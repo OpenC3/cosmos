@@ -20,6 +20,7 @@ import json
 import math
 import os
 import re
+import threading
 import time
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -134,6 +135,64 @@ class QuestDBClient:
             "format": "formatted",
         },
     }
+
+    # Class-level shared connection for query operations (singleton pattern)
+    _shared_conn = None
+    _shared_conn_mutex = threading.Lock()
+
+    # Class-level shared connection for query operations (singleton pattern)
+    _shared_conn = None
+    _shared_conn_mutex = threading.Lock()
+
+    @staticmethod
+    def _create_query_connection(**extra_kwargs):
+        """Create a new psycopg connection to QuestDB using standard env vars.
+
+        Args:
+            **extra_kwargs: Additional keyword arguments passed to psycopg.connect
+                (e.g., autocommit=True, connect_timeout=2).
+
+        Returns:
+            A new psycopg connection.
+        """
+        return psycopg.connect(
+            host=os.environ.get("OPENC3_TSDB_HOSTNAME"),
+            port=os.environ.get("OPENC3_TSDB_QUERY_PORT"),
+            user=os.environ.get("OPENC3_TSDB_USERNAME"),
+            password=os.environ.get("OPENC3_TSDB_PASSWORD"),
+            dbname="qdb",
+            **extra_kwargs,
+        )
+
+    @classmethod
+    def connection(cls):
+        """Get or create a thread-safe shared psycopg connection.
+
+        Returns a shared singleton connection — callers should not close it.
+        """
+        with cls._shared_conn_mutex:
+            if cls._shared_conn is None:
+                cls._shared_conn = cls._create_query_connection()
+            return cls._shared_conn
+
+    @classmethod
+    def disconnect(cls):
+        """Reset the shared connection (close if open, set to None). Used after errors."""
+        with cls._shared_conn_mutex:
+            if cls._shared_conn is not None:
+                with contextlib.suppress(Exception):
+                    cls._shared_conn.close()
+                cls._shared_conn = None
+
+    @classmethod
+    def check_connection(cls):
+        """Health check — attempt to connect and immediately close.
+
+        Returns True if successful, raises on failure.
+        """
+        conn = cls._create_query_connection(autocommit=True, connect_timeout=2)
+        conn.close()
+        return True
 
     # QuestDB name restrictions - characters that need to be replaced
     # See https://questdb.com/docs/reference/api/ilp/advanced-settings/#name-restrictions
@@ -326,23 +385,13 @@ class QuestDBClient:
         Establish PostgreSQL connection for queries and DDL.
 
         Raises:
-            RuntimeError: If required environment variables are missing
             ConnectionError: If connection fails
         """
-        host, port, username, password = self._get_connection_env("OPENC3_TSDB_QUERY_PORT")
-
         try:
             if self.query:
                 self.query.close()
 
-            self.query = psycopg.connect(
-                host=host,
-                port=port,
-                user=username,
-                password=password,
-                dbname="qdb",
-                autocommit=True,  # Important for QuestDB
-            )
+            self.query = self._create_query_connection(autocommit=True)
         except Exception as e:
             raise ConnectionError(f"Failed to connect to QuestDB: {e}") from e
 

@@ -296,7 +296,7 @@ RSpec.describe StreamingApi, type: :model do
         context 'from files' do
           before(:each) do
             # Reset the class variable to prevent leaking between tests
-            LoggedStreamingThread.class_variable_set(:@@conn, nil) if LoggedStreamingThread.class_variable_defined?(:@@conn)
+            OpenC3::QuestDBClient.disconnect
             # Mock get_tlm_available since the TargetModel isn't populated in mock redis
             allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available) do |_instance, items, **_kwargs|
               items.map { |item| item.gsub('CONVERTED', 'RAW') }
@@ -305,12 +305,12 @@ RSpec.describe StreamingApi, type: :model do
 
           after(:each) do
             # Clean up the class variable after each test
-            LoggedStreamingThread.class_variable_set(:@@conn, nil) if LoggedStreamingThread.class_variable_defined?(:@@conn)
+            OpenC3::QuestDBClient.disconnect
           end
 
           it 'has start time and end time within the file time range' do
             mock_conn = instance_double(PG::Connection)
-            allow(PG::Connection).to receive(:new).and_return(mock_conn)
+            allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
             # Data format: each row is array of [column_name, value] pairs
             # Query selects item columns plus timestamp as last column
             pg_data = [ [["PACKET_TIMESECONDS", @file_start_time], ["VALUE1", 10]] ]
@@ -346,7 +346,7 @@ RSpec.describe StreamingApi, type: :model do
 
           it 'has start time within the file time range and end time after the file' do
             mock_conn = instance_double(PG::Connection)
-            allow(PG::Connection).to receive(:new).and_return(mock_conn)
+            allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
             # Data format: each row is array of [column_name, value] pairs
             # Multiple rows with timestamp values spread across file time range
             base_time = @file_start_time / 1_000_000_000
@@ -398,12 +398,12 @@ RSpec.describe StreamingApi, type: :model do
   context 'streaming packets' do
     before(:each) do
       # Reset the class variable to prevent leaking between tests
-      LoggedStreamingThread.class_variable_set(:@@conn, nil) if LoggedStreamingThread.class_variable_defined?(:@@conn)
+      OpenC3::QuestDBClient.disconnect
     end
 
     after(:each) do
       # Clean up the class variable after each test
-      LoggedStreamingThread.class_variable_set(:@@conn, nil) if LoggedStreamingThread.class_variable_defined?(:@@conn)
+      OpenC3::QuestDBClient.disconnect
     end
 
     context 'for packets in raw mode (from files)' do
@@ -457,7 +457,7 @@ RSpec.describe StreamingApi, type: :model do
 
       it 'streams decom packets from TSDB' do
         mock_conn = instance_double(PG::Connection)
-        allow(PG::Connection).to receive(:new).and_return(mock_conn)
+        allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
         # Return non-TypeMapAllStrings so it doesn't try to set the type map
         allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
 
@@ -502,7 +502,7 @@ RSpec.describe StreamingApi, type: :model do
 
       it 'streams all decom packets within time range' do
         mock_conn = instance_double(PG::Connection)
-        allow(PG::Connection).to receive(:new).and_return(mock_conn)
+        allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
         allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
 
         base_time = @file_start_time / 1_000_000_000
@@ -554,7 +554,7 @@ RSpec.describe StreamingApi, type: :model do
 
       it 'streams reduced minute data using SAMPLE BY' do
         mock_conn = instance_double(PG::Connection)
-        allow(PG::Connection).to receive(:new).and_return(mock_conn)
+        allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
         allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
 
         base_time = @file_start_time / 1_000_000_000
@@ -595,7 +595,7 @@ RSpec.describe StreamingApi, type: :model do
 
       it 'streams reduced hour data using SAMPLE BY 1h' do
         mock_conn = instance_double(PG::Connection)
-        allow(PG::Connection).to receive(:new).and_return(mock_conn)
+        allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
         allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
 
         base_time = @file_start_time / 1_000_000_000
@@ -628,7 +628,7 @@ RSpec.describe StreamingApi, type: :model do
 
       it 'streams reduced day data using SAMPLE BY 1d' do
         mock_conn = instance_double(PG::Connection)
-        allow(PG::Connection).to receive(:new).and_return(mock_conn)
+        allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
         allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
 
         base_time = @file_start_time / 1_000_000_000

@@ -15,7 +15,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'pg'
 require_relative 'streaming_thread'
 require_relative 'streaming_object_file_reader'
 OpenC3.require_file 'openc3/api/api'
@@ -38,8 +37,6 @@ class LoggedStreamingThread < StreamingThread
     @thread_mode = :SETUP
     @scope = scope
     @token = token
-    @@conn_mutex = Mutex.new
-    @@conn = nil unless defined?(@@conn)
     @local_api = OpenC3::LocalApi.new
     @last_tsdb_times = {} # topic => last nanosecond timestamp read from TSDB
   end
@@ -566,26 +563,17 @@ class LoggedStreamingThread < StreamingThread
     return if cursor[:exhausted]
     retry_count = 0
     begin
-      @@conn_mutex.synchronize do
-        @@conn ||= PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
-                                      port: ENV['OPENC3_TSDB_QUERY_PORT'],
-                                      user: ENV['OPENC3_TSDB_USERNAME'],
-                                      password: ENV['OPENC3_TSDB_PASSWORD'],
-                                      dbname: 'qdb')
-        if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
-          @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
-        end
-        query_offset = "#{cursor[:query]} LIMIT #{cursor[:offset]}, #{cursor[:offset] + @max_batch_size}"
-        OpenC3::Logger.debug("QuestDB cursor fetch: #{query_offset}")
-        result = @@conn.exec(query_offset)
-        cursor[:offset] += @max_batch_size
-        if result.nil? || result.ntuples == 0
-          cursor[:result] = nil
-          cursor[:exhausted] = true
-        else
-          cursor[:result] = result
-          cursor[:row_index] = 0
-        end
+      conn = OpenC3::QuestDBClient.connection
+      query_offset = "#{cursor[:query]} LIMIT #{cursor[:offset]}, #{cursor[:offset] + @max_batch_size}"
+      OpenC3::Logger.debug("QuestDB cursor fetch: #{query_offset}")
+      result = conn.exec(query_offset)
+      cursor[:offset] += @max_batch_size
+      if result.nil? || result.ntuples == 0
+        cursor[:result] = nil
+        cursor[:exhausted] = true
+      else
+        cursor[:result] = result
+        cursor[:row_index] = 0
       end
     rescue IOError, PG::Error => e
       retry_count += 1
@@ -593,12 +581,7 @@ class LoggedStreamingThread < StreamingThread
         raise QuestDbError, "Error querying QuestDB (cursor fetch): #{e.message}"
       end
       OpenC3::Logger.warn("QuestDB cursor fetch: retry #{retry_count} - #{e.message}")
-      @@conn_mutex.synchronize do
-        if @@conn && !@@conn.finished?
-          @@conn.finish()
-        end
-        @@conn = nil
-      end
+      OpenC3::QuestDBClient.disconnect
       sleep 0.1
       retry
     end
@@ -1162,17 +1145,8 @@ class LoggedStreamingThread < StreamingThread
     query = "SELECT 1 FROM #{table_name}"
     query += tsdb_time_where(start_time, end_time)
     query += " LIMIT 1"
-    result = nil
-    @@conn_mutex.synchronize do
-      @@conn ||= PG::Connection.new(
-        host: ENV['OPENC3_TSDB_HOSTNAME'],
-        port: ENV['OPENC3_TSDB_QUERY_PORT'],
-        user: ENV['OPENC3_TSDB_USERNAME'],
-        password: ENV['OPENC3_TSDB_PASSWORD'],
-        dbname: 'qdb'
-      )
-      result = @@conn.exec(query)
-    end
+    conn = OpenC3::QuestDBClient.connection
+    result = conn.exec(query)
     result && result.ntuples > 0
   rescue IOError, PG::Error
     false
@@ -1195,32 +1169,18 @@ class LoggedStreamingThread < StreamingThread
     loop do
       break if @cancel_thread
       begin
-        @@conn_mutex.synchronize do
-          @@conn ||= PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
-                                        port: ENV['OPENC3_TSDB_QUERY_PORT'],
-                                        user: ENV['OPENC3_TSDB_USERNAME'],
-                                        password: ENV['OPENC3_TSDB_PASSWORD'],
-                                        dbname: 'qdb')
-          # Default connection is all strings but we want to map to the correct types
-          if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
-            # Note: QuestDB uses signed int64 (long), so extreme values are clamped during storage:
-            # - MIN_INT64 (-2^63) is treated as NULL by QuestDB, clamped to -(2^63)+1
-            # - MAX_UINT64 (2^64-1) exceeds int64 max, clamped to 2^63-1
-            # Test with DEMO items P_2.2,2 (MIN_INT64) and P(:6;) (MAX_UINT64)
-            @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
-          end
-          # QuestDB only uses the LIMIT keyword as a range
-          # See https://questdb.com/docs/reference/sql/limit/
-          query_offset = "#{query} LIMIT #{min}, #{max}"
-          OpenC3::Logger.debug("QuestDB #{label}: #{query_offset}")
-          result = @@conn.exec(query_offset)
-          min += @max_batch_size
-          max += @max_batch_size
-          if result.nil? or result.ntuples == 0
-            return # No more pages
-          else
-            yield result
-          end
+        conn = OpenC3::QuestDBClient.connection
+        # QuestDB only uses the LIMIT keyword as a range
+        # See https://questdb.com/docs/reference/sql/limit/
+        query_offset = "#{query} LIMIT #{min}, #{max}"
+        OpenC3::Logger.debug("QuestDB #{label}: #{query_offset}")
+        result = conn.exec(query_offset)
+        min += @max_batch_size
+        max += @max_batch_size
+        if result.nil? or result.ntuples == 0
+          return # No more pages
+        else
+          yield result
         end
       rescue IOError, PG::Error => e
         retry_count += 1
@@ -1229,12 +1189,7 @@ class LoggedStreamingThread < StreamingThread
         end
         OpenC3::Logger.warn("QuestDB #{label}: retry #{retry_count} - #{e.message}")
         OpenC3::Logger.warn("QuestDB #{label}: last query: #{query}")
-        @@conn_mutex.synchronize do
-          if @@conn and !@@conn.finished?
-            @@conn.finish()
-          end
-          @@conn = nil
-        end
+        OpenC3::QuestDBClient.disconnect
         sleep 0.1
         retry
       end
