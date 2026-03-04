@@ -13,7 +13,7 @@ module OpenC3
     end
 
     def self.run
-      ScopeModel.get_all_models(scope: nil).each do |scope, scope_model|
+      ScopeModel.get_all_models(scope: nil).each do |scope, _scope_model|
         model = MicroserviceModel.get_model(name: "#{scope}__CRITICALCMD__#{scope}", scope: scope)
         if BASE # Only remove the critical command model if we're not enterprise
           model.destroy if model

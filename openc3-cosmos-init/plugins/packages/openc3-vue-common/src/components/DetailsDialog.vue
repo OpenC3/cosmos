@@ -34,25 +34,41 @@
             <v-col cols="5" class="label">Item Values</v-col>
             <v-col />
           </v-row>
-          <v-row no-gutters>
+          <v-row no-gutters align="center">
             <v-col cols="1"></v-col>
             <v-col cols="4" class="label">Raw Value</v-col>
-            <v-col>{{ rawValue }}</v-col>
+            <v-col :class="limitsColorClass" class="d-flex align-center">
+              <rux-status
+                v-if="astroStatus"
+                class="mr-1"
+                :status="astroStatus"
+              />
+              {{ rawValue }}
+            </v-col>
           </v-row>
-          <v-row no-gutters>
+          <v-row no-gutters align="center">
             <v-col cols="1"></v-col>
             <v-col cols="4" class="label">Converted Value</v-col>
-            <v-col>{{ convertedValue }}</v-col>
+            <v-col :class="limitsColorClass" class="d-flex align-center">
+              <rux-status
+                v-if="astroStatus"
+                class="mr-1"
+                :status="astroStatus"
+              />
+              {{ convertedValue }}
+            </v-col>
           </v-row>
-          <v-row no-gutters>
+          <v-row no-gutters align="center">
             <v-col cols="1"></v-col>
             <v-col cols="4" class="label">Formatted Value</v-col>
-            <v-col>{{ formattedValue }}</v-col>
-          </v-row>
-          <v-row no-gutters>
-            <v-col cols="1"></v-col>
-            <v-col cols="4" class="label">With Units Value</v-col>
-            <v-col>{{ unitsValue }}</v-col>
+            <v-col :class="limitsColorClass" class="d-flex align-center">
+              <rux-status
+                v-if="astroStatus"
+                class="mr-1"
+                :status="astroStatus"
+              />
+              {{ formattedValue }}
+            </v-col>
           </v-row>
           <v-row no-gutters>
             <v-col cols="5" class="label">Bit Offset</v-col>
@@ -204,6 +220,7 @@
 <script>
 import { OpenC3Api } from '@openc3/js-common/services'
 import LimitsBar from './LimitsBar.vue'
+import { limitsColor, astroStatus } from '../widgets/LimitsColor'
 
 export default {
   components: {
@@ -240,7 +257,7 @@ export default {
       rawValue: null,
       convertedValue: null,
       formattedValue: null,
-      unitsValue: null,
+      currentLimitsState: null,
     }
   },
   computed: {
@@ -251,6 +268,18 @@ export default {
       set(value) {
         this.$emit('update:modelValue', value)
       },
+    },
+    limitsColor() {
+      return limitsColor(this.currentLimitsState)
+    },
+    astroStatus() {
+      return astroStatus(this.limitsColor)
+    },
+    limitsColorClass() {
+      if (this.limitsColor) {
+        return 'openc3-' + this.limitsColor
+      }
+      return ''
     },
   },
   watch: {
@@ -319,7 +348,7 @@ export default {
                 }
                 this.convertedValue = values[1][0]
                 this.formattedValue = values[2][0]
-                this.unitsValue = values[3][0]
+                this.currentLimitsState = values[1][1]
               })
             }
           }, 1000)

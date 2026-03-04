@@ -146,9 +146,9 @@ html.theme-dark-emerald {
   --v-theme-on-primary: #{red($dg-text-primary)},
   #{green($dg-text-primary)},
   #{blue($dg-text-primary)};
-  --v-theme-secondary: #{red($dg-text-secondary)},
-  #{green($dg-text-secondary)},
-  #{blue($dg-text-secondary)};
+  --v-theme-secondary: #{red($dg-accent-light)},
+  #{green($dg-accent-light)},
+  #{blue($dg-accent-light)};
   --v-theme-on-secondary: #{red($dg-text-primary)},
   #{green($dg-text-primary)},
   #{blue($dg-text-primary)};

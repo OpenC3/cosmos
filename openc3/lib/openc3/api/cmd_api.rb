@@ -545,6 +545,8 @@ module OpenC3
           target_name: target_name,
           cmd_name: cmd_name,
           cmd_params: cmd_params,
+          validate: validate,
+          timeout: timeout,
           username: username,
           scope: scope)
       else
