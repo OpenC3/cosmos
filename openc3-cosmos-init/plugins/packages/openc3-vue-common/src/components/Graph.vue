@@ -54,6 +54,18 @@
           "
         />
 
+        <v-tooltip
+          v-if="legendHidden"
+          text="Legend hidden. Restore via Graph > Settings dialog."
+          location="bottom"
+        >
+          <template #activator="{ props }">
+            <v-icon v-bind="props" size="small" class="mx-1">
+              mdi-information-outline
+            </v-icon>
+          </template>
+        </v-tooltip>
+
         <v-spacer />
         <span> {{ title }} </span>
         <v-spacer />
@@ -110,18 +122,6 @@
             @click="expandHeight"
           />
         </template>
-
-        <v-tooltip
-          v-if="legendHidden"
-          text="Legend hidden. Restore via Graph > Settings dialog."
-          location="bottom"
-        >
-          <template #activator="{ props }">
-            <v-icon v-bind="props" size="small" class="mx-1">
-              mdi-information-outline
-            </v-icon>
-          </template>
-        </v-tooltip>
 
         <v-btn
           v-if="expand"
