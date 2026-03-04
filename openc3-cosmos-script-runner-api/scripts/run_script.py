@@ -65,7 +65,7 @@ os.unsetenv("OPENC3_API_PASSWORD")
 del os.environ["OPENC3_API_PASSWORD"]
 os.unsetenv("OPENC3_SERVICE_PASSWORD")
 del os.environ["OPENC3_SERVICE_PASSWORD"]
-# This actually contains the password via redis://openc3:openc3password@openc3-redis:6379
+# This actually contains the password via redis://openc3:XXXXXXXX@openc3-redis:6379
 os.unsetenv("ANYCABLE_REDIS_URL")
 del os.environ["ANYCABLE_REDIS_URL"]
 

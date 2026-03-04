@@ -254,7 +254,8 @@ puts "e"`)
       timeout: 20000,
     },
   )
-  await expect(page.locator('[data-test=start-button]')).toBeVisible()
+  await expect(page.locator('[data-test=start-button]')).toBeEnabled()
+  await utils.sleep(500) // Allow script to fully complete
 
   // Disable the breakpoint
   await page.locator('.ace_gutter-cell').nth(2).click({ force: true })

@@ -39,7 +39,7 @@ ENV['OPENC3_TSDB_USERNAME'] = nil
 ENV['OPENC3_TSDB_PASSWORD'] = nil
 ENV['OPENC3_API_PASSWORD'] = nil
 ENV['OPENC3_SERVICE_PASSWORD'] = nil
-# This actually contains the password via redis://openc3:openc3password@openc3-redis:6379
+# This actually contains the password via redis://openc3:XXXXXXXX@openc3-redis:6379
 ENV['ANYCABLE_REDIS_URL'] = nil
 
 id = ARGV[0]
