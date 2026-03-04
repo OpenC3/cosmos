@@ -147,8 +147,8 @@ export default {
       if (!this.configName) {
         return 'Config must have a name'
       }
-      if (/[/\\]|\.\./.test(this.configName)) {
-        return 'Config name must not contain / \\ or ..'
+      if (!/^[A-Za-z0-9_\-. ]+$/.test(this.configName)) {
+        return 'Config name must only contain letters, numbers, hyphens, underscores, spaces, and periods'
       }
       return null
     },
