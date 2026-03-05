@@ -342,6 +342,18 @@ def check_versitygw(client, versitygw_version)
   validate_versions(versions, versitygw_version, 'versitygw')
 end
 
+def check_tsdb(client, tsdb_version)
+  puts "Checking tsdb against version: #{tsdb_version}"
+  resp = client.get('https://api.github.com/repos/questdb/questdb/releases').body
+  releases = JSON.parse(resp)
+  versions = []
+  releases.each do |release|
+    # Tags are like "v1.0.20"
+    versions << release['tag_name']#.sub(/^v/, '')
+  end
+  validate_versions(versions, tsdb_version, 'tsdb')
+end
+
 def check_build_files(versitygw_version, traefik_version)
   File.open(File.join(File.dirname(__FILE__), 'build_multi_arch.sh')) do |file|
     file.each do |line|

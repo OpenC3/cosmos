@@ -2246,6 +2246,7 @@ export default {
         this.activePromptId = ''
         this.prompt.show = false
         this.ask.show = false
+        this.file.show = false
         return
       }
       this.activePromptId = data.prompt_id
@@ -2439,9 +2440,8 @@ export default {
             answer: fileNames,
             prompt_id: this.activePromptId,
           },
-        }).then((response) => {
-          this.file.show = false // Close the dialog
         })
+        this.file.show = false // Close the dialog immediately to avoid race condition
       })
     },
     setError(event) {

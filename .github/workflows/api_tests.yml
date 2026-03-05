@@ -75,7 +75,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
       # Attempt at using separate SonarQube Scan task
       # - name: Store coverage report
-      #   uses: actions/upload-artifact@v6
+      #   uses: actions/upload-artifact@v7
       #   with:
       #     name: cmd-tlm-api-${{ matrix.ruby-version }}
       #     path: openc3-cosmos-cmd-tlm-api/coverage/coverage.json
@@ -117,7 +117,7 @@ jobs:
           flags: ruby-api # See codecov.yml
           token: ${{ secrets.CODECOV_TOKEN }}
       # - name: Store coverage report
-      #   uses: actions/upload-artifact@v6
+      #   uses: actions/upload-artifact@v7
       #   with:
       #     name: script-runner-api-ruby-${{ matrix.ruby-version }}
       #     path: openc3-cosmos-script-runner-api/coverage/coverage.json
@@ -157,7 +157,7 @@ jobs:
           flags: python # See codecov.yml
           token: ${{ secrets.CODECOV_TOKEN }}
       # - name: Store coverage report
-      #   uses: actions/upload-artifact@v6
+      #   uses: actions/upload-artifact@v7
       #   with:
       #     name: script-runner-api-python-${{ matrix.python-version }}
       #     path: openc3/python/coverage.xml
