@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -141,6 +141,9 @@ export default {
     error: function () {
       if (!this.configName) {
         return 'Config must have a name'
+      }
+      if (!/^[A-Za-z0-9_\-. ]+$/.test(this.configName)) {
+        return 'Config name must only contain letters, numbers, hyphens, underscores, spaces, and periods'
       }
       return null
     },
