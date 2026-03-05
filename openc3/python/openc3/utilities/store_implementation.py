@@ -19,27 +19,18 @@ from openc3.environment import *
 from openc3.utilities.connection_pool import ConnectionPool
 
 
-if OPENC3_REDIS_CLUSTER:
-    openc3_redis_cluster = True
-else:
-    openc3_redis_cluster = False
-
-
 class StoreConnectionPool(ConnectionPool):
     @contextmanager
     def pipelined(self):
-        if openc3_redis_cluster:
-            yield  # TODO: Update keys to support pipelining in cluster
-        else:
-            with self.get() as redis:
-                pipeline = redis.pipeline(transaction=False)
-                thread_id = threading.get_native_id()
-                self.pipelines[thread_id] = pipeline
-                try:
-                    yield
-                finally:
-                    pipeline.execute()
-                    self.pipelines[thread_id] = None
+        with self.get() as redis:
+            pipeline = redis.pipeline(transaction=False)
+            thread_id = threading.get_native_id()
+            self.pipelines[thread_id] = pipeline
+            try:
+                yield
+            finally:
+                pipeline.execute()
+                self.pipelines[thread_id] = None
 
     @contextmanager
     def get(self):
@@ -113,18 +104,16 @@ class Store(metaclass=StoreMeta):
         self.topic_offsets = {}
         self.pipelines = {}
 
-    if not openc3_redis_cluster:
-
-        def build_redis(self):
-            # NOTE: We can't use decode_response because it tries to decode the binary
-            # packet buffer which does not work. Thus strings come back as bytes like
-            # b"target_name" and we decode them using b"target_name".decode()
-            return valkey.Valkey(
-                host=self.redis_host,
-                port=self.redis_port,
-                username=OPENC3_REDIS_USERNAME,
-                password=OPENC3_REDIS_PASSWORD,
-            )
+    def build_redis(self):
+        # NOTE: We can't use decode_response because it tries to decode the binary
+        # packet buffer which does not work. Thus strings come back as bytes like
+        # b"target_name" and we decode them using b"target_name".decode()
+        return valkey.Valkey(
+            host=self.redis_host,
+            port=self.redis_port,
+            username=OPENC3_REDIS_USERNAME,
+            password=OPENC3_REDIS_PASSWORD,
+        )
 
     ###########################################################################
     # Stream APIs
@@ -178,36 +167,34 @@ class Store(metaclass=StoreMeta):
                 topic_offsets[topic] = offsets[-1]
         return offsets
 
-    if not openc3_redis_cluster:
-
-        def read_topics(self, topics, offsets=None, timeout_ms=1000, count=None):
-            if len(topics) == 0:
-                return {}
-            thread_id = threading.get_native_id()
-            if thread_id not in self.topic_offsets:
-                self.topic_offsets[thread_id] = {}
-            topic_offsets = self.topic_offsets[thread_id]
-            try:
-                with self.redis_pool.get() as redis:
-                    if not offsets:
-                        offsets = self.update_topic_offsets(topics)
-                    streams = {}
-                    for index, topic in enumerate(topics):
-                        streams[topic] = offsets[index]
-                    result = redis.xread(streams, block=timeout_ms, count=count)
-                    if result and len(result) > 0:
-                        for topic, messages in result:
-                            for msg_id, msg_hash in messages:
-                                if isinstance(topic, bytes):
-                                    topic = topic.decode()
-                                if isinstance(msg_id, bytes):
-                                    msg_id = msg_id.decode()
-                                topic_offsets[topic] = msg_id
-                                yield topic, msg_id, msg_hash, redis
-                    return result
-            except TimeoutError:
-                # Should return an empty hash not array - xread returns a hash
-                return {}
+    def read_topics(self, topics, offsets=None, timeout_ms=1000, count=None):
+        if len(topics) == 0:
+            return {}
+        thread_id = threading.get_native_id()
+        if thread_id not in self.topic_offsets:
+            self.topic_offsets[thread_id] = {}
+        topic_offsets = self.topic_offsets[thread_id]
+        try:
+            with self.redis_pool.get() as redis:
+                if not offsets:
+                    offsets = self.update_topic_offsets(topics)
+                streams = {}
+                for index, topic in enumerate(topics):
+                    streams[topic] = offsets[index]
+                result = redis.xread(streams, block=timeout_ms, count=count)
+                if result and len(result) > 0:
+                    for topic, messages in result:
+                        for msg_id, msg_hash in messages:
+                            if isinstance(topic, bytes):
+                                topic = topic.decode()
+                            if isinstance(msg_id, bytes):
+                                msg_id = msg_id.decode()
+                            topic_offsets[topic] = msg_id
+                            yield topic, msg_id, msg_hash, redis
+                return result
+        except TimeoutError:
+            # Should return an empty hash not array - xread returns a hash
+            return {}
 
     # Add new entry to the redis stream.
     # > https://www.rubydoc.info/github/redis/redis-rb/Redis:xadd

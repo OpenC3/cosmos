@@ -68,7 +68,7 @@ The COSMOS Core containers consist of the following:
 | cosmos-openc3-buckets-1                  | Provides a S3 like bucket storage interface and also serves as a static webserver for the tool files  |
 | cosmos-openc3-redis-1                    | Serves the static target configuration and Current Value Table                                        |
 | cosmos-openc3-redis-ephemeral-1          | Serves the [streams](https://valkey.io/topics/streams-intro/) containing the raw and decomutated data |
-| cosmos-openc3-tsdb-1                     | [QuestDB](https://questdb.io/) time-series database for long-term storage of decommutated data       |
+| cosmos-openc3-tsdb-1                     | [QuestDB](https://questdb.io/) time-series database for long-term storage of decommutated data        |
 
 The container list for [COSMOS Enterprise](https://openc3.com/enterprise) consists of the following:
 
@@ -116,7 +116,7 @@ Per [AstroUXDS](https://www.astrouxds.com/), "The Astro Space UX Design System e
 
 ### Valkey
 
-[Valkey](https://valkey.io/) is an in-memory data store with support for strings, hashes, lists, sets, sorted sets, streams, and more. COSMOS uses Valkey to store both our configuration and data. If you look back at our [container list](/docs/getting-started/architecture#containers) you'll notice two valkey containers: cosmos-openc3-redis-1 and cosmos-openc3-redis-ephemeral-1 (still named Redis after the original). The ephemeral container contains all the real-time data pushed into [streams](https://valkey.io/topics/streams-intro/). The other container contains COSMOS configuration that is meant to persist. [COSMOS Enterprise](https://openc3.com/enterprise) provides helm charts that setup [Valkey Cluster](https://valkey.io/topics/cluster-tutorial/) to perform horizontal scaling where data is shared across multiple nodes.
+[Valkey](https://valkey.io/) is an in-memory data store with support for strings, hashes, lists, sets, sorted sets, streams, and more. COSMOS uses Valkey to store both our configuration and data. If you look back at our [container list](/docs/getting-started/architecture#containers) you'll notice two valkey containers: cosmos-openc3-redis-1 and cosmos-openc3-redis-ephemeral-1 (still named Redis after the original). The ephemeral container contains all the real-time data pushed into [streams](https://valkey.io/topics/streams-intro/). The other container contains COSMOS configuration that is meant to persist. [COSMOS Enterprise](https://openc3.com/enterprise) provides helm charts that setup [Valkey](https://valkey.io) to perform horizontal scaling where data is shared across multiple nodes.
 
 ### Versitygw
 
@@ -136,20 +136,20 @@ While Valkey stores real-time streaming data and the current value table, QuestD
 
 COSMOS maps its data types to QuestDB column types as follows:
 
-| COSMOS Type | Bit Size    | QuestDB Type   | Notes                                                   |
-| ----------- | ----------- | -------------- | ------------------------------------------------------- |
-| INT         | < 32        | int            | Small signed integers and bitfields                     |
-| INT         | 32          | long           | Promoted to long (QuestDB uses int MIN as NULL)         |
-| INT         | 64          | DECIMAL(20, 0) | Full 64-bit signed range                                |
-| UINT        | < 32        | int            | Fits in signed int                                      |
-| UINT        | 32          | long           | Needs 33 bits for full unsigned range                   |
-| UINT        | 64          | DECIMAL(20, 0) | Full 64-bit unsigned range                              |
-| FLOAT       | 32          | float          | IEEE 754 single precision                               |
-| FLOAT       | 64          | double         | IEEE 754 double precision                               |
-| STRING      | var         | varchar        | Variable-length text                                    |
-| BLOCK       | var         | varchar        | Base64-encoded binary                                   |
-| ARRAY       | var         | varchar        | JSON-serialized arrays                                  |
-| DERIVED     | var         | varies         | Based on converted_type/bit_size; defaults to varchar   |
+| COSMOS Type | Bit Size | QuestDB Type   | Notes                                                 |
+| ----------- | -------- | -------------- | ----------------------------------------------------- |
+| INT         | < 32     | int            | Small signed integers and bitfields                   |
+| INT         | 32       | long           | Promoted to long (QuestDB uses int MIN as NULL)       |
+| INT         | 64       | DECIMAL(20, 0) | Full 64-bit signed range                              |
+| UINT        | < 32     | int            | Fits in signed int                                    |
+| UINT        | 32       | long           | Needs 33 bits for full unsigned range                 |
+| UINT        | 64       | DECIMAL(20, 0) | Full 64-bit unsigned range                            |
+| FLOAT       | 32       | float          | IEEE 754 single precision                             |
+| FLOAT       | 64       | double         | IEEE 754 double precision                             |
+| STRING      | var      | varchar        | Variable-length text                                  |
+| BLOCK       | var      | varchar        | Base64-encoded binary                                 |
+| ARRAY       | var      | varchar        | JSON-serialized arrays                                |
+| DERIVED     | var      | varies         | Based on converted_type/bit_size; defaults to varchar |
 
 #### Special Float Value Handling
 

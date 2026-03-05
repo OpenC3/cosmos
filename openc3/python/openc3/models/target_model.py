@@ -28,7 +28,7 @@ from openc3.topics.topic import Topic
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.json import JsonEncoder
 from openc3.utilities.logger import Logger
-from openc3.utilities.store import Store, openc3_redis_cluster
+from openc3.utilities.store import Store
 
 
 # Manages the target in Redis. It stores the target itself under the
@@ -278,20 +278,12 @@ class TargetModel(Model):
     def get_telemetry_counts(cls, target_packets: list, scope: str = OPENC3_SCOPE):
         result = []
         with Store.instance().redis_pool.get() as redis:
-            if openc3_redis_cluster:
-                # No pipelining for cluster mode
-                # because it requires using the same shard for all keys
-                for target_name, packet_name in target_packets:
-                    target_name = target_name.upper()
-                    packet_name = packet_name.upper()
-                    result.append(redis.hget(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name))
-            else:
-                pipeline = redis.pipeline(transaction=False)
-                for target_name, packet_name in target_packets:
-                    target_name = target_name.upper()
-                    packet_name = packet_name.upper()
-                    pipeline.hget(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name)
-                result = pipeline.execute()
+            pipeline = redis.pipeline(transaction=False)
+            for target_name, packet_name in target_packets:
+                target_name = target_name.upper()
+                packet_name = packet_name.upper()
+                pipeline.hget(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name)
+            result = pipeline.execute()
 
         counts = []
         for count in result:
@@ -316,7 +308,7 @@ class TargetModel(Model):
 
     @classmethod
     def sync_tlm_packet_counts(cls, packet, tlm_target_names, scope):
-        if cls.sync_packet_count_delay_seconds <= 0 or openc3_redis_cluster:
+        if cls.sync_packet_count_delay_seconds <= 0:
             # Perfect but slow method
             packet.received_count = TargetModel.increment_telemetry_count(
                 packet.target_name, packet.packet_name, 1, scope=scope
@@ -412,20 +404,12 @@ class TargetModel(Model):
     def get_command_counts(cls, target_packets: list, scope: str = OPENC3_SCOPE):
         result = []
         with Store.instance().redis_pool.get() as redis:
-            if openc3_redis_cluster:
-                # No pipelining for cluster mode
-                # because it requires using the same shard for all keys
-                for target_name, packet_name in target_packets:
-                    target_name = target_name.upper()
-                    packet_name = packet_name.upper()
-                    result.append(redis.hget(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name))
-            else:
-                pipeline = redis.pipeline(transaction=False)
-                for target_name, packet_name in target_packets:
-                    target_name = target_name.upper()
-                    packet_name = packet_name.upper()
-                    pipeline.hget(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name)
-                result = pipeline.execute()
+            pipeline = redis.pipeline(transaction=False)
+            for target_name, packet_name in target_packets:
+                target_name = target_name.upper()
+                packet_name = packet_name.upper()
+                pipeline.hget(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name)
+            result = pipeline.execute()
 
         counts = []
         for count in result:

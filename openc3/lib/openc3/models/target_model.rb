@@ -1201,21 +1201,11 @@ module OpenC3
 
     def self.get_telemetry_counts(target_packets, scope:)
       result = []
-      if $openc3_redis_cluster
-        # No pipelining for cluster mode
-        # because it requires using the same shard for all keys
+      result = Store.redis_pool.pipelined do
         target_packets.each do |target_name, packet_name|
           target_name = target_name.upcase
           packet_name = packet_name.upcase
-          result << Store.hget("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name)
-        end
-      else
-        result = Store.redis_pool.pipelined do
-          target_packets.each do |target_name, packet_name|
-            target_name = target_name.upcase
-            packet_name = packet_name.upcase
-            Store.hget("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name)
-          end
+          Store.hget("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name)
         end
       end
       counts = []
@@ -1250,7 +1240,7 @@ module OpenC3
     end
 
     def self.sync_tlm_packet_counts(packet, tlm_target_names, scope:)
-      if @@sync_packet_count_delay_seconds <= 0 or $openc3_redis_cluster
+      if @@sync_packet_count_delay_seconds <= 0
         # Perfect but slow method
         packet.received_count = increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope: scope)
       else
@@ -1338,21 +1328,11 @@ module OpenC3
 
     def self.get_command_counts(target_packets, scope:)
       result = []
-      if $openc3_redis_cluster
-        # No pipelining for cluster mode
-        # because it requires using the same shard for all keys
+      result = Store.redis_pool.pipelined do
         target_packets.each do |target_name, packet_name|
           target_name = target_name.upcase
           packet_name = packet_name.upcase
-          result << Store.hget("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name)
-        end
-      else
-        result = Store.redis_pool.pipelined do
-          target_packets.each do |target_name, packet_name|
-            target_name = target_name.upcase
-            packet_name = packet_name.upcase
-            Store.hget("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name)
-          end
+          Store.hget("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name)
         end
       end
       counts = []

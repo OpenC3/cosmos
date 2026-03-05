@@ -304,7 +304,6 @@ export default {
       configKey: 'telemetry_viewer',
       openConfig: false,
       saveConfig: false,
-      playbackAvailable: false,
       playbackStep: 1,
       playbackSkip: 10,
       playbackDate: '',
@@ -328,7 +327,6 @@ export default {
               label: 'Playback Mode',
               checkbox: true,
               checked: this.playbackMode === 'playback',
-              disabled: this.playbackAvailable === false,
               command: () => {
                 this.playbackMode =
                   this.playbackMode === 'playback' ? 'realtime' : 'playback'
@@ -459,18 +457,6 @@ export default {
       })
       .catch((error) => {
         // Do nothing
-      })
-    Api.get('/openc3-api/tsdb', {
-      headers: {
-        // Since we're just checking for existence, 404 is possible so ignore it
-        'Ignore-Errors': '404',
-      },
-    })
-      .then((_response) => {
-        this.playbackAvailable = true
-      })
-      .catch((_error) => {
-        this.playbackAvailable = false
       })
     Api.get('/openc3-api/screens').then((response) => {
       response.data.forEach((filename) => {
