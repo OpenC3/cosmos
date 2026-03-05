@@ -92,8 +92,8 @@ class ScriptAutocompleteController < ApplicationController
               if not item["hidden"]
                 latest_data <<
                   {
-                    :caption => "#{target_name} LATEST #{item}",
-                    :snippet => "#{target_name} LATEST #{item}",
+                    :caption => "#{target_name} LATEST #{item["name"]}",
+                    :snippet => "#{target_name} LATEST #{item["name"]}",
                     :meta => 'telemetry',
                   }
               end
