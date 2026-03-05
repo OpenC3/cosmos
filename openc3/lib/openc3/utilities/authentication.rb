@@ -48,7 +48,8 @@ module OpenC3
     end
 
     def get_otp(scope: 'DEFAULT')
-      if @token.nil? or @token.empty?
+      session_token = token()
+      if session_token.nil? or session_token.empty?
         raise OpenC3AuthenticationError, "Uninitialized authentication: unable to get OTP"
       end
       retry_faraday_request do

@@ -50,12 +50,13 @@ class OpenC3Authentication:
         return self._token
 
     def get_otp(self, scope="DEFAULT"):
-        if not self._token:
+        session_token = self.token()
+        if not session_token:
             raise OpenC3AuthenticationError("Uninitialized authentication: unable to get OTP")
         response = Session().get(
             self._generate_auth_url("/auth/otp"),
             params={"scope": scope},
-            headers={"Authorization": self.token()},
+            headers={"Authorization": session_token},
         )
         return response.text
 
