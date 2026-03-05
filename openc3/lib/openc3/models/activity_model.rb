@@ -261,7 +261,7 @@ module OpenC3
 
     # Update the Redis hash at primary_key and set the score equal to the start Epoch time
     # the member is set to the JSON generated via calling as_json
-    def create(overlap: true)
+    def create(overlap: true, username: nil)
       if @recurring['end'] and @recurring['frequency'] and @recurring['span']
         # First validate the initial recurring activity ... all others are just offsets
         validate_input(start: @start, stop: @stop, kind: @kind, data: @data)
@@ -290,7 +290,7 @@ module OpenC3
 
         # Update @updated_at and add an event assuming it all completes ok
         @updated_at = Time.now.to_nsec_from_epoch
-        add_event(status: 'created')
+        add_event(status: 'created', username: username)
 
         Store.multi do |multi|
           (@start..@recurring['end']).step(recurrence).each do |start_time|
@@ -326,7 +326,7 @@ module OpenC3
           end
         end
         @updated_at = Time.now.to_nsec_from_epoch
-        add_event(status: 'created')
+        add_event(status: 'created', username: username)
         Store.zadd(@primary_key, @start, JSON.generate(self.as_json, allow_nan: true))
         notify(kind: 'created')
       end
@@ -335,7 +335,7 @@ module OpenC3
     # Update the Redis hash at primary_key and remove the current activity at the current score
     # and update the score to the new score equal to the start Epoch time this uses a multi
     # to execute both the remove and create.
-    def update(start:, stop:, kind:, data:, overlap: true)
+    def update(start:, stop:, kind:, data:, overlap: true, username: nil)
       array = Store.zrangebyscore(@primary_key, @start, @start)
       if array.length == 0
         raise ActivityError.new "failed to find activity at: #{@start}"
@@ -350,10 +350,22 @@ module OpenC3
           raise ActivityOverlapError.new "failed to update #{old_start}, no activities can overlap, collision: #{collision}"
         end
       end
+
+      # Compute changeset for audit trail before applying changes
+      changes = {}
+      diff_field(changes, 'start', @start, start)
+      diff_field(changes, 'stop', @stop, stop)
+      diff_field(changes, 'kind', @kind, kind)
+      old_data = @data.reject { |k, _| k == 'username' }
+      new_data = data.reject { |k, _| k == 'username' }
+      (old_data.keys | new_data.keys).each do |key|
+        diff_field(changes, "data.#{key}", old_data[key], new_data[key])
+      end
+
       set_input(start: start, stop: stop, kind: kind, data: data, events: @events)
       @updated_at = Time.now.to_nsec_from_epoch
 
-      add_event(status: 'updated')
+      add_event(status: 'updated', username: username, changes: changes.empty? ? nil : changes)
       json = Store.zrangebyscore(@primary_key, old_start, old_start)
       parsed = json.map { |value| JSON.parse(value, allow_nan: true, create_additions: true) }
       parsed.each_with_index do |value, index|
@@ -397,12 +409,20 @@ module OpenC3
 
     # add_event will make an event. This will NOT save the object to the redis database
     # @param [String] status - the event status such as "queued" or "updated" or "created"
-    def add_event(status:)
+    # @param [String] username - optional username of who performed the action
+    # @param [Hash] changes - optional hash describing what fields changed (for audit)
+    def add_event(status:, username: nil, changes: nil)
       event = {
         'time' => Time.now.to_i,
         'event' => status
       }
+      event['username'] = username if username
+      event['changes'] = changes if changes
       @events << event
+    end
+
+    def diff_field(changes, field, old_val, new_val)
+      changes[field] = {'old' => old_val, 'new' => new_val} unless old_val == new_val
     end
 
     # update the redis stream / timeline topic that something has changed
