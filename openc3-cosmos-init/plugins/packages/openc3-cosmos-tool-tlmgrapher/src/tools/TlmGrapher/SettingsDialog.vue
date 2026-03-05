@@ -33,7 +33,16 @@
         <v-card-text>
           <div class="pa-3">
             <v-row v-for="(item, key) in localSettings" :key="key">
+              <v-checkbox
+                v-if="typeof item.value === 'boolean'"
+                v-model="item.value"
+                :label="item.title"
+                hide-details="auto"
+                density="compact"
+                data-test="settings-hide-legend"
+              />
               <v-text-field
+                v-else
                 v-model.number="item.value"
                 hide-details="auto"
                 type="number"

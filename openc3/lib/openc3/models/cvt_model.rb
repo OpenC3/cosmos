@@ -15,9 +15,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'pg'
 require 'set'
-require 'thread'
 require 'openc3/utilities/store'
 require 'openc3/utilities/store_queued'
 require 'openc3/utilities/questdb_client'
@@ -27,8 +25,6 @@ module OpenC3
   class CvtModel
     @@packet_cache = {}
     @@override_cache = {}
-    @@conn = nil
-    @@conn_mutex = Mutex.new
 
     VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED]
     def self.build_json_from_packet(packet)
@@ -282,98 +278,85 @@ module OpenC3
 
       retry_count = 0
       begin
-        @@conn_mutex.synchronize do
-          @@conn ||= PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
-                                        port: ENV['OPENC3_TSDB_QUERY_PORT'],
-                                        user: ENV['OPENC3_TSDB_USERNAME'],
-                                        password: ENV['OPENC3_TSDB_PASSWORD'],
-                                        dbname: 'qdb')
-          # Default connection is all strings but we want to map to the correct types
-          if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
-            # TODO: This doesn't seem to be round tripping UINT64 correctly
-            # Try playback with P_2.2,2 and P(:6;): from the DEMO
-            @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
-          end
-
-          result = @@conn.exec_params(query, query_params)
-          if result.nil? or result.ntuples == 0
-            return {}
-          else
-            data = []
-            # Build up a results set that is an array of arrays
-            # Each nested array is a set of 2 items: [value, limits state]
-            # If the item does not have limits the limits state is nil
-            result.each_with_index do |tuples, row_num|
-              data[row_num] ||= []
-              row_index = 0
-              # Store timestamp values for this row: { "T0.PACKET_TIMESECONDS" => Time, ... }
-              row_timestamps = {}
-              tuples.each do |tuple|
-                col_name = tuple[0]
-                col_value = tuple[1]
-                if col_name.include?("__L")
-                  data[row_num][row_index - 1][1] = col_value
-                elsif col_name =~ /^__nil/
-                  data[row_num][row_index] = [nil, nil]
-                  row_index += 1
-                elsif col_name =~ /^T(\d+)___ts_(.+)$/
-                  # This is a timestamp column for calculated items (TIMEFORMATTED)
-                  table_idx = $1.to_i
-                  ts_source = $2
-                  row_timestamps["T#{table_idx}.#{ts_source}"] = col_value
-                elsif col_name.end_with?('.PACKET_TIMESECONDS', '.RECEIVED_TIMESECONDS') || col_name == 'PACKET_TIMESECONDS' || col_name == 'RECEIVED_TIMESECONDS'
-                  # Stored timestamp column - convert from datetime to float seconds
-                  ts_utc = QuestDBClient.pg_timestamp_to_utc(col_value)
-                  seconds_value = QuestDBClient.format_timestamp(ts_utc, :seconds)
-                  data[row_num][row_index] = [seconds_value, nil]
-                  row_index += 1
-                  # Also store for calculated items (TIMEFORMATTED) that may need this
-                  # Normalize key to T{index}.{col} format for consistency
-                  if col_name.include?('.')
-                    row_timestamps[col_name] = col_value
-                  else
-                    row_timestamps["T0.#{col_name}"] = col_value
-                  end
+        conn = QuestDBClient.connection
+        result = conn.exec_params(query, query_params)
+        if result.nil? or result.ntuples == 0
+          return {}
+        else
+          data = []
+          # Build up a results set that is an array of arrays
+          # Each nested array is a set of 2 items: [value, limits state]
+          # If the item does not have limits the limits state is nil
+          result.each_with_index do |tuples, row_num|
+            data[row_num] ||= []
+            row_index = 0
+            # Store timestamp values for this row: { "T0.PACKET_TIMESECONDS" => Time, ... }
+            row_timestamps = {}
+            tuples.each do |tuple|
+              col_name = tuple[0]
+              col_value = tuple[1]
+              if col_name.include?("__L")
+                data[row_num][row_index - 1][1] = col_value
+              elsif col_name =~ /^__nil/
+                data[row_num][row_index] = [nil, nil]
+                row_index += 1
+              elsif col_name =~ /^T(\d+)___ts_(.+)$/
+                # This is a timestamp column for calculated items (TIMEFORMATTED)
+                table_idx = $1.to_i
+                ts_source = $2
+                row_timestamps["T#{table_idx}.#{ts_source}"] = col_value
+              elsif col_name.end_with?('.PACKET_TIMESECONDS', '.RECEIVED_TIMESECONDS') || col_name == 'PACKET_TIMESECONDS' || col_name == 'RECEIVED_TIMESECONDS'
+                # Stored timestamp column - convert from datetime to float seconds
+                ts_utc = QuestDBClient.pg_timestamp_to_utc(col_value)
+                seconds_value = QuestDBClient.format_timestamp(ts_utc, :seconds)
+                data[row_num][row_index] = [seconds_value, nil]
+                row_index += 1
+                # Also store for calculated items (TIMEFORMATTED) that may need this
+                # Normalize key to T{index}.{col} format for consistency
+                if col_name.include?('.')
+                  row_timestamps[col_name] = col_value
                 else
-                  # Decode value using item type info
-                  # QuestDB may return column names without table alias prefix
-                  # Try both the raw column name and prefixed versions
-                  type_info = item_types[col_name]
-                  unless type_info
-                    tables.length.times do |i|
-                      prefixed_name = "T#{i}.#{col_name}"
-                      type_info = item_types[prefixed_name]
-                      break if type_info
-                    end
-                    type_info ||= {}
-                  end
-                  decoded_value = QuestDBClient.decode_value(
-                    col_value,
-                    data_type: type_info['data_type'],
-                    array_size: type_info['array_size']
-                  )
-                  data[row_num][row_index] = [decoded_value, nil]
-                  row_index += 1
+                  row_timestamps["T0.#{col_name}"] = col_value
                 end
+              else
+                # Decode value using item type info
+                # QuestDB may return column names without table alias prefix
+                # Try both the raw column name and prefixed versions
+                type_info = item_types[col_name]
+                unless type_info
+                  tables.length.times do |i|
+                    prefixed_name = "T#{i}.#{col_name}"
+                    type_info = item_types[prefixed_name]
+                    break if type_info
+                  end
+                  type_info ||= {}
+                end
+                decoded_value = QuestDBClient.decode_value(
+                  col_value,
+                  data_type: type_info['data_type'],
+                  array_size: type_info['array_size']
+                )
+                data[row_num][row_index] = [decoded_value, nil]
+                row_index += 1
               end
+            end
 
-              # Insert calculated timestamp items at their positions
-              # Insert in ascending order so positions remain valid after each insert
-              calculated_items.keys.sort.each do |position|
-                calc_info = calculated_items[position]
-                ts_key = "T#{calc_info[:table_index]}.#{calc_info[:source]}"
-                ts_value = row_timestamps[ts_key]
-                ts_utc = QuestDBClient.pg_timestamp_to_utc(ts_value)
-                calculated_value = QuestDBClient.format_timestamp(ts_utc, calc_info[:format])
-                data[row_num].insert(position, [calculated_value, nil])
-              end
+            # Insert calculated timestamp items at their positions
+            # Insert in ascending order so positions remain valid after each insert
+            calculated_items.keys.sort.each do |position|
+              calc_info = calculated_items[position]
+              ts_key = "T#{calc_info[:table_index]}.#{calc_info[:source]}"
+              ts_value = row_timestamps[ts_key]
+              ts_utc = QuestDBClient.pg_timestamp_to_utc(ts_value)
+              calculated_value = QuestDBClient.format_timestamp(ts_utc, calc_info[:format])
+              data[row_num].insert(position, [calculated_value, nil])
             end
-            # If we only have one row then we return a single array
-            if result.ntuples == 1
-              data = data[0]
-            end
-            return data
           end
+          # If we only have one row then we return a single array
+          if result.ntuples == 1
+            data = data[0]
+          end
+          return data
         end
       rescue IOError, PG::Error => e
         # Retry the query because various errors can occur that are recoverable
@@ -384,12 +367,7 @@ module OpenC3
         end
         Logger.warn("TSDB: Retrying due to error: #{e.message}")
         Logger.warn("TSDB: Last query: #{query}") # Log the last query for debugging
-        @@conn_mutex.synchronize do
-          if @@conn and !@@conn.finished?
-            @@conn.finish()
-          end
-          @@conn = nil # Force the new connection
-        end
+        QuestDBClient.disconnect
         sleep 0.1
         retry
       end

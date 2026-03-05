@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -15,8 +15,12 @@
   <v-card>
     <v-card-title> Code Editor Settings </v-card-title>
     <v-card-subtitle>
-      Settings for the code editors built into COSMOS (e.g. in Script Runner)
+      Settings for the code editors built into COSMOS (e.g. in Script Runner).
+      These settings are saved to your browser's local storage.
     </v-card-subtitle>
+    <v-alert v-model="successSaving" type="success" closable density="compact">
+      Saved to local browser settings! (Refresh the page to see changes)
+    </v-alert>
     <v-card-text class="pb-0">
       <v-select
         v-model="defaultLanguage"
@@ -49,6 +53,7 @@ import { AceEditorUtils } from '@/components/ace'
 export default {
   data() {
     return {
+      successSaving: false,
       vimMode: AceEditorUtils.isVimModeEnabled(),
       defaultLanguage: AceEditorUtils.getDefaultScriptingLanguage(),
       languageOptions: [
@@ -61,6 +66,7 @@ export default {
     save: function () {
       AceEditorUtils.setVimMode(this.vimMode)
       AceEditorUtils.setDefaultScriptingLanguage(this.defaultLanguage)
+      this.successSaving = true
     },
   },
 }

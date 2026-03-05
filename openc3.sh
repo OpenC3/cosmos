@@ -537,7 +537,7 @@ case $1 in
       exit 1
     fi
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
-      echo "Usage: $0 build-ubi [IMAGE_NAME...]"
+      echo "Usage: $0 build-ubi [BUILD_FLAGS...] [IMAGE_NAME...]"
       echo ""
       echo "Build $COSMOS_NAME UBI (Universal Base Image) containers."
       echo ""
@@ -545,6 +545,7 @@ case $1 in
       echo "suitable for air-gapped and government environments."
       echo ""
       echo "Arguments:"
+      echo "  BUILD_FLAGS   Additional flags to pass to docker build (e.g., --no-cache, --pull)"
       echo "  IMAGE_NAME    One or more image names to build (optional)"
       echo "                If no images are specified, all images will be built"
       echo ""
@@ -570,7 +571,9 @@ case $1 in
       echo ""
       echo "Examples:"
       echo "  $0 build-ubi                              # Build all images"
+      echo "  $0 build-ubi --no-cache                   # Build all images without cache"
       echo "  $0 build-ubi openc3-ruby-ubi              # Build one image"
+      echo "  $0 build-ubi --no-cache openc3-ruby-ubi   # Build one image without cache"
       echo "  ENV_FILE=.env.prod $0 build-ubi           # Use different env file"
       echo ""
       echo "Options:"

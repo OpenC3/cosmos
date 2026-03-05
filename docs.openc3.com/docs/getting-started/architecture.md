@@ -68,7 +68,7 @@ The COSMOS Core containers consist of the following:
 | cosmos-openc3-buckets-1                  | Provides a S3 like bucket storage interface and also serves as a static webserver for the tool files  |
 | cosmos-openc3-redis-1                    | Serves the static target configuration and Current Value Table                                        |
 | cosmos-openc3-redis-ephemeral-1          | Serves the [streams](https://valkey.io/topics/streams-intro/) containing the raw and decomutated data |
-| cosmos-openc3-tsdb-1                     | [QuestDB](https://questdb.io/) time-series database for long-term storage of decommutated data       |
+| cosmos-openc3-tsdb-1                     | [QuestDB](https://questdb.io/) time-series database for long-term storage of decommutated data        |
 
 The container list for [COSMOS Enterprise](https://openc3.com/enterprise) consists of the following:
 
@@ -128,28 +128,28 @@ The COSMOS API and Script Runner backends are powered by [Ruby on Rails](https:/
 
 ### QuestDB
 
-COSMOS uses [QuestDB](https://questdb.io/) as its time-series database (TSDB) for long-term telemetry storage. QuestDB is a high-performance database optimized for time-series data, offering fast ingestion rates and efficient querying of large datasets. Data is ingested into QuestDB via the [ILP HTTP protocol](https://questdb.io/docs/reference/api/ilp/overview/).
+COSMOS uses [QuestDB](https://questdb.io/) as its time-series database (TSDB) for long-term telemetry storage. This includes storage of all the COSMOS [telemetry types](/docs/guides/scripting-api#telemetry-types): `RAW`, `CONVERTED`, and `FORMATTED`. COSMOS still stores the raw packet data as binary files in the object storage (versitygw or cloud native). The storage of raw binary files can be controlled by the [`CMD_LOG_RETAIN_TIME`](/docs/configuration/plugins#cmd_log_retain_time) and [`TLM_LOG_RETAIN_TIME`](/docs/configuration/plugins#tlm_log_retain_time). QuestDB is a high-performance database optimized for time-series data, offering fast ingestion rates and efficient querying of large datasets. Data is ingested into QuestDB via the [ILP HTTP protocol](https://questdb.io/docs/reference/api/ilp/overview/).
 
-While Valkey stores real-time streaming data and the current value table, QuestDB provides persistent storage for historical telemetry. This enables users to query telemetry data over extended time periods using standard SQL syntax. Each telemetry and command packet gets its own QuestDB table using the naming convention `TLM__TARGET__PACKET` or `CMD__TARGET__PACKET`.
+While Valkey stores real-time streaming data and the current value table, QuestDB provides persistent storage for historical telemetry. This enables users to query telemetry data over extended time periods using standard SQL syntax. Each telemetry and command packet gets its own QuestDB table using the naming convention `SCOPE__TLM__TARGET__PACKET` or `SCOPE__CMD__TARGET__PACKET`. Note that all COSMOS tools using the [Streaming API](/docs/development/streaming-api) including Command History, Data Extractor, Data Viewer, Telemetry Grapher, Grafana all now use QuestDB to pull engineering data.
 
 #### Data Type Mapping
 
 COSMOS maps its data types to QuestDB column types as follows:
 
-| COSMOS Type | Bit Size    | QuestDB Type   | Notes                                                   |
-| ----------- | ----------- | -------------- | ------------------------------------------------------- |
-| INT         | < 32        | int            | Small signed integers and bitfields                     |
-| INT         | 32          | long           | Promoted to long (QuestDB uses int MIN as NULL)         |
-| INT         | 64          | DECIMAL(20, 0) | Full 64-bit signed range                                |
-| UINT        | < 32        | int            | Fits in signed int                                      |
-| UINT        | 32          | long           | Needs 33 bits for full unsigned range                   |
-| UINT        | 64          | DECIMAL(20, 0) | Full 64-bit unsigned range                              |
-| FLOAT       | 32          | float          | IEEE 754 single precision                               |
-| FLOAT       | 64          | double         | IEEE 754 double precision                               |
-| STRING      | var         | varchar        | Variable-length text                                    |
-| BLOCK       | var         | varchar        | Base64-encoded binary                                   |
-| ARRAY       | var         | varchar        | JSON-serialized arrays                                  |
-| DERIVED     | var         | varies         | Based on converted_type/bit_size; defaults to varchar   |
+| COSMOS Type | Bit Size | QuestDB Type   | Notes                                                 |
+| ----------- | -------- | -------------- | ----------------------------------------------------- |
+| INT         | < 32     | int            | Small signed integers and bitfields                   |
+| INT         | 32       | long           | Promoted to long (QuestDB uses int MIN as NULL)       |
+| INT         | 64       | DECIMAL(20, 0) | Full 64-bit signed range                              |
+| UINT        | < 32     | int            | Fits in signed int                                    |
+| UINT        | 32       | long           | Needs 33 bits for full unsigned range                 |
+| UINT        | 64       | DECIMAL(20, 0) | Full 64-bit unsigned range                            |
+| FLOAT       | 32       | float          | IEEE 754 single precision                             |
+| FLOAT       | 64       | double         | IEEE 754 double precision                             |
+| STRING      | var      | varchar        | Variable-length text                                  |
+| BLOCK       | var      | varchar        | Base64-encoded binary                                 |
+| ARRAY       | var      | varchar        | JSON-serialized arrays                                |
+| DERIVED     | var      | varies         | Based on converted_type/bit_size; defaults to varchar |
 
 #### Special Float Value Handling
 

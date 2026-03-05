@@ -30,6 +30,9 @@ module OpenC3
         # Initialization calls a method that uses Faraday to get a token from the server.
         # It's mocked to return $openc3_mock_token for unit testing.
         expect(auth.token).to eq($openc3_mock_token)
+
+        # Once initialized, it should be able to get an OTP as well
+        expect(auth.get_otp).to eq($openc3_mock_otp)
       end
 
       it "retries on Faraday::ConnectionFailed" do

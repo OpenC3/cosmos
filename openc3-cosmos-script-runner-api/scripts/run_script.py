@@ -51,23 +51,20 @@ Store.instance()
 EphemeralStore.instance()
 
 # Clear ENV vars for security purposes
-del os.environ["OPENC3_BUCKET_USERNAME"]
-del os.environ["OPENC3_BUCKET_PASSWORD"]
-os.unsetenv("OPENC3_BUCKET_USERNAME")
-os.unsetenv("OPENC3_BUCKET_PASSWORD")
-del os.environ["OPENC3_REDIS_USERNAME"]
-del os.environ["OPENC3_REDIS_PASSWORD"]
-os.unsetenv("OPENC3_TSDB_USERNAME")
-os.unsetenv("OPENC3_TSDB_PASSWORD")
-del os.environ["OPENC3_TSDB_USERNAME"]
-del os.environ["OPENC3_TSDB_PASSWORD"]
-os.unsetenv("OPENC3_API_PASSWORD")
-del os.environ["OPENC3_API_PASSWORD"]
-os.unsetenv("OPENC3_SERVICE_PASSWORD")
-del os.environ["OPENC3_SERVICE_PASSWORD"]
-# This actually contains the password via redis://openc3:XXXXXXXX@openc3-redis:6379
-os.unsetenv("ANYCABLE_REDIS_URL")
-del os.environ["ANYCABLE_REDIS_URL"]
+# Use pop with default to avoid KeyError if vars don't exist (e.g. Enterprise/Keycloak)
+for key in [
+    "OPENC3_BUCKET_USERNAME",
+    "OPENC3_BUCKET_PASSWORD",
+    "OPENC3_REDIS_USERNAME",
+    "OPENC3_REDIS_PASSWORD",
+    "OPENC3_TSDB_USERNAME",
+    "OPENC3_TSDB_PASSWORD",
+    "OPENC3_API_PASSWORD",
+    "OPENC3_SERVICE_PASSWORD",
+    # This actually contains the password via redis://openc3:XXXXXXXX@openc3-redis:6379
+    "ANYCABLE_REDIS_URL",
+]:
+    os.environ.pop(key, None)
 
 
 script_id = sys.argv[1]

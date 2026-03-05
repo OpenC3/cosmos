@@ -8,19 +8,21 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
+import { Api } from '.'
 import { createConsumer } from '@anycable/web'
 
 export default class Cable {
-  constructor(url = '/openc3-api/cable') {
+  constructor(url = '/openc3-api/cable', otpUrl = '/openc3-api/auth/otp') {
     this._cable = null
     this._url = url
+    this._otpUrl = otpUrl
   }
   disconnect() {
     if (this._cable) {
@@ -29,20 +31,23 @@ export default class Cable {
     }
   }
   createSubscription(channel, scope, callbacks = {}, additionalOptions = {}) {
-    return OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-      (refreshed) => {
+    return OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity)
+      .then((refreshed) => {
         if (refreshed) {
           OpenC3Auth.setTokens()
         }
+        return Api.get(this._otpUrl, {
+          params: {
+            scope,
+          },
+        })
+      })
+      .then(({ data: otp }) => {
         if (this._cable == null) {
-          let final_url =
-            this._url +
-            '?scope=' +
-            encodeURIComponent(scope) +
-            '&authorization=' +
-            encodeURIComponent(localStorage.openc3Token)
-          final_url = new URL(final_url, document.baseURI).href
-          this._cable = createConsumer(final_url)
+          const finalUrl = new URL(this._url, document.baseURI)
+          finalUrl.searchParams.set('scope', scope)
+          finalUrl.searchParams.set('authorization', otp)
+          this._cable = createConsumer(finalUrl.href)
         }
         return this._cable.subscriptions.create(
           {
@@ -51,8 +56,7 @@ export default class Cable {
           },
           callbacks,
         )
-      },
-    )
+      })
   }
   recordPing() {
     // Noop with Anycable

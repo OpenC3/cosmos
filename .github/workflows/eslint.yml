@@ -22,6 +22,10 @@ on:
     paths:
       - "openc3-cosmos-init/plugins/packages/**"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 # All jobs need permission to read repo contents
 permissions:
   contents: read

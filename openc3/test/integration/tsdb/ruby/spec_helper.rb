@@ -78,6 +78,11 @@ module QuestDBTestHelpers
     )
   end
 
+  # Write test data to multiple tables using Python and return the test parameters
+  def write_multi_table_data(spec)
+    run_python_helper('write_multi', spec: spec)
+  end
+
   # Clean up a test table
   def cleanup_table(table_name)
     run_python_helper('cleanup', table: table_name)
@@ -103,7 +108,9 @@ RSpec.configure do |config|
 
   # Skip all tests if QuestDB is not available
   config.before(:suite) do
-    unless QuestDBTestHelpers.instance_method(:questdb_available?).bind(Object.new).call
+    checker = Object.new
+    checker.extend(QuestDBTestHelpers)
+    unless checker.questdb_available?
       puts "\n\nSkipping QuestDB tests - QuestDB not available."
       puts "Start QuestDB with: docker compose -f docker-compose.test.yml up -d\n\n"
     end

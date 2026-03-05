@@ -22,13 +22,8 @@ class AuthController < ApplicationController
   MAX_BAD_ATTEMPTS = ENV.fetch('OPENC3_AUTH_RATE_LIMIT_TO', '10').to_i
   BAD_ATTEMPTS_WINDOW = ENV.fetch('OPENC3_AUTH_RATE_LIMIT_WITHIN', '120').to_i
 
-  @@user_bad_attempts_count = 0
-  @@user_bad_attempts_first_time = nil
-  @@user_bad_attempts_mutex = Mutex.new
-
-  @@service_bad_attempts_count = 0
-  @@service_bad_attempts_first_time = nil
-  @@service_bad_attempts_mutex = Mutex.new
+  USER_BAD_ATTEMPTS_KEY = 'openc3__auth_bad_attempts__user'
+  SERVICE_BAD_ATTEMPTS_KEY = 'openc3__auth_bad_attempts__service'
 
   def token_exists
     result = OpenC3::AuthModel.set?
@@ -75,6 +70,12 @@ class AuthController < ApplicationController
     end
   end
 
+  def get_otp
+    user = authorization('system')
+    return unless user
+    render :plain => OpenC3::Authorization.generate_otp(user)
+  end
+
   def set
     if user_rate_limited?
       head :too_many_requests
@@ -99,61 +100,43 @@ class AuthController < ApplicationController
 
   # Checks to see if the user password has been rate limited due to bad attempts
   def user_rate_limited?
-    @@user_bad_attempts_mutex.synchronize do
-      time = Time.now
-      
-      # Reset counter if window has expired
-      if @@user_bad_attempts_first_time && (time - @@user_bad_attempts_first_time) > BAD_ATTEMPTS_WINDOW
-        @@user_bad_attempts_count = 0
-        @@user_bad_attempts_first_time = nil
-      end
-      
-      return @@user_bad_attempts_count >= MAX_BAD_ATTEMPTS
+    begin
+      count = OpenC3::EphemeralStore.get(USER_BAD_ATTEMPTS_KEY)
+      return count.to_i >= MAX_BAD_ATTEMPTS
+    rescue StandardError => error
+      OpenC3::Logger.error("Redis error checking user rate limit: #{error.message}")
+      return false
     end
   end
   
   # Initializes or increments the bad attempt counter for the user password
   def record_user_bad_attempt
-    @@user_bad_attempts_mutex.synchronize do
-      time = Time.now
-      
-      # Start new window if this is the first attempt or window expired
-      if @@user_bad_attempts_first_time.nil? || (time - @@user_bad_attempts_first_time) > BAD_ATTEMPTS_WINDOW
-        @@user_bad_attempts_count = 1
-        @@user_bad_attempts_first_time = time
-      else
-        @@user_bad_attempts_count += 1
-      end
+    begin
+      count = OpenC3::EphemeralStore.incr(USER_BAD_ATTEMPTS_KEY)
+      OpenC3::EphemeralStore.expire(USER_BAD_ATTEMPTS_KEY, BAD_ATTEMPTS_WINDOW) if count == 1
+    rescue StandardError => error
+      OpenC3::Logger.error("Redis error recording user bad attempt: #{error.message}")
     end
   end
   
   # Checks to see if the service password has been rate limited due to bad attempts
   def service_rate_limited?
-    @@service_bad_attempts_mutex.synchronize do
-      time = Time.now
-      
-      # Reset counter if window has expired
-      if @@service_bad_attempts_first_time && (time - @@service_bad_attempts_first_time) > BAD_ATTEMPTS_WINDOW
-        @@service_bad_attempts_count = 0
-        @@service_bad_attempts_first_time = nil
-      end
-      
-      return @@service_bad_attempts_count >= MAX_BAD_ATTEMPTS
+    begin
+      count = OpenC3::EphemeralStore.get(SERVICE_BAD_ATTEMPTS_KEY)
+      return count.to_i >= MAX_BAD_ATTEMPTS
+    rescue StandardError => error
+      OpenC3::Logger.error("Redis error checking service rate limit: #{error.message}")
+      return false
     end
   end
   
   # Initializes or increments the bad attempt counter for the service password
   def record_service_bad_attempt
-    @@service_bad_attempts_mutex.synchronize do
-      time = Time.now
-      
-      # Start new window if this is the first attempt or window expired
-      if @@service_bad_attempts_first_time.nil? || (time - @@service_bad_attempts_first_time) > BAD_ATTEMPTS_WINDOW
-        @@service_bad_attempts_count = 1
-        @@service_bad_attempts_first_time = time
-      else
-        @@service_bad_attempts_count += 1
-      end
+    begin
+      count = OpenC3::EphemeralStore.incr(SERVICE_BAD_ATTEMPTS_KEY)
+      OpenC3::EphemeralStore.expire(SERVICE_BAD_ATTEMPTS_KEY, BAD_ATTEMPTS_WINDOW) if count == 1
+    rescue StandardError => error
+      OpenC3::Logger.error("Redis error recording service bad attempt: #{error.message}")
     end
   end
 end

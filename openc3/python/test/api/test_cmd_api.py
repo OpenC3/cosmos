@@ -14,17 +14,43 @@ import struct
 import threading
 import time
 import unittest
-from unittest.mock import *
+from unittest.mock import Mock, patch
 
-from openc3.api.cmd_api import *
+from openc3.api.cmd_api import (
+    DisabledError,
+    TargetModel,
+    build_cmd,
+    cmd,
+    cmd_no_checks,  # noqa: F401 - accessed dynamically via globals()
+    cmd_no_hazardous_check,  # noqa: F401 - accessed dynamically via globals()
+    cmd_no_range_check,  # noqa: F401 - accessed dynamically via globals()
+    cmd_raw,  # noqa: F401 - accessed dynamically via globals()
+    cmd_raw_no_checks,  # noqa: F401 - accessed dynamically via globals()
+    cmd_raw_no_hazardous_check,  # noqa: F401 - accessed dynamically via globals()
+    cmd_raw_no_range_check,  # noqa: F401 - accessed dynamically via globals()
+    disable_cmd,
+    enable_cmd,
+    get_all_cmd_names,
+    get_all_cmds,
+    get_cmd,
+    get_cmd_buffer,
+    get_cmd_cnt,
+    get_cmd_cnts,
+    get_cmd_hazardous,
+    get_cmd_time,
+    get_cmd_value,
+    get_param,
+    send_raw,
+)
 from openc3.interfaces.interface import Interface
 from openc3.microservices.decom_microservice import DecomMicroservice
 from openc3.microservices.interface_microservice import InterfaceCmdHandlerThread
 from openc3.models.interface_model import InterfaceModel
 from openc3.models.interface_status_model import InterfaceStatusModel
 from openc3.models.microservice_model import MicroserviceModel
+from openc3.packets.packet import Packet
 from openc3.top_level import HazardousError
-from test.test_helper import *
+from test.test_helper import capture_io, mock_redis, setup_system
 
 
 class MyInterface(Interface):

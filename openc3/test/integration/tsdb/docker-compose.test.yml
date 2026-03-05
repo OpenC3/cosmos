@@ -19,7 +19,7 @@ services:
       QDB_HTTP_USER: admin
       QDB_HTTP_PASSWORD: admin
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/"]
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/9000'"]
       interval: 5s
       timeout: 5s
       retries: 5

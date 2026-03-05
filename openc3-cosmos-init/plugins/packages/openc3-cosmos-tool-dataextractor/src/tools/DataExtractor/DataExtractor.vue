@@ -1011,7 +1011,15 @@ export default {
               valueType,
               reducedType,
             ] = regularKey.split('__')
-            row[0] = new Date(packet['__time'] / 1000000).toISOString()
+            // Format __time (nanoseconds) as ISO 8601 with nanosecond precision
+            // Date.toISOString() only has millisecond precision so we format manually
+            const timeNs = BigInt(packet['__time'])
+            const timeMs = Number(timeNs / 1000000n)
+            const subMillis = Number(timeNs % 1000000n)
+            const isoMs = new Date(timeMs).toISOString() // "...T12:34:56.789Z"
+            // Replace ".789Z" with ".789000000Z" using the remaining nanoseconds
+            const subMs = String(subMillis).padStart(6, '0')
+            row[0] = isoMs.replace(/\.(\d{3})Z$/, (_, ms) => `.${ms}${subMs}Z`)
             row[1] = targetName
             row[2] = packetName
             // Add username and approver columns for command data

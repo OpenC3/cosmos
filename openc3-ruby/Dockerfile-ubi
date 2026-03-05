@@ -25,9 +25,10 @@ ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 ENV NOKOGIRI_USE_SYSTEM_LIBRARIES=1
 
 COPY .gemrc /root/.gemrc
-RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc
-RUN cp /root/.gemrc /etc/gemrc
-RUN cp /root/.gemrc /usr/local/etc/gemrc
+RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc \
+  && cp /root/.gemrc /etc/gemrc \
+  && cp /root/.gemrc /usr/local/etc/gemrc
+
 ENV GEMRC=/etc/gemrc
 
 COPY *.tar.gz /tmp/
@@ -38,9 +39,9 @@ RUN /usr/bin/anycable_install.sh
 COPY shoreman.sh /usr/bin/shoreman
 
 ARG PACKAGES="gcc-c++ patch readline zlib zlib-devel libffi-devel libedit \
-    openssl-devel make nc bzip2 autoconf automake libtool sqlite-devel libpq-devel \
-    python3.12 python3.12-devel python3.12-pip python3.12-numpy	ca-certificates less git \
-    libpq-devel libxml2-devel libxslt-devel libyaml-devel cmake glibc-static vim procps unzip ncurses-devel"
+  openssl-devel make nc bzip2 autoconf automake libtool sqlite-devel libpq-devel \
+  python3.12 python3.12-devel python3.12-pip python3.12-numpy	ca-certificates less git \
+  libpq-devel libxml2-devel libxslt-devel libyaml-devel cmake glibc-static vim procps unzip ncurses-devel"
 
 RUN rm /etc/yum.repos.d/*
 COPY ./ubi.repo /etc/yum.repos.d/ubi.repo
@@ -48,42 +49,42 @@ COPY ./ubi.repo /etc/yum.repos.d/ubi.repo
 # ruby - https://www.ruby-lang.org/en/downloads/releases/
 # tini - https://github.com/krallin/tini
 RUN microdnf update -y \
-    && microdnf install -y --setopt=tsflags=nodocs $PACKAGES \
-    && mkdir -p /usr/src \
-    && tar -xzf /tmp/ruby-3.4.7.tar.gz -C /usr/src/ \
-    && rm -f /tmp/ruby-3.4.7.tar.gz \
-    && RUBY_DIR=$(ls /usr/src/ | grep ruby) \
-    && cd /usr/src/${RUBY_DIR} \
-    && ./configure --disable-install-doc --enable-shared \
-    && make -j "$(nproc)" \
-    && make install \
-    && rm -rf /usr/src/${RUBY_DIR}
+  && microdnf install -y --setopt=tsflags=nodocs $PACKAGES \
+  && mkdir -p /usr/src \
+  && tar -xzf /tmp/ruby-3.4.7.tar.gz -C /usr/src/ \
+  && rm -f /tmp/ruby-3.4.7.tar.gz \
+  && RUBY_DIR=$(ls /usr/src/ | grep ruby) \
+  && cd /usr/src/${RUBY_DIR} \
+  && ./configure --disable-install-doc --enable-shared \
+  && make -j "$(nproc)" \
+  && make install \
+  && rm -rf /usr/src/${RUBY_DIR}
 RUN cd / \
-    && tar -xzf /tmp/tini-0.19.0.tar.gz -C /usr/src/ \
-    && TINI_DIR=$(ls /usr/src/ | grep tini) \
-    && rm -f /tmp/tini-0.19.0.tar.gz \
-    && cd /usr/src/${TINI_DIR} \
-    && CFLAGS="-DPR_SET_CHILD_SUBREAPER=36 -DPR_GET_CHILD_SUBREAPER=37" \
-    && cmake . \
-    && make \
-    && make install \
-    && rm -rf /usr/src/${TINI_DIR}
+  && tar -xzf /tmp/tini-0.19.0.tar.gz -C /usr/src/ \
+  && TINI_DIR=$(ls /usr/src/ | grep tini) \
+  && rm -f /tmp/tini-0.19.0.tar.gz \
+  && cd /usr/src/${TINI_DIR} \
+  && CFLAGS="-DPR_SET_CHILD_SUBREAPER=36 -DPR_GET_CHILD_SUBREAPER=37" \
+  && cmake . \
+  && make \
+  && make install \
+  && rm -rf /usr/src/${TINI_DIR}
 RUN cd / \
-    && gem update --system 3.7.2 \
-    && gem install rake \
-    && gem install google-protobuf \
-    && gem install grpc \
-    && gem cleanup \
-    && bundle config build.nokogiri --use-system-libraries \
-    && bundle config git.allow_insecure true \
-    && rm -rf /var/cache/dnf/ /var/tmp/* /tmp/* /var/tmp/.???* /tmp/.???* \
-    && rm /bin/python \
-    && rm /bin/python3 \
-    && ln -s /bin/python3.12 /bin/python \
-    && ln -s /bin/python3.12 /bin/python3 \
-    && ln -s /bin/pip3.12 /bin/pip \
-    && ln -s /bin/pip3.12 /bin/pip3 \
-    && python3 -m pip install --break-system-packages uv
+  && gem update --system 3.7.2 \
+  && gem install rake \
+  && gem install google-protobuf \
+  && gem install grpc \
+  && gem cleanup \
+  && bundle config build.nokogiri --use-system-libraries \
+  && bundle config git.allow_insecure true \
+  && rm -rf /var/cache/dnf/ /var/tmp/* /tmp/* /var/tmp/.???* /tmp/.???* \
+  && rm /bin/python \
+  && rm /bin/python3 \
+  && ln -s /bin/python3.12 /bin/python \
+  && ln -s /bin/python3.12 /bin/python3 \
+  && ln -s /bin/pip3.12 /bin/pip \
+  && ln -s /bin/pip3.12 /bin/pip3 \
+  && python3 -m pip install --break-system-packages uv
 
 # Configure UV for production container usage
 ENV UV_LINK_MODE=copy

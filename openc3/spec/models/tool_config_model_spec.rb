@@ -43,6 +43,34 @@ module OpenC3
         names = ToolConfigModel.delete_config('toolie', 'namely', local_mode: true, scope: 'DEFAULT')
         expect(names[0]).to match(/.*\/DEFAULT\/tool_config\/toolie\/namely.json.*/)
       end
+
+      it "allows valid tool and config names" do
+        ToolConfigModel.save_config('my-tool', 'My Config 1.0', '{}', local_mode: false, scope: 'DEFAULT')
+        config = ToolConfigModel.load_config('my-tool', 'My Config 1.0', scope: 'DEFAULT')
+        expect(config).to eq('{}')
+      end
+
+      it "rejects invalid characters in tool name" do
+        expect { ToolConfigModel.save_config('../evil', 'name', '{}', scope: 'DEFAULT') }.to raise_error(ToolConfigModel::InvalidNameError, /Invalid tool name/)
+        expect { ToolConfigModel.save_config('evil/sub', 'name', '{}', scope: 'DEFAULT') }.to raise_error(ToolConfigModel::InvalidNameError, /Invalid tool name/)
+        expect { ToolConfigModel.save_config('evil\\sub', 'name', '{}', scope: 'DEFAULT') }.to raise_error(ToolConfigModel::InvalidNameError, /Invalid tool name/)
+        expect { ToolConfigModel.save_config('', 'name', '{}', scope: 'DEFAULT') }.to raise_error(ToolConfigModel::InvalidNameError, /Invalid tool name/)
+        expect { ToolConfigModel.save_config('evil@name', 'name', '{}', scope: 'DEFAULT') }.to raise_error(ToolConfigModel::InvalidNameError, /Invalid tool name/)
+        expect { ToolConfigModel.save_config('evil#name', 'name', '{}', scope: 'DEFAULT') }.to raise_error(ToolConfigModel::InvalidNameError, /Invalid tool name/)
+        expect { ToolConfigModel.delete_config('../evil', 'name', scope: 'DEFAULT') }.to raise_error(ToolConfigModel::InvalidNameError, /Invalid tool name/)
+        expect { ToolConfigModel.load_config('../evil', 'name', scope: 'DEFAULT') }.to raise_error(ToolConfigModel::InvalidNameError, /Invalid tool name/)
+        expect { ToolConfigModel.list_configs('../evil', scope: 'DEFAULT') }.to raise_error(ToolConfigModel::InvalidNameError, /Invalid tool name/)
+      end
+
+      it "rejects invalid characters in config name" do
+        expect { ToolConfigModel.save_config('tool', '../../etc/passwd', '{}', scope: 'DEFAULT') }.to raise_error(ToolConfigModel::InvalidNameError, /Invalid config name/)
+        expect { ToolConfigModel.save_config('tool', 'sub/dir', '{}', scope: 'DEFAULT') }.to raise_error(ToolConfigModel::InvalidNameError, /Invalid config name/)
+        expect { ToolConfigModel.save_config('tool', 'sub\\dir', '{}', scope: 'DEFAULT') }.to raise_error(ToolConfigModel::InvalidNameError, /Invalid config name/)
+        expect { ToolConfigModel.save_config('tool', '', '{}', scope: 'DEFAULT') }.to raise_error(ToolConfigModel::InvalidNameError, /Invalid config name/)
+        expect { ToolConfigModel.save_config('tool', 'name@evil', '{}', scope: 'DEFAULT') }.to raise_error(ToolConfigModel::InvalidNameError, /Invalid config name/)
+        expect { ToolConfigModel.delete_config('tool', '../evil', scope: 'DEFAULT') }.to raise_error(ToolConfigModel::InvalidNameError, /Invalid config name/)
+        expect { ToolConfigModel.load_config('tool', '../evil', scope: 'DEFAULT') }.to raise_error(ToolConfigModel::InvalidNameError, /Invalid config name/)
+      end
     end
   end
 end
