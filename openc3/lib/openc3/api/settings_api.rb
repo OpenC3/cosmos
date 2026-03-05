@@ -73,6 +73,8 @@ module OpenC3
       authorize(permission: 'admin', manual: manual, scope: scope, token: token)
       SettingModel.set({ name: name, data: data }, scope: scope)
       LocalMode.save_setting(scope, name, data)
+      username = user_info(token)['username'] || 'Anonymous'
+      Logger.info("User #{username} saved setting '#{name}': #{data}", scope: scope, user: username)
     end
     # save_setting is DEPRECATED
     alias save_setting set_setting

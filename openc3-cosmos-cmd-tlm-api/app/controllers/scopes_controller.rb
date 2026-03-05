@@ -32,14 +32,20 @@ class ScopesController < ModelController
     return unless authorization('superadmin')
     model = @model_class.from_json(params[:json])
     if update_model
+      existing = @model_class.get(name: model.name)
       model.update
       # Scopes are global so the scope is always 'DEFAULT'
-      OpenC3::Logger.info("#{@model_class.name} updated: #{params[:json]}", scope: 'DEFAULT', user: username())
+      changes = existing ? model.diff(existing) : nil
+      if changes.nil? || changes.any?
+        OpenC3::Logger.info("User #{username()} updated scope '#{model.name}': #{(changes || [params[:json]]).join(', ')}", scope: 'DEFAULT', user: username())
+      else
+        OpenC3::Logger.info("User #{username()} updated scope '#{model.name}' (no changes)", scope: 'DEFAULT', user: username())
+      end
     else
       model.create
       model.deploy(".", {})
       # Scopes are global so the scope is always 'DEFAULT'
-      OpenC3::Logger.info("#{@model_class.name} created: #{params[:json]}", scope: 'DEFAULT', user: username())
+      OpenC3::Logger.info("User #{username()} created scope '#{model.name}'", scope: 'DEFAULT', user: username())
     end
     head :ok
   rescue Exception => e

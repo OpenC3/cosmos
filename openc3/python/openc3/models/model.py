@@ -146,6 +146,20 @@ class Model:
         self.undeploy()
         self.store().hdel(self.primary_key, self.name)
 
+    def diff(self, existing):
+        """Compare this model's as_json with a previous dict and return a list
+        of human-readable change descriptions (e.g. "key: old -> new").
+        Skips the updated_at field since it always changes."""
+        changes = []
+        new_json = self.as_json()
+        for key, old_value in existing.items():
+            if key == "updated_at":
+                continue
+            new_value = new_json.get(key)
+            if old_value != new_value:
+                changes.append(f"{key}: {old_value} -> {new_value}")
+        return changes
+
     def as_json(self):
         """
         Return:
