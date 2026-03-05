@@ -462,7 +462,7 @@ export default {
             }
           } else if (this.isArray(str)) {
             try {
-              return JSON.parse(str.replace(/'/g, '"'))
+              return JSON.parse(str.replaceAll("'", '"'))
             } catch (e) {
               this.status = `Invalid array parameter value: ${str}`
               this.displayErrorDialog = true
