@@ -461,7 +461,13 @@ export default {
               return Number.parseInt(str)
             }
           } else if (this.isArray(str)) {
-            return eval(str)
+            try {
+              return JSON.parse(str.replace(/'/g, '"'))
+            } catch (e) {
+              this.status = `Invalid array parameter value: ${str}`
+              this.displayErrorDialog = true
+              return str
+            }
           } else {
             return str
           }
