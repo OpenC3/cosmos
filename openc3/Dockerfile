@@ -50,8 +50,12 @@ RUN uv run python -Ic 'import openc3; print("openc3 imported successfully")'
 
 WORKDIR /openc3/
 
-RUN mkdir /gems && chown openc3:openc3 /gems \
-    && mkdir /plugins && chown openc3:openc3 /plugins \
+RUN mkdir /gems \
+    && chown ${IMAGE_USER}:${IMAGE_GROUP} /gems \
+    && mkdir /plugins \
+    && chown ${IMAGE_USER}:${IMAGE_GROUP} /plugins \
+    && mkdir -p /gems/uv \
+    && chown ${IMAGE_USER}:${IMAGE_GROUP} /gems/uv \
     && chmod -R 777 /gems/ \
     && chmod -R 777 /plugins/ \
     && chmod -R 777 /openc3/
