@@ -104,30 +104,30 @@ class SuiteRunner:
 
         if from_module:
             for attr_name in dir(from_module):
-                object = getattr(from_module, attr_name)
-                if not inspect.isclass(object):
+                attribute = getattr(from_module, attr_name)
+                if not inspect.isclass(attribute):
                     continue
 
                 # If we inherit from Suite
-                if issubclass(object, Suite) and object != Suite and object != TestSuite:
-                    SuiteRunner.suites.insert(0, object())
+                if issubclass(attribute, Suite) and attribute != Suite and attribute != TestSuite:
+                    SuiteRunner.suites.insert(0, attribute())
 
                 # If we inherit from Group
-                if issubclass(object, Group) and object != Group and object != Test:
-                    groups.append(object)
+                if issubclass(attribute, Group) and attribute != Group and attribute != Test:
+                    groups.append(attribute)
 
         if from_globals:
-            for object in from_globals.values():
-                if not inspect.isclass(object):
+            for attribute in from_globals.values():
+                if not inspect.isclass(attribute):
                     continue
 
                 # If we inherit from Suite
-                if issubclass(object, Suite) and object != Suite and object != TestSuite:
-                    SuiteRunner.suites.insert(0, object())
+                if issubclass(attribute, Suite) and attribute != Suite and attribute != TestSuite:
+                    SuiteRunner.suites.insert(0, attribute())
 
                 # If we inherit from Group
-                if issubclass(object, Group) and object != Group and object != Test:
-                    groups.append(object)
+                if issubclass(attribute, Group) and attribute != Group and attribute != Test:
+                    groups.append(attribute)
 
         # Raise error if no suites or groups
         if len(SuiteRunner.suites) == 0 or len(groups) == 0:
@@ -193,7 +193,7 @@ class SuiteRunner:
                                 dict.fromkeys(cur_suite["groups"][group_class.__name__]["scripts"])
                             )
                         else:
-                            raise Exception(f"{group_class} does not have a {script} method defined.")
+                            raise AttributeError(f"{group_class} does not have a {script} method defined.")
 
                         if "setup" in dir(group_class):
                             cur_suite["groups"][group_class.__name__]["setup"] = True
@@ -210,7 +210,7 @@ class SuiteRunner:
                         if "setup" in dir(group_class):
                             cur_suite["groups"][group_class.__name__]["setup"] = True
                         else:
-                            raise Exception(f"{group_class} does not have a setup method defined.")
+                            raise AttributeError(f"{group_class} does not have a setup method defined.")
 
                     case "GROUP_TEARDOWN":
                         if not cur_suite["groups"].get(group_class.__name__):
@@ -223,7 +223,7 @@ class SuiteRunner:
                         if "teardown" in dir(group_class):
                             cur_suite["groups"][group_class.__name__]["teardown"] = True
                         else:
-                            raise Exception(f"{group_class} does not have a teardown method defined.")
+                            raise AttributeError(f"{group_class} does not have a teardown method defined.")
 
             if suite.name != "CustomSuite":
                 suites[suite.name()] = cur_suite

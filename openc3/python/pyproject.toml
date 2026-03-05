@@ -157,9 +157,9 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = ["--verbose", "--strict-markers", "--strict-config", "--tb=short"]
 filterwarnings = [
-    # valkey's internal FLUSHALL implementation calls get_connection with a
-    # deprecated argument - not actionable from our code, suppress until fixed upstream
-    "ignore:Call to 'get_connection' function with deprecated usage:DeprecationWarning:valkey",
+    # valkey's internal implementation calls get_connection with a deprecated redis argument
+    # (stacklevel=5 makes it appear in our code) - not actionable, suppress until fixed upstream
+    "ignore:Call to 'get_connection' function with deprecated usage:DeprecationWarning",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",

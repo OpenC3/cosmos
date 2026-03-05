@@ -37,6 +37,27 @@ class OrderedSuite(Suite):
         self.add_script(OrderedGroup, "test_a_first")
 
 
+class NoSetupTeardownGroup(Group):
+    def test_something(self):
+        # Intentionally empty — used only to trigger missing-method/setup/teardown error paths
+        pass
+
+
+class MissingScriptSuite(Suite):
+    def __init__(self):
+        self.add_script(NoSetupTeardownGroup, "nonexistent_method")
+
+
+class MissingSetupSuite(Suite):
+    def __init__(self):
+        self.add_group_setup(NoSetupTeardownGroup)
+
+
+class MissingTeardownSuite(Suite):
+    def __init__(self):
+        self.add_group_teardown(NoSetupTeardownGroup)
+
+
 class TestSuiteRunner(unittest.TestCase):
     def test_build_suites_creates_a_list_of_suites(self):
         mod = types.ModuleType("test_mod")
@@ -55,6 +76,27 @@ class TestSuiteRunner(unittest.TestCase):
         # Scripts should be in the order they were added, not alphabetical
         scripts = suites["OrderedSuite"]["groups"]["OrderedGroup"]["scripts"]
         self.assertEqual(scripts, ["test_m_middle", "test_z_last", "test_a_first"])
+
+    def test_build_suites_raises_attribute_error_for_missing_script(self):
+        mod = types.ModuleType("test_mod")
+        mod.NoSetupTeardownGroup = NoSetupTeardownGroup
+        mod.MissingScriptSuite = MissingScriptSuite
+        with self.assertRaises(AttributeError, msg="nonexistent_method"):
+            SuiteRunner.build_suites(from_module=mod)
+
+    def test_build_suites_raises_attribute_error_for_missing_setup(self):
+        mod = types.ModuleType("test_mod")
+        mod.NoSetupTeardownGroup = NoSetupTeardownGroup
+        mod.MissingSetupSuite = MissingSetupSuite
+        with self.assertRaises(AttributeError, msg="setup"):
+            SuiteRunner.build_suites(from_module=mod)
+
+    def test_build_suites_raises_attribute_error_for_missing_teardown(self):
+        mod = types.ModuleType("test_mod")
+        mod.NoSetupTeardownGroup = NoSetupTeardownGroup
+        mod.MissingTeardownSuite = MissingTeardownSuite
+        with self.assertRaises(AttributeError, msg="teardown"):
+            SuiteRunner.build_suites(from_module=mod)
 
 
 if __name__ == "__main__":

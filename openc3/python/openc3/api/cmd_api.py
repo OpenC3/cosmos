@@ -393,7 +393,7 @@ def get_cmd_hazardous(*args, scope=OPENC3_SCOPE, manual=False):
 # Returns a value from the specified command
 def get_cmd_value(
     *args,
-    type="CONVERTED",
+    type="CONVERTED",  # Ignore SonarQube warning, changing is a breaking change.
     scope=OPENC3_SCOPE,
     manual=False,
 ):
