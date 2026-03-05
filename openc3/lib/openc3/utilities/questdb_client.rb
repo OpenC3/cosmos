@@ -14,12 +14,58 @@
 require 'json'
 require 'base64'
 require 'bigdecimal'
+require 'pg'
 
 module OpenC3
   # Utility class for QuestDB data encoding and decoding.
   # This provides a common interface for serializing/deserializing COSMOS data types
   # when writing to and reading from QuestDB.
   class QuestDBClient
+    @@conn = nil
+    @@conn_mutex = Mutex.new
+
+    # Get or create a thread-safe PG connection with type mapping configured.
+    # Returns a shared singleton connection — callers should not close it.
+    def self.connection
+      @@conn_mutex.synchronize do
+        @@conn ||= PG::Connection.new(
+          host: ENV['OPENC3_TSDB_HOSTNAME'],
+          port: ENV['OPENC3_TSDB_QUERY_PORT'],
+          user: ENV['OPENC3_TSDB_USERNAME'],
+          password: ENV['OPENC3_TSDB_PASSWORD'],
+          dbname: 'qdb'
+        )
+        if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
+          @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
+        end
+        @@conn
+      end
+    end
+
+    # Reset the connection (close if open, set to nil). Used after errors.
+    def self.disconnect
+      @@conn_mutex.synchronize do
+        if @@conn && !@@conn.finished?
+          @@conn.finish
+        end
+        @@conn = nil
+      end
+    end
+
+    # Health check — attempt to connect and immediately close.
+    # Returns true if successful, raises on failure.
+    def self.check_connection
+      conn = PG::Connection.new(
+        host: ENV['OPENC3_TSDB_HOSTNAME'],
+        port: ENV['OPENC3_TSDB_QUERY_PORT'],
+        user: ENV['OPENC3_TSDB_USERNAME'],
+        password: ENV['OPENC3_TSDB_PASSWORD'],
+        dbname: 'qdb'
+      )
+      conn.close
+      true
+    end
+
     # Special timestamp items that are calculated from PACKET_TIMESECONDS/RECEIVED_TIMESECONDS columns
     # rather than stored as separate columns. PACKET_TIMESECONDS and RECEIVED_TIMESECONDS are stored
     # as timestamp_ns columns and need conversion to float seconds on read. The TIMEFORMATTED items

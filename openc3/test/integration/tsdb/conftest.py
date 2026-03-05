@@ -40,19 +40,7 @@ from openc3.utilities.questdb_client import QuestDBClient
 def is_questdb_available():
     """Check if QuestDB is available for testing."""
     try:
-        import psycopg
-
-        conn = psycopg.connect(
-            host=os.environ.get("OPENC3_TSDB_HOSTNAME", "127.0.0.1"),
-            port=int(os.environ.get("OPENC3_TSDB_QUERY_PORT", "8812")),
-            user=os.environ.get("OPENC3_TSDB_USERNAME", "admin"),
-            password=os.environ.get("OPENC3_TSDB_PASSWORD", "admin"),
-            dbname="qdb",
-            autocommit=True,
-            connect_timeout=2,
-        )
-        conn.close()
-        return True
+        return QuestDBClient.check_connection()
     except Exception:
         return False
 

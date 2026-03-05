@@ -16,7 +16,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/open_telemetry'
-require 'pg'
+require 'openc3/utilities/questdb_client'
 
 $tsdb_connection = nil
 
@@ -32,11 +32,7 @@ class ApiController < ApplicationController
       return
     end
     begin
-      PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
-                         port: ENV['OPENC3_TSDB_QUERY_PORT'],
-                         user: ENV['OPENC3_TSDB_USERNAME'],
-                         password: ENV['OPENC3_TSDB_PASSWORD'],
-                         dbname: 'qdb').close() # Default dbname
+      OpenC3::QuestDBClient.check_connection
       $tsdb_connection = 'OK'
       render plain: 'OK', status: 200
     rescue => e

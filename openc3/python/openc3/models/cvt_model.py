@@ -10,9 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import json
-import os
 import re
-import threading
 import time
 from typing import Any
 
@@ -38,8 +36,6 @@ from openc3.utilities.store_queued import StoreQueued
 class CvtModel(Model):
     packet_cache = {}
     override_cache = {}
-    _conn = None
-    _conn_mutex = threading.Lock()
 
     VALUE_TYPES = {"RAW", "CONVERTED", "FORMATTED"}
 
@@ -359,104 +355,95 @@ class CvtModel(Model):
         retry_count = 0
         while retry_count <= 4:
             try:
-                with cls._conn_mutex:
-                    if cls._conn is None:
-                        cls._conn = psycopg.connect(
-                            host=os.environ["OPENC3_TSDB_HOSTNAME"],
-                            port=os.environ["OPENC3_TSDB_QUERY_PORT"],
-                            user=os.environ["OPENC3_TSDB_USERNAME"],
-                            password=os.environ["OPENC3_TSDB_PASSWORD"],
-                            dbname="qdb",
-                        )
+                conn = QuestDBClient.connection()
+                with conn.cursor(binary=True, row_factory=dict_row) as cursor:
+                    cursor.execute(query, query_params or None)
+                    result = cursor.fetchall()
 
-                    with cls._conn.cursor(binary=True, row_factory=dict_row) as cursor:
-                        cursor.execute(query, query_params or None)
-                        result = cursor.fetchall()
-
-                        if not result:
-                            return {}
-                        else:
-                            data = []
-                            # Build up a results set that is an array of arrays
-                            # Each nested array is a set of 2 items: [value, limits state]
-                            # If the item does not have limits the limits state is None
-                            for row_index, row in enumerate(result):
-                                data.append([])
-                                col_index = 0
-                                # Store timestamp values for this row: { "T0.PACKET_TIMESECONDS": datetime, ... }
-                                row_timestamps = {}
-                                for col_name, col_value in row.items():
-                                    if "__L" in col_name:
-                                        # This is a limits column, add to previous item
-                                        if col_index > 0:
-                                            data[row_index][col_index - 1] = [
-                                                data[row_index][col_index - 1][0],
-                                                col_value,
-                                            ]
-                                    elif col_name.startswith("__nil"):
-                                        data[row_index].append([None, None])
-                                        col_index += 1
-                                    elif re.match(r"^T(\d+)___ts_(.+)$", col_name):
-                                        # This is a timestamp column for calculated items (TIMEFORMATTED)
-                                        match = re.match(r"^T(\d+)___ts_(.+)$", col_name)
-                                        table_idx = int(match.group(1))
-                                        ts_source = match.group(2)
-                                        row_timestamps[f"T{table_idx}.{ts_source}"] = col_value
-                                    elif (
-                                        col_name.endswith(".PACKET_TIMESECONDS")
-                                        or col_name.endswith(".RECEIVED_TIMESECONDS")
-                                        or col_name
-                                        in (
-                                            "PACKET_TIMESECONDS",
-                                            "RECEIVED_TIMESECONDS",
-                                        )
-                                    ):
-                                        # Stored timestamp column - convert from datetime to float seconds
-                                        ts_utc = QuestDBClient.pg_timestamp_to_utc(col_value)
-                                        seconds_value = QuestDBClient.format_timestamp(ts_utc, "seconds")
-                                        data[row_index].append([seconds_value, None])
-                                        col_index += 1
-                                        # Also store for calculated items (TIMEFORMATTED) that may need this
-                                        # Normalize key to T{index}.{col} format for consistency
-                                        if "." in col_name:
-                                            row_timestamps[col_name] = col_value
-                                        else:
-                                            # If no table prefix, assume T0
-                                            row_timestamps[f"T0.{col_name}"] = col_value
-                                    else:
-                                        # Decode value using item type info
-                                        # QuestDB may return column names without table alias prefix
-                                        # Try both the raw column name and prefixed versions
-                                        type_info = item_types.get(col_name, {})
-                                        if not type_info:
-                                            # Try with table prefixes T0, T1, etc.
-                                            for prefix in [f"T{i}." for i in range(len(tables))]:
-                                                prefixed_name = prefix + col_name
-                                                type_info = item_types.get(prefixed_name, {})
-                                                if type_info:
-                                                    break
-                                        decoded_value = QuestDBClient.decode_value(
+                    if not result:
+                        return {}
+                    else:
+                        data = []
+                        # Build up a results set that is an array of arrays
+                        # Each nested array is a set of 2 items: [value, limits state]
+                        # If the item does not have limits the limits state is None
+                        for row_index, row in enumerate(result):
+                            data.append([])
+                            col_index = 0
+                            # Store timestamp values for this row: { "T0.PACKET_TIMESECONDS": datetime, ... }
+                            row_timestamps = {}
+                            for col_name, col_value in row.items():
+                                if "__L" in col_name:
+                                    # This is a limits column, add to previous item
+                                    if col_index > 0:
+                                        data[row_index][col_index - 1] = [
+                                            data[row_index][col_index - 1][0],
                                             col_value,
-                                            data_type=type_info.get("data_type"),
-                                            array_size=type_info.get("array_size"),
-                                        )
-                                        data[row_index].append([decoded_value, None])
-                                        col_index += 1
+                                        ]
+                                elif col_name.startswith("__nil"):
+                                    data[row_index].append([None, None])
+                                    col_index += 1
+                                elif re.match(r"^T(\d+)___ts_(.+)$", col_name):
+                                    # This is a timestamp column for calculated items (TIMEFORMATTED)
+                                    match = re.match(r"^T(\d+)___ts_(.+)$", col_name)
+                                    table_idx = int(match.group(1))
+                                    ts_source = match.group(2)
+                                    row_timestamps[f"T{table_idx}.{ts_source}"] = col_value
+                                elif (
+                                    col_name.endswith(".PACKET_TIMESECONDS")
+                                    or col_name.endswith(".RECEIVED_TIMESECONDS")
+                                    or col_name
+                                    in (
+                                        "PACKET_TIMESECONDS",
+                                        "RECEIVED_TIMESECONDS",
+                                    )
+                                ):
+                                    # Stored timestamp column - convert from datetime to float seconds
+                                    ts_utc = QuestDBClient.pg_timestamp_to_utc(col_value)
+                                    seconds_value = QuestDBClient.format_timestamp(ts_utc, "seconds")
+                                    data[row_index].append([seconds_value, None])
+                                    col_index += 1
+                                    # Also store for calculated items (TIMEFORMATTED) that may need this
+                                    # Normalize key to T{index}.{col} format for consistency
+                                    if "." in col_name:
+                                        row_timestamps[col_name] = col_value
+                                    else:
+                                        # If no table prefix, assume T0
+                                        row_timestamps[f"T0.{col_name}"] = col_value
+                                else:
+                                    # Decode value using item type info
+                                    # QuestDB may return column names without table alias prefix
+                                    # Try both the raw column name and prefixed versions
+                                    type_info = item_types.get(col_name, {})
+                                    if not type_info:
+                                        # Try with table prefixes T0, T1, etc.
+                                        for prefix in [f"T{i}." for i in range(len(tables))]:
+                                            prefixed_name = prefix + col_name
+                                            type_info = item_types.get(prefixed_name, {})
+                                            if type_info:
+                                                break
+                                    decoded_value = QuestDBClient.decode_value(
+                                        col_value,
+                                        data_type=type_info.get("data_type"),
+                                        array_size=type_info.get("array_size"),
+                                    )
+                                    data[row_index].append([decoded_value, None])
+                                    col_index += 1
 
-                                # Insert calculated timestamp items at their positions
-                                # Insert in ascending order so positions remain valid after each insert
-                                for position in sorted(calculated_items.keys()):
-                                    calc_info = calculated_items[position]
-                                    ts_key = f"T{calc_info['table_index']}.{calc_info['source']}"
-                                    ts_value = row_timestamps.get(ts_key)
-                                    ts_utc = QuestDBClient.pg_timestamp_to_utc(ts_value)
-                                    calculated_value = QuestDBClient.format_timestamp(ts_utc, calc_info["format"])
-                                    data[row_index].insert(position, [calculated_value, None])
+                            # Insert calculated timestamp items at their positions
+                            # Insert in ascending order so positions remain valid after each insert
+                            for position in sorted(calculated_items.keys()):
+                                calc_info = calculated_items[position]
+                                ts_key = f"T{calc_info['table_index']}.{calc_info['source']}"
+                                ts_value = row_timestamps.get(ts_key)
+                                ts_utc = QuestDBClient.pg_timestamp_to_utc(ts_value)
+                                calculated_value = QuestDBClient.format_timestamp(ts_utc, calc_info["format"])
+                                data[row_index].insert(position, [calculated_value, None])
 
-                            # If we only have one row then we return a single array
-                            if len(result) == 1:
-                                data = data[0]
-                            return data
+                        # If we only have one row then we return a single array
+                        if len(result) == 1:
+                            data = data[0]
+                        return data
 
             except (psycopg.Error, OSError) as e:
                 # Retry the query because various errors can occur that are recoverable
@@ -466,10 +453,7 @@ class CvtModel(Model):
                     raise RuntimeError(f"Error querying TSDB: {str(e)}") from e
                 Logger.warn(f"TSDB: Retrying due to error: {str(e)}")
                 Logger.warn(f"TSDB: Last query: {query}")  # Log the last query for debugging
-                with cls._conn_mutex:
-                    if cls._conn:
-                        cls._conn.close()
-                    cls._conn = None  # Force the new connection
+                QuestDBClient.disconnect()
                 time.sleep(0.1)
 
     # Return all item values and limit state from the CVT
