@@ -163,7 +163,7 @@ RSpec.describe StreamingApi, type: :model do
 
     it 'expands ALL for a specific target in DECOM mode' do
       data = { 'packets' => ['DECOM__CMD__INST__ALL__CONVERTED'], 'scope' => 'DEFAULT' }
-      @api.send(:expand_all_packets, data, scope: 'DEFAULT', token: nil)
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       expect(data['packets']).to eq([
         'DECOM__CMD__INST__COLLECT__CONVERTED',
         'DECOM__CMD__INST__ABORT__CONVERTED',
@@ -173,7 +173,7 @@ RSpec.describe StreamingApi, type: :model do
 
     it 'expands ALL for a specific target in RAW mode (no value type)' do
       data = { 'packets' => ['RAW__CMD__INST__ALL'], 'scope' => 'DEFAULT' }
-      @api.send(:expand_all_packets, data, scope: 'DEFAULT', token: nil)
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       expect(data['packets']).to eq([
         'RAW__CMD__INST__COLLECT',
         'RAW__CMD__INST__ABORT',
@@ -183,7 +183,7 @@ RSpec.describe StreamingApi, type: :model do
 
     it 'expands ALL for all targets' do
       data = { 'packets' => ['DECOM__TLM__ALL__CONVERTED'], 'scope' => 'DEFAULT' }
-      @api.send(:expand_all_packets, data, scope: 'DEFAULT', token: nil)
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       expect(data['packets']).to eq([
         'DECOM__TLM__INST__HEALTH_STATUS__CONVERTED',
         'DECOM__TLM__INST__PARAMS__CONVERTED',
@@ -193,13 +193,13 @@ RSpec.describe StreamingApi, type: :model do
 
     it 'passes through non-ALL keys unchanged' do
       data = { 'packets' => ['DECOM__CMD__INST__COLLECT__CONVERTED'], 'scope' => 'DEFAULT' }
-      @api.send(:expand_all_packets, data, scope: 'DEFAULT', token: nil)
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       expect(data['packets']).to eq(['DECOM__CMD__INST__COLLECT__CONVERTED'])
     end
 
     it 'handles mixed ALL and concrete keys' do
       data = { 'packets' => ['DECOM__CMD__INST__COLLECT__CONVERTED', 'RAW__CMD__INST__ALL'], 'scope' => 'DEFAULT' }
-      @api.send(:expand_all_packets, data, scope: 'DEFAULT', token: nil)
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       expect(data['packets']).to eq([
         'DECOM__CMD__INST__COLLECT__CONVERTED',
         'RAW__CMD__INST__COLLECT',
@@ -211,19 +211,19 @@ RSpec.describe StreamingApi, type: :model do
     it 'handles ALL with nonexistent target gracefully' do
       allow(OpenC3::TargetModel).to receive(:packets).with('BOGUS', type: :CMD, scope: 'DEFAULT').and_raise(RuntimeError, "Target 'BOGUS' does not exist")
       data = { 'packets' => ['DECOM__CMD__BOGUS__ALL__CONVERTED'], 'scope' => 'DEFAULT' }
-      @api.send(:expand_all_packets, data, scope: 'DEFAULT', token: nil)
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       expect(data['packets']).to eq([])
     end
 
     it 'does nothing when packets key is absent' do
       data = { 'items' => ['DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED'], 'scope' => 'DEFAULT' }
-      @api.send(:expand_all_packets, data, scope: 'DEFAULT', token: nil)
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       expect(data['packets']).to be_nil
     end
 
     it 'skips targets without the requested packet type for ALL targets' do
       data = { 'packets' => ['RAW__CMD__ALL'], 'scope' => 'DEFAULT' }
-      @api.send(:expand_all_packets, data, scope: 'DEFAULT', token: nil)
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       # EMPTY target raises RuntimeError, so it should be skipped
       empty_packets = data['packets'].select { |p| p.include?('EMPTY') }
       expect(empty_packets).to be_empty
@@ -243,13 +243,13 @@ RSpec.describe StreamingApi, type: :model do
       ])
       # ALL targets: UNKNOWN target should be excluded entirely
       data = { 'packets' => ['DECOM__CMD__ALL__CONVERTED'], 'scope' => 'DEFAULT' }
-      @api.send(:expand_all_packets, data, scope: 'DEFAULT', token: nil)
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       unknown_packets = data['packets'].select { |p| p.include?('UNKNOWN') }
       expect(unknown_packets).to be_empty
 
       # Single target: UNKNOWN packet should be excluded
       data = { 'packets' => ['DECOM__TLM__INST__ALL__CONVERTED'], 'scope' => 'DEFAULT' }
-      @api.send(:expand_all_packets, data, scope: 'DEFAULT', token: nil)
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       expect(data['packets']).to eq([
         'DECOM__TLM__INST__HEALTH_STATUS__CONVERTED',
         'DECOM__TLM__INST__PARAMS__CONVERTED',

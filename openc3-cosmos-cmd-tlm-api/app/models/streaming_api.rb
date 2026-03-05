@@ -62,7 +62,7 @@ class StreamingApi
   #   MODE__CMDORTLM__ALL[__VALUETYPE]          - all targets, all packets
   #   MODE__CMDORTLM__TARGET__ALL[__VALUETYPE]  - one target, all packets
   # Unauthorized packets are silently skipped (Option A).
-  def expand_all_packets(data, scope:, token:)
+  def expand_all_packets(data, scope:)
     return unless data["packets"]
 
     expanded = []
@@ -152,7 +152,7 @@ class StreamingApi
       token = data["token"]
 
       # Expand ALL wildcards in packets before building the collection
-      expand_all_packets(data, scope: scope, token: token)
+      expand_all_packets(data, scope: scope)
 
       # Build the collection of streaming objects for this request
       collection = StreamingObjectCollection.new
@@ -214,7 +214,7 @@ class StreamingApi
     token = data["token"]
 
     # Expand ALL wildcards in packets before building the collection
-    expand_all_packets(data, scope: scope, token: token)
+    expand_all_packets(data, scope: scope)
 
     # Build the collection of streaming objects for this request
     collection = StreamingObjectCollection.new
