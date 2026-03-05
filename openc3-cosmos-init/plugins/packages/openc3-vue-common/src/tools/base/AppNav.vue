@@ -51,7 +51,6 @@
         :activated="activeItems"
         item-value="name"
         density="compact"
-        class="ml-2"
         open-on-click
       >
         <!-- Beginning Icon -->
@@ -478,7 +477,7 @@ header {
   --indent-padding: 30px;
 }
 #openc3-nav-drawer .v-treeview .v-treeview-item {
-  padding-left: 0px;
+  padding-left: 8px;
   padding-right: 8px;
 }
 #openc3-nav-drawer .v-treeview .v-treeview-item .v-list-item-action {

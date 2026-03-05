@@ -20,9 +20,10 @@ on:
     branches:
       - "**"
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+# Don't cancel playwright because each run can expose different race conditions and issues
+# concurrency:
+#   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+#   cancel-in-progress: true
 
 env:
   OPENC3_ARGON2_PROFILE: "unsafe_cheapest"
