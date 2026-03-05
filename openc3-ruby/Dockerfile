@@ -1,6 +1,6 @@
 # Make managed in .env-build
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
-ARG ALPINE_VERSION=3.22
+ARG ALPINE_VERSION=3.23
 ARG ALPINE_BUILD=3
 
 # Should be loaded from ARG
