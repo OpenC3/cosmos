@@ -54,10 +54,34 @@ module OpenC3
       end
 
       it "verifies and terminates a session token" do
-        token = AuthModel.generate_session
+        token1 = AuthModel.generate_session
+        token2 = AuthModel.generate_session
+        expect(AuthModel.verify(token1)).to eq(true)
+        expect(AuthModel.verify(token2)).to eq(true)
+
+        # Make sure terminating one doesn't affect the other
+        AuthModel.terminate(token1)
+        expect(AuthModel.verify(token1)).to eq(false)
+        expect(AuthModel.verify(token2)).to eq(true)
+      end
+
+      it "verifies a session token and logs out" do
+        token1 = AuthModel.generate_session
+        token2 = AuthModel.generate_session
+        expect(AuthModel.verify(token1)).to eq(true)
+        expect(AuthModel.verify(token2)).to eq(true)
+
+        # Make sure all sessions are terminated
+        AuthModel.logout
+        expect(AuthModel.verify(token1)).to eq(false)
+        expect(AuthModel.verify(token2)).to eq(false)
+      end
+
+      it "creates a one-time use token" do
+        token = AuthModel.generate_session(otp: true)
         expect(AuthModel.verify(token)).to eq(true)
 
-        AuthModel.logout
+        # Already verified, second attempt shouldn't work
         expect(AuthModel.verify(token)).to eq(false)
       end
 

@@ -134,7 +134,7 @@ class WebSocketApi:
         self.disconnect()
         # Add the token directly in the URL since adding it to the header doesn't seem to work
         # Note in the this case we remove the "Bearer " string which is part of the token
-        final_url = self.url + f"?scope={self.scope}&authorization={self.authentication.token(include_bearer=False)}"
+        final_url = self.url + f"?scope={self.scope}&authorization={self.authentication.get_otp(self.scope)}"
         self.stream = WebSocketClientStream(final_url, self.write_timeout, self.read_timeout, self.connect_timeout)
         self.stream.headers = {
             "Sec-WebSocket-Protocol": "actioncable-v1-json, actioncable-unsupported",

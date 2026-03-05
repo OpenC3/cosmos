@@ -75,6 +75,12 @@ class AuthController < ApplicationController
     end
   end
 
+  def get_otp
+    user = authorization('system')
+    return unless user
+    render :plain => OpenC3::Authorization.generate_otp(user)
+  end
+
   def set
     if user_rate_limited?
       head :too_many_requests
