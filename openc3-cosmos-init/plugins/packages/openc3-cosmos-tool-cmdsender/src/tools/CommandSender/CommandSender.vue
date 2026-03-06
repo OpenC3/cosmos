@@ -464,13 +464,9 @@ export default {
             try {
               return JSON.parse(str)
             } catch {
-              try {
-                return JSON.parse(str.replaceAll("'", '"'))
-              } catch (e) {
-                this.status = `Invalid array parameter value: ${str}`
-                this.displayErrorDialog = true
-                return str
-              }
+              this.status = `Invalid array parameter value: ${str}`
+              this.displayErrorDialog = true
+              return str
             }
           } else {
             return str
