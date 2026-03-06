@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-dataviewer",
-  "version": "7.0.0-rc3",
+  "version": "7.0.0-rc4",
   "private": true,
   "type": "module",
   "scripts": {
