@@ -1,6 +1,7 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG ALPINE_VERSION=3.23
 ARG ALPINE_BUILD=3
+# Make sure to update build_multi_arch.sh with the same version when updating versitygw version
 ARG OPENC3_VERSITYGW_VERSION=v1.3.1
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/alpine:${ALPINE_VERSION}.${ALPINE_BUILD}

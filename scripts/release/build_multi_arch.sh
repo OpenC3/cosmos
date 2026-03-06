@@ -30,12 +30,12 @@ if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_PLATFORMS=linux/amd64
   DOCKERFILE='Dockerfile-ubi'
   SUFFIX='-ubi'
-  OPENC3_VERSITYGW_VERSION=v1.2.0
+  OPENC3_VERSITYGW_VERSION=v1.3.1
 else
   OPENC3_PLATFORMS=linux/amd64,linux/arm64
   DOCKERFILE='Dockerfile'
   SUFFIX=''
-  OPENC3_VERSITYGW_VERSION=v1.2.0
+  OPENC3_VERSITYGW_VERSION=v1.3.1
 fi
 
 # Setup cacert.pem
