@@ -804,7 +804,8 @@ export default {
       }
 
       this.playbackTimer = setInterval(() => {
-        if (this.playbackDateTime) {
+        // Don't advance time while previous playback requests are still loading
+        if (this.playbackDateTime && !this.playbackLoading) {
           this.playbackDateTime = new Date(
             this.playbackDateTime.getTime() + 1000 * this.playbackStep,
           )
