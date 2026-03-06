@@ -161,8 +161,8 @@ RSpec.describe StreamingApi, type: :model do
       allow(OpenC3::TargetModel).to receive(:packets).with('EMPTY', type: :TLM, scope: 'DEFAULT').and_raise(RuntimeError, "no packets")
     end
 
-    it 'expands ALL for a specific target in DECOM mode' do
-      data = { 'packets' => ['DECOM__CMD__INST__ALL__CONVERTED'], 'scope' => 'DEFAULT' }
+    it 'expands COSMOS_ALL for a specific target in DECOM mode' do
+      data = { 'packets' => ['DECOM__CMD__INST__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT' }
       @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       expect(data['packets']).to eq([
         'DECOM__CMD__INST__COLLECT__CONVERTED',
@@ -171,8 +171,8 @@ RSpec.describe StreamingApi, type: :model do
       ])
     end
 
-    it 'expands ALL for a specific target in RAW mode (no value type)' do
-      data = { 'packets' => ['RAW__CMD__INST__ALL'], 'scope' => 'DEFAULT' }
+    it 'expands COSMOS_ALL for a specific target in RAW mode (no value type)' do
+      data = { 'packets' => ['RAW__CMD__INST__COSMOS_ALL'], 'scope' => 'DEFAULT' }
       @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       expect(data['packets']).to eq([
         'RAW__CMD__INST__COLLECT',
@@ -181,8 +181,8 @@ RSpec.describe StreamingApi, type: :model do
       ])
     end
 
-    it 'expands ALL for all targets' do
-      data = { 'packets' => ['DECOM__TLM__ALL__CONVERTED'], 'scope' => 'DEFAULT' }
+    it 'expands COSMOS_ALL for all targets' do
+      data = { 'packets' => ['DECOM__TLM__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT' }
       @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       expect(data['packets']).to eq([
         'DECOM__TLM__INST__HEALTH_STATUS__CONVERTED',
@@ -191,14 +191,14 @@ RSpec.describe StreamingApi, type: :model do
       ])
     end
 
-    it 'passes through non-ALL keys unchanged' do
+    it 'passes through non-COSMOS_ALL keys unchanged' do
       data = { 'packets' => ['DECOM__CMD__INST__COLLECT__CONVERTED'], 'scope' => 'DEFAULT' }
       @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       expect(data['packets']).to eq(['DECOM__CMD__INST__COLLECT__CONVERTED'])
     end
 
-    it 'handles mixed ALL and concrete keys' do
-      data = { 'packets' => ['DECOM__CMD__INST__COLLECT__CONVERTED', 'RAW__CMD__INST__ALL'], 'scope' => 'DEFAULT' }
+    it 'handles mixed COSMOS_ALL and concrete keys' do
+      data = { 'packets' => ['DECOM__CMD__INST__COLLECT__CONVERTED', 'RAW__CMD__INST__COSMOS_ALL'], 'scope' => 'DEFAULT' }
       @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       expect(data['packets']).to eq([
         'DECOM__CMD__INST__COLLECT__CONVERTED',
@@ -208,9 +208,9 @@ RSpec.describe StreamingApi, type: :model do
       ])
     end
 
-    it 'handles ALL with nonexistent target gracefully' do
+    it 'handles COSMOS_ALL with nonexistent target gracefully' do
       allow(OpenC3::TargetModel).to receive(:packets).with('BOGUS', type: :CMD, scope: 'DEFAULT').and_raise(RuntimeError, "Target 'BOGUS' does not exist")
-      data = { 'packets' => ['DECOM__CMD__BOGUS__ALL__CONVERTED'], 'scope' => 'DEFAULT' }
+      data = { 'packets' => ['DECOM__CMD__BOGUS__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT' }
       @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       expect(data['packets']).to eq([])
     end
@@ -221,8 +221,8 @@ RSpec.describe StreamingApi, type: :model do
       expect(data['packets']).to be_nil
     end
 
-    it 'skips targets without the requested packet type for ALL targets' do
-      data = { 'packets' => ['RAW__CMD__ALL'], 'scope' => 'DEFAULT' }
+    it 'skips targets without the requested packet type for COSMOS_ALL targets' do
+      data = { 'packets' => ['RAW__CMD__COSMOS_ALL'], 'scope' => 'DEFAULT' }
       @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       # EMPTY target raises RuntimeError, so it should be skipped
       empty_packets = data['packets'].select { |p| p.include?('EMPTY') }
@@ -241,14 +241,14 @@ RSpec.describe StreamingApi, type: :model do
         { 'packet_name' => 'PARAMS' },
         { 'packet_name' => 'UNKNOWN' },
       ])
-      # ALL targets: UNKNOWN target should be excluded entirely
-      data = { 'packets' => ['DECOM__CMD__ALL__CONVERTED'], 'scope' => 'DEFAULT' }
+      # COSMOS_ALL targets: UNKNOWN target should be excluded entirely
+      data = { 'packets' => ['DECOM__CMD__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT' }
       @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       unknown_packets = data['packets'].select { |p| p.include?('UNKNOWN') }
       expect(unknown_packets).to be_empty
 
       # Single target: UNKNOWN packet should be excluded
-      data = { 'packets' => ['DECOM__TLM__INST__ALL__CONVERTED'], 'scope' => 'DEFAULT' }
+      data = { 'packets' => ['DECOM__TLM__INST__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT' }
       @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       expect(data['packets']).to eq([
         'DECOM__TLM__INST__HEALTH_STATUS__CONVERTED',
@@ -257,8 +257,8 @@ RSpec.describe StreamingApi, type: :model do
     end
   end
 
-  describe 'add with ALL packets and authorization' do
-    it 'skips unauthorized packets when using ALL' do
+  describe 'add with COSMOS_ALL packets and authorization' do
+    it 'skips unauthorized packets when using COSMOS_ALL' do
       $openc3_authorize = true
       allow(OpenC3::TargetModel).to receive(:names).with(scope: 'DEFAULT').and_return(['INST'])
       allow(OpenC3::TargetModel).to receive(:packets).with('INST', type: :CMD, scope: 'DEFAULT').and_return([
@@ -266,7 +266,7 @@ RSpec.describe StreamingApi, type: :model do
         { 'packet_name' => 'ABORT' },
       ])
       @send_count = 0
-      data = { 'packets' => ['DECOM__CMD__INST__ALL__CONVERTED'], 'scope' => 'DEFAULT', 'token' => 'invalid' }
+      data = { 'packets' => ['DECOM__CMD__INST__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT', 'token' => 'invalid' }
       # This should not raise - unauthorized packets are silently skipped
       expect { @api.add(data) }.not_to raise_error
       $openc3_authorize = false

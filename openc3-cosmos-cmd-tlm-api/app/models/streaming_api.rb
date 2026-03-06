@@ -57,10 +57,10 @@ class StreamingApi
     end
   end
 
-  # Expand ANY packet key containing ALL into individual packet keys.
+  # Expand ANY packet key containing COSMOS_ALL into individual packet keys.
   # Supports:
-  #   MODE__CMDORTLM__ALL[__VALUETYPE]          - all targets, all packets
-  #   MODE__CMDORTLM__TARGET__ALL[__VALUETYPE]  - one target, all packets
+  #   MODE__CMDORTLM__COSMOS_ALL[__VALUETYPE]          - all targets, all packets
+  #   MODE__CMDORTLM__TARGET__COSMOS_ALL[__VALUETYPE]  - one target, all packets
   # Unauthorized packets are silently skipped (Option A).
   def expand_all_packets(data, scope:)
     return unless data["packets"]
@@ -71,8 +71,8 @@ class StreamingApi
       mode = parts[0]
       cmd_or_tlm = parts[1]
 
-      if parts[2] == 'ALL'
-        # MODE__CMDORTLM__ALL[__VALUETYPE]
+      if parts[2] == 'COSMOS_ALL'
+        # MODE__CMDORTLM__COSMOS_ALL[__VALUETYPE]
         value_type = parts[3]
         type = (cmd_or_tlm == 'CMD') ? :CMD : :TLM
         targets = OpenC3::TargetModel.names(scope: scope)
@@ -92,8 +92,8 @@ class StreamingApi
             expanded << pkt_key
           end
         end
-      elsif parts[3] == 'ALL'
-        # MODE__CMDORTLM__TARGET__ALL[__VALUETYPE]
+      elsif parts[3] == 'COSMOS_ALL'
+        # MODE__CMDORTLM__TARGET__COSMOS_ALL[__VALUETYPE]
         target_name = parts[2]
         value_type = parts[4]
         type = (cmd_or_tlm == 'CMD') ? :CMD : :TLM
