@@ -151,8 +151,6 @@ jobs:
       - name: Publish python package
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
           packages-dir: openc3/python/dist
       - name: publish common npm packages
         if: ${{ github.event.inputs.update_latest == 'true' }}
