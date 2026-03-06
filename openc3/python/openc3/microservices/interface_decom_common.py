@@ -83,7 +83,7 @@ def handle_get_tlm_buffer(get_tlm_buffer_json, msg_id, scope):
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
             "received_count": packet.received_count,
-            "stored": str(packet.stored).lower(), # Match ruby behavior of "true"/"false"
+            "stored": str(packet.stored).lower(),  # Match ruby behavior of "true"/"false"
             "buffer": json.dumps(packet.buffer_no_copy(), cls=JsonEncoder),
         }
         if packet.extra:
