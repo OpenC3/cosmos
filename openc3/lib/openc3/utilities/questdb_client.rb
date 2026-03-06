@@ -21,35 +21,32 @@ module OpenC3
   # This provides a common interface for serializing/deserializing COSMOS data types
   # when writing to and reading from QuestDB.
   class QuestDBClient
-    @@conn = nil
-    @@conn_mutex = Mutex.new
-
-    # Get or create a thread-safe PG connection with type mapping configured.
-    # Returns a shared singleton connection — callers should not close it.
+    # Get or create a thread-local PG connection with type mapping configured.
+    # Each thread gets its own connection to avoid thread-safety issues with PG::Connection.
+    # Returns the thread-local connection — callers should not close it.
     def self.connection
-      @@conn_mutex.synchronize do
-        @@conn ||= PG::Connection.new(
+      conn = Thread.current[:questdb_conn]
+      if conn.nil? || conn.finished?
+        conn = PG::Connection.new(
           host: ENV['OPENC3_TSDB_HOSTNAME'],
           port: ENV['OPENC3_TSDB_QUERY_PORT'],
           user: ENV['OPENC3_TSDB_USERNAME'],
           password: ENV['OPENC3_TSDB_PASSWORD'],
           dbname: 'qdb'
         )
-        if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
-          @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
-        end
-        @@conn
+        conn.type_map_for_results = PG::BasicTypeMapForResults.new(conn)
+        Thread.current[:questdb_conn] = conn
       end
+      conn
     end
 
-    # Reset the connection (close if open, set to nil). Used after errors.
+    # Reset the connection for the current thread. Used after errors.
     def self.disconnect
-      @@conn_mutex.synchronize do
-        if @@conn && !@@conn.finished?
-          @@conn.finish
-        end
-        @@conn = nil
+      conn = Thread.current[:questdb_conn]
+      if conn && !conn.finished?
+        conn.finish
       end
+      Thread.current[:questdb_conn] = nil
     end
 
     # Health check — attempt to connect and immediately close.
