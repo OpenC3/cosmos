@@ -15,17 +15,22 @@ require 'json'
 require 'base64'
 require 'bigdecimal'
 require 'pg'
+require 'concurrent'
 
 module OpenC3
   # Utility class for QuestDB data encoding and decoding.
   # This provides a common interface for serializing/deserializing COSMOS data types
   # when writing to and reading from QuestDB.
   class QuestDBClient
-    # Get or create a thread-local PG connection with type mapping configured.
+    # Thread-local PG connection storage using Concurrent::ThreadLocalVar.
     # Each thread gets its own connection to avoid thread-safety issues with PG::Connection.
+    # Connections are automatically garbage collected when threads terminate.
+    @thread_conn = Concurrent::ThreadLocalVar.new(nil)
+
+    # Get or create a thread-local PG connection with type mapping configured.
     # Returns the thread-local connection — callers should not close it.
     def self.connection
-      conn = Thread.current[:questdb_conn]
+      conn = @thread_conn.value
       if conn.nil? || conn.finished?
         conn = PG::Connection.new(
           host: ENV['OPENC3_TSDB_HOSTNAME'],
@@ -35,18 +40,18 @@ module OpenC3
           dbname: 'qdb'
         )
         conn.type_map_for_results = PG::BasicTypeMapForResults.new(conn)
-        Thread.current[:questdb_conn] = conn
+        @thread_conn.value = conn
       end
       conn
     end
 
     # Reset the connection for the current thread. Used after errors.
     def self.disconnect
-      conn = Thread.current[:questdb_conn]
+      conn = @thread_conn.value
       if conn && !conn.finished?
         conn.finish
       end
-      Thread.current[:questdb_conn] = nil
+      @thread_conn.value = nil
     end
 
     # Health check — attempt to connect and immediately close.
