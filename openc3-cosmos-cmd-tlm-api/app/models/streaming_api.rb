@@ -77,7 +77,7 @@ class StreamingApi
         type = (cmd_or_tlm == 'CMD') ? :CMD : :TLM
         targets = OpenC3::TargetModel.names(scope: scope)
         targets.each do |target_name|
-          next if target_name == 'UNKNOWN'
+          next if target_name == 'UNKNOWN' and mode != 'RAW'
 
           begin
             packets = OpenC3::TargetModel.packets(target_name, type: type, scope: scope)
@@ -85,8 +85,6 @@ class StreamingApi
             next
           end
           packets.each do |packet|
-            next if packet['packet_name'] == 'UNKNOWN'
-
             pkt_key = "#{mode}__#{cmd_or_tlm}__#{target_name}__#{packet['packet_name']}"
             pkt_key += "__#{value_type}" if value_type
             expanded << pkt_key
@@ -103,8 +101,6 @@ class StreamingApi
           next
         end
         packets.each do |packet|
-          next if packet['packet_name'] == 'UNKNOWN'
-
           pkt_key = "#{mode}__#{cmd_or_tlm}__#{target_name}__#{packet['packet_name']}"
           pkt_key += "__#{value_type}" if value_type
           expanded << pkt_key

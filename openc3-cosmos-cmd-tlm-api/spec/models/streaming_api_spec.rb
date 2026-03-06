@@ -222,6 +222,9 @@ RSpec.describe StreamingApi, type: :model do
     end
 
     it 'skips targets without the requested packet type for COSMOS_ALL targets' do
+      allow(OpenC3::TargetModel).to receive(:packets).with('UNKNOWN', type: :CMD, scope: 'DEFAULT').and_return([
+        { 'packet_name' => 'UNKNOWN' },
+      ])
       data = { 'packets' => ['RAW__CMD__COSMOS_ALL'], 'scope' => 'DEFAULT' }
       @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       # EMPTY target raises RuntimeError, so it should be skipped
@@ -231,14 +234,8 @@ RSpec.describe StreamingApi, type: :model do
       expect(data['packets']).to include('RAW__CMD__SYSTEM__META')
     end
 
-    it 'skips UNKNOWN target and UNKNOWN packets' do
+    it 'skips UNKNOWN target for DECOM' do
       allow(OpenC3::TargetModel).to receive(:packets).with('UNKNOWN', type: :CMD, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'UNKNOWN' },
-      ])
-      # Also add an UNKNOWN packet to INST to test packet-level filtering
-      allow(OpenC3::TargetModel).to receive(:packets).with('INST', type: :TLM, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'HEALTH_STATUS' },
-        { 'packet_name' => 'PARAMS' },
         { 'packet_name' => 'UNKNOWN' },
       ])
       # COSMOS_ALL targets: UNKNOWN target should be excluded entirely
@@ -246,14 +243,17 @@ RSpec.describe StreamingApi, type: :model do
       @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       unknown_packets = data['packets'].select { |p| p.include?('UNKNOWN') }
       expect(unknown_packets).to be_empty
+    end
 
-      # Single target: UNKNOWN packet should be excluded
-      data = { 'packets' => ['DECOM__TLM__INST__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT' }
-      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
-      expect(data['packets']).to eq([
-        'DECOM__TLM__INST__HEALTH_STATUS__CONVERTED',
-        'DECOM__TLM__INST__PARAMS__CONVERTED',
+    it 'keeps UNKNOWN target for RAW' do
+      allow(OpenC3::TargetModel).to receive(:packets).with('UNKNOWN', type: :CMD, scope: 'DEFAULT').and_return([
+        { 'packet_name' => 'UNKNOWN' },
       ])
+      # COSMOS_ALL targets: UNKNOWN target should be included for RAW
+      data = { 'packets' => ['RAW__CMD__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT' }
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
+      unknown_packets = data['packets'].select { |p| p.include?('UNKNOWN') }
+      expect(unknown_packets).not_to be_empty
     end
   end
 
