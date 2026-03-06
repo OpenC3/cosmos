@@ -169,7 +169,7 @@ test('warns for required parameters', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).toContainText('Error sending')
   await expect(page.locator('.v-dialog')).toContainText('INST COLLECT TYPE')
   await expect(page.locator('.v-dialog')).toContainText(
-    "not one of NORMAL, SPECIAL",
+    'not one of NORMAL, SPECIAL',
   )
   await page.locator('button:has-text("Ok")').click()
 })
@@ -539,7 +539,7 @@ test('hazardous commands from history', async ({ page, utils }) => {
 })
 
 //
-// Test the Mode menu
+// Test the range checks, this doesn't affect the UI so can be run in parallel with the other tests
 //
 test('ignores normal range checks', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
@@ -623,44 +623,6 @@ test('ignores hazardous range checks', async ({ page, utils }) => {
   await checkHistory(
     page,
     'cmd_no_range_check("INST COLLECT with TYPE \'SPECIAL\', DURATION 1, OPCODE 171, TEMP 100")',
-  )
-})
-
-test('displays state values in hex', async ({ page, utils }) => {
-  await utils.selectTargetPacketItem('INST', 'COLLECT')
-  await selectValue(page, 'TYPE', 'NORMAL') // Ensure TYPE is set since its required
-  await checkValue(page, 'TYPE', '0')
-  await page.locator('[data-test=command-sender-mode]').click()
-  await page.getByText('Display State Values in Hex').click()
-  await page.locator('[data-test=command-sender-mode]').click()
-  await checkValue(page, 'TYPE', '0x0')
-})
-
-test('shows ignored parameters', async ({ page, utils }) => {
-  await utils.selectTargetPacketItem('INST', 'ABORT')
-  await expect(page.locator('main')).toContainText(
-    'Aborts a collect on the INST instrument',
-  )
-  // All the ABORT parameters are ignored so the table shouldn't appear
-  await expect(page.locator('main')).not.toContainText('Parameters')
-  await page.locator('[data-test=command-sender-mode]').click()
-  await page.locator('text=Show Ignored').click()
-  await page.locator('[data-test=command-sender-mode]').click()
-  await expect(page.locator('main')).toContainText('Parameters') // Now the parameters table is shown
-  await expect(page.locator('main')).toContainText('CCSDSVER') // CCSDSVER is one of the parameters
-})
-
-test('disables command validation', async ({ page, utils }) => {
-  await page.locator('[data-test="clear-history"]').click()
-  await utils.selectTargetPacketItem('INST', 'TIME_OFFSET')
-
-  await page.locator('[data-test=command-sender-mode]').click()
-  await page.getByText('Disable Command Validation').click()
-  await page.locator('[data-test=command-sender-mode]').click()
-
-  await page.locator('[data-test="select-send"]').click()
-  await expect(page.locator('main')).toContainText(
-    'cmd("INST TIME_OFFSET with SECONDS 0, IP_ADDRESS \'127.0.0.1\'", validate=False) sent',
   )
 })
 
@@ -769,6 +731,9 @@ test('sends manually entered state values', async ({ page, utils }) => {
   await page.getByRole('option', { name: 'MANUALLY_ENTERED' }).click()
 
   // Enter a raw numeric value in the manual entry text field
+  await expect(
+    row.locator('[data-test=cmd-param-value] input').first(),
+  ).toBeEditable()
   await row.locator('[data-test=cmd-param-value] input').first().fill('0')
   await row.locator('[data-test=cmd-param-value] input').first().press('Enter')
 
