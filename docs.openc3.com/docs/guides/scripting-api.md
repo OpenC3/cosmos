@@ -409,6 +409,59 @@ for file in files:
 </TabItem>
 </Tabs>
 
+### open_bucket_dialog
+
+> Since 7.0.0
+
+The open_bucket_dialog method creates a dialog box that allows the user to browse S3 bucket files and select one. It presents the available buckets (similar to Bucket Explorer) and allows navigating directories within the selected bucket. The selected file is downloaded and returned as a file object, similar to open_file_dialog.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+open_bucket_dialog("<Title>", "<Message>")
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+open_bucket_dialog("<Title>", "<Message>")
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                   |
+| --------- | ------------------------------------------------------------- |
+| Title     | The title to put on the dialog. Required.                     |
+| Message   | The message to display in the dialog box. Optional parameter. |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+file = open_bucket_dialog("Select a File", "Choose a file from a bucket")
+puts file.filename # The name of the selected file
+puts file.read
+file.delete
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+file = open_bucket_dialog("Select a File", "Choose a file from a bucket")
+print(file.filename) # The name of the selected file
+print(file.read())
+file.close()
+```
+
+</TabItem>
+</Tabs>
+
 ## File Manipulation
 
 These methods provide capability to interact with files in the target directory.

@@ -556,6 +556,13 @@
     :filter="file.filter"
     @response="fileDialogCallback"
   />
+  <bucket-dialog
+    v-if="bucket.show"
+    v-model="bucket.show"
+    :title="bucket.title"
+    :message="bucket.message"
+    @response="bucketDialogCallback"
+  />
   <information-dialog
     v-if="information.show"
     v-model="information.show"
@@ -694,6 +701,7 @@ import { fileIcon } from '@/util'
 import { EventListDialog } from '@/tools/calendar'
 
 import AskDialog from '@/tools/scriptrunner/Dialogs/AskDialog.vue'
+import BucketDialog from '@/tools/scriptrunner/Dialogs/BucketDialog.vue'
 import FileDialog from '@/tools/scriptrunner/Dialogs/FileDialog.vue'
 import InformationDialog from '@/tools/scriptrunner/Dialogs/InformationDialog.vue'
 import OverridesDialog from '@/tools/scriptrunner/Dialogs/OverridesDialog.vue'
@@ -728,6 +736,7 @@ export default {
     Pane,
     TopBar,
     AskDialog,
+    BucketDialog,
     FileDialog,
     InformationDialog,
     EventListDialog,
@@ -851,6 +860,11 @@ export default {
         filter: '*',
         multiple: false,
         callback: () => {},
+      },
+      bucket: {
+        show: false,
+        title: '',
+        message: '',
       },
       prompt: {
         show: false,
@@ -2247,6 +2261,7 @@ export default {
         this.prompt.show = false
         this.ask.show = false
         this.file.show = false
+        this.bucket.show = false
         return
       }
       this.activePromptId = data.prompt_id
@@ -2382,6 +2397,11 @@ export default {
           }
           this.showMetadata()
           break
+        case 'open_bucket_dialog':
+          this.bucket.title = data.args[0]
+          this.bucket.message = data.args[1]
+          this.bucket.show = true
+          break
         // This is called continuously by the backend
         case 'open_file_dialog':
         case 'open_files_dialog':
@@ -2442,6 +2462,20 @@ export default {
           },
         })
         this.file.show = false // Close the dialog immediately to avoid race condition
+      })
+    },
+    bucketDialogCallback(response) {
+      this.bucket.show = false
+      let answer = 'Cancel'
+      if (response !== 'Cancel') {
+        answer = response
+      }
+      Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
+        data: {
+          method: 'open_bucket_dialog',
+          answer: answer,
+          prompt_id: this.activePromptId,
+        },
       })
     },
     setError(event) {

@@ -15,3 +15,12 @@ for file in files:
     print(file.filename())
     print(file.read())
     file.close()
+
+# Specify the title and message
+file = open_bucket_dialog(
+    "Open a file from the buckets", "Choose something interesting"
+)
+print(file)  # Python tempfile.NamedTemporaryFile object
+print(file.filename())  # Filename that was selected in the dialog
+print(file.read())
+file.close()

@@ -138,6 +138,7 @@ SCRIPT_METHODS = [
     "metadata_input",
     "open_file_dialog",
     "open_files_dialog",
+    "open_bucket_dialog",
 ]
 
 
@@ -156,7 +157,24 @@ def running_script_method(method, *args, **kwargs):
             if user_input == "Cancel":
                 RunningScript.instance.perform_pause()
             else:
-                if "open_file" in method:
+                if method == "open_bucket_dialog":
+                    bucket = user_input["bucket"]
+                    path = user_input["path"]
+                    the_filename = user_input["filename"]
+                    # Path from bucket dialog already includes scope prefix (e.g. DEFAULT/targets/...)
+                    # _get_storage_file prepends scope, so strip it from the path to avoid doubling
+                    scope = RunningScript.instance.scope()
+                    if path.startswith(f"{scope}/"):
+                        path = path[len(scope) + 1:]
+                    file = _get_storage_file(path, bucket=bucket, scope=scope)
+                    file._filename = the_filename
+
+                    def filename(self):
+                        return self._filename
+
+                    type(file).filename = filename
+                    return file
+                elif "open_file" in method:
                     files = []
                     for the_filename in user_input:
                         file = _get_storage_file(f"tmp/{the_filename}", scope=RunningScript.instance.scope())
