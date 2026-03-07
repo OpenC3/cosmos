@@ -252,7 +252,7 @@ module OpenC3
           #######################################################################
           when 'STATE', 'READ_CONVERSION', 'WRITE_CONVERSION', 'POLY_READ_CONVERSION',\
               'POLY_WRITE_CONVERSION', 'SEG_POLY_READ_CONVERSION', 'SEG_POLY_WRITE_CONVERSION',\
-              'GENERIC_READ_CONVERSION_START', 'GENERIC_WRITE_CONVERSION_START', 'REQUIRED',\
+              'GENERIC_READ_CONVERSION_START', 'GENERIC_WRITE_CONVERSION_START', 'CONVERTED_DATA', 'REQUIRED',\
               'LIMITS', 'LIMITS_RESPONSE', 'UNITS', 'FORMAT_STRING', 'DESCRIPTION',\
               'MINIMUM_VALUE', 'MAXIMUM_VALUE', 'DEFAULT_VALUE', 'OVERFLOW', 'OVERLAP', 'KEY', 'VARIABLE_BIT_SIZE',\
               'OBFUSCATE'
@@ -675,11 +675,6 @@ module OpenC3
             klass = OpenC3.require_class(params[0])
             conversion = klass.new(*params[1..(params.length - 1)])
             @current_item.public_send("#{keyword.downcase}=".to_sym, conversion)
-            if klass != ProcessorConversion and (conversion.converted_type.nil? or conversion.converted_bit_size.nil?)
-              msg = "Read Conversion #{params[0]} on item #{@current_item.name} does not specify converted type or bit size"
-              @warnings << msg
-              Logger.instance.warn @warnings[-1]
-            end
           else
             conversion = PythonProxy.new('Conversion', params[0], *params[1..(params.length - 1)])
             @current_item.public_send("#{keyword.downcase}=".to_sym, conversion)
@@ -719,8 +714,9 @@ module OpenC3
       # All config.lines following this config.line are considered part
       # of the conversion until an end of conversion marker is found
       when 'GENERIC_READ_CONVERSION_START', 'GENERIC_WRITE_CONVERSION_START'
-        usage = "#{keyword} <Converted Type (optional)> <Converted Bit Size (optional)>"
-        parser.verify_num_parameters(0, 2, usage)
+        # As of COSMOS 7.1 the converted type and bit size are deprecated
+        # but we're still allowing them to be defined as parameters for backward compatibility
+        parser.verify_num_parameters(0, 2, keyword)
         @proc_text = ''
         @building_generic_conversion = true
         parser.set_preserve_lines(true)
@@ -731,10 +727,21 @@ module OpenC3
           raise parser.error("Invalid converted_type: #{@converted_type}.") unless CONVERTED_DATA_TYPES.include? @converted_type
         end
         @converted_bit_size = Integer(params[1]) if params[1]
-        if @converted_type.nil? or @converted_bit_size.nil?
-          msg = "Generic Conversion on item #{@current_item.name} does not specify converted type or bit size"
-          @warnings << msg
-          Logger.instance.warn @warnings[-1]
+
+      # Define the converted data type, bit size, and optional array size
+      # for items with read conversions (especially DERIVED items)
+      when 'CONVERTED_DATA'
+        usage = "CONVERTED_DATA <Converted Bit Size> <Converted Type> <Converted Array Size (optional)>"
+        parser.verify_num_parameters(2, 3, usage)
+        raise parser.error("#{keyword} requires a current item") unless @current_item
+        raise parser.error("#{keyword} requires a current item with a read conversion") unless @current_item.read_conversion
+        converted_bit_size = Integer(params[0])
+        converted_type = params[1].upcase.intern
+        raise parser.error("Invalid converted_type: #{converted_type}.") unless CONVERTED_DATA_TYPES.include? converted_type
+        @current_item.read_conversion.converted_type = converted_type
+        @current_item.read_conversion.converted_bit_size = converted_bit_size
+        if params[2]
+          @current_item.read_conversion.converted_array_size = Integer(params[2])
         end
 
       # Define a set of limits for the current telemetry item

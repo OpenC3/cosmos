@@ -64,6 +64,10 @@ class PacketConfig:
         self.commands = {}
         self.limits_groups = {}
         self.limits_sets = ["DEFAULT"]
+        self.converted_type = None
+        self.converted_bit_size = None
+        self.proc_text = ""
+        self.building_generic_conversion = False
         # Hash of Hashes. First index by target name and then item name.
         # Returns an array of packets with that target and item.
         self.latest_data = {}
@@ -279,6 +283,7 @@ class PacketConfig:
                         | "SEG_POLY_WRITE_CONVERSION"
                         | "GENERIC_READ_CONVERSION_START"
                         | "GENERIC_WRITE_CONVERSION_START"
+                        | "CONVERTED_DATA"
                         | "REQUIRED"
                         | "LIMITS"
                         | "LIMITS_RESPONSE"
@@ -850,10 +855,6 @@ class PacketConfig:
                         self.current_item.read_conversion = conversion
                     else:
                         self.current_item.write_conversion = conversion
-                    # if klass != ProcessorConversion and (conversion.converted_type.None? or conversion.converted_bit_size.None?):
-                    #     msg = f"Read Conversion {params[0]} on item {self.current_item.name} does not specify converted type or bit size"
-                    #     self.warnings.append(msg)
-                    #     Logger.warn(self.warnings[-1])
                 except Exception as error:
                     raise parser.error(error) from error
 
@@ -894,8 +895,9 @@ class PacketConfig:
             # All config.lines following this config.line are considered part
             # of the conversion until an end of conversion marker is found
             case "GENERIC_READ_CONVERSION_START" | "GENERIC_WRITE_CONVERSION_START":
-                usage = f"{keyword} <Converted Type (optional)> <Converted Bit Size (optional)>"
-                parser.verify_num_parameters(0, 2, usage)
+                # As of COSMOS 7.1 the converted type and bit size are deprecated
+                # but we're still allowing them to be defined as parameters for backward compatibility
+                parser.verify_num_parameters(0, 2, keyword)
                 self.proc_text = ""
                 self.building_generic_conversion = True
                 parser.set_preserve_lines(True)
@@ -906,10 +908,24 @@ class PacketConfig:
                     if self.converted_type not in self.CONVERTED_DATA_TYPES:
                         raise parser.error(f"Invalid converted_type: {self.converted_type}.")
                     self.converted_bit_size = int(params[1])
-                if self.converted_type is None or self.converted_bit_size is None:
-                    msg = f"Generic Conversion on item {self.current_item.name} does not specify converted type or bit size"
-                    self.warnings.append(msg)
-                    Logger.warn(self.warnings[-1])
+
+            # Define the converted data type, bit size, and optional array size
+            # for items with read conversions (especially DERIVED items)
+            case "CONVERTED_DATA":
+                usage = "CONVERTED_DATA <Converted Bit Size> <Converted Type> <Converted Array Size (optional)>"
+                parser.verify_num_parameters(2, 3, usage)
+                if not self.current_item:
+                    raise parser.error(f"{keyword} requires a current item")
+                if not self.current_item.read_conversion:
+                    raise parser.error(f"{keyword} requires a current item with a read conversion")
+                converted_bit_size = int(params[0])
+                converted_type = params[1].upper()
+                if converted_type not in self.CONVERTED_DATA_TYPES:
+                    raise parser.error(f"Invalid converted_type: {converted_type}.")
+                self.current_item.read_conversion.converted_type = converted_type
+                self.current_item.read_conversion.converted_bit_size = converted_bit_size
+                if len(params) >= 3:
+                    self.current_item.read_conversion.converted_array_size = int(params[2])
 
             # Define a set of limits for the current telemetry item
             case "LIMITS":

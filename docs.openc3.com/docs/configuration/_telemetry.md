@@ -131,12 +131,14 @@ TELEMETRY TARGET HS BIG_ENDIAN "Health and Status for My Target"
     STATE NORMAL 0 GREEN
     STATE DIAG 1 YELLOW
   ITEM TIMESECONDS 0 0 DERIVED "DERIVED TIME SINCE EPOCH IN SECONDS"
-    GENERIC_READ_CONVERSION_START FLOAT 32
+    GENERIC_READ_CONVERSION_START
       ((packet.read('ccsdsday') * 86400.0) + (packet.read('ccsdsmsod') / 1000.0) + (packet.read('ccsdsusoms') / 1000000.0)  )
     GENERIC_READ_CONVERSION_END
+    CONVERTED_DATA 32 FLOAT
   ITEM TIMEFORMATTED 0 0 DERIVED "DERIVED TIME SINCE EPOCH AS A FORMATTED STRING"
-    GENERIC_READ_CONVERSION_START STRING 216
+    GENERIC_READ_CONVERSION_START
       time = Time.ccsds2mdy(packet.read('ccsdsday'), packet.read('ccsdsmsod'), packet.read('ccsdsusoms'))
       sprintf('%04u/%02u/%02u %02u:%02u:%02u.%06u', time[0], time[1], time[2], time[3], time[4], time[5], time[6])
     GENERIC_READ_CONVERSION_END
+    CONVERTED_DATA 216 STRING
 ```

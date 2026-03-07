@@ -54,32 +54,43 @@ TELEMETRY <%= target_name %> HEALTH_STATUS BIG_ENDIAN "Health and status from th
     LIMITS DEFAULT 1 ENABLED -1 -1 200 250
   ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
+    # Strings can potentially be 35 chars: 2026-03-07T16:51:03.123456789+00:00
+    CONVERTED_DATA 280 STRING
   ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
     READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1WATER HIGH_WATER
+    CONVERTED_DATA 32 FLOAT
   ITEM TEMP1LOW 0 0 DERIVED "Low-water mark for TEMP1"
     READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1WATER LOW_WATER
+    CONVERTED_DATA 32 FLOAT
   ITEM TEMP1MAX 0 0 DERIVED "Maximum of most recent 100 samples for TEMP1"
     READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1STAT MAX
+    CONVERTED_DATA 32 FLOAT
   ITEM TEMP1MIN 0 0 DERIVED "Minimum of most recent 100 samples for TEMP1"
     READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1STAT MIN
+    CONVERTED_DATA 32 FLOAT
   ITEM TEMP1MEAN 0 0 DERIVED "Mean of most recent 100 samples for TEMP1"
     READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1STAT MEAN
+    CONVERTED_DATA 32 FLOAT
   ITEM TEMP1STDDEV 0 0 DERIVED "Stddev of most recent 100 samples for TEMP1"
     READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1STAT STDDEV
+    CONVERTED_DATA 32 FLOAT
   ITEM TEMP1_MICRO 0 0 DERIVED
-    GENERIC_READ_CONVERSION_START FLOAT 32
+    GENERIC_READ_CONVERSION_START
       packet.read('TEMP1') / 1_000_000
     GENERIC_READ_CONVERSION_END
+    CONVERTED_DATA 32 FLOAT
   ITEM TEMP1_MEGA 0 0 DERIVED
-    GENERIC_READ_CONVERSION_START FLOAT 32
+    GENERIC_READ_CONVERSION_START
       packet.read('TEMP1') * 1_000_000
     GENERIC_READ_CONVERSION_END
+    CONVERTED_DATA 32 FLOAT
   PROCESSOR TEMP1STAT openc3/processors/statistics_processor.py TEMP1 100
   PROCESSOR TEMP1WATER openc3/processors/watermark_processor.py TEMP1
   ITEM ZERO 0 0 DERIVED
-    GENERIC_READ_CONVERSION_START INT 16
+    GENERIC_READ_CONVERSION_START
       0
     GENERIC_READ_CONVERSION_END
+    CONVERTED_DATA 16 INT
     LIMITS DEFAULT 1 ENABLED -20 -10 10 20 -5 5
 
 TELEMETRY <%= target_name %> ADCS BIG_ENDIAN "Position and attitude data"
@@ -124,6 +135,7 @@ TELEMETRY <%= target_name %> ADCS BIG_ENDIAN "Position and attitude data"
     FORMAT_STRING "%0.2f"
   ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
+    CONVERTED_DATA 280 STRING
 
 # NOTE: We don't really recommend using periods in packet names
 # but we're doing it here to test the routing code
@@ -143,6 +155,7 @@ TELEMETRY <%= target_name %> PARAMS.PKT BIG_ENDIAN "Params set by SETPARAMS comm
   APPEND_ITEM P(:6;)       64 UINT "Test weird characters"
   ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
+    CONVERTED_DATA 280 STRING
 
 TELEMETRY <%= target_name %> IMAGE BIG_ENDIAN "Packet with image data"
   <%= render "_ccsds_tlm.txt", locals: {apid: 4} %>
@@ -153,6 +166,7 @@ TELEMETRY <%= target_name %> IMAGE BIG_ENDIAN "Packet with image data"
     OVERLAP # Notify OpenC3 that this is intentionally overlapping the BLOCK field
   ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
+    CONVERTED_DATA 280 STRING
 
 TELEMETRY <%= target_name %> MECH BIG_ENDIAN "Mechanism status ©®"
   <%= render "_ccsds_tlm.txt", locals: {apid: 5} %>
@@ -172,6 +186,7 @@ TELEMETRY <%= target_name %> MECH BIG_ENDIAN "Mechanism status ©®"
   APPEND_ARRAY_ITEM STRINGS 2048 STRING 0 "Array of strings"
   ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
+    CONVERTED_DATA 280 STRING
 
 TELEMETRY <%= target_name %> HIDDEN BIG_ENDIAN "Hidden packet"
   HIDDEN
@@ -179,6 +194,7 @@ TELEMETRY <%= target_name %> HIDDEN BIG_ENDIAN "Hidden packet"
   APPEND_ITEM COUNT 32 UINT "Count for hidden command"
   ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
+    CONVERTED_DATA 280 STRING
 
 TELEMETRY <%= target_name %> VARIABLE_ARRAYS BIG_ENDIAN "Variable length arrays"
   <%= render "_ccsds_tlm.txt", locals: {apid: 7} %>
@@ -190,6 +206,7 @@ TELEMETRY <%= target_name %> VARIABLE_ARRAYS BIG_ENDIAN "Variable length arrays"
     VARIABLE_BIT_SIZE ARRAY2_LENGTH
   ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
+    CONVERTED_DATA 280 STRING
 
 TELEMETRY <%= target_name %> JSONTLM BIG_ENDIAN "JSON Accessor Telemetry"
   ACCESSOR JsonAccessor
@@ -329,3 +346,4 @@ TELEMETRY <%= target_name %> THROUGHPUT_STATUS BIG_ENDIAN "Throughput statistics
     UNITS Seconds s
   ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
+    CONVERTED_DATA 280 STRING

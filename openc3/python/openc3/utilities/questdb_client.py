@@ -634,6 +634,10 @@ class QuestDBClient:
                     rc = item.get("read_conversion")
                     converted_type = rc.get("converted_type") if rc else None
                     converted_bit_size = rc.get("converted_bit_size", 0) if rc else 0
+                    # Fall back to item's own data_type/bit_size when conversion doesn't specify
+                    if converted_type is None:
+                        converted_type = data_type
+                        converted_bit_size = bit_size
                     col_type, needs_json = self._get_column_type_from_conversion(
                         table_name,
                         f"{item_name}__C",
