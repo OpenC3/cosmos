@@ -33,7 +33,6 @@ from openc3.packets.parsers.processor_parser import ProcessorParser
 from openc3.packets.parsers.state_parser import StateParser
 from openc3.top_level import get_class_from_module
 from openc3.utilities.extract import convert_to_value
-from openc3.utilities.logger import Logger
 from openc3.utilities.string import (
     class_name_to_filename,
     filename_to_class_name,
