@@ -165,7 +165,7 @@ def running_script_method(method, *args, **kwargs):
                     # _get_storage_file prepends scope, so strip it from the path to avoid doubling
                     scope = RunningScript.instance.scope()
                     if path.startswith(f"{scope}/"):
-                        path = path[len(scope) + 1:]
+                        path = path[len(scope) + 1 :]
                     file = _get_storage_file(path, bucket=bucket, scope=scope)
                     file._filename = the_filename
 

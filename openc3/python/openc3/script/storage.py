@@ -198,9 +198,7 @@ def _get_uri(url):
 
 def _get_presigned_request(endpoint, external=None, bucket="OPENC3_CONFIG_BUCKET", scope=OPENC3_SCOPE):
     if external or not openc3.script.OPENC3_IN_CLUSTER:
-        response = openc3.script.API_SERVER.request(
-            "get", endpoint, query={"bucket": bucket}, scope=scope
-        )
+        response = openc3.script.API_SERVER.request("get", endpoint, query={"bucket": bucket}, scope=scope)
     else:
         response = openc3.script.API_SERVER.request(
             "get",
