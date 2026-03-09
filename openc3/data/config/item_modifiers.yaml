@@ -95,7 +95,7 @@ CONVERTED_DATA:
   summary: Defines the bit size, type, and array size of the converted data for a read conversion
   description: This keyword is used in conjunction with DERIVED items to specify the bit size, type, and array size of the converted data.
     If this keyword is not used, DERIVED items are stored as strings in the decommutated data.
-  since: 7.1.0
+  since: 7.0.0
   parameters:
     - name: Converted Bit Size
       required: true
