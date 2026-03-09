@@ -250,9 +250,22 @@ module OpenC3
 
       variables["tool_name"] = @name
       start_path = "/tools/#{@folder_name}/"
-      Dir.glob(gem_path + start_path + "**/*") do |filename|
-        next if filename == '.' or filename == '..' or File.directory?(filename)
-
+      # Sort files so dependencies are uploaded before dependents:
+      # fonts first, then CSS, then index.html last (it triggers all other loads)
+      filenames = Dir.glob(gem_path + start_path + "**/*")
+      filenames.reject! { |f| f == '.' or f == '..' or File.directory?(f) }
+      filenames.sort_by! do |filename|
+        if filename.include?('/fonts/')
+          [0, filename]
+        elsif filename.include?('/css/')
+          [1, filename]
+        elsif File.basename(filename) == 'index.html'
+          [3, filename]
+        else
+          [2, filename]
+        end
+      end
+      filenames.each do |filename|
         key = filename.split(gem_path + '/tools/')[-1]
         extension = filename.split('.')[-1]
         content_type = Rack::Mime.mime_type(".#{extension}")

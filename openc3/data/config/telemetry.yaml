@@ -10,7 +10,7 @@ TELEMETRY:
       required: true
       description: Name of the target this telemetry packet is associated with
       values: .+
-    - name: Command
+    - name: Packet
       required: true
       description:
         Name of this telemetry packet. Also referred to as its mnemonic.

@@ -63,7 +63,7 @@ dev = [
     "fakeredis>=2.31,<3",
     "pytest>=9.0,<10",
     "pytest-profiling>=1.8,<2",
-    "ruff>=0.14,<0.15",
+    "ruff>=0.15,<0.16",
 ]
 
 [build-system]
