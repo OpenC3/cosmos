@@ -74,6 +74,7 @@
               :hidden="true"
               choose-item
               allow-all
+              show-latest
               @add-item="addItem($event)"
             />
           </v-col>
@@ -197,7 +198,7 @@
                     </v-col>
                   </v-row>
                 </v-card-text>
-                <v-card-actions class="px-2">
+                <v-card-actions class="px-6 py-3">
                   <v-spacer />
                   <v-btn variant="flat" @click="item.edit = false">
                     Close
@@ -270,7 +271,7 @@
             </v-col>
           </v-row>
         </v-card-text>
-        <v-card-actions class="px-2">
+        <v-card-actions class="px-6 py-3">
           <v-spacer />
           <v-btn variant="outlined" @click="editAll = false"> Cancel </v-btn>
           <v-btn
