@@ -236,7 +236,10 @@
                   />
                 </div>
                 <div v-else-if="kind === 'SCRIPT'" class="ma-3">
-                  <script-chooser @file="fileHandler" />
+                  <script-chooser
+                    :model-value="activityData"
+                    @file="fileHandler"
+                  />
                   <environment-chooser v-model="activityEnvironment" />
                 </div>
                 <div v-else>
