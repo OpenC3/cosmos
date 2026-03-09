@@ -413,3 +413,15 @@ test('outputs unique values only', async ({ page, utils }) => {
     expect(lines.length).toEqual(2) // header and a single value
   })
 })
+
+test('works with LATEST', async ({ page, utils }) => {
+  await utils.addTargetPacketItem('INST', '[ LATEST ]', 'ITEM4')
+  await utils.sleep(500)
+
+  await utils.download(page, 'text=Process', function (contents) {
+    expect(contents).toContain('INST,LATEST,HTML')
+    expect(contents).toContain('INST,LATEST,XML')
+    expect(contents).toContain('INST,LATEST,CBOR')
+    expect(contents).toContain('INST,LATEST,JSON')
+  })
+})
