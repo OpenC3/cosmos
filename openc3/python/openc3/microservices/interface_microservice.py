@@ -259,10 +259,10 @@ class InterfaceCmdHandlerThread:
             if msg_hash.get(b"interface_details"):
                 return json.dumps(self.interface.details(), cls=JsonEncoder)
 
-        target_name = msg_hash.get(b"target_name", b"").decode()
+        target_name = msg_hash[b"target_name"].decode()
         if target_name and not self.interface.cmd_target_enabled.get(target_name, False):
             return None  # Return and don't ack given target_name if disabled
-        cmd_name = msg_hash.get(b"cmd_name", b"").decode()
+        cmd_name = msg_hash[b"cmd_name"].decode()
         manual = ConfigParser.handle_true_false(msg_hash.get(b"manual", b"FALSE").decode())
         cmd_params = None
         range_check = True
@@ -562,8 +562,8 @@ class RouterTlmHandlerThread:
                     if self.metric is not None:
                         self.metric.set(name="router_tlm_total", value=self.count, type="counter")
 
-                    target_name = msg_hash.get(b"target_name", b"").decode()
-                    packet_name = msg_hash.get(b"packet_name", b"").decode()
+                    target_name = msg_hash[b"target_name"].decode()
+                    packet_name = msg_hash[b"packet_name"].decode()
 
                     if self.router.tlm_target_enabled.get(target_name, False):
                         packet = System.telemetry.packet(target_name, packet_name)
