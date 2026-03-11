@@ -317,10 +317,7 @@ class QuestDBClient:
         self.float_bit_sizes = {}
 
     def _log_info(self, msg):
-        if self.logger:
-            self.logger.info(msg)
-        else:
-            print(f"INFO: {msg}")
+        print(f"INFO: {msg}")
 
     def _log_warn(self, msg):
         if self.logger:
