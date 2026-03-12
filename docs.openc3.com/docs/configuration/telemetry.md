@@ -105,7 +105,7 @@ Defining PACKET_TIME allows the PACKET_TIMESECONDS and PACKET_TIMEFORMATTED to b
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Target | Name of the target this telemetry packet is associated with | True |
-| Command | Name of this telemetry packet. Also referred to as its mnemonic. Must be unique to telemetry packets in this target. Ideally will be as short and clear as possible. | True |
+| Packet | Name of this telemetry packet. Also referred to as its mnemonic. Must be unique to telemetry packets in this target. Ideally will be as short and clear as possible. | True |
 | Endianness | Indicates if the data in this packet is in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | True |
 | Description | Description of this telemetry packet which must be enclosed with quotes | False |
 

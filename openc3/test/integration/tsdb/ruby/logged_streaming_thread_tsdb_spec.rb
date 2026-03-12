@@ -122,7 +122,7 @@ RSpec.describe LoggedStreamingThread, :questdb do
   def create_thread(objects, max_batch_size: 100)
     collection = MockCollection.new(objects)
     thread = LoggedStreamingThread.new(streaming_api, collection, max_batch_size, scope: scope, token: token)
-    thread.class.class_variable_set(:@@conn, nil) if thread.class.class_variable_defined?(:@@conn)
+    OpenC3::QuestDBClient.disconnect
     thread
   end
 
@@ -173,20 +173,12 @@ RSpec.describe LoggedStreamingThread, :questdb do
   end
 
   before(:each) do
-    if LoggedStreamingThread.class_variable_defined?(:@@conn)
-      conn = LoggedStreamingThread.class_variable_get(:@@conn)
-      conn&.finish rescue nil
-      LoggedStreamingThread.class_variable_set(:@@conn, nil)
-    end
+    OpenC3::QuestDBClient.disconnect
     streaming_api.clear
   end
 
   after(:each) do
-    if LoggedStreamingThread.class_variable_defined?(:@@conn)
-      conn = LoggedStreamingThread.class_variable_get(:@@conn)
-      conn&.finish rescue nil
-      LoggedStreamingThread.class_variable_set(:@@conn, nil)
-    end
+    OpenC3::QuestDBClient.disconnect
   end
 
   describe 'INT (signed integer) streaming' do
