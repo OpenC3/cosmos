@@ -184,7 +184,7 @@ export default {
     },
     breadcrumbPath() {
       if (!this.path) return []
-      const parts = this.path.split('/').filter((p) => p)
+      const parts = this.path.split('/').filter((p) => !!p)
       return parts.map((part, index) => ({
         name: part,
         path: parts.slice(0, index + 1).join('/') + '/',
@@ -215,8 +215,8 @@ export default {
     },
     backArrow() {
       if (this.path === '') return
-      let parts = this.path.split('/')
-      this.path = parts.slice(0, parts.length - 2).join('/')
+      const parts = this.path.split('/')
+      this.path = parts.slice(0, -2).join('/')
       if (this.path) {
         this.path += '/'
       }
