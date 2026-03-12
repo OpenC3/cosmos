@@ -26,16 +26,12 @@ require_relative 'spec_helper'
 RSpec.describe OpenC3::CvtModel, :questdb do
   # Reset connection before each test to ensure clean state
   before(:each) do
-    OpenC3::CvtModel.class_variable_set(:@@conn, nil)
+    OpenC3::QuestDBClient.disconnect
   end
 
   after(:each) do
     # Clean up connection
-    conn = OpenC3::CvtModel.class_variable_get(:@@conn)
-    if conn && !conn.finished?
-      conn.finish rescue nil
-    end
-    OpenC3::CvtModel.class_variable_set(:@@conn, nil)
+    OpenC3::QuestDBClient.disconnect
   end
 
   # Helper method to run a roundtrip test
