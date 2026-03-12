@@ -73,6 +73,15 @@ services:
       QDB_PG_PASSWORD: "${OPENC3_TSDB_PASSWORD}"
       QDB_HTTP_USER: "${OPENC3_TSDB_USERNAME}"
       QDB_HTTP_PASSWORD: "${OPENC3_TSDB_PASSWORD}"
+    ulimits:
+      # Set 'nofile' with different soft and hard limits
+      nofile:
+        soft: 1048576
+        hard: 1048576
+      # Set 'memlock' to unlimited using -1
+      memlock:
+        soft: -1
+        hard: -1
     healthcheck:
       # Test that QuestDB can actually execute queries via the REST API
       # This verifies both the HTTP server and the database engine are working
