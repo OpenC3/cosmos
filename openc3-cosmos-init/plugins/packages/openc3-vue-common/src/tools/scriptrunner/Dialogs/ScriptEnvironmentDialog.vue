@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -50,53 +50,36 @@
   </v-dialog>
 </template>
 
-<script>
+<script setup>
+import { ref, onMounted } from 'vue'
 import { EnvironmentChooser } from '@/components'
 
-export default {
-  components: {
-    EnvironmentChooser,
+const props = defineProps({
+  inputEnvironment: {
+    type: Array,
+    required: true,
   },
-  props: {
-    modelValue: {
-      type: Boolean,
-      required: true,
-    },
-    inputEnvironment: {
-      type: Array,
-      required: true,
-    },
-  },
-  emits: ['update:modelValue', 'environment'],
-  data() {
-    return {
-      selected: [],
-    }
-  },
-  computed: {
-    show: {
-      get() {
-        return this.modelValue
-      },
-      set(value) {
-        this.$emit('update:modelValue', value)
-      },
-    },
-  },
-  mounted: function () {
-    this.loadEnvironment()
-  },
-  methods: {
-    loadEnvironment: function () {
-      this.selected = [...this.inputEnvironment]
-    },
-    updateEnvironment: function () {
-      this.$emit('environment', this.selected)
-      this.show = !this.show
-    },
-    cancel: function () {
-      this.show = !this.show
-    },
-  },
+})
+
+const show = defineModel({ type: Boolean, required: true })
+const emit = defineEmits(['environment'])
+
+const selected = ref([])
+
+function loadEnvironment() {
+  selected.value = [...props.inputEnvironment]
 }
+
+function updateEnvironment() {
+  emit('environment', selected.value)
+  show.value = !show.value
+}
+
+function cancel() {
+  show.value = !show.value
+}
+
+onMounted(() => {
+  loadEnvironment()
+})
 </script>

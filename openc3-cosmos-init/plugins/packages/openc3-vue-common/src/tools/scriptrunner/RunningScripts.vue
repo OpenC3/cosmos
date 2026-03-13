@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -31,9 +31,9 @@
           <v-card-title>
             <v-row dense>
               <v-spacer />
-              <v-btn class="mr-3" color="primary" @click="getRunningScripts"
-                >Refresh</v-btn
-              >
+              <v-btn class="mr-3" color="primary" @click="getRunningScripts">
+                Refresh
+              </v-btn>
               <v-text-field
                 v-model="runningSearch"
                 class="pt-0 search"
@@ -70,8 +70,9 @@
                 color="primary"
                 density="comfortable"
                 @click="showScript(item)"
-                >{{ item.name }}</v-btn
               >
+                {{ item.name }}
+              </v-btn>
             </template>
             <template #item.connect="{ item }">
               <v-btn color="primary" @click="connectScript(item)">
@@ -93,9 +94,9 @@
           <v-card-title>
             <v-row dense>
               <v-spacer />
-              <v-btn class="mr-3" color="primary" @click="getCompletedScripts"
-                >Refresh</v-btn
-              >
+              <v-btn class="mr-3" color="primary" @click="getCompletedScripts">
+                Refresh
+              </v-btn>
               <v-text-field
                 v-model="completedSearch"
                 class="pt-0 search"
@@ -131,8 +132,9 @@
                 color="primary"
                 density="comfortable"
                 @click="showScript(item)"
-                >{{ item.name }}</v-btn
               >
+                {{ item.name }}
+              </v-btn>
             </template>
             <template #item.log="{ item }">
               <v-btn
@@ -162,7 +164,7 @@
                   @click="viewScriptLog(item, 'report')"
                 />
                 <v-menu>
-                  <template #activator="{ props }">
+                  <template #activator="{ props: activatorProps }">
                     <v-btn
                       color="primary"
                       density="comfortable"
@@ -171,7 +173,7 @@
                       :loading="
                         downloadScript && downloadScript.name === item.name
                       "
-                      v-bind="props"
+                      v-bind="activatorProps"
                     />
                   </template>
                   <v-list>
@@ -206,396 +208,376 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref, watch, onMounted, onBeforeUnmount, inject } from 'vue'
+import { useRouter } from 'vue-router'
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { OutputDialog } from '@/components'
 import { TimeFilters } from '@/util'
 
-export default {
-  components: { OutputDialog },
-  mixins: [TimeFilters],
-  props: {
-    tabId: {
-      type: Number,
-      default: null,
-    },
-    curTab: {
-      type: Number,
-      default: null,
-    },
-    connectInNewTab: Boolean,
+const props = defineProps({
+  tabId: {
+    type: Number,
+    default: null,
   },
-  emits: ['disconnect', 'close'],
-  data() {
-    return {
-      api: null,
-      timeZone: 'local',
-      activeTab: 'completed',
-      downloadScript: null,
-      refreshTimer: null,
-      // Running scripts pagination data
-      runningSearch: '',
-      runningScripts: [],
-      runningTotal: 0,
-      runningLoading: false,
-      runningPage: 1,
-      runningItemsPerPage: 10,
-      runningHeaders: [
-        {
-          title: 'Connect',
-          key: 'connect',
-          sortable: false,
-          filterable: false,
-        },
-        { title: 'Id', key: 'name' },
-        { title: 'User', key: 'user_display' },
-        { title: 'Filename', key: 'filename' },
-        { title: 'Start Time', key: 'start_time_formatted' },
-        { title: 'Duration', key: 'duration' },
-        { title: 'State', key: 'state' },
-        {
-          title: 'Stop',
-          key: 'stop',
-          sortable: false,
-          filterable: false,
-        },
-      ],
-      // Completed scripts pagination data
-      completedSearch: '',
-      completedScripts: [],
-      completedTotal: 0,
-      completedLoading: false,
-      completedPage: 1,
-      completedItemsPerPage: 10,
-      completedHeaders: [
-        { title: 'Id', key: 'name' },
-        { title: 'User', key: 'user_display' },
-        { title: 'Filename', key: 'filename' },
-        { title: 'Start Time', key: 'start_time_formatted' },
-        { title: 'Duration', key: 'duration' },
-        { title: 'State', key: 'state' },
-        {
-          title: 'Log',
-          key: 'log',
-          sortable: false,
-          filterable: false,
-        },
-        {
-          title: 'Report',
-          key: 'report',
-          sortable: false,
-          filterable: false,
-        },
-      ],
-      showDialog: false,
-      dialogName: '',
-      dialogContent: '',
-      dialogFilename: '',
+  curTab: {
+    type: Number,
+    default: null,
+  },
+  connectInNewTab: Boolean,
+})
+
+const emit = defineEmits(['disconnect', 'close'])
+
+const router = useRouter()
+const $notify = inject('$notify')
+const $dialog = inject('$dialog')
+const { formatDateTimeHMS } = TimeFilters.methods
+
+const api = new OpenC3Api()
+const timeZone = ref('local')
+const activeTab = ref('completed')
+const downloadScript = ref(null)
+const refreshTimer = ref(null)
+
+// Running scripts pagination data
+const runningSearch = ref('')
+const runningScripts = ref([])
+const runningTotal = ref(0)
+const runningLoading = ref(false)
+const runningPage = ref(1)
+const runningItemsPerPage = ref(10)
+const runningHeaders = [
+  {
+    title: 'Connect',
+    key: 'connect',
+    sortable: false,
+    filterable: false,
+  },
+  { title: 'Id', key: 'name' },
+  { title: 'User', key: 'user_display' },
+  { title: 'Filename', key: 'filename' },
+  { title: 'Start Time', key: 'start_time_formatted' },
+  { title: 'Duration', key: 'duration' },
+  { title: 'State', key: 'state' },
+  {
+    title: 'Stop',
+    key: 'stop',
+    sortable: false,
+    filterable: false,
+  },
+]
+
+// Completed scripts pagination data
+const completedSearch = ref('')
+const completedScripts = ref([])
+const completedTotal = ref(0)
+const completedLoading = ref(false)
+const completedPage = ref(1)
+const completedItemsPerPage = ref(10)
+const completedHeaders = [
+  { title: 'Id', key: 'name' },
+  { title: 'User', key: 'user_display' },
+  { title: 'Filename', key: 'filename' },
+  { title: 'Start Time', key: 'start_time_formatted' },
+  { title: 'Duration', key: 'duration' },
+  { title: 'State', key: 'state' },
+  {
+    title: 'Log',
+    key: 'log',
+    sortable: false,
+    filterable: false,
+  },
+  {
+    title: 'Report',
+    key: 'report',
+    sortable: false,
+    filterable: false,
+  },
+]
+
+const showDialog = ref(false)
+const dialogName = ref('')
+const dialogContent = ref('')
+const dialogFilename = ref('')
+
+watch(activeTab, (newTab) => {
+  if (newTab === 'running') {
+    getRunningScripts()
+  } else if (newTab === 'completed') {
+    getCompletedScripts()
+  }
+})
+
+onMounted(async () => {
+  try {
+    const response = await api.get_setting('time_zone')
+    if (response) {
+      timeZone.value = response
     }
-  },
-  watch: {
-    activeTab(newTab) {
-      if (newTab === 'running') {
-        this.getRunningScripts()
-      } else if (newTab === 'completed') {
-        this.getCompletedScripts()
-      }
-    },
-  },
-  created() {
-    this.api = new OpenC3Api()
-    this.api
-      .get_setting('time_zone')
-      .then((response) => {
-        if (response) {
-          this.timeZone = response
-        }
-      })
-      .catch((error) => {
-        // Do nothing
-      })
+  } catch (error) {
+    // Do nothing
+  }
 
-    this.getRunningScripts()
-    this.getCompletedScripts()
+  getRunningScripts()
+  getCompletedScripts()
 
-    // Start a timer to refresh the running scripts list every 5 seconds
-    this.refreshTimer = setInterval(() => {
-      if (this.activeTab === 'running') {
-        this.getRunningScripts()
-      }
-    }, 5000)
-  },
-  beforeUnmount() {
-    // Clear the timer when component is unmounted
-    if (this.refreshTimer) {
-      clearInterval(this.refreshTimer)
+  // Start a timer to refresh the running scripts list every 5 seconds
+  refreshTimer.value = setInterval(() => {
+    if (activeTab.value === 'running') {
+      getRunningScripts()
     }
-  },
-  methods: {
-    getRunningScripts: function () {
-      this.runningLoading = true
-      const offset = (this.runningPage - 1) * this.runningItemsPerPage
-      Api.get(
-        `/script-api/running-script?scope=DEFAULT&offset=${offset}&limit=${this.runningItemsPerPage}`,
-      )
-        .then((response) => {
-          const scripts = response.data.items || []
-          const currentTime = new Date()
+  }, 5000)
+})
 
-          // Calculate duration for each running script and format user info
-          scripts.forEach((script) => {
-            // Format user display as "full_name (username)"
-            script.user_display = `${script.user_full_name} (${script.username})`
+onBeforeUnmount(() => {
+  // Clear the timer when component is unmounted
+  if (refreshTimer.value) {
+    clearInterval(refreshTimer.value)
+  }
+})
 
-            // Calculate duration
-            if (script.start_time) {
-              const startTime = new Date(script.start_time)
-              const durationMs = currentTime - startTime
-              script.start_time_formatted = this.formatDateTimeHMS(
-                startTime,
-                this.timeZone,
-              )
-              // Format duration
-              if (durationMs < 0) {
-                script.duration = 'N/A'
-              } else if (durationMs < 1000) {
-                script.duration = '< 1s'
-              } else if (durationMs < 60000) {
-                script.duration = `${Math.round(durationMs / 1000)}s`
-              } else if (durationMs < 3600000) {
-                const minutes = Math.floor(durationMs / 60000)
-                const seconds = Math.round((durationMs % 60000) / 1000)
-                script.duration = `${minutes}m ${seconds}s`
-              } else {
-                const hours = Math.floor(durationMs / 3600000)
-                const minutes = Math.floor((durationMs % 3600000) / 60000)
-                const seconds = Math.round((durationMs % 60000) / 1000)
-                script.duration = `${hours}h ${minutes}m ${seconds}s`
-              }
-            } else {
-              script.duration = 'N/A'
-            }
-          })
+function formatDuration(durationMs) {
+  if (durationMs < 0) {
+    return 'N/A'
+  } else if (durationMs < 1000) {
+    return '< 1s'
+  } else if (durationMs < 60000) {
+    return `${Math.round(durationMs / 1000)}s`
+  } else if (durationMs < 3600000) {
+    const minutes = Math.floor(durationMs / 60000)
+    const seconds = Math.round((durationMs % 60000) / 1000)
+    return `${minutes}m ${seconds}s`
+  } else {
+    const hours = Math.floor(durationMs / 3600000)
+    const minutes = Math.floor((durationMs % 3600000) / 60000)
+    const seconds = Math.round((durationMs % 60000) / 1000)
+    return `${hours}h ${minutes}m ${seconds}s`
+  }
+}
 
-          this.runningScripts = scripts
-          this.runningTotal = response.data.total || scripts.length
-          this.runningLoading = false
-        })
-        .catch((error) => {
-          this.runningLoading = false
-          this.$notify.caution({
-            title: 'Error Loading Running Scripts',
-            body: error.message,
-          })
-        })
-    },
-    updateRunningPage: function (page) {
-      this.runningPage = page
-      this.getRunningScripts()
-    },
-    updateRunningItemsPerPage: function (itemsPerPage) {
-      this.runningItemsPerPage = itemsPerPage
-      this.runningPage = 1
-      this.getRunningScripts()
-    },
-    getCompletedScripts: function () {
-      this.completedLoading = true
-      const offset = (this.completedPage - 1) * this.completedItemsPerPage
-      Api.get(
-        `/script-api/completed-scripts?scope=DEFAULT&offset=${offset}&limit=${this.completedItemsPerPage}`,
-      )
-        .then((response) => {
-          const scripts = response.data.items || []
+async function getRunningScripts() {
+  runningLoading.value = true
+  const offset = (runningPage.value - 1) * runningItemsPerPage.value
+  try {
+    const response = await Api.get(
+      `/script-api/running-script?scope=DEFAULT&offset=${offset}&limit=${runningItemsPerPage.value}`,
+    )
+    const scripts = response.data.items || []
+    const currentTime = new Date()
 
-          // Calculate duration and format user info for each completed script
-          scripts.forEach((script) => {
-            // Format user display as "full_name (username)"
-            script.user_display = `${script.user_full_name} (${script.username})`
+    // Calculate duration for each running script and format user info
+    scripts.forEach((script) => {
+      // Format user display as "full_name (username)"
+      script.user_display = `${script.user_full_name} (${script.username})`
 
-            // Calculate duration
-            if (script.start_time && script.end_time) {
-              const startTime = new Date(script.start_time)
-              const endTime = new Date(script.end_time)
-              const durationMs = endTime - startTime
-              script.start_time_formatted = this.formatDateTimeHMS(
-                startTime,
-                this.timeZone,
-              )
-
-              // Format duration
-              if (durationMs < 0) {
-                script.duration = 'N/A'
-              } else if (durationMs < 1000) {
-                script.duration = '< 1s'
-              } else if (durationMs < 60000) {
-                script.duration = `${Math.round(durationMs / 1000)}s`
-              } else if (durationMs < 3600000) {
-                const minutes = Math.floor(durationMs / 60000)
-                const seconds = Math.round((durationMs % 60000) / 1000)
-                script.duration = `${minutes}m ${seconds}s`
-              } else {
-                const hours = Math.floor(durationMs / 3600000)
-                const minutes = Math.floor((durationMs % 3600000) / 60000)
-                const seconds = Math.round((durationMs % 60000) / 1000)
-                script.duration = `${hours}h ${minutes}m ${seconds}s`
-              }
-            } else {
-              script.duration = 'N/A'
-            }
-          })
-
-          this.completedScripts = scripts
-          this.completedTotal = response.data.total || scripts.length
-          this.completedLoading = false
-        })
-        .catch((error) => {
-          this.completedLoading = false
-          this.$notify.caution({
-            title: 'Error Loading Completed Scripts',
-            body: error.message,
-          })
-        })
-    },
-    updateCompletedPage: function (page) {
-      this.completedPage = page
-      this.getCompletedScripts()
-    },
-    updateCompletedItemsPerPage: function (itemsPerPage) {
-      this.completedItemsPerPage = itemsPerPage
-      this.completedPage = 1
-      this.getCompletedScripts()
-    },
-    showScript: function (script) {
-      this.dialogContent = JSON.stringify(script, null, 2)
-      this.dialogName = 'Script: ' + script.name
-      this.dialogFilename = ''
-      this.showDialog = true
-    },
-    connectScript: function (script) {
-      // Must disconnect before connecting
-      this.$emit('disconnect')
-      const destination = {
-        name: 'ScriptRunner',
-        params: { id: script.name },
-      }
-      if (this.connectInNewTab) {
-        let { href } = this.$router.resolve(destination)
-        window.open(href, '_blank')
-      } else {
-        this.$router.push(destination)
-        this.$emit('close')
-      }
-    },
-    deleteScript: function (script) {
-      this.$dialog
-        .confirm(
-          `Are you sure you want to stop script: ${script.name} ${script.filename}?\n`,
-          {
-            okText: 'Stop',
-            cancelText: 'Cancel',
-          },
+      // Calculate duration
+      if (script.start_time) {
+        const startTime = new Date(script.start_time)
+        const durationMs = currentTime - startTime
+        script.start_time_formatted = formatDateTimeHMS(
+          startTime,
+          timeZone.value,
         )
-        .then((dialog) => {
-          return Api.post(`/script-api/running-script/${script.name}/delete`)
-        })
-        .then((response) => {
-          this.$notify.normal({
-            body: `Stopped script: ${script.name} ${script.filename}`,
-          })
-          this.getRunningScripts()
-        })
-        .catch((error) => {
-          if (error !== true) {
-            this.$notify.caution({
-              body: `Failed to stop script: ${script.name} ${script.filename}`,
-            })
-          }
-        })
-    },
-    viewScriptLog: function (script, type) {
-      let logUrl = null
-      if (type === 'report') {
-        this.dialogName = 'Report'
-        logUrl = script.report
+        script.duration = formatDuration(durationMs)
       } else {
-        this.dialogName = 'Log'
-        logUrl = script.log
+        script.duration = 'N/A'
       }
-      Api.get(
+    })
+
+    runningScripts.value = scripts
+    runningTotal.value = response.data.total || scripts.length
+    runningLoading.value = false
+  } catch (error) {
+    runningLoading.value = false
+    $notify.caution({
+      title: 'Error Loading Running Scripts',
+      body: error.message,
+    })
+  }
+}
+
+function updateRunningPage(page) {
+  runningPage.value = page
+  getRunningScripts()
+}
+
+function updateRunningItemsPerPage(itemsPerPage) {
+  runningItemsPerPage.value = itemsPerPage
+  runningPage.value = 1
+  getRunningScripts()
+}
+
+async function getCompletedScripts() {
+  completedLoading.value = true
+  const offset = (completedPage.value - 1) * completedItemsPerPage.value
+  try {
+    const response = await Api.get(
+      `/script-api/completed-scripts?scope=DEFAULT&offset=${offset}&limit=${completedItemsPerPage.value}`,
+    )
+    const scripts = response.data.items || []
+
+    // Calculate duration and format user info for each completed script
+    scripts.forEach((script) => {
+      // Format user display as "full_name (username)"
+      script.user_display = `${script.user_full_name} (${script.username})`
+
+      // Calculate duration
+      if (script.start_time && script.end_time) {
+        const startTime = new Date(script.start_time)
+        const endTime = new Date(script.end_time)
+        const durationMs = endTime - startTime
+        script.start_time_formatted = formatDateTimeHMS(
+          startTime,
+          timeZone.value,
+        )
+        script.duration = formatDuration(durationMs)
+      } else {
+        script.duration = 'N/A'
+      }
+    })
+
+    completedScripts.value = scripts
+    completedTotal.value = response.data.total || scripts.length
+    completedLoading.value = false
+  } catch (error) {
+    completedLoading.value = false
+    $notify.caution({
+      title: 'Error Loading Completed Scripts',
+      body: error.message,
+    })
+  }
+}
+
+function updateCompletedPage(page) {
+  completedPage.value = page
+  getCompletedScripts()
+}
+
+function updateCompletedItemsPerPage(itemsPerPage) {
+  completedItemsPerPage.value = itemsPerPage
+  completedPage.value = 1
+  getCompletedScripts()
+}
+
+function showScript(script) {
+  dialogContent.value = JSON.stringify(script, null, 2)
+  dialogName.value = 'Script: ' + script.name
+  dialogFilename.value = ''
+  showDialog.value = true
+}
+
+function connectScript(script) {
+  // Must disconnect before connecting
+  emit('disconnect')
+  const destination = {
+    name: 'ScriptRunner',
+    params: { id: script.name },
+  }
+  if (props.connectInNewTab) {
+    const { href } = router.resolve(destination)
+    window.open(href, '_blank')
+  } else {
+    router.push(destination)
+    emit('close')
+  }
+}
+
+async function deleteScript(script) {
+  try {
+    await $dialog.confirm(
+      `Are you sure you want to stop script: ${script.name} ${script.filename}?\n`,
+      {
+        okText: 'Stop',
+        cancelText: 'Cancel',
+      },
+    )
+    await Api.post(`/script-api/running-script/${script.name}/delete`)
+    $notify.normal({
+      body: `Stopped script: ${script.name} ${script.filename}`,
+    })
+    getRunningScripts()
+  } catch (error) {
+    if (error !== true) {
+      $notify.caution({
+        body: `Failed to stop script: ${script.name} ${script.filename}`,
+      })
+    }
+  }
+}
+
+async function viewScriptLog(script, type) {
+  let logUrl = null
+  if (type === 'report') {
+    dialogName.value = 'Report'
+    logUrl = script.report
+  } else {
+    dialogName.value = 'Log'
+    logUrl = script.log
+  }
+  const response = await Api.get(
+    `/openc3-api/storage/download_file/${encodeURIComponent(
+      logUrl,
+    )}?bucket=OPENC3_LOGS_BUCKET`,
+  )
+  const filenameParts = logUrl.split('/')
+  dialogFilename.value = filenameParts[filenameParts.length - 1]
+  // Decode Base64 string
+  dialogContent.value = window.atob(response.data.contents)
+  showDialog.value = true
+}
+
+async function downloadScriptLog(script, type, format = 'text') {
+  let logUrl = null
+  if (type === 'report') {
+    dialogName.value = 'Report'
+    logUrl = script.report
+  } else {
+    dialogName.value = 'Log'
+    logUrl = script.log
+  }
+  downloadScript.value = script
+
+  try {
+    if (format === 'ctrf' && type === 'report') {
+      // For CTRF format, pass format parameter to backend for conversion
+      const response = await Api.get(
         `/openc3-api/storage/download_file/${encodeURIComponent(
           logUrl,
-        )}?bucket=OPENC3_LOGS_BUCKET`,
-      ).then((response) => {
-        const filenameParts = logUrl.split('/')
-        this.dialogFilename = filenameParts[filenameParts.length - 1]
-        // Decode Base64 string
-        this.dialogContent = window.atob(response.data.contents)
-        this.showDialog = true
+        )}?bucket=OPENC3_LOGS_BUCKET&format=ctrf`,
+      )
+      // Backend returns the converted CTRF content
+      const blob = new Blob([window.atob(response.data.contents)], {
+        type: 'application/json',
       })
-    },
-    downloadScriptLog: function (script, type, format = 'text') {
-      let logUrl = null
-      if (type === 'report') {
-        this.dialogName = 'Report'
-        logUrl = script.report
-      } else {
-        this.dialogName = 'Log'
-        logUrl = script.log
-      }
-      this.downloadScript = script
-
-      if (format === 'ctrf' && type === 'report') {
-        // For CTRF format, pass format parameter to backend for conversion
-        Api.get(
-          `/openc3-api/storage/download_file/${encodeURIComponent(
-            logUrl,
-          )}?bucket=OPENC3_LOGS_BUCKET&format=ctrf`,
-        )
-          .then((response) => {
-            // Backend returns the converted CTRF content
-            const blob = new Blob([window.atob(response.data.contents)], {
-              type: 'application/json',
-            })
-            const link = document.createElement('a')
-            link.href = URL.createObjectURL(blob)
-            link.setAttribute('download', response.data.filename)
-            link.click()
-            this.downloadScript = null
-          })
-          .catch(() => {
-            this.$notify.caution({
-              title: `Unable to download log ${logUrl}`,
-              body: `You may be able to download this log manually from the 'logs' bucket at ${logUrl}`,
-            })
-            this.downloadScript = null
-          })
-      } else {
-        // Original download functionality for text format
-        Api.get(
-          `/openc3-api/storage/download/${encodeURIComponent(
-            logUrl,
-          )}?bucket=OPENC3_LOGS_BUCKET`,
-        )
-          .then((response) => {
-            const filenameParts = logUrl.split('/')
-            const basename = filenameParts[filenameParts.length - 1]
-            // Make a link and then 'click' on it to start the download
-            const link = document.createElement('a')
-            link.href = response.data.url
-            link.setAttribute('download', basename)
-            link.click()
-            this.downloadScript = null
-          })
-          .catch(() => {
-            this.$notify.caution({
-              title: `Unable to download log ${logUrl}`,
-              body: `You may be able to download this log manually from the 'logs' bucket at ${logUrl}`,
-            })
-            this.downloadScript = null
-          })
-      }
-    },
-  },
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.setAttribute('download', response.data.filename)
+      link.click()
+      downloadScript.value = null
+    } else {
+      // Original download functionality for text format
+      const response = await Api.get(
+        `/openc3-api/storage/download/${encodeURIComponent(
+          logUrl,
+        )}?bucket=OPENC3_LOGS_BUCKET`,
+      )
+      const filenameParts = logUrl.split('/')
+      const basename = filenameParts[filenameParts.length - 1]
+      // Make a link and then 'click' on it to start the download
+      const link = document.createElement('a')
+      link.href = response.data.url
+      link.setAttribute('download', basename)
+      link.click()
+      downloadScript.value = null
+    }
+  } catch {
+    $notify.caution({
+      title: `Unable to download log ${logUrl}`,
+      body: `You may be able to download this log manually from the 'logs' bucket at ${logUrl}`,
+    })
+    downloadScript.value = null
+  }
 }
 </script>
 <style>
