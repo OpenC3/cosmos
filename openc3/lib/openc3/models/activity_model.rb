@@ -18,6 +18,7 @@
 # https://www.rubydoc.info/gems/redis/Redis/Commands/SortedSets
 
 require 'openc3/models/model'
+require 'openc3/models/timeline_model'
 require 'openc3/topics/timeline_topic'
 require 'securerandom'
 
@@ -262,6 +263,12 @@ module OpenC3
     # Update the Redis hash at primary_key and set the score equal to the start Epoch time
     # the member is set to the JSON generated via calling as_json
     def create(overlap: true, username: nil)
+      # Validate that the timeline exists in this scope before creating activities.
+      # Activities must be attached to an existing timeline within the same scope.
+      unless TimelineModel.get(name: @name, scope: @scope)
+        raise ActivityError.new "timeline '#{@name}' does not exist in scope '#{@scope}'"
+      end
+
       if @recurring['end'] and @recurring['frequency'] and @recurring['span']
         # First validate the initial recurring activity ... all others are just offsets
         validate_input(start: @start, stop: @stop, kind: @kind, data: @data)

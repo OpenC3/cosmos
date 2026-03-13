@@ -111,6 +111,7 @@ module OpenC3
       it "delete force timeline" do
         name = "foobar"
         scope = "scope"
+        TimelineModel.new(name: name, scope: scope).create()
         activity = generate_activity(name: name, scope: scope, start: 1)
         activity.create()
         ret = TimelineModel.delete(name: name, scope: scope, force: true)
@@ -122,11 +123,23 @@ module OpenC3
     end
 
     describe "self.delete" do
+      name = "foobar"
+      scope = "scope"
+
+      before(:each) do
+        TimelineModel.new(name: name, scope: scope).create()
+      end
+
+      after(:each) do
+        TimelineModel.delete(name: name, scope: scope, force: true)
+      end
+
       it "delete an empty timeline" do
-        name = "foobar"
-        scope = "scope"
         ret = TimelineModel.delete(name: name, scope: scope)
         expect(ret).to eql(name)
+      end
+
+      it "delete a timeline after all activities destroyed" do
         activity = generate_activity(name: name, scope: scope, start: 1)
         activity.create()
         score = activity.start
@@ -144,12 +157,16 @@ module OpenC3
       it "tries to delete a timeline with activities on it" do
         name = "foobar"
         scope = "scope"
-        TimelineModel.delete(name: name, scope: scope)
-        activity = generate_activity(name: name, scope: scope, start: 1)
-        activity.create()
-        expect {
-          TimelineModel.delete(name: name, scope: scope)
-        }.to raise_error(TimelineError)
+        TimelineModel.new(name: name, scope: scope).create()
+        begin
+          activity = generate_activity(name: name, scope: scope, start: 1)
+          activity.create()
+          expect {
+            TimelineModel.delete(name: name, scope: scope)
+          }.to raise_error(TimelineError)
+        ensure
+          TimelineModel.delete(name: name, scope: scope, force: true)
+        end
       end
     end
 

@@ -8916,7 +8916,7 @@ create_timeline_activity(name, kind, start, stop, data={})
 | start     | Start time of the activity. Time / datetime instance.                         |
 | stop      | Stop time of the activity. Time / datetime instance.                          |
 | data      | Hash / dict of data for COMMAND or SCRIPT type. Default is empty hash / dict. Valid keys are described [below](#create_timeline_activity-data-parameter). |
-| scope     | Scope of the activity. Default is the OPENC3_SCOPE, usually "DEFAULT". |
+| scope     | Scope of the activity. Default is the OPENC3_SCOPE, usually "DEFAULT". Must be the containing scope of the timeline specified by the `name` parameter. |
 
 #### create_timeline_activity data parameter
 | Key | Value |
