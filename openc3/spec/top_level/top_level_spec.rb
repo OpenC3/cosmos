@@ -229,16 +229,6 @@ module OpenC3
     end
   end
 
-  describe "write_exception_file" do
-    it "writes an exception file" do
-      file = OpenC3.write_exception_file(nil, 'test1_exception', File.dirname(__FILE__))
-      expect(File.exist?(file)).to be true
-      file = OpenC3.write_exception_file(RuntimeError.new, 'test2_exception', File.dirname(__FILE__))
-      expect(File.exist?(file)).to be true
-      OpenC3.cleanup_exceptions()
-    end
-  end
-
   describe "handle_fatal_exception" do
     it "writes to the Logger and exit" do
       capture_io do |stdout|

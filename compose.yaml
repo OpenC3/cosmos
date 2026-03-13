@@ -17,6 +17,7 @@
 
 services:
   openc3-buckets:
+    read_only: true
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-buckets${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     volumes:
@@ -51,6 +52,7 @@ services:
       start_period: 20s
 
   openc3-tsdb:
+    read_only: true
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     # ports:
     #   # This gives complete access to the QuestDB instance, which is useful for testing and development.
@@ -96,6 +98,7 @@ services:
       start_period: 30s
 
   openc3-redis:
+    read_only: true
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     volumes:
@@ -124,6 +127,7 @@ services:
       start_period: 10s
 
   openc3-redis-ephemeral:
+    read_only: true
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     volumes:
@@ -244,6 +248,7 @@ services:
       - host.docker.internal:host-gateway
 
   openc3-traefik:
+    read_only: true
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     volumes:
@@ -286,6 +291,7 @@ services:
       start_period: 10s
 
   openc3-cosmos-init:
+    read_only: true
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     restart: on-failure

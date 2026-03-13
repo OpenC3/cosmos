@@ -779,7 +779,6 @@ module OpenC3
         else
           @logger.error "#{@interface.name}: #{connect_error.formatted}"
           unless @connection_failed_messages.include?(connect_error.message)
-            OpenC3.write_exception_file(connect_error)
             @connection_failed_messages << connect_error.message
           end
         end
@@ -800,7 +799,6 @@ module OpenC3
         else
           @logger.error "#{@interface.name}: #{err.formatted}"
           unless @connection_lost_messages.include?(err.message)
-            OpenC3.write_exception_file(err)
             @connection_lost_messages << err.message
           end
         end

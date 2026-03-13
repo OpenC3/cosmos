@@ -853,7 +853,6 @@ class InterfaceMicroservice(Microservice):
         else:
             self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(connect_error))}")
             if str(connect_error) not in self.connection_failed_messages:
-                # OpenC3.write_exception_file(connect_error)
                 self.connection_failed_messages.append(str(connect_error))
         self.disconnect()  # Ensure we do a clean disconnect
 
@@ -870,7 +869,6 @@ class InterfaceMicroservice(Microservice):
             #   else _:
             self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(error))}")
             if str(error) not in self.connection_lost_messages:
-                # OpenC3.write_exception_file(err)
                 self.connection_lost_messages.append(str(error))
         else:
             self.logger.info(f"{self.interface.name}: Connection Lost")
