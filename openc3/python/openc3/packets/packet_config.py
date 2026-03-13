@@ -894,7 +894,7 @@ class PacketConfig:
             # All config.lines following this config.line are considered part
             # of the conversion until an end of conversion marker is found
             case "GENERIC_READ_CONVERSION_START" | "GENERIC_WRITE_CONVERSION_START":
-                # As of COSMOS 7.1 the converted type and bit size are deprecated
+                # As of COSMOS 7 the converted type and bit size are deprecated
                 # but we're still allowing them to be defined as parameters for backward compatibility
                 parser.verify_num_parameters(0, 2, keyword)
                 self.proc_text = ""
@@ -913,18 +913,24 @@ class PacketConfig:
             case "CONVERTED_DATA":
                 usage = "CONVERTED_DATA <Converted Bit Size> <Converted Type> <Converted Array Size (optional)>"
                 parser.verify_num_parameters(2, 3, usage)
-                if not self.current_item:
+                if self.current_item is None:
                     raise parser.error(f"{keyword} requires a current item")
-                if not self.current_item.read_conversion:
+                if self.current_item.read_conversion is None and self.current_item.write_conversion is None:
                     raise parser.error(f"{keyword} requires a current item with a read conversion")
                 converted_bit_size = int(params[0])
                 converted_type = params[1].upper()
                 if converted_type not in self.CONVERTED_DATA_TYPES:
                     raise parser.error(f"Invalid converted_type: {converted_type}.")
-                self.current_item.read_conversion.converted_type = converted_type
-                self.current_item.read_conversion.converted_bit_size = converted_bit_size
-                if len(params) >= 3:
-                    self.current_item.read_conversion.converted_array_size = int(params[2])
+                if self.current_item.read_conversion is not None:
+                    self.current_item.read_conversion.converted_type = converted_type
+                    self.current_item.read_conversion.converted_bit_size = converted_bit_size
+                    if len(params) >= 3:
+                        self.current_item.read_conversion.converted_array_size = int(params[2])
+                if self.current_item.write_conversion is not None:
+                    self.current_item.write_conversion.converted_type = converted_type
+                    self.current_item.write_conversion.converted_bit_size = converted_bit_size
+                    if len(params) >= 3:
+                        self.current_item.write_conversion.converted_array_size = int(params[2])
 
             # Define a set of limits for the current telemetry item
             case "LIMITS":

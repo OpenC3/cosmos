@@ -27,6 +27,7 @@ from decimal import Decimal
 
 import numpy
 import psycopg
+from psycopg.rows import dict_row
 from questdb.ingress import Protocol, Sender, TimestampNanos
 
 
@@ -135,6 +136,10 @@ class QuestDBClient:
             "format": "formatted",
         },
     }
+
+    # Stored timestamp items that are stored as timestamp_ns columns and need
+    # conversion to float seconds on read. Distinguished from calculated items above.
+    STORED_TIMESTAMP_ITEMS = frozenset(["PACKET_TIMESECONDS", "RECEIVED_TIMESECONDS"])
 
     # Class-level shared connection for query operations (singleton pattern)
     _shared_conn = None
@@ -442,6 +447,440 @@ class QuestDBClient:
             # Unknown converted_type - fall back to JSON serialization
             return "varchar", True
 
+    @staticmethod
+    def find_item_def(packet_def, item_name):
+        """Find an item definition within a packet definition by name.
+
+        Args:
+            packet_def: Packet definition dict from TargetModel.packet, or None
+            item_name: Item name to find
+
+        Returns:
+            Item definition dict, or None if not found
+        """
+        if not packet_def:
+            return None
+        for item in packet_def.get("items", []):
+            if item.get("name") == item_name:
+                return item
+        return None
+
+    @staticmethod
+    def resolve_item_type(item_def, value_type):
+        """Resolve the data_type and array_size for a QuestDB column based on
+        the item definition and requested value type.
+
+        Args:
+            item_def: Item definition dict from packet definition, or None
+            value_type: One of 'RAW', 'CONVERTED', 'FORMATTED', 'WITH_UNITS'
+
+        Returns:
+            dict with 'data_type' and 'array_size' keys
+        """
+        if value_type in ("FORMATTED", "WITH_UNITS"):
+            return {"data_type": "STRING", "array_size": None}
+        elif value_type == "CONVERTED":
+            if item_def:
+                rc = item_def.get("read_conversion")
+                if rc and rc.get("converted_type"):
+                    return {
+                        "data_type": rc.get("converted_type"),
+                        "array_size": item_def.get("array_size"),
+                    }
+                elif item_def.get("states"):
+                    return {"data_type": "STRING", "array_size": None}
+                else:
+                    return {
+                        "data_type": item_def.get("data_type"),
+                        "array_size": item_def.get("array_size"),
+                    }
+            else:
+                return {"data_type": None, "array_size": None}
+        else:  # RAW or default
+            if item_def:
+                return {
+                    "data_type": item_def.get("data_type"),
+                    "array_size": item_def.get("array_size"),
+                }
+            else:
+                return {"data_type": None, "array_size": None}
+
+    @classmethod
+    def query_with_retry(cls, query, params=None, max_retries=5, label=None):
+        """Execute a SQL query with automatic retry on connection errors.
+
+        Args:
+            query: SQL query string
+            params: Query parameters (list/tuple), or None
+            max_retries: Maximum number of retry attempts (default 5)
+            label: Optional label for log messages
+
+        Returns:
+            List of result rows (dicts)
+
+        Raises:
+            RuntimeError: After exhausting retries
+        """
+        from openc3.utilities.logger import Logger
+
+        retry_count = 0
+        label_str = f" ({label})" if label else ""
+        while True:
+            try:
+                conn = cls.connection()
+                with conn.cursor(binary=True, row_factory=dict_row) as cursor:
+                    cursor.execute(query, params or None)
+                    return cursor.fetchall()
+            except (psycopg.Error, OSError) as e:
+                retry_count += 1
+                if retry_count >= max_retries:
+                    raise RuntimeError(f"Error querying TSDB{label_str}: {e!s}") from e
+                Logger.warn(f"TSDB{label_str}: Retrying due to error: {e!s}")
+                Logger.warn(f"TSDB{label_str}: Last query: {query}")
+                cls.disconnect()
+                time.sleep(0.1)
+
+    @staticmethod
+    def nsec_to_utc_time(nsec):
+        """Convert a nanosecond integer timestamp to a UTC datetime.
+
+        Args:
+            nsec: Nanoseconds since epoch
+
+        Returns:
+            UTC-aware datetime or None
+        """
+        if nsec is None:
+            return None
+        seconds = nsec / 1_000_000_000
+        remainder_ns = nsec % 1_000_000_000
+        microseconds = remainder_ns / 1000
+        return datetime.fromtimestamp(seconds, tz=timezone.utc).replace(
+            microsecond=int(microseconds)
+        )
+
+    @staticmethod
+    def coerce_to_utc(value):
+        """Coerce a value from QuestDB into a UTC datetime.
+
+        Handles datetime, float (unix seconds), int (nanoseconds), and string timestamps.
+
+        Args:
+            value: Timestamp value in any supported format
+
+        Returns:
+            UTC-aware datetime or None
+        """
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            if value.tzinfo is None:
+                return value.replace(tzinfo=timezone.utc)
+            return value.astimezone(timezone.utc)
+        elif isinstance(value, float):
+            return datetime.fromtimestamp(value, tz=timezone.utc)
+        elif isinstance(value, int):
+            return QuestDBClient.nsec_to_utc_time(value)
+        elif isinstance(value, str):
+            from datetime import datetime as dt
+
+            parsed = dt.fromisoformat(value.replace("Z", "+00:00"))
+            return parsed.astimezone(timezone.utc)
+        else:
+            # Assume PG timestamp-like object
+            return QuestDBClient.pg_timestamp_to_utc(value)
+
+    @staticmethod
+    def column_suffix_for_value_type(value_type):
+        """Return the QuestDB column suffix for a given value type.
+
+        Args:
+            value_type: One of 'RAW', 'CONVERTED', 'FORMATTED', 'WITH_UNITS'
+
+        Returns:
+            Column suffix ('__C', '__F', or '')
+        """
+        return {"FORMATTED": "__F", "WITH_UNITS": "__F", "CONVERTED": "__C"}.get(value_type, "")
+
+    @staticmethod
+    def value_type_for_column_suffix(column_name):
+        """Determine the value type from a QuestDB column name's suffix.
+
+        Args:
+            column_name: Column name possibly ending in __C, __F, __U, __L
+
+        Returns:
+            One of 'FORMATTED', 'WITH_UNITS', 'CONVERTED', 'RAW'
+        """
+        if column_name.endswith("__F"):
+            return "FORMATTED"
+        elif column_name.endswith("__U"):
+            return "WITH_UNITS"
+        elif column_name.endswith("__C"):
+            return "CONVERTED"
+        else:
+            return "RAW"
+
+    @staticmethod
+    def time_where_clause(start_time, end_time, prefix=""):
+        """Build a SQL WHERE clause for PACKET_TIMESECONDS range filtering.
+
+        Args:
+            start_time: Start timestamp (nanoseconds)
+            end_time: End timestamp (nanoseconds), or None for open-ended
+            prefix: Table alias prefix (e.g., 'T0.') — default ''
+
+        Returns:
+            SQL WHERE clause fragment (includes leading space)
+        """
+        where = f" WHERE {prefix}PACKET_TIMESECONDS >= {start_time}"
+        if end_time:
+            where += f" AND {prefix}PACKET_TIMESECONDS < {end_time}"
+        return where
+
+    @staticmethod
+    def fetch_packet_def(target_name, packet_name, type="TLM", scope="DEFAULT"):
+        """Fetch a packet definition from TargetModel, returning None if not found.
+
+        Args:
+            target_name: Target name
+            packet_name: Packet name
+            type: 'CMD' or 'TLM' (default 'TLM')
+            scope: Scope name
+
+        Returns:
+            Packet definition dict or None
+        """
+        from openc3.models.target_model import TargetModel
+
+        try:
+            return TargetModel.packet(target_name, packet_name, type=type, scope=scope)
+        except RuntimeError:
+            return None
+
+    @classmethod
+    def build_item_defs_map(cls, packet_def):
+        """Build a dict mapping sanitized column names to item definitions.
+
+        Args:
+            packet_def: Packet definition dict from TargetModel.packet, or None
+
+        Returns:
+            dict of {sanitized_column_name: item_def_dict}
+        """
+        result = {}
+        if not packet_def:
+            return result
+        for item in packet_def.get("items", []):
+            result[cls.sanitize_column_name(item["name"])] = item
+        return result
+
+    @staticmethod
+    def build_aggregation_selects(safe_item_name, value_type, item_name=None):
+        """Build aggregation SELECT columns (min/max/avg/stddev) for a single item.
+
+        Args:
+            safe_item_name: Sanitized column name
+            value_type: 'RAW' or 'CONVERTED'
+            item_name: Original (unsanitized) item name for mapping values.
+                Defaults to safe_item_name if not provided.
+
+        Returns:
+            Tuple of (select_fragments_list, column_mapping_dict)
+            column_mapping maps result column alias to [item_name, reduced_type, value_type]
+        """
+        if item_name is None:
+            item_name = safe_item_name
+        selects = []
+        mapping = {}
+        if value_type == "RAW":
+            col = safe_item_name
+            for suffix, reduced_type in [("N", "MIN"), ("X", "MAX"), ("A", "AVG"), ("S", "STDDEV")]:
+                alias_name = f"{safe_item_name}__{suffix}"
+                selects.append(f'{reduced_type.lower()}("{col}") as "{alias_name}"')
+                mapping[alias_name] = [item_name, reduced_type, "RAW"]
+        elif value_type == "CONVERTED":
+            col = f"{safe_item_name}__C"
+            for suffix, reduced_type in [("CN", "MIN"), ("CX", "MAX"), ("CA", "AVG"), ("CS", "STDDEV")]:
+                alias_name = f"{safe_item_name}__{suffix}"
+                selects.append(f'{reduced_type.lower()}("{col}") as "{alias_name}"')
+                mapping[alias_name] = [item_name, reduced_type, "CONVERTED"]
+        return selects, mapping
+
+    @classmethod
+    def add_timestamp_entries(cls, entry, timestamp_ns, prefix):
+        """Add TIMESECONDS and TIMEFORMATTED entries to a dict from a nanosecond timestamp.
+
+        Args:
+            entry: Entry dict to populate
+            timestamp_ns: Nanoseconds since epoch
+            prefix: 'PACKET' or 'RECEIVED'
+        """
+        if timestamp_ns is None:
+            return
+        utc_time = cls.nsec_to_utc_time(timestamp_ns)
+        entry[f"{prefix}_TIMESECONDS"] = cls.format_timestamp(utc_time, "seconds")
+        entry[f"{prefix}_TIMEFORMATTED"] = cls.format_timestamp(utc_time, "formatted")
+
+    @classmethod
+    def tsdb_lookup(cls, items, start_time, end_time=None, scope="DEFAULT"):
+        """Query historical telemetry data from QuestDB for a list of items.
+        Builds the SQL query, executes it, and decodes all results.
+
+        Args:
+            items: List of [target_name, packet_name, item_name, value_type, limits].
+                item_name may be None to indicate a placeholder (non-existent item).
+            start_time: Start timestamp for the query
+            end_time: End timestamp, or None for "latest single row"
+            scope: Scope name
+
+        Returns:
+            Array of [value, limits_state] pairs per row, or {} if no results.
+            Single-row results return a flat array; multi-row results return array of arrays.
+        """
+        tables = {}
+        names = []
+        nil_count = 0
+        packet_cache = {}
+        item_types = {}
+        calculated_items = {}
+        needed_timestamps = {}
+        current_position = 0
+
+        for item in items:
+            target_name, packet_name, item_name, value_type, limits = item
+            if item_name is None:
+                names.append(f"PACKET_TIMESECONDS as __nil{nil_count}")
+                nil_count += 1
+                current_position += 1
+                continue
+
+            table_name, _ = cls.sanitize_table_name(target_name, packet_name, scope=scope)
+            tables[table_name] = 1
+            index = list(tables.keys()).index(table_name)
+
+            if item_name in cls.STORED_TIMESTAMP_ITEMS:
+                names.append(f'"T{index}.{item_name}"')
+                current_position += 1
+                continue
+
+            if item_name in cls.TIMESTAMP_ITEMS:
+                ts_info = cls.TIMESTAMP_ITEMS[item_name]
+                calculated_items[current_position] = {
+                    "source": ts_info["source"],
+                    "format": ts_info["format"],
+                    "table_index": index,
+                }
+                if index not in needed_timestamps:
+                    needed_timestamps[index] = set()
+                needed_timestamps[index].add(ts_info["source"])
+                current_position += 1
+                continue
+
+            safe_item_name = cls.sanitize_column_name(item_name)
+
+            cache_key = (target_name, packet_name)
+            if cache_key not in packet_cache:
+                packet_cache[cache_key] = cls.fetch_packet_def(target_name, packet_name, scope=scope)
+
+            packet_def = packet_cache[cache_key]
+            item_def = cls.find_item_def(packet_def, item_name)
+
+            suffix = cls.column_suffix_for_value_type(value_type)
+            col_name = f"T{index}.{safe_item_name}{suffix}"
+            names.append(f'"{col_name}"')
+            item_types[col_name] = cls.resolve_item_type(item_def, value_type)
+
+            current_position += 1
+            if limits:
+                names.append(f'"T{index}.{safe_item_name}__L"')
+
+        # Add needed timestamp columns to the SELECT for calculated items
+        for table_index, ts_columns in needed_timestamps.items():
+            for ts_col in ts_columns:
+                names.append(f"T{table_index}.{ts_col} as T{table_index}___ts_{ts_col}")
+
+        # Build the SQL query
+        query = f"SELECT {', '.join(names)} FROM "
+        for index, (table_name, _) in enumerate(tables.items()):
+            if index == 0:
+                query += f"{table_name} as T{index} "
+            else:
+                query += f"ASOF JOIN {table_name} as T{index} "
+
+        query_params = []
+        if start_time and not end_time:
+            query += "WHERE T0.PACKET_TIMESECONDS < %s LIMIT -1"
+            query_params.append(start_time)
+        elif start_time and end_time:
+            query += "WHERE T0.PACKET_TIMESECONDS >= %s AND T0.PACKET_TIMESECONDS < %s"
+            query_params.append(start_time)
+            query_params.append(end_time)
+
+        result = cls.query_with_retry(query, params=query_params or None, label="tsdb_lookup")
+
+        if not result:
+            return {}
+
+        data = []
+        for row_index, row in enumerate(result):
+            data.append([])
+            col_index = 0
+            row_timestamps = {}
+            for col_name, col_value in row.items():
+                if "__L" in col_name:
+                    if col_index > 0:
+                        data[row_index][col_index - 1] = [
+                            data[row_index][col_index - 1][0],
+                            col_value,
+                        ]
+                elif col_name.startswith("__nil"):
+                    data[row_index].append([None, None])
+                    col_index += 1
+                elif re.match(r"^T(\d+)___ts_(.+)$", col_name):
+                    match = re.match(r"^T(\d+)___ts_(.+)$", col_name)
+                    table_idx = int(match.group(1))
+                    ts_source = match.group(2)
+                    row_timestamps[f"T{table_idx}.{ts_source}"] = col_value
+                elif col_name.endswith(".PACKET_TIMESECONDS") or col_name.endswith(
+                    ".RECEIVED_TIMESECONDS"
+                ) or col_name in ("PACKET_TIMESECONDS", "RECEIVED_TIMESECONDS"):
+                    ts_utc = cls.coerce_to_utc(col_value)
+                    seconds_value = cls.format_timestamp(ts_utc, "seconds")
+                    data[row_index].append([seconds_value, None])
+                    col_index += 1
+                    if "." in col_name:
+                        row_timestamps[col_name] = col_value
+                    else:
+                        row_timestamps[f"T0.{col_name}"] = col_value
+                else:
+                    type_info = item_types.get(col_name, {})
+                    if not type_info:
+                        for prefix in [f"T{i}." for i in range(len(tables))]:
+                            prefixed_name = prefix + col_name
+                            type_info = item_types.get(prefixed_name, {})
+                            if type_info:
+                                break
+                    decoded_value = cls.decode_value(
+                        col_value,
+                        data_type=type_info.get("data_type"),
+                        array_size=type_info.get("array_size"),
+                    )
+                    data[row_index].append([decoded_value, None])
+                    col_index += 1
+
+            for position in sorted(calculated_items.keys()):
+                calc_info = calculated_items[position]
+                ts_key = f"T{calc_info['table_index']}.{calc_info['source']}"
+                ts_value = row_timestamps.get(ts_key)
+                ts_utc = cls.coerce_to_utc(ts_value)
+                calculated_value = cls.format_timestamp(ts_utc, calc_info["format"])
+                data[row_index].insert(position, [calculated_value, None])
+
+        if len(result) == 1:
+            data = data[0]
+        return data
+
     @classmethod
     def sanitize_table_name(cls, target_name, packet_name, cmd_or_tlm="TLM", scope="DEFAULT"):
         """
@@ -631,10 +1070,6 @@ class QuestDBClient:
                     rc = item.get("read_conversion")
                     converted_type = rc.get("converted_type") if rc else None
                     converted_bit_size = rc.get("converted_bit_size", 0) if rc else 0
-                    # Fall back to item's own data_type/bit_size when conversion doesn't specify
-                    if converted_type is None:
-                        converted_type = data_type
-                        converted_bit_size = bit_size
                     col_type, needs_json = self._get_column_type_from_conversion(
                         table_name,
                         f"{item_name}__C",

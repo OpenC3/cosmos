@@ -11,9 +11,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-# TODO: Delegate to actual Python to verify that classes exist
-# and to get proper data from them like converted_type
-
 module OpenC3
   class PythonProxy
     attr_accessor :name

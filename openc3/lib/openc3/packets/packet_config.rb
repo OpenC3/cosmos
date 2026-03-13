@@ -714,7 +714,7 @@ module OpenC3
       # All config.lines following this config.line are considered part
       # of the conversion until an end of conversion marker is found
       when 'GENERIC_READ_CONVERSION_START', 'GENERIC_WRITE_CONVERSION_START'
-        # As of COSMOS 7.1 the converted type and bit size are deprecated
+        # As of COSMOS 7 the converted type and bit size are deprecated
         # but we're still allowing them to be defined as parameters for backward compatibility
         parser.verify_num_parameters(0, 2, keyword)
         @proc_text = ''
@@ -734,14 +734,23 @@ module OpenC3
         usage = "CONVERTED_DATA <Converted Bit Size> <Converted Type> <Converted Array Size (optional)>"
         parser.verify_num_parameters(2, 3, usage)
         raise parser.error("#{keyword} requires a current item") unless @current_item
-        raise parser.error("#{keyword} requires a current item with a read conversion") unless @current_item.read_conversion
+        raise parser.error("#{keyword} requires a current item with a conversion") unless @current_item.read_conversion or @current_item.write_conversion
         converted_bit_size = Integer(params[0])
         converted_type = params[1].upcase.intern
         raise parser.error("Invalid converted_type: #{converted_type}.") unless CONVERTED_DATA_TYPES.include? converted_type
-        @current_item.read_conversion.converted_type = converted_type
-        @current_item.read_conversion.converted_bit_size = converted_bit_size
-        if params[2]
-          @current_item.read_conversion.converted_array_size = Integer(params[2])
+        if @current_item.read_conversion
+          @current_item.read_conversion.converted_type = converted_type
+          @current_item.read_conversion.converted_bit_size = converted_bit_size
+          if params[2]
+            @current_item.read_conversion.converted_array_size = Integer(params[2])
+          end
+        end
+        if @current_item.write_conversion
+          @current_item.write_conversion.converted_type = converted_type
+          @current_item.write_conversion.converted_bit_size = converted_bit_size
+          if params[2]
+            @current_item.write_conversion.converted_array_size = Integer(params[2])
+          end
         end
 
       # Define a set of limits for the current telemetry item

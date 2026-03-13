@@ -78,13 +78,13 @@ GENERIC_READ_CONVERSION_START:
     a conversion class and using READ_CONVERSION instead. READ_CONVERSION is easier
     to debug and has higher performance.
   ruby_example: |
-    APPEND_ITEM ITEM1
+    APPEND_ITEM ITEM1 32 UINT
       GENERIC_READ_CONVERSION_START
         (value * 1.5).to_i # Convert the value by a scale factor
       GENERIC_READ_CONVERSION_END
       CONVERTED_DATA 32 UINT
   python_example: |
-    APPEND_ITEM ITEM1
+    APPEND_ITEM ITEM1 32 UINT
       GENERIC_READ_CONVERSION_START
         int(value * 1.5) # Convert the value by a scale factor
       GENERIC_READ_CONVERSION_END
