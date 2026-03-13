@@ -24,17 +24,15 @@ module OpenC3
     name = "foobar"
     scope = "scope"
 
-    before do
-      timeline = TimelineModel.new(name: name, scope: scope)
-      timeline.create()
-    end
-
     before(:each) do
+      # mock_redis must be called before each test
       mock_redis()
+      # create timeline after mock_redis so it uses the mocked redis instance
+      OpenC3::TimelineModel.new(name: name, scope: scope).create()
     end
 
-    after do
-      TimelineModel.delete(name: name, scope: scope, force: true)
+    after(:each) do
+      OpenC3::TimelineModel.delete(name: name, scope: scope, force: true)
     end
 
     def generate_activity(name:, scope:, start:, kind: "COMMAND", stop: 1.0, data: { "test" => "test" })
@@ -55,13 +53,13 @@ module OpenC3
       timeline_name = "recurring"
       timeline_scope = "DEFAULT"
 
-      before do
-        timeline = TimelineModel.new(name: timeline_name, scope: timeline_scope)
+      before(:each) do
+        timeline = OpenC3::TimelineModel.new(name: timeline_name, scope: timeline_scope)
         timeline.create()
       end
 
-      after do
-        TimelineModel.delete(name: timeline_name, scope: timeline_scope, force: true)
+      after(:each) do
+        OpenC3::TimelineModel.delete(name: timeline_name, scope: timeline_scope, force: true)
       end
 
       describe "self.create" do
@@ -412,13 +410,12 @@ module OpenC3
       timeline_name = "timeline"
       timeline_scope = "DEFAULT"
 
-      before do
-        timeline = TimelineModel.new(name: timeline_name, scope: timeline_scope)
-        timeline.create()
+      before(:each) do
+        OpenC3::TimelineModel.new(name: timeline_name, scope: timeline_scope).create()
       end
 
-      after do
-        TimelineModel.delete(name: timeline_name, scope: timeline_scope, force: true)
+      after(:each) do
+        OpenC3::TimelineModel.delete(name: timeline_name, scope: timeline_scope, force: true)
       end
 
       it "removes the activity with a uuid" do
