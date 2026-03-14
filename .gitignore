@@ -58,4 +58,4 @@ developer.code-workspace
 __pycache__
 
 playwright/tests/enterprise
-.vscode/settings.json
+.vscode

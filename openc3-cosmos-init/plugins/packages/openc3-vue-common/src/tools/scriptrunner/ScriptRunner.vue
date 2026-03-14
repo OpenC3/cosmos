@@ -2466,14 +2466,10 @@ export default {
     },
     bucketDialogCallback(response) {
       this.bucket.show = false
-      let answer = 'Cancel'
-      if (response !== 'Cancel') {
-        answer = response
-      }
       Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
         data: {
           method: 'open_bucket_dialog',
-          answer: answer,
+          answer: response,
           prompt_id: this.activePromptId,
         },
       })
