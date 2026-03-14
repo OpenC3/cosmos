@@ -393,14 +393,7 @@ module OpenC3
       shard: 0,
       scope:
     )
-      super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at,
-        cmd_buffer_depth: cmd_buffer_depth, cmd_log_cycle_time: cmd_log_cycle_time, cmd_log_cycle_size: cmd_log_cycle_size,
-        cmd_log_retain_time: cmd_log_retain_time,
-        tlm_buffer_depth: tlm_buffer_depth, tlm_log_cycle_time: tlm_log_cycle_time, tlm_log_cycle_size: tlm_log_cycle_size,
-        tlm_log_retain_time: tlm_log_retain_time,
-        cmd_decom_retain_time: cmd_decom_retain_time, tlm_decom_retain_time: tlm_decom_retain_time,
-        cleanup_poll_time: cleanup_poll_time, needs_dependencies: needs_dependencies, target_microservices: target_microservices,
-        scope: scope)
+      super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at, scope: scope)
       @folder_name = folder_name
       @requires = requires
       @ignored_parameters = ignored_parameters

@@ -90,7 +90,7 @@ TELEMETRY CBOR CBORTLM BIG_ENDIAN "CBOR Accessor Telemetry"
     KEY $.id_item
   APPEND_ITEM ITEM1 16 UINT "Int Item 2"
     KEY $.item1
-    GENERIC_READ_CONVERSION_START UINT 16
+    GENERIC_READ_CONVERSION_START
       value * 2
     GENERIC_READ_CONVERSION_END
     UNITS CELSIUS C
@@ -207,6 +207,7 @@ COMMAND HTML SEARCH BIG_ENDIAN "Searches Rubygems.org"
     GENERIC_READ_CONVERSION_START
       value.split.join('+')
     GENERIC_READ_CONVERSION_END
+    CONVERTED_DATA 0 STRING
   # This sets header Content-Type=text/html
   # Note that TYPE is not used since the KEY is specified
   PARAMETER HTTP_HEADER_TYPE 0 0 DERIVED nil nil "text/html"
@@ -281,7 +282,7 @@ TELEMETRY JSON JSONTLM BIG_ENDIAN "JSON Accessor Telemetry"
     KEY $.id_item
   APPEND_ITEM ITEM1 16 UINT "Int Item 2"
     KEY $.item1
-    GENERIC_READ_CONVERSION_START UINT 16
+    GENERIC_READ_CONVERSION_START
       value * 2
     GENERIC_READ_CONVERSION_END
     UNITS CELSIUS C
@@ -376,7 +377,7 @@ TELEMETRY XML XMLTLM BIG_ENDIAN "XML Accessor Telemetry"
     KEY "/html/head/script/@src"
   APPEND_ITEM ITEM1 16 UINT "Int Item 2"
     KEY "/html/head/noscript/text()"
-    GENERIC_READ_CONVERSION_START UINT 16
+    GENERIC_READ_CONVERSION_START
       value * 2
     GENERIC_READ_CONVERSION_END
     UNITS CELSIUS C
