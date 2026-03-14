@@ -307,7 +307,7 @@ class LoggedStreamingThread < StreamingThread
         end
         resolved = case value_type
           when 'FORMATTED', 'WITH_UNITS'
-            if item_def['format_string']
+            if item_def['format_string'] or item_def['units']
               'FORMATTED'
             elsif item_def['states'] || (item_def['read_conversion'] && item_def['data_type'] != 'DERIVED')
               'CONVERTED'

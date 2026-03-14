@@ -1665,10 +1665,10 @@ class TestTsdbMicroservice(unittest.TestCase):
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
-    def test_create_table_conversion_without_converted_type_falls_back_to_item_type(
+    def test_create_table_conversion_without_converted_type_uses_json(
         self, mock_system, mock_psycopg, mock_sender, mock_get_tlm
     ):
-        """Test that a read_conversion with no converted_type falls back to item's data_type/bit_size for __C column"""
+        """Test that a read_conversion with no converted_type creates a varchar __C column registered for JSON"""
         mock_query = Mock()
         mock_psycopg.return_value = mock_query
         mock_cursor = Mock()
@@ -1705,12 +1705,12 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertTrue(len(create_table_calls) > 0)
         create_table_sql = str(create_table_calls[0])
 
-        # Both raw and converted columns should use the item's data_type/bit_size (INT 16 -> int)
+        # Raw column should be int, converted column should be varchar
         self.assertIn('"ANGLE" int', create_table_sql)
-        self.assertIn('"ANGLE__C" int', create_table_sql)
+        self.assertIn('"ANGLE__C" varchar', create_table_sql)
 
-        # The __C column should NOT be registered for JSON serialization
-        self.assertNotIn("DEFAULT__TLM__TEST__PKT__ANGLE__C", tsdb.questdb.json_columns)
+        # The __C column should be registered for JSON serialization so integer values get stringified
+        self.assertIn("DEFAULT__TLM__TEST__PKT__ANGLE__C", tsdb.questdb.json_columns)
 
     @patch("openc3.microservices.tsdb_microservice.get_tlm")
     @patch("openc3.utilities.questdb_client.Sender")

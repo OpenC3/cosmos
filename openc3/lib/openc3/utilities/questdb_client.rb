@@ -11,18 +11,22 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'json'
 require 'base64'
 require 'bigdecimal'
-require 'set'
-require 'pg'
 require 'concurrent'
+require 'json'
+require 'pg'
+require 'set'
+require 'time'
+require 'openc3/models/target_model'
 
 module OpenC3
   # Utility class for QuestDB data encoding and decoding.
   # This provides a common interface for serializing/deserializing COSMOS data types
   # when writing to and reading from QuestDB.
   class QuestDBClient
+    class QuestDBError < StandardError; end
+
     # Thread-local PG connection storage using Concurrent::ThreadLocalVar.
     # Each thread gets its own connection to avoid thread-safety issues with PG::Connection.
     # Connections are automatically garbage collected when threads terminate.
@@ -249,11 +253,11 @@ module OpenC3
     # logic for determining how to decode a value read from QuestDB.
     #
     # @param item_def [Hash, nil] Item definition from packet definition
-    # @param value_type [String] One of 'RAW', 'CONVERTED', 'FORMATTED', 'WITH_UNITS'
+    # @param value_type [String] One of 'RAW', 'CONVERTED', 'FORMATTED'
     # @return [Hash] { 'data_type' => String|nil, 'array_size' => Integer|nil }
     def self.resolve_item_type(item_def, value_type)
       case value_type
-      when 'FORMATTED', 'WITH_UNITS'
+      when 'FORMATTED', 'WITH_UNITS' # WITH_UNITS is deprecated
         { 'data_type' => 'STRING', 'array_size' => nil }
       when 'CONVERTED'
         if item_def
@@ -298,7 +302,7 @@ module OpenC3
       rescue IOError, PG::Error => e
         retry_count += 1
         if retry_count > (max_retries - 1)
-          raise "Error querying TSDB#{label ? " (#{label})" : ""}: #{e.message}"
+          raise QuestDBError.new("Error querying TSDB#{label ? " (#{label})" : ""}: #{e.message}")
         end
         Logger.warn("TSDB#{label ? " #{label}" : ""}: Retrying due to error: #{e.message}")
         Logger.warn("TSDB#{label ? " #{label}" : ""}: Last query: #{query}")
@@ -326,17 +330,17 @@ module OpenC3
       return nil unless value
       case value
       when Time
-        value.utc
+        # PG driver returns Time objects with UTC values but in local timezone,
+        # so reconstruct as UTC from components rather than converting
+        pg_timestamp_to_utc(value)
       when Float
         Time.at(value).utc
       when Integer
         nsec_to_utc_time(value).utc
       when String
-        require 'time'
         Time.parse(value).utc
       else
-        # PG timestamp object (responds to year, month, etc.)
-        pg_timestamp_to_utc(value)
+        raise QuestDBError.new("Unsupported timestamp value #{value} with type: #{value.class}")
       end
     end
 
@@ -371,26 +375,30 @@ module OpenC3
 
     # Return the QuestDB column suffix for a given value type.
     #
-    # @param value_type [String] One of 'RAW', 'CONVERTED', 'FORMATTED', 'WITH_UNITS'
+    # @param value_type [String] One of 'RAW', 'CONVERTED', 'FORMATTED'
     # @return [String] Column suffix (e.g., '__C', '__F', or '')
     def self.column_suffix_for_value_type(value_type)
       case value_type
-      when 'FORMATTED' then '__F'
-      when 'WITH_UNITS' then '__F'
-      when 'CONVERTED' then '__C'
-      else ''
+      when 'FORMATTED', 'WITH_UNITS' # WITH_UNITS is deprecated
+        '__F'
+      when 'CONVERTED'
+        '__C'
+      else
+        ''
       end
     end
 
     # Determine the value type from a QuestDB column name's suffix.
     #
-    # @param column_name [String] Column name possibly ending in __C, __F, __U, __L
-    # @return [String] One of 'FORMATTED', 'WITH_UNITS', 'CONVERTED', 'RAW'
+    # @param column_name [String] Column name possibly ending in __C, __F, __L
+    # @return [String] One of 'FORMATTED', 'CONVERTED', 'RAW'
     def self.value_type_for_column_suffix(column_name)
-      if column_name.end_with?('__F') then 'FORMATTED'
-      elsif column_name.end_with?('__U') then 'WITH_UNITS'
-      elsif column_name.end_with?('__C') then 'CONVERTED'
-      else 'RAW'
+      if column_name.end_with?('__F')
+        'FORMATTED'
+      elsif column_name.end_with?('__C')
+        'CONVERTED'
+      else
+        'RAW'
       end
     end
 
@@ -414,7 +422,6 @@ module OpenC3
     # @param scope [String] Scope name
     # @return [Hash, nil] Packet definition or nil
     def self.fetch_packet_def(target_name, packet_name, type: :TLM, scope: "DEFAULT")
-      require 'openc3/models/target_model'
       TargetModel.packet(target_name, packet_name, type: type, scope: scope)
     rescue RuntimeError
       nil
@@ -462,6 +469,9 @@ module OpenC3
           selects << "#{reduced_type.to_s.downcase}(\"#{col}\") as \"#{alias_name}\""
           mapping[alias_name] = [item_name, reduced_type, :CONVERTED]
         end
+      else
+        # No aggregation for FORMATTED type since it is a string
+        raise QuestDBError.new("Unsupported value type for aggregation: #{value_type}")
       end
       [selects, mapping]
     end
@@ -485,7 +495,7 @@ module OpenC3
         next unless value_type == :RAW || value_type == :CONVERTED
 
         safe_name = sanitize_column_name(item['name'])
-        agg_selects, _ = build_aggregation_selects(safe_name, value_type)
+        agg_selects, _mapping = build_aggregation_selects(safe_name, value_type)
         selects.concat(agg_selects)
         has_items = true
       end
@@ -648,6 +658,7 @@ module OpenC3
             timestamp_values['RECEIVED_TIMESECONDS'] = value if value
           when 'COSMOS_EXTRA'
             cosmos_extra = value
+          # No else because we're only interested in these specific extra columns; others can be ignored
           end
           next
         end
@@ -698,7 +709,7 @@ module OpenC3
     # and type-aware decoding.
     #
     # @param row [PG::Result row] Single row as iterable [col_name, value] pairs
-    # @param value_type [Symbol] :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS
+    # @param value_type [Symbol] :RAW, :CONVERTED, :FORMATTED
     # @param packet_def [Hash, nil] Packet definition for type-aware decoding
     # @return [Hash] Entry hash with item => value, __time, COSMOS_EXTRA, timestamp entries
     def self.decode_packet_row(row, value_type, packet_def)
@@ -757,7 +768,7 @@ module OpenC3
           elsif !column_name.end_with?('__F', '__U') && !columns.key?("#{column_name}__C")
             entry[column_name] = value
           end
-        when :FORMATTED, :WITH_UNITS
+        when :FORMATTED
           if column_name.end_with?('__F')
             entry[column_name.sub(/__F$/, '')] = value
           elsif column_name.end_with?('__C') && !columns.key?("#{column_name.sub(/__C$/, '')}__F")
@@ -765,6 +776,8 @@ module OpenC3
           elsif !column_name.end_with?('__C', '__F', '__U') && !columns.key?("#{column_name}__F") && !columns.key?("#{column_name}__C")
             entry[column_name] = value
           end
+        else
+          raise QuestDBError.new("Unsupported value type for packet decoding: #{value_type}")
         end
       end
 
@@ -822,7 +835,7 @@ module OpenC3
         end
         table_name = sanitize_table_name(target_name, packet_name, scope: scope)
         tables[table_name] = 1
-        index = tables.find_index {|k,v| k == table_name }
+        index = tables.find_index {|k,_v| k == table_name }
 
         if STORED_TIMESTAMP_ITEMS.include?(orig_item_name)
           names << "\"T#{index}.#{orig_item_name}\""

@@ -555,9 +555,7 @@ class QuestDBClient:
         seconds = nsec / 1_000_000_000
         remainder_ns = nsec % 1_000_000_000
         microseconds = remainder_ns / 1000
-        return datetime.fromtimestamp(seconds, tz=timezone.utc).replace(
-            microsecond=int(microseconds)
-        )
+        return datetime.fromtimestamp(seconds, tz=timezone.utc).replace(microsecond=int(microseconds))
 
     @staticmethod
     def coerce_to_utc(value):
@@ -607,15 +605,13 @@ class QuestDBClient:
         """Determine the value type from a QuestDB column name's suffix.
 
         Args:
-            column_name: Column name possibly ending in __C, __F, __U, __L
+            column_name: Column name possibly ending in __C, __F, __L
 
         Returns:
-            One of 'FORMATTED', 'WITH_UNITS', 'CONVERTED', 'RAW'
+            One of 'FORMATTED', 'CONVERTED', 'RAW'
         """
         if column_name.endswith("__F"):
             return "FORMATTED"
-        elif column_name.endswith("__U"):
-            return "WITH_UNITS"
         elif column_name.endswith("__C"):
             return "CONVERTED"
         else:
@@ -842,9 +838,11 @@ class QuestDBClient:
                     table_idx = int(match.group(1))
                     ts_source = match.group(2)
                     row_timestamps[f"T{table_idx}.{ts_source}"] = col_value
-                elif col_name.endswith(".PACKET_TIMESECONDS") or col_name.endswith(
-                    ".RECEIVED_TIMESECONDS"
-                ) or col_name in ("PACKET_TIMESECONDS", "RECEIVED_TIMESECONDS"):
+                elif (
+                    col_name.endswith(".PACKET_TIMESECONDS")
+                    or col_name.endswith(".RECEIVED_TIMESECONDS")
+                    or col_name in ("PACKET_TIMESECONDS", "RECEIVED_TIMESECONDS")
+                ):
                     ts_utc = cls.coerce_to_utc(col_value)
                     seconds_value = cls.format_timestamp(ts_utc, "seconds")
                     data[row_index].append([seconds_value, None])
