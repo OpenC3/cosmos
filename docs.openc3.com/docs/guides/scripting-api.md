@@ -8915,7 +8915,19 @@ create_timeline_activity(name, kind, start, stop, data={})
 | kind      | Type of the activity. One of COMMAND, SCRIPT, or RESERVE.                     |
 | start     | Start time of the activity. Time / datetime instance.                         |
 | stop      | Stop time of the activity. Time / datetime instance.                          |
-| data      | Hash / dict of data for COMMAND or SCRIPT type. Default is empty hash / dict. |
+| data      | Hash / dict of data for COMMAND or SCRIPT type. Default is empty hash / dict. Valid keys are described [below](#create_timeline_activity-data-parameter). |
+| scope     | Scope of the activity. Default is the OPENC3_SCOPE, usually "DEFAULT". |
+
+#### create_timeline_activity data parameter
+| Key | Value |
+|-----|-------|
+| username | Username to display as the creator of the activity. Default is "operator". |
+| customTitle | Custom title to display for the activity. Default is empty string which results in no custom title being shown. |
+| notes | Notes to display for the activity. Default is empty string, which results in no notes being shown. |
+| command | Command to execute for COMMAND type activities. |
+| script | Script to execute for SCRIPT type activities. Should be given as the path to the script file to run, starting with the target name, e.g. "INST/procedures/collect.rb". |
+| environment | Array of environment variable key/value pairs to set for SCRIPT type activities, e.g. `[{key: "USER", value: "JASON"}]` |
+
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
