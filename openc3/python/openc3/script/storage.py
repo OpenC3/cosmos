@@ -161,12 +161,12 @@ def _get_download_url(path: str, scope: str = OPENC3_SCOPE):
     return result["url"]
 
 
-def _get_storage_file(path, scope=OPENC3_SCOPE):
+def _get_storage_file(path, bucket="OPENC3_CONFIG_BUCKET", scope=OPENC3_SCOPE):
     # Create Tempfile to store data
     file = tempfile.NamedTemporaryFile(mode="w+b")  # noqa: SIM115 - returned to caller
 
     endpoint = f"/openc3-api/storage/download/{scope}/{path}"
-    result = _get_presigned_request(endpoint, scope=scope)
+    result = _get_presigned_request(endpoint, bucket=bucket, scope=scope)
     print(f"Reading {scope}/{path}")
 
     # Try to get the file
@@ -196,16 +196,14 @@ def _get_uri(url):
         return f"{openc3.script.API_SERVER.generate_url()}{url}"
 
 
-def _get_presigned_request(endpoint, external=None, scope=OPENC3_SCOPE):
+def _get_presigned_request(endpoint, external=None, bucket="OPENC3_CONFIG_BUCKET", scope=OPENC3_SCOPE):
     if external or not openc3.script.OPENC3_IN_CLUSTER:
-        response = openc3.script.API_SERVER.request(
-            "get", endpoint, query={"bucket": "OPENC3_CONFIG_BUCKET"}, scope=scope
-        )
+        response = openc3.script.API_SERVER.request("get", endpoint, query={"bucket": bucket}, scope=scope)
     else:
         response = openc3.script.API_SERVER.request(
             "get",
             endpoint,
-            query={"bucket": "OPENC3_CONFIG_BUCKET", "internal": True},
+            query={"bucket": bucket, "internal": True},
             scope=scope,
         )
 

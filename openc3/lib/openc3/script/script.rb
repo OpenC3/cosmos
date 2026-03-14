@@ -199,6 +199,16 @@ module OpenC3
       _file_dialog(title, message, filter)
     end
 
+    def open_bucket_dialog(title, message = "Open Bucket File")
+      answer = ''
+      while answer.empty?
+        print "#{title}\n#{message}\n<Type bucket file path (e.g. BUCKET/path/to/file)>:"
+        answer = gets
+        answer.chomp!
+      end
+      return answer
+    end
+
     def prompt(string, text_color: nil, background_color: nil, font_size: nil, font_family: nil, details: nil)
       print "#{string}: "
       print "Details: #{details}\n" if details

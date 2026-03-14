@@ -106,7 +106,7 @@ begin
           case parsed_cmd["method"]
           # This list matches the list in running_script.rb:44
           when "ask", "ask_string", "message_box", "vertical_message_box", "combo_box", "prompt", "prompt_for_hazardous",
-            "prompt_for_critical_cmd", "metadata_input", "open_file_dialog", "open_files_dialog"
+            "prompt_for_critical_cmd", "metadata_input", "open_file_dialog", "open_files_dialog", "open_bucket_dialog"
             unless running_script.prompt_id.nil?
               if running_script.prompt_id == parsed_cmd["prompt_id"]
                 if parsed_cmd["password"]
@@ -114,6 +114,9 @@ begin
                 elsif parsed_cmd["multiple"]
                   running_script.user_input = JSON.parse(parsed_cmd["multiple"])
                   run_script_log(id, "Multiple input: #{running_script.user_input}")
+                elsif parsed_cmd["method"] == 'open_bucket_dialog'
+                  running_script.user_input = parsed_cmd["answer"]
+                  run_script_log(id, "Bucket file: #{running_script.user_input}")
                 elsif parsed_cmd["method"].include?('open_file')
                   running_script.user_input = parsed_cmd["answer"]
                   run_script_log(id, "File(s): #{running_script.user_input}")
