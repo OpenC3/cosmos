@@ -317,10 +317,7 @@ class QuestDBClient:
         self.float_bit_sizes = {}
 
     def _log_info(self, msg):
-        if self.logger:
-            self.logger.info(msg)
-        else:
-            print(f"INFO: {msg}")
+        print(f"INFO: {msg}")
 
     def _log_warn(self, msg):
         if self.logger:
@@ -702,13 +699,13 @@ class QuestDBClient:
                     if columns_sql:
                         sql += f",\n{columns_sql}"
 
-                    # Primary DEDUP will be on PACKET_TIMESECONDS, RECEIVED_TIMESECONDS
-                    # If for some reason you're duplicating RECEIVED_TIMESECONDS you can
+                    # Primary DEDUP will be on PACKET_TIMESECONDS
+                    # If for some reason you're duplicating PACKET_TIMESECONDS you can
                     # explicitly include COSMOS_DATA_TAG as well.
                     sql += """
                         ) TIMESTAMP(PACKET_TIMESECONDS)
                             PARTITION BY DAY
-                            DEDUP UPSERT KEYS (PACKET_TIMESECONDS, RECEIVED_TIMESECONDS, COSMOS_DATA_TAG)
+                            DEDUP UPSERT KEYS (PACKET_TIMESECONDS, COSMOS_DATA_TAG)
                     """
 
                     # Add TTL clause if specified

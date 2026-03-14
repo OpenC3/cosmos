@@ -52,7 +52,7 @@ class RouterTopic(Topic):
                 {
                     "target_name": packet.target_name,
                     "cmd_name": packet.packet_name,
-                    "cmd_buffer": packet.buffer_no_copy(),
+                    "cmd_buffer": bytes(packet.buffer_no_copy()),
                 },
                 "*",
                 100,
@@ -67,7 +67,7 @@ class RouterTopic(Topic):
                 {
                     "target_name": target_name,
                     "cmd_name": "UNKNOWN",
-                    "cmd_buffer": packet.buffer_no_copy(),
+                    "cmd_buffer": bytes(packet.buffer_no_copy()),
                 },
                 "*",
                 100,

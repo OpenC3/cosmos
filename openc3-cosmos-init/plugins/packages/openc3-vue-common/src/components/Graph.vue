@@ -671,15 +671,21 @@ export default {
                   }
                 }
               }
-              // Decrement store counter now that playback data has been processed
+              this.dataChanged = true
+              this.updateGraphData()
+            })
+            .catch((error) => {
+              // eslint-disable-next-line no-console
+              console.error('Error fetching playback telemetry:', error)
+            })
+            .finally(() => {
+              // Decrement store counter now that playback request has completed
               this.store.updatePlayback({
                 playbackLoading: Math.max(
                   0,
                   this.store.playback.playbackLoading - 1,
                 ),
               })
-              this.dataChanged = true
-              this.updateGraphData()
             })
         }
         this.lastPlaybackDateTime = this.playbackDateTime

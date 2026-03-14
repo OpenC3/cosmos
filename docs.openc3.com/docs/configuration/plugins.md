@@ -202,7 +202,7 @@ If DONT_RECONNECT is not present the Server will try to reconnect to an interfac
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Delay | Delay in seconds between reconnect attempts. The default is 15 seconds. | True |
+| Delay | Delay in seconds between reconnect attempts. The default is 5 seconds. | True |
 
 ### DISABLE_DISCONNECT
 **Disable the Disconnect button on the Interfaces tab in the Server**
