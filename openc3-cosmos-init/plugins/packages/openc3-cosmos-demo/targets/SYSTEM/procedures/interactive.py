@@ -1,4 +1,14 @@
-from openc3.script import *
+"""Interactive procedure demonstrating all interactive APIs."""
+
+from openc3.script import (
+    prompt,
+    combo_box,
+    check_box,
+    message_box,
+    vertical_message_box,
+    ask,
+    ask_string,
+)
 
 INFORMATIVE = "This is informative"
 DETAILS = "Additional details"
