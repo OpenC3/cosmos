@@ -104,6 +104,10 @@ def combo_box(string, *buttons, **options):
     return message_box(string, *buttons, **options)
 
 
+def check_box(string, *buttons, **options):
+    return message_box(string, *buttons, **options)
+
+
 def open_file_dialog(title, message="Open File", filter=None):
     _file_dialog(title, message, filter)
 

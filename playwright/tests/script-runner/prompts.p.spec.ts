@@ -116,7 +116,7 @@ puts value`)
   })
   await page.locator('.v-dialog >> button:has-text("Cancel")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'User input: Cancel',
+    'User input: COSMOS__CANCEL',
   )
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     /paused \d+s/,
@@ -209,7 +209,7 @@ puts value`)
   })
   await page.locator('.v-dialog >> button:has-text("Cancel")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'User input: Cancel',
+    'User input: COSMOS__CANCEL',
   )
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     /paused \d+s/,
@@ -238,7 +238,7 @@ test('opens a dialog with dropdowns for combo_box', async ({ page, utils }) => {
   })
   await page.locator('.v-dialog >> button:has-text("Cancel")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'User input: Cancel',
+    'User input: COSMOS__CANCEL',
   )
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     /paused \d+s/,
@@ -258,6 +258,41 @@ test('opens a dialog with dropdowns for combo_box', async ({ page, utils }) => {
   )
 })
 
+test('opens a dialog with checkboxes for check_box', async ({
+  page,
+  utils,
+}) => {
+  await page
+    .locator('textarea')
+    .fill(
+      `value = check_box("Select values to enable", "abc123", "def456", "ghi789")\nputs value`,
+    )
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('.v-dialog')).toBeVisible({
+    timeout: 20000,
+  })
+  await page.locator('.v-dialog >> button:has-text("Cancel")').click()
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'Multiple input: COSMOS__CANCEL',
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    /paused \d+s/,
+  )
+
+  // Clicking go re-launches the dialog
+  await page.locator('[data-test=go-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    /waiting \d+s/,
+  )
+  await page.getByRole('checkbox', { name: 'abc123' }).check()
+  await page.getByRole('checkbox', { name: 'ghi789' }).check()
+  await page.locator('[data-test="prompt-ok"]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'Multiple input: ["abc123", "ghi789"]',
+  )
+})
+
 test('opens a dialog for prompt', async ({ page, utils }) => {
   // Default choices for prompt is Ok and Cancel
   await page.locator('textarea').fill(`value = prompt("Continue?")\nputs value`)
@@ -268,7 +303,7 @@ test('opens a dialog for prompt', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).toContainText('Continue?')
   await page.locator('.v-dialog >> button:has-text("Cancel")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'User input: Cancel',
+    'User input: COSMOS__CANCEL',
   )
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     /paused \d+s/,

@@ -177,6 +177,10 @@ module OpenC3
       message_box(string, *items, **options)
     end
 
+    def check_box(string, *items, **options)
+      message_box(string, *items, **options)
+    end
+
     def _file_dialog(title, message, filter:)
       answer = ''
       path = "./*"

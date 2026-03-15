@@ -31,13 +31,13 @@
       </v-toolbar>
       <div class="pa-2" style="max-height: 60vh; overflow: auto">
         <v-card-text class="text">
-          <v-row v-if="subtitle">
+          <v-row v-if="subtitle" class="mb-2">
             <v-card-subtitle>{{ subtitle }}</v-card-subtitle>
           </v-row>
           <v-row class="mt-1">
             <span v-text="message" />
           </v-row>
-          <v-row v-if="details" class="mt-1">
+          <v-row v-if="details" class="mt-3">
             <span v-text="details" />
           </v-row>
         </v-card-text>
@@ -69,6 +69,41 @@
             data-test="prompt-ok"
             :disabled="selectOkDisabled"
             @click="submitHandler"
+          >
+            Ok
+          </v-btn>
+        </v-card-actions>
+      </div>
+      <div v-else-if="layout === 'check'">
+        <v-row class="ma-2">
+          <v-col>
+            <v-checkbox
+              v-for="(button, index) in buttons"
+              :key="index"
+              v-model="checkedItems"
+              :label="button.title"
+              :value="button.value"
+              color="secondary"
+              density="compact"
+              hide-details
+              :data-test="`prompt-check-${button.value}`"
+            />
+          </v-col>
+        </v-row>
+        <v-card-actions class="px-2">
+          <v-spacer />
+          <v-btn
+            variant="outlined"
+            data-test="prompt-cancel"
+            @click="cancelHandler"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            variant="flat"
+            data-test="prompt-ok"
+            :disabled="checkedItems.length === 0"
+            @click="submitChecked"
           >
             Ok
           </v-btn>
@@ -124,7 +159,7 @@ export default {
     },
     layout: {
       type: String,
-      default: 'horizontal', // Also 'vertical' or 'combo' when means ComboBox
+      default: 'horizontal', // Also 'vertical', 'combo' for ComboBox, or 'check' for CheckBox
     },
     multiple: {
       type: Boolean,
@@ -138,6 +173,7 @@ export default {
     return {
       selectOkDisabled: true,
       selectedItem: null,
+      checkedItems: [],
     }
   },
   computed: {
@@ -166,8 +202,13 @@ export default {
     submitHandler: function () {
       this.$emit('response', this.selectedItem)
     },
+    submitChecked: function () {
+      this.$emit('response', this.checkedItems)
+    },
     cancelHandler: function () {
-      this.$emit('response', 'Cancel')
+      // Emit a unique value that indicates cancel was clicked so that the caller
+      // can differentiate between cancel and a button with the text 'Cancel'
+      this.$emit('response', 'COSMOS__CANCEL')
     },
   },
 }

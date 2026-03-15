@@ -147,6 +147,7 @@ try:
                             | "message_box"
                             | "vertical_message_box"
                             | "combo_box"
+                            | "check_box"
                             | "prompt"
                             | "prompt_for_hazardous"
                             | "prompt_for_critical_cmd"
