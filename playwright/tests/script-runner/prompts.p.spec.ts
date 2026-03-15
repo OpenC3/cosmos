@@ -445,3 +445,25 @@ test('test ruby prompts', async ({ page, utils }) => {
 test('test python prompts', async ({ page, utils }) => {
   await runScript(page, utils, 'file_dialog.py')
 })
+
+test('handles ruby crashes', async ({ page, utils }) => {
+  // puts will resolve to Ruby
+  await page.locator('textarea').fill(`puts "HI"\ndef def`)
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'SyntaxError',
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('crashed')
+  await expect(page.locator('[data-test=start-button]')).toBeEnabled()
+})
+
+test('handles python crashes', async ({ page, utils }) => {
+  // print will resolve to Python
+  await page.locator('textarea').fill(`print "HI"`)
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'SyntaxError',
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('crashed')
+  await expect(page.locator('[data-test=start-button]')).toBeEnabled()
+})
