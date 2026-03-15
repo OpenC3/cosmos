@@ -59,7 +59,7 @@ module OpenC3
     # @param start [DateTime] The start time of the activity.
     # @param stop [DateTime] The stop time of the activity.
     # @param data [Hash, optional] Additional data to associate with the activity. Defaults to {}. Any activity can provide "username", "notes", and "customTitle". "command", "script", and "reserve" keys are reserves for the corresponding activity kind, with "environment" also available for script activities.
-    # @param scope [String, optional] The scope of the activity. Defaults to OPENC3_SCOPE.
+    # @param scope [String, optional] The scope of the activity. Defaults to OPENC3_SCOPE, must correspond to the timeline.
     def create_timeline_activity(name, kind:, start:, stop:, data: {}, scope: $openc3_scope)
       kind = kind.to_s.downcase()
       kinds = %w(command script reserve)
