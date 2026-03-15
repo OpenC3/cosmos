@@ -276,7 +276,9 @@ password = ask_string("Enter your password", False, True)
 
 ### combo_box
 
-The message_box, vertical_message_box, and combo_box methods create a message box with arbitrary buttons or selections that the user can click. The text of the button clicked is returned.
+### check_box
+
+The message_box, vertical_message_box, combo_box and check_box methods create a message box with buttons / selections / checkboxes that the user can click. The text of the button / selection / checkbox is returned.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -285,6 +287,7 @@ The message_box, vertical_message_box, and combo_box methods create a message bo
 message_box("<Message>", "<button text 1>", ...)
 vertical_message_box("<Message>", "<button text 1>", ...)
 combo_box("<Message>", "<selection text 1>", ...)
+check_box("<Message>", "<checkbox text 1>", ...)
 ```
 
 </TabItem>
@@ -294,22 +297,26 @@ combo_box("<Message>", "<selection text 1>", ...)
 message_box("<Message>", "<button text 1>", ...)
 vertical_message_box("<Message>", "<button text 1>", ...)
 combo_box("<Message>", "<selection text 1>", ...)
+check_box("<Message>", "<checkbox text 1>", ...)
 ```
 
 </TabItem>
 </Tabs>
 
-| Parameter             | Description                      |
-| --------------------- | -------------------------------- |
-| Message               | Message to prompt the user with. |
-| Button/Selection Text | Text for a button or selection   |
+| Parameter                      | Description                                             |
+| ------------------------------ | ------------------------------------------------------- |
+| Message                        | Message to prompt the user with.                        |
+| Button/Selection/Checkbox Text | Text for a button or selection                          |
+| informative                    | Named parameter to add additional info to the dialog    |
+| details                        | Named parameter to add additional details to the dialog |
+| multiple                       | Named parameter to make the combo_box multi-select      |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-value = message_box("Select the sensor number", 'One', 'Two')
-value = vertical_message_box("Select the sensor number", 'One', 'Two')
+value = message_box("Select the sensor number", 'One', 'Two', informative: "Smaller informative font")
+value = vertical_message_box("Select the sensor number", 'One', 'Two', details: "Regular details")
 value = combo_box("Select the sensor number", 'One', 'Two')
 case value
 when 'One'
@@ -317,20 +324,34 @@ when 'One'
 when 'Two'
   puts 'Sensor Two'
 end
+values = combo_box("Select sensors to enable", 'One', 'Two', 'Three', multiple: true)
+values.each do |value|
+  puts "Enabling #{value}"
+end
+values = check_box("Select sensors to enable", 'One', 'Two', 'Three')
+values.each do |value|
+  puts "Enabling #{value}"
+end
 ```
 
 </TabItem>
 <TabItem value="python" label="Python Example">
 
 ```python
-value = message_box("Select the sensor number", 'One', 'Two')
-value = vertical_message_box("Select the sensor number", 'One', 'Two')
+value = message_box("Select the sensor number", 'One', 'Two', informative="Smaller informative font")
+value = vertical_message_box("Select the sensor number", 'One', 'Two' details="Regular details")
 value = combo_box("Select the sensor number", 'One', 'Two')
 match value:
     case 'One':
         print('Sensor One')
     case 'Two':
         print('Sensor Two')
+values = combo_box("Select sensors to enable", 'One', 'Two', 'Three', multiple=True)
+for value in values:
+    print(f"Enabling {value}")
+values = check_box("Select sensors to enable", 'One', 'Two', 'Three')
+for value in values:
+    print(f"Enabling {value}")
 ```
 
 </TabItem>
@@ -8962,25 +8983,25 @@ create_timeline_activity(name, kind, start, stop, data={})
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                                   |
-| --------- | ----------------------------------------------------------------------------- |
-| name      | Name of the timeline                                                          |
-| kind      | Type of the activity. One of COMMAND, SCRIPT, or RESERVE.                     |
-| start     | Start time of the activity. Time / datetime instance.                         |
-| stop      | Stop time of the activity. Time / datetime instance.                          |
+| Parameter | Description                                                                                                                                               |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| name      | Name of the timeline                                                                                                                                      |
+| kind      | Type of the activity. One of COMMAND, SCRIPT, or RESERVE.                                                                                                 |
+| start     | Start time of the activity. Time / datetime instance.                                                                                                     |
+| stop      | Stop time of the activity. Time / datetime instance.                                                                                                      |
 | data      | Hash / dict of data for COMMAND or SCRIPT type. Default is empty hash / dict. Valid keys are described [below](#create_timeline_activity-data-parameter). |
-| scope     | Scope of the activity. Default is the OPENC3_SCOPE, usually "DEFAULT". |
+| scope     | Scope of the activity. Default is the OPENC3_SCOPE, usually "DEFAULT".                                                                                    |
 
 #### create_timeline_activity data parameter
-| Key | Value |
-|-----|-------|
-| username | Username to display as the creator of the activity. Default is "operator". |
-| customTitle | Custom title to display for the activity. Default is empty string which results in no custom title being shown. |
-| notes | Notes to display for the activity. Default is empty string, which results in no notes being shown. |
-| command | Command to execute for COMMAND type activities. |
-| script | Script to execute for SCRIPT type activities. Should be given as the path to the script file to run, starting with the target name, e.g. "INST/procedures/collect.rb". |
-| environment | Array of environment variable key/value pairs to set for SCRIPT type activities, e.g. `[{key: "USER", value: "JASON"}]` |
 
+| Key         | Value                                                                                                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| username    | Username to display as the creator of the activity. Default is "operator".                                                                                             |
+| customTitle | Custom title to display for the activity. Default is empty string which results in no custom title being shown.                                                        |
+| notes       | Notes to display for the activity. Default is empty string, which results in no notes being shown.                                                                     |
+| command     | Command to execute for COMMAND type activities.                                                                                                                        |
+| script      | Script to execute for SCRIPT type activities. Should be given as the path to the script file to run, starting with the target name, e.g. "INST/procedures/collect.rb". |
+| environment | Array of environment variable key/value pairs to set for SCRIPT type activities, e.g. `[{key: "USER", value: "JASON"}]`                                                |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">

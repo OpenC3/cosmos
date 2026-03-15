@@ -132,6 +132,7 @@ SCRIPT_METHODS = [
     "message_box",
     "vertical_message_box",
     "combo_box",
+    "check_box",
     "prompt",
     "prompt_for_hazardous",
     "prompt_for_critical_cmd",
@@ -154,7 +155,7 @@ def running_script_method(method, *args, **kwargs):
             user_input = RunningScript.instance.user_input
             # All ask and prompt dialogs should include a 'Cancel' button
             # If they cancel we wait so they can potentially stop
-            if user_input == "Cancel":
+            if user_input == "COSMOS__CANCEL":
                 RunningScript.instance.perform_pause()
             else:
                 if method == "open_bucket_dialog":

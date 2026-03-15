@@ -100,6 +100,13 @@ try:
             )
         run_script_log(script_id, message, "YELLOW")
 
+    # Subscribe to the pub sub channel for this script BEFORE starting the thread
+    # to avoid a race condition where the thread crashes (e.g. SyntaxError) and
+    # publishes "shutdown" before the main thread subscribes, losing the message.
+    redis = Store.instance().build_redis()
+    p = redis.pubsub(ignore_subscribe_messages=True)
+    p.subscribe(f"script-api:cmd-running-script-channel:{script_id}")
+
     # Start the script in another thread
     running_script.run()
 
@@ -115,10 +122,6 @@ try:
         },
     )
 
-    # Subscribe to the pub sub channel for this script
-    redis = Store.instance().build_redis()
-    p = redis.pubsub(ignore_subscribe_messages=True)
-    p.subscribe(f"script-api:cmd-running-script-channel:{script_id}")
     for msg in p.listen():
         parsed_cmd = json.loads(msg["data"])
         if parsed_cmd != "shutdown" or (isinstance(parsed_cmd, dict) and not parsed_cmd.get("method")):
@@ -147,6 +150,7 @@ try:
                             | "message_box"
                             | "vertical_message_box"
                             | "combo_box"
+                            | "check_box"
                             | "prompt"
                             | "prompt_for_hazardous"
                             | "prompt_for_critical_cmd"
