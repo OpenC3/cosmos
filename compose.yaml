@@ -169,7 +169,7 @@ services:
       - "openc3-redis-ephemeral"
       - "openc3-buckets"
     volumes:
-      - "openc3-cmd-tlm-api-tmp-v:/src/tmp"
+      - "openc3-cmd-tlm-api-tmp-v:/tmp"
       - "openc3-gems-v:/gems"
       - "./plugins:/plugins:z"
       - "./cacert.pem:/devel/cacert.pem:z"
@@ -198,7 +198,7 @@ services:
       - "openc3-redis-ephemeral"
       - "openc3-buckets"
     volumes:
-      - "openc3-script-runner-api-tmp-v:/src/tmp"
+      - "openc3-script-runner-api-tmp-v:/tmp"
       - "openc3-gems-v:/gems:ro"
       - "./plugins:/plugins:z"
       - "./cacert.pem:/devel/cacert.pem:z"

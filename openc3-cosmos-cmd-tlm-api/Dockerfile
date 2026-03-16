@@ -18,18 +18,17 @@ RUN bundle config set --local without 'development test' \
   /tmp/* \
   /var/tmp/*
 
-RUN mkdir /src/tmp
-RUN rmdir /tmp
-RUN ln -s /src/tmp /tmp
 RUN ["chown", "-R", "openc3:openc3", "/src/"]
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./ ./
+RUN mkdir -p /tmp
+RUN rm -rf /src/tmp
+RUN ln -s /tmp /src/tmp
 RUN ["chmod", "-R", "777", "/src/tmp"]
-RUN chmod 1777 /src/tmp
 
 EXPOSE 2901
 
 USER ${USER_ID}:${GROUP_ID}
 
-ENV HOME=/src/tmp
-ENV TMPDIR=/src/tmp
+ENV HOME=/tmp
+ENV TMPDIR=/tmp
 CMD [ "shoreman" ]
