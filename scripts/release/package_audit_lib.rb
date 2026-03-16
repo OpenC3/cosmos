@@ -476,7 +476,8 @@ def check_tool_base(path, base_pkgs)
       files << "../packages/openc3-tool-base/public/index.html" unless path.include?('enterprise')
       files.each do |filename|
         html = File.read(filename)
-        html.gsub!(/materialdesignicons-.+.min.css/, "materialdesignicons-#{latest}.min.css")
+        html.gsub!(/materialdesignicons-.+\.min\.css/, "materialdesignicons-#{latest}.min.css")
+        html.gsub!(/woff2\?v=.+/, "woff2?v=#{latest}")
         File.open(filename, 'w') {|file| file.puts html }
       end
     end

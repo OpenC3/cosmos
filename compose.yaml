@@ -53,7 +53,7 @@ services:
 
   openc3-tsdb:
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
-    platform: "${OPENC3_TSDB_PLATFORM:-linux/amd64}"
+    platform: "${OPENC3_TSDB_PLATFORM}"
     # ports:
     #   # This gives complete access to the QuestDB instance, which is useful for testing and development.
     #   - "127.0.0.1:9000:9000" # OPENC3_TSDB_INGEST_PORT & QuestDB Console
@@ -281,7 +281,11 @@ services:
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
     healthcheck:
       # Test that Traefik is listening - pgrep not available in UBI/IronBank images
-      test: ["CMD-SHELL", "timeout 2 bash -c 'echo > /dev/tcp/127.0.0.1/2900' || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "timeout 2 bash -c 'echo > /dev/tcp/127.0.0.1/2900' || exit 1",
+        ]
       interval: 10s
       timeout: 3s
       retries: 5

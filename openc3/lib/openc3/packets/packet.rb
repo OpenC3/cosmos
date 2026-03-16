@@ -16,6 +16,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'digest'
+require 'active_support/core_ext/object/deep_dup'
 require 'openc3/packets/structure'
 require 'openc3/packets/packet_item'
 require 'openc3/ext/packet' if RUBY_ENGINE == 'ruby' and !ENV['OPENC3_NO_EXT']

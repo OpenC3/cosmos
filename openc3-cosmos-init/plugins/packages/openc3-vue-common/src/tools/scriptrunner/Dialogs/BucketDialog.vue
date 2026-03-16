@@ -274,7 +274,7 @@ export default {
       })
     },
     cancelHandler() {
-      this.$emit('response', 'Cancel')
+      this.$emit('response', 'COSMOS__CANCEL')
     },
   },
 }
