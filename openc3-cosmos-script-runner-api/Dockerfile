@@ -11,20 +11,17 @@ COPY Gemfile ./
 USER root
 
 ENV SKIP_DEV_GEMS=1
-RUN bundle config set --local without 'development test' \
-  && bundle install --quiet \
-  && rm -rf /usr/lib/ruby/gems/*/cache/* \
-  /var/cache/apk/* \
-  /tmp/* \
-  /var/tmp/*
+RUN bundle config set --local without 'development test' && \
+  bundle install --quiet && \
+  rm -rf /usr/lib/ruby/gems/*/cache/* /var/cache/apk/* /tmp/* /var/tmp/*
 
 RUN ["chown", "-R", "openc3:openc3", "/src/"]
-COPY  --chown=${IMAGE_USER}:${IMAGE_GROUP} ./ ./
-RUN mkdir -p /tmp
-RUN rm -rf /src/tmp
-RUN ln -s /tmp /src/tmp
-RUN ["chmod", "-R", "777", "/src/tmp"]
-RUN ["chmod", "-R", "555", "/src/scripts"]
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./ ./
+RUN mkdir -p /tmp && \
+  rm -rf /src/tmp && \
+  ln -s /tmp /src/tmp && \
+  chmod -R 777 /src/tmp && \
+  chmod -R 555 /src/scripts
 
 EXPOSE 2902
 

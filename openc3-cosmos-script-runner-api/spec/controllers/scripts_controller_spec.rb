@@ -13,7 +13,7 @@
 
 require "rails_helper"
 require "openc3/utilities/aws_bucket"
-require_relative "../../app/models/script"
+require 'openc3/utilities/script'
 
 RSpec.describe ScriptsController, type: :controller do
   before(:each) do
