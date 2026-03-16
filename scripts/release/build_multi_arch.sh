@@ -195,6 +195,7 @@ else
 fi
 cd ../openc3-tsdb
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_TSDB_VERSION_EXT=$OPENC3_TSDB_VERSION_EXT \
@@ -204,6 +205,7 @@ docker buildx build \
 if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_TSDB_VERSION_EXT=$OPENC3_TSDB_VERSION_EXT \
@@ -241,7 +243,6 @@ fi
 
 cd ../openc3-cosmos-cmd-tlm-api
 docker buildx build \
-  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
@@ -254,7 +255,6 @@ docker buildx build \
 if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 docker buildx build \
-  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
@@ -267,7 +267,6 @@ fi
 
 cd ../openc3-cosmos-script-runner-api
 docker buildx build \
-  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
