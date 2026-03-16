@@ -40,10 +40,11 @@ services:
     healthcheck:
       # Test that S3-compatible storage (versitygw) is responding on port 9000
       # A 403 Forbidden response means the server is healthy and responding
+      # Uses curl - available in both standard and UBI/IronBank images
       test:
         [
           "CMD-SHELL",
-          "wget -O- http://localhost:9000/ 2>&1 | grep -q 'Forbidden' || exit 1",
+          "curl -s http://localhost:9000/ 2>&1 | grep -q 'Forbidden' || exit 1",
         ]
       interval: 10s
       timeout: 5s
@@ -52,6 +53,7 @@ services:
 
   openc3-tsdb:
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
+    platform: "${OPENC3_TSDB_PLATFORM:-linux/amd64}"
     # ports:
     #   # This gives complete access to the QuestDB instance, which is useful for testing and development.
     #   - "127.0.0.1:9000:9000" # OPENC3_TSDB_INGEST_PORT & QuestDB Console
@@ -278,8 +280,8 @@ services:
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
     healthcheck:
-      # Test that Traefik process is running - ping endpoint is not configured
-      test: ["CMD-SHELL", "pgrep traefik || exit 1"]
+      # Test that Traefik is listening - pgrep not available in UBI/IronBank images
+      test: ["CMD-SHELL", "timeout 2 bash -c 'echo > /dev/tcp/127.0.0.1/2900' || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 5
