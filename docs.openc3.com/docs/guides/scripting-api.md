@@ -60,6 +60,8 @@ The following API methods have been removed from COSMOS v7. Since WITH_UNITS wer
 | wait_tolerance_raw       | api_shared | Removed, use [wait_tolerance](#wait_tolerance) and pass type              |
 | wait_check_tolerance_raw | api_shared | Removed, use [wait_check_tolerancet](#wait_check_tolerance) and pass type |
 
+The following API methods now return `COSMOS__CANCEL` instead of `Cancel` when the Cancel button is pushed in Script Runner: `ask`, `ask_string`, `message_box`, `vertical_message_box`, `combo_box`, `check_box`, `prompt`, `prompt_for_hazardous`, `prompt_for_critical_cmd`, `metadata_input`, `open_file_dialog`, `open_files_dialog`, `open_bucket_dialog`. Unless you are _explicitly_ checking the return value for the word 'Cancel' there are no changes required.
+
 ### Migration from COSMOS v5 to v6
 
 See the [Migrating From COSMOS 5 to COSMOS 6](../getting-started/upgrading#migrating-from-cosmos-5-to-cosmos-6) guide for other changes including migrating to Vue 3 and Vuetify 3.
