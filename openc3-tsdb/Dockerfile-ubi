@@ -1,0 +1,37 @@
+ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
+ARG OPENC3_TSDB_IMAGE=questdb/questdb
+ARG OPENC3_TSDB_VERSION=9.3.3
+
+# Use the RHEL variant of QuestDB (Red Hat UBI based)
+FROM ${OPENC3_DEPENDENCY_REGISTRY}/${OPENC3_TSDB_IMAGE}:${OPENC3_TSDB_VERSION}-rhel
+
+COPY cacert.pem /devel/cacert.pem
+ENV SSL_CERT_FILE=/devel/cacert.pem
+ENV CURL_CA_BUNDLE=/devel/cacert.pem
+ENV REQUESTS_CA_BUNDLE=/devel/cacert.pem
+ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
+# Configure QuestDB environment variables for performance tuning
+ENV QDB_CAIRO_SYSTEM_WRITER_DATA_APPEND_PAGE_SIZE=4K
+ENV QDB_CAIRO_WRITER_DATA_APPEND_PAGE_SIZE=4K
+ENV QDB_CAIRO_WAL_WRITER_DATA_APPEND_PAGE_SIZE=4K
+ENV QDB_CAIRO_SYSTEM_WAL_WRITER_DATA_APPEND_PAGE_SIZE=4K
+# trivy:ignore:DS010
+ENV QDB_CAIRO_WRITER_DATA_INDEX_KEY_APPEND_PAGE_SIZE=4K
+ENV QDB_CAIRO_WRITER_DATA_INDEX_VALUE_APPEND_PAGE_SIZE=4K
+
+# NOTE: No RUN instruction here intentionally.
+# QuestDB 9.3.3+ (Fedora-based) requires x86-64-v3 CPU instructions which QEMU
+# cannot emulate when cross-building on ARM hosts. COPY/ENV/metadata instructions
+# are handled by BuildKit on the host and do not require executing container code.
+USER root
+COPY --chmod=0755 ./docker-entrypoint.sh /docker-entrypoint.sh
+
+USER questdb
+
+WORKDIR /var/lib/questdb
+
+EXPOSE 9000/tcp
+EXPOSE 8812/tcp
+EXPOSE 9009/tcp
+
+ENTRYPOINT ["/docker-entrypoint.sh"]

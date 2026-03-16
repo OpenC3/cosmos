@@ -8,17 +8,21 @@ answer = combo_box("This is a combo box with details", 'one', 'two', 'three', in
 puts "answer:#{answer}"
 answer = combo_box("This is a combo box with info & details", 'one', 'two', 'three', informative: 'This is informative', details: 'Details details details!')
 puts "answer:#{answer}"
-answer = combo_box("This is a combo box", 'one', 'two', 'three', text_color: 'blue', background_color: 'grey', font_size: 20, font_family: 'courier', details: "Some more stuff")
+answer = combo_box("This is a combo box", 'one', 'two', 'three', details: "Some more stuff")
 puts "answer:#{answer}"
 answer = combo_box("This is a multi-select combo box", 'one', 'two', 'three', multiple: true)
 puts "answer:#{answer} len:#{answer.length} [0]:#{answer[0]}"
-answer = prompt("This is a test", text_color: 'blue', background_color: 'grey', font_size: 20, font_family: 'courier', details: "Some more stuff")
+answer = check_box("This is a check box", 'one', 'two', 'three')
+puts "answer:#{answer} len:#{answer.length} [0]:#{answer[0]}"
+answer = check_box("This is a check box with info & details", 'one', 'two', 'three', informative: 'This is informative', details: 'Details details details!')
+puts "answer:#{answer} len:#{answer.length} [0]:#{answer[0]}"
+answer = prompt("This is a test", details: "Some more stuff")
 puts "answer:#{answer}"
-answer = prompt("This is a test", font_size: 30, details: "Some more stuff")
+answer = prompt("This is a test", details: "Some more stuff")
 puts "answer:#{answer}"
-answer = message_box('This is a message box', 'one', 'two', 'three', text_color: 'blue', background_color: 'grey', font_size: 20, font_family: 'courier', informative: "Informative stuff", details: "Some more stuff")
+answer = message_box('This is a message box', 'one', 'two', 'three', informative: "Informative stuff", details: "Some more stuff")
 puts "answer:#{answer}"
-answer = vertical_message_box('This is a message box', 'one', 'two', 'three', text_color: 'blue', background_color: 'grey', font_size: 20, font_family: 'courier', informative: "Informative stuff", details: "Some more stuff")
+answer = vertical_message_box('This is a message box', 'one', 'two', 'three', informative: "Informative stuff", details: "Some more stuff")
 puts "answer:#{answer}"
 answer = ask("Let me ask you a question", "default")
 puts "answer:#{answer} class:#{answer.class}"

@@ -13,3 +13,11 @@ files.each do |file|
   puts file.read
   file.delete
 end
+
+# Specify the title and message and filter to txt files
+file = open_bucket_dialog("Open a file from the buckets", "Choose something interesting")
+puts file # Ruby File object
+puts file.path # Path of the tempfile (generally not used)
+puts file.filename # Filename that was selected in the dialog
+puts file.read
+file.delete

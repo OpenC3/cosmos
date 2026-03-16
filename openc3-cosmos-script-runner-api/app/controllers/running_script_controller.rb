@@ -175,7 +175,9 @@ class RunningScriptController < ApplicationController
       elsif params[:multiple]
         running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], multiple: JSON.generate(params[:answer], allow_nan: true), prompt_id: params[:prompt_id] })
       else
-        running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], answer: params[:answer], prompt_id: params[:prompt_id] })
+        # Convert ActionController::Parameters to a plain hash for nested objects (e.g. open_bucket_dialog)
+        answer = params[:answer].respond_to?(:to_unsafe_h) ? params[:answer].to_unsafe_h : params[:answer]
+        running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], answer: answer, prompt_id: params[:prompt_id] })
       end
       OpenC3::Logger.info("Script prompt action #{params[:method]}: #{running_script['filename']}", scope: params[:scope], user: username())
       head :ok

@@ -116,7 +116,7 @@ puts value`)
   })
   await page.locator('.v-dialog >> button:has-text("Cancel")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'User input: Cancel',
+    'User input: COSMOS__CANCEL',
   )
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     /paused \d+s/,
@@ -209,7 +209,7 @@ puts value`)
   })
   await page.locator('.v-dialog >> button:has-text("Cancel")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'User input: Cancel',
+    'User input: COSMOS__CANCEL',
   )
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     /paused \d+s/,
@@ -238,7 +238,7 @@ test('opens a dialog with dropdowns for combo_box', async ({ page, utils }) => {
   })
   await page.locator('.v-dialog >> button:has-text("Cancel")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'User input: Cancel',
+    'User input: COSMOS__CANCEL',
   )
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     /paused \d+s/,
@@ -258,6 +258,41 @@ test('opens a dialog with dropdowns for combo_box', async ({ page, utils }) => {
   )
 })
 
+test('opens a dialog with checkboxes for check_box', async ({
+  page,
+  utils,
+}) => {
+  await page
+    .locator('textarea')
+    .fill(
+      `value = check_box("Select values to enable", "abc123", "def456", "ghi789")\nputs value`,
+    )
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('.v-dialog')).toBeVisible({
+    timeout: 20000,
+  })
+  await page.locator('.v-dialog >> button:has-text("Cancel")').click()
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'Multiple input: COSMOS__CANCEL',
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    /paused \d+s/,
+  )
+
+  // Clicking go re-launches the dialog
+  await page.locator('[data-test=go-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    /waiting \d+s/,
+  )
+  await page.getByRole('checkbox', { name: 'abc123' }).check()
+  await page.getByRole('checkbox', { name: 'ghi789' }).check()
+  await page.locator('[data-test="prompt-ok"]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'Multiple input: ["abc123", "ghi789"]',
+  )
+})
+
 test('opens a dialog for prompt', async ({ page, utils }) => {
   // Default choices for prompt is Ok and Cancel
   await page.locator('textarea').fill(`value = prompt("Continue?")\nputs value`)
@@ -268,7 +303,7 @@ test('opens a dialog for prompt', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).toContainText('Continue?')
   await page.locator('.v-dialog >> button:has-text("Cancel")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'User input: Cancel',
+    'User input: COSMOS__CANCEL',
   )
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     /paused \d+s/,
@@ -282,11 +317,34 @@ test('opens a dialog for prompt', async ({ page, utils }) => {
   await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
 })
 
-test('opens a file dialog', async ({ page, utils }) => {
-  await page.locator('textarea')
-    .fill(`file = open_file_dialog("Open a single file", "Choose something interesting")
-puts file.read
-file.delete`)
+async function openFile(page, utils, filename) {
+  await page.locator('[data-test=script-runner-file]').click()
+  await page.locator('text=Open File').click()
+  await utils.sleep(500) // Allow background data to fetch
+  await expect(
+    page.locator('.v-dialog').getByText('INST2', { exact: true }),
+  ).toBeVisible()
+  let parts = filename.split('.')
+  await page.locator('[data-test=file-open-save-search] input').fill(parts[0])
+  await utils.sleep(100)
+  await page
+    .locator('[data-test=file-open-save-search] input')
+    .fill(`.${parts[1]}`)
+  await page.locator(`text=${filename}`).click()
+  await page.locator('[data-test=file-open-save-submit-btn]').click()
+  await expect(page.locator('.v-dialog')).not.toBeVisible()
+
+  // Check for potential "<User> is editing this script"
+  // This can happen if we had to do a retry on this test
+  const someone = page.getByText('is editing this script')
+  if (await someone.isVisible()) {
+    await page.locator('[data-test="unlock-button"]').click()
+    await page.locator('[data-test="confirm-dialog-force unlock"]').click()
+  }
+}
+
+async function runScript(page, utils, filename) {
+  await openFile(page, utils, filename)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('.v-dialog')).toBeVisible({
     timeout: 20000,
@@ -314,13 +372,98 @@ file.delete`)
     // Open the file chooser
     page.getByLabel('Choose File').first().click(),
   ])
-  await fileChooser.setFiles('package.json')
+  await fileChooser.setFiles('.prettierrc.js')
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
+  await utils.sleep(500)
+
+  await expect(page.locator('.v-dialog')).toBeVisible()
+  await expect(page.locator('.v-dialog')).toContainText('Open multiple files')
+  // Note that Promise.all prevents a race condition
+  // between clicking and waiting for the file chooser.
+  const [fileChooser2] = await Promise.all([
+    // It is important to call waitForEvent before click to set up waiting.
+    page.waitForEvent('filechooser'),
+    // Open the file chooser
+    page.getByLabel('Choose File').first().click(),
+  ])
+  await fileChooser2.setFiles(['pnpm-workspace.yaml', 'reset_storage_state.sh'])
+  await page.locator('.v-dialog >> button:has-text("Ok")').click()
+  await utils.sleep(500)
+
+  await expect(page.locator('.v-dialog')).toBeVisible()
+  await expect(page.locator('.v-dialog')).toContainText(
+    'Open a file from the buckets',
+  )
+  await page.getByText('config', { exact: true }).click()
+  await page
+    .locator('[data-test="bucket-item-DEFAULT"]')
+    .getByText('DEFAULT')
+    .click()
+  await page
+    .locator('[data-test="bucket-item-targets"]')
+    .getByText('targets')
+    .click()
+  await page
+    .locator('[data-test="bucket-item-INST2"]')
+    .getByText('INST2')
+    .click()
+  await page.getByText('target.txt').click()
+  await page.locator('[data-test="bucket-ok"]').click()
+
   await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'File(s): ["package.json"]',
+    /File\(s\): \[['"].prettierrc.js['"]\]/,
+  )
+  // Verify something from .prettierrc.js
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'bracketSpacing: true',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'devDependencies',
+    /File\(s\): \[['"]pnpm-workspace.yaml['"], ['"]reset_storage_state.sh['"]\]/,
   )
+  // Verify something from pnpm-workspace.yaml
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'nodeLinker: hoisted',
+  )
+  // Verify something from reset_storage_state.sh
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'Initialize an empty storageState',
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'Reading DEFAULT/targets/INST2/target.txt',
+  )
+  // Verify something from INST2/target.txt
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'TELEMETRY inst_tlm_override.txt',
+  )
+}
+
+test('test ruby prompts', async ({ page, utils }) => {
+  await runScript(page, utils, 'file_dialog.rb')
+})
+
+test('test python prompts', async ({ page, utils }) => {
+  await runScript(page, utils, 'file_dialog.py')
+})
+
+test('handles ruby crashes', async ({ page, utils }) => {
+  // puts will resolve to Ruby
+  await page.locator('textarea').fill(`puts "HI"\ndef def`)
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'SyntaxError',
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('crashed')
+  await expect(page.locator('[data-test=start-button]')).toBeEnabled()
+})
+
+test('handles python crashes', async ({ page, utils }) => {
+  // print will resolve to Python
+  await page.locator('textarea').fill(`print "HI"`)
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'SyntaxError',
+  )
+  await expect(page.locator('[data-test=state] input')).toHaveValue('crashed')
+  await expect(page.locator('[data-test=start-button]')).toBeEnabled()
 })

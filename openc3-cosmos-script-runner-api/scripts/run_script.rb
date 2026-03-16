@@ -74,17 +74,21 @@ begin
     run_script_log(id, message, 'YELLOW')
   end
 
-  # Start the script in another thread
-  running_script.run
-
-  # Notify frontend of number of running scripts in this scope
-  running = OpenC3::ScriptStatusModel.all(scope: scope, type: "running")
-  running_script_anycable_publish("all-scripts-channel", { type: :start, filename: script_status.filename, active_scripts: running.length, scope: scope })
-
-  # Subscribe to the pub sub channel for this script
+  # Subscribe to the pub sub channel for this script BEFORE starting the thread
+  # to avoid a race condition where the thread crashes (e.g. SyntaxError) and
+  # publishes "shutdown" before the main thread subscribes, losing the message.
   # Note: SCRIPT_API = 'script-api' in running_script.rb
   redis = OpenC3::Store.instance.build_redis
   redis.subscribe([SCRIPT_API, "cmd-running-script-channel:#{id}"].compact.join(":")) do |on|
+    on.subscribe do |_channel, _subscriptions|
+      # Start the script in another thread once we're subscribed
+      running_script.run
+
+      # Notify frontend of number of running scripts in this scope
+      running = OpenC3::ScriptStatusModel.all(scope: scope, type: "running")
+      running_script_anycable_publish("all-scripts-channel", { type: :start, filename: script_status.filename, active_scripts: running.length, scope: scope })
+    end
+
     on.message do |_channel, msg|
       parsed_cmd = JSON.parse(msg, allow_nan: true, create_additions: true)
       run_script_log(id, "Script #{path} received command: #{msg}") unless parsed_cmd == "shutdown" or parsed_cmd["method"]
@@ -106,8 +110,8 @@ begin
         if parsed_cmd["method"]
           case parsed_cmd["method"]
           # This list matches the list in running_script.rb:44
-          when "ask", "ask_string", "message_box", "vertical_message_box", "combo_box", "prompt", "prompt_for_hazardous",
-            "prompt_for_critical_cmd", "metadata_input", "open_file_dialog", "open_files_dialog"
+          when "ask", "ask_string", "message_box", "vertical_message_box", "combo_box", "check_box", "prompt", "prompt_for_hazardous",
+            "prompt_for_critical_cmd", "metadata_input", "open_file_dialog", "open_files_dialog", "open_bucket_dialog"
             unless running_script.prompt_id.nil?
               if running_script.prompt_id == parsed_cmd["prompt_id"]
                 if parsed_cmd["password"]
@@ -115,6 +119,9 @@ begin
                 elsif parsed_cmd["multiple"]
                   running_script.user_input = JSON.parse(parsed_cmd["multiple"])
                   run_script_log(id, "Multiple input: #{running_script.user_input}")
+                elsif parsed_cmd["method"] == 'open_bucket_dialog'
+                  running_script.user_input = parsed_cmd["answer"]
+                  run_script_log(id, "Bucket file: #{running_script.user_input}")
                 elsif parsed_cmd["method"].include?('open_file')
                   running_script.user_input = parsed_cmd["answer"]
                   run_script_log(id, "File(s): #{running_script.user_input}")

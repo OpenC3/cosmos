@@ -286,7 +286,7 @@ class StreamingObject
   attr_reader :target_name    # String: target name, e.g. "INST"
   attr_reader :packet_name    # String: packet name, e.g. "ADCS"
   attr_reader :item_name      # String or nil: item name (nil for whole packets)
-  attr_reader :value_type     # Symbol: :RAW, :CONVERTED, :FORMATTED, :WITH_UNITS, :PURE
+  attr_reader :value_type     # Symbol: :RAW, :CONVERTED, :FORMATTED, :PURE
   attr_reader :reduced_type   # Symbol or nil: :MIN, :MAX, :AVG, :STDDEV (reduced modes only)
   attr_accessor :start_time   # Integer or nil: nanoseconds from epoch
   attr_accessor :end_time     # Integer or nil: nanoseconds from epoch

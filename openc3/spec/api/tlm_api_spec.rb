@@ -673,10 +673,12 @@ module OpenC3
         items << 'INST__ADCS__Q1__WITH_UNITS'
         items << 'INST__LATEST__CCSDSTYPE__WITH_UNITS'
         items << 'INST__LATEST__CCSDSVER__WITH_UNITS'
+        items << 'INST__ADCS__POSX__WITH_UNITS' # No conversion or states but has units
         # Ask for FORMATTED for an item which has various formats
         items << 'INST__ADCS__Q2__FORMATTED'
         items << 'INST__ADCS__CCSDSTYPE__FORMATTED'
         items << 'INST__ADCS__CCSDSVER__FORMATTED'
+        items << 'INST__ADCS__POSX__FORMATTED' # No conversion or states but has units
         # Ask for CONVERTED for an item which has various formats
         items << 'INST__HEALTH_STATUS__COLLECT_TYPE__CONVERTED' # states but no conversion
         items << 'INST__ADCS__STAR1ID__CONVERTED' # conversion but no states
@@ -701,9 +703,11 @@ module OpenC3
           'INST__ADCS__Q1__FORMATTED',
           'INST__LATEST__CCSDSTYPE__CONVERTED',
           'INST__LATEST__CCSDSVER__RAW',
+          'INST__ADCS__POSX__FORMATTED',
           'INST__ADCS__Q2__FORMATTED',
           'INST__ADCS__CCSDSTYPE__CONVERTED',
           'INST__ADCS__CCSDSVER__RAW',
+          'INST__ADCS__POSX__FORMATTED',
           'INST__HEALTH_STATUS__COLLECT_TYPE__CONVERTED',
           'INST__ADCS__STAR1ID__CONVERTED',
           'INST__ADCS__CCSDSVER__RAW',

@@ -655,7 +655,14 @@ case $1 in
       exit 0
     fi
     check_root
-    OPENC3_IMAGE_SUFFIX=-ubi OPENC3_REDIS_VOLUME=/home/data ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
+    # QuestDB RHEL images have a native arm64 variant; run tsdb natively on ARM
+    # to avoid the x86-64-v3 QEMU emulation failure. All other services run as amd64.
+    if [[ "$(uname -m)" == "arm64" ]]; then
+      OPENC3_TSDB_PLATFORM=linux/arm64
+    else
+      OPENC3_TSDB_PLATFORM=linux/amd64
+    fi
+    DOCKER_DEFAULT_PLATFORM=linux/amd64 OPENC3_IMAGE_SUFFIX=-ubi OPENC3_REDIS_VOLUME=/home/data OPENC3_TSDB_PLATFORM=$OPENC3_TSDB_PLATFORM ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
     ;;
   test )
     # Check for help at any position

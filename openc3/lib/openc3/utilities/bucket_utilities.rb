@@ -117,7 +117,9 @@ module OpenC3
       # Allow caching for files that have a filename versioning strategy
       has_version_number = /(-|_|\.)\d+(-|_|\.)\d+(-|_|\.)\d+\./.match(filename)
       has_content_hash = /[\.-][a-f0-9]{20}\./.match(filename)
-      return nil if has_version_number or has_content_hash
+      # Font files are immutable assets deployed with plugins and safe to cache
+      is_font = /\.(woff2?|eot|ttf|otf)$/.match(filename)
+      return nil if has_version_number or has_content_hash or is_font
       return 'no-store'
     end
 
