@@ -96,7 +96,7 @@ module OpenC3
               zip_file.extract(entry.name, destination_directory: targets_path)
             end
           end
-          FileUtils.rm(zip_path)
+          FileUtils.rm(zip_path) if File.exist?(zip_path)
 
           # Now add any modifications in targets_modified/TARGET/cmd_tlm
           # This adds support for remembering dynamically created packets

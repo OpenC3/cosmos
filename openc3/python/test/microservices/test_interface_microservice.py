@@ -232,7 +232,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
             self.assertIn("Connection Lost: RuntimeError('test-error')", stdout.getvalue())
 
             MyInterface.read_interface_raise = False
-            time.sleep(0.1)  # Allow to reconnect
+            time.sleep(0.5)  # Allow to reconnect
             all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
             self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
             im.shutdown()

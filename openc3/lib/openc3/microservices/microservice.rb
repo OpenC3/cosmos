@@ -106,7 +106,7 @@ module OpenC3
       @temp_dir = File.join(Dir.tmpdir, @name)
       # Create temp folder for this microservice
       # This will already have been setup by plugin_microservice.rb if USER
-      if microservice_type != 'USER'
+      if is_plugin or microservice_type != 'USER'
         FileUtils.remove_entry_secure(@temp_dir, true)
         Dir.mkdir(@temp_dir)
       end

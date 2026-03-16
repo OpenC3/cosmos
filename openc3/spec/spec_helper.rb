@@ -262,6 +262,7 @@ def capture_io(output = false)
 
   # Create a StringIO object to capture the output
   stdout = StringIO.new('', 'r+')
+  saved_dollar_stdout = $stdout
   $stdout = stdout
   saved_stdout = nil
   OpenC3.disable_warnings do
@@ -273,17 +274,19 @@ def capture_io(output = false)
   end
 
   # Yield back the StringIO so they can match against it
-  yield stdout
+  begin
+    yield stdout
+  ensure
+    # Restore the logger to FATAL to prevent all kinds of output
+    OpenC3::Logger.level = Logger::FATAL
 
-  # Restore the logger to FATAL to prevent all kinds of output
-  OpenC3::Logger.level = Logger::FATAL
+    # Restore the STDOUT constant
+    OpenC3.disable_warnings { Object.const_set(:STDOUT, saved_stdout) }
 
-  # Restore the STDOUT constant
-  OpenC3.disable_warnings { Object.const_set(:STDOUT, saved_stdout) }
-
-  # Restore the $stdout global to be STDOUT
-  $stdout = STDOUT
-  puts stdout.string if output # Print the capture for debugging
+    # Restore the $stdout global to be STDOUT
+    $stdout = saved_dollar_stdout
+    puts stdout.string if output # Print the capture for debugging
+  end
 end
 
 # Get a list of running threads, ignoring jruby system threads if necessary.
