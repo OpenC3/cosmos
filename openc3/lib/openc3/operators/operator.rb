@@ -54,8 +54,10 @@ module OpenC3
     end
 
     def finalize
-      extract()
-      close()
+      unless closed?
+        extract()
+        close()
+      end
       unlink()
 
       output = ''
@@ -174,7 +176,7 @@ module OpenC3
         end
         @process.stop
       end
-      FileUtils.remove_entry_secure(@temp_dir, true)
+      FileUtils.remove_entry_secure(@temp_dir, true) if @temp_dir
       @process = nil
     end
 
@@ -308,6 +310,7 @@ module OpenC3
 
     def shutdown_processes(processes)
       # Make a copy so we don't mutate original
+      hard_stop_processes = processes.dup
       processes = processes.dup
 
       Logger.info("Commanding soft stops...")
@@ -318,6 +321,7 @@ module OpenC3
         processes_to_remove = []
         processes.each do |name, p|
           unless p.alive?
+            p.extract_output # cleanup temp files
             processes_to_remove << name
             Logger.debug("Soft stop process successful: #{p.cmd_line}", scope: p.scope)
           end
@@ -331,10 +335,8 @@ module OpenC3
         end
         sleep(0.1)
       end
-      if processes.length > 0
-        Logger.debug("Commanding hard stops...")
-        processes.each { |_name, p| p.hard_stop }
-      end
+      Logger.debug("Commanding hard stops...")
+      hard_stop_processes.each { |_name, p| p.extract_output; p.hard_stop }
     end
 
     def shutdown

@@ -886,6 +886,14 @@ module OpenC3
     def shutdown(_sig = nil)
       @logger.info "#{@interface ? @interface.name : @name}: shutdown requested"
       stop()
+      if @interface and @interface.stream_log_pair
+        threads = @interface.stream_log_pair.shutdown
+        # Wait for all the logging threads to move files to buckets
+        threads.flatten.compact.each do |thread|
+          thread.join
+        end
+        @interface.stream_log_pair.cleanup
+      end
       super()
     end
 

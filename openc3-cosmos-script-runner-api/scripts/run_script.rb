@@ -21,8 +21,9 @@ require 'openc3/config/config_parser'
 require 'openc3/utilities/store'
 require 'openc3/utilities/bucket'
 require 'json'
-require '../app/models/script'
 require 'openc3/utilities/running_script'
+
+working_dir = Dir.pwd
 
 # Load the bucket client code to ensure we authenticate outside ENV vars
 OpenC3::Bucket.getClient()
@@ -178,5 +179,6 @@ ensure
     running_script_anycable_publish("all-scripts-channel", { type: :complete, filename: script_status.filename, active_scripts: running.length, scope: scope })
   ensure
     running_script.stop_message_log if running_script
+    FileUtils.rm_rf(working_dir)
   end
 end

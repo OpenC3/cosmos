@@ -105,6 +105,9 @@ module OpenC3
       threads.flatten.compact.each do |thread|
         thread.join
       end
+      @tlws.each do |topic, tlw|
+        tlw.cleanup
+      end
       super()
     end
   end

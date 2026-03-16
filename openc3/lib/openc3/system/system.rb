@@ -81,22 +81,22 @@ module OpenC3
       # Nothing to do if there are no targets
       return if target_names.nil? or target_names.length == 0
       if @@instance.nil?
-        FileUtils.mkdir_p("#{base_dir}/targets")
+        targets_path = "#{base_dir}/_targets"
+        FileUtils.mkdir_p(targets_path)
         bucket = Bucket.getClient()
         target_names.each do |target_name|
           # Retrieve bucket/targets/target_name/<TARGET>_current.zip
-          zip_path = "#{base_dir}/targets/#{target_name}_current.zip"
+          zip_path = "#{targets_path}/#{target_name}_current.zip"
           FileUtils.mkdir_p(File.dirname(zip_path))
           bucket_key = "#{scope}/target_archives/#{target_name}/#{target_name}_current.zip"
           Logger.info("Retrieving #{bucket_key} from targets bucket")
           bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: bucket_key, path: zip_path)
-          targets_path = "#{base_dir}/targets"
-          FileUtils.mkdir_p(targets_path)
           Zip::File.open(zip_path) do |zip_file|
             zip_file.each do |entry|
               zip_file.extract(entry.name, destination_directory: targets_path)
             end
           end
+          FileUtils.rm(zip_path)
 
           # Now add any modifications in targets_modified/TARGET/cmd_tlm
           # This adds support for remembering dynamically created packets
@@ -106,13 +106,13 @@ module OpenC3
           _, files = bucket.list_files(bucket: ENV['OPENC3_CONFIG_BUCKET'], path: bucket_path)
           files.each do |file|
             bucket_key = File.join(bucket_path, file['name'])
-            local_path = "#{base_dir}/targets/#{target_name}/cmd_tlm/#{file['name']}"
+            local_path = "#{targets_path}/#{target_name}/cmd_tlm/#{file['name']}"
             bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: bucket_key, path: local_path)
           end
         end
 
         # Build System from targets
-        System.instance(target_names, "#{base_dir}/targets")
+        System.instance(target_names, targets_path)
       end
     end
 

@@ -250,7 +250,12 @@ class RunningScript:
         else:
             scope = OPENC3_SCOPE
             tags = []
-        cls.my_message_log = MessageLog("sr", os.path.join(RAILS_ROOT, "log"), tags=tags, scope=scope)
+
+        log_dir = os.path.join(RAILS_ROOT, "tmp", "script_logs")
+        if not os.path.exists(log_dir):
+            os.mkdir(log_dir)
+
+        cls.my_message_log = MessageLog("sr", log_dir, tags=tags, scope=scope)
         return cls.my_message_log
 
     def __init__(self, script_status):
@@ -930,7 +935,9 @@ class RunningScript:
                 parts[0] += f"_{init_split[-1]}"
             self.suite_report = SuiteRunner.suite_results.report()
             # Write out the report to a local file
-            log_dir = os.path.join(RAILS_ROOT, "log")
+            log_dir = os.path.join(RAILS_ROOT, "tmp", "script_logs")
+            if not os.path.exists(log_dir):
+                os.mkdir(log_dir)
             filename = os.path.join(log_dir, build_timestamped_filename(["sr", "__".join(parts)]))
             with open(filename, "wb") as file:
                 file.write(SuiteRunner.suite_results.report().encode())

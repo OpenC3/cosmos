@@ -951,6 +951,9 @@ class InterfaceMicroservice(Microservice):
             name = self.interface.name
         self.logger.info(f"{name}: shutdown requested")
         self.stop()
+        if self.interface is not None and self.interface.stream_log_pair is not None:
+            # In python shutdown does the join and cleanup
+            self.interface.stream_log_pair.shutdown()
         super().shutdown()
 
     def graceful_kill(self):

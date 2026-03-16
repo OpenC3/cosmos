@@ -164,36 +164,41 @@ module OpenC3
       if target_name.include?('..') || target_name.include?('/') || target_name.include?('\\')
         raise ArgumentError, "Invalid target_name: #{target_name.inspect}"
       end
-      tmp_dir = Dir.mktmpdir
-      zip_filename = File.join(tmp_dir, "#{target_name}.zip")
-      Zip.continue_on_exists_proc = true
-      zip = Zip::File.open(zip_filename, create: true)
+      temp_dir = Dir.mktmpdir
+      begin
+        zip_filename = File.join(temp_dir, "#{target_name}.zip")
+        Zip.continue_on_exists_proc = true
+        zip = Zip::File.open(zip_filename, create: true)
 
-      if ENV['OPENC3_LOCAL_MODE']
-        OpenC3::LocalMode.zip_target(target_name, zip, scope: scope)
-      else
-        bucket = Bucket.getClient()
-        # The trailing slash is important!
-        prefix = "#{scope}/targets_modified/#{target_name}/"
-        resp = bucket.list_objects(
-          bucket: ENV['OPENC3_CONFIG_BUCKET'],
-          prefix: prefix,
-        )
-        resp.each do |item|
-          # item.key looks like DEFAULT/targets_modified/INST/screens/blah.txt
-          base_path = item.key.sub(prefix, '') # remove prefix
-          local_path = File.join(tmp_dir, base_path)
-          # Ensure dir structure exists, get_object fails if not
-          FileUtils.mkdir_p(File.dirname(local_path))
-          bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: item.key, path: local_path)
-          zip.add(base_path, local_path)
+        if ENV['OPENC3_LOCAL_MODE']
+          OpenC3::LocalMode.zip_target(target_name, zip, scope: scope)
+        else
+          bucket = Bucket.getClient()
+          # The trailing slash is important!
+          prefix = "#{scope}/targets_modified/#{target_name}/"
+          resp = bucket.list_objects(
+            bucket: ENV['OPENC3_CONFIG_BUCKET'],
+            prefix: prefix,
+          )
+          resp.each do |item|
+            # item.key looks like DEFAULT/targets_modified/INST/screens/blah.txt
+            base_path = item.key.sub(prefix, '') # remove prefix
+            local_path = File.join(temp_dir, base_path)
+            # Ensure dir structure exists, get_object fails if not
+            FileUtils.mkdir_p(File.dirname(local_path))
+            bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: item.key, path: local_path)
+            zip.add(base_path, local_path)
+          end
         end
-      end
-      zip.close
+        zip.close
 
-      result = OpenStruct.new
-      result.filename = File.basename(zip_filename)
-      result.contents = File.read(zip_filename, mode: 'rb')
+        result = OpenStruct.new
+        result.filename = File.basename(zip_filename)
+        result.contents = File.read(zip_filename, mode: 'rb')
+      ensure
+        FileUtils.remove_entry_secure(temp_dir, true)
+      end
+
       return result
     end
 

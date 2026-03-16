@@ -11,6 +11,7 @@
 require "rails_helper"
 require "tempfile"
 require "open3"
+require 'openc3/utilities/script'
 
 RSpec.describe Script, type: :model do
   before(:each) do

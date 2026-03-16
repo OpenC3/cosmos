@@ -11,10 +11,13 @@
 
 import json
 import os
+import shutil
 import sys
 import time
 import traceback
 from datetime import datetime, timezone
+
+working_dir = os.getcwd()
 
 from openc3.environment import OPENC3_CONFIG_BUCKET
 from openc3.models.script_status_model import ScriptStatusModel
@@ -259,3 +262,4 @@ finally:
     finally:
         if running_script:
             running_script.stop_message_log()
+        shutil.rmtree(working_dir)
