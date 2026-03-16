@@ -1,4 +1,14 @@
-from openc3.script import *
+"""Interactive procedure demonstrating all interactive APIs."""
+
+from openc3.script import (
+    prompt,
+    combo_box,
+    check_box,
+    message_box,
+    vertical_message_box,
+    ask,
+    ask_string,
+)
 
 INFORMATIVE = "This is informative"
 DETAILS = "Additional details"
@@ -38,35 +48,34 @@ answer = combo_box(
     "one",
     "two",
     "three",
-    text_color="blue",
-    background_color="grey",
-    font_size=20,
-    font_family="courier",
     details=DETAILS,
 )
 print(f"answer:{answer}")
 answer = combo_box("This is a multi-select combo box", "one", "two", "three", multiple=True)
 print(f"answer:{answer} len:{len(answer)}")
+answer = check_box("This is a check box", "one", "two", "three")
+print(f"answer:{answer} len:{len(answer)}")
+answer = check_box(
+    "This is a check box with info & details",
+    "one",
+    "two",
+    "three",
+    informative=INFORMATIVE,
+    details=DETAILS,
+)
+print(f"answer:{answer} len:{len(answer)}")
 answer = prompt(
     "This is a test",
-    text_color="blue",
-    background_color="grey",
-    font_size=20,
-    font_family="courier",
     details=DETAILS,
 )
 print(f"answer:{answer}")
-answer = prompt("This is a test", font_size=30, details=DETAILS)
+answer = prompt("This is a test", details=DETAILS)
 print(f"answer:{answer}")
 answer = message_box(
     "This is a message box",
     "one",
     "two",
     "three",
-    text_color="blue",
-    background_color="grey",
-    font_size=20,
-    font_family="courier",
     informative="Informative stuff",
     details=DETAILS,
 )
@@ -76,10 +85,6 @@ answer = vertical_message_box(
     "one",
     "two",
     "three",
-    text_color="blue",
-    background_color="grey",
-    font_size=20,
-    font_family="courier",
     informative="Informative stuff",
     details=DETAILS,
 )

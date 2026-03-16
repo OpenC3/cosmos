@@ -60,7 +60,7 @@ module OpenC3
     private
     # Define all the user input methods used in scripting which we need to broadcast to the frontend
     # Note: This list matches the list in run_script.rb:116
-    SCRIPT_METHODS = %i[ask ask_string message_box vertical_message_box combo_box prompt prompt_for_hazardous
+    SCRIPT_METHODS = %i[ask ask_string message_box vertical_message_box combo_box check_box prompt prompt_for_hazardous
       prompt_for_critical_cmd metadata_input open_file_dialog open_files_dialog open_bucket_dialog]
     SCRIPT_METHODS.each do |method|
       define_method(method) do |*args, **kwargs|
@@ -72,7 +72,7 @@ module OpenC3
             input = RunningScript.instance.user_input
             # All ask and prompt dialogs should include a 'Cancel' button
             # If they cancel we wait so they can potentially stop
-            if input == 'Cancel'
+            if input == 'COSMOS__CANCEL'
               RunningScript.instance.perform_pause
             else
               if method.to_s == 'open_bucket_dialog'

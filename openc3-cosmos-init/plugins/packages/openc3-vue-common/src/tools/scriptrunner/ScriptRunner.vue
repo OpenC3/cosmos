@@ -2343,20 +2343,25 @@ export default {
           this.prompt.show = true
           break
         case 'combo_box':
+        case 'check_box':
           if (data.kwargs && data.kwargs.informative) {
             this.prompt.subtitle = data.kwargs.informative
           }
           if (data.kwargs && data.kwargs.details) {
             this.prompt.details = data.kwargs.details
           }
-          if (data.kwargs && data.kwargs.multiple) {
+          // check_box is always multiple choice, combo_box is single choice unless kwargs.multiple is set to true
+          if (
+            data.method === 'check_box' ||
+            (data.kwargs && data.kwargs.multiple)
+          ) {
             this.prompt.multiple = true
           }
           this.prompt.message = data.args[0]
           data.args.slice(1).forEach((v) => {
             this.prompt.buttons.push({ title: v, value: v })
           })
-          this.prompt.layout = 'combo'
+          this.prompt.layout = data.method.split('_')[0]
           this.prompt.callback = this.promptDialogCallback
           this.prompt.show = true
           break
@@ -2423,12 +2428,12 @@ export default {
       }
     },
     async fileDialogCallback(files) {
-      // Set fileNames to 'Cancel' in case they cancelled
+      // Set fileNames to 'COSMOS__CANCEL' in case they cancelled
       // otherwise we will populate it with the file names they selected
-      let fileNames = 'Cancel'
+      let fileNames = 'COSMOS__CANCEL'
       // Record all the API request promises so we can ensure they complete
       let promises = []
-      if (files != 'Cancel') {
+      if (files != 'COSMOS__CANCEL') {
         fileNames = []
         files.forEach((file) => {
           fileNames.push(file.name)
