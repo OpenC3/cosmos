@@ -17,6 +17,7 @@ import time
 import traceback
 from datetime import datetime, timezone
 
+
 working_dir = os.getcwd()
 
 from openc3.environment import OPENC3_CONFIG_BUCKET

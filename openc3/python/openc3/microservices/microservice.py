@@ -115,10 +115,9 @@ class Microservice:
         self.temp_dir = f"{tempfile.gettempdir()}/{name}"
         # Create temp folder for this microservice
         # This will already have been setup by plugin_microservice.rb if USER
-        if is_plugin or microservice_type != 'USER':
-          if os.path.isdir(self.temp_dir):
-              shutil.rmtree(self.temp_dir)
-          os.mkdir(self.temp_dir)
+        if is_plugin or microservice_type != "USER":
+            shutil.rmtree(self.temp_dir, ignore_errors=True)
+            os.mkdir(self.temp_dir)
 
         # Get microservice configuration from Redis
         self.config = MicroserviceModel.get(self.name, scope=self.scope)
@@ -211,8 +210,7 @@ class Microservice:
         with contextlib.suppress(Exception):
             # Ignore Redis failures during shutdown
             MicroserviceStatusModel.set(self.as_json(), scope=self.scope)
-        if os.path.isdir(self.temp_dir):
-            shutil.rmtree(self.temp_dir)
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
         self.metric.shutdown()
         with contextlib.suppress(Exception):
             # Ignore Redis failures during shutdown
