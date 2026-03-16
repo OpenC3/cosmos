@@ -23,6 +23,8 @@ module OpenC3
         target_models = TargetModel.all(scope: scope)
         target_models.each do |name, target_model|
           # Remove deprecated decom log settings from target model
+          target_model.delete("cmd_unique_id_mode")
+          target_model.delete("tlm_unique_id_mode")
           target_model.delete("cmd_decom_log_cycle_time")
           target_model.delete("cmd_decom_log_cycle_size")
           target_model.delete("cmd_decom_log_retain_time")
