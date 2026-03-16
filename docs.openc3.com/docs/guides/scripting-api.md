@@ -60,6 +60,8 @@ The following API methods have been removed from COSMOS v7. Since WITH_UNITS wer
 | wait_tolerance_raw       | api_shared | Removed, use [wait_tolerance](#wait_tolerance) and pass type              |
 | wait_check_tolerance_raw | api_shared | Removed, use [wait_check_tolerancet](#wait_check_tolerance) and pass type |
 
+The following API methods now return `COSMOS__CANCEL` instead of `Cancel` when the Cancel button is pushed in Script Runner: `ask`, `ask_string`, `message_box`, `vertical_message_box`, `combo_box`, `check_box`, `prompt`, `prompt_for_hazardous`, `prompt_for_critical_cmd`, `metadata_input`, `open_file_dialog`, `open_files_dialog`, `open_bucket_dialog`. Unless you are _explicitly_ checking the return value for the word 'Cancel' there are no changes required.
+
 ### Migration from COSMOS v5 to v6
 
 See the [Migrating From COSMOS 5 to COSMOS 6](../getting-started/upgrading#migrating-from-cosmos-5-to-cosmos-6) guide for other changes including migrating to Vue 3 and Vuetify 3.
@@ -8962,25 +8964,25 @@ create_timeline_activity(name, kind, start, stop, data={})
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                                   |
-| --------- | ----------------------------------------------------------------------------- |
-| name      | Name of the timeline                                                          |
-| kind      | Type of the activity. One of COMMAND, SCRIPT, or RESERVE.                     |
-| start     | Start time of the activity. Time / datetime instance.                         |
-| stop      | Stop time of the activity. Time / datetime instance.                          |
+| Parameter | Description                                                                                                                                               |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| name      | Name of the timeline                                                                                                                                      |
+| kind      | Type of the activity. One of COMMAND, SCRIPT, or RESERVE.                                                                                                 |
+| start     | Start time of the activity. Time / datetime instance.                                                                                                     |
+| stop      | Stop time of the activity. Time / datetime instance.                                                                                                      |
 | data      | Hash / dict of data for COMMAND or SCRIPT type. Default is empty hash / dict. Valid keys are described [below](#create_timeline_activity-data-parameter). |
-| scope     | Scope of the activity. Default is the OPENC3_SCOPE, usually "DEFAULT". |
+| scope     | Scope of the activity. Default is the OPENC3_SCOPE, usually "DEFAULT".                                                                                    |
 
 #### create_timeline_activity data parameter
-| Key | Value |
-|-----|-------|
-| username | Username to display as the creator of the activity. Default is "operator". |
-| customTitle | Custom title to display for the activity. Default is empty string which results in no custom title being shown. |
-| notes | Notes to display for the activity. Default is empty string, which results in no notes being shown. |
-| command | Command to execute for COMMAND type activities. |
-| script | Script to execute for SCRIPT type activities. Should be given as the path to the script file to run, starting with the target name, e.g. "INST/procedures/collect.rb". |
-| environment | Array of environment variable key/value pairs to set for SCRIPT type activities, e.g. `[{key: "USER", value: "JASON"}]` |
 
+| Key         | Value                                                                                                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| username    | Username to display as the creator of the activity. Default is "operator".                                                                                             |
+| customTitle | Custom title to display for the activity. Default is empty string which results in no custom title being shown.                                                        |
+| notes       | Notes to display for the activity. Default is empty string, which results in no notes being shown.                                                                     |
+| command     | Command to execute for COMMAND type activities.                                                                                                                        |
+| script      | Script to execute for SCRIPT type activities. Should be given as the path to the script file to run, starting with the target name, e.g. "INST/procedures/collect.rb". |
+| environment | Array of environment variable key/value pairs to set for SCRIPT type activities, e.g. `[{key: "USER", value: "JASON"}]`                                                |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
