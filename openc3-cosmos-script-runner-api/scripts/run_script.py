@@ -17,6 +17,7 @@ import time
 import traceback
 from datetime import datetime, timezone
 
+
 working_dir = os.getcwd()
 
 from openc3.environment import OPENC3_CONFIG_BUCKET
@@ -103,6 +104,13 @@ try:
             )
         run_script_log(script_id, message, "YELLOW")
 
+    # Subscribe to the pub sub channel for this script BEFORE starting the thread
+    # to avoid a race condition where the thread crashes (e.g. SyntaxError) and
+    # publishes "shutdown" before the main thread subscribes, losing the message.
+    redis = Store.instance().build_redis()
+    p = redis.pubsub(ignore_subscribe_messages=True)
+    p.subscribe(f"script-api:cmd-running-script-channel:{script_id}")
+
     # Start the script in another thread
     running_script.run()
 
@@ -118,10 +126,6 @@ try:
         },
     )
 
-    # Subscribe to the pub sub channel for this script
-    redis = Store.instance().build_redis()
-    p = redis.pubsub(ignore_subscribe_messages=True)
-    p.subscribe(f"script-api:cmd-running-script-channel:{script_id}")
     for msg in p.listen():
         parsed_cmd = json.loads(msg["data"])
         if parsed_cmd != "shutdown" or (isinstance(parsed_cmd, dict) and not parsed_cmd.get("method")):
@@ -150,12 +154,14 @@ try:
                             | "message_box"
                             | "vertical_message_box"
                             | "combo_box"
+                            | "check_box"
                             | "prompt"
                             | "prompt_for_hazardous"
                             | "prompt_for_critical_cmd"
                             | "metadata_input"
                             | "open_file_dialog"
                             | "open_files_dialog"
+                            | "open_bucket_dialog"
                         ):
                             if running_script.prompt_id is not None:
                                 if "prompt_id" in parsed_cmd and running_script.prompt_id == parsed_cmd["prompt_id"]:
@@ -167,6 +173,12 @@ try:
                                             script_id,
                                             f"Multiple input: {running_script.user_input}",
                                         )
+                                    elif parsed_cmd["method"] == "open_bucket_dialog":
+                                        answer = parsed_cmd["answer"]
+                                        if isinstance(answer, str):
+                                            answer = json.loads(answer)
+                                        running_script.user_input = answer
+                                        run_script_log(script_id, f"Bucket file: {running_script.user_input}")
                                     elif "open_file" in parsed_cmd["method"]:
                                         running_script.user_input = parsed_cmd["answer"]
                                         run_script_log(script_id, f"File(s): {running_script.user_input}")

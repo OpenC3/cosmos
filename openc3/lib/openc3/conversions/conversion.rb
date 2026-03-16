@@ -20,11 +20,11 @@ module OpenC3
   class Conversion
     # @return [Symbol] The converted data type. Must be one of
     #   {OpenC3::StructureItem#data_type}
-    attr_reader :converted_type
+    attr_accessor :converted_type
     # @return [Integer] The size in bits of the converted value
-    attr_reader :converted_bit_size
+    attr_accessor :converted_bit_size
     # @return [Integer] The size in bits of the converted array value
-    attr_reader :converted_array_size
+    attr_accessor :converted_array_size
     # @return [Array] The arguments passed to the conversion
     attr_reader :params
 

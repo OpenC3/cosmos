@@ -420,6 +420,68 @@ RSpec.describe LoggedStreamingThread, :questdb do
         expected_key: 'expected_formatted'
       )
     end
+
+    it 'resolves CMD items with units (no format_string) to FORMATTED' do
+      spec = {
+        'tables' => [
+          {
+            'target' => 'CMDUNITS', 'packet' => 'TEMP',
+            'data_type' => 'INT', 'bit_size' => 16, 'cmd_or_tlm' => 'CMD',
+            'units' => 'degC',
+            'rows' => [
+              { 'offset_ms' => 0, 'values' => { 'VALUE' => 100 }, 'formatted_values' => { 'VALUE' => '100 degC' } },
+              { 'offset_ms' => 1000, 'values' => { 'VALUE' => 200 }, 'formatted_values' => { 'VALUE' => '200 degC' } },
+              { 'offset_ms' => 2000, 'values' => { 'VALUE' => 300 }, 'formatted_values' => { 'VALUE' => '300 degC' } }
+            ]
+          }
+        ]
+      }
+
+      test_params = write_multi_table_data(spec)
+      expect(test_params['success']).to be true
+
+      table_info = test_params['tables'][0]
+      target = table_info['target_name']
+      packet = table_info['packet_name']
+
+      obj = MockStreamingObject.new(
+        target: target,
+        packet: packet,
+        item: 'VALUE',
+        value_type: :WITH_UNITS,
+        start_time: Time.parse(test_params['start_time']).to_i * 1_000_000_000,
+        end_time: Time.parse(test_params['end_time']).to_i * 1_000_000_000,
+        cmd_or_tlm: :CMD
+      )
+
+      thread = create_thread([obj])
+
+      # Mock packet_item to return item_def with units but NO format_string.
+      # Before the bug fix, this would resolve to RAW instead of FORMATTED
+      # because only format_string was checked, not units.
+      item_def = {
+        'name' => 'VALUE',
+        'data_type' => 'INT',
+        'bit_size' => 16,
+        'units' => 'degC'
+      }
+      allow(OpenC3::TargetModel).to receive(:packet_item)
+        .with(target, packet, 'VALUE', hash_including(type: :CMD))
+        .and_return(item_def)
+      allow(OpenC3::TargetModel).to receive(:packet)
+        .and_return(table_info['packet_def'])
+
+      objects_by_topic = { obj.topic => [obj] }
+      thread.send(:stream_items, objects_by_topic, [obj.topic], [obj.offset])
+
+      results = streaming_api.transmitted_results
+      expect(results.length).to eq(3)
+
+      # With the fix, units causes resolution to FORMATTED so we read VALUE__F column
+      expect(results[0][obj.item_key]).to eq('100 degC')
+      expect(results[1][obj.item_key]).to eq('200 degC')
+      expect(results[2][obj.item_key]).to eq('300 degC')
+    end
   end
 
   describe 'Calculated timestamp items' do

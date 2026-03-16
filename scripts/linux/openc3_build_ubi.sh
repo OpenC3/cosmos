@@ -109,14 +109,17 @@ then
   fi
 fi
 
-# Detect host architecture and set platform flag
-# On ARM Macs, some x86 images use x86-64-v3 which can't be emulated
+# UBI images are built for linux/amd64 (Red Hat enterprise environments are x86_64)
+# Always set the platform flag regardless of host architecture to avoid platform
+# mismatch warnings when running on ARM hosts (e.g. Apple Silicon Macs)
+PLATFORM_FLAG="--platform linux/amd64"
+
+# QuestDB RHEL images publish a native linux/arm64 variant. On ARM hosts, build
+# tsdb natively to avoid the x86-64-v3 QEMU emulation failure at runtime.
 if [[ "$(uname -m)" == "arm64" ]]; then
-  echo "Detected ARM architecture - building native images"
-  PLATFORM_FLAG=""
+  TSDB_PLATFORM_FLAG=""
 else
-  echo "Detected x86 architecture - building linux/amd64 images"
-  PLATFORM_FLAG="--platform linux/amd64"
+  TSDB_PLATFORM_FLAG="--platform linux/amd64"
 fi
 
 # Function to check and perform registry login
@@ -301,11 +304,11 @@ if should_build "openc3-tsdb-ubi"; then
   START_TIME=$SECONDS
   cd openc3-tsdb
   docker build \
+    -f Dockerfile-ubi \
     --network host \
-    --build-arg OPENC3_TSDB_VERSION_EXT="-rhel" \
     --build-arg OPENC3_DEPENDENCY_REGISTRY="${OPENC3_DEPENDENCY_REGISTRY}" \
     "${BUILD_FLAGS[@]}" \
-    $PLATFORM_FLAG \
+    $TSDB_PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb-ubi:${OPENC3_TAG}" \
     .
   cd ..

@@ -72,7 +72,8 @@ GENERIC_READ_CONVERSION_START:
     class (Note, referencing the packet as 'myself' is still supported for backwards
     compatibility). The last line of code should return the converted
     value. The GENERIC_READ_CONVERSION_END keyword specifies that all lines of
-    code for the conversion have been given.
+    code for the conversion have been given. To specify the bit size, type, and array size of the converted data,
+    use the CONVERTED_DATA keyword.
   warning: Generic conversions are not a good long term solution. Consider creating
     a conversion class and using READ_CONVERSION instead. READ_CONVERSION is easier
     to debug and has higher performance.
@@ -81,22 +82,33 @@ GENERIC_READ_CONVERSION_START:
       GENERIC_READ_CONVERSION_START
         (value * 1.5).to_i # Convert the value by a scale factor
       GENERIC_READ_CONVERSION_END
+      CONVERTED_DATA 32 UINT
   python_example: |
     APPEND_ITEM ITEM1 32 UINT
       GENERIC_READ_CONVERSION_START
         int(value * 1.5) # Convert the value by a scale factor
       GENERIC_READ_CONVERSION_END
-  parameters:
-    - name: Converted Type
-      required: false
-      description: Type of the converted value
-      values: <%= %w(INT UINT FLOAT STRING BLOCK) %>
-    - name: Converted Bit Size
-      required: false
-      description: Bit size of converted value
-      values: \d+
+      CONVERTED_DATA 32 UINT
 GENERIC_READ_CONVERSION_END:
   summary: Complete a generic read conversion
+CONVERTED_DATA:
+  summary: Defines the bit size, type, and array size of the converted data for a read conversion
+  description: This keyword is used in conjunction with DERIVED items to specify the bit size, type, and array size of the converted data.
+    If this keyword is not used, DERIVED items are stored as strings in the decommutated data.
+  since: 7.0.0
+  parameters:
+    - name: Converted Bit Size
+      required: true
+      description: Bit size of converted value
+      values: \d+
+    - name: Converted Type
+      required: true
+      description: Type of the converted value
+      values: <%= %w(INT UINT FLOAT STRING BLOCK) %>
+    - name: Converted Array Size
+      required: false
+      description: Bit size of the total array if the converted value is an array. Only specified if the converted type is an array.
+      values: \d+
 LIMITS:
   summary: Defines a set of limits for a telemetry item
   description: If limits are violated a message is printed in the Command and Telemetry Server

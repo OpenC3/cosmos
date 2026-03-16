@@ -556,6 +556,13 @@
     :filter="file.filter"
     @response="fileDialogCallback"
   />
+  <bucket-dialog
+    v-if="bucket.show"
+    v-model="bucket.show"
+    :title="bucket.title"
+    :message="bucket.message"
+    @response="bucketDialogCallback"
+  />
   <information-dialog
     v-if="information.show"
     v-model="information.show"
@@ -694,6 +701,7 @@ import { fileIcon } from '@/util'
 import { EventListDialog } from '@/tools/calendar'
 
 import AskDialog from '@/tools/scriptrunner/Dialogs/AskDialog.vue'
+import BucketDialog from '@/tools/scriptrunner/Dialogs/BucketDialog.vue'
 import FileDialog from '@/tools/scriptrunner/Dialogs/FileDialog.vue'
 import InformationDialog from '@/tools/scriptrunner/Dialogs/InformationDialog.vue'
 import OverridesDialog from '@/tools/scriptrunner/Dialogs/OverridesDialog.vue'
@@ -728,6 +736,7 @@ export default {
     Pane,
     TopBar,
     AskDialog,
+    BucketDialog,
     FileDialog,
     InformationDialog,
     EventListDialog,
@@ -851,6 +860,11 @@ export default {
         filter: '*',
         multiple: false,
         callback: () => {},
+      },
+      bucket: {
+        show: false,
+        title: '',
+        message: '',
       },
       prompt: {
         show: false,
@@ -2247,6 +2261,7 @@ export default {
         this.prompt.show = false
         this.ask.show = false
         this.file.show = false
+        this.bucket.show = false
         return
       }
       this.activePromptId = data.prompt_id
@@ -2328,20 +2343,25 @@ export default {
           this.prompt.show = true
           break
         case 'combo_box':
+        case 'check_box':
           if (data.kwargs && data.kwargs.informative) {
             this.prompt.subtitle = data.kwargs.informative
           }
           if (data.kwargs && data.kwargs.details) {
             this.prompt.details = data.kwargs.details
           }
-          if (data.kwargs && data.kwargs.multiple) {
+          // check_box is always multiple choice, combo_box is single choice unless kwargs.multiple is set to true
+          if (
+            data.method === 'check_box' ||
+            (data.kwargs && data.kwargs.multiple)
+          ) {
             this.prompt.multiple = true
           }
           this.prompt.message = data.args[0]
           data.args.slice(1).forEach((v) => {
             this.prompt.buttons.push({ title: v, value: v })
           })
-          this.prompt.layout = 'combo'
+          this.prompt.layout = data.method.split('_')[0]
           this.prompt.callback = this.promptDialogCallback
           this.prompt.show = true
           break
@@ -2382,6 +2402,11 @@ export default {
           }
           this.showMetadata()
           break
+        case 'open_bucket_dialog':
+          this.bucket.title = data.args[0]
+          this.bucket.message = data.args[1]
+          this.bucket.show = true
+          break
         // This is called continuously by the backend
         case 'open_file_dialog':
         case 'open_files_dialog':
@@ -2403,12 +2428,12 @@ export default {
       }
     },
     async fileDialogCallback(files) {
-      // Set fileNames to 'Cancel' in case they cancelled
+      // Set fileNames to 'COSMOS__CANCEL' in case they cancelled
       // otherwise we will populate it with the file names they selected
-      let fileNames = 'Cancel'
+      let fileNames = 'COSMOS__CANCEL'
       // Record all the API request promises so we can ensure they complete
       let promises = []
-      if (files != 'Cancel') {
+      if (files != 'COSMOS__CANCEL') {
         fileNames = []
         files.forEach((file) => {
           fileNames.push(file.name)
@@ -2442,6 +2467,16 @@ export default {
           },
         })
         this.file.show = false // Close the dialog immediately to avoid race condition
+      })
+    },
+    bucketDialogCallback(response) {
+      this.bucket.show = false
+      Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
+        data: {
+          method: 'open_bucket_dialog',
+          answer: response,
+          prompt_id: this.activePromptId,
+        },
       })
     },
     setError(event) {

@@ -62,8 +62,8 @@ module OpenC3
     private
     # Define all the user input methods used in scripting which we need to broadcast to the frontend
     # Note: This list matches the list in run_script.rb:116
-    SCRIPT_METHODS = %i[ask ask_string message_box vertical_message_box combo_box prompt prompt_for_hazardous
-      prompt_for_critical_cmd metadata_input open_file_dialog open_files_dialog]
+    SCRIPT_METHODS = %i[ask ask_string message_box vertical_message_box combo_box check_box prompt prompt_for_hazardous
+      prompt_for_critical_cmd metadata_input open_file_dialog open_files_dialog open_bucket_dialog]
     SCRIPT_METHODS.each do |method|
       define_method(method) do |*args, **kwargs|
         while true
@@ -74,10 +74,21 @@ module OpenC3
             input = RunningScript.instance.user_input
             # All ask and prompt dialogs should include a 'Cancel' button
             # If they cancel we wait so they can potentially stop
-            if input == 'Cancel'
+            if input == 'COSMOS__CANCEL'
               RunningScript.instance.perform_pause
             else
-              if (method.to_s.include?('open_file'))
+              if method.to_s == 'open_bucket_dialog'
+                bucket = input['bucket']
+                path = input['path']
+                filename = input['filename']
+                # Path from bucket dialog already includes scope prefix (e.g. DEFAULT/targets/...)
+                # _get_storage_file prepends scope, so strip it from the path to avoid doubling
+                scope = RunningScript.instance.scope
+                path = path.sub(/\A#{Regexp.escape(scope)}\//, '')
+                file = _get_storage_file(path, bucket: bucket, scope: scope)
+                file.filename = filename
+                return file
+              elsif (method.to_s.include?('open_file'))
                 files = input.map do |filename|
                   file = _get_storage_file("tmp/#{filename}", scope: RunningScript.instance.scope)
                   # Set filename method we added to Tempfile in the core_ext

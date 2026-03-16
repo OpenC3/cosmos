@@ -273,6 +273,12 @@ def cmd_write_multi(args):
         item_kwargs = {"name": "VALUE", "data_type": data_type}
         if bit_size is not None:
             item_kwargs["bit_size"] = bit_size
+        format_string = table_spec.get("format_string")
+        if format_string is not None:
+            item_kwargs["format_string"] = format_string
+        units = table_spec.get("units")
+        if units is not None:
+            item_kwargs["units"] = units
         packet_def = create_packet_def([create_item(**item_kwargs)])
 
         # Compute sanitized table name (matches Ruby's QuestDBClient.sanitize_table_name)
@@ -308,6 +314,12 @@ def cmd_write_multi(args):
 
             columns = client.process_json_data({"VALUE": val}, table_name)
             columns["RECEIVED_COUNT"] = i
+
+            # Add formatted values if specified
+            formatted_values = row.get("formatted_values")
+            if formatted_values:
+                for col_name, fmt_val in formatted_values.items():
+                    columns[f"{col_name}__F"] = fmt_val
 
             # Add COSMOS_EXTRA for CMD rows if specified
             cosmos_extra = row.get("cosmos_extra")
