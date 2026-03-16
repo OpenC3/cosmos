@@ -15,7 +15,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3/top_level'
+# require 'openc3/top_level' # Circular require
 require 'openc3/ext/config_parser' if RUBY_ENGINE == 'ruby' and !ENV['OPENC3_NO_EXT']
 require 'erb'
 require 'fileutils'

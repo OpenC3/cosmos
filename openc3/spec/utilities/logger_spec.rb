@@ -258,7 +258,7 @@ module OpenC3
       context "JSON format verification with stderr" do
         it "outputs valid JSON to stderr when enabled" do
           ENV['OPENC3_LOG_STDERR'] = 'true'
-          stdout, stderr = setup_streams
+          _stdout, stderr = setup_streams
 
           Logger.error("Test error message")
 

@@ -64,7 +64,7 @@ module OpenC3
       end
 
       it "prevents duplicate plugin generation" do
-        result = CliGenerator.generate_plugin(['plugin', 'test-plugin', '--ruby'])
+        CliGenerator.generate_plugin(['plugin', 'test-plugin', '--ruby'])
         Dir.chdir(@temp_dir)  # Go back to temp dir since generate_plugin cd's into plugin dir
         expect { CliGenerator.generate_plugin(['plugin', 'test-plugin', '--ruby']) }
           .to raise_error(SystemExit)

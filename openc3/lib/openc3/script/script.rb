@@ -47,6 +47,9 @@ $disconnect = false
 $openc3_scope = ENV['OPENC3_SCOPE'] || 'DEFAULT'
 $openc3_in_cluster = false
 
+saved_verbose = $VERBOSE
+$VERBOSE = false
+
 module OpenC3
   module Script
     private
@@ -363,3 +366,5 @@ module OpenC3
     end
   end
 end
+
+$VERBOSE = saved_verbose

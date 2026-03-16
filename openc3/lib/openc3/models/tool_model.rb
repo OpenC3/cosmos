@@ -16,7 +16,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/model'
-require 'openc3/models/scope_model'
+# require 'openc3/models/scope_model' # Circular require
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/bucket_utilities'
 require 'rack'
@@ -179,7 +179,7 @@ module OpenC3
         end
       end
 
-      if @url and !@url.start_with?('/') and @url !~ URI::regexp
+      if @url and !@url.start_with?('/') and @url !~ URI::RFC2396_PARSER.make_regexp
         raise "URL must be a full URL (http://domain.com/path) or a relative path (/path)"
       end
 

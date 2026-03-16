@@ -19,7 +19,7 @@ require 'set'
 require 'openc3/utilities/store'
 require 'openc3/utilities/store_queued'
 require 'openc3/utilities/questdb_client'
-require 'openc3/models/target_model'
+# require 'openc3/models/target_model' # Circular require
 
 module OpenC3
   class CvtModel

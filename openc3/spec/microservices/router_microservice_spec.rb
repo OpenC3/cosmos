@@ -113,35 +113,35 @@ module OpenC3
       end
     end
 
-    describe "run" do
-      xit "connects and disconnects" do
-        capture_io do |stdout|
-          uservice = RouterMicroservice.new("DEFAULT__ROUTER__TEST_INT")
-          all = RouterStatusModel.all(scope: "DEFAULT")
-          expect(all["TEST_INT"]["state"]).to eql "ATTEMPTING"
-          interface = uservice.instance_variable_get(:@interface)
-          interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
+    # describe "run" do
+    #   xit "connects and disconnects" do
+    #     capture_io do |stdout|
+    #       uservice = RouterMicroservice.new("DEFAULT__ROUTER__TEST_INT")
+    #       all = RouterStatusModel.all(scope: "DEFAULT")
+    #       expect(all["TEST_INT"]["state"]).to eql "ATTEMPTING"
+    #       interface = uservice.instance_variable_get(:@interface)
+    #       interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
 
-          Thread.new { uservice.run }
-          sleep 0.1
-          expect(stdout.string).to include("Connecting ...")
-          expect(stdout.string).to include("Connection Success")
-          all = RouterStatusModel.all(scope: "DEFAULT")
-          expect(all["TEST_INT"]["state"]).to eql "CONNECTED"
+    #       Thread.new { uservice.run }
+    #       sleep 0.1
+    #       expect(stdout.string).to include("Connecting ...")
+    #       expect(stdout.string).to include("Connection Success")
+    #       all = RouterStatusModel.all(scope: "DEFAULT")
+    #       expect(all["TEST_INT"]["state"]).to eql "CONNECTED"
 
-          @api.disconnect_router("TEST_INT")
-          sleep 0.3 # Allow disconnect
-          all = RouterStatusModel.all(scope: "DEFAULT")
-          expect(all["TEST_INT"]["state"]).to eql "DISCONNECTED"
-          expect(stdout.string).to include("Disconnect requested")
-          expect(stdout.string).to include("Clean disconnect")
-          expect(stdout.string).to include("Connection Lost")
+    #       @api.disconnect_router("TEST_INT")
+    #       sleep 0.3 # Allow disconnect
+    #       all = RouterStatusModel.all(scope: "DEFAULT")
+    #       expect(all["TEST_INT"]["state"]).to eql "DISCONNECTED"
+    #       expect(stdout.string).to include("Disconnect requested")
+    #       expect(stdout.string).to include("Clean disconnect")
+    #       expect(stdout.string).to include("Connection Lost")
 
-          uservice.shutdown
-        end
-        sleep 2 # Allow threads to exit
-      end
-    end
+    #       uservice.shutdown
+    #     end
+    #     sleep 2 # Allow threads to exit
+    #   end
+    # end
 
     it "supports router_cmd" do
       init_threads = Thread.list.count

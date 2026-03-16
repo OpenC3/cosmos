@@ -43,6 +43,8 @@ describe Class do
     end
 
     it "does not allow arbitrary code" do
+      saved_verbose = $VERBOSE
+      $VERBOSE = false
       expect {
         class MyClass
           instance_attr_reader "test;puts 'HI'"
@@ -54,11 +56,14 @@ describe Class do
           instance_attr_reader "test\nputs 'HI'"
         end
       }.to raise_error(ArgumentError)
+      $VERBOSE = saved_verbose
     end
   end
 
   describe "instance_attr_accessor" do
     it "adds instance attribute readers for class variables" do
+      saved_verbose = $VERBOSE
+      $VERBOSE = false
       class MyClass
         instance_attr_accessor :test
         @@instance = nil
@@ -72,6 +77,7 @@ describe Class do
           @@instance = self
         end
       end
+      $VERBOSE = saved_verbose
 
       my = MyClass.new
       expect(MyClass.test).to eql "Test"

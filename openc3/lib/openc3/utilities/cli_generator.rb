@@ -195,8 +195,7 @@ module OpenC3
         abort("Target #{target_path} already exists!")
       end
       target_lib_filename = "#{target_name.downcase}.#{@@language}"
-      target_class = target_lib_filename.filename_to_class_name
-      target_object = target_name.downcase
+      target_lib_filename.filename_to_class_name
 
       process_template("#{TEMPLATES_DIR}/target", binding) do |filename|
         # Rename the template TARGET to our actual target named after the plugin
@@ -291,7 +290,7 @@ RUBY
         abort("Microservice #{microservice_path} already exists!")
       end
       microservice_filename = "#{microservice_name.downcase}.#{@@language}"
-      microservice_class = microservice_filename.filename_to_class_name
+      microservice_filename.filename_to_class_name
 
       process_template("#{TEMPLATES_DIR}/microservice", binding) do |filename|
         # Rename the template MICROSERVICE to our actual microservice name
@@ -546,7 +545,7 @@ RUBY
       end
       conversion_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_CONVERSION"
       conversion_basename = "#{conversion_name.downcase}.#{@@language}"
-      conversion_class = conversion_basename.filename_to_class_name
+      conversion_basename.filename_to_class_name
       conversion_filename = "targets/#{target_name}/lib/#{conversion_basename}"
       if File.exist?(conversion_filename)
         abort("Conversion #{conversion_filename} already exists!")
@@ -600,7 +599,7 @@ RUBY
       end
       processor_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_PROCESSOR"
       processor_basename = "#{processor_name.downcase}.#{@@language}"
-      processor_class = processor_basename.filename_to_class_name
+      processor_basename.filename_to_class_name
       processor_filename = "targets/#{target_name}/lib/#{processor_basename}"
       if File.exist?(processor_filename)
         abort("Processor #{processor_filename} already exists!")
@@ -655,7 +654,7 @@ RUBY
       response_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_LIMITS_RESPONSE"
       response_basename = "#{response_name.downcase}.#{@@language}"
       response_filename = "targets/#{target_name}/lib/#{response_basename}"
-      response_class = response_basename.filename_to_class_name
+      response_basename.filename_to_class_name
       if File.exist?(response_filename)
         abort("response #{response_filename} already exists!")
       end
@@ -708,7 +707,7 @@ RUBY
       end
       validator_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_COMMAND_VALIDATOR"
       validator_basename = "#{validator_name.downcase}.#{@@language}"
-      validator_class = validator_basename.filename_to_class_name
+      validator_basename.filename_to_class_name
       validator_filename = "targets/#{target_name}/lib/#{validator_basename}"
       if File.exist?(validator_filename)
         abort("Command validator #{validator_filename} already exists!")

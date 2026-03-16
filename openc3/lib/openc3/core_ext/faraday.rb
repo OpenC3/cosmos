@@ -1,4 +1,8 @@
+# Remove warnings in CGI
+saved_verbose = $VERBOSE
+$VERBOSE = false
 require 'faraday'
+$VERBOSE = saved_verbose
 
 module Faraday
   class Response

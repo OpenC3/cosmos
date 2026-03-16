@@ -13,7 +13,7 @@
 
 require 'openc3/top_level'
 require 'openc3/models/model'
-require 'openc3/models/scope_model'
+# require 'openc3/models/scope_model' # Circular require
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/bucket_utilities'
 
