@@ -35,9 +35,6 @@ from openc3.conversions.conversion import Conversion
 # Custom conversion class
 # See https://docs.openc3.com/docs/configuration/telemetry#read_conversion
 class DoubleConversion(Conversion):
-    def __init__(self):
-        super().__init__()
-
     # @param value [Object] Value based on the item definition. This could be
     #   a string, integer, float, or array of values.
     # @param packet [Packet] The packet object where the conversion is defined
@@ -56,7 +53,7 @@ class DoubleConversion(Conversion):
         return value
 ```
 
-There are a lot of comments to help you know what to do when implementing the `call` method.
+There are a lot of comments to help you implement the `call` method.
 
 ### call
 
@@ -65,9 +62,6 @@ The call method is where the actual conversion logic is implemented. In our case
 ```python
 from openc3.conversions.conversion import Conversion
 class DoubleConversion(Conversion):
-    def __init__(self):
-        super().__init__()
-
     def call(self, value, packet, buffer):
         return value * 2
 ```
