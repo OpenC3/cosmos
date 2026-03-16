@@ -155,7 +155,6 @@ module OpenC3
 
     # Stops all logging and closes the current log file.
     def stop
-      threads = nil
       @mutex.synchronize { close_file(false); @logging_enabled = false; }
       return @wait_threads
     end
@@ -320,7 +319,7 @@ module OpenC3
       # Remove old wait_threads
       to_remove = []
       @wait_threads.each do |thread|
-        if not thread.alive?
+        unless thread.alive?
           to_remove << thread
         end
       end

@@ -117,6 +117,7 @@ RSpec.describe Table, :type => :model do
       tmp_dir = File.join(SPEC_DIR, 'tmp1')
       Dir.mkdir(tmp_dir) unless File.exist?(tmp_dir)
       allow(Dir).to receive(:mktmpdir).and_return(tmp_dir)
+      allow(FileUtils).to receive(:remove_entry_secure)
       file = Table.binary('DEFAULT', 'INST/tables/bin/table.bin', 'INST/tables/config/table_def.txt', 'MY_TABLE')
       expect(file.filename).to eql 'MyTable.bin'
       expect(file.contents).to eql 'data' # Check the simple stub
@@ -135,6 +136,7 @@ RSpec.describe Table, :type => :model do
       tmp_dir = File.join(SPEC_DIR, 'tmp2')
       Dir.mkdir(tmp_dir) unless File.exist?(tmp_dir)
       allow(Dir).to receive(:mktmpdir).and_return(tmp_dir)
+      allow(FileUtils).to receive(:remove_entry_secure)
       expect { Table.binary('DEFAULT', 'INST/tables/bin/table.bin', 'INST/tables/config/table_def.txt', 'MY_TABLE') }.to \
         raise_error("Could not find file INST/tables/config/nope.txt")
       # Real test is did we create the definition files
@@ -164,6 +166,7 @@ RSpec.describe Table, :type => :model do
       tmp_dir = File.join(SPEC_DIR, 'tmp3')
       Dir.mkdir(tmp_dir) unless File.exist?(tmp_dir)
       allow(Dir).to receive(:mktmpdir).and_return(tmp_dir)
+      allow(FileUtils).to receive(:remove_entry_secure)
       file = Table.definition('DEFAULT', 'INST/tables/config/table_def.txt', 'MY_TABLE')
       expect(file.filename).to eql 'tablefile.txt' # Ensure we get the right name
       expect(file.contents).to eql 'data' # Check the simple stub
@@ -195,6 +198,7 @@ RSpec.describe Table, :type => :model do
       tmp_dir = File.join(SPEC_DIR, 'tmp4')
       Dir.mkdir(tmp_dir) unless File.exist?(tmp_dir)
       allow(Dir).to receive(:mktmpdir).and_return(tmp_dir)
+      allow(FileUtils).to receive(:remove_entry_secure)
       file = Table.report('DEFAULT', 'INST/tables/bin/table.bin', 'INST/tables/config/table_def.txt', 'MY_TABLE')
       expect(file.filename).to eql 'INST/tables/bin/MyTable.csv'
       expect(file.contents).to eql 'report' # Check the simple stub

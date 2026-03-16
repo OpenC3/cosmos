@@ -98,14 +98,14 @@ module OpenC3
     def shutdown
       # Make sure all the existing logs are properly closed down
       threads = []
-      @tlws.each do |topic, tlw|
+      @tlws.each do |_topic, tlw|
         threads.concat(tlw.shutdown)
       end
       # Wait for all the logging threads to move files to buckets
       threads.flatten.compact.each do |thread|
         thread.join
       end
-      @tlws.each do |topic, tlw|
+      @tlws.each do |_topic, tlw|
         tlw.cleanup
       end
       super()
