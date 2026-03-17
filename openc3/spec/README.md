@@ -2,14 +2,14 @@
 
 ## Environment
 
-```
-set OPENC3_DEVEL=\path\to\openc3\openc3
-set RUBYGEMS_URL=https://rubygems.org
+```sh
+export OPENC3_DEVEL=\path\to\cosmos\openc3
+export RUBYGEMS_URL=https://rubygems.org
 ```
 
 ## Build
 
-```
+```sh
 bundle install
 
 rake build

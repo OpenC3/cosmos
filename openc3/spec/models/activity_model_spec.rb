@@ -17,11 +17,22 @@
 
 require 'spec_helper'
 require 'openc3/models/activity_model'
+require 'openc3/models/timeline_model'
 
 module OpenC3
   describe ActivityModel do
+    name = "foobar"
+    scope = "scope"
+
     before(:each) do
+      # mock_redis must be called before each test
       mock_redis()
+      # create timeline after mock_redis so it uses the mocked redis instance
+      OpenC3::TimelineModel.new(name: name, scope: scope).create()
+    end
+
+    after(:each) do
+      OpenC3::TimelineModel.delete(name: name, scope: scope, force: true)
     end
 
     def generate_activity(name:, scope:, start:, kind: "COMMAND", stop: 1.0, data: { "test" => "test" })
@@ -39,6 +50,18 @@ module OpenC3
     end
 
     context "recurring" do
+      timeline_name = "recurring"
+      timeline_scope = "DEFAULT"
+
+      before(:each) do
+        timeline = OpenC3::TimelineModel.new(name: timeline_name, scope: timeline_scope)
+        timeline.create()
+      end
+
+      after(:each) do
+        OpenC3::TimelineModel.delete(name: timeline_name, scope: timeline_scope, force: true)
+      end
+
       describe "self.create" do
         it "creates a recurring activity" do
           start = Time.now + 60 # 1 min
@@ -48,8 +71,8 @@ module OpenC3
           # Create a recurring every day
           recurring = { 'frequency' => '1', 'span' => 'days', 'end' => recurring_end.to_i }
           activity = ActivityModel.new(
-            name: 'recurring',
-            scope: 'DEFAULT',
+            name: timeline_name,
+            scope: timeline_scope,
             start: start.to_i,
             stop: stop.to_i,
             kind: "COMMAND",
@@ -57,7 +80,7 @@ module OpenC3
             recurring: recurring
           )
           activity.create()
-          array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
+          array = ActivityModel.all(name: timeline_name, scope: timeline_scope)
           expect(array.length).to eql(6)
           array.each do |item|
             expect(item['start']).to eql(start.to_i)
@@ -75,8 +98,8 @@ module OpenC3
           # Create a recurring every 1 hr
           recurring = { 'frequency' => '1', 'span' => 'hours', 'end' => recurring_end.to_i }
           activity = ActivityModel.new(
-            name: 'recurring',
-            scope: 'DEFAULT',
+            name: timeline_name,
+            scope: timeline_scope,
             start: start.to_i,
             stop: stop.to_i,
             kind: "COMMAND",
@@ -84,7 +107,7 @@ module OpenC3
             recurring: recurring
           )
           activity.create()
-          array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
+          array = ActivityModel.all(name: timeline_name, scope: timeline_scope)
           expect(array.length).to eql(1)
           expect(array[0]['start']).to eql(start.to_i)
           expect(array[0]['stop']).to eql(stop.to_i)
@@ -98,8 +121,8 @@ module OpenC3
           # Create a recurring every 20 min
           recurring = { 'frequency' => '20', 'span' => 'minutes', 'end' => recurring_end.to_i }
           activity = ActivityModel.new(
-            name: 'recurring',
-            scope: 'DEFAULT',
+            name: timeline_name,
+            scope: timeline_scope,
             start: start.to_i,
             stop: stop.to_i,
             kind: "COMMAND",
@@ -107,7 +130,7 @@ module OpenC3
             recurring: recurring
           )
           expect { activity.create() }.to raise_error(ActivityOverlapError, /Recurring activity overlap/)
-          array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
+          array = ActivityModel.all(name: timeline_name, scope: timeline_scope)
           expect(array.length).to eql(0)
         end
 
@@ -119,8 +142,8 @@ module OpenC3
           # Create a recurring every 10 min (should create 4 activities)
           recurring = { 'frequency' => '10', 'span' => 'minutes', 'end' => recurring_end.to_i }
           activity = ActivityModel.new(
-            name: 'recurring',
-            scope: 'DEFAULT',
+            name: timeline_name,
+            scope: timeline_scope,
             start: start.to_i,
             stop: stop.to_i,
             kind: "COMMAND",
@@ -128,13 +151,13 @@ module OpenC3
             recurring: recurring
           )
           activity.create()
-          array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
+          array = ActivityModel.all(name: timeline_name, scope: timeline_scope)
           expect(array.length).to eql(4)
           # Verify each activity has a unique UUID
           uuids = array.map { |item| item['uuid'] }
           expect(uuids.uniq.length).to eql(4)
           # Verify all activities share the same recurring UUID
-          recurring_uuids = array.map { |item| item['recurring']['uuid'] }
+          recurring_uuids = array.map { |item| item[timeline_name]['uuid'] }
           expect(recurring_uuids.uniq.length).to eql(1)
         end
 
@@ -146,8 +169,8 @@ module OpenC3
           # Create a recurring every 60 min
           recurring = { 'frequency' => '60', 'span' => 'minutes', 'end' => recurring_end.to_i }
           activity = ActivityModel.new(
-            name: 'recurring',
-            scope: 'DEFAULT',
+            name: timeline_name,
+            scope: timeline_scope,
             start: start.to_i,
             stop: stop.to_i,
             kind: "COMMAND",
@@ -162,8 +185,8 @@ module OpenC3
           # Create a recurring every 60 min
           recurring = { 'frequency' => '60', 'span' => 'minutes', 'end' => recurring_end.to_i }
           activity = ActivityModel.new(
-            name: 'recurring',
-            scope: 'DEFAULT',
+            name: timeline_name,
+            scope: timeline_scope,
             start: start.to_i,
             stop: stop.to_i,
             kind: "COMMAND",
@@ -180,8 +203,8 @@ module OpenC3
           stop = start + 300 # 5 min
           data = { "test" => "test" }
           activity = ActivityModel.new(
-            name: 'recurring',
-            scope: 'DEFAULT',
+            name: timeline_name,
+            scope: timeline_scope,
             start: start.to_i,
             stop: stop.to_i,
             kind: "COMMAND",
@@ -195,8 +218,8 @@ module OpenC3
           # Create a recurring every 30 min (fill it up)
           recurring = { 'frequency' => '30', 'span' => 'minutes', 'end' => recurring_end.to_i }
           activity = ActivityModel.new(
-            name: 'recurring',
-            scope: 'DEFAULT',
+            name: timeline_name,
+            scope: timeline_scope,
             start: start.to_i,
             stop: stop.to_i,
             kind: "COMMAND",
@@ -204,11 +227,11 @@ module OpenC3
             recurring: recurring
           )
           expect { activity.create(overlap: false) }.to raise_error(ActivityOverlapError, /activity overlaps existing/)
-          array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
+          array = ActivityModel.all(name: timeline_name, scope: timeline_scope)
           expect(array.length).to eql(1)
 
           activity.create() # overlap: true is the default
-          array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
+          array = ActivityModel.all(name: timeline_name, scope: timeline_scope)
           expect(array.length).to eql(4)
         end
       end
@@ -222,29 +245,27 @@ module OpenC3
           # Create a recurring every 30 min
           recurring = { 'frequency' => '30', 'span' => 'minutes', 'end' => recurring_end.to_i }
           ActivityModel.new(
-            name: 'recurring',
-            scope: 'DEFAULT',
+            name: timeline_name,
+            scope: timeline_scope,
             start: start.to_i,
             stop: stop.to_i,
             kind: "COMMAND",
             data: data,
             recurring: recurring
           ).create()
-          array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
+          array = ActivityModel.all(name: timeline_name, scope: timeline_scope)
           expect(array.length).to eql(5)
           # Delete one of the activities
-          ActivityModel.destroy(name: 'recurring', scope: 'DEFAULT', score: array[0]['start'], uuid: array[0]['uuid'])
-          expect(ActivityModel.count(name: 'recurring', scope: 'DEFAULT')).to eql(4)
-          ActivityModel.destroy(name: 'recurring', scope: 'DEFAULT', score: array[1]['start'], uuid: array[1]['recurring']['uuid'], recurring: true)
-          expect(ActivityModel.count(name: 'recurring', scope: 'DEFAULT')).to eql(0)
+          ActivityModel.destroy(name: timeline_name, scope: timeline_scope, score: array[0]['start'], uuid: array[0]['uuid'])
+          expect(ActivityModel.count(name: timeline_name, scope: timeline_scope)).to eql(4)
+          ActivityModel.destroy(name: timeline_name, scope: timeline_scope, score: array[1]['start'], uuid: array[1][timeline_name]['uuid'], recurring: true)
+          expect(ActivityModel.count(name: timeline_name, scope: timeline_scope)).to eql(0)
         end
       end
     end
 
     describe "self.activities" do
       it "returns activities for the next hour" do
-        name = "foobar"
-        scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1)
         activity.create()
         activity = generate_activity(name: name, scope: scope, start: 10)
@@ -260,8 +281,6 @@ module OpenC3
 
     describe "self.get" do
       it "returns all activities between X and Y" do
-        name = "foobar"
-        scope = "scope"
         activity1 = generate_activity(name: name, scope: scope, start: 1.5, kind: 'SCRIPT')
         activity1.create()
         activity2 = generate_activity(name: name, scope: scope, start: 5.0, kind: 'SCRIPT')
@@ -286,8 +305,6 @@ module OpenC3
 
     describe "self.all" do
       it "returns all the activities" do
-        name = "foobar"
-        scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 2.0)
         activity.create()
         activity = generate_activity(name: name, scope: scope, start: 4.0)
@@ -306,8 +323,6 @@ module OpenC3
 
     describe "self.score" do
       it "returns the activity at the score" do
-        name = "foobar"
-        scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1.0)
         activity.create()
         model = ActivityModel.score(name: name, scope: scope, score: activity.start)
@@ -320,8 +335,6 @@ module OpenC3
       end
 
       it "returns the first activity at the score with overlap and no uuid" do
-        name = "foobar"
-        scope = "scope"
         activity1 = generate_activity(name: name, scope: scope, start: 1.0, kind: "COMMAND")
         activity1.create()
         activity2 = generate_activity(name: name, scope: scope, start: 1.0, kind: "RESERVE")
@@ -336,8 +349,6 @@ module OpenC3
       end
 
       it "returns the specified activity at the score with uuid" do
-        name = "foobar"
-        scope = "scope"
         activity1 = generate_activity(name: name, scope: scope, start: 1.0, kind: "COMMAND")
         activity1.create()
         activity2 = generate_activity(name: name, scope: scope, start: 1.0, kind: "RESERVE")
@@ -354,8 +365,6 @@ module OpenC3
 
     describe "self.start" do
       it "returns a ActivityModel at the start" do
-        name = "foobar"
-        scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1.0)
         activity.create()
         model = ActivityModel.score(name: name, scope: scope, score: activity.start)
@@ -368,8 +377,6 @@ module OpenC3
       end
 
       it "supports floating point start and stop" do
-        name = "foobar"
-        scope = "scope"
         activity = ActivityModel.new(
           name: name,
           scope: scope,
@@ -390,8 +397,6 @@ module OpenC3
 
     describe "self.count" do
       it "returns the count of the timeline" do
-        name = "foobar"
-        scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1.0)
         activity.create()
         activity = generate_activity(name: name, scope: scope, start: 2.5)
@@ -402,11 +407,22 @@ module OpenC3
     end
 
     describe "self.destroy" do
+      timeline_name = "timeline"
+      timeline_scope = "DEFAULT"
+
+      before(:each) do
+        OpenC3::TimelineModel.new(name: timeline_name, scope: timeline_scope).create()
+      end
+
+      after(:each) do
+        OpenC3::TimelineModel.delete(name: timeline_name, scope: timeline_scope, force: true)
+      end
+
       it "removes the activity with a uuid" do
         start = Time.now.to_i + 10
         model1 = ActivityModel.new(
-          name: 'timeline',
-          scope: 'DEFAULT',
+          name: timeline_name,
+          scope: timeline_scope,
           start: start,
           stop: start + 10,
           kind: 'COMMAND',
@@ -415,28 +431,28 @@ module OpenC3
         model1.create()
         # Create another activity with the same start time
         model2 = ActivityModel.new(
-          name: 'timeline',
-          scope: 'DEFAULT',
+          name: timeline_name,
+          scope: timeline_scope,
           start: start,
           stop: start + 10,
           kind: 'COMMAND',
           data: {'key' => 'val2'}
         )
         model2.create()
-        expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 2
-        ret = ActivityModel.destroy(name: 'timeline', scope: 'DEFAULT', score: start, uuid: model1.uuid)
+        expect(ActivityModel.count(name: timeline_name, scope: timeline_scope)).to eql 2
+        ret = ActivityModel.destroy(name: timeline_name, scope: timeline_scope, score: start, uuid: model1.uuid)
         expect(ret).to eql(1)
-        expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 1
-        ret = ActivityModel.destroy(name: 'timeline', scope: 'DEFAULT', score: start, uuid: model2.uuid)
+        expect(ActivityModel.count(name: timeline_name, scope: timeline_scope)).to eql 1
+        ret = ActivityModel.destroy(name: timeline_name, scope: timeline_scope, score: start, uuid: model2.uuid)
         expect(ret).to eql(1)
-        expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 0
+        expect(ActivityModel.count(name: timeline_name, scope: timeline_scope)).to eql 0
       end
 
       it "removes the activity without a uuid" do
         start = Time.now.to_i + 10
         model1 = ActivityModel.new(
-          name: 'timeline',
-          scope: 'DEFAULT',
+          name: timeline_name,
+          scope: timeline_scope,
           start: start,
           stop: start + 10,
           kind: 'COMMAND',
@@ -447,42 +463,40 @@ module OpenC3
         # Grab the model and remove the uuid
         # model = ActivityModel.score(name: 'timeline', scope: 'DEFAULT', score: start, uuid: model1.uuid)
         # model.instance_variable_set(:@uuid, nil)
-        json = Store.zrangebyscore("DEFAULT__openc3_timelines__timeline", start, start, :limit => [0, 1])[0]
-        Store.zrem("DEFAULT__openc3_timelines__timeline", json)
+        json = Store.zrangebyscore("#{timeline_scope}__openc3_timelines__#{timeline_name}", start, start, :limit => [0, 1])[0]
+        Store.zrem("#{timeline_scope}__openc3_timelines__#{timeline_name}", json)
         parsed = JSON.parse(json)
         parsed.delete("uuid")
-        Store.zadd("DEFAULT__openc3_timelines__timeline", start, JSON.generate(parsed.as_json, allow_nan: true))
+        Store.zadd("#{timeline_scope}__openc3_timelines__#{timeline_name}", start, JSON.generate(parsed.as_json, allow_nan: true))
 
         # Create another activity with the same start time
         model2 = ActivityModel.new(
-          name: 'timeline',
-          scope: 'DEFAULT',
+          name: timeline_name,
+          scope: timeline_scope,
           start: start,
           stop: start + 10,
           kind: 'COMMAND',
           data: {'key' => 'val2'}
         )
         model2.create()
-        expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 2
+        expect(ActivityModel.count(name: timeline_name, scope: timeline_scope)).to eql 2
 
         # Destroy will delete any activities at the start time that do NOT have a uuid
-        ActivityModel.destroy(name: 'timeline', scope: 'DEFAULT', score: start)
-        expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 1
-        model = ActivityModel.score(name: 'timeline', scope: 'DEFAULT', score: start)
+        ActivityModel.destroy(name: timeline_name, scope: timeline_scope, score: start)
+        expect(ActivityModel.count(name: timeline_name, scope: timeline_scope)).to eql 1
+        model = ActivityModel.score(name: timeline_name, scope: timeline_scope, score: start)
         expect(model.data).to eql({'key' => 'val2'})
 
         # Destroy won't remove the activity if the uuid is missing as a parameter but present in the data
-        ActivityModel.destroy(name: 'timeline', scope: 'DEFAULT', score: start)
-        expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 1
-        ActivityModel.destroy(name: 'timeline', scope: 'DEFAULT', score: start, uuid: model2.uuid)
-        expect(ActivityModel.count(name: 'timeline', scope: 'DEFAULT')).to eql 0
+        ActivityModel.destroy(name: timeline_name, scope: timeline_scope, score: start)
+        expect(ActivityModel.count(name: timeline_name, scope: timeline_scope)).to eql 1
+        ActivityModel.destroy(name: timeline_name, scope: timeline_scope, score: start, uuid: model2.uuid)
+        expect(ActivityModel.count(name: timeline_name, scope: timeline_scope)).to eql 0
       end
     end
 
     describe "self.range_destroy" do
       it "removes multiple members form of the timeline" do
-        name = "foobar"
-        scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 0.5)
         activity.create()
         activity = generate_activity(name: name, scope: scope, start: 2.0)
@@ -499,8 +513,6 @@ module OpenC3
 
     describe "model.create" do
       it "raises due to bad date" do
-        name = "foobar"
-        scope = "scope"
         expect {
           ActivityModel.new(
             name: name,
@@ -514,8 +526,6 @@ module OpenC3
       end
 
       it "raises due to bad kind" do
-        name = "foobar"
-        scope = "scope"
         expect {
           ActivityModel.new(
             name: name,
@@ -540,8 +550,6 @@ module OpenC3
       end
 
       it "raises due to bad data" do
-        name = "foobar"
-        scope = "scope"
         expect {
           ActivityModel.new(
             name: name,
@@ -566,8 +574,6 @@ module OpenC3
       end
 
       it "raises error due to overlap starts inside A and ends inside A" do
-        name = "foobar"
-        scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1.0, stop: 1.0)
         activity.create()
         model = generate_activity(name: name, scope: scope, start: 1.1, stop: 0.8)
@@ -577,8 +583,6 @@ module OpenC3
       end
 
       it "raises error due to overlap starts before A and ends before A" do
-        name = "foobar"
-        scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1.0, stop: 1.0)
         activity.create()
         model = generate_activity(name: name, scope: scope, start: 0.5, stop: 1.0)
@@ -588,8 +592,6 @@ module OpenC3
       end
 
       it "raises error due to overlap starts inside A and ends outside A" do
-        name = "foobar"
-        scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1.0, stop: 1.0)
         activity.create()
         model = generate_activity(name: name, scope: scope, start: 1.5, stop: 1.5)
@@ -599,8 +601,6 @@ module OpenC3
       end
 
       it "raises error due to overlap starts before A and ends after A" do
-        name = "foobar"
-        scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1.0, stop: 1.0)
         activity.create()
         model = generate_activity(name: name, scope: scope, start: 0.5, stop: 1.5)
@@ -610,8 +610,6 @@ module OpenC3
       end
 
       it "raises error due to overlap starts before A and ends outside A inside a second activity" do
-        name = "foobar"
-        scope = "scope"
         foo = generate_activity(name: name, scope: scope, start: 1.0, stop: 0.5)
         foo.create()
         bar = generate_activity(name: name, scope: scope, start: 2.0, stop: 0.5)
@@ -622,9 +620,28 @@ module OpenC3
         }.to raise_error(ActivityOverlapError)
       end
 
+      it "raises due to timeline not existing within scope" do
+        timeline_name = "timeline_x"
+        timeline_scope = "SCOPE_A"
+        activity_scope = "SCOPE_B"
+
+        # Create a timeline in SCOPE_A to ensure timeline exists under a different scope
+        timeline = TimelineModel.new(name: timeline_name, scope: timeline_scope)
+        timeline.create()
+
+        begin
+          # Create an activity with the same timeline name but in a different scope.
+          # Creating an activity when the timeline does not exist in the provided scope
+          # should NOT be allowed. Expect an error to be raised.
+          activity = generate_activity(name: timeline_name, scope: activity_scope, start: 1.0)
+          expect { activity.create() }.to raise_error(ActivityError)
+        ensure
+          # Clean up the timeline regardless of test pass/fail
+          TimelineModel.delete(name: timeline_name, scope: timeline_scope, force: true)
+        end
+      end
+
       it "allows new activities with start == stop" do
-        name = "foobar"
-        scope = "scope"
         foo = generate_activity(name: name, scope: scope, start: 1.0, stop: 0.5)
         foo.create()
         bar = generate_activity(name: name, scope: scope, start: 2.0, stop: 0.5)
@@ -637,8 +654,6 @@ module OpenC3
 
     describe "time parse" do
       it "raises error due to invalid time" do
-        name = "foobar"
-        scope = "scope"
         expect {
           ActivityModel.new(name: name, scope: scope, start: "foo", stop: "bar", kind: "COMMAND", data: {})
         }.to raise_error(ActivityInputError)
@@ -647,8 +662,6 @@ module OpenC3
 
     describe "time duration" do
       it "raises error due to event start and end are the same time" do
-        name = "foobar"
-        scope = "scope"
         start = Time.now.to_i
         expect {
           ActivityModel.new(name: name, scope: scope, start: start, stop: start, kind: "COMMAND", data: {})
@@ -656,8 +669,6 @@ module OpenC3
       end
 
       it "raises error due to event longer then 24h" do
-        name = "foobar"
-        scope = "scope"
         dt_now = DateTime.now
         start = (dt_now + (1.0 / 24.0)).strftime("%s").to_i
         stop = (dt_now + (25.0 / 24.0)).strftime("%s").to_i
@@ -671,8 +682,6 @@ module OpenC3
 
     describe "time entry" do
       it "raises error due to event start is after stop" do
-        name = "foobar"
-        scope = "scope"
         dt_now = DateTime.now
         start = (dt_now + (1.5 / 24.0)).strftime("%s").to_i
         stop = (dt_now + (1.0 / 24.0)).strftime("%s").to_i
@@ -682,8 +691,6 @@ module OpenC3
       end
 
       it "raises error due to start before now" do
-        name = "foobar"
-        scope = "scope"
         dt_now = DateTime.now
         start = (dt_now - (1.5 / 24.0)).strftime("%s").to_i
         stop = (dt_now + (1.0 / 24.0)).strftime("%s").to_i
@@ -693,8 +700,6 @@ module OpenC3
       end
 
       it "allows EXPIRE activities with start before now" do
-        name = "foobar"
-        scope = "scope"
         dt_now = DateTime.now
         start = (dt_now - (1.5 / 24.0)).strftime("%s").to_i
         stop = (dt_now + (1.0 / 24.0)).strftime("%s").to_i
@@ -704,8 +709,6 @@ module OpenC3
 
     describe "update error" do
       it "raises error due to not created yet" do
-        name = "foobar"
-        scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 0.5, stop: 1.0)
         start = activity.start + 10
         stop = activity.stop + 10
@@ -715,8 +718,6 @@ module OpenC3
       end
 
       it "raises error due to update is overlapping time point" do
-        name = "foobar"
-        scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 0.5)
         activity.create()
         model = generate_activity(name: name, scope: scope, start: 2.0)
@@ -741,8 +742,6 @@ module OpenC3
 
     describe "update stop" do
       it "update the input parameters" do
-        name = "foobar"
-        scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1.0)
         activity.create()
         stop = activity.stop + 100
@@ -759,8 +758,6 @@ module OpenC3
 
     describe "update both start and stop" do
       it "update the input parameters" do
-        name = "foobar"
-        scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1.0)
         activity.create()
         og_start = activity.start
@@ -778,8 +775,6 @@ module OpenC3
 
     describe "commit" do
       it "update the events and commit them to redis" do
-        name = "foobar"
-        scope = "scope"
         start = 1.0
         dt = DateTime.now.new_offset(0)
         start_time = dt + (start / 24.0)
@@ -833,15 +828,11 @@ module OpenC3
 
     describe "notify" do
       it "update the top of a change to the timeline" do
-        name = "foobar"
-        scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1.0)
         activity.notify(kind: "new")
       end
 
       it "rescues errors in TimelineTopic" do
-        name = "foobar"
-        scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1.0)
         allow(TimelineTopic).to receive(:write_activity).and_raise(StandardError)
         expect { activity.notify(kind: "new") }.to raise_error(ActivityError)
@@ -850,8 +841,6 @@ module OpenC3
 
     describe "as_json" do
       it "encodes all the input parameters" do
-        name = "foobar"
-        scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1.0)
         json = activity.as_json()
         expect(json["start"]).to eql(activity.start)
@@ -863,8 +852,6 @@ module OpenC3
 
     describe "from_json" do
       it "encodes all the input parameters" do
-        name = "foobar"
-        scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1.0)
         model_hash = activity.as_json()
         json = JSON.generate(model_hash, allow_nan: true)
