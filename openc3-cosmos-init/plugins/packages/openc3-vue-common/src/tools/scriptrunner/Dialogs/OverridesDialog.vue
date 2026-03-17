@@ -88,12 +88,12 @@ const api = new OpenC3Api()
 const overrides = ref([])
 const search = ref('')
 const headers = [
-  { text: 'Target', value: 'target_name' },
-  { text: 'Packet', value: 'packet_name' },
-  { text: 'Item', value: 'item_name' },
-  { text: 'Type', value: 'value_type' },
-  { text: 'Value', value: 'value' },
-  { text: 'Delete', value: 'delete' },
+  { title: 'Target', key: 'target_name' },
+  { title: 'Packet', key: 'packet_name' },
+  { title: 'Item', key: 'item_name' },
+  { title: 'Type', key: 'value_type' },
+  { title: 'Value', key: 'value' },
+  { title: 'Delete', key: 'delete' },
 ]
 
 async function getOverrides() {
