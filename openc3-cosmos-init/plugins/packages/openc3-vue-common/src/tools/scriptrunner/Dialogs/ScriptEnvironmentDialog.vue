@@ -40,7 +40,6 @@
         <v-btn
           variant="flat"
           data-test="environment-dialog-save"
-          :disabled="!!inputError"
           @click="updateEnvironment"
         >
           Save
