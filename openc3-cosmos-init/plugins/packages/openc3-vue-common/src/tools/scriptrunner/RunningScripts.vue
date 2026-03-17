@@ -230,8 +230,8 @@ const props = defineProps({
 const emit = defineEmits(['disconnect', 'close'])
 
 const router = useRouter()
-const $notify = inject('$notify')
-const $dialog = inject('$dialog')
+const notify = inject('notify')
+const dialog = inject('dialog')
 const { formatDateTimeHMS } = TimeFilters.methods
 
 const api = new OpenC3Api()
@@ -390,7 +390,7 @@ async function getRunningScripts() {
     runningLoading.value = false
   } catch (error) {
     runningLoading.value = false
-    $notify.caution({
+    notify.caution({
       title: 'Error Loading Running Scripts',
       body: error.message,
     })
@@ -442,7 +442,7 @@ async function getCompletedScripts() {
     completedLoading.value = false
   } catch (error) {
     completedLoading.value = false
-    $notify.caution({
+    notify.caution({
       title: 'Error Loading Completed Scripts',
       body: error.message,
     })
@@ -485,7 +485,7 @@ function connectScript(script) {
 
 async function deleteScript(script) {
   try {
-    await $dialog.confirm(
+    await dialog.confirm(
       `Are you sure you want to stop script: ${script.name} ${script.filename}?\n`,
       {
         okText: 'Stop',
@@ -493,13 +493,13 @@ async function deleteScript(script) {
       },
     )
     await Api.post(`/script-api/running-script/${script.name}/delete`)
-    $notify.normal({
+    notify.normal({
       body: `Stopped script: ${script.name} ${script.filename}`,
     })
     getRunningScripts()
   } catch (error) {
     if (error !== true) {
-      $notify.caution({
+      notify.caution({
         body: `Failed to stop script: ${script.name} ${script.filename}`,
       })
     }
@@ -572,7 +572,7 @@ async function downloadScriptLog(script, type, format = 'text') {
       downloadScript.value = null
     }
   } catch {
-    $notify.caution({
+    notify.caution({
       title: `Unable to download log ${logUrl}`,
       body: `You may be able to download this log manually from the 'logs' bucket at ${logUrl}`,
     })

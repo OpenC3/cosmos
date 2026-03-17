@@ -89,7 +89,7 @@ import { format } from 'date-fns'
 const messages = defineModel({ type: Array, required: true })
 const emit = defineEmits(['sort'])
 
-const $dialog = inject('$dialog')
+const dialog = inject('dialog')
 
 const search = ref('')
 const headers = [{ title: 'Message', value: 'message', sortable: false }]
@@ -133,7 +133,7 @@ function downloadLog() {
 
 async function clearLog() {
   try {
-    await $dialog.confirm('Are you sure you want to clear the log?', {
+    await dialog.confirm('Are you sure you want to clear the log?', {
       okText: 'Clear',
       cancelText: 'Cancel',
     })
