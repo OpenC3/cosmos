@@ -226,13 +226,10 @@ end`)
   await page.locator('[data-test=script-runner-script]').click()
   await page.getByText('Execution Status').click()
   await page.getByRole('tab', { name: 'Running Scripts' }).click()
-  await expect(
-    page.locator('tr', { hasText: 'test_suite_buttons.rb' }),
-  ).toBeVisible()
+  const table = page.locator('[data-test="running-scripts"]')
+  const runningScriptRow = table.locator('tr', { hasText: 'test_suite_buttons.rb' }).filter({ visible: true }).first()
   await utils.sleep(200) // Allow the tab to render fully
-  await page
-    .locator('tr', { hasText: 'test_suite_buttons.rb' })
-    .first()
+  await runningScriptRow
     .getByRole('button', { name: 'Connect' })
     .click()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
