@@ -25,7 +25,11 @@
 # end
 
 require 'rspec'
-require 'oj' # Removes warnings
+begin
+  require 'oj' # Removes warnings
+rescue LoadError
+  # Oh well
+end
 
 # NOTE: You MUST require simplecov before anything else!
 if !ENV['OPENC3_NO_SIMPLECOV']
