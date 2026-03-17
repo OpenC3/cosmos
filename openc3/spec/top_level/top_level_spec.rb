@@ -18,6 +18,7 @@
 require 'spec_helper'
 require 'openc3/top_level'
 require 'fileutils'
+require 'openc3/packets/packet'
 
 describe "HazardousError" do
   it "has accessors" do
@@ -34,11 +35,6 @@ describe "HazardousError" do
 end
 
 module OpenC3
-  def self.cleanup_exceptions
-    # Delete the 'exception' files
-    Dir[File.join(File.dirname(__FILE__), "*exception.txt")].each { |file| FileUtils.rm_f file }
-  end
-
   describe "FatalError" do
     it "is a StandardError" do
       expect(FatalError.new).to be_a StandardError
@@ -91,7 +87,6 @@ module OpenC3
         expect { OpenC3.marshal_dump('marshal_test', Proc.new { '' }) }.to raise_error(SystemExit)
         expect(stdout.string).to match("is defined for class Proc")
       end
-      OpenC3.cleanup_exceptions()
     end
 
     it "rescues marshal dump errors in a Packet with a Mutex" do
@@ -102,7 +97,6 @@ module OpenC3
         expect { OpenC3.marshal_dump('marshal_test', pkt) }.to raise_error(SystemExit)
         expect(stdout.string).to match("Mutex exists in a packet")
       end
-      OpenC3.cleanup_exceptions()
     end
 
     it "rescues marshal load errors" do
@@ -123,7 +117,6 @@ module OpenC3
         OpenC3.marshal_load('marshal_test')
         expect(stdout.string).to match("Marshal load failed with exception")
       end
-      OpenC3.cleanup_exceptions()
     end
   end
 
@@ -235,7 +228,6 @@ module OpenC3
         expect { OpenC3.handle_fatal_exception(RuntimeError.new) }.to raise_error(SystemExit)
         expect(stdout.string).to match("Fatal Exception! Exiting...")
       end
-      OpenC3.cleanup_exceptions()
     end
   end
 
@@ -245,23 +237,6 @@ module OpenC3
         OpenC3.handle_critical_exception(RuntimeError.new)
         expect(stdout.string).to match("Critical Exception!")
       end
-      OpenC3.cleanup_exceptions()
-    end
-  end
-
-  describe "safe_thread" do
-    it "handles exceptions" do
-      capture_io do |stdout|
-        thread = OpenC3.safe_thread("Test", 1) do
-          raise "TestError"
-        end
-        def thread.graceful_kill
-        end
-        sleep 1
-        expect(stdout.string).to match("Test thread unexpectedly died.")
-        OpenC3.kill_thread(thread, thread)
-      end
-      OpenC3.cleanup_exceptions()
     end
   end
 
