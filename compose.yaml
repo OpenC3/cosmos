@@ -40,12 +40,7 @@ services:
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
     healthcheck:
       # Test that S3-compatible storage (versitygw) is listening on port 9000
-      # Uses bash built-in /dev/tcp to avoid curl needing a writable filesystem (read_only: true)
-      test:
-        [
-          "CMD-SHELL",
-          "timeout 2 bash -c 'echo > /dev/tcp/127.0.0.1/9000' || exit 1",
-        ]
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 9000 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -291,11 +286,7 @@ services:
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
     healthcheck:
       # Test that Traefik is listening - pgrep not available in UBI/IronBank images
-      test:
-        [
-          "CMD-SHELL",
-          "timeout 2 bash -c 'echo > /dev/tcp/127.0.0.1/2900' || exit 1",
-        ]
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 2900 || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 5
