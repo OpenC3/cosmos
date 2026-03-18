@@ -66,8 +66,8 @@ jobs:
             echo "ERROR: One or more containers are restarting"
             exit 1
           fi
-          docker logs cosmos-enterprise-openc3-cosmos-init-1
-          docker logs cosmos-enterprise-openc3-operator-1
+          docker logs cosmos-openc3-cosmos-init-1
+          docker logs cosmos-openc3-operator-1
           if docker ps | grep -q unhealthy; then
             echo "ERROR: One or more containers are unhealthy"
             exit 1
