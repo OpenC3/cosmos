@@ -46,11 +46,11 @@ async function setValue(page, param, value) {
 // Helper function to check parameter value
 async function checkValue(page, param, value) {
   // Use exact text match with colon suffix to avoid partial matches (e.g., ARRAY1 vs ARRAY1_LENGTH)
-  expect(
-    await page.inputValue(
+  await expect(
+    page.locator(
       `tr:has(td:text-is("${param}")) [data-test=cmd-param-value] input`,
     ),
-  ).toMatch(value)
+  ).toHaveValue(value)
 }
 
 // Helper function to check command history

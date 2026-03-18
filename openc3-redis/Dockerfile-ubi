@@ -30,75 +30,64 @@ COPY ./ubi.repo /etc/yum.repos.d/ubi.repo
 
 # ruby - https://www.ruby-lang.org/en/downloads/releases/
 # tini - https://github.com/krallin/tini
-RUN microdnf update -y \
-    && microdnf install -y --setopt=tsflags=nodocs $PACKAGES \
-    && rm -rf /var/cache/dnf/ /var/tmp/* /tmp/* /var/tmp/.???* /tmp/.???*
+RUN microdnf update -y && \
+    microdnf install -y --setopt=tsflags=nodocs $PACKAGES && \
+    rm -rf /var/cache/dnf/ /var/tmp/* /tmp/* /var/tmp/.???* /tmp/.???*
 
 COPY valkey-9.0.3.tar.gz /tmp/valkey.tar.gz
 
 WORKDIR /tmp
 
-RUN set -eux; \
-	mkdir -p /usr/src/valkey; \
-	tar -xzf valkey.tar.gz -C /usr/src/valkey --strip-components=1; \
-	rm valkey.tar.gz; \
-	\
-# disable Valkey protected mode [1] as it is unnecessary in context of Docker
-# (ports are not automatically exposed when running inside Docker, but rather explicitly by specifying -p / -P)
-	grep -E '^ *createBoolConfig[(]"protected-mode",.*, *1 *,.*[)],$' /usr/src/valkey/src/config.c; \
-	sed -ri 's!^( *createBoolConfig[(]"protected-mode",.*, *)1( *,.*[)],)$!\10\2!' /usr/src/valkey/src/config.c; \
-	grep -E '^ *createBoolConfig[(]"protected-mode",.*, *0 *,.*[)],$' /usr/src/valkey/src/config.c; \
-# for future reference, we modify this directly in the source instead of just supplying a default configuration flag because apparently "if you specify any argument to valkey-server, [it assumes] you are going to specify everything"
-# (more exactly, this makes sure the default behavior of "save on SIGTERM" stays functional by default)
-	\
-	echo "Version 9.0.2 is 8.1 or higher - enabling USE_FAST_FLOAT"; \
-	export BUILD_TLS=yes USE_FAST_FLOAT=yes; \
-	export USE_SYSTEMD=yes; \
-	export MALLOC=libc; \
-	export CFLAGS="-fno-lto"; \
-	export LDFLAGS="-fno-lto"; \
-	make -C /usr/src/valkey -j "$(nproc)" all; \
-	make -C /usr/src/valkey install; \
-	\
-	serverMd5="$(md5sum /usr/local/bin/valkey-server | cut -d' ' -f1)"; export serverMd5; \
-	find /usr/local/bin/valkey* -maxdepth 0 \
-		-type f -not -name valkey-server \
-		-exec sh -eux -c ' \
-			md5="$(md5sum "$1" | cut -d" " -f1)"; \
-			test "$md5" = "$serverMd5"; \
-		' -- '{}' ';' \
-		-exec ln -svfT 'valkey-server' '{}' ';' \
-	; \
-	\
-	echo '{"spdxVersion":"SPDX-2.3","SPDXID":"SPDXRef-DOCUMENT","name":"valkey-server-sbom","packages":[{"name":"valkey-server","versionInfo":"9.0.2","SPDXID":"SPDXRef-Package--valkey-server","externalRefs":[{"referenceCategory":"PACKAGE-MANAGER","referenceType":"purl","referenceLocator":"pkg:generic/valkey-server@9.0.2?os_name=debian&os_version=trixie"}],"licenseDeclared":"BSD-3-Clause"}]}' > /usr/local/valkey.spdx.json
+RUN mkdir -p /usr/src/valkey && \
+    tar -xzf valkey.tar.gz -C /usr/src/valkey --strip-components=1 && \
+    rm valkey.tar.gz && \
+    # disable Valkey protected mode [1] as it is unnecessary in context of Docker
+    # (ports are not automatically exposed when running inside Docker, but rather explicitly by specifying -p / -P)
+    grep -E '^ *createBoolConfig[(]"protected-mode",.*, *1 *,.*[)],$' /usr/src/valkey/src/config.c && \
+    sed -ri 's!^( *createBoolConfig[(]"protected-mode",.*, *)1( *,.*[)],)$!\10\2!' /usr/src/valkey/src/config.c && \
+    grep -E '^ *createBoolConfig[(]"protected-mode",.*, *0 *,.*[)],$' /usr/src/valkey/src/config.c && \
+    # for future reference, we modify this directly in the source instead of just supplying a default configuration flag because apparently "if you specify any argument to valkey-server, [it assumes] you are going to specify everything"
+    # (more exactly, this makes sure the default behavior of "save on SIGTERM" stays functional by default)
+    echo "Version 9.0.2 is 8.1 or higher - enabling USE_FAST_FLOAT" && \
+    export BUILD_TLS=yes USE_FAST_FLOAT=yes && \
+    export USE_SYSTEMD=yes && \
+    export MALLOC=libc && \
+    export CFLAGS="-fno-lto" && \
+    export LDFLAGS="-fno-lto" && \
+    make -C /usr/src/valkey -j "$(nproc)" all && \
+    make -C /usr/src/valkey install && \
+    serverMd5="$(md5sum /usr/local/bin/valkey-server | cut -d' ' -f1)" && export serverMd5 && \
+    find /usr/local/bin/valkey* -maxdepth 0 \
+        -type f -not -name valkey-server \
+        -exec sh -eux -c ' \
+            md5="$(md5sum "$1" | cut -d" " -f1)"; \
+            test "$md5" = "$serverMd5"; \
+        ' -- '{}' ';' \
+        -exec ln -svfT 'valkey-server' '{}' ';' && \
+    echo '{"spdxVersion":"SPDX-2.3","SPDXID":"SPDXRef-DOCUMENT","name":"valkey-server-sbom","packages":[{"name":"valkey-server","versionInfo":"9.0.2","SPDXID":"SPDXRef-Package--valkey-server","externalRefs":[{"referenceCategory":"PACKAGE-MANAGER","referenceType":"purl","referenceLocator":"pkg:generic/valkey-server@9.0.2?os_name=debian&os_version=trixie"}],"licenseDeclared":"BSD-3-Clause"}]}' > /usr/local/valkey.spdx.json
 
 FROM base
 
 ENV VALKEY_VERSION=9.0.2
 
 LABEL org.opencontainers.image.source="https://github.com/valkey-io/valkey"
-
-# add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
-RUN set -eux; \
-	groupadd -r -g 1001 valkey; \
-	useradd -r -g valkey -u 1001 valkey
-
 ARG RUNTIME_PACKAGES="tzdata openssl-libs"
 
-# runtime dependencies
-RUN set -eux; \
-	microdnf update -y \
-  && microdnf install -y --setopt=tsflags=nodocs $RUNTIME_PACKAGES \
-	&& rm -rf /var/cache/dnf/
+# add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
+RUN groupadd -r -g 1001 valkey && \
+    useradd -r -g valkey -u 1001 valkey && \
+    microdnf update -y && \
+    microdnf install -y --setopt=tsflags=nodocs $RUNTIME_PACKAGES && \
+    rm -rf /var/cache/dnf/
 
 # Install valkey built earlier
 COPY --from=build /usr/local /usr/local
 RUN mkdir /data && \
-	chown valkey:valkey /data && \
-	mkdir -p /run/valkey && \
-	chown valkey:valkey /run/valkey && \
-	valkey-cli --version && \
-	valkey-server --version
+    chown valkey:valkey /data && \
+    mkdir -p /run/valkey && \
+    chown valkey:valkey /run/valkey && \
+    valkey-cli --version && \
+    valkey-server --version
 WORKDIR /data
 
 COPY docker-entrypoint.sh /usr/local/bin/
@@ -117,10 +106,9 @@ COPY redis_ephemeral.conf /config/.
 COPY users.acl /config/.
 COPY --chmod=0755 ./docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-RUN mkdir -p /data && chown valkey:valkey /data
-RUN ["chmod", "-R", "777", "/data/"]
-RUN mkdir -p /home/data && chown valkey:valkey /home/data
-RUN ["chmod", "-R", "777", "/home/data/"]
+RUN mkdir -p /data && \
+    chown valkey:valkey /data && \
+    chmod -R 777 /data
 
 EXPOSE 6379
 EXPOSE 6380
