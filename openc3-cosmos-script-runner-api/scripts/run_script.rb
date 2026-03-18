@@ -186,6 +186,6 @@ ensure
     running_script_anycable_publish("all-scripts-channel", { type: :complete, filename: script_status.filename, active_scripts: running.length, scope: scope })
   ensure
     running_script.stop_message_log if running_script
-    FileUtils.rm_rf(working_dir)
+    FileUtils.remove_entry_secure(working_dir, true)
   end
 end

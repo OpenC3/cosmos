@@ -302,6 +302,7 @@ module OpenC3
             # Respawn process
             output = p.extract_output
             Logger.error("Unexpected process died... respawning! #{p.cmd_line}\n#{output}\n", scope: p.scope)
+            p.hard_stop
             p.start
           end
         end
@@ -321,7 +322,6 @@ module OpenC3
         processes_to_remove = []
         processes.each do |name, p|
           unless p.alive?
-            p.extract_output # cleanup temp files
             processes_to_remove << name
             Logger.debug("Soft stop process successful: #{p.cmd_line}", scope: p.scope)
           end
@@ -336,7 +336,7 @@ module OpenC3
         sleep(0.1)
       end
       Logger.debug("Commanding hard stops...")
-      hard_stop_processes.each { |_name, p| p.extract_output; p.hard_stop }
+      hard_stop_processes.each { |_name, p| p.output_increment; p.extract_output; p.hard_stop }
     end
 
     def shutdown
