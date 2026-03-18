@@ -20,8 +20,8 @@ ENV RUBYGEMS_URL=${RUBYGEMS_URL}
 ENV PYPI_URL=${PYPI_URL}
 
 # NOTE: This must match the alpine image used above in FROM
-RUN echo "${APK_URL}/alpine/v${ALPINE_VERSION}/main" > /etc/apk/repositories \
-  && echo "${APK_URL}/alpine/v${ALPINE_VERSION}/community" >> /etc/apk/repositories
+RUN echo "${APK_URL}/alpine/v${ALPINE_VERSION}/main" > /etc/apk/repositories && \
+    echo "${APK_URL}/alpine/v${ALPINE_VERSION}/community" >> /etc/apk/repositories
 
 LABEL maintainer="support@openc3.com"
 
@@ -37,8 +37,8 @@ ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 ENV NOKOGIRI_USE_SYSTEM_LIBRARIES=1
 
 COPY .gemrc /root/.gemrc
-RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc \
-  && cp /root/.gemrc /etc/gemrc
+RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc && \
+    cp /root/.gemrc /etc/gemrc
 ENV GEMRC=/etc/gemrc
 
 COPY anycable* /usr/bin
@@ -46,47 +46,47 @@ RUN /usr/bin/anycable_install.sh
 
 COPY shoreman.sh /usr/bin/shoreman
 
-RUN apk update \
-  && apk upgrade \
-  && apk add --no-cache \
-  autoconf \
-  automake \
-  build-base \
-  ca-certificates \
-  cmake \
-  curl \
-  git \
-  htop \
-  less \
-  libc6-compat \
-  # Ruby 3.2+ no longer bundles libffi so explicitly include
-  libffi-dev \
-  libtool \
-  libxml2-dev \
-  libxslt-dev \
-  libpq-dev \
-  openblas-dev \
-  openssl \
-  openssl-dev \
-  py3-pip \
-  python3 \
-  python3-dev \
-  rbspy \
-  ruby \
-  ruby-bigdecimal \
-  ruby-dev \
-  tini \
-  # Ruby 3.2+ no longer bundles libyaml so explicitly include
-  yaml-dev \
-  zeromq-dev \
-  && gem update --system 3.7.2 \
-  && gem install rake \
-  && gem install google-protobuf \
-  && gem install grpc \
-  && gem cleanup \
-  && bundle config build.nokogiri --use-system-libraries \
-  && bundle config git.allow_insecure true \
-  && python3 -m pip install --break-system-packages uv
+RUN apk update && \
+    apk upgrade && \
+    apk add --no-cache \
+      autoconf \
+      automake \
+      build-base \
+      ca-certificates \
+      cmake \
+      curl \
+      git \
+      htop \
+      less \
+      libc6-compat \
+      # Ruby 3.2+ no longer bundles libffi so explicitly include
+      libffi-dev \
+      libtool \
+      libxml2-dev \
+      libxslt-dev \
+      libpq-dev \
+      openblas-dev \
+      openssl \
+      openssl-dev \
+      py3-pip \
+      python3 \
+      python3-dev \
+      rbspy \
+      ruby \
+      ruby-bigdecimal \
+      ruby-dev \
+      tini \
+      # Ruby 3.2+ no longer bundles libyaml so explicitly include
+      yaml-dev \
+      zeromq-dev && \
+    gem update --system 3.7.2 && \
+    gem install rake && \
+    gem install google-protobuf && \
+    gem install grpc && \
+    gem cleanup && \
+    bundle config build.nokogiri --use-system-libraries && \
+    bundle config git.allow_insecure true && \
+    python3 -m pip install --break-system-packages uv
 
 # Configure UV for production container usage
 ENV UV_LINK_MODE=copy
@@ -99,33 +99,33 @@ ENV OPENC3_PYTHON_BIN=/openc3/python/.venv/bin/python
 # libsocketcan - used by libcsp - https://github.com/linux-can/libsocketcan
 COPY libsocketcan-0.0.12.tar.gz /opt/libsocketcan-0.0.12.tar.gz
 WORKDIR /opt
-RUN tar -xzf libsocketcan-0.0.12.tar.gz \
-  && cd libsocketcan-0.0.12 \
-  && autoreconf --force --install --symlink -Wall \
-  && ./configure \
-  && make \
-  && make install \
-  && cd /opt \
-  && rm -rf libsocketcan-0.0.12 \
-  && rm libsocketcan-0.0.12.tar.gz
+RUN tar -xzf libsocketcan-0.0.12.tar.gz && \
+    cd libsocketcan-0.0.12 && \
+    autoreconf --force --install --symlink -Wall && \
+    ./configure && \
+    make && \
+    make install && \
+    cd /opt && \
+    rm -rf libsocketcan-0.0.12 && \
+    rm libsocketcan-0.0.12.tar.gz
 
 # libcsp - https://github.com/libcsp/libcsp
 COPY libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip /opt/libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
 WORKDIR /opt
-RUN unzip libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip \
-  && cd libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 \
-  # Patches to fix compilation issues
-  && sed -i '1s/^/#include <sys\/select.h>/' src/drivers/can/can_socketcan.c \
-  && sed -i '2s/^/#include <endian.h>/' src/drivers/eth/eth_linux.c \
-  && mkdir build \
-  && cd build \
-  && cmake .. -DCSP_ENABLE_PYTHON3_BINDINGS=ON -DCSP_USR_RTABLE=ON \
-  && make \
-  && make install \
-  && cp libcsp_py3* /usr/lib/python3.12/lib-dynload/. \
-  && cd /opt \
-  && rm -rf libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 \
-  && rm libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
+RUN unzip libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip && \
+    cd libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 && \
+    # Patches to fix compilation issues
+    sed -i '1s/^/#include <sys\/select.h>/' src/drivers/can/can_socketcan.c && \
+    sed -i '2s/^/#include <endian.h>/' src/drivers/eth/eth_linux.c && \
+    mkdir build && \
+    cd build && \
+    cmake .. -DCSP_ENABLE_PYTHON3_BINDINGS=ON -DCSP_USR_RTABLE=ON && \
+    make && \
+    make install && \
+    cp libcsp_py3* /usr/lib/python3.12/lib-dynload/. && \
+    cd /opt && \
+    rm -rf libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 && \
+    rm libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
 
 # Set user and group
 ENV IMAGE_USER=openc3
@@ -135,8 +135,8 @@ ENV GROUP_ID=1001
 # The build time venv is at /openc3/python/.venv and the runtime venv is at /gems/python_packages
 # NOTE: This is declared as PYTHONUSERBASE: "/gems/python_packages" in compose.yaml
 ENV PYTHONPATH=/openc3/python/.venv/lib/python3.12/site-packages/:/gems/python_packages/lib/python3.12/site-packages/
-RUN addgroup -g "${GROUP_ID}" -S "${IMAGE_GROUP}" \
-  && adduser -u "${USER_ID}" -G "${IMAGE_GROUP}" -s /bin/ash -S "${IMAGE_USER}"
+RUN addgroup -g "${GROUP_ID}" -S "${IMAGE_GROUP}" && \
+    adduser -u "${USER_ID}" -G "${IMAGE_GROUP}" -s /bin/ash -S "${IMAGE_USER}"
 
 # Switch to user
 USER ${USER_ID}:${GROUP_ID}
