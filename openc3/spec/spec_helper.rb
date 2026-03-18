@@ -25,6 +25,11 @@
 # end
 
 require 'rspec'
+begin
+  require 'oj' # Removes warnings
+rescue LoadError
+  # Oh well
+end
 
 # NOTE: You MUST require simplecov before anything else!
 if !ENV['OPENC3_NO_SIMPLECOV']
@@ -74,12 +79,15 @@ ENV['OPENC3_BUCKET_USERNAME'] = 'openc3bucket'
 ENV['OPENC3_BUCKET_PASSWORD'] = 'openc3bucketpassword'
 ENV['OPENC3_SCOPE'] = 'DEFAULT'
 ENV['OPENC3_CLOUD'] = 'local'
+ENV['AWS_REGION'] = 'us-east-1'
+ENV['AWS_EC2_METADATA_DISABLED'] = 'true' # Removes instance profile AWS errors
 
 module OpenC3
   USERPATH = File.join(File.dirname(File.expand_path(__FILE__)), 'install')
 end
 
 require 'openc3/top_level'
+
 # Create a easy alias to the base of the spec directory
 SPEC_DIR = File.dirname(__FILE__)
 $openc3_scope = ENV['OPENC3_SCOPE']
@@ -89,18 +97,20 @@ $openc3_mock_token = 'mock_token'
 $openc3_mock_otp = 'mock_otp'
 
 # Mock the HTTP request for OpenC3Authentication
-require 'openc3/utilities/authentication'
-OpenC3::OpenC3Authentication.class_eval do
-  def _make_auth_request(password)
-    mock_response = Object.new
-    mock_response.define_singleton_method(:body) { $openc3_mock_token }
-    mock_response
-  end
+OpenC3.disable_warnings do
+  require 'openc3/utilities/authentication'
+  OpenC3::OpenC3Authentication.class_eval do
+    def _make_auth_request(password)
+      mock_response = Object.new
+      mock_response.define_singleton_method(:body) { $openc3_mock_token }
+      mock_response
+    end
 
-  def _make_otp_request(scope)
-    mock_response = Object.new
-    mock_response.define_singleton_method(:body) { $openc3_mock_otp }
-    mock_response
+    def _make_otp_request(scope)
+      mock_response = Object.new
+      mock_response.define_singleton_method(:body) { $openc3_mock_otp }
+      mock_response
+    end
   end
 end
 
@@ -262,6 +272,7 @@ def capture_io(output = false)
 
   # Create a StringIO object to capture the output
   stdout = StringIO.new('', 'r+')
+  saved_dollar_stdout = $stdout
   $stdout = stdout
   saved_stdout = nil
   OpenC3.disable_warnings do
@@ -273,55 +284,45 @@ def capture_io(output = false)
   end
 
   # Yield back the StringIO so they can match against it
-  yield stdout
+  begin
+    yield stdout
+  ensure
+    # Restore the logger to FATAL to prevent all kinds of output
+    OpenC3::Logger.level = Logger::FATAL
+    OpenC3::Logger.stdout = false
 
-  # Restore the logger to FATAL to prevent all kinds of output
-  OpenC3::Logger.level = Logger::FATAL
+    # Restore the STDOUT constant
+    OpenC3.disable_warnings { Object.const_set(:STDOUT, saved_stdout) }
 
-  # Restore the STDOUT constant
-  OpenC3.disable_warnings { Object.const_set(:STDOUT, saved_stdout) }
-
-  # Restore the $stdout global to be STDOUT
-  $stdout = STDOUT
-  puts stdout.string if output # Print the capture for debugging
+    # Restore the $stdout global to be STDOUT
+    $stdout = saved_dollar_stdout
+    puts stdout.string if output # Print the capture for debugging
+  end
 end
 
-# Get a list of running threads, ignoring jruby system threads if necessary.
+# Get a list of running threads
 def running_threads
   threads = []
   Thread.list.each do |t|
-    if RUBY_ENGINE == 'jruby'
-      thread_name = JRuby.reference(t).native_thread.get_name
-      unless thread_name == 'Finalizer' or thread_name.include?('JRubyWorker')
-        threads << t.inspect
-      end
+    if t != Thread.current
+      threads << t.backtrace
     else
-      threads << t.inspect
+      threads << 'self'
     end
   end
   return threads
 end
 
-# Kill threads that are not "main", ignoring jruby system threads if necessary.
+# Kill threads that are not "main"
 def kill_leftover_threads
-  if RUBY_ENGINE == 'jruby'
-    if Thread.list.length > 2
-      Thread.list.each do |t|
-        thread_name = JRuby.reference(t).native_thread.get_name
-        if t != Thread.current and thread_name != 'Finalizer' and
-             !thread_name.include?('JRubyWorker')
-          t.kill
-        end
-      end
-      sleep(0.2)
-    end
-  else
-    if Thread.list.length > 1
-      Thread.list.each { |t| t.kill if t != Thread.current }
-      sleep(0.2)
-    end
+  if Thread.list.length > 1
+    Thread.list.each { |t| t.kill if t != Thread.current }
+    sleep(0.2)
   end
 end
+
+$saved_stdout_global = $stdout
+$saved_stdout_const = Object.const_get(:STDOUT)
 
 RSpec.configure do |config|
   # Enforce the new expect() syntax instead of the old should syntax
@@ -341,18 +342,12 @@ RSpec.configure do |config|
     end
   end
 
-  # Store standard output global and CONSTANT since we will mess with them
-  config.before(:all) do
-    $saved_stdout_global = $stdout
-    $saved_stdout_const = Object.const_get(:STDOUT)
-  end
-
   # Before each test make sure $stdout and STDOUT are set. They might be messed
   # up if a spec fails in the middle of capture_io and we don't have a chance
   # to return and reset them.
   config.before(:each) do
-    $stdout = $saved_stdout_global if $stdout != $saved_stdout_global
-    OpenC3.disable_warnings { Object.const_set(:STDOUT, $saved_stdout_const) }
+    $stdout = StringIO.new('', 'r+')
+    OpenC3.disable_warnings { Object.const_set(:STDOUT, $stdout) }
     kill_leftover_threads
   end
 

@@ -181,6 +181,8 @@ def capture_io():
     sys.stdout = captured_output  # and redirect stdout.
     Logger.stdout = True
     Logger.level = Logger.INFO
-    yield captured_output
-    Logger.level = Logger.FATAL
-    sys.stdout = stdout
+    try:
+        yield captured_output
+    finally:
+        Logger.level = Logger.FATAL
+        sys.stdout = stdout

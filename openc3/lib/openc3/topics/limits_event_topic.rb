@@ -53,7 +53,7 @@ module OpenC3
         limits['red_high'] = event[:red_high]
         limits['green_low'] = event[:green_low] if event[:green_low] && event[:green_high]
         limits['green_high'] = event[:green_high] if event[:green_low] && event[:green_high]
-        limits_settings[event[:limits_set]] = limits
+        limits_settings[event[:limits_set].to_s] = limits
         limits_settings['persistence_setting'] = event[:persistence] if event[:persistence]
         limits_settings['enabled'] = event[:enabled] if not event[:enabled].nil?
         Store.hset("#{scope}__current_limits_settings", field, JSON.generate(limits_settings, allow_nan: true))

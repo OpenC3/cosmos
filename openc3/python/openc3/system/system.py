@@ -165,16 +165,18 @@ class System(metaclass=SystemMeta):
     @classmethod
     def setup_targets(cls, target_names, base_dir, scope=OPENC3_SCOPE):
         if not System.instance_obj:  # type: ignore[has-type]
-            os.makedirs(f"{base_dir}/targets", exist_ok=True)
+            targets_path = f"{base_dir}/_targets"
+            os.makedirs(targets_path, exist_ok=True)
             bucket = Bucket.get_client()
             for target_name in target_names:
                 # Retrieve bucket/targets/target_name/<TARGET>_current.zip
-                zip_path = f"{base_dir}/targets/{target_name}_current.zip"
+                zip_path = f"{targets_path}/{target_name}_current.zip"
                 bucket_key = f"{scope}/target_archives/{target_name}/{target_name}_current.zip"
                 Logger.info(f"Retrieving {bucket_key} from targets bucket")  # type: ignore
                 bucket.get_object(bucket=OPENC3_CONFIG_BUCKET, key=bucket_key, path=zip_path)
                 with zipfile.ZipFile(zip_path) as zip_file:
-                    zip_file.extractall(f"{base_dir}/targets")
+                    zip_file.extractall(targets_path)
+                os.remove(zip_path)
 
                 # Now add any modifications in targets_modified/TARGET/cmd_tlm
                 # This adds support for remembering dynamically created packets
@@ -184,11 +186,11 @@ class System(metaclass=SystemMeta):
                 _, files = bucket.list_files(bucket=OPENC3_CONFIG_BUCKET, path=bucket_path)
                 for file in files:
                     bucket_key = os.path.join(bucket_path, file["name"])
-                    local_path = f"{base_dir}/targets/{target_name}/cmd_tlm/{file['name']}"
+                    local_path = f"{targets_path}/{target_name}/cmd_tlm/{file['name']}"
                     bucket.get_object(bucket=OPENC3_CONFIG_BUCKET, key=bucket_key, path=local_path)
 
             # Build System from targets
-            System.instance(target_names, f"{base_dir}/targets")
+            System.instance(target_names, targets_path)
 
     @classmethod
     def instance(cls, target_names=None, target_config_dir=None):

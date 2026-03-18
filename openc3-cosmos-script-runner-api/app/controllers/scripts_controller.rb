@@ -16,7 +16,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'json'
-require_relative '../models/script'
+require 'openc3/utilities/script'
 
 class ScriptsController < ApplicationController
   # This REGEX is also found in running_script.rb

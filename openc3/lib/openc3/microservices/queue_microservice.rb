@@ -18,6 +18,8 @@ require 'openc3/utilities/authentication'
 require 'openc3/api/api'
 
 module OpenC3
+  saved_verbose = $VERBOSE
+  $VERBOSE = false
   module Script
     private
     # Override the prompt_for_hazardous method to always return true since there is no user to prompt
@@ -25,6 +27,7 @@ module OpenC3
       return true
     end
   end
+  $VERBOSE = saved_verbose
 
   # The queue processor runs in a single thread and processes commands via cmd_api.
   class QueueProcessor

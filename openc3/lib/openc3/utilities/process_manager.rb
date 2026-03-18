@@ -17,7 +17,7 @@
 
 require 'openc3/operators/operator'
 require 'openc3/models/process_status_model'
-require 'openc3/models/scope_model'
+# require 'openc3/models/scope_model' # Circular require
 require 'openc3/utilities/logger'
 require 'socket'
 

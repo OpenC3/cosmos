@@ -23,7 +23,7 @@
 
 require 'openc3/models/target_model'
 require 'openc3/models/cvt_model'
-require 'openc3/packets/packet'
+# require 'openc3/packets/packet' # Circular require
 require 'openc3/topics/telemetry_topic'
 require 'openc3/topics/interface_topic'
 require 'openc3/topics/decom_interface_topic'
@@ -304,7 +304,7 @@ module OpenC3
           if item['limits']['DEFAULT']
             results[-1] += '__LIMITS'
           end
-        rescue RuntimeError => e
+        rescue RuntimeError
           results << nil
         end
       end

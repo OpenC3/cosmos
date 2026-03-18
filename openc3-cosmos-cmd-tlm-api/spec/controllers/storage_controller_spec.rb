@@ -535,7 +535,7 @@ RSpec.describe StorageController, type: :controller do
 
     before(:each) do
       allow(Dir).to receive(:mktmpdir).and_return(tmp_dir)
-      allow(FileUtils).to receive(:rm_rf)
+      allow(FileUtils).to receive(:remove_entry_secure)
       allow(File).to receive(:read).and_call_original
       allow(File).to receive(:read).with(zip_path, mode: 'rb').and_return(zip_data)
       allow(Base64).to receive(:encode64).with(zip_data).and_return(encoded_zip)
@@ -616,7 +616,7 @@ RSpec.describe StorageController, type: :controller do
 
         expect(response).to have_http_status(:internal_server_error)
         expect(JSON.parse(response.body)["message"]).to eq("Zip error")
-        expect(FileUtils).to have_received(:rm_rf).with(tmp_dir)
+        expect(FileUtils).to have_received(:remove_entry_secure).with(tmp_dir, true)
       end
     end
 

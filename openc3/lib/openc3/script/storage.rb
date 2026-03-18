@@ -110,7 +110,7 @@ module OpenC3
           end
 
           return _get_storage_file("#{part}/#{path}", scope: scope)
-        rescue => e
+        rescue
           if part == "targets_modified"
             part = "targets"
             redo

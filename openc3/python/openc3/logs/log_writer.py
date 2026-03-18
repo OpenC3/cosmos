@@ -132,7 +132,8 @@ class LogWriter:
     def shutdown(self):
         threads = self.stop()
         with LogWriter.mutex:
-            LogWriter.instances.remove(self)
+            if self in LogWriter.instances:
+                LogWriter.instances.remove(self)
             if len(LogWriter.instances) <= 0:
                 if LogWriter.cycle_sleeper:
                     LogWriter.cycle_sleeper.cancel()

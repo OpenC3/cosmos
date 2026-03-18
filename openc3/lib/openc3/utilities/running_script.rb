@@ -24,6 +24,7 @@ require 'openc3/io/stdout'
 require 'openc3/io/stderr'
 require 'childprocess'
 require 'openc3/script/suite_runner'
+require 'openc3/utilities/script'
 require 'openc3/utilities/store'
 require 'openc3/utilities/store_queued'
 require 'openc3/utilities/bucket_require'
@@ -31,6 +32,7 @@ require 'openc3/models/offline_access_model'
 require 'openc3/models/environment_model'
 require 'openc3/models/script_engine_model'
 require 'openc3/models/script_status_model'
+require 'fileutils'
 
 if not defined? RAILS_ROOT
   if ENV['RAILS_ROOT']
@@ -388,7 +390,9 @@ class RunningScript
       scope = $openc3_scope
       tags = []
     end
-    @@message_log = OpenC3::MessageLog.new("sr", File.join(RAILS_ROOT, 'log'), tags: tags, scope: scope)
+    log_dir = File.join(RAILS_ROOT, 'tmp', 'script_logs')
+    FileUtils.mkdir_p(log_dir)
+    @@message_log = OpenC3::MessageLog.new("sr", log_dir, tags: tags, scope: scope)
   end
 
   def message_log
@@ -433,7 +437,9 @@ class RunningScript
 
     process = ChildProcess.build(process_name, runner_path.to_s, running_script_id.to_s, scope)
     process.io.inherit! # Helps with debugging
-    process.cwd = File.join(RAILS_ROOT, 'scripts')
+    script_cwd = File.join(RAILS_ROOT, 'tmp', "script_#{running_script_id}")
+    FileUtils.mkdir_p(script_cwd)
+    process.cwd = script_cwd
 
     # Check for offline access token
     model = nil
@@ -1224,7 +1230,8 @@ class RunningScript
       end
       @suite_report = OpenC3::SuiteRunner.suite_results.report
       # Write out the report to a local file
-      log_dir = File.join(RAILS_ROOT, 'log')
+      log_dir = File.join(RAILS_ROOT, 'tmp', 'script_logs')
+      FileUtils.mkdir_p(log_dir)
       filename = File.join(log_dir, File.build_timestamped_filename(['sr', parts.join('__')]))
       File.open(filename, 'wb') do |file|
         file.write(OpenC3::SuiteRunner.suite_results.report)

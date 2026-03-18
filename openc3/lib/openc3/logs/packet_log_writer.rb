@@ -137,7 +137,6 @@ module OpenC3
     # Closing a log file isn't critical so we just log an error
     # Returns threads that moves log to bucket
     def close_file(take_mutex = true)
-      threads = []
       @mutex.lock if take_mutex
       begin
         # Need to write the OFFSET_MARKER for each packet
@@ -145,12 +144,10 @@ module OpenC3
           write_entry(:OFFSET_MARKER, nil, nil, nil, nil, nil, last_offset + ',' + redis_topic, nil) if @file
         end
 
-        threads.concat(super(false))
-
+        return super(false)
       ensure
         @mutex.unlock if take_mutex
       end
-      return threads
     end
 
     def get_packet_index(cmd_or_tlm, target_name, packet_name, entry_type, data)

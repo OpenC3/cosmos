@@ -1,4 +1,4 @@
-# encoding: ascii-8bit
+# encoding: utf-8
 
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
@@ -33,7 +33,7 @@ module OpenC3
     @thread_conn = Concurrent::ThreadLocalVar.new(nil)
 
     # Get or create a thread-local PG connection with type mapping configured.
-    # Returns the thread-local connection — callers should not close it.
+    # Returns the thread-local connection - callers should not close it.
     def self.connection
       conn = @thread_conn.value
       if conn.nil? || conn.finished?
@@ -59,7 +59,7 @@ module OpenC3
       @thread_conn.value = nil
     end
 
-    # Health check — attempt to connect and immediately close.
+    # Health check - attempt to connect and immediately close.
     # Returns true if successful, raises on failure.
     def self.check_connection
       conn = PG::Connection.new(

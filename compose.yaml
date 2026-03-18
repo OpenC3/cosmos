@@ -17,6 +17,7 @@
 
 services:
   openc3-buckets:
+    read_only: true
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-buckets${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     volumes:
@@ -52,8 +53,9 @@ services:
       start_period: 20s
 
   openc3-tsdb:
+    read_only: true
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
-    platform: "${OPENC3_TSDB_PLATFORM}"
+    platform: "${OPENC3_TSDB_PLATFORM:-}"
     # ports:
     #   # This gives complete access to the QuestDB instance, which is useful for testing and development.
     #   - "127.0.0.1:9000:9000" # OPENC3_TSDB_INGEST_PORT & QuestDB Console
@@ -98,6 +100,7 @@ services:
       start_period: 30s
 
   openc3-redis:
+    read_only: true
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     volumes:
@@ -126,6 +129,7 @@ services:
       start_period: 10s
 
   openc3-redis-ephemeral:
+    read_only: true
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     volumes:
@@ -158,6 +162,7 @@ services:
       start_period: 10s
 
   openc3-cosmos-cmd-tlm-api:
+    read_only: true
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-cmd-tlm-api${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     restart: "unless-stopped"
@@ -166,6 +171,7 @@ services:
       - "openc3-redis-ephemeral"
       - "openc3-buckets"
     volumes:
+      - "openc3-cmd-tlm-api-tmp-v:/tmp"
       - "openc3-gems-v:/gems"
       - "./plugins:/plugins:z"
       - "./cacert.pem:/devel/cacert.pem:z"
@@ -185,6 +191,7 @@ services:
       - host.docker.internal:host-gateway
 
   openc3-cosmos-script-runner-api:
+    read_only: true
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-script-runner-api${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     restart: "unless-stopped"
@@ -193,6 +200,7 @@ services:
       - "openc3-redis-ephemeral"
       - "openc3-buckets"
     volumes:
+      - "openc3-script-runner-api-tmp-v:/tmp"
       - "openc3-gems-v:/gems:ro"
       - "./plugins:/plugins:z"
       - "./cacert.pem:/devel/cacert.pem:z"
@@ -210,6 +218,7 @@ services:
       - .env
 
   openc3-operator:
+    read_only: true
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-operator${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     restart: "unless-stopped"
@@ -221,6 +230,7 @@ services:
       - "openc3-redis-ephemeral"
       - "openc3-buckets"
     volumes:
+      - "openc3-operator-tmp-v:/tmp"
       - "openc3-gems-v:/gems:ro"
       - "./plugins:/plugins:z"
       - "./cacert.pem:/devel/cacert.pem:z"
@@ -246,6 +256,7 @@ services:
       - host.docker.internal:host-gateway
 
   openc3-traefik:
+    read_only: true
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     volumes:
@@ -292,6 +303,7 @@ services:
       start_period: 10s
 
   openc3-cosmos-init:
+    read_only: true
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     restart: on-failure
@@ -301,6 +313,7 @@ services:
       - "openc3-redis-ephemeral"
       - "openc3-buckets"
     volumes:
+      - "openc3-init-tmp-v:/tmp"
       - "openc3-gems-v:/gems"
       - "./plugins:/plugins:z"
       - "./cacert.pem:/devel/cacert.pem:z"
@@ -324,3 +337,7 @@ volumes:
   openc3-redis-ephemeral-v: {}
   openc3-object-v: {}
   openc3-gems-v: {}
+  openc3-cmd-tlm-api-tmp-v: {}
+  openc3-script-runner-api-tmp-v: {}
+  openc3-operator-tmp-v: {}
+  openc3-init-tmp-v: {}

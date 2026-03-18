@@ -42,23 +42,23 @@ if ENV['PROFILE'] || ENV['FLAMEGRAPH']
     if ENV['FLAMEGRAPH']
       begin
         require 'ruby-prof-flamegraph'
-        FLAMEGRAPH_AVAILABLE = true
+        $FLAMEGRAPH_AVAILABLE = true
       rescue LoadError
         puts "Warning: ruby-prof-flamegraph not available. Install with: gem install ruby-prof-flamegraph"
-        FLAMEGRAPH_AVAILABLE = false
+        $FLAMEGRAPH_AVAILABLE = false
       end
     else
-      FLAMEGRAPH_AVAILABLE = false
+      $FLAMEGRAPH_AVAILABLE = false
     end
-    PROFILE_AVAILABLE = true
+    $PROFILE_AVAILABLE = true
   rescue LoadError
     puts "Warning: ruby-prof not available"
-    PROFILE_AVAILABLE = false
-    FLAMEGRAPH_AVAILABLE = false
+    $PROFILE_AVAILABLE = false
+    $FLAMEGRAPH_AVAILABLE = false
   end
 else
-  PROFILE_AVAILABLE = false
-  FLAMEGRAPH_AVAILABLE = false
+  $PROFILE_AVAILABLE = false
+  $FLAMEGRAPH_AVAILABLE = false
 end
 
 if ENV['BENCHMARK_IPS']
@@ -402,7 +402,7 @@ RSpec.describe OpenC3::InterfaceMicroservice, if: ENV['PERFORMANCE'] do
     end
   end
 
-  describe "profiling", if: PROFILE_AVAILABLE do
+  describe "profiling", if: $PROFILE_AVAILABLE do
     let(:profile_iterations) { (ENV['PROFILE_ITERATIONS'] || 1000).to_i }
 
     it "profiles handle_packet with ruby-prof" do
@@ -456,7 +456,7 @@ RSpec.describe OpenC3::InterfaceMicroservice, if: ENV['PERFORMANCE'] do
         printer.print(f)
       end
 
-      if FLAMEGRAPH_AVAILABLE
+      if $FLAMEGRAPH_AVAILABLE
         # Generate flamegraph-compatible output
         File.open(File.join(profile_dir, "handle_packet_#{RUBY_VERSION}.flamegraph"), 'w') do |f|
           printer = RubyProf::FlameGraphPrinter.new(result)
@@ -511,7 +511,7 @@ RSpec.describe OpenC3::InterfaceMicroservice, if: ENV['PERFORMANCE'] do
         printer.print(f, min_percent: 1)
       end
 
-      if FLAMEGRAPH_AVAILABLE
+      if $FLAMEGRAPH_AVAILABLE
         File.open(File.join(profile_dir, "identify_#{RUBY_VERSION}.flamegraph"), 'w') do |f|
           printer = RubyProf::FlameGraphPrinter.new(result)
           printer.print(f)

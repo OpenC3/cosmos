@@ -13,6 +13,7 @@ import atexit
 import contextlib
 import json
 import os
+import shutil
 import sys
 import tempfile
 import threading
@@ -95,6 +96,7 @@ class Microservice:
         split_name = name.split("__")
         if len(split_name) != 3:
             raise RuntimeError(f"Name {name} doesn't match convention of SCOPE__TYPE__NAME")
+        microservice_type = split_name[1].upper()
 
         self.scope = split_name[0]
         global openc3_scope
@@ -110,8 +112,12 @@ class Microservice:
 
         # OpenC3.setup_open_telemetry(self.name, False)
 
+        self.temp_dir = f"{tempfile.gettempdir()}/{name}"
         # Create temp folder for this microservice
-        self.temp_dir = tempfile.TemporaryDirectory()
+        # This will already have been setup by plugin_microservice.rb if USER
+        if is_plugin or microservice_type != "USER":
+            shutil.rmtree(self.temp_dir, ignore_errors=True)
+            os.mkdir(self.temp_dir)
 
         # Get microservice configuration from Redis
         self.config = MicroserviceModel.get(self.name, scope=self.scope)
@@ -133,7 +139,7 @@ class Microservice:
         if self.target_names is None:
             self.target_names = []
         if not is_plugin:
-            System.setup_targets(self.target_names, self.temp_dir.name, scope=self.scope)
+            System.setup_targets(self.target_names, self.temp_dir, scope=self.scope)
 
         # Use atexit to shutdown cleanly no matter how we die
         atexit.register(self.shutdown)
@@ -148,21 +154,20 @@ class Microservice:
             self.config["cmd"]
 
             # Get Microservice files from bucket storage
-            temp_dir = tempfile.TemporaryDirectory()
             bucket = OPENC3_CONFIG_BUCKET
             client = Bucket.get_client()
 
             prefix = f"{self.scope}/microservices/{self.name}/"
             file_count = 0
             for object in client.list_objects(bucket=bucket, prefix=prefix):
-                response_target = os.path.join(temp_dir, object.key.split(prefix)[-1])
+                response_target = os.path.join(self.temp_dir, object.key.split(prefix)[-1])
                 os.makedirs(os.path.dirname(response_target), exist_ok=True)
                 client.get_object(bucket=bucket, key=object.key, path=response_target)
                 file_count += 1
 
             # Adjust @work_dir to microservice files downloaded if files and a relative path
             if file_count > 0 and self.work_dir[0] != "/":
-                self.work_dir = os.path.join(temp_dir, self.work_dir)
+                self.work_dir = os.path.join(self.temp_dir, self.work_dir)
 
             # TODO: Check Syntax on any python files
             # ruby_filename = None
@@ -205,8 +210,7 @@ class Microservice:
         with contextlib.suppress(Exception):
             # Ignore Redis failures during shutdown
             MicroserviceStatusModel.set(self.as_json(), scope=self.scope)
-        if self.temp_dir is not None:
-            self.temp_dir.cleanup()
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
         self.metric.shutdown()
         with contextlib.suppress(Exception):
             # Ignore Redis failures during shutdown

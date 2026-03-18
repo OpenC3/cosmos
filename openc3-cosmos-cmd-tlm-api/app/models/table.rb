@@ -37,13 +37,18 @@ class Table < OpenC3::TargetFile
     raise NotFound, "Binary file '#{binary_filename}' not found" unless binary.contents
     # If they want an individual table from the binary we do more work
     if definition_filename and table_name
-      root_definition = get_definitions(scope, definition_filename, binary_filename)[0]
-      raise NotFound, "Definition file '#{definition_filename}' not found" unless root_definition
-      # Convert the typical table naming convention of all caps with underscores
-      # to the typical binary convention of camelcase, e.g. MC_CONFIG => McConfig.bin
-      filename = table_name.split('_').map { |part| part.capitalize }.join()
-      binary.filename = "#{filename}.bin"
-      binary.contents = OpenC3::TableManagerCore.binary(binary.contents, root_definition, table_name)
+      begin
+        root_definition, _, temp_dir = get_definitions(scope, definition_filename, binary_filename)
+        raise NotFound, "Definition file '#{definition_filename}' not found" unless root_definition
+        # Convert the typical table naming convention of all caps with underscores
+        # to the typical binary convention of camelcase, e.g. MC_CONFIG => McConfig.bin
+        filename = table_name.split('_').map { |part| part.capitalize }.join()
+        binary.filename = "#{filename}.bin"
+        binary.contents = OpenC3::TableManagerCore.binary(binary.contents, root_definition, table_name)
+      ensure
+        # Cleanup temp_dir
+        FileUtils.remove_entry_secure(temp_dir, true) if temp_dir
+      end
     end
     return binary
   end
@@ -51,10 +56,15 @@ class Table < OpenC3::TargetFile
   def self.definition(scope, definition_filename, table_name = nil)
     definition = OpenStruct.new
     if table_name
-      root_definition = get_definitions(scope, definition_filename)[0]
-      raise NotFound, "Definition file '#{definition_filename}' not found" unless root_definition
-      definition.filename, definition.contents =
-        OpenC3::TableManagerCore.definition(root_definition, table_name)
+      begin
+        root_definition, _, temp_dir = get_definitions(scope, definition_filename)
+        raise NotFound, "Definition file '#{definition_filename}' not found" unless root_definition
+        definition.filename, definition.contents =
+          OpenC3::TableManagerCore.definition(root_definition, table_name)
+      ensure
+        # Cleanup temp_dir
+        FileUtils.remove_entry_secure(temp_dir, true) if temp_dir
+      end
     else
       contents = body(scope, definition_filename)
       raise NotFound, "Definition file '#{definition_filename}' not found" unless contents
@@ -68,37 +78,52 @@ class Table < OpenC3::TargetFile
     report = OpenStruct.new
     binary = body(scope, binary_filename)
     raise NotFound, "Binary file '#{binary_filename}' not found" unless binary
-    root_definition = get_definitions(scope, definition_filename, binary_filename)[0]
-    raise NotFound, "Definition file '#{definition_filename}' not found" unless root_definition
-    if table_name
-      # Convert the typical table naming convention of all caps with underscores
-      # to the typical binary convention of camelcase, e.g. MC_CONFIG => McConfig.bin
-      filename = table_name.split('_').map { |part| part.capitalize }.join()
-      report.filename = "#{File.dirname(binary_filename)}/#{filename}.csv"
-    else
-      report.filename = binary_filename.sub('.bin', '.csv')
+    root_definition, _, temp_dir = get_definitions(scope, definition_filename, binary_filename)
+    begin
+      raise NotFound, "Definition file '#{definition_filename}' not found" unless root_definition
+      if table_name
+        # Convert the typical table naming convention of all caps with underscores
+        # to the typical binary convention of camelcase, e.g. MC_CONFIG => McConfig.bin
+        filename = table_name.split('_').map { |part| part.capitalize }.join()
+        report.filename = "#{File.dirname(binary_filename)}/#{filename}.csv"
+      else
+        report.filename = binary_filename.sub('.bin', '.csv')
+      end
+      report.contents = OpenC3::TableManagerCore.report(binary, root_definition, table_name)
+    ensure
+      # Cleanup temp_dir
+      FileUtils.remove_entry_secure(temp_dir, true) if temp_dir
     end
-    report.contents = OpenC3::TableManagerCore.report(binary, root_definition, table_name)
     return report
   end
 
   def self.load(scope, binary_filename, definition_filename)
     binary = body(scope, binary_filename)
     raise NotFound, "Binary file '#{binary_filename}' not found" unless binary
-    root_definition, definition_filename = get_definitions(scope, definition_filename, binary_filename)
-    raise NotFound, "Definition file '#{definition_filename}' not found" unless root_definition
-    json = OpenC3::TableManagerCore.build_json_hash(binary, root_definition)
-    json['definition'] = definition_filename
+    begin
+      root_definition, definition_filename, temp_dir = get_definitions(scope, definition_filename, binary_filename)
+      raise NotFound, "Definition file '#{definition_filename}' not found" unless root_definition
+      json = OpenC3::TableManagerCore.build_json_hash(binary, root_definition)
+      json['definition'] = definition_filename
+    ensure
+      # Cleanup temp_dir
+      FileUtils.remove_entry_secure(temp_dir, true) if temp_dir
+    end
     return json.to_json(allow_nan: true)
   end
 
   def self.save(scope, binary_filename, definition_filename, tables)
     binary = body(scope, binary_filename)
     raise NotFound, "Binary file '#{binary_filename}' not found" unless binary
-    root_definition = get_definitions(scope, definition_filename, binary_filename)[0]
-    raise NotFound, "Definition file '#{definition_filename}' not found" unless root_definition
-    binary = OpenC3::TableManagerCore.save(root_definition, JSON.parse(tables, allow_nan: true, create_additions: true))
-    create(scope, binary_filename, binary, content_type: nil)
+    begin
+      root_definition, _, temp_dir = get_definitions(scope, definition_filename, binary_filename)
+      raise NotFound, "Definition file '#{definition_filename}' not found" unless root_definition
+      binary = OpenC3::TableManagerCore.save(root_definition, JSON.parse(tables, allow_nan: true, create_additions: true))
+      return create(scope, binary_filename, binary, content_type: nil)
+    ensure
+      # Cleanup temp_dir
+      FileUtils.remove_entry_secure(temp_dir, true) if temp_dir
+    end
   end
 
   def self.save_as(scope, filename, new_filename)
@@ -108,13 +133,18 @@ class Table < OpenC3::TargetFile
   end
 
   def self.generate(scope, definition_filename)
-    root_definition = get_definitions(scope, definition_filename)[0]
-    raise NotFound, "Definition file '#{definition_filename}' not found" unless root_definition
-    binary = OpenC3::TableManagerCore.generate(root_definition)
-    binary_filename = "#{File.dirname(definition_filename).sub('/config','/bin')}/#{File.basename(definition_filename)}"
-    binary_filename.sub!('_def', '') # Strip off _def from the definition filename
-    binary_filename.sub!('.txt', '.bin')
-    create(scope, binary_filename, binary, content_type: nil)
+    begin
+      root_definition, _, temp_dir = get_definitions(scope, definition_filename)
+      raise NotFound, "Definition file '#{definition_filename}' not found" unless root_definition
+      binary = OpenC3::TableManagerCore.generate(root_definition)
+      binary_filename = "#{File.dirname(definition_filename).sub('/config','/bin')}/#{File.basename(definition_filename)}"
+      binary_filename.sub!('_def', '') # Strip off _def from the definition filename
+      binary_filename.sub!('.txt', '.bin')
+      create(scope, binary_filename, binary, content_type: nil)
+    ensure
+      # Cleanup temp_dir
+      FileUtils.remove_entry_secure(temp_dir, true) if temp_dir
+    end
     return binary_filename
   end
 
@@ -138,7 +168,6 @@ class Table < OpenC3::TargetFile
   # Private helper methods
 
   def self.get_definitions(scope, definition_filename, binary_filename = nil)
-    temp_dir = Dir.mktmpdir
     definition = body(scope, definition_filename)
     # We might not find the definition, especially if the binary isn't named
     # like the convention. If not, and they pass us a binary filename,
@@ -166,22 +195,31 @@ class Table < OpenC3::TargetFile
       if found
         definition = body(scope, definition_filename)
       else
-        return [nil, definition_filename]
+        return [nil, definition_filename, nil]
       end
     end
-    base_definition = File.join(temp_dir, File.basename(definition_filename))
-    File.write(base_definition, definition)
-    # If the definition includes TABLEFILE we need to load
-    # the other definitions locally so we can render them
-    base_dir = File.dirname(definition_filename)
-    definition.split("\n").each do |line|
-      if line.strip =~ /^TABLEFILE (.*)/
-        filename = File.join(base_dir, $1.remove_quotes)
-        file = body(scope, filename)
-        raise NotFound, "Could not find file #{filename}" unless file
-        File.write(File.join(temp_dir, File.basename(filename)), file)
+    temp_dir = Dir.mktmpdir
+    begin
+      base_definition = File.join(temp_dir, File.basename(definition_filename))
+      File.write(base_definition, definition)
+      # If the definition includes TABLEFILE we need to load
+      # the other definitions locally so we can render them
+      base_dir = File.dirname(definition_filename)
+      definition.split("\n").each do |line|
+        if line.strip =~ /^TABLEFILE (.*)/
+          filename = File.join(base_dir, $1.remove_quotes)
+          file = body(scope, filename)
+          raise NotFound, "Could not find file #{filename}" unless file
+          File.write(File.join(temp_dir, File.basename(filename)), file)
+        end
       end
+    rescue Exception
+      # Cleanup temp_dir
+      FileUtils.remove_entry_secure(temp_dir, true)
+
+      # Reraise error
+      raise
     end
-    return [base_definition, definition_filename]
+    return [base_definition, definition_filename, temp_dir]
   end
 end

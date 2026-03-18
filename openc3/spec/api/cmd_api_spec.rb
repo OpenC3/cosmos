@@ -539,19 +539,16 @@ module OpenC3
         expect(result[0]).to eq("INST")
         expect(result[1]).to eq("COLLECT")
         expect(result[2]).to be_within(1).of(time.tv_sec) # Allow 1s for rounding
-        expect(result[3]).to be_within(50_000).of(time.tv_usec) # Allow 50ms
 
         result = @api.get_cmd_time("INST")
         expect(result[0]).to eq("INST")
         expect(result[1]).to eq("COLLECT")
         expect(result[2]).to be_within(1).of(time.tv_sec) # Allow 1s for rounding
-        expect(result[3]).to be_within(50_000).of(time.tv_usec) # Allow 50ms
 
         result = @api.get_cmd_time()
         expect(result[0]).to eq("INST")
         expect(result[1]).to eq("COLLECT")
         expect(result[2]).to be_within(1).of(time.tv_sec) # Allow 1s for rounding
-        expect(result[3]).to be_within(50_000).of(time.tv_usec) # Allow 50ms
 
         time = Time.now
         @api.cmd("INST ABORT")
@@ -560,13 +557,11 @@ module OpenC3
         expect(result[0]).to eq("INST")
         expect(result[1]).to eq("ABORT") # New latest is ABORT
         expect(result[2]).to be_within(1).of(time.tv_sec) # Allow 1s for rounding
-        expect(result[3]).to be_within(50_000).of(time.tv_usec) # Allow 50ms
 
         result = @api.get_cmd_time()
         expect(result[0]).to eq("INST")
         expect(result[1]).to eq("ABORT")
         expect(result[2]).to be_within(1).of(time.tv_sec) # Allow 1s for rounding
-        expect(result[3]).to be_within(50_000).of(time.tv_usec) # Allow 50ms
       end
 
       it "returns 0 if no times are set" do

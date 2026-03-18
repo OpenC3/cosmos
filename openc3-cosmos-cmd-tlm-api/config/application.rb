@@ -19,7 +19,7 @@ require "action_cable/engine"
 Bundler.require(*Rails.groups)
 
 require 'prometheus/client/data_stores/direct_file_store'
-Prometheus::Client.config.data_store = Prometheus::Client::DataStores::DirectFileStore.new(dir: "tmp/metrics")
+Prometheus::Client.config.data_store = Prometheus::Client::DataStores::DirectFileStore.new(dir: "/tmp/api_metrics")
 
 module CmdTlmApi
   class Application < Rails::Application

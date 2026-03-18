@@ -157,6 +157,7 @@ module OpenC3
       it "logs the raw data" do
         thread = double("Thread")
         allow(thread).to receive(:join)
+        allow(thread).to receive(:alive?).and_return(false)
         allow(BucketUtilities).to receive(:move_log_file_to_bucket).and_return(thread)
 
         write = UdpWriteSocket.new('127.0.0.1', 8889)
@@ -208,6 +209,7 @@ module OpenC3
       it "logs the raw data" do
         thread = double("Thread")
         allow(thread).to receive(:join)
+        allow(thread).to receive(:alive?).and_return(false)
         allow(BucketUtilities).to receive(:move_log_file_to_bucket).and_return(thread)
 
         read = UdpReadSocket.new(8888, 'localhost')
@@ -259,6 +261,7 @@ module OpenC3
       it "logs the raw data" do
         thread = double("Thread")
         allow(thread).to receive(:join)
+        allow(thread).to receive(:alive?).and_return(false)
         allow(BucketUtilities).to receive(:move_log_file_to_bucket).and_return(thread)
 
         read = UdpReadSocket.new(8888, 'localhost')

@@ -39,9 +39,10 @@ containers = [
     pnpm: ["/openc3/plugins/pnpm-lock.yaml"] },
   { name: "openc3inc/openc3-operator:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
   { name: "openc3inc/openc3-cosmos-script-runner-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
-  { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "valkey:#{valkey_version}", apt: true },
+  { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "valkey:#{valkey_version}", apk: true },
   { name: "openc3inc/openc3-traefik:#{version_tag}", base_image: "traefik:#{traefik_version}", apk: true },
   { name: "openc3inc/openc3-buckets:#{version_tag}", base_image: "alpine:#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}", apk: true },
+  { name: "openc3inc/openc3-tsdb:#{version_tag}", base_image: "tsdb:#{tsdb_version}", dnf: true },
 ]
 # Update the bundles
 Dir.chdir(File.join(__dir__, '../../openc3')) do

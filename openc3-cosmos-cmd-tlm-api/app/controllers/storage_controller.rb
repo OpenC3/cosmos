@@ -17,6 +17,7 @@
 
 require 'openc3/utilities/local_mode'
 require 'openc3/utilities/bucket'
+require 'fileutils'
 begin
   require 'openc3-enterprise/version'
   STORAGE_VERSION = OPENC3_ENTERPRISE_VERSION
@@ -329,7 +330,7 @@ class StorageController < ApplicationController
       OpenC3::Logger.error("Download failed: #{e.message}", user: username())
       render json: { status: 'error', message: e.message }, status: :internal_server_error
     ensure
-      FileUtils.rm_rf(tmp_dir) if tmp_dir
+      FileUtils.remove_entry_secure(tmp_dir, true) if tmp_dir
     end
   end
 
@@ -373,7 +374,7 @@ class StorageController < ApplicationController
       OpenC3::Logger.error("Multiple file download failed: #{e.message}", user: username())
       render json: { status: 'error', message: e.message }, status: :internal_server_error
     ensure
-      FileUtils.rm_rf(tmp_dir) if tmp_dir
+      FileUtils.remove_entry_secure(tmp_dir, true) if tmp_dir
     end
   end
 
