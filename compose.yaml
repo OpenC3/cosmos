@@ -285,8 +285,8 @@ services:
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
     healthcheck:
-      # Test that Traefik is listening - pgrep not available in UBI/IronBank images
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 2900 || exit 1"]
+      # Use traefik's built-in healthcheck which uses the ping entrypoint
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 10s
       timeout: 3s
       retries: 5
