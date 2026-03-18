@@ -631,7 +631,7 @@ case $1 in
       echo ""
       echo "This uses UBI-based container images and sets UBI-specific configurations:"
       echo "  - Image suffix: -ubi"
-      echo "  - Redis volume: /home/data (for UBI compatibility)"
+      echo "  - Redis volume: /data"
       echo ""
       echo "Containers will start in the background using docker compose up -d."
       echo ""
@@ -662,7 +662,7 @@ case $1 in
     else
       OPENC3_TSDB_PLATFORM=linux/amd64
     fi
-    DOCKER_DEFAULT_PLATFORM=linux/amd64 OPENC3_IMAGE_SUFFIX=-ubi OPENC3_REDIS_VOLUME=/home/data OPENC3_TSDB_PLATFORM=$OPENC3_TSDB_PLATFORM ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
+    DOCKER_DEFAULT_PLATFORM=linux/amd64 OPENC3_IMAGE_SUFFIX=-ubi OPENC3_TSDB_PLATFORM=$OPENC3_TSDB_PLATFORM ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
     ;;
   test )
     # Check for help at any position

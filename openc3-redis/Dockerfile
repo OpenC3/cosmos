@@ -32,8 +32,6 @@ COPY --chmod=0755 ./docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN mkdir -p /data && chown valkey:valkey /data
 RUN ["chmod", "-R", "777", "/data/"]
-RUN mkdir -p /home/data && chown valkey:valkey /home/data
-RUN ["chmod", "-R", "777", "/home/data/"]
 
 EXPOSE 6380
 USER valkey
