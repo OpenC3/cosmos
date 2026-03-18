@@ -103,7 +103,8 @@ module OpenC3
 
       OpenC3.setup_open_telemetry(@name, false)
 
-      @temp_dir = File.join(Dir.tmpdir, @name)
+      @temp_dir = OpenC3.sanitize_path(File.join(Dir.tmpdir, @name))
+
       # Create temp folder for this microservice
       # This will already have been setup by plugin_microservice.rb if USER
       if is_plugin or microservice_type != 'USER'
@@ -154,7 +155,7 @@ module OpenC3
         prefix = "#{@scope}/microservices/#{@name}/"
         file_count = 0
         client.list_objects(bucket: bucket, prefix: prefix).each do |object|
-          response_target = File.join(@temp_dir, object.key.split(prefix)[-1])
+          response_target = OpenC3.sanitize_path(File.join(@temp_dir, object.key.split(prefix)[-1]))
           FileUtils.mkdir_p(File.dirname(response_target))
           client.get_object(bucket: bucket, key: object.key, path: response_target)
           file_count += 1
@@ -162,7 +163,7 @@ module OpenC3
 
         # Adjust @work_dir to microservice files downloaded if files and a relative path
         if file_count > 0 and @work_dir[0] != '/'
-          @work_dir = File.join(@temp_dir, @work_dir)
+          @work_dir = OpenC3.sanitize_path(File.join(@temp_dir, @work_dir))
         end
 
         # Check Syntax on any ruby files

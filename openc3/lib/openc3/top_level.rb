@@ -101,6 +101,20 @@ module OpenC3
     end
   end
 
+  def self.sanitize_path(path)
+    return '' if path.nil?
+    # path is passed as a parameter thus we have to sanitize it or the code scanner detects:
+    # "Uncontrolled data used in path expression"
+    # This method is taken directly from the Rails source:
+    #   https://api.rubyonrails.org/v5.2/classes/ActiveStorage/Filename.html#method-i-sanitized
+    # NOTE: I removed the '/' character because we have to allow this in order to traverse the path
+    sanitized = path.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "�").strip.tr("\u{202E}%$|:;\t\r\n\\", "-").gsub('..', '-')
+    if sanitized != path
+      raise StorageError, "Invalid path: #{path}"
+    end
+    sanitized
+  end
+
   require 'openc3/utilities/logger'
 
   # Creates a marshal file by serializing the given obj

@@ -166,7 +166,7 @@ module OpenC3
       end
       temp_dir = Dir.mktmpdir
       begin
-        zip_filename = File.join(temp_dir, "#{target_name}.zip")
+        zip_filename = OpenC3.sanitize_path(File.join(temp_dir, "#{target_name}.zip"))
         Zip.continue_on_exists_proc = true
         zip = Zip::File.open(zip_filename, create: true)
 
