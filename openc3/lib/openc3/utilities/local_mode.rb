@@ -450,6 +450,7 @@ module OpenC3
     end
 
     def self.save_tool_config(scope, tool, name, data)
+      return unless ENV['OPENC3_LOCAL_MODE'] and Dir.exist?(OPENC3_LOCAL_MODE_PATH)
       json = JSON.parse(data, allow_nan: true, create_additions: true)
       config_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/tool_config/#{tool}/#{name}.json"
       return unless File.expand_path(config_path).start_with?(OPENC3_LOCAL_MODE_PATH)
@@ -460,6 +461,7 @@ module OpenC3
     end
 
     def self.delete_tool_config(scope, tool, name)
+      return unless ENV['OPENC3_LOCAL_MODE'] and Dir.exist?(OPENC3_LOCAL_MODE_PATH)
       config_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/tool_config/#{tool}/#{name}.json"
       return unless File.expand_path(config_path).start_with?(OPENC3_LOCAL_MODE_PATH)
       FileUtils.rm_f(config_path)
@@ -479,6 +481,7 @@ module OpenC3
     end
 
     def self.save_setting(scope, name, data)
+      return unless ENV['OPENC3_LOCAL_MODE'] and Dir.exist?(OPENC3_LOCAL_MODE_PATH)
       config_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/settings/#{name}.json"
       return unless File.expand_path(config_path).start_with?(OPENC3_LOCAL_MODE_PATH)
       FileUtils.mkdir_p(File.dirname(config_path))

@@ -21,6 +21,7 @@
   >
     <template #item="{ item: plugin }">
       <plugin-list-item
+        :key="plugin.name"
         v-bind="plugin"
         :targets="pluginTargets(plugin.name)"
         :is-modified="isModified(plugin.name)"
