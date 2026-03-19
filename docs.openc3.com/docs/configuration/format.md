@@ -105,6 +105,36 @@ TELEMETRY INST HEALTH_STATUS BIG_ENDIAN "Health and status"
 
 Note the variable `apid` was set to 1 using the `locals:` syntax. This is a very powerful way to add common headers and footer to every packet definition. See the INST target's cmd_tlm definitions in the [Demo](https://github.com/OpenC3/cosmos/tree/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets/INST/cmd_tlm) for a more comprehensive example.
 
+### require
+
+You can also `require` files using ERB. For example, you have `targets/BOB/lib/msg_id.rb`
+
+```ruby
+BOB_MSG_ID = 0x1234
+```
+
+You can require this in your cmd.txt and use the values from the required file:
+
+```ruby
+<% require 'msg_id' %>
+
+COMMAND BOB EXAMPLE BIG_ENDIAN "Packet description"
+  # Keyword           Name  BitSize Type   Min Max  Default            Description
+  APPEND_ID_PARAMETER ID    16      UINT   MIN MAX  <%= BOB_MSG_ID %>  "Identifier"
+  APPEND_PARAMETER    VALUE 32      FLOAT  0   10.5 2.5                "Value"
+  APPEND_PARAMETER    BOOL  8       UINT   MIN MAX  0                  "Boolean"
+    STATE FALSE 0
+    STATE TRUE 1
+  APPEND_PARAMETER    LABEL 0       STRING          "OpenC3" "The label to apply"
+```
+
+This will put `0x1234` as the `ID` parameters default value.
+
+:::warning Filename duplication
+If you have 2 targets which both have files called `msg_id.rb` then the first file will 'win' when you require it. A more explicit alternative is:
+`<% require File.expand_path('../lib/msg_id', Dir.pwd) %>`. However, the best solution is to simply name files after the target to keep them distinct, e.g. `bob_msg_id.rb`.
+:::
+
 ## Line Continuation
 
 COSMOS supports a line continuation character in configuration files. For a simple line continuation use the ampersand character: `&`. For example:
