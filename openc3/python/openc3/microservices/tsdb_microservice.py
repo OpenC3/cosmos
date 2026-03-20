@@ -141,7 +141,7 @@ class TsdbMicroservice(Microservice):
 
         except IngressError as error:
             # Cast the value to fit the column type and retry
-            self.questdb.handle_ingress_error(error, table_name, values, timestamp_ns)
+            self.questdb.handle_ingress_error(error)
 
     def trim_topics(self):
         current_time_ms = int(time.time() * 1000)
