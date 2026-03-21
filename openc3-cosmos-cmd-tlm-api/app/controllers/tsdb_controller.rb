@@ -19,7 +19,7 @@ class TsdbController < ApplicationController
 
     sql = request.body.read
     if sql.blank?
-      render json: { status: 'error', message: 'No SQL query provided.' }, status: 422
+      render json: { status: 'error', message: 'No SQL query provided.' }, status: :unprocessable_entity
       return
     end
 
@@ -29,10 +29,10 @@ class TsdbController < ApplicationController
       columns = result.fields
       rows = result.values
       OpenC3::Logger.info("TSDB query executed: #{sql}", user: username())
-      render json: { columns: columns, rows: rows }, status: 200
+      render json: { columns: columns, rows: rows }, status: :ok
     rescue => e
       OpenC3::QuestDBClient.disconnect
-      render json: { status: 'error', message: e.message }, status: 422
+      render json: { status: 'error', message: e.message }, status: :unprocessable_entity
     end
   end
 end

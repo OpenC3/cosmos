@@ -293,7 +293,7 @@ class QuestDBClient:
         # Return as-is (STRING type or unknown)
         return value
 
-    BATCH_SIZE = 500
+    DEFAULT_BATCH_SIZE = 500
 
     def __init__(self, logger=None, name=None, batch_size=None):
         """
@@ -302,9 +302,9 @@ class QuestDBClient:
         Args:
             logger: Optional logger instance. If not provided, uses print.
             name: Optional name for error messages (e.g., microservice name)
-            batch_size: Number of rows to buffer before auto-flushing (default: BATCH_SIZE)
+            batch_size: Number of rows to buffer before auto-flushing (default: DEFAULT_BATCH_SIZE)
         """
-        self.batch_size = batch_size or self.BATCH_SIZE
+        self.batch_size = batch_size or self.DEFAULT_BATCH_SIZE
         self.logger = logger
         self.name = name or "QuestDBClient"
         self.ingest = None
