@@ -65,16 +65,16 @@ class TimelineController < ApplicationController
       model.create()
       model.deploy()
       OpenC3::Logger.info("Timeline created: #{params['name']}", scope: params[:scope], user: username())
-      render json: model.as_json(), status: 201
+      render json: model.as_json(), status: :created
     rescue RuntimeError, JSON::ParserError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
     rescue TypeError => e
       log_error(e)
-      render json: { status: 'error', message: 'Invalid json object', type: e.class }, status: 400
+      render json: { status: 'error', message: 'Invalid json object', type: e.class }, status: :bad_request
     rescue OpenC3::TimelineInputError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
     end
   end
 
@@ -88,13 +88,13 @@ class TimelineController < ApplicationController
     begin
       model = @model_class.get(name: params['name'], scope: params[:scope])
       if model.nil?
-        render json: { status: 'error', message: 'not found' }, status: 404
+        render json: { status: 'error', message: 'not found' }, status: :not_found
       else
         render json: model.as_json()
       end
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: 400
+      render json: { status: 'error', message: e.message, type: e.class, e: e.to_s }, status: :bad_request
     end
   end
 
@@ -124,7 +124,7 @@ class TimelineController < ApplicationController
       render json: {
         status: 'error',
         message: "failed to find timeline: #{params[:name]}",
-      }, status: 404
+      }, status: :not_found
       return
     end
     begin
@@ -135,13 +135,13 @@ class TimelineController < ApplicationController
       render json: model.as_json()
     rescue RuntimeError, JSON::ParserError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
     rescue TypeError => e
       log_error(e)
-      render json: { status: 'error', message: 'Invalid json object', type: e.class }, status: 400
+      render json: { status: 'error', message: 'Invalid json object', type: e.class }, status: :bad_request
     rescue OpenC3::TimelineInputError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
     end
   end
 
@@ -171,7 +171,7 @@ class TimelineController < ApplicationController
       render json: {
         status: 'error',
         message: "failed to find timeline: #{params[:name]}",
-      }, status: 404
+      }, status: :not_found
       return
     end
     begin
@@ -182,13 +182,13 @@ class TimelineController < ApplicationController
       render json: model.as_json()
     rescue RuntimeError, JSON::ParserError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
     rescue TypeError => e
       log_error(e)
-      render json: { status: 'error', message: 'Invalid json object', type: e.class }, status: 400
+      render json: { status: 'error', message: 'Invalid json object', type: e.class }, status: :bad_request
     rescue OpenC3::TimelineInputError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
     end
   end
 
@@ -201,7 +201,7 @@ class TimelineController < ApplicationController
     return unless authorization('script_run')
     model = @model_class.get(name: params[:name], scope: params[:scope])
     if model.nil?
-      render json: { status: 'error', message: "failed to find timeline: #{params[:name]}" }, status: 404
+      render json: { status: 'error', message: "failed to find timeline: #{params[:name]}" }, status: :not_found
     else
       begin
         use_force = params[:force].nil? == false && params[:force] == 'true'
@@ -212,7 +212,7 @@ class TimelineController < ApplicationController
         render json: { name: params[:name]}
       rescue OpenC3::TimelineError => e
         log_error(e)
-        render json: { status: 'error', message: e.message, type: e.class }, status: 400
+        render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
       end
     end
   end

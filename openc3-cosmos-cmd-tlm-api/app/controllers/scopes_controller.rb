@@ -50,7 +50,7 @@ class ScopesController < ModelController
     head :ok
   rescue Exception => e
     log_error(e)
-    render json: { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 
   def destroy
@@ -60,6 +60,6 @@ class ScopesController < ModelController
     render json: result
   rescue Exception => e
     log_error(e)
-    render json: { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 end

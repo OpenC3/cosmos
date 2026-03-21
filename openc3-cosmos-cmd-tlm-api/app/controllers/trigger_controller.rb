@@ -41,7 +41,7 @@ class TriggerController < ApplicationController
       render json: ret
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 
@@ -56,16 +56,16 @@ class TriggerController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
       if model.nil?
-        render json: { status: 'error', message: NOT_FOUND }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
       render json: model.as_json()
     rescue OpenC3::TriggerInputError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 
@@ -108,16 +108,16 @@ class TriggerController < ApplicationController
       name = @model_class.create_unique_name(group: hash['group'], scope: params[:scope])
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
       model.create() # Create sends a notification
-      render json: model.as_json(), status: 201
+      render json: model.as_json(), status: :created
     rescue OpenC3::TriggerInputError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
     rescue OpenC3::TriggerError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 418
+      render json: { status: 'error', message: e.message, type: e.class }, status: :unprocessable_entity
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 
@@ -133,7 +133,7 @@ class TriggerController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
       if model.nil?
-        render json: { status: 'error', message: NOT_FOUND }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
       hash = params.to_unsafe_h.slice(:left, :operator, :right).to_h
@@ -149,13 +149,13 @@ class TriggerController < ApplicationController
       render json: model.as_json()
     rescue OpenC3::TriggerInputError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
     rescue OpenC3::TriggerError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 418
+      render json: { status: 'error', message: e.message, type: e.class }, status: :unprocessable_entity
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 
@@ -181,7 +181,7 @@ class TriggerController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
       if model.nil?
-        render json: { status: 'error', message: NOT_FOUND }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
       # Notify the TriggerGroupMicroservice to enable the TriggerModel
@@ -191,7 +191,7 @@ class TriggerController < ApplicationController
       render json: model.as_json()
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 
@@ -217,7 +217,7 @@ class TriggerController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
       if model.nil?
-        render json: { status: 'error', message: NOT_FOUND }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
       # Notify the TriggerGroupMicroservice to disable the TriggerModel
@@ -227,7 +227,7 @@ class TriggerController < ApplicationController
       render json: model.as_json()
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 
@@ -247,11 +247,11 @@ class TriggerController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
       if model.nil?
-        render json: { status: 'error', message: NOT_FOUND }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
       unless model.dependents.empty?
-        render json: { status: 'error', message: "#{model.group}:#{model.name} has dependents: #{model.dependents}", type: 'TriggerError' }, status: 404
+        render json: { status: 'error', message: "#{model.group}:#{model.name} has dependents: #{model.dependents}", type: 'TriggerError' }, status: :not_found
         return
       end
       # Notify the TriggerGroupMicroservice to delete the TriggerModel
@@ -261,7 +261,7 @@ class TriggerController < ApplicationController
       render json: model.as_json()
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 end

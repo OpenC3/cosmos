@@ -43,7 +43,7 @@ class ScreensController < ApplicationController
     render json: screen
   rescue => e
     log_error(e)
-    render json: { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 
   def destroy
@@ -55,6 +55,6 @@ class ScreensController < ApplicationController
     head :ok
   rescue => e
     log_error(e)
-    render json: { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 end

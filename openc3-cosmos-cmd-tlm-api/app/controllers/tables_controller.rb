@@ -37,7 +37,7 @@ class TablesController < ApplicationController
       render json: results
     rescue Table::NotFound => e
       log_error(e)
-      render json: { status: 'error', message: e.message }, status: 404
+      render json: { status: 'error', message: e.message }, status: :not_found
     end
   end
 
@@ -50,7 +50,7 @@ class TablesController < ApplicationController
       render json: { filename: file.filename, contents: file.contents }
     rescue Table::NotFound => e
       log_error(e)
-      render json: { status: 'error', message: e.message }, status: 404
+      render json: { status: 'error', message: e.message }, status: :not_found
     end
   end
 
@@ -63,7 +63,7 @@ class TablesController < ApplicationController
       render json: { filename: file.filename, contents: file.contents }
     rescue Table::NotFound => e
       log_error(e)
-      render json: { status: 'error', message: e.message }, status: 404
+      render json: { status: 'error', message: e.message }, status: :not_found
     end
   end
 
@@ -102,7 +102,7 @@ class TablesController < ApplicationController
       render json: Table.load(scope, binary, definition)
     rescue Table::NotFound => e
       log_error(e)
-      render json: { status: 'error', message: e.message }, status: 404
+      render json: { status: 'error', message: e.message }, status: :not_found
     end
   end
 
@@ -115,7 +115,7 @@ class TablesController < ApplicationController
       head :ok
     rescue Table::NotFound => e
       log_error(e)
-      render json: { status: 'error', message: e.message }, status: 404
+      render json: { status: 'error', message: e.message }, status: :not_found
     end
   end
 
@@ -128,7 +128,7 @@ class TablesController < ApplicationController
       head :ok
     rescue Table::NotFound => e
       log_error(e)
-      render json: { status: 'error', message: e.message }, status: 404
+      render json: { status: 'error', message: e.message }, status: :not_found
     end
   end
 
@@ -141,7 +141,7 @@ class TablesController < ApplicationController
       render json: { filename: filename }
     rescue Table::NotFound => e
       log_error(e)
-      render json: { status: 'error', message: e.message }, status: 404
+      render json: { status: 'error', message: e.message }, status: :not_found
     end
   end
 
@@ -150,7 +150,7 @@ class TablesController < ApplicationController
     scope, name = sanitize_params([:scope, :name], require_params: true, allow_forward_slash: true)
     return unless scope
     Table.lock(scope, name, username())
-    render status: 200
+    render status: :ok
   end
 
   def unlock
@@ -159,7 +159,7 @@ class TablesController < ApplicationController
     return unless scope
     locked_by = Table.locked?(scope, name)
     Table.unlock(scope, name) if username() == locked_by
-    render status: 200
+    render status: :ok
   end
 
   def destroy
