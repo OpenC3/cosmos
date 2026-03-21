@@ -76,7 +76,7 @@ RSpec.describe ActivityController, type: :controller do
       json = JSON.parse(response.body)
       expect(json["status"]).to eq("error")
       expect(json["message"]).to include("Invalid date")
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "handles ActivityModel errors" do
@@ -85,7 +85,7 @@ RSpec.describe ActivityController, type: :controller do
       json = JSON.parse(response.body)
       expect(json["status"]).to eq("error")
       expect(json["message"]).to eq("Database error")
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
   end
 
@@ -104,7 +104,7 @@ RSpec.describe ActivityController, type: :controller do
       json = JSON.parse(response.body)
       expect(json["status"]).to eq("error")
       expect(json["message"]).to eq("Count failed")
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
   end
 
@@ -124,7 +124,7 @@ RSpec.describe ActivityController, type: :controller do
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["status"]).to eql("error")
       expect(ret["message"]).not_to be_nil
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "returns a hash and status code 400 with negative values" do
@@ -133,7 +133,7 @@ RSpec.describe ActivityController, type: :controller do
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["status"]).to eql("error")
       expect(ret["message"]).not_to be_nil
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "returns a hash and status code 400 with longer than 1 day" do
@@ -150,7 +150,7 @@ RSpec.describe ActivityController, type: :controller do
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["status"]).to eql("error")
       expect(ret["message"]).not_to be_nil
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "returns a hash and status code 409 with overwrite" do
@@ -160,7 +160,7 @@ RSpec.describe ActivityController, type: :controller do
       post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["name"]).to eql("test")
-      expect(response).to have_http_status(201)
+      expect(response).to have_http_status(:created)
     end
   end
 
@@ -185,10 +185,10 @@ RSpec.describe ActivityController, type: :controller do
       ret = JSON.parse(response.body)
       expect(ret["status"]).to eq("error")
       expect(ret["message"]).to eq("not found")
-      expect(response).to have_http_status(404)
+      expect(response).to have_http_status(:not_found)
     end
 
-    it "handles ActivityError with status 418" do
+    it "handles ActivityError with status 422" do
       hash = generate_activity_hash(1.0)
       post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       created = JSON.parse(response.body, allow_nan: true, create_additions: true)
@@ -199,7 +199,7 @@ RSpec.describe ActivityController, type: :controller do
       ret = JSON.parse(response.body)
       expect(ret["status"]).to eq("error")
       expect(ret["message"]).to eq("Event error")
-      expect(response).to have_http_status(418)
+      expect(response).to have_http_status(:unprocessable_entity)
     end
   end
 
@@ -232,7 +232,7 @@ RSpec.describe ActivityController, type: :controller do
       ret = JSON.parse(response.body)
       expect(ret["status"]).to eq("error")
       expect(ret["message"]).to eq("Score failed")
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
   end
 
@@ -262,7 +262,7 @@ RSpec.describe ActivityController, type: :controller do
       put :update, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name, "id" => created["start"]})
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["name"]).to eql "test"
-      expect(response).to have_http_status(200)
+      expect(response).to have_http_status(:ok)
     end
 
     it "returns a hash and status code 404 with invalid start" do
@@ -282,7 +282,7 @@ RSpec.describe ActivityController, type: :controller do
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["status"]).to eql("error")
       expect(ret["message"]).not_to be_nil
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "returns a hash and status code 400 with negative time" do
@@ -296,7 +296,7 @@ RSpec.describe ActivityController, type: :controller do
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["status"]).to eql("error")
       expect(ret["message"]).not_to be_nil
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "returns a hash and status code 400 with invalid json" do
@@ -309,7 +309,7 @@ RSpec.describe ActivityController, type: :controller do
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["status"]).to eql("error")
       expect(ret["message"]).not_to be_nil
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "handles ActivityOverlapError with status 409" do
@@ -326,7 +326,7 @@ RSpec.describe ActivityController, type: :controller do
       expect(response).to have_http_status(409)
     end
 
-    it "handles ActivityError with status 418" do
+    it "handles ActivityError with status 422" do
       hash = generate_activity_hash(1.0)
       post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       created = JSON.parse(response.body, allow_nan: true, create_additions: true)
@@ -337,7 +337,7 @@ RSpec.describe ActivityController, type: :controller do
       ret = JSON.parse(response.body)
       expect(ret["status"]).to eq("error")
       expect(ret["message"]).to eq("Update error")
-      expect(response).to have_http_status(418)
+      expect(response).to have_http_status(:unprocessable_entity)
     end
   end
 
@@ -380,7 +380,7 @@ RSpec.describe ActivityController, type: :controller do
       ret = JSON.parse(response.body)
       expect(ret["status"]).to eq("error")
       expect(ret["message"]).to eq("Destroy failed")
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
   end
 
@@ -429,12 +429,12 @@ RSpec.describe ActivityController, type: :controller do
   describe "POST multi_destroy" do
     it "returns a hash and status code 400" do
       post :multi_create, params: {"scope" => timeline_scope, "multi" => "TEST"}
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).not_to be_nil
       post :multi_destroy, params: {"scope" => timeline_scope, "multi" => "TEST"}
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).not_to be_nil
