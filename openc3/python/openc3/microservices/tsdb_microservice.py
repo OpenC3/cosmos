@@ -171,6 +171,7 @@ class TsdbMicroservice(Microservice):
     def shutdown(self):
         """Graceful shutdown."""
         super().shutdown()
+        self.questdb.flush()
         self.questdb.close()
 
 

@@ -396,7 +396,7 @@ case $1 in
     tag=$4
     docker run --rm --privileged --pid=host --entrypoint='' --user root $repo/$namespace/openc3-operator:$tag nsenter -t 1 -m -u -n -i -- sh -c "echo never > /sys/kernel/mm/transparent_hugepage/enabled"
     docker run --rm --privileged --pid=host --entrypoint='' --user root $repo/$namespace/openc3-operator:$tag nsenter -t 1 -m -u -n -i -- sh -c "echo never > /sys/kernel/mm/transparent_hugepage/defrag"
-    docker run --rm --privileged --pid=host --entrypoint='' --user root $repo/$namespace/openc3-operator:$tag nsenter -t 1 -m -u -n -i -- sh -c "sysctl -w vm.max_map_count=262144"
+    docker run --rm --privileged --pid=host --entrypoint='' --user root $repo/$namespace/openc3-operator:$tag nsenter -t 1 -m -u -n -i -- sh -c "sysctl -w vm.max_map_count=1048576"
     ;;
   hostenter )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then

@@ -1148,7 +1148,6 @@ class QuestDBClient:
                     sql += """
                         ) TIMESTAMP(PACKET_TIMESECONDS)
                             PARTITION BY DAY
-                            DEDUP UPSERT KEYS (PACKET_TIMESECONDS, COSMOS_DATA_TAG)
                     """
 
                     # Add TTL clause if specified
