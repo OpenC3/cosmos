@@ -167,6 +167,13 @@ class TsdbMicroservice(Microservice):
             except Exception as error:
                 self.error = error
                 self.logger.error(f"QuestDB: Microservice error:\n{traceback.format_exc()}")
+                self.questdb.pending_rows.clear()
+                try:
+                    time.sleep(0.1)
+                    self.questdb.connect_ingest()
+                    self.logger.info("QuestDB: Reconnected after error")
+                except Exception:
+                    self.logger.error(f"QuestDB: Failed to reconnect:\n{traceback.format_exc()}")
 
     def shutdown(self):
         """Graceful shutdown."""

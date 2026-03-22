@@ -24,6 +24,7 @@ ENV QDB_CAIRO_WRITER_DATA_INDEX_VALUE_APPEND_PAGE_SIZE=4K
 ENV QDB_SHARED_WORKER_COUNT=1
 ENV QDB_SHARED_WORKER_YIELD_THRESHOLD=1
 ENV QDB_SHARED_WORKER_SLEEP_THRESHOLD=1
+# Disable all line TCP workers since we're using the Ingress API
 ENV QDB_LINE_TCP_ENABLED=false
 ENV QDB_LINE_TCP_WRITER_WORKER_COUNT=0
 ENV QDB_LINE_TCP_WRITER_WORKER_YIELD_THRESHOLD=1
@@ -39,6 +40,7 @@ USER root
 # Update packages to eliminate CVEs
 # QuestDB 9.3.3+ uses Fedora as the base image (dnf, not apt-get)
 RUN dnf -y upgrade && \
+    dnf install htop -y && \
     dnf clean all && \
     rm -f /usr/local/bin/gosu
 COPY --chmod=0755 ./docker-entrypoint.sh /docker-entrypoint.sh
@@ -50,6 +52,5 @@ WORKDIR /var/lib/questdb
 # Make port 9000 available to the world outside this container
 EXPOSE 9000/tcp
 EXPOSE 8812/tcp
-EXPOSE 9009/tcp
 
 ENTRYPOINT ["/docker-entrypoint.sh"]

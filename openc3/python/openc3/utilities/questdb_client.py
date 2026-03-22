@@ -293,14 +293,18 @@ class QuestDBClient:
         # Return as-is (STRING type or unknown)
         return value
 
-    def __init__(self, logger=None, name=None):
+    DEFAULT_BATCH_SIZE = 500
+
+    def __init__(self, logger=None, name=None, batch_size=None):
         """
         Initialize QuestDB client.
 
         Args:
             logger: Optional logger instance. If not provided, uses print.
             name: Optional name for error messages (e.g., microservice name)
+            batch_size: Number of rows to buffer before auto-flushing (default: DEFAULT_BATCH_SIZE)
         """
+        self.batch_size = batch_size or self.DEFAULT_BATCH_SIZE
         self.logger = logger
         self.name = name or "QuestDBClient"
         self.ingest = None
@@ -1350,12 +1354,20 @@ class QuestDBClient:
             columns: Dict of column_name -> value
             timestamp_ns: Packet timestamp in nanoseconds (stored as PACKET_TIMESECONDS)
             rx_timestamp_ns: Received timestamp in nanoseconds (stored as RECEIVED_TIMESECONDS, optional)
+
+        Returns:
+            True if a batch flush was performed, False otherwise
         """
         if rx_timestamp_ns is not None:
             # Convert nanoseconds to datetime for QuestDB timestamp column
             columns["RECEIVED_TIMESECONDS"] = datetime.fromtimestamp(rx_timestamp_ns / 1_000_000_000, tz=timezone.utc)
         self.pending_rows.append((table_name, columns.copy(), timestamp_ns))
         self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
+        # Flush in batches to avoid overwhelming QuestDB's HTTP endpoint
+        if len(self.pending_rows) >= self.batch_size:
+            self.flush()
+            return True
+        return False
 
     def flush(self):
         """Flush pending writes to QuestDB."""
@@ -1433,6 +1445,13 @@ class QuestDBClient:
 
         if "cast error from protocol type" not in str(error):
             self._log_error(f"QuestDB: Error writing to QuestDB: {error}\n")
+            self.pending_rows.clear()
+            try:
+                time.sleep(0.1)
+                self.connect_ingest()
+                self._log_info("QuestDB: Reconnected after connection error")
+            except Exception as reconnect_err:
+                self._log_error(f"QuestDB: Failed to reconnect: {reconnect_err}")
             return False
 
         try:
