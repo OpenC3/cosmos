@@ -1,0 +1,56 @@
+name: Bug report
+about: Create a report to help us improve
+title: ""
+labels: ["triage"]
+assignees: ""
+type: bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        First check out our main documentation site at [https://openc3.com](https://openc3.com).
+  - type: textarea
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: To Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+  - type: upload
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots to help explain your problem.
+  - type: markdown
+    attributes:
+      value: |
+        Environment (please complete the following information):
+  - type: input
+    attributes:
+      label: OS
+      placeholder: e.g. Windows 10, macOS 10.13
+  - type: input
+    attributes:
+      label: OpenC3 COSMOS Version
+      placeholder: e.g. 6.10.4
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Browser
+      placeholder: e.g. Chrome, Firefox, Safari, Edge

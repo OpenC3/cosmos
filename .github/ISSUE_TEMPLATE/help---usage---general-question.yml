@@ -1,0 +1,16 @@
+name: Help / Usage / General Question
+about: I need help using or understanding OpenC3 COSMOS
+title: ""
+labels: ["question"]
+assignees: ""
+body:
+  - type: markdown
+    attributes:
+      value: |
+        First check out our main documentation site at [https://openc3.com](https://openc3.com).
+        Next search the issues here on Github. If you come up empty please submit an issue.
+  - type: textarea
+    attributes:
+      label: Ask your question here
+    validations:
+      required: true
