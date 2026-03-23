@@ -1,8 +1,6 @@
 name: Help / Usage / General Question
 description: I need help using or understanding OpenC3 COSMOS
-title: ""
 labels: ["question"]
-assignees: ""
 body:
   - type: markdown
     attributes:
