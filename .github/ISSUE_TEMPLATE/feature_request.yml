@@ -9,7 +9,7 @@ body:
     attributes:
       value: |
         First check out our main documentation site at [https://openc3.com](https://openc3.com).
-  - type: input
+  - type: textarea
     attributes:
       label: What is the use case or problem this feature would solve?
       description: Explain why you think this feature should be added to COSMOS. This could be a problem you have with the way things work now, a use case that isn't currently covered, etc. (Ex. I'm always frustrated when ...)

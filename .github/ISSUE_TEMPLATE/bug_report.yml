@@ -9,7 +9,7 @@ body:
     attributes:
       value: |
         First check out our main documentation site at [https://openc3.com](https://openc3.com).
-  - type: input
+  - type: textarea
     attributes:
       label: Describe the bug
       description: A clear and concise description of what the bug is.
@@ -26,7 +26,7 @@ body:
         4. See error
     validations:
       required: true
-  - type: input
+  - type: textarea
     attributes:
       label: Expected behavior
       description: A clear and concise description of what you expected to happen.
