@@ -748,7 +748,7 @@ RSpec.describe QueuesController, type: :controller do
 
       controller.send(:change_state, { name: "NONEXISTENT", scope: "DEFAULT" }, "HOLD")
 
-      expect(controller).to have_received(:render).with(json: { status: 'error', message: 'queue not found' }, status: 404)
+      expect(controller).to have_received(:render).with(json: { status: 'error', message: 'queue not found' }, status: :not_found)
     end
 
     it "handles unexpected errors" do
@@ -759,7 +759,7 @@ RSpec.describe QueuesController, type: :controller do
 
       expect(controller).to have_received(:render).with(
         json: { status: 'error', message: 'Unexpected error', type: 'StandardError', backtrace: anything },
-        status: 500
+        status: :internal_server_error
       )
     end
   end

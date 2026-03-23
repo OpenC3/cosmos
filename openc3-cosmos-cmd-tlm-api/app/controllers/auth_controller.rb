@@ -47,7 +47,7 @@ class AuthController < ApplicationController
       end
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class }, status: :internal_server_error
     end
   end
 
@@ -66,7 +66,7 @@ class AuthController < ApplicationController
       end
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class }, status: :internal_server_error
     end
   end
 
@@ -92,7 +92,7 @@ class AuthController < ApplicationController
         record_user_bad_attempt
       end
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class }, status: :internal_server_error
     end
   end
 

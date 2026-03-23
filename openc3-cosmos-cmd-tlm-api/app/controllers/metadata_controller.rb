@@ -84,7 +84,7 @@ class MetadataController < ApplicationController
         scope: params[:scope],
         user: username()
       )
-      render json: model.as_json(), status: 201
+      render json: model.as_json(), status: :created
     end
   end
 
@@ -107,7 +107,7 @@ class MetadataController < ApplicationController
       if model_hash
         render json: model_hash
       else
-        render json: { status: 'error', message: NOT_FOUND }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: :not_found
       end
     end
   end
@@ -138,7 +138,7 @@ class MetadataController < ApplicationController
     action do
       hash = @model_class.get(start: params[:id].to_i, scope: params[:scope])
       if hash.nil?
-        render json: { status: 'error', message: NOT_FOUND }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
       model = @model_class.from_json(hash.symbolize_keys, scope: params[:scope])
@@ -176,7 +176,7 @@ class MetadataController < ApplicationController
     action do
       count = @model_class.destroy(start: params[:id].to_i, scope: params[:scope])
       if count == 0
-        render json: { status: 'error', message: NOT_FOUND }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
       OpenC3::Logger.info(
@@ -244,21 +244,21 @@ class MetadataController < ApplicationController
                status: 'error',
                message: "Invalid input: #{e.message}",
                type: e.class,
-             }, status: 400
+             }, status: :bad_request
     rescue OpenC3::SortedOverlapError => e
       log_error(e)
       render json: {
                 status: 'error',
                 message: e.message,
                 type: e.class,
-              }, status: 409 # Conflict
+              }, status: :conflict
     rescue OpenC3::SortedError => e
       log_error(e)
       render json: {
                status: 'error',
                message: e.message,
                type: e.class,
-             }, status: 400
+             }, status: :bad_request
     rescue StandardError => e
       log_error(e)
       render json: {
@@ -266,7 +266,7 @@ class MetadataController < ApplicationController
                message: e.message,
                type: e.class,
                backtrace: e.backtrace,
-             }, status: 400
+             }, status: :bad_request
     end
   end
 end

@@ -52,7 +52,7 @@ class QueuesController < ApplicationController
       render json: queues
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 
@@ -66,16 +66,16 @@ class QueuesController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        render json: { status: 'error', message: NOT_FOUND }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
       render json: model.as_json()
     rescue OpenC3::QueueError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class.to_s }, status: 400
+      render json: { status: 'error', message: e.message, type: e.class.to_s }, status: :bad_request
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 
@@ -92,16 +92,16 @@ class QueuesController < ApplicationController
         state = params[:state] if params[:state]
         model = @model_class.new(name: params[:name], state: state, scope: params[:scope])
         model.create()
-        render json: model.as_json(), status: 201
+        render json: model.as_json(), status: :created
       else
-        render json: { status: 'error', message: "#{params[:name]} already exists", type: "OpenC3::QueueError" }, status: 400
+        render json: { status: 'error', message: "#{params[:name]} already exists", type: "OpenC3::QueueError" }, status: :bad_request
       end
     rescue OpenC3::QueueError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class.to_s }, status: 400
+      render json: { status: 'error', message: e.message, type: e.class.to_s }, status: :bad_request
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 
@@ -110,14 +110,14 @@ class QueuesController < ApplicationController
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
       if model.nil?
-        render json: { status: 'error', message: NOT_FOUND }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
       list = model.list()
       render json: list
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 
@@ -136,7 +136,7 @@ class QueuesController < ApplicationController
   def insert_command
     command = params[:command]
     if command.nil?
-      render json: { status: 'error', message: 'command is required' }, status: 400
+      render json: { status: 'error', message: 'command is required' }, status: :bad_request
       return
     end
     target_name, packet_name = command.strip.split(' ')
@@ -144,7 +144,7 @@ class QueuesController < ApplicationController
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
       if model.nil?
-        render json: { status: 'error', message: NOT_FOUND }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
       id = nil
@@ -159,7 +159,7 @@ class QueuesController < ApplicationController
       render json: { status: 'success', message: 'Command added to queue' }
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 
@@ -168,7 +168,7 @@ class QueuesController < ApplicationController
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
       if model.nil?
-        render json: { status: 'error', message: NOT_FOUND }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
       id = params[:id]&.to_f
@@ -176,18 +176,18 @@ class QueuesController < ApplicationController
       if command_data
         render json: command_data
       else
-        render json: { status: 'error', message: 'Command not found in queue' }, status: 404
+        render json: { status: 'error', message: 'Command not found in queue' }, status: :not_found
       end
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 
   def update_command
     command = params[:command]
     if command.nil?
-      render json: { status: 'error', message: 'command is required' }, status: 400
+      render json: { status: 'error', message: 'command is required' }, status: :bad_request
       return
     end
     target_name, packet_name = command.strip.split(' ')
@@ -195,12 +195,12 @@ class QueuesController < ApplicationController
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
       if model.nil?
-        render json: { status: 'error', message: NOT_FOUND }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
       id = params[:id]
       if id.nil?
-        render json: { status: 'error', message: 'id is required' }, status: 400
+        render json: { status: 'error', message: 'id is required' }, status: :bad_request
         return
       end
       # validate should be true or false, default to true if not given
@@ -210,10 +210,10 @@ class QueuesController < ApplicationController
       render json: { status: 'success', message: 'Command updated' }
     rescue OpenC3::QueueError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class.to_s }, status: 400
+      render json: { status: 'error', message: e.message, type: e.class.to_s }, status: :bad_request
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 
@@ -222,7 +222,7 @@ class QueuesController < ApplicationController
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
       if model.nil?
-        render json: { status: 'error', message: NOT_FOUND }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
       id = params[:id]&.to_f
@@ -255,7 +255,7 @@ class QueuesController < ApplicationController
             end
           else
             log_error("Invalid command format in queue: #{command_data}")
-            render json: { status: 'error', message: "Invalid command format: missing required fields" }, status: 400
+            render json: { status: 'error', message: "Invalid command format: missing required fields" }, status: :bad_request
             return
           end
         rescue HazardousError => e
@@ -264,20 +264,20 @@ class QueuesController < ApplicationController
           retry
         rescue StandardError => e
           log_error(e)
-          render json: { status: 'error', message: "Failed to execute command: #{e.message}", type: e.class.to_s, backtrace: e.backtrace }, status: 500
+          render json: { status: 'error', message: "Failed to execute command: #{e.message}", type: e.class.to_s, backtrace: e.backtrace }, status: :internal_server_error
           return
         end
         render json: command_data
       else
         if id
-          render json: { status: 'error', message: "No command in queue #{params[:name]} at id #{id}" }, status: 404
+          render json: { status: 'error', message: "No command in queue #{params[:name]} at id #{id}" }, status: :not_found
         else
-          render json: { status: 'error', message: "No commands in queue #{params[:name]}" }, status: 404
+          render json: { status: 'error', message: "No commands in queue #{params[:name]}" }, status: :not_found
         end
       end
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 
@@ -285,7 +285,7 @@ class QueuesController < ApplicationController
     return unless authorization('cmd')
     model = @model_class.get_model(name: params[:name], scope: params[:scope])
     if model.nil?
-      render json: { status: 'error', message: NOT_FOUND }, status: 404
+      render json: { status: 'error', message: NOT_FOUND }, status: :not_found
       return
     end
     model.destroy()
@@ -299,7 +299,7 @@ class QueuesController < ApplicationController
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
       if model.nil?
-        render json: { status: 'error', message: NOT_FOUND }, status: 404
+        render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
       model.state = state
@@ -307,7 +307,7 @@ class QueuesController < ApplicationController
       render json: model.as_json()
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 

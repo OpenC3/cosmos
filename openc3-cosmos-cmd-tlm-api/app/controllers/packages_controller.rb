@@ -42,13 +42,13 @@ class PackagesController < ApplicationController
         render json: process_name
       rescue => e
         OpenC3::Logger.error("Error installing package: #{file.original_filename}:#{e.formatted}", scope: params[:scope], user: username())
-        render json: { status: 'error', message: e.message, type: e.class }, status: 400
+        render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
       ensure
         FileUtils.remove_entry_secure(temp_dir, true)
       end
     else
       OpenC3::Logger.error("Error installing package: Package file as params[:package] is required", scope: params[:scope], user: username())
-      render json: { status: 'error', message: "Package file as params[:package] is required" }, status: 400
+      render json: { status: 'error', message: "Package file as params[:package] is required" }, status: :bad_request
     end
   end
 
@@ -66,11 +66,11 @@ class PackagesController < ApplicationController
         head :ok
       rescue => e
         OpenC3::Logger.error("Error destroying package: #{params[:id]}:#{e.formatted}", scope: params[:scope], user: username())
-        render json: { status: 'error', message: e.message, type: e.class }, status: 400
+        render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
       end
     else
       OpenC3::Logger.error("Error destroying package: Package name as params[:id] is required", scope: params[:scope], user: username())
-      render json: { status: 'error', message: "Package name as params[:id] is required" }, status: 400
+      render json: { status: 'error', message: "Package name as params[:id] is required" }, status: :bad_request
     end
   end
 
@@ -87,7 +87,7 @@ class PackagesController < ApplicationController
       render json: { filename: package_name, contents: Base64.encode64(file) }
     rescue Exception => e
       OpenC3::Logger.info("Package '#{params[:id]}' download failed: #{e.message}", user: username())
-      render json: { status: 'error', message: e.message }, status: 500
+      render json: { status: 'error', message: e.message }, status: :internal_server_error
     end
   end
 end

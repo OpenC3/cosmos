@@ -101,7 +101,7 @@ class PluginsController < ModelController
       render json: plugin
     end
   rescue StandardError => error
-    render json: { status: 'error', message: error.message }, status: 500
+    render json: { status: 'error', message: error.message }, status: :internal_server_error
     logger.error(error.formatted)
   end
 
@@ -116,14 +116,14 @@ class PluginsController < ModelController
         store_version = store_data['versions'].find { |version| version['id'] == store_version_id }
       end
       if store_version.nil? || store_version['gem_url'].nil?
-        render json: { status: 'error', message: 'Unable to fetch requested plugin version.' }, status: 500
+        render json: { status: 'error', message: 'Unable to fetch requested plugin version.' }, status: :internal_server_error
         return
       end
 
       # Try to find the correct hostname (in case it's localhost and needs to be host.docker.internal)
       adjusted_gem_url = check_localhost_reachability(store_version['gem_url'], params[:store_plugin_id])
       if adjusted_gem_url.nil?
-        render json: { status: 'error', message: 'Gem could not be downloaded. Host is not reachable.' }, status: 500
+        render json: { status: 'error', message: 'Gem could not be downloaded. Host is not reachable.' }, status: :internal_server_error
         return
       end
 
@@ -138,7 +138,7 @@ class PluginsController < ModelController
       checksum = Digest::SHA256.file(tempfile.path).hexdigest.downcase
       expected = store_version['checksum'].downcase
       unless checksum == expected
-        render json: { status: 'error', message: "Checksum verification failed. Expected #{expected} but got #{checksum}" }, status: 500
+        render json: { status: 'error', message: "Checksum verification failed. Expected #{expected} but got #{checksum}" }, status: :internal_server_error
         return
       end
 
@@ -164,17 +164,17 @@ class PluginsController < ModelController
         end
         render json: result
       rescue OpenC3::EmptyGemFileError => error
-        render json: { status: 'error', message: error.message }, status: 400
+        render json: { status: 'error', message: error.message }, status: :bad_request
         logger.error(error.formatted)
       rescue Exception => error
-        render json: { status: 'error', message: error.message }, status: 500
+        render json: { status: 'error', message: error.message }, status: :internal_server_error
         logger.error(error.formatted)
       ensure
         FileUtils.remove_entry_secure(temp_dir, true)
       end
     else
       logger.error("No file received")
-      render json: { status: 'error', message: "No file received" }, status: 500
+      render json: { status: 'error', message: "No file received" }, status: :internal_server_error
     end
   end
 
@@ -208,7 +208,7 @@ class PluginsController < ModelController
       render json: result.name
     rescue Exception => error
       logger.error(error.formatted)
-      render json: { status: 'error', message: error.message }, status: 500
+      render json: { status: 'error', message: error.message }, status: :internal_server_error
     end
   end
 
@@ -221,7 +221,7 @@ class PluginsController < ModelController
       render json: result.name
     rescue Exception => error
       logger.error(error.formatted)
-      render json: { status: 'error', message: error.message }, status: 500
+      render json: { status: 'error', message: error.message }, status: :internal_server_error
     end
   end
 end

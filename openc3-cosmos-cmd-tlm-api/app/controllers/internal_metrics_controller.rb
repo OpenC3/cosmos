@@ -38,7 +38,7 @@ class InternalMetricsController < ApplicationController
     rescue RuntimeError => e
       log_error(e)
       OpenC3::Logger.error("failed to connect to redis to pull scopes")
-      render plain: "failed to access datastore", status: 500
+      render plain: "failed to access datastore", status: :internal_server_error
       return # Return to stop execution
     end
     OpenC3::Logger.debug("ScopeModels: #{scopes}")
@@ -50,7 +50,7 @@ class InternalMetricsController < ApplicationController
       rescue RuntimeError => e
         log_error(e)
         OpenC3::Logger.error("failed to connect to redis to pull metrics")
-        render plain: "failed to access datastore", status: 500
+        render plain: "failed to access datastore", status: :internal_server_error
         return # Return to stop execution
       end
       OpenC3::Logger.debug("metrics search for scope: #{scope}, returned: #{scope_resp}")
