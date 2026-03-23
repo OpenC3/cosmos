@@ -1,14 +1,12 @@
 name: Bug report
 description: Create a report to help us improve
-title: ""
 labels: ["triage"]
-assignees: ""
 type: bug
 body:
   - type: markdown
     attributes:
       value: |
-        First check out our main documentation site at [https://openc3.com](https://openc3.com).
+        First check out our main documentation site at [https://docs.openc3.com/docs](https://docs.openc3.com/docs).
   - type: textarea
     attributes:
       label: Describe the bug
