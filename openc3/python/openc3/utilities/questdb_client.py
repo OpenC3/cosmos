@@ -293,14 +293,18 @@ class QuestDBClient:
         # Return as-is (STRING type or unknown)
         return value
 
-    def __init__(self, logger=None, name=None):
+    DEFAULT_BATCH_SIZE = 500
+
+    def __init__(self, logger=None, name=None, batch_size=None):
         """
         Initialize QuestDB client.
 
         Args:
             logger: Optional logger instance. If not provided, uses print.
             name: Optional name for error messages (e.g., microservice name)
+            batch_size: Number of rows to buffer before auto-flushing (default: DEFAULT_BATCH_SIZE)
         """
+        self.batch_size = batch_size or self.DEFAULT_BATCH_SIZE
         self.logger = logger
         self.name = name or "QuestDBClient"
         self.ingest = None
@@ -320,6 +324,9 @@ class QuestDBClient:
         # Track FLOAT column bit sizes for proper inf/nan sentinel encoding
         # Key is "table__column", value is bit_size (32 or 64)
         self.float_bit_sizes = {}
+        # Track pending rows for error recovery (cleared on successful flush)
+        # Each entry is (table_name, columns_dict, timestamp_ns)
+        self.pending_rows = []
 
     def _log_info(self, msg):
         print(f"INFO: {msg}")
@@ -1094,20 +1101,23 @@ class QuestDBClient:
                         existing_raw = existing_columns.get(col_name)
                         existing_type = self._canonical_type(existing_raw) if existing_raw else None
 
-                        if existing_type is None:
-                            # Column doesn't exist yet — add it
-                            alter = f'ALTER TABLE "{table_name}" ADD COLUMN {col_name} {desired_sql_type}'
-                            cur.execute(alter)
-                            self._log_info(f"QuestDB: Added column: {alter}")
-                            altered = True
-                        elif existing_type != desired_canonical:
-                            # Type mismatch — ALTER the column type
-                            alter = f'ALTER TABLE "{table_name}" ALTER COLUMN {col_name} TYPE {desired_sql_type}'
-                            cur.execute(alter)
-                            self._log_info(
-                                f"QuestDB: Altered column type: {alter} (was {existing_type}, now {desired_canonical})"
-                            )
-                            altered = True
+                        try:
+                            if existing_type is None:
+                                # Column doesn't exist yet — add it
+                                alter = f'ALTER TABLE "{table_name}" ADD COLUMN {col_name} {desired_sql_type}'
+                                cur.execute(alter)
+                                self._log_info(f"QuestDB: Added column: {alter}")
+                                altered = True
+                            elif existing_type != desired_canonical:
+                                # Type mismatch — ALTER the column type
+                                alter = f'ALTER TABLE "{table_name}" ALTER COLUMN {col_name} TYPE {desired_sql_type}'
+                                cur.execute(alter)
+                                self._log_info(
+                                    f"QuestDB: Altered column type: {alter} (was {existing_type}, now {desired_canonical})"
+                                )
+                                altered = True
+                        except psycopg.Error as error:
+                            self._log_error(f"QuestDB: Error reconciling table {table_name}: {error}")
             except psycopg.Error as error:
                 self._log_error(f"QuestDB: Error reconciling table {table_name}: {error}")
 
@@ -1142,7 +1152,6 @@ class QuestDBClient:
                     sql += """
                         ) TIMESTAMP(PACKET_TIMESECONDS)
                             PARTITION BY DAY
-                            DEDUP UPSERT KEYS (PACKET_TIMESECONDS, COSMOS_DATA_TAG)
                     """
 
                     # Add TTL clause if specified
@@ -1345,16 +1354,26 @@ class QuestDBClient:
             columns: Dict of column_name -> value
             timestamp_ns: Packet timestamp in nanoseconds (stored as PACKET_TIMESECONDS)
             rx_timestamp_ns: Received timestamp in nanoseconds (stored as RECEIVED_TIMESECONDS, optional)
+
+        Returns:
+            True if a batch flush was performed, False otherwise
         """
         if rx_timestamp_ns is not None:
             # Convert nanoseconds to datetime for QuestDB timestamp column
             columns["RECEIVED_TIMESECONDS"] = datetime.fromtimestamp(rx_timestamp_ns / 1_000_000_000, tz=timezone.utc)
+        self.pending_rows.append((table_name, columns.copy(), timestamp_ns))
         self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
+        # Flush in batches to avoid overwhelming QuestDB's HTTP endpoint
+        if len(self.pending_rows) >= self.batch_size:
+            self.flush()
+            return True
+        return False
 
     def flush(self):
         """Flush pending writes to QuestDB."""
         if self.ingest:
             self.ingest.flush()
+            self.pending_rows.clear()
 
     def _convert_column_to_json(self, table_name, column_name, columns):
         """Mark a column for JSON serialization and convert its current value."""
@@ -1366,10 +1385,11 @@ class QuestDBClient:
             else:
                 columns[column_name] = json.dumps(value)
 
-    def _reconnect_and_retry_row(self, table_name, columns, timestamp_ns):
-        """Reconnect the ILP sender and retry writing the row."""
+    def _reconnect_and_retry_pending(self):
+        """Reconnect the ILP sender and replay all pending rows."""
         self.connect_ingest()
-        self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
+        for table_name, columns, timestamp_ns in self.pending_rows:
+            self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
 
     # Map QuestDB column types to Python casting functions for value conversion.
     # Used by handle_ingress_error to cast mismatched values to fit the column type.
@@ -1404,7 +1424,7 @@ class QuestDBClient:
         except (ValueError, TypeError, OverflowError):
             return None
 
-    def handle_ingress_error(self, error, table_name, columns, timestamp_ns):
+    def handle_ingress_error(self, error):
         """
         Handle an IngressError by casting the value to fit the column type.
 
@@ -1412,11 +1432,11 @@ class QuestDBClient:
         IngressErrors indicate the data doesn't match the user's definitions.
         We cast the value to fit the column type rather than altering the schema.
 
+        Uses self.pending_rows (populated by write_row) to find and fix the
+        affected row data, then replays all pending rows.
+
         Args:
             error: The IngressError
-            table_name: Table name
-            columns: Column values dict
-            timestamp_ns: Timestamp in nanoseconds
 
         Returns:
             True if error was handled and retry succeeded, False otherwise
@@ -1425,6 +1445,13 @@ class QuestDBClient:
 
         if "cast error from protocol type" not in str(error):
             self._log_error(f"QuestDB: Error writing to QuestDB: {error}\n")
+            self.pending_rows.clear()
+            try:
+                time.sleep(0.1)
+                self.connect_ingest()
+                self._log_info("QuestDB: Reconnected after connection error")
+            except Exception as reconnect_err:
+                self._log_error(f"QuestDB: Failed to reconnect: {reconnect_err}")
             return False
 
         try:
@@ -1445,56 +1472,68 @@ class QuestDBClient:
 
             is_array_protocol = protocol_type.endswith("[]") or protocol_type.upper() == "ARRAY"
 
-            # Handle array type mismatches — convert to JSON string
+            # Apply the fix to all pending rows for the affected table
+            fixed = False
+            for _row_table, columns, _row_ts in self.pending_rows:
+                if _row_table != err_table_name:
+                    continue
+
+                # Handle array type mismatches — convert to JSON string
+                if is_array_protocol:
+                    self._convert_column_to_json(err_table_name, column_name, columns)
+                    fixed = True
+                    continue
+
+                # Handle INTEGER to DECIMAL cast error by converting value to string
+                if protocol_type == "INTEGER" and column_type == "DECIMAL":
+                    if column_name in columns:
+                        columns[column_name] = str(columns[column_name])
+                        fixed = True
+                    continue
+
+                # For scalar type mismatches, cast the value to fit the column type
+                if column_name not in columns:
+                    continue
+
+                value = columns[column_name]
+                casted = self._cast_value_to_column_type(value, column_type)
+                if casted is not None:
+                    columns[column_name] = casted
+                    fixed = True
+                else:
+                    # Can't cast — remove from row (will be NULL in QuestDB)
+                    del columns[column_name]
+                    fixed = True
+
+            if not fixed:
+                self._log_error(
+                    f"QuestDB: Could not find column {column_name} in pending rows for table {err_table_name}"
+                )
+                return False
+
+            # Log and persist tracking for future rows
             if is_array_protocol:
-                self._convert_column_to_json(err_table_name, column_name, columns)
                 self._log_warn(
                     f"QuestDB: Column {column_name} in table {err_table_name} "
                     f"received array data but column type is {column_type}. "
                     f"Serializing as JSON string."
                 )
-                self._reconnect_and_retry_row(table_name, columns, timestamp_ns)
-                return True
-
-            # Handle INTEGER to DECIMAL cast error by converting value to string
-            # QuestDB casts string values to DECIMAL for pre-created DECIMAL columns
-            if protocol_type == "INTEGER" and column_type == "DECIMAL":
-                if column_name in columns:
-                    columns[column_name] = str(columns[column_name])
-                    self.decimal_int_columns[f"{err_table_name}__{column_name}"] = True
-                    self._log_warn(
-                        f"QuestDB: Column {column_name} in table {err_table_name} "
-                        f"is DECIMAL but received INTEGER. Converting value to string."
-                    )
-                    self._reconnect_and_retry_row(table_name, columns, timestamp_ns)
-                    return True
-                return False
-
-            # For scalar type mismatches, cast the value to fit the column type
-            if column_name not in columns:
-                return False
-
-            value = columns[column_name]
-            casted = self._cast_value_to_column_type(value, column_type)
-            if casted is not None:
-                columns[column_name] = casted
-                # Persist tracking so convert_value() handles future rows
+            elif protocol_type == "INTEGER" and column_type == "DECIMAL":
+                self.decimal_int_columns[f"{err_table_name}__{column_name}"] = True
+                self._log_warn(
+                    f"QuestDB: Column {column_name} in table {err_table_name} "
+                    f"is DECIMAL but received INTEGER. Converting value to string."
+                )
+            else:
                 if column_type in ("VARCHAR", "STRING"):
                     self.varchar_columns[f"{err_table_name}__{column_name}"] = True
                 self._log_warn(
                     f"QuestDB: Column {column_name} in table {err_table_name} "
                     f"expected {column_type} but received {protocol_type}. "
-                    f"Cast value from {repr(value)} to {repr(casted)}."
+                    f"Value cast applied."
                 )
-            else:
-                # Can't cast — remove from row (will be NULL in QuestDB)
-                del columns[column_name]
-                self._log_warn(
-                    f"QuestDB: Column {column_name} in table {err_table_name} "
-                    f"expected {column_type} but received {protocol_type}. "
-                    f"Could not cast {repr(value)}, storing as NULL."
-                )
-            self._reconnect_and_retry_row(table_name, columns, timestamp_ns)
+
+            self._reconnect_and_retry_pending()
             return True
 
         except Exception as exc:

@@ -1793,7 +1793,7 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         # Simulate INTEGER to VARCHAR cast error (the reported user issue)
         error_msg = (
-            "error in line 1: table: TLM__INST__HEALTH_STATUS, column: ITEM__C; "
+            "error in line 1: table: DEFAULT__TLM__INST__HEALTH_STATUS, column: ITEM__C; "
             'cast error from protocol type: INTEGER to column type: VARCHAR","line":1'
         )
         mock_ingest.row.side_effect = [IngressError(1, error_msg), None]
@@ -1816,7 +1816,7 @@ class TestTsdbMicroservice(unittest.TestCase):
             self.assertIn("expected VARCHAR but received INTEGER", stdout.getvalue())
 
         # The column should now be tracked in varchar_columns so convert_value() will str() it
-        self.assertIn("TLM__INST__HEALTH_STATUS__ITEM__C", tsdb.questdb.varchar_columns)
+        self.assertIn("DEFAULT__TLM__INST__HEALTH_STATUS__ITEM__C", tsdb.questdb.varchar_columns)
 
         # Verify retry was called with the value cast to string
         retry_call = mock_ingest.row.call_args_list[1]

@@ -229,6 +229,7 @@ Rails.application.routes.draw do
     get "/traefik" => "microservices#traefik"
 
     post "/redis/exec" => "redis#execute_raw"
+    post "/tsdb/exec" => "tsdb#execute_raw"
 
     ##########################
     # COSMOS Enterprise Routes

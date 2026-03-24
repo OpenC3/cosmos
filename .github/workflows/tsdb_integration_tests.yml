@@ -44,7 +44,7 @@ jobs:
 
     services:
       questdb:
-        image: questdb/questdb:9.3.2
+        image: questdb/questdb:9.3.3
         ports:
           - 9000:9000
           - 8812:8812

@@ -70,6 +70,9 @@ def _get_column_type(client, table_name, column_name="VALUE"):
 def _write_with_error_handling(client, table_name, columns, ts):
     """Write a row, delegating to handle_ingress_error on IngressError.
 
+    handle_ingress_error uses client.pending_rows (populated by write_row)
+    to find and fix the affected row data, then reconnects and replays.
+
     Returns:
         Tuple of (success, was_handled) where was_handled indicates
         handle_ingress_error was invoked.
@@ -79,8 +82,10 @@ def _write_with_error_handling(client, table_name, columns, ts):
         client.flush()
         return True, False
     except IngressError as error:
-        result = client.handle_ingress_error(error, table_name, columns, ts)
+        result = client.handle_ingress_error(error)
         if result:
+            # handle_ingress_error reconnects and replays rows into the sender
+            # buffer but doesn't flush — we must flush to persist the data.
             client.flush()
         return result, True
 
