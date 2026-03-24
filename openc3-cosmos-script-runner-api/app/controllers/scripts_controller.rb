@@ -100,7 +100,7 @@ class ScriptsController < ApplicationController
     render json: results
   rescue => e
     log_error(e)
-    render json: { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 
   def run
@@ -130,7 +130,7 @@ class ScriptsController < ApplicationController
     scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
     Script.lock(scope, name, username())
-    render status: 200
+    render status: :ok
   end
 
   def unlock
@@ -139,7 +139,7 @@ class ScriptsController < ApplicationController
     return unless scope
     locked_by = Script.locked?(scope, name)
     Script.unlock(scope, name) if username() == locked_by
-    render status: 200
+    render status: :ok
   end
 
   def destroy
@@ -151,7 +151,7 @@ class ScriptsController < ApplicationController
     head :ok
   rescue => e
     log_error(e)
-    render json: { status: 'error', message: e.message }, status: 500
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 
   def mnemonics

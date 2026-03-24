@@ -54,10 +54,10 @@ class ApplicationController < ActionController::API
         token: request.headers['HTTP_AUTHORIZATION'],
       )
     rescue OpenC3::AuthError => e
-      render json: { status: 'error', message: e.message }, status: 401
+      render json: { status: 'error', message: e.message }, status: :unauthorized
       return false
     rescue OpenC3::ForbiddenError => e
-      render json: { status: 'error', message: e.message }, status: 403
+      render json: { status: 'error', message: e.message }, status: :forbidden
       return false
     end
     return true
@@ -88,7 +88,7 @@ class ApplicationController < ActionController::API
           value = value.gsub(/(\.|%2e){2}/i, "-")
         end
         if value != arg
-          render json: { status: 'error', message: "Invalid #{param_list[index]}: #{arg}" }, status: 400
+          render json: { status: 'error', message: "Invalid #{param_list[index]}: #{arg}" }, status: :bad_request
           return false
         end
       end

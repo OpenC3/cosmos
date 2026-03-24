@@ -28,15 +28,15 @@ class ApiController < ApplicationController
   # Time Seriese Database (TSDB) presence check
   def tsdb
     if $tsdb_connection
-      render plain: 'OK', status: 200
+      render plain: 'OK', status: :ok
       return
     end
     begin
       OpenC3::QuestDBClient.check_connection
       $tsdb_connection = 'OK'
-      render plain: 'OK', status: 200
+      render plain: 'OK', status: :ok
     rescue => e
-      render plain: e.message, status: 404
+      render plain: e.message, status: :not_found
     end
   end
 

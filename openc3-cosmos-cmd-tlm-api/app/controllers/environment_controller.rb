@@ -58,7 +58,7 @@ class EnvironmentController < ApplicationController
       render json: {
         status: 'error',
         message: "Parameter '#{params['key'].nil? ? 'key' : 'value'}' is required",
-      }, status: 400
+      }, status: :bad_request
       return
     end
     begin
@@ -70,16 +70,16 @@ class EnvironmentController < ApplicationController
       model = @model_class.new(name: name, key: params['key'], value: params['value'], scope: params[:scope])
       model.create()
       OpenC3::Logger.info("Environment variable created: #{name} #{params['key']} #{params['value']}", scope: params[:scope], user: username())
-      render json: model.as_json(), status: 201
+      render json: model.as_json(), status: :created
     rescue RuntimeError, JSON::ParserError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
     rescue TypeError => e
       log_error(e)
-      render json: { status: 'error', message: 'Invalid json object', type: e.class }, status: 400
+      render json: { status: 'error', message: 'Invalid json object', type: e.class }, status: :bad_request
     rescue OpenC3::EnvironmentError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 409
+      render json: { status: 'error', message: e.message, type: e.class }, status: :conflict
     end
   end
 
@@ -95,7 +95,7 @@ class EnvironmentController < ApplicationController
       render json: {
         status: 'error',
         message: "failed to find environment: #{params[:name]}",
-      }, status: 404
+      }, status: :not_found
       return
     end
     begin
@@ -104,7 +104,7 @@ class EnvironmentController < ApplicationController
       render json: { name: params[:name] }
     rescue OpenC3::EnvironmentError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
     end
   end
 end
