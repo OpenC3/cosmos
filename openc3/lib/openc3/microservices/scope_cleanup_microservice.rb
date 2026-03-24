@@ -37,6 +37,8 @@ ORDER BY
     table_memory_pressure_level DESC,
     wal_pending_row_count DESC;"
 
+    GROWTH_NUM_SAMPLE_PERIODS = 4
+
     def initialize(*args)
       super(*args)
       @run_time = nil
@@ -94,24 +96,24 @@ ORDER BY
             @lag_txns[table_name] ||= []
             @lag_txns[table_name] << lag_txns
 
-            if @wal_pending_row_count[table_name].length >= 3
-              if @wal_pending_row_count[table_name][-1] > @wal_pending_row_count[table_name][-2] and @wal_pending_row_count[table_name][-2] > @wal_pending_row_count[table_name][-3]
-                # Two sample periods of growth
+            if @wal_pending_row_count[table_name].length > GROWTH_NUM_SAMPLE_PERIODS
+              if detect_growth(@wal_pending_row_count[table_name], GROWTH_NUM_SAMPLE_PERIODS)
+                # Crossed threshold of sample periods of growth
                 @logger.error("QuestDB: #{table_name} has growing wal_pending_row_count: #{wal_pending_row_count}")
               end
 
-              # Leave the last two samples
-              @wal_pending_row_count[table_name] = @wal_pending_row_count[table_name][-2..-1]
+              # Leave the last GROWTH_NUM_SAMPLE_PERIODS samples
+              @wal_pending_row_count[table_name] = @wal_pending_row_count[table_name][-GROWTH_NUM_SAMPLE_PERIODS..-1]
             end
 
-            if @lag_txns[table_name].length >= 3
-              if @lag_txns[table_name][-1] > @lag_txns[table_name][-2] and @lag_txns[table_name][-2] > @lag_txns[table_name][-3]
-                # Two sample periods of growth
+            if @lag_txns[table_name].length > GROWTH_NUM_SAMPLE_PERIODS
+              if detect_growth(@lag_txns[table_name], GROWTH_NUM_SAMPLE_PERIODS)
+                # Crossed threshold of sample periods of growth
                 @logger.error("QuestDB: #{table_name} has growing lag_txns: #{lag_txns}")
               end
 
-              # Leave the last two samples
-              @lag_txns[table_name] = @lag_txns[table_name][-2..-1]
+              # Leave the last GROWTH_NUM_SAMPLE_PERIODS samples
+              @lag_txns[table_name] = @lag_txns[table_name][-GROWTH_NUM_SAMPLE_PERIODS..-1]
             end
           end
         rescue => e
@@ -119,6 +121,13 @@ ORDER BY
           @logger.error("QuestDB Error: #{e.formatted}")
         end
       end
+    end
+
+    def detect_growth(array, num_samples)
+      num_samples.times do |index|
+        return false if array[index + 1] <= array[index]
+      end
+      return true
     end
 
     def get_areas_and_poll_time
