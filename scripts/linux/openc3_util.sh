@@ -29,7 +29,6 @@ usage() {
   echo "*  hostsetup: configure host for redis" >&2
   echo "*  hostenter: sh into vm host" >&2
   exit 1
-  return 1
 }
 
 pull_images() {
@@ -64,6 +63,7 @@ save_tar() {
   if [[ "$#" -lt 3 ]]; then
     echo "Usage: save <REPO> <NAMESPACE> <TAG> <SUFFIX>" >&2
     echo "e.g. save docker.io openc3inc 5.1.0" >&2
+    exit 1
   fi
   repo=$1
   namespace=$2
@@ -185,12 +185,12 @@ push() {
 }
 
 clean_files() {
-  find . -type d -name "node_modules" | xargs -I {} echo "Removing {}"; rm -rf {}
-  find . -type d -name "coverage" | xargs -I {} echo "Removing {}"; rm -rf {}
+  find . -type d -name "node_modules" -exec sh -c 'echo "Removing {}"; rm -rf "{}"' \;
+  find . -type d -name "coverage" -exec sh -c 'echo "Removing {}"; rm -rf "{}"' \;
   # Prompt for removing pnpm-lock.yaml files
-  find . -type f -name "pnpm-lock.yaml" | xargs -I {} rm -i {}
+  find . -type f -name "pnpm-lock.yaml" -exec rm -i {} \;
   # Prompt for removing Gemfile.lock files
-  find . -type f -name "Gemfile.lock" | xargs -I {} rm -i {}
+  find . -type f -name "Gemfile.lock" -exec rm -i {} \;
   return 0
 }
 
@@ -220,7 +220,7 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    echo -n $2 | base64
+    echo -n "$2" | base64
     ;;
   hash )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -238,7 +238,7 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    echo -n $2 | shasum -a 256 | sed 's/-//'
+    echo -n "$2" | shasum -a 256 | sed 's/-//'
     ;;
   pull )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then

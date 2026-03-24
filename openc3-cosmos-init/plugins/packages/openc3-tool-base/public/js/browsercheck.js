@@ -29,7 +29,9 @@
   const isNewMinVersion =
     localStorage.lastCheckedBrowserVersions !== currentMinVersionString
   const isNewUaString = localStorage.lastUaString !== navigator.userAgent
-  const isCounterUnset = parseInt(localStorage.browserCheckAlertCounter) === NaN
+  const isCounterUnset = Number.isNaN(
+    parseInt(localStorage.browserCheckAlertCounter),
+  )
   if (isNewMinVersion || isNewUaString || isCounterUnset) {
     localStorage.lastCheckedBrowserVersions = currentMinVersionString
     localStorage.lastUaString = navigator.userAgent
@@ -57,7 +59,7 @@
    */
   if (uaEdge) {
     const version = parseUaVersion(uaEdge)
-    if (version === NaN || version < minEdgeVersion) {
+    if (Number.isNaN(version) || version < minEdgeVersion) {
       localStorage.browserCheckAlertCounter++
       alert(
         `It looks like you're using an unsupported version of Edge. Please update to version ${minEdgeVersion} or later.`,
@@ -65,7 +67,7 @@
     }
   } else if (uaChrome) {
     const version = parseUaVersion(uaChrome)
-    if (version === NaN || version < minChromeVersion) {
+    if (Number.isNaN(version) || version < minChromeVersion) {
       localStorage.browserCheckAlertCounter++
       alert(
         `It looks like you're using an unsupported version of Chrome. Please update to version ${minChromeVersion} or later.`,
@@ -74,7 +76,7 @@
   } else if (uaSafari) {
     const uaSafariVersion = navigator.userAgent.match(/Version\/\d+/)
     const version = parseUaVersion(uaSafariVersion)
-    if (version === NaN || version < minSafariVersion) {
+    if (Number.isNaN(version) || version < minSafariVersion) {
       localStorage.browserCheckAlertCounter++
       alert(
         `It looks like you're using an unsupported version of Safari. Please update to version ${minSafariVersion} or later.`,
@@ -82,7 +84,7 @@
     }
   } else if (uaFirefox) {
     const version = parseUaVersion(uaFirefox)
-    if (version === NaN || version < minFirefoxVersion) {
+    if (Number.isNaN(version) || version < minFirefoxVersion) {
       localStorage.browserCheckAlertCounter++
       alert(
         `It looks like you're using an unsupported version of Firefox. Please update to version ${minFirefoxVersion} or later.`,

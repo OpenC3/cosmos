@@ -648,7 +648,7 @@ export default {
       }
 
       let graphs = config.graphs
-      for (let graph of graphs) {
+      for (let _graph of graphs) {
         await this.addGraph(false) // Don't check existing graphs
       }
       await this.$nextTick()
