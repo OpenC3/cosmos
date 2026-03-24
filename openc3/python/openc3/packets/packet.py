@@ -1144,7 +1144,7 @@ class Packet(Structure):
 
         if self.processors:
             processors = []
-            for _, processor in self.processors():
+            for _, processor in self.processors:
                 processors.append(processor.as_json())
             config["processors"] = processors
 

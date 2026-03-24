@@ -69,7 +69,7 @@ class JsonApiObject:
         self.log = [None, None, None]
         self.authentication = authentication if authentication else self.generate_auth()
         self.timeout: float = timeout
-        self.shutdown: bool = False
+        self._shutdown: bool = False
 
     @staticmethod
     def generate_auth():
@@ -87,7 +87,7 @@ class JsonApiObject:
         Returns:
             return The result of the method call.
         """
-        if self.shutdown:
+        if self._shutdown:
             raise JsonApiError("Shutdown")
         method = method_params[0]
         endpoint = method_params[1]
@@ -106,7 +106,7 @@ class JsonApiObject:
 
     def shutdown(self):
         """Permanently disconnects from the http server"""
-        self.shutdown = True
+        self._shutdown = True
         self.disconnect()
 
     def connect(self):
