@@ -1,5 +1,5 @@
 /**
-* vue v3.5.29
+* vue v3.5.30
 * (c) 2018-present Yuxi (Evan) You and Vue contributors
 * @license MIT
 **/
@@ -1281,10 +1281,17 @@ var Vue = (function (exports) {
   }
   function reduce(self, method, fn, args) {
     const arr = shallowReadArray(self);
+    const needsWrap = arr !== self && !isShallow(self);
     let wrappedFn = fn;
+    let wrapInitialAccumulator = false;
     if (arr !== self) {
-      if (!isShallow(self)) {
+      if (needsWrap) {
+        wrapInitialAccumulator = args.length === 0;
         wrappedFn = function(acc, item, index) {
+          if (wrapInitialAccumulator) {
+            wrapInitialAccumulator = false;
+            acc = toWrapped(self, acc);
+          }
           return fn.call(this, acc, toWrapped(self, item), index, self);
         };
       } else if (fn.length > 3) {
@@ -1293,7 +1300,8 @@ var Vue = (function (exports) {
         };
       }
     }
-    return arr[method](wrappedFn, ...args);
+    const result = arr[method](wrappedFn, ...args);
+    return wrapInitialAccumulator ? toWrapped(self, result) : result;
   }
   function searchProxy(self, method, args) {
     const arr = toRaw(self);
@@ -1583,15 +1591,14 @@ var Vue = (function (exports) {
         clear: createReadonlyMethod("clear")
       } : {
         add(value) {
-          if (!shallow && !isShallow(value) && !isReadonly(value)) {
-            value = toRaw(value);
-          }
           const target = toRaw(this);
           const proto = getProto(target);
-          const hadKey = proto.has.call(target, value);
+          const rawValue = toRaw(value);
+          const valueToAdd = !shallow && !isShallow(value) && !isReadonly(value) ? rawValue : value;
+          const hadKey = proto.has.call(target, valueToAdd) || hasChanged(value, valueToAdd) && proto.has.call(target, value) || hasChanged(rawValue, valueToAdd) && proto.has.call(target, rawValue);
           if (!hadKey) {
-            target.add(value);
-            trigger(target, "add", value, value);
+            target.add(valueToAdd);
+            trigger(target, "add", valueToAdd, valueToAdd);
           }
           return this;
         },
@@ -5440,12 +5447,16 @@ If this is a native custom element, make sure to exclude it from component resol
         );
       }
     } else if (typeof source === "number") {
-      if (!Number.isInteger(source)) {
-        warn$1(`The v-for range expect an integer value but got ${source}.`);
-      }
-      ret = new Array(source);
-      for (let i = 0; i < source; i++) {
-        ret[i] = renderItem(i + 1, i, void 0, cached && cached[i]);
+      if (!Number.isInteger(source) || source < 0) {
+        warn$1(
+          `The v-for range expects a positive integer value but got ${source}.`
+        );
+        ret = [];
+      } else {
+        ret = new Array(source);
+        for (let i = 0; i < source; i++) {
+          ret[i] = renderItem(i + 1, i, void 0, cached && cached[i]);
+        }
       }
     } else if (isObject(source)) {
       if (source[Symbol.iterator]) {
@@ -5896,6 +5907,7 @@ If this is a native custom element, make sure to exclude it from component resol
   }
   function withAsyncContext(getAwaitable) {
     const ctx = getCurrentInstance();
+    const inSSRSetup = isInSSRComponentSetup;
     if (!ctx) {
       warn$1(
         `withAsyncContext called without active current instance. This is likely a bug.`
@@ -5903,13 +5915,25 @@ If this is a native custom element, make sure to exclude it from component resol
     }
     let awaitable = getAwaitable();
     unsetCurrentInstance();
+    if (inSSRSetup) {
+      setInSSRSetupState(false);
+    }
+    const restore = () => {
+      setCurrentInstance(ctx);
+      if (inSSRSetup) {
+        setInSSRSetupState(true);
+      }
+    };
     const cleanup = () => {
       if (getCurrentInstance() !== ctx) ctx.scope.off();
       unsetCurrentInstance();
+      if (inSSRSetup) {
+        setInSSRSetupState(false);
+      }
     };
     if (isPromise(awaitable)) {
       awaitable = awaitable.catch((e) => {
-        setCurrentInstance(ctx);
+        restore();
         Promise.resolve().then(() => Promise.resolve().then(cleanup));
         throw e;
       });
@@ -5917,7 +5941,7 @@ If this is a native custom element, make sure to exclude it from component resol
     return [
       awaitable,
       () => {
-        setCurrentInstance(ctx);
+        restore();
         Promise.resolve().then(cleanup);
       }
     ];
@@ -8289,7 +8313,10 @@ If you want to remount the same app, move your app creation logic into a factory
             }
           } else {
             if (root.ce && root.ce._hasShadowRoot()) {
-              root.ce._injectChildStyle(type);
+              root.ce._injectChildStyle(
+                type,
+                instance.parent ? instance.parent.type : void 0
+              );
             }
             {
               startMeasure(instance, `render`);
@@ -10757,7 +10784,7 @@ Component that was made reactive: `,
     return true;
   }
 
-  const version = "3.5.29";
+  const version = "3.5.30";
   const warn = warn$1 ;
   const ErrorTypeStrings = ErrorTypeStrings$1 ;
   const devtools = devtools$1 ;
@@ -11535,7 +11562,9 @@ Expected function or array of functions, received type ${typeof value}.`
       }
     } else if (
       // #11081 force set props for possible async custom element
-      el._isVueCE && (/[A-Z]/.test(key) || !isString(nextValue))
+      el._isVueCE && // #12408 check if it's declared prop or it's async custom element
+      (shouldSetAsPropForVueCE(el, key) || // @ts-expect-error _def is private
+      el._def.__asyncLoader && (/[A-Z]/.test(key) || !isString(nextValue)))
     ) {
       patchDOMProp(el, camelize(key), nextValue, parentComponent, key);
     } else {
@@ -11583,6 +11612,17 @@ Expected function or array of functions, received type ${typeof value}.`
     }
     return key in el;
   }
+  function shouldSetAsPropForVueCE(el, key) {
+    const props = (
+      // @ts-expect-error _def is private
+      el._def.props
+    );
+    if (!props) {
+      return false;
+    }
+    const camelKey = camelize(key);
+    return Array.isArray(props) ? props.some((prop) => camelize(prop) === camelKey) : Object.keys(props).some((prop) => camelize(prop) === camelKey);
+  }
 
   const REMOVAL = {};
   // @__NO_SIDE_EFFECTS__
@@ -11627,6 +11667,7 @@ Expected function or array of functions, received type ${typeof value}.`
       this._dirty = false;
       this._numberProps = null;
       this._styleChildren = /* @__PURE__ */ new WeakSet();
+      this._styleAnchors = /* @__PURE__ */ new WeakMap();
       this._ob = null;
       if (this.shadowRoot && _createApp !== createApp) {
         this._root = this.shadowRoot;
@@ -11655,7 +11696,8 @@ Expected function or array of functions, received type ${typeof value}.`
       }
       this._connected = true;
       let parent = this;
-      while (parent = parent && (parent.parentNode || parent.host)) {
+      while (parent = parent && // #12479 should check assignedSlot first to get correct parent
+      (parent.assignedSlot || parent.parentNode || parent.host)) {
         if (parent instanceof VueElement) {
           this._parent = parent;
           break;
@@ -11877,6 +11919,7 @@ Expected function or array of functions, received type ${typeof value}.`
                 this._styles.forEach((s) => this._root.removeChild(s));
                 this._styles.length = 0;
               }
+              this._styleAnchors.delete(this._def);
               this._applyStyles(newStyles);
               this._instance = null;
               this._update();
@@ -11901,7 +11944,7 @@ Expected function or array of functions, received type ${typeof value}.`
       }
       return vnode;
     }
-    _applyStyles(styles, owner) {
+    _applyStyles(styles, owner, parentComp) {
       if (!styles) return;
       if (owner) {
         if (owner === this._def || this._styleChildren.has(owner)) {
@@ -11910,11 +11953,19 @@ Expected function or array of functions, received type ${typeof value}.`
         this._styleChildren.add(owner);
       }
       const nonce = this._nonce;
+      const root = this.shadowRoot;
+      const insertionAnchor = parentComp ? this._getStyleAnchor(parentComp) || this._getStyleAnchor(this._def) : this._getRootStyleInsertionAnchor(root);
+      let last = null;
       for (let i = styles.length - 1; i >= 0; i--) {
         const s = document.createElement("style");
         if (nonce) s.setAttribute("nonce", nonce);
         s.textContent = styles[i];
-        this.shadowRoot.prepend(s);
+        root.insertBefore(s, last || insertionAnchor);
+        last = s;
+        if (i === 0) {
+          if (!parentComp) this._styleAnchors.set(this._def, s);
+          if (owner) this._styleAnchors.set(owner, s);
+        }
         {
           if (owner) {
             if (owner.__hmrId) {
@@ -11930,6 +11981,28 @@ Expected function or array of functions, received type ${typeof value}.`
           }
         }
       }
+    }
+    _getStyleAnchor(comp) {
+      if (!comp) {
+        return null;
+      }
+      const anchor = this._styleAnchors.get(comp);
+      if (anchor && anchor.parentNode === this.shadowRoot) {
+        return anchor;
+      }
+      if (anchor) {
+        this._styleAnchors.delete(comp);
+      }
+      return null;
+    }
+    _getRootStyleInsertionAnchor(root) {
+      for (let i = 0; i < root.childNodes.length; i++) {
+        const node = root.childNodes[i];
+        if (!(node instanceof HTMLStyleElement)) {
+          return node;
+        }
+      }
+      return null;
     }
     /**
      * Only called when shadowRoot is false
@@ -11993,8 +12066,8 @@ Expected function or array of functions, received type ${typeof value}.`
     /**
      * @internal
      */
-    _injectChildStyle(comp) {
-      this._applyStyles(comp.styles, comp);
+    _injectChildStyle(comp, parentComp) {
+      this._applyStyles(comp.styles, comp, parentComp);
     }
     /**
      * @internal
@@ -12024,6 +12097,7 @@ Expected function or array of functions, received type ${typeof value}.`
     _removeChildStyle(comp) {
       {
         this._styleChildren.delete(comp);
+        this._styleAnchors.delete(comp);
         if (this._childStyles && comp.__hmrId) {
           const oldStyles = this._childStyles.get(comp.__hmrId);
           if (oldStyles) {

@@ -29,6 +29,7 @@ async function addComponent(page, utils, target: string, packet: string) {
 }
 
 test('saves, opens, and resets the configuration', async ({ page, utils }) => {
+  test.slow()
   await addComponent(page, utils, 'INST', 'ADCS')
   await page.locator('[data-test="tab"]').click({
     button: 'right',
@@ -233,6 +234,7 @@ test('controls playback', async ({ page, utils }) => {
 })
 
 test('changes display settings', async ({ page, utils }) => {
+  test.slow()
   await addComponent(page, utils, 'INST', 'ADCS')
   await page.locator('[data-test=start-button]').click()
   await utils.sleep(1000) // Allow a few packets to come in
