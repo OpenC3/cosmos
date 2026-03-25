@@ -21,6 +21,22 @@ const config = {
     v4: true
   },
 
+  headTags: [
+    {
+      tagName: "script",
+      attributes: {},
+      innerHTML: `
+        if (window.location.hostname === 'docs.openc3.com') {
+          var s = document.createElement('script');
+          s.src = 'https://crawlchat.app/embed.js';
+          s.id = 'crawlchat-script';
+          s.dataset.id = '69c2c5539542f047e7848e0d';
+          document.head.appendChild(s);
+        }
+      `,
+    },
+  ],
+
   // Set the production url of your site here
   url: "https://docs.openc3.com",
   // Set the /<baseUrl>/ pathname under which your site is served
