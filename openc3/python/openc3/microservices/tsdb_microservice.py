@@ -46,8 +46,9 @@ class TsdbMicroservice(Microservice):
             elif option[0] == "TLM_DECOM_RETAIN_TIME":
                 self.tlm_decom_retain_time = option[1]
 
-        # Use shared QuestDB client
-        self.questdb = QuestDBClient(logger=self.logger, name=f"Microservice {self.name}")
+        # Use shared QuestDB client with shard from microservice config
+        shard = self.config.get("shard", 0)
+        self.questdb = QuestDBClient(logger=self.logger, name=f"Microservice {self.name}", shard=shard)
         self.questdb.connect_ingest()
         self.questdb.connect_query()
 

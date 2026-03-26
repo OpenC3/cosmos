@@ -237,8 +237,8 @@ def mock_redis
   # pool = double(ConnectionPool)
   # allow(pool).to receive(:with) { redis }
   # allow(ConnectionPool).to receive(:new).and_return(pool)
-  OpenC3::Store.instance_variable_set(:@instance, nil)
-  OpenC3::EphemeralStore.instance_variable_set(:@instance, nil)
+  OpenC3::Store.instance_variable_set(:@instances, [])
+  OpenC3::EphemeralStore.instance_variable_set(:@instances, [])
   OpenC3::StoreQueued.instance_variable_set(:@instance, nil)
   OpenC3::EphemeralStoreQueued.instance_variable_set(:@instance, nil)
   require 'openc3/models/auth_model'

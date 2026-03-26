@@ -58,10 +58,12 @@ module OpenC3
     # Get the singleton instance
     def self.instance(pool_size = 100, shard: 0)
       # Logger.level = Logger::DEBUG
+      @instances ||= []
       the_instance = @instances[shard]
       return the_instance if the_instance
 
       @@instance_mutex.synchronize do
+        @instances ||= []
         @instances[shard] ||= self.new(pool_size, shard: shard)
         return @instances[shard]
       end

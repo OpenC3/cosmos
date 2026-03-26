@@ -350,7 +350,8 @@ class LoggedStreamingThread < StreamingThread
           stored_timestamp_item_keys: {},
           calculated_positions: {},  # local_index => { source:, format: }
           timestamp_source_columns: {},
-          topics: Set.new
+          topics: Set.new,
+          shard: OpenC3::QuestDBClient.shard_for_target(object.target_name, scope: @scope)
         }
         meta = per_table[table_name]
         meta[:topics] << topic
@@ -406,7 +407,10 @@ class LoggedStreamingThread < StreamingThread
 
     # Filter to tables that exist and have data in the queried range
     if per_table.size > 1
-      per_table.select! { |table_name, _| OpenC3::QuestDBClient.table_has_data?(table_name, start_time, end_time) }
+      per_table.select! do |table_name, meta|
+        shard = meta[:shard]
+        OpenC3::QuestDBClient.table_has_data?(table_name, start_time, end_time, shard: shard)
+      end
     end
 
     # Build per-table queries independently.
@@ -437,7 +441,8 @@ class LoggedStreamingThread < StreamingThread
         row_index: 0,      # position within current page
         offset: 0,         # LIMIT offset for next fetch
         exhausted: false,
-        table_name: table_name
+        table_name: table_name,
+        shard: meta[:shard]
       }
     end
 
@@ -510,7 +515,7 @@ class LoggedStreamingThread < StreamingThread
     return if cursor[:exhausted]
     query_offset = "#{cursor[:query]} LIMIT #{cursor[:offset]}, #{cursor[:offset] + @max_batch_size}"
     OpenC3::Logger.debug("QuestDB cursor fetch: #{query_offset}")
-    result = OpenC3::QuestDBClient.query_with_retry(query_offset, label: "cursor fetch")
+    result = OpenC3::QuestDBClient.query_with_retry(query_offset, label: "cursor fetch", shard: cursor[:shard])
     cursor[:offset] += @max_batch_size
     if result.nil? || result.ntuples == 0
       cursor[:result] = nil
@@ -543,8 +548,8 @@ class LoggedStreamingThread < StreamingThread
         break if @cancel_thread
         table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm, scope: @scope)
         key = [table_name, object.stream_mode]
-        objects_by_table_and_mode[key] ||= []
-        objects_by_table_and_mode[key] << object
+        objects_by_table_and_mode[key] ||= { objects: [], shard: OpenC3::QuestDBClient.shard_for_target(object.target_name, scope: @scope) }
+        objects_by_table_and_mode[key][:objects] << object
       end
     end
 
@@ -552,8 +557,10 @@ class LoggedStreamingThread < StreamingThread
 
     done = false
 
-    objects_by_table_and_mode.each do |(table_name, stream_mode), objects|
+    objects_by_table_and_mode.each do |(table_name, stream_mode), group_info|
       break if @cancel_thread
+      objects = group_info[:objects]
+      shard = group_info[:shard]
 
       sample_interval = OpenC3::QuestDBClient.sample_interval_for(stream_mode)
 
@@ -584,7 +591,7 @@ class LoggedStreamingThread < StreamingThread
 
       query = OpenC3::QuestDBClient.build_reduced_query(table_name, selects, start_time, end_time, sample_interval)
 
-      OpenC3::QuestDBClient.paginate_query(query, @max_batch_size, label: "reduced query") do |result|
+      OpenC3::QuestDBClient.paginate_query(query, @max_batch_size, label: "reduced query", shard: shard) do |result|
         break if @cancel_thread
         results = []
         result.each do |tuples|
@@ -721,14 +728,16 @@ class LoggedStreamingThread < StreamingThread
     packet_objects.each do |object|
       # Same sanitization as tsdb_microservice.py create_table()
       table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm, scope: @scope)
-      objects_by_table[table_name] ||= []
-      objects_by_table[table_name] << object
+      objects_by_table[table_name] ||= { objects: [], shard: OpenC3::QuestDBClient.shard_for_target(object.target_name, scope: @scope) }
+      objects_by_table[table_name][:objects] << object
     end
 
     done = false
 
-    objects_by_table.each do |table_name, objects|
+    objects_by_table.each do |table_name, group_info|
       break if @cancel_thread
+      objects = group_info[:objects]
+      shard = group_info[:shard]
 
       first_object = objects[0]
       value_type = first_object.value_type
@@ -738,7 +747,7 @@ class LoggedStreamingThread < StreamingThread
 
       query = OpenC3::QuestDBClient.build_packet_query(table_name, start_time, end_time)
 
-      OpenC3::QuestDBClient.paginate_query(query, @max_batch_size, label: "packet query") do |result|
+      OpenC3::QuestDBClient.paginate_query(query, @max_batch_size, label: "packet query", shard: shard) do |result|
         break if @cancel_thread
         results = []
         result.each do |tuples|
@@ -781,14 +790,16 @@ class LoggedStreamingThread < StreamingThread
     packet_objects.each do |object|
       table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm, scope: @scope)
       key = [table_name, object.stream_mode]
-      objects_by_table_and_mode[key] ||= []
-      objects_by_table_and_mode[key] << object
+      objects_by_table_and_mode[key] ||= { objects: [], shard: OpenC3::QuestDBClient.shard_for_target(object.target_name, scope: @scope) }
+      objects_by_table_and_mode[key][:objects] << object
     end
 
     done = false
 
-    objects_by_table_and_mode.each do |(table_name, stream_mode), objects|
+    objects_by_table_and_mode.each do |(table_name, stream_mode), group_info|
       break if @cancel_thread
+      objects = group_info[:objects]
+      shard = group_info[:shard]
 
       first_object = objects[0]
       value_type = first_object.value_type
@@ -805,7 +816,7 @@ class LoggedStreamingThread < StreamingThread
 
       query = OpenC3::QuestDBClient.build_reduced_query(table_name, selects, start_time, end_time, sample_interval)
 
-      OpenC3::QuestDBClient.paginate_query(query, @max_batch_size, label: "reduced packet query") do |result|
+      OpenC3::QuestDBClient.paginate_query(query, @max_batch_size, label: "reduced packet query", shard: shard) do |result|
         break if @cancel_thread
         results = []
         result.each do |tuples|

@@ -141,19 +141,27 @@ class QuestDBClient:
     # conversion to float seconds on read. Distinguished from calculated items above.
     STORED_TIMESTAMP_ITEMS = frozenset(["PACKET_TIMESECONDS", "RECEIVED_TIMESECONDS"])
 
-    # Class-level shared connection for query operations (singleton pattern)
-    _shared_conn = None
-    _shared_conn_mutex = threading.Lock()
-
-    # Class-level shared connection for query operations (singleton pattern)
-    _shared_conn = None
-    _shared_conn_mutex = threading.Lock()
+    # Class-level shared connections for query operations (per-shard singleton pattern)
+    # { shard_number: psycopg_connection }
+    _shared_conns = {}
+    _shared_conns_mutex = threading.Lock()
 
     @staticmethod
-    def _create_query_connection(**extra_kwargs):
+    def hostname_for_shard(shard=0):
+        """Resolve the hostname for a given shard number.
+
+        If OPENC3_TSDB_HOSTNAME contains "SHARDNUM", it is replaced with the shard number.
+        Otherwise, all shards connect to the same host (backward compatible).
+        """
+        hostname = os.environ.get("OPENC3_TSDB_HOSTNAME", "")
+        return hostname.replace("SHARDNUM", str(shard))
+
+    @staticmethod
+    def _create_query_connection(shard=0, **extra_kwargs):
         """Create a new psycopg connection to QuestDB using standard env vars.
 
         Args:
+            shard: Shard number (default 0). Used to resolve hostname.
             **extra_kwargs: Additional keyword arguments passed to psycopg.connect
                 (e.g., autocommit=True, connect_timeout=2).
 
@@ -161,7 +169,7 @@ class QuestDBClient:
             A new psycopg connection.
         """
         return psycopg.connect(
-            host=os.environ.get("OPENC3_TSDB_HOSTNAME"),
+            host=QuestDBClient.hostname_for_shard(shard),
             port=os.environ.get("OPENC3_TSDB_QUERY_PORT"),
             user=os.environ.get("OPENC3_TSDB_USERNAME"),
             password=os.environ.get("OPENC3_TSDB_PASSWORD"),
@@ -170,32 +178,43 @@ class QuestDBClient:
         )
 
     @classmethod
-    def connection(cls):
-        """Get or create a thread-safe shared psycopg connection.
+    def connection(cls, shard=0):
+        """Get or create a thread-safe shared psycopg connection for the given shard.
 
         Returns a shared singleton connection — callers should not close it.
         """
-        with cls._shared_conn_mutex:
-            if cls._shared_conn is None:
-                cls._shared_conn = cls._create_query_connection()
-            return cls._shared_conn
+        with cls._shared_conns_mutex:
+            conn = cls._shared_conns.get(shard)
+            if conn is None:
+                conn = cls._create_query_connection(shard=shard)
+                cls._shared_conns[shard] = conn
+            return conn
 
     @classmethod
-    def disconnect(cls):
-        """Reset the shared connection (close if open, set to None). Used after errors."""
-        with cls._shared_conn_mutex:
-            if cls._shared_conn is not None:
-                with contextlib.suppress(Exception):
-                    cls._shared_conn.close()
-                cls._shared_conn = None
+    def disconnect(cls, shard=None):
+        """Reset the shared connection(s). Used after errors.
+
+        If shard is None, closes all shard connections. Otherwise closes only the specified shard.
+        """
+        with cls._shared_conns_mutex:
+            if shard is None:
+                for conn in cls._shared_conns.values():
+                    with contextlib.suppress(Exception):
+                        conn.close()
+                cls._shared_conns = {}
+            else:
+                conn = cls._shared_conns.pop(shard, None)
+                if conn is not None:
+                    with contextlib.suppress(Exception):
+                        conn.close()
 
     @classmethod
-    def check_connection(cls):
+    def check_connection(cls, shard=0):
         """Health check — attempt to connect and immediately close.
 
         Returns True if successful, raises on failure.
         """
-        conn = cls._create_query_connection(autocommit=True, connect_timeout=2)
+        conn = cls._create_query_connection(shard=shard, autocommit=True, connect_timeout=2)
         conn.close()
         return True
 
@@ -295,7 +314,7 @@ class QuestDBClient:
 
     DEFAULT_BATCH_SIZE = 500
 
-    def __init__(self, logger=None, name=None, batch_size=None):
+    def __init__(self, logger=None, name=None, batch_size=None, shard=0):
         """
         Initialize QuestDB client.
 
@@ -303,10 +322,12 @@ class QuestDBClient:
             logger: Optional logger instance. If not provided, uses print.
             name: Optional name for error messages (e.g., microservice name)
             batch_size: Number of rows to buffer before auto-flushing (default: DEFAULT_BATCH_SIZE)
+            shard: Shard number (default 0). Used to resolve hostname via SHARDNUM replacement.
         """
         self.batch_size = batch_size or self.DEFAULT_BATCH_SIZE
         self.logger = logger
         self.name = name or "QuestDBClient"
+        self.shard = shard
         self.ingest = None
         self.query = None
         # Track columns that need JSON serialization due to type conflicts or DERIVED type
@@ -355,7 +376,7 @@ class QuestDBClient:
         Raises:
             RuntimeError: If any required environment variable is missing
         """
-        host = os.environ.get("OPENC3_TSDB_HOSTNAME")
+        host = self.hostname_for_shard(self.shard)
         port = os.environ.get(port_env_var)
         username = os.environ.get("OPENC3_TSDB_USERNAME")
         password = os.environ.get("OPENC3_TSDB_PASSWORD")
@@ -400,7 +421,7 @@ class QuestDBClient:
             if self.query:
                 self.query.close()
 
-            self.query = self._create_query_connection(autocommit=True)
+            self.query = self._create_query_connection(shard=self.shard, autocommit=True)
         except Exception as e:
             raise ConnectionError(f"Failed to connect to QuestDB: {e}") from e
 
