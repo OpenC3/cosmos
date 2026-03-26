@@ -42,6 +42,10 @@ ENV['OPENC3_API_PASSWORD'] = nil
 ENV['OPENC3_SERVICE_PASSWORD'] = nil
 # This actually contains the password via redis://openc3:XXXXXXXX@openc3-redis:6379
 ENV['ANYCABLE_REDIS_URL'] = nil
+ENV['KC_DB_USERNAME'] = nil
+ENV['KC_DB_PASSWORD'] = nil
+ENV['KEYCLOAK_ADMIN'] = nil
+ENV['KEYCLOAK_ADMIN_PASSWORD'] = nil
 
 id = ARGV[0]
 scope = ARGV[1]
