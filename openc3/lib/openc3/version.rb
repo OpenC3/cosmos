@@ -7,7 +7,7 @@ module OpenC3
     MINOR = '0'
     PATCH = '0'
     OTHER = ''
-    BUILD = 'ad253209307208f49a3dcff3b51d91ad7cb128ef'
+    BUILD = '463726bb8dab631febe2e502ec0462a460bd326c'
   end
   VERSION = '7.0.0'
   GEM_VERSION = '7.0.0'
