@@ -55,12 +55,20 @@
     </v-card-text>
     <v-spacer />
     <v-card-actions class="flex-wrap">
-      <v-btn
-        text="Install"
-        append-icon="mdi-puzzle-plus"
-        variant="elevated"
-        @click.stop="install"
-      />
+      <v-tooltip :open-delay="600" location="top">
+        <template #activator="{ props }">
+          <span v-bind="entitled ? null : props">
+            <v-btn
+              text="Install"
+              append-icon="mdi-puzzle-plus"
+              variant="elevated"
+              :disabled="!entitled"
+              @click.stop="install"
+            />
+          </span>
+        </template>
+        <span> {{ accessTooltip }} </span>
+      </v-tooltip>
     </v-card-actions>
   </v-card>
   <plugin-details-dialog
