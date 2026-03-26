@@ -221,7 +221,8 @@ module OpenC3
         return msg_hash
       else
         topic = "#{scope}__TELEMETRY__{#{target_name}}__#{packet_name}"
-        msg_id, msg_hash = Topic.get_newest_message(topic)
+        shard = Store.shard_for_target(target_name, scope: scope)
+        msg_id, msg_hash = Topic.get_newest_message(topic, shard: shard)
         if msg_id
           msg_hash['buffer'] = msg_hash['buffer'].b
           return msg_hash
@@ -446,7 +447,8 @@ module OpenC3
         packet_name = packet_name.upcase
         authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
         topic = "#{scope}__DECOM__{#{target_name}}__#{packet_name}"
-        id, _ = Topic.get_newest_message(topic)
+        shard = Store.shard_for_target(target_name, scope: scope)
+        id, _ = Topic.get_newest_message(topic, shard: shard)
         results[topic] = id ? id : '0-0'
       end
       results.to_a.join(SUBSCRIPTION_DELIMITER)
@@ -463,7 +465,20 @@ module OpenC3
       authorize(permission: 'tlm', manual: manual, scope: scope, token: token)
       # Split the list of topic, ID values and turn it into a hash for easy updates
       lookup = Hash[*id.split(SUBSCRIPTION_DELIMITER)]
-      xread = Topic.read_topics(lookup.keys, lookup.values, nil, count) # Always don't block
+      # Group topics by shard for multi-shard support
+      shard_groups = {}
+      lookup.each do |topic, offset|
+        target_name = topic.match(/__\{?([^}_]+)\}?__/)[1] rescue nil
+        shard = Store.shard_for_target(target_name, scope: scope)
+        shard_groups[shard] ||= { topics: [], offsets: [] }
+        shard_groups[shard][:topics] << topic
+        shard_groups[shard][:offsets] << offset
+      end
+      xread = {}
+      shard_groups.each do |shard, group|
+        result = Topic.read_topics(group[:topics], group[:offsets], nil, count, shard: shard) # Always don't block
+        xread.merge!(result) if result
+      end
       # Return the original ID and and empty array if we didn't get anything
       packets = []
       return [id, packets] if xread.empty?

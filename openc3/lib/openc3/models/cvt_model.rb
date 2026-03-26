@@ -30,12 +30,22 @@ module OpenC3
       packet.decom
     end
 
+    # Get a Store instance routed to the correct shard for a target
+    def self.store_for_target(target_name, scope:)
+      Store.instance(shard: Store.shard_for_target(target_name, scope: scope))
+    end
+
+    # Get a StoreQueued instance routed to the correct shard for a target
+    def self.store_queued_for_target(target_name, scope:)
+      StoreQueued.instance(shard: Store.shard_for_target(target_name, scope: scope))
+    end
+
     # Delete the current value table for a target
     def self.del(target_name:, packet_name:, scope: $openc3_scope)
       key = "#{scope}__tlm__#{target_name}"
       tgt_pkt_key = key + "__#{packet_name}"
       @@packet_cache[tgt_pkt_key] = nil
-      Store.hdel(key, packet_name)
+      store_for_target(target_name, scope: scope).hdel(key, packet_name)
     end
 
     # Set the current value table for a target, packet
@@ -45,9 +55,9 @@ module OpenC3
       tgt_pkt_key = key + "__#{packet_name}"
       @@packet_cache[tgt_pkt_key] = [Time.now, hash]
       if queued
-        StoreQueued.hset(key, packet_name, packet_json)
+        store_queued_for_target(target_name, scope: scope).hset(key, packet_name, packet_json)
       else
-        Store.hset(key, packet_name, packet_json)
+        store_for_target(target_name, scope: scope).hset(key, packet_name, packet_json)
       end
     end
 
@@ -59,9 +69,9 @@ module OpenC3
       tgt_pkt_key = key + "__#{packet_name}"
       @@packet_cache[tgt_pkt_key] = [Time.now, hash]
       if queued
-        StoreQueued.hset(key, packet_name, packet_json)
+        store_queued_for_target(target_name, scope: scope).hset(key, packet_name, packet_json)
       else
-        Store.hset(key, packet_name, packet_json)
+        store_for_target(target_name, scope: scope).hset(key, packet_name, packet_json)
       end
     end
 
@@ -75,7 +85,7 @@ module OpenC3
         cache_time, hash = @@packet_cache[tgt_pkt_key]
         return hash if hash and (now - cache_time) < cache_timeout
       end
-      packet = Store.hget(key, packet_name)
+      packet = store_for_target(target_name, scope: scope).hget(key, packet_name)
       raise "Packet '#{target_name} #{packet_name}' does not exist" unless packet
       hash = JSON.parse(packet, allow_nan: true, create_additions: true)
       @@packet_cache[tgt_pkt_key] = [now, hash]
@@ -198,7 +208,7 @@ module OpenC3
     def self.overrides(scope: $openc3_scope)
       overrides = []
       TargetModel.names(scope: scope).each do |target_name|
-        all = Store.hgetall("#{scope}__override__#{target_name}")
+        all = store_for_target(target_name, scope: scope).hgetall("#{scope}__override__#{target_name}")
         next if all.nil? or all.empty?
         all.each do |packet_name, hash|
           items = JSON.parse(hash, allow_nan: true, create_additions: true)
@@ -227,7 +237,7 @@ module OpenC3
     # Override a current value table item such that it always returns the same value
     # for the given type
     def self.override(target_name, packet_name, item_name, value, type: :ALL, scope: $openc3_scope)
-      hash = Store.hget("#{scope}__override__#{target_name}", packet_name)
+      hash = store_for_target(target_name, scope: scope).hget("#{scope}__override__#{target_name}", packet_name)
       hash = JSON.parse(hash, allow_nan: true, create_additions: true) if hash
       hash ||= {} # In case the above didn't create anything
       case type
@@ -247,12 +257,12 @@ module OpenC3
 
       tgt_pkt_key = "#{scope}__tlm__#{target_name}__#{packet_name}"
       @@override_cache[tgt_pkt_key] = [Time.now, hash]
-      Store.hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json, allow_nan: true))
+      store_for_target(target_name, scope: scope).hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json, allow_nan: true))
     end
 
     # Normalize a current value table item such that it returns the actual value
     def self.normalize(target_name, packet_name, item_name, type: :ALL, scope: $openc3_scope)
-      hash = Store.hget("#{scope}__override__#{target_name}", packet_name)
+      hash = store_for_target(target_name, scope: scope).hget("#{scope}__override__#{target_name}", packet_name)
       hash = JSON.parse(hash, allow_nan: true, create_additions: true) if hash
       hash ||= {} # In case the above didn't create anything
       case type
@@ -271,12 +281,13 @@ module OpenC3
       end
 
       tgt_pkt_key = "#{scope}__tlm__#{target_name}__#{packet_name}"
+      store = store_for_target(target_name, scope: scope)
       if hash.empty?
         @@override_cache.delete(tgt_pkt_key)
-        Store.hdel("#{scope}__override__#{target_name}", packet_name)
+        store.hdel("#{scope}__override__#{target_name}", packet_name)
       else
         @@override_cache[tgt_pkt_key] = [Time.now, hash]
-        Store.hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json, allow_nan: true))
+        store.hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json, allow_nan: true))
       end
     end
 
@@ -334,7 +345,7 @@ module OpenC3
           return hash
         end
       end
-      override_data = Store.hget("#{scope}__override__#{target_name}", packet_name)
+      override_data = store_for_target(target_name, scope: scope).hget("#{scope}__override__#{target_name}", packet_name)
       if override_data
         hash = JSON.parse(override_data, allow_nan: true, create_additions: true)
         overrides[tgt_pkt_key] = hash

@@ -49,11 +49,47 @@ module OpenC3
     # Variable that holds the singleton instances per shard
     @instances = []
 
+    # Shard cache: { "scope__target_name" => [shard_number, Time] }
+    @@shard_cache = {}
+    @@shard_cache_mutex = Mutex.new
+    SHARD_CACHE_TIMEOUT = 60 # seconds
+
     # Mutex used to ensure that only one instance is created
     @@instance_mutex = Mutex.new
 
     attr_reader :redis_url
     attr_reader :redis_pool
+
+    # Look up the shard number for a target with a 1-minute cache.
+    # Reads directly from Redis shard 0 to avoid circular deps with TargetModel.
+    # Non-target-specific data (nil target_name) always returns shard 0.
+    def self.shard_for_target(target_name, scope: "DEFAULT")
+      return 0 unless target_name
+
+      cache_key = "#{scope}__#{target_name}"
+      now = Time.now
+
+      @@shard_cache_mutex.synchronize do
+        cached = @@shard_cache[cache_key]
+        if cached
+          shard, cached_at = cached
+          return shard if (now - cached_at) < SHARD_CACHE_TIMEOUT
+        end
+      end
+
+      begin
+        json = Store.instance(shard: 0).hget("#{scope}__openc3_targets", target_name)
+        shard = json ? JSON.parse(json)['shard'].to_i : 0
+      rescue
+        shard = 0
+      end
+
+      @@shard_cache_mutex.synchronize do
+        @@shard_cache[cache_key] = [shard, now]
+      end
+
+      shard
+    end
 
     # Get the singleton instance
     def self.instance(pool_size = 100, shard: 0)

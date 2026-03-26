@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -12,6 +12,7 @@
 import json
 
 from openc3.topics.topic import Topic
+from openc3.utilities.store import Store
 from openc3.utilities.store_queued import EphemeralStoreQueued
 from openc3.utilities.time import to_nsec_from_epoch
 
@@ -30,8 +31,9 @@ class TelemetryTopic(Topic):
         }
         if packet.extra:
             msg_hash["extra"] = json.dumps(packet.extra)
+        shard = Store.shard_for_target(packet.target_name, scope=scope)
         if queued:
-            EphemeralStoreQueued.write_topic(
+            EphemeralStoreQueued.instance(shard=shard).write_topic(
                 f"{scope}__TELEMETRY__{{{packet.target_name}}}__{packet.packet_name}",
                 msg_hash,
             )
@@ -39,4 +41,5 @@ class TelemetryTopic(Topic):
             Topic.write_topic(
                 f"{scope}__TELEMETRY__{{{packet.target_name}}}__{packet.packet_name}",
                 msg_hash,
+                shard=shard,
             )

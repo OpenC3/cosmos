@@ -32,24 +32,27 @@ def kill_thread(owner, thread, timeout=1.0):
 
 
 class StoreQueued(metaclass=StoreMeta):
-    # Variable that holds the singleton instance
-    my_instance = None
+    # Variable that holds the singleton instances per shard
+    my_instances = {}
 
     # Mutex used to ensure that only one instance is created
     instance_mutex = threading.Lock()
 
-    # Get the singleton instance
+    # Get the singleton instance for a given shard
     @classmethod
-    def instance(cls, update_interval=1):
-        if cls.my_instance:
-            return cls.my_instance
+    def instance(cls, update_interval=1, shard=0):
+        inst = cls.my_instances.get(shard)
+        if inst:
+            return inst
 
         with cls.instance_mutex:
-            cls.my_instance = cls(update_interval)
-            return cls.my_instance
+            if shard not in cls.my_instances:
+                cls.my_instances[shard] = cls(update_interval, shard=shard)
+            return cls.my_instances[shard]
 
-    def __init__(self, update_interval):
+    def __init__(self, update_interval, shard=0):
         self.update_interval = update_interval
+        self.shard = shard
         self.store = self.store_instance()
         # Queue to hold the store requests
         self.store_queue = queue.Queue()
@@ -107,7 +110,7 @@ class StoreQueued(metaclass=StoreMeta):
 
     # Returns the store we're working with
     def store_instance(self):
-        return Store.instance()
+        return Store.instance(shard=self.shard)
 
     def graceful_kill(self):
         # Do nothing
@@ -115,8 +118,8 @@ class StoreQueued(metaclass=StoreMeta):
 
 
 class EphemeralStoreQueued(StoreQueued):
-    # Variable that holds the singleton instance
-    my_instance = None
+    # Variable that holds the singleton instances per shard
+    my_instances = {}
 
     def store_instance(self):
-        return EphemeralStore.instance()
+        return EphemeralStore.instance(shard=self.shard)

@@ -42,11 +42,13 @@ module OpenC3
       end
       msg_hash['json_data'] = JSON.generate(json_hash.as_json, allow_nan: true)
       msg_hash['extra'] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
-      EphemeralStoreQueued.write_topic(topic, msg_hash)
+      shard = Store.shard_for_target(packet.target_name, scope: scope)
+      EphemeralStoreQueued.instance(shard: shard).write_topic(topic, msg_hash)
     end
 
     def self.get_cmd_item(target_name, packet_name, param_name, type: :FORMATTED, scope: $openc3_scope)
-      msg_id, msg_hash = Topic.get_newest_message("#{scope}__DECOMCMD__{#{target_name}}__#{packet_name}")
+      shard = Store.shard_for_target(target_name, scope: scope)
+      msg_id, msg_hash = Topic.get_newest_message("#{scope}__DECOMCMD__{#{target_name}}__#{packet_name}", shard: shard)
       if msg_id
         if param_name == 'RECEIVED_COUNT'
           msg_hash['received_count'].to_i

@@ -15,6 +15,7 @@ import time
 from openc3.top_level import CriticalCmdError, HazardousError
 from openc3.topics.topic import Topic
 from openc3.utilities.json import JsonEncoder
+from openc3.utilities.store import Store
 from openc3.utilities.store_queued import EphemeralStoreQueued
 from openc3.utilities.time import to_nsec_from_epoch
 
@@ -34,7 +35,8 @@ class CommandTopic(Topic):
             "stored": str(packet.stored),
             "buffer": bytes(packet.buffer_no_copy()),
         }
-        EphemeralStoreQueued.write_topic(topic, msg_hash)
+        shard = Store.shard_for_target(packet.target_name, scope=scope)
+        EphemeralStoreQueued.instance(shard=shard).write_topic(topic, msg_hash)
 
     @classmethod
     def send_command(cls, command, timeout, scope, obfuscated_items=None):

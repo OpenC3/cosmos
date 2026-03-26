@@ -57,8 +57,14 @@ class StoreConnectionPool(ConnectionPool):
 
 
 class StoreMeta(type):
+    # Class attributes that should not be delegated to the instance
+    _CLASS_ATTRS = frozenset({
+        "instance", "instance_mutex", "my_instances",
+        "shard_for_target", "_shard_cache", "_shard_cache_lock", "SHARD_CACHE_TIMEOUT",
+    })
+
     def __getattribute__(cls, func):
-        if func == "instance" or func == "instance_mutex" or func == "my_instance":
+        if func in StoreMeta._CLASS_ATTRS:
             return super().__getattribute__(func)
 
         # Handle dunder methods to support help() and other introspection
@@ -72,21 +78,64 @@ class StoreMeta(type):
 
 
 class Store(metaclass=StoreMeta):
-    # Variable that holds the singleton instance
-    my_instance = None
+    # Variable that holds the singleton instances per shard
+    my_instances = {}
 
     # Mutex used to ensure that only one instance is created
     instance_mutex = threading.Lock()
 
-    # Get the singleton instance
+    # Shard cache
+    _shard_cache = {}
+    _shard_cache_lock = threading.Lock()
+    SHARD_CACHE_TIMEOUT = 60  # seconds
+
+    # Get the singleton instance for a given shard
     @classmethod
-    def instance(cls, pool_size=100):
-        if cls.my_instance:
-            return cls.my_instance
+    def instance(cls, pool_size=100, shard=0):
+        inst = cls.my_instances.get(shard)
+        if inst:
+            return inst
 
         with cls.instance_mutex:
-            cls.my_instance = cls(pool_size)
-            return cls.my_instance
+            if shard not in cls.my_instances:
+                cls.my_instances[shard] = cls(pool_size, shard=shard)
+            return cls.my_instances[shard]
+
+    @classmethod
+    def shard_for_target(cls, target_name, scope="DEFAULT"):
+        """Look up the shard number for a target with a 1-minute cache."""
+        import json
+        import time as _time
+
+        if not target_name:
+            return 0
+
+        cache_key = f"{scope}__{target_name}"
+        now = _time.time()
+
+        with cls._shard_cache_lock:
+            cached = cls._shard_cache.get(cache_key)
+            if cached:
+                shard_val, cached_at = cached
+                if (now - cached_at) < cls.SHARD_CACHE_TIMEOUT:
+                    return shard_val
+
+        try:
+            result = Store.instance(shard=0).hget(f"{scope}__openc3_targets", target_name)
+            if result:
+                if isinstance(result, bytes):
+                    result = result.decode()
+                shard_val = json.loads(result).get("shard", 0)
+                shard_val = int(shard_val) if shard_val else 0
+            else:
+                shard_val = 0
+        except Exception:
+            shard_val = 0
+
+        with cls._shard_cache_lock:
+            cls._shard_cache[cache_key] = (shard_val, now)
+
+        return shard_val
 
     # Delegate all unknown methods to redis through the @redis_pool
     def __getattr__(self, func):
@@ -97,8 +146,9 @@ class Store(metaclass=StoreMeta):
 
             return method
 
-    def __init__(self, pool_size=10):
-        self.redis_host = OPENC3_REDIS_HOSTNAME
+    def __init__(self, pool_size=10, shard=0):
+        self.shard = shard
+        self.redis_host = OPENC3_REDIS_HOSTNAME.replace("SHARDNUM", str(shard))
         self.redis_port = OPENC3_REDIS_PORT
         self.redis_pool = StoreConnectionPool(self.build_redis, pool_size)
         self.topic_offsets = {}
@@ -239,11 +289,11 @@ class Store(metaclass=StoreMeta):
 
 
 class EphemeralStore(Store):
-    # Variable that holds the singleton instance
-    my_instance = None
+    # Variable that holds the singleton instances per shard
+    my_instances = {}
 
-    def __init__(self, pool_size=10):
-        super().__init__(pool_size)
-        self.redis_host = OPENC3_REDIS_EPHEMERAL_HOSTNAME
+    def __init__(self, pool_size=10, shard=0):
+        super().__init__(pool_size, shard=shard)
+        self.redis_host = OPENC3_REDIS_EPHEMERAL_HOSTNAME.replace("SHARDNUM", str(shard))
         self.redis_port = OPENC3_REDIS_EPHEMERAL_PORT
         self.redis_pool = StoreConnectionPool(self.build_redis, pool_size)

@@ -14,6 +14,7 @@ import json
 from openc3.environment import OPENC3_SCOPE
 from openc3.topics.topic import Topic
 from openc3.utilities.json import JsonEncoder
+from openc3.utilities.store import Store
 from openc3.utilities.store_queued import EphemeralStoreQueued
 from openc3.utilities.time import to_nsec_from_epoch
 
@@ -46,11 +47,13 @@ class CommandDecomTopic(Topic):
         msg_hash["json_data"] = json.dumps(json_hash, cls=JsonEncoder)
         if packet.extra:
             msg_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
-        EphemeralStoreQueued.write_topic(topic, msg_hash)
+        shard = Store.shard_for_target(packet.target_name, scope=scope)
+        EphemeralStoreQueued.instance(shard=shard).write_topic(topic, msg_hash)
 
     @classmethod
     def get_cmd_item(cls, target_name, packet_name, param_name, type="FORMATTED", scope=OPENC3_SCOPE):
-        msg_id, msg_hash = Topic.get_newest_message(f"{scope}__DECOMCMD__{{{target_name}}}__{packet_name}")
+        shard = Store.shard_for_target(target_name, scope=scope)
+        msg_id, msg_hash = Topic.get_newest_message(f"{scope}__DECOMCMD__{{{target_name}}}__{packet_name}", shard=shard)
         if msg_id:
             if param_name == "RECEIVED_COUNT":
                 return int(msg_hash[b"received_count"])

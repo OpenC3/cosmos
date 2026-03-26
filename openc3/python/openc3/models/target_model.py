@@ -51,6 +51,11 @@ class TargetModel(Model):
     sync_packet_count_delay_seconds = 1.0  # Sync packet counts every second
     stale_packet_keys_warned = set()  # Track stale keys already warned about
 
+    # Get a Store instance routed to the correct shard for a target
+    @classmethod
+    def _store_for_target(cls, target_name, scope):
+        return Store.instance(shard=Store.shard_for_target(target_name, scope=scope))
+
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     @classmethod
@@ -85,7 +90,7 @@ class TargetModel(Model):
                 return cached["packet"]
 
         # Assume it exists and just try to get it to avoid an extra call to Store.exist?
-        json_data = Store.hget(f"{scope}__openc3{type.lower()}__{target_name}", packet_name)
+        json_data = cls._store_for_target(target_name, scope).hget(f"{scope}__openc3{type.lower()}__{target_name}", packet_name)
         if not json_data:
             raise RuntimeError(f"Packet '{target_name} {packet_name}' does not exist")
         packet = json.loads(json_data)
@@ -105,7 +110,7 @@ class TargetModel(Model):
             raise RuntimeError(f"Target '{target_name}' does not exist")
 
         result = []
-        packets = Store.hgetall(f"{scope}__openc3{type.lower()}__{target_name}")
+        packets = cls._store_for_target(target_name, scope).hgetall(f"{scope}__openc3{type.lower()}__{target_name}")
         for _, packet_json in packets.items():
             result.append(json.loads(packet_json))
         return result
@@ -128,7 +133,7 @@ class TargetModel(Model):
             cls.packet_cache.pop(cache_key, None)
 
         try:
-            Store.hset(
+            cls._store_for_target(target_name, scope).hset(
                 f"{scope}__openc3{type.lower()}__{target_name}",
                 packet_name,
                 json.dumps(packet),
@@ -189,7 +194,7 @@ class TargetModel(Model):
     # @return [List<String>] All the item names for every packet in a target
     @classmethod
     def all_item_names(cls, target_name: str, type: str = "TLM", scope: str = OPENC3_SCOPE):
-        items = Store.zrange(f"{scope}__openc3tlm__{target_name}__allitems", 0, -1)
+        items = cls._store_for_target(target_name, scope).zrange(f"{scope}__openc3tlm__{target_name}__allitems", 0, -1)
         if not items:
             items = cls.rebuild_target_allitems_list(target_name, type=type, scope=scope)
         return items
@@ -199,14 +204,14 @@ class TargetModel(Model):
         for packet in cls.packets(target_name, scope=scope):
             for item in packet["items"]:
                 cls.add_to_target_allitems_list(target_name, item["name"], scope=scope)
-        return Store.zrange(
+        return cls._store_for_target(target_name, scope).zrange(
             f"{scope}__openc3tlm__{target_name}__allitems", 0, -1
         )  # return the new sorted set to let redis do the sorting
 
     @classmethod
     def add_to_target_allitems_list(cls, target_name: str, item_name: str, scope: str = OPENC3_SCOPE):
         # https://redis.io/docs/latest/develop/data-types/sorted-sets/#lexicographical-scores
-        Store.zadd(f"{scope}__openc3tlm__{target_name}__allitems", {item_name: 0})
+        cls._store_for_target(target_name, scope).zadd(f"{scope}__openc3tlm__{target_name}__allitems", {item_name: 0})
 
     # @return [Hash{String => Array<Array<String, String, String>>}]
     @classmethod
@@ -225,12 +230,13 @@ class TargetModel(Model):
                 return item_map
         item_map_key = f"{scope}__{target_name}__item_to_packet_map"
         target_name = target_name.upper()
-        json_data = Store.get(item_map_key)
+        store = cls._store_for_target(target_name, scope)
+        json_data = store.get(item_map_key)
         if json_data:
             item_map = json.loads(json_data)
         else:
             item_map = cls.build_item_to_packet_map(target_name, scope=scope)
-            Store.set(item_map_key, json.dumps(item_map))
+            store.set(item_map_key, json.dumps(item_map))
         TargetModel.item_map_cache[target_name] = [time.time(), item_map]
         return item_map
 
@@ -248,7 +254,7 @@ class TargetModel(Model):
 
     @classmethod
     def increment_telemetry_count(cls, target_name: str, packet_name: str, count: int, scope: str = OPENC3_SCOPE):
-        result = Store.hincrby(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name, count)
+        result = cls._store_for_target(target_name, scope).hincrby(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name, count)
         if isinstance(result, (bytes, bytearray)):
             return int(result)
         else:
@@ -257,7 +263,7 @@ class TargetModel(Model):
     @classmethod
     def get_all_telemetry_counts(cls, target_name: str, scope: str = OPENC3_SCOPE):
         result = {}
-        get_all = Store.hgetall(f"{scope}__TELEMETRYCNTS__{{{target_name}}}")
+        get_all = cls._store_for_target(target_name, scope).hgetall(f"{scope}__TELEMETRYCNTS__{{{target_name}}}")
         if get_all is dict:
             for key, value in get_all.items():
                 result[key] = int(value)
@@ -267,7 +273,7 @@ class TargetModel(Model):
 
     @classmethod
     def get_telemetry_count(cls, target_name: str, packet_name: str, scope: str = OPENC3_SCOPE):
-        value = Store.hget(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name)
+        value = cls._store_for_target(target_name, scope).hget(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name)
         if value is None:
             return 0
         elif isinstance(value, (bytes, bytearray)):
@@ -277,21 +283,26 @@ class TargetModel(Model):
 
     @classmethod
     def get_telemetry_counts(cls, target_packets: list, scope: str = OPENC3_SCOPE):
-        result = []
-        with Store.instance().redis_pool.get() as redis:
-            pipeline = redis.pipeline(transaction=False)
-            for target_name, packet_name in target_packets:
-                target_name = target_name.upper()
-                packet_name = packet_name.upper()
-                pipeline.hget(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name)
-            result = pipeline.execute()
+        # Group by shard, preserving original index
+        shard_groups = {}  # shard => [{"index": idx, "target_name": ..., "packet_name": ...}]
+        for idx, (target_name, packet_name) in enumerate(target_packets):
+            target_name = target_name.upper()
+            packet_name = packet_name.upper()
+            shard = Store.shard_for_target(target_name, scope=scope)
+            if shard not in shard_groups:
+                shard_groups[shard] = []
+            shard_groups[shard].append({"index": idx, "target_name": target_name, "packet_name": packet_name})
 
-        counts = []
-        for count in result:
-            if count is None:
-                counts.append(0)
-            else:
-                counts.append(int(count))
+        counts = [0] * len(target_packets)
+        for shard, entries in shard_groups.items():
+            store = Store.instance(shard=shard)
+            with store.redis_pool.get() as redis:
+                pipeline = redis.pipeline(transaction=False)
+                for entry in entries:
+                    pipeline.hget(f"{scope}__TELEMETRYCNTS__{{{entry['target_name']}}}", entry["packet_name"])
+                result = pipeline.execute()
+            for i, entry in enumerate(entries):
+                counts[entry["index"]] = int(result[i]) if result[i] is not None else 0
         return counts
 
     @classmethod
@@ -350,56 +361,39 @@ class TargetModel(Model):
             ):
                 cls.sync_packet_count_time = time.time()
 
-                result = []
-                inc_count = 0
-                # Use pipeline to make this one transaction
-                with Store.instance().redis_pool.get() as redis:
-                    pipeline = redis.pipeline(transaction=False)
-                    thread_id = threading.get_native_id()
-                    Store.instance().redis_pool.pipelines[thread_id] = pipeline
-                    try:
-                        # Increment global counters for packets received
-                        for (
-                            target_name,
-                            packet_data,
-                        ) in cls.sync_packet_count_data.items():
-                            for packet_name, count in packet_data.items():
-                                TargetModel.increment_telemetry_count(target_name, packet_name, count, scope=scope)
-                                inc_count += 1
-                        cls.sync_packet_count_data = {}
+                # Increment global counters for packets received
+                for (
+                    target_name,
+                    packet_data,
+                ) in cls.sync_packet_count_data.items():
+                    for packet_name, count in packet_data.items():
+                        TargetModel.increment_telemetry_count(target_name, packet_name, count, scope=scope)
+                cls.sync_packet_count_data = {}
 
-                        # Get all the packet counts with the global counters
-                        for target_name in tlm_target_names:
-                            TargetModel.get_all_telemetry_counts(target_name, scope=scope)
-                        TargetModel.get_all_telemetry_counts("UNKNOWN", scope=scope)
-
-                        result = pipeline.execute()
-                    finally:
-                        Store.instance().redis_pool.pipelines[thread_id] = None
+                # Get all the packet counts with the global counters
                 for target_name in tlm_target_names:
-                    for packet_name, count in result[inc_count].items():
+                    for packet_name, count in TargetModel.get_all_telemetry_counts(target_name, scope=scope).items():
                         try:
-                            update_packet = System.telemetry.packet(target_name, packet_name.decode())
+                            update_packet = System.telemetry.packet(target_name, packet_name.decode() if isinstance(packet_name, bytes) else packet_name)
                             update_packet.received_count = int(count)
                         except RuntimeError:
-                            key = f"{target_name} {packet_name.decode()}"
+                            key = f"{target_name} {packet_name.decode() if isinstance(packet_name, bytes) else packet_name}"
                             if key not in cls.stale_packet_keys_warned:
                                 cls.stale_packet_keys_warned.add(key)
                                 Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
-                    inc_count += 1
-                for packet_name, count in result[inc_count].items():
+                for packet_name, count in TargetModel.get_all_telemetry_counts("UNKNOWN", scope=scope).items():
                     try:
-                        update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode())
+                        update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode() if isinstance(packet_name, bytes) else packet_name)
                         update_packet.received_count = int(count)
                     except RuntimeError:
-                        key = f"UNKNOWN {packet_name.decode()}"
+                        key = f"UNKNOWN {packet_name.decode() if isinstance(packet_name, bytes) else packet_name}"
                         if key not in cls.stale_packet_keys_warned:
                             cls.stale_packet_keys_warned.add(key)
                             Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
 
     @classmethod
     def increment_command_count(cls, target_name: str, packet_name: str, count: int, scope: str = OPENC3_SCOPE):
-        result = Store.hincrby(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name, count)
+        result = cls._store_for_target(target_name, scope).hincrby(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name, count)
         if isinstance(result, (bytes, bytearray)):
             return int(result)
         else:
@@ -408,7 +402,7 @@ class TargetModel(Model):
     @classmethod
     def get_all_command_counts(cls, target_name: str, scope: str = OPENC3_SCOPE):
         result = {}
-        get_all = Store.hgetall(f"{scope}__COMMANDCNTS__{{{target_name}}}")
+        get_all = cls._store_for_target(target_name, scope).hgetall(f"{scope}__COMMANDCNTS__{{{target_name}}}")
         if get_all is dict:
             for key, value in get_all.items():
                 result[key] = int(value)
@@ -418,7 +412,7 @@ class TargetModel(Model):
 
     @classmethod
     def get_command_count(cls, target_name: str, packet_name: str, scope: str = OPENC3_SCOPE):
-        value = Store.hget(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name)
+        value = cls._store_for_target(target_name, scope).hget(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name)
         if value is None:
             return 0
         elif isinstance(value, (bytes, bytearray)):
@@ -428,21 +422,26 @@ class TargetModel(Model):
 
     @classmethod
     def get_command_counts(cls, target_packets: list, scope: str = OPENC3_SCOPE):
-        result = []
-        with Store.instance().redis_pool.get() as redis:
-            pipeline = redis.pipeline(transaction=False)
-            for target_name, packet_name in target_packets:
-                target_name = target_name.upper()
-                packet_name = packet_name.upper()
-                pipeline.hget(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name)
-            result = pipeline.execute()
+        # Group by shard, preserving original index
+        shard_groups = {}  # shard => [{"index": idx, "target_name": ..., "packet_name": ...}]
+        for idx, (target_name, packet_name) in enumerate(target_packets):
+            target_name = target_name.upper()
+            packet_name = packet_name.upper()
+            shard = Store.shard_for_target(target_name, scope=scope)
+            if shard not in shard_groups:
+                shard_groups[shard] = []
+            shard_groups[shard].append({"index": idx, "target_name": target_name, "packet_name": packet_name})
 
-        counts = []
-        for count in result:
-            if count is None:
-                counts.append(0)
-            else:
-                counts.append(int(count))
+        counts = [0] * len(target_packets)
+        for shard, entries in shard_groups.items():
+            store = Store.instance(shard=shard)
+            with store.redis_pool.get() as redis:
+                pipeline = redis.pipeline(transaction=False)
+                for entry in entries:
+                    pipeline.hget(f"{scope}__COMMANDCNTS__{{{entry['target_name']}}}", entry["packet_name"])
+                result = pipeline.execute()
+            for i, entry in enumerate(entries):
+                counts[entry["index"]] = int(result[i]) if result[i] is not None else 0
         return counts
 
     # Most of these parameters are unused but they must match the Ruby implementation
@@ -493,6 +492,7 @@ class TargetModel(Model):
             ignored_parameters = []
         if requires is None:
             requires = []
+        self.shard = int(shard) if shard is not None else 0
         super().__init__(
             f"{scope}__{self.PRIMARY_KEY}",
             name=name,
@@ -502,15 +502,16 @@ class TargetModel(Model):
         )
 
     def update_store_telemetry(self, packet_hash, clear_old=True):
+        shard_store = Store.instance(shard=self.shard)
         for target_name, packets in packet_hash.items():
             if clear_old:
-                Store.delete(f"{self.scope}__openc3tlm__{target_name}")
-                Store.delete(f"{self.scope}__openc3tlm__{target_name}__allitems")
-                Store.delete(f"{self.scope}__TELEMETRYCNTS__{{{target_name}}}")
+                shard_store.delete(f"{self.scope}__openc3tlm__{target_name}")
+                shard_store.delete(f"{self.scope}__openc3tlm__{target_name}__allitems")
+                shard_store.delete(f"{self.scope}__TELEMETRYCNTS__{{{target_name}}}")
             for packet_name, packet in packets.items():
                 Logger.debug(f"Configuring tlm packet= {target_name} {packet_name}")
                 try:
-                    Store.hset(
+                    shard_store.hset(
                         f"{self.scope}__openc3tlm__{target_name}",
                         packet_name,
                         json.dumps(packet.as_json()),
@@ -523,21 +524,22 @@ class TargetModel(Model):
                     json_hash[item.name] = None
                     TargetModel.add_to_target_allitems_list(target_name, item.name, scope=self.scope)
                 # Use Store.hset directly instead of CvtModel.set to avoid circular dependency
-                Store.hset(
+                shard_store.hset(
                     f"{self.scope}__tlm__{packet.target_name}",
                     packet.packet_name,
                     json.dumps(json_hash, cls=JsonEncoder),
                 )
 
     def update_store_commands(self, packet_hash, clear_old=True):
+        shard_store = Store.instance(shard=self.shard)
         for target_name, packets in packet_hash.items():
             if clear_old:
-                Store.delete(f"{self.scope}__openc3cmd__{target_name}")
-                Store.delete(f"{self.scope}__COMMANDCNTS__{{{target_name}}}")
+                shard_store.delete(f"{self.scope}__openc3cmd__{target_name}")
+                shard_store.delete(f"{self.scope}__COMMANDCNTS__{{{target_name}}}")
             for packet_name, packet in packets.items():
                 Logger.debug(f"Configuring cmd packet= {target_name} {packet_name}")
                 try:
-                    Store.hset(
+                    shard_store.hset(
                         f"{self.scope}__openc3cmd__{target_name}",
                         packet_name,
                         json.dumps(packet.as_json()),
@@ -550,7 +552,7 @@ class TargetModel(Model):
         # Create item_map
         item_map_key = f"{self.scope}__{self.name}__item_to_packet_map"
         item_map = TargetModel.build_item_to_packet_map(self.name, scope=self.scope)
-        Store.set(item_map_key, json.dumps(item_map))
+        Store.instance(shard=self.shard).set(item_map_key, json.dumps(item_map))
         TargetModel.item_map_cache[self.name] = [time.time(), item_map]
 
     def dynamic_update(self, packets, cmd_or_tlm="TELEMETRY", filename="dynamic_tlm.txt"):

@@ -18,30 +18,34 @@ module OpenC3
   class StoreQueued
     attr_reader :update_interval
 
-    # Variable that holds the singleton instance
-    @instance = nil
+    # Variable that holds the singleton instances per shard
+    @instances = []
 
     # Mutex used to ensure that only one instance is created
     @@instance_mutex = Mutex.new
 
-    # Get the singleton instance
+    # Get the singleton instance for the given shard
     # Sets the update interval to 1 second by default
-    def self.instance(update_interval = 1) # seconds
-      return @instance if @instance
+    def self.instance(update_interval = 1, shard: 0) # seconds
+      @instances ||= []
+      the_instance = @instances[shard]
+      return the_instance if the_instance
 
       @@instance_mutex.synchronize do
-        @instance ||= self.new(update_interval)
-        return @instance
+        @instances ||= []
+        @instances[shard] ||= self.new(update_interval, shard: shard)
+        return @instances[shard]
       end
     end
 
-    # Delegate all unknown class methods to delegate to the instance
+    # Delegate all unknown class methods to delegate to the instance (shard 0)
     def self.method_missing(message, *args, **kwargs, &)
       self.instance.public_send(message, *args, **kwargs, &)
     end
 
-    def initialize(update_interval)
+    def initialize(update_interval, shard: 0)
       @update_interval = update_interval
+      @shard = shard
       @store = store_instance()
       # Queue to hold the store requests
       @store_queue = Queue.new
@@ -107,7 +111,7 @@ module OpenC3
 
     # Returns the store we're working with
     def store_instance
-      Store.instance
+      Store.instance(shard: @shard)
     end
 
     def graceful_kill
@@ -117,7 +121,7 @@ module OpenC3
 
   class EphemeralStoreQueued < StoreQueued
     def store_instance
-      EphemeralStore.instance
+      EphemeralStore.instance(shard: @shard)
     end
   end
 end

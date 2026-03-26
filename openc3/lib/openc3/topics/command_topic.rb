@@ -33,7 +33,8 @@ module OpenC3
                    received_count: packet.received_count,
                    stored: packet.stored.to_s,
                    buffer: packet.buffer(false) }
-      EphemeralStoreQueued.write_topic(topic, msg_hash)
+      shard = Store.shard_for_target(packet.target_name, scope: scope)
+      EphemeralStoreQueued.instance(shard: shard).write_topic(topic, msg_hash)
     end
 
     # @param command [Hash] Command hash structure read to be written to a topic

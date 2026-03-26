@@ -34,7 +34,8 @@ module OpenC3
       end
 
       it "writes packet to correct topic format" do
-        expect(EphemeralStoreQueued).to receive(:write_topic).with(
+        store_instance = EphemeralStoreQueued.instance(shard: 0)
+        expect(store_instance).to receive(:write_topic).with(
           "DEFAULT__COMMAND__{TARGET}__COMMAND",
           hash_including(
             target_name: 'TARGET',
@@ -47,7 +48,8 @@ module OpenC3
       end
 
       it "includes time fields in nanoseconds" do
-        expect(EphemeralStoreQueued).to receive(:write_topic) do |topic, msg_hash|
+        store_instance = EphemeralStoreQueued.instance(shard: 0)
+        expect(store_instance).to receive(:write_topic) do |topic, msg_hash|
           expect(msg_hash[:time]).to be_a(Integer)
           expect(msg_hash[:received_time]).to be_a(Integer)
         end
@@ -55,7 +57,8 @@ module OpenC3
       end
 
       it "includes packet buffer" do
-        expect(EphemeralStoreQueued).to receive(:write_topic) do |topic, msg_hash|
+        store_instance = EphemeralStoreQueued.instance(shard: 0)
+        expect(store_instance).to receive(:write_topic) do |topic, msg_hash|
           expect(msg_hash[:buffer]).to eq(packet.buffer(false))
         end
         CommandTopic.write_packet(packet, scope: 'DEFAULT')

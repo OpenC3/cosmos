@@ -72,7 +72,8 @@ class LoggedStreamingThread < StreamingThread
     end
 
     # Check the topic to figure out what we have in Redis
-    oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(first_object.topic)
+    shard = OpenC3::Store.shard_for_target(first_object.target_name, scope: @scope)
+    oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(first_object.topic, shard: shard)
 
     if oldest_msg_id
       # We have data in Redis
@@ -167,7 +168,10 @@ class LoggedStreamingThread < StreamingThread
     # Calculate Valkey stream offset per topic
     offset_by_topic = {}
     @last_tsdb_times.each do |topic, last_time|
-      oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(topic)
+      # Extract target name from topic to determine shard
+      target_name = topic.match(/__\{?([^}_]+)\}?__/)[1] rescue nil
+      topic_shard = OpenC3::Store.shard_for_target(target_name, scope: @scope)
+      oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(topic, shard: topic_shard)
       if oldest_msg_id
         oldest_time = oldest_msg_hash['time'].to_i
         # Use the same interpolation formula as setup_thread_body
@@ -196,7 +200,21 @@ class LoggedStreamingThread < StreamingThread
       topics, offsets, item_objects_by_topic, packet_objects_by_topic = @collection.topics_offsets_and_objects
       results = []
       if topics.length > 0
-        xread_result = OpenC3::Topic.read_topics(topics, offsets, 500) do |topic, msg_id, msg_hash, _|
+        # Group topics by shard for multi-shard support
+        shard_groups = {}
+        topics.each_with_index do |topic, idx|
+          target_name = topic.match(/__\{?([^}_]+)\}?__/)[1] rescue nil
+          shard = OpenC3::Store.shard_for_target(target_name, scope: @scope)
+          shard_groups[shard] ||= { topics: [], offsets: [] }
+          shard_groups[shard][:topics] << topic
+          shard_groups[shard][:offsets] << offsets[idx]
+        end
+
+        timeout_per_shard = [500 / [shard_groups.length, 1].max, 100].max
+        any_result = false
+        shard_groups.each do |shard, group|
+          break if @cancel_thread
+          xread_result = OpenC3::Topic.read_topics(group[:topics], group[:offsets], timeout_per_shard, shard: shard) do |topic, msg_id, msg_hash, _|
           stored = OpenC3::ConfigParser.handle_true_false(msg_hash["stored"])
           next if stored
 
@@ -254,11 +272,13 @@ class LoggedStreamingThread < StreamingThread
 
           break if @cancel_thread
         end
+        any_result = true if xread_result and xread_result.length > 0
+        end
 
         @streaming_api.transmit_results(results)
         results.clear
 
-        check_for_completed_objects() if xread_result and xread_result.length == 0
+        check_for_completed_objects() unless any_result
       else
         @cancel_thread = true
       end

@@ -85,56 +85,71 @@ class StreamingThread
     topics, offsets, item_objects_by_topic, packet_objects_by_topic = @collection.topics_offsets_and_objects
     results = []
     if topics.length > 0
-      # 500ms timeout to allow for thread to shutdown within 1 second
-      xread_result = OpenC3::Topic.read_topics(topics, offsets, 500) do |topic, msg_id, msg_hash, _|
-        stored = OpenC3::ConfigParser.handle_true_false(msg_hash["stored"])
-        next if stored # Ignore stored packets while realtime streaming
+      # Group topics by shard for multi-shard support
+      shard_groups = {} # shard => { topics: [], offsets: [] }
+      topics.each_with_index do |topic, idx|
+        # Extract target name from topic: scope__TYPE__{TARGET}__PACKET
+        target_name = topic.match(/__\{?([^}_]+)\}?__/)[1] rescue nil
+        shard = OpenC3::Store.shard_for_target(target_name, scope: @scope)
+        shard_groups[shard] ||= { topics: [], offsets: [] }
+        shard_groups[shard][:topics] << topic
+        shard_groups[shard][:offsets] << offsets[idx]
+      end
 
+      # Read from each shard with proportionally shorter timeouts
+      timeout_per_shard = [500 / [shard_groups.length, 1].max, 100].max
+      any_result = false
+      shard_groups.each do |shard, group|
         break if @cancel_thread
+        xread_result = OpenC3::Topic.read_topics(group[:topics], group[:offsets], timeout_per_shard, shard: shard) do |topic, msg_id, msg_hash, _|
+          stored = OpenC3::ConfigParser.handle_true_false(msg_hash["stored"])
+          next if stored # Ignore stored packets while realtime streaming
 
-        # Get the item objects that need this topic
-        objects = item_objects_by_topic[topic]
+          break if @cancel_thread
 
-        # Update the offset for each object
+          # Get the item objects that need this topic
+          objects = item_objects_by_topic[topic]
 
-        break if @cancel_thread
-        if objects and objects.length > 0
-          objects.each do |object|
-            object.offset = msg_id
-          end
-          result_entry = handle_message(msg_hash, objects)
-          results << result_entry if result_entry
-        end
-        break if @cancel_thread
-
-        # Transmit if we have a full batch or more
-        if results.length >= @max_batch_size
-          @streaming_api.transmit_results(results)
-          results.clear
-        end
-
-        # Get the packet objects that need this topic
-        objects = packet_objects_by_topic[topic]
-
-        # Update the offset for each object
-        if objects
-          objects.each do |object|
-            object.offset = msg_id
-          end
-
-          objects.each do |object|
-            break if @cancel_thread
-            result_entry = handle_message(msg_hash, [object])
+          break if @cancel_thread
+          if objects and objects.length > 0
+            objects.each do |object|
+              object.offset = msg_id
+            end
+            result_entry = handle_message(msg_hash, objects)
             results << result_entry if result_entry
-            # Transmit if we have a full batch or more
-            if results.length >= @max_batch_size
-              @streaming_api.transmit_results(results)
-              results.clear
+          end
+          break if @cancel_thread
+
+          # Transmit if we have a full batch or more
+          if results.length >= @max_batch_size
+            @streaming_api.transmit_results(results)
+            results.clear
+          end
+
+          # Get the packet objects that need this topic
+          objects = packet_objects_by_topic[topic]
+
+          # Update the offset for each object
+          if objects
+            objects.each do |object|
+              object.offset = msg_id
+            end
+
+            objects.each do |object|
+              break if @cancel_thread
+              result_entry = handle_message(msg_hash, [object])
+              results << result_entry if result_entry
+              # Transmit if we have a full batch or more
+              if results.length >= @max_batch_size
+                @streaming_api.transmit_results(results)
+                results.clear
+              end
             end
           end
-        end
 
-        break if @cancel_thread
+          break if @cancel_thread
+        end
+        any_result = true if xread_result and xread_result.length > 0
       end
 
       # Transmit less than a batch if we have that
@@ -142,7 +157,7 @@ class StreamingThread
       results.clear
 
       # Check for completed objects by wall clock time if we got nothing
-      check_for_completed_objects() if xread_result and xread_result.length == 0
+      check_for_completed_objects() unless any_result
     else
       @cancel_thread = true
     end
