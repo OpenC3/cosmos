@@ -54,7 +54,7 @@
             />
           </v-list-item-title>
           <v-list-item-subtitle>
-            <span v-text="' Updated At: ' + formatDate(process.updated_at)" />
+            <span v-text="' Updated At: ' + formatNanoseconds(process.updated_at, timeZone)" />
           </v-list-item-subtitle>
 
           <template v-if="process.state !== 'Running'" #append>
@@ -119,16 +119,17 @@
 </template>
 
 <script>
-import { toDate, format } from 'date-fns'
-import { Api } from '@openc3/js-common/services'
+import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { SimpleTextDialog } from '@/components'
 import { DownloadDialog } from '@/tools/admin'
+import { TimeFilters } from '@/util'
 
 export default {
   components: {
     DownloadDialog,
     SimpleTextDialog,
   },
+  mixins: [TimeFilters],
   data() {
     return {
       showDownloadDialog: false,
@@ -140,7 +141,20 @@ export default {
       gems: [],
       python: [],
       processes: {},
+      timeZone: 'local',
     }
+  },
+  created() {
+    new OpenC3Api()
+      .get_setting('time_zone')
+      .then((response) => {
+        if (response) {
+          this.timeZone = response
+        }
+      })
+      .catch(() => {
+        // Do nothing
+      })
   },
   mounted() {
     this.update()
@@ -169,12 +183,6 @@ export default {
             }, 2500)
           }
         },
-      )
-    },
-    formatDate(nanoSecs) {
-      return format(
-        toDate(Number.parseInt(nanoSecs) / 1000000),
-        'yyyy-MM-dd HH:mm:ss.SSS',
       )
     },
     selectFile() {
