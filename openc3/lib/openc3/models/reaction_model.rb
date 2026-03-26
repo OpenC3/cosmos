@@ -32,10 +32,12 @@ module OpenC3
     ACTION_TYPES = [SCRIPT_REACTION, COMMAND_REACTION, NOTIFY_REACTION]
 
     def self.create_unique_name(scope:)
-      reaction_names = self.names(scope: scope) # comes back sorted
+      reaction_names = self.names(scope: scope)
       num = 1 # Users count with 1
-      if reaction_names[-1]
-        num = reaction_names[-1][5..-1].to_i + 1
+      unless reaction_names.empty?
+        # Extract numeric suffixes and find the max to avoid lexicographic sort issues
+        max_num = reaction_names.map { |name| name[5..-1].to_i }.max
+        num = max_num + 1
       end
       return "REACT#{num}"
     end

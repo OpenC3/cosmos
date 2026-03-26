@@ -52,10 +52,12 @@ module OpenC3
     TRIGGER_TYPE = 'trigger'.freeze
 
     def self.create_unique_name(group:, scope:)
-      trigger_names = self.names(group: group, scope: scope) # comes back sorted
+      trigger_names = self.names(group: group, scope: scope)
       num = 1 # Users count with 1
-      if trigger_names[-1]
-        num = trigger_names[-1][4..-1].to_i + 1
+      unless trigger_names.empty?
+        # Extract numeric suffixes and find the max to avoid lexicographic sort issues
+        max_num = trigger_names.map { |name| name[4..-1].to_i }.max
+        num = max_num + 1
       end
       return "TRIG#{num}"
     end

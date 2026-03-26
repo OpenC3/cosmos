@@ -104,8 +104,11 @@ class TriggerController < ApplicationController
     return unless authorization('script_run')
     hash = nil
     begin
-      hash = params.to_unsafe_h.slice(:group, :left, :operator, :right).to_h
-      name = @model_class.create_unique_name(group: hash['group'], scope: params[:scope])
+      hash = params.to_unsafe_h.slice(:group, :left, :operator, :right, :name).to_h
+      name = hash.delete('name')
+      if name.nil? || name.strip.empty?
+        name = @model_class.create_unique_name(group: hash['group'], scope: params[:scope])
+      end
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
       model.create() # Create sends a notification
       render json: model.as_json(), status: :created

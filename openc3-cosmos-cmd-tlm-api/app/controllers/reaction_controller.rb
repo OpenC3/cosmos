@@ -101,8 +101,11 @@ class ReactionController < ApplicationController
   def create
     return unless authorization('script_run')
     begin
-      hash = params.to_unsafe_h.slice(:triggers, :trigger_level, :actions, :snooze).to_h
-      name = @model_class.create_unique_name(scope: params[:scope])
+      hash = params.to_unsafe_h.slice(:triggers, :trigger_level, :actions, :snooze, :name).to_h
+      name = hash.delete('name')
+      if name.nil? || name.strip.empty?
+        name = @model_class.create_unique_name(scope: params[:scope])
+      end
       hash[:username] = username()
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
       model.create()

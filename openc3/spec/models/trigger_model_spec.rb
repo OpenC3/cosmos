@@ -71,6 +71,20 @@ module OpenC3
         name = TriggerModel.create_unique_name(group: TMO_GROUP, scope: $openc3_scope)
         expect(name).to eql 'TRIG10' # Previous is 9 so now 10
       end
+
+      it "handles more than 10 triggers correctly" do
+        (1..11).each { |i| generate_trigger(name: "TRIG#{i}").create() }
+        name = TriggerModel.create_unique_name(group: TMO_GROUP, scope: $openc3_scope)
+        expect(name).to eql 'TRIG12'
+      end
+
+      it "handles custom named triggers mixed with auto-generated" do
+        generate_trigger(name: 'TRIG1').create()
+        generate_trigger(name: 'MyCustomTrig').create()
+        generate_trigger(name: 'TRIG5').create()
+        name = TriggerModel.create_unique_name(group: TMO_GROUP, scope: $openc3_scope)
+        expect(name).to eql 'TRIG6' # Max numeric is 5, so next is 6
+      end
     end
 
     describe "self.all" do

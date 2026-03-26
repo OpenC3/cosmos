@@ -82,6 +82,22 @@ module OpenC3
         name = ReactionModel.create_unique_name(scope: $openc3_scope)
         expect(name).to eql 'REACT10' # Previous is 9 so now 10
       end
+
+      it "handles more than 10 reactions correctly" do
+        generate_custom_trigger().create()
+        (1..11).each { |i| generate_custom_reaction(name: "REACT#{i}").create() }
+        name = ReactionModel.create_unique_name(scope: $openc3_scope)
+        expect(name).to eql 'REACT12'
+      end
+
+      it "handles custom named reactions mixed with auto-generated" do
+        generate_custom_trigger().create()
+        generate_custom_reaction(name: 'REACT1').create()
+        generate_custom_reaction(name: 'MyReaction').create()
+        generate_custom_reaction(name: 'REACT5').create()
+        name = ReactionModel.create_unique_name(scope: $openc3_scope)
+        expect(name).to eql 'REACT6' # Max numeric is 5, so next is 6
+      end
     end
 
     describe "check attr_reader" do
