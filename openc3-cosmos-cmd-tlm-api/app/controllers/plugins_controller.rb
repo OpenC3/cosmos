@@ -38,7 +38,7 @@ class PluginsController < ModelController
     api_key_setting = OpenC3::SettingModel.get(name: 'store_api_key', scope: 'DEFAULT')
     api_key = api_key_setting['data'] if api_key_setting
 
-    test_url = "http://#{uri.host}:#{uri.port}/api/v1.1/cosmos_plugins/#{store_plugin_id}"
+    test_url = "http://#{uri.host}:#{uri.port}/api/v1.2/cosmos_plugins/#{store_plugin_id}"
     begin
       uri_obj = URI(test_url)
       req = Net::HTTP::Get.new(uri_obj)

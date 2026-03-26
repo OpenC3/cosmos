@@ -64,7 +64,7 @@
           density="compact"
           variant="outlined"
           hide-details
-          class="version-select"
+          class="mt-1 version-select"
         />
       </v-card-subtitle>
       <!--
@@ -191,13 +191,20 @@
           color="red"
           @click="uninstall"
         />
-        <v-btn
-          v-else
-          text="Install"
-          append-icon="mdi-puzzle-plus"
-          variant="elevated"
-          @click="install"
-        />
+        <v-tooltip v-else :open-delay="600" location="top">
+          <template #activator="{ props }">
+            <span v-bind="entitled ? null : props">
+              <v-btn
+                text="Install"
+                append-icon="mdi-puzzle-plus"
+                variant="elevated"
+                :disabled="!entitled"
+                @click="install"
+              />
+            </span>
+          </template>
+          <span> {{ accessTooltip }} </span>
+        </v-tooltip>
         <v-btn
           v-if="versionRepository"
           text="Repository"
