@@ -30,6 +30,34 @@ module OpenC3
         # Initialization calls a method that uses Faraday to get a token from the server.
         # It's mocked to return $openc3_mock_token for unit testing.
         expect(auth.token).to eq($openc3_mock_token)
+
+        # Once initialized, it should be able to get an OTP as well
+        expect(auth.get_otp).to eq($openc3_mock_otp)
+      end
+
+      it "retries on Faraday::ConnectionFailed" do
+        ENV['OPENC3_API_PASSWORD'] = 'test_password'
+        call_count = 0
+        mock_response = Object.new
+        mock_response.define_singleton_method(:body) { 'retry_token' }
+        allow_any_instance_of(OpenC3Authentication).to receive(:_make_auth_request) do
+          call_count += 1
+          if call_count < 3
+            raise Faraday::ConnectionFailed, "Hostname not known"
+          end
+          mock_response
+        end
+        allow_any_instance_of(OpenC3Authentication).to receive(:sleep)
+        auth = OpenC3Authentication.new
+        expect(auth.token).to eq('retry_token')
+        expect(call_count).to eq(3)
+      end
+
+      it "raises after exhausting retries" do
+        ENV['OPENC3_API_PASSWORD'] = 'test_password'
+        allow_any_instance_of(OpenC3Authentication).to receive(:_make_auth_request).and_raise(Faraday::ConnectionFailed, "Hostname not known")
+        allow_any_instance_of(OpenC3Authentication).to receive(:sleep)
+        expect { OpenC3Authentication.new }.to raise_error(Faraday::ConnectionFailed)
       end
     end
   end

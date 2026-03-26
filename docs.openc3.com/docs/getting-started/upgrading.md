@@ -332,13 +332,13 @@ The following target configuration keywords are silently ignored during parsing 
 
 We removed a few rarely used [API methods](../guides/scripting-api#migration-from-cosmos-v5-to-v6) in COSMOS 6.
 
+Command parameters with states now enforce using defined states. If you need to send an arbitrary value for a command with states you will need to use cmd_no_range_check().
+
 :::info Developers Only
 If you haven't written any custom tools or widgets, there are no special changes required to upgrade from COSMOS 5 to COSMOS 6 other than updating your traefik configuration file. Simply follow the normal upgrade instructions above.
 :::
 
 COSMOS 6 introduces some breaking changes for custom tools regarding the Vue framework and our common library code. We've upgraded from Vue 2 (EOL December 31, 2023) to Vue 3. These versions of Vue are not compatible with each other, so any tools written with Vue 2 will need to be updated. Additionally, our `@openc3/tool-common` NPM package has been deprecated with its functionality reorganized into two packages: `@openc3/js-common` and `@openc3/vue-common`. This is to provide a better experience for developers who are building COSMOS tools without the Vue framework.
-
-We also removed a few rarely used [API methods](../guides/scripting-api#migration-from-cosmos-v5-to-v6) in COSMOS 6.
 
 ### Updating Vue
 

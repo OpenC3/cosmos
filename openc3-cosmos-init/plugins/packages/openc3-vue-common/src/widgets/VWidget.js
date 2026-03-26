@@ -18,6 +18,7 @@
 import { TimeFilters } from '@/util'
 import Widget from './Widget'
 import FormatValueBase from './FormatValueBase'
+import { limitsColor, astroStatus } from './LimitsColor'
 export default {
   mixins: [Widget, TimeFilters, FormatValueBase],
   // ValueWidget can either get it's value and limitsState directly through props
@@ -145,46 +146,11 @@ export default {
     valueClass: function () {
       return 'value shrink pa-1 ' + 'openc3-' + this.limitsColor
     },
-    astroStatus() {
-      switch (this.limitsColor) {
-        case 'green':
-          return 'normal'
-        case 'yellow':
-          return 'caution'
-        case 'red':
-          return 'critical'
-        case 'blue':
-          // This one is a little weird but it matches our color scheme
-          return 'standby'
-        default:
-          return null
-      }
-    },
     limitsColor() {
-      let limitsState = this._limitsState
-      if (limitsState != null) {
-        switch (limitsState) {
-          case 'GREEN':
-          case 'GREEN_HIGH':
-          case 'GREEN_LOW':
-            return 'green'
-          case 'YELLOW':
-          case 'YELLOW_HIGH':
-          case 'YELLOW_LOW':
-            return 'yellow'
-          case 'RED':
-          case 'RED_HIGH':
-          case 'RED_LOW':
-            return 'red'
-          case 'BLUE':
-            return 'blue'
-          case 'STALE':
-            return 'purple'
-          default:
-            return 'white'
-        }
-      }
-      return ''
+      return limitsColor(this._limitsState)
+    },
+    astroStatus() {
+      return astroStatus(this.limitsColor)
     },
     limitsLetter() {
       let limitsState = this._limitsState

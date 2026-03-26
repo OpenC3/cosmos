@@ -56,6 +56,17 @@ def delete_timeline(name, force=False, scope=OPENC3_SCOPE):
 
 
 def create_timeline_activity(name, kind, start, stop, data=None, scope=OPENC3_SCOPE):
+    """
+    Creates an activity for the specified timeline.
+
+    Args:
+        name (str): The name of the timeline.
+        kind (str): The kind of activity. Must be one of "COMMAND", "SCRIPT", or "RESERVE".
+        start (datetime): The start time of the activity.
+        stop (datetime): The stop time of the activity.
+        data (dict, optional): Additional data to associate with the activity. Defaults to None. Any activity can provide "username", "notes", and "customTitle". "command", "script", and "reserve" keys are reserves for the corresponding activity kind, with "environment" also available for script activities.
+        scope (str, optional): The scope of the activity. Defaults to OPENC3_SCOPE, must correspond to the timeline.
+    """
     if data is None:
         data = {}
     kind = kind.lower()

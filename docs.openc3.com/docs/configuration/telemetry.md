@@ -105,7 +105,7 @@ Defining PACKET_TIME allows the PACKET_TIMESECONDS and PACKET_TIMEFORMATTED to b
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Target | Name of the target this telemetry packet is associated with | True |
-| Command | Name of this telemetry packet. Also referred to as its mnemonic. Must be unique to telemetry packets in this target. Ideally will be as short and clear as possible. | True |
+| Packet | Name of this telemetry packet. Also referred to as its mnemonic. Must be unique to telemetry packets in this target. Ideally will be as short and clear as possible. | True |
 | Endianness | Indicates if the data in this packet is in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | True |
 | Description | Description of this telemetry packet which must be enclosed with quotes | False |
 
@@ -280,16 +280,12 @@ See [Segmented Polynomial Conversion](/docs/configuration/conversions#segmented_
 #### GENERIC_READ_CONVERSION_START
 **Start a generic read conversion**
 
-Adds a generic conversion function to the current telemetry item. This conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog. The conversion is specified as Ruby or Python code that receives two implied parameters. 'value' which is the raw value being read and 'packet' which is a reference to the telemetry packet class (Note, referencing the packet as 'myself' is still supported for backwards compatibility). The last line of code should return the converted value. The GENERIC_READ_CONVERSION_END keyword specifies that all lines of code for the conversion have been given.
+Adds a generic conversion function to the current telemetry item. This conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog. The conversion is specified as Ruby or Python code that receives two implied parameters. 'value' which is the raw value being read and 'packet' which is a reference to the telemetry packet class (Note, referencing the packet as 'myself' is still supported for backwards compatibility). The last line of code should return the converted value. The GENERIC_READ_CONVERSION_END keyword specifies that all lines of code for the conversion have been given. To specify the bit size, type, and array size of the converted data, use the CONVERTED_DATA keyword.
 
 :::warning
 Generic conversions are not a good long term solution. Consider creating a conversion class and using READ_CONVERSION instead. READ_CONVERSION is easier to debug and has higher performance.
 :::
 
-| Parameter | Description | Required |
-|-----------|-------------|----------|
-| Converted Type | Type of the converted value<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK</span> | False |
-| Converted Bit Size | Bit size of converted value | False |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -298,6 +294,7 @@ APPEND_ITEM ITEM1 32 UINT
   GENERIC_READ_CONVERSION_START
     int(value * 1.5) # Convert the value by a scale factor
   GENERIC_READ_CONVERSION_END
+  CONVERTED_DATA 32 UINT
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
@@ -306,6 +303,7 @@ APPEND_ITEM ITEM1 32 UINT
   GENERIC_READ_CONVERSION_START
     (value * 1.5).to_i # Convert the value by a scale factor
   GENERIC_READ_CONVERSION_END
+  CONVERTED_DATA 32 UINT
 ```
 </TabItem>
 </Tabs>
@@ -313,6 +311,17 @@ APPEND_ITEM ITEM1 32 UINT
 #### GENERIC_READ_CONVERSION_END
 **Complete a generic read conversion**
 
+
+#### CONVERTED_DATA
+<span class="badge badge--secondary since-right">Since 7.0.0</span>**Defines the bit size, type, and array size of the converted data for a read conversion**
+
+This keyword is used in conjunction with DERIVED items to specify the bit size, type, and array size of the converted data. If this keyword is not used, DERIVED items are stored as strings in the decommutated data.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Converted Bit Size | Bit size of converted value | True |
+| Converted Type | Type of the converted value<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK</span> | True |
+| Converted Array Size | Bit size of the total array if the converted value is an array. Only specified if the converted type is an array. | False |
 
 #### LIMITS
 **Defines a set of limits for a telemetry item**
@@ -702,12 +711,14 @@ TELEMETRY TARGET HS BIG_ENDIAN "Health and Status for My Target"
     STATE NORMAL 0 GREEN
     STATE DIAG 1 YELLOW
   ITEM TIMESECONDS 0 0 DERIVED "DERIVED TIME SINCE EPOCH IN SECONDS"
-    GENERIC_READ_CONVERSION_START FLOAT 32
+    GENERIC_READ_CONVERSION_START
       ((packet.read('ccsdsday') * 86400.0) + (packet.read('ccsdsmsod') / 1000.0) + (packet.read('ccsdsusoms') / 1000000.0)  )
     GENERIC_READ_CONVERSION_END
+    CONVERTED_DATA 32 FLOAT
   ITEM TIMEFORMATTED 0 0 DERIVED "DERIVED TIME SINCE EPOCH AS A FORMATTED STRING"
-    GENERIC_READ_CONVERSION_START STRING 216
+    GENERIC_READ_CONVERSION_START
       time = Time.ccsds2mdy(packet.read('ccsdsday'), packet.read('ccsdsmsod'), packet.read('ccsdsusoms'))
       sprintf('%04u/%02u/%02u %02u:%02u:%02u.%06u', time[0], time[1], time[2], time[3], time[4], time[5], time[6])
     GENERIC_READ_CONVERSION_END
+    CONVERTED_DATA 216 STRING
 ```

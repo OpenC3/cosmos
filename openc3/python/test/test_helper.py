@@ -120,17 +120,23 @@ def setup_system(targets=None):
 
 def mock_redis(self):
     """Ensure the store builds a new instance of valkey and doesn't
-    reuse the existing instance which results in a reused FakeValkey
+    reuse the existing instance which results in a reused FakeValkey.
+
+    IMPORTANT: The mock must be applied BEFORE clearing singleton instances
+    to prevent a race condition where a lingering background thread from a
+    previous test sees my_instance=None, calls instance(), and recreates
+    the singleton using the real valkey.Valkey (causing DNS resolution
+    failures in CI).
     """
-    EphemeralStore.my_instance = None
-    Store.my_instance = None
-    EphemeralStoreQueued.my_instance = None
-    StoreQueued.my_instance = None
     redis = fakeredis.FakeValkey()
     redis.flushall()
     patcher = patch("valkey.Valkey", return_value=redis)
     patcher.start()
     self.addCleanup(patcher.stop)
+    EphemeralStore.my_instance = None
+    Store.my_instance = None
+    EphemeralStoreQueued.my_instance = None
+    StoreQueued.my_instance = None
     return redis
 
 
@@ -175,6 +181,8 @@ def capture_io():
     sys.stdout = captured_output  # and redirect stdout.
     Logger.stdout = True
     Logger.level = Logger.INFO
-    yield captured_output
-    Logger.level = Logger.FATAL
-    sys.stdout = stdout
+    try:
+        yield captured_output
+    finally:
+        Logger.level = Logger.FATAL
+        sys.stdout = stdout

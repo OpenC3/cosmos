@@ -68,7 +68,6 @@ module OpenC3
     # Closing a log file isn't critical so we just log an error
     # Returns threads that moves log to bucket
     def close_file(take_mutex = true)
-      threads = []
       @mutex.lock if take_mutex
       begin
         # Need to write the OFFSET_MARKER for each packet
@@ -79,12 +78,10 @@ module OpenC3
           write_entry(time.to_nsec_from_epoch, data.as_json(allow_nan: true).to_json(allow_nan: true)) if @file
         end
 
-        threads.concat(super(false))
-
+        return super(false)
       ensure
         @mutex.unlock if take_mutex
       end
-      return threads
     end
 
     def extension

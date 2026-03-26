@@ -114,7 +114,7 @@ class InterfaceCmdHandlerThread:
             )
 
         if topic == "OPENC3__SYSTEM__EVENTS":
-            msg = json.loads(msg_hash[b"event"].decode())
+            msg = json.loads(msg_hash.get(b"event", b"{}").decode())
             if msg["type"] == "scope" and msg["name"] == self.scope:
                 self.critical_commanding = msg["critical_commanding"]
             return "SUCCESS"
@@ -263,19 +263,19 @@ class InterfaceCmdHandlerThread:
         if target_name and not self.interface.cmd_target_enabled.get(target_name, False):
             return None  # Return and don't ack given target_name if disabled
         cmd_name = msg_hash[b"cmd_name"].decode()
-        manual = ConfigParser.handle_true_false(msg_hash[b"manual"].decode())
+        manual = ConfigParser.handle_true_false(msg_hash.get(b"manual", b"FALSE").decode())
         cmd_params = None
         range_check = True
         raw = False
         cmd_buffer = None
         hazardous_check = None
-        if msg_hash[b"cmd_params"] is not None:
-            cmd_params = json.loads(msg_hash[b"cmd_params"], cls=JsonDecoder)
-            range_check = ConfigParser.handle_true_false(msg_hash[b"range_check"].decode())
-            raw = ConfigParser.handle_true_false(msg_hash[b"raw"].decode())
-            hazardous_check = ConfigParser.handle_true_false(msg_hash[b"hazardous_check"].decode())
-        elif msg_hash[b"cmd_buffer"] is not None:
-            cmd_buffer = msg_hash[b"cmd_buffer"]
+        if msg_hash.get(b"cmd_params") is not None:
+            cmd_params = json.loads(msg_hash.get(b"cmd_params"), cls=JsonDecoder)
+            range_check = ConfigParser.handle_true_false(msg_hash.get(b"range_check", b"TRUE").decode())
+            raw = ConfigParser.handle_true_false(msg_hash.get(b"raw", b"FALSE").decode())
+            hazardous_check = ConfigParser.handle_true_false(msg_hash.get(b"hazardous_check", b"TRUE").decode())
+        elif msg_hash.get(b"cmd_buffer") is not None:
+            cmd_buffer = msg_hash.get(b"cmd_buffer")
 
         try:
             try:
@@ -309,8 +309,8 @@ class InterfaceCmdHandlerThread:
                 return str(e)
 
             command.extra = command.extra or {}
-            command.extra["cmd_string"] = msg_hash[b"cmd_string"].decode()
-            command.extra["username"] = msg_hash[b"username"].decode()
+            command.extra["cmd_string"] = msg_hash.get(b"cmd_string", b"").decode()
+            command.extra["username"] = msg_hash.get(b"username", b"").decode()
             # Add approver info if this was a critical command that was approved
             if critical_model is not None:
                 command.extra["approver"] = critical_model.approver
@@ -333,19 +333,19 @@ class InterfaceCmdHandlerThread:
                         name=str(uuid.uuid1()),
                         cmd_type=cmd_type,
                         interface_name=self.interface.name,
-                        username=msg_hash[b"username"].decode(),
+                        username=msg_hash.get(b"username", b"").decode(),
                         cmd_hash=msg_hash,
                         scope=self.scope,
                     )
                     model.create()
                     self.logger.info(
-                        f"Critical Cmd Pending: {msg_hash[b'cmd_string'].decode()}",
-                        user=msg_hash[b"username"].decode(),
+                        f"Critical Cmd Pending: {msg_hash.get(b'cmd_string', b'').decode()}",
+                        user=msg_hash.get(b"username", b"").decode(),
                         scope=self.scope,
                     )
                     return f"CriticalCmdError\n{model.name}"
 
-            validate = ConfigParser.handle_true_false(msg_hash[b"validate"].decode())
+            validate = ConfigParser.handle_true_false(msg_hash.get(b"validate", b"TRUE").decode())
             try:
                 if self.interface.connected():
                     result = True
@@ -364,11 +364,11 @@ class InterfaceCmdHandlerThread:
                     if self.metric is not None:
                         self.metric.set(name="interface_cmd_total", value=self.count, type="counter")
 
-                    log_message = ConfigParser.handle_true_false(msg_hash[b"log_message"].decode())
+                    log_message = ConfigParser.handle_true_false(msg_hash.get(b"log_message", b"TRUE").decode())
                     if log_message:
                         self.logger.info(
-                            msg_hash[b"cmd_string"].decode(),
-                            user=msg_hash[b"username"].decode(),
+                            msg_hash.get(b"cmd_string", b"").decode(),
+                            user=msg_hash.get(b"username", b"").decode(),
                             scope=self.scope,
                         )
 
@@ -567,10 +567,10 @@ class RouterTlmHandlerThread:
 
                     if self.router.tlm_target_enabled.get(target_name, False):
                         packet = System.telemetry.packet(target_name, packet_name)
-                        packet.stored = ConfigParser.handle_true_false(msg_hash[b"stored"].decode())
-                        packet.received_time = from_nsec_from_epoch(int(msg_hash[b"time"]))
-                        packet.received_count = int(msg_hash[b"received_count"])
-                        packet.buffer = msg_hash[b"buffer"]
+                        packet.stored = ConfigParser.handle_true_false(msg_hash.get(b"stored", b"FALSE").decode())
+                        packet.received_time = from_nsec_from_epoch(int(msg_hash.get(b"time", b"0")))
+                        packet.received_count = int(msg_hash.get(b"received_count", b"0"))
+                        packet.buffer = msg_hash.get(b"buffer", b"")
 
                         try:
                             self.router.write(packet)
@@ -853,7 +853,6 @@ class InterfaceMicroservice(Microservice):
         else:
             self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(connect_error))}")
             if str(connect_error) not in self.connection_failed_messages:
-                # OpenC3.write_exception_file(connect_error)
                 self.connection_failed_messages.append(str(connect_error))
         self.disconnect()  # Ensure we do a clean disconnect
 
@@ -870,7 +869,6 @@ class InterfaceMicroservice(Microservice):
             #   else _:
             self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(error))}")
             if str(error) not in self.connection_lost_messages:
-                # OpenC3.write_exception_file(err)
                 self.connection_lost_messages.append(str(error))
         else:
             self.logger.info(f"{self.interface.name}: Connection Lost")
@@ -953,6 +951,9 @@ class InterfaceMicroservice(Microservice):
             name = self.interface.name
         self.logger.info(f"{name}: shutdown requested")
         self.stop()
+        if self.interface is not None and self.interface.stream_log_pair is not None:
+            # In python shutdown does the join and cleanup
+            self.interface.stream_log_pair.shutdown()
         super().shutdown()
 
     def graceful_kill(self):

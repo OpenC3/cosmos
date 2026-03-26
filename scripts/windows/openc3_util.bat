@@ -15,6 +15,9 @@ if "%1" == "encode" (
 if "%1" == "hash" (
   GOTO hash
 )
+if "%1" == "pull" (
+  GOTO pull
+)
 if "%1" == "save" (
   GOTO save
 )
@@ -50,6 +53,37 @@ GOTO :EOF
   powershell -c "new-object System.Security.Cryptography.SHA256Managed | ForEach-Object {$_.ComputeHash([System.Text.Encoding]::UTF8.GetBytes("""%2"""))} | ForEach-Object {$_.ToString("""x2""")} | Write-Host -NoNewline"
 GOTO :EOF
 
+:pull
+  if "%2" == "" (
+    @echo "Usage: pull <TAG> [REPO] [NAMESPACE]" 1>&2
+    @echo "e.g. pull 7.0.0" 1>&2
+    @echo "e.g. pull 7.0.0 docker.io openc3inc" 1>&2
+    GOTO :EOF
+  )
+  set tag=%~2
+  if "%3" == "" (
+    set repo=docker.io
+  ) else (
+    set repo=%~3
+  )
+  if "%4" == "" (
+    set namespace=openc3inc
+  ) else (
+    set namespace=%~4
+  )
+
+  echo on
+  docker pull !repo!/!namespace!/openc3-buckets:!tag! || exit /b
+  docker pull !repo!/!namespace!/openc3-cosmos-cmd-tlm-api:!tag! || exit /b
+  docker pull !repo!/!namespace!/openc3-cosmos-init:!tag! || exit /b
+  docker pull !repo!/!namespace!/openc3-cosmos-script-runner-api:!tag! || exit /b
+  docker pull !repo!/!namespace!/openc3-operator:!tag! || exit /b
+  docker pull !repo!/!namespace!/openc3-redis:!tag! || exit /b
+  docker pull !repo!/!namespace!/openc3-traefik:!tag! || exit /b
+  docker pull !repo!/!namespace!/openc3-tsdb:!tag! || exit /b
+  echo off
+GOTO :EOF
+
 :save
   if "%5" == "" (
     set repo=%~2
@@ -58,23 +92,23 @@ GOTO :EOF
     if not exist tmp md tmp
 
     echo on
-    docker pull !repo!/!namespace!/openc3-operator:!tag! || exit /b
-    docker pull !repo!/!namespace!/openc3-cosmos-cmd-tlm-api:!tag! || exit /b
-    docker pull !repo!/!namespace!/openc3-cosmos-script-runner-api:!tag! || exit /b
-    docker pull !repo!/!namespace!/openc3-traefik:!tag! || exit /b
-    docker pull !repo!/!namespace!/openc3-redis:!tag! || exit /b
-    docker pull !repo!/!namespace!/openc3-tsdb:!tag! || exit /b
     docker pull !repo!/!namespace!/openc3-buckets:!tag! || exit /b
+    docker pull !repo!/!namespace!/openc3-cosmos-cmd-tlm-api:!tag! || exit /b
     docker pull !repo!/!namespace!/openc3-cosmos-init:!tag! || exit /b
+    docker pull !repo!/!namespace!/openc3-cosmos-script-runner-api:!tag! || exit /b
+    docker pull !repo!/!namespace!/openc3-operator:!tag! || exit /b
+    docker pull !repo!/!namespace!/openc3-redis:!tag! || exit /b
+    docker pull !repo!/!namespace!/openc3-traefik:!tag! || exit /b
+    docker pull !repo!/!namespace!/openc3-tsdb:!tag! || exit /b
 
-    docker save !repo!/!namespace!/openc3-operator:!tag! -o tmp/openc3-operator-!tag!.tar || exit /b
-    docker save !repo!/!namespace!/openc3-cosmos-cmd-tlm-api:!tag! -o tmp/openc3-cosmos-cmd-tlm-api-!tag!.tar || exit /b
-    docker save !repo!/!namespace!/openc3-cosmos-script-runner-api:!tag! -o tmp/openc3-cosmos-script-runner-api-!tag!.tar || exit /b
-    docker save !repo!/!namespace!/openc3-traefik:!tag! -o tmp/openc3-traefik-!tag!.tar || exit /b
-    docker save !repo!/!namespace!/openc3-redis:!tag! -o tmp/openc3-redis-!tag!.tar || exit /b
-    docker save !repo!/!namespace!/openc3-tsdb:!tag! -o tmp/openc3-tsdb-!tag!.tar || exit /b
     docker save !repo!/!namespace!/openc3-buckets:!tag! -o tmp/openc3-buckets-!tag!.tar || exit /b
+    docker save !repo!/!namespace!/openc3-cosmos-cmd-tlm-api:!tag! -o tmp/openc3-cosmos-cmd-tlm-api-!tag!.tar || exit /b
     docker save !repo!/!namespace!/openc3-cosmos-init:!tag! -o tmp/openc3-cosmos-init-!tag!.tar || exit /b
+    docker save !repo!/!namespace!/openc3-cosmos-script-runner-api:!tag! -o tmp/openc3-cosmos-script-runner-api-!tag!.tar || exit /b
+    docker save !repo!/!namespace!/openc3-operator:!tag! -o tmp/openc3-operator-!tag!.tar || exit /b
+    docker save !repo!/!namespace!/openc3-redis:!tag! -o tmp/openc3-redis-!tag!.tar || exit /b
+    docker save !repo!/!namespace!/openc3-traefik:!tag! -o tmp/openc3-traefik-!tag!.tar || exit /b
+    docker save !repo!/!namespace!/openc3-tsdb:!tag! -o tmp/openc3-tsdb-!tag!.tar || exit /b
     echo off
   ) else (
     @echo "Usage: save <REPO> <NAMESPACE> <TAG>" 1>&2
@@ -89,14 +123,14 @@ GOTO :EOF
     set tag=%~2
   )
   echo on
-  docker load -i tmp/openc3-operator-!tag!.tar || exit /b
-  docker load -i tmp/openc3-cosmos-cmd-tlm-api-!tag!.tar || exit /b
-  docker load -i tmp/openc3-cosmos-script-runner-api-!tag!.tar || exit /b
-  docker load -i tmp/openc3-traefik-!tag!.tar || exit /b
-  docker load -i tmp/openc3-redis-!tag!.tar || exit /b
-  docker load -i tmp/openc3-tsdb-!tag!.tar || exit /b
   docker load -i tmp/openc3-buckets-!tag!.tar || exit /b
+  docker load -i tmp/openc3-cosmos-cmd-tlm-api-!tag!.tar || exit /b
   docker load -i tmp/openc3-cosmos-init-!tag!.tar || exit /b
+  docker load -i tmp/openc3-cosmos-script-runner-api-!tag!.tar || exit /b
+  docker load -i tmp/openc3-operator-!tag!.tar || exit /b
+  docker load -i tmp/openc3-redis-!tag!.tar || exit /b
+  docker load -i tmp/openc3-traefik-!tag!.tar || exit /b
+  docker load -i tmp/openc3-tsdb-!tag!.tar || exit /b
   echo off
 GOTO :EOF
 
@@ -124,14 +158,14 @@ GOTO :EOF
   )
 
   echo on
-  docker tag !repo1!/!namespace1!/openc3-operator:!tag1! !repo2!/!namespace2!/openc3-operator:!tag2!
-  docker tag !repo1!/!namespace1!/openc3-cosmos-cmd-tlm-api:!tag1! !repo2!/!namespace2!/openc3-cosmos-cmd-tlm-api:!tag2!
-  docker tag !repo1!/!namespace1!/openc3-cosmos-script-runner-api:!tag1! !repo2!/!namespace2!/openc3-cosmos-script-runner-api:!tag2!
-  docker tag !repo1!/!namespace1!/openc3-traefik:!tag1! !repo2!/!namespace2!/openc3-traefik:!tag2!
-  docker tag !repo1!/!namespace1!/openc3-redis:!tag1! !repo2!/!namespace2!/openc3-redis:!tag2!
-  docker tag !repo1!/!namespace1!/openc3-tsdb:!tag1! !repo2!/!namespace2!/openc3-tsdb:!tag2!
   docker tag !repo1!/!namespace1!/openc3-buckets:!tag1! !repo2!/!namespace2!/openc3-buckets:!tag2!
+  docker tag !repo1!/!namespace1!/openc3-cosmos-cmd-tlm-api:!tag1! !repo2!/!namespace2!/openc3-cosmos-cmd-tlm-api:!tag2!
   docker tag !repo1!/!namespace1!/openc3-cosmos-init:!tag1! !repo2!/!namespace2!/openc3-cosmos-init:!tag2!
+  docker tag !repo1!/!namespace1!/openc3-cosmos-script-runner-api:!tag1! !repo2!/!namespace2!/openc3-cosmos-script-runner-api:!tag2!
+  docker tag !repo1!/!namespace1!/openc3-operator:!tag1! !repo2!/!namespace2!/openc3-operator:!tag2!
+  docker tag !repo1!/!namespace1!/openc3-redis:!tag1! !repo2!/!namespace2!/openc3-redis:!tag2!
+  docker tag !repo1!/!namespace1!/openc3-traefik:!tag1! !repo2!/!namespace2!/openc3-traefik:!tag2!
+  docker tag !repo1!/!namespace1!/openc3-tsdb:!tag1! !repo2!/!namespace2!/openc3-tsdb:!tag2!
   echo off
 GOTO :EOF
 
@@ -143,14 +177,14 @@ GOTO :EOF
     if not exist tmp md tmp
 
     echo on
-    docker push !repo!/!namespace!/openc3-operator:!tag!
-    docker push !repo!/!namespace!/openc3-cosmos-cmd-tlm-api:!tag!
-    docker push !repo!/!namespace!/openc3-cosmos-script-runner-api:!tag!
-    docker push !repo!/!namespace!/openc3-traefik:!tag!
-    docker push !repo!/!namespace!/openc3-redis:!tag!
-    docker push !repo!/!namespace!/openc3-tsdb:!tag!
     docker push !repo!/!namespace!/openc3-buckets:!tag!
+    docker push !repo!/!namespace!/openc3-cosmos-cmd-tlm-api:!tag!
     docker push !repo!/!namespace!/openc3-cosmos-init:!tag!
+    docker push !repo!/!namespace!/openc3-cosmos-script-runner-api:!tag!
+    docker push !repo!/!namespace!/openc3-operator:!tag!
+    docker push !repo!/!namespace!/openc3-redis:!tag!
+    docker push !repo!/!namespace!/openc3-traefik:!tag!
+    docker push !repo!/!namespace!/openc3-tsdb:!tag!
     echo off
   ) else (
     @echo "Usage: push <REPO> <NAMESPACE> <TAG>" 1>&2
@@ -199,13 +233,14 @@ GOTO :EOF
 GOTO :EOF
 
 :usage
-  @echo Usage: %1 [encode, hash, save, load, tag, push, zip, clean, hostsetup] 1>&2
+  @echo Usage: %1 [encode, hash, save, load, tag, push, pull, zip, clean, hostsetup] 1>&2
   @echo *  encode: encode a string to base64 1>&2
   @echo *  hash: hash a string using SHA-256 1>&2
   @echo *  save: save openc3 to tar files 1>&2
   @echo *  load: load openc3 tar files 1>&2
   @echo *  tag: tag images 1>&2
   @echo *  push: push images 1>&2
+  @echo *  pull: pull images from a registry 1>&2
   @echo *  zip: create openc3 zipfile 1>&2
   @echo *  clean: remove node_modules, coverage, etc 1>&2
   @echo *  hostsetup: configure host for redis 1>&2

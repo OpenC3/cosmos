@@ -17,10 +17,22 @@
 
 require "rails_helper"
 require "openc3/utilities/store_autoload"
+require "openc3/models/timeline_model"
 
 RSpec.describe ActivityController, type: :controller do
+  timeline_name = "test"
+  timeline_scope = "DEFAULT"
+
   before(:each) do
+    # mock_redis must be called before each test
     mock_redis
+    # create timeline after mock_redis so it uses the mocked redis instance
+    OpenC3::TimelineModel.new(name: timeline_name, scope: timeline_scope).create()
+  end
+
+  after(:each) do
+    # delete timeline
+    OpenC3::TimelineModel.delete(name: timeline_name, scope: timeline_scope, force: true)
   end
 
   def generate_activity_hash(start)
@@ -38,9 +50,9 @@ RSpec.describe ActivityController, type: :controller do
   describe "GET index" do
     it "returns an empty array and status code 200" do
       hash = generate_activity_hash(200.0)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       expect(response).to have_http_status(:created)
-      get :index, params: {"scope" => "DEFAULT", "name" => "test"}
+      get :index, params: {"scope" => timeline_scope, "name" => timeline_name}
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json).to eql([])
@@ -48,11 +60,11 @@ RSpec.describe ActivityController, type: :controller do
 
     it "returns an array and status code 200" do
       hash = generate_activity_hash(50.0)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       expect(response).to have_http_status(:created)
       start = DateTime.now.new_offset(0) + 2.0 # add two days
       stop = start + (4.0 / 24.0) # add four hours to the start time
-      get :index, params: {"scope" => "DEFAULT", "name" => "test", "start" => start.to_s, "stop" => stop.to_s}
+      get :index, params: {"scope" => timeline_scope, "name" => timeline_name, "start" => start.to_s, "stop" => stop.to_s}
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(response).to have_http_status(:ok)
       expect(json.empty?).to eql(false)
@@ -60,26 +72,26 @@ RSpec.describe ActivityController, type: :controller do
     end
 
     it "returns error 400 for invalid date format" do
-      get :index, params: {"scope" => "DEFAULT", "name" => "test", "start" => "invalid-date"}
+      get :index, params: {"scope" => timeline_scope, "name" => timeline_name, "start" => "invalid-date"}
       json = JSON.parse(response.body)
       expect(json["status"]).to eq("error")
       expect(json["message"]).to include("Invalid date")
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "handles ActivityModel errors" do
       allow(OpenC3::ActivityModel).to receive(:get).and_raise(StandardError.new("Database error"))
-      get :index, params: {"scope" => "DEFAULT", "name" => "test"}
+      get :index, params: {"scope" => timeline_scope, "name" => timeline_name}
       json = JSON.parse(response.body)
       expect(json["status"]).to eq("error")
       expect(json["message"]).to eq("Database error")
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
   end
 
   describe "GET count" do
     it "returns a json hash of name and count and status code 200" do
-      get :count, params: {"scope" => "DEFAULT", "name" => "test"}
+      get :count, params: {"scope" => timeline_scope, "name" => timeline_name}
       json = JSON.parse(response.body)
       expect(json["name"]).to eql("test")
       expect(json["count"]).to eql(0)
@@ -88,18 +100,18 @@ RSpec.describe ActivityController, type: :controller do
 
     it "handles ActivityModel count errors" do
       allow(OpenC3::ActivityModel).to receive(:count).and_raise(StandardError.new("Count failed"))
-      get :count, params: {"scope" => "DEFAULT", "name" => "test"}
+      get :count, params: {"scope" => timeline_scope, "name" => timeline_name}
       json = JSON.parse(response.body)
       expect(json["status"]).to eq("error")
       expect(json["message"]).to eq("Count failed")
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
   end
 
   describe "POST create" do
     it "returns a hash and status code 201" do
       hash = generate_activity_hash(1.0)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["updated_at"]).not_to be_nil
       expect(ret["start"]).not_to be_nil
@@ -108,20 +120,20 @@ RSpec.describe ActivityController, type: :controller do
     end
 
     it "returns a hash and status code 400 with missing values" do
-      post :create, params: {"scope" => "DEFAULT", "name" => "test"}
+      post :create, params: {"scope" => timeline_scope, "name" => timeline_name}
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["status"]).to eql("error")
       expect(ret["message"]).not_to be_nil
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "returns a hash and status code 400 with negative values" do
       hash = generate_activity_hash(-1.0)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["status"]).to eql("error")
       expect(ret["message"]).not_to be_nil
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "returns a hash and status code 400 with longer than 1 day" do
@@ -134,33 +146,33 @@ RSpec.describe ActivityController, type: :controller do
         "kind" => "COMMAND",
         "data" => {"test" => "test"}
       }
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["status"]).to eql("error")
       expect(ret["message"]).not_to be_nil
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "returns a hash and status code 409 with overwrite" do
       hash = generate_activity_hash(1.0)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       expect(response).to have_http_status(:created)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["name"]).to eql("test")
-      expect(response).to have_http_status(201)
+      expect(response).to have_http_status(:created)
     end
   end
 
   describe "POST event" do
     it "returns a hash and status code 200" do
       hash = generate_activity_hash(1.0)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       expect(response).to have_http_status(:created)
       created = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(created["start"]).not_to be_nil
       event_hash = {"status" => "valid", "message" => "external event update"}
-      post :event, params: event_hash.merge({"scope" => "DEFAULT", "name" => "test", "id" => created["start"]})
+      post :event, params: event_hash.merge({"scope" => timeline_scope, "name" => timeline_name, "id" => created["start"]})
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["events"].empty?).to eql(false)
       expect(ret["events"].length).to eql(2)
@@ -169,36 +181,36 @@ RSpec.describe ActivityController, type: :controller do
 
     it "returns 404 for non-existent activity" do
       event_hash = {"status" => "valid", "message" => "external event update"}
-      post :event, params: event_hash.merge({"scope" => "DEFAULT", "name" => "test", "id" => "999999"})
+      post :event, params: event_hash.merge({"scope" => timeline_scope, "name" => timeline_name, "id" => "999999"})
       ret = JSON.parse(response.body)
       expect(ret["status"]).to eq("error")
       expect(ret["message"]).to eq("not found")
-      expect(response).to have_http_status(404)
+      expect(response).to have_http_status(:not_found)
     end
 
-    it "handles ActivityError with status 418" do
+    it "handles ActivityError with status 422" do
       hash = generate_activity_hash(1.0)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       created = JSON.parse(response.body, allow_nan: true, create_additions: true)
 
       allow_any_instance_of(OpenC3::ActivityModel).to receive(:commit).and_raise(OpenC3::ActivityError.new("Event error"))
       event_hash = {"status" => "valid", "message" => "external event update"}
-      post :event, params: event_hash.merge({"scope" => "DEFAULT", "name" => "test", "id" => created["start"]})
+      post :event, params: event_hash.merge({"scope" => timeline_scope, "name" => timeline_name, "id" => created["start"]})
       ret = JSON.parse(response.body)
       expect(ret["status"]).to eq("error")
       expect(ret["message"]).to eq("Event error")
-      expect(response).to have_http_status(418)
+      expect(response).to have_http_status(:unprocessable_entity)
     end
   end
 
   describe "GET show" do
     it "returns a hash and status code 200" do
       hash = generate_activity_hash(1.0)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       expect(response).to have_http_status(:created)
       created = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(created["start"]).not_to be_nil
-      get :show, params: {"scope" => "DEFAULT", "name" => "test", "id" => created["start"]}
+      get :show, params: {"scope" => timeline_scope, "name" => timeline_name, "id" => created["start"]}
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["start"]).to eql(created["start"])
       expect(ret["stop"]).to eql(created["stop"])
@@ -207,7 +219,7 @@ RSpec.describe ActivityController, type: :controller do
     end
 
     it "returns a hash and status code 404 with invalid start" do
-      get :show, params: {"scope" => "DEFAULT", "name" => "test", "id" => "200"}
+      get :show, params: {"scope" => timeline_scope, "name" => timeline_name, "id" => "200"}
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["status"]).to eql("error")
       expect(ret["message"]).not_to be_nil
@@ -216,22 +228,22 @@ RSpec.describe ActivityController, type: :controller do
 
     it "handles ActivityModel score errors" do
       allow(OpenC3::ActivityModel).to receive(:score).and_raise(StandardError.new("Score failed"))
-      get :show, params: {"scope" => "DEFAULT", "name" => "test", "id" => "123"}
+      get :show, params: {"scope" => timeline_scope, "name" => timeline_name, "id" => "123"}
       ret = JSON.parse(response.body)
       expect(ret["status"]).to eq("error")
       expect(ret["message"]).to eq("Score failed")
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
   end
 
   describe "PUT update" do
     it "returns a hash and status code 200" do
       hash = generate_activity_hash(1.0)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       created = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(created["start"]).not_to be_nil
       hash = generate_activity_hash(2.0)
-      put :update, params: hash.merge({"scope" => "DEFAULT", "name" => "test", "id" => created["start"]})
+      put :update, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name, "id" => created["start"]})
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["start"]).not_to eql(created["start"])
       expect(response).to have_http_status(:ok)
@@ -239,22 +251,22 @@ RSpec.describe ActivityController, type: :controller do
 
     it "returns a hash and status code 409" do
       hash = generate_activity_hash(1.0)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       expect(response).to have_http_status(:created)
       created = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(created["start"]).not_to be_nil
       hash = generate_activity_hash(2.0)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       expect(response).to have_http_status(:created)
       hash = generate_activity_hash(2.0)
-      put :update, params: hash.merge({"scope" => "DEFAULT", "name" => "test", "id" => created["start"]})
+      put :update, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name, "id" => created["start"]})
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["name"]).to eql "test"
-      expect(response).to have_http_status(200)
+      expect(response).to have_http_status(:ok)
     end
 
     it "returns a hash and status code 404 with invalid start" do
-      put :update, params: {"scope" => "DEFAULT", "name" => "test", "id" => "200"}
+      put :update, params: {"scope" => timeline_scope, "name" => timeline_name, "id" => "200"}
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["status"]).to eql("error")
       expect(ret["message"]).not_to be_nil
@@ -263,86 +275,86 @@ RSpec.describe ActivityController, type: :controller do
 
     it "returns a hash and status code 400 with valid params" do
       hash = generate_activity_hash(1.0)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       created = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(created["start"]).not_to be_nil
-      put :update, params: {"scope" => "DEFAULT", "name" => "test", "id" => created["start"]}
+      put :update, params: {"scope" => timeline_scope, "name" => timeline_name, "id" => created["start"]}
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["status"]).to eql("error")
       expect(ret["message"]).not_to be_nil
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "returns a hash and status code 400 with negative time" do
       hash = generate_activity_hash(1.0)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       expect(response).to have_http_status(:created)
       created = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(created["start"]).not_to be_nil
       json = generate_activity_hash(-2.0)
-      put :update, params: {"scope" => "DEFAULT", "name" => "test", "id" => created["start"], "json" => json}
+      put :update, params: {"scope" => timeline_scope, "name" => timeline_name, "id" => created["start"], "json" => json}
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["status"]).to eql("error")
       expect(ret["message"]).not_to be_nil
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "returns a hash and status code 400 with invalid json" do
       hash = generate_activity_hash(1.0)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       expect(response).to have_http_status(:created)
       created = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(created["start"]).not_to be_nil
-      put :update, params: {"scope" => "DEFAULT", "name" => "test", "id" => created["start"], "start" => "Test"}
+      put :update, params: {"scope" => timeline_scope, "name" => timeline_name, "id" => created["start"], "start" => "Test"}
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["status"]).to eql("error")
       expect(ret["message"]).not_to be_nil
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "handles ActivityOverlapError with status 409" do
       hash = generate_activity_hash(1.0)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       created = JSON.parse(response.body, allow_nan: true, create_additions: true)
 
       allow_any_instance_of(OpenC3::ActivityModel).to receive(:update).and_raise(OpenC3::ActivityOverlapError.new("Update overlap"))
       hash = generate_activity_hash(2.0)
-      put :update, params: hash.merge({"scope" => "DEFAULT", "name" => "test", "id" => created["start"]})
+      put :update, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name, "id" => created["start"]})
       ret = JSON.parse(response.body)
       expect(ret["status"]).to eq("error")
       expect(ret["message"]).to eq("Update overlap")
       expect(response).to have_http_status(409)
     end
 
-    it "handles ActivityError with status 418" do
+    it "handles ActivityError with status 422" do
       hash = generate_activity_hash(1.0)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       created = JSON.parse(response.body, allow_nan: true, create_additions: true)
 
       allow_any_instance_of(OpenC3::ActivityModel).to receive(:update).and_raise(OpenC3::ActivityError.new("Update error"))
       hash = generate_activity_hash(2.0)
-      put :update, params: hash.merge({"scope" => "DEFAULT", "name" => "test", "id" => created["start"]})
+      put :update, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name, "id" => created["start"]})
       ret = JSON.parse(response.body)
       expect(ret["status"]).to eq("error")
       expect(ret["message"]).to eq("Update error")
-      expect(response).to have_http_status(418)
+      expect(response).to have_http_status(:unprocessable_entity)
     end
   end
 
   describe "DELETE destroy" do
     it "returns a status code 200" do
       hash = generate_activity_hash(1.0)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       expect(response).to have_http_status(:created)
       created = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(created["start"]).not_to be_nil
-      delete :destroy, params: {"scope" => "DEFAULT", "name" => "test", "id" => created["start"], "uuid" => created["uuid"]}
+      delete :destroy, params: {"scope" => timeline_scope, "name" => timeline_name, "id" => created["start"], "uuid" => created["uuid"]}
       expect(response).to have_http_status(:success)
     end
 
     it "deletes items without uuids if uuid is not given" do
       hash = generate_activity_hash(1.0)
-      post :create, params: hash.merge({"scope" => "DEFAULT", "name" => "test"})
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
       expect(response).to have_http_status(:created)
       created = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(created["start"]).not_to be_nil
@@ -350,12 +362,12 @@ RSpec.describe ActivityController, type: :controller do
       created.delete("uuid")
       # Now add it back to the store and write over the existing activity
       OpenC3::Store.zadd("DEFAULT__openc3_timelines__test", created["start"], JSON.generate(created, allow_nan: true))
-      delete :destroy, params: {"scope" => "DEFAULT", "name" => "test", "id" => created["start"]}
+      delete :destroy, params: {"scope" => timeline_scope, "name" => timeline_name, "id" => created["start"]}
       expect(response).to have_http_status(:success)
     end
 
     it "returns a status code 404" do
-      delete :destroy, params: {"scope" => "DEFAULT", "name" => "test", "id" => "200", "uuid" => "123456"}
+      delete :destroy, params: {"scope" => timeline_scope, "name" => timeline_name, "id" => "200", "uuid" => "123456"}
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret["status"]).to eql("error")
       expect(ret["message"]).to eql("not found")
@@ -364,11 +376,11 @@ RSpec.describe ActivityController, type: :controller do
 
     it "handles ActivityModel destroy errors" do
       allow(OpenC3::ActivityModel).to receive(:destroy).and_raise(StandardError.new("Destroy failed"))
-      delete :destroy, params: {"scope" => "DEFAULT", "name" => "test", "id" => "123", "uuid" => "456"}
+      delete :destroy, params: {"scope" => timeline_scope, "name" => timeline_name, "id" => "123", "uuid" => "456"}
       ret = JSON.parse(response.body)
       expect(ret["status"]).to eq("error")
       expect(ret["message"]).to eq("Destroy failed")
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
   end
 
@@ -380,16 +392,16 @@ RSpec.describe ActivityController, type: :controller do
         start_time = dt + (i / 24.0)
         stop_time = dt + ((i + 0.5) / 24.0)
         post_array << {
-          "name" => "test",
+          "name" => timeline_name,
           "start" => start_time.to_s,
           "stop" => stop_time.to_s,
           "kind" => "COMMAND",
           "data" => {"test" => "test #{i}"}
         }
       end
-      post :multi_create, params: {"scope" => "DEFAULT", "multi" => post_array}
+      post :multi_create, params: {"scope" => timeline_scope, "multi" => post_array}
       expect(response).to have_http_status(:ok)
-      get :index, params: {"scope" => "DEFAULT", "name" => "test"}
+      get :index, params: {"scope" => timeline_scope, "name" => timeline_name}
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json.empty?).to eql(false)
@@ -406,7 +418,7 @@ RSpec.describe ActivityController, type: :controller do
         "Test",
         1
       ]
-      post :multi_create, params: {"scope" => "DEFAULT", "multi" => post_array}
+      post :multi_create, params: {"scope" => timeline_scope, "multi" => post_array}
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json.empty?).to eql(false)
@@ -416,13 +428,13 @@ RSpec.describe ActivityController, type: :controller do
 
   describe "POST multi_destroy" do
     it "returns a hash and status code 400" do
-      post :multi_create, params: {"scope" => "DEFAULT", "multi" => "TEST"}
-      expect(response).to have_http_status(400)
+      post :multi_create, params: {"scope" => timeline_scope, "multi" => "TEST"}
+      expect(response).to have_http_status(:bad_request)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).not_to be_nil
-      post :multi_destroy, params: {"scope" => "DEFAULT", "multi" => "TEST"}
-      expect(response).to have_http_status(400)
+      post :multi_destroy, params: {"scope" => timeline_scope, "multi" => "TEST"}
+      expect(response).to have_http_status(:bad_request)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).not_to be_nil
@@ -435,23 +447,23 @@ RSpec.describe ActivityController, type: :controller do
         start_time = dt + (i / 24.0)
         stop_time = dt + ((i + 0.5) / 24.0)
         create_post_array << {
-          "name" => "test",
+          "name" => timeline_name,
           "start" => start_time.to_s,
           "stop" => stop_time.to_s,
           "kind" => "COMMAND",
           "data" => {"cmd" => "test #{i}"}
         }
       end
-      post :multi_create, params: {"scope" => "DEFAULT", "multi" => create_post_array}
+      post :multi_create, params: {"scope" => timeline_scope, "multi" => create_post_array}
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       destroy_post_array = []
       json.each do |hash|
         destroy_post_array << {"name" => hash["name"], "id" => hash["start"], "uuid" => hash["uuid"]}
       end
-      post :multi_destroy, params: {"scope" => "DEFAULT", "multi" => destroy_post_array}
+      post :multi_destroy, params: {"scope" => timeline_scope, "multi" => destroy_post_array}
       expect(response).to have_http_status(:ok)
-      get :index, params: {"scope" => "DEFAULT", "name" => "test"}
+      get :index, params: {"scope" => timeline_scope, "name" => timeline_name}
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json.empty?).to eql(true)
@@ -463,7 +475,7 @@ RSpec.describe ActivityController, type: :controller do
         "Test",
         1
       ]
-      post :multi_destroy, params: {"scope" => "DEFAULT", "multi" => destroy_post_array}
+      post :multi_destroy, params: {"scope" => timeline_scope, "multi" => destroy_post_array}
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json.empty?).to eql(true)

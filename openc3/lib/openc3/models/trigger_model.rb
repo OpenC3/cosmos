@@ -19,7 +19,7 @@ require 'openc3/models/model'
 require 'openc3/models/microservice_model'
 require 'openc3/models/target_model'
 require 'openc3/models/trigger_group_model'
-require 'openc3/models/reaction_model'
+# require 'openc3/models/reaction_model' # Remove circular require
 require 'openc3/topics/autonomic_topic'
 
 module OpenC3

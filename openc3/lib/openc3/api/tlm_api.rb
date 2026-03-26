@@ -23,7 +23,7 @@
 
 require 'openc3/models/target_model'
 require 'openc3/models/cvt_model'
-require 'openc3/packets/packet'
+# require 'openc3/packets/packet' # Circular require
 require 'openc3/topics/telemetry_topic'
 require 'openc3/topics/interface_topic'
 require 'openc3/topics/decom_interface_topic'
@@ -281,7 +281,7 @@ module OpenC3
 
           case value_type
           when 'FORMATTED', 'WITH_UNITS'
-            if item['format_string']
+            if item['format_string'] or item['units']
               results << [target_name, orig_packet_name, item_name, 'FORMATTED'].join('__')
             # This logic must match the logic in Packet#decom
             elsif item['states'] or (item['read_conversion'] and item['data_type'] != 'DERIVED')
@@ -304,7 +304,7 @@ module OpenC3
           if item['limits']['DEFAULT']
             results[-1] += '__LIMITS'
           end
-        rescue RuntimeError => e
+        rescue RuntimeError
           results << nil
         end
       end

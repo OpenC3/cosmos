@@ -28,7 +28,10 @@ from openc3.topics.decom_interface_topic import DecomInterfaceTopic
 from openc3.topics.interface_topic import InterfaceTopic
 from openc3.topics.topic import Topic
 from openc3.utilities.authorization import authorize
-from openc3.utilities.extract import *
+from openc3.utilities.extract import (
+    extract_fields_from_set_tlm_text,
+    extract_fields_from_tlm_text,
+)
 
 
 WHITELIST.extend(

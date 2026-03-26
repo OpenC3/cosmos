@@ -95,7 +95,7 @@ class JsonDRbObject(JsonApiObject):
     #   the same exception is also raised. If something goes wrong with the
     #   protocol a JsonDRbError exception is raised.
     def __getattr__(self, func):
-        if self.shutdown:
+        if self._shutdown:
             raise JsonDRbError("Shutdown")
 
         def method(*args, **kwargs):

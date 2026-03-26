@@ -15,10 +15,8 @@ import traceback
 from threading import Lock
 
 from requests import Session
-from requests.exceptions import ChunkedEncodingError
-from requests.exceptions import ConnectionError as RequestsConnectionError
 
-from openc3.environment import *
+from openc3.environment import OPENC3_API_PASSWORD, OPENC3_API_TOKEN, OPENC3_API_USER, OPENC3_KEYCLOAK_URL
 from openc3.utilities.authentication import (
     OpenC3Authentication,
     OpenC3KeycloakAuthentication,
@@ -71,7 +69,7 @@ class JsonApiObject:
         self.log = [None, None, None]
         self.authentication = authentication if authentication else self.generate_auth()
         self.timeout: float = timeout
-        self.shutdown: bool = False
+        self._shutdown: bool = False
 
     @staticmethod
     def generate_auth():
@@ -89,7 +87,7 @@ class JsonApiObject:
         Returns:
             return The result of the method call.
         """
-        if self.shutdown:
+        if self._shutdown:
             raise JsonApiError("Shutdown")
         method = method_params[0]
         endpoint = method_params[1]
@@ -108,7 +106,7 @@ class JsonApiObject:
 
     def shutdown(self):
         """Permanently disconnects from the http server"""
-        self.shutdown = True
+        self._shutdown = True
         self.disconnect()
 
     def connect(self):
@@ -199,13 +197,7 @@ class JsonApiObject:
                 self.log[1] = f"{method} Response: {resp.status_code} {resp.headers} {resp.text}"
                 self.response_data = resp.text
                 return resp
-            except (
-                ChunkedEncodingError,
-                RequestsConnectionError,
-                ConnectionResetError,
-                BrokenPipeError,
-                OSError,
-            ) as e:
+            except OSError as e:
                 # Connection errors are retryable - reconnect and try again
                 retry += 1
                 self.log[2] = f"{method} Exception: {traceback.format_exc()}"

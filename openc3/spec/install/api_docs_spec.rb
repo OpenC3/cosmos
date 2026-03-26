@@ -93,7 +93,7 @@ module OpenC3
       File.open(File.join(SPEC_DIR,'../../docs.openc3.com/docs/guides/scripting-api.md')) do |file|
         apis = false
         file.each do |line|
-          if line.strip.include?('###')
+          if line.strip.include?('###') && !line.strip.include?('####') # Only look at ### headings, not #### headings
             if line.include?("Migration")
               apis = true
               next

@@ -67,7 +67,7 @@
             :items="limitsSets"
             density="compact"
             variant="outlined"
-            data-test="limits-set"
+            data-test="change-limits-set"
             hide-details
             class="mt-3"
             style="max-width: 200px"

@@ -444,11 +444,11 @@ export default {
       localStorage[`${this.configKey}__time`] = this.playbackTime
     },
   },
-  created() {
+  async created() {
     // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
     this.api.ensure_offline_access()
-    this.api
+    await this.api
       .get_setting('time_zone')
       .then((response) => {
         if (response) {
@@ -458,36 +458,46 @@ export default {
       .catch((error) => {
         // Do nothing
       })
-    Api.get('/openc3-api/screens').then((response) => {
-      response.data.forEach((filename) => {
-        let parts = filename.split('/')
-        if (this.screens[parts[0]] === undefined) {
-          this.screens[parts[0]] = []
-        }
-        this.screens[parts[0]].push(parts[2].split('.')[0].toUpperCase())
-      })
-      // Select the first target and screen as an optimization
-      this.selectedTarget = Object.keys(this.screens)[0]
-      this.selectedScreen = this.screens[this.selectedTarget][0]
+    Api.get('/openc3-api/screens')
+      .then((response) => {
+        response.data.forEach((filename) => {
+          let parts = filename.split('/')
+          if (this.screens[parts[0]] === undefined) {
+            this.screens[parts[0]] = []
+          }
+          this.screens[parts[0]].push(parts[2].split('.')[0].toUpperCase())
+        })
+        // Select the first target and screen as an optimization
+        this.selectedTarget = Object.keys(this.screens)[0]
+        this.selectedScreen = this.screens[this.selectedTarget][0]
 
-      // Called like /tools/tlmviewer?config=ground
-      if (this.$route.query && this.$route.query.config) {
-        this.openConfiguration(this.$route.query.config, true) // routed
-      } else if (this.$route.params.target && this.$route.params.screen) {
-        // If we're passed in a target / packet as part of the route
-        this.targetSelect(this.$route.params.target.toUpperCase())
-        this.screenSelect(this.$route.params.screen.toUpperCase())
-      } else {
-        let config = this.loadDefaultConfig()
-        // Only apply the config if it's not an empty object (config does not exist)
-        if (JSON.stringify(config) !== '{}') {
-          this.applyConfig(this.loadDefaultConfig())
+        // Called like /tools/tlmviewer?config=ground
+        if (this.$route.query && this.$route.query.config) {
+          this.openConfiguration(this.$route.query.config, true) // routed
+        } else if (this.$route.params.target && this.$route.params.screen) {
+          // If we're passed in a target / packet as part of the route
+          this.targetSelect(this.$route.params.target.toUpperCase())
+          this.screenSelect(this.$route.params.screen.toUpperCase())
+        } else {
+          let config = this.loadDefaultConfig()
+          // Only apply the config if it's not an empty object (config does not exist)
+          if (JSON.stringify(config) !== '{}') {
+            this.applyConfig(this.loadDefaultConfig())
+          }
         }
-      }
-    })
-    Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
-      this.keywords = response.data
-    })
+      })
+      .catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error('Error loading screens:', error)
+      })
+    Api.get('/openc3-api/autocomplete/keywords/screen')
+      .then((response) => {
+        this.keywords = response.data
+      })
+      .catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error('Error loading screen keywords:', error)
+      })
 
     if (localStorage[`${this.configKey}__step`]) {
       this.playbackStep = localStorage[`${this.configKey}__step`]
@@ -573,6 +583,7 @@ export default {
       )
       if (!def) {
         this.loadScreen(target, screen).then((response) => {
+          if (!response || !response.data) return
           this.pushScreen({
             id: this.counter++,
             target: target,
@@ -793,7 +804,8 @@ export default {
       }
 
       this.playbackTimer = setInterval(() => {
-        if (this.playbackDateTime) {
+        // Don't advance time while previous playback requests are still loading
+        if (this.playbackDateTime && !this.playbackLoading) {
           this.playbackDateTime = new Date(
             this.playbackDateTime.getTime() + 1000 * this.playbackStep,
           )

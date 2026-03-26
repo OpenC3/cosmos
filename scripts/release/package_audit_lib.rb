@@ -22,6 +22,7 @@ require 'yaml'
 $overall_apk = []
 $overall_apt = []
 $overall_rpm = []
+$overall_dnf = []
 $overall_gems = []
 $overall_wheels = []
 $overall_pnpm = []
@@ -88,8 +89,13 @@ end
 def extract_apk(container)
   container_name = container[:name]
   name_versions = []
-  lines, stderr, status = Open3.capture3('docker run --rm #{container_name} apk list -I')
-  lines.each_line do |line|
+  results, stderr, status = Open3.capture3("docker run --entrypoint '' --rm --user root #{container_name} apk list -I")
+  if status.exitstatus != 0
+    puts "apk command failed with exit status #{status.exitstatus} for container #{container_name}"
+    puts "Raw apk output:\n#{results}"
+    puts "Raw apk error output:\n#{stderr}" unless stderr.strip.empty?
+  end
+  results.each_line do |line|
     package = line.split(' ')[0]
     breakup_versioned_package(package, name_versions, package)
   end
@@ -99,7 +105,12 @@ end
 
 def extract_apt(container)
   container_name = container[:name]
-  results, stderr, status = Open3.capture3('docker run --rm #{container_name} apt list --installed')
+  results, stderr, status = Open3.capture3("docker run --entrypoint '' --rm --user root #{container_name} apt list --installed")
+  if status.exitstatus != 0
+    puts "apt command failed with exit status #{status.exitstatus} for container #{container_name}"
+    puts "Raw apt output:\n#{results}"
+    puts "Raw apt error output:\n#{stderr}" unless stderr.strip.empty?
+  end
   name_versions = []
   results.each_line do |line|
     next if line =~ /Listing/
@@ -114,8 +125,13 @@ end
 def extract_rpm(container)
   container_name = container[:name]
   name_versions = []
-  lines = `docker run --entrypoint "" --rm #{container_name} rpm -qa`
-  lines.each_line do |line|
+  results, stderr, status = Open3.capture3("docker run --entrypoint '' --rm --user root #{container_name} rpm -qa")
+  if status.exitstatus != 0
+    puts "rpm command failed with exit status #{status.exitstatus} for container #{container_name}"
+    puts "Raw rpm output:\n#{results}"
+    puts "Raw rpm error output:\n#{stderr}" unless stderr.strip.empty?
+  end
+  results.each_line do |line|
     full_package = line.strip
     split_line = full_package.split('.')
     if split_line.length > 1
@@ -125,6 +141,24 @@ def extract_rpm(container)
     breakup_versioned_package(line, name_versions, full_package)
   end
   $overall_rpm.concat(name_versions)
+  make_sorted_hash(name_versions)
+end
+
+def extract_dnf(container)
+  container_name = container[:name]
+  name_versions = []
+  results, stderr, status = Open3.capture3("docker run --entrypoint '' --rm --user root #{container_name} dnf list --installed")
+  if status.exitstatus != 0
+    puts "dnf command failed with exit status #{status.exitstatus} for container #{container_name}"
+    puts "Raw dnf output:\n#{results}"
+    puts "Raw dnf error output:\n#{stderr}" unless stderr.strip.empty?
+  end
+  results.each_line do |line|
+    next if line =~ /Installed Packages/ || line.strip.empty?
+    parts = line.split(' ')
+    name_versions << [parts[0], parts[1], nil]
+  end
+  $overall_dnf.concat(name_versions)
   make_sorted_hash(name_versions)
 end
 
@@ -245,6 +279,10 @@ def build_summary_report(containers)
     report << build_section("RPM Packages", make_sorted_hash($overall_rpm), true)
     report << "\n"
   end
+  if $overall_dnf.length > 0
+    report << build_section("DNF Packages", make_sorted_hash($overall_dnf), true)
+    report << "\n"
+  end
   if $overall_gems.length > 0
     report << build_section("Ruby Gems", make_sorted_hash($overall_gems), false)
     report << "\n"
@@ -277,6 +315,7 @@ def build_container_report(container, client)
   report << build_section("APK Packages", extract_apk(container), false) if container[:apk]
   report << build_section("APT Packages", extract_apt(container), false) if container[:apt]
   report << build_section("RPM Packages", extract_rpm(container), true) if container[:rpm]
+  report << build_section("DNF Packages", extract_dnf(container), true) if container[:dnf]
   report << build_section("Ruby Gems", extract_gems(container), false) if container[:gems]
   report << build_section("Python Wheels", extract_wheels(container), false) if container[:python]
   report << build_section("Node Packages", extract_pnpm(container), false) if container[:pnpm]
@@ -340,6 +379,18 @@ def check_versitygw(client, versitygw_version)
     versions << release['tag_name']#.sub(/^v/, '')
   end
   validate_versions(versions, versitygw_version, 'versitygw')
+end
+
+def check_tsdb(client, tsdb_version)
+  puts "Checking tsdb against version: #{tsdb_version}"
+  resp = client.get('https://api.github.com/repos/questdb/questdb/releases').body
+  releases = JSON.parse(resp)
+  versions = []
+  releases.each do |release|
+    # Tags are like "v1.0.20"
+    versions << release['tag_name']#.sub(/^v/, '')
+  end
+  validate_versions(versions, tsdb_version, 'tsdb')
 end
 
 def check_build_files(versitygw_version, traefik_version)
@@ -459,12 +510,13 @@ def check_tool_base(path, base_pkgs)
       FileUtils.rm(existing)
 
       # Now update the files with references to materialdesignicons
-      files = %w(public/index.html public/index-allow-http.html)
+      files = ["public/index.html"]
       # The base also has to update index.html in openc3-tool-base
       files << "../packages/openc3-tool-base/public/index.html" unless path.include?('enterprise')
       files.each do |filename|
         html = File.read(filename)
-        html.gsub!(/materialdesignicons-.+.min.css/, "materialdesignicons-#{latest}.min.css")
+        html.gsub!(/materialdesignicons-.+\.min\.css/, "materialdesignicons-#{latest}.min.css")
+        html.gsub!(/woff2\?v=.+/, "woff2?v=#{latest}")
         File.open(filename, 'w') {|file| file.puts html }
       end
     end
@@ -546,13 +598,11 @@ def check_tool_base(path, base_pkgs)
           validate_outfile(outfile, package, latest)
         end
         FileUtils.rm existing
-        # Now update the files with references to <package>-<version>.min.js
-        %w(public/index.html public/index-allow-http.html).each do |filename|
-          html = File.read(filename)
-          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")
-          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.css/, "#{alt_package}-#{latest}.min.css")
-          File.open(filename, 'w') {|file| file.puts html }
-        end
+        # Now update the public/index.html with references to <package>-<version>.min.js
+        html = File.read("public/index.html")
+        html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")
+        html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.css/, "#{alt_package}-#{latest}.min.css")
+        File.open("public/index.html", 'w') {|file| file.puts html }
         if package == 'keycloak-js'
           html = File.read('public/js/auth.js')
           html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")

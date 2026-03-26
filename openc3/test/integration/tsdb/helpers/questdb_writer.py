@@ -247,6 +247,132 @@ def cmd_write(args):
     print(json.dumps(result))
 
 
+def cmd_write_multi(args):
+    """Write test data to multiple QuestDB tables with precise timestamp offsets.
+
+    Accepts a JSON spec describing multiple tables, each with rows at specific
+    millisecond offsets from a common base timestamp. Used for testing multi-table
+    k-way merge streaming.
+    """
+    spec = json.loads(args.spec)
+    client = QuietQuestDBClient()
+    client.connect_ingest()
+    client.connect_query()
+
+    base_ts = int(time.time() * 1e9)
+    tables_result = []
+
+    for table_spec in spec["tables"]:
+        target_name = table_spec["target"]
+        packet_name = table_spec["packet"]
+        data_type = table_spec["data_type"]
+        bit_size = table_spec.get("bit_size")
+        cmd_or_tlm = table_spec.get("cmd_or_tlm", "TLM")
+
+        # Build item definition
+        item_kwargs = {"name": "VALUE", "data_type": data_type}
+        if bit_size is not None:
+            item_kwargs["bit_size"] = bit_size
+        format_string = table_spec.get("format_string")
+        if format_string is not None:
+            item_kwargs["format_string"] = format_string
+        units = table_spec.get("units")
+        if units is not None:
+            item_kwargs["units"] = units
+        packet_def = create_packet_def([create_item(**item_kwargs)])
+
+        # Compute sanitized table name (matches Ruby's QuestDBClient.sanitize_table_name)
+        table_name, _ = client.sanitize_table_name(
+            target_name, packet_name, cmd_or_tlm, scope="DEFAULT"
+        )
+
+        # Drop existing table for clean state
+        try:
+            with client.query.cursor() as cur:
+                cur.execute(f'DROP TABLE IF EXISTS "{table_name}"')
+        except Exception:
+            pass
+
+        # Create table
+        table_name = client.create_table(
+            target_name, packet_name, packet_def, cmd_or_tlm=cmd_or_tlm
+        )
+
+        # Write rows at precise offsets
+        rows = table_spec["rows"]
+        timestamps_ns = []
+        expected_values = []
+
+        for i, row in enumerate(rows):
+            offset_ms = row["offset_ms"]
+            row_ts = base_ts + offset_ms * 1_000_000
+            timestamps_ns.append(row_ts)
+
+            values = row["values"]
+            val = values.get("VALUE")
+            expected_values.append(val)
+
+            columns = client.process_json_data({"VALUE": val}, table_name)
+            columns["RECEIVED_COUNT"] = i
+
+            # Add formatted values if specified
+            formatted_values = row.get("formatted_values")
+            if formatted_values:
+                for col_name, fmt_val in formatted_values.items():
+                    columns[f"{col_name}__F"] = fmt_val
+
+            # Add COSMOS_EXTRA for CMD rows if specified
+            cosmos_extra = row.get("cosmos_extra")
+            if cosmos_extra:
+                columns["COSMOS_EXTRA"] = cosmos_extra
+
+            client.write_row(table_name, columns, row_ts, rx_timestamp_ns=row_ts)
+
+        tables_result.append(
+            {
+                "target_name": target_name,
+                "packet_name": packet_name,
+                "cmd_or_tlm": cmd_or_tlm,
+                "table_name": table_name,
+                "packet_def": packet_def,
+                "expected_values": expected_values,
+                "timestamps_ns": timestamps_ns,
+                "row_count": len(rows),
+            }
+        )
+
+    client.flush()
+
+    # Wait for data visibility in all tables
+    all_success = True
+    for table_info in tables_result:
+        actual_count = wait_for_data(
+            client, table_info["table_name"], table_info["row_count"]
+        )
+        table_info["actual_count"] = actual_count
+        if actual_count < table_info["row_count"]:
+            all_success = False
+
+    client.close()
+
+    # Compute global time range
+    all_timestamps = []
+    for table_info in tables_result:
+        all_timestamps.extend(table_info["timestamps_ns"])
+
+    min_ts = min(all_timestamps)
+    max_ts = max(all_timestamps)
+
+    result = {
+        "success": all_success,
+        "base_time_ns": base_ts,
+        "start_time": ts_to_iso(min_ts),
+        "end_time": ts_to_iso(max_ts + 1_000_000_000),
+        "tables": tables_result,
+    }
+    print(json.dumps(result))
+
+
 def cmd_cleanup(args):
     """Drop a test table."""
     client = QuestDBClient()
@@ -324,6 +450,14 @@ def main():
     cleanup_parser = subparsers.add_parser("cleanup", help="Drop a test table")
     cleanup_parser.add_argument("--table", required=True, help="Table name to drop")
 
+    # Write multi command
+    write_multi_parser = subparsers.add_parser(
+        "write_multi", help="Write test data to multiple QuestDB tables"
+    )
+    write_multi_parser.add_argument(
+        "--spec", required=True, help="JSON spec describing multiple tables and rows"
+    )
+
     # Check command
     subparsers.add_parser("check", help="Check if QuestDB is available")
 
@@ -331,6 +465,8 @@ def main():
 
     if args.command == "write":
         cmd_write(args)
+    elif args.command == "write_multi":
+        cmd_write_multi(args)
     elif args.command == "cleanup":
         cmd_cleanup(args)
     elif args.command == "check":

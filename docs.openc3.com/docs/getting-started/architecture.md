@@ -128,9 +128,9 @@ The COSMOS API and Script Runner backends are powered by [Ruby on Rails](https:/
 
 ### QuestDB
 
-COSMOS uses [QuestDB](https://questdb.io/) as its time-series database (TSDB) for long-term telemetry storage. QuestDB is a high-performance database optimized for time-series data, offering fast ingestion rates and efficient querying of large datasets. Data is ingested into QuestDB via the [ILP HTTP protocol](https://questdb.io/docs/reference/api/ilp/overview/).
+COSMOS uses [QuestDB](https://questdb.io/) as its time-series database (TSDB) for long-term telemetry storage. This includes storage of all the COSMOS [telemetry types](/docs/guides/scripting-api#telemetry-types): `RAW`, `CONVERTED`, and `FORMATTED`. COSMOS still stores the raw packet data as binary files in the object storage (versitygw or cloud native). The storage of raw binary files can be controlled by the [`CMD_LOG_RETAIN_TIME`](/docs/configuration/plugins#cmd_log_retain_time) and [`TLM_LOG_RETAIN_TIME`](/docs/configuration/plugins#tlm_log_retain_time). QuestDB is a high-performance database optimized for time-series data, offering fast ingestion rates and efficient querying of large datasets. Data is ingested into QuestDB via the [ILP HTTP protocol](https://questdb.io/docs/reference/api/ilp/overview/).
 
-While Valkey stores real-time streaming data and the current value table, QuestDB provides persistent storage for historical telemetry. This enables users to query telemetry data over extended time periods using standard SQL syntax. Each telemetry and command packet gets its own QuestDB table using the naming convention `TLM__TARGET__PACKET` or `CMD__TARGET__PACKET`.
+While Valkey stores real-time streaming data and the current value table, QuestDB provides persistent storage for historical telemetry. This enables users to query telemetry data over extended time periods using standard SQL syntax. Each telemetry and command packet gets its own QuestDB table using the naming convention `SCOPE__TLM__TARGET__PACKET` or `SCOPE__CMD__TARGET__PACKET`. Note that all COSMOS tools using the [Streaming API](/docs/development/streaming-api) including Command History, Data Extractor, Data Viewer, Telemetry Grapher, Grafana all now use QuestDB to pull engineering data.
 
 #### Data Type Mapping
 

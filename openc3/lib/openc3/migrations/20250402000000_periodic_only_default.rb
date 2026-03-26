@@ -5,7 +5,7 @@ require 'openc3/models/microservice_model'
 module OpenC3
   class PeriodicOnlyDefault < Migration
     def self.run
-      ScopeModel.get_all_models(scope: nil).each do |scope, scope_model|
+      ScopeModel.get_all_models(scope: nil).each do |scope, _scope_model|
         next if scope == 'DEFAULT'
         model = MicroserviceModel.get_model(name: "#{scope}__SCOPEMULTI__#{scope}", scope: scope)
         if model

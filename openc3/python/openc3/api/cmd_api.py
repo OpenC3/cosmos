@@ -32,7 +32,7 @@ from openc3.topics.interface_topic import InterfaceTopic
 from openc3.topics.topic import Topic
 from openc3.utilities.authorization import authorize
 from openc3.utilities.cmd_log import _build_cmd_output_string
-from openc3.utilities.extract import *
+from openc3.utilities.extract import extract_fields_from_cmd_text
 
 
 WHITELIST.extend(
@@ -393,7 +393,7 @@ def get_cmd_hazardous(*args, scope=OPENC3_SCOPE, manual=False):
 # Returns a value from the specified command
 def get_cmd_value(
     *args,
-    type="CONVERTED",
+    type="CONVERTED",  # Ignore SonarQube warning, changing is a breaking change.
     scope=OPENC3_SCOPE,
     manual=False,
 ):
@@ -417,9 +417,7 @@ def get_cmd_value(
             # Invalid number of arguments
             raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to get_cmd_value()")
     if target_name is None or command_name is None:
-        raise RuntimeError(
-            f'ERROR: Target name, command name and parameter name required. Usage: get_cmd_value("TGT CMD PARAM") or {method_name}("TGT", "CMD", "PARAM")'
-        )
+        raise RuntimeError('Usage: get_cmd_value("TGT CMD PARAM") or get_cmd_value("TGT", "CMD", "PARAM")')
 
     authorize(
         permission="cmd_info",
@@ -697,7 +695,9 @@ def _cmd_implementation(
     if queue:
         # Pull the command out of the script string, e.g. cmd("INST ABORT")
         queued = cmd_string.split('("')[1].split('")')[0]
-        QueueModel.queue_command(queue, command=queued, username=username, scope=scope)
+        QueueModel.queue_command(
+            queue, command=queued, username=username, scope=scope, validate=validate, timeout=timeout
+        )
     else:
         CommandTopic.send_command(command, timeout=timeout, scope=scope)
     return command

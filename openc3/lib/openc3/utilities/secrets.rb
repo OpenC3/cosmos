@@ -47,7 +47,7 @@ module OpenC3
         if secret.length < 3
           raise ArgumentError, "Secret must have at least 3 items (type, key, data), got #{secret.length}"
         end
-        type, key, data, secret_store = secret
+        type, key, data, _secret_store = secret
         case type
         when 'ENV'
           @local_secrets[key] = ENV[data]

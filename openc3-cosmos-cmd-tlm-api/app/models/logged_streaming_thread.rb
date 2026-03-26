@@ -15,7 +15,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'pg'
 require_relative 'streaming_thread'
 require_relative 'streaming_object_file_reader'
 OpenC3.require_file 'openc3/api/api'
@@ -36,8 +35,6 @@ class LoggedStreamingThread < StreamingThread
     @thread_mode = :SETUP
     @scope = scope
     @token = token
-    @@conn_mutex = Mutex.new
-    @@conn = nil unless defined?(@@conn)
     @local_api = OpenC3::LocalApi.new
     @last_tsdb_times = {} # topic => last nanosecond timestamp read from TSDB
   end
@@ -271,25 +268,11 @@ class LoggedStreamingThread < StreamingThread
   end
 
   def stream_items(objects_by_topic, topics, offsets)
-    tables = {}
-    names = []
-    item_keys = []
     items = []
     # Cache packet definitions to avoid repeated lookups
     packet_cache = {}
-    # Map column index to item type info for decoding
-    item_types = []
-    # Track calculated timestamp items: { item_key => { source:, format:, table_index: } }
-    calculated_timestamp_items = {}
-    # Track which source timestamp columns we need to add (column name => index in names array)
-    timestamp_source_columns = {}
-    # Stored timestamp items that need conversion from timestamp_ns to float seconds
-    stored_timestamp_items = Set.new(['PACKET_TIMESECONDS', 'RECEIVED_TIMESECONDS'])
-    # Track stored timestamp items: { item_key => { column:, table_index: } }
-    stored_timestamp_item_keys = {}
 
-    start_time = nil
-    end_time = nil
+    start_time, end_time = compute_time_range(objects_by_topic)
 
     item_cmd_or_tlm = [] # Track CMD/TLM per item for type-aware lookups
     objects_by_topic.each do |topic, objects|
@@ -324,7 +307,7 @@ class LoggedStreamingThread < StreamingThread
         end
         resolved = case value_type
           when 'FORMATTED', 'WITH_UNITS'
-            if item_def['format_string']
+            if item_def['format_string'] or item_def['units']
               'FORMATTED'
             elsif item_def['states'] || (item_def['read_conversion'] && item_def['data_type'] != 'DERIVED')
               'CONVERTED'
@@ -346,6 +329,11 @@ class LoggedStreamingThread < StreamingThread
       end
     end
 
+    # Build per-table metadata: each table gets its own column names, item keys,
+    # item types, and timestamp tracking. Tables are queried independently and
+    # merged by timestamp using a k-way merge.
+    per_table = {} # table_name => { cmd_or_tlm:, names:, item_keys:, ... }
+
     item_index = 0
     objects_by_topic.each do |topic, objects|
       break if @cancel_thread
@@ -353,268 +341,193 @@ class LoggedStreamingThread < StreamingThread
       objects.each do |object|
         break if @cancel_thread
         table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm, scope: @scope)
-        tables[table_name] = object.cmd_or_tlm
 
-        if object.start_time
-          if start_time.nil? or object.start_time < start_time
-            start_time = object.start_time
-          end
-        end
-        if object.end_time
-          if end_time.nil? or object.end_time > end_time
-            end_time = object.end_time
-          end
-        end
+        per_table[table_name] ||= {
+          cmd_or_tlm: object.cmd_or_tlm,
+          names: [],
+          item_keys: [],
+          item_types: [],
+          stored_timestamp_item_keys: {},
+          calculated_positions: {},  # local_index => { source:, format: }
+          timestamp_source_columns: {},
+          topics: Set.new
+        }
+        meta = per_table[table_name]
+        meta[:topics] << topic
 
-        table_index = tables.find_index {|k,v| k == table_name }
         item = available[item_index]
         tgt, pkt, orig_item_name, value_type = item.split('__')
 
         # Check if this is a stored timestamp item (PACKET_TIMESECONDS or RECEIVED_TIMESECONDS)
         # These are stored as timestamp_ns columns and need conversion to float seconds on read
-        if stored_timestamp_items.include?(orig_item_name)
-          col_name = "T#{table_index}.#{orig_item_name}"
-          names << "\"#{col_name}\""
-          item_types << { 'data_type' => 'TIMESTAMP', 'array_size' => nil }
-          stored_timestamp_item_keys[object.item_key] = { column: col_name, table_index: table_index }
-          item_keys << object.item_key
-          # Also store for calculated items (TIMEFORMATTED) that may need this
-          timestamp_source_columns[col_name] ||= nil
+        if OpenC3::QuestDBClient::STORED_TIMESTAMP_ITEMS.include?(orig_item_name)
+          meta[:names] << "\"#{orig_item_name}\""
+          meta[:item_types] << { 'data_type' => 'TIMESTAMP', 'array_size' => nil }
+          meta[:stored_timestamp_item_keys][object.item_key] = { column: orig_item_name }
+          meta[:item_keys] << object.item_key
+          meta[:timestamp_source_columns][orig_item_name] ||= nil
           item_index += 1
           next
         end
 
         # Check if this is a calculated timestamp item (PACKET_TIMEFORMATTED or RECEIVED_TIMEFORMATTED)
+        # These get a positional slot (NULL in SQL) and are computed in-place during result processing
         if OpenC3::QuestDBClient::TIMESTAMP_ITEMS.key?(orig_item_name)
-          # Track this as a calculated item - store the item_key separately
           calc_info = OpenC3::QuestDBClient::TIMESTAMP_ITEMS[orig_item_name]
-          calculated_timestamp_items[object.item_key] = {
-            source: calc_info[:source],
-            format: calc_info[:format],
-            table_index: table_index
-          }
-          # Track that we need this source column
-          source_col = "T#{table_index}.#{calc_info[:source]}"
-          timestamp_source_columns[source_col] ||= nil  # Will be set to actual index later
+          local_idx = meta[:names].length
+          meta[:names] << nil  # placeholder - not a SQL column
+          meta[:item_keys] << object.item_key
+          meta[:item_types] << { 'data_type' => 'CALCULATED_TIMESTAMP', 'array_size' => nil }
+          meta[:calculated_positions][local_idx] = { source: calc_info[:source], format: calc_info[:format] }
+          meta[:timestamp_source_columns][calc_info[:source]] ||= nil
           item_index += 1
           next
         end
 
-        item_keys << object.item_key
+        meta[:item_keys] << object.item_key
 
         # Look up item type info from packet definition
         pkt_type = (item_cmd_or_tlm[item_index] == 'CMD') ? :CMD : :TLM
         cache_key = [tgt, pkt, pkt_type]
         unless packet_cache.key?(cache_key)
-          begin
-            packet_cache[cache_key] = OpenC3::TargetModel.packet(tgt, pkt, type: pkt_type, scope: @scope)
-          rescue RuntimeError
-            packet_cache[cache_key] = nil
-          end
+          packet_cache[cache_key] = OpenC3::QuestDBClient.fetch_packet_def(tgt, pkt, type: pkt_type, scope: @scope)
         end
 
         packet_def = packet_cache[cache_key]
-        item_def = nil
-        if packet_def
-          packet_def['items']&.each do |pkt_item|
-            if pkt_item['name'] == orig_item_name
-              item_def = pkt_item
-              break
-            end
-          end
-        end
+        item_def = OpenC3::QuestDBClient.find_item_def(packet_def, orig_item_name)
 
         safe_item_name = OpenC3::QuestDBClient.sanitize_column_name(orig_item_name)
-        case value_type
-        when 'WITH_UNITS'
-          names << "\"T#{table_index}.#{safe_item_name}__U\""
-          item_types << { 'data_type' => 'STRING', 'array_size' => nil }
-        when 'FORMATTED'
-          names << "\"T#{table_index}.#{safe_item_name}__F\""
-          item_types << { 'data_type' => 'STRING', 'array_size' => nil }
-        when 'CONVERTED'
-          names << "\"T#{table_index}.#{safe_item_name}__C\""
-          if item_def
-            rc = item_def['read_conversion']
-            if rc && rc['converted_type']
-              item_types << { 'data_type' => rc['converted_type'], 'array_size' => item_def['array_size'] }
-            elsif item_def['states']
-              item_types << { 'data_type' => 'STRING', 'array_size' => nil }
-            else
-              item_types << { 'data_type' => item_def['data_type'], 'array_size' => item_def['array_size'] }
-            end
-          else
-            item_types << { 'data_type' => nil, 'array_size' => nil }
-          end
-        else
-          names << "\"T#{table_index}.#{safe_item_name}\""
-          if item_def
-            item_types << { 'data_type' => item_def['data_type'], 'array_size' => item_def['array_size'] }
-          else
-            item_types << { 'data_type' => nil, 'array_size' => nil }
-          end
-        end
+        suffix = OpenC3::QuestDBClient.column_suffix_for_value_type(value_type)
+        meta[:names] << "\"#{safe_item_name}#{suffix}\""
+        meta[:item_types] << OpenC3::QuestDBClient.resolve_item_type(item_def, value_type)
         item_index += 1
       end
     end
-    names << "CAST(T0.PACKET_TIMESECONDS AS LONG) as PACKET_TIMESECONDS"
 
-    # Add any additional timestamp source columns needed for calculated items (RECEIVED_TIMESECONDS if needed)
-    timestamp_source_columns.each_key do |source_col|
-      if source_col.include?('RECEIVED_TIMESECONDS')
-        timestamp_source_columns[source_col] = names.length
-        names << source_col
+    # Filter to tables that exist and have data in the queried range
+    if per_table.size > 1
+      per_table.select! { |table_name, _| OpenC3::QuestDBClient.table_has_data?(table_name, start_time, end_time) }
+    end
+
+    # Build per-table queries independently.
+    # Each table gets its own simple SELECT with only its columns.
+    # Results are merged by timestamp using a k-way merge.
+    cursors = []
+
+    per_table.each do |table_name, meta|
+      needs_received_ts = meta[:timestamp_source_columns].any? { |k, _| k.include?('RECEIVED_TIMESECONDS') }
+
+      query_names = meta[:names].compact.dup  # compact removes nil (calculated) placeholders
+
+      # Pre-compute mapping from SQL column index to local meta index.
+      # Calculated positions (names[i] == nil) have no SQL column.
+      sql_to_local = []
+      meta[:names].each_with_index do |name, i|
+        sql_to_local << i unless name.nil?
       end
-      # PACKET_TIMESECONDS is already included as a CAST column above
+
+      query = OpenC3::QuestDBClient.build_item_columns_query(table_name, query_names, start_time, end_time, include_received_ts: needs_received_ts)
+      OpenC3::Logger.debug("QuestDB per-table query: #{query}")
+
+      cursors << {
+        query: query,
+        meta: meta,
+        sql_to_local: sql_to_local,
+        result: nil,      # current PG::Result page
+        row_index: 0,      # position within current page
+        offset: 0,         # LIMIT offset for next fetch
+        exhausted: false,
+        table_name: table_name
+      }
     end
 
-    # Update calculated_timestamp_items with actual source column indices
-    calculated_timestamp_items.each do |item_key, info|
-      source_col = "T#{info[:table_index]}.#{info[:source]}"
-      info[:source_column_index] = timestamp_source_columns[source_col]
+    if cursors.empty?
+      return past_end_time?(end_time) ? true : false
     end
 
-    # Add COSMOS_EXTRA for command tables
-    tables.each_with_index do |(table_name, cmd_or_tlm), index|
-      if cmd_or_tlm == :CMD
-        names << "T#{index}.COSMOS_EXTRA"
-      end
-    end
+    # Initialize: fetch first page for each cursor
+    cursors.each { |c| tsdb_advance_cursor(c) }
 
-    # Build the SQL query
-    query = "SELECT #{names.join(", ")} FROM "
-    tables.each_with_index do |(table_name, _), index|
-      if index == 0
-        query += "#{table_name} as T#{index} "
-      else
-        query += "ASOF JOIN #{table_name} as T#{index} "
-      end
-    end
-    query += "WHERE T0.PACKET_TIMESECONDS >= #{start_time}"
-    if end_time
-      query += " AND T0.PACKET_TIMESECONDS < #{end_time}"
-    end
+    # K-way merge loop: always pick the cursor with the lowest PACKET_TIMESECONDS
+    results = []
+    loop do
+      break if @cancel_thread
 
-    done = false
-    min = 0
-    max = @max_batch_size
-    retry_count = 0
-    while !done and !@cancel_thread
-      begin
-        @@conn_mutex.synchronize do
-          @@conn ||= PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
-                                        port: ENV['OPENC3_TSDB_QUERY_PORT'],
-                                        user: ENV['OPENC3_TSDB_USERNAME'],
-                                        password: ENV['OPENC3_TSDB_PASSWORD'],
-                                        dbname: 'qdb')
-
-          # Default connection is all strings but we want to map to the correct types
-          if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
-            # Note: QuestDB uses signed int64 (long), so extreme values are clamped during storage:
-            # - MIN_INT64 (-2^63) is treated as NULL by QuestDB, clamped to -(2^63)+1
-            # - MAX_UINT64 (2^64-1) exceeds int64 max, clamped to 2^63-1
-            # Test with DEMO items P_2.2,2 (MIN_INT64) and P(:6;) (MAX_UINT64)
-            @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
-          end
-          # QuestDB only uses the LIMIT keyword as a range
-          # See https://questdb.com/docs/reference/sql/limit/
-          query_offset = "#{query} LIMIT #{min}, #{max}"
-          OpenC3::Logger.debug("QuestDB query: #{query_offset}")
-          results = []
-          result = @@conn.exec(query_offset)
-          min += @max_batch_size
-          max += @max_batch_size
-          if result.nil? or result.ntuples == 0
-            done = true
-          else
-            result.each do |tuples|
-              entry = { "__type" => "items" }
-              timestamp_values = {}  # Store timestamp column values for calculation
-              tuples.each_with_index do |tuple, index|
-                col_name = tuple[0]
-                if col_name == 'PACKET_TIMESECONDS'
-                  # Use the nanosecond integer directly for full precision
-                  time_ns = tuple[1].to_i
-                  entry['__time'] = time_ns
-                  # Derive PACKET_TIMESECONDS Time object from nanoseconds for calculated items
-                  # Use Time.at with in: '+00:00' to create UTC time matching PG timestamp behavior
-                  pkt_time = Time.at(time_ns / 1_000_000_000, time_ns % 1_000_000_000, :nsec, in: '+00:00')
-                  timestamp_values['PACKET_TIMESECONDS'] = pkt_time
-                  next
-                elsif col_name == 'COSMOS_EXTRA' || col_name.end_with?('.COSMOS_EXTRA')
-                  entry['COSMOS_EXTRA'] = tuple[1]
-                  next
-                elsif col_name == 'RECEIVED_TIMESECONDS' || col_name.end_with?('.RECEIVED_TIMESECONDS')
-                  # Store for calculated items
-                  timestamp_values['RECEIVED_TIMESECONDS'] = tuple[1]
-                  timestamp_values[col_name] = tuple[1] if col_name.include?('.')
-                  # If this was explicitly requested as an item, add converted value to entry
-                  if index < item_keys.length && stored_timestamp_item_keys.key?(item_keys[index])
-                    ts_utc = OpenC3::QuestDBClient.pg_timestamp_to_utc(tuple[1])
-                    entry[item_keys[index]] = OpenC3::QuestDBClient.format_timestamp(ts_utc, :seconds)
-                  end
-                elsif index < item_keys.length
-                  # Decode value using item type info
-                  type_info = item_types[index] || {}
-                  # Check if this is a stored timestamp item that needs conversion
-                  if stored_timestamp_item_keys.key?(item_keys[index])
-                    ts_utc = OpenC3::QuestDBClient.pg_timestamp_to_utc(tuple[1])
-                    entry[item_keys[index]] = OpenC3::QuestDBClient.format_timestamp(ts_utc, :seconds)
-                  else
-                    entry[item_keys[index]] = OpenC3::QuestDBClient.decode_value(
-                      tuple[1],
-                      data_type: type_info['data_type'],
-                      array_size: type_info['array_size']
-                    )
-                  end
-                end
-              end
-
-              # Calculate timestamp items (TIMEFORMATTED)
-              calculated_timestamp_items.each do |item_key, info|
-                ts_value = timestamp_values[info[:source]]
-                ts_utc = OpenC3::QuestDBClient.pg_timestamp_to_utc(ts_value)
-                calculated_value = OpenC3::QuestDBClient.format_timestamp(ts_utc, info[:format])
-                entry[item_key] = calculated_value if calculated_value
-              end
-
-              # Track the latest timestamp per topic for TSDB→STREAM bridge
-              # ASOF JOIN means all topics in this query share T0's timestamp
-              if entry['__time']
-                objects_by_topic.each_key do |t|
-                  prev = @last_tsdb_times[t]
-                  @last_tsdb_times[t] = entry['__time'] if !prev or entry['__time'] > prev
-                end
-              end
-              results << entry
-            end
-            @streaming_api.transmit_results(results)
-          end
+      # Find cursor with lowest timestamp (linear scan — table count is small)
+      min_cursor = nil
+      min_time = nil
+      cursors.each do |c|
+        next if c[:exhausted]
+        row_time = tsdb_cursor_time(c)
+        if row_time && (min_time.nil? || row_time < min_time)
+          min_time = row_time
+          min_cursor = c
         end
-      rescue IOError, PG::Error => e
-        # Retry the query because various errors can occur that are recoverable
-        retry_count += 1
-        if retry_count > 4
-          # After the 5th retry just raise the error
-          raise "Error querying QuestDB: #{e.message}"
-        end
-        OpenC3::Logger.warn("QuestDB: Retrying due to error: #{e.message}")
-        OpenC3::Logger.warn("QuestDB: Last query: #{query}") # Log the last query for debugging
-        @@conn_mutex.synchronize do
-          if @@conn and !@@conn.finished?
-            @@conn.finish()
-          end
-          @@conn = nil # Force the new connection
-        end
-        sleep 0.1
-        retry
+      end
+
+      break unless min_cursor # All cursors exhausted
+
+      # Process this row
+      entry = decode_cursor_row(min_cursor)
+      if entry
+        objects_by_topic.each_key { |t| track_tsdb_time(t, entry['__time']) }
+        results << entry
+      end
+
+      # Advance cursor
+      min_cursor[:row_index] += 1
+      if min_cursor[:result].nil? || min_cursor[:row_index] >= min_cursor[:result].ntuples
+        tsdb_advance_cursor(min_cursor)
+      end
+
+      # Transmit batch when full
+      if results.length >= @max_batch_size
+        @streaming_api.transmit_results(results)
+        results = []
       end
     end
-    if end_time and end_time <= Time.now.to_nsec_from_epoch
-      return true
+
+    # Transmit remaining results
+    @streaming_api.transmit_results(results) unless results.empty?
+    past_end_time?(end_time) ? true : false
+  end
+
+  # Returns the PACKET_TIMESECONDS value for the current row of a cursor
+  def tsdb_cursor_time(cursor)
+    return nil if cursor[:exhausted] || cursor[:result].nil?
+    row = cursor[:result][cursor[:row_index]]
+    return nil unless row
+    # Row may be a Hash (real PG::Result) or array of [col, val] pairs (mock).
+    # Iterate to find PACKET_TIMESECONDS reliably in both cases.
+    row.each do |tuple|
+      return tuple[1].to_i if tuple[0] == 'PACKET_TIMESECONDS'
+    end
+    nil
+  end
+
+  # Fetches the next page for a cursor, or marks it as exhausted
+  def tsdb_advance_cursor(cursor)
+    return if cursor[:exhausted]
+    query_offset = "#{cursor[:query]} LIMIT #{cursor[:offset]}, #{cursor[:offset] + @max_batch_size}"
+    OpenC3::Logger.debug("QuestDB cursor fetch: #{query_offset}")
+    result = OpenC3::QuestDBClient.query_with_retry(query_offset, label: "cursor fetch")
+    cursor[:offset] += @max_batch_size
+    if result.nil? || result.ntuples == 0
+      cursor[:result] = nil
+      cursor[:exhausted] = true
     else
-      return false
+      cursor[:result] = result
+      cursor[:row_index] = 0
     end
+  end
+
+  # Decode the current row of a cursor using QuestDBClient
+  def decode_cursor_row(cursor)
+    result = cursor[:result]
+    return nil unless result
+    row_index = cursor[:row_index]
+    return nil if row_index >= result.ntuples
+    OpenC3::QuestDBClient.decode_item_row(result[row_index], cursor[:sql_to_local], cursor[:meta])
   end
 
   # Stream reduced (aggregated) items using QuestDB SAMPLE BY
@@ -622,8 +535,7 @@ class LoggedStreamingThread < StreamingThread
   def stream_reduced_items(objects_by_topic)
     # Group objects by table and stream_mode for efficient querying
     objects_by_table_and_mode = {}
-    start_time = nil
-    end_time = nil
+    start_time, end_time = compute_time_range(objects_by_topic)
 
     objects_by_topic.each do |topic, objects|
       break if @cancel_thread
@@ -633,31 +545,17 @@ class LoggedStreamingThread < StreamingThread
         key = [table_name, object.stream_mode]
         objects_by_table_and_mode[key] ||= []
         objects_by_table_and_mode[key] << object
-
-        if object.start_time and (start_time.nil? or object.start_time < start_time)
-          start_time = object.start_time
-        end
-        if object.end_time and (end_time.nil? or object.end_time > end_time)
-          end_time = object.end_time
-        end
       end
     end
 
     return end_time ? true : false if objects_by_table_and_mode.empty?
 
     done = false
-    retry_count = 0
 
     objects_by_table_and_mode.each do |(table_name, stream_mode), objects|
       break if @cancel_thread
 
-      # Determine the SAMPLE BY interval based on stream_mode
-      sample_interval = case stream_mode
-        when :REDUCED_MINUTE then '1m'
-        when :REDUCED_HOUR then '1h'
-        when :REDUCED_DAY then '1d'
-        else '1m' # Default to minute
-      end
+      sample_interval = OpenC3::QuestDBClient.sample_interval_for(stream_mode)
 
       # Group objects by item to build efficient query
       # Each object has: target_name, packet_name, item_name, value_type, reduced_type
@@ -670,141 +568,55 @@ class LoggedStreamingThread < StreamingThread
       end
 
       # Build the SELECT clause with aggregations
-      selects = ["CAST(PACKET_TIMESECONDS AS LONG) as PACKET_TIMESECONDS"]
+      selects = [OpenC3::QuestDBClient::TIMESTAMP_SELECT]
       column_mapping = {} # Maps result column name to [item_key, reduced_type, value_type]
 
       items_to_query.each do |item_name, info|
         safe_item_name = OpenC3::QuestDBClient.sanitize_column_name(item_name)
 
         info[:value_types].each do |value_type|
-          case value_type
-          when :RAW
-            # RAW aggregations - use base column
-            col = safe_item_name
-            selects << "min(\"#{col}\") as \"#{safe_item_name}__N\""
-            selects << "max(\"#{col}\") as \"#{safe_item_name}__X\""
-            selects << "avg(\"#{col}\") as \"#{safe_item_name}__A\""
-            selects << "stddev(\"#{col}\") as \"#{safe_item_name}__S\""
-            column_mapping["#{safe_item_name}__N"] = [item_name, :MIN, :RAW]
-            column_mapping["#{safe_item_name}__X"] = [item_name, :MAX, :RAW]
-            column_mapping["#{safe_item_name}__A"] = [item_name, :AVG, :RAW]
-            column_mapping["#{safe_item_name}__S"] = [item_name, :STDDEV, :RAW]
-          when :CONVERTED
-            # CONVERTED aggregations - use __C column
-            col = "#{safe_item_name}__C"
-            selects << "min(\"#{col}\") as \"#{safe_item_name}__CN\""
-            selects << "max(\"#{col}\") as \"#{safe_item_name}__CX\""
-            selects << "avg(\"#{col}\") as \"#{safe_item_name}__CA\""
-            selects << "stddev(\"#{col}\") as \"#{safe_item_name}__CS\""
-            column_mapping["#{safe_item_name}__CN"] = [item_name, :MIN, :CONVERTED]
-            column_mapping["#{safe_item_name}__CX"] = [item_name, :MAX, :CONVERTED]
-            column_mapping["#{safe_item_name}__CA"] = [item_name, :AVG, :CONVERTED]
-            column_mapping["#{safe_item_name}__CS"] = [item_name, :STDDEV, :CONVERTED]
-          else
-            # Unsupported value_type for reduction
-            next
-          end
+          next unless value_type == :RAW || value_type == :CONVERTED
+          agg_selects, agg_mapping = OpenC3::QuestDBClient.build_aggregation_selects(safe_item_name, value_type, item_name: item_name)
+          selects.concat(agg_selects)
+          column_mapping.merge!(agg_mapping)
         end
       end
 
-      # Build the full query with SAMPLE BY
-      query = "SELECT #{selects.join(', ')} FROM \"#{table_name}\""
-      query += " WHERE PACKET_TIMESECONDS >= #{start_time}"
-      query += " AND PACKET_TIMESECONDS < #{end_time}" if end_time
-      query += " SAMPLE BY #{sample_interval}"
-      query += " ALIGN TO CALENDAR"
-      query += " ORDER BY PACKET_TIMESECONDS"
+      query = OpenC3::QuestDBClient.build_reduced_query(table_name, selects, start_time, end_time, sample_interval)
 
-      min = 0
-      max = @max_batch_size
-      table_done = false
+      OpenC3::QuestDBClient.paginate_query(query, @max_batch_size, label: "reduced query") do |result|
+        break if @cancel_thread
+        results = []
+        result.each do |tuples|
+          decoded = OpenC3::QuestDBClient.decode_reduced_row(tuples)
+          entry = { "__type" => "ITEMS" }
+          entry['__time'] = decoded['__time']
 
-      while !table_done and !@cancel_thread
-        begin
-          @@conn_mutex.synchronize do
-            @@conn ||= PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
-                                          port: ENV['OPENC3_TSDB_QUERY_PORT'],
-                                          user: ENV['OPENC3_TSDB_USERNAME'],
-                                          password: ENV['OPENC3_TSDB_PASSWORD'],
-                                          dbname: 'qdb')
-            if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
-              @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
-            end
+          decoded.each do |col_name, decoded_value|
+            next if col_name == '__time'
+            mapping = column_mapping[col_name]
+            next unless mapping
 
-            query_offset = "#{query} LIMIT #{min}, #{max}"
-            OpenC3::Logger.debug("QuestDB reduced query: #{query_offset}")
-            results = []
-            result = @@conn.exec(query_offset)
-            min += @max_batch_size
-            max += @max_batch_size
+            item_name, reduced_type, value_type = mapping
 
-            if result.nil? or result.ntuples == 0
-              table_done = true
-            else
-              result.each do |tuples|
-                entry = { "__type" => "items" }
-
-                tuples.each do |tuple|
-                  col_name = tuple[0]
-                  value = tuple[1]
-
-                  if col_name == 'PACKET_TIMESECONDS'
-                    # Use nanosecond integer directly for full precision
-                    entry['__time'] = value.to_i
-                    next
-                  end
-
-                  # Map result column to the requesting object's item_key
-                  mapping = column_mapping[col_name]
-                  next unless mapping
-
-                  item_name, reduced_type, value_type = mapping
-
-                  # Find objects that want this specific combination
-                  objects.each do |object|
-                    if object.item_name == item_name &&
-                       object.reduced_type == reduced_type &&
-                       object.value_type == value_type
-                      # Decode the value (aggregations return floats)
-                      decoded_value = OpenC3::QuestDBClient.decode_value(value, data_type: 'DOUBLE', array_size: nil)
-                      entry[object.item_key] = decoded_value
-                    end
-                  end
-                end
-
-                if entry.keys.length > 2 # Has more than __type and __time
-                  # Track the latest timestamp per topic for TSDB→STREAM bridge
-                  if entry['__time']
-                    objects.each do |obj|
-                      prev = @last_tsdb_times[obj.topic]
-                      @last_tsdb_times[obj.topic] = entry['__time'] if !prev or entry['__time'] > prev
-                    end
-                  end
-                  results << entry
-                end
+            objects.each do |object|
+              if object.item_name == item_name &&
+                 object.reduced_type == reduced_type &&
+                 object.value_type == value_type
+                entry[object.item_key] = decoded_value
               end
-              @streaming_api.transmit_results(results) unless results.empty?
-              results.clear
             end
           end
-        rescue IOError, PG::Error => e
-          retry_count += 1
-          if retry_count > 4
-            raise "Error querying QuestDB for reduced items: #{e.message}"
+
+          if entry.keys.length > 2 # Has more than __type and __time
+            objects.each { |obj| track_tsdb_time(obj.topic, entry['__time']) }
+            results << entry
           end
-          OpenC3::Logger.warn("QuestDB: Retrying reduced query due to error: #{e.message}")
-          @@conn_mutex.synchronize do
-            if @@conn and !@@conn.finished?
-              @@conn.finish()
-            end
-            @@conn = nil
-          end
-          sleep 0.1
-          retry
         end
+        @streaming_api.transmit_results(results) unless results.empty?
       end
 
-      done = true if end_time and end_time <= Time.now.to_nsec_from_epoch
+      done = true if past_end_time?(end_time)
     end
 
     done
@@ -865,9 +677,7 @@ class LoggedStreamingThread < StreamingThread
 
       if objects
         # Track the latest timestamp per topic for TSDB→STREAM bridge
-        pkt_time_ns = packet.packet_time.to_nsec_from_epoch
-        prev = @last_tsdb_times[topic]
-        @last_tsdb_times[topic] = pkt_time_ns if !prev or pkt_time_ns > prev
+        track_tsdb_time(topic, packet.packet_time.to_nsec_from_epoch)
 
         objects.each do |object|
           break if @cancel_thread
@@ -893,27 +703,14 @@ class LoggedStreamingThread < StreamingThread
   end
 
   def stream_decom_packets_from_tsdb(objects_by_topic)
-    start_time = nil
-    end_time = nil
+    start_time, end_time = compute_time_range(objects_by_topic)
     packet_objects = []
 
     objects_by_topic.each do |topic, objects|
       break if @cancel_thread
       objects.each do |object|
         break if @cancel_thread
-
         packet_objects << object
-
-        if object.start_time
-          if start_time.nil? or object.start_time < start_time
-            start_time = object.start_time
-          end
-        end
-        if object.end_time
-          if end_time.nil? or object.end_time > end_time
-            end_time = object.end_time
-          end
-        end
       end
     end
 
@@ -929,7 +726,6 @@ class LoggedStreamingThread < StreamingThread
     end
 
     done = false
-    retry_count = 0
 
     objects_by_table.each do |table_name, objects|
       break if @cancel_thread
@@ -937,83 +733,28 @@ class LoggedStreamingThread < StreamingThread
       first_object = objects[0]
       value_type = first_object.value_type
 
-      # Look up packet definition for type info during decoding
-      packet_def = nil
-      begin
-        pkt_type = (first_object.cmd_or_tlm == :CMD) ? :CMD : :TLM
-        packet_def = OpenC3::TargetModel.packet(first_object.target_name, first_object.packet_name, type: pkt_type, scope: @scope)
-      rescue RuntimeError
-        # Packet not found, will use heuristic decoding
-      end
+      pkt_type = (first_object.cmd_or_tlm == :CMD) ? :CMD : :TLM
+      packet_def = OpenC3::QuestDBClient.fetch_packet_def(first_object.target_name, first_object.packet_name, type: pkt_type, scope: @scope)
 
-      # Build the SQL query - select all columns from the table
-      query = "SELECT * FROM \"#{table_name}\""
-      query += " WHERE PACKET_TIMESECONDS >= #{start_time}"
-      if end_time
-        query += " AND PACKET_TIMESECONDS < #{end_time}"
-      end
+      query = OpenC3::QuestDBClient.build_packet_query(table_name, start_time, end_time)
 
-      min = 0
-      max = @max_batch_size
-      table_done = false
-
-      while !table_done and !@cancel_thread
-        begin
-          @@conn_mutex.synchronize do
-            @@conn ||= PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
-                                          port: ENV['OPENC3_TSDB_QUERY_PORT'],
-                                          user: ENV['OPENC3_TSDB_USERNAME'],
-                                          password: ENV['OPENC3_TSDB_PASSWORD'],
-                                          dbname: 'qdb')
-            if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
-              @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
-            end
-
-            query_offset = "#{query} LIMIT #{min}, #{max}"
-            OpenC3::Logger.debug("QuestDB packet query: #{query_offset}")
-            results = []
-            result = @@conn.exec(query_offset)
-            min += @max_batch_size
-            max += @max_batch_size
-
-            if result.nil? or result.ntuples == 0
-              table_done = true
-            else
-              result.each do |tuples|
-                objects.each do |object|
-                  entry = build_packet_entry(tuples, object, value_type, packet_def)
-                  if entry
-                    # Track the latest timestamp per topic for TSDB→STREAM bridge
-                    if entry['__time']
-                      prev = @last_tsdb_times[object.topic]
-                      @last_tsdb_times[object.topic] = entry['__time'] if !prev or entry['__time'] > prev
-                    end
-                    results << entry
-                  end
-                end
-              end
-              @streaming_api.transmit_results(results) unless results.empty?
-              results.clear
+      OpenC3::QuestDBClient.paginate_query(query, @max_batch_size, label: "packet query") do |result|
+        break if @cancel_thread
+        results = []
+        result.each do |tuples|
+          objects.each do |object|
+            decoded = OpenC3::QuestDBClient.decode_packet_row(tuples, value_type, packet_def)
+            if decoded
+              entry = decoded.merge("__type" => "PACKET", "__packet" => object.key)
+              track_tsdb_time(object.topic, entry['__time'])
+              results << entry
             end
           end
-        rescue IOError, PG::Error => e
-          retry_count += 1
-          if retry_count > 4
-            raise "Error querying QuestDB for packets: #{e.message}"
-          end
-          OpenC3::Logger.warn("QuestDB: Retrying packet query due to error: #{e.message}")
-          @@conn_mutex.synchronize do
-            if @@conn and !@@conn.finished?
-              @@conn.finish()
-            end
-            @@conn = nil
-          end
-          sleep 0.1
-          retry
         end
+        @streaming_api.transmit_results(results) unless results.empty?
       end
 
-      done = true if end_time and end_time <= Time.now.to_nsec_from_epoch
+      done = true if past_end_time?(end_time)
     end
 
     done
@@ -1022,23 +763,14 @@ class LoggedStreamingThread < StreamingThread
   # Stream reduced (aggregated) packets using QuestDB SAMPLE BY
   # This generates min, max, avg, stddev aggregations for all numeric columns
   def stream_reduced_packets_from_tsdb(objects_by_topic)
-    start_time = nil
-    end_time = nil
+    start_time, end_time = compute_time_range(objects_by_topic)
     packet_objects = []
 
     objects_by_topic.each do |topic, objects|
       break if @cancel_thread
       objects.each do |object|
         break if @cancel_thread
-
         packet_objects << object
-
-        if object.start_time and (start_time.nil? or object.start_time < start_time)
-          start_time = object.start_time
-        end
-        if object.end_time and (end_time.nil? or object.end_time > end_time)
-          end_time = object.end_time
-        end
       end
     end
 
@@ -1054,299 +786,70 @@ class LoggedStreamingThread < StreamingThread
     end
 
     done = false
-    retry_count = 0
 
     objects_by_table_and_mode.each do |(table_name, stream_mode), objects|
       break if @cancel_thread
 
       first_object = objects[0]
       value_type = first_object.value_type
+      sample_interval = OpenC3::QuestDBClient.sample_interval_for(stream_mode)
 
-      # Determine the SAMPLE BY interval based on stream_mode
-      sample_interval = case stream_mode
-        when :REDUCED_MINUTE then '1m'
-        when :REDUCED_HOUR then '1h'
-        when :REDUCED_DAY then '1d'
-        else '1m'
-      end
+      pkt_type = (first_object.cmd_or_tlm == :CMD) ? :CMD : :TLM
+      packet_def = OpenC3::QuestDBClient.fetch_packet_def(first_object.target_name, first_object.packet_name, type: pkt_type, scope: @scope)
 
-      # Look up packet definition to find numeric columns
-      packet_def = nil
-      begin
-        pkt_type = (first_object.cmd_or_tlm == :CMD) ? :CMD : :TLM
-        packet_def = OpenC3::TargetModel.packet(first_object.target_name, first_object.packet_name, type: pkt_type, scope: @scope)
-      rescue RuntimeError
-        # Packet not found
-      end
-
-      # Build aggregation query for all numeric items in the packet
-      selects = ["CAST(PACKET_TIMESECONDS AS LONG) as PACKET_TIMESECONDS"]
-      numeric_items = []
-
-      if packet_def && packet_def['items']
-        packet_def['items'].each do |item|
-          # Skip non-numeric types and derived items
-          data_type = item['data_type']
-          next if data_type.nil?
-          next if ['STRING', 'BLOCK', 'DERIVED'].include?(data_type)
-          # Skip if it's a derived item (has read_conversion with no data_type or DERIVED type)
-          next if item['data_type'] == 'DERIVED'
-
-          item_name = item['name']
-          safe_name = OpenC3::QuestDBClient.sanitize_column_name(item_name)
-          numeric_items << { name: item_name, safe_name: safe_name }
-
-          # Add aggregations based on value_type
-          case value_type
-          when :RAW
-            selects << "min(\"#{safe_name}\") as \"#{safe_name}__N\""
-            selects << "max(\"#{safe_name}\") as \"#{safe_name}__X\""
-            selects << "avg(\"#{safe_name}\") as \"#{safe_name}__A\""
-            selects << "stddev(\"#{safe_name}\") as \"#{safe_name}__S\""
-          when :CONVERTED
-            # Try converted column first, with fallback to raw
-            selects << "min(\"#{safe_name}__C\") as \"#{safe_name}__CN\""
-            selects << "max(\"#{safe_name}__C\") as \"#{safe_name}__CX\""
-            selects << "avg(\"#{safe_name}__C\") as \"#{safe_name}__CA\""
-            selects << "stddev(\"#{safe_name}__C\") as \"#{safe_name}__CS\""
-          else
-            # Unsupported value_type for reduction
-            next
-          end
-        end
-      end
-
-      # If no numeric items found, skip this table
-      if numeric_items.empty?
+      selects, has_items = OpenC3::QuestDBClient.build_packet_reduced_selects(packet_def, value_type)
+      unless has_items
         OpenC3::Logger.warn("No numeric items found for reduced packet query on #{table_name}")
         next
       end
 
-      # Build the full query with SAMPLE BY
-      query = "SELECT #{selects.join(', ')} FROM \"#{table_name}\""
-      query += " WHERE PACKET_TIMESECONDS >= #{start_time}"
-      query += " AND PACKET_TIMESECONDS < #{end_time}" if end_time
-      query += " SAMPLE BY #{sample_interval}"
-      query += " ALIGN TO CALENDAR"
-      query += " ORDER BY PACKET_TIMESECONDS"
+      query = OpenC3::QuestDBClient.build_reduced_query(table_name, selects, start_time, end_time, sample_interval)
 
-      min = 0
-      max = @max_batch_size
-      table_done = false
-
-      while !table_done and !@cancel_thread
-        begin
-          @@conn_mutex.synchronize do
-            @@conn ||= PG::Connection.new(host: ENV['OPENC3_TSDB_HOSTNAME'],
-                                          port: ENV['OPENC3_TSDB_QUERY_PORT'],
-                                          user: ENV['OPENC3_TSDB_USERNAME'],
-                                          password: ENV['OPENC3_TSDB_PASSWORD'],
-                                          dbname: 'qdb')
-            if @@conn.type_map_for_results.is_a? PG::TypeMapAllStrings
-              @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
-            end
-
-            query_offset = "#{query} LIMIT #{min}, #{max}"
-            OpenC3::Logger.debug("QuestDB reduced packet query: #{query_offset}")
-            results = []
-            result = @@conn.exec(query_offset)
-            min += @max_batch_size
-            max += @max_batch_size
-
-            if result.nil? or result.ntuples == 0
-              table_done = true
-            else
-              result.each do |tuples|
-                objects.each do |object|
-                  entry = {
-                    "__type" => "PACKET",
-                    "__packet" => object.key
-                  }
-
-                  tuples.each do |tuple|
-                    col_name = tuple[0]
-                    value = tuple[1]
-
-                    if col_name == 'PACKET_TIMESECONDS'
-                      # Use nanosecond integer directly for full precision
-                      entry['__time'] = value.to_i
-                      next
-                    end
-
-                    # Decode aggregated value (always numeric)
-                    decoded_value = OpenC3::QuestDBClient.decode_value(value, data_type: 'DOUBLE', array_size: nil)
-
-                    # Map column name back to item name format expected by client
-                    # e.g., TEMP1__A -> TEMP1 with reduced_type AVG
-                    entry[col_name] = decoded_value
-                  end
-
-                  # Track the latest timestamp per topic for TSDB→STREAM bridge
-                  if entry['__time']
-                    prev = @last_tsdb_times[object.topic]
-                    @last_tsdb_times[object.topic] = entry['__time'] if !prev or entry['__time'] > prev
-                  end
-                  results << entry
-                end
-              end
-              @streaming_api.transmit_results(results) unless results.empty?
-              results.clear
-            end
+      OpenC3::QuestDBClient.paginate_query(query, @max_batch_size, label: "reduced packet query") do |result|
+        break if @cancel_thread
+        results = []
+        result.each do |tuples|
+          decoded = OpenC3::QuestDBClient.decode_reduced_row(tuples)
+          objects.each do |object|
+            entry = decoded.merge("__type" => "PACKET", "__packet" => object.key)
+            track_tsdb_time(object.topic, entry['__time'])
+            results << entry
           end
-        rescue IOError, PG::Error => e
-          retry_count += 1
-          if retry_count > 4
-            raise "Error querying QuestDB for reduced packets: #{e.message}"
-          end
-          OpenC3::Logger.warn("QuestDB: Retrying reduced packet query due to error: #{e.message}")
-          @@conn_mutex.synchronize do
-            if @@conn and !@@conn.finished?
-              @@conn.finish()
-            end
-            @@conn = nil
-          end
-          sleep 0.1
-          retry
         end
+        @streaming_api.transmit_results(results) unless results.empty?
       end
 
-      done = true if end_time and end_time <= Time.now.to_nsec_from_epoch
+      done = true if past_end_time?(end_time)
     end
 
     done
   end
 
-  def build_packet_entry(tuples, object, value_type, packet_def = nil)
-    entry = {
-      "__type" => "PACKET",
-      "__packet" => object.key
-    }
+  # --- TSDB query helpers (shared across stream_* methods) ---
 
-    # Build mapping from column name to item definition for type-aware decoding
-    item_defs = {}
-    if packet_def
-      packet_def['items']&.each do |item|
-        # Sanitize item name same way as TSDB storage
-        safe_name = item['name'].gsub(/[?\.,'"\\\/:\)\(\+=\-\*\%~;!@#\$\^&]/, '_')
-        item_defs[safe_name] = item
+  # Returns [start_time, end_time] from the min/max of all objects' time bounds.
+  def compute_time_range(objects_by_topic)
+    start_time = nil
+    end_time = nil
+    objects_by_topic.each_value do |objects|
+      objects.each do |object|
+        start_time = object.start_time if object.start_time and (start_time.nil? or object.start_time < start_time)
+        end_time = object.end_time if object.end_time and (end_time.nil? or object.end_time > end_time)
       end
     end
+    [start_time, end_time]
+  end
 
-    # First pass: build a hash of all columns for lookup
-    columns = {}
-    tuples.each do |tuple|
-      column_name = tuple[0]
-      value = tuple[1]
-      columns[column_name] = value
-    end
+  # Updates @last_tsdb_times for the given topic if time_ns is newer.
+  def track_tsdb_time(topic, time_ns)
+    return unless time_ns
+    prev = @last_tsdb_times[topic]
+    @last_tsdb_times[topic] = time_ns if !prev or time_ns > prev
+  end
 
-    # Track timestamp values for computing derived items
-    cosmos_timestamp_ns = nil
-    received_time_pg = nil
-
-    # Second pass: process columns based on value_type
-    tuples.each do |tuple|
-      column_name = tuple[0]
-      raw_value = tuple[1]
-
-      # PACKET_TIMESECONDS is the designated timestamp - convert PG timestamp to nanoseconds
-      if column_name == 'PACKET_TIMESECONDS'
-        pkt_time = OpenC3::QuestDBClient.pg_timestamp_to_utc(raw_value)
-        cosmos_timestamp_ns = pkt_time.tv_sec * 1_000_000_000 + pkt_time.tv_nsec
-        entry['__time'] = cosmos_timestamp_ns
-        next
-      end
-
-      # Capture RECEIVED_TIMESECONDS for conversion below
-      if column_name == 'RECEIVED_TIMESECONDS'
-        received_time_pg = raw_value
-        next
-      end
-
-      # Skip metadata columns
-      next if column_name == 'COSMOS_DATA_TAG'
-      if column_name == 'COSMOS_EXTRA'
-        entry['COSMOS_EXTRA'] = raw_value
-        next
-      end
-
-      # Determine the base item name (remove __C, __F, __U suffixes)
-      base_name = column_name.sub(/(__C|__F|__U)$/, '')
-      item_def = item_defs[base_name]
-
-      # Determine data_type and array_size based on column suffix and item definition
-      if column_name.end_with?('__F', '__U')
-        # Formatted values are always strings
-        data_type = 'STRING'
-        array_size = nil
-      elsif column_name.end_with?('__C') && item_def
-        # Converted values - check read_conversion
-        rc = item_def['read_conversion']
-        if rc && rc['converted_type']
-          data_type = rc['converted_type']
-          array_size = item_def['array_size']
-        elsif item_def['states']
-          data_type = 'STRING'
-          array_size = nil
-        else
-          data_type = item_def['data_type']
-          array_size = item_def['array_size']
-        end
-      elsif item_def
-        data_type = item_def['data_type']
-        array_size = item_def['array_size']
-      else
-        data_type = nil
-        array_size = nil
-      end
-
-      # Decode value using type info
-      value = OpenC3::QuestDBClient.decode_value(raw_value, data_type: data_type, array_size: array_size)
-
-      # Map column names based on value_type
-      # TSDB columns: item (RAW), item__C (CONVERTED), item__F (FORMATTED)
-      case value_type
-      when :RAW
-        # Only include base columns (no suffix)
-        next if column_name.end_with?('__C', '__F', '__U')
-        entry[column_name] = value
-      when :CONVERTED
-        # Prefer __C columns, fall back to base
-        if column_name.end_with?('__C')
-          base_name = column_name.sub(/__C$/, '')
-          entry[base_name] = value
-        elsif !column_name.end_with?('__F', '__U') && !columns.key?("#{column_name}__C")
-          entry[column_name] = value
-        end
-      when :FORMATTED, :WITH_UNITS
-        # Prefer __F columns, fall back to __C, then base
-        if column_name.end_with?('__F')
-          base_name = column_name.sub(/__F$/, '')
-          entry[base_name] = value
-        elsif column_name.end_with?('__C') && !columns.key?("#{column_name.sub(/__C$/, '')}__F")
-          base_name = column_name.sub(/__C$/, '')
-          entry[base_name] = value
-        elsif !column_name.end_with?('__C', '__F', '__U') && !columns.key?("#{column_name}__F") && !columns.key?("#{column_name}__C")
-          entry[column_name] = value
-        end
-      end
-    end
-
-    # Compute PACKET_TIMESECONDS and PACKET_TIMEFORMATTED from packet timestamp nanoseconds
-    if cosmos_timestamp_ns
-      pkt_time = Time.at(cosmos_timestamp_ns / 1_000_000_000, cosmos_timestamp_ns % 1_000_000_000, :nsec, in: '+00:00')
-      entry['PACKET_TIMESECONDS'] = OpenC3::QuestDBClient.format_timestamp(pkt_time, :seconds)
-      entry['PACKET_TIMEFORMATTED'] = OpenC3::QuestDBClient.format_timestamp(pkt_time, :formatted)
-    end
-
-    # Compute RECEIVED_TIMESECONDS and RECEIVED_TIMEFORMATTED from PG timestamp
-    if received_time_pg
-      rcv_utc = OpenC3::QuestDBClient.pg_timestamp_to_utc(received_time_pg)
-      entry['RECEIVED_TIMESECONDS'] = OpenC3::QuestDBClient.format_timestamp(rcv_utc, :seconds)
-      entry['RECEIVED_TIMEFORMATTED'] = OpenC3::QuestDBClient.format_timestamp(rcv_utc, :formatted)
-    end
-
-    entry
+  # Returns true if end_time is set and has been reached.
+  def past_end_time?(end_time)
+    end_time and end_time <= Time.now.to_nsec_from_epoch
   end
 
   def handle_packet(packet, objects)

@@ -17,7 +17,7 @@ AVAILABLE_IMAGES=(
 
 # Check for help flag
 if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
-  echo "Usage: openc3_build_ubi.sh [IMAGE_NAME...]"
+  echo "Usage: openc3_build_ubi.sh [BUILD_FLAGS...] [IMAGE_NAME...]"
   echo ""
   echo "Builds OpenC3 Core UBI (Universal Base Image) containers for enterprise deployments."
   echo ""
@@ -25,6 +25,7 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "suitable for air-gapped and government environments."
   echo ""
   echo "Arguments:"
+  echo "  BUILD_FLAGS   Additional flags to pass to docker build (e.g., --no-cache, --pull)"
   echo "  IMAGE_NAME    One or more image names to build (optional)"
   echo "                If no images are specified, all images will be built"
   echo ""
@@ -49,8 +50,9 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo ""
   echo "Examples:"
   echo "  openc3_build_ubi.sh                           # Build all images"
+  echo "  openc3_build_ubi.sh --no-cache                # Build all images without cache"
   echo "  openc3_build_ubi.sh openc3-ruby-ubi           # Build only openc3-ruby-ubi"
-  echo "  openc3_build_ubi.sh openc3-ruby-ubi openc3-base-ubi  # Build multiple images"
+  echo "  openc3_build_ubi.sh --no-cache openc3-ruby-ubi openc3-base-ubi  # Build multiple images without cache"
   exit 0
 fi
 
@@ -59,15 +61,25 @@ set -e
 # Save the script's starting directory for use in helper functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-# Parse command line arguments to determine which images to build
+# Parse command line arguments to separate build flags from image names
+BUILD_FLAGS=()
 IMAGES_TO_BUILD=()
-if [[ $# -eq 0 ]]; then
-  # No arguments provided, build all images
+REMAINING_ARGS=()
+for arg in "$@"; do
+  if [[ "$arg" == -* ]]; then
+    BUILD_FLAGS+=("$arg")
+  else
+    REMAINING_ARGS+=("$arg")
+  fi
+done
+
+if [[ ${#REMAINING_ARGS[@]} -eq 0 ]]; then
+  # No image names provided, build all images
   IMAGES_TO_BUILD=("${AVAILABLE_IMAGES[@]}")
   echo "No images specified, building all images..."
 else
   # Validate provided image names
-  for arg in "$@"; do
+  for arg in "${REMAINING_ARGS[@]}"; do
     # Check if the image is in the available list
     if [[ " ${AVAILABLE_IMAGES[@]} " =~ " ${arg} " ]]; then
       IMAGES_TO_BUILD+=("$arg")
@@ -97,14 +109,17 @@ then
   fi
 fi
 
-# Detect host architecture and set platform flag
-# On ARM Macs, some x86 images use x86-64-v3 which can't be emulated
+# UBI images are built for linux/amd64 (Red Hat enterprise environments are x86_64)
+# Always set the platform flag regardless of host architecture to avoid platform
+# mismatch warnings when running on ARM hosts (e.g. Apple Silicon Macs)
+PLATFORM_FLAG="--platform linux/amd64"
+
+# QuestDB RHEL images publish a native linux/arm64 variant. On ARM hosts, build
+# tsdb natively to avoid the x86-64-v3 QEMU emulation failure at runtime.
 if [[ "$(uname -m)" == "arm64" ]]; then
-  echo "Detected ARM architecture - building native images"
-  PLATFORM_FLAG=""
+  TSDB_PLATFORM_FLAG=""
 else
-  echo "Detected x86 architecture - building linux/amd64 images"
-  PLATFORM_FLAG="--platform linux/amd64"
+  TSDB_PLATFORM_FLAG="--platform linux/amd64"
 fi
 
 # Function to check and perform registry login
@@ -189,6 +204,7 @@ if should_build "openc3-ruby-ubi"; then
     --build-arg OPENC3_UBI_TAG=$OPENC3_UBI_TAG \
     --build-arg RUBYGEMS_URL=$RUBYGEMS_URL \
     --build-arg PYPI_URL=$PYPI_URL \
+    "${BUILD_FLAGS[@]}" \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby-ubi:${OPENC3_TAG}" \
     .
@@ -211,6 +227,7 @@ if should_build "openc3-base-ubi"; then
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
     --build-arg OPENC3_IMAGE=openc3-ruby-ubi \
+    "${BUILD_FLAGS[@]}" \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-base-ubi:${OPENC3_TAG}" \
     .
@@ -232,6 +249,7 @@ if should_build "openc3-node-ubi"; then
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
     --build-arg NPM_URL=$NPM_URL \
+    "${BUILD_FLAGS[@]}" \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-node-ubi:${OPENC3_TAG}" \
     .
@@ -251,6 +269,7 @@ if should_build "openc3-buckets-ubi"; then
     --build-arg OPENC3_UBI_REGISTRY=${OPENC3_UBI_REGISTRY} \
     --build-arg OPENC3_UBI_IMAGE=${OPENC3_UBI_IMAGE} \
     --build-arg OPENC3_UBI_TAG=${OPENC3_UBI_TAG} \
+    "${BUILD_FLAGS[@]}" \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-buckets-ubi:${OPENC3_TAG}" \
     .
@@ -270,6 +289,7 @@ if should_build "openc3-redis-ubi"; then
     --build-arg OPENC3_UBI_REGISTRY=${OPENC3_UBI_REGISTRY} \
     --build-arg OPENC3_UBI_IMAGE=${OPENC3_UBI_IMAGE} \
     --build-arg OPENC3_UBI_TAG=${OPENC3_UBI_TAG} \
+    "${BUILD_FLAGS[@]}" \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis-ubi:${OPENC3_TAG}" \
     .
@@ -284,10 +304,11 @@ if should_build "openc3-tsdb-ubi"; then
   START_TIME=$SECONDS
   cd openc3-tsdb
   docker build \
+    -f Dockerfile-ubi \
     --network host \
-    --build-arg OPENC3_TSDB_VERSION_EXT="-rhel" \
     --build-arg OPENC3_DEPENDENCY_REGISTRY="${OPENC3_DEPENDENCY_REGISTRY}" \
-    $PLATFORM_FLAG \
+    "${BUILD_FLAGS[@]}" \
+    $TSDB_PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb-ubi:${OPENC3_TAG}" \
     .
   cd ..
@@ -304,12 +325,12 @@ if should_build "openc3-cosmos-cmd-tlm-api-ubi"; then
   # Clean up any .bundle directory to avoid corrupted config files
   rm -rf .bundle
   docker build \
-    -f Dockerfile-ubi \
     --network host \
     --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
     --build-arg OPENC3_IMAGE=openc3-base-ubi \
+    "${BUILD_FLAGS[@]}" \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-cmd-tlm-api-ubi:${OPENC3_TAG}" \
     .
@@ -328,12 +349,12 @@ if should_build "openc3-cosmos-script-runner-api-ubi"; then
   # Clean up any .bundle directory to avoid corrupted config files
   rm -rf .bundle
   docker build \
-    -f Dockerfile-ubi \
     --network host \
     --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
     --build-arg OPENC3_IMAGE=openc3-base-ubi \
+    "${BUILD_FLAGS[@]}" \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-script-runner-api-ubi:${OPENC3_TAG}" \
     .
@@ -354,6 +375,7 @@ if should_build "openc3-operator-ubi"; then
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
     --build-arg OPENC3_IMAGE=openc3-base-ubi \
+    "${BUILD_FLAGS[@]}" \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-operator-ubi:${OPENC3_TAG}" \
     .
@@ -376,7 +398,8 @@ if should_build "openc3-traefik-ubi"; then
     --network host \
     --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik \
     --build-arg TRAEFIK_CONFIG=$TRAEFIK_CONFIG \
-    --build-arg OPENC3_TRAEFIK_RELEASE=v3.6.5 \
+    --build-arg OPENC3_TRAEFIK_RELEASE=v3.6.11 \
+    "${BUILD_FLAGS[@]}" \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik-ubi:${OPENC3_TAG}" \
     .
@@ -400,6 +423,7 @@ if should_build "openc3-cosmos-init-ubi"; then
     --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
+    "${BUILD_FLAGS[@]}" \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init-ubi:${OPENC3_TAG}" \
     .

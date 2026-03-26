@@ -23,13 +23,15 @@ module OpenC3
     describe "instance" do
       it "returns a single instance" do
         expect(Stdout.instance).to eq(Stdout.instance)
+        Stdout.class_variable_set(:@@instance, nil)
       end
     end
 
     describe "puts" do
       it "writes to STDOUT" do
-        expect($stdout).to receive(:puts).with("TEST")
+        expect(STDOUT).to receive(:puts).with("TEST")
         Stdout.instance.puts("TEST")
+        Stdout.class_variable_set(:@@instance, nil)
       end
     end
   end

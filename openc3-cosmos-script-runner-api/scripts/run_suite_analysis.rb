@@ -20,7 +20,6 @@ $openc3_scope = ARGV[0]
 require 'json'
 require 'openc3'
 require 'openc3/script/suite_runner'
-require '../app/models/script'
 require 'openc3/utilities/running_script'
 require ARGV[1]
 

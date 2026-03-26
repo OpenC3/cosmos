@@ -47,6 +47,9 @@ $disconnect = false
 $openc3_scope = ENV['OPENC3_SCOPE'] || 'DEFAULT'
 $openc3_in_cluster = false
 
+saved_verbose = $VERBOSE
+$VERBOSE = false
+
 module OpenC3
   module Script
     private
@@ -177,6 +180,10 @@ module OpenC3
       message_box(string, *items, **options)
     end
 
+    def check_box(string, *items, **options)
+      message_box(string, *items, **options)
+    end
+
     def _file_dialog(title, message, filter:)
       answer = ''
       path = "./*"
@@ -197,6 +204,16 @@ module OpenC3
 
     def open_files_dialog(title, message = "Open File(s)", filter:)
       _file_dialog(title, message, filter)
+    end
+
+    def open_bucket_dialog(title, message = "Open Bucket File")
+      answer = ''
+      while answer.empty?
+        print "#{title}\n#{message}\n<Type bucket file path (e.g. BUCKET/path/to/file)>:"
+        answer = gets
+        answer.chomp!
+      end
+      return answer
     end
 
     def prompt(string, text_color: nil, background_color: nil, font_size: nil, font_family: nil, details: nil)
@@ -363,3 +380,5 @@ module OpenC3
     end
   end
 end
+
+$VERBOSE = saved_verbose

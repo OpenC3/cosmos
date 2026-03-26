@@ -41,7 +41,7 @@ spec = Gem::Specification.new do |s|
   end
   s.required_ruby_version = '>= 3.0'
 
-  s.version = '7.0.0.pre.rc3'
+  s.version = '7.0.0.pre.rc4'
   s.license = "OpenC3"
 
   # Executables
@@ -68,6 +68,7 @@ spec = Gem::Specification.new do |s|
   s.files = Dir.glob("{bin,data,ext,lib,spec,tasks,templates,test}/**/*", File::FNM_DOTMATCH) + %w(Gemfile Guardfile LICENSE.md Rakefile README.md)
 
   # Runtime Dependencies
+  s.add_runtime_dependency 'activesupport', '~> 8.0' # Required for deep_dup in packet.rb
   s.add_runtime_dependency 'erb',       '~> 6.0'
   s.add_runtime_dependency 'pg',        '~> 1.5'
   s.add_runtime_dependency 'csv',       '~> 3.3'
@@ -117,7 +118,6 @@ spec = Gem::Specification.new do |s|
 
   # Development Dependencies
   s.add_development_dependency 'benchmark-ips', '~> 2.9'
-  s.add_development_dependency 'diff-lcs', '~> 1.4' if RUBY_ENGINE == 'ruby' # Get latest for MRI
   s.add_development_dependency 'faraday-follow_redirects', '~> 0.3'
   s.add_development_dependency 'flay', '~> 2.12'
   s.add_development_dependency 'flog', '~> 4.6'
@@ -128,7 +128,7 @@ spec = Gem::Specification.new do |s|
   s.add_development_dependency 'rspec', '~> 3.10'
   s.add_development_dependency 'rspec-rails', '~> 8.0'
   s.add_development_dependency 'rspec_junit_formatter', '~> 0.4'
-  s.add_development_dependency 'ruby-prof', '~> 1.4' if RUBY_ENGINE == 'ruby' # MRI Only
+  s.add_development_dependency 'ruby-prof', '~> 2.0' if RUBY_ENGINE == 'ruby' # MRI Only
   s.add_development_dependency 'simplecov', '~> 0.22'
   s.add_development_dependency 'rexml', '3.4.4' # 3.4.2 throws an error. See https://github.com/ruby/rexml/issues/287
   s.add_development_dependency 'simplecov-cobertura', '~> 3.0'

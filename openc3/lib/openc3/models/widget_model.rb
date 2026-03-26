@@ -15,9 +15,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3/top_level'
 require 'openc3/models/model'
-require 'openc3/models/scope_model'
+# require 'openc3/models/scope_model' # Circular require
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/bucket_utilities'
 
@@ -126,13 +125,6 @@ module OpenC3
     end
 
     def deploy(gem_path, variables, validate_only: false)
-      # Ensure tools bucket exists
-      bucket = nil
-      unless validate_only
-        bucket = Bucket.getClient()
-        bucket.ensure_public(ENV['OPENC3_TOOLS_BUCKET'])
-      end
-
       filename = gem_path + "/tools/widgets/" + @full_name + '/' + @filename
 
       # Load widget file
@@ -146,6 +138,7 @@ module OpenC3
       unless validate_only
         cache_control = BucketUtilities.get_cache_control(@filename)
         # TODO: support widgets that aren't just a single js file (and its associated map file)
+        bucket = Bucket.getClient()
         bucket.put_object(bucket: ENV['OPENC3_TOOLS_BUCKET'], content_type: 'application/javascript', cache_control: cache_control, key: @bucket_key, body: data)
         data = File.read(filename + '.map', mode: "rb")
         bucket.put_object(bucket: ENV['OPENC3_TOOLS_BUCKET'], content_type: 'application/json', cache_control: cache_control, key: @bucket_key + '.map', body: data)

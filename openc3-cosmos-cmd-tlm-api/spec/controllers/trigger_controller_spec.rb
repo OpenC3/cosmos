@@ -96,7 +96,7 @@ RSpec.describe TriggerController, type: :controller do
 
     it "returns 404 when the trigger is not found" do
       get :show, params: {group: GROUP, scope: "DEFAULT", name: "NONEXISTENT"}
-      expect(response).to have_http_status(404)
+      expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("not found")
@@ -105,7 +105,7 @@ RSpec.describe TriggerController, type: :controller do
     it "returns 400 when a TriggerInputError occurs" do
       allow(OpenC3::TriggerModel).to receive(:get).and_raise(OpenC3::TriggerInputError.new("Invalid trigger input"))
       get :show, params: {group: GROUP, scope: "DEFAULT", name: "TRIG1"}
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("Invalid trigger input")
@@ -115,7 +115,7 @@ RSpec.describe TriggerController, type: :controller do
     it "returns 500 when an unexpected error occurs" do
       allow(OpenC3::TriggerModel).to receive(:get).and_raise(StandardError.new("Unexpected error"))
       get :show, params: {group: GROUP, scope: "DEFAULT", name: "TRIG1"}
-      expect(response).to have_http_status(500)
+      expect(response).to have_http_status(:internal_server_error)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("Unexpected error")
@@ -145,14 +145,14 @@ RSpec.describe TriggerController, type: :controller do
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to match(/invalid operand, must contain target, packet, item and valueType/)
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "returns 418 when a TriggerError occurs" do
       hash = generate_trigger_hash
       allow_any_instance_of(OpenC3::TriggerModel).to receive(:create).and_raise(OpenC3::TriggerError.new("Trigger processing error"))
       post :create, params: hash.merge({scope: "DEFAULT"})
-      expect(response).to have_http_status(418)
+      expect(response).to have_http_status(:unprocessable_entity)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("Trigger processing error")
@@ -163,7 +163,7 @@ RSpec.describe TriggerController, type: :controller do
       hash = generate_trigger_hash
       allow_any_instance_of(OpenC3::TriggerModel).to receive(:create).and_raise(StandardError.new("Unexpected error"))
       post :create, params: hash.merge({scope: "DEFAULT"})
-      expect(response).to have_http_status(500)
+      expect(response).to have_http_status(:internal_server_error)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("Unexpected error")
@@ -220,7 +220,7 @@ RSpec.describe TriggerController, type: :controller do
       }
 
       patch :update, params: update_hash.merge({scope: "DEFAULT", group: GROUP, name: "NONEXISTENT"})
-      expect(response).to have_http_status(404)
+      expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("not found")
@@ -243,7 +243,7 @@ RSpec.describe TriggerController, type: :controller do
 
       allow_any_instance_of(OpenC3::TriggerModel).to receive(:left=).and_raise(OpenC3::TriggerInputError.new("Invalid left operand"))
       patch :update, params: update_hash.merge({scope: "DEFAULT", group: GROUP, name: @trigger_name})
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("Invalid left operand")
@@ -268,7 +268,7 @@ RSpec.describe TriggerController, type: :controller do
 
       allow_any_instance_of(OpenC3::TriggerModel).to receive(:notify).and_raise(OpenC3::TriggerError.new("Trigger processing error"))
       patch :update, params: update_hash.merge({scope: "DEFAULT", group: GROUP, name: @trigger_name})
-      expect(response).to have_http_status(418)
+      expect(response).to have_http_status(:unprocessable_entity)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("Trigger processing error")
@@ -293,7 +293,7 @@ RSpec.describe TriggerController, type: :controller do
 
       allow_any_instance_of(OpenC3::TriggerModel).to receive(:notify).and_raise(StandardError.new("Unexpected error"))
       patch :update, params: update_hash.merge({scope: "DEFAULT", group: GROUP, name: @trigger_name})
-      expect(response).to have_http_status(500)
+      expect(response).to have_http_status(:internal_server_error)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("Unexpected error")
@@ -317,7 +317,7 @@ RSpec.describe TriggerController, type: :controller do
 
     it "returns 404 when the trigger is not found" do
       post :enable, params: {scope: "DEFAULT", group: GROUP, name: "NONEXISTENT"}
-      expect(response).to have_http_status(404)
+      expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("not found")
@@ -326,7 +326,7 @@ RSpec.describe TriggerController, type: :controller do
     it "returns 500 when an unexpected error occurs" do
       allow_any_instance_of(OpenC3::TriggerModel).to receive(:notify_enable).and_raise(StandardError.new("Unexpected error"))
       post :enable, params: {scope: "DEFAULT", group: GROUP, name: @trigger_name}
-      expect(response).to have_http_status(500)
+      expect(response).to have_http_status(:internal_server_error)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("Unexpected error")
@@ -350,7 +350,7 @@ RSpec.describe TriggerController, type: :controller do
 
     it "returns 404 when the trigger is not found" do
       post :disable, params: {scope: "DEFAULT", group: GROUP, name: "NONEXISTENT"}
-      expect(response).to have_http_status(404)
+      expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("not found")
@@ -359,7 +359,7 @@ RSpec.describe TriggerController, type: :controller do
     it "returns 500 when an unexpected error occurs" do
       allow_any_instance_of(OpenC3::TriggerModel).to receive(:notify_disable).and_raise(StandardError.new("Unexpected error"))
       post :disable, params: {scope: "DEFAULT", group: GROUP, name: @trigger_name}
-      expect(response).to have_http_status(500)
+      expect(response).to have_http_status(:internal_server_error)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("Unexpected error")
@@ -396,7 +396,7 @@ RSpec.describe TriggerController, type: :controller do
       allow_any_instance_of(OpenC3::TriggerModel).to receive(:dependents).and_return(["REACTION1"])
 
       delete :destroy, params: {scope: "DEFAULT", name: trigger_name, group: GROUP}
-      expect(response).to have_http_status(404)
+      expect(response).to have_http_status(:not_found)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to match(/has dependents:/)
@@ -411,7 +411,7 @@ RSpec.describe TriggerController, type: :controller do
       allow_any_instance_of(OpenC3::TriggerModel).to receive(:notify).and_raise(StandardError.new("Unexpected error"))
 
       delete :destroy, params: {scope: "DEFAULT", name: trigger_name, group: GROUP}
-      expect(response).to have_http_status(500)
+      expect(response).to have_http_status(:internal_server_error)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("Unexpected error")

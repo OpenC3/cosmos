@@ -139,6 +139,140 @@ RSpec.describe StreamingApi, type: :model do
     expect(@api.instance_variable_get('@logged_threads')).to be_empty
   end
 
+  describe '#expand_all_packets' do
+    before(:each) do
+      allow(OpenC3::TargetModel).to receive(:names).with(scope: 'DEFAULT').and_return(['INST', 'SYSTEM', 'EMPTY', 'UNKNOWN'])
+      allow(OpenC3::TargetModel).to receive(:packets).with('INST', type: :CMD, scope: 'DEFAULT').and_return([
+        { 'packet_name' => 'COLLECT' },
+        { 'packet_name' => 'ABORT' },
+        { 'packet_name' => 'CLEAR' },
+      ])
+      allow(OpenC3::TargetModel).to receive(:packets).with('INST', type: :TLM, scope: 'DEFAULT').and_return([
+        { 'packet_name' => 'HEALTH_STATUS' },
+        { 'packet_name' => 'PARAMS' },
+      ])
+      allow(OpenC3::TargetModel).to receive(:packets).with('SYSTEM', type: :CMD, scope: 'DEFAULT').and_return([
+        { 'packet_name' => 'META' },
+      ])
+      allow(OpenC3::TargetModel).to receive(:packets).with('SYSTEM', type: :TLM, scope: 'DEFAULT').and_return([
+        { 'packet_name' => 'META' },
+      ])
+      allow(OpenC3::TargetModel).to receive(:packets).with('EMPTY', type: :CMD, scope: 'DEFAULT').and_raise(RuntimeError, "no packets")
+      allow(OpenC3::TargetModel).to receive(:packets).with('EMPTY', type: :TLM, scope: 'DEFAULT').and_raise(RuntimeError, "no packets")
+    end
+
+    it 'expands COSMOS_ALL for a specific target in DECOM mode' do
+      data = { 'packets' => ['DECOM__CMD__INST__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT' }
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
+      expect(data['packets']).to eq([
+        'DECOM__CMD__INST__COLLECT__CONVERTED',
+        'DECOM__CMD__INST__ABORT__CONVERTED',
+        'DECOM__CMD__INST__CLEAR__CONVERTED',
+      ])
+    end
+
+    it 'expands COSMOS_ALL for a specific target in RAW mode (no value type)' do
+      data = { 'packets' => ['RAW__CMD__INST__COSMOS_ALL'], 'scope' => 'DEFAULT' }
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
+      expect(data['packets']).to eq([
+        'RAW__CMD__INST__COLLECT',
+        'RAW__CMD__INST__ABORT',
+        'RAW__CMD__INST__CLEAR',
+      ])
+    end
+
+    it 'expands COSMOS_ALL for all targets' do
+      data = { 'packets' => ['DECOM__TLM__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT' }
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
+      expect(data['packets']).to eq([
+        'DECOM__TLM__INST__HEALTH_STATUS__CONVERTED',
+        'DECOM__TLM__INST__PARAMS__CONVERTED',
+        'DECOM__TLM__SYSTEM__META__CONVERTED',
+      ])
+    end
+
+    it 'passes through non-COSMOS_ALL keys unchanged' do
+      data = { 'packets' => ['DECOM__CMD__INST__COLLECT__CONVERTED'], 'scope' => 'DEFAULT' }
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
+      expect(data['packets']).to eq(['DECOM__CMD__INST__COLLECT__CONVERTED'])
+    end
+
+    it 'handles mixed COSMOS_ALL and concrete keys' do
+      data = { 'packets' => ['DECOM__CMD__INST__COLLECT__CONVERTED', 'RAW__CMD__INST__COSMOS_ALL'], 'scope' => 'DEFAULT' }
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
+      expect(data['packets']).to eq([
+        'DECOM__CMD__INST__COLLECT__CONVERTED',
+        'RAW__CMD__INST__COLLECT',
+        'RAW__CMD__INST__ABORT',
+        'RAW__CMD__INST__CLEAR',
+      ])
+    end
+
+    it 'handles COSMOS_ALL with nonexistent target gracefully' do
+      allow(OpenC3::TargetModel).to receive(:packets).with('BOGUS', type: :CMD, scope: 'DEFAULT').and_raise(RuntimeError, "Target 'BOGUS' does not exist")
+      data = { 'packets' => ['DECOM__CMD__BOGUS__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT' }
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
+      expect(data['packets']).to eq([])
+    end
+
+    it 'does nothing when packets key is absent' do
+      data = { 'items' => ['DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED'], 'scope' => 'DEFAULT' }
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
+      expect(data['packets']).to be_nil
+    end
+
+    it 'skips targets without the requested packet type for COSMOS_ALL targets' do
+      allow(OpenC3::TargetModel).to receive(:packets).with('UNKNOWN', type: :CMD, scope: 'DEFAULT').and_return([
+        { 'packet_name' => 'UNKNOWN' },
+      ])
+      data = { 'packets' => ['RAW__CMD__COSMOS_ALL'], 'scope' => 'DEFAULT' }
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
+      # EMPTY target raises RuntimeError, so it should be skipped
+      empty_packets = data['packets'].select { |p| p.include?('EMPTY') }
+      expect(empty_packets).to be_empty
+      expect(data['packets']).to include('RAW__CMD__INST__COLLECT')
+      expect(data['packets']).to include('RAW__CMD__SYSTEM__META')
+    end
+
+    it 'skips UNKNOWN target for DECOM' do
+      allow(OpenC3::TargetModel).to receive(:packets).with('UNKNOWN', type: :CMD, scope: 'DEFAULT').and_return([
+        { 'packet_name' => 'UNKNOWN' },
+      ])
+      # COSMOS_ALL targets: UNKNOWN target should be excluded entirely
+      data = { 'packets' => ['DECOM__CMD__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT' }
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
+      unknown_packets = data['packets'].select { |p| p.include?('UNKNOWN') }
+      expect(unknown_packets).to be_empty
+    end
+
+    it 'keeps UNKNOWN target for RAW' do
+      allow(OpenC3::TargetModel).to receive(:packets).with('UNKNOWN', type: :CMD, scope: 'DEFAULT').and_return([
+        { 'packet_name' => 'UNKNOWN' },
+      ])
+      # COSMOS_ALL targets: UNKNOWN target should be included for RAW
+      data = { 'packets' => ['RAW__CMD__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT' }
+      @api.send(:expand_all_packets, data, scope: 'DEFAULT')
+      unknown_packets = data['packets'].select { |p| p.include?('UNKNOWN') }
+      expect(unknown_packets).not_to be_empty
+    end
+  end
+
+  describe 'add with COSMOS_ALL packets and authorization' do
+    it 'skips unauthorized packets when using COSMOS_ALL' do
+      $openc3_authorize = true
+      allow(OpenC3::TargetModel).to receive(:names).with(scope: 'DEFAULT').and_return(['INST'])
+      allow(OpenC3::TargetModel).to receive(:packets).with('INST', type: :CMD, scope: 'DEFAULT').and_return([
+        { 'packet_name' => 'COLLECT' },
+        { 'packet_name' => 'ABORT' },
+      ])
+      @send_count = 0
+      data = { 'packets' => ['DECOM__CMD__INST__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT', 'token' => 'invalid' }
+      # This should not raise - unauthorized packets are silently skipped
+      expect { @api.add(data) }.not_to raise_error
+      $openc3_authorize = false
+    end
+  end
+
   context 'streaming with Redis' do
     base_data = { 'scope' => 'DEFAULT' }
     modes = [
@@ -296,7 +430,7 @@ RSpec.describe StreamingApi, type: :model do
         context 'from files' do
           before(:each) do
             # Reset the class variable to prevent leaking between tests
-            LoggedStreamingThread.class_variable_set(:@@conn, nil) if LoggedStreamingThread.class_variable_defined?(:@@conn)
+            OpenC3::QuestDBClient.disconnect
             # Mock get_tlm_available since the TargetModel isn't populated in mock redis
             allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available) do |_instance, items, **_kwargs|
               items.map { |item| item.gsub('CONVERTED', 'RAW') }
@@ -305,12 +439,12 @@ RSpec.describe StreamingApi, type: :model do
 
           after(:each) do
             # Clean up the class variable after each test
-            LoggedStreamingThread.class_variable_set(:@@conn, nil) if LoggedStreamingThread.class_variable_defined?(:@@conn)
+            OpenC3::QuestDBClient.disconnect
           end
 
           it 'has start time and end time within the file time range' do
             mock_conn = instance_double(PG::Connection)
-            allow(PG::Connection).to receive(:new).and_return(mock_conn)
+            allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
             # Data format: each row is array of [column_name, value] pairs
             # Query selects item columns plus timestamp as last column
             pg_data = [ [["PACKET_TIMESECONDS", @file_start_time], ["VALUE1", 10]] ]
@@ -346,7 +480,7 @@ RSpec.describe StreamingApi, type: :model do
 
           it 'has start time within the file time range and end time after the file' do
             mock_conn = instance_double(PG::Connection)
-            allow(PG::Connection).to receive(:new).and_return(mock_conn)
+            allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
             # Data format: each row is array of [column_name, value] pairs
             # Multiple rows with timestamp values spread across file time range
             base_time = @file_start_time / 1_000_000_000
@@ -398,12 +532,12 @@ RSpec.describe StreamingApi, type: :model do
   context 'streaming packets' do
     before(:each) do
       # Reset the class variable to prevent leaking between tests
-      LoggedStreamingThread.class_variable_set(:@@conn, nil) if LoggedStreamingThread.class_variable_defined?(:@@conn)
+      OpenC3::QuestDBClient.disconnect
     end
 
     after(:each) do
       # Clean up the class variable after each test
-      LoggedStreamingThread.class_variable_set(:@@conn, nil) if LoggedStreamingThread.class_variable_defined?(:@@conn)
+      OpenC3::QuestDBClient.disconnect
     end
 
     context 'for packets in raw mode (from files)' do
@@ -457,14 +591,15 @@ RSpec.describe StreamingApi, type: :model do
 
       it 'streams decom packets from TSDB' do
         mock_conn = instance_double(PG::Connection)
-        allow(PG::Connection).to receive(:new).and_return(mock_conn)
+        allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
         # Return non-TypeMapAllStrings so it doesn't try to set the type map
         allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
 
         base_time = @file_start_time / 1_000_000_000
         # Mock data with all packet columns - including __C suffix for CONVERTED values
+        # Include __pkt_time_ns and __rx_time_ns columns from CAST(timestamp_ns AS LONG) in query
         pg_data = [
-          [["PACKET_TIMESECONDS", Time.at(base_time)], ["tag", "test"], ["VALUE1", 100], ["VALUE1__C", 10.5], ["VALUE2", 200], ["VALUE2__C", 20.5]]
+          [["PACKET_TIMESECONDS", Time.at(base_time)], ["tag", "test"], ["VALUE1", 100], ["VALUE1__C", 10.5], ["VALUE2", 200], ["VALUE2__C", 20.5], ["__pkt_time_ns", @file_start_time], ["__rx_time_ns", @file_start_time]]
         ]
         pg_data.define_singleton_method(:ntuples) { 1 }
 
@@ -501,17 +636,18 @@ RSpec.describe StreamingApi, type: :model do
 
       it 'streams all decom packets within time range' do
         mock_conn = instance_double(PG::Connection)
-        allow(PG::Connection).to receive(:new).and_return(mock_conn)
+        allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
         allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
 
         base_time = @file_start_time / 1_000_000_000
         # Multiple packets with different timestamps
+        # Include __pkt_time_ns and __rx_time_ns columns from CAST(timestamp_ns AS LONG) in query
         pg_data = [
-          [["PACKET_TIMESECONDS", Time.at(base_time)], ["tag", "test"], ["VALUE1", 100], ["VALUE1__C", 10.0]],
-          [["PACKET_TIMESECONDS", Time.at(base_time + 100)], ["tag", "test"], ["VALUE1", 200], ["VALUE1__C", 20.0]],
-          [["PACKET_TIMESECONDS", Time.at(base_time + 200)], ["tag", "test"], ["VALUE1", 300], ["VALUE1__C", 30.0]],
-          [["PACKET_TIMESECONDS", Time.at(base_time + 300)], ["tag", "test"], ["VALUE1", 400], ["VALUE1__C", 40.0]],
-          [["PACKET_TIMESECONDS", Time.at(base_time + 400)], ["tag", "test"], ["VALUE1", 500], ["VALUE1__C", 50.0]]
+          [["PACKET_TIMESECONDS", Time.at(base_time)], ["tag", "test"], ["VALUE1", 100], ["VALUE1__C", 10.0], ["__pkt_time_ns", @file_start_time], ["__rx_time_ns", @file_start_time]],
+          [["PACKET_TIMESECONDS", Time.at(base_time + 100)], ["tag", "test"], ["VALUE1", 200], ["VALUE1__C", 20.0], ["__pkt_time_ns", @file_start_time + 100_000_000_000], ["__rx_time_ns", @file_start_time + 100_000_000_000]],
+          [["PACKET_TIMESECONDS", Time.at(base_time + 200)], ["tag", "test"], ["VALUE1", 300], ["VALUE1__C", 30.0], ["__pkt_time_ns", @file_start_time + 200_000_000_000], ["__rx_time_ns", @file_start_time + 200_000_000_000]],
+          [["PACKET_TIMESECONDS", Time.at(base_time + 300)], ["tag", "test"], ["VALUE1", 400], ["VALUE1__C", 40.0], ["__pkt_time_ns", @file_start_time + 300_000_000_000], ["__rx_time_ns", @file_start_time + 300_000_000_000]],
+          [["PACKET_TIMESECONDS", Time.at(base_time + 400)], ["tag", "test"], ["VALUE1", 500], ["VALUE1__C", 50.0], ["__pkt_time_ns", @file_start_time + 400_000_000_000], ["__rx_time_ns", @file_start_time + 400_000_000_000]]
         ]
         pg_data.define_singleton_method(:ntuples) { 5 }
 
@@ -552,7 +688,7 @@ RSpec.describe StreamingApi, type: :model do
 
       it 'streams reduced minute data using SAMPLE BY' do
         mock_conn = instance_double(PG::Connection)
-        allow(PG::Connection).to receive(:new).and_return(mock_conn)
+        allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
         allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
 
         base_time = @file_start_time / 1_000_000_000
@@ -587,13 +723,13 @@ RSpec.describe StreamingApi, type: :model do
 
         # Verify first message contains aggregated data
         first_entry = @messages[0][0]
-        expect(first_entry['__type']).to eq('items')
+        expect(first_entry['__type']).to eq('ITEMS')
         expect(first_entry['__time']).to_not be_nil
       end
 
       it 'streams reduced hour data using SAMPLE BY 1h' do
         mock_conn = instance_double(PG::Connection)
-        allow(PG::Connection).to receive(:new).and_return(mock_conn)
+        allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
         allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
 
         base_time = @file_start_time / 1_000_000_000
@@ -626,7 +762,7 @@ RSpec.describe StreamingApi, type: :model do
 
       it 'streams reduced day data using SAMPLE BY 1d' do
         mock_conn = instance_double(PG::Connection)
-        allow(PG::Connection).to receive(:new).and_return(mock_conn)
+        allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
         allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
 
         base_time = @file_start_time / 1_000_000_000

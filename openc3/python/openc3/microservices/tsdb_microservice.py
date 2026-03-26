@@ -141,7 +141,7 @@ class TsdbMicroservice(Microservice):
 
         except IngressError as error:
             # Cast the value to fit the column type and retry
-            self.questdb.handle_ingress_error(error, table_name, values, timestamp_ns)
+            self.questdb.handle_ingress_error(error)
 
     def trim_topics(self):
         current_time_ms = int(time.time() * 1000)
@@ -167,10 +167,18 @@ class TsdbMicroservice(Microservice):
             except Exception as error:
                 self.error = error
                 self.logger.error(f"QuestDB: Microservice error:\n{traceback.format_exc()}")
+                self.questdb.pending_rows.clear()
+                try:
+                    time.sleep(0.1)
+                    self.questdb.connect_ingest()
+                    self.logger.info("QuestDB: Reconnected after error")
+                except Exception:
+                    self.logger.error(f"QuestDB: Failed to reconnect:\n{traceback.format_exc()}")
 
     def shutdown(self):
         """Graceful shutdown."""
         super().shutdown()
+        self.questdb.flush()
         self.questdb.close()
 
 

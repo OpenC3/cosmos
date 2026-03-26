@@ -161,12 +161,12 @@ test('cancels a process', async ({ page, utils }) => {
 
 test('adds an entire target', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST')
-  await expect(page.getByText('1-20 of 278')).toBeVisible()
+  await expect(page.getByText('1-20 of 279')).toBeVisible()
 })
 
 test('adds an entire packet', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS')
-  await expect(page.getByText('1-20 of 39')).toBeVisible()
+  await expect(page.getByText('1-20 of 40')).toBeVisible()
 })
 
 test('add, edits, deletes items', async ({ page, utils }) => {
@@ -411,5 +411,17 @@ test('outputs unique values only', async ({ page, utils }) => {
     let lines = contents.split('\n')
     expect(lines[0]).toContain('CCSDSVER')
     expect(lines.length).toEqual(2) // header and a single value
+  })
+})
+
+test('works with LATEST', async ({ page, utils }) => {
+  await utils.addTargetPacketItem('INST', '[ LATEST ]', 'ITEM4')
+  await utils.sleep(500)
+
+  await utils.download(page, 'text=Process', function (contents) {
+    expect(contents).toContain('INST,LATEST,HTML')
+    expect(contents).toContain('INST,LATEST,XML')
+    expect(contents).toContain('INST,LATEST,CBOR')
+    expect(contents).toContain('INST,LATEST,JSON')
   })
 })

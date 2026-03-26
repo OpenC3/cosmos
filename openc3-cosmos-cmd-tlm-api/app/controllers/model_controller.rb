@@ -22,7 +22,7 @@ class ModelController < ApplicationController
     return unless authorization('system')
     render json: @model_class.names(scope: params[:scope])
   rescue StandardError => error
-    render json: { status: 'error', message: error.message }, status: 500
+    render json: { status: 'error', message: error.message }, status: :internal_server_error
     logger.error(error.formatted)
   end
 
@@ -38,7 +38,7 @@ class ModelController < ApplicationController
     end
     head :ok
   rescue StandardError => error
-    render json: { status: 'error', message: error.message }, status: 500
+    render json: { status: 'error', message: error.message }, status: :internal_server_error
     logger.error(error.formatted)
   end
 
@@ -50,7 +50,7 @@ class ModelController < ApplicationController
       render json: @model_class.get(name: params[:id], scope: params[:scope])
     end
   rescue StandardError => error
-    render json: { status: 'error', message: error.message }, status: 500
+    render json: { status: 'error', message: error.message }, status: :internal_server_error
     logger.error(error.formatted)
   end
 
@@ -64,7 +64,7 @@ class ModelController < ApplicationController
     OpenC3::Logger.info("#{@model_class.name} destroyed: #{params[:id]}", scope: params[:scope], user: username())
     head :ok
   rescue StandardError => error
-    render json: { status: 'error', message: error.message }, status: 500
+    render json: { status: 'error', message: error.message }, status: :internal_server_error
     logger.error(error.formatted)
   end
 end

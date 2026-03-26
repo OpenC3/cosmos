@@ -73,7 +73,7 @@ class TargetsController < ModelController
     rescue Exception => e
       log_error(e)
       OpenC3::Logger.info("Target '#{id} download failed: #{e.message}", user: username())
-      render json: { status: 'error', message: e.message }, status: 500
+      render json: { status: 'error', message: e.message }, status: :internal_server_error
     end
   end
 end

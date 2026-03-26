@@ -3,6 +3,7 @@ Dockerfile
 Gemfile.lock
 .git
 .gitignore
+.claude/
 .vscode/
 **/node_modules
 coverage/

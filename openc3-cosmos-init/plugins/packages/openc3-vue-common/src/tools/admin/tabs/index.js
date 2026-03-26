@@ -65,6 +65,12 @@ const TabsList = [
     component: () => import('./RedisTab.vue'),
   },
   {
+    displayName: 'TSDB',
+    name: 'TsdbTab',
+    path: 'tsdb',
+    component: () => import('./TsdbTab.vue'),
+  },
+  {
     displayName: 'Secrets',
     name: 'SecretsTab',
     path: 'secrets',

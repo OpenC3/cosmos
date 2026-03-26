@@ -41,6 +41,9 @@ module OpenC3
 
     MIN_PASSWORD_LENGTH = 8
 
+    SESSION_PREFIX = "ses_"
+    OTP_PREFIX = "otp_"
+
     def self.set?(key = PRIMARY_KEY)
       Store.exists(key) == 1
     end
@@ -58,36 +61,49 @@ module OpenC3
 
       return false if service_only
 
-      return verify_no_service(token, no_password: no_password)
+      mode = no_password ? :token : :any
+      return verify_no_service(token, mode: mode)
     end
 
     # Checks whether the provided token is a valid user password or session token.
     # @param token [String] the plaintext password or session token to check (required)
-    # @param no_password [Boolean] enforces use of a session token (default: true)
+    # @param mode [String] optionally restrict verification to just the password or token. Valid values: :password, :token, or :any (default :token)
     # @return [Boolean] whether the provided password/token is valid
-    def self.verify_no_service(token, no_password: true)
+    def self.verify_no_service(token, mode: :token)
+      modes = [:password, :token, :any]
+      raise ArgumentError, "Invalid mode '#{mode}': must be one of #{modes}" unless modes.include?(mode)
+
       return false if token.nil? or token.empty?
 
       # Check cached session tokens and password hash
       time = Time.now
-      return true if @@session_cache and (time - @@session_cache_time) < SESSION_CACHE_TIMEOUT and @@session_cache[token]
-      unless no_password
-        return true if @@pw_hash_cache and (time - @@pw_hash_cache_time) < PW_HASH_CACHE_TIMEOUT and Argon2::Password.verify_password(token, @@pw_hash_cache)
+      unless mode == :password
+        if @@session_cache and (time - @@session_cache_time) < SESSION_CACHE_TIMEOUT and @@session_cache[token]
+          terminate_otp(token)
+          return true
+        end
+
+        # Check stored session tokens
+        @@session_cache = Store.hgetall(SESSIONS_KEY)
+        @@session_cache_time = time
+        if @@session_cache[token]
+          terminate_otp(token)
+          return true
+        end
       end
 
-      # Check stored session tokens
-      @@session_cache = Store.hgetall(SESSIONS_KEY)
-      @@session_cache_time = time
-      return true if @@session_cache[token]
+      unless mode == :token
+        return true if @@pw_hash_cache and (time - @@pw_hash_cache_time) < PW_HASH_CACHE_TIMEOUT and Argon2::Password.verify_password(token, @@pw_hash_cache)
 
-      return false if no_password
+        # Check stored password hash
+        pw_hash = Store.get(PRIMARY_KEY)
+        raise "invalid password hash" if pw_hash.nil? || !pw_hash.start_with?("$argon2") # Catch users who didn't run the migration utility when upgrading to COSMOS 7
+        @@pw_hash_cache = pw_hash
+        @@pw_hash_cache_time = time
+        return true if Argon2::Password.verify_password(token, @@pw_hash_cache)
+      end
 
-      # Check stored password hash
-      pw_hash = Store.get(PRIMARY_KEY)
-      raise "invalid password hash" unless pw_hash.start_with?("$argon2") # Catch users who didn't run the migration utility when upgrading to COSMOS 7
-      @@pw_hash_cache = pw_hash
-      @@pw_hash_cache_time = time
-      return Argon2::Password.verify_password(token, @@pw_hash_cache)
+      return false
     end
 
     def self.set(password, old_password, key = PRIMARY_KEY)
@@ -96,17 +112,25 @@ module OpenC3
 
       if set?(key)
         raise "old_password must not be nil or empty" if old_password.nil? or old_password.empty?
-        raise "old_password incorrect" unless verify_no_service(old_password, no_password: false)
+        raise "old_password incorrect" unless verify_no_service(old_password, mode: :password)
       end
       pw_hash = Argon2::Password.create(password, profile: ARGON2_PROFILE)
       Store.set(key, pw_hash)
       @@pw_hash_cache = nil
       @@pw_hash_cache_time = nil
+      logout
     end
 
     # Creates a new session token. DO NOT CALL BEFORE VERIFYING.
-    def self.generate_session
+    # @param otp [Boolean] whether to create a one-time use token (default: false)
+    # @return [String] the new session token
+    def self.generate_session(otp: false)
       token = SecureRandom.urlsafe_base64(nil, false)
+      if otp
+        token = OTP_PREFIX + token
+      else
+        token = SESSION_PREFIX + token
+      end
       Store.hset(SESSIONS_KEY, token, Time.now.iso8601)
       return token
     end
@@ -116,6 +140,17 @@ module OpenC3
       Store.del(SESSIONS_KEY)
       @@session_cache = nil
       @@session_cache_time = nil
+    end
+
+    # Terminates the given session token.
+    def self.terminate(token)
+      Store.hdel(SESSIONS_KEY, token)
+      @@session_cache.delete(token) if @@session_cache
+    end
+
+    # Terminates the session if the token is an OTP.
+    def self.terminate_otp(token)
+      terminate(token) if token.start_with?(OTP_PREFIX)
     end
   end
 end

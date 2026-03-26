@@ -33,6 +33,7 @@ require 'openc3/utilities/bucket'
 require 'openc3/utilities/zip'
 require 'fileutils'
 require 'ostruct'
+require 'set'
 require 'tmpdir'
 
 module OpenC3
@@ -55,6 +56,7 @@ module OpenC3
     @@sync_packet_count_data = {}
     @@sync_packet_count_time = nil
     @@sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
+    @@stale_packet_keys_warned = Set.new # Track stale keys already warned about
 
     attr_accessor :folder_name
     attr_accessor :requires
@@ -162,36 +164,41 @@ module OpenC3
       if target_name.include?('..') || target_name.include?('/') || target_name.include?('\\')
         raise ArgumentError, "Invalid target_name: #{target_name.inspect}"
       end
-      tmp_dir = Dir.mktmpdir
-      zip_filename = File.join(tmp_dir, "#{target_name}.zip")
-      Zip.continue_on_exists_proc = true
-      zip = Zip::File.open(zip_filename, create: true)
+      temp_dir = Dir.mktmpdir
+      begin
+        zip_filename = OpenC3.sanitize_path(File.join(temp_dir, "#{target_name}.zip"))
+        Zip.continue_on_exists_proc = true
+        zip = Zip::File.open(zip_filename, create: true)
 
-      if ENV['OPENC3_LOCAL_MODE']
-        OpenC3::LocalMode.zip_target(target_name, zip, scope: scope)
-      else
-        bucket = Bucket.getClient()
-        # The trailing slash is important!
-        prefix = "#{scope}/targets_modified/#{target_name}/"
-        resp = bucket.list_objects(
-          bucket: ENV['OPENC3_CONFIG_BUCKET'],
-          prefix: prefix,
-        )
-        resp.each do |item|
-          # item.key looks like DEFAULT/targets_modified/INST/screens/blah.txt
-          base_path = item.key.sub(prefix, '') # remove prefix
-          local_path = File.join(tmp_dir, base_path)
-          # Ensure dir structure exists, get_object fails if not
-          FileUtils.mkdir_p(File.dirname(local_path))
-          bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: item.key, path: local_path)
-          zip.add(base_path, local_path)
+        if ENV['OPENC3_LOCAL_MODE']
+          OpenC3::LocalMode.zip_target(target_name, zip, scope: scope)
+        else
+          bucket = Bucket.getClient()
+          # The trailing slash is important!
+          prefix = "#{scope}/targets_modified/#{target_name}/"
+          resp = bucket.list_objects(
+            bucket: ENV['OPENC3_CONFIG_BUCKET'],
+            prefix: prefix,
+          )
+          resp.each do |item|
+            # item.key looks like DEFAULT/targets_modified/INST/screens/blah.txt
+            base_path = item.key.sub(prefix, '') # remove prefix
+            local_path = File.join(temp_dir, base_path)
+            # Ensure dir structure exists, get_object fails if not
+            FileUtils.mkdir_p(File.dirname(local_path))
+            bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: item.key, path: local_path)
+            zip.add(base_path, local_path)
+          end
         end
-      end
-      zip.close
+        zip.close
 
-      result = OpenStruct.new
-      result.filename = File.basename(zip_filename)
-      result.contents = File.read(zip_filename, mode: 'rb')
+        result = OpenStruct.new
+        result.filename = File.basename(zip_filename)
+        result.contents = File.read(zip_filename, mode: 'rb')
+      ensure
+        FileUtils.remove_entry_secure(temp_dir, true)
+      end
+
       return result
     end
 
@@ -391,14 +398,7 @@ module OpenC3
       shard: 0,
       scope:
     )
-      super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at,
-        cmd_buffer_depth: cmd_buffer_depth, cmd_log_cycle_time: cmd_log_cycle_time, cmd_log_cycle_size: cmd_log_cycle_size,
-        cmd_log_retain_time: cmd_log_retain_time,
-        tlm_buffer_depth: tlm_buffer_depth, tlm_log_cycle_time: tlm_log_cycle_time, tlm_log_cycle_size: tlm_log_cycle_size,
-        tlm_log_retain_time: tlm_log_retain_time,
-        cmd_decom_retain_time: cmd_decom_retain_time, tlm_decom_retain_time: tlm_decom_retain_time,
-        cleanup_poll_time: cleanup_poll_time, needs_dependencies: needs_dependencies, target_microservices: target_microservices,
-        scope: scope)
+      super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at, scope: scope)
       @folder_name = folder_name
       @requires = requires
       @ignored_parameters = ignored_parameters
@@ -1225,17 +1225,34 @@ module OpenC3
 
     def self.init_tlm_packet_counts(tlm_target_names, scope:)
       @@sync_packet_count_time = Time.now
+      @@stale_packet_keys_warned = Set.new
 
       # Get all the packet counts with the global counters
       tlm_target_names.each do |target_name|
         get_all_telemetry_counts(target_name, scope: scope).each do |packet_name, count|
-          update_packet = System.telemetry.packet(target_name, packet_name)
-          update_packet.received_count = count.to_i
+          begin
+            update_packet = System.telemetry.packet(target_name, packet_name)
+            update_packet.received_count = count.to_i
+          rescue RuntimeError
+            key = "#{target_name} #{packet_name}"
+            unless @@stale_packet_keys_warned.include?(key)
+              @@stale_packet_keys_warned.add(key)
+              Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
+            end
+          end
         end
       end
       get_all_telemetry_counts('UNKNOWN', scope: scope).each do |packet_name, count|
-        update_packet = System.telemetry.packet('UNKNOWN', packet_name)
-        update_packet.received_count = count.to_i
+        begin
+          update_packet = System.telemetry.packet('UNKNOWN', packet_name)
+          update_packet.received_count = count.to_i
+        rescue RuntimeError
+          key = "UNKNOWN #{packet_name}"
+          unless @@stale_packet_keys_warned.include?(key)
+            @@stale_packet_keys_warned.add(key)
+            Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
+          end
+        end
       end
     end
 
@@ -1281,14 +1298,30 @@ module OpenC3
           end
           tlm_target_names.each do |target_name|
             result[inc_count].each do |packet_name, count|
-              update_packet = System.telemetry.packet(target_name, packet_name)
-              update_packet.received_count = count.to_i
+              begin
+                update_packet = System.telemetry.packet(target_name, packet_name)
+                update_packet.received_count = count.to_i
+              rescue RuntimeError
+                key = "#{target_name} #{packet_name}"
+                unless @@stale_packet_keys_warned.include?(key)
+                  @@stale_packet_keys_warned.add(key)
+                  Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
+                end
+              end
             end
             inc_count += 1
           end
           result[inc_count].each do |packet_name, count|
-            update_packet = System.telemetry.packet('UNKNOWN', packet_name)
-            update_packet.received_count = count.to_i
+            begin
+              update_packet = System.telemetry.packet('UNKNOWN', packet_name)
+              update_packet.received_count = count.to_i
+            rescue RuntimeError
+              key = "UNKNOWN #{packet_name}"
+              unless @@stale_packet_keys_warned.include?(key)
+                @@stale_packet_keys_warned.add(key)
+                Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
+              end
+            end
           end
         end
       end

@@ -48,9 +48,9 @@
       <v-treeview
         :items="items"
         :opened="initiallyOpen"
+        :activated="activeItems"
         item-value="name"
         density="compact"
-        class="ml-2"
         open-on-click
       >
         <!-- Beginning Icon -->
@@ -193,6 +193,7 @@ export default {
       logo: '/img/logo.png',
       wordmark: '/img/COSMOS.svg',
       initiallyOpen: [],
+      activeItems: [],
       showUpgradeToEnterpriseDialog: false,
       chromeless: null,
     }
@@ -338,6 +339,7 @@ export default {
         start({
           urlRerouteOnly: true,
         })
+        this.updateActiveItem()
 
         // Check every minute if we need to update our token
         setInterval(() => {
@@ -350,8 +352,30 @@ export default {
       },
     )
   },
+  mounted() {
+    globalThis.addEventListener(
+      'single-spa:routing-event',
+      this.updateActiveItem,
+    )
+  },
+  beforeUnmount() {
+    globalThis.removeEventListener(
+      'single-spa:routing-event',
+      this.updateActiveItem,
+    )
+  },
   methods: {
     navigateToUrl,
+    updateActiveItem() {
+      const path = globalThis.location.pathname
+      const allTools = this.items.flatMap((item) =>
+        item.children ? item.children : [item],
+      )
+      const match = allTools.find(
+        (tool) => tool.url && path.startsWith(tool.url),
+      )
+      this.activeItems = match ? [match.name] : []
+    },
     newTabUrl(tool) {
       let url = null
       try {
@@ -453,7 +477,7 @@ header {
   --indent-padding: 30px;
 }
 #openc3-nav-drawer .v-treeview .v-treeview-item {
-  padding-left: 0px;
+  padding-left: 8px;
   padding-right: 8px;
 }
 #openc3-nav-drawer .v-treeview .v-treeview-item .v-list-item-action {
@@ -465,5 +489,21 @@ header {
   div.v-treeview-item__level:nth-child(1) {
   width: 0px;
   padding-left: 0px;
+}
+/* Make the entire treeview item row clickable, not just the icon/text */
+#openc3-nav-drawer .v-treeview-item .v-treeview-item__root {
+  position: relative;
+}
+#openc3-nav-drawer .v-treeview-item .v-list-item-title > a::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+#openc3-nav-drawer .v-treeview-item .v-treeview-item__append {
+  position: relative;
+  z-index: 1;
 }
 </style>

@@ -49,12 +49,24 @@ class OpenC3Authentication:
     def token(self, include_bearer=True):
         return self._token
 
-    def _generate_auth_url(self):
+    def get_otp(self, scope="DEFAULT"):
+        session_token = self.token()
+        if not session_token:
+            raise OpenC3AuthenticationError("Uninitialized authentication: unable to get OTP")
+        response = Session().get(
+            self._generate_auth_url("/auth/otp"),
+            params={"scope": scope},
+            headers={"Authorization": session_token},
+        )
+        return response.text
+
+    def _generate_auth_url(self, endpoint=None):
         schema = OPENC3_API_SCHEMA or "http"
         hostname = OPENC3_API_HOSTNAME or ("127.0.0.1" if OPENC3_DEVEL else "openc3-cosmos-cmd-tlm-api")
         port = OPENC3_API_PORT or "2901"
         port = int(port)
-        endpoint = "auth/verify_service" if self.service else "auth/verify"
+        if endpoint is None:
+            endpoint = "auth/verify_service" if self.service else "auth/verify"
         return f"{schema}://{hostname}:{port}/openc3-api/{endpoint}"
 
 

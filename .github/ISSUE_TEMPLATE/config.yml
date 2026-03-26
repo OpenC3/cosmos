@@ -1,0 +1,7 @@
+contact_links:
+   - name: Documentation
+     url: https://docs.openc3.com/docs
+     about: Please check out our documentation site
+   - name: Security
+     url: https://github.com/OpenC3/cosmos/security/advisories
+     about: For any security issues, please email us at support@openc3.com or open a GitHub Security Advisory

@@ -9,16 +9,17 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import errno
 import socket
 import socketserver
 import threading
 import time
 import unittest
-from unittest.mock import *
+from unittest.mock import Mock, patch
 
 from openc3.streams.tcpip_socket_stream import TcpipSocketStream
 from openc3.top_level import close_socket
-from test.test_helper import *
+from test.test_helper import capture_io, mock_redis
 
 
 class TestTcpipSocketStream(unittest.TestCase):
@@ -113,39 +114,54 @@ class TestTcpipSocketStream(unittest.TestCase):
         ss.disconnect()
         time.sleep(0.1)
 
-    #     def test_calls_write_from_the_driver(self):
-    #         write = double("write_socket")
-    #         # Simulate only writing two bytes at a time
-    #         expect(write).to receive(:write_nonblock).twice.and_return(2)
-    #         ss = TcpipSocketStream(write, None, 10.0, None)
-    #         ss.connect
-    #         ss.write('test')
-    #         ss.disconnect
+    def test_raises_immediately_on_non_eagain_socket_error_in_write(self):
+        # Regression test for interface lock-up when write raises an errno
+        # other than EAGAIN/EWOULDBLOCK (e.g. ECONNRESET, EPIPE).
+        write = Mock()
+        error = OSError()
+        error.errno = errno.ECONNRESET
+        write.send.side_effect = error
+        ss = TcpipSocketStream(write, None, 10.0, None)
+        ss.connect()
+        with self.assertRaises(OSError):
+            ss.write(b"test")
+        ss.disconnect()
 
-    #     def test_handles_socket_blocking_exceptions(self):
-    #         write = double("write_socket")
-    #         allow(write).to receive(:write_nonblock) do
-    #           match $index:
-    #           case 1:
-    #             $index += 1
-    #             raise Errno='EWOULDBLOCK'
-    #           case 2:
-    #             4
-    #         expect(IO).to receive(:fast_select).at_least(:once).and_return([])
-    #         $index = 1
-    #         ss = TcpipSocketStream(write, None, 10.0, None)
-    #         ss.connect
-    #         ss.write('test')
-    #         ss.disconnect
+    def test_calls_write_from_the_driver(self):
+        write = Mock()
+        # Simulate only writing two bytes at a time
+        write.send.side_effect = [2, 2]
+        ss = TcpipSocketStream(write, None, 10.0, None)
+        ss.connect()
+        ss.write(b"test")
+        self.assertEqual(write.send.call_count, 2)
+        ss.disconnect()
 
-    #     def test_handles_socket_timeouts(self):
-    #         write = double("write_socket")
-    #         allow(write).to receive(:write_nonblock).and_raise(Errno='EWOULDBLOCK')
-    #         expect(IO).to receive(:fast_select).at_least(:once).and_return(None)
-    #         ss = TcpipSocketStream(write, None, 10.0, None)
-    #         ss.connect
-    #         { ss.write('test') }.to raise_error(Timeout='E'rror)
-    #         ss.disconnect
+    def test_handles_socket_blocking_exceptions(self):
+        write = Mock()
+        error = OSError()
+        error.errno = errno.EWOULDBLOCK
+        # Raise EWOULDBLOCK on first send, succeed on second
+        write.send.side_effect = [error, 4]
+        ss = TcpipSocketStream(write, None, 10.0, None)
+        ss.connect()
+        with patch("openc3.streams.tcpip_socket_stream.select.select") as mock_select:
+            mock_select.return_value = ([], [write], [])
+            ss.write(b"test")
+        ss.disconnect()
+
+    def test_handles_socket_write_timeouts(self):
+        write = Mock()
+        error = OSError()
+        error.errno = errno.EWOULDBLOCK
+        write.send.side_effect = error
+        ss = TcpipSocketStream(write, None, 10.0, None)
+        ss.connect()
+        with patch("openc3.streams.tcpip_socket_stream.select.select") as mock_select:
+            mock_select.return_value = ([], [], [])
+            with self.assertRaisesRegex(TimeoutError, "Write Timeout"):
+                ss.write(b"test")
+        ss.disconnect()
 
     def test_closes_the_write_socket(self):
         write = Mock()

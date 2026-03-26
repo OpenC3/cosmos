@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -268,7 +268,7 @@ export default {
   min-height: 28px;
   max-height: 85vh;
   width: 815px;
-  background-color: var(--color-background-base-selected);
+  background-color: var(--color-background-surface-selected);
 }
 
 .raw-dialog .toolbar-wrapper {
@@ -278,7 +278,7 @@ export default {
 }
 
 .raw-dialog :deep(.v-card-text) {
-  background-color: var(--color-background-base-selected);
+  background-color: var(--color-background-surface-selected);
 }
 
 .v-textarea :deep(textarea) {

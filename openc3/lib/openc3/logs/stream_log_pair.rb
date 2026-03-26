@@ -43,13 +43,20 @@ module OpenC3
 
     # Close any open stream log files
     def stop
-      @read_log.stop
-      @write_log.stop
+      threads = @read_log.stop
+      threads.concat(@write_log.stop)
+      return threads
     end
 
     def shutdown
-      @read_log.shutdown
-      @write_log.shutdown
+      threads = @read_log.shutdown
+      threads.concat(@write_log.shutdown)
+      return threads
+    end
+
+    def cleanup
+      @read_log.cleanup
+      @write_log.cleanup
     end
 
     # Clone the stream log pair

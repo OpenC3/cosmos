@@ -27,6 +27,8 @@ module OpenC3
   describe InterfaceMicroservice do
     before(:each) do
       # This must be here in order to work when running more than this individual file
+      saved_verbose = $VERBOSE
+      $VERBOSE = false
       class TestInterface < Interface
         def initialize(hostname = "default", port = 12345)
           @hostname = hostname
@@ -77,6 +79,7 @@ module OpenC3
           @data = data
         end
       end
+      $VERBOSE = saved_verbose
 
       mock_redis()
       setup_system()

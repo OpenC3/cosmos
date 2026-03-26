@@ -29,6 +29,13 @@ rescue LoadError
     end
 
     module Authorization
+      ANONYMOUS_USER = "anonymous"
+
+      def self.generate_otp(user)
+        raise AuthError.new("Invalid OTP user") unless user == ANONYMOUS_USER
+        return OpenC3::AuthModel.generate_session(otp: true)
+      end
+
       private
 
       # Raises an exception if unauthorized, otherwise does nothing
@@ -41,7 +48,7 @@ rescue LoadError
             raise AuthError.new("Token is invalid")
           end
         end
-        return "anonymous"
+        return ANONYMOUS_USER
       end
 
       def user_info(_token)

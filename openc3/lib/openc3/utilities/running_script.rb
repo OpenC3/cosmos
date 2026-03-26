@@ -24,6 +24,7 @@ require 'openc3/io/stdout'
 require 'openc3/io/stderr'
 require 'childprocess'
 require 'openc3/script/suite_runner'
+require 'openc3/utilities/script'
 require 'openc3/utilities/store'
 require 'openc3/utilities/store_queued'
 require 'openc3/utilities/bucket_require'
@@ -31,6 +32,7 @@ require 'openc3/models/offline_access_model'
 require 'openc3/models/environment_model'
 require 'openc3/models/script_engine_model'
 require 'openc3/models/script_status_model'
+require 'fileutils'
 
 if not defined? RAILS_ROOT
   if ENV['RAILS_ROOT']
@@ -60,8 +62,8 @@ module OpenC3
     private
     # Define all the user input methods used in scripting which we need to broadcast to the frontend
     # Note: This list matches the list in run_script.rb:116
-    SCRIPT_METHODS = %i[ask ask_string message_box vertical_message_box combo_box prompt prompt_for_hazardous
-      prompt_for_critical_cmd metadata_input open_file_dialog open_files_dialog]
+    SCRIPT_METHODS = %i[ask ask_string message_box vertical_message_box combo_box check_box prompt prompt_for_hazardous
+      prompt_for_critical_cmd metadata_input open_file_dialog open_files_dialog open_bucket_dialog]
     SCRIPT_METHODS.each do |method|
       define_method(method) do |*args, **kwargs|
         while true
@@ -72,10 +74,21 @@ module OpenC3
             input = RunningScript.instance.user_input
             # All ask and prompt dialogs should include a 'Cancel' button
             # If they cancel we wait so they can potentially stop
-            if input == 'Cancel'
+            if input == 'COSMOS__CANCEL'
               RunningScript.instance.perform_pause
             else
-              if (method.to_s.include?('open_file'))
+              if method.to_s == 'open_bucket_dialog'
+                bucket = input['bucket']
+                path = input['path']
+                filename = input['filename']
+                # Path from bucket dialog already includes scope prefix (e.g. DEFAULT/targets/...)
+                # _get_storage_file prepends scope, so strip it from the path to avoid doubling
+                scope = RunningScript.instance.scope
+                path = path.sub(/\A#{Regexp.escape(scope)}\//, '')
+                file = _get_storage_file(path, bucket: bucket, scope: scope)
+                file.filename = filename
+                return file
+              elsif (method.to_s.include?('open_file'))
                 files = input.map do |filename|
                   file = _get_storage_file("tmp/#{filename}", scope: RunningScript.instance.scope)
                   # Set filename method we added to Tempfile in the core_ext
@@ -377,7 +390,9 @@ class RunningScript
       scope = $openc3_scope
       tags = []
     end
-    @@message_log = OpenC3::MessageLog.new("sr", File.join(RAILS_ROOT, 'log'), tags: tags, scope: scope)
+    log_dir = File.join(RAILS_ROOT, 'tmp', 'script_logs')
+    FileUtils.mkdir_p(log_dir)
+    @@message_log = OpenC3::MessageLog.new("sr", log_dir, tags: tags, scope: scope)
   end
 
   def message_log
@@ -422,7 +437,9 @@ class RunningScript
 
     process = ChildProcess.build(process_name, runner_path.to_s, running_script_id.to_s, scope)
     process.io.inherit! # Helps with debugging
-    process.cwd = File.join(RAILS_ROOT, 'scripts')
+    script_cwd = File.join(RAILS_ROOT, 'tmp', "script_#{running_script_id}")
+    FileUtils.mkdir_p(script_cwd)
+    process.cwd = script_cwd
 
     # Check for offline access token
     model = nil
@@ -1213,7 +1230,8 @@ class RunningScript
       end
       @suite_report = OpenC3::SuiteRunner.suite_results.report
       # Write out the report to a local file
-      log_dir = File.join(RAILS_ROOT, 'log')
+      log_dir = File.join(RAILS_ROOT, 'tmp', 'script_logs')
+      FileUtils.mkdir_p(log_dir)
       filename = File.join(log_dir, File.build_timestamped_filename(['sr', parts.join('__')]))
       File.open(filename, 'wb') do |file|
         file.write(OpenC3::SuiteRunner.suite_results.report)

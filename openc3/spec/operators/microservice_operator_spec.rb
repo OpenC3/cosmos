@@ -80,60 +80,60 @@ module OpenC3
       # DISABLED due to LanuchError due to linux vs windows
       #    ChildProcess::LaunchError:
       #    The directory name is invalid. (267)
-      xit "should query redis for new microservices and create processes" do
-        capture_io do |stdout|
-          expect(MicroserviceOperator.processes).to be_empty()
-          config = { 'filename' => './while.rb', 'scope' => 'DEFAULT', 'cmd' => %w(ruby while.rb), 'work_dir' => SPEC_DIR, 'env' => [] }
-          @redis.hset('openc3_microservices', 'DEFAULT__INTERFACE__START_INT', JSON.generate(config, allow_nan: true))
-          sleep 1
-          expect(MicroserviceOperator.processes.keys).to include('DEFAULT__INTERFACE__START_INT')
-          expect(MicroserviceOperator.processes['DEFAULT__INTERFACE__START_INT']).to be_a OperatorProcess
-          expect(stdout.string).to match(/Starting.*ruby.*while.rb/)
-        end
-      end
+      # xit "should query redis for new microservices and create processes" do
+      #   capture_io do |stdout|
+      #     expect(MicroserviceOperator.processes).to be_empty()
+      #     config = { 'filename' => './while.rb', 'scope' => 'DEFAULT', 'cmd' => %w(ruby while.rb), 'work_dir' => SPEC_DIR, 'env' => [] }
+      #     @redis.hset('openc3_microservices', 'DEFAULT__INTERFACE__START_INT', JSON.generate(config, allow_nan: true))
+      #     sleep 1
+      #     expect(MicroserviceOperator.processes.keys).to include('DEFAULT__INTERFACE__START_INT')
+      #     expect(MicroserviceOperator.processes['DEFAULT__INTERFACE__START_INT']).to be_a OperatorProcess
+      #     expect(stdout.string).to match(/Starting.*ruby.*while.rb/)
+      #   end
+      # end
 
       # DISABLED due to LanuchError due to linux vs windows
       #    ChildProcess::LaunchError:
       #    The directory name is invalid. (267)
-      xit "should restart changed microservices" do
-        capture_io do |stdout|
-          config = { 'filename' => './while.rb', 'scope' => 'DEFAULT', 'cmd' => %w(ruby while.rb), 'work_dir' => SPEC_DIR, 'env' => [] }
-          @redis.hset('openc3_microservices', 'DEFAULT__INTERFACE__RESTART_INT', JSON.generate(config, allow_nan: true))
-          sleep 1
-          expect(MicroserviceOperator.processes.keys).to include('DEFAULT__INTERFACE__RESTART_INT')
-          expect(MicroserviceOperator.processes['DEFAULT__INTERFACE__RESTART_INT']).to be_a OperatorProcess
+      # xit "should restart changed microservices" do
+      #   capture_io do |stdout|
+      #     config = { 'filename' => './while.rb', 'scope' => 'DEFAULT', 'cmd' => %w(ruby while.rb), 'work_dir' => SPEC_DIR, 'env' => [] }
+      #     @redis.hset('openc3_microservices', 'DEFAULT__INTERFACE__RESTART_INT', JSON.generate(config, allow_nan: true))
+      #     sleep 1
+      #     expect(MicroserviceOperator.processes.keys).to include('DEFAULT__INTERFACE__RESTART_INT')
+      #     expect(MicroserviceOperator.processes['DEFAULT__INTERFACE__RESTART_INT']).to be_a OperatorProcess
 
-          # Slightly change the configuration by adding something
-          config = { 'filename' => './while.rb', 'scope' => 'DEFAULT', 'cmd' => %w(ruby while.rb), 'work_dir' => SPEC_DIR, 'env' => [], 'target_list' => 'TEST' }
-          @redis.hset('openc3_microservices', 'DEFAULT__INTERFACE__RESTART_INT', JSON.generate(config, allow_nan: true))
-          sleep 3 # Due to 2s wait in shutdown
-          expect(MicroserviceOperator.processes.keys).to include('DEFAULT__INTERFACE__RESTART_INT')
-          expect(MicroserviceOperator.processes['DEFAULT__INTERFACE__RESTART_INT']).to be_a OperatorProcess
-          # We should see starting more than once
-          expect(stdout.string.scan(/Starting.*ruby.*while.rb/).size).to be > 1
-          # We should see Soft and Hard stopping
-          expect(stdout.string.scan(/Soft shutting down.*ruby.*while.rb/).size).to eq 1
-          expect(stdout.string.scan(/Hard shutting down.*ruby.*while.rb/).size).to eq 1
-        end
-      end
+      #     # Slightly change the configuration by adding something
+      #     config = { 'filename' => './while.rb', 'scope' => 'DEFAULT', 'cmd' => %w(ruby while.rb), 'work_dir' => SPEC_DIR, 'env' => [], 'target_list' => 'TEST' }
+      #     @redis.hset('openc3_microservices', 'DEFAULT__INTERFACE__RESTART_INT', JSON.generate(config, allow_nan: true))
+      #     sleep 3 # Due to 2s wait in shutdown
+      #     expect(MicroserviceOperator.processes.keys).to include('DEFAULT__INTERFACE__RESTART_INT')
+      #     expect(MicroserviceOperator.processes['DEFAULT__INTERFACE__RESTART_INT']).to be_a OperatorProcess
+      #     # We should see starting more than once
+      #     expect(stdout.string.scan(/Starting.*ruby.*while.rb/).size).to be > 1
+      #     # We should see Soft and Hard stopping
+      #     expect(stdout.string.scan(/Soft shutting down.*ruby.*while.rb/).size).to eq 1
+      #     expect(stdout.string.scan(/Hard shutting down.*ruby.*while.rb/).size).to eq 1
+      #   end
+      # end
 
       # DISABLED due to LanuchError due to linux vs windows
       #    ChildProcess::LaunchError:
       #    The directory name is invalid. (267)
-      xit "should remove deleted microservices" do
-        capture_io do |stdout|
-          config = { 'filename' => './while.rb', 'scope' => 'DEFAULT', 'cmd' => %w(ruby while.rb), 'work_dir' => SPEC_DIR, 'env' => [] }
-          @redis.hset('openc3_microservices', 'DEFAULT__INTERFACE__DELETE_INT', JSON.generate(config, allow_nan: true))
-          sleep 1
-          expect(MicroserviceOperator.processes.keys).to include('DEFAULT__INTERFACE__DELETE_INT')
-          expect(MicroserviceOperator.processes['DEFAULT__INTERFACE__DELETE_INT']).to be_a OperatorProcess
+      # xit "should remove deleted microservices" do
+      #   capture_io do |stdout|
+      #     config = { 'filename' => './while.rb', 'scope' => 'DEFAULT', 'cmd' => %w(ruby while.rb), 'work_dir' => SPEC_DIR, 'env' => [] }
+      #     @redis.hset('openc3_microservices', 'DEFAULT__INTERFACE__DELETE_INT', JSON.generate(config, allow_nan: true))
+      #     sleep 1
+      #     expect(MicroserviceOperator.processes.keys).to include('DEFAULT__INTERFACE__DELETE_INT')
+      #     expect(MicroserviceOperator.processes['DEFAULT__INTERFACE__DELETE_INT']).to be_a OperatorProcess
 
-          @redis.hdel('openc3_microservices', 'DEFAULT__INTERFACE__DELETE_INT')
-          sleep 1
-          expect(MicroserviceOperator.processes).to be_empty()
-          expect(stdout.string).to match(/shutting down.*ruby.*while.rb/)
-        end
-      end
+      #     @redis.hdel('openc3_microservices', 'DEFAULT__INTERFACE__DELETE_INT')
+      #     sleep 1
+      #     expect(MicroserviceOperator.processes).to be_empty()
+      #     expect(stdout.string).to match(/shutting down.*ruby.*while.rb/)
+      #   end
+      # end
     end
   end
 end

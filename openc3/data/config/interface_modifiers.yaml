@@ -53,7 +53,7 @@ RECONNECT_DELAY:
   parameters:
     - name: Delay
       required: true
-      description: Delay in seconds between reconnect attempts. The default is 15 seconds.
+      description: Delay in seconds between reconnect attempts. The default is 5 seconds.
       values: ([0-9]*[.])?[0-9]+
 DISABLE_DISCONNECT:
   summary: Disable the Disconnect button on the Interfaces tab in the Server

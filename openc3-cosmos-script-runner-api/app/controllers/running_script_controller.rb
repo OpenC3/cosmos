@@ -15,6 +15,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'openc3/utilities/script'
+
 class RunningScriptController < ApplicationController
   def index
     return unless authorization('script_view')
@@ -173,7 +175,9 @@ class RunningScriptController < ApplicationController
       elsif params[:multiple]
         running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], multiple: JSON.generate(params[:answer], allow_nan: true), prompt_id: params[:prompt_id] })
       else
-        running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], answer: params[:answer], prompt_id: params[:prompt_id] })
+        # Convert ActionController::Parameters to a plain hash for nested objects (e.g. open_bucket_dialog)
+        answer = params[:answer].respond_to?(:to_unsafe_h) ? params[:answer].to_unsafe_h : params[:answer]
+        running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], answer: answer, prompt_id: params[:prompt_id] })
       end
       OpenC3::Logger.info("Script prompt action #{params[:method]}: #{running_script['filename']}", scope: params[:scope], user: username())
       head :ok

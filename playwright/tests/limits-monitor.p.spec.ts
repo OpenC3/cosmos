@@ -21,24 +21,29 @@ test.use({
   toolName: 'Limits Monitor',
 })
 
-// await page.getByRole('cell', { name: 'playwright' }).click();
-
 test('changes the limits set', async ({ page, utils }) => {
-  expect(await page.getByLabel('Current Limits Set').inputValue()).toBe(
-    'DEFAULT',
-  )
+  expect(
+    await page.locator('[data-test=limits-set]').locator('input').inputValue(),
+  ).toBe('DEFAULT')
   await page.locator('[data-test="limits-monitor-file"]').click()
   await page
     .locator('[data-test="limits-monitor-file-change-limits-set"]')
     .click()
-  await page.getByRole('dialog').locator('[data-test="limits-set"]').click()
+  await page
+    .getByRole('dialog')
+    .locator('[data-test="change-limits-set"]')
+    .click()
   await page.getByRole('option', { name: 'TVAC' }).click()
   await page.getByRole('button', { name: 'Ok' }).click()
   // Poll since inputValue is immediate
   await expect
-    .poll(async () => page.getByLabel('Current Limits Set').inputValue(), {
-      timeout: 15000,
-    })
+    .poll(
+      async () =>
+        page.locator('[data-test=limits-set]').locator('input').inputValue(),
+      {
+        timeout: 15000,
+      },
+    )
     .toBe('TVAC')
 
   await expect(page.locator('[data-test=limits-events]')).toContainText(
@@ -48,14 +53,21 @@ test('changes the limits set', async ({ page, utils }) => {
   await page
     .locator('[data-test="limits-monitor-file-change-limits-set"]')
     .click()
-  await page.getByRole('dialog').locator('[data-test="limits-set"]').click()
+  await page
+    .getByRole('dialog')
+    .locator('[data-test="change-limits-set"]')
+    .click()
   await page.getByRole('option', { name: 'DEFAULT' }).click()
   await page.getByRole('button', { name: 'Ok' }).click()
   // Poll since inputValue is immediate
   await expect
-    .poll(async () => page.getByLabel('Current Limits Set').inputValue(), {
-      timeout: 15000,
-    })
+    .poll(
+      async () =>
+        page.locator('[data-test=limits-set]').locator('input').inputValue(),
+      {
+        timeout: 15000,
+      },
+    )
     .toBe('DEFAULT')
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     'Setting Limits Set: DEFAULT',

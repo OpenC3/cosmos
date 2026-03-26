@@ -67,6 +67,7 @@
               :states="item.states"
               :states-in-hex="statesInHex"
               :disabled="item.disabled"
+              :allow-manual-entry="ignoreRangeChecks"
               @hazardous-change="onParameterHazardousChange(item, $event)"
             />
           </slot>
@@ -148,6 +149,10 @@ export default {
     showQueueSelect: {
       type: Boolean,
       default: true,
+    },
+    ignoreRangeChecks: {
+      type: Boolean,
+      default: false,
     },
   },
   emits: ['command-changed', 'build-cmd', 'command-loaded'],

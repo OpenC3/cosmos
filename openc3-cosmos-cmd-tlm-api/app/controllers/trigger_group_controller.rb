@@ -38,7 +38,7 @@ class TriggerGroupController < ApplicationController
       render json: ret
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 
@@ -52,16 +52,16 @@ class TriggerGroupController < ApplicationController
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
-        render json: { status: 'error', message: 'not found' }, status: 404
+        render json: { status: 'error', message: 'not found' }, status: :not_found
         return
       end
       render json: model.as_json()
     rescue OpenC3::TriggerGroupInputError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 
@@ -89,16 +89,16 @@ class TriggerGroupController < ApplicationController
       model = @model_class.new(name: params[:name], scope: params[:scope])
       model.create()
       model.deploy()
-      render json: model.as_json(), status: 201
+      render json: model.as_json(), status: :created
     rescue OpenC3::TriggerGroupInputError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
     rescue OpenC3::TriggerGroupError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 418
+      render json: { status: 'error', message: e.message, type: e.class }, status: :unprocessable_entity
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 
@@ -122,13 +122,13 @@ class TriggerGroupController < ApplicationController
       render json: { delete: true, group: params[:name] }
     rescue OpenC3::TriggerGroupInputError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 404
+      render json: { status: 'error', message: e.message, type: e.class }, status: :not_found
     rescue OpenC3::TriggerGroupError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class }, status: 400
+      render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
     rescue StandardError => e
       log_error(e)
-      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: 500
+      render json: { status: 'error', message: e.message, type: e.class, backtrace: e.backtrace }, status: :internal_server_error
     end
   end
 end

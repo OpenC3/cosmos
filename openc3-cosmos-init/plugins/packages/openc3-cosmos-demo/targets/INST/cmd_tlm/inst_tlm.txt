@@ -54,36 +54,53 @@ TELEMETRY <%= target_name %> HEALTH_STATUS BIG_ENDIAN "Health and status from th
     LIMITS DEFAULT 1 ENABLED -1 -1 200 250
   ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
+    # Strings can potentially be 35 chars: 2026-03-07T16:51:03.123456789+00:00
+    CONVERTED_DATA 280 STRING
   ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
     READ_CONVERSION processor_conversion.rb TEMP1WATER HIGH_WATER
+    CONVERTED_DATA 32 FLOAT
   ITEM TEMP1LOW 0 0 DERIVED "Low-water mark for TEMP1"
     READ_CONVERSION processor_conversion.rb TEMP1WATER LOW_WATER
+    CONVERTED_DATA 32 FLOAT
   ITEM TEMP1MAX 0 0 DERIVED "Maximum of most recent 100 samples for TEMP1"
     READ_CONVERSION processor_conversion.rb TEMP1STAT MAX
+    CONVERTED_DATA 32 FLOAT
   ITEM TEMP1MIN 0 0 DERIVED "Minimum of most recent 100 samples for TEMP1"
     READ_CONVERSION processor_conversion.rb TEMP1STAT MIN
+    CONVERTED_DATA 32 FLOAT
   ITEM TEMP1MEAN 0 0 DERIVED "Mean of most recent 100 samples for TEMP1"
     READ_CONVERSION processor_conversion.rb TEMP1STAT MEAN
+    CONVERTED_DATA 32 FLOAT
   ITEM TEMP1STDDEV 0 0 DERIVED "Stddev of most recent 100 samples for TEMP1"
     READ_CONVERSION processor_conversion.rb TEMP1STAT STDDEV
+    CONVERTED_DATA 32 FLOAT
   ITEM TEMP1_MICRO 0 0 DERIVED
-    GENERIC_READ_CONVERSION_START FLOAT 32
+    GENERIC_READ_CONVERSION_START
       packet.read('TEMP1') / 1_000_000
     GENERIC_READ_CONVERSION_END
+    CONVERTED_DATA 32 FLOAT
   ITEM TEMP1_MEGA 0 0 DERIVED
-    GENERIC_READ_CONVERSION_START FLOAT 32
+    GENERIC_READ_CONVERSION_START
       packet.read('TEMP1') * 1_000_000
     GENERIC_READ_CONVERSION_END
+    CONVERTED_DATA 32 FLOAT
   # Enable to test the ARRAYPLOT widget with array of array data [[x1,x2,...],[y1,y2,...]]
   # ITEM POINTS 0 0 DERIVED
-  #   GENERIC_READ_CONVERSION_START UINT 800
+  #   GENERIC_READ_CONVERSION_START
   #     return [
   #       Array.new(800) { |i| i * 0.1 },
   #       (0...800).map { |i| Math.sin(2 * Math::PI * i / 800) }
   #     ]
   #   GENERIC_READ_CONVERSION_END
+  #   CONVERTED_DATA 800 UINT
   PROCESSOR TEMP1STAT statistics_processor.rb TEMP1 100
   PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
+  ITEM ZERO 0 0 DERIVED
+    GENERIC_READ_CONVERSION_START
+      0
+    GENERIC_READ_CONVERSION_END
+    CONVERTED_DATA 16 INT
+    LIMITS DEFAULT 1 ENABLED -20 -10 10 20 -5 5
 
 TELEMETRY <%= target_name %> ADCS BIG_ENDIAN "Position and attitude data"
   META TYPE 'struct adcs'
@@ -127,6 +144,7 @@ TELEMETRY <%= target_name %> ADCS BIG_ENDIAN "Position and attitude data"
     FORMAT_STRING "%0.2f"
   ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
+    CONVERTED_DATA 280 STRING
 
 TELEMETRY <%= target_name %> PARAMS BIG_ENDIAN "Params set by SETPARAMS command"
   <%= render "_ccsds_tlm.txt", locals: {apid: 3} %>
@@ -144,6 +162,7 @@ TELEMETRY <%= target_name %> PARAMS BIG_ENDIAN "Params set by SETPARAMS command"
   APPEND_ITEM P(:6;)       64 UINT "Test weird characters"
   ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
+    CONVERTED_DATA 280 STRING
 
 TELEMETRY <%= target_name %> IMAGE BIG_ENDIAN "Packet with image data"
   <%= render "_ccsds_tlm.txt", locals: {apid: 4} %>
@@ -154,6 +173,7 @@ TELEMETRY <%= target_name %> IMAGE BIG_ENDIAN "Packet with image data"
     OVERLAP # Notify OpenC3 that this is intentionally overlapping the BLOCK field
   ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
+    CONVERTED_DATA 280 STRING
 
 TELEMETRY <%= target_name %> MECH BIG_ENDIAN "Mechanism status ©®"
   <%= render "_ccsds_tlm.txt", locals: {apid: 5} %>
@@ -173,6 +193,7 @@ TELEMETRY <%= target_name %> MECH BIG_ENDIAN "Mechanism status ©®"
   APPEND_ARRAY_ITEM STRINGS 2048 STRING 0 "Array of strings"
   ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
+    CONVERTED_DATA 280 STRING
 
 TELEMETRY <%= target_name %> HIDDEN BIG_ENDIAN "Hidden packet"
   HIDDEN
@@ -180,6 +201,7 @@ TELEMETRY <%= target_name %> HIDDEN BIG_ENDIAN "Hidden packet"
   APPEND_ITEM COUNT 32 UINT "Count for hidden command"
   ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
+    CONVERTED_DATA 280 STRING
 
 TELEMETRY <%= target_name %> VARIABLE_ARRAYS BIG_ENDIAN "Variable length arrays"
   <%= render "_ccsds_tlm.txt", locals: {apid: 7} %>
@@ -191,16 +213,17 @@ TELEMETRY <%= target_name %> VARIABLE_ARRAYS BIG_ENDIAN "Variable length arrays"
     VARIABLE_BIT_SIZE ARRAY2_LENGTH
   ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
+    CONVERTED_DATA 280 STRING
 
 TELEMETRY <%= target_name %> JSONTLM BIG_ENDIAN "JSON Accessor Telemetry"
   ACCESSOR JsonAccessor
   # Template is not required for telemetry, but is useful for simulation
-  TEMPLATE '{"id_item":1, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] }, "item6": true, "item7": [1, "2", 3.14], "item8": {"a":"b"}, "item9": {"c":"d"} }'
+  TEMPLATE '{"id_item":1, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"JSON", "item5":[4, 3, 2, 1] }, "item6": true, "item7": [1, "2", 3.14], "item8": {"a":"b"}, "item9": {"c":"d"} }'
   APPEND_ID_ITEM ID_ITEM 32 INT 31 "Int Item"
     KEY $.id_item
   APPEND_ITEM ITEM1 16 UINT "Int Item 2"
     KEY $.item1
-    GENERIC_READ_CONVERSION_START UINT 16
+    GENERIC_READ_CONVERSION_START
       value * 2
     GENERIC_READ_CONVERSION_END
     UNITS CELSIUS C
@@ -230,7 +253,7 @@ TELEMETRY <%= target_name %> CBORTLM BIG_ENDIAN "CBOR Accessor Telemetry"
     KEY $.id_item
   APPEND_ITEM ITEM1 16 UINT "Int Item 2"
     KEY $.item1
-    GENERIC_READ_CONVERSION_START UINT 16
+    GENERIC_READ_CONVERSION_START
       value * 2
     GENERIC_READ_CONVERSION_END
     UNITS CELSIUS C
@@ -247,12 +270,12 @@ TELEMETRY <%= target_name %> CBORTLM BIG_ENDIAN "CBOR Accessor Telemetry"
 TELEMETRY <%= target_name %> XMLTLM BIG_ENDIAN "XML Accessor Telemetry"
   ACCESSOR XmlAccessor
   # Template is not required for telemetry, but is useful for simulation
-  TEMPLATE '<html><head><script src="3"></script><noscript>101</noscript></head><body><img src="12"/><div><ul><li>3.14</li><li>Example</li></ul></div><div></div></body></html>'
+  TEMPLATE '<html><head><script src="3"></script><noscript>101</noscript></head><body><img src="12"/><div><ul><li>3.14</li><li>XML</li></ul></div><div></div></body></html>'
   APPEND_ID_ITEM ID_ITEM 32 INT 33 "Int Item"
     KEY "/html/head/script/@src"
   APPEND_ITEM ITEM1 16 UINT "Int Item 2"
     KEY "/html/head/noscript/text()"
-    GENERIC_READ_CONVERSION_START UINT 16
+    GENERIC_READ_CONVERSION_START
       value * 2
     GENERIC_READ_CONVERSION_END
     UNITS CELSIUS C
@@ -267,12 +290,12 @@ TELEMETRY <%= target_name %> XMLTLM BIG_ENDIAN "XML Accessor Telemetry"
 TELEMETRY <%= target_name %> HTMLTLM BIG_ENDIAN "HTML Accessor Telemetry"
   ACCESSOR HtmlAccessor
   # Template is not required for telemetry, but is useful for simulation
-  TEMPLATE '<!DOCTYPE html><html lang="en"><head><title>4</title><script src="101"></script></head><body><noscript>12</noscript><img src="3.14" alt="An Image"/><p>Example</p><ul><li>1</li><li>3.14</li></ul></body></html>'
+  TEMPLATE '<!DOCTYPE html><html lang="en"><head><title>4</title><script src="101"></script></head><body><noscript>12</noscript><img src="3.14" alt="An Image"/><p>HTML</p><ul><li>1</li><li>3.14</li></ul></body></html>'
   APPEND_ID_ITEM ID_ITEM 32 INT 34 "Int Item"
     KEY "/html/head/title/text()"
   APPEND_ITEM ITEM1 16 UINT "Int Item 2"
     KEY "/html/head/script/@src"
-    GENERIC_READ_CONVERSION_START UINT 16
+    GENERIC_READ_CONVERSION_START
       value * 2
     GENERIC_READ_CONVERSION_END
     UNITS CELSIUS C
@@ -330,3 +353,4 @@ TELEMETRY <%= target_name %> THROUGHPUT_STATUS BIG_ENDIAN "Throughput statistics
     UNITS Seconds s
   ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
+    CONVERTED_DATA 280 STRING

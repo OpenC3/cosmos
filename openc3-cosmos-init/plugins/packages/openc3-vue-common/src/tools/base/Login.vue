@@ -169,6 +169,8 @@ export default {
         .catch((error) => {
           if (error?.status === 401) {
             this.alert = 'Incorrect password'
+          } else if (error?.status === 429) {
+            this.alert = 'Please try again later'
           } else if (
             error?.response?.data?.message === 'invalid password hash'
           ) {

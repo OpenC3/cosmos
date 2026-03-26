@@ -26,6 +26,7 @@ gvData = None
 
 class InterfaceTestProtocol(Protocol):
     def __init__(self, added_data, stop_count=0, packet_added_data=None, packet_stop_count=0):
+        super().__init__()
         self.added_data = added_data
         self.packet_added_data = packet_added_data
         self.stop_count = int(stop_count)

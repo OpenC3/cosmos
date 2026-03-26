@@ -714,9 +714,8 @@ module OpenC3
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
-        xtce_doc = Nokogiri::XML(File.open(xml_path))
-        expected_output = Nokogiri::XML(File.open(expected_tf.path))
-        #expect(xtce_doc).to be_equivalent_to(expected_output)
+        Nokogiri::XML(File.open(xml_path))
+        Nokogiri::XML(File.open(expected_tf.path))
         expected_tf.unlink
         tf.unlink
         FileUtils.rm_rf File.join(spec_install, "TGT1")
@@ -794,11 +793,7 @@ module OpenC3
         @pc.process_file(tf_tgt2.path, "TGT2")
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
-        tgt1_xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
-        tgt2_xml_path = File.join(spec_install, "TGT2", "cmd_tlm", "tgt2.xtce")
-        #xtce_doc = Nokogiri::XML(File.open(xml_path))
         combination_dir = File.join(spec_install)
-        combination_result_dir = File.join(combination_dir, "TARGETS_COMBINED")
         output_path = XtceConverter.combine_output_xtce(combination_dir)
         result_xml = Nokogiri::XML(File.open(output_path))
 
@@ -840,11 +835,7 @@ module OpenC3
         @pc.process_file(tf_tgt2.path, "TGT2")
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
-        tgt1_xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
-        tgt2_xml_path = File.join(spec_install, "TGT2", "cmd_tlm", "tgt2.xtce")
-        #xtce_doc = Nokogiri::XML(File.open(xml_path))
         combination_dir = File.join(spec_install)
-        combination_result_dir = File.join(combination_dir, "TARGETS_COMBINED")
         output_path = XtceConverter.combine_output_xtce(combination_dir, "TGT1")
         result_xml = Nokogiri::XML(File.open(output_path))
 
@@ -886,10 +877,7 @@ module OpenC3
         @pc.process_file(tf_tgt2.path, "TGT2")
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
-        tgt1_xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
-        tgt2_xml_path = File.join(spec_install, "TGT2", "cmd_tlm", "tgt2.xtce")
         combination_dir = File.join(spec_install)
-        combination_result_dir = File.join(combination_dir, "TARGETS_COMBINED")
         output_path = XtceConverter.combine_output_xtce(combination_dir, "TGT2")
         result_xml = Nokogiri::XML(File.open(output_path))
         expected_output = Nokogiri::XML(File.open(expected_tf.path))
@@ -924,7 +912,6 @@ module OpenC3
         @pc.process_file(tf_tgt1.path, "TGT1")
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
-        tgt1_xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
         combination_dir = File.join(spec_install)
         output_path = XtceConverter.combine_output_xtce(combination_dir)
         expect(output_path).to be_equivalent_to(nil)
@@ -999,7 +986,10 @@ module OpenC3
           file.puts "  end"
           file.puts "end"
         end
+        saved_verbose = $VERBOSE
+        $VERBOSE = false
         load 'conversion2.rb'
+        $VERBOSE = saved_verbose
 
         tf = Tempfile.new('unittest')
         tf.puts 'TELEMETRY TGT1 pkt1 LITTLE_ENDIAN "Packet"'
@@ -1047,7 +1037,10 @@ module OpenC3
           file.puts "  end"
           file.puts "end"
         end
+        saved_verbose = $VERBOSE
+        $VERBOSE = false
         load 'conversion2.rb'
+        $VERBOSE = saved_verbose
 
         tf = Tempfile.new('unittest')
         tf.puts 'TELEMETRY TGT1 pkt1 LITTLE_ENDIAN "Packet"'

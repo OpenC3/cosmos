@@ -189,6 +189,8 @@ module OpenC3
           postfix = 'C'
         when :FORMATTED, :WITH_UNITS
           postfix = 'F'
+        else
+          raise "Unsupported value type: #{value_type}"
         end
         case reduced_type
         when :MIN

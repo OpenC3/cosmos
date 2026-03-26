@@ -26,6 +26,7 @@
       :states-in-hex="statesInHex"
       :show-ignored-params="showIgnoredParams"
       :cmd-raw="cmdRaw"
+      :ignore-range-checks="ignoreRangeChecks"
       @command-changed="commandChanged($event)"
       @command-loaded="onCommandLoaded($event)"
       @build-cmd="buildCmd($event)"
@@ -309,7 +310,7 @@ export default {
               checkbox: true,
               checked: this.cmdRaw,
               command: () => {
-                this.cmdRaw = !this.cmdRaw.checked
+                this.cmdRaw = !this.cmdRaw
               },
             },
             {
@@ -411,9 +412,14 @@ export default {
   methods: {
     convertToValue(param) {
       if (param.val !== undefined && param.states && !this.cmdRaw) {
-        return Object.keys(param.states).find(
+        const stateName = Object.keys(param.states).find(
           (state) => param.states[state].value === param.val,
         )
+        if (stateName !== undefined) {
+          return stateName
+        }
+        // No matching state found (manually entered value), fall through
+        // to parse the raw value below
       }
       if (typeof param.val !== 'string') {
         return param.val
@@ -455,7 +461,13 @@ export default {
               return Number.parseInt(str)
             }
           } else if (this.isArray(str)) {
-            return eval(str)
+            try {
+              return JSON.parse(str)
+            } catch {
+              this.status = `Invalid array parameter value: ${str}`
+              this.displayErrorDialog = true
+              return str
+            }
           } else {
             return str
           }

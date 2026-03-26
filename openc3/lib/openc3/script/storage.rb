@@ -110,7 +110,7 @@ module OpenC3
           end
 
           return _get_storage_file("#{part}/#{path}", scope: scope)
-        rescue => e
+        rescue
           if part == "targets_modified"
             part = "targets"
             redo
@@ -141,13 +141,13 @@ module OpenC3
       return result['url']
     end
 
-    def _get_storage_file(path, scope: $openc3_scope)
+    def _get_storage_file(path, bucket: 'OPENC3_CONFIG_BUCKET', scope: $openc3_scope)
       # Create Tempfile to store data
       file = Tempfile.new('target', binmode: true)
       file.filename = path
 
       endpoint = "/openc3-api/storage/download/#{scope}/#{path}"
-      result = _get_presigned_request(endpoint, scope: scope)
+      result = _get_presigned_request(endpoint, bucket: bucket, scope: scope)
       puts "Reading #{scope}/#{path}"
 
       # Try to get the file
@@ -186,11 +186,11 @@ module OpenC3
       end
     end
 
-    def _get_presigned_request(endpoint, external: nil, scope: $openc3_scope)
+    def _get_presigned_request(endpoint, external: nil, bucket: 'OPENC3_CONFIG_BUCKET', scope: $openc3_scope)
       if external or !$openc3_in_cluster
-        response = $api_server.request('get', endpoint, query: { bucket: 'OPENC3_CONFIG_BUCKET' }, scope: scope)
+        response = $api_server.request('get', endpoint, query: { bucket: bucket }, scope: scope)
       else
-        response = $api_server.request('get', endpoint, query: { bucket: 'OPENC3_CONFIG_BUCKET', internal: true }, scope: scope)
+        response = $api_server.request('get', endpoint, query: { bucket: bucket, internal: true }, scope: scope)
       end
       if response.nil? || response.status != 201
         raise "Failed to get presigned URL for #{endpoint}"

@@ -126,6 +126,7 @@ module OpenC3
       @cleanup_times = []
       @previous_time_nsec_since_epoch = nil
       @tmp_dir = Dir.mktmpdir
+      @wait_threads = []
 
       # This is an optimization to avoid creating a new entry object
       # each time we create an entry which we do a LOT!
@@ -154,9 +155,8 @@ module OpenC3
 
     # Stops all logging and closes the current log file.
     def stop
-      threads = nil
-      @mutex.synchronize { threads = close_file(false); @logging_enabled = false; }
-      return threads
+      @mutex.synchronize { close_file(false); @logging_enabled = false; }
+      return @wait_threads
     end
 
     # Stop all logging, close the current log file, and kill the logging threads.
@@ -171,6 +171,13 @@ module OpenC3
         end
       end
       return threads
+    end
+
+    def cleanup
+      if @tmp_dir
+        FileUtils.remove_entry_secure(@tmp_dir, true)
+        @tmp_dir = nil
+      end
     end
 
     def graceful_kill
@@ -307,8 +314,19 @@ module OpenC3
     # to keep a full file's worth of data in the stream. This is what prevents continuous stream growth.
     # Returns thread that moves log to bucket
     def close_file(take_mutex = true)
-      threads = []
       @mutex.lock if take_mutex
+
+      # Remove old wait_threads
+      to_remove = []
+      @wait_threads.each do |thread|
+        unless thread.alive?
+          to_remove << thread
+        end
+      end
+      to_remove.each do |thread|
+        @wait_threads.delete(thread)
+      end
+
       begin
         if @file
           begin
@@ -322,7 +340,7 @@ module OpenC3
               # Cleanup timestamps here so they are unset for the next file
               @first_time = nil
               @last_time = nil
-              threads << BucketUtilities.move_log_file_to_bucket(@filename, bucket_key)
+              @wait_threads << BucketUtilities.move_log_file_to_bucket(@filename, bucket_key)
               # Now that the file is in storage, trim the Redis stream after a delay
               @cleanup_offsets << {}
               @last_offsets.each do |redis_topic, last_offset|
@@ -342,7 +360,7 @@ module OpenC3
       ensure
         @mutex.unlock if take_mutex
       end
-      return threads
+      return @wait_threads
     end
 
     def bucket_filename

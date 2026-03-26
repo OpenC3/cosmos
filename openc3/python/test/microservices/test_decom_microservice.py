@@ -86,7 +86,11 @@ class TestDecomMicroservice(unittest.TestCase):
         packet.received_time = datetime.now(timezone.utc)
         for stdout in capture_io():
             TelemetryTopic.write_packet(packet, scope="DEFAULT")
-            time.sleep(0.01)
+            # Wait for async processing to complete with retries for CI reliability
+            for _ in range(10):
+                time.sleep(0.01)
+                if "GROUND2STATUS" in stdout.getvalue():
+                    break
             self.assertIn(
                 "INST HEALTH_STATUS TEMP1 = -100.0 is RED_LOW (-80.0)",
                 stdout.getvalue(),
@@ -156,7 +160,11 @@ class TestDecomMicroservice(unittest.TestCase):
         packet.write("TEMP3", 0.0)
         for stdout in capture_io():
             TelemetryTopic.write_packet(packet, scope="DEFAULT")
-            time.sleep(0.01)
+            # Wait for async processing to complete with retries for CI reliability
+            for _ in range(10):
+                time.sleep(0.01)
+                if "TEMP2" in stdout.getvalue():
+                    break
             assert re.search(
                 r"INST HEALTH_STATUS TEMP1 = .* is BLUE \(-20.0 to 20.0\)",
                 stdout.getvalue(),

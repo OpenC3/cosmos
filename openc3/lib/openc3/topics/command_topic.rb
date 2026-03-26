@@ -21,6 +21,7 @@ require 'openc3/utilities/open_telemetry'
 
 module OpenC3
   class CommandTopic < Topic
+    # TODO: This is in several places, should maybe be a parameter in settings?
     COMMAND_ACK_TIMEOUT_S = 30
 
     def self.write_packet(packet, scope:)

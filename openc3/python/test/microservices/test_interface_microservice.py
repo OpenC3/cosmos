@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import threading
 import time
 import unittest
@@ -73,6 +74,9 @@ class MyInterface(Interface):
             raise RuntimeError("test-error")
         time.sleep(0.01)
         return self.data, None
+
+    def write_interface(self, data, extra=None):
+        return data, extra
 
     def interface_cmd(self, cmd_name, *cmd_args):
         self.interface_cmd_name = cmd_name
@@ -228,7 +232,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
             self.assertIn("Connection Lost: RuntimeError('test-error')", stdout.getvalue())
 
             MyInterface.read_interface_raise = False
-            time.sleep(0.1)  # Allow to reconnect
+            time.sleep(0.5)  # Allow to reconnect
             all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
             self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
             im.shutdown()
@@ -445,6 +449,103 @@ class TestInterfaceMicroservice(unittest.TestCase):
 
         im.shutdown()
         time.sleep(0.1)  # Allow threads to exit
+
+    # Test for GitHub issue #2855:
+    # Stale tlmcnt Redis keys cause interface disconnect loops.
+    # When a plugin is upgraded and a packet is removed, the old TELEMETRYCNTS
+    # Redis key remains. On the next sync the interface calls
+    # System.telemetry.packet() for every key in the hash — including the stale
+    # one — which raises RuntimeError, propagates through handle_packet() →
+    # handle_connection_lost() → disconnect(), and triggers a reconnect loop.
+    # Test for GitHub issue #2855:
+    # Stale tlmcnt Redis keys cause interface disconnect loops.
+    # When a plugin is upgraded and a packet is removed, the old TELEMETRYCNTS
+    # Redis key remains. On the next sync the interface calls
+    # System.telemetry.packet() for every key in the hash — including the stale
+    # one — which raises RuntimeError, propagates through handle_packet() →
+    # handle_connection_lost() → disconnect(), and triggers a reconnect loop.
+    def test_stale_tlmcnt_redis_key_does_not_disconnect_interface(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        im.interface.reconnect_delay = 0.1
+        # Ensure shutdown is called even if assertions fail, so the thread doesn't hang
+        self.addCleanup(im.shutdown)
+
+        # Inject the stale key AFTER init so init_tlm_packet_counts succeeds.
+        # This simulates a plugin upgrade mid-operation where a packet is removed
+        # but its TELEMETRYCNTS Redis key is left behind.
+        Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
+
+        # Reset sync state so the full pipeline sync fires on the first packet
+        TargetModel.sync_packet_count_data = {}
+        TargetModel.sync_packet_count_time = None
+        TargetModel.stale_packet_keys_warned = set()
+
+        for stdout in capture_io():
+            thread = threading.Thread(target=im.run)
+            thread.start()
+            time.sleep(0.2)  # Allow connect + at least one packet + sync cycle
+
+            # The interface should remain CONNECTED after encountering the stale key
+            # and must not have triggered a disconnect at any point.
+            # With the bug, RuntimeError raised by System.telemetry.packet("INST", "OLD_PACKET")
+            # propagates through handle_packet() → handle_connection_lost() → disconnect(),
+            # causing the disconnect_count to increment and the interface to cycle.
+            self.assertEqual(im.interface.disconnect_count, 0)
+            all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+            self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
+            self.assertNotIn("Connection Lost", stdout.getvalue())
+            self.assertIn("Stale tlmcnt Redis key detected for unknown packet INST OLD_PACKET", stdout.getvalue())
+
+    def test_process_cmd_with_all_fields_and_missing_optional_fields(self):
+        """Test process_cmd succeeds with full msg_hash and with only required fields."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        thread = threading.Thread(target=im.run)
+        thread.start()
+        time.sleep(0.1)
+
+        handler = im.handler_thread
+        topic = "{DEFAULT__CMD}TARGET__INST"
+        msg_id = f"{int(time.time() * 1000)}-0"
+
+        # Full msg_hash with all fields present
+        full_msg_hash = {
+            b"target_name": b"INST",
+            b"cmd_name": b"ABORT",
+            b"cmd_params": json.dumps({}).encode(),
+            b"range_check": b"TRUE",
+            b"raw": b"FALSE",
+            b"hazardous_check": b"TRUE",
+            b"cmd_string": b"cmd('INST ABORT')",
+            b"username": b"test_user",
+            b"validate": b"TRUE",
+            b"manual": b"FALSE",
+            b"log_message": b"TRUE",
+        }
+        result = handler.process_cmd(topic, msg_id, full_msg_hash, None)
+        self.assertEqual(result, "SUCCESS")
+
+        # Minimal msg_hash — only required fields; optional fields use .get() defaults
+        minimal_msg_hash = {
+            b"target_name": b"INST",
+            b"cmd_name": b"ABORT",
+            b"cmd_params": json.dumps({}).encode(),
+        }
+        result = handler.process_cmd(topic, msg_id, minimal_msg_hash, None)
+        self.assertEqual(result, "SUCCESS")
+
+        # Missing target_name raises KeyError (required field uses direct [] access)
+        with self.assertRaises(KeyError):
+            handler.process_cmd(topic, msg_id, {b"cmd_name": b"ABORT"}, None)
+
+        # Missing cmd_name raises KeyError (required field uses direct [] access)
+        with self.assertRaises(KeyError):
+            handler.process_cmd(topic, msg_id, {b"target_name": b"INST"}, None)
+
+        # Disabled target returns None (no ack)
+        handler.interface.cmd_target_enabled["INST"] = False
+        result = handler.process_cmd(topic, msg_id, full_msg_hash, None)
+        self.assertIsNone(result)
 
     def test_supports_optimize_throughput_option_for_backward_compatibility(self):
         # Update the model to use OPTIMIZE_THROUGHPUT option (legacy name)

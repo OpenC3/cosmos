@@ -28,15 +28,15 @@ export default createVuetify({
       cosmosDarkCobalt,
       cosmosDarkIndigo,
       cosmosDarkSlate,
-      cosmosDarkEmerald
+      cosmosDarkEmerald,
     },
   },
   defaults: {
-    VCheckbox: { color: 'primary' },
-    VCheckboxBtn: { color: 'primary' },
-    VRadio: { color: 'primary' },
-    VRadioGroup: { color: 'primary' },
-    VSwitch: { color: 'primary' },
+    VCheckbox: { color: 'secondary' },
+    VCheckboxBtn: { color: 'secondary' },
+    VRadio: { color: 'secondary' },
+    VRadioGroup: { color: 'secondary' },
+    VSwitch: { color: 'secondary' },
   },
   icons: {
     defaultSet: 'mdi',

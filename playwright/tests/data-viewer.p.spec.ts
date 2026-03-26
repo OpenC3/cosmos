@@ -29,6 +29,7 @@ async function addComponent(page, utils, target: string, packet: string) {
 }
 
 test('saves, opens, and resets the configuration', async ({ page, utils }) => {
+  test.slow()
   await addComponent(page, utils, 'INST', 'ADCS')
   await page.locator('[data-test="tab"]').click({
     button: 'right',
@@ -47,11 +48,9 @@ test('saves, opens, and resets the configuration', async ({ page, utils }) => {
 
   // Add a new component with a different type
   await page.locator('[data-test=new-tab]').click()
-  await page
-    .getByRole('combobox')
-    .filter({ hasText: 'COSMOS Packet Raw/Decom' })
-    .click()
-  await page.getByText('Current Time').click()
+  await page.locator('[data-test=select-component]').click()
+  await page.getByRole('option', { name: 'Current Time' }).click()
+  await utils.sleep(100) // Wait for TPI chooser to be clickable
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
   await page.locator('[data-test=select-send]').click() // add the packet to the list
   await page.locator('[data-test=add-component]').click()
@@ -235,6 +234,7 @@ test('controls playback', async ({ page, utils }) => {
 })
 
 test('changes display settings', async ({ page, utils }) => {
+  test.slow()
   await addComponent(page, utils, 'INST', 'ADCS')
   await page.locator('[data-test=start-button]').click()
   await utils.sleep(1000) // Allow a few packets to come in

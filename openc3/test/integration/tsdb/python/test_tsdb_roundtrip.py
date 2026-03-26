@@ -167,7 +167,7 @@ def run_roundtrip_test(questdb_client, clean_table, wait_for_data):
         # Read back using tsdb_lookup
         items = [(target_name, packet_name, "VALUE", "RAW", False)]
 
-        with patch("openc3.models.cvt_model.TargetModel") as mock_target:
+        with patch("openc3.models.target_model.TargetModel") as mock_target:
             mock_target.packet.return_value = packet_def
             end_ts = ts_to_iso(ts + len(test_values) * 1_000_000_000)
             result = CvtModel.tsdb_lookup(items, start_time=ts_iso, end_time=end_ts)
@@ -574,7 +574,7 @@ class TestTimestampItemsRoundtrip:
         start_time = ts_to_iso(base_ts)
         end_time = ts_to_iso(base_ts + len(test_values) * 1_000_000_000)
 
-        with patch("openc3.models.cvt_model.TargetModel") as mock_target:
+        with patch("openc3.models.target_model.TargetModel") as mock_target:
             mock_target.packet.return_value = packet_def
             result = CvtModel.tsdb_lookup(
                 items, start_time=start_time, end_time=end_time
@@ -683,7 +683,7 @@ class TestTimestampItemsRoundtrip:
         start_time = ts_to_iso(base_ts)
         end_time = ts_to_iso(base_ts + len(test_values) * 1_000_000_000)
 
-        with patch("openc3.models.cvt_model.TargetModel") as mock_target:
+        with patch("openc3.models.target_model.TargetModel") as mock_target:
             mock_target.packet.return_value = packet_def
             result = CvtModel.tsdb_lookup(
                 items, start_time=start_time, end_time=end_time

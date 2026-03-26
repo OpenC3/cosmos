@@ -123,6 +123,7 @@
           :points-saved="settings.pointsSaved.value"
           :points-graphed="settings.pointsGraphed.value"
           :refresh-interval-ms="settings.refreshIntervalMs.value"
+          :hide-legend="settings.hideLegend.value"
           :time-zone="timeZone"
           @close-graph="() => closeGraph(graph)"
           @min-max-graph="() => minMaxGraph(graph)"
@@ -130,6 +131,7 @@
           @pause="() => (state = 'pause')"
           @start="() => (state = 'start')"
           @click="() => graphSelected(graph)"
+          @hide-legend="hideLegend"
           @edit="saveDefaultConfig(currentConfig)"
           @started="graphStarted"
         />
@@ -308,6 +310,10 @@ export default {
           value: 100,
           rules: [(value) => !!value || 'Required'],
         },
+        hideLegend: {
+          title: 'Hide Legend',
+          value: false,
+        },
       },
     }
   },
@@ -322,6 +328,7 @@ export default {
           pointsSaved: this.settings.pointsSaved.value,
           pointsGraphed: this.settings.pointsGraphed.value,
           refreshIntervalMs: this.settings.refreshIntervalMs.value,
+          hideLegend: this.settings.hideLegend.value,
         },
         graphs: this.grid.getItems().map((item) => {
           // Map the gridItem id to the graph id
@@ -387,6 +394,10 @@ export default {
       for (const key in newValues) {
         this.settings[key].value = newValues[key]
       }
+    },
+    hideLegend() {
+      this.settings.hideLegend.value = true
+      this.saveDefaultConfig(this.currentConfig)
     },
     setup: function () {
       this.grid = new Muuri('.grid', {
@@ -632,9 +643,12 @@ export default {
       this.settings.pointsSaved.value = config.settings.pointsSaved
       this.settings.pointsGraphed.value = config.settings.pointsGraphed
       this.settings.refreshIntervalMs.value = config.settings.refreshIntervalMs
+      if (config.settings.hideLegend !== undefined) {
+        this.settings.hideLegend.value = config.settings.hideLegend
+      }
 
       let graphs = config.graphs
-      for (let graph of graphs) {
+      for (let _graph of graphs) {
         await this.addGraph(false) // Don't check existing graphs
       }
       await this.$nextTick()

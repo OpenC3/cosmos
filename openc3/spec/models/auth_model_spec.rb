@@ -43,8 +43,8 @@ module OpenC3
           raise_error(/old_password incorrect/)
 
         AuthModel.set('newpassword', AUTH_INITIAL_PASSWORD)
-        expect(AuthModel.verify_no_service(AUTH_INITIAL_PASSWORD, no_password: false)).to eq(false)
-        expect(AuthModel.verify_no_service('newpassword', no_password: false)).to eq(true)
+        expect(AuthModel.verify_no_service(AUTH_INITIAL_PASSWORD, mode: :any)).to eq(false)
+        expect(AuthModel.verify_no_service('newpassword', mode: :any)).to eq(true)
       end
 
       it "self.verify" do
@@ -54,16 +54,48 @@ module OpenC3
       end
 
       it "verifies and terminates a session token" do
+        token1 = AuthModel.generate_session
+        token2 = AuthModel.generate_session
+        expect(AuthModel.verify(token1)).to eq(true)
+        expect(AuthModel.verify(token2)).to eq(true)
+
+        # Make sure terminating one doesn't affect the other
+        AuthModel.terminate(token1)
+        expect(AuthModel.verify(token1)).to eq(false)
+        expect(AuthModel.verify(token2)).to eq(true)
+      end
+
+      it "verifies a session token and logs out" do
+        token1 = AuthModel.generate_session
+        token2 = AuthModel.generate_session
+        expect(AuthModel.verify(token1)).to eq(true)
+        expect(AuthModel.verify(token2)).to eq(true)
+
+        # Make sure all sessions are terminated
+        AuthModel.logout
+        expect(AuthModel.verify(token1)).to eq(false)
+        expect(AuthModel.verify(token2)).to eq(false)
+      end
+
+      it "creates a one-time use token" do
+        token = AuthModel.generate_session(otp: true)
+        expect(AuthModel.verify(token)).to eq(true)
+
+        # Already verified, second attempt shouldn't work
+        expect(AuthModel.verify(token)).to eq(false)
+      end
+
+      it "revokes all sessions on password change" do
         token = AuthModel.generate_session
         expect(AuthModel.verify(token)).to eq(true)
 
-        AuthModel.logout
+        AuthModel.set('newpassword', AUTH_INITIAL_PASSWORD)
         expect(AuthModel.verify(token)).to eq(false)
       end
 
       it "raises when stored password hash is SHA256" do
         @redis.set(PW_HASH_PRIMARY_KEY, Digest::SHA256.hexdigest(AUTH_INITIAL_PASSWORD))
-        expect{ AuthModel.verify_no_service(AUTH_INITIAL_PASSWORD, no_password: false) }.to \
+        expect{ AuthModel.verify_no_service(AUTH_INITIAL_PASSWORD, mode: :any) }.to \
           raise_error(/invalid password hash/)
       end
     end

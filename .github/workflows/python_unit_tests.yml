@@ -20,6 +20,10 @@ on:
     branches:
       - "**"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   OPENC3_CLOUD: local
   OPENC3_REDIS_HOSTNAME: localhost
@@ -30,19 +34,19 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13"]
     permissions:
       contents: read
 
     steps:
       - uses: actions/checkout@v6
       - name: Install uv
-        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7
+        uses: astral-sh/setup-uv@6ee6290f1cbc4156c0bdd66691b2c144ef8df19a # v7
         with:
+          version: "0.10.4"
           enable-cache: true
           cache-suffix: ${{ matrix.python-version }}
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
+          python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: uv sync --frozen
         working-directory: openc3/python
@@ -51,6 +55,8 @@ jobs:
           uv run --frozen coverage run -m pytest ./test/
           uv run --frozen coverage xml -i
         working-directory: openc3/python
+      - name: Prune uv cache
+        run: uv cache prune --ci
       - uses: codecov/codecov-action@v5
         with:
           working-directory: openc3/python

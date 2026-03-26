@@ -136,7 +136,10 @@ module OpenC3
           file.puts "  end"
           file.puts "end"
         end
+        saved_verbose = $VERBOSE
+        $VERBOSE = false
         load 'limits_response2.rb'
+        $VERBOSE = saved_verbose
 
         tf = Tempfile.new('unittest')
         tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'

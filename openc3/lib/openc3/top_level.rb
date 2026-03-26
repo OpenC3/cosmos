@@ -1,4 +1,4 @@
-# encoding: ascii-8bit
+# encoding: utf-8
 
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
@@ -99,6 +99,20 @@ module OpenC3
     else # Back
       $: << path
     end
+  end
+
+  def self.sanitize_path(path)
+    return '' if path.nil?
+    # path is passed as a parameter thus we have to sanitize it or the code scanner detects:
+    # "Uncontrolled data used in path expression"
+    # This method is taken directly from the Rails source:
+    #   https://api.rubyonrails.org/v5.2/classes/ActiveStorage/Filename.html#method-i-sanitized
+    # NOTE: I removed the '/' character because we have to allow this in order to traverse the path
+    sanitized = path.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "�").strip.tr("\u{202E}%$|:;\t\r\n\\", "-").gsub('..', '-')
+    if sanitized != path
+      raise StorageError, "Invalid path: #{path}"
+    end
+    sanitized
   end
 
   require 'openc3/utilities/logger'
@@ -280,65 +294,6 @@ module OpenC3
     return log_file
   end
 
-  # Writes a log file with information about the current configuration
-  # including the Ruby version, OpenC3 version, whether you are on Windows, the
-  # OpenC3 path, and the Ruby path along with the exception that
-  # is passed in.
-  #
-  # @param [String] filename String to append to the exception log filename.
-  #   The filename will start with a date/time stamp.
-  # @param [String] log_dir By default this method will write to the OpenC3
-  #   default log directory. By setting this parameter you can override the
-  #   directory the log will be written to.
-  # @return [String|nil] The fully pathed log filename or nil if there was
-  #   an error creating the log file.
-  def self.write_exception_file(exception, filename = 'exception', log_dir = nil)
-    log_file = create_log_file(filename, log_dir) do |file|
-      file.puts "Exception:"
-      if exception
-        file.puts exception.formatted
-        file.puts
-      else
-        file.puts "No Exception Given"
-        file.puts caller.join("\n")
-        file.puts
-      end
-      file.puts "Caller Backtrace:"
-      file.puts caller().join("\n")
-      file.puts
-
-      file.puts "Ruby Version: ruby #{RUBY_VERSION} (#{RUBY_RELEASE_DATE} patchlevel #{RUBY_PATCHLEVEL}) [#{RUBY_PLATFORM}]"
-      file.puts "Rubygems Version: #{Gem::VERSION}"
-      file.puts "OpenC3 Version: #{OpenC3::VERSION}"
-      file.puts "OpenC3::PATH: #{OpenC3::PATH}"
-      file.puts ""
-      file.puts "Environment:"
-      file.puts "RUBYOPT: #{ENV['RUBYOPT']}"
-      file.puts "RUBYLIB: #{ENV['RUBYLIB']}"
-      file.puts "GEM_PATH: #{ENV['GEM_PATH']}"
-      file.puts "GEMRC: #{ENV['GEMRC']}"
-      file.puts "RI_DEVKIT: #{ENV['RI_DEVKIT']}"
-      file.puts "GEM_HOME: #{ENV['GEM_HOME']}"
-      file.puts "PYTHONUSERBASE: #{ENV['PYTHONUSERBASE']}"
-      file.puts "PATH: #{ENV['PATH']}"
-      file.puts ""
-      file.puts "Ruby Path:\n  #{$:.join("\n  ")}\n\n"
-      file.puts "Gems:"
-      Gem.loaded_specs.values.map { |x| file.puts "#{x.name} #{x.version} #{x.platform}" }
-      file.puts ""
-      file.puts "All Threads Backtraces:"
-      Thread.list.each do |thread|
-        file.puts thread.backtrace.join("\n")
-        file.puts
-      end
-      file.puts ""
-      file.puts ""
-    ensure
-      file.close
-    end
-    return log_file
-  end
-
   # Writes a log file with information about unexpected output
   #
   # @param [String] text The unexpected output text
@@ -367,7 +322,6 @@ module OpenC3
   def self.handle_fatal_exception(error, _try_gui = true)
     unless SystemExit === error or SignalException === error
       $openc3_fatal_exception = error
-      self.write_exception_file(error)
       Logger.fatal "Fatal Exception! Exiting..."
       Logger.fatal error.formatted
       if $stdout != STDOUT
@@ -392,7 +346,6 @@ module OpenC3
   # @param try_gui [Boolean] Whether to try and create a GUI exception popup
   def self.handle_critical_exception(error, _try_gui = true)
     Logger.error "Critical Exception! #{error.formatted}"
-    self.write_exception_file(error)
   end
 
   # Creates a Ruby Thread to run the given block. Rescues any exceptions and
@@ -412,7 +365,6 @@ module OpenC3
         Logger.error e.formatted
         retry_count += 1
         if retry_count <= retry_attempts
-          self.write_exception_file(e)
           retry
         end
         handle_fatal_exception(e)

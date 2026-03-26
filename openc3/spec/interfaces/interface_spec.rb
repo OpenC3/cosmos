@@ -163,6 +163,7 @@ module OpenC3
       before(:each) do
         thread = double("Thread")
         allow(thread).to receive(:join)
+        allow(thread).to receive(:alive?).and_return(false)
         allow(BucketUtilities).to receive(:move_log_file_to_bucket).and_return(thread)
       end
 
@@ -354,6 +355,7 @@ module OpenC3
       before(:each) do
         thread = double("Thread")
         allow(thread).to receive(:join)
+        allow(thread).to receive(:alive?).and_return(false)
         allow(BucketUtilities).to receive(:move_log_file_to_bucket).and_return(thread)
       end
 

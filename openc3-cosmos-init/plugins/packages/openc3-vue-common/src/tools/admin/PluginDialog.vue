@@ -170,7 +170,8 @@ import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
 import AceDiff from 'ace-diff'
-import 'ace-diff/dist/ace-diff-twilight.min.css'
+import 'ace-diff/styles.css'
+import 'ace-diff/styles-twilight.css'
 import { Api } from '@openc3/js-common/services'
 import { toRaw } from 'vue'
 import * as semver from 'semver'
@@ -195,7 +196,12 @@ export default {
       required: false,
       default: null,
     },
-    storeId: {
+    storePluginId: {
+      type: Number,
+      required: false,
+      default: null,
+    },
+    storeVersionId: {
       type: Number,
       required: false,
       default: null,
@@ -437,7 +443,8 @@ export default {
         name: this.pluginName,
         variables: toRaw(this.localVariables),
         plugin_txt_lines: lines,
-        store_id: this.storeId,
+        store_plugin_id: this.storePluginId,
+        store_version_id: this.storeVersionId,
       }
       this.$emit('callback', pluginHash)
     },

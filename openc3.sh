@@ -537,7 +537,7 @@ case $1 in
       exit 1
     fi
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
-      echo "Usage: $0 build-ubi [IMAGE_NAME...]"
+      echo "Usage: $0 build-ubi [BUILD_FLAGS...] [IMAGE_NAME...]"
       echo ""
       echo "Build $COSMOS_NAME UBI (Universal Base Image) containers."
       echo ""
@@ -545,6 +545,7 @@ case $1 in
       echo "suitable for air-gapped and government environments."
       echo ""
       echo "Arguments:"
+      echo "  BUILD_FLAGS   Additional flags to pass to docker build (e.g., --no-cache, --pull)"
       echo "  IMAGE_NAME    One or more image names to build (optional)"
       echo "                If no images are specified, all images will be built"
       echo ""
@@ -570,7 +571,9 @@ case $1 in
       echo ""
       echo "Examples:"
       echo "  $0 build-ubi                              # Build all images"
+      echo "  $0 build-ubi --no-cache                   # Build all images without cache"
       echo "  $0 build-ubi openc3-ruby-ubi              # Build one image"
+      echo "  $0 build-ubi --no-cache openc3-ruby-ubi   # Build one image without cache"
       echo "  ENV_FILE=.env.prod $0 build-ubi           # Use different env file"
       echo ""
       echo "Options:"
@@ -628,7 +631,7 @@ case $1 in
       echo ""
       echo "This uses UBI-based container images and sets UBI-specific configurations:"
       echo "  - Image suffix: -ubi"
-      echo "  - Redis volume: /home/data (for UBI compatibility)"
+      echo "  - Redis volume: /data"
       echo ""
       echo "Containers will start in the background using docker compose up -d."
       echo ""
@@ -652,7 +655,14 @@ case $1 in
       exit 0
     fi
     check_root
-    OPENC3_IMAGE_SUFFIX=-ubi OPENC3_REDIS_VOLUME=/home/data ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
+    # QuestDB RHEL images have a native arm64 variant; run tsdb natively on ARM
+    # to avoid the x86-64-v3 QEMU emulation failure. All other services run as amd64.
+    if [[ "$(uname -m)" == "arm64" ]]; then
+      OPENC3_TSDB_PLATFORM=linux/arm64
+    else
+      OPENC3_TSDB_PLATFORM=linux/amd64
+    fi
+    DOCKER_DEFAULT_PLATFORM=linux/amd64 OPENC3_IMAGE_SUFFIX=-ubi OPENC3_TSDB_PLATFORM=$OPENC3_TSDB_PLATFORM ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
     ;;
   test )
     # Check for help at any position

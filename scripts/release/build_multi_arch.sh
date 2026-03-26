@@ -30,12 +30,12 @@ if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_PLATFORMS=linux/amd64
   DOCKERFILE='Dockerfile-ubi'
   SUFFIX='-ubi'
-  OPENC3_VERSITYGW_VERSION=v1.2.0
+  OPENC3_VERSITYGW_VERSION=v1.3.1
 else
   OPENC3_PLATFORMS=linux/amd64,linux/arm64
   DOCKERFILE='Dockerfile'
   SUFFIX=''
-  OPENC3_VERSITYGW_VERSION=v1.2.0
+  OPENC3_VERSITYGW_VERSION=v1.3.1
 fi
 
 # Setup cacert.pem
@@ -195,6 +195,7 @@ else
 fi
 cd ../openc3-tsdb
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_TSDB_VERSION_EXT=$OPENC3_TSDB_VERSION_EXT \
@@ -204,6 +205,7 @@ docker buildx build \
 if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 docker buildx build \
+  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_TSDB_VERSION_EXT=$OPENC3_TSDB_VERSION_EXT \
@@ -241,7 +243,6 @@ fi
 
 cd ../openc3-cosmos-cmd-tlm-api
 docker buildx build \
-  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
@@ -254,7 +255,6 @@ docker buildx build \
 if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 docker buildx build \
-  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
@@ -267,7 +267,6 @@ fi
 
 cd ../openc3-cosmos-script-runner-api
 docker buildx build \
-  --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
@@ -318,9 +317,9 @@ fi
 # Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
 if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik
-  OPENC3_TRAEFIK_RELEASE=v3.6.5
+  OPENC3_TRAEFIK_RELEASE=v3.6.11
 else
-  OPENC3_TRAEFIK_RELEASE=v3.6.8
+  OPENC3_TRAEFIK_RELEASE=v3.6.11
 fi
 cd ../openc3-traefik
 docker buildx build \

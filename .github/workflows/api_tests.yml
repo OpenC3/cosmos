@@ -19,6 +19,10 @@ on:
     branches:
       - "**"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   RUBYOPT: --disable=frozen_string_literal
   RUBYGEMS_URL: https://rubygems.org
@@ -71,7 +75,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
       # Attempt at using separate SonarQube Scan task
       # - name: Store coverage report
-      #   uses: actions/upload-artifact@v6
+      #   uses: actions/upload-artifact@v7
       #   with:
       #     name: cmd-tlm-api-${{ matrix.ruby-version }}
       #     path: openc3-cosmos-cmd-tlm-api/coverage/coverage.json
@@ -113,7 +117,7 @@ jobs:
           flags: ruby-api # See codecov.yml
           token: ${{ secrets.CODECOV_TOKEN }}
       # - name: Store coverage report
-      #   uses: actions/upload-artifact@v6
+      #   uses: actions/upload-artifact@v7
       #   with:
       #     name: script-runner-api-ruby-${{ matrix.ruby-version }}
       #     path: openc3-cosmos-script-runner-api/coverage/coverage.json
@@ -133,7 +137,7 @@ jobs:
         # with:
         #   fetch-depth: 0
       - name: Install uv
-        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7
+        uses: astral-sh/setup-uv@6ee6290f1cbc4156c0bdd66691b2c144ef8df19a # v7
         with:
           enable-cache: true
           cache-suffix: ${{ matrix.python-version }}
@@ -153,7 +157,7 @@ jobs:
           flags: python # See codecov.yml
           token: ${{ secrets.CODECOV_TOKEN }}
       # - name: Store coverage report
-      #   uses: actions/upload-artifact@v6
+      #   uses: actions/upload-artifact@v7
       #   with:
       #     name: script-runner-api-python-${{ matrix.python-version }}
       #     path: openc3/python/coverage.xml

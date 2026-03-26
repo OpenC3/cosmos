@@ -1,5 +1,5 @@
 <!--
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -44,9 +44,11 @@
             <v-select
               v-model="selectedTarget"
               label="Select Target"
+              :disabled="targets.length === 0"
               :items="targets"
               item-title="label"
               item-value="value"
+              data-test="new-screen-target"
               @update:model-value="targetSelect"
             />
           </v-col>

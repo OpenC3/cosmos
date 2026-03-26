@@ -114,7 +114,7 @@ RSpec.describe ReactionController, type: :controller do
       expect(json["message"]).to eql("Database error")
       expect(json["type"]).to include("StandardError")
       expect(json).to have_key("backtrace")
-      expect(response).to have_http_status(500)
+      expect(response).to have_http_status(:internal_server_error)
     end
   end
 
@@ -132,7 +132,7 @@ RSpec.describe ReactionController, type: :controller do
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("Reaction not found")
       expect(json["type"]).to include("ReactionInputError")
-      expect(response).to have_http_status(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns a 400 status code for ReactionError" do
@@ -144,7 +144,7 @@ RSpec.describe ReactionController, type: :controller do
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("Bad reaction format")
       expect(json["type"]).to include("ReactionError")
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "returns a 500 status code for StandardError" do
@@ -157,7 +157,7 @@ RSpec.describe ReactionController, type: :controller do
       expect(json["message"]).to eql("Unexpected error")
       expect(json["type"]).to include("StandardError")
       expect(json).to have_key("backtrace")
-      expect(response).to have_http_status(500)
+      expect(response).to have_http_status(:internal_server_error)
     end
   end
 
@@ -197,7 +197,7 @@ RSpec.describe ReactionController, type: :controller do
       expect(json["status"]).to eql("error")
       expect(json["message"]).not_to be_nil
       expect(json["type"]).to include("ReactionInputError")
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "returns a 418 status code for ReactionError" do
@@ -209,7 +209,7 @@ RSpec.describe ReactionController, type: :controller do
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("Test reaction error")
       expect(json["type"]).to include("ReactionError")
-      expect(response).to have_http_status(418)
+      expect(response).to have_http_status(:unprocessable_entity)
     end
 
     it "returns a 500 status code for StandardError" do
@@ -222,7 +222,7 @@ RSpec.describe ReactionController, type: :controller do
       expect(json["message"]).to eql("Test standard error")
       expect(json["type"]).to include("StandardError")
       expect(json).to have_key("backtrace")
-      expect(response).to have_http_status(500)
+      expect(response).to have_http_status(:internal_server_error)
     end
   end
 
@@ -244,7 +244,7 @@ RSpec.describe ReactionController, type: :controller do
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("not found")
-      expect(response).to have_http_status(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns a 400 status code for ReactionInputError" do
@@ -276,7 +276,7 @@ RSpec.describe ReactionController, type: :controller do
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("Invalid trigger format")
       expect(json["type"]).to include("ReactionInputError")
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "returns a 418 status code for ReactionError" do
@@ -311,7 +311,7 @@ RSpec.describe ReactionController, type: :controller do
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("Failed to notify")
       expect(json["type"]).to include("ReactionError")
-      expect(response).to have_http_status(418)
+      expect(response).to have_http_status(:unprocessable_entity)
     end
 
     it "returns a 500 status code for StandardError" do
@@ -339,7 +339,7 @@ RSpec.describe ReactionController, type: :controller do
       expect(json["message"]).to eql("Database failure")
       expect(json["type"]).to include("StandardError")
       expect(json).to have_key("backtrace")
-      expect(response).to have_http_status(500)
+      expect(response).to have_http_status(:internal_server_error)
     end
   end
 
@@ -354,7 +354,7 @@ RSpec.describe ReactionController, type: :controller do
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("not found")
-      expect(response).to have_http_status(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns a 500 status code for StandardError" do
@@ -378,7 +378,7 @@ RSpec.describe ReactionController, type: :controller do
       expect(json["message"]).to eql("Notification failed")
       expect(json["type"]).to include("StandardError")
       expect(json).to have_key("backtrace")
-      expect(response).to have_http_status(500)
+      expect(response).to have_http_status(:internal_server_error)
     end
   end
 
@@ -393,7 +393,7 @@ RSpec.describe ReactionController, type: :controller do
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("not found")
-      expect(response).to have_http_status(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns a 500 status code for StandardError" do
@@ -417,7 +417,7 @@ RSpec.describe ReactionController, type: :controller do
       expect(json["message"]).to eql("Notification failed")
       expect(json["type"]).to include("StandardError")
       expect(json).to have_key("backtrace")
-      expect(response).to have_http_status(500)
+      expect(response).to have_http_status(:internal_server_error)
     end
   end
 
@@ -432,7 +432,7 @@ RSpec.describe ReactionController, type: :controller do
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("not found")
-      expect(response).to have_http_status(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns a 500 status code for StandardError" do
@@ -456,7 +456,7 @@ RSpec.describe ReactionController, type: :controller do
       expect(json["message"]).to eql("Execution failed")
       expect(json["type"]).to include("StandardError")
       expect(json).to have_key("backtrace")
-      expect(response).to have_http_status(500)
+      expect(response).to have_http_status(:internal_server_error)
     end
   end
 
@@ -483,7 +483,7 @@ RSpec.describe ReactionController, type: :controller do
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("Invalid reaction name")
       expect(json["type"]).to include("ReactionInputError")
-      expect(response).to have_http_status(404)
+      expect(response).to have_http_status(:not_found)
     end
 
     it "returns a 400 status code for ReactionError" do
@@ -495,7 +495,7 @@ RSpec.describe ReactionController, type: :controller do
       expect(json["status"]).to eql("error")
       expect(json["message"]).to eql("Cannot delete active reaction")
       expect(json["type"]).to include("ReactionError")
-      expect(response).to have_http_status(400)
+      expect(response).to have_http_status(:bad_request)
     end
 
     it "returns a 500 status code for StandardError" do
@@ -508,7 +508,7 @@ RSpec.describe ReactionController, type: :controller do
       expect(json["message"]).to eql("Database failure")
       expect(json["type"]).to include("StandardError")
       expect(json).to have_key("backtrace")
-      expect(response).to have_http_status(500)
+      expect(response).to have_http_status(:internal_server_error)
     end
 
     it "returns a json hash of name and status code 200 if found" do

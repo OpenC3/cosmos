@@ -15,10 +15,11 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3/top_level'
+# require 'openc3/top_level' # Circular require
 require 'openc3/ext/config_parser' if RUBY_ENGINE == 'ruby' and !ENV['OPENC3_NO_EXT']
 require 'erb'
 require 'fileutils'
+require 'tempfile'
 
 module OpenC3
   # Reads OpenC3 style configuration data which consists of keywords followed
@@ -218,6 +219,7 @@ module OpenC3
                    &)
       ensure
         file.close unless file.closed?
+        file.unlink
       end
     end
 
@@ -417,9 +419,7 @@ module OpenC3
       elsif copy.include?(':') # Check for Windows drive letter
         copy = copy.split(':')[1]
       end
-      parsed_filename = File.join(Dir.tmpdir, 'openc3', 'tmp', copy)
-      FileUtils.mkdir_p(File.dirname(parsed_filename)) # Create the path
-      file = File.open(parsed_filename, 'w+')
+      file = Tempfile.new(copy)
       file.puts output
       file.rewind # Rewind so the file is ready to read
       file
