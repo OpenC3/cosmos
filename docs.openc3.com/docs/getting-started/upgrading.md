@@ -254,12 +254,16 @@ Stop COSMOS 6 first, then migrate after upgrading:
 ./openc3.sh upgrade v7.0.0
 ./openc3.sh run
 
+# 3. Pull the migration script from COSMOS 7
+curl -O https://raw.githubusercontent.com/OpenC3/cosmos/main/scripts/linux/openc3_migrate_s3.sh
+chmod +x openc3_migrate_s3.sh
+
 # 3. Migrate all data from old COSMOS 6 MINIO volume to the running versitygw
-./scripts/linux/openc3_migrate_s3.sh migrate
+./openc3_migrate_s3.sh migrate
 
 # 4. Verify your data migrated correctly
-./scripts/linux/openc3_migrate_s3.sh status
-./scripts/linux/openc3_migrate_s3.sh cleanup
+./openc3_migrate_s3.sh status
+./openc3_migrate_s3.sh cleanup
 ```
 
 #### Custom Credentials
@@ -293,13 +297,31 @@ After verifying COSMOS 7 works correctly, you can remove the old COSMOS 6 MINIO 
 docker volume rm openc3-bucket-v
 ```
 
+### Migrating COSMOS Decom Bin Files to TSDB
+
+Now that you've migrated the binary files from Minio to Versitygw you need to ingest this data into the new Time Series Database (TSDB). Install the [TSDB Migration](https://github.com/OpenC3/openc3-cosmos-tsdb-migration) plugin from the App Store by clicking Browse Plugins from the Admin Console and searching for TSDB. You can get more information about the configuration parameters from the TSDB Migration [README](https://github.com/OpenC3/openc3-cosmos-tsdb-migration).
+
+You will notice CmdTlmServer log messages indicating that the Decom log files are being processed:
+
+```json
+{"time":"1774626658233033984","@timestamp":"2026-03-27T15:50:58.233034Z","level":"INFO","microservice_name":"DEFAULT__USER__TSDB-MIGRATION-MICROSERVICE","container_name":"47c6c5a1cc82","message":"Completed: DEFAULT/decom_logs/tlm/INST/20260327/20260327145450822594000__20260327150500322594000__DEFAULT__INST__ALL__rt__decom.bin.gz - 14754 packets (total: 28036 packets, 15 files)","type":"log"}
+...
+{"time":"1774626662373466880","@timestamp":"2026-03-27T15:51:02.373467Z","level":"INFO","microservice_name":"DEFAULT__USER__TSDB-MIGRATION-MICROSERVICE","container_name":"47c6c5a1cc82","message":"Migration complete! Files: 16, Packets: 42452, Errors: 0","type":"log"}
+```
+
+At this point you should be able to use any COSMOS applications that access the streaming API to ensure the data has been migrated. Open Telemetry Grapher or Data Extractor and either graph or extract historical data and verify the contents.
+
+Once the data has been verified you can remove the imported data using Bucket Explorer. Navigate to the `logs` bucket and remove the `processed`, `reduced_minute_logs`, `reduced_hour_logs`, `reduced_day_logs` directories using the Trash icon.
+
+![Bucket Explorer](/img/upgrading/bucket_explorer.png)
+
 ### COSMOS Configuration Changes
 
 #### Removed
 
 - **`rubysloc` CLI command** — The `./openc3.sh cli rubysloc` command has been removed. Use external tools for line counting if needed.
 - **`LOG_RAW`** — Previously deprecated in favor of `LOG_STREAM`. Now fully removed. Replace any `LOG_RAW` usage with [`LOG_STREAM`](../configuration/plugins.md).
-- **Reducer microservices** — All reduced data microservices (REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY) have been removed. Reduced data is now handled by QuestDB using `SAMPLE BY` queries. You can safely delete all REDUCED_MINUTE, REDUCED_HOUR, and REDUCED_DAY data once you perform the [TSDB Migration](https://github.com/OpenC3/openc3-cosmos-tsdb-migration).
+- **Reducer microservices** — All reduced data microservices (REDUCED_MINUTE, REDUCED_HOUR, REDUCED_DAY) have been removed. Reduced data is now handled by QuestDB using `SAMPLE BY` queries. You can safely delete all REDUCED_MINUTE, REDUCED_HOUR, and REDUCED_DAY data once you perform the TSDB Migration (see above).
 
 #### Deprecated Keywords (Silently Ignored)
 
