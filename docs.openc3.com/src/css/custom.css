@@ -293,7 +293,16 @@ img[alt="CANVASDOT"] {
   overflow-y: auto;
 }
 
+/* Used for since in various config docs */
 .since-right {
   float: right;
   font-weight: normal;
+}
+
+/* Used for since in scripting-api.md */
+.since-heading {
+  float: right;
+  font-weight: normal;
+  font-size: 0.75rem;
+  margin-top: -2.6rem;
 }

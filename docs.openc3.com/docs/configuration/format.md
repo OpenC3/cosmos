@@ -54,6 +54,10 @@ APPEND_ITEM VALUE5 16 UINT "Value 5 setting"
 
 COSMOS uses ERB syntax extensively in a Plugin's [plugin.txt](plugins.md#plugintxt-configuration-file) configuration file.
 
+:::info ERB is Install-time, not Runtime
+ERB statements are _only_ evaluated at plugin installation time.
+:::
+
 ### target_name
 
 Any of the COSMOS configuration files can use the ERB variable `target_name` to refer to the actual name of the target. This allows you to use target name substitution in your plugin.txt and then use the correct values throughout your target files (procedures, libraries, etc). This variable is resolved at plugin _install_ time and then remains constant.
