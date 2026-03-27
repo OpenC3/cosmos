@@ -258,10 +258,10 @@ Stop COSMOS 6 first, then migrate after upgrading:
 curl -O https://raw.githubusercontent.com/OpenC3/cosmos/main/scripts/linux/openc3_migrate_s3.sh
 chmod +x openc3_migrate_s3.sh
 
-# 3. Migrate all data from old COSMOS 6 MINIO volume to the running versitygw
+# 4. Migrate all data from old COSMOS 6 MINIO volume to the running versitygw
 ./openc3_migrate_s3.sh migrate
 
-# 4. Verify your data migrated correctly
+# 5. Verify your data migrated correctly
 ./openc3_migrate_s3.sh status
 ./openc3_migrate_s3.sh cleanup
 ```
