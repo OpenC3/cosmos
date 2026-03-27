@@ -461,21 +461,18 @@ export default {
     const cable = new Cable('/script-api/cable')
 
     const api = new OpenC3Api()
-    const { state: screenKeywords } = useAsyncState(
-      Api.get(
-        '/openc3-api/autocomplete/keywords/screen',
-        (response) => response.data,
-      ),
-      null,
-    )
+    const { state: screenKeywords } = useAsyncState(async () => {
+      const response = await Api.get('/openc3-api/autocomplete/keywords/screen')
+      return response.data
+    }, null)
 
-    const { state: timeZone } = useAsyncState(
-      api
-        .get_setting('time_zone')
-        .then((response) => response)
-        .catch(() => {}),
-      'local',
-    )
+    const { state: timeZone } = useAsyncState(async () => {
+      try {
+        return await api.get_setting('time_zone')
+      } catch {
+        return 'local'
+      }
+    }, 'local')
 
     return {
       api,

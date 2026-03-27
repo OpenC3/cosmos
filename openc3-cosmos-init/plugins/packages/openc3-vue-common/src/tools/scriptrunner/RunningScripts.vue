@@ -236,13 +236,13 @@ const dialog = inject('dialog')
 const { formatDateTimeHMS } = TimeFilters.methods
 
 const api = new OpenC3Api()
-const { state: timeZone } = useAsyncState(
-  api
-    .get_setting('time_zone')
-    .then((response) => response)
-    .catch(() => {}),
-  'local',
-)
+const { state: timeZone } = useAsyncState(async () => {
+  try {
+    return await api.get_setting('time_zone')
+  } catch {
+    return 'local'
+  }
+}, 'local')
 const activeTab = ref('completed')
 const downloadScript = ref(null)
 const refreshTimer = ref(null)
