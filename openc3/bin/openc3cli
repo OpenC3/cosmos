@@ -45,7 +45,8 @@ require 'irb/completion'
 require 'digest'
 require 'argon2'
 
-$redis_url = "redis://#{ENV['OPENC3_REDIS_HOSTNAME']}:#{ENV['OPENC3_REDIS_PORT']}"
+$redis_shardnum = ENV['OPENC3_SHARDNUM'] || "0"
+$redis_url = "redis://#{ENV['OPENC3_REDIS_HOSTNAME'].to_s.gsub("SHARDNUM", $redis_shardnum)}:#{ENV['OPENC3_REDIS_PORT']}"
 
 ERROR_CODE = 1
 
