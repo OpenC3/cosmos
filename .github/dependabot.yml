@@ -37,3 +37,223 @@ updates:
 #       - dependency-name: "vue"
 #       - dependency-name: "vue-router"
 #       - dependency-name: "vuetify"
+
+  - package-ecosystem: bundler
+    directory: /
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /docs.openc3.com
+    schedule:
+      interval: daily
+
+  - package-ecosystem: pip
+    directory: /examples/throughput_server
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /openc3-buckets
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /openc3-cosmos-cmd-tlm-api
+    schedule:
+      interval: daily
+
+  - package-ecosystem: bundler
+    directory: /openc3-cosmos-cmd-tlm-api
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /openc3-cosmos-init
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins/packages/openc3-cosmos-demo
+    schedule:
+      interval: daily
+
+  - package-ecosystem: pip
+    directory: /openc3-cosmos-init/plugins/packages/openc3-cosmos-demo
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-admin
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-bucketexplorer
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdsender
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdtlmserver
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataextractor
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataviewer
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-handbooks
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-iframe
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-limitsmonitor
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-packetviewer
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-scriptrunner
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tablemanager
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmgrapher
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmviewer
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins/packages/openc3-js-common
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins/packages/openc3-tool-base
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3-cosmos-init/plugins/packages/openc3-vue-common
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /openc3-cosmos-script-runner-api
+    schedule:
+      interval: daily
+
+  - package-ecosystem: bundler
+    directory: /openc3-cosmos-script-runner-api
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /openc3-node
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /openc3-operator
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /openc3-redis
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /openc3-ruby
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /openc3-traefik
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /openc3-tsdb
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /openc3
+    schedule:
+      interval: daily
+
+  - package-ecosystem: bundler
+    directory: /openc3
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3/templates/tool_angular
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3/templates/tool_react
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3/templates/tool_svelte
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3/templates/tool_vue
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /openc3/templates/widget
+    schedule:
+      interval: daily
+
+  - package-ecosystem: bundler
+    directory: /openc3/test/integration/tsdb/ruby
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /playwright
+    schedule:
+      interval: daily
