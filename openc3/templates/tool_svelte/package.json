@@ -15,7 +15,7 @@
     "@openc3/js-common": "7.0.0",
     "@smui/button": "^7.0.0",
     "@smui/common": "^7.0.0",
-    "@smui/card": "^7.0.0",
+    "@smui/card": "^8.0.3",
     "@smui/list": "^7.0.0",
     "@smui/menu": "^7.0.0",
     "axios": "^1.7.7",
