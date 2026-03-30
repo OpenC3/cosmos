@@ -26,7 +26,7 @@
     "sass": "1.98.0",
     "serve": "14.2.6",
     "vite": "7.3.1",
-    "vue": "3.5.30"
+    "vue": "3.5.31"
   },
   "peerDependencies": {
     "pinia": "3.0.4",
