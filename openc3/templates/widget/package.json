@@ -9,7 +9,7 @@
   "dependencies": {
     "@astrouxds/astro-web-components": "^7.24.0",
     "@openc3/vue-common": "7.0.0",
-    "vuetify": "^3.7.1"
+    "vuetify": "^4.0.4"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.1",
