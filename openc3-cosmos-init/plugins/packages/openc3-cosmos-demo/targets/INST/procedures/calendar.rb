@@ -41,6 +41,20 @@ puts act #=>
 #   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"cdb661b4-a65b-44e7-95e2-5e1dba80c782",
 #   "events"=>[{"time"=>1737128761, "event"=>"created"}], "recurring"=>{}}
 
+# Update act2 with a custom title and notes
+new_start = Time.at(act2['start'])
+new_stop = Time.at(act2['stop']) + 1800
+updated = update_timeline_activity("RubyTL",
+  id: act2['start'],
+  kind: "COMMAND", start: new_start, stop: new_stop,
+  data: {command: "INST COLLECT with TYPE NORMAL, DURATION 10",
+         customTitle: "Extended Collection",
+         notes: "Duration extended per ops request"})
+puts updated
+check_expression("'#{updated['data']['customTitle']}' == 'Extended Collection'")
+check_expression("'#{updated['data']['notes']}' == 'Duration extended per ops request'")
+check_expression("'#{updated['data']['command']}' == 'INST COLLECT with TYPE NORMAL, DURATION 10'")
+
 # Get activities in the past ... should be none
 tlas = get_timeline_activities("RubyTL", start: Time.now() - 3600, stop: Time.now())
 check_expression("#{tlas.length} == 0")

@@ -67,17 +67,7 @@ def create_timeline_activity(name, kind, start, stop, data=None, scope=OPENC3_SC
         data (dict, optional): Additional data to associate with the activity. Defaults to None. Any activity can provide "username", "notes", and "customTitle". "command", "script", and "reserve" keys are reserves for the corresponding activity kind, with "environment" also available for script activities.
         scope (str, optional): The scope of the activity. Defaults to OPENC3_SCOPE, must correspond to the timeline.
     """
-    if data is None:
-        data = {}
-    kind = kind.lower()
-    kinds = ["command", "script", "reserve"]
-    if kind not in kinds:
-        raise RuntimeError(f"Unknown kind: {kind}. Must be one of {', '.join(kinds)}.")
-    post_data = {}
-    post_data["start"] = start.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-    post_data["stop"] = stop.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-    post_data["kind"] = kind
-    post_data["data"] = data
+    post_data = _build_activity_data(kind, start, stop, data)
     response = openc3.script.API_SERVER.request(
         "post",
         f"/openc3-api/timeline/{name}/activities",
@@ -86,6 +76,34 @@ def create_timeline_activity(name, kind, start, stop, data=None, scope=OPENC3_SC
         scope=scope,
     )
     return _handle_response(response, "Failed to create timeline activity")
+
+
+def update_timeline_activity(name, id, kind, start, stop, data=None, uuid=None, scope=OPENC3_SCOPE):
+    """
+    Updates an existing activity on the specified timeline.
+
+    Args:
+        name (str): The name of the timeline.
+        id (int): The start time / score of the activity (Unix seconds).
+        kind (str): The kind of activity. Must be one of "COMMAND", "SCRIPT", or "RESERVE".
+        start (datetime): The new start time of the activity.
+        stop (datetime): The new stop time of the activity.
+        data (dict, optional): Additional data to associate with the activity. Defaults to None. Any activity can provide "username", "notes", and "customTitle". "command", "script", and "reserve" keys are reserved for the corresponding activity kind, with "environment" also available for script activities.
+        uuid (str, optional): The UUID of the activity. Defaults to None.
+        scope (str, optional): The scope of the activity. Defaults to OPENC3_SCOPE.
+    """
+    post_data = _build_activity_data(kind, start, stop, data)
+    url = f"/openc3-api/timeline/{name}/activity/{id}"
+    if uuid:
+        url += f"/{uuid}"
+    response = openc3.script.API_SERVER.request(
+        "put",
+        url,
+        data=post_data,
+        json=True,
+        scope=scope,
+    )
+    return _handle_response(response, "Failed to update timeline activity")
 
 
 def get_timeline_activity(name, start, uuid, scope=OPENC3_SCOPE):
@@ -110,6 +128,21 @@ def delete_timeline_activity(name, start, uuid, scope=OPENC3_SCOPE):
         "delete", f"/openc3-api/timeline/{name}/activity/{start}/{uuid}", scope=scope
     )
     return _handle_response(response, "Failed to delete timeline activity")
+
+
+def _build_activity_data(kind, start, stop, data):
+    if data is None:
+        data = {}
+    kind = kind.lower()
+    kinds = ["command", "script", "reserve"]
+    if kind not in kinds:
+        raise RuntimeError(f"Unknown kind: {kind}. Must be one of {', '.join(kinds)}.")
+    return {
+        "start": start.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        "stop": stop.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        "kind": kind,
+        "data": data,
+    }
 
 
 # Helper method to handle the response

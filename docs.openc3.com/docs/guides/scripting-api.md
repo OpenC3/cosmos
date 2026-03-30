@@ -9063,6 +9063,85 @@ act = create_timeline_activity("PythonTL", kind="SCRIPT", start=start, stop=stop
 </TabItem>
 </Tabs>
 
+### update_timeline_activity
+
+Update an existing timeline activity. The activity is identified by its timeline name and current start time (id). All fields (kind, start, stop, data) are replaced with the provided values.
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+update_timeline_activity(name, id:, kind:, start:, stop:, data: {}, uuid: nil)
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Syntax">
+
+```python
+update_timeline_activity(name, id, kind, start, stop, data={}, uuid=None)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                                                                                                               |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| name      | Name of the timeline                                                                                                                                      |
+| id        | The current start time / score of the activity to update (integer, Unix seconds).                                                                         |
+| kind      | Type of the activity. One of COMMAND, SCRIPT, or RESERVE.                                                                                                 |
+| start     | New start time of the activity. Time / datetime instance.                                                                                                 |
+| stop      | New stop time of the activity. Time / datetime instance.                                                                                                  |
+| data      | Hash / dict of data for the activity. Default is empty hash / dict. Valid keys are described [above](#create_timeline_activity-data-parameter).            |
+| uuid      | UUID of the activity. Optional, defaults to nil / None.                                                                                                   |
+| scope     | Scope of the activity. Must be the containing scope of the timeline specified by the `name` parameter.    |
+
+<Tabs groupId="script-language">
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+# First create an activity
+now = Time.now()
+start = now + 3600
+stop = start + 3600
+act = create_timeline_activity("RubyTL", kind: "COMMAND", start: start, stop: stop,
+  data: {command: "INST COLLECT with TYPE NORMAL, DURATION 5"})
+
+# Update the activity with a new custom title, notes, and extended stop time
+new_stop = stop + 1800
+updated = update_timeline_activity("RubyTL",
+  id: act['start'],
+  kind: "COMMAND", start: start, stop: new_stop,
+  data: {command: "INST COLLECT with TYPE NORMAL, DURATION 10",
+         customTitle: "Extended Collection",
+         notes: "Duration extended per ops request"})
+```
+
+</TabItem>
+
+<TabItem value="python" label="Python Example">
+
+```python
+# First create an activity
+now = datetime.now(timezone.utc)
+start = now + timedelta(hours=1)
+stop = start + timedelta(hours=1)
+act = create_timeline_activity("PythonTL", kind="COMMAND", start=start, stop=stop,
+    data={'command': "INST COLLECT with TYPE NORMAL, DURATION 5"})
+
+# Update the activity with a new custom title, notes, and extended stop time
+new_stop = stop + timedelta(minutes=30)
+updated = update_timeline_activity("PythonTL",
+    id=act['start'],
+    kind="COMMAND", start=start, stop=new_stop,
+    data={'command': "INST COLLECT with TYPE NORMAL, DURATION 10",
+          'customTitle': "Extended Collection",
+          'notes': "Duration extended per ops request"})
+```
+
+</TabItem>
+</Tabs>
+
 ### get_timeline_activity
 
 Get an existing timeline activity.

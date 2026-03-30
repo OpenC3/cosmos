@@ -61,18 +61,27 @@ module OpenC3
     # @param data [Hash, optional] Additional data to associate with the activity. Defaults to {}. Any activity can provide "username", "notes", and "customTitle". "command", "script", and "reserve" keys are reserves for the corresponding activity kind, with "environment" also available for script activities.
     # @param scope [String, optional] The scope of the activity. Defaults to OPENC3_SCOPE, must correspond to the timeline.
     def create_timeline_activity(name, kind:, start:, stop:, data: {}, scope: $openc3_scope)
-      kind = kind.to_s.downcase()
-      kinds = %w(command script reserve)
-      unless kinds.include?(kind)
-        raise "Unknown kind: #{kind}. Must be one of #{kinds.join(', ')}."
-      end
-      post_data = {}
-      post_data['start'] = start.to_datetime.iso8601
-      post_data['stop'] = stop.to_datetime.iso8601
-      post_data['kind'] = kind
-      post_data['data'] = data
+      post_data = _build_activity_data(kind, start, stop, data)
       response = $api_server.request('post', "/openc3-api/timeline/#{name}/activities", data: post_data, json: true, scope: scope)
       return _cal_handle_response(response, 'Failed to create timeline activity')
+    end
+
+    # Updates an existing activity on the specified timeline.
+    #
+    # @param name [String] The name of the timeline.
+    # @param id [Integer] The start time / score of the activity (Unix seconds).
+    # @param kind [String] The kind of activity. Must be one of "COMMAND", "SCRIPT", or "RESERVE".
+    # @param start [DateTime] The new start time of the activity.
+    # @param stop [DateTime] The new stop time of the activity.
+    # @param data [Hash, optional] Additional data to associate with the activity. Defaults to {}. Any activity can provide "username", "notes", and "customTitle". "command", "script", and "reserve" keys are reserved for the corresponding activity kind, with "environment" also available for script activities.
+    # @param uuid [String, optional] The UUID of the activity. Defaults to nil.
+    # @param scope [String, optional] The scope of the activity. Defaults to OPENC3_SCOPE.
+    def update_timeline_activity(name, id:, kind:, start:, stop:, data: {}, uuid: nil, scope: $openc3_scope)
+      post_data = _build_activity_data(kind, start, stop, data)
+      url = "/openc3-api/timeline/#{name}/activity/#{id}"
+      url += "/#{uuid}" if uuid
+      response = $api_server.request('put', url, data: post_data, json: true, scope: scope)
+      return _cal_handle_response(response, 'Failed to update timeline activity')
     end
 
     def get_timeline_activity(name, start, uuid, scope: $openc3_scope)
@@ -95,6 +104,20 @@ module OpenC3
     def delete_timeline_activity(name, start, uuid, scope: $openc3_scope)
       response = $api_server.request('delete', "/openc3-api/timeline/#{name}/activity/#{start}/#{uuid}", scope: scope)
       return _cal_handle_response(response, 'Failed to delete timeline activity')
+    end
+
+    def _build_activity_data(kind, start, stop, data)
+      kind = kind.to_s.downcase()
+      kinds = %w(command script reserve)
+      unless kinds.include?(kind)
+        raise "Unknown kind: #{kind}. Must be one of #{kinds.join(', ')}."
+      end
+      {
+        'start' => start.to_datetime.iso8601,
+        'stop' => stop.to_datetime.iso8601,
+        'kind' => kind,
+        'data' => data,
+      }
     end
 
     # Helper method to handle the response
