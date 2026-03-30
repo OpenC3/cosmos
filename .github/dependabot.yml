@@ -20,6 +20,8 @@ updates:
     directory: /openc3/python
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: openc3
 
   # Bundler
   - package-ecosystem: bundler
