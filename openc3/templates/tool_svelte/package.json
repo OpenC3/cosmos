@@ -32,7 +32,7 @@
     "@testing-library/svelte": "^5.2.1",
     "babel-jest": "^29.7.0",
     "concurrently": "^9.0.1",
-    "jest": "^29.7.0",
+    "jest": "^30.3.0",
     "postcss": "^8.4.47",
     "prettier": "^3.1.1",
     "prettier-plugin-svelte": "^3.2.7",
