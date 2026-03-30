@@ -17,7 +17,7 @@
     "@smui/common": "^7.0.0",
     "@smui/card": "^7.0.0",
     "@smui/list": "^7.0.0",
-    "@smui/menu": "^7.0.0",
+    "@smui/menu": "^8.0.3",
     "axios": "^1.7.7",
     "single-spa-svelte": "^2.1.1",
     "sirv-cli": "^2.0.2",
