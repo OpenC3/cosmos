@@ -28,6 +28,9 @@ env:
   OPENC3_CLOUD: local
   OPENC3_REDIS_HOSTNAME: localhost
 
+permissions:
+  contents: read
+
 jobs:
   unit-test:
     if: ${{ github.actor != 'dependabot[bot]' }}
@@ -39,7 +42,12 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 # v2.16.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install uv
         uses: astral-sh/setup-uv@6ee6290f1cbc4156c0bdd66691b2c144ef8df19a # v7
         with:
@@ -57,7 +65,7 @@ jobs:
         working-directory: openc3/python
       - name: Prune uv cache
         run: uv cache prune --ci
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5.5.3
         with:
           working-directory: openc3/python
           flags: python # See codecov.yml

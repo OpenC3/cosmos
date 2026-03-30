@@ -71,7 +71,7 @@
           <v-list-item-title>{{ microservice.name }}</v-list-item-title>
           <v-list-item-subtitle v-if="microservice_status[microservice.name]">
             Updated:
-            {{ formatDate(microservice_status[microservice.name].updated_at) }},
+            {{ formatNanoseconds(microservice_status[microservice.name].updated_at, timeZone) }},
             Enabled: {{ isEnabled(microservice.name) ? 'True' : 'False' }},
             Count:
             {{ microservice_status[microservice.name].count }}
@@ -171,15 +171,16 @@
 </template>
 
 <script>
-import { toDate, format } from 'date-fns'
-import { Api } from '@openc3/js-common/services'
+import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { OutputDialog, TextBoxDialog } from '@/components'
+import { TimeFilters } from '@/util'
 
 export default {
   components: {
     OutputDialog,
     TextBoxDialog,
   },
+  mixins: [TimeFilters],
   data() {
     return {
       filteredMicroservices: [],
@@ -194,6 +195,7 @@ export default {
       alertType: 'success',
       showAlert: false,
       updater: null,
+      timeZone: 'local',
       // { service_name:
       //   { operation: 'stopping' | 'restarting' | 'starting',
       //     enabled_states: []
@@ -227,6 +229,18 @@ export default {
     '$route.query.services': function () {
       this.applyServiceFilter()
     },
+  },
+  created() {
+    new OpenC3Api()
+      .get_setting('time_zone')
+      .then((response) => {
+        if (response) {
+          this.timeZone = response
+        }
+      })
+      .catch(() => {
+        // Do nothing
+      })
   },
   mounted() {
     this.update()
@@ -488,12 +502,6 @@ export default {
       const e = this.microservice_status[name].error
       this.jsonContent = JSON.stringify(e, null, '\t')
       this.showError = true
-    },
-    formatDate(nanoSecs) {
-      return format(
-        toDate(Number.parseInt(nanoSecs) / 1000000),
-        'yyyy-MM-dd HH:mm:ss.SSS',
-      )
     },
     // States are determined by the microservice and not from an explicitly defined set
     // However, we can provide useful colors for errors and common states

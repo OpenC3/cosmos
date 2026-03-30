@@ -24,12 +24,20 @@ env:
   TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
   TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
 
+permissions:
+  contents: read
+
 jobs:
   openc3-scan:
     runs-on: ubuntu-latest
     permissions:
       contents: write # Need write permission to upload release asset
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 # v2.16.0
+        with:
+          egress-policy: audit
+
       - name: Create trivy output folder
         run: mkdir trivy_results
       - name: Create sbom folder
@@ -38,7 +46,7 @@ jobs:
         id: date
         run: echo "::set-output name=date::$(date -u '+%m_%d_%y_%H_%M_%S')"
       - name: Run Trivy on image ruby
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-ruby:${{ github.event.inputs.version }}"
           format: "json"
@@ -47,13 +55,13 @@ jobs:
           vuln-type: "os,library"
           scanners: "vuln"
       - name: Run Trivy on image ruby in SBOM mode
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-ruby:${{ github.event.inputs.version }}"
           format: "cyclonedx"
           output: "sbom/openc3-ruby.sbom.json"
       - name: Run Trivy on image node
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-node:${{ github.event.inputs.version }}"
           format: "json"
@@ -62,13 +70,13 @@ jobs:
           vuln-type: "os,library"
           scanners: "vuln"
       - name: Run Trivy on image node in SBOM mode
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-node:${{ github.event.inputs.version }}"
           format: "cyclonedx"
           output: "sbom/openc3-node.sbom.json"
       - name: Run Trivy on image base
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-base:${{ github.event.inputs.version }}"
           format: "json"
@@ -77,13 +85,13 @@ jobs:
           vuln-type: "os,library"
           scanners: "vuln"
       - name: Run Trivy on image base in SBOM mode
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-base:${{ github.event.inputs.version }}"
           format: "cyclonedx"
           output: "sbom/openc3-base.sbom.json"
       - name: Run Trivy on image cosmos-init
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-init:${{ github.event.inputs.version }}"
           format: "json"
@@ -92,13 +100,13 @@ jobs:
           vuln-type: "os,library"
           scanners: "vuln"
       - name: Run Trivy on image cosmos-init in SBOM mode
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-init:${{ github.event.inputs.version }}"
           format: "cyclonedx"
           output: "sbom/openc3-cosmos-init.sbom.json"
       - name: Run Trivy on image redis
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-redis:${{ github.event.inputs.version }}"
           format: "json"
@@ -107,13 +115,13 @@ jobs:
           vuln-type: "os,library"
           scanners: "vuln"
       - name: Run Trivy on image redis in SBOM mode
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-redis:${{ github.event.inputs.version }}"
           format: "cyclonedx"
           output: "sbom/openc3-redis.sbom.json"
       - name: Run Trivy on image bucket
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-buckets:${{ github.event.inputs.version }}"
           format: "json"
@@ -122,13 +130,13 @@ jobs:
           vuln-type: "os,library"
           scanners: "vuln"
       - name: Run Trivy on image bucket in SBOM mode
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-buckets:${{ github.event.inputs.version }}"
           format: "cyclonedx"
           output: "sbom/openc3-buckets.sbom.json"
       - name: Run Trivy on image tsdb
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-tsdb:${{ github.event.inputs.version }}"
           format: "json"
@@ -137,13 +145,13 @@ jobs:
           vuln-type: "os,library"
           scanners: "vuln"
       - name: Run Trivy on image tsdb in SBOM mode
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-tsdb:${{ github.event.inputs.version }}"
           format: "cyclonedx"
           output: "sbom/openc3-tsdb.sbom.json"
       - name: Run Trivy on image operator
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-operator:${{ github.event.inputs.version }}"
           format: "json"
@@ -152,13 +160,13 @@ jobs:
           vuln-type: "os,library"
           scanners: "vuln"
       - name: Run Trivy on image operator in SBOM mode
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-operator:${{ github.event.inputs.version }}"
           format: "cyclonedx"
           output: "sbom/openc3-operator.sbom.json"
       - name: Run Trivy on image cmd-tlm-api
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ github.event.inputs.version }}"
           format: "json"
@@ -167,13 +175,13 @@ jobs:
           vuln-type: "os,library"
           scanners: "vuln"
       - name: Run Trivy on image cosmos-cmd-tlm-api in SBOM mode
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ github.event.inputs.version }}"
           format: "cyclonedx"
           output: "sbom/openc3-cosmos-cmd-tlm-api.sbom.json"
       - name: Run Trivy on image script-runner-api
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ github.event.inputs.version }}"
           format: "json"
@@ -182,13 +190,13 @@ jobs:
           vuln-type: "os,library"
           scanners: "vuln"
       - name: Run Trivy on image cosmos-script-runner-api in SBOM mode
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ github.event.inputs.version }}"
           format: "cyclonedx"
           output: "sbom/openc3-cosmos-script-runner-api.sbom.json"
       - name: Run Trivy on image traefik
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-traefik:${{ github.event.inputs.version }}"
           format: "json"
@@ -197,7 +205,7 @@ jobs:
           vuln-type: "os,library"
           scanners: "vuln"
       - name: Run Trivy on image traefik in SBOM mode
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-traefik:${{ github.event.inputs.version }}"
           format: "cyclonedx"
@@ -207,7 +215,7 @@ jobs:
       - name: Create zip of SBOM results
         run: zip -r sbom.zip sbom
       - name: Upload release attachments
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           script: |
             const fs = require('fs');
