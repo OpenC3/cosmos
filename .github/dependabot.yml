@@ -104,58 +104,59 @@ updates:
       interval: weekly
 
   # Ignore all npm updates as we have a process for uding them with package_audit.rb
-  #   - package-ecosystem: "npm"
-  #     directories: # Location of package manifests
-  #       - "/openc3-cosmos-init/plugins/*"
-  #       - "/playwright/*"
-  #       - "/docs.openc3.com/*"
-  #     schedule:
-  #       interval: "weekly"
-  #     ignore: # because we do extra stuff with these. See index.html in tool-base or `base_pkgs` in package_audit.rb
-  #       - dependency-name: "import-map-overrides"
-  #       - dependency-name: "pinia"
-  #       - dependency-name: "single-spa"
-  #       - dependency-name: "systemjs"
-  #       - dependency-name: "vue"
-  #       - dependency-name: "vue-router"
-  #       - dependency-name: "vuetify"
-
   - package-ecosystem: npm
-    directory: /docs.openc3.com
+    directories: # Location of package manifests
+      - /openc3-cosmos-init/plugins/*
+      - /playwright/*
+      - /docs.openc3.com/*
+      - /openc3/templates/*
     schedule:
       interval: weekly
+    ignore: # because we do extra stuff with these. See index.html in tool-base or `base_pkgs` in package_audit.rb
+      - dependency-name: import-map-overrides
+      - dependency-name: pinia
+      - dependency-name: single-spa
+      - dependency-name: systemjs
+      - dependency-name: vue
+      - dependency-name: vue-router
+      - dependency-name: vuetify
 
-  - package-ecosystem: npm
-    directory: /playwright
-    schedule:
-      interval: weekly
+  # - package-ecosystem: npm
+  #   directory: /docs.openc3.com
+  #   schedule:
+  #     interval: weekly
 
-  - package-ecosystem: npm
-    directory: /openc3-cosmos-init/plugins
-    schedule:
-      interval: weekly
+  # - package-ecosystem: npm
+  #   directory: /playwright
+  #   schedule:
+  #     interval: weekly
 
-  - package-ecosystem: npm
-    directory: /openc3/templates/tool_angular
-    schedule:
-      interval: weekly
+  # - package-ecosystem: npm
+  #   directory: /openc3-cosmos-init/plugins
+  #   schedule:
+  #     interval: weekly
 
-  - package-ecosystem: npm
-    directory: /openc3/templates/tool_react
-    schedule:
-      interval: weekly
+  # - package-ecosystem: npm
+  #   directory: /openc3/templates/tool_angular
+  #   schedule:
+  #     interval: weekly
 
-  - package-ecosystem: npm
-    directory: /openc3/templates/tool_svelte
-    schedule:
-      interval: weekly
+  # - package-ecosystem: npm
+  #   directory: /openc3/templates/tool_react
+  #   schedule:
+  #     interval: weekly
 
-  - package-ecosystem: npm
-    directory: /openc3/templates/tool_vue
-    schedule:
-      interval: weekly
+  # - package-ecosystem: npm
+  #   directory: /openc3/templates/tool_svelte
+  #   schedule:
+  #     interval: weekly
 
-  - package-ecosystem: npm
-    directory: /openc3/templates/widget
-    schedule:
-      interval: weekly
+  # - package-ecosystem: npm
+  #   directory: /openc3/templates/tool_vue
+  #   schedule:
+  #     interval: weekly
+
+  # - package-ecosystem: npm
+  #   directory: /openc3/templates/widget
+  #   schedule:
+  #     interval: weekly
