@@ -1,5 +1,5 @@
 #!/bin/sh
-uv venv "$PYTHONUSERBASE"
+uv venv "$PYTHONUSERBASE" --allow-existing
 echo "uv pip install $@"
 uv pip install --python "$PYTHONUSERBASE" "$@"
 if [ $? -eq 0 ]; then
