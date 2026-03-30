@@ -474,6 +474,12 @@ export default {
       }
     }, 'local')
 
+    const overridesCount = ref(0)
+    async function updateOverridesCount() {
+      const result = await api.get_overrides()
+      overridesCount.value = result.length
+    }
+
     return {
       api,
       cable,
@@ -482,10 +488,12 @@ export default {
       editorRef,
       // Make NEW_FILENAME available to the template
       NEW_FILENAME,
+      overridesCount,
       screenKeywords,
       state,
       timeZone,
       handleWaiting,
+      updateOverridesCount,
       waitingTime,
       // Script prompts
       activePromptId,
@@ -570,7 +578,6 @@ export default {
       mnemonicChecker: new MnemonicChecker(),
       showScripts: false,
       showOverrides: false,
-      overridesCount: 0,
       screens: [],
       idCounter: 0,
       updateCounter: 0,
@@ -1006,10 +1013,6 @@ export default {
     this.cable.disconnect()
   },
   methods: {
-    updateOverridesCount: async function () {
-      const result = await this.api.get_overrides()
-      this.overridesCount = result.length
-    },
     handleCommandEditor({ cmdString, isEditing, editLine }) {
       this.$refs.commandEditorDialog.open({
         cmdString,
