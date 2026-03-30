@@ -21,7 +21,7 @@
     "@angular/material": "^18.2.10",
     "@angular/platform-browser": "^18.2.6",
     "@angular/platform-browser-dynamic": "^18.2.6",
-    "@angular/router": "^18.2.6",
+    "@angular/router": "^21.2.6",
     "@astrouxds/astro-web-components": "^7.24.0",
     "@openc3/js-common": "7.0.0",
     "rxjs": "~7.8.0",
