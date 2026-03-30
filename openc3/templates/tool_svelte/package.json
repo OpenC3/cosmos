@@ -14,7 +14,7 @@
     "@astrouxds/astro-web-components": "^7.24.0",
     "@openc3/js-common": "7.0.0",
     "@smui/button": "^7.0.0",
-    "@smui/common": "^7.0.0",
+    "@smui/common": "^8.0.3",
     "@smui/card": "^7.0.0",
     "@smui/list": "^7.0.0",
     "@smui/menu": "^7.0.0",
