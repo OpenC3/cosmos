@@ -646,28 +646,16 @@ export default {
             )
             .then((data) => {
               if (data.length > 0) {
-                if (Array.isArray(data[0]) && Array.isArray(data[0][0])) {
-                  // data is array of array of arrays
-                  for (let i = 0; i < data.length; i++) {
-                    for (let j = 0; j < data[i].length; j++) {
-                      if (j === 0) {
-                        let dateStr = data[i][j][0]
-                        let dateObj = new Date(dateStr)
-                        this.data[0].push(dateObj.getTime() / 1000.0) // Convert to seconds
-                      } else {
-                        this.data[j].push(data[i][j][0])
-                      }
-                    }
-                  }
-                } else if (Array.isArray(data) && data.length >= 2) {
-                  for (let i = 0; i < data.length; i++) {
-                    if (i === 0) {
-                      let dateStr = data[i][0]
-                      let dateObj = new Date(dateStr)
-                      this.data[0].push(dateObj.getTime() / 1000.0) // Convert to seconds
-                    } else {
-                      this.data[i].push(data[i][0])
-                    }
+                // Normalize single-row response to match multi-row format
+                // Multi-row: [[row0col0, row0col1, ...], [row1col0, ...]]
+                // Single-row: [col0, col1, ...] — wrap in an array
+                const rows =
+                  Array.isArray(data[0]) && Array.isArray(data[0][0])
+                    ? data
+                    : [data]
+                for (const row of rows) {
+                  for (let j = 0; j < row.length; j++) {
+                    this.data[j].push(row[j][0])
                   }
                 }
               }
