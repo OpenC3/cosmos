@@ -350,6 +350,64 @@ The following target configuration keywords are silently ignored during parsing 
 - **`CMD_DECOM_RETAIN_TIME`** — Sets the retention time for command decommutation data in QuestDB. Accepts a time value with a unit suffix: `h` (hours), `d` (days), `w` (weeks), `M` (months), or `y` (years). Example: `CMD_DECOM_RETAIN_TIME 30d`
 - **`TLM_DECOM_RETAIN_TIME`** — Sets the retention time for telemetry decommutation data in QuestDB. Same format as above. Example: `TLM_DECOM_RETAIN_TIME 1y`
 
+### Troubleshooting
+
+#### Init Container Failure
+
+If the init container fails and after restarting COSMOS you still see the old version, you can force a reinstall by setting in `.env`:
+
+```sh
+OPENC3_FORCE_INSTALL=1
+```
+
+Then `openc3.sh start` COSMOS again and monitor the init container logs. You will see all the applications being installed. When the init container completes you should comment out this line to prevent re-install on every start.
+
+#### Redis Fails to Start (Permission Denied)
+
+If Redis is restarting and the Docker logs show:
+
+```
+1:M 28 Mar 2026 20:16:12.433 # Fatal error: can't open the RDB file dump.rdb for reading: Permission denied
+1:M 28 Mar 2026 20:16:12.433 # Fatal error loading the DB, check server logs. Exiting.
+```
+
+This is caused by a UID mismatch between the container and the volume data. Check your host UID (this example is from Ubuntu):
+
+```sh
+id -u
+# Example output: 1000
+```
+
+**Check the redis volume permissions** (Note the user and group):
+
+```sh
+docker run --rm -it -v openc3-redis-v:/data alpine sh
+ls -la /data
+```
+
+**Fix the Redis volume permissions** (Change 1000:1000 based on your UID):
+
+```sh
+docker run --rm -it -v openc3-redis-v:/data alpine sh
+ls -la /data
+chown -R 1000:1000 /data
+```
+
+**Check the gems volume permissions** (Note the user and group):
+
+```sh
+docker run --rm -it -v openc3-gems-v:/data alpine sh
+ls -la /data
+```
+
+**Also fix the gems volume permissions** (Change 1000:1000 based on your UID):
+
+```sh
+docker run --rm -it -v openc3-gems-v:/data alpine sh
+ls -la /data
+chown -R 1000:1000 /data
+```
+
 ## Migrating From COSMOS 5 to COSMOS 6
 
 We removed a few rarely used [API methods](../guides/scripting-api#migration-from-cosmos-v5-to-v6) in COSMOS 6.
