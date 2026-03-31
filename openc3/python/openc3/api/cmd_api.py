@@ -29,11 +29,11 @@ from openc3.topics.command_decom_topic import CommandDecomTopic
 from openc3.topics.command_topic import CommandTopic
 from openc3.topics.decom_interface_topic import DecomInterfaceTopic
 from openc3.topics.interface_topic import InterfaceTopic
-from openc3.utilities.store import Store
 from openc3.topics.topic import Topic
 from openc3.utilities.authorization import authorize
 from openc3.utilities.cmd_log import _build_cmd_output_string
 from openc3.utilities.extract import extract_fields_from_cmd_text
+from openc3.utilities.store import Store
 
 
 WHITELIST.extend(

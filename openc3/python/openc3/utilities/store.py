@@ -10,5 +10,4 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.environment import *
-
 from openc3.utilities.store_implementation import EphemeralStore, Store, StoreConnectionPool, StoreMeta  # noqa: F401

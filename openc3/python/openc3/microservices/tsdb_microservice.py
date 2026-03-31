@@ -20,13 +20,12 @@ from questdb.ingress import IngressError
 from openc3.api.cmd_api import get_cmd
 from openc3.api.tlm_api import get_tlm
 from openc3.microservices.microservice import Microservice
-from openc3.models.target_model import TargetModel
 from openc3.topics.config_topic import ConfigTopic
 from openc3.topics.topic import Topic
 from openc3.utilities.questdb_client import QuestDBClient
-from openc3.utilities.store import EphemeralStore
+from openc3.utilities.store import EphemeralStore, Store
 from openc3.utilities.thread_manager import ThreadManager
-from openc3.utilities.store import Store
+
 
 class TsdbMicroservice(Microservice):
     TRIM_KEEP_MS = 60000  # 1 minute

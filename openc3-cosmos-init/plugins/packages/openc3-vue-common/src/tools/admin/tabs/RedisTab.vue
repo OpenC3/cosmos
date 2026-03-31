@@ -165,7 +165,8 @@ export default {
         },
       }).then((response) => {
         this.redisResponse = response.data.result
-        let redis = this.redisEndpoint === 'ephemeral' ? 'Ephemeral' : 'Persistent'
+        let redis =
+          this.redisEndpoint === 'ephemeral' ? 'Ephemeral' : 'Persistent'
         if (this.shard !== '0') {
           redis += ` (shard ${this.shard})`
         }

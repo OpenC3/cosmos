@@ -54,7 +54,12 @@
             />
           </v-list-item-title>
           <v-list-item-subtitle>
-            <span v-text="' Updated At: ' + formatNanoseconds(process.updated_at, timeZone)" />
+            <span
+              v-text="
+                ' Updated At: ' +
+                formatNanoseconds(process.updated_at, timeZone)
+              "
+            />
           </v-list-item-subtitle>
 
           <template v-if="process.state !== 'Running'" #append>
