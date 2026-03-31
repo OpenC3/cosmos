@@ -18,10 +18,11 @@ import re
 
 
 SCANNING_REGULAR_EXPRESSION = re.compile(
-    r"(?:\"(?:[^\\\"]|\\.)*\") | (?:'(?:[^\\']|\\.)*') | (?:\[.*\]) | \S+", re.VERBOSE
+    r"(?:\"(?:[^\\\"]|\\.)*\") | (?:'(?:[^\\']|\\.)*') | (?:\[(?:[^\\\[\]]|\\.)*\]) | \S+", re.VERBOSE
 )
 
 SPLIT_WITH_REGEX = re.compile(r"\s+with\s+", re.IGNORECASE)
+SPLIT_WITH_OPTIONAL_WHITESPACE_REGEX = re.compile(r"\s*with\s*", re.IGNORECASE)
 
 # Regular expression to identify a String as a floating point number
 FLOAT_CHECK_REGEX = re.compile(r"\A\s*[-+]?\d*\.\d+\s*\Z")
@@ -135,8 +136,12 @@ def add_cmd_parameter(keyword, value, cmd_params):
 
 
 def extract_fields_from_cmd_text(text):
-    split_string = re.split(SPLIT_WITH_REGEX, text, maxsplit=2)
-    if len(split_string) == 1 and SPLIT_WITH_REGEX.match(text):
+    split_string = re.split(SPLIT_WITH_REGEX, text, maxsplit=1)  # 1 split, therefore 2 elements
+    if len(split_string) == 0 or split_string[0] == "":
+        raise RuntimeError("ERROR: text must not be empty")
+    if (len(split_string) == 1 and re.search(SPLIT_WITH_OPTIONAL_WHITESPACE_REGEX, text)) or (
+        len(split_string) == 2 and split_string[1] == ""
+    ):
         raise RuntimeError(f"ERROR: 'with' must be followed by parameters : {text:s}")
 
     # Extract target_name and cmd_name
@@ -182,7 +187,7 @@ def extract_fields_from_cmd_text(text):
 
 
 def extract_fields_from_tlm_text(text):
-    split_string = text.split(" ")
+    split_string = text.split()
     if len(split_string) != 3:
         raise RuntimeError(f"ERROR: Telemetry Item must be specified as 'TargetName PacketName ItemName' : {text}")
     target_name = split_string[0]
