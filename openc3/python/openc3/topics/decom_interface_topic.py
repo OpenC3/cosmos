@@ -16,6 +16,7 @@ from openc3.config.config_parser import ConfigParser
 from openc3.environment import OPENC3_SCOPE
 from openc3.topics.topic import Topic
 from openc3.utilities.json import JsonDecoder, JsonEncoder
+from openc3.utilities.store import Store
 
 
 class DecomInterfaceTopic(Topic):
@@ -39,17 +40,19 @@ class DecomInterfaceTopic(Topic):
         # DecomMicroservice is listening to the DECOMINTERFACE topic and is responsible
         # for actually building the command. This was deliberate to allow this to work
         # with or without an interface.
+        shard = Store.shard_for_target(target_name, scope=scope)
         ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
-        Topic.update_topic_offsets([ack_topic])
+        Topic.update_topic_offsets([ack_topic], shard=shard)
         decom_id = Topic.write_topic(
             f"{scope}__DECOMINTERFACE__{{{target_name}}}",
             {"build_cmd": json.dumps(data, cls=JsonEncoder)},
             "*",
             100,
+            shard=shard,
         )
         start_time = time.time()
         while (time.time() - start_time) < timeout:
-            for _topic, _msg_id, msg_hash, _redis in Topic.read_topics([ack_topic]):
+            for _topic, _msg_id, msg_hash, _redis in Topic.read_topics([ack_topic], shard=shard):
                 if msg_hash[b"id"] == decom_id:
                     if msg_hash[b"result"] == b"SUCCESS":
                         msg_hash = {k.decode(): v.decode() for (k, v) in msg_hash.items()}
@@ -73,11 +76,13 @@ class DecomInterfaceTopic(Topic):
         data["packet_name"] = packet_name.upper()
         data["item_hash"] = item_hash
         data["type"] = type
+        shard = Store.shard_for_target(target_name, scope=scope)
         Topic.write_topic(
             f"{scope}__DECOMINTERFACE__{{{target_name}}}",
             {"inject_tlm": json.dumps(data)},
             "*",
             100,
+            shard=shard,
         )
 
     @classmethod
@@ -87,17 +92,19 @@ class DecomInterfaceTopic(Topic):
         data["packet_name"] = packet_name.upper()
         # DecomMicroservice is listening to the DECOMINTERFACE topic and has
         # the most recent decommed packets including subpackets
+        shard = Store.shard_for_target(target_name, scope=scope)
         ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
-        Topic.update_topic_offsets([ack_topic])
+        Topic.update_topic_offsets([ack_topic], shard=shard)
         decom_id = Topic.write_topic(
             f"{scope}__DECOMINTERFACE__{{{target_name}}}",
             {"get_tlm_buffer": json.dumps(data, cls=JsonEncoder)},
             "*",
             100,
+            shard=shard,
         )
         start_time = time.time()
         while (time.time() - start_time) < timeout:
-            for _topic, _msg_id, msg_hash, _redis in Topic.read_topics([ack_topic]):
+            for _topic, _msg_id, msg_hash, _redis in Topic.read_topics([ack_topic], shard=shard):
                 if msg_hash[b"id"] == decom_id:
                     if msg_hash[b"result"] == b"SUCCESS":
                         msg_hash = {k.decode(): v.decode() for (k, v) in msg_hash.items()}

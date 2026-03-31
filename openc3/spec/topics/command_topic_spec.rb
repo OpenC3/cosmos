@@ -91,7 +91,8 @@ module OpenC3
           '{DEFAULT__CMD}TARGET__TARGET',
           hash_including('target_name' => 'TARGET', 'cmd_name' => 'COMMAND'),
           '*',
-          100
+          100,
+          shard: 0
         )
         CommandTopic.send_command(command, scope: 'DEFAULT')
       end
@@ -162,7 +163,7 @@ module OpenC3
         allow(Topic).to receive(:read_topics).and_yield('ack_topic', 'msg_id',
           { 'id' => 'test_cmd_id', 'result' => 'SUCCESS' }, 'redis')
 
-        expect(Topic).to receive(:update_topic_offsets).with(['{DEFAULT__ACKCMD}TARGET__TARGET'])
+        expect(Topic).to receive(:update_topic_offsets).with(['{DEFAULT__ACKCMD}TARGET__TARGET'], shard: 0)
 
         CommandTopic.send_command(command, scope: 'DEFAULT')
       end

@@ -55,7 +55,7 @@ module OpenC3
       @error_count = 0
       @metric.set(name: 'log_total', value: @count, type: 'counter')
       @metric.set(name: 'log_error_total', value: @error_count, type: 'counter')
-      @shard = (@config['shard'] || 0).to_i
+      @target_shard = @target_names.length > 0 ? Store.shard_for_target(@target_names[0], scope: @scope) : 0
     end
 
     def run
@@ -64,7 +64,7 @@ module OpenC3
       while true
         break if @cancel_thread
 
-        Topic.read_topics(@topics, shard: @shard) do |topic, msg_id, msg_hash, redis|
+        Topic.read_topics(@topics, shard: @target_shard) do |topic, msg_id, msg_hash, redis|
           break if @cancel_thread
           if topic == @microservice_topic
             microservice_cmd(topic, msg_id, msg_hash, redis)

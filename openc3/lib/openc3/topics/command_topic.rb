@@ -46,20 +46,22 @@ module OpenC3
       command['cmd_params'] = JSON.generate(command['cmd_params'].as_json, allow_nan: true)
       OpenC3.inject_context(command)
 
+      cmd_shard = Store.shard_for_target(command['target_name'], scope: scope)
+
       # Fire-and-forget mode: skip ACK waiting when timeout <= 0
       if timeout <= 0
-        Topic.write_topic("{#{scope}__CMD}TARGET__#{command['target_name']}", command, '*', 100)
+        Topic.write_topic("{#{scope}__CMD}TARGET__#{command['target_name']}", command, '*', 100, shard: cmd_shard)
         command["cmd_params"] = cmd_params # Restore the original cmd_params Hash
         return command
       end
 
       ack_topic = "{#{scope}__ACKCMD}TARGET__#{command['target_name']}"
-      Topic.update_topic_offsets([ack_topic])
-      cmd_id = Topic.write_topic("{#{scope}__CMD}TARGET__#{command['target_name']}", command, '*', 100)
+      Topic.update_topic_offsets([ack_topic], shard: cmd_shard)
+      cmd_id = Topic.write_topic("{#{scope}__CMD}TARGET__#{command['target_name']}", command, '*', 100, shard: cmd_shard)
       command["cmd_params"] = cmd_params # Restore the original cmd_params Hash
       time = Time.now
       while (Time.now - time) < timeout
-        Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
+        Topic.read_topics([ack_topic], shard: cmd_shard) do |_topic, _msg_id, msg_hash, _redis|
           if msg_hash["id"] == cmd_id
             if msg_hash["result"] == "SUCCESS"
               return command

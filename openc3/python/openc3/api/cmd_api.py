@@ -29,6 +29,7 @@ from openc3.topics.command_decom_topic import CommandDecomTopic
 from openc3.topics.command_topic import CommandTopic
 from openc3.topics.decom_interface_topic import DecomInterfaceTopic
 from openc3.topics.interface_topic import InterfaceTopic
+from openc3.utilities.store import Store
 from openc3.topics.topic import Topic
 from openc3.utilities.authorization import authorize
 from openc3.utilities.cmd_log import _build_cmd_output_string
@@ -261,7 +262,8 @@ def get_cmd_buffer(*args, scope=OPENC3_SCOPE, manual=False):
     )
     TargetModel.packet(target_name, command_name, type="CMD", scope=scope)
     topic = f"{scope}__COMMAND__{{{target_name}}}__{command_name}"
-    msg_id, message = Topic.get_newest_message(topic)
+    shard = Store.shard_for_target(target_name, scope=scope)
+    msg_id, message = Topic.get_newest_message(topic, shard=shard)
     if msg_id:
         # Decode the keys for user convenience
         return {k.decode(): v for (k, v) in message.items()}

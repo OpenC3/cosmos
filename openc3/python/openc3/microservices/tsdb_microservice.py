@@ -20,6 +20,7 @@ from questdb.ingress import IngressError
 from openc3.api.cmd_api import get_cmd
 from openc3.api.tlm_api import get_tlm
 from openc3.microservices.microservice import Microservice
+from openc3.models.target_model import TargetModel
 from openc3.topics.config_topic import ConfigTopic
 from openc3.topics.topic import Topic
 from openc3.utilities.questdb_client import QuestDBClient
@@ -33,7 +34,7 @@ class TsdbMicroservice(Microservice):
     def __init__(self, *args):
         super().__init__(*args)
 
-        Topic.update_topic_offsets(self.topics)
+        # Note: topic offsets are initialized after shard is determined below
         config_topic = f"{self.scope}{ConfigTopic.PRIMARY_KEY}"
         self.topic_offset = Topic.update_topic_offsets([config_topic])[0]
 
@@ -47,8 +48,15 @@ class TsdbMicroservice(Microservice):
                 self.tlm_decom_retain_time = option[1]
 
         # Use shared QuestDB client with shard from microservice config
-        shard = self.config.get("shard", 0)
-        self.questdb = QuestDBClient(logger=self.logger, name=f"Microservice {self.name}", shard=shard)
+        if len(self.topics) <= 0:
+            raise RuntimeError("No topics provided")
+        topic_parts = self.topics[0].split("__")
+        # Only one target should be provided to this microservice
+        target_name = topic_parts[2].strip("{}")
+        target_model = TargetModel.get(name=target_name, scope=self.scope)
+        self.target_shard = int(target_model.get("shard", 0)) if target_model else 0
+        Topic.update_topic_offsets(self.topics, shard=self.target_shard)
+        self.questdb = QuestDBClient(logger=self.logger, name=f"Microservice {self.name}", shard=self.target_shard)
         self.questdb.connect_ingest()
         self.questdb.connect_query()
 
@@ -81,7 +89,7 @@ class TsdbMicroservice(Microservice):
     def read_topics(self):
         """Read topics and write data to QuestDB"""
         try:
-            for topic, msg_id, msg_hash, redis in Topic.read_topics(self.topics):
+            for topic, msg_id, msg_hash, redis in Topic.read_topics(self.topics, shard=self.target_shard):
                 if self.cancel_thread:
                     break
 
@@ -150,7 +158,7 @@ class TsdbMicroservice(Microservice):
             self.next_trim_time_ms = current_time_ms + self.TRIM_KEEP_MS
             trim_time_ms = current_time_ms - self.TRIM_KEEP_MS
             trim_offset = f"{trim_time_ms}-0"
-            redis = EphemeralStore.instance()
+            redis = EphemeralStore.instance(shard=self.target_shard)
             pipeline = redis.pipeline(transaction=False)
             for topic in self.topics:
                 pipeline.xtrim(name=topic, minid=trim_offset, approximate=True, limit=0)
