@@ -448,7 +448,7 @@ module OpenC3
         authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
         topic = "#{scope}__DECOM__{#{target_name}}__#{packet_name}"
         shard = Store.shard_for_target(target_name, scope: scope)
-        id, _ = Topic.get_newest_message(topic, shard: shard)
+        id, = Topic.get_newest_message(topic, shard: shard)
         results[topic] = id ? id : '0-0'
       end
       results.to_a.join(SUBSCRIPTION_DELIMITER)

@@ -264,12 +264,12 @@ class CvtModel(Model):
         """Return all the overrides"""
         overrides = []
         for target_name in TargetModel.names(scope):
-            all = cls._store_for_target(target_name, scope).hgetall(f"{scope}__override__{target_name}")
-            if len(all) == 0:
+            all_overrides = cls._store_for_target(target_name, scope).hgetall(f"{scope}__override__{target_name}")
+            if len(all_overrides) == 0:
                 continue
             # decode the binary string keys to strings
-            all = {k.decode(): v for (k, v) in all.items()}
-            for packet_name, pkt_hash in all.items():
+            all_overrides = {k.decode(): v for (k, v) in all_overrides.items()}
+            for packet_name, pkt_hash in all_overrides.items():
                 items = json.loads(pkt_hash, cls=JsonDecoder)
                 for key, value in items.items():
                     item = {}

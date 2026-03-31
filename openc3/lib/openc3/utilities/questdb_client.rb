@@ -905,21 +905,14 @@ module OpenC3
       # For multi-row results, each shard may have different row counts;
       # use the maximum row count and fill missing positions with [nil, nil].
       if !end_time
-        # Single-row mode: merge into one flat array
+        # Single-row mode: each shard returns a flat array of [value, limits] pairs.
+        # Merge them into the original item order.
         merged = Array.new(items.length) { [nil, nil] }
         shard_groups.each do |shard, group|
           result = shard_results[shard]
-          next if result == {}
-          # Single-shard single-row result is a flat array
-          result_data = result.is_a?(Array) && result[0].is_a?(Array) ? result : []
-          result_data = result if result.is_a?(Array) && result.length > 0 && result[0].is_a?(Array)
-          result_data = [result].flatten(1) if result.is_a?(Array) && result.length > 0 && !result[0].is_a?(Array)
-          # Handle flat array (single row from single shard)
-          if result.is_a?(Array)
-            flat = result[0].is_a?(Array) ? result : result
-            group[:positions].each_with_index do |orig_pos, shard_idx|
-              merged[orig_pos] = flat[shard_idx] if flat[shard_idx]
-            end
+          next if result == {} || !result.is_a?(Array)
+          group[:positions].each_with_index do |orig_pos, shard_idx|
+            merged[orig_pos] = result[shard_idx] if result[shard_idx]
           end
         end
         merged

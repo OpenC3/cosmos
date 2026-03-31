@@ -49,7 +49,7 @@ module OpenC3
 
       it "includes time fields in nanoseconds" do
         store_instance = EphemeralStoreQueued.instance(shard: 0)
-        expect(store_instance).to receive(:write_topic) do |topic, msg_hash|
+        expect(store_instance).to receive(:write_topic) do |_topic, msg_hash|
           expect(msg_hash[:time]).to be_a(Integer)
           expect(msg_hash[:received_time]).to be_a(Integer)
         end
@@ -58,7 +58,7 @@ module OpenC3
 
       it "includes packet buffer" do
         store_instance = EphemeralStoreQueued.instance(shard: 0)
-        expect(store_instance).to receive(:write_topic) do |topic, msg_hash|
+        expect(store_instance).to receive(:write_topic) do |_topic, msg_hash|
           expect(msg_hash[:buffer]).to eq(packet.buffer(false))
         end
         CommandTopic.write_packet(packet, scope: 'DEFAULT')
