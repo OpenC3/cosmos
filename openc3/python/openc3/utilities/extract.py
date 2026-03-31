@@ -14,6 +14,7 @@
 # if purchased from OpenC3, Inc.
 
 import ast
+import json
 import re
 
 
@@ -220,21 +221,54 @@ def extract_fields_from_set_tlm_text(text):
 
 
 def extract_fields_from_check_text(text):
-    split_string = text.split(" ")
-    if len(split_string) < 3:
+    fields_split = text.split(None, 3)  # Python: second split arg is max number of splits
+    if len(fields_split) < 3:
         raise RuntimeError(f"ERROR: Check improperly specified: {text}")
-    target_name = split_string[0]
-    packet_name = split_string[1]
-    item_name = split_string[2]
-    comparison_to_eval = None
-    if len(split_string) == 3:
-        return [target_name, packet_name, item_name, comparison_to_eval]
-    if len(split_string) < 4:
-        raise RuntimeError(f"ERROR: Check improperly specified: {text}")
+    target_name, packet_name, item_name, *comparison = fields_split
 
-    # TODO: Ruby version has additional code to split on regex spaces
-    comparison_to_eval = " ".join(split_string[3:])
-    if split_string[3] == "=":
-        raise RuntimeError(f"ERROR: Use '==' instead of '=': {text}")
+    # comparison is a list, guaranteed to be of length 0 or 1 because of the split 3 with the splat operator above.
+    # We need it to be either None or the comparison string.
+    if len(comparison):
+        comparison = comparison[0]
+    else:
+        comparison = None
 
-    return target_name, packet_name, item_name, comparison_to_eval
+    if comparison and len(comparison):
+        operator, *_ = comparison.split(None, 1)
+        if operator == "=":
+            raise RuntimeError(f"ERROR: Use '==' instead of '=': {comparison}")
+
+    return target_name, packet_name, item_name, comparison
+
+
+# Splits `check()` comparison expressions, e.g. "== 'foo bar'" becomes ["==", "foo bar"]
+def extract_operator_and_operand_from_comparison(comparison):
+    valid_operators = ["==", "!=", ">=", "<=", ">", "<", "in"]
+
+    operator, operand = comparison.split(None, 1)  # Python: second split arg is max number of splits
+
+    if operand is None:
+        if operator is not None:
+            raise RuntimeError(f"ERROR: Invalid comparison, must specify an operand: {comparison}")
+        return [None, None]
+
+    if operator not in valid_operators:
+        raise RuntimeError(f"ERROR: Invalid operator: {comparison}")
+
+    # Handle string operand: remove surrounding double/single quotes
+    quote_match = re.match(
+        r"^(['\"])(.*)\1$", operand, re.DOTALL
+    )  # Starts with single or double quote, and ends with matching quote
+    if quote_match:
+        operand = quote_match.group(2)
+        return operator, operand
+
+    # Handle other operand types
+    if operand == "None":
+        operand = None
+    else:
+        try:
+            operand = json.loads(operand)
+        except json.JSONDecodeError:
+            raise RuntimeError(f"ERROR: Unable to parse operand: {operand}")
+    return operator, operand

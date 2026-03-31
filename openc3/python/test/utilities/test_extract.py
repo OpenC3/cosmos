@@ -146,3 +146,65 @@ class TestExtractFieldsFromSetTlmText:
             [1, 2, 3],
         )
 
+
+class TestExtractFieldsFromCheckText:
+    def test_complains_if_formatted_incorrectly(self):
+        with pytest.raises((RuntimeError, ValueError), match="Check improperly specified"):
+            extract_fields_from_check_text("")
+        with pytest.raises((RuntimeError, ValueError), match="Check improperly specified"):
+            extract_fields_from_check_text("TARGET")
+        with pytest.raises((RuntimeError, ValueError), match="Check improperly specified"):
+            extract_fields_from_check_text("TARGET PACKET")
+
+    def test_supports_no_comparison(self):
+        assert extract_fields_from_check_text("TARGET PACKET ITEM") == ("TARGET", "PACKET", "ITEM", None)
+        assert extract_fields_from_check_text("TARGET PACKET ITEM             ") == ("TARGET", "PACKET", "ITEM", None)
+
+    def test_supports_comparisons(self):
+        assert extract_fields_from_check_text("TARGET PACKET ITEM == 5") == ("TARGET", "PACKET", "ITEM", "== 5")
+        assert extract_fields_from_check_text("TARGET PACKET ITEM > 5") == ("TARGET", "PACKET", "ITEM", "> 5")
+        assert extract_fields_from_check_text("TARGET PACKET ITEM < 5") == ("TARGET", "PACKET", "ITEM", "< 5")
+
+    def test_supports_target_packet_items_named_the_same(self):
+        assert extract_fields_from_check_text("TEST TEST TEST == 5") == ("TEST", "TEST", "TEST", "== 5")
+
+    def test_complains_about_trying_to_do_an_equal_comparison(self):
+        with pytest.raises(RuntimeError, match="ERROR: Use"):
+            extract_fields_from_check_text("TARGET PACKET ITEM = 5")
+
+    def test_handles_spaces_with_quotes_correctly(self):
+        assert extract_fields_from_check_text('TARGET PACKET ITEM == "This   is  a test"') == (
+            "TARGET",
+            "PACKET",
+            "ITEM",
+            '== "This   is  a test"',
+        )
+        assert extract_fields_from_check_text("TARGET   PACKET  ITEM   ==    'This is  a test   '") == (
+            "TARGET",
+            "PACKET",
+            "ITEM",
+            "==    'This is  a test   '",
+        )
+
+
+class TestExtractOperatorAndOperandFromComparison:
+    def test_parses_string_operands(self):
+        assert extract_operator_and_operand_from_comparison("== 'foo'") == ("==", "foo")
+
+    def test_parses_number_operands(self):
+        assert extract_operator_and_operand_from_comparison("== 1") == ("==", 1)
+
+    def test_parses_list_operands(self):
+        assert extract_operator_and_operand_from_comparison("in [1, 2, 3]") == ("in", [1, 2, 3])
+
+    def test_parses_none_operands(self):
+        assert extract_operator_and_operand_from_comparison("== None") == ("==", None)
+
+    def test_complains_about_invalid_operators(self):
+        with pytest.raises(RuntimeError, match="ERROR: Invalid"):
+            extract_operator_and_operand_from_comparison("^ 'foo'")
+
+    def test_complains_about_unparseable_operands(self):
+        with pytest.raises(RuntimeError, match="ERROR: Unable"):
+            extract_operator_and_operand_from_comparison("== foo")
+
