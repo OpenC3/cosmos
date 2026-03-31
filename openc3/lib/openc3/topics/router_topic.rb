@@ -35,17 +35,12 @@ module OpenC3
     end
 
     def self.receive_telemetry(router, scope:)
-      # Group topics by shard since CMD topics are on shard 0
-      # and TELEMETRY topics are on the target's shard
+      # Group topics by shard
       all_topics = RouterTopic.topics(router, scope: scope)
       shard_groups = {} # shard => [topic, ...]
       all_topics.each do |topic|
-        if topic.include?('__TELEMETRY__')
-          target_name = topic.match(/__\{?([^}_]+)\}?__/)[1] rescue nil
-          shard = Store.shard_for_target(target_name, scope: scope)
-        else
-          shard = 0
-        end
+        target_name = topic.match(/__\{?([^}_]+)\}?__/)[1] rescue nil
+        shard = Store.shard_for_target(target_name, scope: scope)
         shard_groups[shard] ||= []
         shard_groups[shard] << topic
       end

@@ -26,7 +26,7 @@ from openc3.topics.topic import Topic
 from openc3.utilities.questdb_client import QuestDBClient
 from openc3.utilities.store import EphemeralStore
 from openc3.utilities.thread_manager import ThreadManager
-
+from openc3.utilities.store import Store
 
 class TsdbMicroservice(Microservice):
     TRIM_KEEP_MS = 60000  # 1 minute
@@ -53,8 +53,7 @@ class TsdbMicroservice(Microservice):
         topic_parts = self.topics[0].split("__")
         # Only one target should be provided to this microservice
         target_name = topic_parts[2].strip("{}")
-        target_model = TargetModel.get(name=target_name, scope=self.scope)
-        self.target_shard = int(target_model.get("shard", 0)) if target_model else 0
+        self.target_shard = Store.shard_for_target(target_name, scope=self.scope)
         Topic.update_topic_offsets(self.topics, shard=self.target_shard)
         self.questdb = QuestDBClient(logger=self.logger, name=f"Microservice {self.name}", shard=self.target_shard)
         self.questdb.connect_ingest()

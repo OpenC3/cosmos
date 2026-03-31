@@ -36,17 +36,13 @@ class RouterTopic(Topic):
     @classmethod
     def receive_telemetry(cls, router, scope=OPENC3_SCOPE):
         import re
-        # Group topics by shard since CMD topics are on shard 0
-        # and TELEMETRY topics are on the target's shard
+        # Group topics by shard
         all_topics = RouterTopic.topics(router, scope)
         shard_groups = {}  # shard => [topic, ...]
         for topic in all_topics:
-            if "__TELEMETRY__" in topic:
-                match = re.search(r'__\{?([^}_]+)\}?__', topic)
-                target_name = match.group(1) if match else None
-                shard = Store.shard_for_target(target_name, scope=scope)
-            else:
-                shard = 0
+            match = re.search(r'__\{?([^}_]+)\}?__', topic)
+            target_name = match.group(1) if match else None
+            shard = Store.shard_for_target(target_name, scope=scope)
             if shard not in shard_groups:
                 shard_groups[shard] = []
             shard_groups[shard].append(topic)
