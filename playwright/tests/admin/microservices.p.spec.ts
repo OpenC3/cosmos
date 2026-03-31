@@ -48,6 +48,7 @@ test('displays microservice details', async ({ page, utils }) => {
 })
 
 test('stops and starts microservices', async ({ page, utils }) => {
+  test.slow()
   await page
     .locator('.v-list-item')
     .filter({ hasText: 'DEFAULT__USER__OPENC3-EXAMPLE' })

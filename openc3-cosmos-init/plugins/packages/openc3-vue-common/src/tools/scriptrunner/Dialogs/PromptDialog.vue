@@ -134,83 +134,78 @@
   </v-dialog>
 </template>
 
-<script>
-export default {
-  props: {
-    title: {
-      type: String,
-      default: 'Prompt Dialog',
-    },
-    subtitle: {
-      type: String,
-      default: '',
-    },
-    message: {
-      type: String,
-      required: true,
-    },
-    details: {
-      type: String,
-      default: '',
-    },
-    buttons: {
-      type: Array,
-      default: () => [],
-    },
-    layout: {
-      type: String,
-      default: 'horizontal', // Also 'vertical', 'combo' for ComboBox, or 'check' for CheckBox
-    },
-    multiple: {
-      type: Boolean,
-      default: false,
-      required: false,
-    },
-    modelValue: Boolean,
+<script setup>
+import { ref, computed } from 'vue'
+
+const props = defineProps({
+  title: {
+    type: String,
+    default: 'Prompt Dialog',
   },
-  emits: ['update:modelValue', 'response'],
-  data() {
-    return {
-      selectOkDisabled: true,
-      selectedItem: null,
-      checkedItems: [],
-    }
+  subtitle: {
+    type: String,
+    default: '',
   },
-  computed: {
-    show: {
-      get() {
-        return this.modelValue
-      },
-      set(value) {
-        this.$emit('update:modelValue', value)
-      },
-    },
-    layoutClass() {
-      let layout = 'px-2 d-flex align-start'
-      if (this.layout === 'vertical') {
-        return `${layout} flex-column prompt-buttons-vertical`
-      } else {
-        return `${layout} flex-row flex-wrap prompt-buttons-horizontal`
-      }
+  message: {
+    type: String,
+    required: true,
+  },
+  details: {
+    type: String,
+    default: '',
+  },
+  buttons: {
+    type: Array,
+    default: () => [],
+  },
+  layout: {
+    type: String,
+    default: 'horizontal',
+    validator(value) {
+      // 'combo' for ComboBox, or 'check' for CheckBox
+      return ['horizontal', 'vertical', 'combo', 'check'].includes(value)
     },
   },
-  methods: {
-    submitWrapper: function (output) {
-      this.selectedItem = output
-      this.submitHandler()
-    },
-    submitHandler: function () {
-      this.$emit('response', this.selectedItem)
-    },
-    submitChecked: function () {
-      this.$emit('response', this.checkedItems)
-    },
-    cancelHandler: function () {
-      // Emit a unique value that indicates cancel was clicked so that the caller
-      // can differentiate between cancel and a button with the text 'Cancel'
-      this.$emit('response', 'COSMOS__CANCEL')
-    },
+  multiple: {
+    type: Boolean,
+    default: false,
+    required: false,
   },
+})
+
+const show = defineModel({ type: Boolean, required: true })
+const emit = defineEmits(['response'])
+const checkedItems = ref([])
+
+const selectOkDisabled = ref(true)
+const selectedItem = ref(null)
+
+const layoutClass = computed(() => {
+  const layout = 'px-2 d-flex align-start'
+  if (props.layout === 'vertical') {
+    return `${layout} flex-column prompt-buttons-vertical`
+  } else {
+    return `${layout} flex-row flex-wrap prompt-buttons-horizontal`
+  }
+})
+
+function submitWrapper(output) {
+  selectedItem.value = output
+  submitHandler()
+}
+
+function submitHandler() {
+  emit('response', selectedItem.value)
+}
+
+function submitChecked() {
+  emit('response', checkedItems.value)
+}
+
+function cancelHandler() {
+  // Emit a unique value that indicates cancel was clicked so that the caller
+  // can differentiate between cancel and a button with the text 'Cancel'
+  emit('response', 'COSMOS__CANCEL')
 }
 </script>
 

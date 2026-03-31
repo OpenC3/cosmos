@@ -74,66 +74,57 @@
   </v-dialog>
 </template>
 
-<script>
-export default {
-  props: {
-    title: {
-      type: String,
-      required: true,
-    },
-    message: {
-      type: String,
-      default: null,
-    },
-    filter: {
-      type: String,
-      default: '*',
-    },
-    multiple: {
-      type: Boolean,
-      default: false,
-    },
-    modelValue: Boolean,
+<script setup>
+import { ref, computed } from 'vue'
+
+const props = defineProps({
+  title: {
+    type: String,
+    required: true,
   },
-  emits: ['update:modelValue', 'response'],
-  data() {
-    return {
-      inputValue: null,
-      valid: null,
-      rules: [
-        (value) => {
-          if (this.multiple) {
-            return value.length != 0 || 'Required'
-          } else {
-            return !!value || 'Required'
-          }
-        },
-      ],
+  message: {
+    type: String,
+    default: null,
+  },
+  filter: {
+    type: String,
+    default: '*',
+  },
+  multiple: {
+    type: Boolean,
+    default: false,
+  },
+})
+
+const show = defineModel({ type: Boolean, required: true })
+
+const emit = defineEmits(['response'])
+
+const inputValue = ref(null)
+const valid = ref(null)
+
+const rules = computed(() => [
+  (value) => {
+    if (props.multiple) {
+      return value.length != 0 || 'Required'
+    } else {
+      return !!value || 'Required'
     }
   },
-  computed: {
-    show: {
-      get() {
-        return this.modelValue
-      },
-      set(value) {
-        this.$emit('update:modelValue', value)
-      },
-    },
-  },
-  methods: {
-    submitHandler: function () {
-      // Ensure we send back an array of file names even in the single case
-      // to make it easier to deal with a consistent result
-      if (!Array.isArray(this.inputValue)) {
-        this.inputValue = [this.inputValue]
-      }
-      this.$emit('response', this.inputValue)
-    },
-    cancelHandler: function () {
-      this.$emit('response', 'COSMOS__CANCEL')
-    },
-  },
+])
+
+const submitHandler = () => {
+  // Ensure we send back an array of file names even in the single case
+  // to make it easier to deal with a consistent result
+  let files = inputValue.value
+  if (!Array.isArray(files)) {
+    files = [files]
+  }
+  emit('response', files)
+}
+
+const cancelHandler = () => {
+  emit('response', 'COSMOS__CANCEL')
 }
 </script>
 

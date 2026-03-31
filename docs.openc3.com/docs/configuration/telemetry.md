@@ -370,7 +370,7 @@ LIMITS_RESPONSE example_limits_response.rb 10
 </Tabs>
 
 #### HIDDEN
-**Hides this item from all the OpenC3 tools**
+<span class="badge badge--secondary since-right">Since 6.10.1</span>**Hides this item from all the OpenC3 tools**
 
 This item will not appear in PacketViewer or Item Choosers. It also hides this item from appearing in the Script Runner popup helper when writing scripts. The item will also not be included in decom data.
 

@@ -125,6 +125,7 @@ export default {
   watch: {
     apiKey: function (val) {
       this.checkEnterpriseKey()
+      localStorage.setItem('pluginStore.isApiKeySet', !!val)
     },
     isEnterprise: function (val) {
       this.checkEnterpriseKey()

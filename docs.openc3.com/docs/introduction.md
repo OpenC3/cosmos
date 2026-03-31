@@ -20,10 +20,6 @@ Throughout this guide there are a number of small-but-handy pieces of
 information that can make using COSMOS easier, more interesting, and less
 hazardous. Here's what to look out for.
 
-:::note ProTips™ help you get more from COSMOS
-These are tips and tricks that will help you be a COSMOS wizard!
-:::
-
 :::info Notes are handy pieces of information
 These are for the extra tidbits sometimes necessary to understand COSMOS.
 :::

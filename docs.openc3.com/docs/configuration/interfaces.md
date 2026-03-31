@@ -45,7 +45,7 @@ The following options apply to all interfaces. Options are added directly beneat
 ```python
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
   # Send the 'INST2 COLLECT with TYPE NORMAL' command every 10s and output to the CmdTlmServer messages
-  OPTION PERIODIC_CMD LOG 10.0 "INST2 COLLECT with TYPE NORMAL"
+  OPTION PERIODIC_CMD DONT_LOG 10.0 "INST2 COLLECT with TYPE NORMAL"
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">

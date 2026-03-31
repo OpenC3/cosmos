@@ -80,7 +80,7 @@
             />
           </v-list-item-title>
           <v-list-item-subtitle>
-            <span v-text="' Updated At: ' + formatDate(process.updated_at)" />
+            <span v-text="' Updated At: ' + formatNanoseconds(process.updated_at, timeZone)" />
           </v-list-item-subtitle>
 
           <template #append>
@@ -164,12 +164,12 @@
 </template>
 
 <script>
-import { toDate, format } from 'date-fns'
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { SimpleTextDialog } from '@/components'
 import { ModifiedPluginDialog, PluginDialog } from '@/tools/admin'
 import { PluginList } from '@/tools/admin/tabs/plugins'
 import { PluginStore } from '@/plugins/plugin-store'
+import { TimeFilters } from '@/util'
 
 export default {
   components: {
@@ -179,6 +179,7 @@ export default {
     ModifiedPluginDialog,
     SimpleTextDialog,
   },
+  mixins: [TimeFilters],
   data() {
     return {
       // Control state
@@ -209,6 +210,7 @@ export default {
       showPluginDialog: false,
       showModifiedPluginDialog: false,
       showDefaultTools: false,
+      timeZone: 'local',
       // When updating update local_mode.rb, local_mode.py, plugins.p.spec.ts
       defaultPlugins: [
         'openc3-cosmos-tool-admin',
@@ -251,6 +253,16 @@ export default {
   },
   created() {
     this.api.update_plugin_store()
+    this.api
+      .get_setting('time_zone')
+      .then((response) => {
+        if (response) {
+          this.timeZone = response
+        }
+      })
+      .catch(() => {
+        // Do nothing
+      })
   },
   mounted() {
     this.update()
@@ -320,12 +332,6 @@ export default {
             }, 5000)
           }
         },
-      )
-    },
-    formatDate(nanoSecs) {
-      return format(
-        toDate(Number.parseInt(nanoSecs) / 1000000),
-        'yyyy-MM-dd HH:mm:ss.SSS',
       )
     },
     upload: function (existing = null, storeData = null) {

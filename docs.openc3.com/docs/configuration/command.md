@@ -571,7 +571,7 @@ SELECT_COMMAND INST COLLECT
 ```
 
 ### HIDDEN
-**Hides this command from all OpenC3 tools such as Command Sender and Handbook Creator**
+<span class="badge badge--secondary since-right">Since 6.10.1</span>**Hides this command from all OpenC3 tools such as Command Sender and Handbook Creator**
 
 Hidden commands do not appear in the Script Runner popup helper when writing scripts. The command still exists in the system and can be sent by scripts.
 

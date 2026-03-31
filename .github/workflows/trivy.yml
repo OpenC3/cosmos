@@ -45,14 +45,14 @@ jobs:
         env:
           OPENC3_TAG: ${{ github.sha }}
       - name: Manual Trivy Setup
-        uses: aquasecurity/setup-trivy@e07451d2e059ed86c2870430ea286b3a9e0bf241
+        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514
         with:
           cache: true
           version: v0.68.2
       - name: Run Trivy on image ruby
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         # See https://github.com/aquasecurity/trivy-action
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: "docker.io/openc3inc/openc3-ruby:${{ github.sha }}"
           # output: "trivy-ruby.sarif"
@@ -70,7 +70,7 @@ jobs:
       #     sarif_file: "trivy-ruby.sarif"
       - name: Run Trivy on image node
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: "docker.io/openc3inc/openc3-node:${{ github.sha }}"
           # output: "trivy-node.sarif"
@@ -84,7 +84,7 @@ jobs:
       #     sarif_file: "trivy-node.sarif"
       - name: Run Trivy on image base
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: "docker.io/openc3inc/openc3-base:${{ github.sha }}"
           # output: "trivy-base.sarif"
@@ -98,7 +98,7 @@ jobs:
       #     sarif_file: "trivy-base.sarif"
       - name: Run Trivy on image cosmos-init
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-init:${{ github.sha }}"
           # output: "trivy-init.sarif"
@@ -112,7 +112,7 @@ jobs:
       #     sarif_file: "trivy-init.sarif"
       - name: Run Trivy on image redis
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: "docker.io/openc3inc/openc3-redis:${{ github.sha }}"
           # output: "trivy-redis.sarif"
@@ -126,7 +126,7 @@ jobs:
       #     sarif_file: "trivy-redis.sarif"
       - name: Run Trivy on image bucket
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: "docker.io/openc3inc/openc3-buckets:${{ github.sha }}"
           # output: "trivy-bucket.sarif"
@@ -140,7 +140,7 @@ jobs:
       #     sarif_file: "trivy-bucket.sarif"
       - name: Run Trivy on image tsdb
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: "docker.io/openc3inc/openc3-tsdb:${{ github.sha }}"
           # output: "trivy-tsdb.sarif"
@@ -154,7 +154,7 @@ jobs:
       #     sarif_file: "trivy-tsdb.sarif"
       - name: Run Trivy on image operator
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: "docker.io/openc3inc/openc3-operator:${{ github.sha }}"
           # output: "trivy-operator.sarif"
@@ -168,7 +168,7 @@ jobs:
       #     sarif_file: "trivy-operator.sarif"
       - name: Run Trivy on image cmd-tlm-api
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ github.sha }}"
           # output: "trivy-cmd-tlm-api.sarif"
@@ -182,7 +182,7 @@ jobs:
       #     sarif_file: "trivy-cmd-tlm-api.sarif"
       - name: Run Trivy on image script-runner-api
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ github.sha }}"
           # output: "trivy-script-runner-api.sarif"
@@ -196,7 +196,7 @@ jobs:
       #     sarif_file: "trivy-script-runner-api.sarif"
       - name: Run Trivy on image traefik
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: "docker.io/openc3inc/openc3-traefik:${{ github.sha }}"
           # output: "trivy-traefik.sarif"
@@ -210,7 +210,7 @@ jobs:
       #     sarif_file: "trivy-traefik.sarif"
       - name: Run Trivy in GitHub SBOM mode and submit results to Dependency Snapshots
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           scan-type: "fs"
           format: "github"

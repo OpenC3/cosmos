@@ -11,29 +11,154 @@
 
 version: 2
 updates:
-  # Maintain dependencies for GitHub Actions
-  - package-ecosystem: "github-actions"
+  - package-ecosystem: github-actions
     directory: "/"
     schedule:
-      interval: "weekly"
-  # Maintain Python dependencies via uv
-  - package-ecosystem: "uv"
-    directory: "/openc3/python"
+      interval: weekly
+
+  - package-ecosystem: uv
+    directory: /openc3/python
     schedule:
-      interval: "weekly"
-# Ignore all npm updates as we have a process for uding them with package_audit.rb
-#   - package-ecosystem: "npm"
-#     directories: # Location of package manifests
-#       - "/openc3-cosmos-init/plugins/*"
-#       - "/playwright/*"
-#       - "/docs.openc3.com/*"
-#     schedule:
-#       interval: "weekly"
-#     ignore: # because we do extra stuff with these. See index.html in tool-base or `base_pkgs` in package_audit.rb
-#       - dependency-name: "import-map-overrides"
-#       - dependency-name: "pinia"
-#       - dependency-name: "single-spa"
-#       - dependency-name: "systemjs"
-#       - dependency-name: "vue"
-#       - dependency-name: "vue-router"
-#       - dependency-name: "vuetify"
+      interval: weekly
+    ignore:
+      - dependency-name: openc3
+
+  # Bundler
+  - package-ecosystem: bundler
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: bundler
+    directory: /openc3-cosmos-cmd-tlm-api
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: bundler
+    directory: /openc3-cosmos-script-runner-api
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: bundler
+    directory: /openc3
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: bundler
+    directory: /openc3/test/integration/tsdb/ruby
+    schedule:
+      interval: weekly
+
+  # Docker
+  - package-ecosystem: docker
+    directory: /openc3-buckets
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /openc3-cosmos-cmd-tlm-api
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /openc3-cosmos-init
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /openc3-cosmos-script-runner-api
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /openc3-node
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /openc3-operator
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /openc3-redis
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /openc3-ruby
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /openc3-traefik
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /openc3-tsdb
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /openc3
+    schedule:
+      interval: weekly
+
+  # Ignore all npm updates as we have a process for uding them with package_audit.rb
+  - package-ecosystem: npm
+    directories: # Location of package manifests
+      - /openc3-cosmos-init/plugins/*
+      - /playwright/*
+      - /docs.openc3.com/*
+      - /openc3/templates/*
+    schedule:
+      interval: weekly
+    ignore: # because we do extra stuff with these. See index.html in tool-base or `base_pkgs` in package_audit.rb
+      - dependency-name: import-map-overrides
+      - dependency-name: pinia
+      - dependency-name: single-spa
+      - dependency-name: systemjs
+      - dependency-name: vue
+      - dependency-name: vue-router
+      - dependency-name: vuetify
+
+  # - package-ecosystem: npm
+  #   directory: /docs.openc3.com
+  #   schedule:
+  #     interval: weekly
+
+  # - package-ecosystem: npm
+  #   directory: /playwright
+  #   schedule:
+  #     interval: weekly
+
+  # - package-ecosystem: npm
+  #   directory: /openc3-cosmos-init/plugins
+  #   schedule:
+  #     interval: weekly
+
+  # - package-ecosystem: npm
+  #   directory: /openc3/templates/tool_angular
+  #   schedule:
+  #     interval: weekly
+
+  # - package-ecosystem: npm
+  #   directory: /openc3/templates/tool_react
+  #   schedule:
+  #     interval: weekly
+
+  # - package-ecosystem: npm
+  #   directory: /openc3/templates/tool_svelte
+  #   schedule:
+  #     interval: weekly
+
+  # - package-ecosystem: npm
+  #   directory: /openc3/templates/tool_vue
+  #   schedule:
+  #     interval: weekly
+
+  # - package-ecosystem: npm
+  #   directory: /openc3/templates/widget
+  #   schedule:
+  #     interval: weekly

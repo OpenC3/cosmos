@@ -67,6 +67,10 @@ for key in [
     "OPENC3_SERVICE_PASSWORD",
     # This actually contains the password via redis://openc3:XXXXXXXX@openc3-redis:6379
     "ANYCABLE_REDIS_URL",
+    "KC_DB_USERNAME",
+    "KC_DB_PASSWORD",
+    "KEYCLOAK_ADMIN",
+    "KEYCLOAK_ADMIN_PASSWORD",
 ]:
     os.environ.pop(key, None)
 

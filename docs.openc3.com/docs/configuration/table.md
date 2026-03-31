@@ -341,7 +341,7 @@ OVERFLOW TRUNCATE
 ```
 
 #### HIDDEN
-**Indicates that the parameter should not be shown to the user in the Table Manager GUI**
+<span class="badge badge--secondary since-right">Since 6.10.1</span>**Indicates that the parameter should not be shown to the user in the Table Manager GUI**
 
 Hidden parameters still exist and will be saved to the resulting binary. This is useful for padding and other essential but non-user editable fields.
 

@@ -173,6 +173,8 @@ These methods allow the user to enter values that are needed by the script.
 
 ### ask
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Prompts the user for input with a question. User input is automatically converted from a string to the appropriate data type. For example if the user enters "1", the number 1 as an integer will be returned.
 
 <Tabs groupId="script-language">
@@ -224,6 +226,8 @@ password = ask("Enter your password", False, True)
 
 ### ask_string
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Prompts the user for input with a question. User input is always returned as a string. For example if the user enters "1", the string "1" will be returned.
 
 <Tabs groupId="script-language">
@@ -274,11 +278,19 @@ password = ask_string("Enter your password", False, True)
 
 ### message_box
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 ### vertical_message_box
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 ### combo_box
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 ### check_box
+
+<span class="badge badge--secondary since-heading">Since 7.0.0</span>
 
 The message_box, vertical_message_box, combo_box and check_box methods create a message box with buttons / selections / checkboxes that the user can click. The text of the button / selection / checkbox is returned.
 
@@ -361,7 +373,11 @@ for value in values:
 
 ### open_file_dialog
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 ### open_files_dialog
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 The open_file_dialog and open_files_dialog methods create a file dialog box so the user can select a single or multiple files. The selected file(s) is returned.
 
@@ -434,7 +450,7 @@ for file in files:
 
 ### open_bucket_dialog
 
-> Since 7.0.0
+<span class="badge badge--secondary since-heading">Since 7.0.0</span>
 
 The open_bucket_dialog method creates a dialog box that allows the user to browse S3 bucket files and select one. It presents the available buckets (similar to Bucket Explorer) and allows navigating directories within the selected bucket. The selected file is downloaded and returned as a file object, similar to open_file_dialog.
 
@@ -490,6 +506,8 @@ file.close()
 These methods provide capability to interact with files in the target directory.
 
 ### get_target_file
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Return a file handle to a file in the target directory. Returns `None` (Python) or `nil` (Ruby) if the file is not found.
 
@@ -547,6 +565,8 @@ file.close() # delete file
 </Tabs>
 
 ### put_target_file
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Writes a file to the target directory
 
@@ -615,6 +635,8 @@ put_target_file("INST/test4.bin", buf)
 
 ### delete_target_file
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Delete a file in the target directory
 
 <Tabs groupId="script-language">
@@ -660,6 +682,8 @@ delete_target_file("INST/delete_me.txt")
 </Tabs>
 
 ### download_file
+
+<span class="badge badge--secondary since-heading">Since 5.8.0</span>
 
 Prompts the user to download a file from the OpenC3 system to their local machine.
 
@@ -709,6 +733,8 @@ These methods notify the user that something has occurred.
 
 ### prompt
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Displays a message to the user and waits for them to press an ok button.
 
 <Tabs groupId="script-language">
@@ -756,6 +782,8 @@ prompt("Press OK to continue")
 These methods provide capability to send commands to a target and receive information about commands in the system.
 
 ### cmd
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Sends a specified command.
 
@@ -815,6 +843,8 @@ cmd("INST ABORT", timeout=10, log_message=False, validate=False)
 
 ### cmd_no_range_check
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Sends a specified command without performing range checking on its parameters. This should only be used when it is necessary to intentionally send a bad command parameter to test a target.
 
 <Tabs groupId="script-language">
@@ -867,6 +897,8 @@ cmd_no_range_check("INST", "COLLECT", {"DURATION": 11, "TYPE": "NORMAL"})
 </Tabs>
 
 ### cmd_no_hazardous_check
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Sends a specified command without performing the notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands.
 
@@ -921,6 +953,8 @@ cmd_no_hazardous_check("INST", "CLEAR")
 
 ### cmd_no_checks
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Sends a specified command without performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentionally have invalid parameters.
 
 <Tabs groupId="script-language">
@@ -973,6 +1007,8 @@ cmd_no_checks("INST", "COLLECT", {"DURATION": 11, "TYPE": "SPECIAL"})
 </Tabs>
 
 ### cmd_raw
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Sends a specified command without running conversions.
 
@@ -1027,6 +1063,8 @@ cmd_raw("INST", "COLLECT", {"DURATION": 10, "TYPE": 0})
 
 ### cmd_raw_no_range_check
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Sends a specified command without running conversions or performing range checking on its parameters. This should only be used when it is necessary to intentionally send a bad command parameter to test a target.
 
 <Tabs groupId="script-language">
@@ -1079,6 +1117,8 @@ cmd_raw_no_range_check("INST", "COLLECT", {"DURATION": 11, "TYPE": 0})
 </Tabs>
 
 ### cmd_raw_no_hazardous_check
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Sends a specified command without running conversions or performing the notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands.
 
@@ -1133,6 +1173,8 @@ cmd_raw_no_hazardous_check("INST", "CLEAR")
 
 ### cmd_raw_no_checks
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Sends a specified command without running conversions or performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentionally have invalid parameters.
 
 <Tabs groupId="script-language">
@@ -1186,9 +1228,9 @@ cmd_raw_no_checks("INST", "COLLECT", {"DURATION": 11, "TYPE": 1})
 
 ### build_cmd
 
-> Since 5.13.0, since 5.8.0 as build_command
+<span class="badge badge--secondary since-heading">Since 5.8.0</span>
 
-Builds a command binary string so you can see the raw bytes for a given command. Use the [get_cmd](#get_cmd) to get information about a command like endianness, description, items, etc.
+Builds a command binary string so you can see the raw bytes for a given command. Previously `build_command`. Use the [get_cmd](#get_cmd) to get information about a command like endianness, description, items, etc.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -1236,7 +1278,7 @@ print(x)  #=> {'id': '1697298167748-0', 'result': 'SUCCESS', 'time': '1697298167
 
 ### enable_cmd
 
-> Since 5.15.1
+<span class="badge badge--secondary since-heading">Since 5.15.1</span>
 
 Enables a disabled command. Sending a disabled command raises `DisabledError` with a message like 'INST ABORT is Disabled'.
 
@@ -1285,7 +1327,7 @@ enable_cmd("INST ABORT")
 
 ### disable_cmd
 
-> Since 5.15.1
+<span class="badge badge--secondary since-heading">Since 5.15.1</span>
 
 Disables a command. Sending a disabled command raises `DisabledError` with a message like 'INST ABORT is Disabled'.
 
@@ -1334,6 +1376,8 @@ disable_cmd("INST ABORT")
 
 ### send_raw
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Sends raw data on an interface.
 
 <Tabs groupId="script-language">
@@ -1379,9 +1423,9 @@ send_raw("INST_INT", data)
 
 ### get_all_cmds
 
-> Since 5.13.0, since 5.0.0 as get_all_commands
+<span class="badge badge--secondary since-heading">Since 5.13.0</span>
 
-Returns an array of the commands that are available for a particular target. The returned array is an array of hashes / list of dicts which fully describe the command packet.
+Returns an array of the commands that are available for a particular target. The returned array is an array of hashes / list of dicts which fully describe the command packet. Previously `get_all_commands`.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -1441,9 +1485,9 @@ print(cmd_list)  #=>
 
 ### get_all_cmd_names
 
-> Since 5.13.0, since 5.0.6 as get_all_command_names
+<span class="badge badge--secondary since-heading">Since 5.13.0</span>
 
-Returns an array of the command names for a particular target.
+Returns an array of the command names for a particular target. Previously `get_all_command_names`.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -1489,9 +1533,9 @@ print(cmd_list)  #=> ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
 
 ### get_cmd
 
-> Since 5.13.0, since 5.0.0 as get_command
+<span class="badge badge--secondary since-heading">Since 5.13.0</span>
 
-Returns a command hash which fully describes the command packet. To get the binary buffer of an as-built command use [build_cmd](#build_cmd).
+Returns a command hash which fully describes the command packet. Previously `get_command`. To get the binary buffer of an as-built command use [build_cmd](#build_cmd).
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -1554,9 +1598,9 @@ print(abort_cmd)  #=>
 
 ### get_param
 
-> Since 5.13.0, since 5.0.0 as get_parameter
+<span class="badge badge--secondary since-heading">Since 5.13.0</span>
 
-Returns a hash of the given command parameter
+Returns a hash of the given command parameter. Previously `get_parameter`.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -1614,6 +1658,8 @@ print(param)  #=>
 
 ### get_cmd_buffer
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns a packet hash (similar to get_cmd) along with the raw packet buffer as a Ruby string.
 
 <Tabs groupId="script-language">
@@ -1669,6 +1715,8 @@ print(packet)  #=>
 
 ### get_cmd_hazardous
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns true/false indicating whether a particular command is flagged as hazardous.
 
 <Tabs groupId="script-language">
@@ -1716,6 +1764,8 @@ print(hazardous) #=> True
 </Tabs>
 
 ### get_cmd_value
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Returns reads a value from the most recently sent command packet. The pseudo-parameters 'PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED', 'RECEIVED_COUNT', 'RECEIVED_TIMEFORMATTED', and 'RECEIVED_TIMESECONDS' are also supported.
 
@@ -1766,6 +1816,8 @@ print(value)  #=> 0.0
 
 ### get_cmd_time
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns the time of the most recent command sent.
 
 <Tabs groupId="script-language">
@@ -1815,6 +1867,8 @@ target_name, command_name, time = get_cmd_time("INST", "COLLECT") # Name of the 
 
 ### get_cmd_cnt
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns the number of times a specified command has been sent.
 
 <Tabs groupId="script-language">
@@ -1862,6 +1916,8 @@ cmd_cnt = get_cmd_cnt("INST COLLECT") # Number of times the INST COLLECT command
 
 ### get_cmd_cnts
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns the number of times the specified commands have been sent.
 
 <Tabs groupId="script-language">
@@ -1907,9 +1963,9 @@ cmd_cnt = get_cmd_cnts([['INST', 'COLLECT'], ['INST', 'ABORT']]) # Number of tim
 
 ### critical_cmd_status
 
-Returns the status of a critical command. One of APPROVED, REJECTED, or WAITING.
+<span class="badge badge--secondary since-heading">Since 5.20.0</span>
 
-> Since 5.20.0
+Returns the status of a critical command. One of APPROVED, REJECTED, or WAITING.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -1953,9 +2009,9 @@ status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") #=> WAITING
 
 ### critical_cmd_approve
 
-Approve the critical command as the current user.
+<span class="badge badge--secondary since-heading">Since 5.20.0</span>
 
-> Since 5.20.0
+Approve the critical command as the current user.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -1999,9 +2055,9 @@ critical_cmd_approve("2fa14183-3148-4399-9a74-a130257118f9")
 
 ### critical_cmd_reject
 
-Reject the critical command as the current user.
+<span class="badge badge--secondary since-heading">Since 5.20.0</span>
 
-> Since 5.20.0
+Reject the critical command as the current user.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -2045,9 +2101,9 @@ critical_cmd_reject("2fa14183-3148-4399-9a74-a130257118f9")
 
 ### critical_cmd_can_approve
 
-Returns whether or not the current user can approve the critical command.
+<span class="badge badge--secondary since-heading">Since 5.20.0</span>
 
-> Since 5.20.0
+Returns whether or not the current user can approve the critical command.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -2121,9 +2177,9 @@ cmd("INST ABORT", queue=False)
 
 ### queue_create
 
-Create a command queue. Queues are initially created in HOLD state.
+<span class="badge badge--secondary since-heading">Since 6.8.0</span>
 
-> Since 6.8.0
+Create a command queue. Queues are initially created in HOLD state.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -2167,9 +2223,9 @@ queue_create('TEST')
 
 ### queue_get
 
-Get information about a command queue including what state it is in.
+<span class="badge badge--secondary since-heading">Since 6.8.0</span>
 
-> Since 6.8.0
+Get information about a command queue including what state it is in.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -2215,9 +2271,9 @@ print(queue) #=>
 
 ### queue_all
 
-Get information about all command queues.
+<span class="badge badge--secondary since-heading">Since 6.8.0</span>
 
-> Since 6.8.0
+Get information about all command queues.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -2241,9 +2297,9 @@ print(all) #=>
 
 ### queue_list
 
-List all the commands in the queue including the username, the creation time, and the command itself.
+<span class="badge badge--secondary since-heading">Since 6.8.0</span>
 
-> Since 6.8.0
+List all the commands in the queue including the username, the creation time, and the command itself.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -2289,9 +2345,9 @@ print(cmds) #=>
 
 ### queue_hold
 
-Puts the specified queue into HOLD mode which means that commands are queued up and not released to the interface.
+<span class="badge badge--secondary since-heading">Since 6.8.0</span>
 
-> Since 6.8.0
+Puts the specified queue into HOLD mode which means that commands are queued up and not released to the interface.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -2335,9 +2391,9 @@ queue_hold('TEST')
 
 ### queue_release
 
-Puts the specified queue into RELEASE mode which means that commands in the queue are released to the interface. Any new commands added to the queue are immediately released to the interface.
+<span class="badge badge--secondary since-heading">Since 6.8.0</span>
 
-> Since 6.8.0
+Puts the specified queue into RELEASE mode which means that commands in the queue are released to the interface. Any new commands added to the queue are immediately released to the interface.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -2381,9 +2437,9 @@ queue_release('TEST')
 
 ### queue_disable
 
-Puts the specified queue into DISABLE mode which means that commands are rejected and not added to the queue. Commands added to a queue in DISABLE mode via script will raise an exception and stop.
+<span class="badge badge--secondary since-heading">Since 6.8.0</span>
 
-> Since 6.8.0
+Puts the specified queue into DISABLE mode which means that commands are rejected and not added to the queue. Commands added to a queue in DISABLE mode via script will raise an exception and stop.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -2427,9 +2483,9 @@ queue_disable('TEST')
 
 ### queue_exec
 
-Removes a command from the queue and executes it.
+<span class="badge badge--secondary since-heading">Since 6.8.0</span>
 
-> Since 6.8.0
+Removes a command from the queue and executes it.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -2476,9 +2532,9 @@ queue_exec('TEST', index=5) # Removes and executes the command at index 5
 
 ### queue_remove
 
-Removes a command from the queue.
+<span class="badge badge--secondary since-heading">Since 6.9.1</span>
 
-> Since 6.9.1
+Removes a command from the queue.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -2525,9 +2581,9 @@ queue_remove('TEST', index=5) # Removes the command at index 5
 
 ### queue_delete
 
-Deletes the specified queue and any commands that it holds.
+<span class="badge badge--secondary since-heading">Since 6.8.0</span>
 
-> Since 6.8.0
+Deletes the specified queue and any commands that it holds.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -2574,6 +2630,8 @@ queue_delete('TEST')
 These methods allow the user to interact with telemetry items.
 
 ### check, check_raw, check_formatted
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Performs a verification of a telemetry item using its specified telemetry type. If the verification fails then the script will be paused with an error. If no comparison is given to check then the telemetry item is simply printed to the script output. Note: In most cases using wait_check is a better choice than using check.
 
@@ -2630,6 +2688,8 @@ check("INST HEALTH_STATUS COLLECTS > 1", type='RAW')
 
 ### check_tolerance
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Checks a converted telemetry item against an expected value with a tolerance. If the verification fails then the script will be paused with an error. Note: In most cases using wait_check_tolerance is a better choice than using check_tolerance.
 
 <Tabs groupId="script-language">
@@ -2680,6 +2740,8 @@ check_tolerance("INST HEALTH_STATUS TEMP1", 50000, 20000, type='RAW')
 </Tabs>
 
 ### check_expression
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Evaluates an expression. If the expression evaluates to false the script will be paused with an error. This method can be used to perform more complicated comparisons than using check as shown in the example. Note: In most cases using [wait_check_expression](#wait_check_expression) is a better choice than using check_expression.
 
@@ -2741,6 +2803,8 @@ check(5)
 
 ### check_exception
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Executes a method and expects an exception to be raised. If the method does not raise an exception, a CheckError is raised.
 
 <Tabs groupId="script-language">
@@ -2785,6 +2849,8 @@ check_exception("cmd", "INST", "COLLECT", {"TYPE": "NORMAL"})
 </Tabs>
 
 ### tlm, tlm_raw, tlm_formatted
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Reads the specified form of a telemetry item.
 
@@ -2845,6 +2911,8 @@ raw_value = tlm("INST HEALTH_STATUS COLLECTS", type='RAW')
 
 ### get_tlm_buffer
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns a packet hash (similar to get_tlm) along with the raw packet buffer.
 
 <Tabs groupId="script-language">
@@ -2894,6 +2962,8 @@ packet['buffer']
 
 ### get_tlm_packet
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns the names, values, and limits states of all telemetry items in a specified packet. The value is returned as an array of arrays with each entry containing [item_name, item_value, limits_state].
 
 <Tabs groupId="script-language">
@@ -2942,6 +3012,8 @@ names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type='FORM
 
 ### get_tlm_available
 
+<span class="badge badge--secondary since-heading">Since 6.7.0</span>
+
 Returns the _actual_ items available based on the specified set of telemetry items. For example, if you request `INST__HEALTH_STATUS__CCSDSVER__FORMATTED` the method will return `INST__HEALTH_STATUS__CCSDSVER__RAW` for that item because it does not have formatting or conversions so only the RAW value is available. This _must_ be called before calling `get_tlm_values` when passing a `start_time` / `end_time` as it ensures a correct request of historical data.
 
 <Tabs groupId="script-language">
@@ -2987,6 +3059,8 @@ print(values) # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEM
 </Tabs>
 
 ### get_tlm_values
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Returns the values and current limits state for a specified set of telemetry items. Items can be in any telemetry packet in the system. They can all be retrieved using the same value type or a specific value type can be specified for each item.
 
@@ -3034,9 +3108,9 @@ print(values) # [[-100.0, :RED_LOW], [0, :RED_LOW]]
 
 ### get_all_tlm
 
-> Since 5.13.0, since 5.0.0 as get_all_telemetry
+<span class="badge badge--secondary since-heading">Since 5.13.0</span>
 
-Returns an array of all target packet hashes.
+Returns an array of all target packet hashes. Previously `get_all_telemetry`.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -3102,9 +3176,9 @@ print(packets)
 
 ### get_all_tlm_names
 
-> Since 5.13.0, since 5.0.6 as get_all_telemetry_names
+<span class="badge badge--secondary since-heading">Since 5.13.0</span>
 
-Returns an array of all target packet names.
+Returns an array of all target packet names. Previously `get_all_telemetry_names`.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -3147,6 +3221,8 @@ get_all_tlm_names("INST")  #=> ["ADCS", "HEALTH_STATUS", ...]
 </Tabs>
 
 ### get_all_tlm_item_names
+
+<span class="badge badge--secondary since-heading">Since 6.3.0</span>
 
 Returns all the item names for every packet in a target
 
@@ -3192,9 +3268,9 @@ get_all_tlm_item_names("INST")  #=> ["ARY", "ARY2", "ASCIICMD", "ATTPROGRESS", .
 
 ### get_tlm
 
-> Since 5.13.0, since 5.0.0 as get_telemetry
+<span class="badge badge--secondary since-heading">Since 5.13.0</span>
 
-Returns a packet hash.
+Returns a packet hash. Previously `get_telemetry`.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Syntax">
@@ -3277,6 +3353,8 @@ print(packet)
 
 ### get_item
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns an item hash.
 
 <Tabs groupId="script-language">
@@ -3343,6 +3421,8 @@ print(item)
 
 ### get_tlm_cnt
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns the number of times a specified telemetry packet has been received.
 
 <Tabs groupId="script-language">
@@ -3389,6 +3469,8 @@ tlm_cnt = get_tlm_cnt("INST HEALTH_STATUS") # Number of times the INST HEALTH_ST
 </Tabs>
 
 ### set_tlm
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Sets a telemetry item value in the Command and Telemetry Server. This value will be overwritten if a new packet is received from an interface. For that reason this method is most useful if interfaces are disconnected or for testing via the Script Runner disconnect mode. Manually setting telemetry values allows for the execution of many logical paths in scripts.
 
@@ -3444,6 +3526,8 @@ check("INST HEALTH_STATUS COLLECTS == 10", type='RAW')
 
 ### inject_tlm
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Injects a packet into the system as if it was received from an interface.
 
 <Tabs groupId="script-language">
@@ -3490,6 +3574,8 @@ inject_tlm("INST", "PARAMS", {'VALUE1': 5.0, 'VALUE2': 7.0})
 </Tabs>
 
 ### override_tlm
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Sets the converted value for a telmetry point in the Command and Telemetry Server. This value will be maintained even if a new packet is received on the interface unless the override is canceled with the normalize_tlm method.
 
@@ -3541,6 +3627,8 @@ override_tlm("INST HEALTH_STATUS TEMP2 = 0", type='RAW') # Only RAW tlm set to 0
 
 ### normalize_tlm
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Clears the override of a telmetry point in the Command and Telemetry Server.
 
 <Tabs groupId="script-language">
@@ -3589,6 +3677,8 @@ normalize_tlm("INST HEALTH_STATUS TEMP1", type='RAW') # clear only the RAW overr
 </Tabs>
 
 ### get_overrides
+
+<span class="badge badge--secondary since-heading">Since 5.4.2</span>
 
 Returns an array of the the currently overridden values set by override_tlm. NOTE: This returns all the value types that are overridden which by default is all 4 values types when using override_tlm.
 
@@ -3642,6 +3732,8 @@ APIs for subscribing to specific packets of data. This provides an interface to 
 
 ### subscribe_packets
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Allows the user to listen for one or more telemetry packets of data to arrive. A unique id is returned which is used to retrieve the data.
 
 <Tabs groupId="script-language">
@@ -3687,6 +3779,8 @@ id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
 </Tabs>
 
 ### get_packets
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Streams packet data from a previous subscription. Returns an updated id and an array of packet hashes/dictionaries. The updated id should be passed to the next call to `get_packets` to continue streaming.
 
@@ -3779,6 +3873,8 @@ for packet in packets:
 
 ### get_tlm_cnt
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Get the receive count for a telemetry packet
 
 <Tabs groupId="script-language">
@@ -3826,6 +3922,8 @@ get_tlm_cnt("INST HEALTH_STATUS")  #=> 10
 
 ### get_tlm_cnts
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Get the receive counts for an array of telemetry packets
 
 <Tabs groupId="script-language">
@@ -3870,6 +3968,8 @@ get_tlm_cnts([["INST", "ADCS"], ["INST", "HEALTH_STATUS"]])  #=> [100, 10]
 </Tabs>
 
 ### get_packet_derived_items
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Get the list of derived telemetry items for a packet
 
@@ -3921,6 +4021,8 @@ get_packet_derived_items("INST HEALTH_STATUS")  #=> ['PACKET_TIMESECONDS', 'PACK
 These methods allow the user to pause the script to wait for telemetry to change or for an amount of time to pass.
 
 ### wait
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Pauses the script for a configurable amount of time (minimum 10ms) or until a converted telemetry item meets given criteria. It supports three different syntaxes as shown. If no parameters are given then an infinite wait occurs until the user presses Go. Note that on a timeout, wait does not stop the script, usually wait_check is a better choice.
 
@@ -4005,6 +4107,8 @@ success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type='RAW', quiet=False)
 
 ### wait_tolerance
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Pauses the script for a configurable amount of time or until a converted telemetry item meets equals an expected value within a tolerance. Note that on a timeout, wait_tolerance does not stop the script, usually wait_check_tolerance is a better choice.
 
 <Tabs groupId="script-language">
@@ -4054,6 +4158,8 @@ success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW
 ```
 
 ### wait_expression
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will continue. This method can be used to perform more complicated comparisons than using wait as shown in the example. Note that on a timeout, wait_expression does not stop the script, usually [wait_check_expression](#wait_check_expression) is a better choice.
 
@@ -4123,6 +4229,8 @@ success = check(5)
 
 ### wait_packet
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Pauses the script until a certain number of packets have been received. If a timeout occurs the script will continue. Note that on a timeout, wait_packet does not stop the script, usually wait_check_packet is a better choice.
 
 <Tabs groupId="script-language">
@@ -4173,6 +4281,8 @@ success = wait_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_S
 </Tabs>
 
 ### wait_check
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Combines the wait and check keywords into one. This pauses the script until the converted value of a telemetry item meets given criteria or times out. On a timeout the script stops.
 
@@ -4228,6 +4338,8 @@ elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type='RAW')
 
 ### wait_check_tolerance
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Pauses the script for a configurable amount of time or until a converted telemetry item equals an expected value within a tolerance. On a timeout the script stops.
 
 <Tabs groupId="script-language">
@@ -4282,6 +4394,8 @@ elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, typ
 </Tabs>
 
 ### wait_check_expression
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will stop. This method can be used to perform more complicated comparisons than using wait as shown in the example. Also see the syntax notes for [check_expression](#check_expression).
 
@@ -4346,6 +4460,8 @@ elapsed = wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm(
 
 ### wait_check_packet
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Pauses the script until a certain number of packets have been received. If a timeout occurs the script will stop.
 
 <Tabs groupId="script-language">
@@ -4401,6 +4517,8 @@ These methods deal with handling telemetry limits.
 
 ### limits_enabled?, limits_enabled
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 The limits_enabled? method returns true/false depending on whether limits are enabled for a telemetry item.
 
 <Tabs groupId="script-language">
@@ -4446,6 +4564,8 @@ enabled = limits_enabled("INST HEALTH_STATUS TEMP1") #=> True or False
 </Tabs>
 
 ### enable_limits
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Enables limits monitoring for the specified telemetry item.
 
@@ -4493,6 +4613,8 @@ enable_limits("INST HEALTH_STATUS TEMP1")
 
 ### disable_limits
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Disables limits monitoring for the specified telemetry item.
 
 <Tabs groupId="script-language">
@@ -4539,6 +4661,8 @@ disable_limits("INST HEALTH_STATUS TEMP1")
 
 ### enable_limits_group
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Enables limits monitoring on a set of telemetry items specified in a limits group.
 
 <Tabs groupId="script-language">
@@ -4582,6 +4706,8 @@ enable_limits_group("SAFE_MODE")
 </Tabs>
 
 ### disable_limits_group
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Disables limits monitoring on a set of telemetry items specified in a limits group.
 
@@ -4627,6 +4753,8 @@ disable_limits_group("SAFE_MODE")
 
 ### get_limits_groups
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns the list of limits groups in the system.
 
 <Tabs groupId="script-language">
@@ -4648,6 +4776,8 @@ limits_groups = get_limits_groups()
 </Tabs>
 
 ### set_limits_set
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Sets the current limits set. The default limits set is DEFAULT.
 
@@ -4693,6 +4823,8 @@ set_limits_set("DEFAULT")
 
 ### get_limits_set
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns the name of the current limits set. The default limits set is DEFAULT.
 
 <Tabs groupId="script-language">
@@ -4715,6 +4847,8 @@ limits_set = get_limits_set()
 
 ### get_limits_sets
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns the list of limits sets in the system.
 
 <Tabs groupId="script-language">
@@ -4736,6 +4870,8 @@ limits_sets = get_limits_sets()
 </Tabs>
 
 ### get_limits
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Returns hash / dict of all the limits settings for a telemetry point.
 
@@ -4788,6 +4924,8 @@ print(result['DEFAULT']) #=> [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
 </Tabs>
 
 ### set_limits
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 The set_limits method sets limits settings for a telemetry point. Note: In most cases it would be better to update your config files or use different limits sets rather than changing limits settings in realtime.
 
@@ -4844,6 +4982,8 @@ set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0,
 
 ### get_out_of_limits
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns an array with the target_name, packet_name, item_name, and limits_state of all items that are out of their limits ranges.
 
 <Tabs groupId="script-language">
@@ -4865,6 +5005,8 @@ out_of_limits_items = get_out_of_limits()
 </Tabs>
 
 ### get_overall_limits_state
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Returns the overall limits state for the COSMOS system. Returns 'GREEN', 'YELLOW', or 'RED'.
 
@@ -4911,6 +5053,8 @@ overall_limits_state = get_overall_limits_state([['INST', 'HEALTH_STATUS', 'TEMP
 </Tabs>
 
 ### get_limits_events
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Returns limits events based on an offset returned from the last time it was called.
 
@@ -5011,6 +5155,8 @@ APIs for getting knowledge about plugins and packages.
 
 ### plugin_list
 
+<span class="badge badge--secondary since-heading">Since 5.6.0</span>
+
 Returns all the installed plugins.
 
 <Tabs groupId="script-language">
@@ -5091,6 +5237,8 @@ plugins = plugin_list(default=True) #=>
 
 ### plugin_get
 
+<span class="badge badge--secondary since-heading">Since 5.6.0</span>
+
 Returns information about an installed plugin.
 
 <Tabs groupId="script-language">
@@ -5145,6 +5293,8 @@ plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__2025011621453
 
 ### package_list
 
+<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+
 List all the packages installed in COSMOS.
 
 <Tabs groupId="script-language">
@@ -5173,7 +5323,9 @@ APIs for getting knowledge about targets.
 
 ### get_target_names
 
-Returns a list of the targets in the system in an array.
+<span class="badge badge--secondary since-heading">Since 5.9.1</span>
+
+Returns a list of the targets in the system in an array. Previously `get_target_list`.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -5194,6 +5346,8 @@ targets = get_target_names() #=> ['INST', 'INST2', 'EXAMPLE', 'TEMPLATED']
 </Tabs>
 
 ### get_target
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Returns a target hash containing all the information about the target.
 
@@ -5305,6 +5459,8 @@ print(target)
 
 ### get_target_interfaces
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns the interfaces for all targets. The return value is an array of arrays where each subarray contains the target name, and a String of all the interface names.
 
 <Tabs groupId="script-language">
@@ -5335,6 +5491,8 @@ for target_name, interfaces in target_ints:
 These methods allow the user to manipulate COSMOS interfaces.
 
 ### get_interface
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Returns an interface status including the as built interface and its current status (cmd/tlm counters, etc).
 
@@ -5424,6 +5582,8 @@ print(interface)
 
 ### get_interface_names
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns a list of the interfaces in the system in an array.
 
 <Tabs groupId="script-language">
@@ -5445,6 +5605,8 @@ interface_names = get_interface_names() #=> ['INST_INT', 'INST2_INT', 'EXAMPLE_I
 </Tabs>
 
 ### connect_interface
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Connects to targets associated with a COSMOS interface.
 
@@ -5493,6 +5655,8 @@ connect_interface("INT1", hostname, port)
 
 ### disconnect_interface
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Disconnects from targets associated with a COSMOS interface.
 
 <Tabs groupId="script-language">
@@ -5536,6 +5700,8 @@ disconnect_interface("INT1")
 </Tabs>
 
 ### start_raw_logging_interface
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Starts logging of raw data on one or all interfaces. This is for debugging purposes only.
 
@@ -5581,6 +5747,8 @@ start_raw_logging_interface("int1")
 
 ### stop_raw_logging_interface
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Stops logging of raw data on one or all interfaces. This is for debugging purposes only.
 
 <Tabs groupId="script-language">
@@ -5625,6 +5793,8 @@ stop_raw_logging_interface("int1")
 
 ### get_all_interface_info
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns information about all interfaces. The return value is an array of arrays where each subarray contains the interface name, connection state, number of connected clients, transmit queue size, receive queue size, bytes transmitted, bytes received, command count, and telemetry count.
 
 <Tabs groupId="script-language">
@@ -5656,6 +5826,8 @@ for interface in interface_info():
 </Tabs>
 
 ### map_target_to_interface
+
+<span class="badge badge--secondary since-heading">Since 5.0.9</span>
 
 Map a target to an interface allowing target commands and telemetry to be processed by that interface. Note this will cause the interface to respawn.
 
@@ -5709,7 +5881,7 @@ map_target_to_interface("INST", "INST_INT", tlm_only=True)
 
 ### unmap_target_from_interface
 
-> Since 6.9.0
+<span class="badge badge--secondary since-heading">Since 6.9.0</span>
 
 Unmap a target from an interface. This removes all knowledge of the target and will cause the interface to respawn.
 
@@ -5762,6 +5934,8 @@ unmap_target_from_interface("INST", "INST_INT", tlm_only=True)
 
 ### interface_cmd
 
+<span class="badge badge--secondary since-heading">Since 5.3.0</span>
+
 Send a command directly to an interface. This has no effect in the standard COSMOS interfaces but can be implemented by a custom interface to change behavior.
 
 <Tabs groupId="script-language">
@@ -5807,6 +5981,8 @@ interface_cmd("INST", "DISABLE_CRC")
 </Tabs>
 
 ### interface_protocol_cmd
+
+<span class="badge badge--secondary since-heading">Since 5.3.0</span>
 
 Send a command directly to an interface protocol. This has no effect in the standard COSMOS protocols but can be implemented by a custom protocol to change behavior.
 
@@ -5856,7 +6032,7 @@ interface_protocol_cmd("INST", "DISABLE_CRC", read_write='READ_WRITE', index=-1)
 
 ### interface_target_enable
 
-> Since 6.9.0
+<span class="badge badge--secondary since-heading">Since 6.9.0</span>
 
 Enable commanding and telemetry processing for a given target in an interface.
 
@@ -5909,7 +6085,7 @@ interface_target_enable("INST_INT", "INST", tlm_only=True)
 
 ### interface_target_disable
 
-> Since 6.9.0
+<span class="badge badge--secondary since-heading">Since 6.9.0</span>
 
 Disable commanding and telemetry processing for a given target in an interface.
 
@@ -5962,7 +6138,7 @@ interface_target_disable("INST_INT", "INST", tlm_only=True)
 
 ### interface_details
 
-> Since 6.9.0
+<span class="badge badge--secondary since-heading">Since 6.9.0</span>
 
 Get details on the interface and its protocols.
 
@@ -6012,6 +6188,8 @@ These methods allow the user to manipulate COSMOS routers.
 
 ### connect_router
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Connects a COSMOS router.
 
 <Tabs groupId="script-language">
@@ -6059,6 +6237,8 @@ connect_router("INST_ROUTER", 7779, 7779, nil, 10.0, 'PREIDENTIFIED')
 
 ### disconnect_router
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Disconnects a COSMOS router.
 
 <Tabs groupId="script-language">
@@ -6103,6 +6283,8 @@ disconnect_router("INT1_ROUTER")
 
 ### get_router_names
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns a list of the routers in the system in an array.
 
 <Tabs groupId="script-language">
@@ -6124,6 +6306,8 @@ router_names = get_router_names() #=> ['ROUTER_INT']
 </Tabs>
 
 ### get_router
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Returns a router status including the as built router and its current status (cmd/tlm counters, etc).
 
@@ -6213,6 +6397,8 @@ print(router)
 
 ### get_all_router_info
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns information about all routers. The return value is an array of arrays where each subarray contains the router name, connection state, number of connected clients, transmit queue size, receive queue size, bytes transmitted, bytes received, packets received, and packets sent.
 
 <Tabs groupId="script-language">
@@ -6245,7 +6431,7 @@ for router in router_info:
 
 ### map_target_to_router
 
-> Since 6.9.0
+<span class="badge badge--secondary since-heading">Since 6.9.0</span>
 
 Map a target to an router allowing target commands and telemetry to be processed by that router. Note: this will cause the router to respawn.
 
@@ -6299,7 +6485,7 @@ map_target_to_router("INST", "INST_ROUTER", tlm_only=True)
 
 ### unmap_target_from_router
 
-> Since 6.9.0
+<span class="badge badge--secondary since-heading">Since 6.9.0</span>
 
 Unmap a target from an router. This removes all knowledge of the target and will cause the router to respawn.
 
@@ -6352,6 +6538,8 @@ unmap_target_from_router("INST", "INST_ROUTER", tlm_only=True)
 
 ### start_raw_logging_router
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Starts logging of raw data on one or all routers. This is for debugging purposes only.
 
 <Tabs groupId="script-language">
@@ -6396,6 +6584,8 @@ start_raw_logging_router("router1")
 
 ### stop_raw_logging_router
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Stops logging of raw data on one or all routers. This is for debugging purposes only.
 
 <Tabs groupId="script-language">
@@ -6439,6 +6629,8 @@ stop_raw_logging_router("router1")
 </Tabs>
 
 ### router_cmd
+
+<span class="badge badge--secondary since-heading">Since 5.3.0</span>
 
 Send a command directly to a router. This has no effect in the standard COSMOS routers but can be implemented by a custom router to change behavior.
 
@@ -6485,6 +6677,8 @@ router_cmd("INST", "DISABLE_CRC")
 </Tabs>
 
 ### router_protocol_cmd
+
+<span class="badge badge--secondary since-heading">Since 5.3.0</span>
 
 Send a command directly to an router protocol. This has no effect in the standard COSMOS protocols but can be implemented by a custom protocol to change behavior.
 
@@ -6534,7 +6728,7 @@ router_protocol_cmd("INST", "DISABLE_CRC", read_write='READ_WRITE', index=-1)
 
 ### router_target_enable
 
-> Since 6.9.0
+<span class="badge badge--secondary since-heading">Since 6.9.0</span>
 
 Enable commanding and telemetry processing for a given target in a router.
 
@@ -6587,7 +6781,7 @@ router_target_enable("INST_ROUTER", "INST", tlm_only=True)
 
 ### router_target_disable
 
-> Since 6.9.0
+<span class="badge badge--secondary since-heading">Since 6.9.0</span>
 
 Disable commanding and telemetry processing for a given target in a router.
 
@@ -6640,7 +6834,7 @@ router_target_disable("INST_ROUTER", "INST", tlm_only=True)
 
 ### router_details
 
-> Since 6.9.0
+<span class="badge badge--secondary since-heading">Since 6.9.0</span>
 
 Get details on the router and its protocols.
 
@@ -6690,7 +6884,7 @@ These methods allow the user to script Table Manager.
 
 ### table_create_binary
 
-> Since 6.1.0
+<span class="badge badge--secondary since-heading">Since 6.1.0</span>
 
 Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
 
@@ -6768,7 +6962,7 @@ put_target_file("INST2/tables/bin/MCConfigurationTable_NoScrub.bin", table.buffe
 
 ### table_create_report
 
-> Since 6.1.0
+<span class="badge badge--secondary since-heading">Since 6.1.0</span>
 
 Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
 
@@ -6828,6 +7022,8 @@ These methods allow the user to store data into COSMOS and retrieve it. The stor
 
 ### stash_set
 
+<span class="badge badge--secondary since-heading">Since 5.2.0</span>
+
 Sets a stash item.
 
 <Tabs groupId="script-language">
@@ -6875,6 +7071,8 @@ stash_set('setpoint', 23.4)
 
 ### stash_get
 
+<span class="badge badge--secondary since-heading">Since 5.2.0</span>
+
 Returns the specified stash item.
 
 <Tabs groupId="script-language">
@@ -6919,6 +7117,8 @@ stash_get('run_count')  #=> 5
 
 ### stash_all
 
+<span class="badge badge--secondary since-heading">Since 5.2.0</span>
+
 Returns all the stash items as a Ruby hash or Python dict.
 
 <Tabs groupId="script-language">
@@ -6941,6 +7141,8 @@ stash_all()  #=> ['run_count': 5, 'setpoint': 23.4]
 
 ### stash_keys
 
+<span class="badge badge--secondary since-heading">Since 5.2.0</span>
+
 Returns all the stash keys.
 
 <Tabs groupId="script-language">
@@ -6962,6 +7164,8 @@ stash_keys()  #=> ['run_count', 'setpoint']
 </Tabs>
 
 ### stash_delete
+
+<span class="badge badge--secondary since-heading">Since 5.2.0</span>
 
 Deletes a stash item. Note this actions is permanent!
 
@@ -7011,6 +7215,8 @@ These methods allow the user to open, close or create unique telemetry screens f
 
 ### display_screen
 
+<span class="badge badge--secondary since-heading">Since 5.6.0</span>
+
 Opens a telemetry screen at the specified position.
 
 <Tabs groupId="script-language">
@@ -7058,6 +7264,8 @@ display_screen("INST", "ADCS", 100, 200)
 
 ### clear_screen
 
+<span class="badge badge--secondary since-heading">Since 5.6.0</span>
+
 Closes an open telemetry screen.
 
 <Tabs groupId="script-language">
@@ -7103,6 +7311,8 @@ clear_screen("INST", "ADCS")
 
 ### clear_all_screens
 
+<span class="badge badge--secondary since-heading">Since 5.6.0</span>
+
 Closes all open screens.
 
 <Tabs groupId="script-language">
@@ -7124,6 +7334,8 @@ clear_all_screens()
 </Tabs>
 
 ### delete_screen
+
+<span class="badge badge--secondary since-heading">Since 5.6.0</span>
 
 Deletes an existing Telemetry Viewer screen.
 
@@ -7170,6 +7382,8 @@ delete_screen("INST", "ADCS")
 
 ### get_screen_list
 
+<span class="badge badge--secondary since-heading">Since 5.6.0</span>
+
 Returns a list of available telemetry screens.
 
 <Tabs groupId="script-language">
@@ -7191,6 +7405,8 @@ get_screen_list() #=> ['INST ADCS', 'INST COMMANDING', ...]
 </Tabs>
 
 ### get_screen_definition
+
+<span class="badge badge--secondary since-heading">Since 5.6.0</span>
 
 Returns the text file contents of a telemetry screen definition.
 
@@ -7236,6 +7452,8 @@ screen_definition = get_screen_definition("INST", "HS")
 </Tabs>
 
 ### create_screen
+
+<span class="badge badge--secondary since-heading">Since 5.6.0</span>
 
 Allows you to create a screen directly from a script. This screen is saved to Telemetry Viewer for future use in that application.
 
@@ -7302,6 +7520,8 @@ create_screen("INST", "LOCAL", screen_def)
 </Tabs>
 
 ### local_screen
+
+<span class="badge badge--secondary since-heading">Since 5.6.0</span>
 
 Allows you to create a local screen directly from a script which is not permanently saved to the Telemetry Viewer screen list. This is useful for one off screens that help users interact with scripts.
 
@@ -7382,6 +7602,8 @@ These methods allow the user to control Script Runner scripts.
 
 ### start
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Starts execution of another high level test procedure. Script Runner will load the file and immediately start executing it before jumping back to the calling procedure. Parameters are not directly given to high level test procedures, though they can use environment variables. If parameters are necessary, consider using a subroutine.
 
 <Tabs groupId="script-language">
@@ -7426,7 +7648,7 @@ start("test1.rb")
 
 ### goto
 
-> Since 6.4.0
+<span class="badge badge--secondary since-heading">Since 6.4.0</span>
 
 Jumps to a specific line in either the current file or another file. Script context and local variables are retained if jumping in the same file. This method should not be used to create loops or in any other case where normal Python/Ruby functionality could perform the same function. Use of goto increases stack depth and excess use can lead to stack level too deep errors.
 
@@ -7479,6 +7701,8 @@ goto("TARGET/procedures/other_script.py", 12)
 
 ### load_utility
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Reads in a script file that contains useful subroutines for use in your test procedure. When these subroutines run in ScriptRunner or TestRunner, their lines will be highlighted. If you want to import subroutines but do not want their lines to be highlighted in ScriptRunner or TestRunner, use the standard Ruby 'load' or 'require' statement or Python 'import' statement.
 
 <Tabs groupId="script-language">
@@ -7525,6 +7749,8 @@ load_utility("TARGET/lib/mode_changes.py") # Python
 
 ### script_list
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns all the available files in COSMOS as an array / list. This includes configuration files at every directory level to ensure the user has access to every file. You can filter the list client side to just the 'lib' and or 'procedures' directories if you wish. Note: script names do NOT include '\*' to indicate modified.
 
 <Tabs groupId="script-language">
@@ -7552,6 +7778,8 @@ print(list(script for script in scripts if '/lib/' in script or '/procedures/' i
 </Tabs>
 
 ### script_create
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Creates a new script with the given contents.
 
@@ -7600,6 +7828,8 @@ script_create("INST2/procedures/new_script.py", contents)
 
 ### script_body
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns the script contents.
 
 <Tabs groupId="script-language">
@@ -7646,6 +7876,8 @@ print(script) #=> # import os\n\n# Display the environment variables ...
 
 ### script_delete
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Deletes a script from COSMOS. Note, you can only _really_ delete TEMP scripts and modified scripts. Scripts that are part of an installed COSMOS plugin remain as they were installed.
 
 <Tabs groupId="script-language">
@@ -7689,6 +7921,8 @@ script_delete("INST/procedures/checks.rb")
 </Tabs>
 
 ### script_run
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Runs a script in Script Runner. The script will run in the background and can be opened in Script Runner by selecting Script->Execution Status and then connecting to it.
 
@@ -7745,6 +7979,8 @@ print(id)
 
 ### script_lock
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Locks a script for editing. Subsequent users that open this script will get a warning that the script is currently locked.
 
 <Tabs groupId="script-language">
@@ -7789,6 +8025,8 @@ script_lock("INST/procedures/checks.rb")
 
 ### script_unlock
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Unlocks a script for editing. If the script was not previously locked this does nothing.
 
 <Tabs groupId="script-language">
@@ -7832,6 +8070,8 @@ script_unlock("INST/procedures/checks.rb")
 </Tabs>
 
 ### script_syntax_check
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Performs a Ruby or Python syntax check on the given script.
 
@@ -7879,6 +8119,8 @@ print(result) #=> {'title': 'Syntax Check Successful', 'description': '["Syntax 
 
 ### script_instrumented
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Returns the instrumented script which allows COSMOS Script Runner to monitor the execution and provide line by line visualization. This is primarily a low level debugging method used by COSMOS developers.
 
 <Tabs groupId="script-language">
@@ -7925,6 +8167,8 @@ print(script) #=> while True:\ntry:\nRunningScript.instance.pre_line_instrumenta
 
 ### script_delete_all_breakpoints
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Delete _all_ breakpoints associated with _all_ scripts.
 
 <Tabs groupId="script-language">
@@ -7946,6 +8190,8 @@ script_delete_all_breakpoints()
 </Tabs>
 
 ### step_mode
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Places ScriptRunner into step mode where Go must be hit to proceed to the next line.
 
@@ -7969,6 +8215,8 @@ step_mode()
 
 ### run_mode
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Places ScriptRunner into run mode where the next line is run automatically.
 
 <Tabs groupId="script-language">
@@ -7991,6 +8239,8 @@ run_mode()
 
 ### disconnect_script
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Puts scripting into disconnect mode. In disconnect mode, commands are not sent to targets, checks are all successful, and waits expire instantly. Requests for telemetry (tlm()) typically return 0. Disconnect mode is useful for dry-running scripts without having connected targets.
 
 <Tabs groupId="script-language">
@@ -8012,6 +8262,8 @@ disconnect_script()
 </Tabs>
 
 ### running_script_list
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 List the currently running scripts. Note, this will also include the script which is calling this method. Thus the list will never be empty but will always contain at least 1 item. Returns an array of hashes / list of dicts (see [script_get](#script_get) for hash / dict contents).
 
@@ -8057,6 +8309,8 @@ running_script_list(limit = 20, offset = 10) #=>  [{'name': '372', 'state': 'spa
 </Tabs>
 
 ### script_get
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Get information on the script with the specified ID. The information returned is the script name (id), state (spawning, init, running, paused, waiting, error, breakpoint, crashed, stopped, completed, completed_errors, killed), shard, filename, current_filename, line_no, start_line_no, end_line_no, username, user_full_name, start_time, end_time, disconnect state, environment variables, suite_runner configuration, errors, pid, log file, report file, update time, and scope.
 
@@ -8117,6 +8371,8 @@ script_get(15) #=> {'name': '372', 'state': 'spawning', 'shard': 0, 'filename': 
 
 ### running_script_stop
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Stop the running script with the specified ID. This is equivalent to clicking the Stop button in the Script Runner GUI.
 
 <Tabs groupId="script-language">
@@ -8160,6 +8416,8 @@ running_script_stop(15)
 </Tabs>
 
 ### running_script_pause
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Pause the running script with the specified ID. This is equivalent to clicking the Pause button in the Script Runner GUI.
 
@@ -8205,6 +8463,8 @@ running_script_pause(15)
 
 ### running_script_retry
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Retry the current line of the running script with the specified ID. This is equivalent to clicking the Retry button in the Script Runner GUI.
 
 <Tabs groupId="script-language">
@@ -8249,6 +8509,8 @@ running_script_retry(15)
 
 ### running_script_go
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Unpause the running script with the specified ID. This is equivalent to clicking the Go button in the Script Runner GUI.
 
 <Tabs groupId="script-language">
@@ -8292,6 +8554,8 @@ running_script_go(15)
 </Tabs>
 
 ### running_script_execute_while_paused
+
+<span class="badge badge--secondary since-heading">Since 6.4.0</span>
 
 Perform a goto or execute selection on a running script.
 
@@ -8346,6 +8610,8 @@ running_script_execute_while_paused("33", "INST2/procedures/collect.py", 7)
 
 ### running_script_step
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Step the running script with the specified ID. This is equivalent to clicking the Step button in the Script Runner GUI's Debug window.
 
 <Tabs groupId="script-language">
@@ -8390,6 +8656,8 @@ running_script_step(15)
 
 ### running_script_delete
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Force quit the running script with the specified ID. This is equivalent to clicking the Delete button under the Running Scripts in the Script Runner GUI's Script -> Execution Status pane. Note, the 'stop' signal is first sent to the specified script and then the script is forcibly removed. Normally you should use the [running_script_stop](#running_script_stop) method.
 
 <Tabs groupId="script-language">
@@ -8433,6 +8701,8 @@ running_script_delete(15)
 </Tabs>
 
 ### completed_script_list
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 List the completed scripts. Returns an array of hashes / list of dicts containing the id, username, script name, script log, and start time.
 
@@ -8483,6 +8753,8 @@ These methods allow the user to control various Script Runner settings.
 
 ### set_line_delay
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 This method sets the line delay in script runner.
 
 <Tabs groupId="script-language">
@@ -8527,6 +8799,8 @@ set_line_delay(0.0)
 
 ### get_line_delay
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 The method gets the line delay that script runner is currently using.
 
 <Tabs groupId="script-language">
@@ -8548,6 +8822,8 @@ curr_line_delay = get_line_delay()
 </Tabs>
 
 ### set_max_output
+
+<span class="badge badge--secondary since-heading">Since 5.1.0</span>
 
 This method sets the maximum number of characters to display in Script Runner output before truncating. Default is 50,000 characters.
 
@@ -8593,6 +8869,8 @@ set_max_output(100)
 
 ### get_max_output
 
+<span class="badge badge--secondary since-heading">Since 5.1.0</span>
+
 The method gets the maximum number of characters to display in Script Runner output before truncating. Default is 50,000 characters.
 
 <Tabs groupId="script-language">
@@ -8614,6 +8892,8 @@ print(get_max_output()) #=> 50000
 </Tabs>
 
 ### disable_instrumentation
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Disables instrumentation for a block of code (line highlighting and exception catching). This is especially useful for speeding up loops that are very slow if lines are instrumented.
 Consider breaking code like this into a separate file and using either require/load to read the file for the same effect while still allowing errors to be caught by your script.
@@ -8652,6 +8932,8 @@ with disable_instrumentation():
 Creating Script Runner suites utilizes APIs to add groups to the defined suites. For more information please see [running script suites](../tools/script-runner.md#running-script-suites).
 
 ### add_group, add_group_setup, add_group_teardown, add_script
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Adds a group's methods to the suite. The add_group method adds all the group methods including setup, teardown, and all the methods starting with 'script\_' or 'test\_'. The add_group_setup method adds just the setup method defined in the group class. The add_group_teardown method adds just the teardown method defined in the group class. The add_script method adds an individual method to the suite. NOTE: add_script can add any method including those not named with 'script\_' or 'test\_'.
 
@@ -8758,6 +9040,8 @@ The Timelines API allows you to manipulate Calendar timelines. Calendar is a COS
 
 ### list_timelines
 
+<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+
 Returns all the timelines in an array of hashes / list of dicts.
 
 <Tabs groupId="script-language">
@@ -8781,6 +9065,8 @@ timelihes = list_timelines() #=>
 </Tabs>
 
 ### create_timeline
+
+<span class="badge badge--secondary since-heading">Since 5.12.0</span>
 
 Create a new timeline in Calendar which can hold activities.
 
@@ -8829,6 +9115,8 @@ tl = create_timeline("Other", color="#FF0000") #=>
 
 ### get_timeline
 
+<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+
 Get information about an existing timeline.
 
 <Tabs groupId="script-language">
@@ -8875,6 +9163,8 @@ tl = get_timeline("Other") #=>
 
 ### set_timeline_color
 
+<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+
 Set the displayed color for an existing timeline.
 
 <Tabs groupId="script-language">
@@ -8919,6 +9209,8 @@ set_timeline_color("Mine", "#4287f5")
 </Tabs>
 
 ### delete_timeline
+
+<span class="badge badge--secondary since-heading">Since 5.12.0</span>
 
 Delete an existing timeline. Timelines with activities can only be deleted by passing force = true.
 
@@ -8965,6 +9257,8 @@ delete_timeline("Other", force=True)
 
 ### create_timeline_activity
 
+<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+
 Create an activity on an existing timeline. Activities can be one of COMMAND, SCRIPT, or RESERVE. Activities have a start and stop time and commands and scripts take data on the command or script to execute.
 
 <Tabs groupId="script-language">
@@ -8992,7 +9286,7 @@ create_timeline_activity(name, kind, start, stop, data={})
 | start     | Start time of the activity. Time / datetime instance.                                                                                                     |
 | stop      | Stop time of the activity. Time / datetime instance.                                                                                                      |
 | data      | Hash / dict of data for COMMAND or SCRIPT type. Default is empty hash / dict. Valid keys are described [below](#create_timeline_activity-data-parameter). |
-| scope     | Scope of the activity. Default is the OPENC3_SCOPE, usually "DEFAULT". Must be the containing scope of the timeline specified by the `name` parameter. |
+| scope     | Scope of the activity. Default is the OPENC3_SCOPE, usually "DEFAULT". Must be the containing scope of the timeline specified by the `name` parameter.    |
 
 #### create_timeline_activity data parameter
 
@@ -9065,6 +9359,8 @@ act = create_timeline_activity("PythonTL", kind="SCRIPT", start=start, stop=stop
 
 ### get_timeline_activity
 
+<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+
 Get an existing timeline activity.
 
 <Tabs groupId="script-language">
@@ -9119,6 +9415,8 @@ act = get_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-265
 
 ### get_timeline_activities
 
+<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+
 Get a range of timeline activities between start and stop time. If called without a start / stop time it defaults to 1 week before "now" up to 1 week from "now" (2 weeks total).
 
 <Tabs groupId="script-language">
@@ -9168,6 +9466,8 @@ acts = get_timeline_activities("PythonTL", start=now - timedelta(hours=2), stop=
 </Tabs>
 
 ### delete_timeline_activity
+
+<span class="badge badge--secondary since-heading">Since 5.12.0</span>
 
 Delete an existing timeline activity.
 
@@ -9219,6 +9519,8 @@ Metadata allows you to mark the regular target / packet data logged in COSMOS wi
 
 ### metadata_all
 
+<span class="badge badge--secondary since-heading">Since 5.2.0</span>
+
 Returns all the metadata that was previously set
 
 <Tabs groupId="script-language">
@@ -9263,6 +9565,8 @@ metadata_all(limit='500')
 
 ### metadata_get
 
+<span class="badge badge--secondary since-heading">Since 5.2.0</span>
+
 Returns metadata that was previously set
 
 <Tabs groupId="script-language">
@@ -9306,6 +9610,8 @@ metadata_get(start='500')
 </Tabs>
 
 ### metadata_set
+
+<span class="badge badge--secondary since-heading">Since 5.2.0</span>
 
 Sets metadata which appears on the Calendar and can be retried by metadata_get.
 
@@ -9355,6 +9661,8 @@ metadata_set({ 'key': 'value' }, color='ff5252')
 
 ### metadata_update
 
+<span class="badge badge--secondary since-heading">Since 5.2.0</span>
+
 Updates metadata that was previously set
 
 <Tabs groupId="script-language">
@@ -9401,6 +9709,8 @@ metadata_update({ 'key': 'value' })
 
 ### metadata_input
 
+<span class="badge badge--secondary since-heading">Since 5.2.0</span>
+
 Prompts the user to set existing metadata values or create new a new one.
 
 <Tabs groupId="script-language">
@@ -9427,6 +9737,8 @@ COSMOS has several settings typically accessed through the Admin Settings tab. T
 
 ### list_settings
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Return all the current COSMOS setting name. These are the names that should be used in the other APIs.
 
 <Tabs groupId="script-language">
@@ -9448,6 +9760,8 @@ print(list_settings()) #=> ['pypi_url', 'rubygems_url', 'source_url', 'version']
 </Tabs>
 
 ### get_all_settings
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Return all the current COSMOS settings along with their values.
 
@@ -9478,6 +9792,8 @@ settings = get_all_settings() #=>
 </Tabs>
 
 ### get_setting, get_settings
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Return the data from the given COSMOS setting. Returns nil (Ruby) or None (Python) if the setting does not exist.
 
@@ -9526,6 +9842,8 @@ setting = get_setting('version', 'rubygems_url') #=> ['5.11.4-beta0', 'https://r
 </Tabs>
 
 ### set_setting
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Sets the given setting value.
 
@@ -9580,6 +9898,8 @@ Many COSMOS tools have the ability to load and save a configuration. These APIs 
 
 ### config_tool_names
 
+<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+
 List all the configuration tool names which are used as the first parameter in the other APIs.
 
 <Tabs groupId="script-language">
@@ -9601,6 +9921,8 @@ names = config_tool_names() #=> ['telemetry_grapher', 'data_viewer']
 </Tabs>
 
 ### list_configs
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 List all the saved configuration names under the given tool name.
 
@@ -9645,6 +9967,8 @@ configs = list_configs('telemetry_grapher') #=> ['adcs', 'temps']
 </Tabs>
 
 ### load_config
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Load a particular tool configuration.
 
@@ -9709,6 +10033,8 @@ config = load_config('telemetry_grapher', 'adcs') #=>
 
 ### save_config
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Save a particular tool configuration.
 
 <Tabs groupId="script-language">
@@ -9754,6 +10080,8 @@ save_config('telemetry_grapher', 'adcs', config)
 </Tabs>
 
 ### delete_config
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Delete a particular tool configuration.
 
@@ -9805,6 +10133,8 @@ An offline access token is required to execute scripts in COSMOS Enterprise. The
 
 ### initialize_offline_access
 
+<span class="badge badge--secondary since-heading">Since 6.3.0</span>
+
 Creates and sets the offline access token for the user. Note: calling this method is required before executing any api methods that require an offline access token like script_run (Enterprise Only). This method must be called OUTSIDE of ScriptRunner as it is needed in order to start a script in the first place.
 
 In Enterprise, the `OPENC3_API_USER` and `OPENC3_API_PASSWORD` environment variables must be set for the `initialize_offline_access` to generate a token. This API user must also be a valid user with the respective permissions setup in Keycloak. These two variables are not in the `.env` by default, and should not be as they contain sensitive information.
@@ -9835,6 +10165,8 @@ script_run("INST2/procedures/collect.py")
 
 ### offline_access_needed
 
+<span class="badge badge--secondary since-heading">Since 5.2.0</span>
+
 Returns true if the user needs to generate an offline access token. Note this will only be true if the user is at least authorized to view scripts, otherwise it will always be false if script_view permission is not available for the user.
 
 <Tabs groupId="script-language">
@@ -9856,6 +10188,8 @@ result = offline_access_needed() #=> False
 </Tabs>
 
 ### set_offline_access
+
+<span class="badge badge--secondary since-heading">Since 5.2.0</span>
 
 Sets the offline access token in the backend. Note: You probably don't need to call this method directly, as it will be called by initialize_offline_access().
 
@@ -9905,6 +10239,8 @@ Autonomic provides automated reactions to telemetry conditions through triggers 
 
 ### autonomic_group_list
 
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+
 Returns a list of all autonomic groups.
 
 <Tabs groupId="script-language">
@@ -9948,6 +10284,8 @@ groups = autonomic_group_list()
 </Tabs>
 
 ### autonomic_group_create
+
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
 
 Creates a new autonomic group.
 
@@ -9994,6 +10332,8 @@ group = autonomic_group_create("SAFETY")
 
 ### autonomic_group_show
 
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+
 Shows details about a specific autonomic group.
 
 <Tabs groupId="script-language">
@@ -10038,6 +10378,8 @@ group_info = autonomic_group_show("SAFETY")
 </Tabs>
 
 ### autonomic_group_destroy
+
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
 
 Destroys an autonomic group.
 
@@ -10084,6 +10426,8 @@ autonomic_group_destroy("SAFETY")
 
 ### autonomic_trigger_list
 
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+
 Returns a list of triggers in a specific group.
 
 <Tabs groupId="script-language">
@@ -10128,6 +10472,8 @@ triggers = autonomic_trigger_list(group="SAFETY")
 </Tabs>
 
 ### autonomic_trigger_create
+
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
 
 Creates a new trigger with the specified condition.
 
@@ -10202,6 +10548,8 @@ trigger = autonomic_trigger_create(left=left, operator=operator, right=right, gr
 
 ### autonomic_trigger_show
 
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+
 Shows details about a specific trigger.
 
 <Tabs groupId="script-language">
@@ -10247,6 +10595,8 @@ trigger_info = autonomic_trigger_show("TRIG1", group="SAFETY")
 </Tabs>
 
 ### autonomic_trigger_enable
+
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
 
 Enables a trigger.
 
@@ -10294,6 +10644,8 @@ autonomic_trigger_enable("TRIG1", group="SAFETY")
 
 ### autonomic_trigger_disable
 
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+
 Disables a trigger.
 
 <Tabs groupId="script-language">
@@ -10339,6 +10691,8 @@ autonomic_trigger_disable("TRIG1", group="SAFETY")
 </Tabs>
 
 ### autonomic_trigger_update
+
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
 
 Updates an existing trigger with new parameters.
 
@@ -10405,6 +10759,8 @@ updated_trigger = autonomic_trigger_update(
 
 ### autonomic_trigger_destroy
 
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+
 Destroys a trigger.
 
 <Tabs groupId="script-language">
@@ -10451,6 +10807,8 @@ autonomic_trigger_destroy("TRIG1", group="SAFETY")
 
 ### autonomic_reaction_list
 
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+
 Returns a list of all reactions.
 
 <Tabs groupId="script-language">
@@ -10494,6 +10852,8 @@ reactions = autonomic_reaction_list()
 </Tabs>
 
 ### autonomic_reaction_create
+
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
 
 Creates a new reaction that executes actions when triggers are activated.
 
@@ -10569,6 +10929,8 @@ reaction = autonomic_reaction_create(
 
 ### autonomic_reaction_show
 
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+
 Shows details about a specific reaction.
 
 <Tabs groupId="script-language">
@@ -10613,6 +10975,8 @@ reaction_info = autonomic_reaction_show("REACT1")
 </Tabs>
 
 ### autonomic_reaction_enable
+
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
 
 Enables a reaction.
 
@@ -10659,6 +11023,8 @@ autonomic_reaction_enable("REACT1")
 
 ### autonomic_reaction_disable
 
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+
 Disables a reaction.
 
 <Tabs groupId="script-language">
@@ -10704,6 +11070,8 @@ autonomic_reaction_disable("REACT1")
 
 ### autonomic_reaction_execute
 
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+
 Manually executes a reaction's actions.
 
 <Tabs groupId="script-language">
@@ -10748,6 +11116,8 @@ autonomic_reaction_execute("REACT1")
 </Tabs>
 
 ### autonomic_reaction_update
+
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
 
 Updates an existing reaction with new parameters.
 
@@ -10804,6 +11174,8 @@ updated_reaction = autonomic_reaction_update(
 
 ### autonomic_reaction_destroy
 
+<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+
 Destroys a reaction.
 
 <Tabs groupId="script-language">
@@ -10852,6 +11224,8 @@ autonomic_reaction_destroy("REACT1")
 Various utilities that can be used in scripts.
 
 ### open_tab
+
+<span class="badge badge--secondary since-heading">Since 7.0.0</span>
 
 Opens a new tab in the browser.
 

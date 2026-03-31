@@ -22,6 +22,9 @@ on:
   #   - cron: '0 6 * * *'  # Run at 06:00 UTC (midnight MDT) every day
   workflow_dispatch: # Allow manual triggering
 
+permissions:
+  contents: read
+
 jobs:
   openc3-firefox-test:
     runs-on: ubuntu-latest
@@ -30,15 +33,20 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 # v2.16.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: 24
       - name: openc3.sh build
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
         run: ./openc3.sh build
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
         with:
           version: 10
       - name: Install playwright dependencies
@@ -81,14 +89,14 @@ jobs:
       - name: Generate coverage
         run: pnpm fixlinux; pnpm cobertura
         working-directory: playwright
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5.5.3
         with:
           directory: playwright/coverage
           flags: firefox-nightly
           token: ${{ secrets.CODECOV_TOKEN }}
       - name: Upload test artifacts
         if: always() # Upload on pass or fail
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: playwright-firefox
           path: playwright/test-results

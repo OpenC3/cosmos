@@ -39,6 +39,8 @@ export default {
     checksum: String,
     versions: Array,
     current_version_id: Number,
+    access: String,
+    entitled: Boolean,
   },
   data: function () {
     return {
@@ -71,6 +73,8 @@ export default {
         checksum: this.checksum,
         versions: this.versions,
         current_version_id: this.current_version_id,
+        access: this.access,
+        entitled: this.entitled,
       }
     },
     imageContentsWithMimeType: function () {
@@ -115,6 +119,19 @@ export default {
     },
     isPluginInstalled: function () {
       return !!this.name // Plugins only have a title, not a name, from the store
+    },
+    accessTooltip: function () {
+      if (this.entitled) {
+        return null
+      }
+      if (localStorage.getItem('pluginStore.isApiKeySet') !== 'true') {
+        return 'Please add your App Store API key using the settings cog icon.'
+      }
+      if (this.access === 'enterprise') {
+        return 'A COSMOS Enterprise license is required for this plugin.'
+      } else {
+        return 'Please contact sales@openc3.com for access to this plugin.'
+      }
     },
   },
   created: async function () {
