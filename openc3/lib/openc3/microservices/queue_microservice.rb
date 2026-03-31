@@ -19,7 +19,7 @@ require 'openc3/api/api'
 
 module OpenC3
   saved_verbose = $VERBOSE
-  $VERBOSE = false
+  $VERBOSE = nil
   module Script
     private
     # Override the prompt_for_hazardous method to always return true since there is no user to prompt

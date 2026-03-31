@@ -48,7 +48,7 @@ $openc3_scope = ENV['OPENC3_SCOPE'] || 'DEFAULT'
 $openc3_in_cluster = false
 
 saved_verbose = $VERBOSE
-$VERBOSE = false
+$VERBOSE = nil
 
 module OpenC3
   module Script

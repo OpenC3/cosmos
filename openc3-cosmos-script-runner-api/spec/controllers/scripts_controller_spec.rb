@@ -314,8 +314,8 @@ RSpec.describe ScriptsController, type: :controller do
   describe "delete_all_breakpoints" do
     it "deletes all breakpoints" do
       # Need to mock OpenC3::Store directly
-      redis = mock_redis
-      expect(redis).to receive(:del).with("DEFAULT__script-breakpoints")
+      mock_redis
+      expect_any_instance_of(OpenC3::Store).to receive(:method_missing).with(:del, "DEFAULT__script-breakpoints")
 
       post :delete_all_breakpoints, params: {scope: "DEFAULT"}
 
