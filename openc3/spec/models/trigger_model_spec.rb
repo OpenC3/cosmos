@@ -242,6 +242,36 @@ module OpenC3
         expect(json['operator']).to eql('>')
         expect(json['right']).to_not be_nil()
         expect(json['dependents']).to_not be_nil()
+        expect(json['label']).to be_nil()
+      end
+    end
+
+    describe "label" do
+      it "defaults to nil" do
+        model = generate_trigger()
+        expect(model.label).to be_nil()
+        expect(model.as_json()['label']).to be_nil()
+      end
+
+      it "persists through create and reload" do
+        model = generate_trigger()
+        model.label = 'My Trigger'
+        model.create()
+        loaded = TriggerModel.get(name: 'TRIG1', group: TMO_GROUP, scope: $openc3_scope)
+        expect(loaded.label).to eql('My Trigger')
+      end
+
+      it "can be updated and cleared" do
+        model = generate_trigger()
+        model.create()
+        model.label = 'Updated Label'
+        model.update()
+        loaded = TriggerModel.get(name: 'TRIG1', group: TMO_GROUP, scope: $openc3_scope)
+        expect(loaded.label).to eql('Updated Label')
+        loaded.label = nil
+        loaded.update()
+        cleared = TriggerModel.get(name: 'TRIG1', group: TMO_GROUP, scope: $openc3_scope)
+        expect(cleared.label).to be_nil()
       end
     end
 

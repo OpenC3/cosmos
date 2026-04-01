@@ -241,6 +241,35 @@ module OpenC3
         expect(json['snooze']).to eql(300)
         expect(json['triggers']).to_not be_nil()
         expect(json['actions']).to_not be_nil()
+        expect(json['label']).to be_nil()
+      end
+    end
+
+    describe "label" do
+      it "defaults to nil" do
+        model = generate_reaction()
+        expect(model.label).to be_nil()
+        expect(model.as_json()['label']).to be_nil()
+      end
+
+      it "persists through create and reload" do
+        model = generate_reaction()
+        model.label = 'My Reaction'
+        model.update()
+        loaded = ReactionModel.get(name: 'REACT1', scope: $openc3_scope)
+        expect(loaded.label).to eql('My Reaction')
+      end
+
+      it "can be updated and cleared" do
+        model = generate_reaction()
+        model.label = 'Updated Label'
+        model.update()
+        loaded = ReactionModel.get(name: 'REACT1', scope: $openc3_scope)
+        expect(loaded.label).to eql('Updated Label')
+        loaded.label = nil
+        loaded.update()
+        cleared = ReactionModel.get(name: 'REACT1', scope: $openc3_scope)
+        expect(cleared.label).to be_nil()
       end
     end
 
