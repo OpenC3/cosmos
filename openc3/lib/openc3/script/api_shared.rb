@@ -864,7 +864,18 @@ module OpenC3
       # Note: We have to preserve the original 'value' variable because we're going to eval against it
       value_str = value.is_a?(String) ? "'#{value}'" : value
       with_value = "with value == #{value_str}"
-      if eval(string)
+
+      eval_is_valid = _check_eval_validity(value, comparison_to_eval)
+      unless eval_is_valid
+        message = "Invalid comparison for types"
+        if $disconnect
+          puts "ERROR: #{message}"
+        else
+          raise CheckError, message
+        end
+      end
+
+      if eval_is_valid && eval(string)
         puts "#{check_str} success #{with_value}"
       else
         message = "#{check_str} failed #{with_value}"
@@ -882,6 +893,18 @@ module OpenC3
       else
         raise e
       end
+    end
+
+    def _check_eval_validity(value, comparison)
+      return true if comparison.nil? || comparison.empty?
+
+      operator, operand = extract_operator_and_operand_from_comparison(comparison)
+
+      if [">=", "<=", ">", "<"].include?(operator)
+        return false if value.nil? || operand.nil? || value.is_a?(Array) || operand.is_a?(Array)
+      end
+
+      return true
     end
   end
 end

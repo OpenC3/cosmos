@@ -19,6 +19,7 @@ from openc3.script.exceptions import CheckError
 from openc3.utilities.extract import (
     extract_fields_from_check_text,
     extract_fields_from_tlm_text,
+    extract_operator_and_operand_from_comparison,
 )
 
 
@@ -965,8 +966,12 @@ def _check_eval(target_name, packet_name, item_name, comparison_to_eval, value):
     else:
         value_str = value
     with_value = f"with value == {value_str}"
+
+    eval_is_valid = _check_eval_validity(value, comaparison_to_eval)
+    if not eval_is_valid:
+        raise CheckError("ERROR: Invalid comparison for types")
     try:
-        if eval(string):
+        if eval_is_valid and eval(string):
             print(f"{check_str} success {with_value}")
         else:
             message = f"{check_str} failed {with_value}"
@@ -984,6 +989,25 @@ def _frange(value):
         return f"{value:.6}"
     else:
         return value
+
+
+def _check_eval_validity(value, comparison):
+    if not comparison:
+        return True
+
+    operator, operand = extract_operator_and_operand_from_comparison(comparison)
+
+    if operator in [">=", "<=", ">", "<"]:
+        if value is None or operand is None or isinstance(value, list) or isinstance(operand, list):
+            return False
+
+    if operator == "in": # Ruby doesn't have this operator
+        if isinstance(operand, str) and not isinstance(value, str):
+            return False
+        elif not isinstance(operand, list):
+            return False
+
+    return True
 
 
 # Interesting formatter to a specific number of significant digits:
