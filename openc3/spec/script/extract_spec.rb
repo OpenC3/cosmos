@@ -211,7 +211,7 @@ module OpenC3
         expect { extract_operator_and_operand_from_comparison("^ 'foo'") }.to raise_error(/ERROR: Invalid/)
       end
 
-      it "should complain about unparseable operands" do
+      it "should complain about unparsable operands" do
         expect { extract_operator_and_operand_from_comparison("== foo") }.to raise_error(/ERROR: Unable/)
       end
     end

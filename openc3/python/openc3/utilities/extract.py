@@ -266,6 +266,10 @@ def extract_operator_and_operand_from_comparison(comparison):
     # Handle other operand types
     if operand == "None":
         operand = None
+    elif operand == "False":
+        operand = False
+    elif operand == "True":
+        operand = True
     else:
         try:
             operand = json.loads(operand)

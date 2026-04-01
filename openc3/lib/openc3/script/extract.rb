@@ -191,6 +191,10 @@ module OpenC3
       # Handle other operand types
       if operand == "nil"
         operand = nil
+      elsif operand == "false"
+        operand = false
+      elsif operand == "true"
+        operand = true
       else
         begin
           operand = JSON.parse(operand)

@@ -898,7 +898,13 @@ module OpenC3
     def _check_eval_validity(value, comparison)
       return true if comparison.nil? || comparison.empty?
 
-      operator, operand = extract_operator_and_operand_from_comparison(comparison)
+      begin
+        operator, operand = extract_operator_and_operand_from_comparison(comparison)
+      rescue RuntimeError, JSON::ParserError
+        # If we can't parse the operand, let the eval happen anyway
+        # It will raise an appropriate error (like NameError for undefined constants)
+        return true
+      end
 
       if [">=", "<=", ">", "<"].include?(operator)
         return false if value.nil? || operand.nil? || value.is_a?(Array) || operand.is_a?(Array)

@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import sys
 import time
 import traceback
@@ -967,19 +968,22 @@ def _check_eval(target_name, packet_name, item_name, comparison_to_eval, value):
         value_str = value
     with_value = f"with value == {value_str}"
 
-    eval_is_valid = _check_eval_validity(value, comaparison_to_eval)
-    if not eval_is_valid:
-        raise CheckError("ERROR: Invalid comparison for types")
     try:
+        eval_is_valid = _check_eval_validity(value, comparison_to_eval)
+        # if not eval_is_valid:
+        #     raise CheckError("ERROR: Invalid comparison for types")
         if eval_is_valid and eval(string):
             print(f"{check_str} success {with_value}")
         else:
             message = f"{check_str} failed {with_value}"
             raise CheckError(message)
-    except NameError as error:
-        parts = error.args[0].split("'")
-        new_error = NameError(f"Uninitialized constant {parts[1]}. Did you mean '{parts[1]}' as a string?")
-        raise new_error from error
+    except (NameError, json.JSONDecodeError) as error:
+        if isinstance(error, NameError):
+            parts = error.args[0].split("'")
+            new_error = NameError(f"Uninitialized constant {parts[1]}. Did you mean '{parts[1]}' as a string?")
+            raise new_error from error
+        else:
+            raise
 
 
 def _frange(value):
@@ -995,16 +999,19 @@ def _check_eval_validity(value, comparison):
     if not comparison:
         return True
 
-    operator, operand = extract_operator_and_operand_from_comparison(comparison)
+    try:
+        operator, operand = extract_operator_and_operand_from_comparison(comparison)
+    except (RuntimeError, json.JSONDecodeError):
+        # If we can't parse the operand, let the eval happen anyway
+        # It will raise an appropriate error (like NameError for undefined constants)
+        return True
 
     if operator in [">=", "<=", ">", "<"]:
         if value is None or operand is None or isinstance(value, list) or isinstance(operand, list):
             return False
 
-    if operator == "in": # Ruby doesn't have this operator
-        if isinstance(operand, str) and not isinstance(value, str):
-            return False
-        elif not isinstance(operand, list):
+    if operator == "in":  # Ruby doesn't have this operator
+        if isinstance(operand, str) and not isinstance(value, str) or not isinstance(operand, list):
             return False
 
     return True

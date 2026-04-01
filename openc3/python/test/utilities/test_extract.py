@@ -10,15 +10,14 @@
 # if purchased from OpenC3, Inc.
 
 import pytest
+
 from openc3.utilities.extract import (
     add_cmd_parameter,
-    extract_fields_from_cmd_text,
-    extract_fields_from_tlm_text,
-    extract_fields_from_set_tlm_text,
     extract_fields_from_check_text,
+    extract_fields_from_cmd_text,
+    extract_fields_from_set_tlm_text,
+    extract_fields_from_tlm_text,
     extract_operator_and_operand_from_comparison,
-    remove_quotes,
-    convert_to_value,
 )
 
 
@@ -204,7 +203,7 @@ class TestExtractOperatorAndOperandFromComparison:
         with pytest.raises(RuntimeError, match="ERROR: Invalid"):
             extract_operator_and_operand_from_comparison("^ 'foo'")
 
-    def test_complains_about_unparseable_operands(self):
+    def test_complains_about_unparsable_operands(self):
         with pytest.raises(RuntimeError, match="ERROR: Unable"):
             extract_operator_and_operand_from_comparison("== foo")
 
