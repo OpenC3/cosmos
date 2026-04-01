@@ -273,6 +273,6 @@ def extract_operator_and_operand_from_comparison(comparison):
     else:
         try:
             operand = json.loads(operand)
-        except json.JSONDecodeError:
-            raise RuntimeError(f"ERROR: Unable to parse operand: {operand}")
+        except json.JSONDecodeError as err:
+            raise RuntimeError(f"ERROR: Unable to parse operand: {operand}") from err
     return operator, operand

@@ -970,8 +970,6 @@ def _check_eval(target_name, packet_name, item_name, comparison_to_eval, value):
 
     try:
         eval_is_valid = _check_eval_validity(value, comparison_to_eval)
-        # if not eval_is_valid:
-        #     raise CheckError("ERROR: Invalid comparison for types")
         if eval_is_valid and eval(string):
             print(f"{check_str} success {with_value}")
         else:
@@ -1006,15 +1004,15 @@ def _check_eval_validity(value, comparison):
         # It will raise an appropriate error (like NameError for undefined constants)
         return True
 
-    if operator in [">=", "<=", ">", "<"]:
-        if value is None or operand is None or isinstance(value, list) or isinstance(operand, list):
-            return False
+    if operator in [">=", "<=", ">", "<"] and (
+        value is None or operand is None or isinstance(value, list) or isinstance(operand, list)
+    ):
+        return False
 
-    if operator == "in":  # Ruby doesn't have this operator
-        if isinstance(operand, str) and not isinstance(value, str) or not isinstance(operand, list):
-            return False
-
-    return True
+    # Ruby doesn't have the "in" operator
+    return not (
+        operator == "in" and (isinstance(operand, str) and not isinstance(value, str) or not isinstance(operand, list))
+    )
 
 
 # Interesting formatter to a specific number of significant digits:

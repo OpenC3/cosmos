@@ -1091,27 +1091,15 @@ def _check_eval_validity(value, comparison):
         # It will raise an appropriate error (like NameError for undefined constants)
         return True
 
-    if operator in [">=", "<=", ">", "<"]:
-        if value is None or operand is None or isinstance(value, list) or isinstance(operand, list):
-            return False
+    if operator in [">=", "<=", ">", "<"] and (
+        value is None or operand is None or isinstance(value, list) or isinstance(operand, list)
+    ):
+        return False
 
-    if operator == "in":  # Ruby doesn't have this operator
-        if isinstance(operand, str) and not isinstance(value, str) or not isinstance(operand, list):
-            return False
-
-    return True
-
-    operator, operand = extract_operator_and_operand_from_comparison(comparison)
-
-    if operator in [">=", "<=", ">", "<"]:
-        if value is None or operand is None or isinstance(value, list) or isinstance(operand, list):
-            return False
-
-    if operator == "in":  # Ruby doesn't have this operator
-        if isinstance(operand, str) and not isinstance(value, str) or not isinstance(operand, list):
-            return False
-
-    return True
+    # Ruby doesn't have the "in" operator
+    return not (
+        operator == "in" and (isinstance(operand, str) and not isinstance(value, str) or not isinstance(operand, list))
+    )
 
 
 # Interesting formatter to a specific number of significant digits:
