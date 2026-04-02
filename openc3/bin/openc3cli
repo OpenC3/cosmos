@@ -610,6 +610,9 @@ def cli_script_monitor(script_id)
           puts resp['line']
         when 'complete'
           $script_interrupt_text = ''
+          if resp['report']
+            puts resp['report']
+          end
           puts 'script complete'
           ret_code = 0
           break
