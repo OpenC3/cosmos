@@ -275,6 +275,13 @@ class TestTlmApi(unittest.TestCase):
 
         self.dm.shutdown()
 
+    @patch("openc3.microservices.microservice.System")
+    def test_inject_tlm_raises_error_for_derived_item_without_write_conversion(self, mock_system):
+        self.decom_stuff()
+        with self.assertRaisesRegex(RuntimeError, "Cannot write DERIVED item"):
+            inject_tlm("INST", "HEALTH_STATUS", {"RECEIVED_TIMESECONDS": 123.0})
+        self.dm.shutdown()
+
     # override_tlm
     def test_overrides_complains_about_unknown_targets_packets_and_parameters(self):
         with self.assertRaisesRegex(RuntimeError, "does not exist"):

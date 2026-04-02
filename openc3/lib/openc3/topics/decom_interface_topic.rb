@@ -45,14 +45,29 @@ module OpenC3
       raise "Timeout of #{timeout}s waiting for cmd ack. Does target '#{target_name}' exist?"
     end
 
-    def self.inject_tlm(target_name, packet_name, item_hash = nil, type: :CONVERTED, scope:)
+    def self.inject_tlm(target_name, packet_name, item_hash = nil, type: :CONVERTED, timeout: 5, scope:)
       data = {}
       data['target_name'] = target_name.to_s.upcase
       data['packet_name'] = packet_name.to_s.upcase
       data['item_hash'] = item_hash
       data['type'] = type
-      Topic.write_topic("#{scope}__DECOMINTERFACE__{#{target_name}}",
+      ack_topic = "{#{scope}__ACKCMD}TARGET__#{target_name}"
+      Topic.update_topic_offsets([ack_topic])
+      decom_id = Topic.write_topic("#{scope}__DECOMINTERFACE__{#{target_name}}",
           { 'inject_tlm' => JSON.generate(data, allow_nan: true) }, '*', 100)
+      time = Time.now
+      while (Time.now - time) < timeout
+        Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
+          if msg_hash["id"] == decom_id
+            if msg_hash["result"] == "SUCCESS"
+              return
+            else
+              raise msg_hash["message"]
+            end
+          end
+        end
+      end
+      raise "Timeout of #{timeout}s waiting for cmd ack. Does target '#{target_name}' exist?"
     end
 
     def self.get_tlm_buffer(target_name, packet_name, timeout: 5, scope:)

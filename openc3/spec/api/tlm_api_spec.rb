@@ -284,6 +284,10 @@ module OpenC3
         sleep 0.1
         expect(@api.tlm("INST HEALTH_STATUS RECEIVED_COUNT")).to eql 3
       end
+
+      it "raises an error when writing to a DERIVED item without a write conversion" do
+        expect { @api.inject_tlm("INST", "HEALTH_STATUS", { "RECEIVED_TIMESECONDS" => 123.0 }) }.to raise_error(/Cannot write DERIVED item/)
+      end
     end
 
     describe "override_tlm" do

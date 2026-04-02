@@ -34,10 +34,27 @@ module OpenC3
       packet.received_time = Time.now.sys
       packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope: @scope)
       TelemetryTopic.write_packet(packet, scope: @scope)
-    # If the inject_tlm parameters are bad we rescue so
-    # interface_microservice and decom_microservice can continue
-    rescue => e
-      @logger.error "inject_tlm error due to #{e.message}"
+    end
+
+    def handle_inject_tlm_with_ack(inject_tlm_json, msg_id)
+      inject_tlm_hash = JSON.parse(inject_tlm_json, allow_nan: true, create_additions: true)
+      target_name = inject_tlm_hash['target_name']
+      ack_topic = "{#{@scope}__ACKCMD}TARGET__#{target_name}"
+      begin
+        handle_inject_tlm(inject_tlm_json)
+        msg_hash = {
+          id: msg_id,
+          result: 'SUCCESS'
+        }
+      rescue => error
+        @logger.error "inject_tlm error due to #{error.message}"
+        msg_hash = {
+          id: msg_id,
+          result: 'ERROR',
+          message: error.message
+        }
+      end
+      Topic.write_topic(ack_topic, msg_hash)
     end
 
     def handle_build_cmd(build_cmd_json, msg_id)

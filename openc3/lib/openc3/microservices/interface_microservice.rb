@@ -179,7 +179,12 @@ module OpenC3
               next 'SUCCESS'
             end
             if msg_hash.key?('inject_tlm')
-              handle_inject_tlm(msg_hash['inject_tlm'])
+              begin
+                handle_inject_tlm(msg_hash['inject_tlm'])
+              rescue => e
+                @logger.error "#{@interface.name}: inject_tlm: #{e.formatted}"
+                next e.message
+              end
               next 'SUCCESS'
             end
             if msg_hash.key?('release_critical')

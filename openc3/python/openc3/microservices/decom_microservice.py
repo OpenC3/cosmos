@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -22,7 +22,7 @@ from openc3.config.config_parser import ConfigParser
 from openc3.microservices.interface_decom_common import (
     handle_build_cmd,
     handle_get_tlm_buffer,
-    handle_inject_tlm,
+    handle_inject_tlm_with_ack,
 )
 from openc3.microservices.interface_microservice import InterfaceMicroservice
 from openc3.microservices.microservice import Microservice
@@ -140,7 +140,7 @@ class DecomMicroservice(Microservice):
                         self.microservice_cmd(topic, msg_id, msg_hash, redis)
                     elif "__DECOMINTERFACE__" in topic:
                         if msg_hash.get(b"inject_tlm"):
-                            handle_inject_tlm(msg_hash[b"inject_tlm"], self.scope)
+                            handle_inject_tlm_with_ack(msg_hash[b"inject_tlm"], msg_id, self.scope, self.logger)
                             continue
                         if msg_hash.get(b"build_cmd"):
                             handle_build_cmd(msg_hash[b"build_cmd"], msg_id, self.scope)
