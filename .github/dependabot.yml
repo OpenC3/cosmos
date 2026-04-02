@@ -20,6 +20,8 @@ updates:
     directory: /openc3/python
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     ignore:
       - dependency-name: openc3
 

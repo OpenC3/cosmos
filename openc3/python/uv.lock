@@ -6,6 +6,10 @@ resolution-markers = [
     "python_full_version < '3.11'",
 ]
 
+[options]
+exclude-newer = "2026-03-26T19:07:11.44899Z"
+exclude-newer-span = "P1W"
+
 [[package]]
 name = "async-timeout"
 version = "5.0.1"
@@ -753,7 +757,7 @@ wheels = [
 
 [[package]]
 name = "openc3"
-version = "7.0.0rc4"
+version = "7.0.1b0"
 source = { editable = "." }
 dependencies = [
     { name = "boto3" },

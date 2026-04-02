@@ -180,3 +180,6 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "if typing.TYPE_CHECKING:",
 ]
+
+[tool.uv]
+exclude-newer = "1 week"
