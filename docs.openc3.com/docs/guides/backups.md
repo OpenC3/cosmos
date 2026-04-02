@@ -25,8 +25,8 @@ To back up, use a temporary Docker container to mount both the COSMOS volume and
 # Back up bucket data to a shared network drive or external path
 docker run --rm \
   -v openc3-object-v:/data:ro \
-  -v /mnt/backup:/backup \
-  alpine rsync -a /data/ /backup/buckets/
+  -v /mnt/backup:/backup eeacms/rsync \
+  rsync -a /data/ /backup/buckets/
 ```
 
 Replace `/mnt/backup` with your shared network drive or backup destination. This mounts the `openc3-object-v` volume as read-only and copies its contents to the backup location. This command is safe to run on a schedule for incremental backups since `rsync` only copies changed files.
