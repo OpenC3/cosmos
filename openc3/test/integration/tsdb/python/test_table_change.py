@@ -299,6 +299,39 @@ class TestStringToFloat:
         assert abs(rows[0] - 3.14) < 1e-10  # Numeric string "3.14" survives as double
         assert abs(rows[1] - 2.718) < 1e-10
 
+@requires_questdb
+class TestLargeUintUsesVarchar:
+    """UINT > 64 bits should use VARCHAR instead of DECIMAL(20,0)."""
+
+    def test_large_uint_stored_as_varchar(self, questdb_client, clean_table, wait_for_data):
+        target = "TBLCHG"
+        packet = "LARGE_UINT"
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
+        base_ts = int(time.time() * 1e9)
+
+        # Create as UINT 88 — should use VARCHAR, not DECIMAL
+        questdb_client.create_table(
+            target, packet, _make_packet_def("UINT", bit_size=88)
+        )
+        assert _get_column_type(questdb_client, table_name) == "VARCHAR"
+
+        # Write a value that exceeds DECIMAL(20,0) capacity (27 digits)
+        large_value = 2**88 - 1  # 309485009821345068724781055
+        _write_value(questdb_client, table_name, large_value, base_ts)
+        wait_for_data(questdb_client, table_name, 1)
+
+        with questdb_client.query.cursor() as cur:
+            cur.execute(
+                f'SELECT "VALUE" FROM "{table_name}" ORDER BY PACKET_TIMESECONDS'
+            )
+            rows = [r[0] for r in cur.fetchall()]
+        assert len(rows) == 1
+        assert rows[0] == str(large_value)
+
+
+# TODO: Waiting on QuestDB bug: https://github.com/questdb/questdb/issues/6923
+# When this is fixed add a test for converting DECIMAL to VARCHAR when value the value changes
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

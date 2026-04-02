@@ -442,9 +442,12 @@ class QuestDBClient:
                 return "int", False
             elif converted_bit_size < 64:
                 return "long", False
-            else:
+            elif converted_bit_size == 64:
                 self.decimal_int_columns[f"{table_name}__{column_name}"] = True
                 return "DECIMAL(20, 0)", False
+            else:
+                # > 64-bit integers exceed DECIMAL(20,0) capacity — store as VARCHAR
+                return "varchar", False
         elif converted_type == "TIME" or converted_type == "STRING":
             return "varchar", False
         elif converted_type == "BLOCK":
@@ -1443,7 +1446,11 @@ class QuestDBClient:
         """
         self._log_warn(f"QuestDB: IngressError: {error}\n")
 
-        if "cast error from protocol type" not in str(error):
+        error_message = str(error)
+        is_cast_error = "cast error from protocol type" in error_message
+        is_value_error = "cannot be converted to column type" in error_message
+
+        if not is_cast_error and not is_value_error:
             self._log_error(f"QuestDB: Error writing to QuestDB: {error}\n")
             self.pending_rows.clear()
             try:
@@ -1455,22 +1462,26 @@ class QuestDBClient:
             return False
 
         try:
-            error_message = str(error)
             table_match = re.search(r"table:\s+(.+?),", error_message)
             column_match = re.search(r"column:\s+(.+?);", error_message)
-            type_match = re.search(r"protocol type:\s+([A-Z]+(?:\[\])?)\s", error_message)
             to_type_match = re.search(r"column type:\s+([A-Z]+)", error_message)
 
-            if not (table_match and column_match and type_match):
-                self._log_error("QuestDB: Could not parse table, column, or type from error message")
+            # "cast error from protocol type" includes the protocol type;
+            # "cannot be converted to column type" does not
+            type_match = re.search(r"protocol type:\s+([A-Z]+(?:\[\])?)\s", error_message)
+            protocol_type = type_match.group(1) if type_match else None
+
+            if not (table_match and column_match):
+                self._log_error("QuestDB: Could not parse table or column from error message")
                 return False
 
             err_table_name = table_match.group(1)
             column_name = column_match.group(1)
-            protocol_type = type_match.group(1)
             column_type = to_type_match.group(1) if to_type_match else ""
 
-            is_array_protocol = protocol_type.endswith("[]") or protocol_type.upper() == "ARRAY"
+            is_array_protocol = protocol_type is not None and (
+                protocol_type.endswith("[]") or protocol_type.upper() == "ARRAY"
+            )
 
             # Apply the fix to all pending rows for the affected table
             fixed = False
@@ -1486,6 +1497,13 @@ class QuestDBClient:
 
                 # Handle INTEGER to DECIMAL cast error by converting value to string
                 if protocol_type == "INTEGER" and column_type == "DECIMAL":
+                    if column_name in columns:
+                        columns[column_name] = str(columns[column_name])
+                        fixed = True
+                    continue
+
+                # Handle value overflow for DECIMAL columns (value exceeds precision)
+                if is_value_error and column_type == "DECIMAL":
                     if column_name in columns:
                         columns[column_name] = str(columns[column_name])
                         fixed = True
@@ -1523,6 +1541,12 @@ class QuestDBClient:
                 self._log_warn(
                     f"QuestDB: Column {column_name} in table {err_table_name} "
                     f"is DECIMAL but received INTEGER. Converting value to string."
+                )
+            elif is_value_error and column_type == "DECIMAL":
+                self.decimal_int_columns[f"{err_table_name}__{column_name}"] = True
+                self._log_warn(
+                    f"QuestDB: Column {column_name} in table {err_table_name} "
+                    f"value overflows DECIMAL precision. Converting value to string."
                 )
             else:
                 if column_type in ("VARCHAR", "STRING"):
