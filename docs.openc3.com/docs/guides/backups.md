@@ -39,10 +39,20 @@ The QuestDB data is stored in the `openc3-tsdb-v` Docker volume mounted at `/var
 
 #### Backup Procedure
 
-1. **Create a checkpoint** to pause housekeeping while keeping the database available for reads and writes. Open the Admin Console and the TSDB tab. Run the following:
+1. **Create a checkpoint** to pause housekeeping while keeping the database available for reads and writes.
+
+   **From the COSMOS Admin Console:** Open the Admin Console and the TSDB tab. Run the following:
 
    ```sql
    CHECKPOINT CREATE
+   ```
+
+   **From the command line:** Execute the SQL directly against the QuestDB container's HTTP API:
+
+   ```bash
+   docker exec openc3-tsdb-1 \
+     curl -sS -u "$OPENC3_TSDB_USERNAME:$OPENC3_TSDB_PASSWORD" \
+     'http://localhost:9000/exec?query=CHECKPOINT+CREATE'
    ```
 
 2. **Copy the QuestDB data directory.** While the checkpoint is active, copy the entire volume contents (including `db`, `snapshot`, and all subdirectories) to your backup destination.
@@ -67,9 +77,19 @@ The QuestDB data is stored in the `openc3-tsdb-v` Docker volume mounted at `/var
 
 3. **Release the checkpoint** to resume normal operations:
 
+   **From the COSMOS Admin Console:**
+
    ```sql
    CHECKPOINT RELEASE
    SELECT * FROM checkpoint_status()
+   ```
+
+   **From the command line:**
+
+   ```bash
+   docker exec openc3-tsdb-1 \
+     curl -sS -u "$OPENC3_TSDB_USERNAME:$OPENC3_TSDB_PASSWORD" \
+     'http://localhost:9000/exec?query=CHECKPOINT+RELEASE'
    ```
 
 #### Restore Procedure
