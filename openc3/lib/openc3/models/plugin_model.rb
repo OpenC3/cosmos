@@ -280,7 +280,15 @@ module OpenC3
                 pip_args = "-i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} -r #{requirements_path}"
               end
             end
-            puts `/openc3/bin/pipinstall #{pip_args}`
+            # Capture output and check exit code so failures surface as a warning
+            # rather than silently succeeding. pipinstall is non-fatal: the plugin
+            # continues to install even if Python packages fail so that non-Python
+            # functionality still works.
+            output = `/openc3/bin/pipinstall #{pip_args}`
+            puts output
+            unless $?.success?
+              Logger.warn "Python package installation failed. Plugin Python microservices may not function correctly."
+            end
           end
           needs_dependencies = true
         end

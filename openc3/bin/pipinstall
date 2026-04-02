@@ -1,13 +1,45 @@
 #!/bin/sh
-uv venv "$PYTHONUSERBASE"
+uv venv "$PYTHONUSERBASE" --allow-existing
 echo "uv pip install $@"
 uv pip install --python "$PYTHONUSERBASE" "$@"
 if [ $? -eq 0 ]; then
     echo "Command succeeded"
-else
-    echo "Command failed - retrying with --no-index"
-    uv pip install --python "$PYTHONUSERBASE" --no-index "$@"
-    if [ $? -ne 0 ]; then
-        echo "ERROR: uv pip install failed"
+    exit 0
+fi
+
+# Collect the last arg and all preceding args
+LAST_ARG=""
+OPTS=""
+PREV=""
+for ARG in "$@"; do
+    if [ -n "$PREV" ]; then
+        OPTS="${OPTS} ${PREV}"
     fi
+    PREV="$ARG"
+done
+LAST_ARG="$PREV"
+
+# If last arg is a directory with pyproject.toml, the build may have failed
+# (e.g. Poetry package-mode = false). Try compiling and installing declared
+# dependencies only, without attempting to build the package itself.
+if [ -d "$LAST_ARG" ] && [ -f "$LAST_ARG/pyproject.toml" ]; then
+    echo "Warning: Failed to build Python package, attempting to install declared dependencies from pyproject.toml"
+    TMPFILE=$(mktemp)
+    uv pip compile ${OPTS} "${LAST_ARG}/pyproject.toml" > "$TMPFILE"
+    if [ $? -eq 0 ] && [ -s "$TMPFILE" ]; then
+        uv pip install --python "$PYTHONUSERBASE" ${OPTS} -r "$TMPFILE"
+        if [ $? -eq 0 ]; then
+            echo "Dependencies installed successfully"
+            rm -f "$TMPFILE"
+            exit 0
+        fi
+    fi
+    rm -f "$TMPFILE"
+fi
+
+echo "Warning: Install failed - retrying with --no-index"
+uv pip install --python "$PYTHONUSERBASE" --no-index "$@"
+if [ $? -ne 0 ]; then
+    echo "ERROR: uv pip install failed"
+    exit 1
 fi
