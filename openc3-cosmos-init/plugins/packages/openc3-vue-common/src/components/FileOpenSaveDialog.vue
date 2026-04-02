@@ -81,31 +81,31 @@
                 {{ error }}
               </div>
             </v-row>
-            <v-row class="mt-2">
-              <v-spacer />
-              <v-btn
-                variant="outlined"
-                class="mx-2"
-                data-test="file-open-save-cancel-btn"
-                :disabled="disableButtons"
-                @click="show = false"
-              >
-                Cancel
-              </v-btn>
-              <v-btn
-                ref="submitBtn"
-                type="submit"
-                color="primary"
-                class="mx-2"
-                data-test="file-open-save-submit-btn"
-                :disabled="disableButtons || !!error"
-                @click.prevent="success"
-              >
-                {{ submit }}
-              </v-btn>
-            </v-row>
           </div>
         </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn
+            variant="outlined"
+            class="mx-2"
+            data-test="file-open-save-cancel-btn"
+            :disabled="disableButtons"
+            @click="show = false"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            ref="submitBtn"
+            type="submit"
+            color="primary"
+            class="mx-2"
+            data-test="file-open-save-submit-btn"
+            :disabled="disableButtons || !!error"
+            @click.prevent="success"
+          >
+            {{ submit }}
+          </v-btn>
+        </v-card-actions>
       </form>
     </v-card>
   </v-dialog>
