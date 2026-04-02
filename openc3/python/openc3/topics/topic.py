@@ -29,7 +29,9 @@ class Topic(metaclass=TopicMeta):
 
     @classmethod
     def topics(cls, key, scope, shard=0):
-        return sorted(set(EphemeralStore.instance(shard=shard).scan_iter(match=f"{scope}__{key}__*", type="stream", count=100)))
+        return sorted(
+            set(EphemeralStore.instance(shard=shard).scan_iter(match=f"{scope}__{key}__*", type="stream", count=100))
+        )
 
     @classmethod
     def get_cnt(cls, topic, shard=0):

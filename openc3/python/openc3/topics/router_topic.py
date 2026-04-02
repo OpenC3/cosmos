@@ -36,11 +36,12 @@ class RouterTopic(Topic):
     @classmethod
     def receive_telemetry(cls, router, scope=OPENC3_SCOPE):
         import re
+
         # Group topics by shard
         all_topics = RouterTopic.topics(router, scope)
         shard_groups = {}  # shard => [topic, ...]
         for topic in all_topics:
-            match = re.search(r'__\{?([^}_]+)\}?__', topic)
+            match = re.search(r"__\{?([^}_]+)\}?__", topic)
             target_name = match.group(1) if match else None
             shard = Store.shard_for_target(target_name, scope=scope)
             if shard not in shard_groups:
@@ -50,7 +51,9 @@ class RouterTopic(Topic):
         while True:
             timeout_per_shard = max(1000 // max(len(shard_groups), 1), 100)
             for shard, topics in shard_groups.items():
-                for topic, msg_id, msg_hash, redis in Topic.read_topics(topics, timeout_ms=timeout_per_shard, shard=shard):
+                for topic, msg_id, msg_hash, redis in Topic.read_topics(
+                    topics, timeout_ms=timeout_per_shard, shard=shard
+                ):
                     result = yield topic, msg_id, msg_hash, redis
                     if result is not None and "CMD}ROUTER" in topic:
                         ack_topic = topic.split("__")

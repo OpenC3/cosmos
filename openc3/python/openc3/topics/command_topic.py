@@ -56,7 +56,7 @@ class CommandTopic(Topic):
         cmd_params = command["cmd_params"]
         command["cmd_params"] = json.dumps(command["cmd_params"], cls=JsonEncoder)
 
-        cmd_shard = Store.shard_for_target(command['target_name'], scope=scope)
+        cmd_shard = Store.shard_for_target(command["target_name"], scope=scope)
 
         # Fire-and-forget mode: skip ACK waiting when timeout <= 0
         if timeout <= 0:

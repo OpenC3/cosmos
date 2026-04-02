@@ -544,9 +544,10 @@ def get_packets(id, count=1000, scope=OPENC3_SCOPE):
     packets = []
     # Group topics by shard for multi-shard support
     import re
+
     shard_groups = {}
     for topic, offset in lookup.items():
-        match = re.search(r'__\{?([^}_]+)\}?__', topic)
+        match = re.search(r"__\{?([^}_]+)\}?__", topic)
         target_name = match.group(1) if match else None
         shard = Store.shard_for_target(target_name, scope=scope)
         if shard not in shard_groups:
@@ -554,7 +555,9 @@ def get_packets(id, count=1000, scope=OPENC3_SCOPE):
         shard_groups[shard]["topics"].append(topic)
         shard_groups[shard]["offsets"].append(offset)
     for shard, group in shard_groups.items():
-        for topic, topic_id, msg_hash, _ in Topic.read_topics(group["topics"], group["offsets"], None, count, shard=shard):
+        for topic, topic_id, msg_hash, _ in Topic.read_topics(
+            group["topics"], group["offsets"], None, count, shard=shard
+        ):
             lookup[topic] = topic_id  # save the new ID
             # decode the binary string keys and values to strings
             msg_hash = {k.decode(): v.decode() for (k, v) in msg_hash.items()}

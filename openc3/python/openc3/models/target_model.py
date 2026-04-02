@@ -90,7 +90,9 @@ class TargetModel(Model):
                 return cached["packet"]
 
         # Assume it exists and just try to get it to avoid an extra call to Store.exist?
-        json_data = cls._store_for_target(target_name, scope).hget(f"{scope}__openc3{type.lower()}__{target_name}", packet_name)
+        json_data = cls._store_for_target(target_name, scope).hget(
+            f"{scope}__openc3{type.lower()}__{target_name}", packet_name
+        )
         if not json_data:
             raise RuntimeError(f"Packet '{target_name} {packet_name}' does not exist")
         packet = json.loads(json_data)
@@ -254,7 +256,9 @@ class TargetModel(Model):
 
     @classmethod
     def increment_telemetry_count(cls, target_name: str, packet_name: str, count: int, scope: str = OPENC3_SCOPE):
-        result = cls._store_for_target(target_name, scope).hincrby(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name, count)
+        result = cls._store_for_target(target_name, scope).hincrby(
+            f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name, count
+        )
         if isinstance(result, (bytes, bytearray)):
             return int(result)
         else:
@@ -273,7 +277,9 @@ class TargetModel(Model):
 
     @classmethod
     def get_telemetry_count(cls, target_name: str, packet_name: str, scope: str = OPENC3_SCOPE):
-        value = cls._store_for_target(target_name, scope).hget(f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name)
+        value = cls._store_for_target(target_name, scope).hget(
+            f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name
+        )
         if value is None:
             return 0
         elif isinstance(value, (bytes, bytearray)):
@@ -374,7 +380,9 @@ class TargetModel(Model):
                 for target_name in tlm_target_names:
                     for packet_name, count in TargetModel.get_all_telemetry_counts(target_name, scope=scope).items():
                         try:
-                            update_packet = System.telemetry.packet(target_name, packet_name.decode() if isinstance(packet_name, bytes) else packet_name)
+                            update_packet = System.telemetry.packet(
+                                target_name, packet_name.decode() if isinstance(packet_name, bytes) else packet_name
+                            )
                             update_packet.received_count = int(count)
                         except RuntimeError:
                             key = f"{target_name} {packet_name.decode() if isinstance(packet_name, bytes) else packet_name}"
@@ -383,7 +391,9 @@ class TargetModel(Model):
                                 Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
                 for packet_name, count in TargetModel.get_all_telemetry_counts("UNKNOWN", scope=scope).items():
                     try:
-                        update_packet = System.telemetry.packet("UNKNOWN", packet_name.decode() if isinstance(packet_name, bytes) else packet_name)
+                        update_packet = System.telemetry.packet(
+                            "UNKNOWN", packet_name.decode() if isinstance(packet_name, bytes) else packet_name
+                        )
                         update_packet.received_count = int(count)
                     except RuntimeError:
                         key = f"UNKNOWN {packet_name.decode() if isinstance(packet_name, bytes) else packet_name}"
@@ -393,7 +403,9 @@ class TargetModel(Model):
 
     @classmethod
     def increment_command_count(cls, target_name: str, packet_name: str, count: int, scope: str = OPENC3_SCOPE):
-        result = cls._store_for_target(target_name, scope).hincrby(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name, count)
+        result = cls._store_for_target(target_name, scope).hincrby(
+            f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name, count
+        )
         if isinstance(result, (bytes, bytearray)):
             return int(result)
         else:

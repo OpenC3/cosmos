@@ -58,10 +58,17 @@ class StoreConnectionPool(ConnectionPool):
 
 class StoreMeta(type):
     # Class attributes that should not be delegated to the instance
-    _CLASS_ATTRS = frozenset({
-        "instance", "instance_mutex", "my_instances",
-        "shard_for_target", "_shard_cache", "_shard_cache_lock", "SHARD_CACHE_TIMEOUT",
-    })
+    _CLASS_ATTRS = frozenset(
+        {
+            "instance",
+            "instance_mutex",
+            "my_instances",
+            "shard_for_target",
+            "_shard_cache",
+            "_shard_cache_lock",
+            "SHARD_CACHE_TIMEOUT",
+        }
+    )
 
     def __getattribute__(cls, func):
         if func in StoreMeta._CLASS_ATTRS:
