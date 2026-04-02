@@ -16,7 +16,7 @@
     "ace-builds": "1.43.6",
     "axios": "1.13.6",
     "date-fns": "4.1.0",
-    "lodash": "4.17.23",
+    "lodash": "4.18.1",
     "single-spa-vue": "3.0.1",
     "splitpanes": "4.0.4",
     "sprintf-js": "1.1.3"
