@@ -31,7 +31,7 @@ module OpenC3
     # Each thread gets its own connections (per shard) to avoid thread-safety issues with PG::Connection.
     # Connections are automatically garbage collected when threads terminate.
     # Value is a Hash: { shard_number => PG::Connection }
-    @thread_conns = Concurrent::ThreadLocalVar.new { Hash.new }
+    @thread_conns = Concurrent::ThreadLocalVar.new { Hash.new } # NOSONAR
 
     # Shard cache: { "scope__target_name" => [shard_number, Time] }
     @shard_cache = {}
