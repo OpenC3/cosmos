@@ -23,8 +23,8 @@
     @keydown.enter="disableButtons ? null : success()"
     @keydown.esc="disableButtons ? null : (show = false)"
   >
-    <v-card>
-      <form @submit.prevent="success">
+    <v-card class="file-open-save-card d-flex flex-column">
+      <form class="d-flex flex-column" @submit.prevent="success">
         <v-toolbar height="24">
           <v-spacer />
           <span> {{ title }} </span>
@@ -36,7 +36,7 @@
             absolute
           />
         </v-toolbar>
-        <v-card-text>
+        <v-card-text class="overflow-y-auto">
           <div class="pa-3">
             <v-row>{{ helpText }} </v-row>
             <v-row dense class="mt-5">
@@ -75,37 +75,37 @@
             <v-row dense>
               <div
                 v-show="error"
-                class="my-2 text-red"
+                class="my-2 text-red overflow-y-auto error-container"
                 style="white-space: pre-line"
               >
                 {{ error }}
               </div>
             </v-row>
-            <v-row class="mt-2">
-              <v-spacer />
-              <v-btn
-                variant="outlined"
-                class="mx-2"
-                data-test="file-open-save-cancel-btn"
-                :disabled="disableButtons"
-                @click="show = false"
-              >
-                Cancel
-              </v-btn>
-              <v-btn
-                ref="submitBtn"
-                type="submit"
-                color="primary"
-                class="mx-2"
-                data-test="file-open-save-submit-btn"
-                :disabled="disableButtons || !!error"
-                @click.prevent="success"
-              >
-                {{ submit }}
-              </v-btn>
-            </v-row>
           </div>
         </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn
+            variant="outlined"
+            class="mx-2"
+            data-test="file-open-save-cancel-btn"
+            :disabled="disableButtons"
+            @click="show = false"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            ref="submitBtn"
+            type="submit"
+            color="primary"
+            class="mx-2"
+            data-test="file-open-save-submit-btn"
+            :disabled="disableButtons || !!error"
+            @click.prevent="success"
+          >
+            {{ submit }}
+          </v-btn>
+        </v-card-actions>
       </form>
     </v-card>
   </v-dialog>
@@ -454,11 +454,20 @@ export default {
 </script>
 
 <style>
+.file-open-save-card {
+  max-height: 90vh;
+}
+.file-open-save-card form {
+  min-height: 0;
+}
 .tree-container {
   background-color: var(--color-background-base-default);
   padding: 10px;
   margin-top: 5px;
   max-height: 60vh;
   font-size: large;
+}
+.error-container {
+  max-height: 10vh;
 }
 </style>
