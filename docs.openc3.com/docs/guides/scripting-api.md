@@ -1261,7 +1261,7 @@ build_cmd(<ARGS>, range_check=True, raw=False)
 
 ```ruby
 x = build_cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
-puts x  #=> {"id"=>"1696437370872-0", "result"=>"SUCCESS", "time"=>"1696437370872305961", "received_time"=>"1696437370872305961", "target_name"=>"INST", "packet_name"=>"COLLECT", "received_count"=>"3", "buffer"=>"\x13\xE7\xC0\x00\x00\f\x00\x01\x00\x00A \x00\x00\xAB\x00\x00\x00\x00"}
+puts x  # => {"id"=>"1696437370872-0", "result"=>"SUCCESS", "time"=>"1696437370872305961", "received_time"=>"1696437370872305961", "target_name"=>"INST", "packet_name"=>"COLLECT", "received_count"=>"3", "buffer"=>"\x13\xE7\xC0\x00\x00\f\x00\x01\x00\x00A \x00\x00\xAB\x00\x00\x00\x00"}
 ```
 
 </TabItem>
@@ -1270,7 +1270,7 @@ puts x  #=> {"id"=>"1696437370872-0", "result"=>"SUCCESS", "time"=>"169643737087
 
 ```python
 x = build_cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
-print(x)  #=> {'id': '1697298167748-0', 'result': 'SUCCESS', 'time': '1697298167749155717', 'received_time': '1697298167749155717', 'target_name': 'INST', 'packet_name': 'COLLECT', 'received_count': '2', 'buffer': bytearray(b'\x13\xe7\xc0\x00\x00\x0c\x00\x01\x00\x00A \x00\x00\xab\x00\x00\x00\x00')}
+print(x)  # => {'id': '1697298167748-0', 'result': 'SUCCESS', 'time': '1697298167749155717', 'received_time': '1697298167749155717', 'target_name': 'INST', 'packet_name': 'COLLECT', 'received_count': '2', 'buffer': bytearray(b'\x13\xe7\xc0\x00\x00\x0c\x00\x01\x00\x00A \x00\x00\xab\x00\x00\x00\x00')}
 ```
 
 </TabItem>
@@ -1454,7 +1454,7 @@ get_all_cmds("<Target Name>")
 
 ```ruby
 cmd_list = get_all_cmds("INST")
-puts cmd_list  #=>
+puts cmd_list  # =>
 # [{"target_name"=>"INST",
 #   "packet_name"=>"ABORT",
 #   "endianness"=>"BIG_ENDIAN",
@@ -1470,7 +1470,7 @@ puts cmd_list  #=>
 
 ```python
 cmd_list = get_all_cmds("INST")
-print(cmd_list)  #=>
+print(cmd_list)  # =>
 # [{'target_name': 'INST',
 #   'packet_name': 'ABORT',
 #   'endianness': 'BIG_ENDIAN',
@@ -1516,7 +1516,7 @@ get_all_cmd_names("<Target Name>")
 
 ```ruby
 cmd_list = get_all_cmd_names("INST")
-puts cmd_list  #=> ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
+puts cmd_list  # => ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
 ```
 
 </TabItem>
@@ -1525,7 +1525,7 @@ puts cmd_list  #=> ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
 
 ```python
 cmd_list = get_all_cmd_names("INST")
-print(cmd_list)  #=> ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
+print(cmd_list)  # => ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
 ```
 
 </TabItem>
@@ -1567,7 +1567,7 @@ get_cmd("<Target Name>", "<Packet Name>")
 
 ```ruby
 abort_cmd = get_cmd("INST ABORT")
-puts abort_cmd  #=>
+puts abort_cmd  # =>
 # [{"target_name"=>"INST",
 #   "packet_name"=>"ABORT",
 #   "endianness"=>"BIG_ENDIAN",
@@ -1583,7 +1583,7 @@ puts abort_cmd  #=>
 
 ```python
 abort_cmd = get_cmd("INST ABORT")
-print(abort_cmd)  #=>
+print(abort_cmd)  # =>
 # [{'target_name': 'INST',
 #   'packet_name': 'ABORT',
 #   'endianness': 'BIG_ENDIAN',
@@ -1633,7 +1633,7 @@ get_param("<Target Name>", "<Command Name>", "<Parameter Name>")
 
 ```ruby
 param = get_param("INST COLLECT TYPE")
-puts param  #=>
+puts param  # =>
 # {"name"=>"TYPE", "bit_offset"=>64, "bit_size"=>16, "data_type"=>"UINT",
 #  "description"=>"Collect type which can be normal or special", "default"=>0,
 #  "minimum"=>0, "maximum"=>65535, "endianness"=>"BIG_ENDIAN", "required"=>true, "overflow"=>"ERROR",
@@ -1646,7 +1646,7 @@ puts param  #=>
 
 ```python
 param = get_param("INST COLLECT TYPE")
-print(param)  #=>
+print(param)  # =>
 # {'name': 'TYPE', 'bit_offset': 64, 'bit_size': 16, 'data_type': 'UINT',
 #  'description': 'Collect type which can be normal or special', 'default': 0,
 #  'minimum': 0, 'maximum': 65535, 'endianness': 'BIG_ENDIAN', 'required': True, 'overflow': 'ERROR',
@@ -1692,7 +1692,7 @@ buffer = get_cmd_buffer("<Target Name>", "<Packet Name>")['buffer']
 
 ```ruby
 packet = get_cmd_buffer("INST COLLECT")
-puts packet  #=>
+puts packet  # =>
 # {"time"=>"1697298846752053420", "received_time"=>"1697298846752053420",
 #  "target_name"=>"INST", "packet_name"=>"COLLECT", "received_count"=>"20", "stored"=>"false",
 #  "buffer"=>"\x13\xE7\xC0\x00\x00\f\x00\x01\x00\x00@\xE0\x00\x00\xAB\x00\x00\x00\x00"}
@@ -1704,7 +1704,7 @@ puts packet  #=>
 
 ```python
 packet = get_cmd_buffer("INST COLLECT")
-print(packet)  #=>
+print(packet)  # =>
 # {'time': '1697298923745982470', 'received_time': '1697298923745982470',
 #  'target_name': 'INST', 'packet_name': 'COLLECT', 'received_count': '21', 'stored': 'false',
 #  'buffer': bytearray(b'\x13\xe7\xc0\x00\x00\x0c\x00\x01\x00\x00@\xe0\x00\x00\xab\x00\x00\x00\x00')}
@@ -1748,7 +1748,7 @@ get_cmd_hazardous("<Target Name>", "<Command Name>", <Command Params - optional>
 
 ```ruby
 hazardous = get_cmd_hazardous("INST", "COLLECT", {'TYPE' => 'SPECIAL'})
-puts hazardous  #=> true
+puts hazardous  # => true
 ```
 
 </TabItem>
@@ -1757,7 +1757,7 @@ puts hazardous  #=> true
 
 ```python
 hazardous = get_cmd_hazardous("INST", "COLLECT", {'TYPE': 'SPECIAL'})
-print(hazardous) #=> True
+print(hazardous) # => True
 ```
 
 </TabItem>
@@ -1799,7 +1799,7 @@ get_cmd_value("<Target Name>", "<Command Name>", "<Parameter Name>", <Value Type
 
 ```ruby
 value = get_cmd_value("INST", "COLLECT", "TEMP", :RAW)
-puts value  #=> 0.0
+puts value  # => 0.0
 ```
 
 </TabItem>
@@ -1808,7 +1808,7 @@ puts value  #=> 0.0
 
 ```python
 value = get_cmd_value("INST", "COLLECT", "TEMP", "RAW")
-print(value)  #=> 0.0
+print(value)  # => 0.0
 ```
 
 </TabItem>
@@ -1993,7 +1993,7 @@ critical_cmd_status(uuid)
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") #=> WAITING
+status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") # => WAITING
 ```
 
 </TabItem>
@@ -2001,7 +2001,7 @@ status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") #=> WAITING
 <TabItem value="python" label="Python Example">
 
 ```python
-status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") #=> WAITING
+status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") # => WAITING
 ```
 
 </TabItem>
@@ -2131,7 +2131,7 @@ critical_cmd_can_approve(uuid)
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") #=> true / false
+status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") # => true / false
 ```
 
 </TabItem>
@@ -2139,7 +2139,7 @@ status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") #=> tr
 <TabItem value="python" label="Python Example">
 
 ```python
-status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") #=> True / False
+status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") # => True / False
 ```
 
 </TabItem>
@@ -2254,7 +2254,7 @@ queue_get('<Queue Name>')
 
 ```ruby
 queue = queue_get('TEST')
-puts queue #=>
+puts queue # =>
 ```
 
 </TabItem>
@@ -2263,7 +2263,7 @@ puts queue #=>
 
 ```python
 queue = queue_get('TEST')
-print(queue) #=>
+print(queue) # =>
 ```
 
 </TabItem>
@@ -2280,7 +2280,7 @@ Get information about all command queues.
 
 ```ruby
 all = queue_all()
-puts all #=>
+puts all # =>
 ```
 
 </TabItem>
@@ -2289,7 +2289,7 @@ puts all #=>
 
 ```python
 all = queue_all()
-print(all) #=>
+print(all) # =>
 ```
 
 </TabItem>
@@ -2328,7 +2328,7 @@ queue_list('<Queue Name>')
 
 ```ruby
 cmds = queue_list('TEST')
-puts cmds #=>
+puts cmds # =>
 ```
 
 </TabItem>
@@ -2337,7 +2337,7 @@ puts cmds #=>
 
 ```python
 cmds = queue_list('TEST')
-print(cmds) #=>
+print(cmds) # =>
 ```
 
 </TabItem>
@@ -3206,7 +3206,7 @@ get_all_tlm_names("<Target Name>")
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-get_all_tlm_names("INST")  #=> ["ADCS", "HEALTH_STATUS", ...]
+get_all_tlm_names("INST")  # => ["ADCS", "HEALTH_STATUS", ...]
 ```
 
 </TabItem>
@@ -3214,7 +3214,7 @@ get_all_tlm_names("INST")  #=> ["ADCS", "HEALTH_STATUS", ...]
 <TabItem value="python" label="Python Example">
 
 ```python
-get_all_tlm_names("INST")  #=> ["ADCS", "HEALTH_STATUS", ...]
+get_all_tlm_names("INST")  # => ["ADCS", "HEALTH_STATUS", ...]
 ```
 
 </TabItem>
@@ -3252,7 +3252,7 @@ get_all_tlm_item_names("<Target Name>")
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-get_all_tlm_item_names("INST")  #=> ["ARY", "ARY2", "ASCIICMD", "ATTPROGRESS", ...]
+get_all_tlm_item_names("INST")  # => ["ARY", "ARY2", "ASCIICMD", "ATTPROGRESS", ...]
 ```
 
 </TabItem>
@@ -3260,7 +3260,7 @@ get_all_tlm_item_names("INST")  #=> ["ARY", "ARY2", "ASCIICMD", "ATTPROGRESS", .
 <TabItem value="python" label="Python Example">
 
 ```python
-get_all_tlm_item_names("INST")  #=> ["ARY", "ARY2", "ASCIICMD", "ATTPROGRESS", ...]
+get_all_tlm_item_names("INST")  # => ["ARY", "ARY2", "ASCIICMD", "ATTPROGRESS", ...]
 ```
 
 </TabItem>
@@ -3705,7 +3705,7 @@ get_overrides()
 
 ```ruby
 override_tlm("INST HEALTH_STATUS TEMP1 = 5")
-puts get_overrides() #=>
+puts get_overrides() # =>
 # [ {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"RAW", "value"=>5}
 #   {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"CONVERTED", "value"=>5}
 #   {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"FORMATTED", "value"=>"5"} ]
@@ -3717,7 +3717,7 @@ puts get_overrides() #=>
 
 ```python
 override_tlm("INST HEALTH_STATUS TEMP1 = 5")
-print(get_overrides()) #=>
+print(get_overrides()) # =>
 # [ {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'RAW', 'value': 5},
 #   {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'CONVERTED', 'value': 5},
 #   {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'FORMATTED', 'value': '5'} ]
@@ -3906,7 +3906,7 @@ get_tlm_cnt("<Target>", "<Packet>")
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-get_tlm_cnt("INST HEALTH_STATUS")  #=> 10
+get_tlm_cnt("INST HEALTH_STATUS")  # => 10
 ```
 
 </TabItem>
@@ -3914,7 +3914,7 @@ get_tlm_cnt("INST HEALTH_STATUS")  #=> 10
 <TabItem value="python" label="Python Example">
 
 ```python
-get_tlm_cnt("INST HEALTH_STATUS")  #=> 10
+get_tlm_cnt("INST HEALTH_STATUS")  # => 10
 ```
 
 </TabItem>
@@ -3953,7 +3953,7 @@ get_tlm_cnts([["<Target>", "<Packet>"], ["<Target>", "<Packet>"]])
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-get_tlm_cnts([["INST", "ADCS"], ["INST", "HEALTH_STATUS"]])  #=> [100, 10]
+get_tlm_cnts([["INST", "ADCS"], ["INST", "HEALTH_STATUS"]])  # => [100, 10]
 ```
 
 </TabItem>
@@ -3961,7 +3961,7 @@ get_tlm_cnts([["INST", "ADCS"], ["INST", "HEALTH_STATUS"]])  #=> [100, 10]
 <TabItem value="python" label="Python Example">
 
 ```python
-get_tlm_cnts([["INST", "ADCS"], ["INST", "HEALTH_STATUS"]])  #=> [100, 10]
+get_tlm_cnts([["INST", "ADCS"], ["INST", "HEALTH_STATUS"]])  # => [100, 10]
 ```
 
 </TabItem>
@@ -4002,7 +4002,7 @@ get_packet_derived_items("<Target>", "<Packet>")
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-get_packet_derived_items("INST HEALTH_STATUS")  #=> ['PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED', ...]
+get_packet_derived_items("INST HEALTH_STATUS")  # => ['PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED', ...]
 ```
 
 </TabItem>
@@ -4010,7 +4010,7 @@ get_packet_derived_items("INST HEALTH_STATUS")  #=> ['PACKET_TIMESECONDS', 'PACK
 <TabItem value="python" label="Python Example">
 
 ```python
-get_packet_derived_items("INST HEALTH_STATUS")  #=> ['PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED', ...]
+get_packet_derived_items("INST HEALTH_STATUS")  # => ['PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED', ...]
 ```
 
 </TabItem>
@@ -4030,8 +4030,8 @@ Pauses the script for a configurable amount of time (minimum 10ms) or until a co
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-elapsed = wait() #=> Returns the actual time waited
-elapsed = wait(<Time>) #=> Returns the actual time waited
+elapsed = wait() # => Returns the actual time waited as float
+elapsed = wait(<Time>) # => Returns the actual time waited as float
 ```
 
 </TabItem>
@@ -4039,8 +4039,8 @@ elapsed = wait(<Time>) #=> Returns the actual time waited
 <TabItem value="python" label="Python Syntax">
 
 ```python
-elapsed = wait() #=> Returns the actual time waited
-elapsed = wait(<Time>) #=> Returns the actual time waited
+elapsed = wait() # => Returns the actual time waited as float
+elapsed = wait(<Time>) # => Returns the actual time waited as float
 ```
 
 </TabItem>
@@ -4055,7 +4055,13 @@ elapsed = wait(<Time>) #=> Returns the actual time waited
 
 ```ruby
 # Returns true or false based on the whether the expression is true or false
-success = wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling Rate (optional)>, type, quiet)
+success = wait(
+  "<Target Name> <Packet Name> <Item Name> <Comparison>",
+  <Timeout>,
+  <Polling Rate (optional)>,
+  type: :CONVERTED,
+  quiet: false
+) # => true / false
 ```
 
 </TabItem>
@@ -4064,7 +4070,13 @@ success = wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>
 
 ```python
 # Returns True or False based on the whether the expression is True or False
-success = wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling Rate (optional)>, type, quiet)
+success = wait(
+  "<Target Name> <Packet Name> <Item Name> <Comparison>",
+  <Timeout>,
+  <Polling Rate (optional)>,
+  type="CONVERTED",
+  quiet=False
+) # => True / False
 ```
 
 </TabItem>
@@ -4079,7 +4091,7 @@ success = wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>
 | Timeout      | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true. |
 | Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                           |
 | type         | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).       |
-| quiet        | Named parameter indicating whether to log the result. Defaults to true.                                        |
+| quiet        | Named parameter indicating whether to log the result. Defaults to false which means log the wait.              |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -4088,7 +4100,7 @@ success = wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>
 elapsed = wait
 elapsed = wait 5
 success = wait("INST HEALTH_STATUS COLLECTS == 3", 10)
-success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type: :RAW, quiet: false)
+success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type: :RAW, quiet: true)
 ```
 
 </TabItem>
@@ -4099,7 +4111,7 @@ success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type: :RAW, quiet: false)
 elapsed = wait()
 elapsed = wait(5)
 success = wait("INST HEALTH_STATUS COLLECTS == 3", 10)
-success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type='RAW', quiet=False)
+success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type='RAW', quiet=True)
 ```
 
 </TabItem>
@@ -4116,7 +4128,15 @@ Pauses the script for a configurable amount of time or until a converted telemet
 
 ```ruby
 # Returns true or false based on the whether the expression is true or false
-success = wait_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>, <Timeout>, <Polling Rate (optional), type, quiet>)
+success = wait_tolerance(
+  "<Target Name> <Packet Name> <Item Name>", # Can also be given as individual parameters
+  <Expected Value>,
+  <Tolerance>,
+  <Timeout>,
+  <Polling Rate (optional)>,
+  type: :CONVERTED,
+  quiet: false
+) # => true / false
 ```
 
 </TabItem>
@@ -4124,8 +4144,16 @@ success = wait_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Va
 <TabItem value="python" label="Python Syntax">
 
 ```python
-# Returns true or false based on the whether the expression is true or false
-success = wait_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>, <Timeout>, <Polling Rate (optional), type, quiet>)
+# Returns True or False based on the whether the expression is true or false
+success = wait_tolerance(
+  "<Target Name> <Packet Name> <Item Name>",  # Can also be given as individual parameters
+  <Expected Value>,
+  <Tolerance>,
+  <Timeout>,
+  <Polling Rate (optional)>,
+  type="CONVERTED",
+  quiet=False
+) # => True / False
 ```
 
 </TabItem>
@@ -4141,7 +4169,7 @@ success = wait_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Va
 | Timeout        | Timeout in seconds. Script will proceed if the wait statement times out waiting for the comparison to be true. |
 | Polling Rate   | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                           |
 | type           | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).       |
-| quiet          | Named parameter indicating whether to log the result. Defaults to true.                                        |
+| quiet          | Named parameter indicating whether to log the result. Defaults to false which means log the wait.              |
 
 Ruby Examples:
 
@@ -4174,7 +4202,7 @@ wait_expression(
   polling_rate = DEFAULT_TLM_POLLING_RATE,
   context = nil,
   quiet: false
-) # -> boolean
+) # => true / false
 ```
 
 </TabItem>
@@ -4190,7 +4218,7 @@ wait_expression(
     globals=None,
     locals=None,
     quiet=False,
-) # -> bool
+) # => True / False
 ```
 
 </TabItem>
@@ -4204,7 +4232,7 @@ wait_expression(
 | context (ruby only)   | The context to call eval with. Defaults to nil. Context in Ruby is typically binding() and is usually not needed.             |
 | globals (python only) | The globals to call eval with. Defaults to None. Note that to use COSMOS APIs like tlm() you must pass globals().             |
 | locals (python only)  | The locals to call eval with. Defaults to None. Note that if you're using local variables in a method you must pass locals(). |
-| quiet                 | Whether to log the result. Defaults to false which means to log.                                                              |
+| quiet                 | Whether to log the result. Defaults to false which means log the wait.                                                        |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -4238,7 +4266,14 @@ Pauses the script until a certain number of packets have been received. If a tim
 
 ```ruby
 # Returns true or false based on the whether the packet was received
-success = wait_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (optional)>, quiet)
+success = wait_packet(
+  "<Target>",
+  "<Packet>",
+  <Num Packets>,
+  <Timeout>,
+  <Polling Rate (optional)>,
+  quiet: false
+) # => true / false
 ```
 
 </TabItem>
@@ -4247,20 +4282,27 @@ success = wait_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling
 
 ```python
 # Returns True or False based on the whether the packet was received
-success = wait_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (optional)>, quiet)
+success = wait_packet(
+  "<Target>",
+  "<Packet>",
+  <Num Packets>,
+  <Timeout>,
+  <Polling Rate (optional)>,
+  quiet=False
+) # => True / False
 ```
 
 </TabItem>
 </Tabs>
 
-| Parameter    | Description                                                                          |
-| ------------ | ------------------------------------------------------------------------------------ |
-| Target       | The target name                                                                      |
-| Packet       | The packet name                                                                      |
-| Num Packets  | The number of packets to receive                                                     |
-| Timeout      | Timeout in seconds.                                                                  |
-| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified. |
-| quiet        | Named parameter indicating whether to log the result. Defaults to true.              |
+| Parameter    | Description                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------------- |
+| Target       | The target name                                                                                   |
+| Packet       | The packet name                                                                                   |
+| Num Packets  | The number of packets to receive                                                                  |
+| Timeout      | Timeout in seconds.                                                                               |
+| Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.              |
+| quiet        | Named parameter indicating whether to log the result. Defaults to false which means log the wait. |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -4291,7 +4333,12 @@ Combines the wait and check keywords into one. This pauses the script until the 
 
 ```ruby
 # Returns the amount of time elapsed waiting for the expression
-elapsed = wait_check("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling Rate (optional)>, type)
+elapsed = wait_check(
+  "<Target Name> <Packet Name> <Item Name> <Comparison>",
+  <Timeout>,
+  <Polling Rate (optional)>,
+  type: :CONVERTED
+) # => float
 ```
 
 </TabItem>
@@ -4300,7 +4347,12 @@ elapsed = wait_check("<Target Name> <Packet Name> <Item Name> <Comparison>", <Ti
 
 ```python
 # Returns the amount of time elapsed waiting for the expression
-elapsed = wait_check("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling Rate (optional)>, type)
+elapsed = wait_check(
+  "<Target Name> <Packet Name> <Item Name> <Comparison>",
+  <Timeout>,
+  <Polling Rate (optional)>,
+  type="CONVERTED"
+) # => float
 ```
 
 </TabItem>
@@ -4347,7 +4399,14 @@ Pauses the script for a configurable amount of time or until a converted telemet
 
 ```ruby
 # Returns the amount of time elapsed waiting for the expression
-elapsed = wait_check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>, <Timeout>, <Polling Rate (optional)>, type)
+elapsed = wait_check_tolerance(
+  "<Target Name> <Packet Name> <Item Name>",
+  <Expected Value>,
+  <Tolerance>,
+  <Timeout>,
+  <Polling Rate (optional)>,
+  type: :CONVERTED
+) # => float
 ```
 
 </TabItem>
@@ -4356,7 +4415,14 @@ elapsed = wait_check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expec
 
 ```python
 # Returns the amount of time elapsed waiting for the expression
-elapsed = wait_check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>, <Timeout>, <Polling Rate (optional)>, type)
+elapsed = wait_check_tolerance(
+  "<Target Name> <Packet Name> <Item Name>",
+  <Expected Value>,
+  <Tolerance>,
+  <Timeout>,
+  <Polling Rate (optional)>,
+  type="CONVERTED"
+) # => float
 ```
 
 </TabItem>
@@ -4409,7 +4475,7 @@ wait_check_expression(
   timeout,
   polling_rate = DEFAULT_TLM_POLLING_RATE,
   context = nil
-) # -> int
+) # => float
 ```
 
 </TabItem>
@@ -4424,7 +4490,7 @@ wait_check_expression(
     polling_rate=DEFAULT_TLM_POLLING_RATE,
     globals=None,
     locals=None
-) # -> int
+) # => float
 ```
 
 </TabItem>
@@ -4469,7 +4535,14 @@ Pauses the script until a certain number of packets have been received. If a tim
 
 ```ruby
 # Returns the amount of time elapsed waiting for the packets
-elapsed = wait_check_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (optional)>, quiet)
+elapsed = wait_check_packet(
+  "<Target>",
+  "<Packet>",
+  <Num Packets>,
+  <Timeout>,
+  <Polling Rate (optional)>,
+  quiet=false
+) # => float
 ```
 
 </TabItem>
@@ -4478,7 +4551,14 @@ elapsed = wait_check_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <P
 
 ```python
 # Returns the amount of time elapsed waiting for the packets
-elapsed = wait_check_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (optional)>, quiet)
+elapsed = wait_check_packet(
+  "<Target>",
+  "<Packet>",
+  <Num Packets>,
+  <Timeout>,
+  <Polling Rate (optional)>,
+  quiet=False
+) # => float
 ```
 
 </TabItem>
@@ -4491,7 +4571,7 @@ elapsed = wait_check_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <P
 | Num Packets  | The number of packets to receive                                                                          |
 | Timeout      | Timeout in seconds. Script will stop if the wait statement times out waiting specified number of packets. |
 | Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                      |
-| quiet        | Named parameter indicating whether to log the result. Defaults to true.                                   |
+| quiet        | Named parameter indicating whether to log the result. Defaults to false which means log the wait.         |
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby Example">
@@ -4549,7 +4629,7 @@ limits_enabled("<Target Name> <Packet Name> <Item Name>")
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-enabled = limits_enabled?("INST HEALTH_STATUS TEMP1") #=> true or false
+enabled = limits_enabled?("INST HEALTH_STATUS TEMP1") # => true or false
 ```
 
 </TabItem>
@@ -4557,7 +4637,7 @@ enabled = limits_enabled?("INST HEALTH_STATUS TEMP1") #=> true or false
 <TabItem value="python" label="Python Example">
 
 ```python
-enabled = limits_enabled("INST HEALTH_STATUS TEMP1") #=> True or False
+enabled = limits_enabled("INST HEALTH_STATUS TEMP1") # => True or False
 ```
 
 </TabItem>
@@ -4904,9 +4984,9 @@ get_limits(<Target Name>, <Packet Name>, <Item Name>)
 
 ```ruby
 result = get_limits('INST', 'HEALTH_STATUS', 'TEMP1')
-puts result #=> {"DEFAULT"=>[-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], "TVAC"=>[-80.0, -30.0, 30.0, 80.0]}
-puts result.keys #=> ['DEFAULT', 'TVAC']
-puts result['DEFAULT'] #=> [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
+puts result # => {"DEFAULT"=>[-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], "TVAC"=>[-80.0, -30.0, 30.0, 80.0]}
+puts result.keys # => ['DEFAULT', 'TVAC']
+puts result['DEFAULT'] # => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
 ```
 
 </TabItem>
@@ -4915,9 +4995,9 @@ puts result['DEFAULT'] #=> [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
 
 ```python
 result = get_limits('INST', 'HEALTH_STATUS', 'TEMP1')
-print(result) #=> {'DEFAULT'=>[-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], 'TVAC'=>[-80.0, -30.0, 30.0, 80.0]}
-print(result.keys()) #=> dict_keys(['DEFAULT', 'TVAC'])
-print(result['DEFAULT']) #=> [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
+print(result) # => {'DEFAULT'=>[-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], 'TVAC'=>[-80.0, -30.0, 30.0, 80.0]}
+print(result.keys()) # => dict_keys(['DEFAULT', 'TVAC'])
+print(result['DEFAULT']) # => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
 ```
 
 </TabItem>
@@ -5185,8 +5265,8 @@ plugin_list(default = False)
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-plugins = plugin_list() #=> ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539']
-plugins = plugin_list(default: true) #=>
+plugins = plugin_list() # => ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539']
+plugins = plugin_list(default: true) # =>
 # ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539',
 #  'openc3-cosmos-tool-admin-6.0.3.pre.beta0.20250115200004.gem__20250116211504',
 #  'openc3-cosmos-tool-bucketexplorer-6.0.3.pre.beta0.20250115200008.gem__20250116211525',
@@ -5211,8 +5291,8 @@ plugins = plugin_list(default: true) #=>
 <TabItem value="python" label="Python Example">
 
 ```python
-plugins = plugin_list() #=> ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539']
-plugins = plugin_list(default=True) #=>
+plugins = plugin_list() # => ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539']
+plugins = plugin_list(default=True) # =>
 # ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539',
 #  'openc3-cosmos-tool-admin-6.0.3.pre.beta0.20250115200004.gem__20250116211504',
 #  'openc3-cosmos-tool-bucketexplorer-6.0.3.pre.beta0.20250115200008.gem__20250116211525',
@@ -5267,7 +5347,7 @@ plugin_get(<Plugin Name>)
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539') #=>
+plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539') # =>
 # { "name"=>"openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539",
 #   "variables"=>{"inst_target_name"=>"INST", ...},
 #   "plugin_txt_lines"=>["# Note: This plugin includes 4 targets ..."],
@@ -5280,7 +5360,7 @@ plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__2025011621453
 <TabItem value="python" label="Python Example">
 
 ```python
-plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539') #=>
+plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539') # =>
 # { "name"=>"openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539",
 #   "variables"=>{"inst_target_name"=>"INST", ...},
 #   "plugin_txt_lines"=>["# Note: This plugin includes 4 targets ..."],
@@ -5301,7 +5381,7 @@ List all the packages installed in COSMOS.
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-package_list() #=> {"ruby"=>["openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem", ..., "openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem"],
+package_list() # => {"ruby"=>["openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem", ..., "openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem"],
                #    "python"=>["numpy-2.1.1", "pip-24.0", "setuptools-65.5.0"]}
 ```
 
@@ -5310,7 +5390,7 @@ package_list() #=> {"ruby"=>["openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.
 <TabItem value="python" label="Python Example">
 
 ```python
-package_list() #=> {'ruby': ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem', ..., 'openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem'],
+package_list() # => {'ruby': ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem', ..., 'openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem'],
                #    'python': ['numpy-2.1.1', 'pip-24.0', 'setuptools-65.5.0']}
 ```
 
@@ -5331,7 +5411,7 @@ Returns a list of the targets in the system in an array. Previously `get_target_
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-targets = get_target_names() #=> ['INST', 'INST2', 'EXAMPLE', 'TEMPLATED']
+targets = get_target_names() # => ['INST', 'INST2', 'EXAMPLE', 'TEMPLATED']
 ```
 
 </TabItem>
@@ -5339,7 +5419,7 @@ targets = get_target_names() #=> ['INST', 'INST2', 'EXAMPLE', 'TEMPLATED']
 <TabItem value="python" label="Python Example">
 
 ```python
-targets = get_target_names() #=> ['INST', 'INST2', 'EXAMPLE', 'TEMPLATED']
+targets = get_target_names() # => ['INST', 'INST2', 'EXAMPLE', 'TEMPLATED']
 ```
 
 </TabItem>
@@ -5590,7 +5670,7 @@ Returns a list of the interfaces in the system in an array.
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-interface_names = get_interface_names() #=> ['INST_INT', 'INST2_INT', 'EXAMPLE_INT', 'TEMPLATED_INT']
+interface_names = get_interface_names() # => ['INST_INT', 'INST2_INT', 'EXAMPLE_INT', 'TEMPLATED_INT']
 ```
 
 </TabItem>
@@ -5598,7 +5678,7 @@ interface_names = get_interface_names() #=> ['INST_INT', 'INST2_INT', 'EXAMPLE_I
 <TabItem value="python" label="Python Example">
 
 ```python
-interface_names = get_interface_names() #=> ['INST_INT', 'INST2_INT', 'EXAMPLE_INT', 'TEMPLATED_INT']
+interface_names = get_interface_names() # => ['INST_INT', 'INST2_INT', 'EXAMPLE_INT', 'TEMPLATED_INT']
 ```
 
 </TabItem>
@@ -6291,7 +6371,7 @@ Returns a list of the routers in the system in an array.
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-router_names = get_router_names() #=> ['ROUTER_INT']
+router_names = get_router_names() # => ['ROUTER_INT']
 ```
 
 </TabItem>
@@ -6299,7 +6379,7 @@ router_names = get_router_names() #=> ['ROUTER_INT']
 <TabItem value="python" label="Python Example">
 
 ```python
-router_names = get_router_names() #=> ['ROUTER_INT']
+router_names = get_router_names() # => ['ROUTER_INT']
 ```
 
 </TabItem>
@@ -6996,9 +7076,9 @@ filename, definition, table_name
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt") #=>
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt") # =>
 # {"filename"=>"INST/tables/bin/ConfigTables.csv", "contents"=>"MC_CONFIGURATION\nLabel, ...
-table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name: "MC_CONFIGURATION") #=>
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name: "MC_CONFIGURATION") # =>
 # {"filename"=>"INST/tables/bin/McConfiguration.csv", "contents"=>"MC_CONFIGURATION\nLabel, ...
 ```
 
@@ -7007,9 +7087,9 @@ table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/con
 <TabItem value="python" label="Python Example">
 
 ```python
-table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt") #=>
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt") # =>
 # {'filename': 'INST/tables/bin/ConfigTables.csv', 'contents': 'MC_CONFIGURATION\nLabel, ...
-table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name="MC_CONFIGURATION") #=>
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name="MC_CONFIGURATION") # =>
 # {'filename': 'INST/tables/bin/ConfigTables.csv', 'contents': 'MC_CONFIGURATION\nLabel, ...
 ```
 
@@ -7101,7 +7181,7 @@ stash_get("<Stash Key>")
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-stash_get('run_count')  #=> 5
+stash_get('run_count')  # => 5
 ```
 
 </TabItem>
@@ -7109,7 +7189,7 @@ stash_get('run_count')  #=> 5
 <TabItem value="python" label="Python Example">
 
 ```python
-stash_get('run_count')  #=> 5
+stash_get('run_count')  # => 5
 ```
 
 </TabItem>
@@ -7125,7 +7205,7 @@ Returns all the stash items as a Ruby hash or Python dict.
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-stash_all()  #=> ['run_count' => 5, 'setpoint' => 23.4]
+stash_all()  # => ['run_count' => 5, 'setpoint' => 23.4]
 ```
 
 </TabItem>
@@ -7133,7 +7213,7 @@ stash_all()  #=> ['run_count' => 5, 'setpoint' => 23.4]
 <TabItem value="python" label="Python Example">
 
 ```python
-stash_all()  #=> ['run_count': 5, 'setpoint': 23.4]
+stash_all()  # => ['run_count': 5, 'setpoint': 23.4]
 ```
 
 </TabItem>
@@ -7149,7 +7229,7 @@ Returns all the stash keys.
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-stash_keys()  #=> ['run_count', 'setpoint']
+stash_keys()  # => ['run_count', 'setpoint']
 ```
 
 </TabItem>
@@ -7157,7 +7237,7 @@ stash_keys()  #=> ['run_count', 'setpoint']
 <TabItem value="python" label="Python Example">
 
 ```python
-stash_keys()  #=> ['run_count', 'setpoint']
+stash_keys()  # => ['run_count', 'setpoint']
 ```
 
 </TabItem>
@@ -7390,7 +7470,7 @@ Returns a list of available telemetry screens.
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-get_screen_list() #=> ['INST ADCS', 'INST COMMANDING', ...]
+get_screen_list() # => ['INST ADCS', 'INST COMMANDING', ...]
 ```
 
 </TabItem>
@@ -7398,7 +7478,7 @@ get_screen_list() #=> ['INST ADCS', 'INST COMMANDING', ...]
 <TabItem value="python" label="Python Example">
 
 ```python
-get_screen_list() #=> ['INST ADCS', 'INST COMMANDING', ...]
+get_screen_list() # => ['INST ADCS', 'INST COMMANDING', ...]
 ```
 
 </TabItem>
@@ -7758,8 +7838,8 @@ Returns all the available files in COSMOS as an array / list. This includes conf
 
 ```ruby
 scripts = script_list()
-puts scripts.length #=> 139
-puts scripts.select {|script| script.include?('/lib/') || script.include?('/procedures/')} #=>
+puts scripts.length # => 139
+puts scripts.select {|script| script.include?('/lib/') || script.include?('/procedures/')} # =>
 # [EXAMPLE/lib/example_interface.rb, INST/lib/example_limits_response.rb, ...]
 ```
 
@@ -7770,7 +7850,7 @@ puts scripts.select {|script| script.include?('/lib/') || script.include?('/proc
 ```python
 scripts = script_list()
 print(len(scripts))
-print(list(script for script in scripts if '/lib/' in script or '/procedures/' in script)) #=>
+print(list(script for script in scripts if '/lib/' in script or '/procedures/' in script)) # =>
 # [EXAMPLE/lib/example_interface.rb, INST/lib/example_limits_response.rb, ...]
 ```
 
@@ -7859,7 +7939,7 @@ script_body("<Script Name>")
 
 ```ruby
 script = script_body("INST/procedures/checks.rb")
-puts script #=> # Display all environment variables\nputs ENV.inspect ...
+puts script # => # Display all environment variables\nputs ENV.inspect ...
 ```
 
 </TabItem>
@@ -7868,7 +7948,7 @@ puts script #=> # Display all environment variables\nputs ENV.inspect ...
 
 ```python
 script = script_body("INST2/procedures/checks.py")
-print(script) #=> # import os\n\n# Display the environment variables ...
+print(script) # => # import os\n\n# Display the environment variables ...
 ```
 
 </TabItem>
@@ -8102,7 +8182,7 @@ script_syntax_check("<Script Name>")
 
 ```ruby
 result = script_syntax_check("INST/procedures/checks.rb")
-puts result #=> {"title"=>"Syntax Check Successful", "description"=>"[\"Syntax OK\\n\"]", "success"=>true}
+puts result # => {"title"=>"Syntax Check Successful", "description"=>"[\"Syntax OK\\n\"]", "success"=>true}
 ```
 
 </TabItem>
@@ -8111,7 +8191,7 @@ puts result #=> {"title"=>"Syntax Check Successful", "description"=>"[\"Syntax O
 
 ```python
 result = script_syntax_check("INST2/procedures/checks.py")
-print(result) #=> {'title': 'Syntax Check Successful', 'description': '["Syntax OK"]', 'success': True}
+print(result) # => {'title': 'Syntax Check Successful', 'description': '["Syntax OK"]', 'success': True}
 ```
 
 </TabItem>
@@ -8150,7 +8230,7 @@ script_instrumented("<Script Name>")
 
 ```ruby
 script = script_instrumented("INST/procedures/checks.rb")
-puts script #=> private; __return_val = nil; begin; RunningScript.instance.script_binding = binding(); ...
+puts script # => private; __return_val = nil; begin; RunningScript.instance.script_binding = binding(); ...
 ```
 
 </TabItem>
@@ -8159,7 +8239,7 @@ puts script #=> private; __return_val = nil; begin; RunningScript.instance.scrip
 
 ```python
 script = script_instrumented("INST2/procedures/checks.py")
-print(script) #=> while True:\ntry:\nRunningScript.instance.pre_line_instrumentation ...
+print(script) # => while True:\ntry:\nRunningScript.instance.pre_line_instrumentation ...
 ```
 
 </TabItem>
@@ -8294,7 +8374,7 @@ running_script_list(limit = <limit>, offset = <offset>)
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-running_script_list(limit: 20, offset: 10) #=> [{"name"=>"293", "state"=>"waiting", "shard"=>0, "filename"=>"INST/procedures/collect.rb", "current_filename"=>"INST/procedures/collect.rb", "line_no"=>4, "start_line_no"=>1, "end_line_no"=>nil, "username"=>"anonymous", "user_full_name"=>"Anonymous", "start_time"=>"2025-05-03T04:26:50Z", "end_time"=>nil, "disconnect"=>false, "environment"=>"{}", "suite_runner"=>nil, "errors"=>nil, "pid"=>414, "log"=>nil, "report"=>nil, "updated_at"=>1746246411160414638, "scope"=>"DEFAULT"}]
+running_script_list(limit: 20, offset: 10) # => [{"name"=>"293", "state"=>"waiting", "shard"=>0, "filename"=>"INST/procedures/collect.rb", "current_filename"=>"INST/procedures/collect.rb", "line_no"=>4, "start_line_no"=>1, "end_line_no"=>nil, "username"=>"anonymous", "user_full_name"=>"Anonymous", "start_time"=>"2025-05-03T04:26:50Z", "end_time"=>nil, "disconnect"=>false, "environment"=>"{}", "suite_runner"=>nil, "errors"=>nil, "pid"=>414, "log"=>nil, "report"=>nil, "updated_at"=>1746246411160414638, "scope"=>"DEFAULT"}]
 ```
 
 </TabItem>
@@ -8302,7 +8382,7 @@ running_script_list(limit: 20, offset: 10) #=> [{"name"=>"293", "state"=>"waitin
 <TabItem value="python" label="Python Example">
 
 ```python
-running_script_list(limit = 20, offset = 10) #=>  [{'name': '372', 'state': 'spawning', 'shard': 0, 'filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'current_filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'line_no': 0, 'start_line_no': 1, 'end_line_no': None, 'username': 'anonymous', 'user_full_name': 'Anonymous', 'start_time': '2025-05-03T14:34:11Z', 'end_time': None, 'disconnect': False, 'environment': '{}', 'suite_runner': None, 'errors': None, 'pid': None, 'log': None, 'report': None, 'updated_at': 1746282851410918174, 'scope': 'DEFAULT'}]
+running_script_list(limit = 20, offset = 10) # =>  [{'name': '372', 'state': 'spawning', 'shard': 0, 'filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'current_filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'line_no': 0, 'start_line_no': 1, 'end_line_no': None, 'username': 'anonymous', 'user_full_name': 'Anonymous', 'start_time': '2025-05-03T14:34:11Z', 'end_time': None, 'disconnect': False, 'environment': '{}', 'suite_runner': None, 'errors': None, 'pid': None, 'log': None, 'report': None, 'updated_at': 1746282851410918174, 'scope': 'DEFAULT'}]
 ```
 
 </TabItem>
@@ -8355,7 +8435,7 @@ script_get("<Script Id>")
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-script_get(15) #=> {"name"=>"293", "state"=>"waiting", "shard"=>0, "filename"=>"INST/procedures/collect.rb", "current_filename"=>"INST/procedures/collect.rb", "line_no"=>4, "start_line_no"=>1, "end_line_no"=>nil, "username"=>"anonymous", "user_full_name"=>"Anonymous", "start_time"=>"2025-05-03T04:26:50Z", "end_time"=>nil, "disconnect"=>false, "environment"=>"{}", "suite_runner"=>nil, "errors"=>nil, "pid"=>414, "log"=>nil, "report"=>nil, "updated_at"=>1746246411160414638, "scope"=>"DEFAULT"}
+script_get(15) # => {"name"=>"293", "state"=>"waiting", "shard"=>0, "filename"=>"INST/procedures/collect.rb", "current_filename"=>"INST/procedures/collect.rb", "line_no"=>4, "start_line_no"=>1, "end_line_no"=>nil, "username"=>"anonymous", "user_full_name"=>"Anonymous", "start_time"=>"2025-05-03T04:26:50Z", "end_time"=>nil, "disconnect"=>false, "environment"=>"{}", "suite_runner"=>nil, "errors"=>nil, "pid"=>414, "log"=>nil, "report"=>nil, "updated_at"=>1746246411160414638, "scope"=>"DEFAULT"}
 ```
 
 </TabItem>
@@ -8363,7 +8443,7 @@ script_get(15) #=> {"name"=>"293", "state"=>"waiting", "shard"=>0, "filename"=>"
 <TabItem value="python" label="Python Example">
 
 ```python
-script_get(15) #=> {'name': '372', 'state': 'spawning', 'shard': 0, 'filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'current_filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'line_no': 0, 'start_line_no': 1, 'end_line_no': None, 'username': 'anonymous', 'user_full_name': 'Anonymous', 'start_time': '2025-05-03T14:34:11Z', 'end_time': None, 'disconnect': False, 'environment': '{}', 'suite_runner': None, 'errors': None, 'pid': None, 'log': None, 'report': None, 'updated_at': 1746282851410918174, 'scope': 'DEFAULT'}
+script_get(15) # => {'name': '372', 'state': 'spawning', 'shard': 0, 'filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'current_filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'line_no': 0, 'start_line_no': 1, 'end_line_no': None, 'username': 'anonymous', 'user_full_name': 'Anonymous', 'start_time': '2025-05-03T14:34:11Z', 'end_time': None, 'disconnect': False, 'environment': '{}', 'suite_runner': None, 'errors': None, 'pid': None, 'log': None, 'report': None, 'updated_at': 1746282851410918174, 'scope': 'DEFAULT'}
 ```
 
 </TabItem>
@@ -8733,7 +8813,7 @@ completed_script_list(limit = <limit>, offset = <offset>)
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-completed_script_list(limit: 10, offset: 0) #=> [{"id"=>"15", "user"=>"Anonymous", "name"=>"__TEMP__/2025_01_15_17_07_51_568_temp.rb", "log"=>"DEFAULT/tool_logs/sr/20250116/2025_01_16_00_28_43_sr_2025_01_15_17_07_51_568_temp.txt", "start"=>"2025-01-16 00:28:43 +0000"}, ...]
+completed_script_list(limit: 10, offset: 0) # => [{"id"=>"15", "user"=>"Anonymous", "name"=>"__TEMP__/2025_01_15_17_07_51_568_temp.rb", "log"=>"DEFAULT/tool_logs/sr/20250116/2025_01_16_00_28_43_sr_2025_01_15_17_07_51_568_temp.txt", "start"=>"2025-01-16 00:28:43 +0000"}, ...]
 ```
 
 </TabItem>
@@ -8741,7 +8821,7 @@ completed_script_list(limit: 10, offset: 0) #=> [{"id"=>"15", "user"=>"Anonymous
 <TabItem value="python" label="Python Example">
 
 ```python
-completed_script_list(limit = 10, offset = 0) #=> [{'id': 16, 'user': 'Anonymous', 'name': 'INST2/procedures/new_script.py', 'log': 'DEFAULT/tool_logs/sr/20250116/2025_01_16_17_46_22_sr_new_script.txt', 'start': '2025-01-16 17:46:22 +0000'}, ...]
+completed_script_list(limit = 10, offset = 0) # => [{'id': 16, 'user': 'Anonymous', 'name': 'INST2/procedures/new_script.py', 'log': 'DEFAULT/tool_logs/sr/20250116/2025_01_16_17_46_22_sr_new_script.txt', 'start': '2025-01-16 17:46:22 +0000'}, ...]
 ```
 
 </TabItem>
@@ -8877,7 +8957,7 @@ The method gets the maximum number of characters to display in Script Runner out
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-puts get_max_output() #=> 50000
+puts get_max_output() # => 50000
 ```
 
 </TabItem>
@@ -8885,7 +8965,7 @@ puts get_max_output() #=> 50000
 <TabItem value="python" label="Python Example">
 
 ```python
-print(get_max_output()) #=> 50000
+print(get_max_output()) # => 50000
 ```
 
 </TabItem>
@@ -9048,7 +9128,7 @@ Returns all the timelines in an array of hashes / list of dicts.
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-timelines = list_timelines() #=>
+timelines = list_timelines() # =>
 # [{"name"=>"Mine", "color"=>"#e67643", "execute"=>true, "shard"=>0, "scope"=>"DEFAULT", "updated_at"=>1737124024123643504}]
 ```
 
@@ -9057,7 +9137,7 @@ timelines = list_timelines() #=>
 <TabItem value="python" label="Python Example">
 
 ```python
-timelihes = list_timelines() #=>
+timelihes = list_timelines() # =>
 # [{'name': 'Mine', 'color': '#e67643', 'execute': True, 'shard': 0, 'scope': 'DEFAULT', 'updated_at': 1737124024123643504}]
 ```
 
@@ -9097,7 +9177,7 @@ create_timeline(name, color=None)
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-tl = create_timeline("Mine") #=>
+tl = create_timeline("Mine") # =>
 # {"name"=>"Mine", "color"=>"#e67643", "execute"=>true, "shard"=>0, "scope"=>"DEFAULT", "updated_at"=>1737124024123643504}
 ```
 
@@ -9106,7 +9186,7 @@ tl = create_timeline("Mine") #=>
 <TabItem value="python" label="Python Example">
 
 ```python
-tl = create_timeline("Other", color="#FF0000") #=>
+tl = create_timeline("Other", color="#FF0000") # =>
 # {'name': 'Other', 'color': '#FF0000', 'execute': True, 'shard': 0, 'scope': 'DEFAULT', 'updated_at': 1737126348971941923}
 ```
 
@@ -9145,7 +9225,7 @@ get_timeline(name)
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-tl = get_timeline("Mine") #=>
+tl = get_timeline("Mine") # =>
 # {"name"=>"Mine", "color"=>"#e67643", "execute"=>true, "shard"=>0, "scope"=>"DEFAULT", "updated_at"=>1737124024123643504}
 ```
 
@@ -9154,7 +9234,7 @@ tl = get_timeline("Mine") #=>
 <TabItem value="python" label="Python Example">
 
 ```python
-tl = get_timeline("Other") #=>
+tl = get_timeline("Other") # =>
 # {'name': 'Other', 'color': '#FF0000', 'execute': True, 'shard': 0, 'scope': 'DEFAULT', 'updated_at': 1737126348971941923}
 ```
 
@@ -9306,19 +9386,19 @@ create_timeline_activity(name, kind, start, stop, data={})
 now = Time.now()
 start = now + 3600
 stop = start + 3600
-act = create_timeline_activity("RubyTL", kind: "RESERVE", start: start, stop: stop) #=>
+act = create_timeline_activity("RubyTL", kind: "RESERVE", start: start, stop: stop) # =>
 # { "name"=>"RubyTL", "updated_at"=>1737128705034982375, "start"=>1737132303, "stop"=>1737135903,
 #   "kind"=>"reserve", "data"=>{"username"=>"operator"},
 #   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"5f373846-eb6c-43cd-97bd-cca19a8ffb04",
 #   "events"=>[{"time"=>1737128705, "event"=>"created"}], "recurring"=>{}}
 act = create_timeline_activity("RubyTL", kind: "COMMAND", start: start, stop: stop,
-    data: {command: "INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10"}) #=>
+    data: {command: "INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10"}) # =>
 # { "name"=>"RubyTL", "updated_at"=>1737128761316084471, "start"=>1737132303, "stop"=>1737135903,
 #   "kind"=>"command", "data"=>{"command"=>"INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10", "username"=>"operator"},
 #   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"cdb661b4-a65b-44e7-95e2-5e1dba80c782",
 #   "events"=>[{"time"=>1737128761, "event"=>"created"}], "recurring"=>{}}
 act = create_timeline_activity("RubyTL", kind: "SCRIPT", start: start, stop: stop,
-  data: {environment: [{key: "USER", value: "JASON"}], script: "INST/procedures/checks.rb"}) #=>
+  data: {environment: [{key: "USER", value: "JASON"}], script: "INST/procedures/checks.rb"}) # =>
 # { "name"=>"RubyTL", "updated_at"=>1737128791047885970, "start"=>1737135903, "stop"=>1737139503,
 #   "kind"=>"script", "data"=>{"environment"=>[{"key"=>"USER", "value"=>"JASON"}], "script"=>"INST/procedures/checks.rb", "username"=>"operator"},
 #   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"70426e3d-6313-4897-b159-6e5cd94ace1d",
@@ -9333,13 +9413,13 @@ act = create_timeline_activity("RubyTL", kind: "SCRIPT", start: start, stop: sto
 now = datetime.now(timezone.utc)
 start = now + timedelta(hours=1)
 stop = start + timedelta(hours=1)
-act = create_timeline_activity("PythonTL", kind="RESERVE", start=start, stop=stop) #=>
+act = create_timeline_activity("PythonTL", kind="RESERVE", start=start, stop=stop) # =>
 # {'name': 'PythonTL', 'updated_at': 1737129305507111708, 'start': 1737132902, 'stop': 1737136502,
 #  'kind': 'reserve', 'data': {'username': 'operator'},
 #  'scope': 'DEFAULT', 'fulfillment': False, 'uuid': '46328378-ed78-4719-ad70-e84951a196fd',
 #  'events': [{'time': 1737129305, 'event': 'created'}], 'recurring': {}}
 act = create_timeline_activity("PythonTL", kind="COMMAND", start=start, stop=stop,
-    data={'command': "INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10"}) #=>
+    data={'command': "INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10"}) # =>
 # {'name': 'PythonTL', 'updated_at': 1737129508886643928, 'start': 1737133108, 'stop': 1737136708,
 #  'kind': 'command', 'data': {'command': 'INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10', 'username': 'operator'},
 #  'scope': 'DEFAULT', 'fulfillment': False, 'uuid': 'cddbf034-ccdd-4c36-91c2-2653a39b06a5',
@@ -9347,7 +9427,7 @@ act = create_timeline_activity("PythonTL", kind="COMMAND", start=start, stop=sto
 start = now + timedelta(hours=2)
 stop = start + timedelta(hours=1)
 act = create_timeline_activity("PythonTL", kind="SCRIPT", start=start, stop=stop,
-  data={'environment': [{'key': "USER", 'value': "JASON"}], 'script': "INST2/procedures/checks.py"}) #=>
+  data={'environment': [{'key': "USER", 'value': "JASON"}], 'script': "INST2/procedures/checks.py"}) # =>
 # {'name': 'PythonTL', 'updated_at': 1737129509288571345, 'start': 1737136708, 'stop': 1737140308,
 #  'kind': 'script', 'data': {'environment': [{'key': 'USER', 'value': 'JASON'}], 'script': 'INST2/procedures/checks.py', 'username': 'operator'},
 #  'scope': 'DEFAULT', 'fulfillment': False, 'uuid': '4f8d791b-b138-4383-b5ec-85c28b2bea20',
@@ -9391,7 +9471,7 @@ get_timeline_activity(name, start, uuid)
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-act = get_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782") #=>
+act = get_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782") # =>
 # { "name"=>"RubyTL", "updated_at"=>1737128761316084471, "start"=>1737132303, "stop"=>1737135903,
 #   "kind"=>"command", "data"=>{"command"=>"INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10", "username"=>"operator"},
 #   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"cdb661b4-a65b-44e7-95e2-5e1dba80c782",
@@ -9403,7 +9483,7 @@ act = get_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1db
 <TabItem value="python" label="Python Example">
 
 ```python
-act = get_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a39b06a5") #=>
+act = get_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a39b06a5") # =>
 # {'name': 'PythonTL', 'updated_at': 1737129508886643928, 'start': 1737133108, 'stop': 1737136708,
 #  'kind': 'command', 'data': {'command': 'INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10', 'username': 'operator'},
 #  'scope': 'DEFAULT', 'fulfillment': False, 'uuid': 'cddbf034-ccdd-4c36-91c2-2653a39b06a5',
@@ -9448,7 +9528,7 @@ get_timeline_activities(name, start=None, stop=None, limit=None)
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-acts = get_timeline_activities("RubyTL", start: Time.now() - 3600, stop: Time.now(), limit: 1000) #=>
+acts = get_timeline_activities("RubyTL", start: Time.now() - 3600, stop: Time.now(), limit: 1000) # =>
 # [{ "name"=>"RubyTL", ... }, { "name"=>"RubyTL", ... }]
 ```
 
@@ -9458,7 +9538,7 @@ acts = get_timeline_activities("RubyTL", start: Time.now() - 3600, stop: Time.no
 
 ```python
 now = datetime.now(timezone.utc)
-acts = get_timeline_activities("PythonTL", start=now - timedelta(hours=2), stop=now, limit=1000) #=>
+acts = get_timeline_activities("PythonTL", start=now - timedelta(hours=2), stop=now, limit=1000) # =>
 # [{ "name"=>"PythonTL", ... }, { "name"=>"PythonTL", ... }]
 ```
 
@@ -9745,7 +9825,7 @@ Return all the current COSMOS setting name. These are the names that should be u
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-puts list_settings() #=> ["pypi_url", "rubygems_url", "source_url", "version"]
+puts list_settings() # => ["pypi_url", "rubygems_url", "source_url", "version"]
 ```
 
 </TabItem>
@@ -9753,7 +9833,7 @@ puts list_settings() #=> ["pypi_url", "rubygems_url", "source_url", "version"]
 <TabItem value="python" label="Python Example">
 
 ```python
-print(list_settings()) #=> ['pypi_url', 'rubygems_url', 'source_url', 'version']
+print(list_settings()) # => ['pypi_url', 'rubygems_url', 'source_url', 'version']
 ```
 
 </TabItem>
@@ -9769,7 +9849,7 @@ Return all the current COSMOS settings along with their values.
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-settings = get_all_settings() #=>
+settings = get_all_settings() # =>
 # { "version"=>{"name"=>"version", "data"=>"5.11.4-beta0", "updated_at"=>1698074299509456507},
 #   "pypi_url"=>{"name"=>"pypi_url", "data"=>"https://pypi.org/simple", "updated_at"=>1698026776574347007},
 #   "rubygems_url"=>{"name"=>"rubygems_url", "data"=>"https://rubygems.org", "updated_at"=>1698026776574105465},
@@ -9781,7 +9861,7 @@ settings = get_all_settings() #=>
 <TabItem value="python" label="Python Example">
 
 ```python
-settings = get_all_settings() #=>
+settings = get_all_settings() # =>
 # { 'version': {'name': 'version', 'data': '5.11.4-beta0', 'updated_at': 1698074299509456507},
 #   'pypi_url': {'name': 'pypi_url', 'data': 'https://pypi.org/simple', 'updated_at': 1698026776574347007},
 #   'rubygems_url': {'name': 'rubygems_url', 'data': 'https://rubygems.org', 'updated_at': 1698026776574105465},
@@ -9825,8 +9905,8 @@ get_settings(<Setting Name1>, <Setting Name2>, ...)
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-setting = get_setting('version') #=> "5.11.4-beta0"
-setting = get_settings('version', 'rubygems_url') #=> ["5.11.4-beta0", "https://rubygems.org"]
+setting = get_setting('version') # => "5.11.4-beta0"
+setting = get_settings('version', 'rubygems_url') # => ["5.11.4-beta0", "https://rubygems.org"]
 ```
 
 </TabItem>
@@ -9834,8 +9914,8 @@ setting = get_settings('version', 'rubygems_url') #=> ["5.11.4-beta0", "https://
 <TabItem value="python" label="Python Example">
 
 ```python
-setting = get_setting('version') #=> '5.11.4-beta0'
-setting = get_setting('version', 'rubygems_url') #=> ['5.11.4-beta0', 'https://rubygems.org']
+setting = get_setting('version') # => '5.11.4-beta0'
+setting = get_setting('version', 'rubygems_url') # => ['5.11.4-beta0', 'https://rubygems.org']
 ```
 
 </TabItem>
@@ -9906,7 +9986,7 @@ List all the configuration tool names which are used as the first parameter in t
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-names = config_tool_names() #=> ["telemetry_grapher", "data_viewer"]
+names = config_tool_names() # => ["telemetry_grapher", "data_viewer"]
 ```
 
 </TabItem>
@@ -9914,7 +9994,7 @@ names = config_tool_names() #=> ["telemetry_grapher", "data_viewer"]
 <TabItem value="python" label="Python Example">
 
 ```python
-names = config_tool_names() #=> ['telemetry_grapher', 'data_viewer']
+names = config_tool_names() # => ['telemetry_grapher', 'data_viewer']
 ```
 
 </TabItem>
@@ -9952,7 +10032,7 @@ list_configs(<Tool Name>)
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-configs = list_configs('telemetry_grapher') #=> ['adcs', 'temps']
+configs = list_configs('telemetry_grapher') # => ['adcs', 'temps']
 ```
 
 </TabItem>
@@ -9960,7 +10040,7 @@ configs = list_configs('telemetry_grapher') #=> ['adcs', 'temps']
 <TabItem value="python" label="Python Example">
 
 ```python
-configs = list_configs('telemetry_grapher') #=> ['adcs', 'temps']
+configs = list_configs('telemetry_grapher') # => ['adcs', 'temps']
 ```
 
 </TabItem>
@@ -10003,7 +10083,7 @@ load_config(<Tool Name>, <Configuration Name>)
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-config = load_config('telemetry_grapher', 'adcs') #=>
+config = load_config('telemetry_grapher', 'adcs') # =>
 # [ {
 #   "items": [
 #     {
@@ -10018,7 +10098,7 @@ config = load_config('telemetry_grapher', 'adcs') #=>
 <TabItem value="python" label="Python Example">
 
 ```python
-config = load_config('telemetry_grapher', 'adcs') #=>
+config = load_config('telemetry_grapher', 'adcs') # =>
 # [ {
 #   "items": [
 #     {
@@ -10173,7 +10253,7 @@ Returns true if the user needs to generate an offline access token. Note this wi
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-result = offline_access_needed() #=> true
+result = offline_access_needed() # => true
 ```
 
 </TabItem>
@@ -10181,7 +10261,7 @@ result = offline_access_needed() #=> true
 <TabItem value="python" label="Python Example">
 
 ```python
-result = offline_access_needed() #=> False
+result = offline_access_needed() # => False
 ```
 
 </TabItem>
