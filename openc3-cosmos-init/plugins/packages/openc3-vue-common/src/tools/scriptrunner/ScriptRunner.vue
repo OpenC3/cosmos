@@ -1072,13 +1072,10 @@ export default {
     },
     messageSortOrder(order) {
       // See ScriptLogMessages for these strings
-      if (order === 'Newest on Top' && this.messagesNewestOnTop === false) {
+      if (order === 'Newest on Top' && !this.messagesNewestOnTop) {
         this.messagesNewestOnTop = true
         this.messages.reverse()
-      } else if (
-        order === 'Newest on Bottom' &&
-        this.messagesNewestOnTop === true
-      ) {
+      } else if (order === 'Newest on Bottom' && this.messagesNewestOnTop) {
         this.messagesNewestOnTop = false
         this.messages.reverse()
       }
@@ -1747,7 +1744,7 @@ export default {
         this.setFile({ file, locked, breakpoints }, true)
         this.saveAllowed = true
       } catch (error) {
-        if (showError === true) {
+        if (showError) {
           this.$notify.caution({
             title: 'File Open Error',
             body: `Failed to open ${this.filename} due to ${error}`,
