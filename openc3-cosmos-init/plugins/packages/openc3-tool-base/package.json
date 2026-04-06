@@ -25,7 +25,7 @@
     "prettier": "3.8.1",
     "sass": "1.98.0",
     "serve": "14.2.6",
-    "vite": "7.3.1",
+    "vite": "7.3.2",
     "vue": "3.5.32"
   },
   "peerDependencies": {
