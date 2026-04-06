@@ -1132,7 +1132,7 @@ export default {
         } else {
           throw new Error(`Unable to load state for running script ${id}`) // Get into the following catch block because this should be handled the same as an error like 404
         }
-      } catch (error) {
+      } catch {
         // TODO: This is appearing on the main page which is blurred from the presence of the bottom sheet
         // We should probably not allow the bottom sheet to blur the screen
         this.$notify.caution({
@@ -1351,7 +1351,7 @@ export default {
       try {
         const response = await Api.post(url, { data })
         this.scriptStart(response.data)
-      } catch (error) {
+      } catch {
         this.scriptComplete()
       }
     },
