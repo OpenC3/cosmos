@@ -82,6 +82,7 @@ module OpenC3
         result = Ctrf.convert_report(sample_report)
 
         expect(result).to be_a(Hash)
+        expect(result[:reportFormat]).to eq("CTRF")
         expect(result[:results]).to be_a(Hash)
       end
 

@@ -195,6 +195,7 @@ module OpenC3
       # Build CTRF report
       # See https://ctrf.io/docs/specification/root
       return {
+        reportFormat: "CTRF",
         results: {
           # See https://ctrf.io/docs/specification/tool
           tool: {
