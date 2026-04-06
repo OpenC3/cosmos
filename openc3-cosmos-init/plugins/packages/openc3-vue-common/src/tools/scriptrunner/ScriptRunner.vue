@@ -1594,10 +1594,11 @@ export default {
           case 'clearallscreens':
             this.screens = []
             break
-          case 'downloadfile':
+          case 'downloadfile': {
             const url = window.location.origin + data.url
             this.downloadFile(url, data.filename)
             break
+          }
           case 'opentab':
             window.open(data.url, '_blank')
             break
