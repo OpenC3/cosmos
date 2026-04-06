@@ -353,8 +353,9 @@ function updateBreakpoints($event, session) {
       break
     case 'remove':
       offset = -$event.lines.length + 1
-      rowsToDelete = [...Array($event.lines.length).keys()].map(
-        (row) => row + $event.start.row,
+      rowsToDelete = Array.from(
+        { length: $event.lines.length },
+        (_, i) => i + $event.start.row,
       )
       break
   }
