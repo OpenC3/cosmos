@@ -77,7 +77,7 @@ const editLine = ref(null)
 function open(options = {}) {
   cmdString.value = options.cmdString || null
   isEditing.value = options.isEditing || false
-  editLine.value = options.editLine !== undefined ? options.editLine : null
+  editLine.value = options.editLine === undefined ? null : options.editLine
   targetName.value = options.targetName || null
   packetName.value = options.packetName || null
   dialogError.value = null

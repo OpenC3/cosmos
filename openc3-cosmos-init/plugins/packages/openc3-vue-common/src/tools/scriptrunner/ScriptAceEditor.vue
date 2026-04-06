@@ -262,9 +262,7 @@ function handleExecuteSelection() {
     const range = editor.value.getSelectionRange()
     const startRow = range.start.row + 1
     const endRow = range.end.column === 0 ? range.end.row : range.end.row + 1
-    if (!props.scriptId) {
-      emit('start', [null, null, startRow, endRow])
-    } else {
+    if (props.scriptId) {
       Api.post(
         `/script-api/running-script/${props.scriptId}/executewhilepaused`,
         {
@@ -273,6 +271,8 @@ function handleExecuteSelection() {
           },
         },
       )
+    } else {
+      emit('start', [null, null, startRow, endRow])
     }
   }
 }
@@ -282,9 +282,7 @@ function handleRunFromCursor() {
   if (editor.value) {
     const position = editor.value.getCursorPosition()
     const startRow = position.row + 1
-    if (!props.scriptId) {
-      emit('start', [null, null, startRow])
-    } else {
+    if (props.scriptId) {
       Api.post(
         `/script-api/running-script/${props.scriptId}/executewhilepaused`,
         {
@@ -293,6 +291,8 @@ function handleRunFromCursor() {
           },
         },
       )
+    } else {
+      emit('start', [null, null, startRow])
     }
   }
 }
