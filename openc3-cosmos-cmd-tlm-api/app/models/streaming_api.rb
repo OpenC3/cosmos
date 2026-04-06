@@ -23,6 +23,7 @@ OpenC3.require_file 'openc3/utilities/authorization'
 OpenC3.require_file 'openc3/models/target_model'
 require_relative 'logged_streaming_thread'
 require_relative 'realtime_streaming_thread'
+require_relative 'streaming_key'
 require_relative 'streaming_object'
 require_relative 'streaming_object_collection'
 
@@ -41,15 +42,14 @@ class StreamingApi
     data["items"].each do |key, item_key|
       item_key = key unless item_key
       # Unwrap LATEST packet into individual items
-      parts = key.split('__')
-      if parts[3] == 'LATEST'
-        item_map = OpenC3::TargetModel.get_item_to_packet_map(parts[2], scope: scope)
-        packet_names = item_map[parts[4]]
-        raise "Item '#{parts[2]} LATEST #{parts[4]}' does not exist for scope: #{scope}" unless packet_names
+      parsed = StreamingKey.parse(key, item_key: true)
+      if parsed.packet_name == 'LATEST'
+        item_map = OpenC3::TargetModel.get_item_to_packet_map(parsed.target_name, scope: scope)
+        packet_names = item_map[parsed.item_name]
+        raise "Item '#{parsed.target_name} LATEST #{parsed.item_name}' does not exist for scope: #{scope}" unless packet_names
         packet_names.each do |packet_name|
-          parts[3] = packet_name
-          key = parts.join('__')
-          collection.add(StreamingObject.new(key, start_time, end_time, item_key: item_key, scope: scope, token: token))
+          new_key = parsed.with(packet_name: packet_name).to_key_string
+          collection.add(StreamingObject.new(new_key, start_time, end_time, item_key: item_key, scope: scope, token: token))
         end
       else
         collection.add(StreamingObject.new(key, start_time, end_time, item_key: item_key, scope: scope, token: token))
@@ -67,17 +67,16 @@ class StreamingApi
 
     expanded = []
     data["packets"].each do |key|
-      parts = key.upcase.split('__')
-      mode = parts[0]
-      cmd_or_tlm = parts[1]
+      parsed = StreamingKey.parse(key)
 
-      if parts[2] == 'COSMOS_ALL'
+      if parsed.target_name == 'COSMOS_ALL'
         # MODE__CMDORTLM__COSMOS_ALL[__VALUETYPE]
-        value_type = parts[3]
-        type = (cmd_or_tlm == 'CMD') ? :CMD : :TLM
+        # When target_name is COSMOS_ALL, the value type occupies the packet_name position
+        value_type = parsed.packet_name.empty? ? nil : parsed.packet_name
+        type = (parsed.cmd_or_tlm == :CMD) ? :CMD : :TLM
         targets = OpenC3::TargetModel.names(scope: scope)
         targets.each do |target_name|
-          next if target_name == 'UNKNOWN' and mode != 'RAW'
+          next if target_name == 'UNKNOWN' and parsed.stream_mode != :RAW
 
           begin
             packets = OpenC3::TargetModel.packets(target_name, type: type, scope: scope)
@@ -85,23 +84,22 @@ class StreamingApi
             next
           end
           packets.each do |packet|
-            pkt_key = "#{mode}__#{cmd_or_tlm}__#{target_name}__#{packet['packet_name']}"
+            pkt_key = "#{parsed.stream_mode}__#{parsed.cmd_or_tlm}__#{target_name}__#{packet['packet_name']}"
             pkt_key += "__#{value_type}" if value_type
             expanded << pkt_key
           end
         end
-      elsif parts[3] == 'COSMOS_ALL'
+      elsif parsed.packet_name == 'COSMOS_ALL'
         # MODE__CMDORTLM__TARGET__COSMOS_ALL[__VALUETYPE]
-        target_name = parts[2]
-        value_type = parts[4]
-        type = (cmd_or_tlm == 'CMD') ? :CMD : :TLM
+        value_type = (parsed.stream_mode != :RAW) ? parsed.value_type : nil
+        type = (parsed.cmd_or_tlm == :CMD) ? :CMD : :TLM
         begin
-          packets = OpenC3::TargetModel.packets(target_name, type: type, scope: scope)
+          packets = OpenC3::TargetModel.packets(parsed.target_name, type: type, scope: scope)
         rescue RuntimeError
           next
         end
         packets.each do |packet|
-          pkt_key = "#{mode}__#{cmd_or_tlm}__#{target_name}__#{packet['packet_name']}"
+          pkt_key = "#{parsed.stream_mode}__#{parsed.cmd_or_tlm}__#{parsed.target_name}__#{packet['packet_name']}"
           pkt_key += "__#{value_type}" if value_type
           expanded << pkt_key
         end
