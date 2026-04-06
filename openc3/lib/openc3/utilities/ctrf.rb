@@ -102,9 +102,9 @@ module OpenC3
               # Must have at least 2 colons for group:name:status format
               result_parts = result_string.split(':')
               if result_parts.length >= 3
-                # Get start time from last_result if it was an Executing line
+                # Get start time from last_result - could be Executing line or previous test result
                 start_time = nil
-                if last_result && last_result.include?("Executing")
+                if last_result
                   last_timestamp_and_msg = last_result.split(': ', 2)
                   if last_timestamp_and_msg.length >= 2
                     begin
