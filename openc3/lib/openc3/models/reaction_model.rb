@@ -32,10 +32,12 @@ module OpenC3
     ACTION_TYPES = [SCRIPT_REACTION, COMMAND_REACTION, NOTIFY_REACTION]
 
     def self.create_unique_name(scope:)
-      reaction_names = self.names(scope: scope) # comes back sorted
+      reaction_names = self.names(scope: scope)
       num = 1 # Users count with 1
-      if reaction_names[-1]
-        num = reaction_names[-1][5..-1].to_i + 1
+      unless reaction_names.empty?
+        # Extract numeric suffixes and find the max to avoid lexicographic sort issues
+        max_num = reaction_names.map { |name| name[5..-1].to_i }.max
+        num = max_num + 1
       end
       return "REACT#{num}"
     end
@@ -77,7 +79,7 @@ module OpenC3
     end
 
     attr_reader :name, :scope, :snooze, :triggers, :actions, :enabled, :trigger_level, :snoozed_until
-    attr_accessor :username, :shard
+    attr_accessor :username, :shard, :label
 
     def initialize(
       name:,
@@ -90,6 +92,7 @@ module OpenC3
       snoozed_until: nil,
       username: nil,
       shard: 0,
+      label: nil,
       updated_at: nil
     )
       super("#{scope}#{PRIMARY_KEY}", name: name, scope: scope)
@@ -102,6 +105,7 @@ module OpenC3
       @triggers = validate_triggers(triggers)
       @username = username
       @shard = shard.to_i # to_i to handle nil
+      @label = label
       @updated_at = updated_at
     end
 
@@ -177,28 +181,40 @@ module OpenC3
       return actions
     end
 
-    def verify_triggers
+    # Validate that all triggers exist, but do not persist dependent changes yet.
+    # Returns the list of trigger models that need updating.
+    def validate_triggers_exist
       if @triggers.empty?
         raise ReactionInputError.new "reaction must contain at least one valid trigger: #{@triggers}"
       end
 
+      models_to_update = []
       @triggers.each do | trigger |
         model = TriggerModel.get(name: trigger['name'], group: trigger['group'], scope: @scope)
         if model.nil?
           raise ReactionInputError.new "failed to find trigger: #{trigger}"
         end
-        model.update_dependents(dependent: @name)
-        model.update()
+        unless model.dependents.include?(@name)
+          model.update_dependents(dependent: @name)
+          models_to_update << model
+        end
       end
+      models_to_update
+    end
+
+    # Persist dependent changes to trigger models
+    def commit_trigger_dependents(models)
+      models.each { |model| model.update() }
     end
 
     def create
       unless Store.hget(@primary_key, @name).nil?
         raise ReactionInputError.new "existing reaction found: #{@name}"
       end
-      verify_triggers()
+      models = validate_triggers_exist()
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json, allow_nan: true))
+      commit_trigger_dependents(models)
       notify(kind: 'created')
     end
 
@@ -222,9 +238,10 @@ module OpenC3
         end
       end
 
-      verify_triggers()
+      models = validate_triggers_exist()
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json, allow_nan: true))
+      commit_trigger_dependents(models)
       # No notification as this is only called via reaction_controller which already notifies
     end
 
@@ -281,6 +298,7 @@ module OpenC3
         'actions' => @actions,
         'username' => @username,
         'shard' => @shard,
+        'label' => @label,
         'updated_at' => @updated_at
       }
     end
