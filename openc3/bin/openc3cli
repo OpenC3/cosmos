@@ -588,35 +588,44 @@ def run_bridge(filename, params)
   end
 end
 
-def cli_script_monitor(script_id)
+def cli_script_monitor(script_id, format: 'text')
   ret_code = ERROR_CODE
   require 'openc3/script'
+  require 'openc3/utilities/ctrf'
   begin
     OpenC3::RunningScriptWebSocketApi.new(id: script_id) do |api|
       while (resp = api.read) do
         # see ScriptRunner.vue for types and states
         case resp['type']
         when 'file'
-          puts "Filename #{resp['filename']} scope #{resp['scope']}"
+          puts "Filename #{resp['filename']} scope #{resp['scope']}" unless format == 'ctrf'
         when 'line'
           fn = resp['filename'].nil? ? '<no file>' : resp['filename']
-          puts "At [#{fn}:#{resp['line_no']}] state [#{resp['state']}]"
+          puts "At [#{fn}:#{resp['line_no']}] state [#{resp['state']}]" unless format == 'ctrf'
           if resp['state'] == 'error' or resp['state'] == 'crashed'
             $script_interrupt_text = ''
-            puts 'script failed'
+            puts 'script failed' unless format == 'ctrf'
             break
           end
         when 'output'
-          puts resp['line']
+          puts resp['line'] unless format == 'ctrf'
         when 'complete'
           $script_interrupt_text = ''
-          puts 'script complete'
+          if resp['report']
+            if format == 'ctrf'
+              ctrf_data = OpenC3::Ctrf.convert_report(resp['report'])
+              puts JSON.pretty_generate(ctrf_data)
+            else
+              puts resp['report']
+            end
+          end
+          puts 'script complete' unless format == 'ctrf'
           ret_code = 0
           break
         # These conditions are all handled by the else
         # when 'running', 'breakpoint', 'waiting', 'time'
         else
-          puts resp.pretty_inspect
+          puts resp.pretty_inspect unless format == 'ctrf'
         end
       end
     end
@@ -692,10 +701,10 @@ def cli_script_run(args, options)
     puts id
     $script_interrupt_text = "  Script #{args[1]} still running remotely.\n" # for Ctrl-C
     if (options[:wait] < 1) then
-      ret_code = cli_script_monitor(id)
+      ret_code = cli_script_monitor(id, format: options[:format])
     else
       Timeout::timeout(options[:wait], nil, "--wait #{options[:wait]} exceeded") do
-        ret_code = cli_script_monitor(id)
+        ret_code = cli_script_monitor(id, format: options[:format])
       rescue Timeout::ExitException, Timeout::Error => e
         # Timeout exceptions are also raised by the Websocket API, so we check
         if e.message =~ /^--wait /
@@ -795,7 +804,7 @@ rescue => e
 end
 
 def cli_script(args=[])
-  options = {scope: 'DEFAULT', disconnect: false, wait: 0, verbose: false}
+  options = {scope: 'DEFAULT', disconnect: false, wait: 0, verbose: false, format: 'text'}
   option_parser = OptionParser.new do |opts|
     opts.banner = "Usage: script --scope SCOPE [init | list | spawn | run]\n" +
       "  init                               Initialize running scripts (Enterprise Only)\n" +
@@ -811,6 +820,9 @@ def cli_script(args=[])
     end
     opts.on("--scope SCOPE", "Run with specified scope (default = DEFAULT)") do |arg|
       options[:scope] = arg
+    end
+    opts.on("--format FORMAT", "Output format: text or ctrf (default = text)") do |arg|
+      options[:format] = arg
     end
     opts.on("--suite SUITE", "Run with specified suite") do |arg|
       options[:suite] = arg
