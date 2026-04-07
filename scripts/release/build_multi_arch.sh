@@ -318,7 +318,7 @@ if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik
   OPENC3_TRAEFIK_RELEASE=v3.6.12
 else
-  OPENC3_TRAEFIK_RELEASE=v3.6.12
+  OPENC3_TRAEFIK_RELEASE=v3.6.13
 fi
 cd ../openc3-traefik
 docker buildx build \
