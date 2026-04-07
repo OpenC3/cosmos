@@ -75,16 +75,14 @@ module OpenC3
 
     def self.redis_metrics
       # This prevents a circular dependency
-      require 'openc3/models/scope_model'
-      require 'openc3/models/target_model'
+      require 'openc3/models/scope_model' # NOSONAR
+      require 'openc3/models/target_model' # NOSONAR
       result = {}
-
-      num_shards = 1
 
       shards = Set.new
       OpenC3::ScopeModel.names.each do |scope|
         targets = OpenC3::TargetModel.all(scope: scope)
-        targets.each do |target_name, target_hash|
+        targets.each do |_target_name, target_hash|
           shards << target_hash['shard']
         end
       end
