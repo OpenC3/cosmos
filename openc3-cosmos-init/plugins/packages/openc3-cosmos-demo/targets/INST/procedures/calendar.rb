@@ -47,6 +47,7 @@ new_stop = Time.at(act2['stop']) + 1800
 updated = update_timeline_activity("RubyTL",
   id: act2['start'],
   kind: "COMMAND", start: new_start, stop: new_stop,
+  uuid: act2['uuid'],
   data: {command: "INST COLLECT with TYPE NORMAL, DURATION 10",
          customTitle: "Extended Collection",
          notes: "Duration extended per ops request"})

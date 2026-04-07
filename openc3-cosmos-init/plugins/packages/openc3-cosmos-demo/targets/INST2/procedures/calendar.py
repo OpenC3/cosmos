@@ -50,6 +50,7 @@ new_stop = datetime.datetime.fromtimestamp(act2['stop'], tz=datetime.timezone.ut
 updated = update_timeline_activity("PythonTL",
     id=act2['start'],
     kind="COMMAND", start=new_start, stop=new_stop,
+    uuid=act2['uuid'],
     data={'command': "INST COLLECT with TYPE NORMAL, DURATION 10",
           'customTitle': "Extended Collection",
           'notes': "Duration extended per ops request"})

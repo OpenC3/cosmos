@@ -74,12 +74,11 @@ module OpenC3
     # @param start [DateTime] The new start time of the activity.
     # @param stop [DateTime] The new stop time of the activity.
     # @param data [Hash, optional] Additional data to associate with the activity. Defaults to {}. Any activity can provide "username", "notes", and "customTitle". "command", "script", and "reserve" keys are reserved for the corresponding activity kind, with "environment" also available for script activities.
-    # @param uuid [String, optional] The UUID of the activity. Defaults to nil.
+    # @param uuid [String] The UUID of the activity.
     # @param scope [String, optional] The scope of the activity. Defaults to OPENC3_SCOPE.
-    def update_timeline_activity(name, id:, kind:, start:, stop:, data: {}, uuid: nil, scope: $openc3_scope)
+    def update_timeline_activity(name, id:, kind:, start:, stop:, uuid:, data: {}, scope: $openc3_scope)
       post_data = _build_activity_data(kind, start, stop, data)
-      url = "/openc3-api/timeline/#{name}/activity/#{id}"
-      url += "/#{uuid}" if uuid
+      url = "/openc3-api/timeline/#{name}/activity/#{id}/#{uuid}"
       response = $api_server.request('put', url, data: post_data, json: true, scope: scope)
       return _cal_handle_response(response, 'Failed to update timeline activity')
     end

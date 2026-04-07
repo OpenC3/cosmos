@@ -78,7 +78,7 @@ def create_timeline_activity(name, kind, start, stop, data=None, scope=OPENC3_SC
     return _handle_response(response, "Failed to create timeline activity")
 
 
-def update_timeline_activity(name, id, kind, start, stop, data=None, uuid=None, scope=OPENC3_SCOPE):
+def update_timeline_activity(name, id, kind, start, stop, uuid, data=None, scope=OPENC3_SCOPE):
     """
     Updates an existing activity on the specified timeline.
 
@@ -88,14 +88,12 @@ def update_timeline_activity(name, id, kind, start, stop, data=None, uuid=None, 
         kind (str): The kind of activity. Must be one of "COMMAND", "SCRIPT", or "RESERVE".
         start (datetime): The new start time of the activity.
         stop (datetime): The new stop time of the activity.
+        uuid (str): The UUID of the activity.
         data (dict, optional): Additional data to associate with the activity. Defaults to None. Any activity can provide "username", "notes", and "customTitle". "command", "script", and "reserve" keys are reserved for the corresponding activity kind, with "environment" also available for script activities.
-        uuid (str, optional): The UUID of the activity. Defaults to None.
         scope (str, optional): The scope of the activity. Defaults to OPENC3_SCOPE.
     """
     post_data = _build_activity_data(kind, start, stop, data)
-    url = f"/openc3-api/timeline/{name}/activity/{id}"
-    if uuid:
-        url += f"/{uuid}"
+    url = f"/openc3-api/timeline/{name}/activity/{id}/{uuid}"
     response = openc3.script.API_SERVER.request(
         "put",
         url,

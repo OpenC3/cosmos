@@ -9071,7 +9071,7 @@ Update an existing timeline activity. The activity is identified by its timeline
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-update_timeline_activity(name, id:, kind:, start:, stop:, data: {}, uuid: nil)
+update_timeline_activity(name, id:, kind:, start:, stop:, uuid:, data: {})
 ```
 
 </TabItem>
@@ -9079,7 +9079,7 @@ update_timeline_activity(name, id:, kind:, start:, stop:, data: {}, uuid: nil)
 <TabItem value="python" label="Python Syntax">
 
 ```python
-update_timeline_activity(name, id, kind, start, stop, data={}, uuid=None)
+update_timeline_activity(name, id, kind, start, stop, uuid, data={})
 ```
 
 </TabItem>
@@ -9092,8 +9092,8 @@ update_timeline_activity(name, id, kind, start, stop, data={}, uuid=None)
 | kind      | Type of the activity. One of COMMAND, SCRIPT, or RESERVE.                                                                                                 |
 | start     | New start time of the activity. Time / datetime instance.                                                                                                 |
 | stop      | New stop time of the activity. Time / datetime instance.                                                                                                  |
+| uuid      | UUID of the activity.                                                                                                                                     |
 | data      | Hash / dict of data for the activity. Default is empty hash / dict. Valid keys are described [above](#create_timeline_activity-data-parameter).            |
-| uuid      | UUID of the activity. Optional, defaults to nil / None.                                                                                                   |
 | scope     | Scope of the activity. Must be the containing scope of the timeline specified by the `name` parameter.    |
 
 <Tabs groupId="script-language">
@@ -9112,6 +9112,7 @@ new_stop = stop + 1800
 updated = update_timeline_activity("RubyTL",
   id: act['start'],
   kind: "COMMAND", start: start, stop: new_stop,
+  uuid: act['uuid'],
   data: {command: "INST COLLECT with TYPE NORMAL, DURATION 10",
          customTitle: "Extended Collection",
          notes: "Duration extended per ops request"})
@@ -9134,6 +9135,7 @@ new_stop = stop + timedelta(minutes=30)
 updated = update_timeline_activity("PythonTL",
     id=act['start'],
     kind="COMMAND", start=start, stop=new_stop,
+    uuid=act['uuid'],
     data={'command': "INST COLLECT with TYPE NORMAL, DURATION 10",
           'customTitle': "Extended Collection",
           'notes': "Duration extended per ops request"})
