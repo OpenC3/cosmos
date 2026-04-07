@@ -17,8 +17,15 @@ import ast
 import re
 
 
+# Tokenizer for command parameters: matches double-quoted strings, single-quoted strings,
+# bracket-delimited arrays, or bare words (non-whitespace runs)
 SCANNING_REGULAR_EXPRESSION = re.compile(
-    r"(?:\"(?:[^\\\"]|\\.)*\") | (?:'(?:[^\\']|\\.)*') | (?:\[.*\]) | \S+", re.VERBOSE
+    r""" "(?:[^\\"]|\\.)*"   # double-quoted string (with escaped chars)
+       | '(?:[^\\']|\\.)*'   # single-quoted string (with escaped chars)
+       | \[.*\]              # bracket-delimited array
+       | \S+                 # bare word
+    """,
+    re.VERBOSE,
 )
 
 SPLIT_WITH_REGEX = re.compile(r"\s+with\s+", re.IGNORECASE)
@@ -172,11 +179,10 @@ def extract_fields_from_cmd_text(text):
             keyword = None
             value = None
             comma = None
-        if keyword is not None:
-            if value is not None:
-                add_cmd_parameter(keyword, value, cmd_params)
-            else:
-                raise RuntimeError(f"Missing value for last command parameter: {text:s}")
+        if keyword is not None and value is not None:
+            add_cmd_parameter(keyword, value, cmd_params)
+        else:
+            raise RuntimeError(f"Missing value for last command parameter: {text:s}")
 
     return target_name, cmd_name, cmd_params
 
@@ -215,7 +221,7 @@ def extract_fields_from_set_tlm_text(text):
 
 
 def extract_fields_from_check_text(text):
-    split_string = text.split(" ")
+    split_string = text.split()
     if len(split_string) < 3:
         raise RuntimeError(f"ERROR: Check improperly specified: {text}")
     target_name = split_string[0]
@@ -224,12 +230,12 @@ def extract_fields_from_check_text(text):
     comparison_to_eval = None
     if len(split_string) == 3:
         return [target_name, packet_name, item_name, comparison_to_eval]
-    if len(split_string) < 4:
-        raise RuntimeError(f"ERROR: Check improperly specified: {text}")
 
-    # TODO: Ruby version has additional code to split on regex spaces
-    comparison_to_eval = " ".join(split_string[3:])
-    if split_string[3] == "=":
+    # Split on single spaces to preserve spaces in comparison string
+    split_string = text.split(" ")
+    index = len(split_string) - 1 - split_string[::-1].index(item_name)
+    comparison_to_eval = " ".join(split_string[(index + 1) :])
+    if split_string[index + 1] == "=":
         raise RuntimeError(f"ERROR: Use '==' instead of '=': {text}")
 
     return target_name, packet_name, item_name, comparison_to_eval
