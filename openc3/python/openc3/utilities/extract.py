@@ -21,16 +21,12 @@ import re
 # Tokenizer for command parameters: matches double-quoted strings, single-quoted strings,
 # bracket-delimited arrays, or bare words (non-whitespace runs)
 SCANNING_REGULAR_EXPRESSION = re.compile(
-<<<<<<< HEAD
-    r""" "(?:[^\\"]|\\.)*"   # double-quoted string (with escaped chars)
-       | '(?:[^\\']|\\.)*'   # single-quoted string (with escaped chars)
-       | \[.*\]              # bracket-delimited array
-       | \S+                 # bare word
+    r""" "(?:[^\\"]|\\.)*"            # double-quoted string (with escaped chars)
+       | '(?:[^\\']|\\.)*'            # single-quoted string (with escaped chars)
+       | \[(?:[^\\\[\]]|\\.)*\]       # bracket-delimited array (with escaped chars)
+       | \S+                          # bare word
     """,
     re.VERBOSE,
-=======
-    r"(?:\"(?:[^\\\"]|\\.)*\") | (?:'(?:[^\\']|\\.)*') | (?:\[(?:[^\\\[\]]|\\.)*\]) | \S+", re.VERBOSE
->>>>>>> main
 )
 
 SPLIT_WITH_REGEX = re.compile(r"\s+with\s+", re.IGNORECASE)
