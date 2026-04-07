@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -61,15 +61,15 @@ class Metric:
             if self.data.get(name) is None:
                 self.data[name] = {}
             self.data[name]["value"] = value
-            if type:
+            if type is not None:
                 self.data[name]["type"] = type
-            if unit:
+            if unit is not None:
                 self.data[name]["unit"] = unit
-            if help:
+            if help is not None:
                 self.data[name]["help"] = help
-            if labels:
+            if labels is not None:
                 self.data[name]["labels"] = labels
-            if time_ms:
+            if time_ms is not None:
                 self.data[name]["time_ms"] = time_ms
 
     def set_multiple(self, data):

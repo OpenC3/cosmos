@@ -7,7 +7,7 @@
 # attribution addendums as found in the LICENSE.txt
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -165,10 +165,10 @@ def extract_fields_from_cmd_text(text):
         value = None
         comma = None
         for item in second_half:
-            if not keyword:
+            if keyword is None:
                 keyword = item
                 continue
-            if not value:
+            if value is None:
                 if item.endswith(","):
                     value = item[0:-1]
                     comma = True
@@ -182,8 +182,8 @@ def extract_fields_from_cmd_text(text):
             keyword = None
             value = None
             comma = None
-        if keyword:
-            if value:
+        if keyword is not None:
+            if value is not None:
                 add_cmd_parameter(keyword, value, cmd_params)
             else:
                 raise RuntimeError("Missing value for last command parameter: {:s}".format(text))

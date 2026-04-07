@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -27,7 +27,7 @@ class FormAccessor(Accessor):
             if key.decode() == item.key:
                 # Handle the case of multiple values for the same key
                 # and build up an array of values
-                if value:
+                if value is not None:
                     # Second time through value is not a list yet
                     if type(value) is not list:
                         value = [value]

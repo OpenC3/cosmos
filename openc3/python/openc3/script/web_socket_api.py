@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -313,13 +313,13 @@ class MessagesWebSocketApi(CmdTlmWebSocketApi):
         scope=OPENC3_SCOPE,
     ):
         self.identifier = {"channel": "MessagesChannel", "history_count": history_count}
-        if start_time:
+        if start_time is not None:
             self.identifier["start_time"] = start_time
-        if end_time:
+        if end_time is not None:
             self.identifier["end_time"] = end_time
-        if level:
+        if level is not None:
             self.identifier["level"] = level
-        if types:
+        if types is not None:
             self.identifier["types"] = types
         super().__init__(
             url=url,
@@ -548,9 +548,9 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         """
         data_hash = {}
         data_hash["action"] = "add"
-        if start_time:
+        if start_time is not None:
             data_hash["start_time"] = to_nsec_from_epoch(start_time)
-        if end_time:
+        if end_time is not None:
             data_hash["end_time"] = to_nsec_from_epoch(end_time)
         if items:
             data_hash["items"] = items

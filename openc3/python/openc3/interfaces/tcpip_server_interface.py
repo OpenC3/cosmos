@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -438,16 +438,14 @@ class TcpipServerInterface(StreamInterface):
 
             index_to_delete = None
             with self.connection_mutex:
-                index = 0
-                for read_interface_info in self.read_interface_infos:
+                for index, read_interface_info in enumerate(self.read_interface_infos):
                     if interface_info.interface == read_interface_info.interface:
                         index_to_delete = index
                         read_interface_info.interface.disconnect()
                         if read_interface_info.interface.stream_log_pair:
                             read_interface_info.interface.stream_log_pair.stop()
                         break
-                    index += 1
-            if index_to_delete:
+            if index_to_delete is not None:
                 del self.read_interface_infos[index_to_delete]
         except Exception:
             Logger.error(f"{self.name}: Tcpip server read thread unexpectedly died")
