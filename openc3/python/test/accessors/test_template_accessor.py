@@ -95,6 +95,24 @@ class TestTemplateAccessor(unittest.TestCase):
         self.assertEqual(values["CHANNEL"], 2)
         self.assertAlmostEqual(values["MYVALUE"], 5.67, places=2)
 
+    def test_should_handle_templates_with_no_items(self):
+        packet = Packet()
+        packet.template = b"OUTPUT:STATE? (@1:3);"
+        packet.buffer = packet.template
+        accessor = TemplateAccessor(packet)
+
+        item = namedtuple("Item", ["name", "key", "data_type", "array_size"])
+        item.name = "DUMMY"
+        item.key = "DUMMY"
+        item.data_type = "STRING"
+        item.array_size = None
+
+        value = accessor.read_item(item, packet.buffer_no_copy())
+        self.assertIsNone(value)
+
+        values = accessor.read_items([item], packet.buffer_no_copy())
+        self.assertIsNone(values["DUMMY"])
+
     def test_should_write_values(self):
         accessor = TemplateAccessor(self.packet)
         self.packet.restore_defaults()
