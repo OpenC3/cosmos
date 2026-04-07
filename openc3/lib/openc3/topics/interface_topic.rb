@@ -34,15 +34,46 @@ module OpenC3
     end
 
     def self.receive_commands(interface, scope:)
+      all_topics = InterfaceTopic.topics(interface, scope: scope)
+
+      # Separate non-target topics (interface cmds, system events) from target cmd topics
+      non_target_topics = []
+      target_topics = []
+      all_topics.each do |topic|
+        if topic.include?('CMD}TARGET__')
+          target_topics << topic
+        else
+          non_target_topics << topic
+        end
+      end
+
+      # Group only target topics by shard
+      target_shard_groups = Topic.group_topics_by_shard(target_topics, target_pattern: 'CMD}TARGET__', scope: scope)
+      all_shard_zero = Topic.all_on_shard_zero?(target_shard_groups)
+
       while true
-        Topic.read_topics(InterfaceTopic.topics(interface, scope: scope)) do |topic, msg_id, msg_hash, redis|
-          result = yield topic, msg_id, msg_hash, redis
-          if result
-            # Only ack if we intend to - Disabled targets will not ack
-            ack_topic = topic.split("__")
-            ack_topic[1] = 'ACK' + ack_topic[1]
-            ack_topic = ack_topic.join("__")
-            Topic.write_topic(ack_topic, { 'result' => result, 'id' => msg_id }, '*', 100)
+        if all_shard_zero
+          # Fast path: everything on shard 0, single read
+          Topic.read_topics(all_topics) do |topic, msg_id, msg_hash, redis|
+            result = yield topic, msg_id, msg_hash, redis
+            Topic.write_ack(topic, result, msg_id) if result
+          end
+        else
+          # Non-blocking read for interface commands and system events (shard 0)
+          unless non_target_topics.empty?
+            Topic.read_topics(non_target_topics, nil, 0) do |topic, msg_id, msg_hash, redis|
+              result = yield topic, msg_id, msg_hash, redis
+              Topic.write_ack(topic, result, msg_id) if result
+            end
+          end
+
+          # Blocking read for target command topics per shard
+          timeout_per_shard = [1000 / [target_shard_groups.length, 1].max, 100].max
+          target_shard_groups.each do |shard, topics|
+            Topic.read_topics(topics, nil, timeout_per_shard, shard: shard) do |topic, msg_id, msg_hash, redis|
+              result = yield topic, msg_id, msg_hash, redis
+              Topic.write_ack(topic, result, msg_id, shard: shard) if result
+            end
           end
         end
       end

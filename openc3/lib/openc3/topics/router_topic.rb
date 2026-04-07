@@ -35,26 +35,23 @@ module OpenC3
     end
 
     def self.receive_telemetry(router, scope:)
-      # Group topics by shard
       all_topics = RouterTopic.topics(router, scope: scope)
-      shard_groups = {} # shard => [topic, ...]
-      all_topics.each do |topic|
-        target_name = topic.match(/__\{?([^}_]+)\}?__/)[1] rescue nil
-        shard = Store.shard_for_target(target_name, scope: scope)
-        shard_groups[shard] ||= []
-        shard_groups[shard] << topic
-      end
+      shard_groups = Topic.group_topics_by_shard(all_topics, target_pattern: '__TELEMETRY__', scope: scope)
+      all_shard_zero = Topic.all_on_shard_zero?(shard_groups)
 
       while true
-        timeout_per_shard = [1000 / [shard_groups.length, 1].max, 100].max
-        shard_groups.each do |shard, topics|
-          Topic.read_topics(topics, nil, timeout_per_shard, shard: shard) do |topic, msg_id, msg_hash, redis|
+        if all_shard_zero
+          # Fast path: everything on shard 0, single read
+          Topic.read_topics(all_topics) do |topic, msg_id, msg_hash, redis|
             result = yield topic, msg_id, msg_hash, redis
-            if result and /CMD}ROUTER/.match?(topic)
-              ack_topic = topic.split("__")
-              ack_topic[1] = 'ACK' + ack_topic[1]
-              ack_topic = ack_topic.join("__")
-              Topic.write_topic(ack_topic, { 'result' => result, 'id' => msg_id }, msg_id, 100)
+            Topic.write_ack(topic, result, msg_id) if result and /CMD}ROUTER/.match?(topic)
+          end
+        else
+          timeout_per_shard = [1000 / [shard_groups.length, 1].max, 100].max
+          shard_groups.each do |shard, topics|
+            Topic.read_topics(topics, nil, timeout_per_shard, shard: shard) do |topic, msg_id, msg_hash, redis|
+              result = yield topic, msg_id, msg_hash, redis
+              Topic.write_ack(topic, result, msg_id, shard: shard) if result and /CMD}ROUTER/.match?(topic)
             end
           end
         end

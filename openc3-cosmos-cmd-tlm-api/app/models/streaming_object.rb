@@ -82,8 +82,9 @@ class StreamingObject
     permission = @cmd_or_tlm == :CMD ? 'cmd_info' : 'tlm'
     authorize(permission: permission, target_name: @target_name, packet_name: @packet_name, manual: false, scope: scope, token: token)
     @topic = "#{@scope}__#{type}__{#{@target_name}}__#{@packet_name}"
+    @shard = OpenC3::Store.shard_for_target(@target_name, scope: @scope)
     @offset = "0-0"
-    @offset = OpenC3::Topic.get_last_offset(@topic) unless @start_time
+    @offset = OpenC3::Topic.get_last_offset(@topic, shard: @shard) unless @start_time
     if @item_key
       @id = 'ITEM__' + key
     else

@@ -31,9 +31,8 @@ class LoggedStreamingThread < StreamingThread
   ALLOWABLE_START_TIME_OFFSET_NSEC = 60 * Time::NSEC_PER_SECOND
 
   def initialize(streaming_api, collection, max_batch_size = 600, scope:, token:)
-    super(streaming_api, collection, max_batch_size)
+    super(streaming_api, collection, max_batch_size, scope: scope)
     @thread_mode = :SETUP
-    @scope = scope
     @token = token
     @local_api = OpenC3::LocalApi.new
     @last_tsdb_times = {} # topic => last nanosecond timestamp read from TSDB
@@ -200,15 +199,7 @@ class LoggedStreamingThread < StreamingThread
       topics, offsets, item_objects_by_topic, packet_objects_by_topic = @collection.topics_offsets_and_objects
       results = []
       if topics.length > 0
-        # Group topics by shard for multi-shard support
-        shard_groups = {}
-        topics.each_with_index do |topic, idx|
-          target_name = topic.match(/__\{?([^}_]+)\}?__/)[1] rescue nil
-          shard = OpenC3::Store.shard_for_target(target_name, scope: @scope)
-          shard_groups[shard] ||= { topics: [], offsets: [] }
-          shard_groups[shard][:topics] << topic
-          shard_groups[shard][:offsets] << offsets[idx]
-        end
+        shard_groups = OpenC3::Topic.group_topics_with_offsets_by_shard(topics, offsets, scope: @scope)
 
         timeout_per_shard = [500 / [shard_groups.length, 1].max, 100].max
         any_result = false

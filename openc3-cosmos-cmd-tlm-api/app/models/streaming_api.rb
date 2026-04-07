@@ -31,6 +31,7 @@ class StreamingApi
 
   def initialize(subscription_key, scope: nil)
     @subscription_key = subscription_key
+    @scope = scope
     @mutex = Mutex.new
     @realtime_thread = nil
     @logged_threads = []
@@ -174,7 +175,7 @@ class StreamingApi
         # Create a single realtime streaming thread to use the entire collection
         if @realtime_thread.nil? or not @realtime_thread.alive?
           OpenC3::Logger.info("Creating new realtime thread")
-          @realtime_thread = RealtimeStreamingThread.new(self, collection)
+          @realtime_thread = RealtimeStreamingThread.new(self, collection, scope: @scope)
           @realtime_thread.start
         else
           OpenC3::Logger.info("Adding to existing realtime thread")
@@ -292,7 +293,7 @@ class StreamingApi
           return false
         end
       else
-        @realtime_thread = RealtimeStreamingThread.new(self, collection)
+        @realtime_thread = RealtimeStreamingThread.new(self, collection, scope: @scope)
         @realtime_thread.start
         return true
       end

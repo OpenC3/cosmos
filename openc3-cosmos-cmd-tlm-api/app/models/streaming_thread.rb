@@ -25,10 +25,11 @@ OpenC3.require_file 'openc3/logs/packet_log_reader'
 OpenC3.require_file 'openc3/config/config_parser'
 
 class StreamingThread
-  def initialize(streaming_api, collection, max_batch_size = 100)
+  def initialize(streaming_api, collection, max_batch_size = 100, scope: nil)
     @streaming_api = streaming_api
     @collection = collection
     @max_batch_size = max_batch_size
+    @scope = scope
     @cancel_thread = false
     @thread = nil
   end
@@ -85,16 +86,7 @@ class StreamingThread
     topics, offsets, item_objects_by_topic, packet_objects_by_topic = @collection.topics_offsets_and_objects
     results = []
     if topics.length > 0
-      # Group topics by shard for multi-shard support
-      shard_groups = {} # shard => { topics: [], offsets: [] }
-      topics.each_with_index do |topic, idx|
-        # Extract target name from topic: scope__TYPE__{TARGET}__PACKET
-        target_name = topic.match(/__\{?([^}_]+)\}?__/)[1] rescue nil
-        shard = OpenC3::Store.shard_for_target(target_name, scope: @scope)
-        shard_groups[shard] ||= { topics: [], offsets: [] }
-        shard_groups[shard][:topics] << topic
-        shard_groups[shard][:offsets] << offsets[idx]
-      end
+      shard_groups = OpenC3::Topic.group_topics_with_offsets_by_shard(topics, offsets, scope: @scope)
 
       # Read from each shard with proportionally shorter timeouts
       timeout_per_shard = [500 / [shard_groups.length, 1].max, 100].max

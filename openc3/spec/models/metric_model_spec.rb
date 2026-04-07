@@ -93,6 +93,12 @@ module OpenC3
         json['values'] = values
         model = MetricModel.set(json, scope: 'scope')
 
+        # Set up scope and target so redis_metrics can discover shards
+        scope_model = ScopeModel.new(name: "DEFAULT")
+        scope_model.create
+        target_model = TargetModel.new(name: "INST", scope: "DEFAULT")
+        target_model.create
+
         allow(OpenC3::Store.instance).to receive(:info) do
           values
         end
@@ -103,7 +109,7 @@ module OpenC3
 
         result = MetricModel.redis_metrics
         expect(result.empty?).to eql(false)
-        expect(result['redis_connected_clients_total']['value']).to eql(37)
+        expect(result['redis_connected_clients_total_0']['value']).to eql(37)
       end
     end
   end

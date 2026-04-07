@@ -34,15 +34,44 @@ class InterfaceTopic(Topic):
 
     @classmethod
     def receive_commands(cls, method, interface, scope=OPENC3_SCOPE):
+        all_topics = InterfaceTopic.topics(interface, scope)
+
+        # Separate non-target topics (interface cmds, system events) from target cmd topics
+        non_target_topics = []
+        target_topics = []
+        for topic in all_topics:
+            if "CMD}TARGET__" in topic:
+                target_topics.append(topic)
+            else:
+                non_target_topics.append(topic)
+
+        # Group only target topics by shard
+        target_shard_groups = Topic.group_topics_by_shard(target_topics, "CMD}TARGET__", scope)
+        all_shard_zero = Topic.all_on_shard_zero(target_shard_groups)
+
         InterfaceTopic.while_receive_commands = True
         while InterfaceTopic.while_receive_commands:
-            for topic, msg_id, msg_hash, redis in Topic.read_topics(InterfaceTopic.topics(interface, scope)):
-                result = method(topic, msg_id, msg_hash, redis)
-                if result is not None:
-                    ack_topic = topic.split("__")
-                    ack_topic[1] = "ACK" + ack_topic[1]
-                    ack_topic = "__".join(ack_topic)
-                    Topic.write_topic(ack_topic, {"result": result, "id": msg_id}, "*", 100)
+            if all_shard_zero:
+                # Fast path: everything on shard 0, single read
+                for topic, msg_id, msg_hash, redis in Topic.read_topics(all_topics):
+                    result = method(topic, msg_id, msg_hash, redis)
+                    if result is not None:
+                        Topic.write_ack(topic, result, msg_id)
+            else:
+                # Non-blocking read for interface commands and system events (shard 0)
+                if non_target_topics:
+                    for topic, msg_id, msg_hash, redis in Topic.read_topics(non_target_topics, timeout_ms=0):
+                        result = method(topic, msg_id, msg_hash, redis)
+                        if result is not None:
+                            Topic.write_ack(topic, result, msg_id)
+
+                # Blocking read for target command topics per shard
+                timeout_per_shard = max(1000 // max(len(target_shard_groups), 1), 100)
+                for shard, topics in target_shard_groups.items():
+                    for topic, msg_id, msg_hash, redis in Topic.read_topics(topics, timeout_ms=timeout_per_shard, shard=shard):
+                        result = method(topic, msg_id, msg_hash, redis)
+                        if result is not None:
+                            Topic.write_ack(topic, result, msg_id, shard=shard)
 
     @classmethod
     def write_raw(cls, interface_name, data, scope, timeout=None):

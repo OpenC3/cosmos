@@ -68,5 +68,59 @@ module OpenC3
     def self.del(topic, shard: 0)
       EphemeralStore.instance(shard: shard).del(topic)
     end
+
+    # Group topics by shard. Each topic's target name is extracted and looked up.
+    # Topics matching target_pattern are sharded; others go to shard 0.
+    # @param topics [Array<String>] List of topic strings
+    # @param target_pattern [String] Substring to identify target-specific topics (e.g. 'CMD}TARGET__', '__TELEMETRY__')
+    # @param scope [String] Scope name for shard lookup
+    # @return [Hash] { shard => [topic, ...] }
+    def self.group_topics_by_shard(topics, target_pattern:, scope:)
+      groups = {}
+      topics.each do |topic|
+        if topic.include?(target_pattern)
+          target_name = topic.match(/__\{?([^}_]+)\}?__/)[1] rescue nil
+          # Handle CMD}TARGET__ pattern where target is after TARGET__
+          target_name = topic.split('TARGET__')[1] if target_pattern.include?('TARGET__') && target_name.nil?
+          shard = Store.shard_for_target(target_name, scope: scope)
+        else
+          shard = 0
+        end
+        groups[shard] ||= []
+        groups[shard] << topic
+      end
+      groups
+    end
+
+    # Check if all shard groups resolve to shard 0 (single-shard fast path).
+    def self.all_on_shard_zero?(shard_groups)
+      shard_groups.length <= 1 && (shard_groups.empty? || shard_groups.key?(0))
+    end
+
+    # Build the ACK topic from a command/router topic and write the ack.
+    def self.write_ack(topic, result, msg_id, shard: 0)
+      ack_topic = topic.split("__")
+      ack_topic[1] = 'ACK' + ack_topic[1]
+      ack_topic = ack_topic.join("__")
+      Topic.write_topic(ack_topic, { 'result' => result, 'id' => msg_id }, '*', 100, shard: shard)
+    end
+
+    # Group topics with offsets by shard. Returns { shard => { topics: [], offsets: [] } }.
+    # If all on shard 0, returns a single group with the original arrays (fast path).
+    def self.group_topics_with_offsets_by_shard(topics, offsets, scope:)
+      groups = {}
+      topics.each_with_index do |topic, idx|
+        target_name = topic.match(/__\{?([^}_]+)\}?__/)[1] rescue nil
+        shard = Store.shard_for_target(target_name, scope: scope)
+        groups[shard] ||= { topics: [], offsets: [] }
+        groups[shard][:topics] << topic
+        groups[shard][:offsets] << offsets[idx]
+      end
+      # Fast path: if everything is on shard 0, use the original arrays
+      if groups.length == 1 && groups.key?(0)
+        groups = { 0 => { topics: topics, offsets: offsets } }
+      end
+      groups
+    end
   end
 end

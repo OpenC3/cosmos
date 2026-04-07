@@ -16,7 +16,6 @@ from openc3.environment import OPENC3_SCOPE
 from openc3.system.system import System
 from openc3.topics.topic import Topic
 from openc3.utilities.json import JsonDecoder
-from openc3.utilities.store import Store
 
 
 class RouterTopic(Topic):
@@ -35,31 +34,24 @@ class RouterTopic(Topic):
 
     @classmethod
     def receive_telemetry(cls, router, scope=OPENC3_SCOPE):
-        import re
-
-        # Group topics by shard
         all_topics = RouterTopic.topics(router, scope)
-        shard_groups = {}  # shard => [topic, ...]
-        for topic in all_topics:
-            match = re.search(r"__\{?([^}_]+)\}?__", topic)
-            target_name = match.group(1) if match else None
-            shard = Store.shard_for_target(target_name, scope=scope)
-            if shard not in shard_groups:
-                shard_groups[shard] = []
-            shard_groups[shard].append(topic)
+        shard_groups = Topic.group_topics_by_shard(all_topics, "__TELEMETRY__", scope)
+        all_shard_zero = Topic.all_on_shard_zero(shard_groups)
 
         while True:
-            timeout_per_shard = max(1000 // max(len(shard_groups), 1), 100)
-            for shard, topics in shard_groups.items():
-                for topic, msg_id, msg_hash, redis in Topic.read_topics(
-                    topics, timeout_ms=timeout_per_shard, shard=shard
-                ):
+            if all_shard_zero:
+                # Fast path: everything on shard 0, single read
+                for topic, msg_id, msg_hash, redis in Topic.read_topics(all_topics):
                     result = yield topic, msg_id, msg_hash, redis
                     if result is not None and "CMD}ROUTER" in topic:
-                        ack_topic = topic.split("__")
-                        ack_topic[1] = "ACK" + ack_topic[1]
-                        ack_topic = "__".join(ack_topic)
-                        Topic.write_topic(ack_topic, {"result": result, "id": msg_id}, msg_id, 100)
+                        Topic.write_ack(topic, result, msg_id)
+            else:
+                timeout_per_shard = max(1000 // max(len(shard_groups), 1), 100)
+                for shard, topics in shard_groups.items():
+                    for topic, msg_id, msg_hash, redis in Topic.read_topics(topics, timeout_ms=timeout_per_shard, shard=shard):
+                        result = yield topic, msg_id, msg_hash, redis
+                        if result is not None and "CMD}ROUTER" in topic:
+                            Topic.write_ack(topic, result, msg_id, shard=shard)
 
     @classmethod
     def route_command(cls, packet, target_names, scope=OPENC3_SCOPE):

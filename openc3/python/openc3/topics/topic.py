@@ -70,3 +70,37 @@ class Topic(metaclass=TopicMeta):
     @classmethod
     def trim_topic(cls, topic, minid, approximate=True, limit=0, shard=0):
         return EphemeralStore.instance(shard=shard).trim_topic(topic, minid, approximate, limit=limit)
+
+    @classmethod
+    def group_topics_by_shard(cls, topics, target_pattern, scope):
+        """Group topics by shard. Topics matching target_pattern are sharded; others go to shard 0."""
+        import re
+        from openc3.utilities.store import Store
+        groups = {}
+        for topic in topics:
+            if target_pattern in topic:
+                if "TARGET__" in target_pattern:
+                    target_name = topic.split("TARGET__")[1] if "TARGET__" in topic else None
+                else:
+                    match = re.search(r"__\{?([^}_]+)\}?__", topic)
+                    target_name = match.group(1) if match else None
+                shard = Store.shard_for_target(target_name, scope=scope)
+            else:
+                shard = 0
+            if shard not in groups:
+                groups[shard] = []
+            groups[shard].append(topic)
+        return groups
+
+    @staticmethod
+    def all_on_shard_zero(shard_groups):
+        """Check if all shard groups resolve to shard 0."""
+        return len(shard_groups) <= 1 and (not shard_groups or 0 in shard_groups)
+
+    @classmethod
+    def write_ack(cls, topic, result, msg_id, shard=0):
+        """Build the ACK topic from a command/router topic and write the ack."""
+        ack_topic = topic.split("__")
+        ack_topic[1] = "ACK" + ack_topic[1]
+        ack_topic = "__".join(ack_topic)
+        Topic.write_topic(ack_topic, {"result": result, "id": msg_id}, "*", 100, shard=shard)

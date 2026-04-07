@@ -133,8 +133,15 @@ class DecomMicroservice(Microservice):
             if self.cancel_thread:
                 break
             try:
-                # OpenC3.in_span("read_topics") do
-                for topic, msg_id, msg_hash, redis in Topic.read_topics(self.topics, shard=self.target_shard):
+                # If target shard differs from shard 0, read microservice topic separately
+                if self.target_shard != 0:
+                    for topic, msg_id, msg_hash, redis in Topic.read_topics([self.microservice_topic], timeout_ms=0):
+                        self.microservice_cmd(topic, msg_id, msg_hash, redis)
+                    if self.cancel_thread:
+                        break
+
+                topics_to_read = [t for t in self.topics if t != self.microservice_topic] if self.target_shard != 0 else self.topics
+                for topic, msg_id, msg_hash, redis in Topic.read_topics(topics_to_read, shard=self.target_shard):
                     if self.cancel_thread:
                         break
 
