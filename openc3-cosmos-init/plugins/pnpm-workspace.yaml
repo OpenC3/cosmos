@@ -1,7 +1,5 @@
 packages:
   - 'packages/*'
-overrides:
-  picomatch: 4.0.4 # picomatch@4.0.3 has a CVE and is used by tinyglobby@0.2.15, which is used by vite@7.3.2 - CVE is fixed in 4.0.4
 
 minimumReleaseAge: 1440 # 1 day
 minimumReleaseAgeExclude:
