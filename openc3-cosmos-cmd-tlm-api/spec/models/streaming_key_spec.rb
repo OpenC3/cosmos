@@ -176,6 +176,43 @@ RSpec.describe StreamingKey, type: :model do
     end
   end
 
+  describe '#has_glob?' do
+    it 'returns false for a plain item key' do
+      key = StreamingKey.parse('DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED', item_key: true)
+      expect(key.has_glob?).to be false
+    end
+
+    it 'returns true when item_name contains *' do
+      key = StreamingKey.parse('DECOM__TLM__INST__PARAMS__TEMP*__CONVERTED', item_key: true)
+      expect(key.has_glob?).to be true
+    end
+
+    it 'returns true when packet_name contains *' do
+      key = StreamingKey.parse('DECOM__TLM__INST__HEALTH*__VALUE1__CONVERTED', item_key: true)
+      expect(key.has_glob?).to be true
+    end
+
+    it 'returns true when item_name contains ?' do
+      key = StreamingKey.parse('DECOM__TLM__INST__PARAMS__TEMP?__CONVERTED', item_key: true)
+      expect(key.has_glob?).to be true
+    end
+
+    it 'returns true when item_name contains [' do
+      key = StreamingKey.parse('DECOM__TLM__INST__PARAMS__TEMP[12]__CONVERTED', item_key: true)
+      expect(key.has_glob?).to be true
+    end
+
+    it 'returns false for a packet key without item_name' do
+      key = StreamingKey.parse('DECOM__TLM__INST__PARAMS__CONVERTED')
+      expect(key.has_glob?).to be false
+    end
+
+    it 'returns true when packet_name has glob in a packet key' do
+      key = StreamingKey.parse('DECOM__TLM__INST__HEALTH*__CONVERTED')
+      expect(key.has_glob?).to be true
+    end
+  end
+
   describe '#with' do
     it 'creates a new key with a replaced field' do
       key = StreamingKey.parse('DECOM__TLM__INST__LATEST__VALUE1__CONVERTED', item_key: true)

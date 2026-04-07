@@ -74,6 +74,7 @@
               :hidden="true"
               choose-item
               allow-all
+              allow-glob
               show-latest
               @add-item="addItem($event)"
             />
@@ -893,7 +894,7 @@ export default {
         if (item.slice(0, 2) === '__') return
         if (this.columnMap[item]) return
         this.columnMap[item] = this.columnHeaders.length // Uses short name
-        item = this.keyMap[item] // Decode to full name
+        item = this.keyMap[item] || item // Decode to full name (glob-expanded keys are already full)
         const [
           mode,
           cmdTlm,
@@ -1002,7 +1003,7 @@ export default {
         if (!this.uniqueOnly || changed) {
           // Normal column mode means each row has time / target name / packet name
           if (this.columnMode === 'normal') {
-            regularKey = this.keyMap[regularKey] // Decode to full name
+            regularKey = this.keyMap[regularKey] || regularKey // Decode to full name (glob-expanded keys are already full)
             const [
               mode,
               cmdTlm,

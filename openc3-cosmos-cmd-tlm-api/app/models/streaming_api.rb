@@ -110,6 +110,76 @@ class StreamingApi
     data["packets"] = expanded
   end
 
+  # Expand glob patterns (*, ?, []) in item keys into concrete item entries.
+  # Mutates data["items"] in-place, replacing glob entries with expanded pairs.
+  def expand_item_globs(data, scope:)
+    return unless data["items"]
+
+    expanded = []
+    data["items"].each do |entry|
+      key, item_key = entry.is_a?(Array) ? entry : [entry, nil]
+      parsed = StreamingKey.parse(key, item_key: true)
+
+      unless parsed.has_glob?
+        expanded << entry
+        next
+      end
+
+      type = (parsed.cmd_or_tlm == :CMD) ? :CMD : :TLM
+
+      if parsed.packet_name == 'LATEST'
+        # LATEST + item glob: resolve item names from the item-to-packet map
+        item_map = OpenC3::TargetModel.get_item_to_packet_map(parsed.target_name, scope: scope)
+        item_map.each_key do |item_name|
+          next unless File.fnmatch(parsed.item_name.to_s, item_name, File::FNM_CASEFOLD)
+          concrete_key = parsed.with(item_name: item_name).to_key_string
+          expanded << [concrete_key, concrete_key]
+        end
+      else
+        # Determine which packets to iterate over
+        if parsed.packet_name.match?(/[*?\[]/)
+          # Packet name is a glob — match against all packets
+          begin
+            packets = OpenC3::TargetModel.packets(parsed.target_name, type: type, scope: scope)
+          rescue RuntimeError
+            next
+          end
+          matched_packets = packets.select { |pkt| File.fnmatch(parsed.packet_name.to_s, pkt['packet_name'], File::FNM_CASEFOLD) }
+        else
+          # Concrete packet name — just wrap it so the loop below works uniformly
+          matched_packets = [{ 'packet_name' => parsed.packet_name.to_s }]
+        end
+
+        packet_glob = parsed.packet_name.match?(/[*?\[]/)
+        item_glob = parsed.item_name && parsed.item_name.to_s.match?(/[*?\[]/)
+
+        matched_packets.each do |pkt|
+          pkt_name = pkt['packet_name']
+
+          if item_glob || (packet_glob && parsed.item_name)
+            # Fetch packet items and filter by item name (glob or exact match)
+            begin
+              packet_def = OpenC3::TargetModel.packet(parsed.target_name, pkt_name, type: type, scope: scope)
+            rescue RuntimeError
+              next
+            end
+            item_pattern = parsed.item_name.to_s
+            packet_def['items'].each do |item|
+              next unless File.fnmatch(item_pattern, item['name'], File::FNM_CASEFOLD)
+              concrete_key = parsed.with(packet_name: pkt_name, item_name: item['name']).to_key_string
+              expanded << [concrete_key, concrete_key]
+            end
+          else
+            # Packet glob only, no item name
+            concrete_key = parsed.with(packet_name: pkt_name).to_key_string
+            expanded << [concrete_key, concrete_key]
+          end
+        end
+      end
+    end
+    data["items"] = expanded
+  end
+
   # Request to add data to the stream
   #
   # data format:
@@ -147,6 +217,8 @@ class StreamingApi
 
       # Expand ALL wildcards in packets before building the collection
       expand_all_packets(data, scope: scope)
+      # Expand glob patterns in item keys before building the collection
+      expand_item_globs(data, scope: scope)
 
       # Build the collection of streaming objects for this request
       collection = StreamingObjectCollection.new
@@ -209,6 +281,8 @@ class StreamingApi
 
     # Expand ALL wildcards in packets before building the collection
     expand_all_packets(data, scope: scope)
+    # Expand glob patterns in item keys before building the collection
+    expand_item_globs(data, scope: scope)
 
     # Build the collection of streaming objects for this request
     collection = StreamingObjectCollection.new

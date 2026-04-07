@@ -39,7 +39,8 @@
         />
       </v-col>
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="select-packet">
-        <v-autocomplete
+        <component
+          :is="allowGlob ? 'v-combobox' : 'v-autocomplete'"
           ref="packetAutocomplete"
           v-model="selectedPacketName"
           label="Select Packet"
@@ -53,8 +54,7 @@
           item-value="value"
           @update:model-value="packetNameChanged"
           @focus="selectOnFocus('packetAutocomplete')"
-        >
-        </v-autocomplete>
+        />
       </v-col>
       <v-col
         v-if="mode === 'cmd' && showQueueSelect"
@@ -84,7 +84,8 @@
         class="tpic-select pr-4"
         data-test="select-item"
       >
-        <v-autocomplete
+        <component
+          :is="allowGlob ? 'v-combobox' : 'v-autocomplete'"
           ref="itemAutocomplete"
           v-model="selectedItemName"
           label="Select Item"
@@ -270,6 +271,10 @@ export default {
       default: true,
     },
     parameterHazardous: {
+      type: Boolean,
+      default: false,
+    },
+    allowGlob: {
       type: Boolean,
       default: false,
     },
@@ -640,7 +645,17 @@ export default {
       // the @change handler is fired but the value is null
       // In this case we don't want to update packet details
       if (value !== null) {
-        this.updatePacketDetails(value)
+        if (
+          this.allowGlob &&
+          typeof value === 'string' &&
+          /[*?\[]/.test(value)
+        ) {
+          // Glob pattern: skip API calls, enable the item field for free-text entry
+          this.itemsDisabled = false
+          this.internalDisabled = false
+        } else {
+          this.updatePacketDetails(value)
+        }
       }
     },
 
@@ -713,6 +728,13 @@ export default {
           reducedType: this.selectedReducedType,
           queueName: this.selectedQueueName,
         })
+      } else if (
+        this.allowGlob &&
+        typeof value === 'string' &&
+        /[*?\[]/.test(value)
+      ) {
+        // Accept free-text glob pattern even though it's not in the item list
+        this.selectedItemName = value.toUpperCase()
       }
     },
 
