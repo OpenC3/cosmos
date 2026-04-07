@@ -76,7 +76,7 @@ jobs:
         working-directory: openc3-cosmos-cmd-tlm-api
         env:
           OPENC3_DEVEL: ../openc3
-      - uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5.5.3
+      - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
           directory: openc3-cosmos-cmd-tlm-api/coverage
           flags: ruby-api # See codecov.yml
@@ -124,7 +124,7 @@ jobs:
         working-directory: openc3-cosmos-script-runner-api
         env:
           OPENC3_DEVEL: ../openc3
-      - uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5.5.3
+      - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
           directory: openc3-cosmos-script-runner-api/coverage
           flags: ruby-api # See codecov.yml
@@ -169,7 +169,7 @@ jobs:
           uv run --frozen coverage run -m pytest ../../openc3-cosmos-script-runner-api/test/
           uv run --frozen coverage xml -i
         working-directory: openc3/python
-      - uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5.5.3
+      - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
           working-directory: openc3/python
           flags: python # See codecov.yml
