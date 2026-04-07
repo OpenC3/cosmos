@@ -89,7 +89,7 @@ class TsdbMicroservice(Microservice):
         try:
             # If target shard differs from shard 0, read microservice topic separately
             if self.target_shard != 0:
-                for topic, msg_id, msg_hash, redis in Topic.read_topics([self.microservice_topic], timeout_ms=0):
+                for topic, msg_id, msg_hash, redis in Topic.read_topics([self.microservice_topic], timeout_ms=None):
                     self.microservice_cmd(topic, msg_id, msg_hash, redis)
                 if self.cancel_thread:
                     return

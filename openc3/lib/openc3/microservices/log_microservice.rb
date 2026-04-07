@@ -66,7 +66,7 @@ module OpenC3
 
         # If target shard differs from shard 0, read microservice topic separately
         if @target_shard != 0
-          Topic.read_topics([@microservice_topic], nil, 0) do |topic, msg_id, msg_hash, redis|
+          Topic.read_topics([@microservice_topic], nil, nil) do |topic, msg_id, msg_hash, redis|
             microservice_cmd(topic, msg_id, msg_hash, redis)
           end
           break if @cancel_thread

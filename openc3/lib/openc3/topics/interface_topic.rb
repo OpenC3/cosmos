@@ -61,7 +61,7 @@ module OpenC3
         else
           # Non-blocking read for interface commands and system events (shard 0)
           unless non_target_topics.empty?
-            Topic.read_topics(non_target_topics, nil, 0) do |topic, msg_id, msg_hash, redis|
+            Topic.read_topics(non_target_topics, nil, nil) do |topic, msg_id, msg_hash, redis|
               result = yield topic, msg_id, msg_hash, redis
               Topic.write_ack(topic, result, msg_id) if result
             end

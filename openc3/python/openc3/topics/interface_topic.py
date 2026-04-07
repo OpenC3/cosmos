@@ -60,7 +60,7 @@ class InterfaceTopic(Topic):
             else:
                 # Non-blocking read for interface commands and system events (shard 0)
                 if non_target_topics:
-                    for topic, msg_id, msg_hash, redis in Topic.read_topics(non_target_topics, timeout_ms=0):
+                    for topic, msg_id, msg_hash, redis in Topic.read_topics(non_target_topics, timeout_ms=None):
                         result = method(topic, msg_id, msg_hash, redis)
                         if result is not None:
                             Topic.write_ack(topic, result, msg_id)
