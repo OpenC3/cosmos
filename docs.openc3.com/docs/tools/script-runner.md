@@ -15,7 +15,7 @@ Script Runner is both an editor of COSMOS scripts as well as executes scripts. S
 
 ### File Menu Items
 
-<!-- Image sized to match up with bullets -->
+{/* Image sized to match up with bullets */}
 
 <img src={require('@site/static/img/script_runner/file_menu.png').default}
 alt="File Menu"
@@ -44,7 +44,7 @@ When saving a file for the first time, or using File Save As, the File Save As D
 
 ### Script Menu Items
 
-<!-- Image sized to match up with bullets -->
+{/* Image sized to match up with bullets */}
 
 <img src={require('@site/static/img/script_runner/script_menu.png').default}
 alt="Script Menu"

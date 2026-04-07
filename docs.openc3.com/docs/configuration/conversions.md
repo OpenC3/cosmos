@@ -6,7 +6,7 @@ sidebar_custom_props:
   myEmoji: 🔄
 ---
 
-<!-- Be sure to edit _conversions.md because conversions.md is a generated file -->
+{/* Be sure to edit _conversions.md because conversions.md is a generated file */}
 
 # Overview
 

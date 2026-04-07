@@ -15,7 +15,7 @@ Data Extractor extracts command and telemetry items into comma or tab separated 
 
 ### File Menu Items
 
-<!-- Image sized to match up with bullets -->
+{/* Image sized to match up with bullets */}
 
 <img src={require('@site/static/img/data_extractor/file_menu.png').default}
 alt="File Menu"
@@ -37,7 +37,7 @@ The Save Configuration dialog also displays a list of all saved configurations. 
 
 ### Mode Menu Items
 
-<!-- Image sized to match up with bullets -->
+{/* Image sized to match up with bullets */}
 
 <img src={require('@site/static/img/data_extractor/mode_menu.png').default}
 alt="Mode Menu"

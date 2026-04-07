@@ -13,7 +13,7 @@ Telemetry Viewer is a live telemetry viewer which displays custom built screens.
 
 ### File Menu Items
 
-<!-- Image sized to match up with bullets -->
+{/* Image sized to match up with bullets */}
 
 <img src={require('@site/static/img/telemetry_viewer/file_menu.png').default}
 alt="File Menu"

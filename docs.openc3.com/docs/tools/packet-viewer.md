@@ -15,7 +15,7 @@ Packet Viewer is a live telemetry viewer which requires no configuration to disp
 
 ### File Menu Items
 
-<!-- Image sized to match up with bullets -->
+{/* Image sized to match up with bullets */}
 
 <img src={require('@site/static/img/packet_viewer/file_menu.png').default}
 alt="File Menu"
@@ -28,7 +28,7 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 120 + 'px'}} />
 
 ### View Menu Items
 
-<!-- Image sized to match up with bullets -->
+{/* Image sized to match up with bullets */}
 
 <img src={require('@site/static/img/packet_viewer/view_menu.png').default}
 alt="View Menu"

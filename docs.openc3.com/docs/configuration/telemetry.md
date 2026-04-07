@@ -6,7 +6,7 @@ sidebar_custom_props:
   myEmoji: 📡
 ---
 
-<!-- Be sure to edit _telemetry.md because telemetry.md is a generated file -->
+{/* Be sure to edit _telemetry.md because telemetry.md is a generated file */}
 
 ## Telemetry Concepts
 
@@ -684,7 +684,7 @@ LIMITS_GROUP SUBSYSTEM
 
 **Example File: TARGET/cmd_tlm/tlm.txt**
 
-<!-- prettier-ignore -->
+{/* prettier-ignore */}
 ```ruby
 TELEMETRY TARGET HS BIG_ENDIAN "Health and Status for My Target"
   ITEM CCSDSVER 0 3 UINT "CCSDS PACKET VERSION NUMBER (SEE CCSDS 133.0-B-1)"

@@ -15,7 +15,7 @@ Data Viewer allows you to view packet data or individual item data in both the p
 
 ### File Menu Items
 
-<!-- Image sized to match up with bullets -->
+{/* Image sized to match up with bullets */}
 
 <img src={require('@site/static/img/data_viewer/file_menu.png').default}
 alt="File Menu"

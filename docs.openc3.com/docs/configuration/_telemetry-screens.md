@@ -6,7 +6,7 @@ sidebar_custom_props:
   myEmoji: 🖥️
 ---
 
-<!-- Be sure to edit _telemetry_screens.md because telemetry_screens.md is a generated file -->
+{/* Be sure to edit _telemetry_screens.md because telemetry_screens.md is a generated file */}
 
 This document provides the information necessary to generate and use COSMOS Telemetry Screens, which are displayed by the COSMOS Telemetry Viewer application.
 
@@ -119,7 +119,7 @@ COSMOS_META
 
 Example File: TARGET/myscreen.txt
 
-<!-- prettier-ignore -->
+{/* prettier-ignore */}
 ```ruby
 SCREEN AUTO AUTO 0.5
 VERTICAL

@@ -17,8 +17,7 @@ const config = {
   favicon: "img/favicon.png",
 
   future: {
-    experimental_faster: true,
-    v4: true
+    v4: true,
   },
 
   headTags: [
@@ -55,7 +54,7 @@ const config = {
     hooks: {
       onBrokenMarkdownLinks: "throw",
       onBrokenMarkdownImages: "throw",
-    }
+    },
   },
 
   // Even if you don't use internalization, you can use this field to set useful

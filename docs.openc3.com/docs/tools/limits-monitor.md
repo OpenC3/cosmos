@@ -15,7 +15,7 @@ The Limits Monitor application provides situational awareness for all telemetry 
 
 ### File Menu Items
 
-<!-- Image sized to match up with bullets -->
+{/* Image sized to match up with bullets */}
 
 <img src={require('@site/static/img/limits_monitor/file_menu.png').default}
 alt="File Menu"
