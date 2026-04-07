@@ -71,8 +71,7 @@ class LoggedStreamingThread < StreamingThread
     end
 
     # Check the topic to figure out what we have in Redis
-    shard = OpenC3::Store.shard_for_target(first_object.target_name, scope: @scope)
-    oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(first_object.topic, shard: shard)
+    oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(first_object.topic, shard: first_object.shard)
 
     if oldest_msg_id
       # We have data in Redis
@@ -166,10 +165,12 @@ class LoggedStreamingThread < StreamingThread
 
     # Calculate Valkey stream offset per topic
     offset_by_topic = {}
+    # Build topic-to-shard map from objects
+    topic_shard_map = {}
+    @collection.objects.each { |obj| topic_shard_map[obj.topic] = obj.shard }
+
     @last_tsdb_times.each do |topic, last_time|
-      # Extract target name from topic to determine shard
-      target_name = topic.match(/__\{?([^}_]+)\}?__/)[1] rescue nil
-      topic_shard = OpenC3::Store.shard_for_target(target_name, scope: @scope)
+      topic_shard = topic_shard_map[topic] || 0
       oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(topic, shard: topic_shard)
       if oldest_msg_id
         oldest_time = oldest_msg_hash['time'].to_i
@@ -199,7 +200,7 @@ class LoggedStreamingThread < StreamingThread
       topics, offsets, item_objects_by_topic, packet_objects_by_topic = @collection.topics_offsets_and_objects
       results = []
       if topics.length > 0
-        shard_groups = OpenC3::Topic.group_topics_with_offsets_by_shard(topics, offsets, scope: @scope)
+        shard_groups = build_shard_groups(topics, offsets, item_objects_by_topic, packet_objects_by_topic)
 
         timeout_per_shard = [500 / [shard_groups.length, 1].max, 100].max
         any_result = false

@@ -34,6 +34,8 @@ class StreamingObject
   attr_accessor :end_time
   attr_accessor :offset
   attr_reader :topic
+  attr_reader :shard
+  attr_reader :scope
   attr_reader :id
   attr_reader :realtime
   attr_reader :item_key

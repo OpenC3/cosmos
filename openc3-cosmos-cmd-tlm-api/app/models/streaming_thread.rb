@@ -86,7 +86,8 @@ class StreamingThread
     topics, offsets, item_objects_by_topic, packet_objects_by_topic = @collection.topics_offsets_and_objects
     results = []
     if topics.length > 0
-      shard_groups = OpenC3::Topic.group_topics_with_offsets_by_shard(topics, offsets, scope: @scope)
+      # Build shard groups from the objects' pre-computed shards
+      shard_groups = build_shard_groups(topics, offsets, item_objects_by_topic, packet_objects_by_topic)
 
       # Read from each shard with proportionally shorter timeouts
       timeout_per_shard = [500 / [shard_groups.length, 1].max, 100].max
@@ -234,6 +235,34 @@ class StreamingThread
       @collection.remove(object)
     end
     @cancel_thread = true if @collection.empty?
+  end
+
+  # Build shard groups from streaming objects' pre-computed shards.
+  # Each StreamingObject already knows its shard from initialization.
+  # Returns { shard => { topics: [], offsets: [] } } with fast path for all-shard-0.
+  def build_shard_groups(topics, offsets, item_objects_by_topic, packet_objects_by_topic)
+    # Build a topic-to-shard map from the objects
+    topic_shard = {}
+    item_objects_by_topic.each do |topic, objects|
+      topic_shard[topic] = objects[0].shard if objects && objects.length > 0
+    end
+    packet_objects_by_topic.each do |topic, objects|
+      topic_shard[topic] = objects[0].shard if objects && objects.length > 0
+    end
+
+    groups = {}
+    topics.each_with_index do |topic, idx|
+      shard = topic_shard[topic] || 0
+      groups[shard] ||= { topics: [], offsets: [] }
+      groups[shard][:topics] << topic
+      groups[shard][:offsets] << offsets[idx]
+    end
+
+    # Fast path: if everything is on shard 0, use the original arrays
+    if groups.length == 1 && groups.key?(0)
+      groups = { 0 => { topics: topics, offsets: offsets } }
+    end
+    groups
   end
 
   def handoff(collection)
