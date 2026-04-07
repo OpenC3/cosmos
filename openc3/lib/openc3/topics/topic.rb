@@ -104,23 +104,5 @@ module OpenC3
       ack_topic = ack_topic.join("__")
       Topic.write_topic(ack_topic, { 'result' => result, 'id' => msg_id }, '*', 100, shard: shard)
     end
-
-    # Group topics with offsets by shard. Returns { shard => { topics: [], offsets: [] } }.
-    # If all on shard 0, returns a single group with the original arrays (fast path).
-    def self.group_topics_with_offsets_by_shard(topics, offsets, scope:)
-      groups = {}
-      topics.each_with_index do |topic, idx|
-        target_name = topic.match(/__\{?([^}_]+)\}?__/)[1] rescue nil
-        shard = Store.shard_for_target(target_name, scope: scope)
-        groups[shard] ||= { topics: [], offsets: [] }
-        groups[shard][:topics] << topic
-        groups[shard][:offsets] << offsets[idx]
-      end
-      # Fast path: if everything is on shard 0, use the original arrays
-      if groups.length == 1 && groups.key?(0)
-        groups = { 0 => { topics: topics, offsets: offsets } }
-      end
-      groups
-    end
   end
 end
