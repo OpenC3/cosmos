@@ -334,7 +334,7 @@ import 'splitpanes/dist/splitpanes.css'
 
 import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
 import { useContainerHeight } from '@/composables/useContainerHeight'
-import { ref, useTemplateRef } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import { useAsyncState } from '@vueuse/core'
 import {
   AceEditorUtils,
@@ -438,7 +438,7 @@ export default {
 
     // Template refs
     const editorRef = useTemplateRef('editor')
-    const editor = editorRef?.value?.editor || null
+    const editor = computed(() => editorRef?.value?.editor || null)
 
     // Script prompts and dialogs
     const {
