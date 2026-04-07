@@ -7,21 +7,23 @@
 # See LICENSE.md for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 import ast
+import json
 import re
 
 
 SCANNING_REGULAR_EXPRESSION = re.compile(
-    r"(?:\"(?:[^\\\"]|\\.)*\") | (?:'(?:[^\\']|\\.)*') | (?:\[.*\]) | \S+", re.VERBOSE
+    r"(?:\"(?:[^\\\"]|\\.)*\") | (?:'(?:[^\\']|\\.)*') | (?:\[(?:[^\\\[\]]|\\.)*\]) | \S+", re.VERBOSE
 )
 
 SPLIT_WITH_REGEX = re.compile(r"\s+with\s+", re.IGNORECASE)
+SPLIT_WITH_OPTIONAL_WHITESPACE_REGEX = re.compile(r"\s*with\s*", re.IGNORECASE)
 
 # Regular expression to identify a String as a floating point number
 FLOAT_CHECK_REGEX = re.compile(r"\A\s*[-+]?\d*\.\d+\s*\Z")
@@ -135,8 +137,12 @@ def add_cmd_parameter(keyword, value, cmd_params):
 
 
 def extract_fields_from_cmd_text(text):
-    split_string = re.split(SPLIT_WITH_REGEX, text, maxsplit=2)
-    if len(split_string) == 1 and SPLIT_WITH_REGEX.match(text):
+    split_string = re.split(SPLIT_WITH_REGEX, text, maxsplit=1)  # 1 split, therefore 2 elements
+    if len(split_string) == 0 or split_string[0] == "":
+        raise RuntimeError("ERROR: text must not be empty")
+    if (len(split_string) == 1 and re.search(SPLIT_WITH_OPTIONAL_WHITESPACE_REGEX, text)) or (
+        len(split_string) == 2 and split_string[1] == ""
+    ):
         raise RuntimeError(f"ERROR: 'with' must be followed by parameters : {text:s}")
 
     # Extract target_name and cmd_name
@@ -182,7 +188,7 @@ def extract_fields_from_cmd_text(text):
 
 
 def extract_fields_from_tlm_text(text):
-    split_string = text.split(" ")
+    split_string = text.split()
     if len(split_string) != 3:
         raise RuntimeError(f"ERROR: Telemetry Item must be specified as 'TargetName PacketName ItemName' : {text}")
     target_name = split_string[0]
@@ -215,21 +221,60 @@ def extract_fields_from_set_tlm_text(text):
 
 
 def extract_fields_from_check_text(text):
-    split_string = text.split(" ")
-    if len(split_string) < 3:
+    fields_split = text.split(None, 3)  # Python: second split arg is max number of splits
+    if len(fields_split) < 3:
         raise RuntimeError(f"ERROR: Check improperly specified: {text}")
-    target_name = split_string[0]
-    packet_name = split_string[1]
-    item_name = split_string[2]
-    comparison_to_eval = None
-    if len(split_string) == 3:
-        return [target_name, packet_name, item_name, comparison_to_eval]
-    if len(split_string) < 4:
-        raise RuntimeError(f"ERROR: Check improperly specified: {text}")
+    target_name, packet_name, item_name, *comparison = fields_split
 
-    # TODO: Ruby version has additional code to split on regex spaces
-    comparison_to_eval = " ".join(split_string[3:])
-    if split_string[3] == "=":
-        raise RuntimeError(f"ERROR: Use '==' instead of '=': {text}")
+    # comparison is a list, guaranteed to be of length 0 or 1 because of the split 3 with the splat operator above.
+    # We need it to be either None or the comparison string.
+    if len(comparison):
+        comparison = comparison[0]
+    else:
+        comparison = None
 
-    return target_name, packet_name, item_name, comparison_to_eval
+    if comparison and len(comparison):
+        operator, *_ = comparison.split(None, 1)
+        if operator == "=":
+            raise RuntimeError(f"ERROR: Use '==' instead of '=' in {text}")
+
+    return target_name, packet_name, item_name, comparison
+
+
+# Splits `check()` comparison expressions, e.g. "== 'foo bar'" becomes ["==", "foo bar"]
+def extract_operator_and_operand_from_comparison(comparison):
+    valid_operators = ["==", "!=", ">=", "<=", ">", "<", "in"]
+
+    parts = comparison.split(None, 1)  # Python: second split arg is max number of splits
+    operator = parts[0] if len(parts) >= 1 else None
+    operand = parts[1] if len(parts) >= 2 else None
+
+    if operand is None:
+        if operator is not None:
+            raise RuntimeError(f"ERROR: Invalid comparison, must specify an operand: {comparison}")
+        return [None, None]
+
+    if operator not in valid_operators:
+        raise RuntimeError(f"ERROR: Invalid operator: '{operator}'")
+
+    # Handle string operand: remove surrounding double/single quotes
+    quote_match = re.match(
+        r"^(['\"])(.*)\1$", operand, re.DOTALL
+    )  # Starts with single or double quote, and ends with matching quote
+    if quote_match:
+        operand = quote_match.group(2)
+        return operator, operand
+
+    # Handle other operand types
+    if operand == "None":
+        operand = None
+    elif operand == "False":
+        operand = False
+    elif operand == "True":
+        operand = True
+    else:
+        try:
+            operand = json.loads(operand)
+        except json.JSONDecodeError as err:
+            raise RuntimeError(f"ERROR: Unable to parse operand: {operand}") from err
+    return operator, operand
