@@ -18,8 +18,15 @@ import json
 import re
 
 
+# Tokenizer for command parameters: matches double-quoted strings, single-quoted strings,
+# bracket-delimited arrays, or bare words (non-whitespace runs)
 SCANNING_REGULAR_EXPRESSION = re.compile(
-    r"(?:\"(?:[^\\\"]|\\.)*\") | (?:'(?:[^\\']|\\.)*') | (?:\[(?:[^\\\[\]]|\\.)*\]) | \S+", re.VERBOSE
+    r""" "(?:[^\\"]|\\.)*"            # double-quoted string (with escaped chars)
+       | '(?:[^\\']|\\.)*'            # single-quoted string (with escaped chars)
+       | \[(?:[^\\\[\]]|\\.)*\]       # bracket-delimited array (with escaped chars)
+       | \S+                          # bare word
+    """,
+    re.VERBOSE,
 )
 
 SPLIT_WITH_REGEX = re.compile(r"\s+with\s+", re.IGNORECASE)
@@ -162,10 +169,10 @@ def extract_fields_from_cmd_text(text):
         value = None
         comma = None
         for item in second_half:
-            if not keyword:
+            if keyword is None:
                 keyword = item
                 continue
-            if not value:
+            if value is None:
                 if item.endswith(","):
                     value = item[0:-1]
                     comma = True
@@ -178,11 +185,10 @@ def extract_fields_from_cmd_text(text):
             keyword = None
             value = None
             comma = None
-        if keyword:
-            if value:
-                add_cmd_parameter(keyword, value, cmd_params)
-            else:
-                raise RuntimeError(f"Missing value for last command parameter: {text:s}")
+        if keyword is not None and value is not None:
+            add_cmd_parameter(keyword, value, cmd_params)
+        else:
+            raise RuntimeError(f"Missing value for last command parameter: {text:s}")
 
     return target_name, cmd_name, cmd_params
 
