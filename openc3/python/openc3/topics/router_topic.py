@@ -48,7 +48,9 @@ class RouterTopic(Topic):
             else:
                 timeout_per_shard = max(1000 // max(len(shard_groups), 1), 100)
                 for shard, topics in shard_groups.items():
-                    for topic, msg_id, msg_hash, redis in Topic.read_topics(topics, timeout_ms=timeout_per_shard, shard=shard):
+                    for topic, msg_id, msg_hash, redis in Topic.read_topics(
+                        topics, timeout_ms=timeout_per_shard, shard=shard
+                    ):
                         result = yield topic, msg_id, msg_hash, redis
                         if result is not None and "CMD}ROUTER" in topic:
                             Topic.write_ack(topic, result, msg_id, shard=shard)

@@ -77,6 +77,7 @@ class Topic(metaclass=TopicMeta):
         import re
 
         from openc3.utilities.store import Store
+
         groups = {}
         for topic in topics:
             if target_pattern in topic:

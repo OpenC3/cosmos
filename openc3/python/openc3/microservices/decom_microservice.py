@@ -140,7 +140,9 @@ class DecomMicroservice(Microservice):
                     if self.cancel_thread:
                         break
 
-                topics_to_read = [t for t in self.topics if t != self.microservice_topic] if self.target_shard != 0 else self.topics
+                topics_to_read = (
+                    [t for t in self.topics if t != self.microservice_topic] if self.target_shard != 0 else self.topics
+                )
                 for topic, msg_id, msg_hash, redis in Topic.read_topics(topics_to_read, shard=self.target_shard):
                     if self.cancel_thread:
                         break
