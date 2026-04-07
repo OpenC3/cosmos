@@ -53,6 +53,9 @@ module OpenC3
       return nil if item.data_type == :DERIVED
       configure()
 
+      # No template items to read (e.g. command with fixed template string)
+      return nil if @item_keys.empty?
+
       # Scan the response for all the variables in brackets <VARIABLE>
       values = buffer.scan(@read_regexp)[0]
       if !values || (values.length != @item_keys.length)
@@ -72,6 +75,12 @@ module OpenC3
     def read_items(items, buffer)
       result = {}
       configure()
+
+      # No template items to read (e.g. command with fixed template string)
+      if @item_keys.empty?
+        items.each { |item| result[item.name] = nil }
+        return result
+      end
 
       # Scan the response for all the variables in brackets <VARIABLE>
       values = buffer.scan(@read_regexp)[0]
