@@ -999,9 +999,13 @@ def _check_eval_validity(value, comparison):
 
     try:
         operator, operand = extract_operator_and_operand_from_comparison(comparison)
-    except (RuntimeError, json.JSONDecodeError):
-        # If we can't parse the operand, let the eval happen anyway
-        # It will raise an appropriate error (like NameError for undefined constants)
+    except RuntimeError as e:
+        if "Unable to parse operand" in str(e):
+            # If we can't parse the operand, let the eval happen anyway
+            # It will raise an appropriate error (like NameError for undefined constants)
+            return True
+        raise  # Re-raise invalid operator errors
+    except json.JSONDecodeError:
         return True
 
     if operator in [">=", "<=", ">", "<"] and (

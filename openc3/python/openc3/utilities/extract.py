@@ -7,7 +7,7 @@
 # See LICENSE.md for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -236,7 +236,7 @@ def extract_fields_from_check_text(text):
     if comparison and len(comparison):
         operator, *_ = comparison.split(None, 1)
         if operator == "=":
-            raise RuntimeError(f"ERROR: Use '==' instead of '=': {comparison}")
+            raise RuntimeError(f"ERROR: Use '==' instead of '=' in {text}")
 
     return target_name, packet_name, item_name, comparison
 
@@ -245,7 +245,9 @@ def extract_fields_from_check_text(text):
 def extract_operator_and_operand_from_comparison(comparison):
     valid_operators = ["==", "!=", ">=", "<=", ">", "<", "in"]
 
-    operator, operand = comparison.split(None, 1)  # Python: second split arg is max number of splits
+    parts = comparison.split(None, 1)  # Python: second split arg is max number of splits
+    operator = parts[0] if len(parts) >= 1 else None
+    operand = parts[1] if len(parts) >= 2 else None
 
     if operand is None:
         if operator is not None:
@@ -253,7 +255,7 @@ def extract_operator_and_operand_from_comparison(comparison):
         return [None, None]
 
     if operator not in valid_operators:
-        raise RuntimeError(f"ERROR: Invalid operator: {comparison}")
+        raise RuntimeError(f"ERROR: Invalid operator: '{operator}'")
 
     # Handle string operand: remove surrounding double/single quotes
     quote_match = re.match(

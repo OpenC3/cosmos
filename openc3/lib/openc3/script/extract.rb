@@ -163,7 +163,7 @@ module OpenC3
       comparison = nil if comparison&.length == 0
 
       operator, _ = comparison&.split(nil, 2)
-      raise "ERROR: Use '==' instead of '=': #{comparison}" if operator == "="
+      raise "ERROR: Use '==' instead of '=' in #{text}" if operator == "="
 
       return [target_name, packet_name, item_name, comparison]
     end
@@ -180,7 +180,7 @@ module OpenC3
         return [nil, nil]
       end
 
-      raise "ERROR: Invalid operator: #{comparison}" unless valid_operators.include?(operator)
+      raise "ERROR: Invalid operator: '#{operator}'" unless valid_operators.include?(operator)
 
       # Handle string operand: remove surrounding double/single quotes
       if operand.match?(/^(['"])(.*)\1$/m) # Starts with single or double quote, and ends with matching quote

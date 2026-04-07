@@ -179,6 +179,150 @@ class TestApiShared(unittest.TestCase):
         ):
             check("INST HEALTH_STATUS CCSDSSHF == FALSE")
 
+    def test_check_raises_with_an_invalid_operator(self):
+        with self.assertRaisesRegex(RuntimeError, r"ERROR: Invalid operator: '==='"):
+            check("INST HEALTH_STATUS TEMP1 === 1")
+        with self.assertRaisesRegex(RuntimeError, r"ERROR: Invalid operator: 'not'"):
+            check("INST HEALTH_STATUS TEMP1 not 1")
+        with self.assertRaisesRegex(RuntimeError, r"ERROR: Invalid operator: 'and'"):
+            check("INST HEALTH_STATUS TEMP1 and 1")
+
+    def test_check_raises_with_an_operator_but_no_operand(self):
+        with self.assertRaisesRegex(RuntimeError, r"ERROR: Invalid comparison, must specify an operand: >"):
+            check("INST HEALTH_STATUS TEMP1 >")
+        with self.assertRaisesRegex(RuntimeError, r"ERROR: Invalid comparison, must specify an operand: =="):
+            check("INST HEALTH_STATUS TEMP1 ==")
+
+    def test_check_raises_with_invalid_comparison_for_types(self):
+        with self.assertRaisesRegex(CheckError, r"Invalid comparison for types"):
+            check("INST HEALTH_STATUS TEMP1 > None")
+        with self.assertRaisesRegex(CheckError, r"Invalid comparison for types"):
+            check("INST HEALTH_STATUS TEMP1 < None")
+        with self.assertRaisesRegex(CheckError, r"Invalid comparison for types"):
+            check("INST HEALTH_STATUS TEMP1 >= None")
+        with self.assertRaisesRegex(CheckError, r"Invalid comparison for types"):
+            check("INST HEALTH_STATUS TEMP1 <= None")
+        global count
+        count = False
+        with self.assertRaisesRegex(CheckError, r"Invalid comparison for types"):
+            check("INST HEALTH_STATUS RECEIVED_COUNT > 1")
+        with self.assertRaisesRegex(CheckError, r"Invalid comparison for types"):
+            check("INST HEALTH_STATUS RECEIVED_COUNT < 1")
+        count = True
+        with self.assertRaisesRegex(CheckError, r"Invalid comparison for types"):
+            check("INST HEALTH_STATUS ARY > 1")
+        with self.assertRaisesRegex(CheckError, r"Invalid comparison for types"):
+            check("INST HEALTH_STATUS ARY < 1")
+
+    def test_check_logs_invalid_comparison_for_types_when_disconnected(self):
+        openc3.script.DISCONNECT = True
+        for stdout in capture_io():
+            check("INST HEALTH_STATUS TEMP1 > None")
+            self.assertIn("ERROR: Invalid comparison for types", stdout.getvalue())
+        openc3.script.DISCONNECT = False
+
+    def test_check_nil_value_with_equality_operators(self):
+        global count
+        count = False
+        for stdout in capture_io():
+            check("INST HEALTH_STATUS RECEIVED_COUNT == None")
+            self.assertIn(
+                "CHECK: INST HEALTH_STATUS RECEIVED_COUNT == None success with value == None",
+                stdout.getvalue(),
+            )
+        with self.assertRaisesRegex(
+            CheckError,
+            r"CHECK: INST HEALTH_STATUS RECEIVED_COUNT != None failed with value == None",
+        ):
+            check("INST HEALTH_STATUS RECEIVED_COUNT != None")
+        count = True
+
+    def test_check_prints_none_for_value_with_no_comparison(self):
+        global count
+        count = False
+        for stdout in capture_io():
+            check("INST HEALTH_STATUS RECEIVED_COUNT")
+            self.assertIn("CHECK: INST HEALTH_STATUS RECEIVED_COUNT == None", stdout.getvalue())
+        count = True
+
+    def test_wait_tolerance_accepts_polling_rate_with_string_form(self):
+        for stdout in capture_io():
+            result = wait_tolerance("INST HEALTH_STATUS TEMP2", 10.5, 0.01, 0.01, 0.01)
+            self.assertTrue(result)
+            self.assertIn(
+                "WAIT: INST HEALTH_STATUS TEMP2 was within range 10.49 to 10.51 with value == 10.5",
+                stdout.getvalue(),
+            )
+
+    def test_wait_tolerance_accepts_polling_rate_with_explicit_form(self):
+        for stdout in capture_io():
+            result = wait_tolerance("INST", "HEALTH_STATUS", "TEMP2", 1.55, 0.1, 0.01, 0.01, type="RAW")
+            self.assertTrue(result)
+            self.assertIn(
+                "WAIT: INST HEALTH_STATUS TEMP2 was within range 1.45 to 1.65 with value == 1.5",
+                stdout.getvalue(),
+            )
+
+    def test_wait_check_uses_default_polling_rate_with_explicit_form(self):
+        for stdout in capture_io():
+            result = wait_check("INST", "HEALTH_STATUS", "TEMP1", "> 1", 0.01)
+            self.assertTrue(isinstance(result, float))
+            self.assertIn(
+                "CHECK: INST HEALTH_STATUS TEMP1 > 1 success with value == 10",
+                stdout.getvalue(),
+            )
+
+    def test_wait_returns_true_when_cancelled_and_eval_condition_is_met(self):
+        global cancel
+        cancel = True
+        for stdout in capture_io():
+            result = wait("INST HEALTH_STATUS RECEIVED_COUNT >= 2", 0.1, 0.01)
+            self.assertTrue(result)
+            self.assertIn("WAIT: INST HEALTH_STATUS RECEIVED_COUNT >= 2 success", stdout.getvalue())
+        cancel = False
+
+    def test_wait_returns_false_when_cancelled_and_eval_raises_type_error(self):
+        global cancel, count
+        cancel = True
+        count = False
+        for stdout in capture_io():
+            # RECEIVED_COUNT returns None when count=False, so eval("value >= 0") raises TypeError
+            result = wait("INST HEALTH_STATUS RECEIVED_COUNT >= 0", 0.1, 0.01)
+            self.assertFalse(result)
+            self.assertIn("WARN: WAIT: INST HEALTH_STATUS RECEIVED_COUNT >= 0 failed", stdout.getvalue())
+        cancel = False
+        count = True
+
+    def test_wait_check_succeeds_when_cancelled_and_eval_condition_is_met(self):
+        global cancel
+        cancel = True
+        for stdout in capture_io():
+            result = wait_check("INST HEALTH_STATUS RECEIVED_COUNT >= 2", 0.1, 0.01)
+            self.assertTrue(isinstance(result, float))
+            self.assertIn("CHECK: INST HEALTH_STATUS RECEIVED_COUNT >= 2 success", stdout.getvalue())
+        cancel = False
+
+    def test_wait_expression_succeeds_when_cancelled_and_expression_becomes_true(self):
+        global cancel
+        cancel = True
+        counter = {"n": 0}
+
+        def bump():
+            counter["n"] += 1
+            return counter["n"]
+
+        for stdout in capture_io():
+            result = wait_expression("bump() >= 2", 0.1, 0.01, {"bump": bump}, {})
+            self.assertTrue(result)
+            self.assertIn("is TRUE", stdout.getvalue())
+        cancel = False
+
+    def test_check_eval_validity_returns_true_for_no_comparison(self):
+        from openc3.script.api_shared import _check_eval_validity
+
+        self.assertTrue(_check_eval_validity(10, None))
+        self.assertTrue(_check_eval_validity(10, ""))
+
     def test_checks_against_the_specified_type(self):
         for stdout in capture_io():
             check_raw("INST HEALTH_STATUS TEMP1 == 1")
@@ -202,6 +346,13 @@ class TestApiShared(unittest.TestCase):
             r"check\(INST HEALTH_STATUS TEMP1 == 10\) should have raised an exception but did not",
         ):
             check_exception("check", "INST HEALTH_STATUS TEMP1 == 10")
+
+    def test_raises_if_the_exception_is_not_raised_with_kwargs(self):
+        with self.assertRaisesRegex(
+            CheckError,
+            r"check\(INST HEALTH_STATUS TEMP1 == 1, \{'type': 'RAW'\}\) should have raised an exception but did not",
+        ):
+            check_exception("check", "INST HEALTH_STATUS TEMP1 == 1", type="RAW")
 
     def test_check_tolerance_raises_with_invalid_params(self):
         with self.assertRaisesRegex(
@@ -361,9 +512,9 @@ class TestApiShared(unittest.TestCase):
 
     def test_waits_for_a_relative_time(self):
         for stdout in capture_io():
-            result = wait(0.2)
+            result = wait(0.01)
             self.assertTrue(isinstance(result, float))
-            self.assertIn("WAIT: 0.2 seconds with actual time of 0.000", stdout.getvalue())
+            self.assertIn("WAIT: 0.01 seconds with actual time of 0.000", stdout.getvalue())
 
     def test_raises_on_a_non_numeric_time(self):
         with self.assertRaisesRegex(RuntimeError, "Non-numeric wait time specified"):
@@ -371,36 +522,51 @@ class TestApiShared(unittest.TestCase):
 
     def test_waits_for_a_tgt_pkt_item(self):
         for stdout in capture_io():
-            result = wait("INST HEALTH_STATUS TEMP1 > 0", 5)
+            result = wait("INST HEALTH_STATUS TEMP1 > 0", 0.01)
             self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS TEMP1 > 0 success with value == 10 after waiting 0.0",
                 stdout.getvalue(),
             )
 
-            result = wait("INST HEALTH_STATUS TEMP1 < 0", 0.1, 0.1)  # Last param is polling rate
+            result = wait("INST HEALTH_STATUS TEMP1 < 0", 0.01, 0.01)  # Last param is polling rate
             self.assertFalse(result)
             self.assertIn(
-                "WAIT: INST HEALTH_STATUS TEMP1 < 0 failed with value == 10 after waiting 0.1",
+                "WAIT: INST HEALTH_STATUS TEMP1 < 0 failed with value == 10 after waiting 0.01",
                 stdout.getvalue(),
             )
 
-            result = wait("INST", "HEALTH_STATUS", "TEMP1", "> 0", 5)
+            result = wait("INST", "HEALTH_STATUS", "TEMP1", "> 0", 0.01)
             self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS TEMP1 > 0 success with value == 10 after waiting 0.0",
                 stdout.getvalue(),
             )
 
-            result = wait("INST", "HEALTH_STATUS", "TEMP1", "== 0", 0.1, 0.1)  # Last param is polling rate
+            result = wait("INST", "HEALTH_STATUS", "TEMP1", "== 0", 0.01, 0.01)  # Last param is polling rate
             self.assertFalse(result)
             self.assertIn(
-                "WAIT: INST HEALTH_STATUS TEMP1 == 0 failed with value == 10 after waiting 0.1",
+                "WAIT: INST HEALTH_STATUS TEMP1 == 0 failed with value == 10 after waiting 0.01",
                 stdout.getvalue(),
             )
 
         with self.assertRaisesRegex(RuntimeError, "Invalid number of arguments"):
-            wait("INST", "HEALTH_STATUS", "TEMP1", "== 0", 0.1, 0.1, 0.1)
+            wait("INST", "HEALTH_STATUS", "TEMP1", "== 0", 0.01, 0.01, 0.01)
+
+    def test_waits_for_a_string_value(self):
+        for stdout in capture_io():
+            result = wait("INST HEALTH_STATUS CCSDSSHF == 'FALSE'", 0.01)
+            self.assertTrue(result)
+            self.assertIn(
+                "WAIT: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'",
+                stdout.getvalue(),
+            )
+
+    def test_waits_with_no_comparison(self):
+        for stdout in capture_io():
+            result = wait("INST HEALTH_STATUS TEMP1", 0.01)
+            self.assertFalse(result)
+            self.assertIn("WARN: WAIT: INST HEALTH_STATUS TEMP1 None failed", stdout.getvalue())
 
     def test_wait_tolerance_raises_with_invalid_params(self):
         with self.assertRaisesRegex(
@@ -419,28 +585,28 @@ class TestApiShared(unittest.TestCase):
 
     def test_waits_for_a_value_to_be_within_a_tolerance(self):
         for stdout in capture_io():
-            result = wait_tolerance("INST", "HEALTH_STATUS", "TEMP2", 1.55, 0.1, 5, type="RAW")
+            result = wait_tolerance("INST", "HEALTH_STATUS", "TEMP2", 1.55, 0.1, 0.01, type="RAW")
             self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS TEMP2 was within range 1.45 to 1.65 with value == 1.5 after waiting 0.0",
                 stdout.getvalue(),
             )
-            result = wait_tolerance("INST HEALTH_STATUS TEMP2", 10.5, 0.01, 5)
+            result = wait_tolerance("INST HEALTH_STATUS TEMP2", 10.5, 0.01, 0.01)
             self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS TEMP2 was within range 10.49 to 10.51 with value == 10.5 after waiting 0.0",
                 stdout.getvalue(),
             )
-            result = wait_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.1)
+            result = wait_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.01)
             self.assertFalse(result)
             self.assertIn(
-                "WAIT: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5 after waiting 0.1",
+                "WAIT: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5 after waiting 0.01",
                 stdout.getvalue(),
             )
 
     def test_waits_that_an_array_value_is_within_a_single_tolerance(self):
         for stdout in capture_io():
-            result = wait_tolerance("INST", "HEALTH_STATUS", "ARY", 3, 1, 5)
+            result = wait_tolerance("INST", "HEALTH_STATUS", "ARY", 3, 1, 0.01)
             self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2",
@@ -454,7 +620,7 @@ class TestApiShared(unittest.TestCase):
                 "WAIT: INST HEALTH_STATUS ARY[2] was within range 2 to 4 with value == 4",
                 stdout.getvalue(),
             )
-            result = wait_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1)
+            result = wait_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.01)
             self.assertFalse(result)
             self.assertIn(
                 "INST HEALTH_STATUS ARY[0] failed to be within range 2.9 to 3.1 with value == 2",
@@ -471,7 +637,7 @@ class TestApiShared(unittest.TestCase):
 
     def test_waits_that_multiple_array_values_are_within_tolerance(self):
         for stdout in capture_io():
-            result = wait_tolerance("INST", "HEALTH_STATUS", "ARY", [2, 3, 4], 0.1, 5)
+            result = wait_tolerance("INST", "HEALTH_STATUS", "ARY", [2, 3, 4], 0.1, 0.01)
             self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS ARY[0] was within range 1.9 to 2.1 with value == 2",
@@ -486,7 +652,7 @@ class TestApiShared(unittest.TestCase):
                 stdout.getvalue(),
             )
 
-            result = wait_tolerance("INST HEALTH_STATUS ARY", [2, 3, 4], 0.1, 5)
+            result = wait_tolerance("INST HEALTH_STATUS ARY", [2, 3, 4], 0.1, 0.01)
             self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS ARY[0] was within range 1.9 to 2.1 with value == 2",
@@ -503,7 +669,7 @@ class TestApiShared(unittest.TestCase):
 
     def test_waits_that_an_array_value_is_within_multiple_tolerances(self):
         for stdout in capture_io():
-            result = wait_tolerance("INST", "HEALTH_STATUS", "ARY", 3, [1, 0.1, 2], 5)
+            result = wait_tolerance("INST", "HEALTH_STATUS", "ARY", 3, [1, 0.1, 2], 0.01)
             self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2",
@@ -518,7 +684,7 @@ class TestApiShared(unittest.TestCase):
                 stdout.getvalue(),
             )
 
-            result = wait_tolerance("INST HEALTH_STATUS ARY", 3, [1, 0.1, 2], 5)
+            result = wait_tolerance("INST HEALTH_STATUS ARY", 3, [1, 0.1, 2], 0.01)
             self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2",
@@ -532,35 +698,48 @@ class TestApiShared(unittest.TestCase):
                 "WAIT: INST HEALTH_STATUS ARY[2] was within range 1 to 5 with value == 4",
                 stdout.getvalue(),
             )
+
+    def test_wait_expression_raises_with_non_ascii(self):
+        with self.assertRaisesRegex(RuntimeError, "Invalid comparison to non-ascii value"):
+            wait_expression("True == '\xff'", 0.01)
+
+    def test_wait_expression_returns_none_when_cancelled_and_expression_is_false(self):
+        global cancel
+        cancel = True
+        for stdout in capture_io():
+            result = wait_expression("True == False", 0.1, 0.01)
+            self.assertIsNone(result)
+            self.assertIn("WARN: WAIT: True == False is FALSE", stdout.getvalue())
+        cancel = False
 
     def test_waits_for_an_expression(self):
         for stdout in capture_io():
-            result = wait_expression("True == True", 5)
+            result = wait_expression("True == True", 0.01)
             self.assertTrue(result)
             self.assertIn(
                 "WAIT: True == True is TRUE after waiting 0.0",
                 stdout.getvalue(),
             )
-            result = wait_expression("True == False", 0.1)
+            result = wait_expression("True == False", 0.01)
             self.assertFalse(result)
-            self.assertIn("WAIT: True == False is FALSE after waiting 0.1", stdout.getvalue())
+            self.assertIn("WAIT: True == False is FALSE after waiting 0.01", stdout.getvalue())
 
     def test_waits_for_a_logical_expression(self):
         for stdout in capture_io():
-            result = wait_expression("'STRING' == 'STRING'", 5)
+            result = wait_expression("'STRING' == 'STRING'", 0.01)
             self.assertTrue(result)
             self.assertIn(
                 "WAIT: 'STRING' == 'STRING' is TRUE after waiting 0.0",
                 stdout.getvalue(),
             )
-            result = wait_expression("1 == 2", 0.1)
+            result = wait_expression("1 == 2", 0.01)
             self.assertFalse(result)
             self.assertIn("WAIT: 1 == 2 is FALSE after waiting", stdout.getvalue())
         with self.assertRaisesRegex(
             NameError,
             "Uninitialized constant STRING. Did you mean 'STRING' as a string?",
         ):
-            wait_expression("'STRING' == STRING", 5)
+            wait_expression("'STRING' == STRING", 0.01)
 
     def test_wait_check_raises_with_invalid_params(self):
         with self.assertRaisesRegex(
@@ -636,19 +815,19 @@ class TestApiShared(unittest.TestCase):
 
     def test_wait_check_tolerance_raises_with_formatted_or_with_units(self):
         with self.assertRaisesRegex(RuntimeError, r"Invalid type 'FORMATTED' for wait_check_tolerance"):
-            wait_check_tolerance("INST HEALTH_STATUS TEMP2 == 10.5", 0.1, 5, type="FORMATTED")
+            wait_check_tolerance("INST HEALTH_STATUS TEMP2 == 10.5", 0.1, 0.01, type="FORMATTED")
         with self.assertRaisesRegex(RuntimeError, r"Invalid type 'WITH_UNITS' for wait_check_tolerance"):
-            wait_check_tolerance("INST HEALTH_STATUS TEMP2 == 10.5", 0.1, 5, type="WITH_UNITS")
+            wait_check_tolerance("INST HEALTH_STATUS TEMP2 == 10.5", 0.1, 0.01, type="WITH_UNITS")
 
     def test_wait_checks_that_a_value_is_within_a_tolerance(self):
         for stdout in capture_io():
-            result = wait_check_tolerance("INST", "HEALTH_STATUS", "TEMP2", 1.55, 0.1, 5, type="RAW")
+            result = wait_check_tolerance("INST", "HEALTH_STATUS", "TEMP2", 1.55, 0.1, 0.01, type="RAW")
             self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS TEMP2 was within range 1.45 to 1.65 with value == 1.5",
                 stdout.getvalue(),
             )
-            result = wait_check_tolerance("INST HEALTH_STATUS TEMP2", 10.5, 0.01, 5)
+            result = wait_check_tolerance("INST HEALTH_STATUS TEMP2", 10.5, 0.01, 0.01)
             self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS TEMP2 was within range 10.49 to 10.51 with value == 10.5",
@@ -658,11 +837,11 @@ class TestApiShared(unittest.TestCase):
             CheckError,
             r"CHECK: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5",
         ):
-            wait_check_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.1)
+            wait_check_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.01)
 
     def test_wait_checks_that_an_array_value_is_within_a_single_tolerance(self):
         for stdout in capture_io():
-            result = wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", 3, 1, 5)
+            result = wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", 3, 1, 0.01)
             self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2",
@@ -680,17 +859,17 @@ class TestApiShared(unittest.TestCase):
             CheckError,
             r"CHECK: INST HEALTH_STATUS ARY\[0\] failed to be within range 2.9 to 3.1 with value == 2",
         ):
-            wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1)
+            wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.01)
         with self.assertRaisesRegex(
             CheckError,
             r"CHECK: INST HEALTH_STATUS ARY\[1\] was within range 2.9 to 3.1 with value == 3",
         ):
-            wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1)
+            wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.01)
         with self.assertRaisesRegex(
             CheckError,
             r"CHECK: INST HEALTH_STATUS ARY\[2\] failed to be within range 2.9 to 3.1 with value == 4",
         ):
-            wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1)
+            wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.01)
 
     def test_wait_check_tolerance_logs_instead_of_raises_when_disconnected(self):
         openc3.script.DISCONNECT = True
@@ -712,7 +891,7 @@ class TestApiShared(unittest.TestCase):
 
     def test_wait_checks_that_multiple_array_values_are_within_tolerance(self):
         for stdout in capture_io():
-            result = wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", [2, 3, 4], 0.1, 5)
+            result = wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", [2, 3, 4], 0.1, 0.01)
             self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS ARY[0] was within range 1.9 to 2.1 with value == 2",
@@ -729,7 +908,7 @@ class TestApiShared(unittest.TestCase):
 
     def test_wait_checks_that_an_array_value_is_within_multiple_tolerances(self):
         for stdout in capture_io():
-            result = wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", 3, [1, 0.1, 2], 5)
+            result = wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", 3, [1, 0.1, 2], 0.01)
             self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2",
@@ -746,38 +925,38 @@ class TestApiShared(unittest.TestCase):
 
     def test_waits_and_checks_that_an_expression_is_true(self):
         for stdout in capture_io():
-            result = wait_check_expression("True == True", 5)
+            result = wait_check_expression("True == True", 0.01)
             self.assertTrue(isinstance(result, float))
             self.assertIn("CHECK: True == True is TRUE", stdout.getvalue())
         with self.assertRaisesRegex(CheckError, "CHECK: True == False is FALSE"):
-            wait_check_expression("True == False", 0.1)
+            wait_check_expression("True == False", 0.01)
 
     def test_wait_check_expression_logs_instead_of_raises_when_disconnected(self):
         openc3.script.DISCONNECT = True
         for stdout in capture_io():
-            result = wait_check_expression("True == False", 5)
+            result = wait_check_expression("True == False", 0.01)
             self.assertTrue(isinstance(result, float))
             self.assertIn("CHECK: True == False is FALSE", stdout.getvalue())
         openc3.script.DISCONNECT = False
 
     def test_waits_and_checks_a_logical_expression(self):
         for stdout in capture_io():
-            result = wait_check_expression("'STRING' == 'STRING'", 5)
+            result = wait_check_expression("'STRING' == 'STRING'", 0.01)
             self.assertTrue(isinstance(result, float))
             self.assertIn("CHECK: 'STRING' == 'STRING' is TRUE", stdout.getvalue())
         with self.assertRaisesRegex(CheckError, "CHECK: 1 == 2 is FALSE"):
-            wait_check_expression("1 == 2", 0.1)
+            wait_check_expression("1 == 2", 0.01)
         with self.assertRaisesRegex(
             NameError,
             "Uninitialized constant STRING. Did you mean 'STRING' as a string?",
         ):
-            wait_check_expression("'STRING' == STRING", 0.1)
+            wait_check_expression("'STRING' == STRING", 0.01)
 
     def test_wait_packet_prints_warning_if_packet_not_received(self):
         global count
         count = False
         for stdout in capture_io():
-            result = wait_packet("INST", "HEALTH_STATUS", 1, 0.5)
+            result = wait_packet("INST", "HEALTH_STATUS", 1, 0.1)
             self.assertFalse(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS expected to be received 1 times but only received 0 times",
@@ -790,14 +969,14 @@ class TestApiShared(unittest.TestCase):
         count = True
         for stdout in capture_io():
             cancel = True
-            result = wait_packet("INST", "HEALTH_STATUS", 5, 0.5)
+            result = wait_packet("INST", "HEALTH_STATUS", 5, 0.1)
             self.assertFalse(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS expected to be received 5 times",
                 stdout.getvalue(),
             )
             cancel = False
-            result = wait_packet("INST", "HEALTH_STATUS", 5, 0.5)
+            result = wait_packet("INST", "HEALTH_STATUS", 5, 0.1)
             self.assertTrue(result)
             self.assertIn(
                 "WAIT: INST HEALTH_STATUS received 5 times after waiting",
@@ -811,7 +990,7 @@ class TestApiShared(unittest.TestCase):
             CheckError,
             "CHECK: INST HEALTH_STATUS expected to be received 1 times but only received 0 times",
         ):
-            wait_check_packet("INST", "HEALTH_STATUS", 1, 0.5)
+            wait_check_packet("INST", "HEALTH_STATUS", 1, 0.1)
 
     def test_wait_check_packet_logs_instead_of_raises_if_disconnected(self):
         openc3.script.DISCONNECT = True
@@ -838,7 +1017,7 @@ class TestApiShared(unittest.TestCase):
             ):
                 wait_check_packet("INST", "HEALTH_STATUS", 5, 0.0)
             cancel = False
-            result = wait_check_packet("INST", "HEALTH_STATUS", 5, 0.5)
+            result = wait_check_packet("INST", "HEALTH_STATUS", 5, 0.1)
             self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS received 5 times after waiting",
