@@ -75,6 +75,7 @@ class Topic(metaclass=TopicMeta):
     def group_topics_by_shard(cls, topics, target_pattern, scope):
         """Group topics by shard. Topics matching target_pattern are sharded; others go to shard 0."""
         import re
+
         from openc3.utilities.store import Store
         groups = {}
         for topic in topics:
