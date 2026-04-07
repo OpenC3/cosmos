@@ -337,6 +337,7 @@ import { useContainerHeight } from '@/composables/useContainerHeight'
 import { ref, useTemplateRef } from 'vue'
 import { useAsyncState } from '@vueuse/core'
 import {
+  AceEditorUtils,
   CriticalCmdDialog,
   EnvironmentDialog,
   FileOpenSaveDialog,
