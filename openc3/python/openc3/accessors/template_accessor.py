@@ -60,6 +60,10 @@ class TemplateAccessor(Accessor):
             return None
         self.configure()
 
+        # No template items to read (e.g. command with fixed template string)
+        if not self.item_keys:
+            return None
+
         # Scan the response for all the variables in brackets <VARIABLE>
         values = self.read_regexp.match(buffer.decode())
         if values is not None:
@@ -86,6 +90,12 @@ class TemplateAccessor(Accessor):
     def read_items(self, items, buffer):
         result = {}
         self.configure()
+
+        # No template items to read (e.g. command with fixed template string)
+        if not self.item_keys:
+            for item in items:
+                result[item.name] = None
+            return result
 
         # Scan the response for all the variables in brackets <VARIABLE>
         values = self.read_regexp.match(buffer.decode())

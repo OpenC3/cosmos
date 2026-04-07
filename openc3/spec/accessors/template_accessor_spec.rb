@@ -99,6 +99,24 @@ module OpenC3
         expect(values['CHANNEL']).to eq 2
         expect(values['MYVALUE']).to be_within(0.01).of(5.67)
       end
+
+      it "should handle templates with no items" do
+        packet = Packet.new
+        packet.template = 'OUTPUT:STATE? (@1:3);'
+        packet.buffer = packet.template
+        accessor = TemplateAccessor.new(packet)
+
+        item = OpenStruct.new
+        item.name = 'DUMMY'
+        item.key = 'DUMMY'
+        item.data_type = :STRING
+
+        value = accessor.read_item(item, packet.buffer(false))
+        expect(value).to be_nil
+
+        values = accessor.read_items([item], packet.buffer(false))
+        expect(values['DUMMY']).to be_nil
+      end
     end
 
     describe "write_item and write_items" do
