@@ -1,9 +1,7 @@
 import Hogan from "./mini-mustache";
 import LunrSearchAdapter from "./lunar-search";
-import autocomplete from "autocomplete.js";
 import templates from "./templates";
 import utils from "./utils";
-import $ from "autocomplete.js/zepto";
 
 class DocSearch {
     constructor({
@@ -13,11 +11,6 @@ class DocSearch {
         debug = false,
         baseUrl = '/',
         queryDataCallback = null,
-        autocompleteOptions = {
-            debug: false,
-            hint: false,
-            autoselect: true
-        },
         transformData = false,
         queryHook = false,
         handleSelected = false,
@@ -25,155 +18,223 @@ class DocSearch {
         layout = "column",
         maxHits = 5
     }) {
-        this.input = DocSearch.getInputFromSelector(inputSelector);
+        this.input = document.querySelector(inputSelector);
+        if (!this.input) return;
+
         this.queryDataCallback = queryDataCallback || null;
-        const autocompleteOptionsDebug =
-            autocompleteOptions && autocompleteOptions.debug
-                ? autocompleteOptions.debug
-                : false;
-        // eslint-disable-next-line no-param-reassign
-        autocompleteOptions.debug = debug || autocompleteOptionsDebug;
-        this.autocompleteOptions = autocompleteOptions;
-        this.autocompleteOptions.cssClasses =
-            this.autocompleteOptions.cssClasses || {};
-        this.autocompleteOptions.cssClasses.prefix =
-            this.autocompleteOptions.cssClasses.prefix || "ds";
-        const inputAriaLabel =
-            this.input &&
-            typeof this.input.attr === "function" &&
-            this.input.attr("aria-label");
-        this.autocompleteOptions.ariaLabel =
-            this.autocompleteOptions.ariaLabel || inputAriaLabel || "search input";
-
         this.isSimpleLayout = layout === "simple";
-
         this.client = new LunrSearchAdapter(searchDocs, searchIndex, baseUrl, maxHits);
+        this.transformData = transformData;
+        this.queryHook = queryHook;
+        this.customHandleSelected = handleSelected;
+        this.cursorIndex = -1;
+        this.suggestions = [];
+        this.isOpen = false;
 
-        if (enhancedSearchInput) {
-            this.input = DocSearch.injectSearchBox(this.input);
-        }
-        this.autocomplete = autocomplete(this.input, autocompleteOptions, [
-            {
-                source: this.getAutocompleteSource(transformData, queryHook),
-                templates: {
-                    suggestion: DocSearch.getSuggestionTemplate(this.isSimpleLayout),
-                    footer: templates.footer,
-                    empty: DocSearch.getEmptyTemplate()
-                }
-            }
-        ]);
+        this._buildDropdown();
+        this._bindEvents();
 
-        const customHandleSelected = handleSelected;
-        this.handleSelected = customHandleSelected || this.handleSelected;
-
-        // We prevent default link clicking if a custom handleSelected is defined
-        if (customHandleSelected) {
-            $(".algolia-autocomplete").on("click", ".ds-suggestions a", event => {
-                event.preventDefault();
-            });
-        }
-
-        this.autocomplete.on(
-            "autocomplete:selected",
-            this.handleSelected.bind(null, this.autocomplete.autocomplete)
-        );
-
-        this.autocomplete.on(
-            "autocomplete:shown",
-            this.handleShown.bind(null, this.input)
-        );
-
-        if (enhancedSearchInput) {
-            DocSearch.bindSearchBoxEvent();
-        }
-
-        // Ctrl/Cmd + K should focus the search bar, emulating the Algolia search UI
-        document.addEventListener('keydown',  (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key == 'k') {
+        // Ctrl/Cmd + K to focus
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 this.input.focus();
-
-                // By default, using Ctrl + K in Chrome will open the location bar, so disable this
                 e.preventDefault();
             }
         });
     }
 
-    static injectSearchBox(input) {
-        input.before(templates.searchBox);
-        const newInput = input
-            .prev()
-            .prev()
-            .find("input");
-        input.remove();
-        return newInput;
+    _buildDropdown() {
+        // Use the existing parent as the positioning wrapper instead of
+        // re-parenting the input (which disrupts the navbar flex layout).
+        this.wrapper = this.input.parentNode;
+        this.wrapper.classList.add('algolia-autocomplete');
+        this.wrapper.style.position = 'relative';
+
+        // Create dropdown
+        this.dropdown = document.createElement('div');
+        this.dropdown.className = 'ds-dropdown-menu';
+        this.dropdown.style.display = 'none';
+        this.dropdown.innerHTML = '<div class="ds-dataset-1"><div class="ds-suggestions"></div></div>';
+        this.wrapper.appendChild(this.dropdown);
+
+        this.suggestionsContainer = this.dropdown.querySelector('.ds-suggestions');
     }
 
-    static bindSearchBoxEvent() {
-        $('.searchbox [type="reset"]').on("click", function () {
-            $("input#docsearch").focus();
-            $(this).addClass("hide");
-            autocomplete.autocomplete.setVal("");
+    _bindEvents() {
+        let debounceTimer;
+        this.input.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => this._onInput(), 100);
         });
 
-        $("input#docsearch").on("keyup", () => {
-            const searchbox = document.querySelector("input#docsearch");
-            const reset = document.querySelector('.searchbox [type="reset"]');
-            reset.className = "searchbox__reset";
-            if (searchbox.value.length === 0) {
-                reset.className += " hide";
+        this.input.addEventListener('keydown', (e) => this._onKeyDown(e));
+
+        // Close on outside click
+        document.addEventListener('click', (e) => {
+            if (!this.wrapper.contains(e.target)) {
+                this._close();
+            }
+        });
+
+        // Close on escape
+        this.input.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this._close();
+                this.input.blur();
             }
         });
     }
 
-    /**
-     * Returns the matching input from a CSS selector, null if none matches
-     * @function getInputFromSelector
-     * @param  {string} selector CSS selector that matches the search
-     * input of the page
-     * @returns {void}
-     */
-    static getInputFromSelector(selector) {
-        const input = $(selector).filter("input");
-        return input.length ? $(input[0]) : null;
+    _onInput() {
+        let query = this.input.value;
+        if (!query || query.length < 1) {
+            this._close();
+            return;
+        }
+
+        if (this.queryHook) {
+            query = this.queryHook(query) || query;
+        }
+
+        this.client.search(query).then(hits => {
+            if (this.queryDataCallback && typeof this.queryDataCallback === "function") {
+                this.queryDataCallback(hits);
+            }
+            if (this.transformData) {
+                hits = this.transformData(hits) || hits;
+            }
+            const formatted = DocSearch.formatHits(hits);
+            this._renderSuggestions(formatted);
+        });
     }
 
-    /**
-     * Returns the `source` method to be passed to autocomplete.js. It will query
-     * the Algolia index and call the callbacks with the formatted hits.
-     * @function getAutocompleteSource
-     * @param  {function} transformData An optional function to transform the hits
-     * @param {function} queryHook An optional function to transform the query
-     * @returns {function} Method to be passed as the `source` option of
-     * autocomplete
-     */
-    getAutocompleteSource(transformData, queryHook) {
-        return (query, callback) => {
-            if (queryHook) {
-                // eslint-disable-next-line no-param-reassign
-                query = queryHook(query) || query;
-            }
-            this.client.search(query).then(hits => {
-                if (
-                    this.queryDataCallback &&
-                    typeof this.queryDataCallback == "function"
-                ) {
-                    this.queryDataCallback(hits);
-                }
-                if (transformData) {
-                    hits = transformData(hits) || hits;
-                }
-                callback(DocSearch.formatHits(hits));
+    _renderSuggestions(hits) {
+        this.suggestions = hits;
+        this.cursorIndex = -1;
+
+        if (!hits || hits.length === 0) {
+            const emptyTemplate = Hogan.compile(templates.empty);
+            this.suggestionsContainer.innerHTML = emptyTemplate.render({
+                query: this.input.value
             });
-        };
+            this._open();
+            return;
+        }
+
+        const suggestionTemplate = this.isSimpleLayout
+            ? templates.suggestionSimple
+            : templates.suggestion;
+        const template = Hogan.compile(suggestionTemplate);
+
+        this.suggestionsContainer.innerHTML = hits
+            .map((hit, i) =>
+                `<div class="ds-suggestion" data-index="${i}">${template.render(hit)}</div>`
+            )
+            .join('');
+
+        // Add footer
+        const existingFooter = this.dropdown.querySelector('.ds-dataset-1 .algolia-docsearch-footer');
+        if (!existingFooter) {
+            const dataset = this.dropdown.querySelector('.ds-dataset-1');
+            dataset.insertAdjacentHTML('beforeend', templates.footer);
+        }
+
+        // Bind click events on suggestions
+        this.suggestionsContainer.querySelectorAll('.ds-suggestion').forEach(el => {
+            el.addEventListener('mousedown', (e) => {
+                // mousedown fires before blur, so we can navigate
+                const idx = parseInt(el.dataset.index, 10);
+                const suggestion = this.suggestions[idx];
+                if (suggestion) {
+                    this._selectSuggestion(suggestion, e, 'click');
+                }
+            });
+        });
+
+        this._open();
     }
 
-    // Given a list of hits returned by the API, will reformat them to be used in
-    // a Hogan template
+    _open() {
+        this.dropdown.style.display = '';
+        this.isOpen = true;
+        this._updateAlignment();
+    }
+
+    _close() {
+        this.dropdown.style.display = 'none';
+        this.isOpen = false;
+        this.cursorIndex = -1;
+        this._clearCursor();
+    }
+
+    _updateAlignment() {
+        // Always right-align the dropdown to the search input
+        this.wrapper.classList.add('algolia-autocomplete-right');
+        this.wrapper.classList.remove('algolia-autocomplete-left');
+    }
+
+    _onKeyDown(e) {
+        if (!this.isOpen) return;
+
+        const items = this.suggestionsContainer.querySelectorAll('.ds-suggestion');
+        if (!items.length) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            this.cursorIndex = Math.min(this.cursorIndex + 1, items.length - 1);
+            this._updateCursor(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            this.cursorIndex = Math.max(this.cursorIndex - 1, 0);
+            this._updateCursor(items);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            const idx = this.cursorIndex >= 0 ? this.cursorIndex : 0;
+            const suggestion = this.suggestions[idx];
+            if (suggestion) {
+                this._selectSuggestion(suggestion, e, 'key');
+            }
+        }
+    }
+
+    _updateCursor(items) {
+        this._clearCursor();
+        if (this.cursorIndex >= 0 && items[this.cursorIndex]) {
+            items[this.cursorIndex].classList.add('ds-cursor');
+        }
+    }
+
+    _clearCursor() {
+        this.suggestionsContainer.querySelectorAll('.ds-cursor').forEach(el => {
+            el.classList.remove('ds-cursor');
+        });
+    }
+
+    _selectSuggestion(suggestion, event, selectionMethod) {
+        const inputWrapper = {
+            setVal: (val) => { this.input.value = val; },
+        };
+
+        this._close();
+
+        if (this.customHandleSelected) {
+            this.customHandleSelected(inputWrapper, event, suggestion, 0, {
+                selectionMethod
+            });
+            return;
+        }
+
+        // Default behavior
+        if (selectionMethod === 'click') return;
+        this.input.value = '';
+        window.location.assign(suggestion.url);
+    }
+
+    // Given a list of hits, reformat them for templates
     static formatHits(receivedHits) {
         const clonedHits = utils.deepClone(receivedHits);
         const hits = clonedHits.map(hit => {
             if (hit._highlightResult) {
-                // eslint-disable-next-line no-param-reassign
                 hit._highlightResult = utils.mergeKeyWithParent(
                     hit._highlightResult,
                     "hierarchy"
@@ -182,9 +243,8 @@ class DocSearch {
             return utils.mergeKeyWithParent(hit, "hierarchy");
         });
 
-        // Group hits by category / subcategory
         let groupedHits = utils.groupBy(hits, "lvl0");
-        $.each(groupedHits, (level, collection) => {
+        Object.entries(groupedHits).forEach(([level, collection]) => {
             const groupedHitsByLvl1 = utils.groupBy(collection, "lvl1");
             const flattenedHits = utils.flattenAndFlagFirst(
                 groupedHitsByLvl1,
@@ -194,7 +254,6 @@ class DocSearch {
         });
         groupedHits = utils.flattenAndFlagFirst(groupedHits, "isCategoryHeader");
 
-        // Translate hits into smaller objects to be send to the template
         return groupedHits.map(hit => {
             const url = DocSearch.formatURL(hit);
             const category = utils.getHighlightedValue(hit, "lvl0");
@@ -250,60 +309,8 @@ class DocSearch {
             else if (anchor) return `${hit.url}#${hit.anchor}`;
             return url;
         } else if (anchor) return `#${hit.anchor}`;
-        /* eslint-disable */
         console.warn("no anchor nor url for : ", JSON.stringify(hit));
-        /* eslint-enable */
         return null;
-    }
-
-    static getEmptyTemplate() {
-        return args => Hogan.compile(templates.empty).render(args);
-    }
-
-    static getSuggestionTemplate(isSimpleLayout) {
-        const stringTemplate = isSimpleLayout
-            ? templates.suggestionSimple
-            : templates.suggestion;
-        const template = Hogan.compile(stringTemplate);
-        return suggestion => template.render(suggestion);
-    }
-
-    handleSelected(input, event, suggestion, datasetNumber, context = {}) {
-        // Do nothing if click on the suggestion, as it's already a <a href>, the
-        // browser will take care of it. This allow Ctrl-Clicking on results and not
-        // having the main window being redirected as well
-        if (context.selectionMethod === "click") {
-            return;
-        }
-
-        input.setVal("");
-        window.location.assign(suggestion.url);
-    }
-
-    handleShown(input) {
-        const middleOfInput = input.offset().left + input.width() / 2;
-        let middleOfWindow = $(document).width() / 2;
-
-        if (isNaN(middleOfWindow)) {
-            middleOfWindow = 900;
-        }
-
-        const alignClass =
-            middleOfInput - middleOfWindow >= 0
-                ? "algolia-autocomplete-right"
-                : "algolia-autocomplete-left";
-        const otherAlignClass =
-            middleOfInput - middleOfWindow < 0
-                ? "algolia-autocomplete-right"
-                : "algolia-autocomplete-left";
-        const autocompleteWrapper = $(".algolia-autocomplete");
-        if (!autocompleteWrapper.hasClass(alignClass)) {
-            autocompleteWrapper.addClass(alignClass);
-        }
-
-        if (autocompleteWrapper.hasClass(otherAlignClass)) {
-            autocompleteWrapper.removeClass(otherAlignClass);
-        }
     }
 }
 

@@ -265,14 +265,13 @@
   }
 
   .algolia-autocomplete .ds-dropdown-menu {
-    position: relative;
-    top: -6px;
+    position: absolute;
+    top: 100%;
     border-radius: 4px;
     margin: 6px 0 0;
     padding: 0;
     text-align: left;
     height: auto;
-    position: relative;
     background: transparent;
     border: none;
     z-index: 999;

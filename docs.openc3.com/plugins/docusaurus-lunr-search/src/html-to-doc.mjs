@@ -1,27 +1,24 @@
 import { parentPort, workerData } from 'worker_threads'
+import fs from 'fs'
+import * as cheerio from 'cheerio'
 
-import { unified } from 'unified'
-import rehypeParse from 'rehype-parse'
-import { select, selectAll } from 'hast-util-select'
-import { toText } from 'hast-util-to-text'
-import { is } from 'unist-util-is'
-import { readSync } from 'to-vfile'
-
-function findArticleWithMarkdown(articles) {
+function findArticleWithMarkdown($$) {
+  const articles = $$('article')
   for (let i = 0; i < articles.length; i++) {
-    const markdown = select('.markdown', articles[i])
-    if (markdown) {
-      return [markdown, articles[i]];
+    const article = $$(articles[i])
+    const markdown = article.find('.markdown')
+    if (markdown.length) {
+      return [markdown, article]
     }
   }
-  return [null, null];
+  return [null, null]
 }
 
 // Build search data for a html
 function* scanDocuments({ path, url }) {
-  let vfile
+  let html
   try {
-    vfile = readSync(path)
+    html = fs.readFileSync(path, 'utf-8')
   } catch (e) {
     if (e.code !== 'ENOENT') {
       console.error(`docusaurus-lunr-search:: unable to read file ${path}`)
@@ -30,29 +27,26 @@ function* scanDocuments({ path, url }) {
     return
   }
 
-  const hast = unified().use(rehypeParse, { emitParseErrors: false }).parse(vfile)
+  const $$ = cheerio.load(html)
 
-  const articles = selectAll('article', hast)
-  if (!articles) {
-    return
-  }
-
-  const [markdown, article] = findArticleWithMarkdown(articles)
+  const [markdown, article] = findArticleWithMarkdown($$)
   if (!markdown) {
     return
   }
 
-  const pageTitleElement = select('h1', article)
-  if (!pageTitleElement) {
+  const pageTitleElement = article.find('h1').first()
+  if (!pageTitleElement.length) {
     return
   }
-  const pageTitle = toText(pageTitleElement)
-  const sectionHeaders = getSectionHeaders(markdown)
+  const pageTitle = pageTitleElement.text()
+  const sectionHeaders = getSectionHeaders(markdown, $$)
 
-  const keywords = selectAll('meta[name="keywords"]', hast)
-    .reduce((acc, metaNode) => {
-      if (metaNode.properties.content) {
-        return acc.concat(metaNode.properties.content.replace(/,/g, ' '))
+  const keywords = $$('meta[name="keywords"]')
+    .toArray()
+    .reduce((acc, el) => {
+      const content = $$(el).attr('content')
+      if (content) {
+        return acc.concat(content.replace(/,/g, ' '))
       }
       return acc
     }, [])
@@ -60,13 +54,9 @@ function* scanDocuments({ path, url }) {
 
   let version = null
   if (workerData.loadedVersions) {
-    const docsearchVersionElement = select(
-      'meta[name="docsearch:version"]',
-      hast
-    )
-
-    version = docsearchVersionElement
-      ? workerData.loadedVersions[docsearchVersionElement.properties.content]
+    const versionMeta = $$('meta[name="docsearch:version"]')
+    version = versionMeta.length
+      ? workerData.loadedVersions[versionMeta.attr('content')]
       : null
   }
 
@@ -95,8 +85,9 @@ function* scanDocuments({ path, url }) {
   }
 }
 
-function getContent(element) {
-  return toText(element)
+function getContent(el) {
+  const text = typeof el === 'string' ? el : el.text()
+  return text
     .replace(/\s\s+/g, ' ')
     .replace(/(\r\n|\n|\r)/gm, ' ')
     .replace(/&/g, '&amp;')
@@ -105,48 +96,36 @@ function getContent(element) {
     .replace(/"/g, '&quot;')
 }
 
-function getSectionHeaders(element) {
-  const isHeadingNodeTest = ({ tagName }) => ['h2', 'h3'].includes(tagName)
-  const shouldIndexChildrenTest = ({ properties }) =>
-    properties && properties.dataSearchChildren
-
+function getSectionHeaders(markdown, $$) {
   const headerDocs = []
 
-  const trackHeadingNode = (node) => {
-    const ref = select('.anchor', node)
-    const searchDoc = {
-      title: toText(node).replace(/^#+/, '').replace(/#$/, ''),
-      ref: ref ? ref.properties.id : '#',
-      tagName: node.tagName || '#',
-      content: ''
-    }
-    headerDocs.push(searchDoc)
-    return searchDoc;
-  }
+  function traverse(el, isIndexingChildren = false, searchDoc = null) {
+    el.children().each((_, child) => {
+      const node = $$(child)
+      const tagName = child.tagName
 
-  function traverseNodeAndIndex(
-    element,
-    isIndexingChildren = false,
-    searchDoc = null
-  ) {
-
-
-    for (const node of element.children) {
-      if (is(node, isHeadingNodeTest)) {
-        searchDoc = trackHeadingNode(node)
-      } else if (is(node, shouldIndexChildrenTest)) {
-        traverseNodeAndIndex(node, true, searchDoc)
-      } else if (isIndexingChildren && node.children && node.tagName !== 'p') {
-        traverseNodeAndIndex(node, true, searchDoc)
+      if (tagName === 'h2' || tagName === 'h3') {
+        // Track heading
+        const anchor = node.find('.anchor')
+        searchDoc = {
+          title: node.text().replace(/^#+/, '').replace(/#$/, ''),
+          ref: anchor.length ? anchor.attr('id') : '#',
+          tagName: tagName || '#',
+          content: ''
+        }
+        headerDocs.push(searchDoc)
+      } else if (child.attribs && child.attribs['data-search-children'] !== undefined) {
+        traverse(node, true, searchDoc)
+      } else if (isIndexingChildren && child.children && child.children.length && tagName !== 'p') {
+        traverse(node, true, searchDoc)
       } else if (searchDoc) {
-        searchDoc.content +=  `${getContent(node)} `
+        searchDoc.content += `${getContent(node)} `
       }
-    }
+    })
   }
 
-  traverseNodeAndIndex(element)
-
-  return headerDocs;
+  traverse(markdown)
+  return headerDocs
 }
 
 function processFile(file) {

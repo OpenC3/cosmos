@@ -1,9 +1,48 @@
 //copied from https://github.com/cmfcmf/docusaurus-search-local
-import Mark from "mark.js";
 import { useEffect, useState } from "react";
 import { useLocation } from "@docusaurus/router";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import { useHistory } from "@docusaurus/router";
+
+function highlightTextNodes(root, word) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const matches = [];
+  const lower = word.toLowerCase();
+
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    // Skip script/style content
+    const tag = node.parentElement?.tagName;
+    if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'MARK') continue;
+
+    let idx = node.textContent.toLowerCase().indexOf(lower);
+    while (idx !== -1) {
+      matches.push({ node, index: idx });
+      idx = node.textContent.toLowerCase().indexOf(lower, idx + lower.length);
+    }
+  }
+
+  // Process in reverse so earlier splits don't shift later indices
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const { node, index } = matches[i];
+    const mark = document.createElement('mark');
+    const highlighted = node.splitText(index);
+    highlighted.splitText(word.length);
+    mark.appendChild(highlighted.cloneNode(true));
+    highlighted.parentNode.replaceChild(mark, highlighted);
+  }
+}
+
+function removeHighlights(root) {
+  root.querySelectorAll('mark').forEach(mark => {
+    const parent = mark.parentNode;
+    while (mark.firstChild) {
+      parent.insertBefore(mark.firstChild, mark);
+    }
+    parent.removeChild(mark);
+    parent.normalize();
+  });
+}
 
 export function HighlightSearchResults() {
   const location = useLocation();
@@ -41,12 +80,8 @@ export function HighlightSearchResults() {
       return;
     }
 
-    const mark = new Mark(root);
-    const options = {
-      ignoreJoiners: true,
-    };
-    mark.mark(highlightData.wordToHighlight , options);
-    return () => mark.unmark(options);
+    highlightTextNodes(root, highlightData.wordToHighlight);
+    return () => removeHighlights(root);
   }, [highlightData, baseUrl]);
 
   return null;

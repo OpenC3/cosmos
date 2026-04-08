@@ -1,6 +1,19 @@
 const path = require('path')
 const fs = require('fs')
-const { minimatch } = require('minimatch')
+
+/**
+ * Simple glob matcher supporting * and ** patterns.
+ * Converts a glob pattern to a regex for matching.
+ */
+function globMatch(str, pattern) {
+    const regex = pattern
+        .replace(/[.+^${}()|[\]\\]/g, '\\$&') // escape regex special chars (except * and ?)
+        .replace(/\*\*/g, '\0')                // placeholder for **
+        .replace(/\*/g, '[^/]*')               // * matches anything except /
+        .replace(/\0/g, '.*')                  // ** matches anything including /
+        .replace(/\?/g, '[^/]')                // ? matches single char except /
+    return new RegExp(`^${regex}$`).test(str)
+}
 
 /**
  * Based on code from https://github.com/cmfcmf/docusaurus-search-local/
@@ -44,8 +57,6 @@ function getFilePaths(routesPaths, outDir, baseUrl, options = {}) {
 
         const filePath = candidatePaths.find(fs.existsSync);
         if(filePath && !fs.existsSync(filePath)) {
-            // if this error occurs, likely docusaurus changed some file generation aspects
-            // and we need to update the candidates above
             console.warn(`docusaurus-lunr-search: could not resolve file for route '${route}', it will be missing in the search index`);
         }
 
@@ -53,13 +64,13 @@ function getFilePaths(routesPaths, outDir, baseUrl, options = {}) {
         if(filePath && addedFiles.has(filePath)) return
 
         // if we have include routes, skip if this route doesn't match any of them
-        if(includeRoutes.length > 0 && !(includeRoutes.some((includePattern) => minimatch(route, includePattern) || minimatch(relativePath, includePattern)))) {
+        if(includeRoutes.length > 0 && !(includeRoutes.some((includePattern) => globMatch(route, includePattern) || globMatch(relativePath, includePattern)))) {
             meta.excludedCount++
             return
         }
 
         // if we have exclude routes, skip if this route matches any of them
-        if (excludeRoutes.some((excludePattern) => minimatch(route, excludePattern) || minimatch(relativePath, excludePattern))) {
+        if (excludeRoutes.some((excludePattern) => globMatch(route, excludePattern) || globMatch(relativePath, excludePattern))) {
             meta.excludedCount++
             return
         }
@@ -75,5 +86,6 @@ function getFilePaths(routesPaths, outDir, baseUrl, options = {}) {
 
 module.exports = {
     generateMiniSearchClientJS,
+    globMatch,
     getFilePaths,
 }
