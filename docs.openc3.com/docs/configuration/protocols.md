@@ -8,7 +8,7 @@ sidebar_custom_props:
 
 Protocols process data on behalf of an [Interface](interfaces). They can modify the data being written, data being read, or both. Protocols can also mark a packet as stored instead of real-time which means COSMOS will not update the current value table with the packet data. Protocols can be layered and will be processed in order. For example, if you have a low-level encryption layer that must be first removed before processing a higher level buffer length protocol.
 
-:::info Protocol Run Order
+:::info[Protocol Run Order]
 Read protocols execute in the order specified (first specified runs first). Write protocols execute in the reverse order (last specified executes first).
 
 This ordering is critical when combining packet delineation protocols (e.g. Length, Terminated) with helper protocols (e.g. CRC, Ignore). Delineation protocols must run before helper protocols on reads so they can assemble complete packets first. On writes, delineation protocols must run after helper protocols so fields like the length are filled in before the CRC is calculated. Since write protocols execute in reverse order, the helper protocol must be listed before the delineation protocol for writes.
@@ -525,7 +525,7 @@ For a full example, please see the [openc3-cosmos-scpi-power-supply](https://git
 
 The CRC protocol can add CRCs to outgoing commands and verify CRCs on incoming telemetry packets. Note: You either have to give all the parameters for Poly, Seed, Xor, Reflect or just use the defaults. You can't mix and match setting some and not others.
 
-:::warning CRC Protocol Ordering
+:::warning[CRC Protocol Ordering]
 The CRC Protocol must run after packet delineation protocols (e.g. Length, Terminated) for both reads and writes. On reads, the delineation protocol must assemble a complete packet before the CRC can be verified — otherwise the CRC protocol may operate on partial or multiple packets. On writes, the delineation protocol must fill in fields like the length before the CRC is calculated — otherwise the CRC will be computed over incorrect data. Because read and write protocols execute in opposite orders, this typically requires defining the CRC protocol twice — once for WRITE before the delineation protocol, and once for READ after it. See "Protocol Run Order" for a full example.
 :::
 
@@ -607,7 +607,7 @@ Source code for [ignore_packet_protocol.rb](https://github.com/OpenC3/cosmos/blo
 
 COSMOS supports implementing encryption at the protocol layer using OpenSSL. This allows you to encrypt and decrypt data transparently as it flows through the interface. Encryption protocols are typically placed at the beginning of the protocol chain (for reads) so they can decrypt data before other protocols process it.
 
-:::info Encryption Order
+:::info[Encryption Order]
 For reading, the encryption protocol should be first so it decrypts the raw data before other protocols process it. For writing, protocols execute in reverse order, so the encryption protocol (listed first) will encrypt the data last, just before it's sent.
 :::
 
@@ -793,7 +793,7 @@ OpenSSL supports many encryption algorithms. Common choices include:
 | aes-256-cbc | AES-256 in CBC mode                            | 32 bytes | 16 bytes |
 | aes-128-cbc | AES-128 in CBC mode                            | 16 bytes | 16 bytes |
 
-:::warning Use Authenticated Encryption
+:::warning[Use Authenticated Encryption]
 We recommend using authenticated encryption modes like GCM (Galois/Counter Mode) which provide both confidentiality and integrity. Non-authenticated modes like CBC are vulnerable to certain attacks if not combined with a separate MAC (Message Authentication Code).
 :::
 
@@ -808,17 +808,17 @@ We recommend using authenticated encryption modes like GCM (Galois/Counter Mode)
 
 Creating a custom protocol is easy and should be the default solution for customizing COSMOS Interfaces (rather than creating a new Interface class). However, creating custom Interfaces is still useful for defaulting parameters to values that always are fixed for your target and for including the necessary Protocols. The COSMOS Interfaces take a lot of parameters that can be confusing to your end users. Thus you may want to create a custom Interface just to hard coded these values and cut the available parameters down to something like the hostname and port to connect to.
 
-:::info Stored Telemetry
+:::info[Stored Telemetry]
 Custom protocols that handle non-realtime data (e.g. recorded files, back-orbit data, or store-and-forward playback) should set `packet.stored = true` in the `read_packet()` method. Stored packets are fully processed through the COSMOS pipeline (identification, decommutation, logging) but do **not** update the Current Value Table (CVT). This prevents historical data from overwriting real-time values in displays like Packet Viewer and Telemetry Viewer. See [Stored Packets](../guides/packet-types#stored-packets) for more details. The [Preidentified Protocol](#preidentified-protocol) is one example that encodes and decodes the stored flag in its packet header.
 :::
 
 All custom Protocols should derive from the Protocol class [openc3/interfaces/protocols/protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/protocol.rb) (Ruby) and [openc3/interfaces/protocols/protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/protocol.py) (Python). This class defines the 9 methods that are relevant to writing your own protocol. The base class implementation for each method is included below as well as a discussion as to how the methods should be overridden and used in your own Protocols.
 
-:::info Ruby Protocol APIs
+:::info[Ruby Protocol APIs]
 Protocols should not `require 'openc3/script'` since they are part of a COSMOS interface. They should use the COSMOS library code directly like [System](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/system/system.rb), [Packet](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/packets/packet.rb), [Bucket](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/utilities/bucket.rb), [BinaryAccessor](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/accessors/binary_accessor.rb), etc. When in doubt, consult the existing COSMOS [protocol](https://github.com/OpenC3/cosmos/tree/main/openc3/lib/openc3/interfaces/protocols) classes.
 :::
 
-:::info Python Protocol APIs
+:::info[Python Protocol APIs]
 Protocols should not `from openc3.script import *` since they are part of a COSMOS interface. They should use the COSMOS library code directly like [System](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/system/system.py), [Packet](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/packets/packet.py), [Bucket](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/utilities/bucket.py), [BinaryAccessor](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/accessors/binary_accessor.py), etc. When in doubt, consult the existing COSMOS [protocol](https://github.com/OpenC3/cosmos/tree/main/openc3/python/openc3/interfaces/protocols) classes.
 :::
 
@@ -826,7 +826,7 @@ To really understand how Protocols work, you first must understand the logic wit
 
 Let's first discuss the read method.
 
-:::info Ruby Symbols, Python Strings
+:::info[Ruby Symbols, Python Strings]
 In the following discussions an all caps word is a symbol in Ruby and a string in Python. So a reference to STOP means :STOP in Ruby and "STOP" in Python.
 :::
 

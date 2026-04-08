@@ -54,7 +54,7 @@ APPEND_ITEM VALUE5 16 UINT "Value 5 setting"
 
 COSMOS uses ERB syntax extensively in a Plugin's [plugin.txt](plugins.md#plugintxt-configuration-file) configuration file.
 
-:::info ERB is Install-time, not Runtime
+:::info[ERB is Install-time, not Runtime]
 ERB statements are _only_ evaluated at plugin installation time.
 :::
 
@@ -120,11 +120,11 @@ BOB_MSG_ID = 0x1234
 You can require this in your cmd.txt and use the values from the required file:
 
 ```ruby
-<% require 'msg_id' %>
+<% require "msg_id" %>  #>
 
 COMMAND BOB EXAMPLE BIG_ENDIAN "Packet description"
   # Keyword           Name  BitSize Type   Min Max  Default            Description
-  APPEND_ID_PARAMETER ID    16      UINT   MIN MAX  <%= BOB_MSG_ID %>  "Identifier"
+  APPEND_ID_PARAMETER ID    16      UINT   MIN MAX  <%= BOB_MSG_ID %>  "Identifier" #>
   APPEND_PARAMETER    VALUE 32      FLOAT  0   10.5 2.5                "Value"
   APPEND_PARAMETER    BOOL  8       UINT   MIN MAX  0                  "Boolean"
     STATE FALSE 0
@@ -134,7 +134,7 @@ COMMAND BOB EXAMPLE BIG_ENDIAN "Packet description"
 
 This will put `0x1234` as the `ID` parameters default value.
 
-:::warning Filename duplication
+:::warning[Filename duplication]
 If you have 2 targets which both have files called `msg_id.rb` then the first file will 'win' when you require it. A more explicit alternative is:
 `<% require File.expand_path('../lib/msg_id', Dir.pwd) %>`. However, the best solution is to simply name files after the target to keep them distinct, e.g. `bob_msg_id.rb`.
 :::

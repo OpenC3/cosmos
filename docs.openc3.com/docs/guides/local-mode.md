@@ -15,7 +15,7 @@ If you check the project directory you should see a `plugins/DEFAULT/openc3-cosm
 
 ### Editing scripts
 
-:::info Visual Studio Code
+:::info[Visual Studio Code]
 This tutorial will use [VS Code](https://code.visualstudio.com) which is the editor used by the COSMOS developers. NOTE: There is a VS Code plugin maintained by a member of the COSMOS community at [openc3-vscode](https://github.com/JakeHillHub/openc3-vscode) (search in the Marketplace for 'OpenC3').
 :::
 

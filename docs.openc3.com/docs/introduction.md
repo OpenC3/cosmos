@@ -20,15 +20,15 @@ Throughout this guide there are a number of small-but-handy pieces of
 information that can make using COSMOS easier, more interesting, and less
 hazardous. Here's what to look out for.
 
-:::info Notes are handy pieces of information
+:::info[Notes are handy pieces of information]
 These are for the extra tidbits sometimes necessary to understand COSMOS.
 :::
 
-:::warning Warnings help you not blow things up
+:::warning[Warnings help you not blow things up]
 Be aware of these messages if you wish to avoid certain death.
 :::
 
-:::note Find a problem in the documentation or in COSMOS itself?
+:::note[Find a problem in the documentation or in COSMOS itself?]
 Both using and hacking on COSMOS should be fun, simple, and easy, so if for
 some reason you find it's a pain, please [create an issue](https://github.com/OpenC3/cosmos/issues/new/choose) on
 GitHub describing your experience so we can make it better.

@@ -464,7 +464,7 @@ print(temp)
 </TabItem>
 </Tabs>
 
-:::warning When Running Uninstrumented Code
+:::warning[When Running Uninstrumented Code]
 Make sure that the code will not raise any exceptions or have any check failures. If an exception is raised from uninstrumented code, then your entire script will stop.
 :::
 

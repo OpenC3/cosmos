@@ -7,7 +7,7 @@ sidebar_custom_props:
 
 The COSMOS APIs are all served over HTTP, which means you can use curl to experiment with them. Curl is a great tool for seeing exactly how the API responds to any given request.
 
-:::info OpenC3 CLI is Available
+:::info[OpenC3 CLI is Available]
 Before diving too deeping into `curl` make sure what you're trying to accomplish can't be achieved using the [OpenC3 CLI](/docs/getting-started/cli). There are options to load plugins, spawn scripts, check script status, etc. This curl information is for developers or executing APIs calls outside the CLI.
 :::
 

@@ -7,7 +7,7 @@ sidebar_custom_props:
 
 COSMOS provides a simple method to add new APIs and make custom microservices and interfaces accessible to the network.
 
-:::warning Make sure anything you expose is secure
+:::warning[Make sure anything you expose is secure]
 
 Make sure that any new apis you expose check for user credentials and authorize actions appropriately.
 :::
@@ -82,7 +82,7 @@ INTERFACE <%= my_interface_name %> http_server_interface.rb <%= my_port %>
 - The interface will be exposed internally to Kubernetes (Enterprise) at: `http://default-interface-my-int-service:2888`
 - The interface will be exposed externally to the network at: `http://localhost:2900/myint`
 
-:::warning Sharded Operator on Kubernetes (Enterprise)
+:::warning[Sharded Operator on Kubernetes (Enterprise)]
 
 The sharded operator is expected to be used on Kubernetes whenever the Kubernetes Operator is not used. Typically this will be because the user does not have permission to use the Kubernetes API directly to spawn containers which is required for use of the Kubernetes Operator.
 

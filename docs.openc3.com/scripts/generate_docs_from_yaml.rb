@@ -84,7 +84,7 @@ class CosmosMetaTag
     meta.each do |keyword, data|
       page << "\n#{'#' * @level} #{keyword}\n"
       if data['deprecated']
-        page << ":::note Deprecated\n"
+        page << ":::note[Deprecated]\n"
         page << "#{data['deprecated']}\n"
         page << ":::\n\n"
       end

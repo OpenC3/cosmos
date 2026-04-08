@@ -178,7 +178,7 @@ COMMAND CFS TO_LAB_ENABLE BIG_ENDIAN "Enable telemetry"
   APPEND_PARAMETER    DEST_IP   144  STRING "127.0.0.1"                      "Destination IP, i.e. 172.16.9.112, pc-57"
 ```
 
-:::info Enabling Telemetry
+:::info[Enabling Telemetry]
 The command `0x1880` is needed to enable telemetry. When the cFS receives
 this command, it starts sending telemetry to the IP address provided via the
 `DEST_IP` field.
@@ -248,14 +248,14 @@ Build the plugin from the base of your plugin folder:
 $PATH_TO_OPENC3/openc3.sh cli rake build VERSION=1.0.0
 ```
 
-:::info Plugin versioning
+:::info[Plugin versioning]
 Do not forget to change the version number with every build if you want to
 better distinguish between the versions of the plugin. When the version is
 seen in the plugin's .gem file name, it is easier to visualize the existing
 versions and the newly uploaded versions.
 :::
 
-:::info Plugin parameters
+:::info[Plugin parameters]
 Multiple parameters are available for the plugin configuration. See the [plugin](../configuration/plugins.md) page.
 :::
 
@@ -307,12 +307,12 @@ step is optional as long as you are fine with your plugin showing up as `CFS`.
 
 ![Plugin Variable Settings](/img/guides/plugin_variables.png)
 
-:::warning Port subscription
+:::warning[Port subscription]
 The last uploaded plugin on COSMOS will subscribe to TM on port 1235.
 Other plugins will not receive any TM anymore.
 :::
 
-:::info Typo errors
+:::info[Typo errors]
 Presence of typos in one of the plugin files can cause problems when uploading and installing
 the plugin's .gem file. Make sure your configuration is typo-free.
 :::

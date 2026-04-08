@@ -13,7 +13,7 @@ This guide will walk you through the process of building custom widgets for use 
 
 If you have an existing plugin, start in the root directory for that plugin. If you do not yet have a plugin, start by using the [Plugin Generator](/docs/getting-started/generators#plugin-generator) to create one.
 
-:::warning Use separate plugins for tools and widgets
+:::warning[Use separate plugins for tools and widgets]
 If your existing plugin contains a custom tool, you may run into build issues. In this instance, we recommend having one plugin for your custom tool, and a second plugin for you custom custom widgets.
 :::
 
@@ -132,7 +132,7 @@ In the `<template>` section, you'll define your widget's visual structure. For a
 </template>
 ```
 
-:::info Vue & Vuetify
+:::info[Vue & Vuetify]
 For more information about how the COSMOS frontend is built (including all the Widgets) please check out [Vue.js](https://vuejs.org) and [Vuetify](https://vuetifyjs.com).
 :::
 

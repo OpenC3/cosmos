@@ -12,7 +12,7 @@ Interfaces are the connection to the external embedded systems called [targets](
 
 Interface classes provide the code that COSMOS uses to receive real-time telemetry from targets and to send commands to targets. The interface that a target uses could be anything (TCP/IP, serial, MQTT, SNMP, etc.), therefore it is important that this is a customizable portion of any reusable Command and Telemetry System. Fortunately the most common form of interfaces are over TCP/IP sockets, and COSMOS provides interface solutions for these. This guide will discuss how to use these interface classes, and how to create your own. Note that in most cases you can extend interfaces with [Protocols](protocols.md) rather than implementing a new interface.
 
-:::info Interface and Routers Are Very Similar
+:::info[Interface and Routers Are Very Similar]
 Note that Interfaces and Routers are very similar and share the same configuration parameters. Routers are simply Interfaces which route an existing Interface's telemetry data out to the connected target and routes the connected target's commands back to the original Interface's target.
 :::
 
@@ -682,10 +682,10 @@ Interfaces also have the following methods that exist and have default implement
 1. **write** - Send a packet to the interface. COSMOS implements this method to allow the Protocol system to operate on the packet and the data before it is sent.
 1. **write_raw** - Send a raw binary string of data to the target. COSMOS implements this method by basically calling write_interface with the raw data.
 
-:::info Stored Telemetry
+:::info[Stored Telemetry]
 Custom interfaces that read non-realtime data (e.g. recorded files, back-orbit data, or store-and-forward playback) should set `packet.stored = true` on telemetry packets before returning them. Stored packets are fully processed through the COSMOS pipeline (identification, decommutation, logging) but do **not** update the Current Value Table (CVT). This prevents historical data from overwriting real-time values in displays like Packet Viewer and Telemetry Viewer. See the [File Interface](#file-interface) for a built-in example of this behavior. Also see [Stored Packets](../guides/packet-types#stored-packets) for more details.
 :::
 
-:::warning Naming Conventions
+:::warning[Naming Conventions]
 When creating your own interfaces, in most cases they will be subclasses of one of the built-in interfaces described below. It is important to know that both the filename and class name of the interface files must match with correct capitalization or you will receive "class not found" errors when trying to load your new interface. For example, an interface file called labview_interface.rb must contain the class LabviewInterface. If the class was named, LabVIEWInterface, for example, COSMOS would not be able to find the class because of the unexpected capitalization.
 :::

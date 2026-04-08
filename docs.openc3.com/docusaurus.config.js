@@ -157,11 +157,19 @@ const config = {
         ],
       },
     ],
+  ],
+
+  themes: [
     [
-      require.resolve("./plugins/docusaurus-lunr-search/src/index.js"),
-      {
-        maxHits: "25", // Default is "5", increase to show more results
-      },
+      require.resolve("@easyops-cn/docusaurus-search-local"),
+      /** @type {import("@easyops-cn/docusaurus-search-local").PluginOptions} */
+      ({
+        // `hashed` is recommended as long-term-cache of index file is possible.
+        hashed: "filename",
+        indexBlog: false,
+        removeDefaultStemmer: true, // search for any partial word
+        searchResultLimits: 15,
+      }),
     ],
   ],
 

@@ -108,7 +108,7 @@ TELEMETRY inst_tlm_v2.txt
 ```
 
 ## CMD_UNIQUE_ID_MODE
-:::note Deprecated
+:::note[Deprecated]
 Since 6.10.0 this condition is now automatically detected
 :::
 
@@ -118,7 +118,7 @@ Ideally all commands for a target are identified using the exact same bit offset
 
 
 ## TLM_UNIQUE_ID_MODE
-:::note Deprecated
+:::note[Deprecated]
 Since 6.10.0 this condition is now automatically detected
 :::
 

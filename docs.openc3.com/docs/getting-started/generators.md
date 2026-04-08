@@ -16,7 +16,7 @@ Unknown generator ''. Valid generators: plugin, target, microservice, widget, co
   processor, limits_response, tool, tool_vue, tool_angular, tool_react, tool_svelte
 ```
 
-:::note Training Available
+:::note[Training Available]
 If any of this gets confusing, contact us at [support@openc3.com](mailto:support@openc3.com). We have training classes available!
 :::
 

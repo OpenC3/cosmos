@@ -37,7 +37,7 @@ There are four different ways that telemetry values can be retrieved in COSMOS. 
 
 The following methods are designed to be used in Script Runner procedures. Many can also be used in custom built COSMOS tools. Please see the COSMOS Tool API section for methods that are more efficient to use in custom tools.
 
-:::note Including APIs
+:::note[Including APIs]
 When writing a script for a microservice, interface, or something run within COSMOS you should include the openc3/api library.
 When writing a script that connects to COSMOS from outside of the COSMOS cluster you should include the openc3/script library.
 For more information see [API vs Script](./script-writing.md#api-vs-script)
@@ -8978,7 +8978,7 @@ print(get_max_output()) # => 50000
 Disables instrumentation for a block of code (line highlighting and exception catching). This is especially useful for speeding up loops that are very slow if lines are instrumented.
 Consider breaking code like this into a separate file and using either require/load to read the file for the same effect while still allowing errors to be caught by your script.
 
-:::warning Use with Caution
+:::warning[Use with Caution]
 Disabling instrumentation will cause any error that occurs while disabled to cause your script to completely stop.
 :::
 
@@ -9927,7 +9927,7 @@ setting = get_setting('version', 'rubygems_url') # => ['5.11.4-beta0', 'https://
 
 Sets the given setting value.
 
-:::note Admin Passwork Required
+:::note[Admin Passwork Required]
 This API is only accessible externally (not within Script Runner) and requires the admin password.
 :::
 
@@ -10052,7 +10052,7 @@ configs = list_configs('telemetry_grapher') # => ['adcs', 'temps']
 
 Load a particular tool configuration.
 
-:::note Tool Configuration
+:::note[Tool Configuration]
 Tool configurations are not fully documented and subject to change between releases. Only modify values returned by load_config and do not change any keys.
 :::
 

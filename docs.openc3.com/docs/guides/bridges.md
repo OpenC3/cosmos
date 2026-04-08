@@ -9,7 +9,7 @@ COSMOS Bridges provide an easy solution for getting data from devices that don't
 Serial ports are the most common, but other devices such as USB, PCI cards, and Bluetooth devices can also be
 supported by using bridges to convert from a host computer accessible device, into an Ethernet byte stream that COSMOS can process from inside of containers.
 
-:::warning Bridges are Meant to be Dumb
+:::warning[Bridges are Meant to be Dumb]
 
 The purpose of bridges is to get bytes into COSMOS. Processing should be done in COSMOS itself, including details such as
 packet delineation.
