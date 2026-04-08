@@ -2,19 +2,24 @@ import React, { useRef, useCallback, useState, useEffect } from "react";
 import clsx from "clsx";
 import { useHistory } from "@docusaurus/router";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
-import { usePluginData } from '@docusaurus/useGlobalData';
+import { usePluginData } from "@docusaurus/useGlobalData";
 import useIsBrowser from "@docusaurus/useIsBrowser";
 import { HighlightSearchResults } from "./HighlightSearchResults";
-const Search = props => {
+const Search = (props) => {
   const initialized = useRef(false);
   const searchBarRef = useRef(null);
   const [indexReady, setIndexReady] = useState(false);
   const history = useHistory();
   const { siteConfig = {} } = useDocusaurusContext();
-  const pluginConfig = (siteConfig.plugins || []).find(plugin => Array.isArray(plugin) && typeof plugin[0] === "string" && plugin[0].includes("docusaurus-lunr-search"))
+  const pluginConfig = (siteConfig.plugins || []).find(
+    (plugin) =>
+      Array.isArray(plugin) &&
+      typeof plugin[0] === "string" &&
+      plugin[0].includes("docusaurus-search"),
+  );
   const isBrowser = useIsBrowser();
   const { baseUrl } = siteConfig;
-  const assetUrl = pluginConfig && pluginConfig[1]?.assetUrl || baseUrl;
+  const assetUrl = (pluginConfig && pluginConfig[1]?.assetUrl) || baseUrl;
   const initAlgolia = (searchDocs, searchIndex, DocSearch, options) => {
     new DocSearch({
       searchDocs,
@@ -29,17 +34,20 @@ const Search = props => {
         // Alternatively, we can use new URL(suggestion.url) but its not supported in IE
         const a = document.createElement("a");
         a.href = url;
-        _input.setVal(''); // clear value
+        _input.setVal(""); // clear value
         _event.target.blur(); // remove focus
 
         // Get the highlight word from the suggestion.
-        let wordToHighlight = '';
+        let wordToHighlight = "";
         if (options.highlightResult) {
           try {
-            const matchedLine = suggestion.text || suggestion.subcategory || suggestion.title;
-            const matchedWordResult = matchedLine.match(new RegExp('<span.+span>\\w*', 'g'));
+            const matchedLine =
+              suggestion.text || suggestion.subcategory || suggestion.title;
+            const matchedWordResult = matchedLine.match(
+              new RegExp("<span.+span>\\w*", "g"),
+            );
             if (matchedWordResult && matchedWordResult.length > 0) {
-              const tempDoc = document.createElement('div');
+              const tempDoc = document.createElement("div");
               tempDoc.innerHTML = matchedWordResult[0];
               wordToHighlight = tempDoc.textContent;
             }
@@ -52,19 +60,23 @@ const Search = props => {
           highlightState: { wordToHighlight },
         });
       },
-      maxHits: options.maxHits
+      maxHits: options.maxHits,
     });
   };
 
-  const pluginData = usePluginData('docusaurus-lunr-search');
+  const pluginData = usePluginData("docusaurus-search");
   const getSearchDoc = () =>
     process.env.NODE_ENV === "production"
-      ? fetch(`${assetUrl}${pluginData.fileNames.searchDoc}`).then((content) => content.json())
+      ? fetch(`${assetUrl}${pluginData.fileNames.searchDoc}`).then((content) =>
+          content.json(),
+        )
       : Promise.resolve({});
 
   const getLunrIndex = () =>
     process.env.NODE_ENV === "production"
-      ? fetch(`${assetUrl}${pluginData.fileNames.lunrIndex}`).then((content) => content.json())
+      ? fetch(`${assetUrl}${pluginData.fileNames.lunrIndex}`).then((content) =>
+          content.json(),
+        )
       : Promise.resolve([]);
 
   const loadAlgolia = () => {
@@ -73,7 +85,7 @@ const Search = props => {
         getSearchDoc(),
         getLunrIndex(),
         import("./DocSearch"),
-        import("./algolia.css")
+        import("./algolia.css"),
       ]).then(([searchDocFile, searchIndex, { default: DocSearch }]) => {
         const { searchDocs, options } = searchDocFile;
         if (!searchDocs || searchDocs.length === 0) {
@@ -87,21 +99,23 @@ const Search = props => {
   };
 
   const toggleSearchIconClick = useCallback(
-    e => {
+    (e) => {
       if (!searchBarRef.current.contains(e.target)) {
         searchBarRef.current.focus();
       }
 
-      props.handleSearchBarToggle && props.handleSearchBarToggle(!props.isSearchBarExpanded);
+      props.handleSearchBarToggle &&
+        props.handleSearchBarToggle(!props.isSearchBarExpanded);
     },
-    [props.isSearchBarExpanded]
+    [props.isSearchBarExpanded],
   );
 
-  let placeholder
+  let placeholder;
   if (isBrowser) {
     loadAlgolia();
-    placeholder = window.navigator.platform.startsWith("Mac") ?
-      'Search ⌘+K' : 'Search Ctrl+K'
+    placeholder = window.navigator.platform.startsWith("Mac")
+      ? "Search ⌘+K"
+      : "Search Ctrl+K";
   }
 
   // auto focus search bar on page load
@@ -117,7 +131,7 @@ const Search = props => {
         aria-label="expand searchbar"
         role="button"
         className={clsx("search-icon", {
-          "search-icon-hidden": props.isSearchBarExpanded
+          "search-icon-hidden": props.isSearchBarExpanded,
         })}
         onClick={toggleSearchIconClick}
         onKeyDown={toggleSearchIconClick}
@@ -126,12 +140,12 @@ const Search = props => {
       <input
         id="search_input_react"
         type="search"
-        placeholder={indexReady ? placeholder : 'Loading...'}
+        placeholder={indexReady ? placeholder : "Loading..."}
         aria-label="Search"
         className={clsx(
           "navbar__search-input",
           { "search-bar-expanded": props.isSearchBarExpanded },
-          { "search-bar": !props.isSearchBarExpanded }
+          { "search-bar": !props.isSearchBarExpanded },
         )}
         onClick={loadAlgolia}
         onMouseOver={loadAlgolia}

@@ -18,7 +18,7 @@ module.exports = function (context, options) {
   };
 
   return {
-    name: "docusaurus-lunr-search",
+    name: "docusaurus-search",
     getThemePath() {
       return path.resolve(__dirname, "./theme");
     },
@@ -35,9 +35,9 @@ module.exports = function (context, options) {
     },
     async postBuild({ routesPaths = [], outDir, baseUrl, plugins }) {
       console.log(
-        "docusaurus-lunr-search:: Building search docs and lunr index file",
+        "docusaurus-search:: Building search docs and lunr index file",
       );
-      console.time("docusaurus-lunr-search:: Indexing time");
+      console.time("docusaurus-search:: Indexing time");
 
       const docsPlugin = plugins.find(
         (plugin) => plugin.name == "docusaurus-plugin-content-docs",
@@ -51,7 +51,7 @@ module.exports = function (context, options) {
       );
       if (meta.excludedCount) {
         console.log(
-          `docusaurus-lunr-search:: ${meta.excludedCount} documents were excluded from the search by excludeRoutes config`,
+          `docusaurus-search:: ${meta.excludedCount} documents were excluded from the search by excludeRoutes config`,
         );
       }
 
@@ -112,38 +112,35 @@ module.exports = function (context, options) {
         addToSearchData,
         loadedVersions,
       );
-      console.timeEnd("docusaurus-lunr-search:: Indexing time");
+      console.timeEnd("docusaurus-search:: Indexing time");
       console.log(
-        `docusaurus-lunr-search:: indexed ${indexedDocuments} documents out of ${files.length}`,
+        `docusaurus-search:: indexed ${indexedDocuments} documents out of ${files.length}`,
       );
 
       const searchDocFileContents = JSON.stringify({
         searchDocs: searchDocuments,
         options,
       });
-      console.log("docusaurus-lunr-search:: writing search-doc.json");
+      console.log("docusaurus-search:: writing search-doc.json");
       fs.writeFileSync(
         path.join(outDir, "search-doc.json"),
         searchDocFileContents,
       );
-      console.log(`docusaurus-lunr-search:: writing ${fileNames.searchDoc}`);
+      console.log(`docusaurus-search:: writing ${fileNames.searchDoc}`);
       fs.writeFileSync(
         path.join(outDir, fileNames.searchDoc),
         searchDocFileContents,
       );
 
       const indexFileContents = JSON.stringify(miniSearch);
-      console.log("docusaurus-lunr-search:: writing lunr-index.json");
-      fs.writeFileSync(
-        path.join(outDir, "lunr-index.json"),
-        indexFileContents,
-      );
-      console.log(`docusaurus-lunr-search:: writing ${fileNames.lunrIndex}`);
+      console.log("docusaurus-search:: writing lunr-index.json");
+      fs.writeFileSync(path.join(outDir, "lunr-index.json"), indexFileContents);
+      console.log(`docusaurus-search:: writing ${fileNames.lunrIndex}`);
       fs.writeFileSync(
         path.join(outDir, fileNames.lunrIndex),
         indexFileContents,
       );
-      console.log("docusaurus-lunr-search:: End of process");
+      console.log("docusaurus-search:: End of process");
     },
   };
 };
@@ -156,7 +153,7 @@ function buildSearchData(files, addToSearchData, loadedVersions) {
   const workerCount = Math.max(2, os.cpus().length);
 
   console.log(
-    `docusaurus-lunr-search:: Start scanning documents in ${Math.min(workerCount, files.length)} threads`,
+    `docusaurus-search:: Start scanning documents in ${Math.min(workerCount, files.length)} threads`,
   );
   let indexedDocuments = 0;
 

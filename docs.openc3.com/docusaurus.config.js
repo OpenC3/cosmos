@@ -158,7 +158,7 @@ const config = {
       },
     ],
     [
-      require.resolve("./plugins/docusaurus-lunr-search/src/index.js"),
+      require.resolve("./plugins/docusaurus-search/src/index.js"),
       {
         maxHits: "25", // Default is "5", increase to show more results
       },
