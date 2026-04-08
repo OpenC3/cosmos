@@ -104,7 +104,7 @@ function getSectionHeaders(markdown, $$) {
       const node = $$(child)
       const tagName = child.tagName
 
-      if (tagName === 'h2' || tagName === 'h3') {
+      if (tagName === 'h2' || tagName === 'h3' || tagName === 'h4') {
         // Track heading
         const anchor = node.find('.anchor')
         searchDoc = {
