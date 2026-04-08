@@ -1,31 +1,36 @@
 /*
-Aloglia DocSearch Adapter for Lunr.js
-====================================
-Written by:  Praveen N
-github: praveenn77
+Search Adapter using MiniSearch
+(migrated from Lunr.js adapter by Praveen N)
 */
 
-import lunr from "@generated/lunr.client";
-lunr.tokenizer.separator = /[\s\-/]+/;
+import MiniSearch from "@generated/lunr.client";
 
 class LunrSearchAdapter {
     constructor(searchDocs, searchIndex, baseUrl = '/', maxHits) {
         this.searchDocs = searchDocs;
-        this.lunrIndex = lunr.Index.load(searchIndex);
+        this.miniSearch = MiniSearch.loadJSON(JSON.stringify(searchIndex), {
+            idField: "id",
+            fields: ["title", "content", "keywords"],
+            storeFields: ["title", "content", "keywords"],
+            searchOptions: {
+                prefix: true,
+            },
+        });
         this.baseUrl = baseUrl;
         this.maxHits = maxHits;
     }
 
-    getLunrResult(input) {
-        return this.lunrIndex.query(function (query) {
-            const tokens = lunr.tokenizer(input);
-            query.term(tokens, {
-                boost: 10
-            });
-            query.term(tokens, {
-                wildcard: lunr.Query.wildcard.TRAILING
-            });
-        });
+    // Find the first case-insensitive occurrence of any search term in text
+    findTermPosition(text, terms) {
+        if (!text) return null;
+        const lowerText = text.toLowerCase();
+        for (const term of terms) {
+            const idx = lowerText.indexOf(term.toLowerCase());
+            if (idx !== -1) {
+                return [idx, term.length];
+            }
+        }
+        return null;
     }
 
     getHit(doc, formattedTitle, formattedContent) {
@@ -57,6 +62,7 @@ class LunrSearchAdapter {
             }
         };
     }
+
     getTitleHit(doc, position, length) {
         const start = position[0];
         const end = position[0] + length;
@@ -118,35 +124,46 @@ class LunrSearchAdapter {
             preview += ' ...';
         }
         return this.getHit(doc, null, preview);
-
     }
+
     search(input) {
-        return new Promise((resolve, rej) => {
-            const results = this.getLunrResult(input);
-            const hits = [];
-            results.length > this.maxHits && (results.length = this.maxHits);
-            this.titleHitsRes = []
-            this.contentHitsRes = []
-            results.forEach(result => {
-                const doc = this.searchDocs[result.ref];
-                const { metadata } = result.matchData;
-                for (let i in metadata) {
-                    if (metadata[i].title) {
-                        if (!this.titleHitsRes.includes(result.ref)) {
-                            const position = metadata[i].title.position[0]
-                            hits.push(this.getTitleHit(doc, position, input.length));
-                            this.titleHitsRes.push(result.ref);
-                        }
-                    } else if (metadata[i].content) {
-                        const position = metadata[i].content.position[0]
-                        hits.push(this.getContentHit(doc, position))
-                    } else if (metadata[i].keywords) {
-                        const position = metadata[i].keywords.position[0]
-                        hits.push(this.getKeywordHit(doc, position, input.length));
-                        this.titleHitsRes.push(result.ref);
-                    }
-                }
+        return new Promise((resolve) => {
+            const results = this.miniSearch.search(input, {
+                boost: { title: 10 },
+                prefix: true,
             });
+            const hits = [];
+            const truncated = results.slice(0, this.maxHits);
+            const titleHitsRef = new Set();
+
+            for (const result of truncated) {
+                const doc = this.searchDocs[result.id];
+                if (!doc) continue;
+                const terms = result.terms;
+
+                // Check title match
+                const titlePos = this.findTermPosition(doc.title, terms);
+                if (titlePos && !titleHitsRef.has(result.id)) {
+                    hits.push(this.getTitleHit(doc, titlePos, input.length));
+                    titleHitsRef.add(result.id);
+                    continue;
+                }
+
+                // Check keywords match
+                const keywordPos = this.findTermPosition(doc.keywords, terms);
+                if (keywordPos && !titleHitsRef.has(result.id)) {
+                    hits.push(this.getKeywordHit(doc, keywordPos, input.length));
+                    titleHitsRef.add(result.id);
+                    continue;
+                }
+
+                // Check content match
+                const contentPos = this.findTermPosition(doc.content, terms);
+                if (contentPos) {
+                    hits.push(this.getContentHit(doc, contentPos));
+                }
+            }
+
             hits.length > this.maxHits && (hits.length = this.maxHits);
             resolve(hits);
         });

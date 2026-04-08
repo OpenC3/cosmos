@@ -1,7 +1,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const lunr = require("lunr");
+const MiniSearch = require("minisearch");
 const { Worker } = require("worker_threads");
 
 // local imports
@@ -9,7 +9,7 @@ const utils = require("./utils");
 
 module.exports = function (context, options) {
   options = options || {};
-  let languages = undefined;
+  let clientGenerated = false;
 
   const guid = String(Date.now());
   const fileNames = {
@@ -23,15 +23,10 @@ module.exports = function (context, options) {
       return path.resolve(__dirname, "./theme");
     },
     configureWebpack(config) {
-      // Docusaurus invokes configureWebpack() twice, for client and server; however generateLunrClientJS()
-      // is a global configuration.
-      if (languages === undefined) {
-        // Multilingual issue fix
+      if (!clientGenerated) {
         const generatedFilesDir = config.resolve.alias["@generated"];
-        languages = utils.generateLunrClientJS(
-          generatedFilesDir,
-          options.languages,
-        );
+        utils.generateMiniSearchClientJS(generatedFilesDir);
+        clientGenerated = true;
       }
       return {};
     },
@@ -60,9 +55,6 @@ module.exports = function (context, options) {
         );
       }
 
-      // Expose Lunr's fields configuration through docusaurus options.
-      // Fields are used to configure how Lunr treats different sources of search terms.
-      // This allows a user to boost the importance of certain fields over others.
       const fields = {
         title: { boost: 200, ...options.fields?.title },
         content: { boost: 2, ...options.fields?.content },
@@ -70,21 +62,22 @@ module.exports = function (context, options) {
       };
 
       const searchDocuments = [];
-      const lunrBuilder = lunr(function (builder) {
-        if (languages) {
-          this.use(languages);
-        }
-        this.ref("id");
-        Object.entries(fields).forEach(([key, value]) =>
-          this.field(key, value),
-        );
-        this.metadataWhitelist = ["position"];
-
-        const { build } = builder;
-        builder.build = () => {
-          builder.build = build;
-          return builder;
-        };
+      const miniSearch = new MiniSearch({
+        idField: "id",
+        fields: ["title", "content", "keywords"],
+        storeFields: ["title", "content", "keywords"],
+        searchOptions: {
+          boost: Object.fromEntries(
+            Object.entries(fields).map(([k, v]) => [k, v.boost || 1]),
+          ),
+          prefix: true,
+        },
+        processTerm: (term) => {
+          if (options.stopWords && options.stopWords.includes(term)) {
+            return null;
+          }
+          return term.toLowerCase();
+        },
       });
 
       const loadedVersions =
@@ -100,21 +93,17 @@ module.exports = function (context, options) {
             }, {})
           : null;
 
-      if (options.stopWords) {
-        const customStopWords = lunr.generateStopWordFilter(options.stopWords);
-        lunrBuilder.pipeline.before(lunr.stopWordFilter, customStopWords);
-        lunrBuilder.pipeline.remove(lunr.stopWordFilter);
-      }
       const addToSearchData = (d) => {
         if (options.excludeTags && options.excludeTags.includes(d.tagName)) {
           return;
         }
-        lunrBuilder.add({
+        const doc = {
           id: searchDocuments.length,
           title: d.title,
           content: d.content,
           keywords: d.keywords,
-        });
+        };
+        miniSearch.add(doc);
         searchDocuments.push(d);
       };
 
@@ -123,7 +112,6 @@ module.exports = function (context, options) {
         addToSearchData,
         loadedVersions,
       );
-      const lunrIndex = lunrBuilder.build();
       console.timeEnd("docusaurus-lunr-search:: Indexing time");
       console.log(
         `docusaurus-lunr-search:: indexed ${indexedDocuments} documents out of ${files.length}`,
@@ -134,7 +122,6 @@ module.exports = function (context, options) {
         options,
       });
       console.log("docusaurus-lunr-search:: writing search-doc.json");
-      // This file is written for backwards-compatibility with components swizzled from v2.1.12 or earlier.
       fs.writeFileSync(
         path.join(outDir, "search-doc.json"),
         searchDocFileContents,
@@ -145,17 +132,16 @@ module.exports = function (context, options) {
         searchDocFileContents,
       );
 
-      const lunrIndexFileContents = JSON.stringify(lunrIndex);
+      const indexFileContents = JSON.stringify(miniSearch);
       console.log("docusaurus-lunr-search:: writing lunr-index.json");
-      // This file is written for backwards-compatibility with components swizzled from v2.1.12 or earlier.
       fs.writeFileSync(
         path.join(outDir, "lunr-index.json"),
-        lunrIndexFileContents,
+        indexFileContents,
       );
       console.log(`docusaurus-lunr-search:: writing ${fileNames.lunrIndex}`);
       fs.writeFileSync(
         path.join(outDir, fileNames.lunrIndex),
-        lunrIndexFileContents,
+        indexFileContents,
       );
       console.log("docusaurus-lunr-search:: End of process");
     },
@@ -172,7 +158,7 @@ function buildSearchData(files, addToSearchData, loadedVersions) {
   console.log(
     `docusaurus-lunr-search:: Start scanning documents in ${Math.min(workerCount, files.length)} threads`,
   );
-  let indexedDocuments = 0; // Documents that have added at least one value to the index
+  let indexedDocuments = 0;
 
   return new Promise((resolve, reject) => {
     let nextIndex = 0;
@@ -208,10 +194,8 @@ function buildSearchData(files, addToSearchData, loadedVersions) {
         if (code !== 0) {
           reject(new Error(`Scanner stopped with exit code ${code}`));
         } else {
-          // Worker #${i} completed their work in worker pool
           activeWorkersCount--;
           if (activeWorkersCount <= 0) {
-            // No active workers left, we are done
             resolve(indexedDocuments);
           }
         }
