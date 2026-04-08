@@ -141,7 +141,7 @@ const config = {
         ],
       },
     ],
-    require.resolve("docusaurus-lunr-search"),
+    require.resolve("./plugins/docusaurus-lunr-search/src/index.js"),
   ],
 
   presets: [
