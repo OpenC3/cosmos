@@ -1148,6 +1148,14 @@ export default {
           max += 1
         }
         this.graph.setScale('x', { min, max })
+      } else if (this.graphStartDateTime && this.graphEndDateTime) {
+        const min = this.graphStartDateTime / 1_000_000_000
+        const max = this.graphEndDateTime / 1_000_000_000
+        this.graph.setScale('x', { min, max })
+        this.$notify.caution({
+          title: 'Empty graph data',
+          body: 'No data was returned for the selected time range.',
+        })
       }
 
       this.dataChanged = false
@@ -1407,10 +1415,17 @@ export default {
       return {
         scales: {
           x: {
-            range(u, dataMin, dataMax) {
+            range: (u, dataMin, dataMax) => {
               if (dataMin == null) {
+                if (this.graphStartDateTime && this.graphEndDateTime) {
+                  return [
+                    this.graphStartDateTime / 1_000_000_000,
+                    this.graphEndDateTime / 1_000_000_000,
+                  ]
+                }
                 if (this.xAxisIsTime) {
-                  return [1566453600, 1566497660]
+                  const now = Date.now() / 1000
+                  return [now - 3600, now] // 1hr
                 }
                 return [0, 1]
               }
@@ -1419,7 +1434,7 @@ export default {
             time: this.xAxisIsTime,
           },
           y: {
-            range(u, dataMin, dataMax) {
+            range: (u, dataMin, dataMax) => {
               if (dataMin == null) return [-100, 100]
               return uPlot.rangeNum(dataMin, dataMax, 0.1, true)
             },
