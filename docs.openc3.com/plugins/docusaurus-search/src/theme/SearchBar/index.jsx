@@ -47,9 +47,8 @@ const Search = (props) => {
               new RegExp("<span.+span>\\w*", "g"),
             );
             if (matchedWordResult && matchedWordResult.length > 0) {
-              const tempDoc = document.createElement("div");
-              tempDoc.innerHTML = matchedWordResult[0];
-              wordToHighlight = tempDoc.textContent;
+              const parsed = new DOMParser().parseFromString(matchedWordResult[0], "text/html");
+              wordToHighlight = parsed.body.textContent;
             }
           } catch (e) {
             console.log(e);

@@ -105,11 +105,12 @@ function getSectionHeaders(markdown, $$) {
       const tagName = child.tagName;
 
       if (tagName === "h2" || tagName === "h3" || tagName === "h4") {
-        // Track heading
-        const anchor = node.find(".anchor");
+        // Track heading — the id may be on the heading itself or on a child .anchor
+        const headingId = node.attr("id");
+        const childAnchor = node.find(".anchor");
         searchDoc = {
           title: node.text().replace(/^#+/, "").replace(/#$/, ""),
-          ref: anchor.length ? anchor.attr("id") : "#",
+          ref: headingId || (childAnchor.length ? childAnchor.attr("id") : "#"),
           tagName: tagName || "#",
           content: "",
         };
