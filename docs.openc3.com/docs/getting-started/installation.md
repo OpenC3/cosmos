@@ -91,9 +91,9 @@ The workaround is to get a proper local certificate file from your IT department
 
 Then set the following environment variables to that path (ie. C:\Shared\Ball.pem)
 
-SSL_CERT_FILE<br/>
-CURL_CA_BUNDLE<br/>
-REQUESTS_CA_BUNDLE<br/>
+- SSL_CERT_FILE
+- CURL_CA_BUNDLE
+- REQUESTS_CA_BUNDLE
 
 Here are some directions on environment variables in Windows: [Windows Environment Variables](https://www.computerhope.com/issues/ch000549.htm)
 
