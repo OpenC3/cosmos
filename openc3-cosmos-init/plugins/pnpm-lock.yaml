@@ -44,19 +44,19 @@ importers:
         version: 1.16.1
       '@vitejs/plugin-vue':
         specifier: 6.0.5
-        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))(vue@3.5.32)
+        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0))(vue@3.5.32)
       prettier:
         specifier: 3.8.1
         version: 3.8.1
       sass:
-        specifier: 1.98.0
-        version: 1.98.0
+        specifier: 1.99.0
+        version: 1.99.0
       vite:
         specifier: 7.3.2
-        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
+        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)
       vite-plugin-style-inject:
         specifier: 0.0.1
-        version: 0.0.1(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))
+        version: 0.0.1(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0))
       vue:
         specifier: 3.5.32
         version: 3.5.32
@@ -78,19 +78,16 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 6.0.5
-        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))(vue@3.5.32)
-      '@vue/test-utils':
-        specifier: 2.4.6
-        version: 2.4.6
+        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0))(vue@3.5.32)
       prettier:
         specifier: 3.8.1
         version: 3.8.1
       sass:
-        specifier: 1.98.0
-        version: 1.98.0
+        specifier: 1.99.0
+        version: 1.99.0
       vite:
         specifier: 7.3.2
-        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
+        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)
       vue:
         specifier: 3.5.32
         version: 3.5.32
@@ -124,19 +121,16 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 6.0.5
-        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))(vue@3.5.32)
-      '@vue/test-utils':
-        specifier: 2.4.6
-        version: 2.4.6
+        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0))(vue@3.5.32)
       prettier:
         specifier: 3.8.1
         version: 3.8.1
       sass:
-        specifier: 1.98.0
-        version: 1.98.0
+        specifier: 1.99.0
+        version: 1.99.0
       vite:
         specifier: 7.3.2
-        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
+        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)
       vue:
         specifier: 3.5.32
         version: 3.5.32
@@ -173,19 +167,16 @@ importers:
         version: 1.16.1
       '@vitejs/plugin-vue':
         specifier: 6.0.5
-        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))(vue@3.5.32)
-      '@vue/test-utils':
-        specifier: 2.4.6
-        version: 2.4.6
+        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0))(vue@3.5.32)
       prettier:
         specifier: 3.8.1
         version: 3.8.1
       sass:
-        specifier: 1.98.0
-        version: 1.98.0
+        specifier: 1.99.0
+        version: 1.99.0
       vite:
         specifier: 7.3.2
-        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
+        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)
       vue:
         specifier: 3.5.32
         version: 3.5.32
@@ -237,19 +228,16 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 6.0.5
-        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))(vue@3.5.32)
-      '@vue/test-utils':
-        specifier: 2.4.6
-        version: 2.4.6
+        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0))(vue@3.5.32)
       prettier:
         specifier: 3.8.1
         version: 3.8.1
       sass:
-        specifier: 1.98.0
-        version: 1.98.0
+        specifier: 1.99.0
+        version: 1.99.0
       vite:
         specifier: 7.3.2
-        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
+        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)
       vue:
         specifier: 3.5.32
         version: 3.5.32
@@ -280,19 +268,16 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 6.0.5
-        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))(vue@3.5.32)
-      '@vue/test-utils':
-        specifier: 2.4.6
-        version: 2.4.6
+        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0))(vue@3.5.32)
       prettier:
         specifier: 3.8.1
         version: 3.8.1
       sass:
-        specifier: 1.98.0
-        version: 1.98.0
+        specifier: 1.99.0
+        version: 1.99.0
       vite:
         specifier: 7.3.2
-        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
+        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)
       vue:
         specifier: 3.5.32
         version: 3.5.32
@@ -326,19 +311,16 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 6.0.5
-        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))(vue@3.5.32)
-      '@vue/test-utils':
-        specifier: 2.4.6
-        version: 2.4.6
+        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0))(vue@3.5.32)
       prettier:
         specifier: 3.8.1
         version: 3.8.1
       sass:
-        specifier: 1.98.0
-        version: 1.98.0
+        specifier: 1.99.0
+        version: 1.99.0
       vite:
         specifier: 7.3.2
-        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
+        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)
       vue:
         specifier: 3.5.32
         version: 3.5.32
@@ -372,19 +354,16 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 6.0.5
-        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))(vue@3.5.32)
-      '@vue/test-utils':
-        specifier: 2.4.6
-        version: 2.4.6
+        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0))(vue@3.5.32)
       prettier:
         specifier: 3.8.1
         version: 3.8.1
       sass:
-        specifier: 1.98.0
-        version: 1.98.0
+        specifier: 1.99.0
+        version: 1.99.0
       vite:
         specifier: 7.3.2
-        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
+        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)
       vue:
         specifier: 3.5.32
         version: 3.5.32
@@ -421,19 +400,16 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 6.0.5
-        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))(vue@3.5.32)
-      '@vue/test-utils':
-        specifier: 2.4.6
-        version: 2.4.6
+        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0))(vue@3.5.32)
       prettier:
         specifier: 3.8.1
         version: 3.8.1
       sass:
-        specifier: 1.98.0
-        version: 1.98.0
+        specifier: 1.99.0
+        version: 1.99.0
       vite:
         specifier: 7.3.2
-        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
+        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)
       vue:
         specifier: 3.5.32
         version: 3.5.32
@@ -467,19 +443,16 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 6.0.5
-        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))(vue@3.5.32)
-      '@vue/test-utils':
-        specifier: 2.4.6
-        version: 2.4.6
+        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0))(vue@3.5.32)
       prettier:
         specifier: 3.8.1
         version: 3.8.1
       sass:
-        specifier: 1.98.0
-        version: 1.98.0
+        specifier: 1.99.0
+        version: 1.99.0
       vite:
         specifier: 7.3.2
-        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
+        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)
       vue:
         specifier: 3.5.32
         version: 3.5.32
@@ -513,19 +486,16 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 6.0.5
-        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))(vue@3.5.32)
-      '@vue/test-utils':
-        specifier: 2.4.6
-        version: 2.4.6
+        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0))(vue@3.5.32)
       prettier:
         specifier: 3.8.1
         version: 3.8.1
       sass:
-        specifier: 1.98.0
-        version: 1.98.0
+        specifier: 1.99.0
+        version: 1.99.0
       vite:
         specifier: 7.3.2
-        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
+        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)
       vue:
         specifier: 3.5.32
         version: 3.5.32
@@ -565,19 +535,16 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 6.0.5
-        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))(vue@3.5.32)
-      '@vue/test-utils':
-        specifier: 2.4.6
-        version: 2.4.6
+        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0))(vue@3.5.32)
       prettier:
         specifier: 3.8.1
         version: 3.8.1
       sass:
-        specifier: 1.98.0
-        version: 1.98.0
+        specifier: 1.99.0
+        version: 1.99.0
       vite:
         specifier: 7.3.2
-        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
+        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)
       vue:
         specifier: 3.5.32
         version: 3.5.32
@@ -611,19 +578,16 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 6.0.5
-        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))(vue@3.5.32)
-      '@vue/test-utils':
-        specifier: 2.4.6
-        version: 2.4.6
+        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0))(vue@3.5.32)
       prettier:
         specifier: 3.8.1
         version: 3.8.1
       sass:
-        specifier: 1.98.0
-        version: 1.98.0
+        specifier: 1.99.0
+        version: 1.99.0
       vite:
         specifier: 7.3.2
-        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
+        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)
       vue:
         specifier: 3.5.32
         version: 3.5.32
@@ -663,19 +627,16 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 6.0.5
-        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))(vue@3.5.32)
-      '@vue/test-utils':
-        specifier: 2.4.6
-        version: 2.4.6
+        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0))(vue@3.5.32)
       prettier:
         specifier: 3.8.1
         version: 3.8.1
       sass:
-        specifier: 1.98.0
-        version: 1.98.0
+        specifier: 1.99.0
+        version: 1.99.0
       vite:
         specifier: 7.3.2
-        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
+        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)
       vue:
         specifier: 3.5.32
         version: 3.5.32
@@ -718,19 +679,16 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 6.0.5
-        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))(vue@3.5.32)
-      '@vue/test-utils':
-        specifier: 2.4.6
-        version: 2.4.6
+        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0))(vue@3.5.32)
       prettier:
         specifier: 3.8.1
         version: 3.8.1
       sass:
-        specifier: 1.98.0
-        version: 1.98.0
+        specifier: 1.99.0
+        version: 1.99.0
       vite:
         specifier: 7.3.2
-        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
+        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)
       vue:
         specifier: 3.5.32
         version: 3.5.32
@@ -762,8 +720,8 @@ importers:
         specifier: 4.3.0
         version: 4.3.0
       sass:
-        specifier: 1.98.0
-        version: 1.98.0
+        specifier: 1.99.0
+        version: 1.99.0
       sortablejs:
         specifier: 1.15.7
         version: 1.15.7
@@ -778,8 +736,8 @@ importers:
         specifier: 3.8.1
         version: 3.8.1
       vite:
-        specifier: 7.3.1
-        version: 7.3.1(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
+        specifier: 7.3.2
+        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)
 
   packages/openc3-tool-base:
     dependencies:
@@ -878,8 +836,8 @@ importers:
         specifier: 3.0.4
         version: 3.0.4(vue@3.5.32)
       sass:
-        specifier: 1.98.0
-        version: 1.98.0
+        specifier: 1.99.0
+        version: 1.99.0
       semver:
         specifier: 7.7.4
         version: 7.7.4
@@ -907,13 +865,13 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 6.0.5
-        version: 6.0.5(vite@7.3.1(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))(vue@3.5.32)
+        version: 6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0))(vue@3.5.32)
       prettier:
         specifier: 3.8.1
         version: 3.8.1
       vite:
-        specifier: 7.3.1
-        version: 7.3.1(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
+        specifier: 7.3.2
+        version: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)
 
 packages:
 
@@ -1234,10 +1192,6 @@ packages:
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
 
-  '@isaacs/cliui@8.0.2':
-    resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
-    engines: {node: '>=12'}
-
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
 
@@ -1253,9 +1207,6 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
-
-  '@one-ini/wasm@0.1.1':
-    resolution: {integrity: sha512-XuySG1E38YScSJoMlqovLru4KTUNSjgVTIjyh7qMX6aNN5HY5Ct5LhRJdxO79JtTzKfzV/bnWpz+zquYrISsvw==}
 
   '@parcel/watcher-android-arm64@2.5.6':
     resolution: {integrity: sha512-YQxSS34tPF/6ZG7r/Ih9xy+kP/WwediEUsqmtf0cuCV5TPPKw/PQHRhueUo6JdeFJaqV3pyjm0GdYjZotbRt/A==}
@@ -1344,10 +1295,6 @@ packages:
   '@parcel/watcher@2.5.6':
     resolution: {integrity: sha512-tmmZ3lQxAe/k/+rNnXQRawJ4NjxO2hqiOLTHvWchtGZULp4RyFeh6aU4XdOYBFe2KE1oShQTv4AblOs2iOrNnQ==}
     engines: {node: '>= 10.0.0'}
-
-  '@pkgjs/parseargs@0.11.0':
-    resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
-    engines: {node: '>=14'}
 
   '@pkgr/core@0.2.9':
     resolution: {integrity: sha512-QNqXyfVS2wm9hweSYD2O7F0G06uurj9kZ96TRQE5Y9hU7+tgdZwIkbAKc5Ocy1HxEY2kuDQa6cQ1WRs/O5LFKA==}
@@ -1616,9 +1563,6 @@ packages:
   '@vue/shared@3.5.32':
     resolution: {integrity: sha512-ksNyrmRQzWJJ8n3cRDuSF7zNNontuJg1YHnmWRJd2AMu8Ij2bqwiiri2lH5rHtYPZjj4STkNcgcmiQqlOjiYGg==}
 
-  '@vue/test-utils@2.4.6':
-    resolution: {integrity: sha512-FMxEjOpYNYiFe0GkaHsnJPXFHxQ6m4t8vI/ElPGpMWxZKpmRvQ33OIrvRXemy6yha03RxhOlQuy+gZMC3CQSow==}
-
   '@vueuse/core@10.11.1':
     resolution: {integrity: sha512-guoy26JQktXPcz+0n3GukWIy/JDNKti9v6VEMu6kV2sYBsWuGiTU8OWdg+ADfUbHg3/3DlqySDe7JmdHrktiww==}
 
@@ -1627,10 +1571,6 @@ packages:
 
   '@vueuse/shared@10.11.1':
     resolution: {integrity: sha512-LHpC8711VFZlDaYUXEBbFBCQ7GS3dVU9mjOhhMhXP6txTV4EhYQg/KGnQuvt/sPAtoUKq7VVUnL6mVtFoL42sA==}
-
-  abbrev@2.0.0:
-    resolution: {integrity: sha512-6/mh1E2u2YgEsCHdY0Yx5oW+61gZU+1vXaoiHHrpKeuRNNgFvS+/jrwHiQhB5apAf5oB7UB7E19ol2R2LKH8hQ==}
-    engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
 
   ace-builds@1.43.6:
     resolution: {integrity: sha512-L1ddibQ7F3vyXR2k2fg+I8TQTPWVA6CKeDQr/h2+8CeyTp3W6EQL8xNFZRTztuP8xNOAqL3IYPqdzs31GCjDvg==}
@@ -1652,37 +1592,18 @@ packages:
   ajv@6.14.0:
     resolution: {integrity: sha512-IWrosm/yrn43eiKqkfkHis7QioDleaXQHdDVPKg0FSwwd/DuvyX79TZnFOnYpB7dcsFAMmtFztZuXPDvSePkFw==}
 
-  ansi-regex@5.0.1:
-    resolution: {integrity: sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==}
-    engines: {node: '>=8'}
-
-  ansi-regex@6.2.2:
-    resolution: {integrity: sha512-Bq3SmSpyFHaWjPk8If9yc6svM8c56dB5BAtW4Qbw5jHTwwXXcTLoRMkpDJp6VL0XzlWaCHTXrkFURMYmD0sLqg==}
-    engines: {node: '>=12'}
-
-  ansi-styles@4.3.0:
-    resolution: {integrity: sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg==}
-    engines: {node: '>=8'}
-
-  ansi-styles@6.2.3:
-    resolution: {integrity: sha512-4Dj6M28JB+oAH8kFkTLUo+a2jwOFkuqb3yucU0CANcRRUbxS0cP0nZYCGjcc3BNXwRIsUVmDGgzawme7zvJHvg==}
-    engines: {node: '>=12'}
-
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
 
   axios@1.14.0:
     resolution: {integrity: sha512-3Y8yrqLSwjuzpXuZ0oIYZ/XGgLwUIBU3uLvbcpb0pidD9ctpShJd43KSlEEkVQg6DS0G9NKyzOvBfUtDKEyHvQ==}
 
-  balanced-match@1.0.2:
-    resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
-
   balanced-match@4.0.4:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
     engines: {node: 18 || 20 || >=22}
 
-  baseline-browser-mapping@2.10.15:
-    resolution: {integrity: sha512-1nfKCq9wuAZFTkA2ey/3OXXx7GzFjLdkTiFVNwlJ9WqdI706CZRIhEqjuwanjMIja+84jDLa9rcyZDPDiVkASQ==}
+  baseline-browser-mapping@2.10.16:
+    resolution: {integrity: sha512-Lyf3aK28zpsD1yQMiiHD4RvVb6UdMoo8xzG2XzFIfR9luPzOpcBlAsT/qfB1XWS1bxWT+UtE4WmQgsp297FYOA==}
     engines: {node: '>=6.0.0'}
     hasBin: true
 
@@ -1694,9 +1615,6 @@ packages:
 
   boolbase@1.0.0:
     resolution: {integrity: sha512-JZOSA7Mo9sNGB8+UjSgzdLtokWAky1zbztM3WRLCbZ70/3cTANmQmOdR7y2g+J0e2WXywy1yS468tY+IruqEww==}
-
-  brace-expansion@2.0.3:
-    resolution: {integrity: sha512-MCV/fYJEbqx68aE58kv2cA/kiky1G8vux3OR6/jbS+jIMe/6fJWa0DTzJU7dqijOWYwHi1t29FlfYI9uytqlpA==}
 
   brace-expansion@5.0.5:
     resolution: {integrity: sha512-VZznLgtwhn+Mact9tfiwx64fA9erHH/MCXEUfB/0bX/6Fz6ny5EGTXYltMocqg4xFAQZtnO3DHWWXi8RiuN7cQ==}
@@ -1711,30 +1629,16 @@ packages:
     resolution: {integrity: sha512-Sp1ablJ0ivDkSzjcaJdxEunN5/XvksFJ2sMBFfq6x0ryhQV/2b/KwFe21cMpmHtPOSij8K99/wSfoEuTObmuMQ==}
     engines: {node: '>= 0.4'}
 
-  caniuse-lite@1.0.30001785:
-    resolution: {integrity: sha512-blhOL/WNR+Km1RI/LCVAvA73xplXA7ZbjzI4YkMK9pa6T/P3F2GxjNpEkyw5repTw9IvkyrjyHpwjnhZ5FOvYQ==}
+  caniuse-lite@1.0.30001786:
+    resolution: {integrity: sha512-4oxTZEvqmLLrERwxO76yfKM7acZo310U+v4kqexI2TL1DkkUEMT8UijrxxcnVdxR3qkVf5awGRX+4Z6aPHVKrA==}
 
   chokidar@4.0.3:
     resolution: {integrity: sha512-Qgzu8kfBvo+cA4962jnP1KkS6Dop5NS6g7R5LFYJr4b8Ub94PPQXUksCw9PvXoeXPRRddRNC5C1JQUR2SMGtnA==}
     engines: {node: '>= 14.16.0'}
 
-  color-convert@2.0.1:
-    resolution: {integrity: sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==}
-    engines: {node: '>=7.0.0'}
-
-  color-name@1.1.4:
-    resolution: {integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==}
-
   combined-stream@1.0.8:
     resolution: {integrity: sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==}
     engines: {node: '>= 0.8'}
-
-  commander@10.0.1:
-    resolution: {integrity: sha512-y4Mg2tXshplEbSGzx7amzPwKKOCGuoSRP/CjEdwwk0FOGlUbq6lKuoyDZTNZkmxHdJtp54hdfY/JUrdL7Xfdug==}
-    engines: {node: '>=14'}
-
-  config-chain@1.1.13:
-    resolution: {integrity: sha512-qj+f8APARXHrM0hraqXYb2/bOVSV4PvJQlNZ/DVj0QrmNM2q2euizkeuVckQ57J+W0mRH6Hvi+k50M4Jul2VRQ==}
 
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
@@ -1841,22 +1745,8 @@ packages:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
     engines: {node: '>= 0.4'}
 
-  eastasianwidth@0.2.0:
-    resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
-
-  editorconfig@1.0.7:
-    resolution: {integrity: sha512-e0GOtq/aTQhVdNyDU9e02+wz9oDDM+SIOQxWME2QRjzRX5yyLAuHDE+0aE8vHb9XRC8XD37eO2u57+F09JqFhw==}
-    engines: {node: '>=14'}
-    hasBin: true
-
   electron-to-chromium@1.5.331:
     resolution: {integrity: sha512-IbxXrsTlD3hRodkLnbxAPP4OuJYdWCeM3IOdT+CpcMoIwIoDfCmRpEtSPfwBXxVkg9xmBeY7Lz2Eo2TDn/HC3Q==}
-
-  emoji-regex@8.0.0:
-    resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
-
-  emoji-regex@9.2.2:
-    resolution: {integrity: sha512-L18DaJsXSUk2+42pv8mLs5jJT2hqFkFE4j21wOmgbUqsZ2hL72NsUU785g9RXgo3s0ZNgVl42TiHp3ZtOv/Vyg==}
 
   entities@7.0.1:
     resolution: {integrity: sha512-TWrgLOFUQTH994YUyl1yT4uyavY5nNB5muff+RtWaqNVCAK408b5ZnnbNAUEWLTCpum9w6arT70i1XdQ4UeOPA==}
@@ -2021,10 +1911,6 @@ packages:
       debug:
         optional: true
 
-  foreground-child@3.3.1:
-    resolution: {integrity: sha512-gIXjKqtFuWEgzFRJA9WCQeSJLZDjgJUOMCMzxtvFq/37KojM1BFGufqsCy0r4qSQmYLsZYMeyRqzIWOMup03sw==}
-    engines: {node: '>=14'}
-
   form-data@4.0.5:
     resolution: {integrity: sha512-8RipRLol37bNs2bhoV67fiTEvdTrbMUYcFTiy3+wuuOnUog2QBHCZWXDRijWQfAkhBj2Uf5UnVaiWwA5vdd82w==}
     engines: {node: '>= 6'}
@@ -2052,11 +1938,6 @@ packages:
   glob-parent@6.0.2:
     resolution: {integrity: sha512-XxwI8EOhVQgWp6iDL+3b0r86f4d6AX6zSU55HfB4ydCEuXLXc5FcYeOu+nnGftS4TEju/11rt4KJPTMgbfmv4A==}
     engines: {node: '>=10.13.0'}
-
-  glob@10.5.0:
-    resolution: {integrity: sha512-DfXN8DfhJ7NH3Oe7cFmu3NCu1wKbkReJ8TorzSAFbSKrlNaQSKfIzqYqVY8zlbs2NLBbWpRiU52GX2PbaBVNkg==}
-    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
-    hasBin: true
 
   globals@17.4.0:
     resolution: {integrity: sha512-hjrNztw/VajQwOLsMNT1cbJiH2muO3OROCHnbehc8eY5JyD2gqz4AcMHPqgaOR59DjgUjYAYLeH699g/eWi2jw==}
@@ -2095,16 +1976,9 @@ packages:
     resolution: {integrity: sha512-JmXMZ6wuvDmLiHEml9ykzqO6lwFbof0GG4IkcGaENdCRDDmMVnny7s5HsIgHCbaq0w2MyPhDqkhTUgS2LU2PHA==}
     engines: {node: '>=0.8.19'}
 
-  ini@1.3.8:
-    resolution: {integrity: sha512-JV/yugV2uzW5iMRSiZAyDtQd+nxtUnjeLt0acNdw98kKLrvuRVyB80tsREOE7yvGVgalhZ6RNXCmEHkUKBKxew==}
-
   is-extglob@2.1.1:
     resolution: {integrity: sha512-SbKbANkN603Vi4jEZv49LeVJMn4yGwsbzZworEoyEiutsN3nJYdbO36zfhGJ6QEDpOZIFkDtnq5JRxmvl3jsoQ==}
     engines: {node: '>=0.10.0'}
-
-  is-fullwidth-code-point@3.0.0:
-    resolution: {integrity: sha512-zymm5+u+sCsSWyD9qNaejV3DFvhCKclKdizYaJUuHA83RLjb7nSuGnddCHGv0hk+KY7BMAlsWeK4Ueg6EV6XQg==}
-    engines: {node: '>=8'}
 
   is-glob@4.0.3:
     resolution: {integrity: sha512-xelSayHH36ZgE7ZWhli7pW34hNbNl8Ojv5KVmkJD4hBdD3th8Tfk9vYasLM+mXWOZhFkgZfxhLSnrwRr4elSSg==}
@@ -2116,18 +1990,6 @@ packages:
 
   isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
-
-  jackspeak@3.4.3:
-    resolution: {integrity: sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw==}
-
-  js-beautify@1.15.4:
-    resolution: {integrity: sha512-9/KXeZUKKJwqCXUdBxFJ3vPh467OCckSBmYDwSK/EtV090K+iMJ7zx2S3HLVDIWFQdqMIsZWbnaGiba18aWhaA==}
-    engines: {node: '>=14'}
-    hasBin: true
-
-  js-cookie@3.0.5:
-    resolution: {integrity: sha512-cEiJEAEoIbWfCZYKWhVwFuvPX1gETRYPw6LlaTKoxD3s2AkXzkCjnp6h0V77ozyqj0jakteJ4YqDJT830+lVGw==}
-    engines: {node: '>=14'}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -2242,9 +2104,6 @@ packages:
   lossless-json@4.3.0:
     resolution: {integrity: sha512-ToxOC+SsduRmdSuoLZLYAr5zy1Qu7l5XhmPWM3zefCZ5IcrzW/h108qbJUKfOlDlhvhjUK84+8PSVX0kxnit0g==}
 
-  lru-cache@10.4.3:
-    resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
-
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
 
@@ -2266,14 +2125,6 @@ packages:
   minimatch@10.2.5:
     resolution: {integrity: sha512-MULkVLfKGYDFYejP07QOurDLLQpcjk7Fw+7jXS2R2czRQzR56yHRveU5NDJEOviH+hETZKSkIk5c+T23GjFUMg==}
     engines: {node: 18 || 20 || >=22}
-
-  minimatch@9.0.9:
-    resolution: {integrity: sha512-OBwBN9AL4dqmETlpS2zasx+vTeWclWzkblfZk7KTA5j3jeOONz/tRCnZomUyvNg83wL5Zv9Ss6HMJXAgL8R2Yg==}
-    engines: {node: '>=16 || 14 >=14.17'}
-
-  minipass@7.1.3:
-    resolution: {integrity: sha512-tEBHqDnIoM/1rXME1zgka9g6Q2lcoCkxHLuc7ODJ5BxbP5d4c2Z5cGgtXAku59200Cx7diuHTOYfSBD8n6mm8A==}
-    engines: {node: '>=16 || 14 >=14.17'}
 
   mitt@3.0.1:
     resolution: {integrity: sha512-vKivATfr97l2/QBCYAkXYDbrIWPM2IIKEl7YPhjCvKlG3kE2gm+uBo6nEXK3M5/Ffh/FLpKExzOQ3JJoJGFKBw==}
@@ -2302,11 +2153,6 @@ packages:
   node-releases@2.0.37:
     resolution: {integrity: sha512-1h5gKZCF+pO/o3Iqt5Jp7wc9rH3eJJ0+nh/CIoiRwjRxde/hAHyLPXYN4V3CqKAbiZPSeJFSWHmJsbkicta0Eg==}
 
-  nopt@7.2.1:
-    resolution: {integrity: sha512-taM24ViiimT/XntxbPyJQzCG+p4EKOpgD3mxFwW38mGjVUrfERQOeY4EDHjdnptttfHuHQXFx+lTP08Q+mLa/w==}
-    engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
-    hasBin: true
-
   nth-check@2.1.1:
     resolution: {integrity: sha512-lqjrjmaOoAnWfMmBPL+XNnynZh2+swxiX3WUE0s4yEHI6m+AwrK2UZOimIRl3X/4QctVqS8AiZjFqyOGrMXb/w==}
 
@@ -2322,9 +2168,6 @@ packages:
     resolution: {integrity: sha512-LaNjtRWUBY++zB5nE/NwcaoMylSPk+S+ZHNB1TzdbMJMny6dynpAGt7X/tl/QYq3TIeE6nxHppbo2LGymrG5Pw==}
     engines: {node: '>=10'}
 
-  package-json-from-dist@1.0.1:
-    resolution: {integrity: sha512-UEZIS3/by4OC8vL3P2dTXRETpebLI2NiI5vIrjaD/5UtrkFX/tNbwjTSRAGC/+7CAo2pIcBaRgWmcBBHcsaCIw==}
-
   path-exists@4.0.0:
     resolution: {integrity: sha512-ak9Qy5Q7jYb2Wwcey5Fpvg2KoAc/ZIhLSLOSBmRmygPsGwkVVt0fZa0qrtMz+m6tJTAHfZQ8FnmB4MG4LWy7/w==}
     engines: {node: '>=8'}
@@ -2332,10 +2175,6 @@ packages:
   path-key@3.1.1:
     resolution: {integrity: sha512-ojmeN0qd+y0jszEtoY48r0Peq5dwMEkIlCOu6Q5f41lfkswXuKtYrhgoTpLnyIcHm24Uhqx+5Tqm2InSwLhE6Q==}
     engines: {node: '>=8'}
-
-  path-scurry@1.11.1:
-    resolution: {integrity: sha512-Xa4Nw17FS9ApQFJ9umLiJS4orGjm7ZzwUrwamcGQuHSzDyth9boKDaycYdDcZDuqYATXw4HFXgaqWTctW/v1HA==}
-    engines: {node: '>=16 || 14 >=14.18'}
 
   perfect-debounce@1.0.0:
     resolution: {integrity: sha512-xCy9V055GLEqoFaHoC1SoLIaLmWctgCUaBaWxDZ7/Zx4CTyX7cJQLJOok/orfjZAh9kEYpjJa4d0KcJmCbctZA==}
@@ -2377,9 +2216,6 @@ packages:
     engines: {node: '>=14'}
     hasBin: true
 
-  proto-list@1.2.4:
-    resolution: {integrity: sha512-vtK/94akxsTMhe0/cbfpR+syPuszcuwhqVjJq26CuNDgFGj682oRBXOP5MJpv2r7JtE8MsiepGIqvvOTBwn2vA==}
-
   proxy-from-env@2.1.0:
     resolution: {integrity: sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA==}
     engines: {node: '>=10'}
@@ -2404,11 +2240,6 @@ packages:
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
     hasBin: true
 
-  sass@1.98.0:
-    resolution: {integrity: sha512-+4N/u9dZ4PrgzGgPlKnaaRQx64RO0JBKs9sDhQ2pLgN6JQZ25uPQZKQYaBJU48Kd5BxgXoJ4e09Dq7nMcOUW3A==}
-    engines: {node: '>=14.0.0'}
-    hasBin: true
-
   sass@1.99.0:
     resolution: {integrity: sha512-kgW13M54DUB7IsIRM5LvJkNlpH+WhMpooUcaWGFARkF1Tc82v9mIWkCbCYf+MBvpIUBSeSOTilpZjEPr2VYE6Q==}
     engines: {node: '>=14.0.0'}
@@ -2430,10 +2261,6 @@ packages:
   shebang-regex@3.0.0:
     resolution: {integrity: sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==}
     engines: {node: '>=8'}
-
-  signal-exit@4.1.0:
-    resolution: {integrity: sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==}
-    engines: {node: '>=14'}
 
   single-spa-vue@3.0.1:
     resolution: {integrity: sha512-GX6uQBBMGG3/ZQh6Z+tuqKGIuWKMbDhj3O/6xwX4j0NQJhW9kynHXbOWwwel1DFq6tkjzk7a0qBlhJwRCgn/lg==}
@@ -2459,22 +2286,6 @@ packages:
 
   sprintf-js@1.1.3:
     resolution: {integrity: sha512-Oo+0REFV59/rz3gfJNKQiBlwfHaSESl1pcGyABQsnnIfWOFt6JNj5gCog2U6MLZ//IGYD+nA8nI+mTShREReaA==}
-
-  string-width@4.2.3:
-    resolution: {integrity: sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==}
-    engines: {node: '>=8'}
-
-  string-width@5.1.2:
-    resolution: {integrity: sha512-HnLOCR3vjcY8beoNLtcjZ5/nxn2afmME6lhrDrebokqMap+XbeW8n9TXpPDOqdGK5qcI3oT0GKTW6wC7EMiVqA==}
-    engines: {node: '>=12'}
-
-  strip-ansi@6.0.1:
-    resolution: {integrity: sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==}
-    engines: {node: '>=8'}
-
-  strip-ansi@7.2.0:
-    resolution: {integrity: sha512-yDPMNjp4WyfYBkHnjIRLfca1i6KMyGCtsVgoKe/z1+6vukgaENdgGBZt+ZmKPc4gavvEZ5OgHfHdrazhgNyG7w==}
-    engines: {node: '>=12'}
 
   superjson@2.2.6:
     resolution: {integrity: sha512-H+ue8Zo4vJmV2nRjpx86P35lzwDT3nItnIsocgumgr0hHMQ+ZGq5vrERg9kJBo5AWGmxZDhzDo+WVIJqkB0cGA==}
@@ -2518,46 +2329,6 @@ packages:
     peerDependencies:
       vite: ^2.0.0
 
-  vite@7.3.1:
-    resolution: {integrity: sha512-w+N7Hifpc3gRjZ63vYBXA56dvvRlNWRczTdmCBBa+CotUzAPf5b7YMdMR/8CQoeYE5LX3W4wj6RYTgonm1b9DA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    hasBin: true
-    peerDependencies:
-      '@types/node': ^20.19.0 || >=22.12.0
-      jiti: '>=1.21.0'
-      less: ^4.0.0
-      lightningcss: ^1.21.0
-      sass: ^1.70.0
-      sass-embedded: ^1.70.0
-      stylus: '>=0.54.8'
-      sugarss: ^5.0.0
-      terser: ^5.16.0
-      tsx: ^4.8.1
-      yaml: ^2.4.2
-    peerDependenciesMeta:
-      '@types/node':
-        optional: true
-      jiti:
-        optional: true
-      less:
-        optional: true
-      lightningcss:
-        optional: true
-      sass:
-        optional: true
-      sass-embedded:
-        optional: true
-      stylus:
-        optional: true
-      sugarss:
-        optional: true
-      terser:
-        optional: true
-      tsx:
-        optional: true
-      yaml:
-        optional: true
-
   vite@7.3.2:
     resolution: {integrity: sha512-Bby3NOsna2jsjfLVOHKes8sGwgl4TT0E6vvpYgnAYDIF/tie7MRaFthmKuHx1NSXjiTueXH3do80FMQgvEktRg==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2597,9 +2368,6 @@ packages:
         optional: true
       yaml:
         optional: true
-
-  vue-component-type-helpers@2.2.12:
-    resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -2654,14 +2422,6 @@ packages:
   word-wrap@1.2.5:
     resolution: {integrity: sha512-BN22B5eaMMI9UMtjrGd5g5eCYPpCPDUy0FJXbYsaT5zYxjFOckS53SQDE3pWkVoWpHXVb3BrYcEN4Twa55B5cA==}
     engines: {node: '>=0.10.0'}
-
-  wrap-ansi@7.0.0:
-    resolution: {integrity: sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==}
-    engines: {node: '>=10'}
-
-  wrap-ansi@8.1.0:
-    resolution: {integrity: sha512-si7QWI6zUMq56bESFvagtmzMdGOtoxfR+Sez11Mobfc7tm+VkUckk9bW2UeffTGVUbOksxmSw0AA2gs8g71NCQ==}
-    engines: {node: '>=12'}
 
   xml-name-validator@4.0.0:
     resolution: {integrity: sha512-ICP2e+jsHvAj2E2lIHxa5tjXRlKDJo4IdvPvCXbXQGdzSfmSpNVyIKMvoZHjDY9DP0zV17iI85o90vRFXNccRw==}
@@ -2952,15 +2712,6 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
-  '@isaacs/cliui@8.0.2':
-    dependencies:
-      string-width: 5.1.2
-      string-width-cjs: string-width@4.2.3
-      strip-ansi: 7.2.0
-      strip-ansi-cjs: strip-ansi@6.0.1
-      wrap-ansi: 8.1.0
-      wrap-ansi-cjs: wrap-ansi@7.0.0
-
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
@@ -2979,8 +2730,6 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
-
-  '@one-ini/wasm@0.1.1': {}
 
   '@parcel/watcher-android-arm64@2.5.6':
     optional: true
@@ -3041,9 +2790,6 @@ snapshots:
       '@parcel/watcher-win32-arm64': 2.5.6
       '@parcel/watcher-win32-ia32': 2.5.6
       '@parcel/watcher-win32-x64': 2.5.6
-    optional: true
-
-  '@pkgjs/parseargs@0.11.0':
     optional: true
 
   '@pkgr/core@0.2.9': {}
@@ -3148,18 +2894,6 @@ snapshots:
     optional: true
 
   '@types/web-bluetooth@0.0.20': {}
-
-  '@vitejs/plugin-vue@6.0.5(vite@7.3.1(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))(vue@3.5.32)':
-    dependencies:
-      '@rolldown/pluginutils': 1.0.0-rc.2
-      vite: 7.3.1(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
-      vue: 3.5.32
-
-  '@vitejs/plugin-vue@6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0))(vue@3.5.32)':
-    dependencies:
-      '@rolldown/pluginutils': 1.0.0-rc.2
-      vite: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
-      vue: 3.5.32
 
   '@vitejs/plugin-vue@6.0.5(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0))(vue@3.5.32)':
     dependencies:
@@ -3290,11 +3024,6 @@ snapshots:
 
   '@vue/shared@3.5.32': {}
 
-  '@vue/test-utils@2.4.6':
-    dependencies:
-      js-beautify: 1.15.4
-      vue-component-type-helpers: 2.2.12
-
   '@vueuse/core@10.11.1(vue@3.5.32)':
     dependencies:
       '@types/web-bluetooth': 0.0.20
@@ -3313,8 +3042,6 @@ snapshots:
     transitivePeerDependencies:
       - '@vue/composition-api'
       - vue
-
-  abbrev@2.0.0: {}
 
   ace-builds@1.43.6: {}
 
@@ -3335,16 +3062,6 @@ snapshots:
       json-schema-traverse: 0.4.1
       uri-js: 4.4.1
 
-  ansi-regex@5.0.1: {}
-
-  ansi-regex@6.2.2: {}
-
-  ansi-styles@4.3.0:
-    dependencies:
-      color-convert: 2.0.1
-
-  ansi-styles@6.2.3: {}
-
   asynckit@0.4.0: {}
 
   axios@1.14.0:
@@ -3355,11 +3072,9 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  balanced-match@1.0.2: {}
-
   balanced-match@4.0.4: {}
 
-  baseline-browser-mapping@2.10.15: {}
+  baseline-browser-mapping@2.10.16: {}
 
   binary-search@1.3.6: {}
 
@@ -3367,18 +3082,14 @@ snapshots:
 
   boolbase@1.0.0: {}
 
-  brace-expansion@2.0.3:
-    dependencies:
-      balanced-match: 1.0.2
-
   brace-expansion@5.0.5:
     dependencies:
       balanced-match: 4.0.4
 
   browserslist@4.28.2:
     dependencies:
-      baseline-browser-mapping: 2.10.15
-      caniuse-lite: 1.0.30001785
+      baseline-browser-mapping: 2.10.16
+      caniuse-lite: 1.0.30001786
       electron-to-chromium: 1.5.331
       node-releases: 2.0.37
       update-browserslist-db: 1.2.3(browserslist@4.28.2)
@@ -3388,28 +3099,15 @@ snapshots:
       es-errors: 1.3.0
       function-bind: 1.1.2
 
-  caniuse-lite@1.0.30001785: {}
+  caniuse-lite@1.0.30001786: {}
 
   chokidar@4.0.3:
     dependencies:
       readdirp: 4.1.2
 
-  color-convert@2.0.1:
-    dependencies:
-      color-name: 1.1.4
-
-  color-name@1.1.4: {}
-
   combined-stream@1.0.8:
     dependencies:
       delayed-stream: 1.0.0
-
-  commander@10.0.1: {}
-
-  config-chain@1.1.13:
-    dependencies:
-      ini: 1.3.8
-      proto-list: 1.2.4
 
   convert-source-map@2.0.0: {}
 
@@ -3498,20 +3196,7 @@ snapshots:
       es-errors: 1.3.0
       gopd: 1.2.0
 
-  eastasianwidth@0.2.0: {}
-
-  editorconfig@1.0.7:
-    dependencies:
-      '@one-ini/wasm': 0.1.1
-      commander: 10.0.1
-      minimatch: 9.0.9
-      semver: 7.7.4
-
   electron-to-chromium@1.5.331: {}
-
-  emoji-regex@8.0.0: {}
-
-  emoji-regex@9.2.2: {}
 
   entities@7.0.1: {}
 
@@ -3694,11 +3379,6 @@ snapshots:
 
   follow-redirects@1.15.11: {}
 
-  foreground-child@3.3.1:
-    dependencies:
-      cross-spawn: 7.0.6
-      signal-exit: 4.1.0
-
   form-data@4.0.5:
     dependencies:
       asynckit: 0.4.0
@@ -3736,15 +3416,6 @@ snapshots:
     dependencies:
       is-glob: 4.0.3
 
-  glob@10.5.0:
-    dependencies:
-      foreground-child: 3.3.1
-      jackspeak: 3.4.3
-      minimatch: 9.0.9
-      minipass: 7.1.3
-      package-json-from-dist: 1.0.1
-      path-scurry: 1.11.1
-
   globals@17.4.0: {}
 
   gopd@1.2.0: {}
@@ -3771,11 +3442,7 @@ snapshots:
 
   imurmurhash@0.1.4: {}
 
-  ini@1.3.8: {}
-
   is-extglob@2.1.1: {}
-
-  is-fullwidth-code-point@3.0.0: {}
 
   is-glob@4.0.3:
     dependencies:
@@ -3784,22 +3451,6 @@ snapshots:
   is-what@5.5.0: {}
 
   isexe@2.0.0: {}
-
-  jackspeak@3.4.3:
-    dependencies:
-      '@isaacs/cliui': 8.0.2
-    optionalDependencies:
-      '@pkgjs/parseargs': 0.11.0
-
-  js-beautify@1.15.4:
-    dependencies:
-      config-chain: 1.1.13
-      editorconfig: 1.0.7
-      glob: 10.5.0
-      js-cookie: 3.0.5
-      nopt: 7.2.1
-
-  js-cookie@3.0.5: {}
 
   js-tokens@4.0.0: {}
 
@@ -3880,8 +3531,6 @@ snapshots:
 
   lossless-json@4.3.0: {}
 
-  lru-cache@10.4.3: {}
-
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
@@ -3902,12 +3551,6 @@ snapshots:
     dependencies:
       brace-expansion: 5.0.5
 
-  minimatch@9.0.9:
-    dependencies:
-      brace-expansion: 2.0.3
-
-  minipass@7.1.3: {}
-
   mitt@3.0.1: {}
 
   ms@2.1.3: {}
@@ -3924,10 +3567,6 @@ snapshots:
     optional: true
 
   node-releases@2.0.37: {}
-
-  nopt@7.2.1:
-    dependencies:
-      abbrev: 2.0.0
 
   nth-check@2.1.1:
     dependencies:
@@ -3950,16 +3589,9 @@ snapshots:
     dependencies:
       p-limit: 3.1.0
 
-  package-json-from-dist@1.0.1: {}
-
   path-exists@4.0.0: {}
 
   path-key@3.1.1: {}
-
-  path-scurry@1.11.1:
-    dependencies:
-      lru-cache: 10.4.3
-      minipass: 7.1.3
 
   perfect-debounce@1.0.0: {}
 
@@ -3990,8 +3622,6 @@ snapshots:
       fast-diff: 1.3.0
 
   prettier@3.8.1: {}
-
-  proto-list@1.2.4: {}
 
   proxy-from-env@2.1.0: {}
 
@@ -4034,14 +3664,6 @@ snapshots:
       '@rollup/rollup-win32-x64-msvc': 4.60.1
       fsevents: 2.3.3
 
-  sass@1.98.0:
-    dependencies:
-      chokidar: 4.0.3
-      immutable: 5.1.5
-      source-map-js: 1.2.1
-    optionalDependencies:
-      '@parcel/watcher': 2.5.6
-
   sass@1.99.0:
     dependencies:
       chokidar: 4.0.3
@@ -4060,8 +3682,6 @@ snapshots:
 
   shebang-regex@3.0.0: {}
 
-  signal-exit@4.1.0: {}
-
   single-spa-vue@3.0.1: {}
 
   single-spa@6.0.3: {}
@@ -4077,26 +3697,6 @@ snapshots:
       vue: 3.5.32
 
   sprintf-js@1.1.3: {}
-
-  string-width@4.2.3:
-    dependencies:
-      emoji-regex: 8.0.0
-      is-fullwidth-code-point: 3.0.0
-      strip-ansi: 6.0.1
-
-  string-width@5.1.2:
-    dependencies:
-      eastasianwidth: 0.2.0
-      emoji-regex: 9.2.2
-      strip-ansi: 7.2.0
-
-  strip-ansi@6.0.1:
-    dependencies:
-      ansi-regex: 5.0.1
-
-  strip-ansi@7.2.0:
-    dependencies:
-      ansi-regex: 6.2.2
 
   superjson@2.2.6:
     dependencies:
@@ -4134,37 +3734,9 @@ snapshots:
 
   util-deprecate@1.0.2: {}
 
-  vite-plugin-style-inject@0.0.1(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)):
+  vite-plugin-style-inject@0.0.1(vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)):
     dependencies:
-      vite: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0)
-
-  vite@7.3.1(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0):
-    dependencies:
-      esbuild: 0.27.7
-      fdir: 6.5.0(picomatch@4.0.4)
-      picomatch: 4.0.4
-      postcss: 8.5.8
-      rollup: 4.60.1
-      tinyglobby: 0.2.15
-    optionalDependencies:
-      '@types/node': 25.0.3
-      fsevents: 2.3.3
-      lightningcss: 1.30.2
-      sass: 1.98.0
-
-  vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.98.0):
-    dependencies:
-      esbuild: 0.27.7
-      fdir: 6.5.0(picomatch@4.0.4)
-      picomatch: 4.0.4
-      postcss: 8.5.8
-      rollup: 4.60.1
-      tinyglobby: 0.2.15
-    optionalDependencies:
-      '@types/node': 25.0.3
-      fsevents: 2.3.3
-      lightningcss: 1.30.2
-      sass: 1.98.0
+      vite: 7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0)
 
   vite@7.3.2(@types/node@25.0.3)(lightningcss@1.30.2)(sass@1.99.0):
     dependencies:
@@ -4179,8 +3751,6 @@ snapshots:
       fsevents: 2.3.3
       lightningcss: 1.30.2
       sass: 1.99.0
-
-  vue-component-type-helpers@2.2.12: {}
 
   vue-demi@0.14.10(vue@3.5.32):
     dependencies:
@@ -4220,18 +3790,6 @@ snapshots:
       isexe: 2.0.0
 
   word-wrap@1.2.5: {}
-
-  wrap-ansi@7.0.0:
-    dependencies:
-      ansi-styles: 4.3.0
-      string-width: 4.2.3
-      strip-ansi: 6.0.1
-
-  wrap-ansi@8.1.0:
-    dependencies:
-      ansi-styles: 6.2.3
-      string-width: 5.1.2
-      strip-ansi: 7.2.0
 
   xml-name-validator@4.0.0: {}
 
