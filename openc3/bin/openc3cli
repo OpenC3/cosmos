@@ -75,6 +75,7 @@ def print_usage
   puts "  cli pkguninstall PKGFILENAME SCOPE  # Uninstall loaded package (Ruby gem or python package)"
   puts "  cli xtce_converter                # Convert to and from the XTCE format. Run with --help for more info."
   puts "  cli cstol_converter               # Converts CSTOL files (.prc) to COSMOS. Run with --help for more info."
+  puts "  cli setpassword                   # Set the initial password from OPENC3_API_PASSWORD env var"
   puts ""
 end
 
@@ -904,6 +905,25 @@ def cli_script(args=[])
   exit(ret_code)
 end
 
+def set_password
+  password = ENV['OPENC3_API_PASSWORD']
+  argon2_profile = ENV["OPENC3_ARGON2_PROFILE"]&.to_sym || :rfc_9106_low_memory
+  if password.nil? or password.empty?
+    abort "OPENC3_API_PASSWORD environment variable is required"
+  end
+  if password.length < 8
+    abort "Password must be at least 8 characters"
+  end
+  redis = Redis.new(url: $redis_url, username: ENV['OPENC3_REDIS_USERNAME'], password: ENV['OPENC3_REDIS_PASSWORD'])
+  if redis.exists('OPENC3__TOKEN') == 1
+    abort "Password has already been set. Use the web interface to change the password."
+  end
+  pw_hash = Argon2::Password.create(password, profile: argon2_profile)
+  redis.set('OPENC3__TOKEN', pw_hash)
+  puts "Password set successfully."
+  exit 0
+end
+
 def migrate_password_hash
   password = ENV['OPENC3_API_PASSWORD']
   argon2_profile = ENV["OPENC3_ARGON2_PROFILE"]&.to_sym || :rfc_9106_low_memory
@@ -1388,6 +1408,22 @@ if not ARGV[0].nil? # argument(s) given
       exit 0
     end
     run_migrations(ARGV[1])
+
+  when 'setpassword'
+    if ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli setpassword"
+      puts ""
+      puts "Set the initial COSMOS password from the OPENC3_API_PASSWORD environment variable."
+      puts "This allows you to skip the password creation screen in the web interface."
+      puts ""
+      puts "The password must be at least 8 characters. This command will fail if a"
+      puts "password has already been set."
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit 0
+    end
+    set_password()
 
   when 'migratepassword'
     migrate_password_hash()
