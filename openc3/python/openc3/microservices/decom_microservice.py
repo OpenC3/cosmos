@@ -297,7 +297,7 @@ class DecomMicroservice(Microservice):
             packet_time = packet.packet_time
         else:
             packet_time = datetime.now(timezone.utc)
-        if value:
+        if value is not None:
             message = f"{packet.target_name} {packet.packet_name} {item.name} = {value} is {item.limits.state}"
             if item.limits.values:
                 values = item.limits.values[System.limits_set()]

@@ -276,3 +276,24 @@ Generate new plugins: `./openc3.sh cli generate plugin MyPlugin`
 ## Enterprise vs Core
 
 Set `ENTERPRISE=1` environment variable for Enterprise features. Enterprise uses Keycloak authentication. Core uses simple password authentication.
+
+## Commit Message Format
+
+Use Angular commit message format. Keep messages concise and focused.
+
+**Format:**
+```
+<type>(<scope>): <subject>
+
+<body>
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+**Guidelines:**
+- Subject line: imperative mood, lowercase, no period, max 72 chars
+- Body: explain what and why (not how), keep concise (2-4 lines max)
+- Scope: component/module affected
+- Always include Claude Code attribution footer

@@ -71,8 +71,12 @@
           <v-list-item-title>{{ microservice.name }}</v-list-item-title>
           <v-list-item-subtitle v-if="microservice_status[microservice.name]">
             Updated:
-            {{ formatNanoseconds(microservice_status[microservice.name].updated_at, timeZone) }},
-            Enabled: {{ isEnabled(microservice.name) ? 'True' : 'False' }},
+            {{
+              formatNanoseconds(
+                microservice_status[microservice.name].updated_at,
+                timeZone,
+              )
+            }}, Enabled: {{ isEnabled(microservice.name) ? 'True' : 'False' }},
             Count:
             {{ microservice_status[microservice.name].count }}
           </v-list-item-subtitle>

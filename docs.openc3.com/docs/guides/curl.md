@@ -13,12 +13,23 @@ Before diving too deeping into `curl` make sure what you're trying to accomplish
 
 ## Curl Example with OpenC3 COSMOS Core
 
-OpenC3 COSMOS Core just has a single user account, so all you need to do is pass the single password as the token with your requests like this.
+OpenC3 COSMOS Core just has a single user account, but since COSMOS 7.0.0 you must first obtain a token:
 
 Request:
 
 ```bash
-curl -i -H "Content-Type: application/json-rpc" -H "Authorization: eyJhbGciOiJSUzI1NiIsInR5cCI...<access_token>" \
+TOKEN=$(curl -s -X POST "http://localhost:2900/openc3-api/auth/verify" \
+    -H "Content-Type: application/json" \
+    -d '{"password": "password"}')
+curl -i -H "Content-Type: application/json-rpc" -H "Authorization: $TOKEN" \
+-d '{"jsonrpc": "2.0", "method": "tlm", "params": ["INST HEALTH_STATUS TEMP1"], "keyword_params": {"scope": "DEFAULT"}, "id": 8}' \
+-X POST http://127.0.0.1:2900/openc3-api/api
+```
+
+In COSMOS 6 you can directly pass the password:
+
+```bash
+curl -i -H "Content-Type: application/json-rpc" -H "Authorization: password" \
 -d '{"jsonrpc": "2.0", "method": "tlm", "params": ["INST HEALTH_STATUS TEMP1"], "keyword_params": {"scope": "DEFAULT"}, "id": 8}' \
 -X POST http://127.0.0.1:2900/openc3-api/api
 ```

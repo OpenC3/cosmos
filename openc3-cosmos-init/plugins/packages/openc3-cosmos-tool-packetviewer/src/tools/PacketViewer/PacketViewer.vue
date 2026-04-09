@@ -497,34 +497,35 @@ export default {
     // Called like /tools/packetviewer?config=temps
     if (this.$route.query && this.$route.query.config) {
       this.openConfiguration(this.$route.query.config, true) // routed
-      this.changeUpdater(true)
     } else {
       // Merge default config into the currentConfig in case default isn't yet defined
       let config = { ...this.currentConfig, ...this.loadDefaultConfig() }
       this.applyConfig(config)
-      // If we're passed in the route then manually call packetChanged to update
-      if (this.$route.params.target && this.$route.params.packet) {
-        // Initial position of chooser should be correct so call packetChanged for it
+      // Resolve target/packet from route params, falling back to saved config
+      let target = this.$route.params.target
+      let packet = this.$route.params.packet
+      if (!target || !packet) {
+        target = config.target
+        packet = config.packet
+        // Chooser probably won't be at the right packet so push the route
+        if (target && packet) {
+          this.$router.push({
+            name: 'PackerViewer',
+            params: { target, packet },
+          })
+        }
+      }
+      if (target && packet) {
         await this.packetChanged(
           {
-            targetName: this.$route.params.target.toUpperCase(),
-            packetName: this.$route.params.packet.toUpperCase(),
+            targetName: target.toUpperCase(),
+            packetName: packet.toUpperCase(),
           },
           true,
         )
       } else {
-        if (config.target && config.packet) {
-          // Chooser probably won't be at the right packet so need to refresh
-          this.$router.push({
-            name: 'PackerViewer',
-            params: {
-              target: config.target,
-              packet: config.packet,
-            },
-          })
-        }
+        this.changeUpdater(true)
       }
-      this.changeUpdater(true)
     }
   },
   beforeUnmount() {
@@ -616,6 +617,7 @@ export default {
                 target: this.targetName,
                 packet: this.packetName,
               },
+              query: this.$route.query,
             })
           }
           this.changeUpdater(true)
@@ -812,24 +814,21 @@ export default {
       this.refreshInterval = config.refreshInterval || 1000
       this.staleLimit = config.staleLimit || 30
       this.showIgnored = config.showIgnored || false
-      this.menus[1].items[0].checked = this.showIgnored
       this.derivedLast = config.derivedLast || false
-      this.menus[1].items[1].checked = this.derivedLast
       this.valueType = config.valueType || 'FORMATTED'
-      this.menus[1].radioGroup = valueTypeToRadioGroup[this.valueType]
       this.itemsPerPage = config.itemsPerPage || 20
       this.pinnedItems = config.pinnedItems || []
     },
     openConfiguration: function (name, routed = false) {
-      this.openConfigBase(name, routed, async (config) => {
+      // Always pass routed=true to prevent openConfigBase's query-only push
+      // from racing with packetChanged and reverting to old params
+      this.openConfigBase(name, true, async (config) => {
         this.applyConfig(config)
-        this.saveDefaultConfig(config)
         if (
           this.$route.params.target !== config.target ||
           this.$route.params.packet !== config.packet ||
           this.$route.query.config !== name
         ) {
-          // Need full refresh since chooser won't be on the right packet
           this.$router.push({
             name: 'PackerViewer',
             params: {
@@ -840,6 +839,15 @@ export default {
               config: name,
             },
           })
+        }
+        if (config.target && config.packet) {
+          await this.packetChanged(
+            {
+              targetName: config.target.toUpperCase(),
+              packetName: config.packet.toUpperCase(),
+            },
+            true,
+          )
         }
       })
     },

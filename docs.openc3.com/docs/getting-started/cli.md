@@ -30,6 +30,7 @@ Usage:
   cli pkguninstall PKGFILENAME SCOPE  # Uninstall loaded package (Ruby gem or python package)
   cli xtce_converter                # Convert to and from the XTCE format. Run with --help for more info.
   cli cstol_converter               # Converts CSTOL files (.prc) to COSMOS. Run with --help for more info.
+  cli setpassword                   # Set the initial password from OPENC3_API_PASSWORD env var
 ```
 
 :::note seccomp profile
@@ -157,63 +158,83 @@ script complete
 %
 ```
 
-You can also run Test Runner suites by passing the `--suite SUITE`, `--group GROUP`, and `--script SCRIPT` options as shown below. Pass the `--method` option to run `--method setup` or `--method teardown`. The default is `--method start`. In addition you can pass an `--options` argument to control the flags set in the Test Runner GUI. See the CLI help for more information.
+You can also run Test Runner suites by passing the `--suite SUITE`, `--group GROUP`, and `--script SCRIPT` options as shown below. Pass the `--method` option to run `--method setup` or `--method teardown`. The default is `--method start`. In addition you can pass an `--options` argument to control the flags set in the Test Runner GUI and a `--format` option to output results as `text` (default) or `ctrf` for CI/CD integration. See the CLI help for more information.
+
+**Text Format (default):**
 
 ```bash
 % openc3.sh cli script run INST2/procedures/my_script_suite.py --suite MySuite --group ExampleGroup --script script_2
 Filename INST2/procedures/my_script_suite.py scope DEFAULT
-Filename INST2/procedures/my_script_suite.py scope
-Filename INST2/procedures/utilities/clear.py scope
-Filename INST2/procedures/my_script_suite.py scope
-At [INST2/procedures/my_script_suite.py:48] state [running]
-At [INST2/procedures/my_script_suite.py:49] state [running]
-2025-07-31T04:45:31.284707Z (SCRIPTRUNNER): Script config/DEFAULT/targets/INST2/procedures/my_script_suite.py spawned in 0.0043256282806396484 seconds <python 3.12.11 (main, Jun  9 2025, 08:58:11) [GCC 14.2.0]>
-2025-07-31T04:45:31.310253Z (SCRIPTRUNNER): Starting script: my_script_suite.py, line_delay = 0.1
-2025-07-31T04:45:31.310949Z (my_script_suite.py:0): 2025-07-31T04:45:31.310253Z (SCRIPTRUNNER): Starting script: my_script_suite.py, line_delay = 0.1
-Filename INST2/procedures/my_script_suite.py scope
-At [INST2/procedures/my_script_suite.py:21] state [running]
-2025-07-31T04:45:31.415640Z (my_script_suite.py:21): Running None:ExampleGroup:script_2
-At [INST2/procedures/my_script_suite.py:24] state [running]
-2025-07-31T04:45:31.516645Z (my_script_suite.py:24): This test verifies requirement 2
-At [INST2/procedures/my_script_suite.py:25] state [running]
-At [INST2/procedures/my_script_suite.py:35] state [running]
-At [INST2/procedures/my_script_suite.py:36] state [running]
-2025-07-31T04:45:31.822472Z (my_script_suite.py:36): help
-At [INST2/procedures/my_script_suite.py:37] state [running]
-At [INST2/procedures/my_script_suite.py:40] state [running]
-At [INST2/procedures/my_script_suite.py:26] state [running]
-At [INST2/procedures/my_script_suite.py:26] state [waiting]
-At [INST2/procedures/my_script_suite.py:26] state [waiting]
-2025-07-31T04:45:34.129293Z (my_script_suite.py:26): WAIT: 2.0 seconds with actual time of 2.001 seconds
-2025-07-31T04:45:34.131468Z (SCRIPTRUNNER): Script completed: INST2/procedures/my_script_suite.py
+...
+2026-04-02T19:45:44.131468Z (SCRIPTRUNNER): Script completed: my_script_suite.py
 At [INST2/procedures/my_script_suite.py:0] state [completed]
-{"report"=>
-  "--- Script Report ---\n" +
-  "\n" +
-  "Settings:\n" +
-  "Manual = False\n" +
-  "Pause on Error = False\n" +
-  "Continue After Error = True\n" +
-  "Abort After Error = False\n" +
-  "Loop = False\n" +
-  "Break Loop On Error = False\n" +
-  "\n" +
-  "Results:\n" +
-  "2025-07-31T04:45:31.314286Z: Executing MySuite:ExampleGroup:script_2 \n" +
-  "2025-07-31T04:45:34.130958Z: ExampleGroup:script_2:PASS\n" +
-  "  This test verifies requirement 2\n" +
-  "  \n" +
-  "2025-07-31T04:45:34.132814Z: Completed MySuite:ExampleGroup:script_2 \n" +
-  "\n" +
-  "--- Test Summary ---\n" +
-  "\n" +
-  "Run Time: 2.8185291290283203\n" +
-  "Total Tests: 1\n" +
-  "Pass: 1\n" +
-  "Skip: 0\n" +
-  "Fail: 0\n",
- "type"=>"report"}
+--- Script Report ---
+
+Settings:
+Manual = False
+Pause on Error = False
+Continue After Error = True
+Abort After Error = False
+Loop = False
+Break Loop On Error = False
+
+Results:
+2026-04-02T19:45:41.228209Z: Executing MySuite:ExampleGroup:script_2
+2026-04-02T19:45:44.041472Z: ExampleGroup:script_2:PASS
+  This test verifies requirement 2
+
+2026-04-02T19:45:44.044982Z: Completed MySuite:ExampleGroup:script_2
+
+--- Test Summary ---
+
+Run Time: 2.8167383670806885
+Total Tests: 1
+Pass: 1
+Skip: 0
+Fail: 0
+
 script complete
+```
+
+**CTRF Format (for CI/CD):**
+
+You can output test results in [CTRF (Common Test Report Format)](https://ctrf.io/) JSON format for integration with CI/CD pipelines:
+
+```bash
+% openc3.sh cli script run INST2/procedures/my_script_suite.py --suite MySuite --group ExampleGroup --script script_2 --format ctrf
+{
+  "results": {
+    "tool": {
+      "name": "COSMOS Script Runner",
+      "version": "7.0.0"
+    },
+    "summary": {
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "pending": 0,
+      "skipped": 0,
+      "other": 0,
+      "start": 1712087141228.209,
+      "stop": 1712087144044.982
+    },
+    "tests": [
+      {
+        "name": "ExampleGroup:script_2",
+        "status": "passed",
+        "duration": 2816.763
+      }
+    ],
+    "extra": {
+      "manual": "False",
+      "pauseOnError": "False",
+      "continueAfterError": "True",
+      "abortAfterError": "False",
+      "loop": "False",
+      "breakLoopOnError": "False"
+    }
+  }
+}
 ```
 
 ### Running (since 6.5.0)
@@ -334,6 +355,21 @@ Usage: xtce_converter [options] --import input_xtce_filename --output output_dir
     -p, --plugin PLUGIN              Export .xtce file(s) from the plugin
     -v, --variables                  Optional variables file to pass to the plugin
 ```
+
+## Set Password
+
+Sets the initial COSMOS password from the `OPENC3_API_PASSWORD` environment variable. This allows you to skip the password creation screen in the web interface, which is useful for automated or scripted deployments.
+
+The password must be at least 8 characters. This command will fail if a password has already been set — use the web interface to change an existing password.
+
+```bash
+% openc3.sh cli setpassword
+Password set successfully.
+```
+
+:::note OPENC3_API_PASSWORD
+The `OPENC3_API_PASSWORD` environment variable must be set (typically in your `.env` file). The password is read from this variable, not from a command line argument, to avoid exposing it in shell history.
+:::
 
 ## CSTOL Converter
 
