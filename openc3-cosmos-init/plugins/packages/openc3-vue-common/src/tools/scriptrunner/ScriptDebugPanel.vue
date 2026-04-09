@@ -47,7 +47,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, useTemplateRef } from 'vue'
 import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
 
 const props = defineProps({
@@ -66,7 +66,7 @@ const debug = defineModel('debug', { type: String, required: true })
 
 const emit = defineEmits(['step', 'execute-debug', 'message-sort-order'])
 
-const debugInput = ref(null)
+const debugInput = useTemplateRef('debugInput')
 const debugHistory = ref([])
 const debugHistoryIndex = ref(0)
 
