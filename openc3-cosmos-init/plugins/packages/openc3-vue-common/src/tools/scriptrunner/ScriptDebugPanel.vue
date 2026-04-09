@@ -47,6 +47,7 @@
 </template>
 
 <script setup>
+import { Api } from '@openc3/js-common/services'
 import { ref, nextTick, useTemplateRef } from 'vue'
 import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
 
@@ -70,6 +71,15 @@ const debugInput = useTemplateRef('debugInput')
 const debugHistory = ref([])
 const debugHistoryIndex = ref(0)
 
+function executeDebug(debugCommand) {
+  // Post the debug command to the API, output is processed by receive()
+  Api.post(`/script-api/running-script/${props.scriptId}/debug`, {
+    data: {
+      args: debugCommand,
+    },
+  })
+}
+
 function handleKeydown(event) {
   if (event.key === 'Escape') {
     debug.value = ''
@@ -79,7 +89,7 @@ function handleKeydown(event) {
       debugHistory.value.push(debug.value)
       debugHistoryIndex.value = debugHistory.value.length
       // Emit event for parent to handle the API call
-      emit('execute-debug', debug.value)
+      executeDebug(debug.value)
       debug.value = ''
     }
   } else if (event.key === 'ArrowUp') {

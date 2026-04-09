@@ -2004,14 +2004,6 @@ export default {
     toggleDisconnect() {
       this.showDisconnect = !this.showDisconnect
     },
-    executeDebug(debugCommand) {
-      // Post the debug command to the API, output is processed by receive()
-      Api.post(`/script-api/running-script/${this.scriptId}/debug`, {
-        data: {
-          args: debugCommand,
-        },
-      })
-    },
     removeAllMarkers: function () {
       if (!this.editor) return
       const allMarkers = this.editor.session.getMarkers()
