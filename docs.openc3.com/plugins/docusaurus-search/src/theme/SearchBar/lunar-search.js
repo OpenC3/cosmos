@@ -6,7 +6,7 @@ Search Adapter using MiniSearch
 import MiniSearch from "@generated/lunr.client";
 
 class LunrSearchAdapter {
-    constructor(searchDocs, searchIndex, baseUrl = '/', maxHits) {
+    constructor(searchDocs, searchIndex, maxHits, baseUrl = '/') {
         this.searchDocs = searchDocs;
         this.miniSearch = MiniSearch.loadJSON(JSON.stringify(searchIndex), {
             idField: "id",

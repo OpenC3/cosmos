@@ -23,7 +23,7 @@ class DocSearch {
 
         this.queryDataCallback = queryDataCallback || null;
         this.isSimpleLayout = layout === "simple";
-        this.client = new LunrSearchAdapter(searchDocs, searchIndex, baseUrl, maxHits);
+        this.client = new LunrSearchAdapter(searchDocs, searchIndex, maxHits, baseUrl);
         this.transformData = transformData;
         this.queryHook = queryHook;
         this.customHandleSelected = handleSelected;

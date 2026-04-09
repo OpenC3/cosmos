@@ -116,14 +116,12 @@ function getSectionHeaders(markdown, $$) {
         };
         headerDocs.push(searchDoc);
       } else if (
-        child.attribs &&
-        child.attribs["data-search-children"] !== undefined
+        child.attribs?.["data-search-children"] !== undefined
       ) {
         traverse(node, true, searchDoc);
       } else if (
         isIndexingChildren &&
-        child.children &&
-        child.children.length &&
+        child.children?.length &&
         tagName !== "p"
       ) {
         traverse(node, true, searchDoc);

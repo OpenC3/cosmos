@@ -5,7 +5,7 @@ import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import { usePluginData } from "@docusaurus/useGlobalData";
 import useIsBrowser from "@docusaurus/useIsBrowser";
 import { HighlightSearchResults } from "./HighlightSearchResults";
-const Search = (props) => {
+const Search = ({ handleSearchBarToggle, isSearchBarExpanded, autoFocus }) => {
   const initialized = useRef(false);
   const searchBarRef = useRef(null);
   const [indexReady, setIndexReady] = useState(false);
@@ -103,9 +103,9 @@ const Search = (props) => {
         searchBarRef.current.focus();
       }
 
-      props.handleSearchBarToggle?.(!props.isSearchBarExpanded);
+      handleSearchBarToggle?.(!isSearchBarExpanded);
     },
-    [props.isSearchBarExpanded],
+    [isSearchBarExpanded, handleSearchBarToggle],
   );
 
   let placeholder;
@@ -118,7 +118,7 @@ const Search = (props) => {
 
   // auto focus search bar on page load
   useEffect(() => {
-    if (props.autoFocus && indexReady) {
+    if (autoFocus && indexReady) {
       searchBarRef.current.focus();
     }
   }, [indexReady]);
@@ -129,7 +129,7 @@ const Search = (props) => {
         aria-label="expand searchbar"
         role="button"
         className={clsx("search-icon", {
-          "search-icon-hidden": props.isSearchBarExpanded,
+          "search-icon-hidden": isSearchBarExpanded,
         })}
         onClick={toggleSearchIconClick}
         onKeyDown={toggleSearchIconClick}
@@ -142,8 +142,8 @@ const Search = (props) => {
         aria-label="Search"
         className={clsx(
           "navbar__search-input",
-          { "search-bar-expanded": props.isSearchBarExpanded },
-          { "search-bar": !props.isSearchBarExpanded },
+          { "search-bar-expanded": isSearchBarExpanded },
+          { "search-bar": !isSearchBarExpanded },
         )}
         onClick={loadAlgolia}
         onMouseOver={loadAlgolia}

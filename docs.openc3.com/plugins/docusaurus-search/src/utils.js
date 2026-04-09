@@ -59,7 +59,7 @@ function getFilePaths(routesPaths, outDir, baseUrl, options = {}) {
       ];
     });
 
-    const filePath = candidatePaths.find(fs.existsSync);
+    const filePath = candidatePaths.find((p) => fs.existsSync(p));
     if (filePath && !fs.existsSync(filePath)) {
       console.warn(
         `docusaurus-search: could not resolve file for route '${route}', it will be missing in the search index`,

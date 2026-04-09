@@ -6,7 +6,7 @@ const utils = {
     if (typeof object[property] !== 'object') {
       return object;
     }
-    const newObject = Object.assign({}, object, object[property]);
+    const newObject = { ...object, ...object[property] };
     delete newObject[property];
     return newObject;
   },
