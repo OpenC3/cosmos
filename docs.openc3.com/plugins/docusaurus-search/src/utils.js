@@ -1,5 +1,5 @@
-const path = require("path");
-const fs = require("fs");
+const path = require("node:path");
+const fs = require("node:fs");
 
 /**
  * Simple glob matcher supporting * and ** patterns.
@@ -7,11 +7,11 @@ const fs = require("fs");
  */
 function globMatch(str, pattern) {
   const regex = pattern
-    .replace(/[.+^${}()|[\]\\]/g, "\\$&") // escape regex special chars (except * and ?)
-    .replace(/\*\*/g, "\0") // placeholder for **
-    .replace(/\*/g, "[^/]*") // * matches anything except /
-    .replace(/\0/g, ".*") // ** matches anything including /
-    .replace(/\?/g, "[^/]"); // ? matches single char except /
+    .replaceAll(/[.+^${}()|[\]\\]/g, "\\$&") // escape regex special chars (except * and ?)
+    .replaceAll("**", "\0") // placeholder for **
+    .replaceAll("*", "[^/]*") // * matches anything except /
+    .replaceAll("\0", ".*") // ** matches anything including /
+    .replaceAll("?", "[^/]"); // ? matches single char except /
   return new RegExp(`^${regex}$`).test(str);
 }
 

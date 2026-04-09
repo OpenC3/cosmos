@@ -19,9 +19,9 @@ const Search = (props) => {
   );
   const isBrowser = useIsBrowser();
   const { baseUrl } = siteConfig;
-  const assetUrl = (pluginConfig && pluginConfig[1]?.assetUrl) || baseUrl;
+  const assetUrl = pluginConfig?.[1]?.assetUrl || baseUrl;
   const initAlgolia = (searchDocs, searchIndex, DocSearch, options) => {
-    new DocSearch({
+    const _docSearch = new DocSearch({
       searchDocs,
       searchIndex,
       baseUrl,
@@ -103,8 +103,7 @@ const Search = (props) => {
         searchBarRef.current.focus();
       }
 
-      props.handleSearchBarToggle &&
-        props.handleSearchBarToggle(!props.isSearchBarExpanded);
+      props.handleSearchBarToggle?.(!props.isSearchBarExpanded);
     },
     [props.isSearchBarExpanded],
   );
@@ -112,7 +111,7 @@ const Search = (props) => {
   let placeholder;
   if (isBrowser) {
     loadAlgolia();
-    placeholder = window.navigator.platform.startsWith("Mac")
+    placeholder = globalThis.navigator.platform.startsWith("Mac")
       ? "Search ⌘+K"
       : "Search Ctrl+K";
   }

@@ -1,8 +1,7 @@
 //copied from https://github.com/cmfcmf/docusaurus-search-local
 import { useEffect, useState } from "react";
-import { useLocation } from "@docusaurus/router";
+import { useLocation, useHistory } from "@docusaurus/router";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
-import { useHistory } from "@docusaurus/router";
 
 function highlightTextNodes(root, word) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -39,7 +38,7 @@ function removeHighlights(root) {
     while (mark.firstChild) {
       parent.insertBefore(mark.firstChild, mark);
     }
-    parent.removeChild(mark);
+    mark.remove();
     parent.normalize();
   });
 }

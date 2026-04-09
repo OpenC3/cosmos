@@ -1,13 +1,13 @@
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const MiniSearch = require("minisearch");
-const { Worker } = require("worker_threads");
+const { Worker } = require("node:worker_threads");
 
 // local imports
 const utils = require("./utils");
 
-module.exports = function (context, options) {
+module.exports = function docusaurusSearch(context, options) {
   options = options || {};
   let clientGenerated = false;
 
@@ -73,7 +73,7 @@ module.exports = function (context, options) {
           prefix: true,
         },
         processTerm: (term) => {
-          if (options.stopWords && options.stopWords.includes(term)) {
+          if (options.stopWords?.includes(term)) {
             return null;
           }
           return term.toLowerCase();
@@ -94,7 +94,7 @@ module.exports = function (context, options) {
           : null;
 
       const addToSearchData = (d) => {
-        if (options.excludeTags && options.excludeTags.includes(d.tagName)) {
+        if (options.excludeTags?.includes(d.tagName)) {
           return;
         }
         const doc = {
@@ -188,13 +188,13 @@ function buildSearchData(files, addToSearchData, loadedVersions) {
         handleMessage(message, worker);
       });
       worker.on("exit", (code) => {
-        if (code !== 0) {
-          reject(new Error(`Scanner stopped with exit code ${code}`));
-        } else {
+        if (code === 0) {
           activeWorkersCount--;
           if (activeWorkersCount <= 0) {
             resolve(indexedDocuments);
           }
+        } else {
+          reject(new Error(`Scanner stopped with exit code ${code}`));
         }
       });
 

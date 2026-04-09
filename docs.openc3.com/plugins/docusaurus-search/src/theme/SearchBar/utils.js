@@ -69,40 +69,32 @@ const utils = {
   },
 
   getHighlightedValue(object, property) {
+    const hierarchyEntry = object._highlightResult?.hierarchy_camel?.[property];
     if (
-      object._highlightResult &&
-      object._highlightResult.hierarchy_camel &&
-      object._highlightResult.hierarchy_camel[property] &&
-      object._highlightResult.hierarchy_camel[property].matchLevel &&
-      object._highlightResult.hierarchy_camel[property].matchLevel !== 'none' &&
-      object._highlightResult.hierarchy_camel[property].value
+      hierarchyEntry?.matchLevel &&
+      hierarchyEntry.matchLevel !== 'none' &&
+      hierarchyEntry.value
     ) {
-      return object._highlightResult.hierarchy_camel[property].value;
+      return hierarchyEntry.value;
     }
-    if (
-      object._highlightResult &&
-      object._highlightResult[property] &&
-      object._highlightResult[property].value
-    ) {
-      return object._highlightResult[property].value;
+    const highlightValue = object._highlightResult?.[property]?.value;
+    if (highlightValue) {
+      return highlightValue;
     }
     return object[property];
   },
 
   getSnippetedValue(object, property) {
-    if (
-      !object._snippetResult ||
-      !object._snippetResult[property] ||
-      !object._snippetResult[property].value
-    ) {
+    const snippetValue = object._snippetResult?.[property]?.value;
+    if (!snippetValue) {
       return object[property];
     }
-    let snippet = object._snippetResult[property].value;
+    let snippet = snippetValue;
 
     if (snippet[0] !== snippet[0].toUpperCase()) {
       snippet = `…${snippet}`;
     }
-    if (['.', '!', '?'].indexOf(snippet[snippet.length - 1]) === -1) {
+    if (!['.', '!', '?'].includes(snippet[snippet.length - 1])) {
       snippet = `${snippet}…`;
     }
     return snippet;

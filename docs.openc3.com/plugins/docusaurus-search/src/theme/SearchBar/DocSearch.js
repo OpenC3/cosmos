@@ -143,7 +143,7 @@ class DocSearch {
         this.suggestionsContainer.querySelectorAll('.ds-suggestion').forEach(el => {
             el.addEventListener('mousedown', (e) => {
                 // mousedown fires before blur, so we can navigate
-                const idx = parseInt(el.dataset.index, 10);
+                const idx = Number.parseInt(el.dataset.index, 10);
                 const suggestion = this.suggestions[idx];
                 if (suggestion) {
                     this._selectSuggestion(suggestion, e, 'click');
@@ -227,7 +227,7 @@ class DocSearch {
         // Default behavior
         if (selectionMethod === 'click') return;
         this.input.value = '';
-        window.location.assign(suggestion.url);
+        globalThis.location.assign(suggestion.url);
     }
 
     // Given a list of hits, reformat them for templates
@@ -304,7 +304,7 @@ class DocSearch {
     static formatURL(hit) {
         const { url, anchor } = hit;
         if (url) {
-            const containsAnchor = url.indexOf("#") !== -1;
+            const containsAnchor = url.includes("#");
             if (containsAnchor) return url;
             else if (anchor) return `${hit.url}#${hit.anchor}`;
             return url;

@@ -1,11 +1,11 @@
-import { parentPort, workerData } from "worker_threads";
-import fs from "fs";
+import { parentPort, workerData } from "node:worker_threads";
+import fs from "node:fs";
 import * as cheerio from "cheerio";
 
 function findArticleWithMarkdown($$) {
   const articles = $$("article");
-  for (let i = 0; i < articles.length; i++) {
-    const article = $$(articles[i]);
+  for (const el of articles) {
+    const article = $$(el);
     const markdown = article.find(".markdown");
     if (markdown.length) {
       return [markdown, article];
@@ -46,7 +46,7 @@ function* scanDocuments({ path, url }) {
     .reduce((acc, el) => {
       const content = $$(el).attr("content");
       if (content) {
-        return acc.concat(content.replace(/,/g, " "));
+        return acc.concat(content.replaceAll(",", " "));
       }
       return acc;
     }, [])
@@ -88,12 +88,12 @@ function* scanDocuments({ path, url }) {
 function getContent(el) {
   const text = typeof el === "string" ? el : el.text();
   return text
-    .replace(/\s\s+/g, " ")
-    .replace(/(\r\n|\n|\r)/gm, " ")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replaceAll(/\s\s+/g, " ")
+    .replaceAll(/(\r\n|\n|\r)/gm, " ")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
 function getSectionHeaders(markdown, $$) {
