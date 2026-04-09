@@ -75,11 +75,11 @@ function handleKeydown(event) {
     debug.value = ''
     debugHistoryIndex.value = debugHistory.value.length
   } else if (event.key === 'Enter') {
-    if (props.debug && props.debug.trim()) {
-      debugHistory.value.push(props.debug)
+    if (debug.value?.trim()) {
+      debugHistory.value.push(debug.value)
       debugHistoryIndex.value = debugHistory.value.length
       // Emit event for parent to handle the API call
-      emit('execute-debug', props.debug)
+      emit('execute-debug', debug.value)
       debug.value = ''
     }
   } else if (event.key === 'ArrowUp') {
