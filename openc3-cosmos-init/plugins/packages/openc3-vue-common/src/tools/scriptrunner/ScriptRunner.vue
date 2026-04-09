@@ -334,7 +334,7 @@ import 'splitpanes/dist/splitpanes.css'
 
 import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
 import { useContainerHeight } from '@/composables/useContainerHeight'
-import { computed, ref, useTemplateRef } from 'vue'
+import { computed, onBeforeMount, ref, useTemplateRef } from 'vue'
 import { useAsyncState } from '@vueuse/core'
 import {
   AceEditorUtils,
@@ -430,7 +430,7 @@ export default {
     },
   },
   emits: ['alert', 'script-id'],
-  setup() {
+  setup(props) {
     const containerHeight = useContainerHeight()
 
     const state = ref(null)
@@ -481,16 +481,87 @@ export default {
       overridesCount.value = result.length
     }
 
+    const readOnlyUser = ref(false)
+    const executeUser = ref(true)
+    const showAlert = ref(false)
+    const alertType = ref(null)
+    const alertText = ref('')
+
+    onBeforeMount(async () => {
+      // Ensure Offline Access Is Setup For the Current User
+      api.ensure_offline_access()
+
+      await updateOverridesCount()
+      const user = OpenC3Auth.user()
+      const roles = OpenC3Auth.userroles()
+      readOnlyUser.value = true
+      executeUser.value = false
+      for (let role of roles) {
+        if (role == 'viewer') {
+          continue
+        }
+        if (role == 'admin' || role == 'operator') {
+          readOnlyUser.value = false
+          executeUser.value = true
+        } else if (role == 'runner') {
+          executeUser.value = true
+        } else {
+          const response = await Api.get(`/openc3-api/roles/${role}`)
+          if (
+            response.data !== null &&
+            response.data.permissions !== undefined
+          ) {
+            if (
+              response.data.permissions.some(
+                (i) => i.permission == 'script_edit',
+              )
+            ) {
+              readOnlyUser.value = false
+            }
+            if (
+              response.data.permissions.some(
+                (i) => i.permission == 'script_run',
+              )
+            ) {
+              executeUser.value = true
+            }
+          }
+        }
+      }
+      // Output the userinfo for use in the SuiteRunner component
+      if (!props.inline) {
+        localStorage['script_runner__userinfo'] = JSON.stringify({
+          name: user['preferred_username'],
+          readOnly: readOnlyUser.value,
+          execute: executeUser.value,
+        })
+      }
+      if (readOnlyUser.value) {
+        alertType.value = 'info'
+        let text = `User ${user['preferred_username']} is read only`
+        if (executeUser.value) {
+          text += ' but can execute scripts'
+        }
+        alertText.value = text
+        showAlert.value = true
+      }
+    })
+
     return {
+      alertText,
+      alertType,
       api,
       cable,
       containerHeight,
       editor,
       editorRef,
+      executeUser,
       // Make NEW_FILENAME available to the template
       NEW_FILENAME,
       overridesCount,
+      readOnlyUser,
       screenKeywords,
+      showAlert,
       state,
       timeZone,
       handleWaiting,
@@ -536,9 +607,6 @@ export default {
       filenameSelect: null,
       currentFilename: null, // This is the currently shown filename while running
       showSave: false,
-      showAlert: false,
-      alertType: null,
-      alertText: '',
       scriptId: null,
       startOrGoButton: START,
       startOrGoDisabled: false,
@@ -554,8 +622,6 @@ export default {
       breakpoints: {},
       enableStackTraces: false,
       filename: NEW_FILENAME,
-      readOnlyUser: false,
-      executeUser: true,
       saveAllowed: true,
       tempFilename: null,
       fileModified: '',
@@ -904,58 +970,6 @@ export default {
         await this.updateOverridesCount()
       }
     },
-  },
-  created: async function () {
-    // Ensure Offline Access Is Setup For the Current User
-    this.api.ensure_offline_access()
-
-    await this.updateOverridesCount()
-    let user = OpenC3Auth.user()
-    let roles = OpenC3Auth.userroles()
-    this.readOnlyUser = true
-    this.executeUser = false
-    for (let role of roles) {
-      if (role == 'viewer') {
-        continue
-      }
-      if (role == 'admin' || role == 'operator') {
-        this.readOnlyUser = false
-        this.executeUser = true
-      } else if (role == 'runner') {
-        this.executeUser = true
-      } else {
-        const response = await Api.get(`/openc3-api/roles/${role}`)
-        if (response.data !== null && response.data.permissions !== undefined) {
-          if (
-            response.data.permissions.some((i) => i.permission == 'script_edit')
-          ) {
-            this.readOnlyUser = false
-          }
-          if (
-            response.data.permissions.some((i) => i.permission == 'script_run')
-          ) {
-            this.executeUser = true
-          }
-        }
-      }
-    }
-    // Output the userinfo for use in the SuiteRunner component
-    if (!this.inline) {
-      localStorage['script_runner__userinfo'] = JSON.stringify({
-        name: user['preferred_username'],
-        readOnly: this.readOnlyUser,
-        execute: this.executeUser,
-      })
-    }
-    if (this.readOnlyUser == true) {
-      this.alertType = 'info'
-      let text = `User ${user['preferred_username']} is read only`
-      if (this.executeUser) {
-        text += ' but can execute scripts'
-      }
-      this.alertText = text
-      this.showAlert = true
-    }
   },
   mounted: async function () {
     if (!this.inline && localStorage['script_runner__recent']) {
