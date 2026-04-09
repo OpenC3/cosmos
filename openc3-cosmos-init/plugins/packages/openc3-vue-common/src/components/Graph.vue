@@ -1148,9 +1148,11 @@ export default {
           max += 1
         }
         this.graph.setScale('x', { min, max })
-      } else if (this.graphStartDateTime && this.graphEndDateTime) {
+      } else if (this.graphStartDateTime) {
         const min = this.graphStartDateTime / 1_000_000_000
-        const max = this.graphEndDateTime / 1_000_000_000
+        const max = this.graphEndDateTime
+          ? this.graphEndDateTime / 1_000_000_000
+          : Date.now() / 1000
         this.graph.setScale('x', { min, max })
         this.$notify.caution({
           title: 'Empty graph data',
@@ -1417,11 +1419,11 @@ export default {
           x: {
             range: (u, dataMin, dataMax) => {
               if (dataMin == null) {
-                if (this.graphStartDateTime && this.graphEndDateTime) {
-                  return [
-                    this.graphStartDateTime / 1_000_000_000,
-                    this.graphEndDateTime / 1_000_000_000,
-                  ]
+                if (this.graphStartDateTime) {
+                  const max = this.graphEndDateTime
+                    ? this.graphEndDateTime / 1_000_000_000
+                    : Date.now() / 1000
+                  return [this.graphStartDateTime / 1_000_000_000, max]
                 }
                 if (this.xAxisIsTime) {
                   const now = Date.now() / 1000
