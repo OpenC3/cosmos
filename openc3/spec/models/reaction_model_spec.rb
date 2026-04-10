@@ -82,6 +82,22 @@ module OpenC3
         name = ReactionModel.create_unique_name(scope: $openc3_scope)
         expect(name).to eql 'REACT10' # Previous is 9 so now 10
       end
+
+      it "handles more than 10 reactions correctly" do
+        generate_custom_trigger().create()
+        (1..11).each { |i| generate_custom_reaction(name: "REACT#{i}").create() }
+        name = ReactionModel.create_unique_name(scope: $openc3_scope)
+        expect(name).to eql 'REACT12'
+      end
+
+      it "handles custom named reactions mixed with auto-generated" do
+        generate_custom_trigger().create()
+        generate_custom_reaction(name: 'REACT1').create()
+        generate_custom_reaction(name: 'MyReaction').create()
+        generate_custom_reaction(name: 'REACT5').create()
+        name = ReactionModel.create_unique_name(scope: $openc3_scope)
+        expect(name).to eql 'REACT6' # Max numeric is 5, so next is 6
+      end
     end
 
     describe "check attr_reader" do
@@ -225,6 +241,35 @@ module OpenC3
         expect(json['snooze']).to eql(300)
         expect(json['triggers']).to_not be_nil()
         expect(json['actions']).to_not be_nil()
+        expect(json['label']).to be_nil()
+      end
+    end
+
+    describe "label" do
+      it "defaults to nil" do
+        model = generate_reaction()
+        expect(model.label).to be_nil()
+        expect(model.as_json()['label']).to be_nil()
+      end
+
+      it "persists through create and reload" do
+        model = generate_reaction()
+        model.label = 'My Reaction'
+        model.update()
+        loaded = ReactionModel.get(name: 'REACT1', scope: $openc3_scope)
+        expect(loaded.label).to eql('My Reaction')
+      end
+
+      it "can be updated and cleared" do
+        model = generate_reaction()
+        model.label = 'Updated Label'
+        model.update()
+        loaded = ReactionModel.get(name: 'REACT1', scope: $openc3_scope)
+        expect(loaded.label).to eql('Updated Label')
+        loaded.label = nil
+        loaded.update()
+        cleared = ReactionModel.get(name: 'REACT1', scope: $openc3_scope)
+        expect(cleared.label).to be_nil()
       end
     end
 

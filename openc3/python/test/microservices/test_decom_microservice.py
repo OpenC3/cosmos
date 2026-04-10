@@ -193,6 +193,22 @@ class TestDecomMicroservice(unittest.TestCase):
             events[2][1]["message"],
         )
 
+    def test_limits_change_with_zero_value_is_not_disabled(self):
+        """A telemetry value of 0 must report a limits change, not 'is disabled'."""
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+        packet.received_time = datetime.now(timezone.utc)
+        item = packet.get_item("TEMP1")
+        item.limits.state = "BLUE"
+
+        # Call the callback directly with value=0
+        for stdout in capture_io():
+            self.dm.limits_change_callback(packet, item, "RED_LOW", 0, True)
+            output = stdout.getvalue()
+            # Value of 0 must NOT be treated as disabled
+            self.assertNotIn("is disabled", output)
+            # Should report the actual value and limits state
+            self.assertIn("INST HEALTH_STATUS TEMP1 = 0 is BLUE", output)
+
     def test_handles_exceptions_in_the_thread(self):
         with patch.object(self.dm, "microservice_cmd") as mock_microservice_cmd:
             mock_microservice_cmd.side_effect = Exception("Bad command")

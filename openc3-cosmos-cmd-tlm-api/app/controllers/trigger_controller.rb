@@ -104,8 +104,11 @@ class TriggerController < ApplicationController
     return unless authorization('script_run')
     hash = nil
     begin
-      hash = params.to_unsafe_h.slice(:group, :left, :operator, :right).to_h
-      name = @model_class.create_unique_name(group: hash['group'], scope: params[:scope])
+      hash = params.to_unsafe_h.slice(:group, :left, :operator, :right, :label, :name).to_h
+      name = hash.delete('name')
+      if name.nil? || name.strip.empty?
+        name = @model_class.create_unique_name(group: hash['group'], scope: params[:scope])
+      end
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
       model.create() # Create sends a notification
       render json: model.as_json(), status: :created
@@ -136,10 +139,11 @@ class TriggerController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
-      hash = params.to_unsafe_h.slice(:left, :operator, :right).to_h
+      hash = params.to_unsafe_h.slice(:left, :operator, :right, :label).to_h
       model.left = hash['left'] if hash['left']
       model.operator = hash['operator'] if hash['operator']
       model.right = hash['right'] if hash['right']
+      model.label = hash['label'] if hash.key?('label')
       # Update the timestamp before notifying so the event has the current time
       model.updated_at = Time.now.to_nsec_from_epoch
       # Notify the TriggerGroupMicroservice to update the TriggerModel

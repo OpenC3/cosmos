@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import sys
 import time
 import traceback
@@ -19,6 +20,7 @@ from openc3.script.exceptions import CheckError
 from openc3.utilities.extract import (
     extract_fields_from_check_text,
     extract_fields_from_tlm_text,
+    extract_operator_and_operand_from_comparison,
 )
 
 
@@ -965,16 +967,21 @@ def _check_eval(target_name, packet_name, item_name, comparison_to_eval, value):
     else:
         value_str = value
     with_value = f"with value == {value_str}"
+
     try:
-        if eval(string):
+        eval_is_valid = _check_eval_validity(value, comparison_to_eval)
+        if eval_is_valid and eval(string):
             print(f"{check_str} success {with_value}")
         else:
             message = f"{check_str} failed {with_value}"
             raise CheckError(message)
-    except NameError as error:
-        parts = error.args[0].split("'")
-        new_error = NameError(f"Uninitialized constant {parts[1]}. Did you mean '{parts[1]}' as a string?")
-        raise new_error from error
+    except (NameError, json.JSONDecodeError) as error:
+        if isinstance(error, NameError):
+            parts = error.args[0].split("'")
+            new_error = NameError(f"Uninitialized constant {parts[1]}. Did you mean '{parts[1]}' as a string?")
+            raise new_error from error
+        else:
+            raise
 
 
 def _frange(value):
@@ -984,6 +991,32 @@ def _frange(value):
         return f"{value:.6}"
     else:
         return value
+
+
+def _check_eval_validity(value, comparison):
+    if not comparison:
+        return True
+
+    try:
+        operator, operand = extract_operator_and_operand_from_comparison(comparison)
+    except RuntimeError as e:
+        if "Unable to parse operand" in str(e):
+            # If we can't parse the operand, let the eval happen anyway
+            # It will raise an appropriate error (like NameError for undefined constants)
+            return True
+        raise  # Re-raise invalid operator errors
+    except json.JSONDecodeError:
+        return True
+
+    if operator in [">=", "<=", ">", "<"] and (
+        value is None or operand is None or isinstance(value, list) or isinstance(operand, list)
+    ):
+        return False
+
+    # Ruby doesn't have the "in" operator
+    return not (
+        operator == "in" and (isinstance(operand, str) and not isinstance(value, str) or not isinstance(operand, list))
+    )
 
 
 # Interesting formatter to a specific number of significant digits:

@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import sys
 import time
 import traceback
@@ -19,6 +20,7 @@ from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.extract import (
     extract_fields_from_check_text,
     extract_fields_from_tlm_text,
+    extract_operator_and_operand_from_comparison,
 )
 
 from .exceptions import CheckError
@@ -1046,8 +1048,16 @@ def _check_eval(target_name, packet_name, item_name, comparison_to_eval, value):
     else:
         value_str = value
     with_value = f"with value == {value_str}"
+
+    eval_is_valid = _check_eval_validity(value, comparison_to_eval)
+    if not eval_is_valid:
+        message = "Invalid comparison for types"
+        if openc3.script.DISCONNECT:
+            print(f"ERROR: {message}")
+        else:
+            raise CheckError(message)
     try:
-        if eval(string):
+        if eval_is_valid and eval(string):
             print(f"{check_str} success {with_value}")
         else:
             message = f"{check_str} failed {with_value}"
@@ -1068,6 +1078,32 @@ def _frange(value):
         return f"{value:.6}"
     else:
         return value
+
+
+def _check_eval_validity(value, comparison):
+    if not comparison:
+        return True
+
+    try:
+        operator, operand = extract_operator_and_operand_from_comparison(comparison)
+    except RuntimeError as e:
+        if "Unable to parse operand" in str(e):
+            # If we can't parse the operand, let the eval happen anyway
+            # It will raise an appropriate error (like NameError for undefined constants)
+            return True
+        raise  # Re-raise invalid operator errors
+    except json.JSONDecodeError:
+        return True
+
+    if operator in [">=", "<=", ">", "<"] and (
+        value is None or operand is None or isinstance(value, list) or isinstance(operand, list)
+    ):
+        return False
+
+    # Ruby doesn't have the "in" operator
+    return not (
+        operator == "in" and (isinstance(operand, str) and not isinstance(value, str) or not isinstance(operand, list))
+    )
 
 
 # Interesting formatter to a specific number of significant digits:

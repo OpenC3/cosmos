@@ -186,7 +186,33 @@ module OpenC3
 
       it "should handle spaces throughout correctly" do
         expect(extract_fields_from_check_text("TARGET PACKET ITEM == \"This   is  a test\"")).to eql(['TARGET', 'PACKET', 'ITEM', "== \"This   is  a test\""])
-        expect(extract_fields_from_check_text("TARGET   PACKET  ITEM   ==    'This is  a test   '")).to eql(['TARGET', 'PACKET', 'ITEM', "  ==    'This is  a test   '"])
+        expect(extract_fields_from_check_text("TARGET   PACKET  ITEM   ==    'This is  a test   '")).to eql(['TARGET', 'PACKET', 'ITEM', "==    'This is  a test   '"])
+      end
+    end
+
+    describe "extract_operator_and_operand_from_comparison" do
+      it "should parse string operands" do
+        expect(extract_operator_and_operand_from_comparison("== 'foo'")).to eql(["==", "foo"])
+      end
+
+      it "should parse number operands" do
+        expect(extract_operator_and_operand_from_comparison("== 1")).to eql(["==", 1])
+      end
+
+      it "should parse list operands" do
+        expect(extract_operator_and_operand_from_comparison("in [1, 2, 3]")).to eql(["in", [1, 2, 3]])
+      end
+
+      it "should parse nil operands" do
+        expect(extract_operator_and_operand_from_comparison("== nil")).to eql(["==", nil])
+      end
+
+      it "should complain about invalid operators" do
+        expect { extract_operator_and_operand_from_comparison("^ 'foo'") }.to raise_error(/ERROR: Invalid/)
+      end
+
+      it "should complain about unparsable operands" do
+        expect { extract_operator_and_operand_from_comparison("== foo") }.to raise_error(/ERROR: Unable/)
       end
     end
   end
