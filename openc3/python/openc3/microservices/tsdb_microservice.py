@@ -70,6 +70,12 @@ class TsdbMicroservice(Microservice):
         # Setup first trim time
         self.next_trim_time_ms = int(time.time() * 1000) + self.TRIM_KEEP_MS
 
+        # Initialize metrics
+        self.ingest_count = 0
+        self.error_count = 0
+        self.metric.set(name="tsdb_ingest_total", value=self.ingest_count, labels={"target_shard": self.target_shard}, type="counter")
+        self.metric.set(name="tsdb_ingest_error_total", value=self.error_count, labels={"target_shard": self.target_shard}, type="counter")
+
     def _create_table(self, target_name, packet_name, topic):
         """Create a table for a target/packet combination."""
         if "__DECOMCMD__" in topic:
@@ -152,12 +158,16 @@ class TsdbMicroservice(Microservice):
 
                 # Write to QuestDB with packet timestamp and received timestamp
                 self.questdb.write_row(table_name, values, timestamp_ns, rx_timestamp_ns)
+                self.ingest_count += 1
 
             # Flush the sender after the full topic read
             self.questdb.flush()
+            self.metric.set(name="tsdb_ingest_total", value=self.ingest_count, labels={"target_shard": self.target_shard}, type="counter")
 
         except IngressError as error:
             # Cast the value to fit the column type and retry
+            self.error_count += 1
+            self.metric.set(name="tsdb_ingest_error_total", value=self.error_count, labels={"target_shard": self.target_shard}, type="counter")
             self.questdb.handle_ingress_error(error)
 
     def trim_topics(self):

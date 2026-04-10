@@ -14,6 +14,7 @@ from unittest.mock import *
 
 from openc3.interfaces.interface import Interface
 from openc3.models.interface_status_model import InterfaceStatusModel
+from openc3.models.router_model import RouterModel
 from openc3.models.router_status_model import RouterStatusModel
 from test.test_helper import *
 
@@ -68,3 +69,8 @@ class TestRouterStatusModel(unittest.TestCase):
         all_interfaces = InterfaceStatusModel.all("DEFAULT")
         self.assertEqual(list(all_interfaces.keys()), ["MyRouter"])
         self.assertEqual(all_interfaces["MyRouter"]["state"], "CONNECTED")
+
+    def test_shard_for_name_returns_target_shard(self):
+        RouterModel(name="MY_RTR", scope="DEFAULT", target_shard=3).create()
+        shard = RouterStatusModel._shard_for_name("MY_RTR", "DEFAULT")
+        self.assertEqual(shard, 3)
