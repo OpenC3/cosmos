@@ -625,6 +625,7 @@ class TargetModel(Model):
                     "command": "ADD_TOPICS",
                     "topics": json.dumps(raw_topics, cls=JsonEncoder),
                 },
+                shard=self.target_shard,
             )
             self.add_topics_to_microservice(f"{self.scope}__PACKETLOG__{self.name}", raw_topics)
             Topic.write_topic(
@@ -633,6 +634,7 @@ class TargetModel(Model):
                     "command": "ADD_TOPICS",
                     "topics": json.dumps(raw_topics, cls=JsonEncoder),
                 },
+                shard=self.target_shard,
             )
             self.add_topics_to_microservice(f"{self.scope}__DECOM__{self.name}", raw_topics)
         else:
@@ -642,6 +644,7 @@ class TargetModel(Model):
                     "command": "ADD_TOPICS",
                     "topics": json.dumps(raw_topics, cls=JsonEncoder),
                 },
+                shard=self.target_shard,
             )
             self.add_topics_to_microservice(f"{self.scope}__COMMANDLOG__{self.name}", raw_topics)
 

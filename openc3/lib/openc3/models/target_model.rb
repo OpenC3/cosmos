@@ -905,15 +905,15 @@ module OpenC3
         end
       end
       if cmd_or_tlm == :TELEMETRY
-        Topic.write_topic("MICROSERVICE__#{@scope}__PACKETLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json})
+        Topic.write_topic("MICROSERVICE__#{@scope}__PACKETLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json}, shard: @target_shard)
         add_topics_to_microservice("#{@scope}__PACKETLOG__#{@name}", raw_topics)
-        Topic.write_topic("MICROSERVICE__#{@scope}__DECOM__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json})
+        Topic.write_topic("MICROSERVICE__#{@scope}__DECOM__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json}, shard: @target_shard)
         add_topics_to_microservice("#{@scope}__DECOM__#{@name}", raw_topics)
       else
-        Topic.write_topic("MICROSERVICE__#{@scope}__COMMANDLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json})
+        Topic.write_topic("MICROSERVICE__#{@scope}__COMMANDLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json}, shard: @target_shard)
         add_topics_to_microservice("#{@scope}__COMMANDLOG__#{@name}", raw_topics)
       end
-      Topic.write_topic("MICROSERVICE__#{@scope}__TSDB__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => decom_topics.as_json.to_json})
+      Topic.write_topic("MICROSERVICE__#{@scope}__TSDB__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => decom_topics.as_json.to_json}, shard: @target_shard)
       add_topics_to_microservice("#{@scope}__TSDB__#{@name}", decom_topics)
     end
 
