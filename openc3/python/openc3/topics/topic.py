@@ -95,9 +95,9 @@ class Topic(metaclass=TopicMeta):
         return groups
 
     @staticmethod
-    def all_on_shard_zero(shard_groups):
-        """Check if all shard groups resolve to shard 0."""
-        return len(shard_groups) <= 1 and (not shard_groups or 0 in shard_groups)
+    def all_same_shard(shard_groups):
+        """Check if all shard groups resolve to a single shard (fast path)."""
+        return len(shard_groups) <= 1
 
     @classmethod
     def write_ack(cls, topic, result, msg_id, shard=0):

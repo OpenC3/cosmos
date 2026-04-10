@@ -93,23 +93,26 @@ class TsdbMicroservice(Microservice):
     def read_topics(self):
         """Read topics and write data to QuestDB"""
         try:
-            # If target shard differs from shard 0, read microservice topic separately
-            if self.target_shard != 0:
-                for topic, msg_id, msg_hash, redis in Topic.read_topics([self.microservice_topic], timeout_ms=None):
-                    self.microservice_cmd(topic, msg_id, msg_hash, redis)
-                if self.cancel_thread:
-                    return
-
-            topics_to_read = (
-                [t for t in self.topics if t != self.microservice_topic] if self.target_shard != 0 else self.topics
-            )
-            for topic, msg_id, msg_hash, redis in Topic.read_topics(topics_to_read, shard=self.target_shard):
+            start = None
+            for topic, msg_id, msg_hash, redis in Topic.read_topics(self.topics, shard=self.target_shard):
                 if self.cancel_thread:
                     break
 
                 if topic == self.microservice_topic:
                     self.microservice_cmd(topic, msg_id, msg_hash, redis)
                     continue
+
+                if start is None:
+                    start = time.time()
+                    msgid_seconds_from_epoch = int(msg_id.split("-")[0]) / 1000.0
+                    delta = time.time() - msgid_seconds_from_epoch
+                    self.metric.set(
+                        name="tsdb_ingest_topic_delta_seconds",
+                        value=delta,
+                        type="gauge",
+                        unit="seconds",
+                        help="Delta time between data written to stream and tsdb ingest start",
+                    )
 
                 target_name_bytes = msg_hash.get(b"target_name")
                 packet_name_bytes = msg_hash.get(b"packet_name")
@@ -162,6 +165,9 @@ class TsdbMicroservice(Microservice):
 
             # Flush the sender after the full topic read
             self.questdb.flush()
+            if start is not None:
+                diff = time.time() - start  # seconds as a float
+                self.metric.set(name="tsdb_ingest_duration_seconds", value=diff, type="gauge", unit="seconds")
             self.metric.set(name="tsdb_ingest_total", value=self.ingest_count, labels={"target_shard": self.target_shard}, type="counter")
 
         except IngressError as error:
@@ -184,6 +190,7 @@ class TsdbMicroservice(Microservice):
 
     def run(self):
         """Main run loop"""
+        self.setup_microservice_topic()
         while True:
             if self.cancel_thread:
                 break

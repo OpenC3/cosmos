@@ -21,6 +21,12 @@ module OpenC3
   class InterfaceTopic < Topic
     COMMAND_ACK_TIMEOUT_S = 30
 
+    # Look up target_shard from InterfaceModel stored on shard 0.
+    def self._shard_for_interface(interface_name, scope:)
+      json = Store.hget("#{scope}__openc3_interfaces", interface_name)
+      json ? (JSON.parse(json, allow_nan: true, create_additions: true)['target_shard'] || 0).to_i : 0
+    end
+
     # Generate a list of topics for this interface. This includes the interface itself
     # and all the targets which are assigned to this interface.
     def self.topics(interface, scope:)
@@ -33,43 +39,34 @@ module OpenC3
       topics
     end
 
-    def self.receive_commands(interface, scope:)
-      all_topics = InterfaceTopic.topics(interface, scope: scope)
+    def self.receive_commands(interface, scope:, target_shard: 0)
+      interface_cmd_topic = "{#{scope}__CMD}INTERFACE__#{interface.name}"
+      system_events_topic = "OPENC3__SYSTEM__EVENTS"
 
-      # Separate non-target topics (interface cmds, system events) from target cmd topics
-      non_target_topics = []
       target_topics = []
-      all_topics.each do |topic|
-        if topic.include?('CMD}TARGET__')
-          target_topics << topic
-        else
-          non_target_topics << topic
-        end
+      interface.cmd_target_names.each do |target_name|
+        target_topics << "{#{scope}__CMD}TARGET__#{target_name}"
       end
 
-      # Group only target topics by shard
-      target_shard_groups = Topic.group_topics_by_shard(target_topics, target_pattern: 'CMD}TARGET__', scope: scope)
-      all_shard_zero = Topic.all_on_shard_zero?(target_shard_groups)
+      # Group target command topics by shard; include interface cmd and system events on target_shard
+      shard_groups = Topic.group_topics_by_shard(target_topics, target_pattern: 'CMD}TARGET__', scope: scope)
+      shard_groups[target_shard] ||= []
+      shard_groups[target_shard] << interface_cmd_topic
+      shard_groups[target_shard] << system_events_topic
+
+      all_same_shard = Topic.all_same_shard?(shard_groups)
 
       while true
-        if all_shard_zero
-          # Fast path: everything on shard 0, single read
-          Topic.read_topics(all_topics) do |topic, msg_id, msg_hash, redis|
+        if all_same_shard
+          # Fast path: everything on one shard, single read
+          shard = shard_groups.keys.first || 0
+          Topic.read_topics(shard_groups[shard], shard: shard) do |topic, msg_id, msg_hash, redis|
             result = yield topic, msg_id, msg_hash, redis
-            Topic.write_ack(topic, result, msg_id) if result
+            Topic.write_ack(topic, result, msg_id, shard: shard) if result
           end
         else
-          # Non-blocking read for interface commands and system events (shard 0)
-          unless non_target_topics.empty?
-            Topic.read_topics(non_target_topics, nil, nil) do |topic, msg_id, msg_hash, redis|
-              result = yield topic, msg_id, msg_hash, redis
-              Topic.write_ack(topic, result, msg_id) if result
-            end
-          end
-
-          # Blocking read for target command topics per shard
-          timeout_per_shard = [1000 / [target_shard_groups.length, 1].max, 100].max
-          target_shard_groups.each do |shard, topics|
+          timeout_per_shard = [1000 / [shard_groups.length, 1].max, 100].max
+          shard_groups.each do |shard, topics|
             Topic.read_topics(topics, nil, timeout_per_shard, shard: shard) do |topic, msg_id, msg_hash, redis|
               result = yield topic, msg_id, msg_hash, redis
               Topic.write_ack(topic, result, msg_id, shard: shard) if result
@@ -81,15 +78,16 @@ module OpenC3
 
     def self.write_raw(interface_name, data, timeout: nil, scope:)
       interface_name = interface_name.upcase
+      shard = _shard_for_interface(interface_name, scope: scope)
 
       timeout = COMMAND_ACK_TIMEOUT_S unless timeout
       ack_topic = "{#{scope}__ACKCMD}INTERFACE__#{interface_name}"
-      Topic.update_topic_offsets([ack_topic])
+      Topic.update_topic_offsets([ack_topic], shard: shard)
 
-      cmd_id = Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'raw' => data }, '*', 100)
+      cmd_id = Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'raw' => data }, '*', 100, shard: shard)
       time = Time.now
       while (Time.now - time) < timeout
-        Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
+        Topic.read_topics([ack_topic], shard: shard) do |_topic, _msg_id, msg_hash, _redis|
           if msg_hash["id"] == cmd_id
             if msg_hash["result"] == "SUCCESS"
               return
@@ -103,83 +101,94 @@ module OpenC3
     end
 
     def self.connect_interface(interface_name, *interface_params, scope:)
+      shard = _shard_for_interface(interface_name, scope: scope)
       if interface_params && !interface_params.empty?
-        Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'connect' => 'true', 'params' => JSON.generate(interface_params, allow_nan: true) }, '*', 100)
+        Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'connect' => 'true', 'params' => JSON.generate(interface_params, allow_nan: true) }, '*', 100, shard: shard)
       else
-        Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'connect' => 'true' }, '*', 100)
+        Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'connect' => 'true' }, '*', 100, shard: shard)
       end
     end
 
     def self.disconnect_interface(interface_name, scope:)
-      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'disconnect' => 'true' }, '*', 100)
+      shard = _shard_for_interface(interface_name, scope: scope)
+      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'disconnect' => 'true' }, '*', 100, shard: shard)
     end
 
     def self.start_raw_logging(interface_name, scope:)
-      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'log_stream' => 'true' }, '*', 100)
+      shard = _shard_for_interface(interface_name, scope: scope)
+      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'log_stream' => 'true' }, '*', 100, shard: shard)
     end
 
     def self.stop_raw_logging(interface_name, scope:)
-      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'log_stream' => 'false' }, '*', 100)
+      shard = _shard_for_interface(interface_name, scope: scope)
+      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'log_stream' => 'false' }, '*', 100, shard: shard)
     end
 
     def self.shutdown(interface, scope:)
-      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface.name}", { 'shutdown' => 'true' }, '*', 100)
+      shard = _shard_for_interface(interface.name, scope: scope)
+      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface.name}", { 'shutdown' => 'true' }, '*', 100, shard: shard)
     end
 
     def self.interface_cmd(interface_name, cmd_name, *cmd_params, scope:)
+      shard = _shard_for_interface(interface_name, scope: scope)
       data = {}
       data['cmd_name'] = cmd_name
       data['cmd_params'] = cmd_params
-      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'interface_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100)
+      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'interface_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100, shard: shard)
     end
 
     def self.protocol_cmd(interface_name, cmd_name, *cmd_params, read_write: :READ_WRITE, index: -1, scope:)
+      shard = _shard_for_interface(interface_name, scope: scope)
       data = {}
       data['cmd_name'] = cmd_name
       data['cmd_params'] = cmd_params
       data['read_write'] = read_write.to_s.upcase
       data['index'] = index
-      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'protocol_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100)
+      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'protocol_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100, shard: shard)
     end
 
     def self.inject_tlm(interface_name, target_name, packet_name, item_hash = nil, type: :CONVERTED, scope:)
+      shard = _shard_for_interface(interface_name, scope: scope)
       data = {}
       data['target_name'] = target_name.to_s.upcase
       data['packet_name'] = packet_name.to_s.upcase
       data['item_hash'] = item_hash
       data['type'] = type
-      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'inject_tlm' => JSON.generate(data, allow_nan: true) }, '*', 100)
+      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'inject_tlm' => JSON.generate(data, allow_nan: true) }, '*', 100, shard: shard)
     end
 
     def self.interface_target_enable(interface_name, target_name, cmd_only: false, tlm_only: false, scope:)
+      shard = _shard_for_interface(interface_name, scope: scope)
       data = {}
       data['target_name'] = target_name.to_s.upcase
       data['cmd_only'] = cmd_only
       data['tlm_only'] = tlm_only
       data['action'] = 'enable'
-      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'target_control' => JSON.generate(data, allow_nan: true) }, '*', 100)
+      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'target_control' => JSON.generate(data, allow_nan: true) }, '*', 100, shard: shard)
     end
 
     def self.interface_target_disable(interface_name, target_name, cmd_only: false, tlm_only: false, scope:)
+      shard = _shard_for_interface(interface_name, scope: scope)
       data = {}
       data['target_name'] = target_name.to_s.upcase
       data['cmd_only'] = cmd_only
       data['tlm_only'] = tlm_only
       data['action'] = 'disable'
-      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'target_control' => JSON.generate(data, allow_nan: true) }, '*', 100)
+      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'target_control' => JSON.generate(data, allow_nan: true) }, '*', 100, shard: shard)
     end
 
     def self.interface_details(interface_name, timeout: nil, scope:)
       interface_name = interface_name.upcase
+      shard = _shard_for_interface(interface_name, scope: scope)
 
       timeout = COMMAND_ACK_TIMEOUT_S unless timeout
       ack_topic = "{#{scope}__ACKCMD}INTERFACE__#{interface_name}"
-      Topic.update_topic_offsets([ack_topic])
+      Topic.update_topic_offsets([ack_topic], shard: shard)
 
-      cmd_id = Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'interface_details' => 'true' }, '*', 100)
+      cmd_id = Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'interface_details' => 'true' }, '*', 100, shard: shard)
       time = Time.now
       while (Time.now - time) < timeout
-        Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
+        Topic.read_topics([ack_topic], shard: shard) do |_topic, _msg_id, msg_hash, _redis|
           if msg_hash["id"] == cmd_id
             return JSON.parse(msg_hash["result"], :allow_nan => true, :create_additions => true)
           end

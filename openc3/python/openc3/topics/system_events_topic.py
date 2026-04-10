@@ -12,10 +12,23 @@
 import json
 
 from openc3.topics.topic import Topic
+from openc3.utilities.store import Store
 
 
 class SystemEventsTopic(Topic):
     PRIMARY_KEY = "OPENC3__SYSTEM__EVENTS"
+
+    @classmethod
+    def _active_shards(cls):
+        """Collect all unique target shards from TargetModel data on shard 0."""
+        shards = {0}
+        # Iterate all scopes to find all target shards
+        for key in Store.scan_iter(match="*__openc3_targets", type="hash", count=100):
+            decoded_key = key.decode() if isinstance(key, bytes) else key
+            for _name, json_data in Store.hgetall(decoded_key).items():
+                parsed = json.loads(json_data)
+                shards.add(int(parsed.get("shard", 0) or 0))
+        return shards
 
     @classmethod
     def update_topic_offsets(cls):
@@ -24,7 +37,10 @@ class SystemEventsTopic(Topic):
     @classmethod
     def write(cls, type, event):
         event["type"] = type
-        Topic.write_topic(cls.PRIMARY_KEY, {"event": json.dumps(event)}, "*", 1000)
+        msg = {"event": json.dumps(event)}
+        # Write to all active shards so every interface microservice can read system events inline
+        for shard in cls._active_shards():
+            Topic.write_topic(cls.PRIMARY_KEY, msg, "*", 1000, shard=shard)
 
     @classmethod
     def read(cls):

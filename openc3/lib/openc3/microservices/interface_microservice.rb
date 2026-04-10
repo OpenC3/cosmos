@@ -81,7 +81,7 @@ module OpenC3
     end
 
     def run
-      InterfaceTopic.receive_commands(@interface, scope: @scope) do |topic, msg_id, msg_hash, _redis|
+      InterfaceTopic.receive_commands(@interface, scope: @scope, target_shard: @target_shard) do |topic, msg_id, msg_hash, _redis|
         OpenC3.with_context(msg_hash) do
           release_critical = false
           critical_model = nil
@@ -105,7 +105,7 @@ module OpenC3
             @metric.set(name: 'interface_directive_total', value: @directive_count, type: 'counter') if @metric
             if msg_hash['shutdown']
               @logger.info "#{@interface.name}: Shutdown requested"
-              InterfaceTopic.clear_topics(InterfaceTopic.topics(@interface, scope: @scope))
+              InterfaceTopic.clear_topics(InterfaceTopic.topics(@interface, scope: @scope), shard: @target_shard)
               return
             end
             if msg_hash['connect']
@@ -407,7 +407,7 @@ module OpenC3
     end
 
     def run
-      RouterTopic.receive_telemetry(@router, scope: @scope) do |topic, msg_id, msg_hash, _redis|
+      RouterTopic.receive_telemetry(@router, scope: @scope, target_shard: @target_shard) do |topic, msg_id, msg_hash, _redis|
         msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
         delta = Time.now.to_f - msgid_seconds_from_epoch
         @metric.set(name: 'router_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and router tlm start') if @metric
@@ -419,7 +419,7 @@ module OpenC3
 
           if msg_hash['shutdown']
             @logger.info "#{@router.name}: Shutdown requested"
-            RouterTopic.clear_topics(RouterTopic.topics(@router, scope: @scope))
+            RouterTopic.clear_topics(RouterTopic.topics(@router, scope: @scope), shard: @target_shard)
             return
           end
           if msg_hash['connect']

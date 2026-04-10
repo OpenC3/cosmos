@@ -92,9 +92,9 @@ module OpenC3
       groups
     end
 
-    # Check if all shard groups resolve to shard 0 (single-shard fast path).
-    def self.all_on_shard_zero?(shard_groups)
-      shard_groups.length <= 1 && (shard_groups.empty? || shard_groups.key?(0))
+    # Check if all shard groups resolve to a single shard (fast path).
+    def self.all_same_shard?(shard_groups)
+      shard_groups.length <= 1
     end
 
     # Build the ACK topic from a command/router topic and write the ack.

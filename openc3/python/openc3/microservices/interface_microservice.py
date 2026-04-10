@@ -92,7 +92,7 @@ class InterfaceCmdHandlerThread:
 
     def run(self):
         # receive_commands does a while True and does not return
-        InterfaceTopic.receive_commands(self.process_cmd, self.interface, self.scope)
+        InterfaceTopic.receive_commands(self.process_cmd, self.interface, self.scope, target_shard=self.target_shard)
 
     def process_cmd(self, topic, msg_id, msg_hash, _redis):
         # OpenC3.with_context(msg_hash) do
@@ -130,7 +130,7 @@ class InterfaceCmdHandlerThread:
                 )
             if msg_hash.get(b"shutdown"):
                 self.logger.info(f"{self.interface.name}: Shutdown requested")
-                InterfaceTopic.clear_topics(InterfaceTopic.topics(self.interface, scope=self.scope))
+                InterfaceTopic.clear_topics(InterfaceTopic.topics(self.interface, scope=self.scope), shard=self.target_shard)
                 return "SHUTDOWN"
             if msg_hash.get(b"connect"):
                 self.logger.info(f"{self.interface.name}: Connect requested")
@@ -440,7 +440,7 @@ class RouterTlmHandlerThread:
         time.sleep(0.001)  # Allow other threads to run
 
     def run(self):
-        generator = RouterTopic.receive_telemetry(self.router, scope=self.scope)
+        generator = RouterTopic.receive_telemetry(self.router, scope=self.scope, target_shard=self.target_shard)
         topic, msg_id, msg_hash, _redis = next(generator)
         result = None
 
@@ -470,7 +470,7 @@ class RouterTlmHandlerThread:
 
                 if msg_hash.get(b"shutdown"):
                     self.logger.info(f"{self.router.name}: Shutdown requested")
-                    RouterTopic.clear_topics(RouterTopic.topics(self.router, scope=self.scope))
+                    RouterTopic.clear_topics(RouterTopic.topics(self.router, scope=self.scope), shard=self.target_shard)
                     result = "SHUTDOWN"
                 elif msg_hash.get(b"connect"):
                     self.logger.info(f"{self.router.name}: Connect requested")

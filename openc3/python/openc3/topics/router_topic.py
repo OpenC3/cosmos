@@ -16,10 +16,17 @@ from openc3.environment import OPENC3_SCOPE
 from openc3.system.system import System
 from openc3.topics.topic import Topic
 from openc3.utilities.json import JsonDecoder
+from openc3.utilities.store import Store
 
 
 class RouterTopic(Topic):
     COMMAND_ACK_TIMEOUT_S = 30
+
+    @classmethod
+    def _shard_for_router(cls, router_name, scope):
+        """Look up target_shard from RouterModel stored on shard 0."""
+        json_data = Store.hget(f"{scope}__openc3_routers", router_name)
+        return int(json.loads(json_data).get("target_shard", 0) or 0) if json_data else 0
 
     # Generate a list of topics for this router. This includes the router itself
     # and all the targets which are assigned to this router.
@@ -33,18 +40,30 @@ class RouterTopic(Topic):
         return topics
 
     @classmethod
-    def receive_telemetry(cls, router, scope=OPENC3_SCOPE):
-        all_topics = RouterTopic.topics(router, scope)
-        shard_groups = Topic.group_topics_by_shard(all_topics, "__TELEMETRY__", scope)
-        all_shard_zero = Topic.all_on_shard_zero(shard_groups)
+    def receive_telemetry(cls, router, scope=OPENC3_SCOPE, target_shard=0):
+        router_cmd_topic = f"{{{scope}__CMD}}ROUTER__{router.name}"
+
+        target_topics = []
+        for target_name in router.tlm_target_names:
+            for _, packet in System.telemetry.packets(target_name).items():
+                target_topics.append(f"{scope}__TELEMETRY__{{{packet.target_name}}}__{packet.packet_name}")
+
+        # Group telemetry topics by shard; include router cmd topic on target_shard
+        shard_groups = Topic.group_topics_by_shard(target_topics, "__TELEMETRY__", scope)
+        if target_shard not in shard_groups:
+            shard_groups[target_shard] = []
+        shard_groups[target_shard].append(router_cmd_topic)
+
+        all_same_shard = Topic.all_same_shard(shard_groups)
 
         while True:
-            if all_shard_zero:
-                # Fast path: everything on shard 0, single read
-                for topic, msg_id, msg_hash, redis in Topic.read_topics(all_topics):
+            if all_same_shard:
+                # Fast path: everything on one shard, single read
+                shard = next(iter(shard_groups), 0)
+                for topic, msg_id, msg_hash, redis in Topic.read_topics(shard_groups[shard], shard=shard):
                     result = yield topic, msg_id, msg_hash, redis
                     if result is not None and "CMD}ROUTER" in topic:
-                        Topic.write_ack(topic, result, msg_id)
+                        Topic.write_ack(topic, result, msg_id, shard=shard)
             else:
                 timeout_per_shard = max(1000 // max(len(shard_groups), 1), 100)
                 for shard, topics in shard_groups.items():
@@ -95,126 +114,70 @@ class RouterTopic(Topic):
 
     @classmethod
     def connect_router(cls, router_name, *router_params, scope=OPENC3_SCOPE):
+        shard = cls._shard_for_router(router_name, scope)
         if router_params and len(router_params) == 0:
-            Topic.write_topic(
-                f"{{{scope}__CMD}}ROUTER__{router_name}",
-                {"connect": "True", "params": json.dumps(router_params)},
-                "*",
-                100,
-            )
+            Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"connect": "True", "params": json.dumps(router_params)}, "*", 100, shard=shard)
         else:
-            Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"connect": "True"}, "*", 100)
+            Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"connect": "True"}, "*", 100, shard=shard)
 
     @classmethod
     def disconnect_router(cls, router_name, scope=OPENC3_SCOPE):
-        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"disconnect": "True"}, "*", 100)
+        shard = cls._shard_for_router(router_name, scope)
+        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"disconnect": "True"}, "*", 100, shard=shard)
 
     @classmethod
     def start_raw_logging(cls, router_name, scope=OPENC3_SCOPE):
-        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"log_stream": "True"}, "*", 100)
+        shard = cls._shard_for_router(router_name, scope)
+        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"log_stream": "True"}, "*", 100, shard=shard)
 
     @classmethod
     def stop_raw_logging(cls, router_name, scope=OPENC3_SCOPE):
-        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"log_stream": "False"}, "*", 100)
+        shard = cls._shard_for_router(router_name, scope)
+        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"log_stream": "False"}, "*", 100, shard=shard)
 
     @classmethod
     def shutdown(cls, router, scope=OPENC3_SCOPE):
-        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router.name}", {"shutdown": "True"}, "*", 100)
+        shard = cls._shard_for_router(router.name, scope)
+        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router.name}", {"shutdown": "True"}, "*", 100, shard=shard)
 
     @classmethod
     def router_cmd(cls, router_name, cmd_name, *cmd_params, scope=OPENC3_SCOPE):
-        data = {}
-        data["cmd_name"] = cmd_name
-        data["cmd_params"] = cmd_params
-        Topic.write_topic(
-            f"{{{scope}__CMD}}ROUTER__{router_name}",
-            {"router_cmd": json.dumps(data)},
-            "*",
-            100,
-        )
+        shard = cls._shard_for_router(router_name, scope)
+        data = {"cmd_name": cmd_name, "cmd_params": cmd_params}
+        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"router_cmd": json.dumps(data)}, "*", 100, shard=shard)
 
     @classmethod
-    def protocol_cmd(
-        cls,
-        router_name,
-        cmd_name,
-        *cmd_params,
-        read_write="READ_WRITE",
-        index=-1,
-        scope=OPENC3_SCOPE,
-    ):
-        data = {}
-        data["cmd_name"] = cmd_name
-        data["cmd_params"] = cmd_params
-        data["read_write"] = str(read_write).upper()
-        data["index"] = index
-        Topic.write_topic(
-            f"{{{scope}__CMD}}ROUTER__{router_name}",
-            {"protocol_cmd": json.dumps(data)},
-            "*",
-            100,
-        )
+    def protocol_cmd(cls, router_name, cmd_name, *cmd_params, read_write="READ_WRITE", index=-1, scope=OPENC3_SCOPE):
+        shard = cls._shard_for_router(router_name, scope)
+        data = {"cmd_name": cmd_name, "cmd_params": cmd_params, "read_write": str(read_write).upper(), "index": index}
+        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"protocol_cmd": json.dumps(data)}, "*", 100, shard=shard)
 
     @classmethod
-    def router_target_enable(
-        cls,
-        router_name,
-        target_name,
-        cmd_only=False,
-        tlm_only=False,
-        scope=OPENC3_SCOPE,
-    ):
-        data = {}
-        data["target_name"] = target_name.upper()
-        data["cmd_only"] = cmd_only
-        data["tlm_only"] = tlm_only
-        data["action"] = "enable"
-        Topic.write_topic(
-            f"{{{scope}__CMD}}ROUTER__{router_name}",
-            {"target_control": json.dumps(data)},
-            "*",
-            100,
-        )
+    def router_target_enable(cls, router_name, target_name, cmd_only=False, tlm_only=False, scope=OPENC3_SCOPE):
+        shard = cls._shard_for_router(router_name, scope)
+        data = {"target_name": target_name.upper(), "cmd_only": cmd_only, "tlm_only": tlm_only, "action": "enable"}
+        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"target_control": json.dumps(data)}, "*", 100, shard=shard)
 
     @classmethod
-    def router_target_disable(
-        cls,
-        router_name,
-        target_name,
-        cmd_only=False,
-        tlm_only=False,
-        scope=OPENC3_SCOPE,
-    ):
-        data = {}
-        data["target_name"] = target_name.upper()
-        data["cmd_only"] = cmd_only
-        data["tlm_only"] = tlm_only
-        data["action"] = "disable"
-        Topic.write_topic(
-            f"{{{scope}__CMD}}ROUTER__{router_name}",
-            {"target_control": json.dumps(data)},
-            "*",
-            100,
-        )
+    def router_target_disable(cls, router_name, target_name, cmd_only=False, tlm_only=False, scope=OPENC3_SCOPE):
+        shard = cls._shard_for_router(router_name, scope)
+        data = {"target_name": target_name.upper(), "cmd_only": cmd_only, "tlm_only": tlm_only, "action": "disable"}
+        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"target_control": json.dumps(data)}, "*", 100, shard=shard)
 
     @classmethod
     def router_details(cls, router_name, scope=OPENC3_SCOPE, timeout=None):
         router_name = router_name.upper()
+        shard = cls._shard_for_router(router_name, scope)
 
         if timeout is None:
             timeout = cls.COMMAND_ACK_TIMEOUT_S
         ack_topic = f"{{{scope}__ACKCMD}}ROUTER__{router_name}"
-        Topic.update_topic_offsets([ack_topic])
+        Topic.update_topic_offsets([ack_topic], shard=shard)
 
-        cmd_id = Topic.write_topic(
-            f"{{{scope}__CMD}}ROUTER__{router_name}",
-            {"router_details": "true"},
-            "*",
-            100,
-        )
+        cmd_id = Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"router_details": "true"}, "*", 100, shard=shard)
         start_time = time.time()
         while (time.time() - start_time) < timeout:
-            for _, _, msg_hash, _ in Topic.read_topics([ack_topic]):
+            for _, _, msg_hash, _ in Topic.read_topics([ack_topic], shard=shard):
                 if msg_hash[b"id"] == cmd_id:
                     return json.loads(msg_hash[b"result"].decode(), cls=JsonDecoder)
         raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack")
