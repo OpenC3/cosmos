@@ -30,6 +30,7 @@ Usage:
   cli pkguninstall PKGFILENAME SCOPE  # Uninstall loaded package (Ruby gem or python package)
   cli xtce_converter                # Convert to and from the XTCE format. Run with --help for more info.
   cli cstol_converter               # Converts CSTOL files (.prc) to COSMOS. Run with --help for more info.
+  cli setpassword                   # Set the initial password from OPENC3_API_PASSWORD env var
 ```
 
 :::note[seccomp profile]
@@ -354,6 +355,21 @@ Usage: xtce_converter [options] --import input_xtce_filename --output output_dir
     -p, --plugin PLUGIN              Export .xtce file(s) from the plugin
     -v, --variables                  Optional variables file to pass to the plugin
 ```
+
+## Set Password
+
+Sets the initial COSMOS password from the `OPENC3_API_PASSWORD` environment variable. This allows you to skip the password creation screen in the web interface, which is useful for automated or scripted deployments.
+
+The password must be at least 8 characters. This command will fail if a password has already been set — use the web interface to change an existing password.
+
+```bash
+% openc3.sh cli setpassword
+Password set successfully.
+```
+
+:::note OPENC3_API_PASSWORD
+The `OPENC3_API_PASSWORD` environment variable must be set (typically in your `.env` file). The password is read from this variable, not from a command line argument, to avoid exposing it in shell history.
+:::
 
 ## CSTOL Converter
 
