@@ -1,0 +1,60 @@
+# OpenC3 Ruby Core Development Commands
+# Run `just` or `just --list` to see all available commands
+#
+# Quick Start:
+#   just ruby-install    - Install gem dependencies
+#   just ruby-build      - Compile C extensions
+#   just ruby-test       - Run all specs
+#   just ruby-verify     - Build + test everything
+
+# Default recipe - show available commands
+default:
+    @just --list
+
+# Install gem dependencies
+ruby-install:
+    bundle install
+
+# Compile C extensions (required before first test run)
+ruby-build:
+    bundle exec rake build
+
+# Run all Ruby specs
+ruby-test *ARGS:
+    bundle exec rspec {{ ARGS }}
+
+# Run a single spec file: just ruby-test-file spec/models/target_model_spec.rb
+ruby-test-file FILE:
+    bundle exec rspec {{ FILE }}
+
+# Run Ruby specs matching a line number: just ruby-test-line spec/models/target_model_spec.rb:42
+ruby-test-line SPEC:
+    bundle exec rspec {{ SPEC }}
+
+# Run Ruby specs matching a pattern: just ruby-test-pattern "connection"
+ruby-test-pattern PATTERN:
+    bundle exec rspec -e "{{ PATTERN }}"
+
+# Run Ruby specs with documentation format output
+ruby-test-doc *ARGS:
+    bundle exec rspec -f d --warnings {{ ARGS }}
+
+# Build C extensions and run all Ruby specs
+ruby-verify:
+    bundle exec rake build
+    bundle exec rspec
+    @echo "All Ruby specs passed!"
+
+# Build the gem
+ruby-gem:
+    bundle exec rake gems
+
+# Clean compiled C extension artifacts
+ruby-clean:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for ext in ext/openc3/ext/*/; do
+        echo "Cleaning $(basename "$ext") ..."
+        rm -f "$ext"/*.o "$ext"/*.so "$ext"/*.bundle "$ext"/*.def "$ext"/Makefile
+    done
+    echo "Done"

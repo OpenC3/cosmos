@@ -412,6 +412,25 @@ export default {
         this.selectedItemName = val.toUpperCase()
       }
     },
+    allowGlob: function (newVal) {
+      if (!newVal) {
+        // Clear any glob values when wildcards are disabled
+        const globPattern = /[*?[]/
+        if (
+          typeof this.selectedPacketName === 'string' &&
+          globPattern.test(this.selectedPacketName)
+        ) {
+          this.selectedPacketName = null
+          this.selectedItemName = null
+        }
+        if (
+          typeof this.selectedItemName === 'string' &&
+          globPattern.test(this.selectedItemName)
+        ) {
+          this.selectedItemName = null
+        }
+      }
+    },
     mode: function (newVal, oldVal) {
       this.selectedPacketName = null
       this.selectedItemName = null
