@@ -111,13 +111,32 @@ module OpenC3
       Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'protocol_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100)
     end
 
-    def self.inject_tlm(interface_name, target_name, packet_name, item_hash = nil, type: :CONVERTED, scope:)
+    def self.inject_tlm(interface_name, target_name, packet_name, item_hash = nil, type: :CONVERTED, timeout: nil, scope:)
+      interface_name = interface_name.upcase
+
+      timeout = COMMAND_ACK_TIMEOUT_S unless timeout
+      ack_topic = "{#{scope}__ACKCMD}INTERFACE__#{interface_name}"
+      Topic.update_topic_offsets([ack_topic])
+
       data = {}
       data['target_name'] = target_name.to_s.upcase
       data['packet_name'] = packet_name.to_s.upcase
       data['item_hash'] = item_hash
       data['type'] = type
-      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'inject_tlm' => JSON.generate(data, allow_nan: true) }, '*', 100)
+      cmd_id = Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'inject_tlm' => JSON.generate(data, allow_nan: true) }, '*', 100)
+      time = Time.now
+      while (Time.now - time) < timeout
+        Topic.read_topics([ack_topic]) do |_topic, _msg_id, msg_hash, _redis|
+          if msg_hash["id"] == cmd_id
+            if msg_hash["result"] == "SUCCESS"
+              return
+            else
+              raise msg_hash["result"]
+            end
+          end
+        end
+      end
+      raise "Timeout of #{timeout}s waiting for cmd ack"
     end
 
     def self.interface_target_enable(interface_name, target_name, cmd_only: false, tlm_only: false, scope:)

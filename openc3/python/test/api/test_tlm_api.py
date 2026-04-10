@@ -246,34 +246,46 @@ class TestTlmApi(unittest.TestCase):
     @patch("openc3.microservices.microservice.System")
     def test_inject_tlm_injects_a_packet_into_target_without_an_interface(self, mock_system):
         self.decom_stuff()
-        # Case doesn't matter
-        inject_tlm("inst", "Health_Status", {"temp1": 10, "Temp2": 20}, type="CONVERTED")
-        time.sleep(0.5)
-        self.assertAlmostEqual(tlm("INST HEALTH_STATUS TEMP1"), 10.0, delta=0.1)
-        self.assertAlmostEqual(tlm("INST HEALTH_STATUS TEMP2"), 20.0, delta=0.1)
+        try:
+            # Case doesn't matter
+            inject_tlm("inst", "Health_Status", {"temp1": 10, "Temp2": 20}, type="CONVERTED")
+            time.sleep(0.5)
+            self.assertAlmostEqual(tlm("INST HEALTH_STATUS TEMP1"), 10.0, delta=0.1)
+            self.assertAlmostEqual(tlm("INST HEALTH_STATUS TEMP2"), 20.0, delta=0.1)
 
-        inject_tlm("INST", "HEALTH_STATUS", {"TEMP1": 0, "TEMP2": 0}, type="RAW")
-        time.sleep(0.5)
-        self.assertEqual(tlm("INST HEALTH_STATUS TEMP1"), (-100.0))
-        self.assertEqual(tlm("INST HEALTH_STATUS TEMP2"), (-100.0))
-
-        self.dm.shutdown()
+            inject_tlm("INST", "HEALTH_STATUS", {"TEMP1": 0, "TEMP2": 0}, type="RAW")
+            time.sleep(0.5)
+            self.assertEqual(tlm("INST HEALTH_STATUS TEMP1"), (-100.0))
+            self.assertEqual(tlm("INST HEALTH_STATUS TEMP2"), (-100.0))
+        finally:
+            self.dm.shutdown()
 
     @patch("openc3.microservices.microservice.System")
     def test_inject_tlm_bumps_the_received_count(self, mock_system):
         self.decom_stuff()
+        try:
+            inject_tlm("INST", "HEALTH_STATUS")
+            time.sleep(0.5)
+            self.assertEqual(tlm("INST HEALTH_STATUS RECEIVED_COUNT"), 1)
+            inject_tlm("INST", "HEALTH_STATUS")
+            time.sleep(0.5)
+            self.assertEqual(tlm("INST HEALTH_STATUS RECEIVED_COUNT"), 2)
+            inject_tlm("INST", "HEALTH_STATUS")
+            time.sleep(0.5)
+            self.assertEqual(tlm("INST HEALTH_STATUS RECEIVED_COUNT"), 3)
+        finally:
+            self.dm.shutdown()
 
-        inject_tlm("INST", "HEALTH_STATUS")
-        time.sleep(0.5)
-        self.assertEqual(tlm("INST HEALTH_STATUS RECEIVED_COUNT"), 1)
-        inject_tlm("INST", "HEALTH_STATUS")
-        time.sleep(0.5)
-        self.assertEqual(tlm("INST HEALTH_STATUS RECEIVED_COUNT"), 2)
-        inject_tlm("INST", "HEALTH_STATUS")
-        time.sleep(0.5)
-        self.assertEqual(tlm("INST HEALTH_STATUS RECEIVED_COUNT"), 3)
-
-        self.dm.shutdown()
+    @patch("openc3.microservices.microservice.System")
+    def test_inject_tlm_raises_error_for_derived_item_without_write_conversion(self, mock_system):
+        self.decom_stuff()
+        try:
+            with self.assertRaises(RuntimeError) as context:
+                inject_tlm("INST", "HEALTH_STATUS", {"RECEIVED_TIMESECONDS": 123.0})
+            self.assertIsInstance(context.exception.args[0], str)
+            self.assertIn("Cannot write DERIVED item", context.exception.args[0])
+        finally:
+            self.dm.shutdown()
 
     # override_tlm
     def test_overrides_complains_about_unknown_targets_packets_and_parameters(self):

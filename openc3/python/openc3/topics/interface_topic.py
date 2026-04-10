@@ -161,19 +161,37 @@ class InterfaceTopic(Topic):
         packet_name,
         item_hash=None,
         type="CONVERTED",
+        timeout=None,
         scope=OPENC3_SCOPE,
     ):
+        interface_name = interface_name.upper()
+
+        if timeout is None:
+            timeout = cls.COMMAND_ACK_TIMEOUT_S
+        ack_topic = f"{{{scope}__ACKCMD}}INTERFACE__{interface_name}"
+        Topic.update_topic_offsets([ack_topic])
+
         data = {}
         data["target_name"] = target_name.upper()
         data["packet_name"] = packet_name.upper()
         data["item_hash"] = item_hash
         data["type"] = type
-        Topic.write_topic(
+        cmd_id = Topic.write_topic(
             f"{{{scope}__CMD}}INTERFACE__{interface_name}",
             {"inject_tlm": json.dumps(data)},
             "*",
             100,
         )
+        start_time = time.time()
+        while (time.time() - start_time) < timeout:
+            for _, _, msg_hash, _ in Topic.read_topics([ack_topic]):
+                if msg_hash[b"id"] == cmd_id:
+                    result = msg_hash[b"result"].decode()
+                    if result == "SUCCESS":
+                        return
+                    else:
+                        raise RuntimeError(result)
+        raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack")
 
     @classmethod
     def interface_target_enable(

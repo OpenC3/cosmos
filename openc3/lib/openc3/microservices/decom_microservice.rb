@@ -116,7 +116,7 @@ module OpenC3
                 microservice_cmd(topic, msg_id, msg_hash, redis)
               elsif topic =~ /__DECOMINTERFACE/
                 if msg_hash.key?('inject_tlm')
-                  handle_inject_tlm(msg_hash['inject_tlm'])
+                  handle_inject_tlm_with_ack(msg_hash['inject_tlm'], msg_id)
                   next
                 end
                 if msg_hash.key?('build_cmd')
