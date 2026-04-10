@@ -10,29 +10,34 @@ function escapeHtml(s) {
     .replaceAll("'", "&#39;");
 }
 
+const INVERTED_SECTION_RE = /\{\{\^(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g;
+const SECTION_RE = /\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g;
+const UNESCAPED_RE = /\{\{\{(\w+)\}\}\}/g;
+const ESCAPED_RE = /\{\{(\w+)\}\}/g;
+
 function render(template, context) {
   // Inverted sections: {{^key}}...{{/key}}
   let result = template.replaceAll(
-    /\{\{\^(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g,
-    (_, key, inner) => (!context[key] ? render(inner, context) : "")
+    INVERTED_SECTION_RE,
+    (_, key, inner) => (context[key] ? "" : render(inner, context))
   );
 
   // Sections: {{#key}}...{{/key}}
   result = result.replaceAll(
-    /\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g,
+    SECTION_RE,
     (_, key, inner) => (context[key] ? render(inner, context) : "")
   );
 
   // Unescaped interpolation: {{{key}}}
   result = result.replaceAll(
-    /\{\{\{(\w+)\}\}\}/g,
-    (_, key) => (context[key] != null ? String(context[key]) : "")
+    UNESCAPED_RE,
+    (_, key) => (context[key] == null ? "" : String(context[key]))
   );
 
   // Escaped interpolation: {{key}}
   result = result.replaceAll(
-    /\{\{(\w+)\}\}/g,
-    (_, key) => (context[key] != null ? escapeHtml(context[key]) : "")
+    ESCAPED_RE,
+    (_, key) => (context[key] == null ? "" : escapeHtml(context[key]))
   );
 
   return result;

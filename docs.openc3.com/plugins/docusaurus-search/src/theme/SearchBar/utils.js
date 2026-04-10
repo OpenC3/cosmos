@@ -21,7 +21,7 @@ const utils = {
       if (typeof key === 'string') {
         key = key.toLowerCase();
       }
-      if (!Object.prototype.hasOwnProperty.call(newCollection, key)) {
+      if (!Object.hasOwn(newCollection, key)) {
         newCollection[key] = [];
       }
       newCollection[key].push(item);
@@ -29,32 +29,13 @@ const utils = {
     return newCollection;
   },
 
-  values(object) {
-    return Object.keys(object).map(key => object[key]);
-  },
-
-  flatten(array) {
-    const results = [];
-    array.forEach(value => {
-      if (!Array.isArray(value)) {
-        results.push(value);
-        return;
-      }
-      value.forEach(subvalue => {
-        results.push(subvalue);
-      });
-    });
-    return results;
-  },
-
   flattenAndFlagFirst(object, flag) {
-    const values = this.values(object).map(collection =>
+    return Object.values(object).flatMap(collection =>
       collection.map((item, index) => {
         item[flag] = index === 0;
         return item;
       })
     );
-    return this.flatten(values);
   },
 
   compact(array) {
@@ -100,9 +81,6 @@ const utils = {
     return snippet;
   },
 
-  deepClone(object) {
-    return JSON.parse(JSON.stringify(object));
-  },
 };
 
 export default utils;

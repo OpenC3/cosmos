@@ -50,7 +50,7 @@ export function HighlightSearchResults() {
     siteConfig: { baseUrl },
   } = useDocusaurusContext();
 
-  const [highlightData, setHighlightData] = useState({ wordToHighlight: '', isTitleSuggestion: false , titleText: '' });
+  const [highlightData, setHighlightData] = useState({ wordToHighlight: '' });
 
   useEffect(() => {
     if (

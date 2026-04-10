@@ -1,5 +1,5 @@
 import Hogan from "./mini-mustache";
-import LunrSearchAdapter from "./lunar-search";
+import MiniSearchAdapter from "./mini-search";
 import templates from "./templates";
 import utils from "./utils";
 
@@ -23,7 +23,7 @@ class DocSearch {
 
         this.queryDataCallback = queryDataCallback || null;
         this.isSimpleLayout = layout === "simple";
-        this.client = new LunrSearchAdapter(searchDocs, searchIndex, maxHits, baseUrl);
+        this.client = new MiniSearchAdapter(searchDocs, searchIndex, maxHits, baseUrl);
         this.transformData = transformData;
         this.queryHook = queryHook;
         this.customHandleSelected = handleSelected;
@@ -35,12 +35,21 @@ class DocSearch {
         this._bindEvents();
 
         // Ctrl/Cmd + K to focus
-        document.addEventListener('keydown', (e) => {
+        this._onKeyboardShortcut = (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 this.input.focus();
                 e.preventDefault();
             }
-        });
+        };
+        document.addEventListener('keydown', this._onKeyboardShortcut);
+    }
+
+    destroy() {
+        document.removeEventListener('keydown', this._onKeyboardShortcut);
+        document.removeEventListener('click', this._onOutsideClick);
+        if (this.dropdown?.parentNode) {
+            this.dropdown.parentNode.removeChild(this.dropdown);
+        }
     }
 
     _buildDropdown() {
@@ -70,11 +79,12 @@ class DocSearch {
         this.input.addEventListener('keydown', (e) => this._onKeyDown(e));
 
         // Close on outside click
-        document.addEventListener('click', (e) => {
+        this._onOutsideClick = (e) => {
             if (!this.wrapper.contains(e.target)) {
                 this._close();
             }
-        });
+        };
+        document.addEventListener('click', this._onOutsideClick);
 
         // Close on escape
         this.input.addEventListener('keydown', (e) => {
@@ -232,7 +242,7 @@ class DocSearch {
 
     // Given a list of hits, reformat them for templates
     static formatHits(receivedHits) {
-        const clonedHits = utils.deepClone(receivedHits);
+        const clonedHits = structuredClone(receivedHits);
         const hits = clonedHits.map(hit => {
             if (hit._highlightResult) {
                 hit._highlightResult = utils.mergeKeyWithParent(

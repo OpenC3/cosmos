@@ -85,11 +85,14 @@ function* scanDocuments({ path, url }) {
   }
 }
 
+const WHITESPACE_RE = /\s\s+/g;
+const NEWLINE_RE = /(\r\n|\n|\r)/gm;
+
 function getContent(el) {
   const text = typeof el === "string" ? el : el.text();
   return text
-    .replaceAll(/\s\s+/g, " ")
-    .replaceAll(/(\r\n|\n|\r)/gm, " ")
+    .replaceAll(WHITESPACE_RE, " ")
+    .replaceAll(NEWLINE_RE, " ")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")

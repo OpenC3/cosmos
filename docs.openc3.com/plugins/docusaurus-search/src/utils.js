@@ -7,7 +7,7 @@ const fs = require("node:fs");
  */
 function globMatch(str, pattern) {
   const regex = pattern
-    .replaceAll(/[.+^${}()|[\]\\]/g, "\\$&") // escape regex special chars (except * and ?)
+    .replaceAll(/[.+^${}()|[\]\\]/g, String.raw`\$&`) // escape regex special chars (except * and ?)
     .replaceAll("**", "\0") // placeholder for **
     .replaceAll("*", "[^/]*") // * matches anything except /
     .replaceAll("\0", ".*") // ** matches anything including /
@@ -60,14 +60,15 @@ function getFilePaths(routesPaths, outDir, baseUrl, options = {}) {
     });
 
     const filePath = candidatePaths.find((p) => fs.existsSync(p));
-    if (filePath && !fs.existsSync(filePath)) {
+    if (!filePath) {
       console.warn(
         `docusaurus-search: could not resolve file for route '${route}', it will be missing in the search index`,
       );
+      return;
     }
 
     // if we already added this file, skip it
-    if (filePath && addedFiles.has(filePath)) return;
+    if (addedFiles.has(filePath)) return;
 
     // if we have include routes, skip if this route doesn't match any of them
     if (

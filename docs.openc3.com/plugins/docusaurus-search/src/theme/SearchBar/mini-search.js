@@ -5,7 +5,7 @@ Search Adapter using MiniSearch
 
 import MiniSearch from "@generated/lunr.client";
 
-class LunrSearchAdapter {
+class MiniSearchAdapter {
     constructor(searchDocs, searchIndex, maxHits, baseUrl = '/') {
         this.searchDocs = searchDocs;
         this.miniSearch = MiniSearch.loadJSON(JSON.stringify(searchIndex), {
@@ -170,4 +170,4 @@ class LunrSearchAdapter {
     }
 }
 
-export default LunrSearchAdapter;
+export default MiniSearchAdapter;

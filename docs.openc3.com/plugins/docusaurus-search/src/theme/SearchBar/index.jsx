@@ -5,8 +5,14 @@ import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import { usePluginData } from "@docusaurus/useGlobalData";
 import useIsBrowser from "@docusaurus/useIsBrowser";
 import { HighlightSearchResults } from "./HighlightSearchResults";
-const Search = ({ handleSearchBarToggle, isSearchBarExpanded, autoFocus }) => {
+const Search = ({
+  handleSearchBarToggle = undefined,
+  isSearchBarExpanded = false,
+  autoFocus = false,
+}) => {
   const initialized = useRef(false);
+  const mountedRef = useRef(true);
+  const docSearchRef = useRef(null);
   const searchBarRef = useRef(null);
   const [indexReady, setIndexReady] = useState(false);
   const history = useHistory();
@@ -21,7 +27,7 @@ const Search = ({ handleSearchBarToggle, isSearchBarExpanded, autoFocus }) => {
   const { baseUrl } = siteConfig;
   const assetUrl = pluginConfig?.[1]?.assetUrl || baseUrl;
   const initAlgolia = (searchDocs, searchIndex, DocSearch, options) => {
-    const _docSearch = new DocSearch({
+    docSearchRef.current = new DocSearch({
       searchDocs,
       searchIndex,
       baseUrl,
@@ -44,7 +50,7 @@ const Search = ({ handleSearchBarToggle, isSearchBarExpanded, autoFocus }) => {
             const matchedLine =
               suggestion.text || suggestion.subcategory || suggestion.title;
             const matchedWordResult = matchedLine.match(
-              new RegExp("<span.+span>\\w*", "g"),
+              /<span.+span>\w*/g,
             );
             if (matchedWordResult && matchedWordResult.length > 0) {
               const parsed = new DOMParser().parseFromString(matchedWordResult[0], "text/html");
@@ -80,20 +86,24 @@ const Search = ({ handleSearchBarToggle, isSearchBarExpanded, autoFocus }) => {
 
   const loadAlgolia = () => {
     if (!initialized.current) {
+      initialized.current = true;
       Promise.all([
         getSearchDoc(),
         getLunrIndex(),
         import("./DocSearch"),
         import("./algolia.css"),
       ]).then(([searchDocFile, searchIndex, { default: DocSearch }]) => {
+        if (!mountedRef.current) return;
         const { searchDocs, options } = searchDocFile;
         if (!searchDocs || searchDocs.length === 0) {
           return;
         }
         initAlgolia(searchDocs, searchIndex, DocSearch, options);
         setIndexReady(true);
+      }).catch((err) => {
+        console.error("docusaurus-search: failed to load search index", err);
+        initialized.current = false;
       });
-      initialized.current = true;
     }
   };
 
@@ -111,10 +121,17 @@ const Search = ({ handleSearchBarToggle, isSearchBarExpanded, autoFocus }) => {
   let placeholder;
   if (isBrowser) {
     loadAlgolia();
-    placeholder = globalThis.navigator.platform.startsWith("Mac")
+    placeholder = globalThis.navigator.userAgentData?.platform === "macOS" || /Mac/.test(globalThis.navigator.userAgent)
       ? "Search ⌘+K"
       : "Search Ctrl+K";
   }
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      docSearchRef.current?.destroy();
+    };
+  }, []);
 
   // auto focus search bar on page load
   useEffect(() => {
