@@ -1384,6 +1384,8 @@ class QuestDBClient:
         "VARCHAR": str,
         "STRING": str,
         "SYMBOL": str,
+        # Legacy DECIMAL columns accept string values via ILP auto-cast
+        "DECIMAL": str,
     }
 
     def _cast_value_to_column_type(self, value, column_type):
@@ -1500,7 +1502,7 @@ class QuestDBClient:
                     f"Serializing as JSON string."
                 )
             else:
-                if column_type in ("VARCHAR", "STRING"):
+                if column_type in ("VARCHAR", "STRING", "DECIMAL"):
                     self.varchar_columns[f"{err_table_name}__{column_name}"] = True
                 self._log_warn(
                     f"QuestDB: Column {column_name} in table {err_table_name} "
