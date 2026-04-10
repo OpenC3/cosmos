@@ -117,7 +117,7 @@ class StreamingApi
 
     expanded = []
     data["items"].each do |entry|
-      key, item_key = entry.is_a?(Array) ? entry : [entry, nil]
+      key = entry.is_a?(Array) ? entry[0] : entry
       parsed = StreamingKey.parse(key, item_key: true)
 
       unless parsed.has_glob?
