@@ -337,8 +337,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertIn('"1BIT" int', create_table_sql)
         # 63 bits is a long
         self.assertIn('"63BITS" long', create_table_sql)
-        # 64 bits uses DECIMAL(20, 0) for full 64-bit integer support
-        self.assertIn('"64BITS" DECIMAL(20, 0)', create_table_sql)
+        # 64 bits uses VARCHAR to avoid LONG NULL sentinel
+        self.assertIn('"64BITS" varchar', create_table_sql)
         # DERIVED items are now created as VARCHAR to avoid type conflicts
         self.assertIn('"DERIVED_GENERIC" varchar', create_table_sql)
 
@@ -1247,8 +1247,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertIn('"DERIVED_FLOAT64" double', create_table_sql)
         self.assertIn('"DERIVED_INT16" int', create_table_sql)
         self.assertIn('"DERIVED_UINT32" long', create_table_sql)
-        # 64-bit integers use DECIMAL(20, 0) for full range support
-        self.assertIn('"DERIVED_INT64" DECIMAL(20, 0)', create_table_sql)
+        # 64-bit integers use VARCHAR to avoid LONG NULL sentinel
+        self.assertIn('"DERIVED_INT64" varchar', create_table_sql)
         self.assertIn('"DERIVED_STRING" varchar', create_table_sql)
         self.assertIn('"DERIVED_TIME" varchar', create_table_sql)
 
@@ -1277,8 +1277,8 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertEqual(tsdb.questdb.float_bit_sizes.get("DEFAULT__TLM__TEST__PACKET__DERIVED_FLOAT32"), 32)
         self.assertEqual(tsdb.questdb.float_bit_sizes.get("DEFAULT__TLM__TEST__PACKET__DERIVED_FLOAT64"), 64)
 
-        # 64-bit integer columns should be registered for DECIMAL conversion
-        self.assertIn("DEFAULT__TLM__TEST__PACKET__DERIVED_INT64", tsdb.questdb.decimal_int_columns)
+        # 64-bit integer columns should be registered as VARCHAR
+        self.assertIn("DEFAULT__TLM__TEST__PACKET__DERIVED_INT64", tsdb.questdb.varchar_columns)
 
     def test_convert_value_arrays_json_serialized(self):
         """Test that all arrays are JSON serialized to avoid QuestDB type conflicts"""
@@ -1722,15 +1722,15 @@ class TestTsdbMicroservice(unittest.TestCase):
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
-    def test_reconcile_skips_alter_when_decimal_types_match(self, mock_system, mock_psycopg, mock_sender, mock_get_tlm):
-        """Test that reconciliation does not ALTER when existing DECIMAL(20,0) matches desired DECIMAL(20, 0)"""
+    def test_reconcile_skips_alter_for_legacy_decimal(self, mock_system, mock_psycopg, mock_sender, mock_get_tlm):
+        """Test that reconciliation skips ALTER for legacy DECIMAL columns (QuestDB bug #6923)"""
         mock_query = Mock()
         mock_psycopg.return_value = mock_query
         mock_cursor = Mock()
         mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
         mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
 
-        # Simulate an existing table with DECIMAL(20,0) (no space, as QuestDB returns)
+        # Simulate an existing table with legacy DECIMAL(20,0) (no space, as QuestDB returns)
         mock_cursor.fetchall.return_value = [
             ("PACKET_TIMESECONDS", "TIMESTAMP_NS"),
             ("RECEIVED_TIMESECONDS", "TIMESTAMP_NS"),
@@ -1759,11 +1759,11 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         TsdbMicroservice("DEFAULT__TSDB__TEST")
 
-        # Should NOT have issued any ALTER COLUMN TYPE statements
+        # Should NOT have issued any ALTER COLUMN TYPE — DECIMAL->VARCHAR is blocked by bug #6923
         alter_calls = [
             call for call in mock_cursor.execute.call_args_list if "ALTER" in str(call) and "TYPE" in str(call)
         ]
-        self.assertEqual(len(alter_calls), 0, f"Should not ALTER matching DECIMAL types, but got: {alter_calls}")
+        self.assertEqual(len(alter_calls), 0, f"Should skip DECIMAL->VARCHAR ALTER, but got: {alter_calls}")
 
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")

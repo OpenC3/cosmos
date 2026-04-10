@@ -214,7 +214,7 @@ class QuestDBClient:
         - Arrays are JSON-encoded: "[1, 2, 3]" or '["a", "b"]'
         - Objects/Dicts are JSON-encoded: '{"key": "value"}'
         - Binary data (BLOCK) is base64-encoded
-        - Large integers (64-bit) are stored as DECIMAL (returned as Decimal objects)
+        - Large integers (≥64-bit) are stored as VARCHAR strings
 
         Args:
             value: The value to decode
@@ -224,7 +224,8 @@ class QuestDBClient:
         Returns:
             The decoded value
         """
-        # Handle Decimal values from QuestDB DECIMAL columns (used for 64-bit integers)
+        # Handle Decimal values from legacy QuestDB DECIMAL columns
+        # (pre-existing tables may still use DECIMAL; new tables use VARCHAR)
         if isinstance(value, Decimal):
             if data_type in ("INT", "UINT"):
                 return int(value)
@@ -259,7 +260,7 @@ class QuestDBClient:
             except json.JSONDecodeError:
                 return value
 
-        # Integer values stored as strings (fallback path, normally DECIMAL)
+        # Integer values stored as VARCHAR strings (≥64-bit integers)
         if data_type in ("INT", "UINT"):
             try:
                 return int(value)
@@ -312,12 +313,7 @@ class QuestDBClient:
         # Track columns that need JSON serialization due to type conflicts or DERIVED type
         # Key is "table__column", value is True
         self.json_columns = {}
-        # Track columns that store integers as DECIMAL (for 64-bit items)
-        # These need integer values converted to strings before ILP ingestion
-        # (QuestDB casts strings to DECIMAL for pre-created DECIMAL columns)
-        # Key is "table__column", value is True
-        self.decimal_int_columns = {}
-        # Track columns that are VARCHAR type (for state __C columns, etc.)
+        # Track columns that are VARCHAR type (for ≥64-bit integers, state __C columns, etc.)
         # Non-string values must be converted to strings before ILP ingestion.
         # Key is "table__column", value is True
         self.varchar_columns = {}
@@ -442,11 +438,10 @@ class QuestDBClient:
                 return "int", False
             elif converted_bit_size < 64:
                 return "long", False
-            elif converted_bit_size == 64:
-                self.decimal_int_columns[f"{table_name}__{column_name}"] = True
-                return "DECIMAL(20, 0)", False
             else:
-                # > 64-bit integers exceed DECIMAL(20,0) capacity — store as VARCHAR
+                # ≥64-bit integers stored as VARCHAR to avoid LONG NULL sentinel
+                # (0x8000000000000000) and DECIMAL limitations
+                self.varchar_columns[f"{table_name}__{column_name}"] = True
                 return "varchar", False
         elif converted_type == "TIME" or converted_type == "STRING":
             return "varchar", False
@@ -947,9 +942,8 @@ class QuestDBClient:
     def _canonical_type(sql_type):
         """Normalize a SQL type string for comparison.
 
-        Uppercases and strips internal whitespace so that e.g.
-        'DECIMAL(20, 0)' and 'DECIMAL(20,0)' compare equal,
-        while preserving parameters so DECIMAL(20,0) != DECIMAL(22,0).
+        Uppercases and strips internal whitespace so that parameterized types
+        like 'DECIMAL(20, 0)' and 'DECIMAL(20,0)' compare equal.
         """
         return re.sub(r"\s+", "", sql_type.upper())
 
@@ -1095,13 +1089,23 @@ class QuestDBClient:
                                 self._log_info(f"QuestDB: Added column: {alter}")
                                 altered = True
                             elif existing_type != desired_canonical:
-                                # Type mismatch — ALTER the column type
-                                alter = f'ALTER TABLE "{table_name}" ALTER COLUMN {col_name} TYPE {desired_sql_type}'
-                                cur.execute(alter)
-                                self._log_info(
-                                    f"QuestDB: Altered column type: {alter} (was {existing_type}, now {desired_canonical})"
-                                )
-                                altered = True
+                                # Skip DECIMAL -> VARCHAR: blocked by QuestDB bug #6923.
+                                # String values sent via ILP are auto-cast to DECIMAL,
+                                # so the column remains usable without the ALTER.
+                                if "DECIMAL" in existing_type and desired_canonical == "VARCHAR":
+                                    self._log_warn(
+                                        f"QuestDB: Skipping ALTER {col_name} from {existing_type} to VARCHAR "
+                                        f"in table {table_name} — blocked by QuestDB bug #6923. "
+                                        f"Column will continue to function as DECIMAL."
+                                    )
+                                else:
+                                    # Type mismatch — ALTER the column type
+                                    alter = f'ALTER TABLE "{table_name}" ALTER COLUMN {col_name} TYPE {desired_sql_type}'
+                                    cur.execute(alter)
+                                    self._log_info(
+                                        f"QuestDB: Altered column type: {alter} (was {existing_type}, now {desired_canonical})"
+                                    )
+                                    altered = True
                         except psycopg.Error as error:
                             self._log_error(f"QuestDB: Error reconciling table {table_name}: {error}")
             except psycopg.Error as error:
@@ -1230,21 +1234,12 @@ class QuestDBClient:
         if is_varchar and not isinstance(value, str):
             return str(value), False
 
-        # Check if this column stores integers as DECIMAL (64-bit integer columns)
-        if table_name:
-            decimal_int_key = f"{table_name}__{item_name}"
-            is_decimal_int = decimal_int_key in self.decimal_int_columns
-        else:
-            is_decimal_int = False
-
         # Handle various data types for non-DERIVED columns
         match value:
             case int():
-                # 64-bit integer columns are stored as DECIMAL - send as string via ILP
-                # QuestDB casts string values to DECIMAL for pre-created DECIMAL columns.
                 # QuestDB Python client uses C long internally (signed 64-bit).
-                # Values outside this range must be strings for DECIMAL columns.
-                if is_decimal_int or value > 9223372036854775807 or value < -9223372036854775808:
+                # Values outside signed 64-bit range must be sent as strings.
+                if value > 9223372036854775807 or value < -9223372036854775808:
                     value = str(value)
 
             case float():
@@ -1389,7 +1384,6 @@ class QuestDBClient:
         "VARCHAR": str,
         "STRING": str,
         "SYMBOL": str,
-        "DECIMAL": str,
     }
 
     def _cast_value_to_column_type(self, value, column_type):
@@ -1478,20 +1472,6 @@ class QuestDBClient:
                     fixed = True
                     continue
 
-                # Handle INTEGER to DECIMAL cast error by converting value to string
-                if protocol_type == "INTEGER" and column_type == "DECIMAL":
-                    if column_name in columns:
-                        columns[column_name] = str(columns[column_name])
-                        fixed = True
-                    continue
-
-                # Handle value overflow for DECIMAL columns (value exceeds precision)
-                if is_value_error and column_type == "DECIMAL":
-                    if column_name in columns:
-                        columns[column_name] = str(columns[column_name])
-                        fixed = True
-                    continue
-
                 # For scalar type mismatches, cast the value to fit the column type
                 if column_name not in columns:
                     continue
@@ -1518,18 +1498,6 @@ class QuestDBClient:
                     f"QuestDB: Column {column_name} in table {err_table_name} "
                     f"received array data but column type is {column_type}. "
                     f"Serializing as JSON string."
-                )
-            elif protocol_type == "INTEGER" and column_type == "DECIMAL":
-                self.decimal_int_columns[f"{err_table_name}__{column_name}"] = True
-                self._log_warn(
-                    f"QuestDB: Column {column_name} in table {err_table_name} "
-                    f"is DECIMAL but received INTEGER. Converting value to string."
-                )
-            elif is_value_error and column_type == "DECIMAL":
-                self.decimal_int_columns[f"{err_table_name}__{column_name}"] = True
-                self._log_warn(
-                    f"QuestDB: Column {column_name} in table {err_table_name} "
-                    f"value overflows DECIMAL precision. Converting value to string."
                 )
             else:
                 if column_type in ("VARCHAR", "STRING"):
