@@ -648,7 +648,7 @@ export default {
         if (
           this.allowGlob &&
           typeof value === 'string' &&
-          /[*?\[]/.test(value)
+          /[*?[]/.test(value)
         ) {
           // Glob pattern: skip API calls, enable the item field for free-text entry
           this.itemsDisabled = false
@@ -731,7 +731,7 @@ export default {
       } else if (
         this.allowGlob &&
         typeof value === 'string' &&
-        /[*?\[]/.test(value)
+        /[*?[]/.test(value)
       ) {
         // Accept free-text glob pattern even though it's not in the item list
         this.selectedItemName = value.toUpperCase()
