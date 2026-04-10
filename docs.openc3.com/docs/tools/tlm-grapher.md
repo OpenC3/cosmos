@@ -15,7 +15,7 @@ Telemetry Grapher is a graphing application that allows for one or more telemetr
 
 ### File Menu Items
 
-<!-- Image sized to match up with bullets -->
+{/* Image sized to match up with bullets */}
 
 <img src={require('@site/static/img/telemetry_grapher/file_menu.png').default}
 alt="File Menu"
@@ -35,7 +35,7 @@ The Save Configuration dialog also displays a list of all saved configurations. 
 
 ### Graph Menu Items
 
-<!-- Image sized to match up with bullets -->
+{/* Image sized to match up with bullets */}
 
 <img src={require('@site/static/img/telemetry_grapher/graph_menu.png').default}
 alt="File Menu"

@@ -3,7 +3,7 @@ title: Web Socket API
 description: Using web sockets to retrieve data.
 ---
 
-:::note This documentation is for COSMOS Developers
+:::note[This documentation is for COSMOS Developers]
 This information is just generally used behind the scenes in COSMOS tools
 :::
 

@@ -15,7 +15,7 @@ Command Sender provides the ability to send any command defined by COSMOS. Comma
 
 ### Mode Menu Items
 
-<!-- Image sized to match up with bullets -->
+{/* Image sized to match up with bullets */}
 
 <img src={require('@site/static/img/command_sender/mode_menu.png').default}
 alt="Mode Menu"

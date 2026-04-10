@@ -158,7 +158,7 @@ MICROSERVICE BACKGROUND background-microservice
 
 ## Available APIs
 
-:::warning API vs Script
+:::warning[API vs Script]
 When writing code for a microservice (or interface) that runs _within_ COSMOS, you must use the `openc3/api` library, **NOT** `openc3/script`.
 
 - `openc3/api` - For code running inside the COSMOS cluster (microservices, interfaces)
@@ -282,7 +282,7 @@ The available types are:
 
 Update `state` to communicate status to users viewing the Admin Microservices tab.
 
-:::note Polling Interval
+:::note[Polling Interval]
 The microservice status is polled by the frontend every few seconds. Only long-running states will be visible to users. Rapid state changes may not be displayed.
 :::
 

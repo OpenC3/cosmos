@@ -1,0 +1,337 @@
+/**
+ * Copyright (c) 2017-present, Facebook, Inc.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+/* Bottom border of each suggestion */
+.algolia-docsearch-suggestion {
+  border-bottom-color: #3a3dd1;
+}
+/* Main category headers */
+.algolia-docsearch-suggestion--category-header {
+  background-color: #4b54de;
+}
+/* Highlighted search terms */
+.algolia-docsearch-suggestion--highlight {
+  color: #3a33d1;
+}
+/* Highlighted search terms in the main category headers */
+.algolia-docsearch-suggestion--category-header
+  .algolia-docsearch-suggestion--highlight {
+  background-color: #4d47d5;
+}
+/* For bigger screens, when displaying results in two columns */
+@media (min-width: 768px) {
+  /* Bottom border of each suggestion */
+  .algolia-docsearch-suggestion {
+    border-bottom-color: #7671df;
+  }
+  /* Left column, with secondary category header */
+  .algolia-docsearch-suggestion--subcategory-column {
+    border-right-color: #7671df;
+    color: #4e4726;
+  }
+}
+
+.algolia-autocomplete .ds-dropdown-menu:before {
+  display: block;
+  position: absolute;
+  content: "";
+  width: 14px;
+  height: 14px;
+  background: #373940;
+  z-index: 1000;
+  top: -7px;
+  border-top: 1px solid #373940;
+  border-right: 1px solid #373940;
+  -webkit-transform: rotate(-45deg);
+  transform: rotate(-45deg);
+  border-radius: 2px;
+}
+
+.algolia-autocomplete .ds-dropdown-menu {
+  box-shadow:
+    0 1px 0 0 rgba(0, 0, 0, 0.2),
+    0 2px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+@media (min-width: 601px) {
+  .algolia-autocomplete.algolia-autocomplete-right .ds-dropdown-menu {
+    right: 0 !important;
+    left: inherit !important;
+  }
+
+  .algolia-autocomplete.algolia-autocomplete-right .ds-dropdown-menu:before {
+    right: 48px;
+  }
+
+  .algolia-autocomplete .ds-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    border-radius: 4px;
+    margin: 6px 0 0;
+    padding: 0;
+    text-align: left;
+    height: auto;
+    background: transparent;
+    border: none;
+    z-index: 999;
+    max-width: 600px;
+    min-width: 500px;
+  }
+}
+
+@media (max-width: 600px) {
+  .algolia-autocomplete .ds-dropdown-menu {
+    z-index: 100;
+    position: fixed !important;
+    top: 50px !important;
+    left: auto !important;
+    right: 1rem !important;
+    width: 600px;
+    max-width: calc(100% - 2rem);
+    max-height: calc(100% - 5rem);
+    display: block;
+  }
+
+  .algolia-autocomplete .ds-dropdown-menu:before {
+    right: 6rem;
+  }
+}
+
+.algolia-autocomplete .ds-dropdown-menu .ds-suggestions {
+  position: relative;
+  z-index: 1000;
+}
+
+.algolia-autocomplete .ds-dropdown-menu .ds-suggestion {
+  cursor: pointer;
+}
+
+.algolia-autocomplete .ds-dropdown-menu [class^="ds-dataset-"] {
+  position: relative;
+  border-radius: 4px;
+  overflow: auto;
+  padding: 0;
+  background: #ffffff;
+}
+
+.algolia-autocomplete .ds-dropdown-menu * {
+  box-sizing: border-box;
+}
+
+.algolia-autocomplete .algolia-docsearch-suggestion {
+  display: block;
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+  text-decoration: none;
+}
+
+.algolia-autocomplete .ds-cursor .algolia-docsearch-suggestion--wrapper {
+  background: #f1f1f1;
+  box-shadow: inset -2px 0 0 #61dafb;
+}
+
+.algolia-autocomplete .algolia-docsearch-suggestion--highlight {
+  background: #ffe564;
+  padding: 0.1em 0.05em;
+}
+
+.algolia-autocomplete
+  .algolia-docsearch-suggestion--category-header
+  .algolia-docsearch-suggestion--category-header-lvl0
+  .algolia-docsearch-suggestion--highlight,
+.algolia-autocomplete
+  .algolia-docsearch-suggestion--category-header
+  .algolia-docsearch-suggestion--category-header-lvl1
+  .algolia-docsearch-suggestion--highlight {
+  color: inherit;
+  background: inherit;
+}
+
+.algolia-autocomplete
+  .algolia-docsearch-suggestion--text
+  .algolia-docsearch-suggestion--highlight {
+  padding: 0 0 1px;
+  background: inherit;
+  box-shadow: inset 0 -2px 0 0 rgba(69, 142, 225, 0.8);
+  color: inherit;
+}
+
+.algolia-autocomplete .algolia-docsearch-suggestion--content {
+  display: block;
+  float: right;
+  width: 70%;
+  position: relative;
+  padding: 5.33333px 0 5.33333px 10.66667px;
+  cursor: pointer;
+}
+
+.algolia-autocomplete .algolia-docsearch-suggestion--content:before {
+  content: "";
+  position: absolute;
+  display: block;
+  top: 0;
+  height: 100%;
+  width: 1px;
+  background: #ececec;
+  left: -1px;
+}
+
+.algolia-autocomplete .algolia-docsearch-suggestion--category-header {
+  position: relative;
+  display: none;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  background-color: #373940;
+  text-transform: uppercase;
+  color: #fff;
+  margin: 0;
+  padding: 5px 8px;
+}
+
+.algolia-autocomplete .algolia-docsearch-suggestion--wrapper {
+  background-color: #fff;
+  width: 100%;
+  float: left;
+  padding: 8px 0 0 0;
+}
+
+.algolia-autocomplete .algolia-docsearch-suggestion--subcategory-column {
+  float: left;
+  width: 30%;
+  display: none;
+  text-align: right;
+  position: relative;
+  padding: 5.33333px 10.66667px;
+  color: #777;
+  font-size: 0.9em;
+  word-wrap: break-word;
+}
+
+.algolia-autocomplete .algolia-docsearch-suggestion--subcategory-column:before {
+  content: "";
+  position: absolute;
+  display: block;
+  top: 0;
+  height: 100%;
+  width: 1px;
+  background: #ececec;
+  right: 0;
+}
+
+.algolia-autocomplete
+  .algolia-docsearch-suggestion.algolia-docsearch-suggestion__main
+  .algolia-docsearch-suggestion--category-header,
+.algolia-autocomplete
+  .algolia-docsearch-suggestion.algolia-docsearch-suggestion__secondary {
+  display: block;
+}
+
+.algolia-autocomplete
+  .algolia-docsearch-suggestion--subcategory-column
+  .algolia-docsearch-suggestion--highlight {
+  background-color: inherit;
+  color: inherit;
+}
+
+.algolia-autocomplete .algolia-docsearch-suggestion--subcategory-inline {
+  display: none;
+}
+
+.algolia-autocomplete .algolia-docsearch-suggestion--title {
+  margin-bottom: 4px;
+  color: #02060c;
+  font-size: 0.9em;
+  font-weight: bold;
+}
+
+.algolia-autocomplete .algolia-docsearch-suggestion--text {
+  display: block;
+  line-height: 1.2em;
+  font-size: 0.85em;
+  color: #63676d;
+  padding-right: 2px;
+}
+
+.algolia-autocomplete .algolia-docsearch-suggestion--version {
+  display: block;
+  font-size: 0.65em;
+  color: #a6aab1;
+  padding-top: 2px;
+  padding-right: 2px;
+}
+
+.algolia-autocomplete .algolia-docsearch-suggestion--no-results {
+  width: 100%;
+  padding: 8px 0;
+  text-align: center;
+  font-size: 1.2em;
+  background-color: #373940;
+  margin-top: -8px;
+}
+
+.algolia-autocomplete
+  .algolia-docsearch-suggestion--no-results
+  .algolia-docsearch-suggestion--text {
+  color: #ffffff;
+  margin-top: 4px;
+}
+
+.algolia-autocomplete .algolia-docsearch-suggestion--no-results::before {
+  display: none;
+}
+
+.algolia-autocomplete .algolia-docsearch-suggestion code {
+  padding: 1px 5px;
+  font-size: 90%;
+  border: none;
+  color: #222222;
+  background-color: #ebebeb;
+  border-radius: 3px;
+  font-family:
+    source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+}
+
+.algolia-autocomplete
+  .algolia-docsearch-suggestion
+  code
+  .algolia-docsearch-suggestion--highlight {
+  background: none;
+}
+
+.algolia-autocomplete
+  .algolia-docsearch-suggestion.algolia-docsearch-suggestion__main
+  .algolia-docsearch-suggestion--category-header {
+  color: white;
+  display: block;
+}
+
+.algolia-autocomplete
+  .algolia-docsearch-suggestion.algolia-docsearch-suggestion__secondary
+  .algolia-docsearch-suggestion--subcategory-column {
+  display: block;
+}
+
+
+html[data-theme="dark"] .algolia-docsearch-suggestion--category-header,
+html[data-theme="dark"] .algolia-docsearch-suggestion--wrapper {
+  background: var(--ifm-background-color) !important;
+  color: var(--ifm-font-color-base) !important;
+}
+
+html[data-theme="dark"] .algolia-docsearch-suggestion--title {
+  color: var(--ifm-font-color-base) !important;
+}
+
+html[data-theme="dark"] .ds-cursor .algolia-docsearch-suggestion--wrapper {
+  background: var(--ifm-background-surface-color) !important;
+}
+
+mark {
+  background-color: lightblue;
+}

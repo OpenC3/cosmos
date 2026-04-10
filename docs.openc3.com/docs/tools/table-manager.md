@@ -13,7 +13,7 @@ Table Manager is a binary file editor. It takes binary file [definitions](../con
 
 ### File Menu Items
 
-<!-- Image sized to match up with bullets -->
+{/* Image sized to match up with bullets */}
 
 <img src={require('@site/static/img/table_manager/file_menu.png').default}
 alt="File Menu"

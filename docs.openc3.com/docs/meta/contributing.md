@@ -12,7 +12,7 @@ So you've got an awesome idea to throw into COSMOS. Great! This is the basic pro
 1. Make your changes
 1. Submit a pull request
 
-:::note Contributor Terms
+:::note[Contributor Terms]
 By contributing to this project, you agree to the following terms in our OpenC3 Builder License: [LICENSE.md](https://github.com/OpenC3/cosmos/blob/main/LICENSE.md)
 :::
 
@@ -62,7 +62,7 @@ git push origin my_awesome_feature
 - Create a pull request against openc3/cosmos:main and describe what your
   change does and the why you think it should be merged.
 
-:::note Find a problem in the code or documentation?
+:::note[Find a problem in the code or documentation?]
 
     Please [create an issue](https://github.com/OpenC3/cosmos/issues/new/choose) on
     GitHub describing what we can do to make it better.

@@ -13,7 +13,7 @@ Telemetry Viewer is a live telemetry viewer which displays custom built screens.
 
 ### File Menu Items
 
-<!-- Image sized to match up with bullets -->
+{/* Image sized to match up with bullets */}
 
 <img src={require('@site/static/img/telemetry_viewer/file_menu.png').default}
 alt="File Menu"
@@ -43,7 +43,7 @@ Clicking New Screen brings up the new screen dialog.
 
 Screens are owned by Targets so Select Target chooses where the screen will be created. Screens can be based on a Packet such that all the items in that particular packet will be generated in a simple vertical screen similar to Packet Viewer. This is a good starting point for customizing a screen. Note that screen names must be unique so the screen name is set to 'adcs2' since an 'ADCS' screen already exists.
 
-:::note Derived Item Placement
+:::note[Derived Item Placement]
 
 When generating a screen based on a packet, [derived items](../configuration/telemetry.md#derived-items) will always appear at the bottom of the generated screen, regardless of where they are defined in the telemetry definition file. If your packet has many items, you may need to scroll down to see derived items like PACKET_TIMESECONDS or custom derived calculations.
 

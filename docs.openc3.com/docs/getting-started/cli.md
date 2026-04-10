@@ -33,7 +33,7 @@ Usage:
   cli setpassword                   # Set the initial password from OPENC3_API_PASSWORD env var
 ```
 
-:::note seccomp profile
+:::note[seccomp profile]
 You can safely ignore `WARNING: daemon is not using the default seccomp profile`
 :::
 
@@ -51,7 +51,7 @@ compinit
 
 Then, either run `exec zsh` in your current shell or open a new shell in your terminal application.
 
-:::note issues getting argument completion
+:::note[issues getting argument completion]
 If you are having issues getting "argument completion" working for `openc3.sh` try clearing the ZSH autocomplete cache running `rm ~/.zcompdump*` and then reinitialize the completion system with `compinit`.
 :::
 
@@ -83,7 +83,7 @@ irb(main):002:0> Cosmos::Api::WHITELIST
 
 The script methods allow you to list the available scripts, spawn a script, and run a script while monitoring its output. Note that you must set the OPENC3_API_PASSWORD in COSMOS Core and both the OPENC3_API_USER and OPENC3_API_PASSWORD in COSMOS Enterprise.
 
-:::note Offline Access Token (since 6.3.0)
+:::note[Offline Access Token (since 6.3.0)]
 You must visit the frontend Script Runner page as the OPENC3_API_USER or run "openc3.sh cli script init" in order to obtain an offline access token before the other script cli methods will work.
 :::
 

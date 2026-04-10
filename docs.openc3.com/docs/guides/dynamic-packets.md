@@ -9,7 +9,7 @@ COSMOS has the ability to dynamically build packets rather than have them static
 
 The best way to illustrate this capability is with an example. If you're an Enterprise customer, please see the [prometheus-metrics](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-prometheus-metrics) plugin.
 
-:::info Microservice Restart
+:::info[Microservice Restart]
 This capability is meant for use during plugin installation rather than while running because various microservices will restart when defining dynamic packets.
 :::
 

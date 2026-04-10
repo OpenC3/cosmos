@@ -53,7 +53,7 @@ Reactions wait for triggers to be evaluated to true and perform actions such as 
 
 After the triggers are specified, the dialog prompts for the actions to take. You can either send a command, run a script, or simply push a notification. Commands and scripts can also optionally push a notification. In this example a script is specified with a notification at the WARN level.
 
-:::warning Spawning Scripts
+:::warning[Spawning Scripts]
 Be aware of how and when you spawn scripts and whether they are running to completion. Spawning a faulty script can lead to many unfinished scripts consuming resources.
 :::
 

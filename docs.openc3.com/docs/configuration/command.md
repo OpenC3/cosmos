@@ -6,7 +6,7 @@ sidebar_custom_props:
   myEmoji: 📡
 ---
 
-<!-- Be sure to edit _command.md because command.md is a generated file -->
+{/* Be sure to edit _command.md because command.md is a generated file */}
 
 ## Command Concepts
 
@@ -810,7 +810,7 @@ SELECT_COMMAND INST COLLECT
 
 **Example File: TARGET/cmd_tlm/cmd.txt**
 
-<!-- prettier-ignore -->
+{/* prettier-ignore */}
 ```ruby
 COMMAND TARGET COLLECT_DATA BIG_ENDIAN "Commands my target to collect data"
   PARAMETER CCSDSVER 0 3 UINT 0 0 0 "CCSDS PRIMARY HEADER VERSION NUMBER"
