@@ -16,8 +16,8 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3'
-OpenC3.require_file 'openc3/utilities/authorization'
 require_relative 'streaming_key'
+OpenC3.require_file 'openc3/utilities/authorization'
 
 # Helper class to store information about the streaming item
 class StreamingObject

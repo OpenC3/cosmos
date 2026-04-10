@@ -19,13 +19,13 @@
 # See https://github.com/OpenC3/cosmos/pull/1957
 
 require 'openc3'
-OpenC3.require_file 'openc3/utilities/authorization'
-OpenC3.require_file 'openc3/models/target_model'
 require_relative 'logged_streaming_thread'
 require_relative 'realtime_streaming_thread'
 require_relative 'streaming_key'
 require_relative 'streaming_object'
 require_relative 'streaming_object_collection'
+OpenC3.require_file 'openc3/utilities/authorization'
+OpenC3.require_file 'openc3/models/target_model'
 
 class StreamingApi
   include OpenC3::Authorization
@@ -46,7 +46,7 @@ class StreamingApi
       if parsed.packet_name == 'LATEST'
         item_map = OpenC3::TargetModel.get_item_to_packet_map(parsed.target_name, scope: scope)
         packet_names = item_map[parsed.item_name]
-        raise RuntimeError, "Item '#{parsed.target_name} LATEST #{parsed.item_name}' does not exist for scope: #{scope}" unless packet_names
+        raise "Item '#{parsed.target_name} LATEST #{parsed.item_name}' does not exist for scope: #{scope}" unless packet_names
         packet_names.each do |packet_name|
           new_key = parsed.with(packet_name: packet_name).to_key_string
           collection.add(StreamingObject.new(new_key, start_time, end_time, item_key: item_key, scope: scope, token: token))
