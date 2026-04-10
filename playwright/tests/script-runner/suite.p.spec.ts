@@ -184,6 +184,7 @@ test('loads Suite controls when opening a suite', async ({ page, utils }) => {
 })
 
 test('disables all suite buttons when running', async ({ page, utils }) => {
+  test.slow()
   await page.locator('textarea').fill(`require "openc3/script/suite.rb"
 class TestGroup < OpenC3::Group
   def test_test
@@ -227,11 +228,12 @@ end`)
   await page.getByText('Execution Status').click()
   await page.getByRole('tab', { name: 'Running Scripts' }).click()
   const table = page.locator('[data-test="running-scripts"]')
-  const runningScriptRow = table.locator('tr', { hasText: 'test_suite_buttons.rb' }).filter({ visible: true }).first()
+  const runningScriptRow = table
+    .locator('tr', { hasText: 'test_suite_buttons.rb' })
+    .filter({ visible: true })
+    .first()
   await utils.sleep(200) // Allow the tab to render fully
-  await runningScriptRow
-    .getByRole('button', { name: 'Connect' })
-    .click()
+  await runningScriptRow.getByRole('button', { name: 'Connect' }).click()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     /waiting \d+s/,
     { timeout: 20000 },

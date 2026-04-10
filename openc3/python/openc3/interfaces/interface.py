@@ -180,7 +180,7 @@ class Interface:
                     if not blank_test:
                         protocol.read_protocol_input_base(data, extra)
                     data, extra = protocol.read_data(data, extra)
-                    if not blank_test:
+                    if not blank_test and data != "STOP" and data != "DISCONNECT":
                         protocol.read_protocol_output_base(data, extra)
                     if data == "DISCONNECT":
                         Logger.info(
@@ -189,10 +189,6 @@ class Interface:
                         return None
                     if data == "STOP":
                         break
-                    if blank_test:
-                        # This means the blank test returned something so we can log
-                        protocol.read_protocol_input_base("", None)
-                        protocol.read_protocol_output_base(data, extra)
                 if data == "STOP":
                     continue
 

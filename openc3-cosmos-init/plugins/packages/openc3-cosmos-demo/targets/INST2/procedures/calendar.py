@@ -44,6 +44,21 @@ print(act) #=>
 #   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"cdb661b4-a65b-44e7-95e2-5e1dba80c782",
 #   "events"=>[{"time"=>1737128761, "event"=>"created"}], "recurring"=>{}}
 
+# Update act2 with a custom title and notes
+new_start = datetime.datetime.fromtimestamp(act2['start'], tz=datetime.timezone.utc)
+new_stop = datetime.datetime.fromtimestamp(act2['stop'], tz=datetime.timezone.utc) + datetime.timedelta(minutes=30)
+updated = update_timeline_activity("PythonTL",
+    id=act2['start'],
+    kind="COMMAND", start=new_start, stop=new_stop,
+    uuid=act2['uuid'],
+    data={'command': "INST COLLECT with TYPE NORMAL, DURATION 10",
+          'customTitle': "Extended Collection",
+          'notes': "Duration extended per ops request"})
+print(updated)
+check_expression(f"'{updated['data']['customTitle']}' == 'Extended Collection'")
+check_expression(f"'{updated['data']['notes']}' == 'Duration extended per ops request'")
+check_expression(f"'{updated['data']['command']}' == 'INST COLLECT with TYPE NORMAL, DURATION 10'")
+
 # Get activities in the past ... should be none
 tlas = get_timeline_activities("PythonTL", start=now - datetime.timedelta(hours=2), stop=now)
 print(tlas)

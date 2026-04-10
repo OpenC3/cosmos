@@ -71,6 +71,20 @@ module OpenC3
         name = TriggerModel.create_unique_name(group: TMO_GROUP, scope: $openc3_scope)
         expect(name).to eql 'TRIG10' # Previous is 9 so now 10
       end
+
+      it "handles more than 10 triggers correctly" do
+        (1..11).each { |i| generate_trigger(name: "TRIG#{i}").create() }
+        name = TriggerModel.create_unique_name(group: TMO_GROUP, scope: $openc3_scope)
+        expect(name).to eql 'TRIG12'
+      end
+
+      it "handles custom named triggers mixed with auto-generated" do
+        generate_trigger(name: 'TRIG1').create()
+        generate_trigger(name: 'MyCustomTrig').create()
+        generate_trigger(name: 'TRIG5').create()
+        name = TriggerModel.create_unique_name(group: TMO_GROUP, scope: $openc3_scope)
+        expect(name).to eql 'TRIG6' # Max numeric is 5, so next is 6
+      end
     end
 
     describe "self.all" do
@@ -228,6 +242,36 @@ module OpenC3
         expect(json['operator']).to eql('>')
         expect(json['right']).to_not be_nil()
         expect(json['dependents']).to_not be_nil()
+        expect(json['label']).to be_nil()
+      end
+    end
+
+    describe "label" do
+      it "defaults to nil" do
+        model = generate_trigger()
+        expect(model.label).to be_nil()
+        expect(model.as_json()['label']).to be_nil()
+      end
+
+      it "persists through create and reload" do
+        model = generate_trigger()
+        model.label = 'My Trigger'
+        model.create()
+        loaded = TriggerModel.get(name: 'TRIG1', group: TMO_GROUP, scope: $openc3_scope)
+        expect(loaded.label).to eql('My Trigger')
+      end
+
+      it "can be updated and cleared" do
+        model = generate_trigger()
+        model.create()
+        model.label = 'Updated Label'
+        model.update()
+        loaded = TriggerModel.get(name: 'TRIG1', group: TMO_GROUP, scope: $openc3_scope)
+        expect(loaded.label).to eql('Updated Label')
+        loaded.label = nil
+        loaded.update()
+        cleared = TriggerModel.get(name: 'TRIG1', group: TMO_GROUP, scope: $openc3_scope)
+        expect(cleared.label).to be_nil()
       end
     end
 

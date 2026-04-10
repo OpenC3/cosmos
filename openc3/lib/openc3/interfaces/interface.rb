@@ -295,17 +295,12 @@ module OpenC3
           else
             data, extra = protocol.read_data(data)
           end
-          protocol.read_protocol_output_base(data, extra) unless blank_test
+          protocol.read_protocol_output_base(data, extra) unless blank_test or data == :STOP or data == :DISCONNECT
           if data == :DISCONNECT
             Logger.info("#{@name}: Protocol #{protocol.class} read_data requested disconnect")
             return nil
           end
           break if data == :STOP
-          if blank_test
-            # This means the blank test returned something so we can log
-            protocol.read_protocol_input_base('', nil)
-            protocol.read_protocol_output_base(data, extra)
-          end
         end
         next if data == :STOP
 
