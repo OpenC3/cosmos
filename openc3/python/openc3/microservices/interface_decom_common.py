@@ -50,7 +50,7 @@ def handle_inject_tlm_with_ack(inject_tlm_json, msg_id, scope, logger=None):
     except Exception as error:
         if logger:
             logger.error(f"inject_tlm error due to {error}")
-        msg_hash = {"id": msg_id, "result": "ERROR", "message": str(error)}
+        msg_hash = {"id": msg_id, "result": str(error)}
     Topic.write_topic(ack_topic, msg_hash)
 
 
@@ -78,7 +78,7 @@ def handle_build_cmd(build_cmd_json, msg_id, scope):
     # write the ACKCMD}TARGET topic and allow the TelemetryDecomTopic.build_cmd to return
     except Exception as error:
         # Return only the error message (not full traceback) to match Ruby behavior
-        msg_hash = {"id": msg_id, "result": "ERROR", "message": str(error)}
+        msg_hash = {"id": msg_id, "result": str(error)}
     Topic.write_topic(ack_topic, msg_hash)
 
 
@@ -106,5 +106,5 @@ def handle_get_tlm_buffer(get_tlm_buffer_json, msg_id, scope):
     # write the ACKCMD}TARGET topic and allow the source to return
     except Exception as error:
         # Return only the error message (not full traceback) to match Ruby behavior
-        msg_hash = {"id": msg_id, "result": "ERROR", "message": str(error)}
+        msg_hash = {"id": msg_id, "result": str(error)}
     Topic.write_topic(ack_topic, msg_hash)

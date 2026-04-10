@@ -37,7 +37,7 @@ module OpenC3
             if msg_hash["result"] == "SUCCESS"
               return msg_hash
             else
-              raise msg_hash["message"]
+              raise msg_hash["result"]
             end
           end
         end
@@ -62,7 +62,7 @@ module OpenC3
             if msg_hash["result"] == "SUCCESS"
               return
             else
-              raise msg_hash["message"]
+              raise msg_hash["result"]
             end
           end
         end
@@ -92,7 +92,7 @@ module OpenC3
               end
               return msg_hash
             else
-              raise msg_hash["message"]
+              raise msg_hash["result"]
             end
           end
         end

@@ -50,8 +50,7 @@ module OpenC3
         @logger.error "inject_tlm error due to #{error.message}"
         msg_hash = {
           id: msg_id,
-          result: 'ERROR',
-          message: error.message
+          result: error.message
         }
       end
       Topic.write_topic(ack_topic, msg_hash)
@@ -82,8 +81,7 @@ module OpenC3
       rescue => error
         msg_hash = {
           id: msg_id,
-          result: 'ERROR',
-          message: error.message
+          result: error.message
         }
       end
       Topic.write_topic(ack_topic, msg_hash)
@@ -114,8 +112,7 @@ module OpenC3
       rescue => error
         msg_hash = {
           id: msg_id,
-          result: 'ERROR',
-          message: error.message
+          result: error.message
         }
       end
       Topic.write_topic(ack_topic, msg_hash)

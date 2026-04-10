@@ -56,7 +56,7 @@ class DecomInterfaceTopic(Topic):
                         msg_hash["buffer"] = json.loads(msg_hash["buffer"], cls=JsonDecoder)
                         return msg_hash
                     else:
-                        raise RuntimeError(msg_hash[b"message"])
+                        raise RuntimeError(msg_hash[b"result"].decode())
         raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack. Does target '{target_name}' exist?")
 
     @classmethod
@@ -89,7 +89,7 @@ class DecomInterfaceTopic(Topic):
                     if msg_hash[b"result"] == b"SUCCESS":
                         return
                     else:
-                        raise RuntimeError(msg_hash[b"message"])
+                        raise RuntimeError(msg_hash[b"result"].decode())
         raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack. Does target '{target_name}' exist?")
 
     @classmethod
@@ -120,5 +120,5 @@ class DecomInterfaceTopic(Topic):
                             msg_hash["extra"] = json.loads(extra)
                         return msg_hash
                     else:
-                        raise RuntimeError(msg_hash[b"message"])
+                        raise RuntimeError(msg_hash[b"result"].decode())
         raise RuntimeError(f"Timeout of {timeout}s waiting for ack. Does target '{target_name}' exist?")
