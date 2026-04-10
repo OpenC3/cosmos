@@ -15,6 +15,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'json'
 require 'openc3/utilities/store'
 
 module OpenC3
@@ -154,22 +155,54 @@ module OpenC3
     end
 
     def extract_fields_from_check_text(text)
-      split_string = text.split
-      raise "ERROR: Check improperly specified: #{text}" if split_string.length < 3
+      target_name, packet_name, item_name, comparison = text.split(nil, 4) # Ruby: second split arg is max number of resultant elements
+      raise "ERROR: Check improperly specified: #{text}" if item_name.nil?
 
-      target_name = split_string[0]
-      packet_name = split_string[1]
-      item_name = split_string[2]
-      comparison_to_eval = nil
-      return [target_name, packet_name, item_name, comparison_to_eval] if split_string.length == 3
-      raise "ERROR: Check improperly specified: #{text}" if split_string.length < 4
+      # comparison is either nil, the comparison string, or an empty string.
+      # We need it to not be an empty string.
+      comparison = nil if comparison&.length == 0
 
-      split_string = text.split(/ /) # Split on regex spaces to preserve spaces in comparison
-      index = split_string.rindex(item_name)
-      comparison_to_eval = split_string[(index + 1)..(split_string.length - 1)].join(" ")
-      raise "ERROR: Use '==' instead of '=': #{text}" if split_string[3] == '='
+      operator, _ = comparison&.split(nil, 2)
+      raise "ERROR: Use '==' instead of '=' in #{text}" if operator == "="
 
-      return [target_name, packet_name, item_name, comparison_to_eval]
+      return [target_name, packet_name, item_name, comparison]
+    end
+
+    # Splits `check()` comparison expressions, e.g. "== 'foo bar'" becomes ["==", "foo bar"]
+    def extract_operator_and_operand_from_comparison(comparison)
+      valid_operators = ["==", "!=", ">=", "<=", ">", "<", "in"]
+
+      operator, operand = comparison.split(nil, 2) # Ruby: second split arg is max number of resultant elements
+
+      if operand.nil?
+        # Don't allow operator without operand
+        raise "ERROR: Invalid comparison, must specify an operand: #{comparison}" if !operator.nil?
+        return [nil, nil]
+      end
+
+      raise "ERROR: Invalid operator: '#{operator}'" unless valid_operators.include?(operator)
+
+      # Handle string operand: remove surrounding double/single quotes
+      if operand.match?(/^(['"])(.*)\1$/m) # Starts with single or double quote, and ends with matching quote
+        operand = operand[1..-2]
+        return [operator, operand]
+      end
+
+      # Handle other operand types
+      if operand == "nil"
+        operand = nil
+      elsif operand == "false"
+        operand = false
+      elsif operand == "true"
+        operand = true
+      else
+        begin
+          operand = JSON.parse(operand)
+        rescue JSON::ParserError
+          raise "ERROR: Unable to parse operand: #{operand}"
+        end
+      end
+      return [operator, operand]
     end
   end
 end

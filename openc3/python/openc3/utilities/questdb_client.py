@@ -628,23 +628,6 @@ class QuestDBClient:
             return "RAW"
 
     @staticmethod
-    def time_where_clause(start_time, end_time, prefix=""):
-        """Build a SQL WHERE clause for PACKET_TIMESECONDS range filtering.
-
-        Args:
-            start_time: Start timestamp (nanoseconds)
-            end_time: End timestamp (nanoseconds), or None for open-ended
-            prefix: Table alias prefix (e.g., 'T0.') — default ''
-
-        Returns:
-            SQL WHERE clause fragment (includes leading space)
-        """
-        where = f" WHERE {prefix}PACKET_TIMESECONDS >= {start_time}"
-        if end_time:
-            where += f" AND {prefix}PACKET_TIMESECONDS < {end_time}"
-        return where
-
-    @staticmethod
     def fetch_packet_def(target_name, packet_name, type="TLM", scope="DEFAULT"):
         """Fetch a packet definition from TargetModel, returning None if not found.
 

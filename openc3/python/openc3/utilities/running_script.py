@@ -1155,11 +1155,9 @@ class RunningScript:
         elif exc_type == CheckError:
             Logger.error(str(exc_value))
         else:
-            formatted_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
-            # Print the last 4 lines to show the exception, the ^^^^ line,
-            # the line itself, and the filename / line number
-            Logger.error("".join(formatted_lines[-4:]))
+            Logger.error(f"{exc_type.__name__} : {exc_value}")
             if os.environ.get("OPENC3_FULL_BACKTRACE"):
+                formatted_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
                 Logger.error("\n".join(formatted_lines))
 
         self.handle_output_io(filename, line_number)

@@ -441,7 +441,7 @@ class TcpipServerInterface(StreamInterface):
                         if read_interface_info.interface.stream_log_pair:
                             read_interface_info.interface.stream_log_pair.stop()
                         break
-            if index_to_delete:
+            if index_to_delete is not None:
                 del self.read_interface_infos[index_to_delete]
         except Exception:
             Logger.error(f"{self.name}: Tcpip server read thread unexpectedly died")

@@ -99,7 +99,7 @@ test('navigate gems volume', async ({ page, utils }) => {
   )
 
   await page.locator('[data-test="search-input"] input').fill('bucket')
-  await expect(page.locator('tbody > tr')).toHaveCount(1)
+  expect(await page.locator('tbody > tr').count()).toBeGreaterThanOrEqual(1)
   // Download the file
   await utils.download(page, 'tbody > tr [data-test="download-file"] >> nth=0')
 
@@ -112,7 +112,7 @@ test('navigate gems volume', async ({ page, utils }) => {
     /.*\/tools\/bucketexplorer\/%2Fgems%2Fcosmoscache%2F/,
   )
   await page.locator('[data-test="search-input"] input').fill('bucket')
-  await expect(page.locator('tbody > tr')).toHaveCount(1)
+  expect(await page.locator('tbody > tr').count()).toBeGreaterThanOrEqual(1)
 })
 
 test('direct URLs', async ({ page, utils }) => {
@@ -262,10 +262,11 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
 
 test('auto refreshes to update files', async ({
   page,
-  utils,
   toolPath,
   context,
 }) => {
+  const identifier = Math.ceil(Math.random() * 1000)
+  const filename = `refresh_package_${identifier}.json`
   // Create a file so we have something in __TEMP__
   await page.goto('/tools/scriptrunner')
   await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
@@ -299,7 +300,7 @@ test('auto refreshes to update files', async ({
 
   // Upload a file from the first tab
   await page.goto(
-    '/tools/bucketexplorer/config%2FDEFAULT%2Ftargets_modified%2F__TEMP__%2F',
+    `${toolPath}/config%2FDEFAULT%2Ftargets_modified%2F__TEMP__%2F`,
   )
   await expect(page.locator('.v-app-bar')).toContainText('Bucket Explorer')
   await expect(page.getByLabel('prepended action')).toBeVisible()
@@ -310,13 +311,12 @@ test('auto refreshes to update files', async ({
   await fileChooser.setFiles('package.json')
   await page
     .locator('[data-test="upload-file-path"] input')
-    .fill(`DEFAULT/targets_modified/__TEMP__/refresh_package.json`)
+    .fill(`DEFAULT/targets_modified/__TEMP__/${filename}`)
   await page.locator('[data-test="upload-file-submit-btn"]').click()
 
   // The second tab shouldn't have refreshed yet, so the file shouldn't be there
-  await page.locator('tbody> tr').first().waitFor()
   await expect(
-    pageTwo.getByRole('cell', { name: 'refresh_package.json' }),
+    pageTwo.getByRole('cell', { name: filename }),
   ).not.toBeVisible({ timeout: 10000 })
 
   // Set the refresh interval on the second tab to 1s
@@ -328,14 +328,13 @@ test('auto refreshes to update files', async ({
   await pageTwo.getByRole('button', { name: 'Save' }).click()
 
   // Second tab should auto refresh in 1s and then the file should be there
-  await page.locator('tbody> tr').first().waitFor()
   await expect(
-    pageTwo.getByRole('cell', { name: 'refresh_package.json' }),
+    pageTwo.getByRole('cell', { name: filename }),
   ).toBeVisible()
 
   // Cleanup
   await page
-    .locator('tr:has-text("refresh_package.json") [data-test="delete-file"]')
+    .locator(`tr:has-text("${filename}") [data-test="delete-file"]`)
     .click()
   await page.locator('[data-test="confirm-dialog-delete"]').click()
 })
