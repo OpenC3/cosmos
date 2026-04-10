@@ -582,6 +582,16 @@ export default {
       if (this.selectedPacketName === 'ALL') {
         return
       }
+      // In glob mode, skip API calls if the packet name is free text (not a known packet)
+      if (this.allowGlob && typeof this.selectedPacketName === 'string') {
+        const knownPacket = this.packetNames.find(
+          (p) => this.selectedPacketName === p.value,
+        )
+        if (!knownPacket && this.selectedPacketName !== 'LATEST') {
+          this.internalDisabled = false
+          return
+        }
+      }
       this.internalDisabled = true
 
       if (this.selectedPacketName === 'LATEST') {
@@ -669,14 +679,18 @@ export default {
       // the @change handler is fired but the value is null
       // In this case we don't want to update packet details
       if (value !== null) {
-        if (
-          this.allowGlob &&
-          typeof value === 'string' &&
-          /[*?[]/.test(value)
-        ) {
-          // Glob pattern: skip API calls, enable the item field for free-text entry
-          this.itemsDisabled = false
-          this.internalDisabled = false
+        if (this.allowGlob && typeof value === 'string') {
+          // In glob mode, only call the API if the value matches a known packet
+          const knownPacket = this.packetNames.find(
+            (p) => value === p.value,
+          )
+          if (knownPacket) {
+            this.updatePacketDetails(value)
+          } else {
+            // Free-text entry (partial or glob): skip API calls
+            this.itemsDisabled = false
+            this.internalDisabled = false
+          }
         } else {
           this.updatePacketDetails(value)
         }
