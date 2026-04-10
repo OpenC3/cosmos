@@ -132,6 +132,56 @@ dev-tlm-viewer *FLAGS:
     just dev openc3-cosmos-tool-tlmviewer {{ FLAGS }}
 
 # ---------------------------------------------------------------------------
+# Linting
+# ---------------------------------------------------------------------------
+
+# Lint a specific package: just lint openc3-cosmos-tool-dataextractor
+lint package:
+    cd {{ plugins_dir }}/{{ package }} && pnpm lint
+
+# Lint and auto-fix a specific package
+lint-fix package:
+    cd {{ plugins_dir }}/{{ package }} && pnpm lint --fix
+
+# Lint all packages that have a lint script
+lint-all:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    failed=0
+    for dir in {{ plugins_dir }}/openc3-*/; do
+        if grep -q '"lint"' "$dir/package.json" 2>/dev/null; then
+            name=$(basename "$dir")
+            echo "Linting $name ..."
+            if (cd "$dir" && pnpm lint --max-warnings 0); then
+                echo "  OK"
+            else
+                echo "  FAILED"
+                failed=$((failed + 1))
+            fi
+        fi
+    done
+    if [ $failed -gt 0 ]; then
+        echo ""
+        echo "$failed package(s) failed linting"
+        exit 1
+    fi
+    echo ""
+    echo "All packages passed!"
+
+# Lint and auto-fix all packages that have a lint script
+lint-fix-all:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for dir in {{ plugins_dir }}/openc3-*/; do
+        if grep -q '"lint"' "$dir/package.json" 2>/dev/null; then
+            name=$(basename "$dir")
+            echo "Fixing $name ..."
+            (cd "$dir" && pnpm lint --fix) || true
+        fi
+    done
+    echo "Done"
+
+# ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
 
