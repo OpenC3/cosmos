@@ -53,7 +53,7 @@ COSMOS specifies a variable sized item with a bit size of 0. When a packet is id
 
 COSMOS has a concept of a derived item which is a telemetry item that doesn't actually exist in the binary data. Derived items are typically computed based on other telemetry items. COSMOS derived items are very similar to real items except they use the special DERIVED data type. Here is how a derived item might look in a telemetry definition.
 
-```ruby
+```cosmos
 ITEM TEMP_AVERAGE 0 0 DERIVED "Average of TEMP1, TEMP2, TEMP3, TEMP4"
 ```
 
@@ -85,7 +85,7 @@ ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
 ```
@@ -110,7 +110,7 @@ Defining PACKET_TIME allows the PACKET_TIMESECONDS and PACKET_TIMEFORMATTED to b
 | Description | Description of this telemetry packet which must be enclosed with quotes | False |
 
 Example Usage:
-```ruby
+```cosmos
 TELEMETRY INST HEALTH_STATUS BIG_ENDIAN "Instrument health and status"
 ```
 
@@ -130,7 +130,7 @@ The following keywords must follow a TELEMETRY keyword.
 | Endianness | Indicates if the item is to be interpreted in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 ITEM PKTID 112 16 UINT "Packet ID"
 ITEM DATA 0 0 DERIVED "Derived data"
 ```
@@ -146,7 +146,7 @@ The following keywords must follow a ITEM keyword.
 | Format | How to format using printf syntax. For example, '0x%0X' will display the value in hex. | True |
 
 Example Usage:
-```ruby
+```cosmos
 FORMAT_STRING "0x%0X"
 ```
 
@@ -159,7 +159,7 @@ FORMAT_STRING "0x%0X"
 | Abbreviated | Abbreviation for the units, e.g. C | True |
 
 Example Usage:
-```ruby
+```cosmos
 UNITS Celsius C
 UNITS Kilometers KM
 ```
@@ -182,7 +182,7 @@ Meta data is user specific data that can be used by custom tools for various pur
 | Meta Values | One or more values to be stored for this Meta Name | False |
 
 Example Usage:
-```ruby
+```cosmos
 META TEST "This parameter is for test purposes only"
 ```
 
@@ -202,7 +202,7 @@ Keys are often [JSONPath](https://en.wikipedia.org/wiki/JSONPath) or [XPath](htt
 | Key string | The key to access this item | True |
 
 Example Usage:
-```ruby
+```cosmos
 KEY $.book.title
 ```
 
@@ -231,7 +231,7 @@ Key value pairs allow for user friendly strings. For example, you might define s
 | Color | The color the state should be displayed as<br/><br/>Valid Values: <span class="values">GREEN, YELLOW, RED</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 APPEND_ITEM ENABLE 32 UINT "Enable setting"
   STATE FALSE 0
   STATE TRUE 1
@@ -254,12 +254,12 @@ Conversions are implemented in a custom Ruby or Python file which should be loca
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 READ_CONVERSION openc3/conversions/ip_read_conversion.rb
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 READ_CONVERSION ip_read_conversion.rb
 ```
 </TabItem>
@@ -289,7 +289,7 @@ Generic conversions are not a good long term solution. Consider creating a conve
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 APPEND_ITEM ITEM1 32 UINT
   GENERIC_READ_CONVERSION_START
     int(value * 1.5) # Convert the value by a scale factor
@@ -298,7 +298,7 @@ APPEND_ITEM ITEM1 32 UINT
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 APPEND_ITEM ITEM1 32 UINT
   GENERIC_READ_CONVERSION_START
     (value * 1.5).to_i # Convert the value by a scale factor
@@ -341,7 +341,7 @@ If limits are violated a message is printed in the Command and Telemetry Server 
 | Green High Limit | Setting the Green Low and Green High limits defines an "operational limit" which is colored blue by OpenC3. This allows for a distinct desired operational range which is narrower than the green safety limit. If the telemetry value is less than or equal to this value, but greater than the Green Low Limit, a Blue operational condition will be detected. | False |
 
 Example Usage:
-```ruby
+```cosmos
 LIMITS DEFAULT 3 ENABLED -80.0 -70.0 60.0 80.0 -20.0 20.0
 LIMITS TVAC 3 ENABLED -80.0 -30.0 30.0 80.0
 ```
@@ -358,12 +358,12 @@ See the [Limits Response](/docs/configuration/limits-response) documentation for
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 LIMITS_RESPONSE example_limits_response.py 10
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 LIMITS_RESPONSE example_limits_response.rb 10
 ```
 </TabItem>
@@ -387,7 +387,7 @@ This item will not appear in PacketViewer or Item Choosers. It also hides this i
 | Endianness | Indicates if the item is to be interpreted in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 APPEND_ITEM PKTID 16 UINT "Packet ID"
 ```
 
@@ -405,7 +405,7 @@ APPEND_ITEM PKTID 16 UINT "Packet ID"
 | Endianness | Indicates if the item is to be interpreted in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 ID_ITEM PKTID 112 16 UINT 1 "Packet ID which must be 1"
 ```
 
@@ -422,7 +422,7 @@ ID_ITEM PKTID 112 16 UINT 1 "Packet ID which must be 1"
 | Endianness | Indicates if the item is to be interpreted in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 APPEND_ID_ITEM PKTID 16 UINT 1 "Packet ID which must be 1"
 ```
 
@@ -440,7 +440,7 @@ APPEND_ID_ITEM PKTID 16 UINT 1 "Packet ID which must be 1"
 | Endianness | Indicates if the data is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 ARRAY_ITEM ARRAY 64 32 FLOAT 320 "Array of 10 floats"
 ```
 
@@ -457,7 +457,7 @@ ARRAY_ITEM ARRAY 64 32 FLOAT 320 "Array of 10 floats"
 | Endianness | Indicates if the data is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 APPEND_ARRAY_ITEM ARRAY 32 FLOAT 320 "Array of 10 floats"
 ```
 
@@ -494,7 +494,7 @@ Must be used in conjunction with SELECT_TELEMETRY to first select the packet. Ty
 | Item | Name of the item to select for modification | True |
 
 Example Usage:
-```ruby
+```cosmos
 SELECT_TELEMETRY INST HEALTH_STATUS
   SELECT_ITEM TEMP1
     # Define limits for this item, overrides or replaces any existing
@@ -511,7 +511,7 @@ Deleting an item from the packet definition does not remove the defined space fo
 | Item | Name of the item to delete | True |
 
 Example Usage:
-```ruby
+```cosmos
 SELECT_TELEMETRY INST HEALTH_STATUS
   DELETE_ITEM TEMP4
 ```
@@ -527,7 +527,7 @@ Meta data is user specific data that can be used by custom tools for various pur
 | Meta Values | One or more values to be stored for this Meta Name | False |
 
 Example Usage:
-```ruby
+```cosmos
 META FSW_TYPE "struct tlm_packet"
 ```
 
@@ -544,12 +544,12 @@ See the [Processor](/docs/configuration/processors) documentation for more infor
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 PROCESSOR TEMP1HIGH watermark_processor.py TEMP1
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 PROCESSOR TEMP1HIGH watermark_processor.rb TEMP1
 ```
 </TabItem>
@@ -644,7 +644,7 @@ Typically used in a separate configuration file from where the original telemetr
 | Packet Name | Name of the telemetry packet to select | True |
 
 Example Usage:
-```ruby
+```cosmos
 SELECT_TELEMETRY INST HEALTH_STATUS
   SELECT_ITEM TEMP1
     # Define limits for this item, overrides or replaces any existing
@@ -672,7 +672,7 @@ Limits group information is typically kept in a separate configuration file in t
 | Item Name | Name of the telemetry item to add to the group | True |
 
 Example Usage:
-```ruby
+```cosmos
 LIMITS_GROUP SUBSYSTEM
   LIMITS_GROUP_ITEM INST HEALTH_STATUS TEMP1
   LIMITS_GROUP_ITEM INST HEALTH_STATUS TEMP2
@@ -685,7 +685,8 @@ LIMITS_GROUP SUBSYSTEM
 **Example File: TARGET/cmd_tlm/tlm.txt**
 
 {/* prettier-ignore */}
-```ruby
+
+```cosmos
 TELEMETRY TARGET HS BIG_ENDIAN "Health and Status for My Target"
   ITEM CCSDSVER 0 3 UINT "CCSDS PACKET VERSION NUMBER (SEE CCSDS 133.0-B-1)"
   ITEM CCSDSTYPE 3 1 UINT "CCSDS PACKET TYPE (COMMAND OR TELEMETRY)"

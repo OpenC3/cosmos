@@ -24,17 +24,17 @@ When defining command parameters you can choose from the following data types: I
 
 Command Packets and Parameters can be named however you want with very few exceptions. The following is not allowed in Command or Parameter names: `__` (double underscore), `[[` or `]]` (double brackets), whitespace, and ending a name with underscore. While not much else is _explicitly_ restricted we've found the following guidelines to be helpful.
 
-* Use underscores
+- Use underscores
 
-    Command names like `FIRE_THRUSTER` or `SET_MODE` are easy to read and understand. Most parameter names can be a single word like `TYPE`, `DURATION`, or `MODE` because they are unique within each Command.
+  Command names like `FIRE_THRUSTER` or `SET_MODE` are easy to read and understand. Most parameter names can be a single word like `TYPE`, `DURATION`, or `MODE` because they are unique within each Command.
 
-* Be descriptive but succinct
+- Be descriptive but succinct
 
-    A command name like `BUS_FLIGHT_SOFTWARE_ADCS_FIRE_THRUSTER_2` is a valid command name but makes all the drop downs extra long and is a lot to type. A better choice might be `FIRE_THRUSTER with POD 2`. Parameters are a great way to break up complex commands.
+  A command name like `BUS_FLIGHT_SOFTWARE_ADCS_FIRE_THRUSTER_2` is a valid command name but makes all the drop downs extra long and is a lot to type. A better choice might be `FIRE_THRUSTER with POD 2`. Parameters are a great way to break up complex commands.
 
-* Avoid brackets in commands and parameters
+- Avoid brackets in commands and parameters
 
-    Array items use brackets to allow indexing into an individual item. Thus if you use brackets in parameter names it gets confusing as to whether this is a COSMOS [ARRAY_PARAMETER](command#array_parameter) or simply a name with brackets. We support brackets for legacy reasons but avoid them when possible. For example from the Demo: `INST ARYCMD with ARRAY [1, 2, 3, 4]`.
+  Array items use brackets to allow indexing into an individual item. Thus if you use brackets in parameter names it gets confusing as to whether this is a COSMOS [ARRAY_PARAMETER](command#array_parameter) or simply a name with brackets. We support brackets for legacy reasons but avoid them when possible. For example from the Demo: `INST ARYCMD with ARRAY [1, 2, 3, 4]`.
 
 <div style={{"clear": 'both'}}></div>
 
@@ -67,7 +67,7 @@ Here is an example of sending a HAZARDOUS command in Command Sender when Critica
 | Description | Description of this command which must be enclosed with quotes | False |
 
 Example Usage:
-```ruby
+```cosmos
 COMMAND INST COLLECT BIG_ENDIAN "Start collect"
 ```
 
@@ -103,7 +103,7 @@ When Data Type is STRING, BLOCK the remaining parameters are:
 | Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 PARAMETER SYNC 0 32 UINT 0xDEADBEEF 0xDEADBEEF 0xDEADBEEF "Sync pattern"
 PARAMETER DATA 32 32 INT MIN MAX 0 "Data value"
 PARAMETER VALUE 64 32 FLOAT 0 10.5 2.5
@@ -122,7 +122,7 @@ The following keywords must follow a PARAMETER keyword.
 | Format | How to format using printf syntax. For example, '0x%0X' will display the value in hex. | True |
 
 Example Usage:
-```ruby
+```cosmos
 FORMAT_STRING "0x%0X"
 ```
 
@@ -135,7 +135,7 @@ FORMAT_STRING "0x%0X"
 | Abbreviated | Abbreviation for the units, e.g. C | True |
 
 Example Usage:
-```ruby
+```cosmos
 UNITS Celsius C
 UNITS Kilometers KM
 ```
@@ -158,7 +158,7 @@ Meta data is user specific data that can be used by custom tools for various pur
 | Meta Values | One or more values to be stored for this Meta Name | False |
 
 Example Usage:
-```ruby
+```cosmos
 META TEST "This parameter is for test purposes only"
 ```
 
@@ -178,7 +178,7 @@ Keys are often [JSONPath](https://en.wikipedia.org/wiki/JSONPath) or [XPath](htt
 | Key string | The key to access this item | True |
 
 Example Usage:
-```ruby
+```cosmos
 KEY $.book.title
 ```
 
@@ -235,7 +235,7 @@ Key value pairs allow for user friendly strings. For example, you might define s
 | Hazardous Description | String describing why this state is hazardous | False |
 
 Example Usage:
-```ruby
+```cosmos
 APPEND_PARAMETER ENABLE 32 UINT 0 1 0 "Enable setting"
   STATE FALSE 0
   STATE TRUE 1
@@ -283,12 +283,12 @@ values to the command. That can be used to check parameter values passed in.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 WRITE_CONVERSION openc3/conversions/ip_write_conversion.py
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 WRITE_CONVERSION ip_write_conversion.rb
 ```
 </TabItem>
@@ -336,7 +336,7 @@ Generic conversions are not a good long term solution. Consider creating a conve
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
   GENERIC_WRITE_CONVERSION_START
     int(value * 1.5) # Convert the value by a scale factor
@@ -344,7 +344,7 @@ APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 APPEND_PARAMETER ITEM1 32 UINT 0 0xFFFFFFFF 0
   GENERIC_WRITE_CONVERSION_START
     (value * 1.5).to_i # Convert the value by a scale factor
@@ -367,7 +367,7 @@ By default OpenC3 throws an error if you try to write a value which overflows it
 | Behavior | How OpenC3 treats an overflow value. Only applies to signed and unsigned integer data types.<br/><br/>Valid Values: <span class="values">ERROR, ERROR_ALLOW_HEX, TRUNCATE, SATURATE</span> | True |
 
 Example Usage:
-```ruby
+```cosmos
 OVERFLOW TRUNCATE
 ```
 
@@ -405,7 +405,7 @@ When Data Type is STRING, BLOCK the remaining parameters are:
 | Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 APPEND_PARAMETER SYNC 32 UINT 0xDEADBEEF 0xDEADBEEF 0xDEADBEEF "Sync pattern"
 APPEND_PARAMETER VALUE 32 FLOAT 0 10.5 2.5
 APPEND_PARAMETER LABEL 0 STRING "OPENC3" "The label to apply"
@@ -442,7 +442,7 @@ When Data Type is STRING, BLOCK the remaining parameters are:
 | Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 ID_PARAMETER OPCODE 32 32 UINT 2 2 2 "Opcode identifier"
 ```
 
@@ -476,7 +476,7 @@ When Data Type is STRING, BLOCK the remaining parameters are:
 | Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 APPEND_ID_PARAMETER OPCODE 32 UINT 2 2 2 "Opcode identifier"
 ```
 
@@ -494,7 +494,7 @@ APPEND_ID_PARAMETER OPCODE 32 UINT 2 2 2 "Opcode identifier"
 | Endianness | Indicates if the data is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 ARRAY_PARAMETER ARRAY 64 64 FLOAT 640 "Array of 10 64bit floats"
 ```
 
@@ -511,7 +511,7 @@ ARRAY_PARAMETER ARRAY 64 64 FLOAT 640 "Array of 10 64bit floats"
 | Endianness | Indicates if the data is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 APPEND_ARRAY_PARAMETER ARRAY 64 FLOAT 640 "Array of 10 64bit floats"
 ```
 
@@ -548,7 +548,7 @@ Must be used in conjunction with SELECT_COMMAND to first select the packet. Typi
 | Parameter | Name of the parameter to select for modification | True |
 
 Example Usage:
-```ruby
+```cosmos
 SELECT_COMMAND INST COLLECT
   SELECT_PARAMETER DURATION
     # Add units
@@ -565,7 +565,7 @@ Deleting a parameter from the command definition does not remove the defined spa
 | Parameter | Name of the parameter to delete | True |
 
 Example Usage:
-```ruby
+```cosmos
 SELECT_COMMAND INST COLLECT
   DELETE_PARAMETER DURATION
 ```
@@ -597,7 +597,7 @@ Meta data is user specific data that can be used by custom tools for various pur
 | Meta Values | One or more values to be stored for this Meta Name | False |
 
 Example Usage:
-```ruby
+```cosmos
 META FSW_TYPE "struct command"
 ```
 
@@ -726,7 +726,7 @@ Validator class is used to validate the command success or failure with both a p
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 VALIDATOR custom_validator.py
 
 Defined in custom_validator.py:
@@ -754,7 +754,7 @@ class CustomValidator(CommandValidator):
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 VALIDATOR custom_validator.rb
 
 Defined in custom_validator.rb:
@@ -798,7 +798,7 @@ Typically used in a separate configuration file from where the original command 
 | Command Name | Name of the command to select | True |
 
 Example Usage:
-```ruby
+```cosmos
 SELECT_COMMAND INST COLLECT
   SELECT_PARAMETER DURATION
     # Add units
@@ -811,7 +811,8 @@ SELECT_COMMAND INST COLLECT
 **Example File: TARGET/cmd_tlm/cmd.txt**
 
 {/* prettier-ignore */}
-```ruby
+
+```cosmos
 COMMAND TARGET COLLECT_DATA BIG_ENDIAN "Commands my target to collect data"
   PARAMETER CCSDSVER 0 3 UINT 0 0 0 "CCSDS PRIMARY HEADER VERSION NUMBER"
   PARAMETER CCSDSTYPE 3 1 UINT 1 1 1 "CCSDS PRIMARY HEADER PACKET TYPE"

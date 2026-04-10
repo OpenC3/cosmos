@@ -94,7 +94,7 @@ The generic conversion is meant to be a quick and easy way to apply a conversion
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 GENERIC_READ_CONVERSION_START
     packet.read('TEMP1') / 1_000_000
 GENERIC_READ_CONVERSION_END
@@ -104,7 +104,7 @@ CONVERTED_DATA 32 FLOAT
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 GENERIC_READ_CONVERSION_START
   packet.read('TEMP1') / 1_000_000
 GENERIC_READ_CONVERSION_END
@@ -121,13 +121,13 @@ CONVERTED_DATA 32 FLOAT
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 READ_CONVERSION openc3/conversions/bit_reverse_conversion.py
 WRITE_CONVERSION openc3/conversions/bit_reverse_conversion.py
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 READ_CONVERSION bit_reverse_conversion.rb
 WRITE_CONVERSION bit_reverse_conversion.rb
 ```
@@ -144,12 +144,12 @@ For example, 0xFFFF8000 would be converted to '255.255.128.0'.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 READ_CONVERSION openc3/conversions/ip_read_conversion.py
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 READ_CONVERSION ip_read_conversion.rb
 ```
 </TabItem>
@@ -166,12 +166,12 @@ For example, '255.255.128.0' would be converted to 0xFFFF8000.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 WRITE_CONVERSION openc3/conversions/ip_write_conversion.py
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 WRITE_CONVERSION ip_write_conversion.rb
 ```
 </TabItem>
@@ -192,12 +192,12 @@ returned as a Ruby hash or Python dict. The packet object must be defined in the
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 READ_CONVERSION openc3/conversions/object_read_conversion.py CMD INST COLLECT
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 READ_CONVERSION object_read_conversion.rb CMD INST COLLECT
 ```
 </TabItem>
@@ -219,12 +219,12 @@ are the values to write. The packet object must be defined in the target's confi
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 WRITE_CONVERSION openc3/conversions/object_write_conversion.py CMD INST COLLECT
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 WRITE_CONVERSION object_write_conversion.rb CMD INST COLLECT
 ```
 </TabItem>
@@ -241,12 +241,12 @@ For more information see the [Received Time and Packet Time](/docs/configuration
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 READ_CONVERSION openc3/conversions/packet_time_formatted_conversion.py
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 READ_CONVERSION packet_time_formatted_conversion.rb
 ```
 </TabItem>
@@ -263,12 +263,12 @@ For more information see the [Received Time and Packet Time](/docs/configuration
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 READ_CONVERSION openc3/conversions/packet_time_seconds_conversion.py
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 READ_CONVERSION packet_time_seconds_conversion.rb
 ```
 </TabItem>
@@ -286,7 +286,7 @@ For commands, the conversion factor is applied to raw value set by the user (via
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 READ_CONVERSION openc3/conversions/polynomial_conversion.py 10 0.5 0.25
 # Since this is a common conversion it has an alias:
 POLY_READ_CONVERSION 10 0.5 0.25
@@ -297,7 +297,7 @@ POLY_WRITE_CONVERSION 10 0.5 0.25
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 READ_CONVERSION polynomial_conversion.rb 10 0.5 0.25
 # Since this is a common conversion it has an alias:
 POLY_READ_CONVERSION 10 0.5 0.25
@@ -324,14 +324,14 @@ See the [Processor](/docs/configuration/processors) documentation for more infor
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 PROCESSOR TEMP1WATER openc3/conversions/watermark_processor.py TEMP1
 ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
   READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1WATER HIGH_WATER
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
 ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
   READ_CONVERSION processor_conversion.rb TEMP1WATER HIGH_WATER
@@ -349,12 +349,12 @@ This in an internal conversion which is automatically applied to the
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 READ_CONVERSION openc3/conversions/received_count_conversion.py
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 READ_CONVERSION received_count_conversion.rb
 ```
 </TabItem>
@@ -371,12 +371,12 @@ For more information see the [Received Time and Packet Time](/docs/configuration
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 READ_CONVERSION openc3/conversions/received_time_formatted_conversion.py
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 READ_CONVERSION received_time_formatted_conversion.rb
 ```
 </TabItem>
@@ -393,12 +393,12 @@ For more information see the [Received Time and Packet Time](/docs/configuration
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 READ_CONVERSION openc3/conversions/received_time_formatted_conversion.py
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 READ_CONVERSION received_time_formatted_conversion.rb
 ```
 </TabItem>
@@ -417,7 +417,7 @@ For commands, this conversion factor is applied to the raw value set by the user
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 READ_CONVERSION openc3/conversions/segmented_polynomial_conversion.py 0 10 0.5 0.25 # Apply the conversion to all values < 50
 # Since this is a common conversion it has an alias:
 SEG_POLY_READ_CONVERSION 10 0.5 0.25 0 10 0.5 0.25 # Apply the conversion to all values < 50
@@ -432,7 +432,7 @@ SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >=
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 READ_CONVERSION segmented_polynomial_conversion.rb 0 10 0.5 0.25 # Apply the conversion to all values < 50
 # Since this is a common conversion it has an alias:
 SEG_POLY_READ_CONVERSION 10 0.5 0.25 0 10 0.5 0.25 # Apply the conversion to all values < 50
@@ -460,12 +460,12 @@ SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >=
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
 ```
 </TabItem>
@@ -483,12 +483,12 @@ READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 READ_CONVERSION openc3/conversions/unix_time_formatted_conversion.py TIMESEC TIMEUS
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 READ_CONVERSION unix_time_formatted_conversion.rb TIMESEC TIMEUS
 ```
 </TabItem>
@@ -506,12 +506,12 @@ READ_CONVERSION unix_time_formatted_conversion.rb TIMESEC TIMEUS
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 READ_CONVERSION openc3/conversions/unix_time_seconds_conversion.py TIMESEC TIMEUS
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 READ_CONVERSION unix_time_seconds_conversion.rb TIMESEC TIMEUS
 ```
 </TabItem>

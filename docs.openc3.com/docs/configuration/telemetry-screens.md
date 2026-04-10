@@ -38,77 +38,79 @@ The `api` object provides methods for commanding and telemetry operations:
 
 #### Commanding
 
-| Method | Description |
-| ------ | ----------- |
-| `api.cmd(target_name, command_name, params)` | Sends a command with hazardous and range checks. Can also use string syntax: `api.cmd("INST COLLECT with TYPE NORMAL")` |
-| `api.cmd_no_checks(target_name, command_name, params)` | Sends a command without hazardous or range checks |
-| `api.cmd_no_hazardous_check(target_name, command_name, params)` | Sends a command without hazardous checks |
-| `api.cmd_no_range_check(target_name, command_name, params)` | Sends a command without range checks |
-| `api.cmd_raw(...)` | Sends a command without converting parameter values |
-| `api.cmd_raw_no_checks(...)` | Sends a raw command without any checks |
-| `api.cmd_raw_no_hazardous_check(...)` | Sends a raw command without hazardous checks |
-| `api.cmd_raw_no_range_check(...)` | Sends a raw command without range checks |
+| Method                                                          | Description                                                                                                             |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `api.cmd(target_name, command_name, params)`                    | Sends a command with hazardous and range checks. Can also use string syntax: `api.cmd("INST COLLECT with TYPE NORMAL")` |
+| `api.cmd_no_checks(target_name, command_name, params)`          | Sends a command without hazardous or range checks                                                                       |
+| `api.cmd_no_hazardous_check(target_name, command_name, params)` | Sends a command without hazardous checks                                                                                |
+| `api.cmd_no_range_check(target_name, command_name, params)`     | Sends a command without range checks                                                                                    |
+| `api.cmd_raw(...)`                                              | Sends a command without converting parameter values                                                                     |
+| `api.cmd_raw_no_checks(...)`                                    | Sends a raw command without any checks                                                                                  |
+| `api.cmd_raw_no_hazardous_check(...)`                           | Sends a raw command without hazardous checks                                                                            |
+| `api.cmd_raw_no_range_check(...)`                               | Sends a raw command without range checks                                                                                |
 
 #### Telemetry
 
-| Method | Description |
-| ------ | ----------- |
-| `api.tlm(target_name, packet_name, item_name, value_type)` | Returns a Promise that resolves with the telemetry value. Can also use string syntax: `api.tlm("INST HEALTH_STATUS TEMP1")` |
-| `api.get_tlm_packet(target_name, packet_name, value_type, stale_time)` | Returns a Promise that resolves with the entire telemetry packet |
+| Method                                                                 | Description                                                                                                                 |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `api.tlm(target_name, packet_name, item_name, value_type)`             | Returns a Promise that resolves with the telemetry value. Can also use string syntax: `api.tlm("INST HEALTH_STATUS TEMP1")` |
+| `api.get_tlm_packet(target_name, packet_name, value_type, stale_time)` | Returns a Promise that resolves with the entire telemetry packet                                                            |
 
 #### Limits
 
-| Method | Description |
-| ------ | ----------- |
-| `api.enable_limits(target, packet, item)` | Enables limits checking for an item |
-| `api.disable_limits(target, packet, item)` | Disables limits checking for an item |
-| `api.get_out_of_limits()` | Returns array of items currently out of limits |
-| `api.get_overall_limits_state(ignored)` | Returns the overall limits state |
+| Method                                     | Description                                    |
+| ------------------------------------------ | ---------------------------------------------- |
+| `api.enable_limits(target, packet, item)`  | Enables limits checking for an item            |
+| `api.disable_limits(target, packet, item)` | Disables limits checking for an item           |
+| `api.get_out_of_limits()`                  | Returns array of items currently out of limits |
+| `api.get_overall_limits_state(ignored)`    | Returns the overall limits state               |
 
 #### Utilities
 
-| Method | Description |
-| ------ | ----------- |
+| Method              | Description                      |
+| ------------------- | -------------------------------- |
 | `api.open_tab(url)` | Opens a URL in a new browser tab |
 
 **Example using telemetry in a command:**
 
 ```javascript
-api.tlm('INST PARAMS VALUE3', 'RAW').then(dur => api.cmd('INST COLLECT with DURATION '+dur))
+api
+  .tlm("INST PARAMS VALUE3", "RAW")
+  .then((dur) => api.cmd("INST COLLECT with DURATION " + dur));
 ```
 
 ### screen
 
 The `screen` object provides methods for interacting with widgets and screens:
 
-| Method | Description |
-| ------ | ----------- |
-| `screen.getNamedWidget(name)` | Returns a reference to a named widget (see NAMED_WIDGET) |
-| `screen.open(target, screen)` | Opens another telemetry screen |
-| `screen.close(target, screen)` | Closes a specific telemetry screen |
-| `screen.closeAll()` | Closes all open telemetry screens |
+| Method                         | Description                                              |
+| ------------------------------ | -------------------------------------------------------- |
+| `screen.getNamedWidget(name)`  | Returns a reference to a named widget (see NAMED_WIDGET) |
+| `screen.open(target, screen)`  | Opens another telemetry screen                           |
+| `screen.close(target, screen)` | Closes a specific telemetry screen                       |
+| `screen.closeAll()`            | Closes all open telemetry screens                        |
 
 **Example using named widgets:**
 
 ```javascript
-var type = screen.getNamedWidget('COLLECT_TYPE').text()
-api.cmd('INST COLLECT with TYPE '+type)
+var type = screen.getNamedWidget("COLLECT_TYPE").text();
+api.cmd("INST COLLECT with TYPE " + type);
 ```
 
 ### runScript
 
 The `runScript` function starts a script in Script Runner:
 
-| Syntax | Description |
-| ------ | ----------- |
-| `runScript(scriptName)` | Runs the script and opens Script Runner |
-| `runScript(scriptName, false)` | Runs the script without opening Script Runner |
-| `runScript(scriptName, true, {ENV_VAR: 'value'})` | Runs the script with environment variables |
+| Syntax                                            | Description                                   |
+| ------------------------------------------------- | --------------------------------------------- |
+| `runScript(scriptName)`                           | Runs the script and opens Script Runner       |
+| `runScript(scriptName, false)`                    | Runs the script without opening Script Runner |
+| `runScript(scriptName, true, {ENV_VAR: 'value'})` | Runs the script with environment variables    |
 
 **Example:**
 
 ```javascript
-runScript('INST/procedures/collect.rb', true, {TYPE: 'NORMAL'})
+runScript("INST/procedures/collect.rb", true, { TYPE: "NORMAL" });
 ```
 
 # Screen Keywords
@@ -126,7 +128,7 @@ The SCREEN keyword is the first keyword in any telemetry screen definition. It d
 | Polling Period | Number of seconds between screen updates. 0 means disable polling. | True |
 
 Example Usage:
-```ruby
+```cosmos
 SCREEN AUTO AUTO 1.0
 ```
 
@@ -144,7 +146,7 @@ All layout widgets must be closed to properly identify where they stop. For exam
 | value | Items from packets with RECEIVED_TIMESECONDS greater than this value in the past will be marked stale. The default is 30s. Recommend a minimum of 2s to avoid false positives due to race conditions. | True |
 
 Example Usage:
-```ruby
+```cosmos
 STALE_TIME 5 # Number of seconds to wait before marking data stale
 ```
 
@@ -158,7 +160,7 @@ STALE_TIME 5 # Number of seconds to wait before marking data stale
 | Setting Value(s) | See SETTING for details. | False |
 
 Example Usage:
-```ruby
+```cosmos
 GLOBAL_SETTING LABELVALUELIMITSBAR TEXTCOLOR BLACK
 ```
 
@@ -175,7 +177,7 @@ Subsettings are only valid for widgets that are made up of more than one subwidg
 | Setting Value(s) | See SETTING for details. | False |
 
 Example Usage:
-```ruby
+```cosmos
 # Set all text color to white for labelvaluelimitsbars
 GLOBAL_SUBSETTING LABELVALUELIMITSBAR 0 TEXTCOLOR white
 ```
@@ -204,7 +206,7 @@ WIDTH supports [css units](https://www.w3schools.com/cssref/css_units.php) with 
 | Width | Width in pixels or explicitly declared with units | True |
 
 Example Usage:
-```ruby
+```cosmos
 LABEL "THIS IS A TEST"
   SETTING WIDTH 50
 LABEL "THIS IS A TEST"
@@ -223,7 +225,7 @@ HEIGHT supports [css units](https://www.w3schools.com/cssref/css_units.php) with
 | Height | Height in pixels or explicitly declared with units | True |
 
 Example Usage:
-```ruby
+```cosmos
 LABEL "THIS IS A TEST"
   SETTING BACKCOLOR BLUE
   SETTING HEIGHT 50
@@ -244,7 +246,7 @@ MARGIN supports [css units](https://www.w3schools.com/cssref/css_units.php) with
 | Size | Size in pixels or explicitly declared with units | True |
 
 Example Usage:
-```ruby
+```cosmos
 LABEL "THIS IS A TEST"
   SETTING BACKCOLOR BLUE
 LABEL "THIS IS A TEST"
@@ -266,7 +268,7 @@ PADDING supports [css units](https://www.w3schools.com/cssref/css_units.php) wit
 | Size | Size in pixels or explicitly declared with units | True |
 
 Example Usage:
-```ruby
+```cosmos
 LABEL "THIS IS A TEST"
   SETTING BACKCOLOR BLUE
 LABEL "THIS IS A TEST"
@@ -288,7 +290,7 @@ LABEL "THIS IS A TEST"
 | Blue value | Blue value of the RGB value | False |
 
 Example Usage:
-```ruby
+```cosmos
 LABEL "THIS IS A TEST"
   SETTING BACKCOLOR red
 LABEL "THIS IS A TEST"
@@ -307,7 +309,7 @@ LABEL "THIS IS A TEST"
 | Blue value | Blue value of the RGB value | False |
 
 Example Usage:
-```ruby
+```cosmos
 LABEL "THIS IS A TEST"
   SETTING TEXTCOLOR red
 LABEL "THIS IS A TEST"
@@ -326,7 +328,7 @@ LABEL "THIS IS A TEST"
 | Blue value | Blue value of the RGB value | False |
 
 Example Usage:
-```ruby
+```cosmos
 HORIZONTAL
   LABEL "Label 1"
 END
@@ -348,7 +350,7 @@ SETTING BORDERCOLOR 155 50 155
 | Value | CSS Value | True |
 
 Example Usage:
-```ruby
+```cosmos
 LABEL "Label 1"
   SETTING RAW font-size 30px
 ```
@@ -367,7 +369,7 @@ Subsettings are only valid for widgets that are made up of more than one subwidg
 | Setting Value(s) | See SETTING for details. | False |
 
 Example Usage:
-```ruby
+```cosmos
 VERTICALBOX
   LABELVALUE INST HEALTH_STATUS TEMP1
     SUBSETTING 0 TEXTCOLOR blue # Change the label's text to blue
@@ -389,7 +391,7 @@ TOOLTIP applies a custom hover tooltip to the widget defined immediately before 
 | Delay | The delay in milliseconds before the tooltip appears (default = 600). | False |
 
 Example Usage:
-```ruby
+```cosmos
 LED INST PARAMS VALUE5 RAW 25 20
   SETTING LED_COLOR 0 GREEN
   SETTING LED_COLOR 1 RED
@@ -414,7 +416,7 @@ getNamedWidget returns the widget itself and thus must be operated on using meth
 | Widget Parameters | The unique parameters for the given widget type | True |
 
 Example Usage:
-```ruby
+```cosmos
 NAMED_WIDGET DURATION TEXTFIELD
 BUTTON "Push" "screen.getNamedWidget('DURATION').text()"
 ```
@@ -437,7 +439,7 @@ The screen defaults to a vertical layout, so if no layout widgets are specified,
 | Margin | Margin between widgets (default = 0px) | False |
 
 Example Usage:
-```ruby
+```cosmos
 VERTICAL 5px
   LABEL "TEST"
   LABEL "SCREEN"
@@ -457,7 +459,7 @@ The VERTICALBOX widget sizes itself to fit its contents vertically and to fit th
 | Margin | Margin between widgets (default = 0px) | False |
 
 Example Usage:
-```ruby
+```cosmos
 VERTICALBOX Info
   SUBSETTING 1 RAW border "1px dashed green"
   LABEL "TEST"
@@ -477,7 +479,7 @@ The HORIZONTAL widget sizes itself to fit its contents
 | Margin | Margin between widgets (default = 0px) | False |
 
 Example Usage:
-```ruby
+```cosmos
 HORIZONTAL 100
   LABEL "TEST"
   LABEL "SCREEN"
@@ -497,7 +499,7 @@ The HORIZONTALBOX widget sizes itself to fit its contents
 | Margin | Margin between widgets (default = 0px) | False |
 
 Example Usage:
-```ruby
+```cosmos
 HORIZONTALBOX Info 10
   SUBSETTING 0 RAW text-align CENTER
   SUBSETTING 1 RAW border "1px solid blue"
@@ -519,7 +521,7 @@ The MATRIXBYCOLUMNS widget sizes itself to fit its contents
 | Margin | Margin between widgets (default = 0px) | False |
 
 Example Usage:
-```ruby
+```cosmos
 MATRIXBYCOLUMNS 3 10
   LABEL "COL 1"
   LABEL "COL 2"
@@ -543,7 +545,7 @@ The SCROLLWINDOW widget sizes itself to fit the screen in which it is contained
 | Margin | Margin between widgets (default = 0px) | False |
 
 Example Usage:
-```ruby
+```cosmos
 SCROLLWINDOW 100 10
   VERTICAL
     LABEL "100"
@@ -573,7 +575,7 @@ END
 | Tab text | Text to display in the tab | True |
 
 Example Usage:
-```ruby
+```cosmos
 TABBOOK
   TABITEM "Tab 1"
     LABEL "100"
@@ -598,7 +600,7 @@ END
 | Height | Height of the widget | False |
 
 Example Usage:
-```ruby
+```cosmos
 IFRAME https://openc3.com 900 450
 ```
 ![IFRAME](/img/telemetry_viewer/widgets/iframe.png)
@@ -620,7 +622,7 @@ Generally, label widgets contain a telemetry mnemonic and are placed next to the
 | Text | Text to display on the label | True |
 
 Example Usage:
-```ruby
+```cosmos
 LABEL "Note: This is only a warning"
 ```
 ![LABEL](/img/telemetry_viewer/widgets/label.png)
@@ -631,7 +633,7 @@ LABEL "Note: This is only a warning"
 
 
 Example Usage:
-```ruby
+```cosmos
 LABEL Over
 HORIZONTALLINE
 LABEL Under
@@ -647,7 +649,7 @@ LABEL Under
 | Text | Text to display | True |
 
 Example Usage:
-```ruby
+```cosmos
 TITLE "Title"
 HORIZONTALLINE
 LABEL "Label"
@@ -664,7 +666,7 @@ LABEL "Label"
 | Height | Height of the spacer in pixels | True |
 
 Example Usage:
-```ruby
+```cosmos
 VERTICAL 3
   LABEL "Spacer below"
   SPACER 0 100
@@ -684,7 +686,7 @@ END
 | Height | Height of the widget in pixels (default = 300) | False |
 
 Example Usage:
-```ruby
+```cosmos
 FILEDISPLAY "INST/data/sample.json" 400 200
 ```
 
@@ -696,7 +698,7 @@ FILEDISPLAY "INST/data/sample.json" 400 200
 | File path | Path to a file relative to the target folder (e.g. "INST/procedures/file.rb"). Multiple file paths can be provided to compare checksums. | True |
 
 Example Usage:
-```ruby
+```cosmos
 FILECHECKSUM "INST/data/sample.json"
 FILECHECKSUM "INST/data/sample.json" "INST2/data/sample.json"
 FILECHECKSUM "INST/data/file1.bin" "INST/data/file2.bin" "INST/data/file3.bin"
@@ -723,7 +725,7 @@ Telemetry widgets are used to display telemetry values. The first parameters to 
 | Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 ARRAY INST HEALTH_STATUS ARY 250 80 "0x%x" 6 FORMATTED
 ARRAY INST HEALTH_STATUS ARY2 200 100 nil 4 FORMATTED
 ```
@@ -737,7 +739,7 @@ The item can either be a simple array or a 2D array of x values and y values, e.
 
 
 Example Usage:
-```ruby
+```cosmos
 ARRAYPLOT
   SETTING TITLE "Array Data"
   SETTING ITEM INST HEALTH_STATUS ARY
@@ -835,7 +837,7 @@ The following settings apply to ARRAYPLOT. They are applied using the SETTING ke
 | Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 BLOCK INST IMAGE IMAGE 620 200 "%02X" 4 4 "0x%08X:"
 ```
 ![BLOCK](/img/telemetry_viewer/widgets/block.png)
@@ -856,7 +858,7 @@ Data is formatted by the specified string rather than by a format string given i
 | Number of characters | The number of characters wide to make the value box (default = 12) | False |
 
 Example Usage:
-```ruby
+```cosmos
 FORMATVALUE INST LATEST TIMESEC %012u CONVERTED 20
 FORMATVALUE INST LATEST TEMP1 %.2f CONVERTED 20
 ```
@@ -879,7 +881,7 @@ See the LED widget for more information
 | Justification | How to justify the label and LED together. The default of 'SPLIT' aligns the label to the left and the LED to the right with any additional space going between them. 'CENTER' pushes the label and LED together with any additional space to the left and right. 'LEFT' or 'RIGHT' pushes them to the respective side with the space going on the opposite.<br/><br/>Valid Values: <span class="values">SPLIT, CENTER, LEFT, RIGHT</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 LABELLED INST PARAMS VALUE1
   SETTING LED_COLOR GOOD GREEN
   SETTING LED_COLOR BAD RED
@@ -908,7 +910,7 @@ The following settings apply to LABELLED. They are applied using the SETTING key
 | Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 LABELPROGRESSBAR INST ADCS POSPROGRESS 2 200 RAW
 LABELPROGRESSBAR INST ADCS POSPROGRESS
 ```
@@ -927,7 +929,7 @@ LABELPROGRESSBAR INST ADCS POSPROGRESS
 | Number of characters | The number of characters wide to make the value box (default = 12) | False |
 
 Example Usage:
-```ruby
+```cosmos
 LABELVALUE INST LATEST TIMESEC CONVERTED 18
 LABELVALUE INST LATEST COLLECT_TYPE
 ```
@@ -947,7 +949,7 @@ LABELVALUE INST LATEST COLLECT_TYPE
 | Number of characters | The number of characters wide to make the value box (default = 12) | False |
 
 Example Usage:
-```ruby
+```cosmos
 LABELVALUEDESC INST HEALTH_STATUS TEMP1 "Temperature number 1" RAW 18
 LABELVALUEDESC INST HEALTH_STATUS COLLECT_TYPE
 ```
@@ -977,7 +979,7 @@ LABELVALUEDESC INST HEALTH_STATUS COLLECT_TYPE
 | Number of characters | The number of characters wide to make the value box (default = 12) | False |
 
 Example Usage:
-```ruby
+```cosmos
 LABELVALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1 CONVERTED 18
 LABELVALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1
 ```
@@ -1000,7 +1002,7 @@ LABELVALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1
 | Height | Height of the range bar (default = 25) | False |
 
 Example Usage:
-```ruby
+```cosmos
 LABELVALUERANGEBAR INST HEALTH_STATUS TEMP1 0 100000 RAW 18 200 40
 LABELVALUERANGEBAR INST HEALTH_STATUS TEMP1 -120 120
 ```
@@ -1022,7 +1024,7 @@ By default TRUE is green and FALSE is red and all other values are black. Additi
 | Height | Height of the LED circle (default = 20) | False |
 
 Example Usage:
-```ruby
+```cosmos
 LED INST PARAMS VALUE5 RAW 25 20 # Ellipse
   SETTING LED_COLOR 0 GREEN
   SETTING LED_COLOR 1 RED
@@ -1052,7 +1054,7 @@ The following settings apply to LED. They are applied using the SETTING keyword.
 | Height | Height of the range bar (default = 25) | False |
 
 Example Usage:
-```ruby
+```cosmos
 LIMITSBAR INST HEALTH_STATUS TEMP1 CONVERTED 200 50
 LIMITSBAR INST HEALTH_STATUS TEMP1
 ```
@@ -1072,7 +1074,7 @@ LIMITSBAR INST HEALTH_STATUS TEMP1
 | Height | Height of the range bar (default = 25) | False |
 
 Example Usage:
-```ruby
+```cosmos
 LIMITSCOLUMN INST HEALTH_STATUS TEMP1 CONVERTED 50 200
 LIMITSCOLUMN INST HEALTH_STATUS TEMP1
 ```
@@ -1092,7 +1094,7 @@ LIMITSCOLUMN INST HEALTH_STATUS TEMP1
 | Item Name Display | Show the full item name, e.g. TGT PKT ITEM (true), no item name (nil or none) or just the item name (false). Default is false. | False |
 
 Example Usage:
-```ruby
+```cosmos
 HORIZONTAL
   LIMITSCOLOR INST HEALTH_STATUS TEMP1 CONVERTED 10 NIL # No label
   LABEL '1st Temp'
@@ -1123,7 +1125,7 @@ When set, the LIMITSCOLOR renders an Astro (rux-status) icon whose shape reflect
 | Number of characters | The number of characters wide to make the value box (default = 12) | False |
 
 Example Usage:
-```ruby
+```cosmos
 VALUELIMITSBAR INST HEALTH_STATUS TEMP1 CONVERTED 18
 VALUELIMITSBAR INST HEALTH_STATUS TEMP1
 ```
@@ -1142,7 +1144,7 @@ VALUELIMITSBAR INST HEALTH_STATUS TEMP1
 | Number of characters | The number of characters wide to make the value box (default = 8) | False |
 
 Example Usage:
-```ruby
+```cosmos
 VALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1 CONVERTED 18
 VALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1
 ```
@@ -1165,7 +1167,7 @@ VALUELIMITSCOLUMN INST HEALTH_STATUS TEMP1
 | Height | Height of the range bar (default = 25) | False |
 
 Example Usage:
-```ruby
+```cosmos
 VALUERANGEBAR INST HEALTH_STATUS TEMP1 0 100000 RAW 18 200 40
 VALUERANGEBAR INST HEALTH_STATUS TEMP1 -120 120
 ```
@@ -1185,7 +1187,7 @@ VALUERANGEBAR INST HEALTH_STATUS TEMP1 -120 120
 | Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 LINEGRAPH INST HEALTH_STATUS TEMP1
   SETTING ITEM INST ADCS Q1 # Add additional item to graph
 ```
@@ -1260,7 +1262,7 @@ The following settings apply to LINEGRAPH. They are applied using the SETTING ke
 | Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 SPARKLINE INST HEALTH_STATUS TEMP1
   SETTING SIZE 400 50
   SETTING HISTORY 30s # Add 30 seconds of data into graph
@@ -1336,7 +1338,7 @@ The following settings apply to SPARKLINE. They are applied using the SETTING ke
 | Reduced Type | The type of reduce data to display. Only applies if Reduced is not DECOM.<br/><br/>Valid Values: <span class="values">MIN, MAX, AVG, STDDEV</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 LABELSPARKLINE INST HEALTH_STATUS TEMP1
   SETTING HISTORY 5m # Add 5 minutes of data into graph
 ```
@@ -1409,7 +1411,7 @@ The following settings apply to LABELSPARKLINE. They are applied using the SETTI
 | Format | The image format of the base64 data (e.g. jpg, png, etc) | True |
 
 Example Usage:
-```ruby
+```cosmos
 IMAGEVIEWER INST IMAGE IMAGE jpg
 ```
 ![IMAGEVIEWER](/img/telemetry_viewer/widgets/imageviewer.png)
@@ -1428,7 +1430,7 @@ IMAGEVIEWER INST IMAGE IMAGE jpg
 | Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 PROGRESSBAR INST ADCS POSPROGRESS 0.5 200
 PROGRESSBAR INST ADCS POSPROGRESS
 ```
@@ -1450,7 +1452,7 @@ PROGRESSBAR INST ADCS POSPROGRESS
 | Height | Height of the range bar (default = 25) | False |
 
 Example Usage:
-```ruby
+```cosmos
 RANGEBAR INST HEALTH_STATUS TEMP1 0 100000 RAW 200 50
 RANGEBAR INST HEALTH_STATUS TEMP1 -100 100
 ```
@@ -1467,7 +1469,7 @@ RANGEBAR INST HEALTH_STATUS TEMP1 -100 100
 | Icon sublabel | Text to apply to the icon sublabel | False |
 
 Example Usage:
-```ruby
+```cosmos
 ROLLUP satellite-transmit "SAT 1" "Details"
   # Screen to open on click
   SETTING SCREEN INST HS
@@ -1495,7 +1497,7 @@ ROLLUP antenna "GND 2" "Location"
 | Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 SIGNAL INST HEALTH_STATUS TEMP1
   # Screen to open on click
   SETTING SCREEN INST HS
@@ -1522,7 +1524,7 @@ SIGNAL INST HEALTH_STATUS TEMP1
 | Height | Height of the textbox in px (default = 200) | False |
 
 Example Usage:
-```ruby
+```cosmos
 TEXTBOX INST HEALTH_STATUS PACKET_TIMEFORMATTED 150 70
 ```
 ![TEXTBOX](/img/telemetry_viewer/widgets/textbox.png)
@@ -1542,7 +1544,7 @@ The white portion of the box darkens to gray while the value remains stagnant, t
 | Number of characters | The number of characters wide to make the value box (default = 12) | False |
 
 Example Usage:
-```ruby
+```cosmos
 VALUE INST HEALTH_STATUS TEMP1 CONVERTED 18
 VALUE INST HEALTH_STATUS TEMP1
 ```
@@ -1591,7 +1593,7 @@ environment variables. For example: `runScript('INST/procedures/script.rb', fals
 | Button Code | Javascript code to execute when the button is pressed | True |
 
 Example Usage:
-```ruby
+```cosmos
 BUTTON 'Start Collect' 'api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")'
 BUTTON 'Run Checks' 'runScript("INST/procedures/checks.rb")'
 # More complex example with background checkbox and env vars
@@ -1616,7 +1618,7 @@ Note this is of limited use by itself and is primarily used in conjunction with 
 | Checked | Whether the initial state of the checkbox is checked (default = false). Do not give a value to make the checkbox unchecked. | False |
 
 Example Usage:
-```ruby
+```cosmos
 NAMED_WIDGET UNCHECKED CHECKBUTTON 'Default Unchecked'
 NAMED_WIDGET CHECK CHECKBUTTON 'Ignore Hazardous Checks' CHECKED
 BUTTON 'Send' 'screen.getNamedWidget("CHECK").checked() ? ' \
@@ -1639,7 +1641,7 @@ Note this is of limited use by itself and is primarily used in conjunction with 
 | Option Text n | Text to display in the selection drop down | False |
 
 Example Usage:
-```ruby
+```cosmos
 BUTTON 'Start Collect' 'var type = screen.getNamedWidget("COLLECT_TYPE").text();' +
   'api.cmd("INST COLLECT with TYPE "+type+", DURATION 10.0")'
 NAMED_WIDGET COLLECT_TYPE COMBOBOX NORMAL SPECIAL
@@ -1657,7 +1659,7 @@ Note this is of limited use by itself and is primarily used in conjunction with 
 | Date label | Text to label the data selection ('Date' by default) | False |
 
 Example Usage:
-```ruby
+```cosmos
 BUTTON 'Alert Date' 'var date = screen.getNamedWidget("DATE").text();' +
   'alert("Date:"+date)'
 NAMED_WIDGET DATE DATE
@@ -1684,7 +1686,7 @@ Note this is of limited use by itself and is primarily used in conjunction with 
 | Text | Text to display next to the radio button | True |
 
 Example Usage:
-```ruby
+```cosmos
 NAMED_WIDGET GROUP RADIOGROUP 1 # Select 'Clear' initially, 0-based index
   RADIOBUTTON 'Abort'
   RADIOBUTTON 'Clear'
@@ -1704,7 +1706,7 @@ BUTTON 'Send' "screen.getNamedWidget('GROUP').selected() === 0 ? " +
 | Text | Default text to put in the text field (default is blank) | False |
 
 Example Usage:
-```ruby
+```cosmos
 NAMED_WIDGET DURATION TEXTFIELD 12 "10.0"
 BUTTON 'Start Collect' 'var dur = screen.getNamedWidget("DURATION").text();' +
       'api.cmd("INST COLLECT with TYPE NORMAL, DURATION "+dur+"")'
@@ -1722,7 +1724,7 @@ Note this is of limited use by itself and is primarily used in conjunction with 
 | Time label | Text to label the time selection ('Time' by default) | False |
 
 Example Usage:
-```ruby
+```cosmos
 BUTTON 'Alert Time' 'var time = screen.getNamedWidget("TIME").text();' +
   'alert("Time:"+time)'
 NAMED_WIDGET TIME TIME
@@ -1762,7 +1764,7 @@ The canvas coordinate frame places (0,0) in the upper-left corner of the canvas.
 | Color | Color of the text | False |
 
 Example Usage:
-```ruby
+```cosmos
 CANVAS 100 100
   CANVASLABEL 5 34 "Label1" 24 red
   CANVASLABEL 5 70 "Label2" 18 blue
@@ -1786,7 +1788,7 @@ END
 | Value type | The type of the value to display. Default is CONVERTED.<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 CANVAS 200 100
   CANVASLABELVALUE INST HEALTH_STATUS TEMP1 5 34 12 red
   CANVASLABELVALUE INST HEALTH_STATUS TEMP2 5 70 10 blue FORMATTED
@@ -1805,7 +1807,7 @@ END
 | Y Position | Y position of the upper-left corner of the image on the canvas | True |
 
 Example Usage:
-```ruby
+```cosmos
 CANVAS 250 430
   CANVASIMAGE "satellite.png" 10 10 200 200
     SETTING SCREEN INST HS
@@ -1841,7 +1843,7 @@ Use various SETTING values to indicate which images should be displayed based on
 | Image height | Height of the image (default is 100%) | False |
 
 Example Usage:
-```ruby
+```cosmos
 CANVAS 230 230
   CANVASIMAGEVALUE INST HEALTH_STATUS GROUND1STATUS CONVERTED "ground_error.png" 10 10 180 180
     SETTING IMAGE CONNECTED "ground_on.png" 10 10
@@ -1883,7 +1885,7 @@ The following settings apply to CANVASIMAGEVALUE. They are applied using the SET
 | Width | Width of the line in pixels (default = 1) | False |
 
 Example Usage:
-```ruby
+```cosmos
 CANVAS 100 50
   CANVASLINE 5 5 95 5
   CANVASLINE 5 5 5 45 green 2
@@ -1911,7 +1913,7 @@ The line is represented by one of two colors based on the value of the associate
 | Value type | The type of the value to display. Default is CONVERTED<br/><br/>Valid Values: <span class="values">RAW, CONVERTED, FORMATTED</span> | False |
 
 Example Usage:
-```ruby
+```cosmos
 CANVAS 120 50
   CANVASLABELVALUE INST HEALTH_STATUS GROUND1STATUS 0 12 12 black
   CANVASLINEVALUE INST HEALTH_STATUS GROUND1STATUS 5 25 115 25 5 RAW
@@ -1944,7 +1946,7 @@ The following settings apply to CANVASLINEVALUE. They are applied using the SETT
 | Radius | Radius of the dot in pixels | True |
 
 Example Usage:
-```ruby
+```cosmos
 CANVAS 50 50
   CANVASDOT 10 15 BLUE 5
 END
@@ -1958,7 +1960,8 @@ END
 Example File: TARGET/myscreen.txt
 
 {/* prettier-ignore */}
-```ruby
+
+```cosmos
 SCREEN AUTO AUTO 0.5
 VERTICAL
   TITLE "<%= target_name %> Commanding Examples"
