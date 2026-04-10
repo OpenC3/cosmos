@@ -82,7 +82,7 @@ module OpenC3
           target_name = topic.match(/__\{?([^}_]+)\}?__/)[1] rescue nil
           # Handle CMD}TARGET__ pattern where target is after TARGET__
           target_name = topic.split('TARGET__')[1] if target_pattern.include?('TARGET__') && target_name.nil?
-          shard = Store.shard_for_target(target_name, scope: scope)
+          shard = (Store.shard_for_target(target_name, scope: scope) || 0).to_i
         else
           shard = 0
         end

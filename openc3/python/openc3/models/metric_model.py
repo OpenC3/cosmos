@@ -12,12 +12,12 @@
 import json
 
 from openc3.environment import OPENC3_SCOPE
-from openc3.models.model import Model
+from openc3.models.model import EphemeralModel
 from openc3.models.sharded_model import ShardedModel
 from openc3.utilities.store import Store
 
 
-class MetricModel(ShardedModel, Model):
+class MetricModel(ShardedModel, EphemeralModel):
     PRIMARY_KEY = "__openc3__metric"
 
     _shard_cache = {}

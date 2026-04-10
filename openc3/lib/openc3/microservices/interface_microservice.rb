@@ -42,10 +42,11 @@ module OpenC3
   class InterfaceCmdHandlerThread
     include InterfaceDecomCommon
 
-    def initialize(interface, tlm, logger: nil, metric: nil, scope:)
+    def initialize(interface, tlm, logger: nil, metric: nil, target_shard: 0, scope:)
       @interface = interface
       @tlm = tlm
       @scope = scope
+      @target_shard = target_shard.to_i
       scope_model = ScopeModel.get_model(name: @scope)
       if scope_model
         @critical_commanding = scope_model.critical_commanding
@@ -374,10 +375,11 @@ module OpenC3
   end
 
   class RouterTlmHandlerThread
-    def initialize(router, tlm, logger: nil, metric: nil, scope:)
+    def initialize(router, tlm, logger: nil, metric: nil, target_shard: 0, scope:)
       @router = router
       @tlm = tlm
       @scope = scope
+      @target_shard = target_shard.to_i
       @logger = logger
       @logger = Logger unless @logger
       @metric = metric
@@ -585,9 +587,9 @@ module OpenC3
       @connection_failed_messages = []
       @connection_lost_messages = []
       if @interface_or_router == 'INTERFACE'
-        @handler_thread = InterfaceCmdHandlerThread.new(@interface, self, logger: @logger, metric: @metric, scope: @scope)
+        @handler_thread = InterfaceCmdHandlerThread.new(@interface, self, logger: @logger, metric: @metric, target_shard: @target_shard, scope: @scope)
       else
-        @handler_thread = RouterTlmHandlerThread.new(@interface, self, logger: @logger, metric: @metric, scope: @scope)
+        @handler_thread = RouterTlmHandlerThread.new(@interface, self, logger: @logger, metric: @metric, target_shard: @target_shard, scope: @scope)
       end
       @handler_thread.start
     end

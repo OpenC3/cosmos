@@ -40,6 +40,7 @@ module OpenC3
     end
 
     def self.receive_commands(interface, scope:, target_shard: 0)
+      target_shard = target_shard.to_i
       interface_cmd_topic = "{#{scope}__CMD}INTERFACE__#{interface.name}"
       system_events_topic = "OPENC3__SYSTEM__EVENTS"
 

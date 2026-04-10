@@ -41,6 +41,7 @@ module OpenC3
     end
 
     def self.receive_telemetry(router, scope:, target_shard: 0)
+      target_shard = target_shard.to_i
       router_cmd_topic = "{#{scope}__CMD}ROUTER__#{router.name}"
 
       target_topics = []

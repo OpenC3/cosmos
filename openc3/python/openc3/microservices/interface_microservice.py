@@ -54,10 +54,11 @@ with contextlib.suppress(ModuleNotFoundError):
 
 
 class InterfaceCmdHandlerThread:
-    def __init__(self, interface, tlm, logger=None, metric=None, scope=None):
+    def __init__(self, interface, tlm, logger=None, metric=None, target_shard=0, scope=None):
         self.interface = interface
         self.tlm = tlm
         self.scope = scope
+        self.target_shard = int(target_shard or 0)
         scope_model = ScopeModel.get_model(name=scope)
         if scope_model is not None:
             self.critical_commanding = scope_model.critical_commanding
@@ -407,10 +408,11 @@ class InterfaceCmdHandlerThread:
 
 
 class RouterTlmHandlerThread:
-    def __init__(self, router, tlm, logger=None, metric=None, scope=None):
+    def __init__(self, router, tlm, logger=None, metric=None, target_shard=0, scope=None):
         self.router = router
         self.tlm = tlm
         self.scope = scope
+        self.target_shard = int(target_shard or 0)
         self.logger = logger
         if not self.logger:
             self.logger = Logger
@@ -649,6 +651,7 @@ class InterfaceMicroservice(Microservice):
                 self,
                 logger=self.logger,
                 metric=self.metric,
+                target_shard=self.target_shard,
                 scope=self.scope,
             )
         else:
@@ -657,6 +660,7 @@ class InterfaceMicroservice(Microservice):
                 self,
                 logger=self.logger,
                 metric=self.metric,
+                target_shard=self.target_shard,
                 scope=self.scope,
             )
         self.handler_thread.start()

@@ -41,6 +41,7 @@ class InterfaceTopic(Topic):
 
     @classmethod
     def receive_commands(cls, method, interface, scope=OPENC3_SCOPE, target_shard=0):
+        target_shard = int(target_shard or 0)
         interface_cmd_topic = f"{{{scope}__CMD}}INTERFACE__{interface.name}"
         system_events_topic = "OPENC3__SYSTEM__EVENTS"
 

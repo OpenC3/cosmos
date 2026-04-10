@@ -41,6 +41,7 @@ class RouterTopic(Topic):
 
     @classmethod
     def receive_telemetry(cls, router, scope=OPENC3_SCOPE, target_shard=0):
+        target_shard = int(target_shard or 0)
         router_cmd_topic = f"{{{scope}__CMD}}ROUTER__{router.name}"
 
         target_topics = []

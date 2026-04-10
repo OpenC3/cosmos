@@ -86,7 +86,7 @@ class Topic(metaclass=TopicMeta):
                 else:
                     match = re.search(r"__\{?([^}_]+)\}?__", topic)
                     target_name = match.group(1) if match else None
-                shard = Store.shard_for_target(target_name, scope=scope)
+                shard = int(Store.shard_for_target(target_name, scope=scope) or 0)
             else:
                 shard = 0
             if shard not in groups:
