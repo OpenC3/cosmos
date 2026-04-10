@@ -10,12 +10,14 @@
 # if purchased from OpenC3, Inc.
 
 import contextlib
+import json
 import threading
 import time
 
 from openc3.models.metric_model import MetricModel
 from openc3.top_level import kill_thread
 from openc3.utilities.sleeper import Sleeper
+from openc3.utilities.store import Store
 
 
 class Metric:
@@ -42,6 +44,13 @@ class Metric:
         self.microservice = microservice
         self.data = {}
         self.mutex = threading.Lock()
+
+        # Look up target_shard from MicroserviceModel stored on shard 0
+        try:
+            json_data = Store.hget("openc3_microservices", microservice)
+            self.target_shard = int(json.loads(json_data).get("target_shard", 0) or 0) if json_data else 0
+        except Exception:
+            self.target_shard = 0
 
         # Always make sure there is a update thread
         with Metric.mutex:
@@ -84,12 +93,13 @@ class Metric:
 
                 for instance in Metric.instances:
                     with instance.mutex:
-                        json = {}
-                        json["name"] = instance.microservice
+                        metric_json = {}
+                        metric_json["name"] = instance.microservice
+                        metric_json["target_shard"] = instance.target_shard
                         values = instance.data
-                        json["values"] = values
+                        metric_json["values"] = values
                         if len(values) > 0:
-                            MetricModel.set(json, scope=instance.scope)
+                            MetricModel.set(metric_json, scope=instance.scope)
 
             # Only check whether to update at a set interval
             run_time = time.time() - start_time

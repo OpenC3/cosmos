@@ -30,6 +30,7 @@ class OtherRouter(Interface):
 class TestRouterStatusModel(unittest.TestCase):
     def setUp(self):
         self.redis = mock_redis(self)
+        RouterStatusModel._shard_cache = {}
 
     def test_set_and_get(self):
         my = MyRouter()

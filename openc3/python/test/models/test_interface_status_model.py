@@ -29,6 +29,7 @@ class OtherInterface(Interface):
 class TestInterfaceStatusModel(unittest.TestCase):
     def setUp(self):
         self.redis = mock_redis(self)
+        InterfaceStatusModel._shard_cache = {}
 
     def test_set_and_get(self):
         my = MyInterface()

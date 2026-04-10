@@ -21,6 +21,7 @@ module OpenC3
     before(:each) do
       mock_redis()
       local_s3()
+      MicroserviceStatusModel.instance_variable_set(:@shard_cache, {})
     end
 
     after(:each) do

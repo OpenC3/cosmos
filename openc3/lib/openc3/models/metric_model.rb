@@ -16,25 +16,44 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/model'
+require 'openc3/models/sharded_model'
 
 module OpenC3
   class MetricModel < EphemeralModel
+    include ShardedModel
+
     PRIMARY_KEY = '__openc3__metric'.freeze
 
     attr_accessor :values
 
+    # Look up target_shard from the corresponding MicroserviceModel.
+    def self._lookup_target_shard(name, scope:)
+      json = Store.hget('openc3_microservices', name)
+      json ? (JSON.parse(json, allow_nan: true, create_additions: true)['target_shard'] || 0).to_i : 0
+    end
+
+    # Collect all unique target_shard values from MicroserviceModels.
+    def self._collect_target_shards(scope:)
+      shards = Set.new([0])
+      Store.hgetall('openc3_microservices').each do |name, json|
+        next if scope and name.split("__")[0] != scope
+        shards << (JSON.parse(json, allow_nan: true, create_additions: true)['target_shard'] || 0).to_i
+      end
+      shards
+    end
+
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     def self.get(name:, scope:)
-      super("#{scope}#{PRIMARY_KEY}", name: name)
+      _sharded_get("#{scope}#{PRIMARY_KEY}", name: name, scope: scope)
     end
 
     def self.names(scope:)
-      super("#{scope}#{PRIMARY_KEY}")
+      _sharded_names("#{scope}#{PRIMARY_KEY}", scope: scope)
     end
 
     def self.all(scope:)
-      super("#{scope}#{PRIMARY_KEY}")
+      _sharded_all("#{scope}#{PRIMARY_KEY}", scope: scope)
     end
 
     # Sets (updates) the redis hash of this model
@@ -46,12 +65,22 @@ module OpenC3
     end
 
     def self.destroy(scope:, name:)
-      EphemeralStore.hdel("#{scope}#{PRIMARY_KEY}", name)
+      shard = _shard_for_name(name, scope: scope)
+      store.instance(shard: shard).hdel("#{scope}#{PRIMARY_KEY}", name)
     end
 
-    def initialize(name:, values: {}, scope:)
+    def initialize(name:, values: {}, target_shard: 0, scope:)
       super("#{scope}#{PRIMARY_KEY}", name: name, scope: scope)
       @values = values
+      @target_shard = target_shard.to_i
+    end
+
+    def create(update: false, force: false, queued: false, isoformat: false)
+      _sharded_create(@target_shard, update: update, force: force, queued: queued, isoformat: isoformat)
+    end
+
+    def destroy
+      _sharded_destroy(@target_shard)
     end
 
     def as_json(*a)

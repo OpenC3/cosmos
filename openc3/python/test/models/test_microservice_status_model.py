@@ -22,6 +22,7 @@ from test.test_helper import *
 class TestMicroserviceStatusModel(unittest.TestCase):
     def setUp(self):
         self.redis = mock_redis(self)
+        MicroserviceStatusModel._shard_cache = {}
 
     def test_stores_microservice_status(self):
         microservice1 = Microservice("DEFAULT__TYPE__TEST")

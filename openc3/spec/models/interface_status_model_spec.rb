@@ -22,6 +22,7 @@ module OpenC3
   describe InterfaceStatusModel, type: :model do
     before(:each) do
       mock_redis()
+      InterfaceStatusModel.instance_variable_set(:@shard_cache, {})
     end
 
     describe "initialize" do
@@ -143,6 +144,7 @@ module OpenC3
   describe RouterStatusModel, type: :model do
     before(:each) do
       mock_redis()
+      RouterStatusModel.instance_variable_set(:@shard_cache, {})
     end
 
     describe "self.get" do
