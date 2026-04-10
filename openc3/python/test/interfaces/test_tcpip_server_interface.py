@@ -248,6 +248,29 @@ class TestTcpipServerInterface(unittest.TestCase):
         self.assertEqual(i.num_clients(), 0)
         i.disconnect()
 
+    def test_first_read_client_disconnect_cleans_up(self):
+        """The first connected read client (index 0) must be cleaned up on disconnect."""
+        i = TcpipServerInterface(None, "8889", None, "5", "burst")
+        i.connect()
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(("localhost", 8889))
+        time.sleep(0.1)  # Allow the connection to be accepted
+        self.assertEqual(i.num_clients(), 1)
+
+        # Only one client — it will be at index 0 in read_interface_infos
+        self.assertEqual(len(i.read_interface_infos), 1)
+
+        # Close the socket to trigger the read thread cleanup path
+        sock.shutdown(socket.SHUT_RDWR)
+        sock.close()
+        time.sleep(0.2)  # Allow the read thread to detect disconnect and clean up
+
+        # The interface info at index 0 must have been removed
+        self.assertEqual(len(i.read_interface_infos), 0)
+        self.assertEqual(i.num_clients(), 0)
+        i.disconnect()
+
     def test_details(self):
         i = TcpipServerInterface("8888", "8889", "10.0", "15.0", "burst")
         details = i.details()

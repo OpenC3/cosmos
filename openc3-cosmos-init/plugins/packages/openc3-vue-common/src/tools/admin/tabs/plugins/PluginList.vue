@@ -139,4 +139,7 @@ export default {
   background-color: var(--color-background-surface-default) !important;
   overflow-x: hidden;
 }
+.list :deep(tr:nth-child(even)) {
+  background-color: rgba(var(--v-theme-on-surface), 0.05);
+}
 </style>

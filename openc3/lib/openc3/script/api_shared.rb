@@ -288,6 +288,7 @@ module OpenC3
       start_time = Time.now.sys
       success, value = _openc3_script_wait_implementation_comparison(target_name, packet_name, item_name, type, comparison_to_eval, timeout, polling_rate, scope: scope, token: token, &block)
       value = "'#{value}'" if value.is_a? String # Show user the check against a quoted string
+      value = 'nil' if value.nil? # Show user nil value as 'nil'
       time_diff = Time.now.sys - start_time
       check_str = "CHECK: #{_upcase(target_name, packet_name, item_name)}"
       if comparison_to_eval
@@ -531,7 +532,7 @@ module OpenC3
       if comparison_to_eval
         _check_eval(target_name, packet_name, item_name, comparison_to_eval, value)
       else
-        puts "CHECK: #{_upcase(target_name, packet_name, item_name)} == #{value}"
+        puts "CHECK: #{_upcase(target_name, packet_name, item_name)} == #{value.nil? ? 'nil' : value.inspect}"
       end
     end
 
@@ -632,6 +633,7 @@ module OpenC3
       start_time = Time.now.sys
       success, value = _openc3_script_wait_implementation_comparison(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate, scope: scope, token: token)
       value = "'#{value}'" if value.is_a? String # Show user the check against a quoted string
+      value = 'nil' if value.nil? # Show user nil value as 'nil'
       time_diff = Time.now.sys - start_time
       wait_str = "WAIT: #{_upcase(target_name, packet_name, item_name)} #{comparison_to_eval}"
       value_str = "with value == #{value} after waiting #{time_diff} seconds"
@@ -863,8 +865,20 @@ module OpenC3
       # Show user the check against a quoted string
       # Note: We have to preserve the original 'value' variable because we're going to eval against it
       value_str = value.is_a?(String) ? "'#{value}'" : value
+      value_str = 'nil' if value.nil? # Show user nil value as 'nil'
       with_value = "with value == #{value_str}"
-      if eval(string)
+
+      eval_is_valid = _check_eval_validity(value, comparison_to_eval)
+      unless eval_is_valid
+        message = "Invalid comparison for types"
+        if $disconnect
+          puts "ERROR: #{message}"
+        else
+          raise CheckError, message
+        end
+      end
+
+      if eval_is_valid && eval(string)
         puts "#{check_str} success #{with_value}"
       else
         message = "#{check_str} failed #{with_value}"
@@ -882,6 +896,29 @@ module OpenC3
       else
         raise e
       end
+    end
+
+    def _check_eval_validity(value, comparison)
+      return true if comparison.nil? || comparison.empty?
+
+      begin
+        operator, operand = extract_operator_and_operand_from_comparison(comparison)
+      rescue RuntimeError => e
+        if e.message.include?("Unable to parse operand")
+          # If we can't parse the operand, let the eval happen anyway
+          # It will raise an appropriate error (like NameError for undefined constants)
+          return true
+        end
+        raise # Re-raise invalid operator errors
+      rescue JSON::ParserError
+        return true
+      end
+
+      if [">=", "<=", ">", "<"].include?(operator)
+        return false if value.nil? || operand.nil? || value.is_a?(Array) || operand.is_a?(Array)
+      end
+
+      return true
     end
   end
 end

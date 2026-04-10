@@ -16,7 +16,6 @@ from openc3.models.model import EphemeralModel
 from openc3.models.sharded_model import ShardedModel
 from openc3.utilities.store import Store
 
-
 class MetricModel(ShardedModel, EphemeralModel):
     PRIMARY_KEY = "__openc3__metric"
 

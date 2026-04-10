@@ -951,6 +951,9 @@ class TestTsdbMicroservice(unittest.TestCase):
         # Column should be registered for JSON serialization
         self.assertIn("DEFAULT__TLM__INST__HEALTH_STATUS__JSON_ITEM", tsdb.questdb.json_columns)
 
+        # Clear error side_effect so atexit shutdown doesn't raise
+        mock_ingest.flush.side_effect = None
+
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
@@ -1014,6 +1017,9 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         # Column should be registered for JSON serialization
         self.assertIn("DEFAULT__TLM__INST__HEALTH_STATUS__ITEM7", tsdb.questdb.json_columns)
+
+        # Clear error side_effect so atexit shutdown doesn't raise
+        mock_ingest.flush.side_effect = None
 
     @patch("openc3.microservices.tsdb_microservice.get_tlm")
     @patch("openc3.utilities.questdb_client.Sender")
