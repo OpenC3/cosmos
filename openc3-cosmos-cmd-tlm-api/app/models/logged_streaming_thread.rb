@@ -356,6 +356,7 @@ class LoggedStreamingThread < StreamingThread
         meta[:topics] << topic
 
         item = available[item_index]
+        next if item.nil? # API probably requested something that doesn't exist, so we'll ignore it and return nothing for it
         tgt, pkt, orig_item_name, value_type = item.split('__')
 
         # Check if this is a stored timestamp item (PACKET_TIMESECONDS or RECEIVED_TIMESECONDS)
