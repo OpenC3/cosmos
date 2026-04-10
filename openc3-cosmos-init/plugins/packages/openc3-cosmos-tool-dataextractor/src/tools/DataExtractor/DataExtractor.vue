@@ -74,7 +74,7 @@
               :hidden="true"
               choose-item
               allow-all
-              allow-glob
+              :allow-glob="allowWildcards"
               show-latest
               @add-item="addItem($event)"
             />
@@ -373,6 +373,7 @@ export default {
       fillDown: false,
       matlabHeader: false,
       uniqueOnly: false,
+      allowWildcards: false,
       keyMap: {},
       modes: ['DECOM', 'REDUCED_MINUTE', 'REDUCED_HOUR', 'REDUCED_DAY'],
       valueTypes: ['CONVERTED', 'RAW', 'FORMATTED'],
@@ -481,6 +482,14 @@ export default {
               },
             },
             {
+              label: 'Allow Wildcards',
+              checkbox: true,
+              checked: this.allowWildcards,
+              command: () => {
+                this.allowWildcards = !this.allowWildcards
+              },
+            },
+            {
               divider: true,
             },
             {
@@ -510,6 +519,7 @@ export default {
         fillDown: this.fillDown,
         matlabHeader: this.matlabHeader,
         uniqueOnly: this.uniqueOnly,
+        allowWildcards: this.allowWildcards,
         columnMode: this.columnMode,
         cmdOrTlm: this.cmdOrTlm,
         items: this.items,
@@ -528,6 +538,9 @@ export default {
       this.saveDefaultConfig(this.currentConfig)
     },
     uniqueOnly: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    allowWildcards: function () {
       this.saveDefaultConfig(this.currentConfig)
     },
     columnNode: function () {
@@ -599,6 +612,7 @@ export default {
       this.fillDown = false
       this.matlabHeader = false
       this.uniqueOnly = false
+      this.allowWildcards = false
       this.columnMode = 'normal'
       let now = new Date()
       this.startDate = this.formatDate(now - 3600000, this.timeZone) // last hr data
@@ -620,6 +634,8 @@ export default {
       this.menus[1].items[1].checked = this.matlabHeader || false
       this.uniqueOnly = config.uniqueOnly
       this.menus[1].items[2].checked = this.uniqueOnly || false
+      this.allowWildcards = config.allowWildcards
+      this.menus[1].items[3].checked = this.allowWildcards || false
       this.columnMode = config.columnMode
       this.menus[1].radioGroup =
         this.columnMode === 'normal' ? 'Normal Columns' : 'Full Column Names'

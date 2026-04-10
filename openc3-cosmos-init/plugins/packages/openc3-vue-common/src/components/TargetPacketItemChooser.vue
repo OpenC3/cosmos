@@ -641,6 +641,11 @@ export default {
 
     packetNameChanged: function (value) {
       this.selectedItemName = ''
+      // v-combobox may return a full item object instead of just the value string
+      if (value !== null && typeof value === 'object' && value.value) {
+        value = value.value
+        this.selectedPacketName = value
+      }
       // When the packet name is completed deleted in the v-autocomplete
       // the @change handler is fired but the value is null
       // In this case we don't want to update packet details
@@ -713,6 +718,11 @@ export default {
     },
 
     itemNameChanged: function (value) {
+      // v-combobox may return a full item object instead of just the value string
+      if (value !== null && typeof value === 'object' && value.value) {
+        value = value.value
+        this.selectedItemName = value
+      }
       const item = this.itemNames.find((item) => {
         return value === item.value
       })
