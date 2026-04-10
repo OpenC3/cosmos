@@ -91,6 +91,8 @@ module OpenC3
         @topics << "#{@scope}__DECOMINTERFACE__{#{@target_names[0]}}"
       end
       @target_shard = Store.shard_for_target(@target_names[0], scope: @scope)
+      @limits_event_topic = "#{@scope}__openc3_limits_events"
+      @topics << @limits_event_topic
       Topic.update_topic_offsets(@topics, shard: @target_shard)
       System.telemetry.limits_change_callback = method(:limits_change_callback)
       LimitsEventTopic.sync_system(scope: @scope)
@@ -115,6 +117,9 @@ module OpenC3
               break if @cancel_thread
               if topic == @microservice_topic
                 microservice_cmd(topic, msg_id, msg_hash, redis)
+              elsif topic == @limits_event_topic
+                event = JSON.parse(msg_hash['event'], allow_nan: true, create_additions: true)
+                LimitsEventTopic.process_event(event)
               elsif topic =~ /__DECOMINTERFACE/
                 if msg_hash.key?('inject_tlm')
                   handle_inject_tlm(msg_hash['inject_tlm'])
@@ -135,7 +140,6 @@ module OpenC3
               @count += 1
             end
           end
-          LimitsEventTopic.sync_system_thread_body(scope: @scope)
         rescue => e
           @error_count += 1
           @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')

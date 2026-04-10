@@ -109,6 +109,8 @@ class DecomMicroservice(Microservice):
         if "__DECOM__" in self.name:
             self.topics.append(f"{self.scope}__DECOMINTERFACE__{{{self.target_names[0]}}}")
         self.target_shard = Store.shard_for_target(self.target_names[0], scope=self.scope) if self.target_names else 0
+        self.limits_event_topic = f"{self.scope}__openc3_limits_events"
+        self.topics.append(self.limits_event_topic)
         Topic.update_topic_offsets(self.topics, shard=self.target_shard)
         System.telemetry.set_limits_change_callback(self.limits_change_callback)
         LimitsEventTopic.sync_system(scope=self.scope)
@@ -139,6 +141,9 @@ class DecomMicroservice(Microservice):
 
                     if topic == self.microservice_topic:
                         self.microservice_cmd(topic, msg_id, msg_hash, redis)
+                    elif topic == self.limits_event_topic:
+                        event = json.loads(msg_hash[b"event"])
+                        LimitsEventTopic.process_event(event)
                     elif "__DECOMINTERFACE__" in topic:
                         if msg_hash.get(b"inject_tlm"):
                             handle_inject_tlm(msg_hash[b"inject_tlm"], self.scope)
@@ -153,7 +158,6 @@ class DecomMicroservice(Microservice):
                         self.decom_packet(topic, msg_id, msg_hash, redis)
                         self.metric.set(name="decom_total", value=self.count, type="counter")
                     self.count += 1
-                LimitsEventTopic.sync_system_thread_body(scope=self.scope)
             except Exception as error:
                 self.error_count += 1
                 self.metric.set(name="decom_error_total", value=self.error_count, type="counter")

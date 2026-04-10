@@ -26,6 +26,15 @@ from openc3.utilities.store import Store
 # it helps maintain consistency as the topic and model are linked.
 class LimitsEventTopic(Topic):
     @classmethod
+    def _active_shards(cls, scope):
+        """Collect all unique target shards from TargetModel data on shard 0."""
+        shards = {0}
+        for _name, json_data in Store.hgetall(f"{scope}__openc3_targets").items():
+            parsed = json.loads(json_data)
+            shards.add(int(parsed.get("shard", 0) or 0))
+        return shards
+
+    @classmethod
     def write(cls, event, scope):
         match event["type"]:
             case "LIMITS_CHANGE":
@@ -90,12 +99,15 @@ class LimitsEventTopic(Topic):
             case _:
                 raise RuntimeError(f"Invalid limits event type '{event['type']}'")
 
-        Topic.write_topic(
-            f"{scope}__openc3_limits_events",
-            {"event": json.dumps(event, cls=JsonEncoder)},
-            "*",
-            1000,
-        )
+        # Write to all active shards so each decom microservice can read limits events inline
+        for shard in cls._active_shards(scope):
+            Topic.write_topic(
+                f"{scope}__openc3_limits_events",
+                {"event": json.dumps(event, cls=JsonEncoder)},
+                "*",
+                1000,
+                shard=shard,
+            )
 
     # Remove the JSON encoding to return hashes directly
     @classmethod
@@ -221,54 +233,63 @@ class LimitsEventTopic(Topic):
                         else:
                             System.limits.disable(target_name, packet_name, item_name)
 
-    # Update the local system based on limits events
+    # Process a single limits event dict and update the local System accordingly.
+    # Called inline by DecomMicroservice when reading from the limits events topic.
+    @classmethod
+    def process_event(cls, event, telemetry=None):
+        if telemetry is None:
+            telemetry = System.telemetry.all()
+        match event["type"]:
+            case "LIMITS_CHANGE":
+                pass  # Ignore
+            case "LIMITS_SETTINGS":
+                target_name = event["target_name"]
+                packet_name = event["packet_name"]
+                item_name = event["item_name"]
+                target = telemetry.get(target_name)
+                if target:
+                    packet = target.get(packet_name)
+                    if packet:
+                        enabled = event.get("enabled", None)
+                        persistence = event.get("persistence", 1)
+                        System.limits.set(
+                            target_name,
+                            packet_name,
+                            item_name,
+                            event["red_low"],
+                            event["yellow_low"],
+                            event["yellow_high"],
+                            event["red_high"],
+                            event.get("green_low", None),
+                            event.get("green_high", None),
+                            event["limits_set"],
+                            persistence,
+                            enabled,
+                        )
+
+            case "LIMITS_ENABLE_STATE":
+                target_name = event["target_name"]
+                packet_name = event["packet_name"]
+                item_name = event["item_name"]
+                target = telemetry.get(target_name)
+                if target:
+                    packet = target.get(packet_name)
+                    if packet:
+                        enabled = event.get("enabled", False)
+                        if enabled:
+                            System.limits.enable(target_name, packet_name, item_name)
+                        else:
+                            System.limits.disable(target_name, packet_name, item_name)
+
+            case "LIMITS_SET":
+                pass  # Ignore, System.limits_set() always queries Redis
+
+    # Update the local system based on limits events (standalone read loop).
+    # Still available for non-decom consumers that need to sync limits.
     @classmethod
     def sync_system_thread_body(cls, scope):
         telemetry = System.telemetry.all()
         topics = [f"{scope}__openc3_limits_events"]
         for _, _, event, _ in Topic.read_topics(topics, timeout_ms=None):
             event = json.loads(event[b"event"], cls=JsonDecoder)
-            match event["type"]:
-                case "LIMITS_CHANGE":
-                    pass  # Ignore
-                case "LIMITS_SETTINGS":
-                    target_name = event["target_name"]
-                    packet_name = event["packet_name"]
-                    item_name = event["item_name"]
-                    target = telemetry.get(target_name)
-                    if target:
-                        packet = target.get(packet_name)
-                        if packet:
-                            enabled = event.get("enabled", None)
-                            persistence = event.get("persistence", 1)
-                            System.limits.set(
-                                target_name,
-                                packet_name,
-                                item_name,
-                                event["red_low"],
-                                event["yellow_low"],
-                                event["yellow_high"],
-                                event["red_high"],
-                                event.get("green_low", None),
-                                event.get("green_high", None),
-                                event["limits_set"],
-                                persistence,
-                                enabled,
-                            )
-
-                case "LIMITS_ENABLE_STATE":
-                    target_name = event["target_name"]
-                    packet_name = event["packet_name"]
-                    item_name = event["item_name"]
-                    target = telemetry.get(target_name)
-                    if target:
-                        packet = target.get(packet_name)
-                        if packet:
-                            enabled = event.get("enabled", False)
-                            if enabled:
-                                System.limits.enable(target_name, packet_name, item_name)
-                            else:
-                                System.limits.disable(target_name, packet_name, item_name)
-
-                case "LIMITS_SET":
-                    pass  # Ignore, System.limits_set() always queries Redis
+            cls.process_event(event, telemetry=telemetry)
