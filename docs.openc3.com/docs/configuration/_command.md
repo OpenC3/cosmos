@@ -24,17 +24,17 @@ When defining command parameters you can choose from the following data types: I
 
 Command Packets and Parameters can be named however you want with very few exceptions. The following is not allowed in Command or Parameter names: `__` (double underscore), `[[` or `]]` (double brackets), whitespace, and ending a name with underscore. While not much else is _explicitly_ restricted we've found the following guidelines to be helpful.
 
-* Use underscores
+- Use underscores
 
-    Command names like `FIRE_THRUSTER` or `SET_MODE` are easy to read and understand. Most parameter names can be a single word like `TYPE`, `DURATION`, or `MODE` because they are unique within each Command.
+  Command names like `FIRE_THRUSTER` or `SET_MODE` are easy to read and understand. Most parameter names can be a single word like `TYPE`, `DURATION`, or `MODE` because they are unique within each Command.
 
-* Be descriptive but succinct
+- Be descriptive but succinct
 
-    A command name like `BUS_FLIGHT_SOFTWARE_ADCS_FIRE_THRUSTER_2` is a valid command name but makes all the drop downs extra long and is a lot to type. A better choice might be `FIRE_THRUSTER with POD 2`. Parameters are a great way to break up complex commands.
+  A command name like `BUS_FLIGHT_SOFTWARE_ADCS_FIRE_THRUSTER_2` is a valid command name but makes all the drop downs extra long and is a lot to type. A better choice might be `FIRE_THRUSTER with POD 2`. Parameters are a great way to break up complex commands.
 
-* Avoid brackets in commands and parameters
+- Avoid brackets in commands and parameters
 
-    Array items use brackets to allow indexing into an individual item. Thus if you use brackets in parameter names it gets confusing as to whether this is a COSMOS [ARRAY_PARAMETER](command#array_parameter) or simply a name with brackets. We support brackets for legacy reasons but avoid them when possible. For example from the Demo: `INST ARYCMD with ARRAY [1, 2, 3, 4]`.
+  Array items use brackets to allow indexing into an individual item. Thus if you use brackets in parameter names it gets confusing as to whether this is a COSMOS [ARRAY_PARAMETER](command#array_parameter) or simply a name with brackets. We support brackets for legacy reasons but avoid them when possible. For example from the Demo: `INST ARYCMD with ARRAY [1, 2, 3, 4]`.
 
 <div style={{"clear": 'both'}}></div>
 
@@ -62,7 +62,8 @@ COSMOS_META
 **Example File: TARGET/cmd_tlm/cmd.txt**
 
 {/* prettier-ignore */}
-```ruby
+
+```cosmos
 COMMAND TARGET COLLECT_DATA BIG_ENDIAN "Commands my target to collect data"
   PARAMETER CCSDSVER 0 3 UINT 0 0 0 "CCSDS PRIMARY HEADER VERSION NUMBER"
   PARAMETER CCSDSTYPE 3 1 UINT 1 1 1 "CCSDS PRIMARY HEADER PACKET TYPE"

@@ -48,7 +48,7 @@ Here is an example of what would be one of many possible subpackets in a channel
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Subpacketizer">
 
-```python
+```cosmos
 TELEMETRY <%= target_name %> ServerDeployment.rateGroup3.RgMaxTime BIG_ENDIAN "Max execution time rate group"
   SUBPACKET
   APPEND_ID_ITEM FPRIME_CHANNEL_ID 32 UINT 1024
@@ -68,7 +68,7 @@ TELEMETRY <%= target_name %> ServerDeployment.rateGroup3.RgMaxTime BIG_ENDIAN "M
 </TabItem>
 <TabItem value="ruby" label="Ruby Subpacketizer">
 
-```ruby
+```cosmos
 TELEMETRY <%= target_name %> ServerDeployment.rateGroup3.RgMaxTime BIG_ENDIAN "Max execution time rate group"
   SUBPACKET
   APPEND_ID_ITEM FPRIME_CHANNEL_ID 32 UINT 1024
@@ -140,7 +140,7 @@ class FprimeSubpacketizer(Subpacketizer):
 
 The Subpacketizer is then referenced in a packet definition like this:
 
-```
+```cosmos
 TELEMETRY <%= target_name %> TELEMETRY BIG_ENDIAN "Channelized Telemetry Packet"
   SUBPACKETIZER fprime_subpacketizer.py
   APPEND_ITEM FPRIME_SIZE 32 UINT

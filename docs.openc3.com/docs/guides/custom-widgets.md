@@ -38,13 +38,13 @@ your-plugin/
 
 In your plugin's `plugin.txt` file, declare each custom widget you want to create:
 
-```ruby
+```cosmos
 WIDGET YOURCUSTOM
 ```
 
 For example, in the COSMOS Demo plugin, two widgets are declared:
 
-```ruby
+```cosmos
 WIDGET BIG
 WIDGET HELLOWORLD
 ```
@@ -216,7 +216,7 @@ export default defineConfig({
 
 Create a screen definition file in your target's screens directory:
 
-```ruby
+```cosmos
 SCREEN AUTO AUTO 0.5
 LABELVALUE <%= target_name %> HEALTH_STATUS CCSDSSEQCNT
 HELLOWORLD
@@ -228,14 +228,14 @@ In this example, we're using the HELLOWORLD widget from the demo, which will res
 
 The widget name follows the convention from `plugin.txt` file. The screen definition for a screen that has only your custom widget created here, ensure your screen definition looks like this:
 
-```ruby
+```cosmos
 SCREEN AUTO AUTO 0.5
 YOURCUSTOM
 ```
 
 If your widget requires telemetry data, make sure you include the target and telemetry information:
 
-```ruby
+```cosmos
 YOURCUSTOM <%= target_name %> HEALTH_STATUS TEMP1
 ```
 
@@ -266,6 +266,7 @@ docker run -it -v %cd%:/openc3/local -w /openc3/local openc3inc/openc3-node sh
 </Tabs>
 
 Notes:
+
 - The `openc3-node` container is currently missing the `openc3` gem, so the gem validation will fail. This does not impact widget development.
 - The `openc3-node` container may need to be run as `root` so that `pnpm` has the permissions to create `node_modules` in the host widget directory.
 - If you are behind a firewall/proxy, the `NODE_EXTRA_CA_CERTS` in the container may need to be set for `pnpm` to work. The `Error: self-signed certificate in certificate chain error` signifies the need for this env variable.

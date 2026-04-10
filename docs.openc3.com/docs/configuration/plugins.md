@@ -127,7 +127,7 @@ The VARIABLE_DESCRIPTION keyword adds a human-readable description to a previous
 | Description | Human-readable description of the variable's purpose | True |
 
 Example Usage:
-```ruby
+```cosmos
 VARIABLE port 8080
 VARIABLE_DESCRIPTION "TCP port for the target connection"
 ```
@@ -143,7 +143,7 @@ The VARIABLE_STATE keyword defines a selectable state for a previously defined V
 | State Value | The value that will be used when this state is selected | True |
 
 Example Usage:
-```ruby
+```cosmos
 VARIABLE log_retain_time 172800
 VARIABLE_STATE "24 hours" 86400
 VARIABLE_STATE "48 hours" 172800
@@ -179,13 +179,13 @@ The following keywords must follow a INTERFACE keyword.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 INTERFACE DATA_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
   MAP_TARGET DATA
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
   MAP_TARGET DATA
 ```
@@ -201,13 +201,13 @@ INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 INTERFACE CMD_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
   MAP_CMD_TARGET DATA # Only DATA commands go on the CMD_INT interface
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 INTERFACE CMD_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
   MAP_CMD_TARGET DATA # Only DATA commands go on the CMD_INT interface
 ```
@@ -223,13 +223,13 @@ INTERFACE CMD_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 INTERFACE TLM_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
   MAP_TLM_TARGET DATA # Only DATA telemetry received on TLM_INT interface
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 INTERFACE TLM_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
   MAP_TLM_TARGET DATA # Only DATA telemetry received on TLM_INT interface
 ```
@@ -272,7 +272,7 @@ LOG_STREAM does not add any OpenC3 headers and thus can not be read by OpenC3 to
 | Cycle Minute | See Cycle Hour. | False |
 
 Example Usage:
-```ruby
+```cosmos
 INTERFACE EXAMPLE example_interface.rb
   # Override the default log time of 600
   LOG_STREAM 60
@@ -291,14 +291,14 @@ Protocols can be either READ, WRITE, or READ_WRITE. READ protocols act on the da
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 INTERFACE DATA_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
   MAP_TARGET DATA
   PROTOCOL READ openc3/interfaces/protocols/ignore_packet_protocol.py INST IMAGE # Drop all INST IMAGE packets
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil nil
   MAP_TARGET DATA
   # Rather than defining the LENGTH protocol on the INTERFACE line we define it here
@@ -318,7 +318,7 @@ When an option is set the interface class calls the set_option method. Custom in
 | Parameters | Parameters to pass to the option | False |
 
 Example Usage:
-```ruby
+```cosmos
 INTERFACE SERIAL_INT serial_interface.rb COM1 COM1 115200 NONE 1 10.0 nil
   OPTION FLOW_CONTROL RTSCTS
   OPTION DATA_BITS 8
@@ -341,7 +341,7 @@ Defines a secret for this interface and optionally assigns its value to an optio
 | Secret Store Name | Name of the secret store for stores with multipart keys | False |
 
 Example Usage:
-```ruby
+```cosmos
 SECRET ENV USERNAME ENV_USERNAME USERNAME
 SECRET FILE KEY "/tmp/DATA/cert" KEY
 ```
@@ -355,7 +355,7 @@ SECRET FILE KEY "/tmp/DATA/cert" KEY
 | Value | Environment variable value | True |
 
 Example Usage:
-```ruby
+```cosmos
 ENV COMPANY OpenC3
 ```
 
@@ -369,7 +369,7 @@ Working directory to run the microservice CMD in.  Can be a path relative to the
 | Directory | Working directory to run the microservice CMD in. Can be a path relative to the microservice folder in the plugin, or an absolute path in the container the microservice runs in. | True |
 
 Example Usage:
-```ruby
+```cosmos
 WORK_DIR '/openc3/lib/openc3/microservices'
 ```
 
@@ -384,7 +384,7 @@ Kubernetes needs a Service to be applied to open a port so this is required for 
 | Protocol | Port protocol. Default is TCP. | False |
 
 Example Usage:
-```ruby
+```cosmos
 PORT 7272
 ```
 
@@ -399,12 +399,12 @@ Command line to execute to run the microservice.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 CMD python interface_microservice.py DEFAULT__INTERFACE__INT1
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 CMD ruby interface_microservice.rb DEFAULT__INTERFACE__INT1
 ```
 </TabItem>
@@ -429,7 +429,7 @@ Prefix of route to the microservice to expose externally with Traefik
 | Route Prefix | Route prefix. Must be unique across all scopes. Something like /myprefix | True |
 
 Example Usage:
-```ruby
+```cosmos
 ROUTE_PREFIX /interface
 ```
 
@@ -443,7 +443,7 @@ Operator Shard. Only used if running multiple operator containers typically in K
 | Shard | Shard number starting from 0 | False |
 
 Example Usage:
-```ruby
+```cosmos
 SHARD 0
 ```
 
@@ -468,7 +468,7 @@ Additional parameters are required. Please see the [Interfaces](../configuration
 | Name | The target name. While this typically matches the Folder Name it can be different to create multiple targets based on the same target definition. As in the Example Usage, the target folder is KEYSIGHT_N6700 but the target name is PWR_SUPPLY1. To create multiple targets from the same folder, just define multiple TARGET entries with different target names. To make the target definition flexbible, you can use ERB to insert the target name in procedures, libraries, etc via &lt;%= target_name %&gt;. See [ERB target_name](/docs/configuration/format#target_name) for more information. | True |
 
 Example Usage:
-```ruby
+```cosmos
 TARGET KEYSIGHT_N6700 PWR_SUPPLY1
 ```
 
@@ -598,7 +598,7 @@ Operator Shard. Only used if running multiple operator containers typically in K
 | Shard | Shard number starting from 0 | False |
 
 Example Usage:
-```ruby
+```cosmos
 SHARD 0
 ```
 
@@ -613,7 +613,7 @@ Defines a microservice that the plugin adds to the OpenC3 system. Microservices 
 | Microservice Name | The specific name of this instance of the microservice in the OpenC3 system | True |
 
 Example Usage:
-```ruby
+```cosmos
 MICROSERVICE EXAMPLE openc3-example
 ```
 
@@ -629,7 +629,7 @@ The following keywords must follow a MICROSERVICE keyword.
 | Value | Environment variable value | True |
 
 Example Usage:
-```ruby
+```cosmos
 MICROSERVICE EXAMPLE openc3-example
   ENV COMPANY OpenC3
 ```
@@ -644,7 +644,7 @@ Working directory to run the microservice CMD in.  Can be a path relative to the
 | Directory | Working directory to run the microservice CMD in. Can be a path relative to the microservice folder in the plugin, or an absolute path in the container the microservice runs in. | True |
 
 Example Usage:
-```ruby
+```cosmos
 MICROSERVICE EXAMPLE openc3-example
   WORK_DIR .
 ```
@@ -660,7 +660,7 @@ Kubernetes needs a Service to be applied to open a port so this is required for 
 | Protocol | Port protocol. Default is TCP. | False |
 
 Example Usage:
-```ruby
+```cosmos
 MICROSERVICE EXAMPLE openc3-example
   PORT 7272
 ```
@@ -675,7 +675,7 @@ Redis topic to associate with this microservice. Standard OpenC3 microservices s
 | Topic Name | Redis Topic to associate with the microservice | True |
 
 Example Usage:
-```ruby
+```cosmos
 MICROSERVICE EXAMPLE openc3-example
   # Manually assigning topics is an advanced topic and requires
   # intimate knowledge of the internal COSMOS data structures.
@@ -693,7 +693,7 @@ OpenC3 target to associate with the microservice. For standard OpenC3 microservi
 | Target Name | OpenC3 target to associate with the microservice | True |
 
 Example Usage:
-```ruby
+```cosmos
 MICROSERVICE EXAMPLE openc3-example
   TARGET_NAME EXAMPLE
 ```
@@ -709,13 +709,13 @@ Command line to execute to run the microservice.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 MICROSERVICE EXAMPLE openc3-example
   CMD python example_target.py
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 MICROSERVICE EXAMPLE openc3-example
   CMD ruby example_target.rb
 ```
@@ -754,7 +754,7 @@ Defines a secret for this microservice. For more information see [Admin Secrets]
 | Secret Store Name | Name of the secret store for stores with multipart keys | False |
 
 Example Usage:
-```ruby
+```cosmos
 SECRET ENV USERNAME ENV_USERNAME
 SECRET FILE KEY "/tmp/DATA/cert"
 ```
@@ -769,7 +769,7 @@ Prefix of route to the microservice to expose externally with Traefik
 | Route Prefix | Route prefix. Must be unique across all scopes. Something like /myprefix | True |
 
 Example Usage:
-```ruby
+```cosmos
 MICROSERVICE CFDP CFDP
   ROUTE_PREFIX /cfdp
 ```
@@ -793,7 +793,7 @@ Operator Shard. Only used if running multiple operator containers typically in K
 | Shard | Shard number starting from 0 | False |
 
 Example Usage:
-```ruby
+```cosmos
 SHARD 0
 ```
 
@@ -802,7 +802,7 @@ SHARD 0
 
 
 Example Usage:
-```ruby
+```cosmos
 STOPPED
 ```
 
@@ -817,7 +817,7 @@ Defines a tool that the plugin adds to the OpenC3 system. Tools are web based ap
 | Tool Name | Name of the tool that is displayed in the OpenC3 Navigation menu | True |
 
 Example Usage:
-```ruby
+```cosmos
 TOOL DEMO Demo
 ```
 
@@ -915,7 +915,7 @@ Defines a custom widget that can be used in Telemetry Viewer screens.
 | Label | The label for the widget that will appear in the Data Viewer component drop down | False |
 
 Example Usage:
-```ruby
+```cosmos
 WIDGET HELLOWORLD
 ```
 
@@ -942,7 +942,7 @@ Defines a script engine to add language support to Script Runner. For a realisti
 | Script Engine Filename | Filename that implements the script engine. Should be in top level lib folder in plugin. | True |
 
 Example Usage:
-```ruby
+```cosmos
 SCRIPT_ENGINE .print print_script_engine.py
 ```
 

@@ -81,7 +81,7 @@ There are a number of generators available. Run `openc3.bat cli generate` to see
 
 1. The target generator creates a single target named BOB. Best practice is to create a single target per plugin to make it easier to share targets and upgrade them individually. Lets see what the target generator created for us. Open the openc3-cosmos-bob/targets/BOB/cmd_tlm/cmd.txt:
 
-   ```ruby
+   ```cosmos
    COMMAND BOB EXAMPLE BIG_ENDIAN "Packet description"
      # Keyword           Name  BitSize Type   Min Max  Default  Description
      APPEND_ID_PARAMETER ID    16      INT    1   1    1        "Identifier"
@@ -104,7 +104,7 @@ There are a number of generators available. Run `openc3.bat cli generate` to see
 
 1. Now open the openc3-cosmos-bob/targets/BOB/cmd_tlm/tlm.txt:
 
-   ```ruby
+   ```cosmos
    TELEMETRY BOB STATUS BIG_ENDIAN "Telemetry description"
      # Keyword      Name  BitSize Type   ID Description
      APPEND_ID_ITEM ID    16      INT    1  "Identifier"
@@ -125,7 +125,7 @@ There are a number of generators available. Run `openc3.bat cli generate` to see
 
 1. Now we need to tell COSMOS how to connect to our BOB target. Open the openc3-cosmos-bob/plugin.txt file:
 
-   ```ruby
+   ```cosmos
    # Set VARIABLEs here to allow variation in your plugin
    # See [Plugins](../configuration/plugins) for more information
    VARIABLE bob_target_name BOB
@@ -164,7 +164,7 @@ In a plugin that you plan to reuse you should make things like hostnames and por
 
 1. Let's modify our BOB target and then update the copy in COSMOS. If you open Command Sender in COSMOS to BOB EXAMPLE you should see the VALUE parameter has value 2.5. Open the openc3-cosmos-bob/targets/BOB/cmd_tlm/cmd.txt and change the Default value for VALUE to 5 and the description to "New Value".
 
-   ```ruby
+   ```cosmos
    COMMAND BOB EXAMPLE BIG_ENDIAN "Packet description"
      # Keyword           Name  BitSize Type   Min Max  Default  Description
      APPEND_ID_PARAMETER ID    16      INT    1   1    1        "Identifier"

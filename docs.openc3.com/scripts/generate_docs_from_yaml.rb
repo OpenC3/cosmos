@@ -102,7 +102,7 @@ class CosmosMetaTag
       end
       if data['example']
         page << "\nExample Usage:\n"
-        page << "```ruby\n"
+        page << "```cosmos\n"
         page << "#{data['example'].strip}\n"
         page << "```\n"
         # If this is a screen, check to see if there is an image for the widget
@@ -114,14 +114,14 @@ class CosmosMetaTag
         page << "\n<Tabs groupId=\"script-language\">\n"
         if data['python_example']
           page << "<TabItem value=\"python\" label=\"Python\">\n"
-          page << "```python\n"
+          page << "```cosmos\n"
           page << "#{data['python_example'].strip}\n"
           page << "```\n"
           page << "</TabItem>\n"
         end
         if data['ruby_example']
           page << "<TabItem value=\"ruby\" label=\"Ruby\">\n"
-          page << "```ruby\n"
+          page << "```cosmos\n"
           page << "#{data['ruby_example'].strip}\n"
           page << "```\n"
           page << "</TabItem>\n"

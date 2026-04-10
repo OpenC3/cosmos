@@ -23,7 +23,7 @@ The target language must be either Ruby or Python. The language determines how t
 |  | Ruby or Python<br/><br/>Valid Values: <span class="values">ruby, python</span> | True |
 
 Example Usage:
-```ruby
+```cosmos
 LANGUAGE python
 ```
 
@@ -37,7 +37,7 @@ List the Ruby files required to explicitly declare dependencies. This is now com
 | Filename | Filename to require. For files in the target's lib directory simply supply the filename, e.g. "REQUIRE my_file". Files in the base OpenC3 lib directory also should just list the filename. If a file is in a folder under the lib directory then you must specify the folder name, e.g. "REQUIRE folder/my_file". Note the ".rb" extension is optional when specifying the filename. | True |
 
 Example Usage:
-```ruby
+```cosmos
 REQUIRE limits_response.rb
 ```
 
@@ -51,7 +51,7 @@ Hint to other OpenC3 tools to hide or ignore this command parameter when process
 | Parameter Name | The name of a command parameter. Note that this parameter will be ignored in ALL the commands it appears in. | True |
 
 Example Usage:
-```ruby
+```cosmos
 IGNORE_PARAMETER CCSDS_VERSION
 ```
 
@@ -65,7 +65,7 @@ Hint to other OpenC3 tools to hide or ignore this telemetry item when processing
 | Item name | The name of a telemetry item. Note that this item will be ignored in ALL the telemetry it appears in. | True |
 
 Example Usage:
-```ruby
+```cosmos
 IGNORE_ITEM CCSDS_VERSION
 ```
 
@@ -83,7 +83,7 @@ Usage of this keyword overrides automatic command and telemetry file discovery. 
 | Filename | Name of a command definition file in the target's cmd_tlm directory, e.g. "cmd.txt". | True |
 
 Example Usage:
-```ruby
+```cosmos
 COMMANDS inst_cmds_v2.txt
 TELEMETRY inst_tlm_v2.txt
 ```
@@ -102,7 +102,7 @@ Usage of this keyword overrides automatic command and telemetry file discovery. 
 | Filename | Name of a telemetry definition file in the target's cmd_tlm directory, e.g. "tlm.txt". | True |
 
 Example Usage:
-```ruby
+```cosmos
 COMMANDS inst_cmds_v2.txt
 TELEMETRY inst_tlm_v2.txt
 ```

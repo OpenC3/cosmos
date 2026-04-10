@@ -37,7 +37,7 @@ This creates the following files:
 | Name                      | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | .gitignore                | Tells git to ignore any node_modules directory (for tool development)                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| LICENSE.md               | License for the plugin. COSMOS Plugins should be licensed using the OpenC3 Builder License (OpenC3), MIT or the Apache License.                                                                                                                                                                                                                                                                                                                           |
+| LICENSE.md                | License for the plugin. COSMOS Plugins should be licensed using the OpenC3 Builder License (OpenC3), MIT or the Apache License.                                                                                                                                                                                                                                                                                                                                                           |
 | openc3-cosmos-gse.gemspec | Gemspec file which should be edited to add user specific information like description, authors, emails, homepage, etc. The name of this file is used in compiling the plugin contents into the final corresponding gem file: e.g. openc3-cosmos-gse-1.0.0.gem. COSMOS plugins should always begin with the openc3-cosmos prefix to make them easily identifiable in the Rubygems repository. The file is formatted as documented at: https://guides.rubygems.org/specification-reference/ |
 | plugin.txt                | COSMOS specific file for Plugin creation. Learn more [here](../configuration/plugins).                                                                                                                                                                                                                                                                                                                                                                                                    |
 | Rakefile                  | Ruby Rakefile configured to support building the plugin by running "openc3.sh cli rake build VERSION=X.X.X" where X.X.X is the plugin version number                                                                                                                                                                                                                                                                                                                                      |
@@ -77,7 +77,7 @@ This creates the following files and directories:
 
 It also updates the plugin.txt file to add the new target:
 
-```ruby
+```cosmos
 VARIABLE gse_target_name GSE
 
 TARGET GSE <%= gse_target_name %>
@@ -107,7 +107,7 @@ This creates the following files and directories:
 
 It also updates the plugin.txt file to add the new microservice:
 
-```ruby
+```cosmos
 MICROSERVICE BACKGROUND background-microservice
   CMD python background.py
 ```
@@ -181,7 +181,7 @@ This creates the following files and directories:
 
 It also updates the plugin.txt file to add the new widget:
 
-```ruby
+```cosmos
 WIDGET Helloworld
 ```
 
@@ -207,13 +207,13 @@ This creates the following files and directories:
 | src/router.js                 | Vue component router.                                                                                                                                                                                                   |
 | src/tools/datavis             | Contains all the files necessary to serve a web-based tool named datavis. The name is always defined in all lowercase. Due to technical limitations, the toolname must be unique and cannot be renamed at installation. |
 | src/tools/datavis/datavis.vue | Fully functional tool which displays a simple button. This can be expanded using existing COSMOS Vue.js code to create any tool imaginable.                                                                             |
-| package.json                  | Build and dependency definition file. Used by pnpm to build the tool.                                                                                                                                            |
+| package.json                  | Build and dependency definition file. Used by pnpm to build the tool.                                                                                                                                                   |
 | vue.config.js                 | Vue configuration file used to serve the application in development and build the application.                                                                                                                          |
 | \<dotfiles\>                  | Various dotfiles which help configure formatters and tools for Javascript frontend development                                                                                                                          |
 
 It also updates the plugin.txt file to add the new tool. The icon can be changed to any of the material design icons found [here](https://pictogrammers.com/library/mdi/).
 
-```ruby
+```cosmos
 TOOL datavis "DataVis"
   INLINE_URL main.js
   ICON mdi-file-cad-box

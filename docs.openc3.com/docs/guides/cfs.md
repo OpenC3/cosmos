@@ -123,7 +123,7 @@ communication happens over UDP. `port_tm` is the port number on which cFS
 sends the telemetry messages. `port_tc` indicates the port on which cFS listens to the
 telecommands.
 
-```ruby
+```cosmos
 VARIABLE ip 127.0.0.1
 VARIABLE port_tm 1235
 VARIABLE port_tc 1234
@@ -164,7 +164,7 @@ content.
 
 `to_lab_cmds.txt`:
 
-```ruby
+```cosmos
 COMMAND CFS TO_LAB_ENABLE BIG_ENDIAN "Enable telemetry"
   #                   NAME      BITS TYPE   min VAL     max VAL    init VAL  DESCRIPTION
   APPEND_ID_PARAMETER STREAM_ID  16  UINT   0x1880      0x1880     0x1880    "Stream ID"
@@ -186,7 +186,7 @@ this command, it starts sending telemetry to the IP address provided via the
 
 `cfs_cmds.txt`:
 
-```ruby
+```cosmos
 COMMAND CFS NOOP BIG_ENDIAN "NOOP Command"
   # cFS primary header
   APPEND_ID_PARAMETER    STREAM_ID   16   UINT   0x1882      0x1882      0x1882      "Packet Identification"
@@ -219,7 +219,7 @@ COMMAND CFS PROCESS BIG_ENDIAN "Process Command"
 
 `cfs_tlm.txt`:
 
-```ruby
+```cosmos
 TELEMETRY CFS HK BIG_ENDIAN "housekeeping telemetry"
   #                NAME       BITS  TYPE    ID      DESCRIPTION
   APPEND_ID_ITEM   STREAM_ID   16   UINT    0x0883  "Stream ID"
@@ -277,7 +277,7 @@ docker network ls
 NETWORK ID     NAME             DRIVER    SCOPE
 d842f813f1c7   cosmos-project_default    bridge    local
 
-docker network inspect cosmos-project_default 
+docker network inspect cosmos-project_default
 [
     {
         "Name": "cosmos-project_default ",

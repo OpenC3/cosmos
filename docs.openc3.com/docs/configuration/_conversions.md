@@ -94,7 +94,7 @@ The generic conversion is meant to be a quick and easy way to apply a conversion
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 GENERIC_READ_CONVERSION_START
     packet.read('TEMP1') / 1_000_000
 GENERIC_READ_CONVERSION_END
@@ -104,7 +104,7 @@ CONVERTED_DATA 32 FLOAT
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 GENERIC_READ_CONVERSION_START
   packet.read('TEMP1') / 1_000_000
 GENERIC_READ_CONVERSION_END

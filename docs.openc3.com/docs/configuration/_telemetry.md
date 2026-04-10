@@ -53,7 +53,7 @@ COSMOS specifies a variable sized item with a bit size of 0. When a packet is id
 
 COSMOS has a concept of a derived item which is a telemetry item that doesn't actually exist in the binary data. Derived items are typically computed based on other telemetry items. COSMOS derived items are very similar to real items except they use the special DERIVED data type. Here is how a derived item might look in a telemetry definition.
 
-```ruby
+```cosmos
 ITEM TEMP_AVERAGE 0 0 DERIVED "Average of TEMP1, TEMP2, TEMP3, TEMP4"
 ```
 
@@ -85,7 +85,7 @@ ITEM PACKET_TIME 0 0 DERIVED "Python time based on TIMESEC and TIMEUS"
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
 ```
@@ -105,7 +105,8 @@ COSMOS_META
 **Example File: TARGET/cmd_tlm/tlm.txt**
 
 {/* prettier-ignore */}
-```ruby
+
+```cosmos
 TELEMETRY TARGET HS BIG_ENDIAN "Health and Status for My Target"
   ITEM CCSDSVER 0 3 UINT "CCSDS PACKET VERSION NUMBER (SEE CCSDS 133.0-B-1)"
   ITEM CCSDSTYPE 3 1 UINT "CCSDS PACKET TYPE (COMMAND OR TELEMETRY)"

@@ -15,7 +15,7 @@ This ordering is critical when combining packet delineation protocols (e.g. Leng
 
 To satisfy both directions, you may need to define a helper protocol twice — once for WRITE (before the delineation protocol) and once for READ (after it). For example, with a Length protocol and CRC protocol:
 
-```ruby
+```cosmos
 PROTOCOL WRITE CrcProtocol ...
 PROTOCOL READ_WRITE LengthProtocol ...
 PROTOCOL READ CrcProtocol ...
@@ -53,7 +53,7 @@ The Consistent Overhead Byte Stuffing (COBS) Protocol is an algorithm for encodi
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ openc3/interfaces/protocols/cobs_protocol.py
 ```
@@ -63,7 +63,7 @@ Source code for [cobs_protocol.py](https://github.com/OpenC3/cosmos/blob/main/op
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ CobsProtocol
 ```
@@ -93,7 +93,7 @@ The Serial Line IP (SLIP) Protocol defines a sequence of characters that frame I
 
 Usage in plugin.txt:
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Since we're using the defaults, none of the parameters are actually required
   PROTOCOL READ openc3/interfaces/protocols/slip_protocol.py None True True True 0xC0 0xDB 0xDC 0xDD
@@ -106,7 +106,7 @@ Source code for [slip_protocol.py](https://github.com/OpenC3/cosmos/blob/main/op
 
 Usage in plugin.txt:
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Since we're using the defaults, none of the parameters are actually required
   PROTOCOL READ SlipProtocol nil true true true 0xC0 0xDB 0xDC 0xDD
@@ -130,7 +130,7 @@ The Burst Protocol simply reads as much data as it can from the interface before
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Use a sync pattern but discard it
   PROTOCOL READ openc3/interfaces/protocols/burst_protocol.py 4 0x1ACFFC1D
@@ -141,7 +141,7 @@ Source code for [burst_protocol.py](https://github.com/OpenC3/cosmos/blob/main/o
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Use a sync pattern but discard it
   PROTOCOL READ BurstProtocol 4 0x1ACFFC1D
@@ -168,7 +168,7 @@ The Fixed Protocol reads a preset minimum amount of data which is necessary to p
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ openc3/interfaces/protocols/fixed_protocol.py 6 4 0x1ACFFC1D True
 ```
@@ -178,7 +178,7 @@ Source code for [fixed_protocol.py](https://github.com/OpenC3/cosmos/blob/main/o
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ FixedProtocol 6 4 0x1ACFFC1D true
 ```
@@ -215,7 +215,7 @@ In this case the total length of the packet is 14 bytes: **4 + 4 + 2 + 4 = 14**.
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Example length protocol parameters for a CCSDS packet
   PROTOCOL READ openc3/interfaces/protocols/length_protocol.py 64 16 11 1 BIG_ENDIAN 4 0x1ACFFC1D None True
@@ -226,7 +226,7 @@ Source code for [length_protocol.py](https://github.com/OpenC3/cosmos/blob/main/
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Example length protocol parameters for a CCSDS packet
   PROTOCOL READ LengthProtocol 64 16 11 1 BIG_ENDIAN 4 0x1ACFFC1D nil true
@@ -253,7 +253,7 @@ The Terminated Protocol delineates packets using termination characters found at
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Example newline (0x0A) delimiter and sync pattern of 'DATA' (0x44415441 is ascii for 'DATA')
   PROTOCOL READ openc3/interfaces/protocols/terminated_protocol.py 0x0A 0x0A True 4 0x44415441
@@ -264,7 +264,7 @@ Source code for [terminated_protocol.py](https://github.com/OpenC3/cosmos/blob/m
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Example newline (0x0A) delimiter and sync pattern of 'DATA' (0x44415441 is ascii for 'DATA')
   PROTOCOL READ TerminatedProtocol 0x0A 0x0A True 4 0x44415441
@@ -284,7 +284,7 @@ The GEMS protocol doesn't take any parameters but should be added to an interfac
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE GEMS_INT tcpip_client_interface.rb openc3-operator 8080 8080 10.0 nil nil
   # TerminatedProtocol 0x7C454E44 0x7C454E44 false 0       0x7C47454D53 false ... means:
   #                    wtc        rtc        strip discard sync         fill
@@ -322,7 +322,7 @@ The CCSDS CLTU Protocol handles the CLTU (Communicates Link Transfer Unit) for C
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <params>
   PROTOCOL WRITE CcsdsCltuProtocol
 ```
@@ -333,7 +333,7 @@ Source code for [cltu_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-p
 
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <params>
   PROTOCOL WRITE openc3/interfaces/protocols/ccsds_cltu_protocol.py
 ```
@@ -361,7 +361,7 @@ The CCSDS TCTF Protocol handles the Telecommand Transfer Frame for Command Strea
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <params>
   PROTOCOL WRITE CcsdsTctfProtocol true false 1 0xA 0x1
 ```
@@ -371,7 +371,7 @@ Source code for [ccsds_tctf_protocol.rb](https://github.com/OpenC3/cosmos-enterp
 </TabItem>
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <params>
   PROTOCOL WRITE openc3/interfaces/protocols/ccsds_tctf_protocol.py True False 1 0xA 0x1
 ```
@@ -399,7 +399,7 @@ The CCSDS TMTF Protocol handles the Telemetry Transfer Frame for Telemetry Strea
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <params>
   PROTOCOL READ CcsdsTmtfProtocol true 0 0x1ACFFC1D true
 ```
@@ -410,7 +410,7 @@ Source code for [ccsds_tmtf_protocol.rb](https://github.com/OpenC3/cosmos-enterp
 
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <params>
   PROTOCOL READ openc3/interfaces/protocols/ccsds_tmtf_protocol.py True 0 0x1ACFFC1D True
 ```
@@ -435,7 +435,7 @@ The Preidentified Protocol delineates packets using the COSMOS header. This Prot
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ openc3/interfaces/protocols/preidentified_protocol.py
 ```
@@ -445,7 +445,7 @@ Source code for [preidentified_protocol.py](https://github.com/OpenC3/cosmos/blo
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ PreidentifiedProtocol
 ```
@@ -474,7 +474,7 @@ The Command Response Protocol waits for a response for any commands with a defin
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ openc3/interfaces/protocols/cmd_response_protocol.py 5.0 0.1 True
 ```
@@ -484,7 +484,7 @@ Source code for [cmd_response_protocol.py](https://github.com/OpenC3/cosmos/blob
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ CmdResponseProtocol 5.0 0.1 true
 ```
@@ -498,7 +498,7 @@ Source code for [cmd_response_protocol.rb](https://github.com/OpenC3/cosmos/blob
 
 The Command Response Protocol utilizes the [RESPONSE](../configuration/command#response) keyword in the command definition to determine which telemetry packet should be expected when the given command is sent. This will block the command until the response is received.
 
-```ruby
+```cosmos
 COMMAND SCPI_PS GET_STATUS BIG_ENDIAN "Gets status"
   ACCESSOR TemplateAccessor
   TEMPLATE ":MEAS:VOLT? (@1:2)"
@@ -507,7 +507,7 @@ COMMAND SCPI_PS GET_STATUS BIG_ENDIAN "Gets status"
 
 The Response packet (STATUS) should be defined to contain the response data.
 
-```ruby
+```cosmos
 TELEMETRY SCPI_PS STATUS BIG_ENDIAN "Status"
   ACCESSOR TemplateAccessor
   TEMPLATE "<MEAS_VOLTAGE_1>,<MEAS_VOLTAGE_2>"
@@ -545,7 +545,7 @@ The CRC Protocol must run after packet delineation protocols (e.g. Length, Termi
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Handle a trailing 32 bit CRC on telemetry by stripping it off
   # In this example I changed the Reflect default to false so I had to explicitly specify all the values
@@ -557,7 +557,7 @@ Source code for [crc_protocol.py](https://github.com/OpenC3/cosmos/blob/main/ope
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Handle a trailing 32 bit CRC on telemetry by stripping it off
   # In this example I changed the Reflect default to false so I had to explicitly specify all the values
@@ -581,7 +581,7 @@ The Ignore Packet protocol drops specified command packets sent by COSMOS or dro
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Ignore the INST MECH packet
   PROTOCOL READ openc3/interfaces/protocols/ignore_packet_protocol.py INST MECH
@@ -592,7 +592,7 @@ Source code for [ignore_packet_protocol.py](https://github.com/OpenC3/cosmos/blo
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Ignore the INST MECH packet
   PROTOCOL READ IgnorePacketProtocol INST MECH
@@ -774,7 +774,7 @@ class EncryptionProtocol(Protocol):
 
 To use the encryption protocol, first store your encryption key as a secret in COSMOS Admin under the Secrets tab. Then reference it in your plugin.txt:
 
-```ruby
+```cosmos
 INTERFACE ENCRYPTED_INT tcpip_client_interface.rb myhost.com 12345 12345 10.0 nil LENGTH 0 16 0 1 BIG_ENDIAN 0 nil true
   # The encryption protocol should be first for reading (decrypts before other protocols)
   # For writing, it will be last (encrypts after other protocols build the packet)
