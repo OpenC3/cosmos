@@ -1,4 +1,5 @@
 import React, { useRef, useCallback, useState, useEffect } from "react";
+import PropTypes from "prop-types";
 import clsx from "clsx";
 import { useHistory } from "@docusaurus/router";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
@@ -26,20 +27,14 @@ const Search = ({
   const isBrowser = useIsBrowser();
   const { baseUrl } = siteConfig;
   const assetUrl = pluginConfig?.[1]?.assetUrl || baseUrl;
-  const initAlgolia = (searchDocs, searchIndex, DocSearch, options) => {
+  const initSearch = (searchDocs, searchIndex, DocSearch, options) => {
     docSearchRef.current = new DocSearch({
       searchDocs,
       searchIndex,
-      baseUrl,
       inputSelector: "#search_input_react",
-      // Override algolia's default selection event, allowing us to do client-side
-      // navigation and avoiding a full page refresh.
+      // Custom selection handler for client-side navigation
       handleSelected: (_input, _event, suggestion) => {
         const url = suggestion.url || "/";
-        // Use an anchor tag to parse the absolute url into a relative url
-        // Alternatively, we can use new URL(suggestion.url) but its not supported in IE
-        const a = document.createElement("a");
-        a.href = url;
         _input.setVal(""); // clear value
         _event.target.blur(); // remove focus
 
@@ -77,19 +72,19 @@ const Search = ({
         )
       : Promise.resolve({});
 
-  const getLunrIndex = () =>
+  const getSearchIndex = () =>
     process.env.NODE_ENV === "production"
-      ? fetch(`${assetUrl}${pluginData.fileNames.lunrIndex}`).then((content) =>
+      ? fetch(`${assetUrl}${pluginData.fileNames.searchIndex}`).then((content) =>
           content.json(),
         )
       : Promise.resolve([]);
 
-  const loadAlgolia = () => {
+  const loadSearch = () => {
     if (!initialized.current) {
       initialized.current = true;
       Promise.all([
         getSearchDoc(),
-        getLunrIndex(),
+        getSearchIndex(),
         import("./DocSearch"),
         import("./algolia.css"),
       ]).then(([searchDocFile, searchIndex, { default: DocSearch }]) => {
@@ -98,7 +93,7 @@ const Search = ({
         if (!searchDocs || searchDocs.length === 0) {
           return;
         }
-        initAlgolia(searchDocs, searchIndex, DocSearch, options);
+        initSearch(searchDocs, searchIndex, DocSearch, options);
         setIndexReady(true);
       }).catch((err) => {
         console.error("docusaurus-search: failed to load search index", err);
@@ -120,7 +115,7 @@ const Search = ({
 
   let placeholder;
   if (isBrowser) {
-    loadAlgolia();
+    loadSearch();
     placeholder = globalThis.navigator.userAgentData?.platform === "macOS" || /Mac/.test(globalThis.navigator.userAgent)
       ? "Search ⌘+K"
       : "Search Ctrl+K";
@@ -162,8 +157,8 @@ const Search = ({
           { "search-bar-expanded": isSearchBarExpanded },
           { "search-bar": !isSearchBarExpanded },
         )}
-        onClick={loadAlgolia}
-        onMouseOver={loadAlgolia}
+        onClick={loadSearch}
+        onMouseOver={loadSearch}
         onFocus={toggleSearchIconClick}
         onBlur={toggleSearchIconClick}
         ref={searchBarRef}
@@ -172,6 +167,12 @@ const Search = ({
       <HighlightSearchResults />
     </div>
   );
+};
+
+Search.propTypes = {
+  handleSearchBarToggle: PropTypes.func,
+  isSearchBarExpanded: PropTypes.bool,
+  autoFocus: PropTypes.bool,
 };
 
 export default Search;

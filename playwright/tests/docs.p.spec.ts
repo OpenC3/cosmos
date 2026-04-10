@@ -59,7 +59,7 @@ test('verify documentation pages and search', async ({ page, utils }) => {
       .getByText('Defines a key/value pair for the current item'),
   ).toBeVisible()
 
-  // Search for CRC Protcol, click the Protocols result, and verify the contents
+  // Search for CRC Protocol, click the Protocols result, and verify the contents
   await page
     .locator('iframe[title="Documentation"]')
     .contentFrame()

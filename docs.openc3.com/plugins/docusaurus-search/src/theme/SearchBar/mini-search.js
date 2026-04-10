@@ -1,12 +1,11 @@
 /*
 Search Adapter using MiniSearch
-(migrated from Lunr.js adapter by Praveen N)
 */
 
-import MiniSearch from "@generated/lunr.client";
+import MiniSearch from "@generated/mini-search.client";
 
 class MiniSearchAdapter {
-    constructor(searchDocs, searchIndex, maxHits, baseUrl = '/') {
+    constructor(searchDocs, searchIndex, maxHits) {
         this.searchDocs = searchDocs;
         this.miniSearch = MiniSearch.loadJSON(JSON.stringify(searchIndex), {
             idField: "id",
@@ -16,7 +15,6 @@ class MiniSearchAdapter {
                 prefix: true,
             },
         });
-        this.baseUrl = baseUrl;
         this.maxHits = maxHits;
     }
 

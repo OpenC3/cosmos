@@ -39,25 +39,10 @@ const utils = {
   },
 
   compact(array) {
-    const results = [];
-    array.forEach(value => {
-      if (!value) {
-        return;
-      }
-      results.push(value);
-    });
-    return results;
+    return array.filter(Boolean);
   },
 
   getHighlightedValue(object, property) {
-    const hierarchyEntry = object._highlightResult?.hierarchy_camel?.[property];
-    if (
-      hierarchyEntry?.matchLevel &&
-      hierarchyEntry.matchLevel !== 'none' &&
-      hierarchyEntry.value
-    ) {
-      return hierarchyEntry.value;
-    }
     const highlightValue = object._highlightResult?.[property]?.value;
     if (highlightValue) {
       return highlightValue;

@@ -8,24 +8,13 @@ class DocSearch {
         searchDocs,
         searchIndex,
         inputSelector,
-        debug = false,
-        baseUrl = '/',
-        queryDataCallback = null,
-        transformData = false,
-        queryHook = false,
         handleSelected = false,
-        enhancedSearchInput = false,
-        layout = "column",
         maxHits = 5
     }) {
         this.input = document.querySelector(inputSelector);
         if (!this.input) return;
 
-        this.queryDataCallback = queryDataCallback || null;
-        this.isSimpleLayout = layout === "simple";
-        this.client = new MiniSearchAdapter(searchDocs, searchIndex, maxHits, baseUrl);
-        this.transformData = transformData;
-        this.queryHook = queryHook;
+        this.client = new MiniSearchAdapter(searchDocs, searchIndex, maxHits);
         this.customHandleSelected = handleSelected;
         this.cursorIndex = -1;
         this.suggestions = [];
@@ -47,9 +36,7 @@ class DocSearch {
     destroy() {
         document.removeEventListener('keydown', this._onKeyboardShortcut);
         document.removeEventListener('click', this._onOutsideClick);
-        if (this.dropdown?.parentNode) {
-            this.dropdown.parentNode.removeChild(this.dropdown);
-        }
+        this.dropdown?.remove();
     }
 
     _buildDropdown() {
@@ -96,23 +83,13 @@ class DocSearch {
     }
 
     _onInput() {
-        let query = this.input.value;
+        const query = this.input.value;
         if (!query || query.length < 1) {
             this._close();
             return;
         }
 
-        if (this.queryHook) {
-            query = this.queryHook(query) || query;
-        }
-
         this.client.search(query).then(hits => {
-            if (this.queryDataCallback && typeof this.queryDataCallback === "function") {
-                this.queryDataCallback(hits);
-            }
-            if (this.transformData) {
-                hits = this.transformData(hits) || hits;
-            }
             const formatted = DocSearch.formatHits(hits);
             this._renderSuggestions(formatted);
         });
@@ -131,23 +108,13 @@ class DocSearch {
             return;
         }
 
-        const suggestionTemplate = this.isSimpleLayout
-            ? templates.suggestionSimple
-            : templates.suggestion;
-        const template = Hogan.compile(suggestionTemplate);
+        const template = Hogan.compile(templates.suggestion);
 
         this.suggestionsContainer.innerHTML = hits
             .map((hit, i) =>
                 `<div class="ds-suggestion" data-index="${i}">${template.render(hit)}</div>`
             )
             .join('');
-
-        // Add footer
-        const existingFooter = this.dropdown.querySelector('.ds-dataset-1 .algolia-docsearch-footer');
-        if (!existingFooter) {
-            const dataset = this.dropdown.querySelector('.ds-dataset-1');
-            dataset.insertAdjacentHTML('beforeend', templates.footer);
-        }
 
         // Bind click events on suggestions
         this.suggestionsContainer.querySelectorAll('.ds-suggestion').forEach(el => {
@@ -178,9 +145,7 @@ class DocSearch {
     }
 
     _updateAlignment() {
-        // Always right-align the dropdown to the search input
         this.wrapper.classList.add('algolia-autocomplete-right');
-        this.wrapper.classList.remove('algolia-autocomplete-left');
     }
 
     _onKeyDown(e) {
@@ -199,7 +164,7 @@ class DocSearch {
             this._updateCursor(items);
         } else if (e.key === 'Enter') {
             e.preventDefault();
-            const idx = this.cursorIndex >= 0 ? this.cursorIndex : 0;
+            const idx = Math.max(this.cursorIndex, 0);
             const suggestion = this.suggestions[idx];
             if (suggestion) {
                 this._selectSuggestion(suggestion, e, 'key');
@@ -283,21 +248,8 @@ class DocSearch {
             const isTextOrSubcategoryNonEmpty =
                 (subcategory && subcategory !== "") ||
                 (displayTitle && displayTitle !== "");
-            const isLvl1EmptyOrDuplicate =
-                !subcategory || subcategory === "" || subcategory === category;
-            const isLvl2 =
-                displayTitle && displayTitle !== "" && displayTitle !== subcategory;
-            const isLvl1 =
-                !isLvl2 &&
-                (subcategory && subcategory !== "" && subcategory !== category);
-            const isLvl0 = !isLvl1 && !isLvl2;
-            const version = hit.version;
 
             return {
-                isLvl0,
-                isLvl1,
-                isLvl2,
-                isLvl1EmptyOrDuplicate,
                 isCategoryHeader: hit.isCategoryHeader,
                 isSubCategoryHeader: hit.isSubCategoryHeader,
                 isTextOrSubcategoryNonEmpty,
@@ -306,20 +258,14 @@ class DocSearch {
                 title: displayTitle,
                 text,
                 url,
-                version
+                version: hit.version
             };
         });
     }
 
     static formatURL(hit) {
-        const { url, anchor } = hit;
-        if (url) {
-            const containsAnchor = url.includes("#");
-            if (containsAnchor) return url;
-            else if (anchor) return `${hit.url}#${hit.anchor}`;
-            return url;
-        } else if (anchor) return `#${hit.anchor}`;
-        console.warn("no anchor nor url for : ", JSON.stringify(hit));
+        if (hit.url) return hit.url;
+        console.warn("no url for:", JSON.stringify(hit));
         return null;
     }
 }

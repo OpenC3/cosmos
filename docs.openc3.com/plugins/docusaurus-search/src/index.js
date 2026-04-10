@@ -4,9 +4,18 @@ const path = require("node:path");
 const MiniSearch = require("minisearch");
 const { Worker } = require("node:worker_threads");
 
-// local imports
 const utils = require("./utils");
 
+/**
+ * Docusaurus plugin that builds a client-side search index at build time
+ * using MiniSearch. At build, it parses every rendered HTML page into search
+ * documents, creates a serialized MiniSearch index, and writes both to the
+ * output directory. At runtime, the SearchBar theme component fetches these
+ * files and provides instant full-text search.
+ * @param {Object} context - Docusaurus context (siteConfig, etc.)
+ * @param {Object} options - Plugin options (excludeRoutes, fields, stopWords, etc.)
+ * @returns {Object} Docusaurus plugin lifecycle hooks
+ */
 module.exports = function docusaurusSearch(context, options) {
   options = options || {};
   let clientGenerated = false;
@@ -14,7 +23,7 @@ module.exports = function docusaurusSearch(context, options) {
   const guid = String(Date.now());
   const fileNames = {
     searchDoc: `search-doc-${guid}.json`,
-    lunrIndex: `lunr-index-${guid}.json`,
+    searchIndex: `search-index-${guid}.json`,
   };
 
   return {
@@ -35,7 +44,7 @@ module.exports = function docusaurusSearch(context, options) {
     },
     async postBuild({ routesPaths = [], outDir, baseUrl, plugins }) {
       console.log(
-        "docusaurus-search:: Building search docs and lunr index file",
+        "docusaurus-search:: Building search docs and search index file",
       );
       console.time("docusaurus-search:: Indexing time");
 
@@ -133,11 +142,11 @@ module.exports = function docusaurusSearch(context, options) {
       );
 
       const indexFileContents = JSON.stringify(miniSearch);
-      console.log("docusaurus-search:: writing lunr-index.json");
-      fs.writeFileSync(path.join(outDir, "lunr-index.json"), indexFileContents);
-      console.log(`docusaurus-search:: writing ${fileNames.lunrIndex}`);
+      console.log("docusaurus-search:: writing search-index.json");
+      fs.writeFileSync(path.join(outDir, "search-index.json"), indexFileContents);
+      console.log(`docusaurus-search:: writing ${fileNames.searchIndex}`);
       fs.writeFileSync(
-        path.join(outDir, fileNames.lunrIndex),
+        path.join(outDir, fileNames.searchIndex),
         indexFileContents,
       );
       console.log("docusaurus-search:: End of process");
@@ -145,6 +154,15 @@ module.exports = function docusaurusSearch(context, options) {
   };
 };
 
+/**
+ * Distributes HTML file parsing across worker threads to build the search index.
+ * Each worker runs html-to-doc.mjs to extract search documents from HTML files.
+ * Workers process files from a shared queue and report results back via messages.
+ * @param {Array<{path: string, url: string}>} files - HTML files to parse
+ * @param {Function} addToSearchData - Callback to add a parsed document to the index
+ * @param {Object|null} loadedVersions - Map of version names to labels, or null if versioning is disabled
+ * @returns {Promise<number>} The number of files that produced search documents
+ */
 function buildSearchData(files, addToSearchData, loadedVersions) {
   if (!files.length) {
     return Promise.resolve();

@@ -1,7 +1,6 @@
 //copied from https://github.com/cmfcmf/docusaurus-search-local
 import { useEffect, useState } from "react";
 import { useLocation, useHistory } from "@docusaurus/router";
-import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 
 function highlightTextNodes(root, word) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -46,9 +45,6 @@ function removeHighlights(root) {
 export function HighlightSearchResults() {
   const location = useLocation();
   const history = useHistory();
-  const {
-    siteConfig: { baseUrl },
-  } = useDocusaurusContext();
 
   const [highlightData, setHighlightData] = useState({ wordToHighlight: '' });
 
@@ -81,7 +77,7 @@ export function HighlightSearchResults() {
 
     highlightTextNodes(root, highlightData.wordToHighlight);
     return () => removeHighlights(root);
-  }, [highlightData, baseUrl]);
+  }, [highlightData]);
 
   return null;
 }
