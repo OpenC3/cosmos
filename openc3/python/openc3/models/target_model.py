@@ -490,6 +490,7 @@ class TargetModel(Model):
         target_microservices=None,
         disable_erb=None,
         shard=0,
+        target_shard=0,
         scope: str = OPENC3_SCOPE,
     ):
         if target_microservices is None:
@@ -505,6 +506,7 @@ class TargetModel(Model):
         if requires is None:
             requires = []
         self.shard = int(shard) if shard is not None else 0
+        self.target_shard = int(target_shard) if target_shard is not None else 0
         super().__init__(
             f"{scope}__{self.PRIMARY_KEY}",
             name=name,

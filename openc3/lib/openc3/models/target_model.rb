@@ -81,6 +81,7 @@ module OpenC3
     attr_accessor :children
     attr_accessor :disable_erb
     attr_accessor :shard
+    attr_accessor :target_shard
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -402,6 +403,7 @@ module OpenC3
       target_microservices: {},
       disable_erb: nil,
       shard: 0,
+      target_shard: 0,
       scope:
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at, scope: scope)
@@ -427,6 +429,7 @@ module OpenC3
       @target_microservices = target_microservices
       @disable_erb = disable_erb
       @shard = shard.to_i # to_i to handle nil
+      @target_shard = target_shard.to_i # to_i to handle nil
       @bucket = Bucket.getClient()
       @children = []
     end
@@ -458,6 +461,7 @@ module OpenC3
         'target_microservices' => @target_microservices.as_json(),
         'disable_erb' => @disable_erb,
         'shard' => @shard,
+        'target_shard' => @target_shard,
       }
     end
 
@@ -548,6 +552,10 @@ module OpenC3
       when 'SHARD'
         parser.verify_num_parameters(1, 1, "#{keyword} <Shard Number Starting from 0>")
         @shard = Integer(parameters[0])
+
+      when 'TARGET_SHARD'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Shard Number Starting from 0>")
+        @target_shard = Integer(parameters[0])
 
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Target: #{keyword} #{parameters.join(" ")}")
@@ -936,6 +944,7 @@ module OpenC3
         parent: parent,
         needs_dependencies: @needs_dependencies,
         shard: @shard,
+        target_shard: @target_shard,
         scope: @scope
       )
       microservice.create
@@ -963,6 +972,7 @@ module OpenC3
         parent: parent,
         needs_dependencies: @needs_dependencies,
         shard: @shard,
+        target_shard: @target_shard,
         scope: @scope
       )
       microservice.create
@@ -995,6 +1005,7 @@ module OpenC3
         parent: parent,
         needs_dependencies: @needs_dependencies,
         shard: @shard,
+        target_shard: @target_shard,
         scope: @scope
       )
       microservice.create
@@ -1019,6 +1030,7 @@ module OpenC3
         parent: nil,
         needs_dependencies: @needs_dependencies,
         shard: @shard,
+        target_shard: @target_shard,
         scope: @scope
       )
       microservice.create
@@ -1035,6 +1047,7 @@ module OpenC3
         plugin: @plugin,
         parent: parent,
         shard: @shard,
+        target_shard: @target_shard,
         scope: @scope
       )
       microservice.create
@@ -1053,6 +1066,7 @@ module OpenC3
           plugin: @plugin,
           needs_dependencies: @needs_dependencies,
           shard: @shard,
+          target_shard: @target_shard,
           scope: @scope
         )
         microservice.create
