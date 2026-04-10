@@ -206,4 +206,3 @@ class TestExtractOperatorAndOperandFromComparison:
     def test_complains_about_unparsable_operands(self):
         with pytest.raises(RuntimeError, match="ERROR: Unable"):
             extract_operator_and_operand_from_comparison("== foo")
-

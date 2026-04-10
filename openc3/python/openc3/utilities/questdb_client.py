@@ -1100,7 +1100,9 @@ class QuestDBClient:
                                     )
                                 else:
                                     # Type mismatch — ALTER the column type
-                                    alter = f'ALTER TABLE "{table_name}" ALTER COLUMN {col_name} TYPE {desired_sql_type}'
+                                    alter = (
+                                        f'ALTER TABLE "{table_name}" ALTER COLUMN {col_name} TYPE {desired_sql_type}'
+                                    )
                                     cur.execute(alter)
                                     self._log_info(
                                         f"QuestDB: Altered column type: {alter} (was {existing_type}, now {desired_canonical})"
