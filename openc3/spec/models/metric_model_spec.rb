@@ -17,11 +17,16 @@
 
 require 'spec_helper'
 require 'openc3/models/metric_model'
-
+require 'openc3/models/scope_model'
 module OpenC3
   describe MetricModel do
     before(:each) do
       mock_redis()
+      local_s3()
+    end
+
+    after(:each) do
+      local_s3_unset()
     end
 
     describe "self.all" do
@@ -77,13 +82,13 @@ module OpenC3
     describe "redis_metrics" do
       it "returns redis metrics from Store and Ephemeral Store" do
         values = {
-          'connected_clients' => {'value' => 37},
-          'used_memory_rss' => {'value' => 0},
-          'total_commands_processed' => {'value' => 0},
-          'instantaneous_ops_per_sec' => {'value' => 0},
-          'instantaneous_input_kbps' => {'value' => 0},
-          'instantaneous_output_kbps' => {'value' => 0},
-          'latency_percentiles_usec_hget'=> {'value' => '1,2'}
+          'connected_clients' => 37,
+          'used_memory_rss' => 0,
+          'total_commands_processed' => 0,
+          'instantaneous_ops_per_sec' => 0,
+          'instantaneous_input_kbps' => 0,
+          'instantaneous_output_kbps' => 0,
+          'latency_percentiles_usec_hget' => '1,2'
         }
         model = MetricModel.new(name: "all", scope: "scope", values: {"test" => {"value" => 7}})
         model.create(force: true)
@@ -109,7 +114,7 @@ module OpenC3
 
         result = MetricModel.redis_metrics
         expect(result.empty?).to eql(false)
-        expect(result['redis_connected_clients_total_0']['value']).to eql(37)
+        expect(result[0]['redis_connected_clients_total']).to eql(37)
       end
     end
   end
