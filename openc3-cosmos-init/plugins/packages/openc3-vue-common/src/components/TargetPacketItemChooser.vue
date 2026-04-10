@@ -584,9 +584,7 @@ export default {
       }
       // In glob mode, skip API calls if the packet name is free text (not a known packet)
       if (this.allowGlob && typeof this.selectedPacketName === 'string') {
-        const knownPacket = this.packetNames.find(
-          (p) => this.selectedPacketName === p.value,
-        )
+        const knownPacket = this.packetNames.find((p) => this.selectedPacketName === p.value)
         if (!knownPacket && this.selectedPacketName !== 'LATEST') {
           this.internalDisabled = false
           return
@@ -681,9 +679,7 @@ export default {
       if (value !== null) {
         if (this.allowGlob && typeof value === 'string') {
           // In glob mode, only call the API if the value matches a known packet
-          const knownPacket = this.packetNames.find(
-            (p) => value === p.value,
-          )
+          const knownPacket = this.packetNames.find((p) => value === p.value)
           if (knownPacket) {
             this.updatePacketDetails(value)
           } else {
