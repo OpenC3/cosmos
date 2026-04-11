@@ -50,7 +50,12 @@ def get_packets(
 
 
 def inject_tlm(
-    target_name: str, packet_name: str, item_hash: dict = None, type: str = "CONVERTED", stored: bool = False, scope: str = OPENC3_SCOPE
+    target_name: str,
+    packet_name: str,
+    item_hash: dict = None,
+    type: str = "CONVERTED",
+    stored: bool = False,
+    scope: str = OPENC3_SCOPE,
 ):
     print(f'inject_tlm("{target_name}", "{packet_name}", {item_hash}, type="{type}", stored={stored})')
     openc3.script.API_SERVER.inject_tlm(target_name, packet_name, item_hash, type=type, stored=stored, scope=scope)

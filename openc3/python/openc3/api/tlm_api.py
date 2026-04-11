@@ -167,7 +167,9 @@ def inject_tlm(target_name, packet_name, item_hash=None, type="CONVERTED", store
 
     # Use an interface microservice if it exists, other use the decom microservice
     if interface_name:
-        InterfaceTopic.inject_tlm(interface_name, target_name, packet_name, item_hash, type=type, stored=stored, scope=scope)
+        InterfaceTopic.inject_tlm(
+            interface_name, target_name, packet_name, item_hash, type=type, stored=stored, scope=scope
+        )
     else:
         DecomInterfaceTopic.inject_tlm(target_name, packet_name, item_hash, type=type, stored=stored, scope=scope)
 

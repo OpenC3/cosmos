@@ -43,7 +43,7 @@ class Proxy:
         global gPkts
         return "ID", gPkts
 
-    def inject_tlm(self, packet_name, item_hash=None, type="CONVERTED", scope=OPENC3_SCOPE):
+    def inject_tlm(self, packet_name, item_hash=None, type="CONVERTED", stored=False, scope=OPENC3_SCOPE):
         pass
 
     def set_tlm(*args, type="CONVERTED", scope=OPENC3_SCOPE):
@@ -84,7 +84,7 @@ class TestTelemetry(unittest.TestCase):
         for stdout in capture_io():
             inject_tlm("TARGET", "PACKET", {"PARAM": "VALUE"})
             self.assertIn(
-                'inject_tlm("TARGET", "PACKET", {\'PARAM\': \'VALUE\'}, type="CONVERTED")',
+                'inject_tlm("TARGET", "PACKET", {\'PARAM\': \'VALUE\'}, type="CONVERTED", stored=False)',
                 stdout.getvalue(),
             )
 
