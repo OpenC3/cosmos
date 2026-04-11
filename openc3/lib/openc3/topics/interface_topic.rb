@@ -111,7 +111,7 @@ module OpenC3
       Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'protocol_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100)
     end
 
-    def self.inject_tlm(interface_name, target_name, packet_name, item_hash = nil, type: :CONVERTED, timeout: nil, scope:)
+    def self.inject_tlm(interface_name, target_name, packet_name, item_hash = nil, type: :CONVERTED, stored: false, timeout: nil, scope:)
       interface_name = interface_name.upcase
 
       timeout = COMMAND_ACK_TIMEOUT_S unless timeout
@@ -123,6 +123,7 @@ module OpenC3
       data['packet_name'] = packet_name.to_s.upcase
       data['item_hash'] = item_hash
       data['type'] = type
+      data['stored'] = stored
       cmd_id = Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'inject_tlm' => JSON.generate(data, allow_nan: true) }, '*', 100)
       time = Time.now
       while (Time.now - time) < timeout

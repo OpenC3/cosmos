@@ -33,6 +33,9 @@ def handle_inject_tlm(inject_tlm_json, scope):
     if item_hash:
         for name, value in item_hash.items():
             packet.write(str(name), value, data_type)
+    stored = inject_tlm_hash.get("stored")
+    if stored:
+        packet.stored = str(stored).lower() == "true"
     packet.received_time = datetime.now(timezone.utc)
     packet.received_count = TargetModel.increment_telemetry_count(
         packet.target_name, packet.packet_name, 1, scope=scope

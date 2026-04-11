@@ -287,6 +287,21 @@ class TestTlmApi(unittest.TestCase):
         finally:
             self.dm.shutdown()
 
+    @patch("openc3.microservices.microservice.System")
+    def test_inject_tlm_does_not_update_cvt_when_stored_is_true(self, mock_system):
+        self.decom_stuff()
+        try:
+            inject_tlm("INST", "HEALTH_STATUS", {"TEMP1": 50}, type="CONVERTED")
+            time.sleep(0.5)
+            self.assertAlmostEqual(tlm("INST HEALTH_STATUS TEMP1"), 50.0, delta=0.1)
+
+            inject_tlm("INST", "HEALTH_STATUS", {"TEMP1": 99}, type="CONVERTED", stored=True)
+            time.sleep(0.5)
+            # CVT should still have the old value since stored packets don't update CVT
+            self.assertAlmostEqual(tlm("INST HEALTH_STATUS TEMP1"), 50.0, delta=0.1)
+        finally:
+            self.dm.shutdown()
+
     # override_tlm
     def test_overrides_complains_about_unknown_targets_packets_and_parameters(self):
         with self.assertRaisesRegex(RuntimeError, "does not exist"):

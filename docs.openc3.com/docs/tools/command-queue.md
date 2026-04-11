@@ -26,18 +26,17 @@ The queue starts out in Hold mode by default which means that commands are added
 You add commands to the queue by specifying the queue as a keyword argument to the normal `cmd` [APIs](/docs/guides/scripting-api#commands).
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-cmd("INST ABORT", queue: "TEST")
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 cmd("INST ABORT", queue="TEST")
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmd("INST ABORT", queue: "TEST")
 ```
 
 </TabItem>

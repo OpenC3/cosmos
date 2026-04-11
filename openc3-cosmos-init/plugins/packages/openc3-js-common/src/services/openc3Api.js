@@ -514,9 +514,11 @@ export default class OpenC3Api {
     packet_name,
     item_hash = null,
     value_type = 'CONVERTED',
+    stored = false,
   ) {
     await this.exec('inject_tlm', [target_name, packet_name, item_hash], {
       type: value_type,
+      stored: stored,
     })
   }
 
