@@ -37,7 +37,7 @@ module OpenC3
 
     attr_reader :microservice
     attr_reader :scope
-    attr_reader :target_shard
+    attr_reader :db_shard
     attr_reader :data
     attr_reader :mutex
 
@@ -47,12 +47,12 @@ module OpenC3
       @data = {}
       @mutex = Mutex.new
 
-      # Look up target_shard from MicroserviceModel stored on shard 0
+      # Look up db_shard from MicroserviceModel stored on shard 0
       begin
         json = Store.hget('openc3_microservices', microservice)
-        @target_shard = json ? JSON.parse(json)['target_shard'].to_i : 0
+        @db_shard = json ? JSON.parse(json)['db_shard'].to_i : 0
       rescue
-        @target_shard = 0
+        @db_shard = 0
       end
 
       # Always make sure there is a update thread
@@ -99,7 +99,7 @@ module OpenC3
             instance.mutex.synchronize do
               json = {}
               json['name'] = instance.microservice
-              json['target_shard'] = instance.target_shard
+              json['db_shard'] = instance.db_shard
               values = instance.data
               json['values'] = values
               MetricModel.set(json, scope: instance.scope) if values.length > 0

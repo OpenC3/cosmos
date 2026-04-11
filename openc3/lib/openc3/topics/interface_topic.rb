@@ -21,10 +21,10 @@ module OpenC3
   class InterfaceTopic < Topic
     COMMAND_ACK_TIMEOUT_S = 30
 
-    # Look up target_shard from InterfaceModel stored on shard 0.
+    # Look up db_shard from InterfaceModel stored on shard 0.
     def self._shard_for_interface(interface_name, scope:)
       json = Store.hget("#{scope}__openc3_interfaces", interface_name)
-      json ? (JSON.parse(json, allow_nan: true, create_additions: true)['target_shard'] || 0).to_i : 0
+      json ? (JSON.parse(json, allow_nan: true, create_additions: true)['db_shard'] || 0).to_i : 0
     end
 
     # Generate a list of topics for this interface. This includes the interface itself
@@ -39,8 +39,8 @@ module OpenC3
       topics
     end
 
-    def self.receive_commands(interface, scope:, target_shard: 0)
-      target_shard = target_shard.to_i
+    def self.receive_commands(interface, scope:, db_shard: 0)
+      db_shard = db_shard.to_i
       interface_cmd_topic = "{#{scope}__CMD}INTERFACE__#{interface.name}"
       system_events_topic = "OPENC3__SYSTEM__EVENTS"
 
@@ -49,11 +49,11 @@ module OpenC3
         target_topics << "{#{scope}__CMD}TARGET__#{target_name}"
       end
 
-      # Group target command topics by shard; include interface cmd and system events on target_shard
+      # Group target command topics by shard; include interface cmd and system events on db_shard
       shard_groups = Topic.group_topics_by_shard(target_topics, target_pattern: 'CMD}TARGET__', scope: scope)
-      shard_groups[target_shard] ||= []
-      shard_groups[target_shard] << interface_cmd_topic
-      shard_groups[target_shard] << system_events_topic
+      shard_groups[db_shard] ||= []
+      shard_groups[db_shard] << interface_cmd_topic
+      shard_groups[db_shard] << system_events_topic
 
       all_same_shard = Topic.all_same_shard?(shard_groups)
 

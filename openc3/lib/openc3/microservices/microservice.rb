@@ -127,7 +127,7 @@ module OpenC3
       @logger.info("Microservice initialized with config:\n#{@config}")
       @topics ||= []
       @microservice_topic = "MICROSERVICE__#{@name}"
-      @target_shard = (@config['target_shard'] || 0).to_i
+      @db_shard = (@config['db_shard'] || 0).to_i
 
       # Get configuration for any targets
       @target_names = @config["target_names"]
@@ -260,10 +260,10 @@ module OpenC3
         else
           raise "Invalid topics given to microservice_cmd: #{topics}"
         end
-        Topic.trim_topic(topic, msg_id, shard: @target_shard)
+        Topic.trim_topic(topic, msg_id, shard: @db_shard)
         return true
       end
-      Topic.trim_topic(topic, msg_id, shard: @target_shard)
+      Topic.trim_topic(topic, msg_id, shard: @db_shard)
       return false
     end
   end

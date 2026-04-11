@@ -24,9 +24,9 @@ class RouterTopic(Topic):
 
     @classmethod
     def _shard_for_router(cls, router_name, scope):
-        """Look up target_shard from RouterModel stored on shard 0."""
+        """Look up db_shard from RouterModel stored on shard 0."""
         json_data = Store.hget(f"{scope}__openc3_routers", router_name)
-        return int(json.loads(json_data).get("target_shard", 0) or 0) if json_data else 0
+        return int(json.loads(json_data).get("db_shard", 0) or 0) if json_data else 0
 
     # Generate a list of topics for this router. This includes the router itself
     # and all the targets which are assigned to this router.
@@ -40,8 +40,8 @@ class RouterTopic(Topic):
         return topics
 
     @classmethod
-    def receive_telemetry(cls, router, scope=OPENC3_SCOPE, target_shard=0):
-        target_shard = int(target_shard or 0)
+    def receive_telemetry(cls, router, scope=OPENC3_SCOPE, db_shard=0):
+        db_shard = int(db_shard or 0)
         router_cmd_topic = f"{{{scope}__CMD}}ROUTER__{router.name}"
 
         target_topics = []
@@ -49,11 +49,11 @@ class RouterTopic(Topic):
             for _, packet in System.telemetry.packets(target_name).items():
                 target_topics.append(f"{scope}__TELEMETRY__{{{packet.target_name}}}__{packet.packet_name}")
 
-        # Group telemetry topics by shard; include router cmd topic on target_shard
+        # Group telemetry topics by shard; include router cmd topic on db_shard
         shard_groups = Topic.group_topics_by_shard(target_topics, "__TELEMETRY__", scope)
-        if target_shard not in shard_groups:
-            shard_groups[target_shard] = []
-        shard_groups[target_shard].append(router_cmd_topic)
+        if db_shard not in shard_groups:
+            shard_groups[db_shard] = []
+        shard_groups[db_shard].append(router_cmd_topic)
 
         all_same_shard = Topic.all_same_shard(shard_groups)
 

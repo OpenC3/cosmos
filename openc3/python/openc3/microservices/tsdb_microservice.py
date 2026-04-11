@@ -50,11 +50,8 @@ class TsdbMicroservice(Microservice):
         if len(self.topics) <= 0:
             raise RuntimeError("No topics provided")
         topic_parts = self.topics[0].split("__")
-        # Only one target should be provided to this microservice
-        target_name = topic_parts[2].strip("{}")
-        self.target_shard = Store.shard_for_target(target_name, scope=self.scope)
-        Topic.update_topic_offsets(self.topics, shard=self.target_shard)
-        self.questdb = QuestDBClient(logger=self.logger, name=f"Microservice {self.name}", shard=self.target_shard)
+        Topic.update_topic_offsets(self.topics, shard=self.db_shard)
+        self.questdb = QuestDBClient(logger=self.logger, name=f"Microservice {self.name}", shard=self.db_shard)
         self.questdb.connect_ingest()
         self.questdb.connect_query()
 
@@ -73,8 +70,8 @@ class TsdbMicroservice(Microservice):
         # Initialize metrics
         self.ingest_count = 0
         self.error_count = 0
-        self.metric.set(name="tsdb_ingest_total", value=self.ingest_count, labels={"target_shard": self.target_shard}, type="counter")
-        self.metric.set(name="tsdb_ingest_error_total", value=self.error_count, labels={"target_shard": self.target_shard}, type="counter")
+        self.metric.set(name="tsdb_ingest_total", value=self.ingest_count, type="counter")
+        self.metric.set(name="tsdb_ingest_error_total", value=self.error_count, type="counter")
 
     def _create_table(self, target_name, packet_name, topic):
         """Create a table for a target/packet combination."""
@@ -94,7 +91,7 @@ class TsdbMicroservice(Microservice):
         """Read topics and write data to QuestDB"""
         try:
             start = None
-            for topic, msg_id, msg_hash, redis in Topic.read_topics(self.topics, shard=self.target_shard):
+            for topic, msg_id, msg_hash, redis in Topic.read_topics(self.topics, shard=self.db_shard):
                 if self.cancel_thread:
                     break
 
@@ -168,12 +165,12 @@ class TsdbMicroservice(Microservice):
             if start is not None:
                 diff = time.time() - start  # seconds as a float
                 self.metric.set(name="tsdb_ingest_duration_seconds", value=diff, type="gauge", unit="seconds")
-            self.metric.set(name="tsdb_ingest_total", value=self.ingest_count, labels={"target_shard": self.target_shard}, type="counter")
+            self.metric.set(name="tsdb_ingest_total", value=self.ingest_count, type="counter")
 
         except IngressError as error:
             # Cast the value to fit the column type and retry
             self.error_count += 1
-            self.metric.set(name="tsdb_ingest_error_total", value=self.error_count, labels={"target_shard": self.target_shard}, type="counter")
+            self.metric.set(name="tsdb_ingest_error_total", value=self.error_count, type="counter")
             self.questdb.handle_ingress_error(error)
 
     def trim_topics(self):
@@ -182,7 +179,7 @@ class TsdbMicroservice(Microservice):
             self.next_trim_time_ms = current_time_ms + self.TRIM_KEEP_MS
             trim_time_ms = current_time_ms - self.TRIM_KEEP_MS
             trim_offset = f"{trim_time_ms}-0"
-            redis = EphemeralStore.instance(shard=self.target_shard)
+            redis = EphemeralStore.instance(shard=self.db_shard)
             pipeline = redis.pipeline(transaction=False)
             for topic in self.topics:
                 pipeline.xtrim(name=topic, minid=trim_offset, approximate=True, limit=0)

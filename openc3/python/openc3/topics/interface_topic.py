@@ -24,9 +24,9 @@ class InterfaceTopic(Topic):
 
     @classmethod
     def _shard_for_interface(cls, interface_name, scope):
-        """Look up target_shard from InterfaceModel stored on shard 0."""
+        """Look up db_shard from InterfaceModel stored on shard 0."""
         json_data = Store.hget(f"{scope}__openc3_interfaces", interface_name)
-        return int(json.loads(json_data).get("target_shard", 0) or 0) if json_data else 0
+        return int(json.loads(json_data).get("db_shard", 0) or 0) if json_data else 0
 
     # Generate a list of topics for this interface. This includes the interface itself
     # and all the targets which are assigned to this interface.
@@ -40,8 +40,8 @@ class InterfaceTopic(Topic):
         return topics
 
     @classmethod
-    def receive_commands(cls, method, interface, scope=OPENC3_SCOPE, target_shard=0):
-        target_shard = int(target_shard or 0)
+    def receive_commands(cls, method, interface, scope=OPENC3_SCOPE, db_shard=0):
+        db_shard = int(db_shard or 0)
         interface_cmd_topic = f"{{{scope}__CMD}}INTERFACE__{interface.name}"
         system_events_topic = "OPENC3__SYSTEM__EVENTS"
 
@@ -49,12 +49,12 @@ class InterfaceTopic(Topic):
         for target_name in interface.cmd_target_names:
             target_topics.append(f"{{{scope}__CMD}}TARGET__{target_name}")
 
-        # Group target command topics by shard; include interface cmd and system events on target_shard
+        # Group target command topics by shard; include interface cmd and system events on db_shard
         shard_groups = Topic.group_topics_by_shard(target_topics, "CMD}TARGET__", scope)
-        if target_shard not in shard_groups:
-            shard_groups[target_shard] = []
-        shard_groups[target_shard].append(interface_cmd_topic)
-        shard_groups[target_shard].append(system_events_topic)
+        if db_shard not in shard_groups:
+            shard_groups[db_shard] = []
+        shard_groups[db_shard].append(interface_cmd_topic)
+        shard_groups[db_shard].append(system_events_topic)
 
         all_same_shard = Topic.all_same_shard(shard_groups)
 

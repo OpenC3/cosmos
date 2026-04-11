@@ -37,21 +37,21 @@ module OpenC3
     attr_accessor :txcnt
     attr_accessor :rxcnt
 
-    # Look up target_shard from the corresponding InterfaceModel or RouterModel.
-    def self._lookup_target_shard(name, scope:)
+    # Look up db_shard from the corresponding InterfaceModel or RouterModel.
+    def self._lookup_db_shard(name, scope:)
       type = _get_type
       key = type == 'INTERFACESTATUS' ? "#{scope}__openc3_interfaces" : "#{scope}__openc3_routers"
       json = Store.hget(key, name)
-      json ? (JSON.parse(json, allow_nan: true, create_additions: true)['target_shard'] || 0).to_i : 0
+      json ? (JSON.parse(json, allow_nan: true, create_additions: true)['db_shard'] || 0).to_i : 0
     end
 
-    # Collect all unique target_shard values from InterfaceModels or RouterModels.
-    def self._collect_target_shards(scope:)
+    # Collect all unique db_shard values from InterfaceModels or RouterModels.
+    def self._collect_db_shards(scope:)
       shards = Set.new([0])
       type = _get_type
       key = type == 'INTERFACESTATUS' ? "#{scope}__openc3_interfaces" : "#{scope}__openc3_routers"
       Store.hgetall(key).each do |_name, json|
-        shards << (JSON.parse(json, allow_nan: true, create_additions: true)['target_shard'] || 0).to_i
+        shards << (JSON.parse(json, allow_nan: true, create_additions: true)['db_shard'] || 0).to_i
       end
       shards
     end

@@ -90,10 +90,9 @@ module OpenC3
       if @name =~ /__DECOM__/
         @topics << "#{@scope}__DECOMINTERFACE__{#{@target_names[0]}}"
       end
-      @target_shard = Store.shard_for_target(@target_names[0], scope: @scope)
       @limits_event_topic = "#{@scope}__openc3_limits_events"
       @topics << @limits_event_topic
-      Topic.update_topic_offsets(@topics, shard: @target_shard)
+      Topic.update_topic_offsets(@topics, shard: @db_shard)
       System.telemetry.limits_change_callback = method(:limits_change_callback)
       LimitsEventTopic.sync_system(scope: @scope)
       @error_count = 0
@@ -113,7 +112,7 @@ module OpenC3
 
         begin
           OpenC3.in_span("read_topics") do
-            Topic.read_topics(@topics, shard: @target_shard) do |topic, msg_id, msg_hash, redis|
+            Topic.read_topics(@topics, shard: @db_shard) do |topic, msg_id, msg_hash, redis|
               break if @cancel_thread
               if topic == @microservice_topic
                 microservice_cmd(topic, msg_id, msg_hash, redis)

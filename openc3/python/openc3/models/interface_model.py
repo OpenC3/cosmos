@@ -87,7 +87,7 @@ class InterfaceModel(Model):
         container=None,
         prefix=None,
         shard=0,
-        target_shard=0,
+        db_shard=0,
         scope: str = OPENC3_SCOPE,
     ):
         type = self.__class__._get_type()
@@ -150,9 +150,9 @@ class InterfaceModel(Model):
         self.shard = shard
         if self.shard is None:
             self.shard = 0
-        self.target_shard = target_shard
-        if self.target_shard is None:
-            self.target_shard = 0
+        self.db_shard = db_shard
+        if self.db_shard is None:
+            self.db_shard = 0
         self.secrets = [] if secrets is None else secrets
 
     # Called by InterfaceMicroservice to instantiate the Interface defined
@@ -221,7 +221,7 @@ class InterfaceModel(Model):
             "container": self.container,
             "prefix": self.prefix,
             "shard": self.shard,
-            "target_shard": self.target_shard,
+            "db_shard": self.db_shard,
             "updated_at": self.updated_at,
         }
 

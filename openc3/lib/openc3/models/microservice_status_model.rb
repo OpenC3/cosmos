@@ -29,18 +29,18 @@ module OpenC3
     attr_accessor :error
     attr_accessor :custom
 
-    # Look up target_shard from the corresponding MicroserviceModel.
-    def self._lookup_target_shard(name, scope:)
+    # Look up db_shard from the corresponding MicroserviceModel.
+    def self._lookup_db_shard(name, scope:)
       json = Store.hget('openc3_microservices', name)
-      json ? (JSON.parse(json, allow_nan: true, create_additions: true)['target_shard'] || 0).to_i : 0
+      json ? (JSON.parse(json, allow_nan: true, create_additions: true)['db_shard'] || 0).to_i : 0
     end
 
-    # Collect all unique target_shard values from MicroserviceModels.
-    def self._collect_target_shards(scope:)
+    # Collect all unique db_shard values from MicroserviceModels.
+    def self._collect_db_shards(scope:)
       shards = Set.new([0])
       Store.hgetall('openc3_microservices').each do |name, json|
         next if scope and name.split("__")[0] != scope
-        shards << (JSON.parse(json, allow_nan: true, create_additions: true)['target_shard'] || 0).to_i
+        shards << (JSON.parse(json, allow_nan: true, create_additions: true)['db_shard'] || 0).to_i
       end
       shards
     end

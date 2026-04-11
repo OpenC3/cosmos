@@ -490,7 +490,7 @@ class TargetModel(Model):
         target_microservices=None,
         disable_erb=None,
         shard=0,
-        target_shard=0,
+        db_shard=0,
         scope: str = OPENC3_SCOPE,
     ):
         if target_microservices is None:
@@ -506,7 +506,7 @@ class TargetModel(Model):
         if requires is None:
             requires = []
         self.shard = int(shard) if shard is not None else 0
-        self.target_shard = int(target_shard) if target_shard is not None else 0
+        self.db_shard = int(db_shard) if db_shard is not None else 0
         super().__init__(
             f"{scope}__{self.PRIMARY_KEY}",
             name=name,
@@ -625,7 +625,7 @@ class TargetModel(Model):
                     "command": "ADD_TOPICS",
                     "topics": json.dumps(raw_topics, cls=JsonEncoder),
                 },
-                shard=self.target_shard,
+                shard=self.db_shard,
             )
             self.add_topics_to_microservice(f"{self.scope}__PACKETLOG__{self.name}", raw_topics)
             Topic.write_topic(
@@ -634,7 +634,7 @@ class TargetModel(Model):
                     "command": "ADD_TOPICS",
                     "topics": json.dumps(raw_topics, cls=JsonEncoder),
                 },
-                shard=self.target_shard,
+                shard=self.db_shard,
             )
             self.add_topics_to_microservice(f"{self.scope}__DECOM__{self.name}", raw_topics)
         else:
@@ -644,7 +644,7 @@ class TargetModel(Model):
                     "command": "ADD_TOPICS",
                     "topics": json.dumps(raw_topics, cls=JsonEncoder),
                 },
-                shard=self.target_shard,
+                shard=self.db_shard,
             )
             self.add_topics_to_microservice(f"{self.scope}__COMMANDLOG__{self.name}", raw_topics)
 

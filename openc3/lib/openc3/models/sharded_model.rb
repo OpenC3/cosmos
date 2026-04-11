@@ -13,8 +13,8 @@
 
 # Mixin that provides shard-aware Redis operations with hard caching.
 # Including classes must define two class methods:
-#   _lookup_target_shard(name, scope:) -> Integer
-#   _collect_target_shards(scope:) -> Set
+#   _lookup_db_shard(name, scope:) -> Integer
+#   _collect_db_shards(scope:) -> Set
 module OpenC3
   module ShardedModel
     def self.included(base)
@@ -22,7 +22,7 @@ module OpenC3
     end
 
     module ClassMethods
-      # Lookup of target_shard for a given name.
+      # Lookup of db_shard for a given name.
       # Hard-cached only when use_cache: true (intended for the set/create path
       # where the shard won't change within the process lifetime).
       def _shard_for_name(name, scope:, use_cache: false)
@@ -33,7 +33,7 @@ module OpenC3
           return cached unless cached.nil?
         end
 
-        shard = _lookup_target_shard(name, scope: scope)
+        shard = _lookup_db_shard(name, scope: scope)
 
         if use_cache
           cache[cache_key] = shard
@@ -44,7 +44,7 @@ module OpenC3
 
       # Collect all active shards (always fresh lookup, no cache).
       def _active_shards(scope:)
-        _collect_target_shards(scope: scope)
+        _collect_db_shards(scope: scope)
       end
 
       # Shard-aware get: looks up the shard for name, reads from the correct store instance.

@@ -23,20 +23,20 @@ class MicroserviceStatusModel(ShardedModel, Model):
     _shard_cache = {}
 
     @classmethod
-    def _lookup_target_shard(cls, name, scope):
-        """Look up target_shard from the corresponding MicroserviceModel."""
+    def _lookup_db_shard(cls, name, scope):
+        """Look up db_shard from the corresponding MicroserviceModel."""
         json_data = Store.hget("openc3_microservices", name)
-        return int(json.loads(json_data).get("target_shard", 0) or 0) if json_data else 0
+        return int(json.loads(json_data).get("db_shard", 0) or 0) if json_data else 0
 
     @classmethod
-    def _collect_target_shards(cls, scope):
-        """Collect all unique target_shard values from MicroserviceModels."""
+    def _collect_db_shards(cls, scope):
+        """Collect all unique db_shard values from MicroserviceModels."""
         shards = {0}
         for name, json_data in Store.hgetall("openc3_microservices").items():
             decoded_name = name.decode() if isinstance(name, bytes) else name
             if scope and decoded_name.split("__")[0] != scope:
                 continue
-            shards.add(int(json.loads(json_data).get("target_shard", 0) or 0))
+            shards.add(int(json.loads(json_data).get("db_shard", 0) or 0))
         return shards
 
     # NOTE: The following three class methods are used by the ModelController

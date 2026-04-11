@@ -71,7 +71,7 @@ class TestRouterStatusModel(unittest.TestCase):
         self.assertEqual(list(all_interfaces.keys()), ["MyRouter"])
         self.assertEqual(all_interfaces["MyRouter"]["state"], "CONNECTED")
 
-    def test_shard_for_name_returns_target_shard(self):
-        RouterModel(name="MY_RTR", scope="DEFAULT", target_shard=3).create()
+    def test_shard_for_name_returns_db_shard(self):
+        RouterModel(name="MY_RTR", scope="DEFAULT", db_shard=3).create()
         shard = RouterStatusModel._shard_for_name("MY_RTR", "DEFAULT")
         self.assertEqual(shard, 3)

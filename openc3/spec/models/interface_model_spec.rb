@@ -225,7 +225,7 @@ module OpenC3
         expect(json['ports']).to eq []
         expect(json['container']).to eq nil
         expect(json['prefix']).to eql nil
-        expect(json['target_shard']).to eq 0
+        expect(json['db_shard']).to eq 0
 
         params = model.method(:initialize).parameters
         params.each do |type, name|

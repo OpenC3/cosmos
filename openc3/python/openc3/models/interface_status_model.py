@@ -26,21 +26,21 @@ class InterfaceStatusModel(ShardedModel, Model):
     _shard_cache = {}
 
     @classmethod
-    def _lookup_target_shard(cls, name, scope):
-        """Look up target_shard from the corresponding InterfaceModel or RouterModel."""
+    def _lookup_db_shard(cls, name, scope):
+        """Look up db_shard from the corresponding InterfaceModel or RouterModel."""
         type_ = cls._get_type()
         key = f"{scope}__openc3_interfaces" if type_ == "INTERFACESTATUS" else f"{scope}__openc3_routers"
         json_data = Store.hget(key, name)
-        return int(json.loads(json_data).get("target_shard", 0) or 0) if json_data else 0
+        return int(json.loads(json_data).get("db_shard", 0) or 0) if json_data else 0
 
     @classmethod
-    def _collect_target_shards(cls, scope):
-        """Collect all unique target_shard values from InterfaceModels or RouterModels."""
+    def _collect_db_shards(cls, scope):
+        """Collect all unique db_shard values from InterfaceModels or RouterModels."""
         shards = {0}
         type_ = cls._get_type()
         key = f"{scope}__openc3_interfaces" if type_ == "INTERFACESTATUS" else f"{scope}__openc3_routers"
         for _name, json_data in Store.hgetall(key).items():
-            shards.add(int(json.loads(json_data).get("target_shard", 0) or 0))
+            shards.add(int(json.loads(json_data).get("db_shard", 0) or 0))
         return shards
 
     # NOTE: The following three class methods are used by the ModelController

@@ -45,12 +45,12 @@ class Metric:
         self.data = {}
         self.mutex = threading.Lock()
 
-        # Look up target_shard from MicroserviceModel stored on shard 0
+        # Look up db_shard from MicroserviceModel stored on shard 0
         try:
             json_data = Store.hget("openc3_microservices", microservice)
-            self.target_shard = int(json.loads(json_data).get("target_shard", 0) or 0) if json_data else 0
+            self.db_shard = int(json.loads(json_data).get("db_shard", 0) or 0) if json_data else 0
         except Exception:
-            self.target_shard = 0
+            self.db_shard = 0
 
         # Always make sure there is a update thread
         with Metric.mutex:
@@ -95,7 +95,7 @@ class Metric:
                     with instance.mutex:
                         metric_json = {}
                         metric_json["name"] = instance.microservice
-                        metric_json["target_shard"] = instance.target_shard
+                        metric_json["db_shard"] = instance.db_shard
                         values = instance.data
                         metric_json["values"] = values
                         if len(values) > 0:

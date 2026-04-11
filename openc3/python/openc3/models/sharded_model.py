@@ -11,8 +11,8 @@
 
 # Mixin that provides shard-aware Redis operations with hard caching.
 # Subclasses must define two class methods:
-#   _lookup_target_shard(name, scope) -> int
-#   _collect_target_shards(scope) -> set[int]
+#   _lookup_db_shard(name, scope) -> int
+#   _collect_db_shards(scope) -> set[int]
 
 import json
 import time
@@ -22,8 +22,8 @@ class ShardedModel:
     """Mixin providing shard-aware Redis operations with hard caching.
 
     Including classes must define:
-      _lookup_target_shard(cls, name, scope) -> int
-      _collect_target_shards(cls, scope) -> set[int]
+      _lookup_db_shard(cls, name, scope) -> int
+      _collect_db_shards(cls, scope) -> set[int]
     """
 
     @classmethod
@@ -34,7 +34,7 @@ class ShardedModel:
 
     @classmethod
     def _shard_for_name(cls, name, scope, use_cache=False):
-        """Lookup of target_shard for a given name.
+        """Lookup of db_shard for a given name.
         Hard-cached only when use_cache=True (intended for the set/create path
         where the shard won't change within the process lifetime)."""
         if use_cache:
@@ -43,7 +43,7 @@ class ShardedModel:
             if cache_key in cache:
                 return cache[cache_key]
 
-        shard = cls._lookup_target_shard(name, scope)
+        shard = cls._lookup_db_shard(name, scope)
 
         if use_cache:
             cache[cache_key] = shard
@@ -53,7 +53,7 @@ class ShardedModel:
     @classmethod
     def _active_shards(cls, scope):
         """Collect all active shards (always fresh lookup, no cache)."""
-        return cls._collect_target_shards(scope)
+        return cls._collect_db_shards(scope)
 
     @classmethod
     def _sharded_get(cls, key, name, scope):

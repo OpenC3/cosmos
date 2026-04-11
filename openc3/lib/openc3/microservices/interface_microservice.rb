@@ -42,11 +42,11 @@ module OpenC3
   class InterfaceCmdHandlerThread
     include InterfaceDecomCommon
 
-    def initialize(interface, tlm, logger: nil, metric: nil, target_shard: 0, scope:)
+    def initialize(interface, tlm, logger: nil, metric: nil, db_shard: 0, scope:)
       @interface = interface
       @tlm = tlm
       @scope = scope
-      @target_shard = target_shard.to_i
+      @db_shard = db_shard.to_i
       scope_model = ScopeModel.get_model(name: @scope)
       if scope_model
         @critical_commanding = scope_model.critical_commanding
@@ -82,7 +82,7 @@ module OpenC3
     end
 
     def run
-      InterfaceTopic.receive_commands(@interface, scope: @scope, target_shard: @target_shard) do |topic, msg_id, msg_hash, _redis|
+      InterfaceTopic.receive_commands(@interface, scope: @scope, db_shard: @db_shard) do |topic, msg_id, msg_hash, _redis|
         OpenC3.with_context(msg_hash) do
           release_critical = false
           critical_model = nil
@@ -106,7 +106,7 @@ module OpenC3
             @metric.set(name: 'interface_directive_total', value: @directive_count, type: 'counter') if @metric
             if msg_hash['shutdown']
               @logger.info "#{@interface.name}: Shutdown requested"
-              InterfaceTopic.clear_topics(InterfaceTopic.topics(@interface, scope: @scope), shard: @target_shard)
+              InterfaceTopic.clear_topics(InterfaceTopic.topics(@interface, scope: @scope), shard: @db_shard)
               return
             end
             if msg_hash['connect']
@@ -375,11 +375,11 @@ module OpenC3
   end
 
   class RouterTlmHandlerThread
-    def initialize(router, tlm, logger: nil, metric: nil, target_shard: 0, scope:)
+    def initialize(router, tlm, logger: nil, metric: nil, db_shard: 0, scope:)
       @router = router
       @tlm = tlm
       @scope = scope
-      @target_shard = target_shard.to_i
+      @db_shard = db_shard.to_i
       @logger = logger
       @logger = Logger unless @logger
       @metric = metric
@@ -409,7 +409,7 @@ module OpenC3
     end
 
     def run
-      RouterTopic.receive_telemetry(@router, scope: @scope, target_shard: @target_shard) do |topic, msg_id, msg_hash, _redis|
+      RouterTopic.receive_telemetry(@router, scope: @scope, db_shard: @db_shard) do |topic, msg_id, msg_hash, _redis|
         msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
         delta = Time.now.to_f - msgid_seconds_from_epoch
         @metric.set(name: 'router_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and router tlm start') if @metric
@@ -421,7 +421,7 @@ module OpenC3
 
           if msg_hash['shutdown']
             @logger.info "#{@router.name}: Shutdown requested"
-            RouterTopic.clear_topics(RouterTopic.topics(@router, scope: @scope), shard: @target_shard)
+            RouterTopic.clear_topics(RouterTopic.topics(@router, scope: @scope), shard: @db_shard)
             return
           end
           if msg_hash['connect']
@@ -587,9 +587,9 @@ module OpenC3
       @connection_failed_messages = []
       @connection_lost_messages = []
       if @interface_or_router == 'INTERFACE'
-        @handler_thread = InterfaceCmdHandlerThread.new(@interface, self, logger: @logger, metric: @metric, target_shard: @target_shard, scope: @scope)
+        @handler_thread = InterfaceCmdHandlerThread.new(@interface, self, logger: @logger, metric: @metric, db_shard: @db_shard, scope: @scope)
       else
-        @handler_thread = RouterTlmHandlerThread.new(@interface, self, logger: @logger, metric: @metric, target_shard: @target_shard, scope: @scope)
+        @handler_thread = RouterTlmHandlerThread.new(@interface, self, logger: @logger, metric: @metric, db_shard: @db_shard, scope: @scope)
       end
       @handler_thread.start
     end

@@ -26,18 +26,18 @@ module OpenC3
 
     attr_accessor :values
 
-    # Look up target_shard from the corresponding MicroserviceModel.
-    def self._lookup_target_shard(name, scope:)
+    # Look up db_shard from the corresponding MicroserviceModel.
+    def self._lookup_db_shard(name, scope:)
       json = Store.hget('openc3_microservices', name)
-      json ? (JSON.parse(json, allow_nan: true, create_additions: true)['target_shard'] || 0).to_i : 0
+      json ? (JSON.parse(json, allow_nan: true, create_additions: true)['db_shard'] || 0).to_i : 0
     end
 
-    # Collect all unique target_shard values from MicroserviceModels.
-    def self._collect_target_shards(scope:)
+    # Collect all unique db_shard values from MicroserviceModels.
+    def self._collect_db_shards(scope:)
       shards = Set.new([0])
       Store.hgetall('openc3_microservices').each do |name, json|
         next if scope and name.split("__")[0] != scope
-        shards << (JSON.parse(json, allow_nan: true, create_additions: true)['target_shard'] || 0).to_i
+        shards << (JSON.parse(json, allow_nan: true, create_additions: true)['db_shard'] || 0).to_i
       end
       shards
     end
@@ -69,25 +69,25 @@ module OpenC3
       store.instance(shard: shard).hdel("#{scope}#{PRIMARY_KEY}", name)
     end
 
-    def initialize(name:, values: {}, target_shard: 0, scope:)
+    def initialize(name:, values: {}, db_shard: 0, scope:)
       super("#{scope}#{PRIMARY_KEY}", name: name, scope: scope)
       @values = values
-      @target_shard = target_shard.to_i
+      @db_shard = db_shard.to_i
     end
 
     def create(update: false, force: false, queued: false, isoformat: false)
-      _sharded_create(@target_shard, update: update, force: force, queued: queued, isoformat: isoformat)
+      _sharded_create(@db_shard, update: update, force: force, queued: queued, isoformat: isoformat)
     end
 
     def destroy
-      _sharded_destroy(@target_shard)
+      _sharded_destroy(@db_shard)
     end
 
     def as_json(*a)
       {
         'name' => @name,
         'updated_at' => @updated_at,
-        'values' => @values.as_json(*a)
+        'values' => @values.as_json(*a),
       }
     end
 

@@ -21,10 +21,10 @@ module OpenC3
   class RouterTopic < Topic
     COMMAND_ACK_TIMEOUT_S = 30
 
-    # Look up target_shard from RouterModel stored on shard 0.
+    # Look up db_shard from RouterModel stored on shard 0.
     def self._shard_for_router(router_name, scope:)
       json = Store.hget("#{scope}__openc3_routers", router_name)
-      json ? (JSON.parse(json, allow_nan: true, create_additions: true)['target_shard'] || 0).to_i : 0
+      json ? (JSON.parse(json, allow_nan: true, create_additions: true)['db_shard'] || 0).to_i : 0
     end
 
     # Generate a list of topics for this router. This includes the router itself
@@ -40,8 +40,8 @@ module OpenC3
       topics
     end
 
-    def self.receive_telemetry(router, scope:, target_shard: 0)
-      target_shard = target_shard.to_i
+    def self.receive_telemetry(router, scope:, db_shard: 0)
+      db_shard = db_shard.to_i
       router_cmd_topic = "{#{scope}__CMD}ROUTER__#{router.name}"
 
       target_topics = []
@@ -51,10 +51,10 @@ module OpenC3
         end
       end
 
-      # Group telemetry topics by shard; include router cmd topic on target_shard
+      # Group telemetry topics by shard; include router cmd topic on db_shard
       shard_groups = Topic.group_topics_by_shard(target_topics, target_pattern: '__TELEMETRY__', scope: scope)
-      shard_groups[target_shard] ||= []
-      shard_groups[target_shard] << router_cmd_topic
+      shard_groups[db_shard] ||= []
+      shard_groups[db_shard] << router_cmd_topic
 
       all_same_shard = Topic.all_same_shard?(shard_groups)
 
