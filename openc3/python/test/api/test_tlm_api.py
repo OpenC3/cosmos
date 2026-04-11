@@ -240,7 +240,7 @@ class TestTlmApi(unittest.TestCase):
         )
         model.create()
         inject_tlm("INST", "HEALTH_STATUS", {"TEMP1": 5})
-        time.sleep(0.5)
+        time.sleep(0.1)
         obj.inject_tlm.assert_called_once()
 
     @patch("openc3.microservices.microservice.System")
@@ -249,12 +249,12 @@ class TestTlmApi(unittest.TestCase):
         try:
             # Case doesn't matter
             inject_tlm("inst", "Health_Status", {"temp1": 10, "Temp2": 20}, type="CONVERTED")
-            time.sleep(0.5)
+            time.sleep(0.1)
             self.assertAlmostEqual(tlm("INST HEALTH_STATUS TEMP1"), 10.0, delta=0.1)
             self.assertAlmostEqual(tlm("INST HEALTH_STATUS TEMP2"), 20.0, delta=0.1)
 
             inject_tlm("INST", "HEALTH_STATUS", {"TEMP1": 0, "TEMP2": 0}, type="RAW")
-            time.sleep(0.5)
+            time.sleep(0.1)
             self.assertEqual(tlm("INST HEALTH_STATUS TEMP1"), (-100.0))
             self.assertEqual(tlm("INST HEALTH_STATUS TEMP2"), (-100.0))
         finally:
@@ -265,13 +265,13 @@ class TestTlmApi(unittest.TestCase):
         self.decom_stuff()
         try:
             inject_tlm("INST", "HEALTH_STATUS")
-            time.sleep(0.5)
+            time.sleep(0.1)
             self.assertEqual(tlm("INST HEALTH_STATUS RECEIVED_COUNT"), 1)
             inject_tlm("INST", "HEALTH_STATUS")
-            time.sleep(0.5)
+            time.sleep(0.1)
             self.assertEqual(tlm("INST HEALTH_STATUS RECEIVED_COUNT"), 2)
             inject_tlm("INST", "HEALTH_STATUS")
-            time.sleep(0.5)
+            time.sleep(0.1)
             self.assertEqual(tlm("INST HEALTH_STATUS RECEIVED_COUNT"), 3)
         finally:
             self.dm.shutdown()
@@ -292,13 +292,17 @@ class TestTlmApi(unittest.TestCase):
         self.decom_stuff()
         try:
             inject_tlm("INST", "HEALTH_STATUS", {"TEMP1": 50}, type="CONVERTED")
-            time.sleep(0.5)
+            time.sleep(0.1)
             self.assertAlmostEqual(tlm("INST HEALTH_STATUS TEMP1"), 50.0, delta=0.1)
 
             inject_tlm("INST", "HEALTH_STATUS", {"TEMP1": 99}, type="CONVERTED", stored=True)
-            time.sleep(0.5)
+            time.sleep(0.1)
             # CVT should still have the old value since stored packets don't update CVT
             self.assertAlmostEqual(tlm("INST HEALTH_STATUS TEMP1"), 50.0, delta=0.1)
+
+            inject_tlm("INST", "HEALTH_STATUS", {"TEMP1": 99}, type="CONVERTED", stored=False)
+            time.sleep(0.1)
+            self.assertAlmostEqual(tlm("INST HEALTH_STATUS TEMP1"), 99.0, delta=0.1)
         finally:
             self.dm.shutdown()
 

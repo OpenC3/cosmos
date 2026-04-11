@@ -31,7 +31,8 @@ module OpenC3
           packet.write(name.to_s, value, type)
         end
       end
-      packet.stored = ConfigParser.handle_true_false(inject_tlm_hash['stored']) if inject_tlm_hash['stored']
+      stored = inject_tlm_hash.fetch('stored', false)
+      packet.stored = stored.to_s.downcase == 'true'
       packet.received_time = Time.now.sys
       packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope: @scope)
       TelemetryTopic.write_packet(packet, scope: @scope)

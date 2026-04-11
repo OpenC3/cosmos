@@ -298,6 +298,10 @@ module OpenC3
         sleep 0.1
         # CVT should still have the old value since stored packets don't update CVT
         expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to be_within(0.1).of(50.0)
+
+        @api.inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 99 }, type: :CONVERTED, stored: false)
+        sleep 0.1
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to be_within(0.1).of(99.0)
       end
     end
 
