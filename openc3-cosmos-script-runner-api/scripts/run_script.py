@@ -77,7 +77,7 @@ def run_script_log(id, message, color="BLACK", message_log=True):
 
 start_time = time.time()
 # Load the bucket client code to ensure we authenticate outside ENV vars
-Bucket.get_client()
+Bucket.getClient()
 # Preload Store and remove Redis secrets from ENV
 Store.instance()
 EphemeralStore.instance()
