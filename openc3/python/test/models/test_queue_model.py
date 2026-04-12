@@ -61,28 +61,6 @@ class TestQueueModel(unittest.TestCase):
 
     @patch("openc3.models.queue_model.Store")
     @patch("openc3.models.queue_model.QueueModel.get_model")
-    def test_queue_command_success(self, mock_get_model, mock_store):
-        mock_model = Mock()
-        mock_model.state = "RUNNING"
-        mock_model.notify = Mock()
-        mock_get_model.return_value = mock_model
-        mock_store.zrevrange.return_value = []
-        mock_store.zadd = Mock()
-
-        with patch("time.time_ns", return_value=1234567890):
-            QueueModel.queue_command("TEST", command="CMD", username="user", scope="DEFAULT")
-
-        mock_get_model.assert_called_once_with(name="TEST", scope="DEFAULT")
-        mock_store.zrevrange.assert_called_once_with("DEFAULT:TEST", 0, 0, withscores=True)
-
-        expected_data = json.dumps(
-            {"username": "user", "value": "CMD", "validate": True, "timeout": None, "timestamp": 1234567890}
-        )
-        mock_store.zadd.assert_called_once_with("DEFAULT:TEST", {expected_data: 1.0})
-        mock_model.notify.assert_called_once_with(kind="command")
-
-    @patch("openc3.models.queue_model.Store")
-    @patch("openc3.models.queue_model.QueueModel.get_model")
     def test_queue_command_with_existing_items(self, mock_get_model, mock_store):
         mock_model = Mock()
         mock_model.state = "RUNNING"

@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -24,6 +24,7 @@ from openc3.utilities.thread_manager import ThreadManager
 
 class TestThreadManager(unittest.TestCase):
     def setUp(self):
+        ThreadManager.instance_obj = None
         ThreadManager.MONITOR_SLEEP_SECONDS = 0.01
 
     def tearDown(self):

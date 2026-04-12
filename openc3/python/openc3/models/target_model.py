@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -343,8 +343,12 @@ class TargetModel(Model):
                         Store.instance().redis_pool.pipelines[thread_id] = None
                 for target_name in tlm_target_names:
                     for packet_name, count in result[inc_count].items():
-                        update_packet = System.telemetry.packet(target_name, packet_name.decode())
-                        update_packet.received_count = int(count)
+                        try:
+                            update_packet = System.telemetry.packet(target_name, packet_name.decode())
+                            update_packet.received_count = int(count)
+                        except RuntimeError:
+                            # Stale TELEMETRYCNTS key for a packet that no longer exists (e.g. after plugin upgrade)
+                            pass
                     inc_count += 1
                 for packet_name, count in result[inc_count].items():
                     update_packet = System.telemetry.packet('UNKNOWN', packet_name.decode())

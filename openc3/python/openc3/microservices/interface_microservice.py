@@ -118,16 +118,9 @@ class InterfaceCmdHandlerThread:
             )
 
         if topic == "OPENC3__SYSTEM__EVENTS":
-<<<<<<< HEAD
-            msg = json.loads(msg_hash[b"event"].decode())
-            if msg["type"] == "scope":
-                if msg["name"] == self.scope:
-                    self.critical_commanding = msg["critical_commanding"]
-=======
             msg = json.loads(msg_hash.get(b"event", b"{}").decode())
             if msg["type"] == "scope" and msg["name"] == self.scope:
                 self.critical_commanding = msg["critical_commanding"]
->>>>>>> f32b7919a ([Bug] Python Interface Microservice accessing attributes)
             return "SUCCESS"
 
         # Check for a raw write to the interface
@@ -372,13 +365,9 @@ class InterfaceCmdHandlerThread:
                     log_message = ConfigParser.handle_true_false(msg_hash.get(b"log_message", b"TRUE").decode())
                     if log_message:
                         self.logger.info(
-<<<<<<< HEAD
-                            msg_hash[b"cmd_string"].decode(), user=msg_hash[b"username"].decode(), scope=self.scope
-=======
                             msg_hash.get(b"cmd_string", b"").decode(),
                             user=msg_hash.get(b"username", b"").decode(),
                             scope=self.scope,
->>>>>>> f32b7919a ([Bug] Python Interface Microservice accessing attributes)
                         )
 
                     self.interface.write(command)
@@ -641,7 +630,7 @@ class InterfaceMicroservice(Microservice):
 
         self.queued = False
         for option_name, option_values in self.interface.options.items():
-            if option_name.upper() == "OPTIMIZE_THROUGHPUT":
+            if option_name.upper() in ("OPTIMIZE_THROUGHPUT", "UPDATE_INTERVAL"):
                 self.queued = True
                 update_interval = float(option_values[0])
                 EphemeralStoreQueued.instance().set_update_interval(update_interval)
