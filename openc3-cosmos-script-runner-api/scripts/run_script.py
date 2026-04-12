@@ -35,8 +35,8 @@ start_time = time.time()
 # Load the bucket client code to ensure we authenticate outside ENV vars
 Bucket.getClient()
 
-del os.environ["OPENC3_BUCKET_USERNAME"]
-del os.environ["OPENC3_BUCKET_PASSWORD"]
+os.environ.pop("OPENC3_BUCKET_USERNAME", None)
+os.environ.pop("OPENC3_BUCKET_PASSWORD", None)
 os.unsetenv("OPENC3_BUCKET_USERNAME")
 os.unsetenv("OPENC3_BUCKET_PASSWORD")
 
@@ -44,8 +44,8 @@ os.unsetenv("OPENC3_BUCKET_PASSWORD")
 Store.instance()
 EphemeralStore.instance()
 
-del os.environ["OPENC3_REDIS_USERNAME"]
-del os.environ["OPENC3_REDIS_PASSWORD"]
+os.environ.pop("OPENC3_REDIS_USERNAME", None)
+os.environ.pop("OPENC3_REDIS_PASSWORD", None)
 os.unsetenv("OPENC3_REDIS_USERNAME")
 os.unsetenv("OPENC3_REDIS_PASSWORD")
 
@@ -83,23 +83,23 @@ Store.instance()
 EphemeralStore.instance()
 
 # Clear ENV vars for security purposes
-del os.environ["OPENC3_BUCKET_USERNAME"]
-del os.environ["OPENC3_BUCKET_PASSWORD"]
+os.environ.pop("OPENC3_BUCKET_USERNAME", None)
+os.environ.pop("OPENC3_BUCKET_PASSWORD", None)
 os.unsetenv("OPENC3_BUCKET_USERNAME")
 os.unsetenv("OPENC3_BUCKET_PASSWORD")
-del os.environ["OPENC3_REDIS_USERNAME"]
-del os.environ["OPENC3_REDIS_PASSWORD"]
+os.environ.pop("OPENC3_REDIS_USERNAME", None)
+os.environ.pop("OPENC3_REDIS_PASSWORD", None)
 os.unsetenv("OPENC3_TSDB_USERNAME")
 os.unsetenv("OPENC3_TSDB_PASSWORD")
-del os.environ["OPENC3_TSDB_USERNAME"]
-del os.environ["OPENC3_TSDB_PASSWORD"]
+os.environ.pop("OPENC3_TSDB_USERNAME", None)
+os.environ.pop("OPENC3_TSDB_PASSWORD", None)
 os.unsetenv("OPENC3_API_PASSWORD")
-del os.environ["OPENC3_API_PASSWORD"]
+os.environ.pop("OPENC3_API_PASSWORD", None)
 os.unsetenv("OPENC3_SERVICE_PASSWORD")
-del os.environ["OPENC3_SERVICE_PASSWORD"]
+os.environ.pop("OPENC3_SERVICE_PASSWORD", None)
 # This actually contains the password via redis://openc3:openc3password@openc3-redis:6379
 os.unsetenv("ANYCABLE_REDIS_URL")
-del os.environ["ANYCABLE_REDIS_URL"]
+os.environ.pop("ANYCABLE_REDIS_URL", None)
 
 
 script_id = sys.argv[1]
