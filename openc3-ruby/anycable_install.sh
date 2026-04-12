@@ -1,7 +1,7 @@
 #!/bin/sh
 
 ARCH=`uname -m`
-if [ "$ARCH" == "aarch64" ]; then
+if [ "$ARCH" = "aarch64" ]; then
   chmod 755 /usr/bin/anycable-go-linux-arm64
   ln -s /usr/bin/anycable-go-linux-arm64 /usr/bin/anycable-go
 else
