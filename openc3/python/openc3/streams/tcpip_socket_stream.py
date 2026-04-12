@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -106,6 +106,10 @@ class TcpipSocketStream(Stream):
                             continue
                         else:
                             raise RuntimeError("Write Timeout")
+                    else:
+                        # Any other socket error (e.g. ECONNRESET, EPIPE) is not
+                        # recoverable - re-raise immediately to avoid an infinite loop
+                        raise
                 total_bytes_sent += bytes_sent
                 if total_bytes_sent >= num_bytes_to_send:
                     break
