@@ -169,8 +169,10 @@
           show-context-menu
           @change="onChange"
           @command-editor="handleCommandEditor"
-          @ready="onEditorReady"
+          @resize="doResize"
           @save="saveFile"
+          @save-as="saveAs"
+          @save-file="saveFile"
           @start="start(...$event)"
           @tokenizer-update="onChange"
         />
@@ -1204,26 +1206,7 @@ export default {
         this.go(event, 'suiteRunner')
       }
     },
-    async keydown(event) {
-      // Don't ever save if running or readonly
-      if (this.scriptId || this.editor.getReadOnly()) {
-        return
-      }
-      // NOTE: Chrome does not allow overriding Ctrl-N, Ctrl-Shift-N, Ctrl-T, Ctrl-Shift-T, Ctrl-W
-      // NOTE: metaKey == Command on Mac
-      if (
-        (event.metaKey || event.ctrlKey) &&
-        event.keyCode === 'S'.charCodeAt(0)
-      ) {
-        if (event.shiftKey) {
-          event.preventDefault()
-          this.saveAs()
-        } else {
-          event.preventDefault()
-          await this.saveFile()
-        }
-      }
-    },
+
     onChange() {
       // Don't track changes when we're running or read-only (locked)
       if (this.scriptId || this.editor.getReadOnly()) {
@@ -2019,15 +2002,6 @@ export default {
           break
         }
         index += 1
-      }
-    },
-    // ACE Editor event handlers
-    onEditorReady() {
-      // Editor is ready and initialized
-      // Get the editor instance and add event listeners
-      if (this.editor) {
-        this.editor.container.addEventListener('resize', this.doResize)
-        this.editor.container.addEventListener('keydown', this.keydown)
       }
     },
   },

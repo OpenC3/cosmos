@@ -96,7 +96,10 @@ const emit = defineEmits([
   'clearBreakpoints',
   'commandEditor',
   'ready',
+  'resize',
   'save',
+  'save-as',
+  'save-file',
   'start',
   'tokenizerUpdate',
 ])
@@ -110,6 +113,24 @@ const contextMenuVisible = ref(false)
 const menuX = ref(0)
 const menuY = ref(0)
 const currentLineHasCommand = ref(false)
+
+async function keydown(event) {
+  // Don't ever save if running or readonly
+  if (props.scriptId || editor.value.getReadOnly()) {
+    return
+  }
+  // NOTE: Chrome does not allow overriding Ctrl-N, Ctrl-Shift-N, Ctrl-T, Ctrl-Shift-T, Ctrl-W
+  // NOTE: metaKey == Command on Mac
+  if ((event.metaKey || event.ctrlKey) && event.keyCode === 'S'.charCodeAt(0)) {
+    if (event.shiftKey) {
+      event.preventDefault()
+      emit('save-as')
+    } else {
+      event.preventDefault()
+      emit('save-file')
+    }
+  }
+}
 
 onMounted(() => {
   // Build modes
@@ -160,6 +181,8 @@ onMounted(() => {
     }
   })
 
+  editor.value.container.addEventListener('keydown', keydown)
+  editor.value.container.addEventListener('resize', () => emit('resize'))
   // Emit ready event with editor instance
   emit('ready', editor.value)
 })
