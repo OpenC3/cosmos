@@ -14,26 +14,6 @@
 import { reactive, computed, onMounted } from 'vue'
 import { OpenC3Api } from '@openc3/js-common/services'
 
-/**
- * Composable to provide classification banner state and styles.
- *
- * Usage:
- * const { classification, classificationStyles, refresh } = useClassificationBanner()
- *
- * - `classification` is a reactive object:
- *   {
- *     text: '',
- *     fontColor: 'white',
- *     backgroundColor: 'red',
- *     topHeight: 0,
- *     bottomHeight: 0
- *   }
- *
- * - `classificationStyles` is a computed string you can bind to a root element's
- *   `style` attribute so CSS pseudo-elements can read the values via CSS variables.
- *
- * - `refresh()` will re-fetch the setting from the API.
- */
 export function useClassificationBanner() {
   const classification = reactive({
     text: '',
