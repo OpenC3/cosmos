@@ -522,9 +522,7 @@ export default {
       stop,
     } = useScriptOperations(
       emit,
-      updateOverridesCount,
-      resetButtons,
-      reloadFile,
+      { updateOverridesCount, resetButtons, reloadFile },
       editor,
       readOnlyUser,
       () => props.inline,

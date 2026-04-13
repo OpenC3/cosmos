@@ -18,9 +18,7 @@ export const PAUSE = 'Pause'
 
 export function useScriptOperations(
   emit,
-  updateOverridesCount,
-  resetButtons,
-  reloadFile,
+  { updateOverridesCount, resetButtons, reloadFile },
   editor,
   readOnlyUser,
   inline,
