@@ -332,7 +332,7 @@ import { format } from 'date-fns'
 import { Splitpanes, Pane } from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
 
-import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
+import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { useContainerHeight } from '@/composables/useContainerHeight'
 import { computed, onBeforeMount, ref, useTemplateRef } from 'vue'
 import { useAsyncState } from '@vueuse/core'
@@ -367,6 +367,10 @@ import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
 import ScriptAceEditor from '@/tools/scriptrunner/ScriptAceEditor.vue'
 import { useHandleWaiting } from '@/tools/scriptrunner/useHandleWaiting'
 import { useScriptPrompts } from '@/tools/scriptrunner/useScriptPrompts'
+import {
+  useScriptOperations,
+  PAUSE,
+} from '@/tools/scriptrunner/useScriptOperations'
 
 import { detectLanguage, pythonTestSuiteText, rubyTestSuiteText } from './utils'
 
@@ -375,7 +379,6 @@ const TEMP_FOLDER = '__TEMP__'
 const NEW_FILENAME = '<Untitled>'
 const START = 'Start'
 const GO = 'Go'
-const PAUSE = 'Pause'
 const RETRY = 'Retry'
 
 export default {
@@ -430,7 +433,7 @@ export default {
     },
   },
   emits: ['alert', 'script-id'],
-  setup(props) {
+  setup(props, { emit }) {
     const containerHeight = useContainerHeight()
 
     const state = ref(null)
@@ -460,8 +463,6 @@ export default {
 
     const { classificationStyles } = useClassificationBanner()
 
-    const cable = new Cable('/script-api/cable')
-
     const api = new OpenC3Api()
     const { state: screenKeywords } = useAsyncState(async () => {
       const response = await Api.get('/openc3-api/autocomplete/keywords/screen')
@@ -482,11 +483,51 @@ export default {
       overridesCount.value = result.length
     }
 
+    /** Whether to display the SuiteRunner GUI */
+    const suiteRunner = ref(false)
+    const disableSuiteButtons = ref(false)
+    const startOrGoButton = ref(START)
+    const startOrGoDisabled = ref(false)
+    const envDisabled = ref(false)
+    const pauseOrRetryButton = ref(PAUSE)
+    const pauseOrRetryDisabled = ref(false)
+    const stopDisabled = ref(false)
+
     const readOnlyUser = ref(false)
     const executeUser = ref(true)
     const showAlert = ref(false)
     const alertType = ref(null)
     const alertText = ref('')
+
+    function resetButtons() {
+      disableSuiteButtons.value = false
+      startOrGoButton.value = START
+      pauseOrRetryButton.value = PAUSE
+      // Disable start if suiteRunner
+      startOrGoDisabled.value = suiteRunner.value
+      envDisabled.value = false
+      pauseOrRetryDisabled.value = true
+      stopDisabled.value = true
+    }
+
+    const {
+      pauseOrRetry,
+      receivedEvents,
+      scriptComplete,
+      scriptDisconnect,
+      scriptId,
+      scriptStart,
+      step,
+      stop,
+    } = useScriptOperations(
+      emit,
+      updateOverridesCount,
+      resetButtons,
+      reloadFile,
+      editor,
+      readOnlyUser,
+      () => props.inline,
+    )
 
     onBeforeMount(async () => {
       // Ensure Offline Access Is Setup For the Current User
@@ -554,17 +595,33 @@ export default {
       api,
       cable,
       containerHeight,
+      disableSuiteButtons,
       editor,
       editorRef,
+      envDisabled,
       executeUser,
       // Make NEW_FILENAME available to the template
       NEW_FILENAME,
       overridesCount,
+      pauseOrRetry,
+      pauseOrRetryButton,
+      pauseOrRetryDisabled,
       readOnlyUser,
+      receivedEvents,
       screenKeywords,
+      scriptComplete,
+      scriptDisconnect,
+      scriptId,
+      scriptStart,
       showAlert,
       showMetadata,
+      startOrGoButton,
+      startOrGoDisabled,
       state,
+      step,
+      stop,
+      stopDisabled,
+      suiteRunner,
       timeZone,
       handleWaiting,
       updateOverridesCount,
@@ -589,8 +646,6 @@ export default {
   data() {
     return {
       title: 'Script Runner',
-      suiteRunner: false, // Whether to display the SuiteRunner GUI
-      disableSuiteButtons: false,
       suiteMap: {
         // Useful for testing the various options in the SuiteRunner GUI
         // Suite: {
@@ -609,13 +664,6 @@ export default {
       filenameSelect: null,
       currentFilename: null, // This is the currently shown filename while running
       showSave: false,
-      scriptId: null,
-      startOrGoButton: START,
-      startOrGoDisabled: false,
-      envDisabled: false,
-      pauseOrRetryButton: PAUSE,
-      pauseOrRetryDisabled: false,
-      stopDisabled: false,
       showEnvironment: false,
       showDebug: false,
       debug: '',
@@ -631,9 +679,7 @@ export default {
       lockedBy: null,
       showEditingToast: false,
       showSaveAs: false,
-      subscription: null,
       updateInterval: null,
-      receivedEvents: [],
       messages: [],
       messagesNewestOnTop: true,
       maxArrayLength: 200,
@@ -1020,14 +1066,6 @@ export default {
   },
   unmounted() {
     this.unlockFile()
-    if (this.updateInterval != null) {
-      clearInterval(this.updateInterval)
-    }
-    if (this.subscription) {
-      this.subscription.unsubscribe()
-      this.subscription = null
-    }
-    this.cable.disconnect()
   },
   methods: {
     handleCommandEditor({ cmdString, isEditing, editLine }) {
@@ -1063,13 +1101,6 @@ export default {
     },
     doResize() {
       this.editorRef?.resize()
-    },
-    scriptDisconnect() {
-      if (this.subscription) {
-        this.subscription.unsubscribe()
-        this.subscription = null
-      }
-      this.receivedEvents.length = 0 // Clear any unprocessed events
     },
     messageSortOrder(order) {
       // See ScriptLogMessages for these strings
@@ -1256,52 +1287,6 @@ export default {
       this.startOrGoButton = GO
       this.editor.setReadOnly(true)
     },
-    scriptStart: async function (id) {
-      this.$emit('script-id', id)
-      this.scriptId = id
-      const subscription = await this.cable.createSubscription(
-        'RunningScriptChannel',
-        window.openc3Scope,
-        {
-          received: (data) => this.received(data),
-        },
-        {
-          id: this.scriptId,
-        },
-      )
-      this.subscription = subscription
-    },
-    async scriptComplete() {
-      // Make sure we process no more events
-      if (this.subscription) {
-        await this.subscription.unsubscribe()
-        this.subscription = null
-      }
-      this.receivedEvents.length = 0 // Clear any unprocessed events
-
-      await this.reloadFile() // Make sure the right file is shown
-      // We may have changed the contents (if there were sub-scripts)
-      // so don't let the undo manager think this is a change
-      this.editor.session.getUndoManager().reset()
-      if (this.readOnlyUser == false && !this.inline) {
-        this.editor.setReadOnly(false)
-      }
-
-      this.scriptId = null // No current scriptId
-      sessionStorage.removeItem('script_runner__script_id')
-
-      // Lastly enable the buttons so another script can start
-      this.disableSuiteButtons = false
-      this.startOrGoButton = START
-      this.pauseOrRetryButton = PAUSE
-      // Disable start if suiteRunner
-      this.startOrGoDisabled = this.suiteRunner
-      this.envDisabled = false
-      this.pauseOrRetryDisabled = true
-      this.stopDisabled = true
-      // Overrides can be set from a script
-      await this.updateOverridesCount()
-    },
     environmentHandler: function (event) {
       this.scriptEnvironment.env = event
     },
@@ -1359,20 +1344,6 @@ export default {
       this.filenameSelect = this.currentFilename
       this.fileNameChanged(this.currentFilename)
       Api.post(`/script-api/running-script/${this.scriptId}/go`)
-    },
-    pauseOrRetry() {
-      if (this.pauseOrRetryButton === PAUSE) {
-        Api.post(`/script-api/running-script/${this.scriptId}/pause`)
-      } else {
-        this.pauseOrRetryButton = PAUSE
-        Api.post(`/script-api/running-script/${this.scriptId}/retry`)
-      }
-    },
-    stop() {
-      Api.post(`/script-api/running-script/${this.scriptId}/stop`)
-    },
-    step() {
-      Api.post(`/script-api/running-script/${this.scriptId}/step`)
     },
     processLine(data) {
       if (data.filename && data.filename !== this.currentFilename) {
@@ -1609,10 +1580,6 @@ export default {
 
       // Remove all the events we processed
       this.receivedEvents.splice(0, count)
-    },
-    received(data) {
-      this.cable.recordPing()
-      this.receivedEvents.push(data)
     },
     setError(event) {
       this.alertType = 'error'
