@@ -167,7 +167,6 @@
           :read-only="readOnlyUser || inline"
           :script-id="scriptId"
           show-context-menu
-          @change="onChange"
           @command-editor="handleCommandEditor"
           @resize="doResize"
           @save="saveFile"

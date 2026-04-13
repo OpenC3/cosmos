@@ -92,7 +92,6 @@ const props = defineProps({
 const modelValue = defineModel({ type: String, required: true })
 
 const emit = defineEmits([
-  'change',
   'clearBreakpoints',
   'commandEditor',
   'ready',
@@ -101,7 +100,7 @@ const emit = defineEmits([
   'save-as',
   'save-file',
   'start',
-  'tokenizerUpdate',
+  'tokenizer-update',
 ])
 
 const editorElement = ref(null)
@@ -166,19 +165,13 @@ onMounted(() => {
     toggleBreakpoint($event)
   })
 
-  editor.value.session.on('tokenizerUpdate', ($event) => {
-    emit('tokenizerUpdate', $event)
+  editor.value.session.on('tokenizerUpdate', () => {
+    emit('tokenizer-update', $event)
   })
 
   editor.value.session.on('change', ($event, session) => {
     sleepAnnotator.value.annotate($event, session)
     updateBreakpoints($event, session)
-    emit('change', $event, session)
-    // Emit value changes
-    const newValue = editor.value.getValue()
-    if (newValue !== modelValue.value) {
-      modelValue.value = newValue
-    }
   })
 
   editor.value.container.addEventListener('keydown', keydown)
