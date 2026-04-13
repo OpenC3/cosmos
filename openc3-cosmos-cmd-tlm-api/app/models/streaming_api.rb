@@ -73,35 +73,25 @@ class StreamingApi
         # MODE__CMDORTLM__COSMOS_ALL[__VALUETYPE]
         # When target_name is COSMOS_ALL, the value type occupies the packet_name position
         value_type = parsed.packet_name.empty? ? nil : parsed.packet_name
-        type = (parsed.cmd_or_tlm == :CMD) ? :CMD : :TLM
         targets = OpenC3::TargetModel.names(scope: scope)
         targets.each do |target_name|
           next if target_name == 'UNKNOWN' and parsed.stream_mode != :RAW
 
-          begin
-            packets = OpenC3::TargetModel.packets(target_name, type: type, scope: scope)
-          rescue RuntimeError
-            next
-          end
+          packets = fetch_target_packets(target_name, type: parsed.packet_type, scope: scope)
+          next unless packets
+
           packets.each do |packet|
-            pkt_key = "#{parsed.stream_mode}__#{parsed.cmd_or_tlm}__#{target_name}__#{packet['packet_name']}"
-            pkt_key += "__#{value_type}" if value_type
-            expanded << pkt_key
+            expanded << build_packet_key(parsed, target_name: target_name, packet_name: packet['packet_name'], value_type: value_type)
           end
         end
       elsif parsed.packet_name == 'COSMOS_ALL'
         # MODE__CMDORTLM__TARGET__COSMOS_ALL[__VALUETYPE]
         value_type = (parsed.stream_mode != :RAW) ? parsed.value_type : nil
-        type = (parsed.cmd_or_tlm == :CMD) ? :CMD : :TLM
-        begin
-          packets = OpenC3::TargetModel.packets(parsed.target_name, type: type, scope: scope)
-        rescue RuntimeError
-          next
-        end
+        packets = fetch_target_packets(parsed.target_name, type: parsed.packet_type, scope: scope)
+        next unless packets
+
         packets.each do |packet|
-          pkt_key = "#{parsed.stream_mode}__#{parsed.cmd_or_tlm}__#{parsed.target_name}__#{packet['packet_name']}"
-          pkt_key += "__#{value_type}" if value_type
-          expanded << pkt_key
+          expanded << build_packet_key(parsed, packet_name: packet['packet_name'], value_type: value_type)
         end
       else
         expanded << key
@@ -125,8 +115,6 @@ class StreamingApi
         next
       end
 
-      type = (parsed.cmd_or_tlm == :CMD) ? :CMD : :TLM
-
       if parsed.packet_name == 'LATEST'
         # LATEST + item glob: resolve item names from the item-to-packet map
         item_map = OpenC3::TargetModel.get_item_to_packet_map(parsed.target_name, scope: scope)
@@ -137,32 +125,23 @@ class StreamingApi
         end
       else
         # Determine which packets to iterate over
-        if parsed.packet_name.match?(/[*?\[]/)
-          # Packet name is a glob — match against all packets
-          begin
-            packets = OpenC3::TargetModel.packets(parsed.target_name, type: type, scope: scope)
-          rescue RuntimeError
-            next
-          end
+        if parsed.packet_glob?
+          packets = fetch_target_packets(parsed.target_name, type: parsed.packet_type, scope: scope)
+          next unless packets
+
           matched_packets = packets.select { |pkt| File.fnmatch(parsed.packet_name.to_s, pkt['packet_name'], File::FNM_CASEFOLD) }
         else
-          # Concrete packet name — just wrap it so the loop below works uniformly
           matched_packets = [{ 'packet_name' => parsed.packet_name.to_s }]
         end
-
-        packet_glob = parsed.packet_name.match?(/[*?\[]/)
-        item_glob = parsed.item_name && parsed.item_name.to_s.match?(/[*?\[]/)
 
         matched_packets.each do |pkt|
           pkt_name = pkt['packet_name']
 
-          if item_glob || (packet_glob && parsed.item_name)
+          if parsed.item_glob? || (parsed.packet_glob? && parsed.item_name)
             # Fetch packet items and filter by item name (glob or exact match)
-            begin
-              packet_def = OpenC3::TargetModel.packet(parsed.target_name, pkt_name, type: type, scope: scope)
-            rescue RuntimeError
-              next
-            end
+            packet_def = fetch_packet_definition(parsed.target_name, pkt_name, type: parsed.packet_type, scope: scope)
+            next unless packet_def
+
             item_pattern = parsed.item_name.to_s
             packet_def['items'].each do |item|
               next unless File.fnmatch(item_pattern, item['name'], File::FNM_CASEFOLD)
@@ -369,5 +348,28 @@ class StreamingApi
         return true
       end
     end
+  end
+
+  private
+
+  # Fetch all packets for a target, returning nil if the target/type doesn't exist.
+  def fetch_target_packets(target_name, type:, scope:)
+    OpenC3::TargetModel.packets(target_name, type: type, scope: scope)
+  rescue RuntimeError
+    nil
+  end
+
+  # Fetch a single packet definition, returning nil if it doesn't exist.
+  def fetch_packet_definition(target_name, packet_name, type:, scope:)
+    OpenC3::TargetModel.packet(target_name, packet_name, type: type, scope: scope)
+  rescue RuntimeError
+    nil
+  end
+
+  # Build a packet key string for COSMOS_ALL expansion.
+  def build_packet_key(parsed, target_name: parsed.target_name, packet_name:, value_type: nil)
+    key = "#{parsed.stream_mode}__#{parsed.cmd_or_tlm}__#{target_name}__#{packet_name}"
+    key += "__#{value_type}" if value_type
+    key
   end
 end

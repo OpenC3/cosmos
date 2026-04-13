@@ -390,6 +390,14 @@ RSpec.describe StreamingApi, type: :model do
       expect(data['items']).to eq([])
     end
 
+    it 'skips packets whose definition cannot be fetched' do
+      allow(OpenC3::TargetModel).to receive(:packet).with('INST', 'IMAGE', type: :TLM, scope: 'DEFAULT').and_raise(RuntimeError, "Packet not found")
+      data = { 'items' => [['DECOM__TLM__INST__*__DATA__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      # IMAGE packet raises, so only HEALTH_STATUS and PARAMS are checked — neither has DATA
+      expect(data['items']).to eq([])
+    end
+
     it 'handles flat string entries (non-array items)' do
       data = { 'items' => ['DECOM__TLM__INST__HEALTH_STATUS__TEMP*__CONVERTED'], 'scope' => 'DEFAULT' }
       @api.send(:expand_item_globs, data, scope: 'DEFAULT')

@@ -213,6 +213,47 @@ RSpec.describe StreamingKey, type: :model do
     end
   end
 
+  describe '#packet_type' do
+    it 'returns :TLM for TLM keys' do
+      key = StreamingKey.parse('DECOM__TLM__INST__PARAMS__CONVERTED')
+      expect(key.packet_type).to eq(:TLM)
+    end
+
+    it 'returns :CMD for CMD keys' do
+      key = StreamingKey.parse('DECOM__CMD__INST__COLLECT__RAW')
+      expect(key.packet_type).to eq(:CMD)
+    end
+  end
+
+  describe '#packet_glob?' do
+    it 'returns false for a concrete packet name' do
+      key = StreamingKey.parse('DECOM__TLM__INST__PARAMS__TEMP1__CONVERTED', item_key: true)
+      expect(key.packet_glob?).to be false
+    end
+
+    it 'returns true when packet_name contains *' do
+      key = StreamingKey.parse('DECOM__TLM__INST__HEALTH*__TEMP1__CONVERTED', item_key: true)
+      expect(key.packet_glob?).to be true
+    end
+  end
+
+  describe '#item_glob?' do
+    it 'returns false for a concrete item name' do
+      key = StreamingKey.parse('DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED', item_key: true)
+      expect(key.item_glob?).to be false
+    end
+
+    it 'returns true when item_name contains *' do
+      key = StreamingKey.parse('DECOM__TLM__INST__PARAMS__TEMP*__CONVERTED', item_key: true)
+      expect(key.item_glob?).to be true
+    end
+
+    it 'returns false when item_name is nil (packet key)' do
+      key = StreamingKey.parse('DECOM__TLM__INST__PARAMS__CONVERTED')
+      expect(key.item_glob?).to be false
+    end
+  end
+
   describe '#with' do
     it 'creates a new key with a replaced field' do
       key = StreamingKey.parse('DECOM__TLM__INST__LATEST__VALUE1__CONVERTED', item_key: true)

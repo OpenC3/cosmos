@@ -50,9 +50,24 @@ StreamingKey = Data.define(:stream_mode, :cmd_or_tlm, :target_name, :packet_name
     )
   end
 
+  # Returns :CMD or :TLM based on cmd_or_tlm.
+  def packet_type
+    (cmd_or_tlm == :CMD) ? :CMD : :TLM
+  end
+
+  # Returns true if packet_name contains glob wildcard characters.
+  def packet_glob?
+    !!(packet_name && packet_name.match?(/[*?\[]/))
+  end
+
+  # Returns true if item_name contains glob wildcard characters.
+  def item_glob?
+    !!(item_name && item_name.match?(/[*?\[]/))
+  end
+
   # Returns true if packet_name or item_name contain glob wildcard characters.
   def has_glob?
-    [packet_name, item_name].any? { |field| field && field.match?(/[*?\[]/) }
+    packet_glob? || item_glob?
   end
 
   # Reconstruct the __-delimited key string from fields.
