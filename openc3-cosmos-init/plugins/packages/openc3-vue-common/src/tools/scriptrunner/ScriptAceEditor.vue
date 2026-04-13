@@ -120,7 +120,10 @@ async function keydown(event) {
   }
   // NOTE: Chrome does not allow overriding Ctrl-N, Ctrl-Shift-N, Ctrl-T, Ctrl-Shift-T, Ctrl-W
   // NOTE: metaKey == Command on Mac
-  if ((event.metaKey || event.ctrlKey) && event.keyCode === 'S'.charCodeAt(0)) {
+  if (
+    (event.metaKey || event.ctrlKey) &&
+    event.keyCode === 'S'.codePointAt(0)
+  ) {
     if (event.shiftKey) {
       event.preventDefault()
       emit('save-as')
