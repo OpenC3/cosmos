@@ -87,6 +87,23 @@ export function useScriptPrompts() {
     display: false,
   })
 
+  async function showMetadata() {
+    const response = await Api.get('/openc3-api/metadata')
+    // TODO: This is how Calendar creates new metadata items via makeMetadataEvent
+    inputMetadata.value.events = response.data.map((event) => {
+      return {
+        name: 'Metadata',
+        start: new Date(event.start * 1000),
+        end: new Date(event.start * 1000),
+        color: event.color,
+        type: event.type,
+        timed: true,
+        metadata: event,
+      }
+    })
+    inputMetadata.value.show = true
+  }
+
   /**
    * Callback for generic prompt dialogs
    */
@@ -358,5 +375,6 @@ export function useScriptPrompts() {
     fileDialogCallback,
     handleScript,
     promptDialogCallback,
+    showMetadata,
   }
 }

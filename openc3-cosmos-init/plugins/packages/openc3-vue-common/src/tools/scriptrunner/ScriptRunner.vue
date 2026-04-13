@@ -455,6 +455,7 @@ export default {
       fileDialogCallback,
       handleScript,
       promptDialogCallback,
+      showMetadata,
     } = useScriptPrompts()
 
     const { classificationStyles } = useClassificationBanner()
@@ -562,6 +563,7 @@ export default {
       readOnlyUser,
       screenKeywords,
       showAlert,
+      showMetadata,
       state,
       timeZone,
       handleWaiting,
@@ -1068,22 +1070,6 @@ export default {
         this.subscription = null
       }
       this.receivedEvents.length = 0 // Clear any unprocessed events
-    },
-    showMetadata: async function () {
-      const response = await Api.get('/openc3-api/metadata')
-      // TODO: This is how Calendar creates new metadata items via makeMetadataEvent
-      this.inputMetadata.events = response.data.map((event) => {
-        return {
-          name: 'Metadata',
-          start: new Date(event.start * 1000),
-          end: new Date(event.start * 1000),
-          color: event.color,
-          type: event.type,
-          timed: true,
-          metadata: event,
-        }
-      })
-      this.inputMetadata.show = true
     },
     messageSortOrder(order) {
       // See ScriptLogMessages for these strings
