@@ -40,7 +40,7 @@
       </v-col>
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="select-packet">
         <component
-          :is="allowGlob ? 'v-combobox' : 'v-autocomplete'"
+          :is="globEnabled ? 'v-combobox' : 'v-autocomplete'"
           ref="packetAutocomplete"
           v-model="selectedPacketName"
           label="Select Packet"
@@ -85,7 +85,7 @@
         data-test="select-item"
       >
         <component
-          :is="allowGlob ? 'v-combobox' : 'v-autocomplete'"
+          :is="globEnabled ? 'v-combobox' : 'v-autocomplete'"
           ref="itemAutocomplete"
           v-model="selectedItemName"
           label="Select Item"
@@ -392,6 +392,11 @@ export default {
     isHazardous: function () {
       return this.hazardous || this.parameterHazardous
     },
+    // Glob mode is only safe for telemetry — command packets carry hazardous
+    // metadata that requires the per-packet API call in updatePacketDetails.
+    globEnabled: function () {
+      return this.allowGlob && this.mode === 'tlm'
+    },
   },
   watch: {
     initialTargetName: function (val) {
@@ -412,7 +417,7 @@ export default {
         this.selectedItemName = val.toUpperCase()
       }
     },
-    allowGlob: function (newVal) {
+    globEnabled: function (newVal) {
       if (!newVal) {
         // Clear any glob values when wildcards are disabled
         const globPattern = /[*?[]/
@@ -583,7 +588,7 @@ export default {
         return
       }
       // In glob mode, skip API calls if the packet name is free text (not a known packet)
-      if (this.allowGlob && typeof this.selectedPacketName === 'string') {
+      if (this.globEnabled && typeof this.selectedPacketName === 'string') {
         const knownPacket = this.packetNames.find(
           (p) => this.selectedPacketName === p.value,
         )
@@ -679,7 +684,7 @@ export default {
       // the @change handler is fired but the value is null
       // In this case we don't want to update packet details
       if (value !== null) {
-        if (this.allowGlob && typeof value === 'string') {
+        if (this.globEnabled && typeof value === 'string') {
           // In glob mode, only call the API if the value matches a known packet
           const knownPacket = this.packetNames.find((p) => value === p.value)
           if (knownPacket) {
@@ -770,7 +775,7 @@ export default {
           queueName: this.selectedQueueName,
         })
       } else if (
-        this.allowGlob &&
+        this.globEnabled &&
         typeof value === 'string' &&
         /[*?[]/.test(value)
       ) {
