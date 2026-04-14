@@ -22,7 +22,7 @@ Automatically ensures copyright exists and updates copyright years in modified f
 - Updates `All changes Copyright YYYY, OpenC3, Inc.` to the current year (for dual-copyright files)
 - Does NOT modify Ball Aerospace copyright lines
 - Adds the OpenC3 Copyright header to any newly created files
-- Automatically re-stages files that were updated`
+- Automatically re-stages files that were updated
 
 **Example:**
 ```ruby
