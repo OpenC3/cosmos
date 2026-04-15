@@ -59,6 +59,12 @@ After configuring OpenC3 COSMOS to talk to your hardware, you can immediately us
 
 OpenC3 COSMOS was originally created by Ryan Melton (ryanmelt) and Jason Thomas (jmthomas) and is built and maintained by OpenC3, Inc.
 
+## Dependencies
+
+### Taskfile
+
+This project uses [Taskfile](https://taskfile.dev) for task automation. See the [Taskfile installation guide](https://taskfile.dev/installation/) to install, then run `task` to see available commands.
+
 ## Getting Started
 
 1.  See the [Installation Guide](https://docs.openc3.com/docs/getting-started/installation) for detailed instructions.
