@@ -511,16 +511,7 @@ export default {
       stopDisabled.value = true
     }
 
-    const {
-      pauseOrRetry,
-      receivedEvents,
-      scriptComplete,
-      scriptDisconnect,
-      scriptId,
-      scriptStart,
-      step,
-      stop,
-    } = useScriptOperations(
+    const scriptOperations = useScriptOperations(
       emit,
       { updateOverridesCount, resetButtons, reloadFile },
       editor,
@@ -589,6 +580,7 @@ export default {
     })
 
     return {
+      ...scriptOperations,
       alertText,
       alertType,
       api,
@@ -602,23 +594,15 @@ export default {
       // Make NEW_FILENAME available to the template
       NEW_FILENAME,
       overridesCount,
-      pauseOrRetry,
       pauseOrRetryButton,
       pauseOrRetryDisabled,
       readOnlyUser,
-      receivedEvents,
       screenKeywords,
-      scriptComplete,
-      scriptDisconnect,
-      scriptId,
-      scriptStart,
       showAlert,
       showMetadata,
       startOrGoButton,
       startOrGoDisabled,
       state,
-      step,
-      stop,
       stopDisabled,
       suiteRunner,
       timeZone,
