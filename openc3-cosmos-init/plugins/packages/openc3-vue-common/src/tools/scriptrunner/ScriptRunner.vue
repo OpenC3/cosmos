@@ -445,21 +445,7 @@ export default {
     const editor = computed(() => editorRef?.value?.editor || null)
 
     // Script prompts and dialogs
-    const {
-      ask,
-      bucket,
-      file,
-      prompt,
-      information,
-      inputMetadata,
-      results,
-      criticalCmd,
-      bucketDialogCallback,
-      fileDialogCallback,
-      handleScript,
-      promptDialogCallback,
-      showMetadata,
-    } = useScriptPrompts()
+    const scriptPrompts = useScriptPrompts()
 
     const { classificationStyles } = useClassificationBanner()
 
@@ -580,10 +566,12 @@ export default {
 
     return {
       ...scriptOperations,
+      ...scriptPrompts,
       alertText,
       alertType,
       api,
       cable,
+      classificationStyles,
       containerHeight,
       disableSuiteButtons,
       editor,
@@ -608,20 +596,6 @@ export default {
       handleWaiting,
       updateOverridesCount,
       waitingTime,
-      // Script prompts
-      ask,
-      bucket,
-      file,
-      prompt,
-      information,
-      inputMetadata,
-      results,
-      criticalCmd,
-      bucketDialogCallback,
-      fileDialogCallback,
-      handleScript,
-      promptDialogCallback,
-      classificationStyles,
     }
   },
   data() {
