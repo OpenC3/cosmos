@@ -446,7 +446,6 @@ export default {
 
     // Script prompts and dialogs
     const {
-      activePromptId,
       ask,
       bucket,
       file,
@@ -610,7 +609,6 @@ export default {
       updateOverridesCount,
       waitingTime,
       // Script prompts
-      activePromptId,
       ask,
       bucket,
       file,

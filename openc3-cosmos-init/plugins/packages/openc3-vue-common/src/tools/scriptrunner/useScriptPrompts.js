@@ -360,7 +360,6 @@ export function useScriptPrompts() {
 
   return {
     // State
-    activePromptId,
     ask,
     bucket,
     criticalCmd,
