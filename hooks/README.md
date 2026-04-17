@@ -14,14 +14,15 @@ After cloning the repository, install the hooks by running:
 
 ### pre-commit
 
-Automatically updates copyright years in modified files during commits.
+Automatically ensures copyright exists and updates copyright years in modified files during commits.
 
 **What it does:**
 - Scans all files staged for commit
 - Updates `Copyright YYYY OpenC3, Inc.` to the current year
 - Updates `All changes Copyright YYYY, OpenC3, Inc.` to the current year (for dual-copyright files)
 - Does NOT modify Ball Aerospace copyright lines
-- Automatically re-stages files with updated copyright headers
+- Adds the OpenC3 Copyright header to any newly created files
+- Automatically re-stages files that were updated
 
 **Example:**
 ```ruby
