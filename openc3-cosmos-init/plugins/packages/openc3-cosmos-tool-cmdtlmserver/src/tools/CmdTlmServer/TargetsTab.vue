@@ -204,9 +204,7 @@ export default {
               response.data.permissions !== undefined
             ) {
               if (
-                response.data.permissions.some(
-                  (i) => i.permission == 'cmd',
-                )
+                response.data.permissions.some((i) => i.permission == 'cmd')
               ) {
                 this.cmdUser = true
               }
