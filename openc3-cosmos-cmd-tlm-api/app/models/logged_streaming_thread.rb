@@ -278,9 +278,8 @@ class LoggedStreamingThread < StreamingThread
     objects_by_topic.each do |topic, objects|
       break if @cancel_thread
       objects.each do |object|
-        _type, cmd_tlm, tgt, pkt, item, value_type = object.key.split('__')
-        items << "#{tgt}__#{pkt}__#{item}__#{value_type}"
-        item_cmd_or_tlm << cmd_tlm
+        items << "#{object.target_name}__#{object.packet_name}__#{object.item_name}__#{object.value_type}"
+        item_cmd_or_tlm << object.cmd_or_tlm.to_s
       end
     end
 
