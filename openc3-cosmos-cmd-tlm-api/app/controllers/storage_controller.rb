@@ -18,6 +18,9 @@
 require 'openc3/utilities/local_mode'
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/ctrf'
+require 'openc3/utilities/questdb_client'
+require 'openc3/logs/packet_log_reader'
+require 'openc3/topics/telemetry_topic'
 require 'fileutils'
 begin
   require 'openc3-enterprise/version'
@@ -470,6 +473,102 @@ class StorageController < ApplicationController
     log_error(e)
     OpenC3::Logger.error("Delete directory failed: #{e.message}", user: username())
     render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
+  def reingest_files
+    return unless authorization('admin')
+    tmp_dir = Dir.mktmpdir
+
+    begin
+      files = params[:files] || []
+      raise StorageError, "No files specified" if files.empty?
+
+      # Validate all files are .bin.gz
+      invalid = files.reject { |f| f.end_with?('.bin.gz') }
+      raise StorageError, "Only .bin.gz files can be reingested: #{invalid.join(', ')}" if invalid.any?
+
+      path = sanitize_path(params[:path] || '')
+      storage_type, storage_name = validate_storage_source
+      raise StorageError, "Reingest only supported for buckets" unless storage_type == :bucket
+
+      scope = params[:scope] || 'DEFAULT'
+
+      # Check scope-based RBAC
+      if params[:bucket] && bucket_requires_rbac?(params[:bucket])
+        unless authorize_bucket_path(params[:bucket], path)
+          path_scope = extract_scope_from_path(path)
+          render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: :forbidden
+          return
+        end
+      end
+
+      # Collect unique table names from packets to enable/disable DEDUP
+      table_names = Set.new
+      total_packets = 0
+      bucket_client = OpenC3::Bucket.getClient()
+      reader = OpenC3::PacketLogReader.new
+
+      # Download and decompress all files
+      local_files = []
+      files.each do |filename|
+        key = sanitize_path("#{path}#{filename}")
+        temp_file = File.join(tmp_dir, filename)
+        bucket_client.get_object(bucket: storage_name, key: key, path: temp_file)
+        if File.extname(filename) == '.gz'
+          decompressed = OpenC3::BucketUtilities.uncompress_file(temp_file)
+          File.delete(temp_file)
+          local_files << decompressed
+        else
+          local_files << temp_file
+        end
+      end
+
+      # First pass: read all files to discover table names
+      local_files.each do |local_file|
+        reader.each(local_file, false) do |packet|
+          next unless packet.target_name && packet.packet_name
+          cmd_or_tlm = packet.cmd_or_tlm == :CMD ? 'CMD' : 'TLM'
+          table_name = "#{scope}__#{cmd_or_tlm}__#{packet.target_name}__#{packet.packet_name}"
+          table_names.add(table_name)
+        end
+      end
+
+      # Enable DEDUP on all affected tables
+      dedup_enabled_tables = []
+      conn = OpenC3::QuestDBClient.connection
+      table_names.each do |table_name|
+        begin
+          conn.exec("ALTER TABLE '#{table_name}' DEDUP ENABLE UPSERT KEYS(PACKET_TIMESECONDS)")
+          dedup_enabled_tables << table_name
+        rescue => e
+          OpenC3::Logger.warn("Failed to enable DEDUP on #{table_name}: #{e.message}", user: username())
+        end
+      end
+
+      # Second pass: reingest packets
+      local_files.each do |local_file|
+        reader.each(local_file, true) do |packet|
+          next unless packet.target_name && packet.packet_name
+          packet.stored = true
+          OpenC3::TelemetryTopic.write_packet(packet, scope: scope)
+          total_packets += 1
+        end
+      end
+
+      OpenC3::Logger.info("Reingested #{total_packets} packets from #{files.length} files (DEDUP enabled on #{dedup_enabled_tables.length} tables)", user: username())
+      render json: {
+        status: 'ok',
+        packets: total_packets,
+        files: files.length,
+        dedup_tables: dedup_enabled_tables
+      }, status: :ok
+    rescue Exception => e
+      log_error(e)
+      OpenC3::Logger.error("Reingest failed: #{e.message}", user: username())
+      render json: { status: 'error', message: e.message }, status: :internal_server_error
+    ensure
+      FileUtils.remove_entry_secure(tmp_dir, true) if tmp_dir
+    end
   end
 
   private

@@ -285,7 +285,7 @@
           <v-spacer />
           <v-btn icon="mdi-close" variant="text" @click="gapDialog = false" />
         </v-card-title>
-        <v-card-text>
+        <v-card-text style="max-height: 80vh; overflow-y: auto">
           <v-progress-linear
             v-if="gapLoading"
             :model-value="gapProgress"

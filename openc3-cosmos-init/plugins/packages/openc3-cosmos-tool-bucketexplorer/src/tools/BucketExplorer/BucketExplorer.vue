@@ -53,6 +53,18 @@
         {{ root }} Files
         <v-spacer />
         <v-btn
+          v-if="selectedFiles.length > 0 && canReingest"
+          color="warning"
+          variant="elevated"
+          prepend-icon="mdi-database-refresh"
+          class="mr-2"
+          :loading="reingesting"
+          data-test="reingest-selected"
+          @click="reingestPrompt"
+        >
+          Reingest {{ selectedFiles.length }} Selected
+        </v-btn>
+        <v-btn
           v-if="selectedFiles.length > 0"
           color="primary"
           variant="elevated"
@@ -351,6 +363,7 @@ export default {
       file: null,
       files: [],
       selectedFiles: [],
+      reingesting: false,
       showDialog: false,
       dialogName: '',
       dialogContent: '',
@@ -417,6 +430,13 @@ export default {
         name: part,
         path: parts.slice(0, index + 1).join('/') + '/',
       }))
+    },
+    canReingest() {
+      return (
+        this.mode === 'bucket' &&
+        this.path.includes('raw_logs/') &&
+        this.selectedFiles.every((f) => f.endsWith('.bin.gz'))
+      )
     },
   },
   watch: {
@@ -642,6 +662,50 @@ export default {
         this.$notify.caution({
           title: `Failed to download files: ${error.message}`,
         })
+      }
+    },
+    reingestPrompt() {
+      this.$dialog
+        .confirm(
+          `Are you sure you want to reingest ${this.selectedFiles.length} file(s) to TSDB? This will reprocess the raw packets and store them in the time series database.`,
+          {
+            okText: 'Reingest',
+            cancelText: 'Cancel',
+          },
+        )
+        .then(() => {
+          this.reingestFiles()
+        })
+    },
+    async reingestFiles() {
+      if (this.selectedFiles.length === 0) return
+      this.reingesting = true
+
+      try {
+        let root = this.root.toUpperCase()
+        if (this.mode === 'volume') {
+          root = root.slice(1)
+        }
+
+        const response = await Api.post('/openc3-api/storage/reingest', {
+          data: {
+            [this.mode]: `OPENC3_${root}_${this.mode.toUpperCase()}`,
+            path: this.path,
+            files: this.selectedFiles,
+          },
+        })
+
+        const dedupCount = response.data.dedup_tables?.length || 0
+        this.$notify.normal({
+          title: `Reingested ${response.data.packets.toLocaleString()} packets from ${response.data.files} file(s). DEDUP enabled on ${dedupCount} table(s) — disable manually when processing completes.`,
+          severity: 'success',
+        })
+      } catch (error) {
+        this.$notify.caution({
+          title: `Failed to reingest files: ${error.message}`,
+        })
+      } finally {
+        this.reingesting = false
       }
     },
     clearSelection() {
