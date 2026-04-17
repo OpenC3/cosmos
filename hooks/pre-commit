@@ -47,8 +47,14 @@ staged_files.each do |file|
   # Skip if file doesn't exist (deleted files)
   next unless File.exist?(file)
 
+  # Only process files with specific extensions
+  next unless %w[.py .rb .ts .js .vue].include?(File.extname(file).downcase)
+
   # Skip files in the hooks directory
   next if file.start_with?('hooks/')
+
+  # Skip vendored/third-party JS files
+  next if file.start_with?('openc3-cosmos-init/plugins/packages/openc3-tool-base/public/js/')
 
   # Read file content with encoding handling
   begin
