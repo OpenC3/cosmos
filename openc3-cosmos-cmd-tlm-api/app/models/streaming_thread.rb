@@ -191,6 +191,7 @@ class StreamingThread
   def handle_raw_packet(buffer, objects, time)
     objects = objects_active?(objects, time)
     return nil if objects.length <= 0
+    return nil if buffer.nil?
     return {
       "__type" => "PACKET",
       "__packet" => objects[0].key,
