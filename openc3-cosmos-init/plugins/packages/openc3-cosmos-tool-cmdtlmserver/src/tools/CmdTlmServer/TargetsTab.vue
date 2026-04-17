@@ -190,10 +190,7 @@ export default {
       // Check user permissions for cmd authority
       let roles = OpenC3Auth.userroles()
       for (let role of roles) {
-        if (role == 'operator') {
-          this.cmdUser = true
-          break
-        } else if (role == 'runner') {
+        if (role == 'operator' || role == 'runner') {
           this.cmdUser = true
           break
         } else if (role != 'viewer' && role != 'admin' && role != 'approver') {
