@@ -41,18 +41,22 @@ module OpenC3
     attr_reader :data
     attr_reader :mutex
 
-    def initialize(microservice:, scope:)
+    def initialize(microservice:, scope:, db_shard: nil)
       @scope = scope
       @microservice = microservice
       @data = {}
       @mutex = Mutex.new
 
-      # Look up db_shard from MicroserviceModel stored on shard 0
-      begin
-        json = Store.hget('openc3_microservices', microservice)
-        @db_shard = json ? JSON.parse(json)['db_shard'].to_i : 0
-      rescue
-        @db_shard = 0
+      if db_shard
+        @db_shard = db_shard
+      else
+        # Look up db_shard from MicroserviceModel stored on shard 0
+        begin
+          json = Store.hget('openc3_microservices', microservice)
+          @db_shard = json ? JSON.parse(json)['db_shard'].to_i : 0
+        rescue
+          @db_shard = 0
+        end
       end
 
       # Always make sure there is a update thread

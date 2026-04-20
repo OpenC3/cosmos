@@ -39,18 +39,21 @@ class Metric:
     # Objects with a generate method to be called on each metric cycle (to generate metrics)
     update_generators = []
 
-    def __init__(self, microservice, scope):
+    def __init__(self, microservice, scope, db_shard = None):
         self.scope = scope
         self.microservice = microservice
         self.data = {}
         self.mutex = threading.Lock()
 
         # Look up db_shard from MicroserviceModel stored on shard 0
-        try:
-            json_data = Store.hget("openc3_microservices", microservice)
-            self.db_shard = int(json.loads(json_data).get("db_shard", 0) or 0) if json_data else 0
-        except Exception:
-            self.db_shard = 0
+        if db_shard is not None:
+            self.db_shard = db_shard
+        else:
+            try:
+                json_data = Store.hget("openc3_microservices", microservice)
+                self.db_shard = int(json.loads(json_data).get("db_shard", 0) or 0) if json_data else 0
+            except Exception:
+                self.db_shard = 0
 
         # Always make sure there is a update thread
         with Metric.mutex:

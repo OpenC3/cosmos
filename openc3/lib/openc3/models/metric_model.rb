@@ -25,6 +25,7 @@ module OpenC3
     PRIMARY_KEY = '__openc3__metric'.freeze
 
     attr_accessor :values
+    attr_accessor :db_shard
 
     # Look up db_shard from the corresponding MicroserviceModel.
     def self._lookup_db_shard(name, scope:)
@@ -88,6 +89,7 @@ module OpenC3
         'name' => @name,
         'updated_at' => @updated_at,
         'values' => @values.as_json(*a),
+        'db_shard' => @db_shard,
       }
     end
 

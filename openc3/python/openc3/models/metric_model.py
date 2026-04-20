@@ -73,4 +73,4 @@ class MetricModel(ShardedModel, EphemeralModel):
         self._sharded_create(self.db_shard, update=update, force=force, queued=queued)
 
     def as_json(self):
-        return {"name": self.name, "updated_at": self.updated_at, "values": self.values}
+        return {"name": self.name, "updated_at": self.updated_at, "values": self.values, "db_shard": self.db_shard}
