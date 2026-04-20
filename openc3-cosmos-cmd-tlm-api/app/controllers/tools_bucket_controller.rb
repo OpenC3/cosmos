@@ -28,7 +28,7 @@ class ToolsBucketController < ApplicationController
       return
     end
 
-    bucket_name = ENV['OPENC3_TOOLS_BUCKET']
+    bucket_name = ENV.fetch('OPENC3_TOOLS_BUCKET', nil)
     unless bucket_name && !bucket_name.empty?
       head :service_unavailable
       return
