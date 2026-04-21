@@ -81,11 +81,11 @@ if %errorlevel% equ 0 (
 
 REM Fetch the latest changes from the 'cosmos' remote
 echo Fetching latest changes from 'cosmos' remote.
-git fetch cosmos
+git fetch cosmos --tags
 
-REM Check the tag is valid
-git tag | findstr /x "%TAG%" >nul 2>&1
-if %errorlevel% neq 0 (
+REM Check the tag is valid (native git lookup, tolerant of findstr/line-ending quirks)
+git rev-parse --verify "refs/tags/%TAG%" >nul 2>&1
+if errorlevel 1 (
     echo Error: '%TAG%' is not a valid git tag.
     echo Available tags:
     git tag | sort
