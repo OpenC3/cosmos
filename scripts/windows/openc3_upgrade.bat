@@ -25,7 +25,7 @@ if "%1"=="-h" goto usage
 
 set TAG=%1
 
-REM Setup the cosmos remote based on IS_ENTERPRISE or if upgrading to enterprise
+REM Setup the 'cosmos' remote based on IS_ENTERPRISE or if upgrading to enterprise
 echo %1 | findstr /i "enterprise" >nul 2>&1
 if "%IS_ENTERPRISE%"=="true" (
     set UPGRADING_TO_ENTERPRISE=true
@@ -39,10 +39,10 @@ if "%UPGRADING_TO_ENTERPRISE%"=="true" (
     set COSMOS_URL=https://github.com/OpenC3/cosmos-enterprise-project.git
     git remote -v | findstr /b "cosmos " >nul 2>&1
     if !errorlevel! equ 0 (
-        echo Setting cosmos remote to the enterprise repository.
+        echo Setting 'cosmos' remote to the enterprise repository.
         git remote set-url cosmos !COSMOS_URL!
     ) else (
-        echo Adding cosmos remote for the enterprise repository.
+        echo Adding 'cosmos' remote for the enterprise repository.
         git remote add cosmos !COSMOS_URL!
     )
 
@@ -64,10 +64,10 @@ if "%UPGRADING_TO_ENTERPRISE%"=="true" (
     set COSMOS_URL=https://github.com/OpenC3/cosmos-project.git
     git remote -v | findstr /b "cosmos " >nul 2>&1
     if !errorlevel! equ 0 (
-        echo Setting cosmos remote to the core repository.
+        echo Setting 'cosmos' remote to the core repository.
         git remote set-url cosmos !COSMOS_URL!
     ) else (
-        echo Adding cosmos remote for the core repository.
+        echo Adding 'cosmos' remote for the core repository.
         git remote add cosmos !COSMOS_URL!
     )
 )
@@ -79,14 +79,14 @@ if %errorlevel% equ 0 (
     set TAG=!TAG:enterprise-=!
 )
 
-REM Fetch the latest changes from the cosmos remote
-echo Fetching latest changes from the cosmos remote.
+REM Fetch the latest changes from the 'cosmos' remote
+echo Fetching latest changes from 'cosmos' remote.
 git fetch cosmos --tags
 
 REM Check the tag is valid (native git lookup, tolerant of findstr/line-ending quirks)
 git rev-parse --verify "refs/tags/%TAG%" >nul 2>&1
 if errorlevel 1 (
-    echo Error: %TAG% is not a valid git tag.
+    echo Error: '%TAG%' is not a valid git tag.
     echo Available tags:
     git tag | sort
     goto usage
@@ -100,17 +100,17 @@ if "%2"=="--preview" (
 
 REM Apply the changes
 git diff -R "refs/tags/%TAG%" --binary | git apply --whitespace=fix --exclude="plugins/*"
-echo Applied changes from tag %1.
+echo Applied changes from tag '%1'.
 echo We recommend committing these changes to your local repository.
 echo e.g. git commit -am "Upgrade to %1"
-echo You can now run openc3.bat run to start the upgraded OpenC3 environment.
+echo You can now run 'openc3.bat run' to start the upgraded OpenC3 environment.
 echo.
 GOTO :EOF
 
 :usage
     echo Usage: openc3.bat upgrade ^<tag^> --preview
     echo e.g. openc3.bat upgrade v6.4.1
-    echo The --preview flag will show the diff without applying changes.
+    echo The '--preview' flag will show the diff without applying changes.
     if "%IS_ENTERPRISE%"=="false" (
         echo.
         echo You can also upgrade to Enterprise versions of OpenC3 if you have access
