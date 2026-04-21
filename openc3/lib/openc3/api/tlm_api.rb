@@ -117,7 +117,7 @@ module OpenC3
     # @param packet_name [String] Packet name of the packet
     # @param item_hash [Hash] Hash of item_name and value for each item you want to change from the current value table
     # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
-    def inject_tlm(target_name, packet_name, item_hash = nil, type: :CONVERTED, manual: false, scope: $openc3_scope, token: $openc3_token)
+    def inject_tlm(target_name, packet_name, item_hash = nil, type: :CONVERTED, stored: false, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       type = type.to_s.intern
       target_name = target_name.upcase
@@ -155,9 +155,9 @@ module OpenC3
 
       # Use an interface microservice if it exists, other use the decom microservice
       if interface_name
-        InterfaceTopic.inject_tlm(interface_name, target_name, packet_name, item_hash, type: type, scope: scope)
+        InterfaceTopic.inject_tlm(interface_name, target_name, packet_name, item_hash, type: type, stored: stored, scope: scope)
       else
-        DecomInterfaceTopic.inject_tlm(target_name, packet_name, item_hash, type: type, scope: scope)
+        DecomInterfaceTopic.inject_tlm(target_name, packet_name, item_hash, type: type, stored: stored, scope: scope)
       end
     end
 

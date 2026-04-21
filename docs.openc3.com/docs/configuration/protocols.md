@@ -320,17 +320,6 @@ The CCSDS CLTU Protocol handles the CLTU (Communicates Link Transfer Unit) for C
 | Fill Byte | BCH encoding fill byte         | No       | 0x55               |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby">
-
-```cosmos
-INTERFACE INTERFACE_NAME <params>
-  PROTOCOL WRITE CcsdsCltuProtocol
-```
-
-Source code for [cltu_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_cltu_protocol.rb)
-
-</TabItem>
-
 <TabItem value="python" label="Python">
 
 ```cosmos
@@ -341,7 +330,16 @@ INTERFACE INTERFACE_NAME <params>
 Source code for [cltu_protocol.py](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols-python/openc3_ccsds_protocols/ccsds_cltu_protocol.py)
 
 </TabItem>
+<TabItem value="ruby" label="Ruby">
 
+```cosmos
+INTERFACE INTERFACE_NAME <params>
+  PROTOCOL WRITE CcsdsCltuProtocol
+```
+
+Source code for [cltu_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_cltu_protocol.rb)
+
+</TabItem>
 </Tabs>
 
 For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
@@ -359,16 +357,6 @@ The CCSDS TCTF Protocol handles the Telecommand Transfer Frame for Command Strea
 | VCID          | Virtual Channel Identifier (6 bits)                                           | No       | 0       |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby">
-
-```cosmos
-INTERFACE INTERFACE_NAME <params>
-  PROTOCOL WRITE CcsdsTctfProtocol true false 1 0xA 0x1
-```
-
-Source code for [ccsds_tctf_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_tctf_protocol.rb)
-
-</TabItem>
 <TabItem value="python" label="Python">
 
 ```cosmos
@@ -377,6 +365,16 @@ INTERFACE INTERFACE_NAME <params>
 ```
 
 Source code for [ccsds_tctf_protocol.py](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols-python/openc3_ccsds_protocols/ccsds_tctf_protocol.py)
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```cosmos
+INTERFACE INTERFACE_NAME <params>
+  PROTOCOL WRITE CcsdsTctfProtocol true false 1 0xA 0x1
+```
+
+Source code for [ccsds_tctf_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_tctf_protocol.rb)
 
 </TabItem>
 </Tabs>
@@ -397,17 +395,6 @@ The CCSDS TMTF Protocol handles the Telemetry Transfer Frame for Telemetry Strea
 | Fill Fields           | Whether to fill in the sync pattern on outgoing packets                                                                                                                                      | No       | true                     |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby">
-
-```cosmos
-INTERFACE INTERFACE_NAME <params>
-  PROTOCOL READ CcsdsTmtfProtocol true 0 0x1ACFFC1D true
-```
-
-Source code for [ccsds_tmtf_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_tmtf_protocol.rb)
-
-</TabItem>
-
 <TabItem value="python" label="Python">
 
 ```cosmos
@@ -418,7 +405,16 @@ INTERFACE INTERFACE_NAME <params>
 Source code for [ccsds_tmtf_protocol.py](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols-python/openc3_ccsds_protocols/ccsds_tmtf_protocol.py)
 
 </TabItem>
+<TabItem value="ruby" label="Ruby">
 
+```cosmos
+INTERFACE INTERFACE_NAME <params>
+  PROTOCOL READ CcsdsTmtfProtocol true 0 0x1ACFFC1D true
+```
+
+Source code for [ccsds_tmtf_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_tmtf_protocol.rb)
+
+</TabItem>
 </Tabs>
 
 For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
@@ -616,6 +612,74 @@ For reading, the encryption protocol should be first so it decrypts the raw data
 Below is an example of a custom encryption protocol using OpenSSL's AES-256-GCM cipher. This protocol encrypts outgoing data and decrypts incoming data.
 
 <Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+# encryption_protocol.py
+# Place in targets/TARGET_NAME/lib/encryption_protocol.py
+
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+import os
+from openc3.interfaces.protocols.protocol import Protocol
+from openc3.system.system import System
+from openc3.utilities.logger import Logger
+
+class EncryptionProtocol(Protocol):
+    # key_secret_name: Name of the secret containing the encryption key
+    # iv_secret_name: Name of the secret containing the initialization vector (optional)
+    # allow_empty_data: See Protocol.__init__
+    def __init__(self, key_secret_name, iv_secret_name=None, allow_empty_data=None):
+        super().__init__(allow_empty_data)
+        self.key_secret_name = key_secret_name
+        self.iv_secret_name = iv_secret_name
+        self.key = None
+        self.iv = None
+        # AESGCM instance created in connect_reset after key is loaded
+        self.aesgcm = None
+
+    def connect_reset(self):
+        # Retrieve the encryption key from COSMOS secrets
+        secrets = System.secrets
+        self.key = secrets.get(self.key_secret_name, scope=self.interface.scope)
+        # IV can be from secrets or generated per message
+        if self.iv_secret_name:
+            self.iv = secrets.get(self.iv_secret_name, scope=self.interface.scope)
+        # Create the AESGCM instance with the key (reused for encrypt/decrypt)
+        self.aesgcm = AESGCM(self.key)
+
+    def read_data(self, data, extra=None):
+        if len(data) == 0:
+            return super().read_data(data, extra)
+
+        try:
+            # Extract IV and ciphertext from the data
+            # Format: [12-byte IV][ciphertext with auth tag]
+            iv = data[0:12]
+            ciphertext = data[12:]
+
+            plaintext = self.aesgcm.decrypt(iv, ciphertext, None)
+            return (plaintext, extra)
+        except Exception as e:
+            Logger.error(f"Decryption failed: {e}")
+            return "DISCONNECT"
+
+    def write_data(self, data, extra=None):
+        if len(data) == 0:
+            return super().write_data(data, extra)
+
+        # Generate a random IV for each message (recommended for GCM)
+        iv = self.iv if self.iv else os.urandom(12)
+
+        # encrypt() returns ciphertext with auth tag appended
+        ciphertext = self.aesgcm.encrypt(iv, data, None)
+
+        # Prepend IV to ciphertext
+        # Format: [12-byte IV][ciphertext with auth tag]
+        encrypted_data = iv + ciphertext
+        return (encrypted_data, extra)
+```
+
+</TabItem>
 <TabItem value="ruby" label="Ruby">
 
 ```ruby
@@ -697,74 +761,6 @@ module OpenC3
     end
   end
 end
-```
-
-</TabItem>
-<TabItem value="python" label="Python">
-
-```python
-# encryption_protocol.py
-# Place in targets/TARGET_NAME/lib/encryption_protocol.py
-
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-import os
-from openc3.interfaces.protocols.protocol import Protocol
-from openc3.system.system import System
-from openc3.utilities.logger import Logger
-
-class EncryptionProtocol(Protocol):
-    # key_secret_name: Name of the secret containing the encryption key
-    # iv_secret_name: Name of the secret containing the initialization vector (optional)
-    # allow_empty_data: See Protocol.__init__
-    def __init__(self, key_secret_name, iv_secret_name=None, allow_empty_data=None):
-        super().__init__(allow_empty_data)
-        self.key_secret_name = key_secret_name
-        self.iv_secret_name = iv_secret_name
-        self.key = None
-        self.iv = None
-        # AESGCM instance created in connect_reset after key is loaded
-        self.aesgcm = None
-
-    def connect_reset(self):
-        # Retrieve the encryption key from COSMOS secrets
-        secrets = System.secrets
-        self.key = secrets.get(self.key_secret_name, scope=self.interface.scope)
-        # IV can be from secrets or generated per message
-        if self.iv_secret_name:
-            self.iv = secrets.get(self.iv_secret_name, scope=self.interface.scope)
-        # Create the AESGCM instance with the key (reused for encrypt/decrypt)
-        self.aesgcm = AESGCM(self.key)
-
-    def read_data(self, data, extra=None):
-        if len(data) == 0:
-            return super().read_data(data, extra)
-
-        try:
-            # Extract IV and ciphertext from the data
-            # Format: [12-byte IV][ciphertext with auth tag]
-            iv = data[0:12]
-            ciphertext = data[12:]
-
-            plaintext = self.aesgcm.decrypt(iv, ciphertext, None)
-            return (plaintext, extra)
-        except Exception as e:
-            Logger.error(f"Decryption failed: {e}")
-            return "DISCONNECT"
-
-    def write_data(self, data, extra=None):
-        if len(data) == 0:
-            return super().write_data(data, extra)
-
-        # Generate a random IV for each message (recommended for GCM)
-        iv = self.iv if self.iv else os.urandom(12)
-
-        # encrypt() returns ciphertext with auth tag appended
-        ciphertext = self.aesgcm.encrypt(iv, data, None)
-
-        # Prepend IV to ciphertext
-        # Format: [12-byte IV][ciphertext with auth tag]
-        encrypted_data = iv + ciphertext
-        return (encrypted_data, extra)
 ```
 
 </TabItem>

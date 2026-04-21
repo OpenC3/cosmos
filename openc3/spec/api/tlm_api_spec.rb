@@ -288,6 +288,21 @@ module OpenC3
       it "raises an error when writing to a DERIVED item without a write conversion" do
         expect { @api.inject_tlm("INST", "HEALTH_STATUS", { "RECEIVED_TIMESECONDS" => 123.0 }) }.to raise_error(/Cannot write DERIVED item/)
       end
+
+      it "does not update the CVT when stored is true" do
+        @api.inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 50 }, type: :CONVERTED)
+        sleep 0.1
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to be_within(0.1).of(50.0)
+
+        @api.inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 99 }, type: :CONVERTED, stored: true)
+        sleep 0.1
+        # CVT should still have the old value since stored packets don't update CVT
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to be_within(0.1).of(50.0)
+
+        @api.inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 99 }, type: :CONVERTED, stored: false)
+        sleep 0.1
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to be_within(0.1).of(99.0)
+      end
     end
 
     describe "override_tlm" do
