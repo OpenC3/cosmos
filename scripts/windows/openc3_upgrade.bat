@@ -92,17 +92,14 @@ if errorlevel 1 (
     goto usage
 )
 
-REM Get the commit hash for the tag
-for /f "tokens=1" %%a in ('git ls-remote cosmos refs/tags/%TAG%') do set HASH=%%a
-
 REM If the --preview flag is set, show the diff without applying changes
 if "%2"=="--preview" (
-    git diff -R %HASH%
+    git diff -R "refs/tags/%TAG%"
     exit /b 0
 )
 
 REM Apply the changes
-git diff -R %HASH% | git apply --whitespace=fix --exclude="plugins/*"
+git diff -R "refs/tags/%TAG%" --binary | git apply --whitespace=fix --exclude="plugins/*"
 echo Applied changes from tag '%1'.
 echo We recommend committing these changes to your local repository.
 echo e.g. git commit -am "Upgrade to %1"
