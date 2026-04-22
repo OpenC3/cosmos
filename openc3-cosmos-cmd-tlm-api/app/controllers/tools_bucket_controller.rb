@@ -23,7 +23,7 @@ class ToolsBucketController < ApplicationController
 
   def show
     key = params[:path].to_s
-    if key.empty? || key.include?('..')
+    if key.empty? || key.start_with?('/') || key.include?('..')
       head :bad_request
       return
     end

@@ -112,6 +112,14 @@ RSpec.describe ToolsBucketController, type: :controller do
       expect(response).to have_http_status(:bad_request)
     end
 
+    it "rejects absolute paths (e.g. URL-encoded leading slash)" do
+      expect(OpenC3::Bucket).not_to receive(:getClient)
+
+      get :show, params: { path: "/secrets.env", scope: "DEFAULT" }
+
+      expect(response).to have_http_status(:bad_request)
+    end
+
     it "returns 503 if the tools bucket env var is missing" do
       ENV.delete("OPENC3_TOOLS_BUCKET")
       get :show, params: { path: "base/index.html", scope: "DEFAULT" }
