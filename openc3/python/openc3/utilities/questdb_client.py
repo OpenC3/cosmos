@@ -788,9 +788,9 @@ class QuestDBClient:
         query = f"SELECT {', '.join(names)} FROM "
         for index, (table_name, _) in enumerate(tables.items()):
             if index == 0:
-                query += f"{table_name} as T{index} "
+                query += f'"{table_name}" as T{index} '
             else:
-                query += f"ASOF JOIN {table_name} as T{index} "
+                query += f'ASOF JOIN "{table_name}" as T{index} '
 
         query_params = []
         if start_time and not end_time:
@@ -1084,14 +1084,14 @@ class QuestDBClient:
                         try:
                             if existing_type is None:
                                 # Column doesn't exist yet — add it
-                                alter = f'ALTER TABLE "{table_name}" ADD COLUMN {col_name} {desired_sql_type}'
+                                alter = f'ALTER TABLE "{table_name}" ADD COLUMN "{col_name}" {desired_sql_type}'
                                 cur.execute(alter)
                                 self._log_info(f"QuestDB: Added column: {alter}")
                                 altered = True
                             elif existing_type != desired_canonical:
                                 # Type mismatch — ALTER the column type
                                 alter = (
-                                    f'ALTER TABLE "{table_name}" ALTER COLUMN {col_name} TYPE {desired_sql_type}'
+                                    f'ALTER TABLE "{table_name}" ALTER COLUMN "{col_name}" TYPE {desired_sql_type}'
                                 )
                                 cur.execute(alter)
                                 self._log_info(

@@ -461,5 +461,54 @@ class TestDecimalToVarcharBug:
         assert _get_column_type(questdb_client, table_name) == "VARCHAR"
 
 
+@requires_questdb
+class TestSpecialCharColumnMigration:
+    """Columns whose names contain SQL-identifier special chars (<, >, |)
+    must be double-quoted in ALTER TABLE statements. COSMOS generates such
+    names for bit-level parameters (e.g., P<_5|_>).
+    """
+
+    def test_add_column_with_special_chars(self, questdb_client, clean_table):
+        target = "TBLCHG"
+        packet = "SPECIAL_CHARS_ADD"
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
+
+        # Create table with just the base packet — no user items
+        questdb_client.create_table(
+            target, packet, {"items": []}
+        )
+
+        # Restart with a packet_def that adds a column containing <, >, |
+        _restart_and_create(
+            questdb_client,
+            target,
+            packet,
+            {"items": [{"name": "P<_5|_>", "data_type": "UINT", "bit_size": 5}]},
+        )
+        assert _get_column_type(questdb_client, table_name, "P<_5|_>") == "INT"
+
+    def test_alter_column_with_special_chars(self, questdb_client, clean_table):
+        target = "TBLCHG"
+        packet = "SPECIAL_CHARS_ALTER"
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
+
+        # Phase A: Create with INT 32 (LONG)
+        questdb_client.create_table(
+            target,
+            packet,
+            {"items": [{"name": "P<_5|_>", "data_type": "INT", "bit_size": 32}]},
+        )
+        assert _get_column_type(questdb_client, table_name, "P<_5|_>") == "LONG"
+
+        # Phase B: Restart with UINT 64 — should ALTER LONG -> VARCHAR
+        _restart_and_create(
+            questdb_client,
+            target,
+            packet,
+            {"items": [{"name": "P<_5|_>", "data_type": "UINT", "bit_size": 64}]},
+        )
+        assert _get_column_type(questdb_client, table_name, "P<_5|_>") == "VARCHAR"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -1768,6 +1768,56 @@ class TestTsdbMicroservice(unittest.TestCase):
         self.assertIn("BIGVAL", alter_sql)
         self.assertIn("varchar", alter_sql)
 
+    @patch("openc3.microservices.tsdb_microservice.get_tlm")
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
+    @patch("openc3.microservices.microservice.System")
+    def test_reconcile_quotes_column_names_with_special_chars(
+        self, mock_system, mock_psycopg, mock_sender, mock_get_tlm
+    ):
+        """ALTER/ADD COLUMN must double-quote column names so identifiers like
+        'P<_5|_>' (from COSMOS bit-level parameters) parse correctly."""
+        mock_query = Mock()
+        mock_psycopg.return_value = mock_query
+        mock_cursor = Mock()
+        mock_query.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
+        mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
+
+        # Existing table: one column type-mismatch, one column missing
+        mock_cursor.fetchall.return_value = [
+            ("PACKET_TIMESECONDS", "TIMESTAMP_NS"),
+            ("RECEIVED_TIMESECONDS", "TIMESTAMP_NS"),
+            ("RECEIVED_COUNT", "LONG"),
+            ("COSMOS_DATA_TAG", "SYMBOL"),
+            ("P<_5|_>", "LONG"),
+        ]
+
+        mock_get_tlm.return_value = {
+            "items": [
+                {"name": "P<_5|_>", "data_type": "UINT", "bit_size": 64},
+                {"name": "Q<_7|_>", "data_type": "INT", "bit_size": 32},
+            ]
+        }
+
+        model = MicroserviceModel(
+            "DEFAULT__TSDB__TEST",
+            scope="DEFAULT",
+            topics=["DEFAULT__DECOM__{TEST}__PKT"],
+            target_names=["TEST"],
+        )
+        model.create()
+
+        TsdbMicroservice("DEFAULT__TSDB__TEST")
+
+        executed = [str(call) for call in mock_cursor.execute.call_args_list]
+        alter_sql = next((s for s in executed if "ALTER COLUMN" in s and "P<_5|_>" in s), None)
+        add_sql = next((s for s in executed if "ADD COLUMN" in s and "Q<_7|_>" in s), None)
+
+        self.assertIsNotNone(alter_sql, f"Expected ALTER COLUMN for P<_5|_>, got: {executed}")
+        self.assertIsNotNone(add_sql, f"Expected ADD COLUMN for Q<_7|_>, got: {executed}")
+        self.assertIn('"P<_5|_>"', alter_sql)
+        self.assertIn('"Q<_7|_>"', add_sql)
+
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")

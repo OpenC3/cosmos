@@ -544,7 +544,7 @@ module OpenC3
     # @param end_time [Integer, nil] Nanosecond end time
     # @return [Boolean]
     def self.table_has_data?(table_name, start_time, end_time)
-      query = "SELECT 1 FROM #{table_name}"
+      query = "SELECT 1 FROM \"#{table_name}\""
       query += time_where_clause(start_time, end_time)
       query += " LIMIT 1"
       result = query_with_retry(query, max_retries: 1, label: "table_has_data")
@@ -590,7 +590,7 @@ module OpenC3
       names << TIMESTAMP_SELECT
       names << "RECEIVED_TIMESECONDS" if include_received_ts
       names << "COSMOS_EXTRA"
-      query = "SELECT #{names.join(', ')} FROM #{table_name}"
+      query = "SELECT #{names.join(', ')} FROM \"#{table_name}\""
       query += time_where_clause(start_time, end_time)
       query
     end
@@ -888,9 +888,9 @@ module OpenC3
       query = "SELECT #{names.join(", ")} FROM "
       tables.each_with_index do |(table_name, _), index|
         if index == 0
-          query += "#{table_name} as T#{index} "
+          query += "\"#{table_name}\" as T#{index} "
         else
-          query += "ASOF JOIN #{table_name} as T#{index} "
+          query += "ASOF JOIN \"#{table_name}\" as T#{index} "
         end
       end
       query_params = []
