@@ -34,7 +34,7 @@ class TsdbMicroservice(Microservice):
     # QuestDB returns "table does not exist" when QDB_LINE_AUTO_CREATE_NEW_TABLES=false
     # and an ILP write targets a table we haven't created (e.g. after a DROP from the admin UI).
     MISSING_TABLE_RE = re.compile(r"table\s+does\s+not\s+exist", re.IGNORECASE)
-    ERROR_TABLE_NAME_RE = re.compile(r"table[=:\s]+([A-Za-z0-9_]+)")
+    ERROR_TABLE_NAME_RE = re.compile(r"table[=:\s]+(\w+)")
 
     def __init__(self, *args):
         super().__init__(*args)

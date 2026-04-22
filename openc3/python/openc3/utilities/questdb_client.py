@@ -967,8 +967,7 @@ class QuestDBClient:
                 if attempt == max_retries - 1:
                     raise
                 self._log_warn(
-                    f"QuestDB: DDL connection error on attempt {attempt + 1}/{max_retries}, "
-                    f"reconnecting: {error}"
+                    f"QuestDB: DDL connection error on attempt {attempt + 1}/{max_retries}, reconnecting: {error}"
                 )
                 try:
                     self.connect_query()
@@ -1010,6 +1009,7 @@ class QuestDBClient:
                 # psycopg.Error: table doesn't exist in QuestDB
                 # TypeError: can occur in unit tests with mock cursors
                 return None
+        return None
 
     def create_table(self, target_name, packet_name, packet, cmd_or_tlm="TLM", retain_time=None, scope="DEFAULT"):
         """
@@ -1126,22 +1126,28 @@ class QuestDBClient:
                 existing_raw = existing_columns.get(col_name)
                 existing_type = self._canonical_type(existing_raw) if existing_raw else None
 
-                if existing_type is None:
-                    # Column doesn't exist yet — add it
-                    alter = f'ALTER TABLE "{table_name}" ADD COLUMN "{col_name}" {desired_sql_type}'
-                    cur.execute(alter)
-                    self._log_info(f"QuestDB: Added column: {alter}")
-                    altered = True
-                elif existing_type != desired_canonical:
-                    # Type mismatch — ALTER the column type
-                    alter = f'ALTER TABLE "{table_name}" ALTER COLUMN "{col_name}" TYPE {desired_sql_type}'
-                    cur.execute(alter)
-                    self._log_info(
-                        f"QuestDB: Altered column type: {alter} (was {existing_type}, now {desired_canonical})"
-                    )
-                    altered = True
-            except psycopg.Error as error:
-                self._log_error(f"QuestDB: Error reconciling table {table_name}: {error}")
+                try:
+                    if existing_type is None:
+                        # Column doesn't exist yet — add it
+                        alter = f'ALTER TABLE "{table_name}" ADD COLUMN "{col_name}" {desired_sql_type}'
+                        self._execute_ddl(alter)
+                        self._log_info(f"QuestDB: Added column: {alter}")
+                        altered = True
+                    elif existing_type != desired_canonical:
+                        # Type mismatch — ALTER the column type
+                        alter = f'ALTER TABLE "{table_name}" ALTER COLUMN "{col_name}" TYPE {desired_sql_type}'
+                        self._execute_ddl(alter)
+                        self._log_info(
+                            f"QuestDB: Altered column type: {alter} (was {existing_type}, now {desired_canonical})"
+                        )
+                        altered = True
+                except self._CONNECTION_ERROR_TYPES:
+                    # Connection is fatally broken — let caller see it.
+                    raise
+                except psycopg.Error as error:
+                    # Per-column schema error (bad type, constraint, etc.) — log and continue
+                    # so other columns still reconcile.
+                    self._log_error(f"QuestDB: Error reconciling column {col_name} in table {table_name}: {error}")
 
             if altered:
                 # QuestDB applies ALTER asynchronously — wait for changes to propagate
