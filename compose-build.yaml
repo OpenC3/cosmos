@@ -20,8 +20,8 @@ services:
     build:
       context: "openc3-ruby"
       network: host
-      cache_from:
-        - type=gha,scope=openc3-ruby
+      # cache_from:
+      #   - type=gha,scope=openc3-ruby
       cache_to:
         - type=gha,scope=openc3-ruby,mode=max
       args:
@@ -38,8 +38,8 @@ services:
     build:
       context: "openc3"
       network: host
-      cache_from:
-        - type=gha,scope=openc3-base
+      # cache_from:
+      #   - type=gha,scope=openc3-base
       cache_to:
         - type=gha,scope=openc3-base,mode=max
       args:
@@ -54,8 +54,8 @@ services:
     build:
       context: "openc3-node"
       network: host
-      cache_from:
-        - type=gha,scope=openc3-node
+      # cache_from:
+      #   - type=gha,scope=openc3-node
       cache_to:
         - type=gha,scope=openc3-node,mode=max
       args:
