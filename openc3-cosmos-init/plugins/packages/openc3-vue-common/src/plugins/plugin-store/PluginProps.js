@@ -89,7 +89,7 @@ export default {
       if (!this.installAllowed) {
         return 'Only admin users can install plugins.'
       }
-      return this.accessTooltip
+      return this.accessTooltip ?? ''
     },
     imageContentsWithMimeType: function () {
       if (this.imageContents) {
