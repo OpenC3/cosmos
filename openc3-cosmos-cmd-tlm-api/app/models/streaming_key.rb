@@ -57,12 +57,12 @@ StreamingKey = Data.define(:stream_mode, :cmd_or_tlm, :target_name, :packet_name
 
   # Returns true if packet_name contains glob wildcard characters.
   def packet_glob?
-    !!(packet_name && packet_name.match?(/[*?\[]/))
+    !!(packet_name && packet_name.match?(/[*?]/))
   end
 
   # Returns true if item_name contains glob wildcard characters.
   def item_glob?
-    !!(item_name && item_name.match?(/[*?\[]/))
+    !!(item_name && item_name.match?(/[*?]/))
   end
 
   # Returns true if packet_name or item_name contain glob wildcard characters.
