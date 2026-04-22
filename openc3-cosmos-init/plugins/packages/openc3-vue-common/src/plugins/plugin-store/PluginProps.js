@@ -89,7 +89,7 @@ export default {
       if (!this.installAllowed) {
         return 'Only admin users can install plugins.'
       }
-      return this.accessTooltip ?? ''
+      return this.accessTooltip
     },
     imageContentsWithMimeType: function () {
       if (this.imageContents) {
@@ -136,7 +136,7 @@ export default {
     },
     accessTooltip: function () {
       if (this.entitled) {
-        return null
+        return ''
       }
       if (localStorage.getItem('pluginStore.isApiKeySet') !== 'true') {
         return 'Please add your App Store API key using the settings cog icon.'
