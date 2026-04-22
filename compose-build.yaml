@@ -31,6 +31,7 @@ services:
         RUBYGEMS_URL: ${RUBYGEMS_URL}
         PYPI_URL: ${PYPI_URL}
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
+        OPENC3_TAG: ${OPENC3_TAG}
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby:${OPENC3_TAG}"
 
   openc3-base:
