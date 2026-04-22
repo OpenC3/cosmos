@@ -163,6 +163,8 @@ Rails.application.routes.draw do
       get '/storage/download_file/:object_id', to: 'storage#download_file', object_id: /.*/
       post '/storage/download_multiple_files', to: 'storage#download_multiple_files'
       post '/storage/reingest', to: 'storage#reingest_files'
+      get '/storage/reingest/:job_id', to: 'storage#reingest_status'
+      get '/storage/repair_candidates', to: 'storage#repair_candidates'
       get '/storage/download/:object_id', to: 'storage#get_download_presigned_request', object_id: /.*/
       get '/storage/upload/:object_id', to: 'storage#get_upload_presigned_request', object_id: /.*/
       delete '/storage/delete/:object_id', to: 'storage#delete', object_id: /.*/

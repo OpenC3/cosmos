@@ -17,11 +17,15 @@
 
 require 'openc3/utilities/local_mode'
 require 'openc3/utilities/bucket'
+require 'openc3/utilities/bucket_utilities'
 require 'openc3/utilities/ctrf'
 require 'openc3/utilities/questdb_client'
+require 'openc3/utilities/reingest_job'
 require 'openc3/logs/packet_log_reader'
+require 'openc3/models/reingest_job_model'
 require 'openc3/topics/telemetry_topic'
 require 'fileutils'
+require 'securerandom'
 begin
   require 'openc3-enterprise/version'
   STORAGE_VERSION = OPENC3_ENTERPRISE_VERSION
@@ -477,98 +481,119 @@ class StorageController < ApplicationController
 
   def reingest_files
     return unless authorization('admin')
-    tmp_dir = Dir.mktmpdir
 
-    begin
-      files = params[:files] || []
-      raise StorageError, "No files specified" if files.empty?
+    files = params[:files] || []
+    raise StorageError, "No files specified" if files.empty?
 
-      # Validate all files are .bin.gz
-      invalid = files.reject { |f| f.end_with?('.bin.gz') }
-      raise StorageError, "Only .bin.gz files can be reingested: #{invalid.join(', ')}" if invalid.any?
+    invalid = files.reject { |f| f.end_with?('.bin.gz') }
+    raise StorageError, "Only .bin.gz files can be reingested: #{invalid.join(', ')}" if invalid.any?
 
-      path = sanitize_path(params[:path] || '')
-      storage_type, storage_name = validate_storage_source
-      raise StorageError, "Reingest only supported for buckets" unless storage_type == :bucket
+    path = sanitize_path(params[:path] || '')
+    storage_type, _storage_name = validate_storage_source
+    raise StorageError, "Reingest only supported for buckets" unless storage_type == :bucket
 
-      scope = params[:scope] || 'DEFAULT'
+    scope = params[:scope] || 'DEFAULT'
 
-      # Check scope-based RBAC
-      if params[:bucket] && bucket_requires_rbac?(params[:bucket])
-        unless authorize_bucket_path(params[:bucket], path)
-          path_scope = extract_scope_from_path(path)
-          render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: :forbidden
-          return
-        end
+    if params[:bucket] && bucket_requires_rbac?(params[:bucket])
+      unless authorize_bucket_path(params[:bucket], path)
+        path_scope = extract_scope_from_path(path)
+        render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: :forbidden
+        return
       end
-
-      # Collect unique table names from packets to enable/disable DEDUP
-      table_names = Set.new
-      total_packets = 0
-      bucket_client = OpenC3::Bucket.getClient()
-      reader = OpenC3::PacketLogReader.new
-
-      # Download and decompress all files
-      local_files = []
-      files.each do |filename|
-        key = sanitize_path("#{path}#{filename}")
-        temp_file = File.join(tmp_dir, filename)
-        bucket_client.get_object(bucket: storage_name, key: key, path: temp_file)
-        if File.extname(filename) == '.gz'
-          decompressed = OpenC3::BucketUtilities.uncompress_file(temp_file)
-          File.delete(temp_file)
-          local_files << decompressed
-        else
-          local_files << temp_file
-        end
-      end
-
-      # First pass: read all files to discover table names
-      local_files.each do |local_file|
-        reader.each(local_file, false) do |packet|
-          next unless packet.target_name && packet.packet_name
-          cmd_or_tlm = packet.cmd_or_tlm == :CMD ? 'CMD' : 'TLM'
-          table_name = "#{scope}__#{cmd_or_tlm}__#{packet.target_name}__#{packet.packet_name}"
-          table_names.add(table_name)
-        end
-      end
-
-      # Enable DEDUP on all affected tables
-      dedup_enabled_tables = []
-      conn = OpenC3::QuestDBClient.connection
-      table_names.each do |table_name|
-        begin
-          conn.exec("ALTER TABLE '#{table_name}' DEDUP ENABLE UPSERT KEYS(PACKET_TIMESECONDS)")
-          dedup_enabled_tables << table_name
-        rescue => e
-          OpenC3::Logger.warn("Failed to enable DEDUP on #{table_name}: #{e.message}", user: username())
-        end
-      end
-
-      # Second pass: reingest packets
-      local_files.each do |local_file|
-        reader.each(local_file, true) do |packet|
-          next unless packet.target_name && packet.packet_name
-          packet.stored = true
-          OpenC3::TelemetryTopic.write_packet(packet, scope: scope)
-          total_packets += 1
-        end
-      end
-
-      OpenC3::Logger.info("Reingested #{total_packets} packets from #{files.length} files (DEDUP enabled on #{dedup_enabled_tables.length} tables)", user: username())
-      render json: {
-        status: 'ok',
-        packets: total_packets,
-        files: files.length,
-        dedup_tables: dedup_enabled_tables
-      }, status: :ok
-    rescue Exception => e
-      log_error(e)
-      OpenC3::Logger.error("Reingest failed: #{e.message}", user: username())
-      render json: { status: 'error', message: e.message }, status: :internal_server_error
-    ensure
-      FileUtils.remove_entry_secure(tmp_dir, true) if tmp_dir
     end
+
+    target_version = params[:target_version].to_s
+    target_version = 'as_logged' if target_version.empty?
+    unless %w[as_logged current].include?(target_version) || target_version.match?(/\A[a-f0-9]{32,}\z/)
+      raise StorageError, "Invalid target_version: #{target_version}"
+    end
+
+    job_id = SecureRandom.uuid
+    job = OpenC3::ReingestJobModel.new(
+      name: job_id,
+      files: files,
+      bucket: params[:bucket],
+      path: path,
+      target_version: target_version,
+      scope: scope,
+    )
+    job.create
+
+    Thread.new do
+      begin
+        OpenC3::ReingestJob.new(
+          job_id: job_id,
+          files: files,
+          path: path,
+          bucket: params[:bucket],
+          scope: scope,
+          target_version: target_version,
+        ).run
+      rescue Exception => e
+        OpenC3::Logger.error("Reingest job #{job_id} thread died: #{e.formatted}", user: username())
+      end
+    end
+
+    OpenC3::Logger.info("Reingest job #{job_id} enqueued: #{files.length} file(s)", user: username())
+    render json: { job_id: job_id, state: 'Queued' }, status: :accepted
+  rescue Exception => e
+    log_error(e)
+    OpenC3::Logger.error("Reingest enqueue failed: #{e.message}", user: username())
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
+  def reingest_status
+    return unless authorization('admin')
+    scope = params[:scope] || 'DEFAULT'
+    job = OpenC3::ReingestJobModel.get_model(name: params[:job_id], scope: scope)
+    if job.nil?
+      render json: { status: 'error', message: "Reingest job not found: #{params[:job_id]}" }, status: :not_found
+      return
+    end
+    render json: job.as_json, status: :ok
+  rescue Exception => e
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
+  def repair_candidates
+    return unless authorization('admin')
+    scope = params[:scope] || 'DEFAULT'
+    target = params[:target].to_s
+    cmd_or_tlm = (params[:cmd_or_tlm] || 'TLM').to_s.upcase
+    raise StorageError, "cmd_or_tlm must be TLM (CMD repair not yet supported)" unless cmd_or_tlm == 'TLM'
+    raise StorageError, "target is required" if target.empty?
+
+    start_time = parse_repair_time(params[:start_time])
+    end_time = parse_repair_time(params[:end_time])
+
+    bucket_env = 'OPENC3_LOGS_BUCKET'
+    bucket_name = ENV.fetch(bucket_env) { |n| raise StorageError, "Unknown bucket #{n}" }
+    prefix = "#{scope}/raw_logs/tlm/#{target}"
+
+    if bucket_requires_rbac?(bucket_env) && !authorize_bucket_path(bucket_env, "#{prefix}/")
+      render json: { status: 'error', message: "Not authorized for scope: #{scope}" }, status: :forbidden
+      return
+    end
+
+    keys = OpenC3::BucketUtilities.files_between_time(
+      bucket_name, prefix, start_time, end_time,
+      file_suffix: '.bin.gz', overlap: true,
+    )
+
+    files = keys.map do |key|
+      basename = key.split('/').last
+      { 'key' => key, 'filename' => basename }
+    end
+
+    render json: {
+      bucket: bucket_env,
+      path: "#{prefix}/",
+      files: files,
+    }, status: :ok
+  rescue Exception => e
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 
   private
@@ -708,6 +733,19 @@ class StorageController < ApplicationController
 
   # Validates and returns storage source information
   # @return [Array<Symbol, String>] Storage type (:volume or :bucket) and storage name
+  # Accepts a time param as nsec-from-epoch integer, an ISO8601 string, or nil.
+  # Returns a Ruby Time (UTC) or nil.
+  def parse_repair_time(value)
+    return nil if value.nil? || value.to_s.empty?
+    s = value.to_s
+    if s.match?(/\A\d+\z/)
+      # Raw logs use nsec-from-epoch throughout the codebase; use that.
+      Time.from_nsec_from_epoch(s.to_i)
+    else
+      Time.parse(s).utc
+    end
+  end
+
   def validate_storage_source
     if params[:volume]
       volume = ENV.fetch(params[:volume]) { |name| raise StorageError, "Unknown volume #{name}" }

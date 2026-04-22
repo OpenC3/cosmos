@@ -77,7 +77,8 @@ module OpenC3
       end
     end
 
-    def self.setup_targets(target_names, base_dir, scope:)
+    # target_version can also be the actual hash used in the target_archives folder
+    def self.setup_targets(target_names, base_dir, target_version: 'current', scope:)
       # Nothing to do if there are no targets
       return if target_names.nil? or target_names.length == 0
       if @@instance.nil?
@@ -86,9 +87,9 @@ module OpenC3
         bucket = Bucket.getClient()
         target_names.each do |target_name|
           # Retrieve bucket/targets/target_name/<TARGET>_current.zip
-          zip_path = "#{targets_path}/#{target_name}_current.zip"
+          zip_path = "#{targets_path}/#{target_name}_#{target_version}.zip"
           FileUtils.mkdir_p(File.dirname(zip_path))
-          bucket_key = "#{scope}/target_archives/#{target_name}/#{target_name}_current.zip"
+          bucket_key = "#{scope}/target_archives/#{target_name}/#{target_name}_#{target_version}.zip"
           Logger.info("Retrieving #{bucket_key} from targets bucket")
           bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: bucket_key, path: zip_path)
           Zip::File.open(zip_path) do |zip_file|
@@ -113,6 +114,17 @@ module OpenC3
 
         # Build System from targets
         System.instance(target_names, targets_path)
+      end
+    end
+
+    # Clears the System singleton so the next call to setup_targets or
+    # instance rebuilds it. Intended for admin flows (e.g. reingest) that
+    # need to load a specific target_version distinct from whatever is
+    # currently loaded. Callers must hold an external lock if they need to
+    # protect other threads from observing a nil @@instance briefly.
+    def self.reset_instance!
+      @@instance_mutex.synchronize do
+        @@instance = nil
       end
     end
 
