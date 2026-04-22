@@ -66,6 +66,7 @@ class DecomInterfaceTopic(Topic):
         packet_name,
         item_hash=None,
         type="CONVERTED",
+        stored=False,
         timeout=5,
         scope=OPENC3_SCOPE,
     ):
@@ -74,6 +75,7 @@ class DecomInterfaceTopic(Topic):
         data["packet_name"] = packet_name.upper()
         data["item_hash"] = item_hash
         data["type"] = type
+        data["stored"] = stored
         ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
         Topic.update_topic_offsets([ack_topic])
         decom_id = Topic.write_topic(
