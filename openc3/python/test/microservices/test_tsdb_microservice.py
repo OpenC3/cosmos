@@ -1722,8 +1722,8 @@ class TestTsdbMicroservice(unittest.TestCase):
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
-    def test_reconcile_skips_alter_for_legacy_decimal(self, mock_system, mock_psycopg, mock_sender, mock_get_tlm):
-        """Test that reconciliation skips ALTER for legacy DECIMAL columns (QuestDB bug #6923)"""
+    def test_reconcile_migrates_legacy_decimal_to_varchar(self, mock_system, mock_psycopg, mock_sender, mock_get_tlm):
+        """Test that reconciliation ALTERs legacy DECIMAL columns to VARCHAR (QuestDB 9.3.5 fixed bug #6923)"""
         mock_query = Mock()
         mock_psycopg.return_value = mock_query
         mock_cursor = Mock()
@@ -1759,11 +1759,14 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         TsdbMicroservice("DEFAULT__TSDB__TEST")
 
-        # Should NOT have issued any ALTER COLUMN TYPE — DECIMAL->VARCHAR is blocked by bug #6923
+        # Should have issued an ALTER COLUMN TYPE to migrate DECIMAL -> VARCHAR
         alter_calls = [
             call for call in mock_cursor.execute.call_args_list if "ALTER" in str(call) and "TYPE" in str(call)
         ]
-        self.assertEqual(len(alter_calls), 0, f"Should skip DECIMAL->VARCHAR ALTER, but got: {alter_calls}")
+        self.assertEqual(len(alter_calls), 1, f"Expected one ALTER for DECIMAL->VARCHAR, got: {alter_calls}")
+        alter_sql = str(alter_calls[0])
+        self.assertIn("BIGVAL", alter_sql)
+        self.assertIn("varchar", alter_sql)
 
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")

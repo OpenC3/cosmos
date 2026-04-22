@@ -1089,25 +1089,15 @@ class QuestDBClient:
                                 self._log_info(f"QuestDB: Added column: {alter}")
                                 altered = True
                             elif existing_type != desired_canonical:
-                                # Skip DECIMAL -> VARCHAR: blocked by QuestDB bug #6923.
-                                # String values sent via ILP are auto-cast to DECIMAL,
-                                # so the column remains usable without the ALTER.
-                                if "DECIMAL" in existing_type and desired_canonical == "VARCHAR":
-                                    self._log_warn(
-                                        f"QuestDB: Skipping ALTER {col_name} from {existing_type} to VARCHAR "
-                                        f"in table {table_name} — blocked by QuestDB bug #6923. "
-                                        f"Column will continue to function as DECIMAL."
-                                    )
-                                else:
-                                    # Type mismatch — ALTER the column type
-                                    alter = (
-                                        f'ALTER TABLE "{table_name}" ALTER COLUMN {col_name} TYPE {desired_sql_type}'
-                                    )
-                                    cur.execute(alter)
-                                    self._log_info(
-                                        f"QuestDB: Altered column type: {alter} (was {existing_type}, now {desired_canonical})"
-                                    )
-                                    altered = True
+                                # Type mismatch — ALTER the column type
+                                alter = (
+                                    f'ALTER TABLE "{table_name}" ALTER COLUMN {col_name} TYPE {desired_sql_type}'
+                                )
+                                cur.execute(alter)
+                                self._log_info(
+                                    f"QuestDB: Altered column type: {alter} (was {existing_type}, now {desired_canonical})"
+                                )
+                                altered = True
                         except psycopg.Error as error:
                             self._log_error(f"QuestDB: Error reconciling table {table_name}: {error}")
             except psycopg.Error as error:
