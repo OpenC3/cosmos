@@ -161,6 +161,7 @@ class InterfaceTopic(Topic):
         packet_name,
         item_hash=None,
         type="CONVERTED",
+        stored=False,
         timeout=None,
         scope=OPENC3_SCOPE,
     ):
@@ -176,6 +177,7 @@ class InterfaceTopic(Topic):
         data["packet_name"] = packet_name.upper()
         data["item_hash"] = item_hash
         data["type"] = type
+        data["stored"] = stored
         cmd_id = Topic.write_topic(
             f"{{{scope}__CMD}}INTERFACE__{interface_name}",
             {"inject_tlm": json.dumps(data)},

@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -33,7 +33,7 @@
             <v-btn
               color="primary"
               class="mr-2"
-              :disabled="!commandAuthority"
+              :disabled="!commandAuthority || !cmdUser"
               data-test="take-all"
             >
               Take All Cmd Authority
@@ -60,7 +60,7 @@
             <v-btn
               color="primary"
               class="mr-2"
-              :disabled="!commandAuthority"
+              :disabled="!commandAuthority || !cmdUser"
               data-test="release-all"
             >
               Release All Cmd Authority
@@ -104,7 +104,7 @@
           v-if="item.name != 'UNKNOWN'"
           block
           color="primary"
-          :disabled="!commandAuthority"
+          :disabled="!commandAuthority || !cmdUser"
           @click="take(item.name)"
         >
           Take
@@ -117,7 +117,7 @@
           v-if="item.name != 'UNKNOWN'"
           block
           color="primary"
-          :disabled="!commandAuthority"
+          :disabled="!commandAuthority || !cmdUser"
           @click="release(item.name)"
         >
           Release
@@ -164,6 +164,7 @@ export default {
       ],
       cmdAuth: {},
       commandAuthority: false,
+      cmdUser: false,
       showUpgradeToEnterpriseDialog: false,
     }
   },
@@ -186,6 +187,28 @@ export default {
       }
     })
     if (this.enterprise) {
+      // Check user permissions for cmd authority
+      let roles = OpenC3Auth.userroles()
+      for (let role of roles) {
+        if (role == 'operator' || role == 'runner') {
+          this.cmdUser = true
+          break
+        } else if (role != 'viewer' && role != 'admin' && role != 'approver') {
+          // Custom role - check permissions from backend
+          await Api.get(`/openc3-api/roles/${role}`).then((response) => {
+            if (
+              response.data !== null &&
+              response.data.permissions !== undefined
+            ) {
+              if (
+                response.data.permissions.some((i) => i.permission == 'cmd')
+              ) {
+                this.cmdUser = true
+              }
+            }
+          })
+        }
+      }
       // Get the initial scope setting
       Api.get(`/openc3-api/scopes/${window.openc3Scope}`).then((response) => {
         if (response.data.command_authority) {
@@ -239,9 +262,9 @@ export default {
     },
     tooltipHandler(method) {
       if (this.enterprise) {
-        if (this.commandAuthority) {
+        if (this.commandAuthority && this.cmdUser) {
           this[method]()
-        } else {
+        } else if (!this.commandAuthority) {
           window.open('/tools/admin/scopes', '_blank')
         }
       } else {
