@@ -56,7 +56,7 @@ class DecomInterfaceTopic(Topic):
                         for k, v in msg_hash.items():
                             key = k.decode()
                             if key == "buffer":
-                                result[key] = bytes(v)
+                                result[key] = v
                             else:
                                 result[key] = v.decode()
                         return result
