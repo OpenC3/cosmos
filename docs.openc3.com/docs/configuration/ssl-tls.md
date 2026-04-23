@@ -129,22 +129,47 @@ The following steps are written for the enterprise folder names. Remove "-enterp
 
 Follow earlier instructions to obtain your private key, public key, and to modify cacert.pem as necessary.
 
-In most Kubernetes environments, COSMOS will use a separate platform provided load balancer as the TLS termination point. Follow the directions for your specific Kubernetes environment to configure this load balancer with the TLS keys. Don't forget to update the cacert.pem file for COSMOS (and create the secret defined below) so that COSMOS can recognize the CA that issued your keys. As of COSMOS Enterprise 6.4, the create_secrets.sh script will create a secret called openc3-cacert to hold this file. This file is automatically mounted into each container that needs it at /devel/cacert.pem. Our helm charts also set the appropriate environment variables to use this file.
+There are two supported TLS termination patterns in Kubernetes. Pick the one that matches your environment before editing values or creating secrets — the required settings differ.
 
-You will also need to correctly set several values in the helm chart values.yaml file to configure for TLS. The relevant values are described in the following table.
+#### Pattern 1: Platform load balancer terminates TLS (AWS EKS, GCP GKE)
 
-| Value Name               | Description                                                                                                          | Default Value     |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| global.cosmosdomain      | The domain name that cosmos will be hosted at                                                                        | cosmos.openc3.com |
-| ssl                      | This flag should be set to true if you are using SSL/TLS even with an external load balancer                         | true              |
-| traefik.tlsCerts         | Set this flag to true if you are going to use Traefik as your SSL endpoint with given certs                          | false             |
-| traefik.letsEncrypt      | Set this flag to true if you want Traefik to acquire certs from Lets Encrypt. Will only work on the public internet. | false             |
-| traefik.letsEncryptEmail | Email address given to Lets Encrypt when issuing certs                                                               | false             |
+This is the recommended pattern for cloud-managed Kubernetes. The cloud provider's load balancer (AWS ALB, GCP Global Load Balancer) handles HTTPS using a cert managed by the cloud (AWS Certificate Manager, Google-managed certificate). Traffic from the load balancer to Traefik inside the cluster is plain HTTP, so Traefik itself does not need a TLS cert.
 
-Additionally the following secrets will need to be defined based on how you set the above values.
+In this pattern:
 
-| Secret Name         | Description                                                                                                                                                                                                                                                                                         |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| openc3-cacert       | This should always be set with the cacert.pem file used by COSMOS (even if just using public certificates). Be sure to append the full certificate chain from your private CA so that COSMOS can verify certificates successfully. Without doing this you will be guaranteed to receive SSL errors. |
-| openc3-traefik-cert | Public key provided to Traefik if traefik.tlsCerts is true. Should be created with the filename as cert.crt. ie. kubectl create secret generic openc3-traefik-cert --from-file=cert.crt=/Users/ryanmelt/192.168.1.109.pem                                                                           |
-| openc3-traefik-key  | Private key provided to Traefik if traefik.tlsCerts is true. Should be created with the filename as cert.key. ie. kubectl create secret generic openc3-traefik-cert --from-file=cert.key=/Users/ryanmelt/192.168.1.109-key.pem                                                                      |
+- Set `ssl: true` so Traefik injects `X-Forwarded-Proto: https` for Keycloak.
+- Set `traefik.tlsCerts: false`. The default in `openc3-helm/openc3/values.yaml` is `true`, so you must explicitly override it in your environment-specific values file.
+- Do **not** create the `openc3-traefik-cert` or `openc3-traefik-key` secrets — they are not used in this pattern, and `create_secrets.sh` does not create them.
+- For AWS: set `aws.enabled: true` and `aws.certArn` to your ACM certificate ARN. The `aws` subchart's ingress attaches the cert to the ALB.
+- For GCP: configure a `ManagedCertificate` following the GCP deployment guide.
+
+You still need to create the `openc3-cacert` secret (described below) so COSMOS containers can verify outbound TLS connections.
+
+#### Pattern 2: Traefik terminates TLS (bare metal, self-managed clusters)
+
+Use this pattern when there is no external load balancer doing TLS and Traefik itself must present the cert to clients. In this pattern:
+
+- Set `traefik.tlsCerts: true` (this is the helm chart default).
+- Create the `openc3-traefik-cert` and `openc3-traefik-key` secrets containing your public and private keys.
+- If you are exposed to the public internet and want Let's Encrypt instead of providing your own certs, set `traefik.letsEncrypt: true` and `traefik.letsEncryptEmail` instead of creating the two secrets.
+
+#### Helm values reference
+
+| Value Name               | Description                                                                                                                     | Default Value     |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| global.cosmosDomain      | The domain name that cosmos will be hosted at                                                                                   | cosmos.openc3.com |
+| ssl                      | Set to true if you are using SSL/TLS, including when an external load balancer terminates TLS                                   | true              |
+| traefik.tlsCerts         | Set to true if Traefik is your TLS endpoint (Pattern 2). Set to false when a platform load balancer terminates TLS (Pattern 1). | true              |
+| traefik.letsEncrypt      | Set to true if you want Traefik to acquire certs from Let's Encrypt. Only works on the public internet.                         | false             |
+| traefik.letsEncryptEmail | Email address given to Let's Encrypt when issuing certs                                                                         | ""                |
+| aws.certArn              | ACM certificate ARN used by the AWS ALB ingress (Pattern 1, AWS only)                                                           | ""                |
+
+#### Secrets reference
+
+The `openc3-cacert` secret is always required. The two `openc3-traefik-*` secrets are only used in Pattern 2.
+
+| Secret Name         | Description                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| openc3-cacert       | Always required. The cacert.pem file used by COSMOS (even if just using public certificates). Append the full certificate chain from your private CA so that COSMOS can verify certificates successfully. Without doing this you will be guaranteed to receive SSL errors. As of COSMOS Enterprise 6.4, `create_secrets.sh` creates this secret from the `cacert.pem` at the root of your COSMOS folder structure. |
+| openc3-traefik-cert | Pattern 2 only. Public key provided to Traefik when `traefik.tlsCerts: true`. Create with filename `cert.crt`: `kubectl create secret generic openc3-traefik-cert --from-file=cert.crt=/path/to/mydomain.pem`                                                                                                                                                                                                      |
+| openc3-traefik-key  | Pattern 2 only. Private key provided to Traefik when `traefik.tlsCerts: true`. Create with filename `cert.key`: `kubectl create secret generic openc3-traefik-key --from-file=cert.key=/path/to/mydomain-key.pem`                                                                                                                                                                                                  |

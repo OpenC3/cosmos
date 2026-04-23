@@ -178,17 +178,17 @@ These methods allow the user to enter values that are needed by the script.
 Prompts the user for input with a question. User input is automatically converted from a string to the appropriate data type. For example if the user enters "1", the number 1 as an integer will be returned.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 ask("<question>", <Blank or Default>, <Password>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 ask("<question>", <Blank or Default>, <Password>)
 ```
 
@@ -202,16 +202,6 @@ ask("<question>", <Blank or Default>, <Password>)
 | Password         | Whether to treat the entry as a password which is displayed with dots and not logged. Default is false.                                 |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-value = ask("Enter an integer")
-value = ask("Enter a value or nothing", true)
-value = ask("Enter a value", 10)
-password = ask("Enter your password", false, true)
-```
-
-</TabItem>
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -219,6 +209,16 @@ value = ask("Enter an integer")
 value = ask("Enter a value or nothing", True)
 value = ask("Enter a value", 10)
 password = ask("Enter your password", False, True)
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+value = ask("Enter an integer")
+value = ask("Enter a value or nothing", true)
+value = ask("Enter a value", 10)
+password = ask("Enter your password", false, true)
 ```
 
 </TabItem>
@@ -231,16 +231,16 @@ password = ask("Enter your password", False, True)
 Prompts the user for input with a question. User input is always returned as a string. For example if the user enters "1", the string "1" will be returned.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 ask_string("<question>", <Blank or Default>, <Password>)
 ```
 
 </TabItem>
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 ask_string("<question>", <Blank or Default>, <Password>)
 ```
 
@@ -254,16 +254,6 @@ ask_string("<question>", <Blank or Default>, <Password>)
 | Password         | Whether to treat the entry as a password which is displayed with dots and not logged. Default is false.                                 |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-string = ask_string("Enter a String")
-string = ask_string("Enter a value or nothing", true)
-string = ask_string("Enter a value", "test")
-password = ask_string("Enter your password", false, true)
-```
-
-</TabItem>
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -271,6 +261,16 @@ string = ask_string("Enter a String")
 string = ask_string("Enter a value or nothing", True)
 string = ask_string("Enter a value", "test")
 password = ask_string("Enter your password", False, True)
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+string = ask_string("Enter a String")
+string = ask_string("Enter a value or nothing", true)
+string = ask_string("Enter a value", "test")
+password = ask_string("Enter your password", false, true)
 ```
 
 </TabItem>
@@ -295,9 +295,9 @@ password = ask_string("Enter your password", False, True)
 The message_box, vertical_message_box, combo_box and check_box methods create a message box with buttons / selections / checkboxes that the user can click. The text of the button / selection / checkbox is returned.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 message_box("<Message>", "<button text 1>", ...)
 vertical_message_box("<Message>", "<button text 1>", ...)
 combo_box("<Message>", "<selection text 1>", ...)
@@ -305,9 +305,9 @@ check_box("<Message>", "<checkbox text 1>", ...)
 ```
 
 </TabItem>
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 message_box("<Message>", "<button text 1>", ...)
 vertical_message_box("<Message>", "<button text 1>", ...)
 combo_box("<Message>", "<selection text 1>", ...)
@@ -326,6 +326,26 @@ check_box("<Message>", "<checkbox text 1>", ...)
 | multiple                       | Named parameter to make the combo_box multi-select      |
 
 <Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+value = message_box("Select the sensor number", 'One', 'Two', informative="Smaller informative font")
+value = vertical_message_box("Select the sensor number", 'One', 'Two' details="Regular details")
+value = combo_box("Select the sensor number", 'One', 'Two')
+match value:
+    case 'One':
+        print('Sensor One')
+    case 'Two':
+        print('Sensor Two')
+values = combo_box("Select sensors to enable", 'One', 'Two', 'Three', multiple=True)
+for value in values:
+    print(f"Enabling {value}")
+values = check_box("Select sensors to enable", 'One', 'Two', 'Three')
+for value in values:
+    print(f"Enabling {value}")
+```
+
+</TabItem>
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
@@ -349,26 +369,6 @@ end
 ```
 
 </TabItem>
-<TabItem value="python" label="Python Example">
-
-```python
-value = message_box("Select the sensor number", 'One', 'Two', informative="Smaller informative font")
-value = vertical_message_box("Select the sensor number", 'One', 'Two' details="Regular details")
-value = combo_box("Select the sensor number", 'One', 'Two')
-match value:
-    case 'One':
-        print('Sensor One')
-    case 'Two':
-        print('Sensor Two')
-values = combo_box("Select sensors to enable", 'One', 'Two', 'Three', multiple=True)
-for value in values:
-    print(f"Enabling {value}")
-values = check_box("Select sensors to enable", 'One', 'Two', 'Three')
-for value in values:
-    print(f"Enabling {value}")
-```
-
-</TabItem>
 </Tabs>
 
 ### open_file_dialog
@@ -384,20 +384,20 @@ The open_file_dialog and open_files_dialog methods create a file dialog box so t
 Note: COSMOS 5 has deprecated the save_file_dialog and open_directory_dialog methods. save_file_dialog can be replaced by put_target_file if you want to write a file back to the target. open_directory_dialog doesn't make sense in new architecture so you must request individual files.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-open_file_dialog("<Title>", "<Message>", filter: "<filter>")
-open_files_dialog("<Title>", "<Message>", filter: "<filter>")
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 open_file_dialog("<Title>", "<Message>", filter="<filter>")
 open_files_dialog("<Title>", "<Message>", filter="<filter>")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+open_file_dialog("<Title>", "<Message>", filter: "<filter>")
+open_files_dialog("<Title>", "<Message>", filter: "<filter>")
 ```
 
 </TabItem>
@@ -410,6 +410,24 @@ open_files_dialog("<Title>", "<Message>", filter="<filter>")
 | filter    | Named parameter to filter allowed file types. Optional parameter, specified as comma delimited file types, e.g. ".txt,.doc". See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#accept for more information. |
 
 <Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+file = open_file_dialog("Open a single file", "Choose something interesting", filter=".txt")
+print(file)
+print(file.read())
+file.close()
+
+files = open_files_dialog("Open multiple files") # message is optional
+print(files) # Array of File objects (even if you select only one)
+for file in files:
+    print(file)
+    print(file.read())
+    file.close()
+```
+
+</TabItem>
+
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
@@ -428,24 +446,6 @@ end
 ```
 
 </TabItem>
-
-<TabItem value="python" label="Python Example">
-
-```python
-file = open_file_dialog("Open a single file", "Choose something interesting", filter=".txt")
-print(file)
-print(file.read())
-file.close()
-
-files = open_files_dialog("Open multiple files") # message is optional
-print(files) # Array of File objects (even if you select only one)
-for file in files:
-    print(file)
-    print(file.read())
-    file.close()
-```
-
-</TabItem>
 </Tabs>
 
 ### open_bucket_dialog
@@ -455,17 +455,17 @@ for file in files:
 The open_bucket_dialog method creates a dialog box that allows the user to browse S3 bucket files and select one. It presents the available buckets (similar to Bucket Explorer) and allows navigating directories within the selected bucket. The selected file is downloaded and returned as a file object, similar to open_file_dialog.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 open_bucket_dialog("<Title>", "<Message>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 open_bucket_dialog("<Title>", "<Message>")
 ```
 
@@ -478,17 +478,6 @@ open_bucket_dialog("<Title>", "<Message>")
 | Message   | The message to display in the dialog box. Optional parameter. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-file = open_bucket_dialog("Select a File", "Choose a file from a bucket")
-puts file.filename # The name of the selected file
-puts file.read
-file.delete
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -496,6 +485,17 @@ file = open_bucket_dialog("Select a File", "Choose a file from a bucket")
 print(file.filename) # The name of the selected file
 print(file.read())
 file.close()
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+file = open_bucket_dialog("Select a File", "Choose a file from a bucket")
+puts file.filename # The name of the selected file
+puts file.read
+file.delete
 ```
 
 </TabItem>
@@ -512,18 +512,18 @@ These methods provide capability to interact with files in the target directory.
 Return a file handle to a file in the target directory. Returns `None` (Python) or `nil` (Ruby) if the file is not found.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-get_target_file("<File Path>", original: false)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 get_target_file("<File Path>", original=False)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+get_target_file("<File Path>", original: false)
 ```
 
 </TabItem>
@@ -535,19 +535,6 @@ get_target_file("<File Path>", original=False)
 | original  | Whether to get the original file from the plug-in, or any modifications to the file. Default is false which means to grab the modified file. If the modified file does not exist the API will automatically try to pull the original. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-file = get_target_file("INST/data/attitude.bin")
-puts file.read().formatted # format a binary file
-file.unlink # delete file
-file = get_target_file("INST/procedures/checks.rb", original: true)
-puts file.read()
-file.unlink # delete file
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -562,6 +549,19 @@ file.close() # delete file
 ```
 
 </TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+file = get_target_file("INST/data/attitude.bin")
+puts file.read().formatted # format a binary file
+file.unlink # delete file
+file = get_target_file("INST/procedures/checks.rb", original: true)
+puts file.read()
+file.unlink # delete file
+```
+
+</TabItem>
 </Tabs>
 
 ### put_target_file
@@ -571,17 +571,17 @@ file.close() # delete file
 Writes a file to the target directory
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 put_target_file("<File Path>", "IO or String")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 put_target_file("<File Path>", "IO or String")
 ```
 
@@ -594,24 +594,6 @@ put_target_file("<File Path>", "IO or String")
 | IO or String | The data can be an IO object or String                                                                                                                                                                                                                                           |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-put_target_file("INST/test1.txt", "this is a string test")
-file = Tempfile.new('test')
-file.write("this is a Io test")
-file.rewind
-put_target_file("INST/test2.txt", file)
-put_target_file("INST/test3.bin", "\x00\x01\x02\x03\xFF\xEE\xDD\xCC") # binary
-
-buf = StringIO.new
-buf.write([0xDEADBEEF].pack('N'))
-buf.seek(0)
-put_target_file("INST/test4.bin", buf)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -631,6 +613,24 @@ put_target_file("INST/test4.bin", buf)
 ```
 
 </TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+put_target_file("INST/test1.txt", "this is a string test")
+file = Tempfile.new('test')
+file.write("this is a Io test")
+file.rewind
+put_target_file("INST/test2.txt", file)
+put_target_file("INST/test3.bin", "\x00\x01\x02\x03\xFF\xEE\xDD\xCC") # binary
+
+buf = StringIO.new
+buf.write([0xDEADBEEF].pack('N'))
+buf.seek(0)
+put_target_file("INST/test4.bin", buf)
+```
+
+</TabItem>
 </Tabs>
 
 ### delete_target_file
@@ -640,17 +640,17 @@ put_target_file("INST/test4.bin", buf)
 Delete a file in the target directory
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 delete_target_file("<File Path>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 delete_target_file("<File Path>")
 ```
 
@@ -662,18 +662,18 @@ delete_target_file("<File Path>")
 | File Path | The path to the file in the target directory. Should assume to start with a TARGET name, e.g. INST/procedures/proc.rb. Note: Only files created with put_target_file can be deleted. Original files from the plugin installation will remain. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 put_target_file("INST/delete_me.txt", "to be deleted")
 delete_target_file("INST/delete_me.txt")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 put_target_file("INST/delete_me.txt", "to be deleted")
 delete_target_file("INST/delete_me.txt")
 ```
@@ -688,17 +688,17 @@ delete_target_file("INST/delete_me.txt")
 Prompts the user to download a file from the OpenC3 system to their local machine.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 download_file("<File Path>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 download_file("<File Path>")
 ```
 
@@ -710,17 +710,17 @@ download_file("<File Path>")
 | File Path | File Path to the file to download within the OpenC3 system. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 download_file("targets/INST/procedures/my_data.csv")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 download_file("targets/INST/procedures/my_data.csv")
 ```
 
@@ -738,17 +738,17 @@ These methods notify the user that something has occurred.
 Displays a message to the user and waits for them to press an ok button.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 prompt("<Message>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 prompt("<Message>")
 ```
 
@@ -760,17 +760,17 @@ prompt("<Message>")
 | Message   | Message to prompt the user with. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 prompt("Press OK to continue")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 prompt("Press OK to continue")
 ```
 
@@ -788,20 +788,20 @@ These methods provide capability to send commands to a target and receive inform
 Sends a specified command.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-cmd("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
-cmd("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Param #2 Name" => <Param #2 Value>, ...)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 cmd("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #1 Value>, "Param #2 Name": <Param #2 Value>, ...})
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+cmd("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
+cmd("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Param #2 Name" => <Param #2 Value>, ...)
 ```
 
 </TabItem>
@@ -818,6 +818,16 @@ cmd("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #1 Value>, "Para
 | validate       | Optional named parameter to enable/disable validation (default is True)                              |
 
 <Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
+cmd("INST", "COLLECT", { "DURATION": 10, "TYPE": "NORMAL" })
+cmd("INST ABORT", timeout=10, log_message=False, validate=False)
+```
+
+</TabItem>
+
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
@@ -826,16 +836,6 @@ cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 cmd("INST", "COLLECT", "DURATION" => 10, "TYPE" => "NORMAL")
 cmd("INST", "COLLECT", { "DURATION" => 10, "TYPE" => "NORMAL" })
 cmd("INST ABORT", timeout: 10, log_message: false, validate: false)
-```
-
-</TabItem>
-
-<TabItem value="python" label="Python Example">
-
-```python
-cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
-cmd("INST", "COLLECT", { "DURATION": 10, "TYPE": "NORMAL" })
-cmd("INST ABORT", timeout=10, log_message=False, validate=False)
 ```
 
 </TabItem>
@@ -848,20 +848,20 @@ cmd("INST ABORT", timeout=10, log_message=False, validate=False)
 Sends a specified command without performing range checking on its parameters. This should only be used when it is necessary to intentionally send a bad command parameter to test a target.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-cmd_no_range_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
-cmd_no_range_check("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Param #2 Name" => <Param #2 Value>, ...)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 cmd_no_range_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_no_range_check("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #1 Value>, "Param #2 Name": <Param #2 Value>, ...})
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+cmd_no_range_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
+cmd_no_range_check("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Param #2 Name" => <Param #2 Value>, ...)
 ```
 
 </TabItem>
@@ -877,20 +877,20 @@ cmd_no_range_check("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-cmd_no_range_check("INST COLLECT with DURATION 11, TYPE NORMAL")
-cmd_no_range_check("INST", "COLLECT", "DURATION" => 11, "TYPE" => "NORMAL")
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 cmd_no_range_check("INST COLLECT with DURATION 11, TYPE NORMAL")
 cmd_no_range_check("INST", "COLLECT", {"DURATION": 11, "TYPE": "NORMAL"})
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmd_no_range_check("INST COLLECT with DURATION 11, TYPE NORMAL")
+cmd_no_range_check("INST", "COLLECT", "DURATION" => 11, "TYPE" => "NORMAL")
 ```
 
 </TabItem>
@@ -903,20 +903,20 @@ cmd_no_range_check("INST", "COLLECT", {"DURATION": 11, "TYPE": "NORMAL"})
 Sends a specified command without performing the notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-cmd_no_hazardous_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
-cmd_no_hazardous_check("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Param #2 Name" => <Param #2 Value>, ...)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 cmd_no_hazardous_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_no_hazardous_check("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #1 Value>, "Param #2 Name": <Param #2 Value>, ...})
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+cmd_no_hazardous_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
+cmd_no_hazardous_check("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Param #2 Name" => <Param #2 Value>, ...)
 ```
 
 </TabItem>
@@ -932,18 +932,18 @@ cmd_no_hazardous_check("<Target Name>", "<Command Name>", {"Param #1 Name": <Par
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 cmd_no_hazardous_check("INST CLEAR")
 cmd_no_hazardous_check("INST", "CLEAR")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 cmd_no_hazardous_check("INST CLEAR")
 cmd_no_hazardous_check("INST", "CLEAR")
 ```
@@ -958,20 +958,20 @@ cmd_no_hazardous_check("INST", "CLEAR")
 Sends a specified command without performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentionally have invalid parameters.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-cmd_no_checks("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
-cmd_no_checks("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Param #2 Name" => <Param #2 Value>, ...)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 cmd_no_checks("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_no_checks("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #1 Value>, "Param #2 Name": <Param #2 Value>, ...})
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+cmd_no_checks("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
+cmd_no_checks("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Param #2 Name" => <Param #2 Value>, ...)
 ```
 
 </TabItem>
@@ -987,20 +987,20 @@ cmd_no_checks("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #1 Val
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-cmd_no_checks("INST COLLECT with DURATION 11, TYPE SPECIAL")
-cmd_no_checks("INST", "COLLECT", "DURATION" => 11, "TYPE" => "SPECIAL")
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 cmd_no_checks("INST COLLECT with DURATION 11, TYPE SPECIAL")
 cmd_no_checks("INST", "COLLECT", {"DURATION": 11, "TYPE": "SPECIAL"})
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmd_no_checks("INST COLLECT with DURATION 11, TYPE SPECIAL")
+cmd_no_checks("INST", "COLLECT", "DURATION" => 11, "TYPE" => "SPECIAL")
 ```
 
 </TabItem>
@@ -1013,20 +1013,20 @@ cmd_no_checks("INST", "COLLECT", {"DURATION": 11, "TYPE": "SPECIAL"})
 Sends a specified command without running conversions.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-cmd_raw("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
-cmd_raw("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param #1 Value>, "<Param #2 Name>" => <Param #2 Value>, ...)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 cmd_raw("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_raw("<Target Name>", "<Command Name>", {"<Param #1 Name>": <Param #1 Value>, "<Param #2 Name>": <Param #2 Value>, ...})
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+cmd_raw("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
+cmd_raw("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param #1 Value>, "<Param #2 Name>" => <Param #2 Value>, ...)
 ```
 
 </TabItem>
@@ -1042,20 +1042,20 @@ cmd_raw("<Target Name>", "<Command Name>", {"<Param #1 Name>": <Param #1 Value>,
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-cmd_raw("INST COLLECT with DURATION 10, TYPE 0")
-cmd_raw("INST", "COLLECT", "DURATION" => 10, "TYPE" => 0)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 cmd_raw("INST COLLECT with DURATION 10, TYPE 0")
 cmd_raw("INST", "COLLECT", {"DURATION": 10, "TYPE": 0})
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmd_raw("INST COLLECT with DURATION 10, TYPE 0")
+cmd_raw("INST", "COLLECT", "DURATION" => 10, "TYPE" => 0)
 ```
 
 </TabItem>
@@ -1068,20 +1068,20 @@ cmd_raw("INST", "COLLECT", {"DURATION": 10, "TYPE": 0})
 Sends a specified command without running conversions or performing range checking on its parameters. This should only be used when it is necessary to intentionally send a bad command parameter to test a target.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-cmd_raw_no_range_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
-cmd_raw_no_range_check("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param #1 Value>, "<Param #2 Name>" => <Param #2 Value>, ...)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 cmd_raw_no_range_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_raw_no_range_check("<Target Name>", "<Command Name>", {"<Param #1 Name>": <Param #1 Value>, "<Param #2 Name>": <Param #2 Value>, ...})
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+cmd_raw_no_range_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
+cmd_raw_no_range_check("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param #1 Value>, "<Param #2 Name>" => <Param #2 Value>, ...)
 ```
 
 </TabItem>
@@ -1097,20 +1097,20 @@ cmd_raw_no_range_check("<Target Name>", "<Command Name>", {"<Param #1 Name>": <P
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-cmd_raw_no_range_check("INST COLLECT with DURATION 11, TYPE 0")
-cmd_raw_no_range_check("INST", "COLLECT", "DURATION" => 11, "TYPE" => 0)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 cmd_raw_no_range_check("INST COLLECT with DURATION 11, TYPE 0")
 cmd_raw_no_range_check("INST", "COLLECT", {"DURATION": 11, "TYPE": 0})
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmd_raw_no_range_check("INST COLLECT with DURATION 11, TYPE 0")
+cmd_raw_no_range_check("INST", "COLLECT", "DURATION" => 11, "TYPE" => 0)
 ```
 
 </TabItem>
@@ -1123,20 +1123,20 @@ cmd_raw_no_range_check("INST", "COLLECT", {"DURATION": 11, "TYPE": 0})
 Sends a specified command without running conversions or performing the notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-cmd_raw_no_hazardous_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
-cmd_raw_no_hazardous_check("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param #1 Value>, "<Param #2 Name>" => <Param #2 Value>, ...)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 cmd_raw_no_hazardous_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_raw_no_hazardous_check("<Target Name>", "<Command Name>", {"<Param #1 Name>": <Param #1 Value>, "<Param #2 Name>": <Param #2 Value>, ...})
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+cmd_raw_no_hazardous_check("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
+cmd_raw_no_hazardous_check("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param #1 Value>, "<Param #2 Name>" => <Param #2 Value>, ...)
 ```
 
 </TabItem>
@@ -1152,18 +1152,18 @@ cmd_raw_no_hazardous_check("<Target Name>", "<Command Name>", {"<Param #1 Name>"
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 cmd_raw_no_hazardous_check("INST CLEAR")
 cmd_raw_no_hazardous_check("INST", "CLEAR")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 cmd_raw_no_hazardous_check("INST CLEAR")
 cmd_raw_no_hazardous_check("INST", "CLEAR")
 ```
@@ -1178,20 +1178,20 @@ cmd_raw_no_hazardous_check("INST", "CLEAR")
 Sends a specified command without running conversions or performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentionally have invalid parameters.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-cmd_raw_no_checks("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
-cmd_raw_no_checks("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param #1 Value>, "<Param #2 Name>" => <Param #2 Value>, ...)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 cmd_raw_no_checks("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
 cmd_raw_no_checks("<Target Name>", "<Command Name>", {"<Param #1 Name>": <Param #1 Value>, "<Param #2 Name>": <Param #2 Value>, ...})
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+cmd_raw_no_checks("<Target Name> <Command Name> with <Param #1 Name> <Param #1 Value>, <Param #2 Name> <Param #2 Value>, ...")
+cmd_raw_no_checks("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param #1 Value>, "<Param #2 Name>" => <Param #2 Value>, ...)
 ```
 
 </TabItem>
@@ -1207,20 +1207,20 @@ cmd_raw_no_checks("<Target Name>", "<Command Name>", {"<Param #1 Name>": <Param 
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-cmd_raw_no_checks("INST COLLECT with DURATION 11, TYPE 1")
-cmd_raw_no_checks("INST", "COLLECT", "DURATION" => 11, "TYPE" => 1)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 cmd_raw_no_checks("INST COLLECT with DURATION 11, TYPE 1")
 cmd_raw_no_checks("INST", "COLLECT", {"DURATION": 11, "TYPE": 1})
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmd_raw_no_checks("INST COLLECT with DURATION 11, TYPE 1")
+cmd_raw_no_checks("INST", "COLLECT", "DURATION" => 11, "TYPE" => 1)
 ```
 
 </TabItem>
@@ -1233,18 +1233,18 @@ cmd_raw_no_checks("INST", "COLLECT", {"DURATION": 11, "TYPE": 1})
 Builds a command binary string so you can see the raw bytes for a given command. Previously `build_command`. Use the [get_cmd](#get_cmd) to get information about a command like endianness, description, items, etc.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-build_cmd(<ARGS>, range_check: true, raw: false)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 build_cmd(<ARGS>, range_check=True, raw=False)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+build_cmd(<ARGS>, range_check: true, raw: false)
 ```
 
 </TabItem>
@@ -1257,20 +1257,20 @@ build_cmd(<ARGS>, range_check=True, raw=False)
 | raw         | Whether to write the command arguments as RAW or CONVERTED value. Default is CONVERTED. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-x = build_cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
-puts x  # => {"id"=>"1696437370872-0", "result"=>"SUCCESS", "time"=>"1696437370872305961", "received_time"=>"1696437370872305961", "target_name"=>"INST", "packet_name"=>"COLLECT", "received_count"=>"3", "buffer"=>"\x13\xE7\xC0\x00\x00\f\x00\x01\x00\x00A \x00\x00\xAB\x00\x00\x00\x00"}
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 x = build_cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 print(x)  # => {'id': '1697298167748-0', 'result': 'SUCCESS', 'time': '1697298167749155717', 'received_time': '1697298167749155717', 'target_name': 'INST', 'packet_name': 'COLLECT', 'received_count': '2', 'buffer': bytearray(b'\x13\xe7\xc0\x00\x00\x0c\x00\x01\x00\x00A \x00\x00\xab\x00\x00\x00\x00')}
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+x = build_cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
+puts x  # => {"id"=>"1696437370872-0", "result"=>"SUCCESS", "time"=>"1696437370872305961", "received_time"=>"1696437370872305961", "target_name"=>"INST", "packet_name"=>"COLLECT", "received_count"=>"3", "buffer"=>"\x13\xE7\xC0\x00\x00\f\x00\x01\x00\x00A \x00\x00\xAB\x00\x00\x00\x00"}
 ```
 
 </TabItem>
@@ -1283,18 +1283,18 @@ print(x)  # => {'id': '1697298167748-0', 'result': 'SUCCESS', 'time': '169729816
 Enables a disabled command. Sending a disabled command raises `DisabledError` with a message like 'INST ABORT is Disabled'.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 buffer = enable_cmd("<Target Name> <Command Name>")
 buffer = enable_cmd("<Target Name>", "<Command Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 buffer = enable_cmd("<Target Name> <Command Name>")
 buffer = enable_cmd("<Target Name>", "<Command Name>")
 ```
@@ -1308,17 +1308,17 @@ buffer = enable_cmd("<Target Name>", "<Command Name>")
 | Packet Name | Name of the command (packet). |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 enable_cmd("INST ABORT")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 enable_cmd("INST ABORT")
 ```
 
@@ -1332,18 +1332,18 @@ enable_cmd("INST ABORT")
 Disables a command. Sending a disabled command raises `DisabledError` with a message like 'INST ABORT is Disabled'.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 buffer = disable_cmd("<Target Name> <Command Name>")
 buffer = disable_cmd("<Target Name>", "<Command Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 buffer = disable_cmd("<Target Name> <Command Name>")
 buffer = disable_cmd("<Target Name>", "<Command Name>")
 ```
@@ -1357,17 +1357,17 @@ buffer = disable_cmd("<Target Name>", "<Command Name>")
 | Packet Name | Name of the command (packet). |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 disable_cmd("INST ABORT")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 disable_cmd("INST ABORT")
 ```
 
@@ -1381,17 +1381,17 @@ disable_cmd("INST ABORT")
 Sends raw data on an interface.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 send_raw(<Interface Name>, <Data>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 send_raw(<Interface Name>, <Data>)
 ```
 
@@ -1404,17 +1404,17 @@ send_raw(<Interface Name>, <Data>)
 | Data           | Raw ruby string of data to send.               |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 send_raw("INST_INT", data)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 send_raw("INST_INT", data)
 ```
 
@@ -1428,17 +1428,17 @@ send_raw("INST_INT", data)
 Returns an array of the commands that are available for a particular target. The returned array is an array of hashes / list of dicts which fully describe the command packet. Previously `get_all_commands`.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_all_cmds("<Target Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_all_cmds("<Target Name>")
 ```
 
@@ -1450,22 +1450,6 @@ get_all_cmds("<Target Name>")
 | Target Name | Name of the target. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-cmd_list = get_all_cmds("INST")
-puts cmd_list  # =>
-# [{"target_name"=>"INST",
-#   "packet_name"=>"ABORT",
-#   "endianness"=>"BIG_ENDIAN",
-#   "description"=>"Aborts a collect on the instrument",
-#   "items"=> [{"name"=>"CCSDSVER", "bit_offset"=>0, "bit_size"=>3, ... }]
-# ...
-# }]
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -1481,6 +1465,22 @@ print(cmd_list)  # =>
 ```
 
 </TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmd_list = get_all_cmds("INST")
+puts cmd_list  # =>
+# [{"target_name"=>"INST",
+#   "packet_name"=>"ABORT",
+#   "endianness"=>"BIG_ENDIAN",
+#   "description"=>"Aborts a collect on the instrument",
+#   "items"=> [{"name"=>"CCSDSVER", "bit_offset"=>0, "bit_size"=>3, ... }]
+# ...
+# }]
+```
+
+</TabItem>
 </Tabs>
 
 ### get_all_cmd_names
@@ -1490,17 +1490,17 @@ print(cmd_list)  # =>
 Returns an array of the command names for a particular target. Previously `get_all_command_names`.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_all_cmd_names("<Target Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_all_cmd_names("<Target Name>")
 ```
 
@@ -1512,20 +1512,20 @@ get_all_cmd_names("<Target Name>")
 | Target Name | Name of the target |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-cmd_list = get_all_cmd_names("INST")
-puts cmd_list  # => ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 cmd_list = get_all_cmd_names("INST")
 print(cmd_list)  # => ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmd_list = get_all_cmd_names("INST")
+puts cmd_list  # => ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
 ```
 
 </TabItem>
@@ -1538,18 +1538,18 @@ print(cmd_list)  # => ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
 Returns a command hash which fully describes the command packet. Previously `get_command`. To get the binary buffer of an as-built command use [build_cmd](#build_cmd).
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_cmd("<Target Name> <Packet Name>")
 get_cmd("<Target Name>", "<Packet Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_cmd("<Target Name> <Packet Name>")
 get_cmd("<Target Name>", "<Packet Name>")
 ```
@@ -1563,22 +1563,6 @@ get_cmd("<Target Name>", "<Packet Name>")
 | Packet Name | Name of the packet. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-abort_cmd = get_cmd("INST ABORT")
-puts abort_cmd  # =>
-# [{"target_name"=>"INST",
-#   "packet_name"=>"ABORT",
-#   "endianness"=>"BIG_ENDIAN",
-#   "description"=>"Aborts a collect on the instrument",
-#   "items"=> [{"name"=>"CCSDSVER", "bit_offset"=>0, "bit_size"=>3, ... }]
-# ...
-# }]
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -1594,6 +1578,22 @@ print(abort_cmd)  # =>
 ```
 
 </TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+abort_cmd = get_cmd("INST ABORT")
+puts abort_cmd  # =>
+# [{"target_name"=>"INST",
+#   "packet_name"=>"ABORT",
+#   "endianness"=>"BIG_ENDIAN",
+#   "description"=>"Aborts a collect on the instrument",
+#   "items"=> [{"name"=>"CCSDSVER", "bit_offset"=>0, "bit_size"=>3, ... }]
+# ...
+# }]
+```
+
+</TabItem>
 </Tabs>
 
 ### get_param
@@ -1603,18 +1603,18 @@ print(abort_cmd)  # =>
 Returns a hash of the given command parameter. Previously `get_parameter`.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_param("<Target Name> <Command Name> <Parameter Name>")
 get_param("<Target Name>", "<Command Name>", "<Parameter Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_param("<Target Name> <Command Name> <Parameter Name>")
 get_param("<Target Name>", "<Command Name>", "<Parameter Name>")
 ```
@@ -1629,19 +1629,6 @@ get_param("<Target Name>", "<Command Name>", "<Parameter Name>")
 | Parameter Name | Name of the parameter. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-param = get_param("INST COLLECT TYPE")
-puts param  # =>
-# {"name"=>"TYPE", "bit_offset"=>64, "bit_size"=>16, "data_type"=>"UINT",
-#  "description"=>"Collect type which can be normal or special", "default"=>0,
-#  "minimum"=>0, "maximum"=>65535, "endianness"=>"BIG_ENDIAN", "required"=>true, "overflow"=>"ERROR",
-#  "states"=>{"NORMAL"=>{"value"=>0}, "SPECIAL"=>{"value"=>1, "hazardous"=>""}}, "limits"=>{}}
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -1654,6 +1641,19 @@ print(param)  # =>
 ```
 
 </TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+param = get_param("INST COLLECT TYPE")
+puts param  # =>
+# {"name"=>"TYPE", "bit_offset"=>64, "bit_size"=>16, "data_type"=>"UINT",
+#  "description"=>"Collect type which can be normal or special", "default"=>0,
+#  "minimum"=>0, "maximum"=>65535, "endianness"=>"BIG_ENDIAN", "required"=>true, "overflow"=>"ERROR",
+#  "states"=>{"NORMAL"=>{"value"=>0}, "SPECIAL"=>{"value"=>1, "hazardous"=>""}}, "limits"=>{}}
+```
+
+</TabItem>
 </Tabs>
 
 ### get_cmd_buffer
@@ -1663,18 +1663,18 @@ print(param)  # =>
 Returns a packet hash (similar to get_cmd) along with the raw packet buffer as a Ruby string.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 buffer = get_cmd_buffer("<Target Name> <Packet Name>")['buffer']
 buffer = get_cmd_buffer("<Target Name>", "<Packet Name>")['buffer']
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 buffer = get_cmd_buffer("<Target Name> <Packet Name>")['buffer']
 buffer = get_cmd_buffer("<Target Name>", "<Packet Name>")['buffer']
 ```
@@ -1688,18 +1688,6 @@ buffer = get_cmd_buffer("<Target Name>", "<Packet Name>")['buffer']
 | Packet Name | Name of the packet. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-packet = get_cmd_buffer("INST COLLECT")
-puts packet  # =>
-# {"time"=>"1697298846752053420", "received_time"=>"1697298846752053420",
-#  "target_name"=>"INST", "packet_name"=>"COLLECT", "received_count"=>"20", "stored"=>"false",
-#  "buffer"=>"\x13\xE7\xC0\x00\x00\f\x00\x01\x00\x00@\xE0\x00\x00\xAB\x00\x00\x00\x00"}
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -1708,6 +1696,18 @@ print(packet)  # =>
 # {'time': '1697298923745982470', 'received_time': '1697298923745982470',
 #  'target_name': 'INST', 'packet_name': 'COLLECT', 'received_count': '21', 'stored': 'false',
 #  'buffer': bytearray(b'\x13\xe7\xc0\x00\x00\x0c\x00\x01\x00\x00@\xe0\x00\x00\xab\x00\x00\x00\x00')}
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+packet = get_cmd_buffer("INST COLLECT")
+puts packet  # =>
+# {"time"=>"1697298846752053420", "received_time"=>"1697298846752053420",
+#  "target_name"=>"INST", "packet_name"=>"COLLECT", "received_count"=>"20", "stored"=>"false",
+#  "buffer"=>"\x13\xE7\xC0\x00\x00\f\x00\x01\x00\x00@\xE0\x00\x00\xAB\x00\x00\x00\x00"}
 ```
 
 </TabItem>
@@ -1720,17 +1720,17 @@ print(packet)  # =>
 Returns true/false indicating whether a particular command is flagged as hazardous.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_cmd_hazardous("<Target Name>", "<Command Name>", <Command Params - optional>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_cmd_hazardous("<Target Name>", "<Command Name>", <Command Params - optional>)
 ```
 
@@ -1744,20 +1744,20 @@ get_cmd_hazardous("<Target Name>", "<Command Name>", <Command Params - optional>
 | Command Params | Hash of the parameters given to the command (optional). Note that some commands are only hazardous based on parameter states. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-hazardous = get_cmd_hazardous("INST", "COLLECT", {'TYPE' => 'SPECIAL'})
-puts hazardous  # => true
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 hazardous = get_cmd_hazardous("INST", "COLLECT", {'TYPE': 'SPECIAL'})
 print(hazardous) # => True
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+hazardous = get_cmd_hazardous("INST", "COLLECT", {'TYPE' => 'SPECIAL'})
+puts hazardous  # => true
 ```
 
 </TabItem>
@@ -1770,17 +1770,17 @@ print(hazardous) # => True
 Returns reads a value from the most recently sent command packet. The pseudo-parameters 'PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED', 'RECEIVED_COUNT', 'RECEIVED_TIMEFORMATTED', and 'RECEIVED_TIMESECONDS' are also supported.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_cmd_value("<Target Name>", "<Command Name>", "<Parameter Name>", <Value Type - optional>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_cmd_value("<Target Name>", "<Command Name>", "<Parameter Name>", <Value Type - optional>)
 ```
 
@@ -1795,20 +1795,20 @@ get_cmd_value("<Target Name>", "<Command Name>", "<Parameter Name>", <Value Type
 | Value Type     | Value Type to read. RAW, CONVERTED or FORMATTED. NOTE: Symbol in Ruby and str in Python |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-value = get_cmd_value("INST", "COLLECT", "TEMP", :RAW)
-puts value  # => 0.0
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 value = get_cmd_value("INST", "COLLECT", "TEMP", "RAW")
 print(value)  # => 0.0
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+value = get_cmd_value("INST", "COLLECT", "TEMP", :RAW)
+puts value  # => 0.0
 ```
 
 </TabItem>
@@ -1821,17 +1821,17 @@ print(value)  # => 0.0
 Returns the time of the most recent command sent.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_cmd_time("<Target Name - optional>", "<Command Name - optional>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_cmd_time("<Target Name - optional>", "<Command Name - optional>")
 ```
 
@@ -1844,9 +1844,9 @@ get_cmd_time("<Target Name - optional>", "<Command Name - optional>")
 | Command Name | Name of the command. If not given, then the most recent command time to the given target will be returned |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 target_name, command_name, time = get_cmd_time() # Name of the most recent command sent to any target and time
 target_name, command_name, time = get_cmd_time("INST") # Name of the most recent command sent to the INST target and time
 target_name, command_name, time = get_cmd_time("INST", "COLLECT") # Name of the most recent INST COLLECT command and time
@@ -1854,9 +1854,9 @@ target_name, command_name, time = get_cmd_time("INST", "COLLECT") # Name of the 
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 target_name, command_name, time = get_cmd_time() # Name of the most recent command sent to any target and time
 target_name, command_name, time = get_cmd_time("INST") # Name of the most recent command sent to the INST target and time
 target_name, command_name, time = get_cmd_time("INST", "COLLECT") # Name of the most recent INST COLLECT command and time
@@ -1872,18 +1872,18 @@ target_name, command_name, time = get_cmd_time("INST", "COLLECT") # Name of the 
 Returns the number of times a specified command has been sent.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_cmd_cnt("<Target Name> <Command Name>")
 get_cmd_cnt("<Target Name>", "<Command Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_cmd_cnt("<Target Name> <Command Name>")
 get_cmd_cnt("<Target Name>", "<Command Name>")
 ```
@@ -1897,17 +1897,17 @@ get_cmd_cnt("<Target Name>", "<Command Name>")
 | Command Name | Name of the command. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 cmd_cnt = get_cmd_cnt("INST COLLECT") # Number of times the INST COLLECT command has been sent
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 cmd_cnt = get_cmd_cnt("INST COLLECT") # Number of times the INST COLLECT command has been sent
 ```
 
@@ -1921,17 +1921,17 @@ cmd_cnt = get_cmd_cnt("INST COLLECT") # Number of times the INST COLLECT command
 Returns the number of times the specified commands have been sent.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_cmd_cnts([["<Target Name>", "<Command Name>"], ["<Target Name>", "<Command Name>"], ...])
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_cmd_cnts([["<Target Name>", "<Command Name>"], ["<Target Name>", "<Command Name>"], ...])
 ```
 
@@ -1944,17 +1944,17 @@ get_cmd_cnts([["<Target Name>", "<Command Name>"], ["<Target Name>", "<Command N
 | Command Name | Name of the command. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 cmd_cnt = get_cmd_cnts([['INST', 'COLLECT'], ['INST', 'ABORT']]) # Number of times the INST COLLECT and INST ABORT commands have been sent
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 cmd_cnt = get_cmd_cnts([['INST', 'COLLECT'], ['INST', 'ABORT']]) # Number of times the INST COLLECT and INST ABORT commands have been sent
 ```
 
@@ -1968,17 +1968,17 @@ cmd_cnt = get_cmd_cnts([['INST', 'COLLECT'], ['INST', 'ABORT']]) # Number of tim
 Returns the status of a critical command. One of APPROVED, REJECTED, or WAITING.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 critical_cmd_status(uuid)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 critical_cmd_status(uuid)
 ```
 
@@ -1990,17 +1990,17 @@ critical_cmd_status(uuid)
 | uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") # => WAITING
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") # => WAITING
 ```
 
@@ -2014,17 +2014,17 @@ status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") # => WAITIN
 Approve the critical command as the current user.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 critical_cmd_approve(uuid)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 critical_cmd_approve(uuid)
 ```
 
@@ -2036,17 +2036,17 @@ critical_cmd_approve(uuid)
 | uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 critical_cmd_approve("2fa14183-3148-4399-9a74-a130257118f9")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 critical_cmd_approve("2fa14183-3148-4399-9a74-a130257118f9")
 ```
 
@@ -2060,17 +2060,17 @@ critical_cmd_approve("2fa14183-3148-4399-9a74-a130257118f9")
 Reject the critical command as the current user.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 critical_cmd_reject(uuid)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 critical_cmd_reject(uuid)
 ```
 
@@ -2082,17 +2082,17 @@ critical_cmd_reject(uuid)
 | uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 critical_cmd_reject("2fa14183-3148-4399-9a74-a130257118f9")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 critical_cmd_reject("2fa14183-3148-4399-9a74-a130257118f9")
 ```
 
@@ -2106,17 +2106,17 @@ critical_cmd_reject("2fa14183-3148-4399-9a74-a130257118f9")
 Returns whether or not the current user can approve the critical command.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 critical_cmd_can_approve(uuid)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 critical_cmd_can_approve(uuid)
 ```
 
@@ -2128,18 +2128,18 @@ critical_cmd_can_approve(uuid)
 | uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") # => true / false
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") # => True / False
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") # => true / false
 ```
 
 </TabItem>
@@ -2154,22 +2154,22 @@ By setting the environment variable `OPENC3_DEFAULT_QUEUE` in the .env file you 
 Here is an example of sending a command to a queue:
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-cmd("INST ABORT", queue: "TEST")
-# Do NOT queue the command (useful if OPENC3_DEFAULT_QUEUE is set)
-cmd("INST ABORT", queue: false)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 cmd("INST ABORT", queue="TEST")
 # Do NOT queue the command (useful if OPENC3_DEFAULT_QUEUE is set)
 cmd("INST ABORT", queue=False)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmd("INST ABORT", queue: "TEST")
+# Do NOT queue the command (useful if OPENC3_DEFAULT_QUEUE is set)
+cmd("INST ABORT", queue: false)
 ```
 
 </TabItem>
@@ -2182,17 +2182,17 @@ cmd("INST ABORT", queue=False)
 Create a command queue. Queues are initially created in HOLD state.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 queue_create('<Queue Name>')
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 queue_create('<Queue Name>')
 ```
 
@@ -2204,17 +2204,17 @@ queue_create('<Queue Name>')
 | Queue Name | Case sensitive name of the queue |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 queue_create('TEST')
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 queue_create('TEST')
 ```
 
@@ -2228,17 +2228,17 @@ queue_create('TEST')
 Get information about a command queue including what state it is in.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 queue_get('<Queue Name>')
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 queue_get('<Queue Name>')
 ```
 
@@ -2250,20 +2250,20 @@ queue_get('<Queue Name>')
 | Queue Name | Case sensitive name of the queue |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-queue = queue_get('TEST')
-puts queue # =>
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 queue = queue_get('TEST')
 print(queue) # =>
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+queue = queue_get('TEST')
+puts queue # =>
 ```
 
 </TabItem>
@@ -2276,20 +2276,20 @@ print(queue) # =>
 Get information about all command queues.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-all = queue_all()
-puts all # =>
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 all = queue_all()
 print(all) # =>
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+all = queue_all()
+puts all # =>
 ```
 
 </TabItem>
@@ -2302,17 +2302,17 @@ print(all) # =>
 List all the commands in the queue including the username, the creation time, and the command itself.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 queue_list('<Queue Name>')
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 queue_list('<Queue Name>')
 ```
 
@@ -2324,20 +2324,20 @@ queue_list('<Queue Name>')
 | Queue Name | Case sensitive name of the queue |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-cmds = queue_list('TEST')
-puts cmds # =>
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 cmds = queue_list('TEST')
 print(cmds) # =>
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmds = queue_list('TEST')
+puts cmds # =>
 ```
 
 </TabItem>
@@ -2350,17 +2350,17 @@ print(cmds) # =>
 Puts the specified queue into HOLD mode which means that commands are queued up and not released to the interface.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 queue_hold('<Queue Name>')
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 queue_hold('<Queue Name>')
 ```
 
@@ -2372,17 +2372,17 @@ queue_hold('<Queue Name>')
 | Queue Name | Case sensitive name of the queue |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 queue_hold('TEST')
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 queue_hold('TEST')
 ```
 
@@ -2396,17 +2396,17 @@ queue_hold('TEST')
 Puts the specified queue into RELEASE mode which means that commands in the queue are released to the interface. Any new commands added to the queue are immediately released to the interface.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 queue_release('<Queue Name>')
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 queue_release('<Queue Name>')
 ```
 
@@ -2418,17 +2418,17 @@ queue_release('<Queue Name>')
 | Queue Name | Case sensitive name of the queue |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 queue_release('TEST')
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 queue_release('TEST')
 ```
 
@@ -2442,17 +2442,17 @@ queue_release('TEST')
 Puts the specified queue into DISABLE mode which means that commands are rejected and not added to the queue. Commands added to a queue in DISABLE mode via script will raise an exception and stop.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 queue_disable('<Queue Name>')
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 queue_disable('<Queue Name>')
 ```
 
@@ -2464,17 +2464,17 @@ queue_disable('<Queue Name>')
 | Queue Name | Case sensitive name of the queue |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 queue_disable('TEST')
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 queue_disable('TEST')
 ```
 
@@ -2488,17 +2488,17 @@ queue_disable('TEST')
 Removes a command from the queue and executes it.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 queue_exec('<Queue Name>', '<Optional Index>')
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 queue_exec('<Queue Name>', '<Optional Index>')
 ```
 
@@ -2511,20 +2511,20 @@ queue_exec('<Queue Name>', '<Optional Index>')
 | Index      | Remove and execute at the specified index. If the index is not given the first command is removed and executed. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-queue_exec('TEST') # Removes and executes the first command in the queue
-queue_exec('TEST', index: 5) # Removes and executes the command at index 5
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 queue_exec('TEST') # Removes and executes the first command in the queue
 queue_exec('TEST', index=5) # Removes and executes the command at index 5
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+queue_exec('TEST') # Removes and executes the first command in the queue
+queue_exec('TEST', index: 5) # Removes and executes the command at index 5
 ```
 
 </TabItem>
@@ -2537,17 +2537,17 @@ queue_exec('TEST', index=5) # Removes and executes the command at index 5
 Removes a command from the queue.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 queue_remove('<Queue Name>', '<Optional Index>')
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 queue_remove('<Queue Name>', '<Optional Index>')
 ```
 
@@ -2560,20 +2560,20 @@ queue_remove('<Queue Name>', '<Optional Index>')
 | Index      | Remove at the specified index. If the index is not given the first command is removed. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-queue_remove('TEST') # Removes the first command in the queue
-queue_remove('TEST', index: 5) # Removes the command at index 5
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 queue_remove('TEST') # Removes the first command in the queue
 queue_remove('TEST', index=5) # Removes the command at index 5
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+queue_remove('TEST') # Removes the first command in the queue
+queue_remove('TEST', index: 5) # Removes the command at index 5
 ```
 
 </TabItem>
@@ -2586,17 +2586,17 @@ queue_remove('TEST', index=5) # Removes the command at index 5
 Deletes the specified queue and any commands that it holds.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 queue_delete('<Queue Name>')
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 queue_delete('<Queue Name>')
 ```
 
@@ -2608,17 +2608,17 @@ queue_delete('<Queue Name>')
 | Queue Name | Case sensitive name of the queue |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 queue_delete('TEST')
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 queue_delete('TEST')
 ```
 
@@ -2636,17 +2636,17 @@ These methods allow the user to interact with telemetry items.
 Performs a verification of a telemetry item using its specified telemetry type. If the verification fails then the script will be paused with an error. If no comparison is given to check then the telemetry item is simply printed to the script output. Note: In most cases using wait_check is a better choice than using check.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 check("<Target Name> <Packet Name> <Item Name> <Comparison - optional>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 check("<Target Name> <Packet Name> <Item Name> <Comparison - optional>")
 ```
 
@@ -2661,18 +2661,6 @@ check("<Target Name> <Packet Name> <Item Name> <Comparison - optional>")
 | Comparison  | A comparison to perform against the telemetry item. If a comparison is not given then the telemetry item will just be printed into the script log. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-check("INST HEALTH_STATUS COLLECTS > 1")
-check_raw("INST HEALTH_STATUS COLLECTS > 1")
-check_formatted("INST HEALTH_STATUS COLLECTS > 1")
-# Ruby passes type as symbol
-check("INST HEALTH_STATUS COLLECTS > 1", type: :RAW)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -2681,6 +2669,18 @@ check_raw("INST HEALTH_STATUS COLLECTS > 1")
 check_formatted("INST HEALTH_STATUS COLLECTS > 1")
 # Python passes type as string
 check("INST HEALTH_STATUS COLLECTS > 1", type='RAW')
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+check("INST HEALTH_STATUS COLLECTS > 1")
+check_raw("INST HEALTH_STATUS COLLECTS > 1")
+check_formatted("INST HEALTH_STATUS COLLECTS > 1")
+# Ruby passes type as symbol
+check("INST HEALTH_STATUS COLLECTS > 1", type: :RAW)
 ```
 
 </TabItem>
@@ -2693,17 +2693,17 @@ check("INST HEALTH_STATUS COLLECTS > 1", type='RAW')
 Checks a converted telemetry item against an expected value with a tolerance. If the verification fails then the script will be paused with an error. Note: In most cases using wait_check_tolerance is a better choice than using check_tolerance.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>)
 ```
 
@@ -2720,20 +2720,20 @@ check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <To
 | type           | CONVERTED (default) or RAW (Ruby symbol, Python string) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0)
-check_tolerance("INST HEALTH_STATUS TEMP1", 50000, 20000, type: :RAW)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0)
 check_tolerance("INST HEALTH_STATUS TEMP1", 50000, 20000, type='RAW')
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0)
+check_tolerance("INST HEALTH_STATUS TEMP1", 50000, 20000, type: :RAW)
 ```
 
 </TabItem>
@@ -2756,18 +2756,18 @@ This evaluates to `yes == 'yes'` which is not valid syntax because the variable 
 Now this evaluates to `'yes' == 'yes'` which is true so the check passes.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-check_expression(exp_to_eval, context = nil)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 check_expression(exp_to_eval, globals=None, locals=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+check_expression(exp_to_eval, context = nil)
 ```
 
 </TabItem>
@@ -2781,14 +2781,6 @@ check_expression(exp_to_eval, globals=None, locals=None)
 | locals (python only)  | The locals to call eval with. Defaults to None. Note that if you're using local variables in a method you must pass locals(). |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0")
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -2796,6 +2788,14 @@ def check(value):
     # Here we using both tlm() and a local 'value' so we need to pass globals() and locals()
     check_expression("tlm('INST HEALTH_STATUS COLLECTS') > value", 5, 0.25, globals(), locals())
 check(5)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0")
 ```
 
 </TabItem>
@@ -2808,17 +2808,17 @@ check(5)
 Executes a method and expects an exception to be raised. If the method does not raise an exception, a CheckError is raised.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 check_exception("<Method Name>", "<Method Params - optional>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 check_exception("<Method Name>", "<Method Params - optional>")
 ```
 
@@ -2831,18 +2831,18 @@ check_exception("<Method Name>", "<Method Params - optional>")
 | Method Params | Parameters for the method                                |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-check_exception("cmd", "INST", "COLLECT", "TYPE" => "NORMAL")
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 check_exception("cmd", "INST", "COLLECT", {"TYPE": "NORMAL"})
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+check_exception("cmd", "INST", "COLLECT", "TYPE" => "NORMAL")
 ```
 
 </TabItem>
@@ -2855,18 +2855,18 @@ check_exception("cmd", "INST", "COLLECT", {"TYPE": "NORMAL"})
 Reads the specified form of a telemetry item.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 tlm("<Target Name> <Packet Name> <Item Name>")
 tlm("<Target Name>", "<Packet Name>", "<Item Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 tlm("<Target Name> <Packet Name> <Item Name>")
 tlm("<Target Name>", "<Packet Name>", "<Item Name>")
 ```
@@ -2882,19 +2882,6 @@ tlm("<Target Name>", "<Packet Name>", "<Item Name>")
 | type        | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string). |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-value = tlm("INST HEALTH_STATUS COLLECTS")
-value = tlm("INST", "HEALTH_STATUS", "COLLECTS")
-value = tlm_raw("INST HEALTH_STATUS COLLECTS")
-value = tlm_formatted("INST HEALTH_STATUS COLLECTS")
-# Equivalent to tlm_raw
-raw_value = tlm("INST HEALTH_STATUS COLLECTS", type: :RAW)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -2907,6 +2894,19 @@ raw_value = tlm("INST HEALTH_STATUS COLLECTS", type='RAW')
 ```
 
 </TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+value = tlm("INST HEALTH_STATUS COLLECTS")
+value = tlm("INST", "HEALTH_STATUS", "COLLECTS")
+value = tlm_raw("INST HEALTH_STATUS COLLECTS")
+value = tlm_formatted("INST HEALTH_STATUS COLLECTS")
+# Equivalent to tlm_raw
+raw_value = tlm("INST HEALTH_STATUS COLLECTS", type: :RAW)
+```
+
+</TabItem>
 </Tabs>
 
 ### get_tlm_buffer
@@ -2916,18 +2916,18 @@ raw_value = tlm("INST HEALTH_STATUS COLLECTS", type='RAW')
 Returns a packet hash (similar to get_tlm) along with the raw packet buffer.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 buffer = get_tlm_buffer("<Target Name> <Packet Name>")['buffer']
 buffer = get_tlm_buffer("<Target Name>", "<Packet Name>")['buffer']
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 buffer = get_tlm_buffer("<Target Name> <Packet Name>")['buffer']
 buffer = get_tlm_buffer("<Target Name>", "<Packet Name>")['buffer']
 ```
@@ -2941,18 +2941,18 @@ buffer = get_tlm_buffer("<Target Name>", "<Packet Name>")['buffer']
 | Packet Name | Name of the packet. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 packet = get_tlm_buffer("INST HEALTH_STATUS")
 packet['buffer']
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 packet = get_tlm_buffer("INST HEALTH_STATUS")
 packet['buffer']
 ```
@@ -2967,18 +2967,18 @@ packet['buffer']
 Returns the names, values, and limits states of all telemetry items in a specified packet. The value is returned as an array of arrays with each entry containing [item_name, item_value, limits_state].
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_tlm_packet("<Target Name> <Packet Name>", <type>)
 get_tlm_packet("<Target Name>", "<Packet Name>", <type>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_tlm_packet("<Target Name> <Packet Name>", <type>)
 get_tlm_packet("<Target Name>", "<Packet Name>", <type>)
 ```
@@ -2993,18 +2993,18 @@ get_tlm_packet("<Target Name>", "<Packet Name>", <type>)
 | type        | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string). |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type: :FORMATTED)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type='FORMATTED')
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type: :FORMATTED)
 ```
 
 </TabItem>
@@ -3017,17 +3017,17 @@ names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type='FORM
 Returns the _actual_ items available based on the specified set of telemetry items. For example, if you request `INST__HEALTH_STATUS__CCSDSVER__FORMATTED` the method will return `INST__HEALTH_STATUS__CCSDSVER__RAW` for that item because it does not have formatting or conversions so only the RAW value is available. This _must_ be called before calling `get_tlm_values` when passing a `start_time` / `end_time` as it ensures a correct request of historical data.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 actual = get_tlm_available(<Items>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 actual = get_tlm_available(<Items>)
 ```
 
@@ -3039,20 +3039,20 @@ actual = get_tlm_available(<Items>)
 | Items     | Array of strings of the form ['TGT__PKT__ITEM__TYPE', ... ] |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-actual = get_tlm_available(["INST__HEALTH_STATUS__CCSDSVER__FORMATTED", "INST__HEALTH_STATUS__TEMP1__FORMATTED"])
-puts values # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEMP1__FORMATTED"]
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 values = get_tlm_available(["INST__HEALTH_STATUS__CCSDSVER__FORMATTED", "INST__HEALTH_STATUS__TEMP1__FORMATTED"])
 print(values) # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEMP1__FORMATTED"]
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+actual = get_tlm_available(["INST__HEALTH_STATUS__CCSDSVER__FORMATTED", "INST__HEALTH_STATUS__TEMP1__FORMATTED"])
+puts values # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEMP1__FORMATTED"]
 ```
 
 </TabItem>
@@ -3065,17 +3065,17 @@ print(values) # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEM
 Returns the values and current limits state for a specified set of telemetry items. Items can be in any telemetry packet in the system. They can all be retrieved using the same value type or a specific value type can be specified for each item.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 values, limits_states, limits_settings, limits_set = get_tlm_values(<Items>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 values, limits_states, limits_settings, limits_set = get_tlm_values(<Items>)
 ```
 
@@ -3087,20 +3087,20 @@ values, limits_states, limits_settings, limits_set = get_tlm_values(<Items>)
 | Items     | Array of strings of the form ['TGT__PKT__ITEM__TYPE', ... ] |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-values = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__RAW"])
-puts values # [[-100.0, :RED_LOW], [0, :RED_LOW]]
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 values = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__RAW"])
 print(values) # [[-100.0, :RED_LOW], [0, :RED_LOW]]
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+values = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__RAW"])
+puts values # [[-100.0, :RED_LOW], [0, :RED_LOW]]
 ```
 
 </TabItem>
@@ -3113,17 +3113,17 @@ print(values) # [[-100.0, :RED_LOW], [0, :RED_LOW]]
 Returns an array of all target packet hashes. Previously `get_all_telemetry`.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_all_tlm("<Target Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_all_tlm("<Target Name>")
 ```
 
@@ -3135,11 +3135,11 @@ get_all_tlm("<Target Name>")
 | Target Name | Name of the target. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 packets = get_all_tlm("INST")
-puts packets
+print(packets)
 #[{"target_name"=>"INST",
 #  "packet_name"=>"ADCS",
 #  "endianness"=>"BIG_ENDIAN",
@@ -3154,11 +3154,11 @@ puts packets
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 packets = get_all_tlm("INST")
-print(packets)
+puts packets
 #[{"target_name"=>"INST",
 #  "packet_name"=>"ADCS",
 #  "endianness"=>"BIG_ENDIAN",
@@ -3181,17 +3181,17 @@ print(packets)
 Returns an array of all target packet names. Previously `get_all_telemetry_names`.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_all_tlm_names("<Target Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_all_tlm_names("<Target Name>")
 ```
 
@@ -3203,17 +3203,17 @@ get_all_tlm_names("<Target Name>")
 | Target Name | Name of the target |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 get_all_tlm_names("INST")  # => ["ADCS", "HEALTH_STATUS", ...]
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 get_all_tlm_names("INST")  # => ["ADCS", "HEALTH_STATUS", ...]
 ```
 
@@ -3227,17 +3227,17 @@ get_all_tlm_names("INST")  # => ["ADCS", "HEALTH_STATUS", ...]
 Returns all the item names for every packet in a target
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_all_tlm_item_names("<Target Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_all_tlm_item_names("<Target Name>")
 ```
 
@@ -3249,17 +3249,17 @@ get_all_tlm_item_names("<Target Name>")
 | Target Name | Name of the target |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 get_all_tlm_item_names("INST")  # => ["ARY", "ARY2", "ASCIICMD", "ATTPROGRESS", ...]
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 get_all_tlm_item_names("INST")  # => ["ARY", "ARY2", "ASCIICMD", "ATTPROGRESS", ...]
 ```
 
@@ -3273,18 +3273,18 @@ get_all_tlm_item_names("INST")  # => ["ARY", "ARY2", "ASCIICMD", "ATTPROGRESS", 
 Returns a packet hash. Previously `get_telemetry`.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_tlm("<Target Name> <Packet Name>")
 get_tlm("<Target Name>", "<Packet Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_tlm("<Target Name> <Packet Name>")
 get_tlm("<Target Name>", "<Packet Name>")
 ```
@@ -3298,11 +3298,11 @@ get_tlm("<Target Name>", "<Packet Name>")
 | Packet Name | Name of the packet. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 packet = get_tlm("INST HEALTH_STATUS")
-puts packet
+print(packet)
 #{"target_name"=>"INST",
 # "packet_name"=>"HEALTH_STATUS",
 # "endianness"=>"BIG_ENDIAN",
@@ -3324,11 +3324,11 @@ puts packet
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 packet = get_tlm("INST HEALTH_STATUS")
-print(packet)
+puts packet
 #{"target_name"=>"INST",
 # "packet_name"=>"HEALTH_STATUS",
 # "endianness"=>"BIG_ENDIAN",
@@ -3358,18 +3358,18 @@ print(packet)
 Returns an item hash.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_item("<Target Name> <Packet Name> <Item Name>")
 get_item("<Target Name>", "<Packet Name>", "<Item Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_item("<Target Name> <Packet Name> <Item Name>")
 get_item("<Target Name>", "<Packet Name>", "<Item Name>")
 ```
@@ -3384,11 +3384,11 @@ get_item("<Target Name>", "<Packet Name>", "<Item Name>")
 | Item Name   | Name of the item.   |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 item = get_item("INST HEALTH_STATUS CCSDSVER")
-puts item
+print(item)
 #{"name"=>"CCSDSVER",
 # "bit_offset"=>0,
 # "bit_size"=>3,
@@ -3401,11 +3401,11 @@ puts item
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 item = get_item("INST HEALTH_STATUS CCSDSVER")
-print(item)
+puts item
 #{"name"=>"CCSDSVER",
 # "bit_offset"=>0,
 # "bit_size"=>3,
@@ -3426,18 +3426,18 @@ print(item)
 Returns the number of times a specified telemetry packet has been received.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_tlm_cnt("<Target Name> <Packet Name>")
 get_tlm_cnt("<Target Name>", "<Packet Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_tlm_cnt("<Target Name> <Packet Name>")
 get_tlm_cnt("<Target Name>", "<Packet Name>")
 ```
@@ -3451,17 +3451,17 @@ get_tlm_cnt("<Target Name>", "<Packet Name>")
 | Packet Name | Name of the telemetry packet. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 tlm_cnt = get_tlm_cnt("INST HEALTH_STATUS") # Number of times the INST HEALTH_STATUS telemetry packet has been received.
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 tlm_cnt = get_tlm_cnt("INST HEALTH_STATUS") # Number of times the INST HEALTH_STATUS telemetry packet has been received.
 ```
 
@@ -3475,17 +3475,17 @@ tlm_cnt = get_tlm_cnt("INST HEALTH_STATUS") # Number of times the INST HEALTH_ST
 Sets a telemetry item value in the Command and Telemetry Server. This value will be overwritten if a new packet is received from an interface. For that reason this method is most useful if interfaces are disconnected or for testing via the Script Runner disconnect mode. Manually setting telemetry values allows for the execution of many logical paths in scripts.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 set_tlm("<Target> <Packet> <Item> = <Value>", <type>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 set_tlm("<Target> <Packet> <Item> = <Value>", <type>)
 ```
 
@@ -3501,17 +3501,6 @@ set_tlm("<Target> <Packet> <Item> = <Value>", <type>)
 | type      | Value type RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-set_tlm("INST HEALTH_STATUS COLLECTS = 5") # type is :CONVERTED by default
-check("INST HEALTH_STATUS COLLECTS == 5")
-set_tlm("INST HEALTH_STATUS COLLECTS = 10", type: :RAW)
-check("INST HEALTH_STATUS COLLECTS == 10", type: :RAW)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -3519,6 +3508,17 @@ set_tlm("INST HEALTH_STATUS COLLECTS = 5") # type is CONVERTED by default
 check("INST HEALTH_STATUS COLLECTS == 5")
 set_tlm("INST HEALTH_STATUS COLLECTS = 10", type='RAW')
 check("INST HEALTH_STATUS COLLECTS == 10", type='RAW')
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+set_tlm("INST HEALTH_STATUS COLLECTS = 5") # type is :CONVERTED by default
+check("INST HEALTH_STATUS COLLECTS == 5")
+set_tlm("INST HEALTH_STATUS COLLECTS = 10", type: :RAW)
+check("INST HEALTH_STATUS COLLECTS == 10", type: :RAW)
 ```
 
 </TabItem>
@@ -3531,43 +3531,46 @@ check("INST HEALTH_STATUS COLLECTS == 10", type='RAW')
 Injects a packet into the system as if it was received from an interface.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
-inject_tlm("<target_name>", "<packet_name>", <item_hash>, <type>)
+```python
+inject_tlm("<target_name>", "<packet_name>", <item_hash>, type=<type>, stored=<stored>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
-inject_tlm("<target_name>", "<packet_name>", <item_hash>, <type>)
+```ruby
+inject_tlm("<target_name>", "<packet_name>", <item_hash>, type: <type>, stored: <stored>)
 ```
 
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                                                                                                                      |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Target    | Target name                                                                                                                                                      |
-| Packet    | Packet name                                                                                                                                                      |
-| Item Hash | Hash of item name/value for each item. If an item is not specified in the hash, the current value table value will be used. Optional parameter, defaults to nil. |
-| type      | Type of values in the item hash, RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string)                                                              |
+| Parameter                                                      | Description                                                                                                                                                        |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Target                                                         | Target name                                                                                                                                                        |
+| Packet                                                         | Packet name                                                                                                                                                        |
+| Item Hash                                                      | Hash of item name/value for each item. If an item is not specified in the hash, the current value table value will be used. Optional parameter, defaults to nil.   |
+| type                                                           | Type of values in the item hash, RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string)                                                                |
+| stored <span class="badge badge--secondary">Since 7.1.0</span> | Whether the packet should be marked as stored (default false). Stored packets are written to the telemetry stream but do not update the current value table (CVT). |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-inject_tlm("INST", "PARAMS", {'VALUE1' => 5.0, 'VALUE2' => 7.0})
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 inject_tlm("INST", "PARAMS", {'VALUE1': 5.0, 'VALUE2': 7.0})
+inject_tlm("INST", "PARAMS", {'VALUE1': 5.0, 'VALUE2': 7.0}, stored=True)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+inject_tlm("INST", "PARAMS", {'VALUE1' => 5.0, 'VALUE2' => 7.0})
+inject_tlm("INST", "PARAMS", {'VALUE1' => 5.0, 'VALUE2' => 7.0}, stored: true)
 ```
 
 </TabItem>
@@ -3580,17 +3583,17 @@ inject_tlm("INST", "PARAMS", {'VALUE1': 5.0, 'VALUE2': 7.0})
 Sets the converted value for a telmetry point in the Command and Telemetry Server. This value will be maintained even if a new packet is received on the interface unless the override is canceled with the normalize_tlm method.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 override_tlm("<Target> <Packet> <Item> = <Value>", <type>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 override_tlm("<Target> <Packet> <Item> = <Value>", <type>)
 ```
 
@@ -3606,20 +3609,20 @@ override_tlm("<Target> <Packet> <Item> = <Value>", <type>)
 | type      | Type to override, ALL (default), RAW, CONVERTED or FORMATTED (Ruby symbol, Python string) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-override_tlm("INST HEALTH_STATUS TEMP1 = 5") # All requests for TEMP1 return 5
-override_tlm("INST HEALTH_STATUS TEMP2 = 0", type: :RAW) # Only RAW tlm set to 0
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 override_tlm("INST HEALTH_STATUS TEMP1 = 5") # All requests for TEMP1 return 5
 override_tlm("INST HEALTH_STATUS TEMP2 = 0", type='RAW') # Only RAW tlm set to 0
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+override_tlm("INST HEALTH_STATUS TEMP1 = 5") # All requests for TEMP1 return 5
+override_tlm("INST HEALTH_STATUS TEMP2 = 0", type: :RAW) # Only RAW tlm set to 0
 ```
 
 </TabItem>
@@ -3632,17 +3635,17 @@ override_tlm("INST HEALTH_STATUS TEMP2 = 0", type='RAW') # Only RAW tlm set to 0
 Clears the override of a telmetry point in the Command and Telemetry Server.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 normalize_tlm("<Target> <Packet> <Item>", <type>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 normalize_tlm("<Target> <Packet> <Item>", <type>)
 ```
 
@@ -3657,20 +3660,20 @@ normalize_tlm("<Target> <Packet> <Item>", <type>)
 | type      | Type to normalize, ALL (default), RAW, CONVERTED or FORMATTED (Ruby symbol, Python string) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-normalize_tlm("INST HEALTH_STATUS TEMP1") # clear all overrides
-normalize_tlm("INST HEALTH_STATUS TEMP1", type: :RAW) # clear only the RAW override
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 normalize_tlm("INST HEALTH_STATUS TEMP1") # clear all overrides
 normalize_tlm("INST HEALTH_STATUS TEMP1", type='RAW') # clear only the RAW override
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+normalize_tlm("INST HEALTH_STATUS TEMP1") # clear all overrides
+normalize_tlm("INST HEALTH_STATUS TEMP1", type: :RAW) # clear only the RAW override
 ```
 
 </TabItem>
@@ -3683,14 +3686,6 @@ normalize_tlm("INST HEALTH_STATUS TEMP1", type='RAW') # clear only the RAW overr
 Returns an array of the the currently overridden values set by override_tlm. NOTE: This returns all the value types that are overridden which by default is all 4 values types when using override_tlm.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-get_overrides()
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
@@ -3698,21 +3693,17 @@ get_overrides()
 ```
 
 </TabItem>
-</Tabs>
 
-<Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-override_tlm("INST HEALTH_STATUS TEMP1 = 5")
-puts get_overrides() # =>
-# [ {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"RAW", "value"=>5}
-#   {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"CONVERTED", "value"=>5}
-#   {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"FORMATTED", "value"=>"5"} ]
+get_overrides()
 ```
 
 </TabItem>
+</Tabs>
 
+<Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -3721,6 +3712,18 @@ print(get_overrides()) # =>
 # [ {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'RAW', 'value': 5},
 #   {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'CONVERTED', 'value': 5},
 #   {'target_name': 'INST', 'packet_name': 'HEALTH_STATUS', 'item_name': 'TEMP1', 'value_type': 'FORMATTED', 'value': '5'} ]
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+override_tlm("INST HEALTH_STATUS TEMP1 = 5")
+puts get_overrides() # =>
+# [ {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"RAW", "value"=>5}
+#   {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"CONVERTED", "value"=>5}
+#   {"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"FORMATTED", "value"=>"5"} ]
 ```
 
 </TabItem>
@@ -3737,17 +3740,17 @@ APIs for subscribing to specific packets of data. This provides an interface to 
 Allows the user to listen for one or more telemetry packets of data to arrive. A unique id is returned which is used to retrieve the data.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 subscribe_packets(packets)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 subscribe_packets(packets)
 ```
 
@@ -3761,17 +3764,17 @@ subscribe_packets(packets)
 Returns a unique id string which should be passed to [get_packets](#get_packets) to retrieve the subscribed data.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
 ```
 
@@ -3785,18 +3788,18 @@ id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
 Streams packet data from a previous subscription. Returns an updated id and an array of packet hashes/dictionaries. The updated id should be passed to the next call to `get_packets` to continue streaming.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-id, packets = get_packets(id, block: nil, count: 1000)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 id, packets = get_packets(id, block=None, count=1000)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+id, packets = get_packets(id, block: nil, count: 1000)
 ```
 
 </TabItem>
@@ -3835,6 +3838,23 @@ Each telemetry item in the packet is included with up to four keys using the ite
 For example, if the HEALTH_STATUS packet has a TEMP1 item with a conversion and limits, the packet hash/dictionary would contain `TEMP1` (raw), `TEMP1__C` (converted), `TEMP1__F` (formatted), and `TEMP1__L` (limits state).
 
 <Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
+wait(0.1)
+id, packets = get_packets(id)
+for packet in packets:
+    print(f"{packet['PACKET_TIMESECONDS']}: {packet['target_name']} {packet['packet_name']}")
+
+# Reuse ID from last call, allow for 1s wait, only get 1 packet
+id, packets = get_packets(id, block=1000, count=1)
+for packet in packets:
+    print(f"{packet['PACKET_TIMESECONDS']}: {packet['target_name']} {packet['packet_name']}")
+```
+
+</TabItem>
+
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
@@ -3852,23 +3872,6 @@ end
 ```
 
 </TabItem>
-
-<TabItem value="python" label="Python Example">
-
-```python
-id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
-wait(0.1)
-id, packets = get_packets(id)
-for packet in packets:
-    print(f"{packet['PACKET_TIMESECONDS']}: {packet['target_name']} {packet['packet_name']}")
-
-# Reuse ID from last call, allow for 1s wait, only get 1 packet
-id, packets = get_packets(id, block=1000, count=1)
-for packet in packets:
-    print(f"{packet['PACKET_TIMESECONDS']}: {packet['target_name']} {packet['packet_name']}")
-```
-
-</TabItem>
 </Tabs>
 
 ### get_tlm_cnt
@@ -3878,18 +3881,18 @@ for packet in packets:
 Get the receive count for a telemetry packet
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_tlm_cnt("<Target> <Packet>")
 get_tlm_cnt("<Target>", "<Packet>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_tlm_cnt("<Target> <Packet>")
 get_tlm_cnt("<Target>", "<Packet>")
 ```
@@ -3903,17 +3906,17 @@ get_tlm_cnt("<Target>", "<Packet>")
 | Packet    | Packet name |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 get_tlm_cnt("INST HEALTH_STATUS")  # => 10
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 get_tlm_cnt("INST HEALTH_STATUS")  # => 10
 ```
 
@@ -3927,17 +3930,17 @@ get_tlm_cnt("INST HEALTH_STATUS")  # => 10
 Get the receive counts for an array of telemetry packets
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_tlm_cnts([["<Target>", "<Packet>"], ["<Target>", "<Packet>"]])
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_tlm_cnts([["<Target>", "<Packet>"], ["<Target>", "<Packet>"]])
 ```
 
@@ -3950,17 +3953,17 @@ get_tlm_cnts([["<Target>", "<Packet>"], ["<Target>", "<Packet>"]])
 | Packet    | Packet name |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 get_tlm_cnts([["INST", "ADCS"], ["INST", "HEALTH_STATUS"]])  # => [100, 10]
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 get_tlm_cnts([["INST", "ADCS"], ["INST", "HEALTH_STATUS"]])  # => [100, 10]
 ```
 
@@ -3974,18 +3977,18 @@ get_tlm_cnts([["INST", "ADCS"], ["INST", "HEALTH_STATUS"]])  # => [100, 10]
 Get the list of derived telemetry items for a packet
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_packet_derived_items("<Target> <Packet>")
 get_packet_derived_items("<Target>", "<Packet>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_packet_derived_items("<Target> <Packet>")
 get_packet_derived_items("<Target>", "<Packet>")
 ```
@@ -3999,17 +4002,17 @@ get_packet_derived_items("<Target>", "<Packet>")
 | Packet    | Packet name |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 get_packet_derived_items("INST HEALTH_STATUS")  # => ['PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED', ...]
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 get_packet_derived_items("INST HEALTH_STATUS")  # => ['PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED', ...]
 ```
 
@@ -4027,18 +4030,18 @@ These methods allow the user to pause the script to wait for telemetry to change
 Pauses the script for a configurable amount of time (minimum 10ms) or until a converted telemetry item meets given criteria. It supports three different syntaxes as shown. If no parameters are given then an infinite wait occurs until the user presses Go. Note that on a timeout, wait does not stop the script, usually wait_check is a better choice.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 elapsed = wait() # => Returns the actual time waited as float
 elapsed = wait(<Time>) # => Returns the actual time waited as float
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 elapsed = wait() # => Returns the actual time waited as float
 elapsed = wait(<Time>) # => Returns the actual time waited as float
 ```
@@ -4051,21 +4054,6 @@ elapsed = wait(<Time>) # => Returns the actual time waited as float
 | Time      | Time in Seconds to delay for. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-# Returns true or false based on the whether the expression is true or false
-success = wait(
-  "<Target Name> <Packet Name> <Item Name> <Comparison>",
-  <Timeout>,
-  <Polling Rate (optional)>,
-  type: :CONVERTED,
-  quiet: false
-) # => true / false
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
@@ -4077,6 +4065,21 @@ success = wait(
   type="CONVERTED",
   quiet=False
 ) # => True / False
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+# Returns true or false based on the whether the expression is true or false
+success = wait(
+  "<Target Name> <Packet Name> <Item Name> <Comparison>",
+  <Timeout>,
+  <Polling Rate (optional)>,
+  type: :CONVERTED,
+  quiet: false
+) # => true / false
 ```
 
 </TabItem>
@@ -4094,17 +4097,6 @@ success = wait(
 | quiet        | Named parameter indicating whether to log the result. Defaults to false which means log the wait.              |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-elapsed = wait
-elapsed = wait 5
-success = wait("INST HEALTH_STATUS COLLECTS == 3", 10)
-success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type: :RAW, quiet: true)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -4112,6 +4104,17 @@ elapsed = wait()
 elapsed = wait(5)
 success = wait("INST HEALTH_STATUS COLLECTS == 3", 10)
 success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type='RAW', quiet=True)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+elapsed = wait
+elapsed = wait 5
+success = wait("INST HEALTH_STATUS COLLECTS == 3", 10)
+success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type: :RAW, quiet: true)
 ```
 
 </TabItem>
@@ -4124,23 +4127,6 @@ success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type='RAW', quiet=True)
 Pauses the script for a configurable amount of time or until a converted telemetry item meets equals an expected value within a tolerance. Note that on a timeout, wait_tolerance does not stop the script, usually wait_check_tolerance is a better choice.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-# Returns true or false based on the whether the expression is true or false
-success = wait_tolerance(
-  "<Target Name> <Packet Name> <Item Name>", # Can also be given as individual parameters
-  <Expected Value>,
-  <Tolerance>,
-  <Timeout>,
-  <Polling Rate (optional)>,
-  type: :CONVERTED,
-  quiet: false
-) # => true / false
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
@@ -4154,6 +4140,23 @@ success = wait_tolerance(
   type="CONVERTED",
   quiet=False
 ) # => True / False
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+# Returns true or false based on the whether the expression is true or false
+success = wait_tolerance(
+  "<Target Name> <Packet Name> <Item Name>", # Can also be given as individual parameters
+  <Expected Value>,
+  <Tolerance>,
+  <Timeout>,
+  <Polling Rate (optional)>,
+  type: :CONVERTED,
+  quiet: false
+) # => true / false
 ```
 
 </TabItem>
@@ -4192,21 +4195,6 @@ success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW
 Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will continue. This method can be used to perform more complicated comparisons than using wait as shown in the example. Note that on a timeout, wait_expression does not stop the script, usually [wait_check_expression](#wait_check_expression) is a better choice.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-# Return true or false based the expression evaluation
-wait_expression(
-  exp_to_eval,
-  timeout,
-  polling_rate = DEFAULT_TLM_POLLING_RATE,
-  context = nil,
-  quiet: false
-) # => true / false
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
@@ -4219,6 +4207,21 @@ wait_expression(
     locals=None,
     quiet=False,
 ) # => True / False
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+# Return true or false based the expression evaluation
+wait_expression(
+  exp_to_eval,
+  timeout,
+  polling_rate = DEFAULT_TLM_POLLING_RATE,
+  context = nil,
+  quiet: false
+) # => true / false
 ```
 
 </TabItem>
@@ -4235,14 +4238,6 @@ wait_expression(
 | quiet                 | Whether to log the result. Defaults to false which means log the wait.                                                        |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-success = wait_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10, 0.25, nil, quiet: true)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -4250,6 +4245,14 @@ def check(value):
     # Here we using both tlm() and a local 'value' so we need to pass globals() and locals()
     return wait_expression("tlm('INST HEALTH_STATUS COLLECTS') > value", 5, 0.25, globals(), locals(), quiet=True)
 success = check(5)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+success = wait_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10, 0.25, nil, quiet: true)
 ```
 
 </TabItem>
@@ -4262,22 +4265,6 @@ success = check(5)
 Pauses the script until a certain number of packets have been received. If a timeout occurs the script will continue. Note that on a timeout, wait_packet does not stop the script, usually wait_check_packet is a better choice.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-# Returns true or false based on the whether the packet was received
-success = wait_packet(
-  "<Target>",
-  "<Packet>",
-  <Num Packets>,
-  <Timeout>,
-  <Polling Rate (optional)>,
-  quiet: false
-) # => true / false
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
@@ -4293,6 +4280,22 @@ success = wait_packet(
 ```
 
 </TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+# Returns true or false based on the whether the packet was received
+success = wait_packet(
+  "<Target>",
+  "<Packet>",
+  <Num Packets>,
+  <Timeout>,
+  <Polling Rate (optional)>,
+  quiet: false
+) # => true / false
+```
+
+</TabItem>
 </Tabs>
 
 | Parameter    | Description                                                                                       |
@@ -4305,17 +4308,17 @@ success = wait_packet(
 | quiet        | Named parameter indicating whether to log the result. Defaults to false which means log the wait. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 success = wait_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_STATUS packets over 10s
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 success = wait_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_STATUS packets over 10s
 ```
 
@@ -4329,20 +4332,6 @@ success = wait_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_S
 Combines the wait and check keywords into one. This pauses the script until the converted value of a telemetry item meets given criteria or times out. On a timeout the script stops.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-# Returns the amount of time elapsed waiting for the expression
-elapsed = wait_check(
-  "<Target Name> <Packet Name> <Item Name> <Comparison>",
-  <Timeout>,
-  <Polling Rate (optional)>,
-  type: :CONVERTED
-) # => float
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
@@ -4352,6 +4341,20 @@ elapsed = wait_check(
   <Timeout>,
   <Polling Rate (optional)>,
   type="CONVERTED"
+) # => float
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+# Returns the amount of time elapsed waiting for the expression
+elapsed = wait_check(
+  "<Target Name> <Packet Name> <Item Name> <Comparison>",
+  <Timeout>,
+  <Polling Rate (optional)>,
+  type: :CONVERTED
 ) # => float
 ```
 
@@ -4369,20 +4372,20 @@ elapsed = wait_check(
 | type         | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).    |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10)
-elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type: :RAW)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10)
 elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type='RAW')
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10)
+elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type: :RAW)
 ```
 
 </TabItem>
@@ -4395,22 +4398,6 @@ elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type='RAW')
 Pauses the script for a configurable amount of time or until a converted telemetry item equals an expected value within a tolerance. On a timeout the script stops.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-# Returns the amount of time elapsed waiting for the expression
-elapsed = wait_check_tolerance(
-  "<Target Name> <Packet Name> <Item Name>",
-  <Expected Value>,
-  <Tolerance>,
-  <Timeout>,
-  <Polling Rate (optional)>,
-  type: :CONVERTED
-) # => float
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
@@ -4422,6 +4409,22 @@ elapsed = wait_check_tolerance(
   <Timeout>,
   <Polling Rate (optional)>,
   type="CONVERTED"
+) # => float
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+# Returns the amount of time elapsed waiting for the expression
+elapsed = wait_check_tolerance(
+  "<Target Name> <Packet Name> <Item Name>",
+  <Expected Value>,
+  <Tolerance>,
+  <Timeout>,
+  <Polling Rate (optional)>,
+  type: :CONVERTED
 ) # => float
 ```
 
@@ -4440,20 +4443,20 @@ elapsed = wait_check_tolerance(
 | type           | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).    |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
-elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type: :RAW)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
 elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW')
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
+elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type: :RAW)
 ```
 
 </TabItem>
@@ -4466,20 +4469,6 @@ elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, typ
 Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will stop. This method can be used to perform more complicated comparisons than using wait as shown in the example. Also see the syntax notes for [check_expression](#check_expression).
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-# Return time spent waiting for the expression to evaluate to true
-wait_check_expression(
-  exp_to_eval,
-  timeout,
-  polling_rate = DEFAULT_TLM_POLLING_RATE,
-  context = nil
-) # => float
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
@@ -4490,6 +4479,20 @@ wait_check_expression(
     polling_rate=DEFAULT_TLM_POLLING_RATE,
     globals=None,
     locals=None
+) # => float
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+# Return time spent waiting for the expression to evaluate to true
+wait_check_expression(
+  exp_to_eval,
+  timeout,
+  polling_rate = DEFAULT_TLM_POLLING_RATE,
+  context = nil
 ) # => float
 ```
 
@@ -4506,19 +4509,19 @@ wait_check_expression(
 | locals (python only)  | The locals to call eval with. Defaults to None. Note that if you're using local variables in a method you must pass locals(). |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-elapsed = wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 # Note that for Python we need to pass globals() to be able to use COSMOS API methods like tlm()
 elapsed = wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10, 0.25, globals())
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+elapsed = wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10)
 ```
 
 </TabItem>
@@ -4531,22 +4534,6 @@ elapsed = wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm(
 Pauses the script until a certain number of packets have been received. If a timeout occurs the script will stop.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-# Returns the amount of time elapsed waiting for the packets
-elapsed = wait_check_packet(
-  "<Target>",
-  "<Packet>",
-  <Num Packets>,
-  <Timeout>,
-  <Polling Rate (optional)>,
-  quiet=false
-) # => float
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
@@ -4558,6 +4545,22 @@ elapsed = wait_check_packet(
   <Timeout>,
   <Polling Rate (optional)>,
   quiet=False
+) # => float
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+# Returns the amount of time elapsed waiting for the packets
+elapsed = wait_check_packet(
+  "<Target>",
+  "<Packet>",
+  <Num Packets>,
+  <Timeout>,
+  <Polling Rate (optional)>,
+  quiet=false
 ) # => float
 ```
 
@@ -4574,17 +4577,17 @@ elapsed = wait_check_packet(
 | quiet        | Named parameter indicating whether to log the result. Defaults to false which means log the wait.         |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 elapsed = wait_check_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_STATUS packets over 10s
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 elapsed = wait_check_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_STATUS packets over 10s
 ```
 
@@ -4602,18 +4605,18 @@ These methods deal with handling telemetry limits.
 The limits_enabled? method returns true/false depending on whether limits are enabled for a telemetry item.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-limits_enabled?("<Target Name> <Packet Name> <Item Name>")
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 limits_enabled("<Target Name> <Packet Name> <Item Name>")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+limits_enabled?("<Target Name> <Packet Name> <Item Name>")
 ```
 
 </TabItem>
@@ -4626,18 +4629,18 @@ limits_enabled("<Target Name> <Packet Name> <Item Name>")
 | Item Name   | Name of the telemetry item.                         |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-enabled = limits_enabled?("INST HEALTH_STATUS TEMP1") # => true or false
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 enabled = limits_enabled("INST HEALTH_STATUS TEMP1") # => True or False
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+enabled = limits_enabled?("INST HEALTH_STATUS TEMP1") # => true or false
 ```
 
 </TabItem>
@@ -4650,17 +4653,17 @@ enabled = limits_enabled("INST HEALTH_STATUS TEMP1") # => True or False
 Enables limits monitoring for the specified telemetry item.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 enable_limits("<Target Name> <Packet Name> <Item Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 enable_limits("<Target Name> <Packet Name> <Item Name>")
 ```
 
@@ -4674,17 +4677,17 @@ enable_limits("<Target Name> <Packet Name> <Item Name>")
 | Item Name   | Name of the telemetry item.                         |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 enable_limits("INST HEALTH_STATUS TEMP1")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 enable_limits("INST HEALTH_STATUS TEMP1")
 ```
 
@@ -4698,17 +4701,17 @@ enable_limits("INST HEALTH_STATUS TEMP1")
 Disables limits monitoring for the specified telemetry item.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 disable_limits("<Target Name> <Packet Name> <Item Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 disable_limits("<Target Name> <Packet Name> <Item Name>")
 ```
 
@@ -4722,17 +4725,17 @@ disable_limits("<Target Name> <Packet Name> <Item Name>")
 | Item Name   | Name of the telemetry item.                         |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 disable_limits("INST HEALTH_STATUS TEMP1")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 disable_limits("INST HEALTH_STATUS TEMP1")
 ```
 
@@ -4746,17 +4749,17 @@ disable_limits("INST HEALTH_STATUS TEMP1")
 Enables limits monitoring on a set of telemetry items specified in a limits group.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 enable_limits_group("<Limits Group Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 enable_limits_group("<Limits Group Name>")
 ```
 
@@ -4768,17 +4771,17 @@ enable_limits_group("<Limits Group Name>")
 | Limits Group Name | Name of the limits group. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 enable_limits_group("SAFE_MODE")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 enable_limits_group("SAFE_MODE")
 ```
 
@@ -4792,17 +4795,17 @@ enable_limits_group("SAFE_MODE")
 Disables limits monitoring on a set of telemetry items specified in a limits group.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 disable_limits_group("<Limits Group Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 disable_limits_group("<Limits Group Name>")
 ```
 
@@ -4814,17 +4817,17 @@ disable_limits_group("<Limits Group Name>")
 | Limits Group Name | Name of the limits group. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 disable_limits_group("SAFE_MODE")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 disable_limits_group("SAFE_MODE")
 ```
 
@@ -4838,17 +4841,17 @@ disable_limits_group("SAFE_MODE")
 Returns the list of limits groups in the system.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 limits_groups = get_limits_groups()
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 limits_groups = get_limits_groups()
 ```
 
@@ -4862,17 +4865,17 @@ limits_groups = get_limits_groups()
 Sets the current limits set. The default limits set is DEFAULT.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 set_limits_set("<Limits Set Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 set_limits_set("<Limits Set Name>")
 ```
 
@@ -4884,17 +4887,17 @@ set_limits_set("<Limits Set Name>")
 | Limits Set Name | Name of the limits set. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 set_limits_set("DEFAULT")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 set_limits_set("DEFAULT")
 ```
 
@@ -4908,17 +4911,17 @@ set_limits_set("DEFAULT")
 Returns the name of the current limits set. The default limits set is DEFAULT.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 limits_set = get_limits_set()
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 limits_set = get_limits_set()
 ```
 
@@ -4932,17 +4935,17 @@ limits_set = get_limits_set()
 Returns the list of limits sets in the system.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 limits_sets = get_limits_sets()
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 limits_sets = get_limits_sets()
 ```
 
@@ -4956,17 +4959,17 @@ limits_sets = get_limits_sets()
 Returns hash / dict of all the limits settings for a telemetry point.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_limits(<Target Name>, <Packet Name>, <Item Name>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_limits(<Target Name>, <Packet Name>, <Item Name>)
 ```
 
@@ -4980,17 +4983,6 @@ get_limits(<Target Name>, <Packet Name>, <Item Name>)
 | Item Name   | Name of the telemetry item                         |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-result = get_limits('INST', 'HEALTH_STATUS', 'TEMP1')
-puts result # => {"DEFAULT"=>[-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], "TVAC"=>[-80.0, -30.0, 30.0, 80.0]}
-puts result.keys # => ['DEFAULT', 'TVAC']
-puts result['DEFAULT'] # => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -4998,6 +4990,17 @@ result = get_limits('INST', 'HEALTH_STATUS', 'TEMP1')
 print(result) # => {'DEFAULT'=>[-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], 'TVAC'=>[-80.0, -30.0, 30.0, 80.0]}
 print(result.keys()) # => dict_keys(['DEFAULT', 'TVAC'])
 print(result['DEFAULT']) # => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+result = get_limits('INST', 'HEALTH_STATUS', 'TEMP1')
+puts result # => {"DEFAULT"=>[-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], "TVAC"=>[-80.0, -30.0, 30.0, 80.0]}
+puts result.keys # => ['DEFAULT', 'TVAC']
+puts result['DEFAULT'] # => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
 ```
 
 </TabItem>
@@ -5010,17 +5013,17 @@ print(result['DEFAULT']) # => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
 The set_limits method sets limits settings for a telemetry point. Note: In most cases it would be better to update your config files or use different limits sets rather than changing limits settings in realtime.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 set_limits(<Target Name>, <Packet Name>, <Item Name>, <Red Low>, <Yellow Low>, <Yellow High>, <Red High>, <Green Low (optional)>, <Green High (optional)>, <Limits Set (optional)>, <Persistence (optional)>, <Enabled (optional)>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 set_limits(<Target Name>, <Packet Name>, <Item Name>, <Red Low>, <Yellow Low>, <Yellow High>, <Red High>, <Green Low (optional)>, <Green High (optional)>, <Limits Set (optional)>, <Persistence (optional)>, <Enabled (optional)>)
 ```
 
@@ -5043,18 +5046,18 @@ set_limits(<Target Name>, <Packet Name>, <Item Name>, <Red Low>, <Yellow Low>, <
 | Enabled     | Optional. Whether or not limits are enabled for this item. Defaults to true. Note: This affects all limits settings across limits sets.                                             |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0, 'TVAC', 1, true)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0, 'TVAC', 1, True)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0, 'TVAC', 1, true)
 ```
 
 </TabItem>
@@ -5067,17 +5070,17 @@ set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0,
 Returns an array with the target_name, packet_name, item_name, and limits_state of all items that are out of their limits ranges.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 out_of_limits_items = get_out_of_limits()
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 out_of_limits_items = get_out_of_limits()
 ```
 
@@ -5091,17 +5094,17 @@ out_of_limits_items = get_out_of_limits()
 Returns the overall limits state for the COSMOS system. Returns 'GREEN', 'YELLOW', or 'RED'.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_overall_limits_state(<Ignored Items> (optional))
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_overall_limits_state(<Ignored Items> (optional))
 ```
 
@@ -5113,18 +5116,18 @@ get_overall_limits_state(<Ignored Items> (optional))
 | Ignored Items | Array of arrays with items to ignore when determining the overall limits state. [['TARGET_NAME', 'PACKET_NAME', 'ITEM_NAME'], ...] |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 overall_limits_state = get_overall_limits_state()
 overall_limits_state = get_overall_limits_state([['INST', 'HEALTH_STATUS', 'TEMP1']])
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 overall_limits_state = get_overall_limits_state()
 overall_limits_state = get_overall_limits_state([['INST', 'HEALTH_STATUS', 'TEMP1']])
 ```
@@ -5139,17 +5142,17 @@ overall_limits_state = get_overall_limits_state([['INST', 'HEALTH_STATUS', 'TEMP
 Returns limits events based on an offset returned from the last time it was called.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_limits_event(<Offset>, count)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_limits_event(<Offset>, count)
 ```
 
@@ -5162,39 +5165,6 @@ get_limits_event(<Offset>, count)
 | count     | Named parameter specifying the maximum number of limits events to return. Default is 100      |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-events = get_limits_event()
-puts events
-#[["1613077715557-0",
-#  {"type"=>"LIMITS_CHANGE",
-#   "target_name"=>"TGT",
-#   "packet_name"=>"PKT",
-#   "item_name"=>"ITEM",
-#   "old_limits_state"=>"YELLOW_LOW",
-#   "new_limits_state"=>"RED_LOW",
-#   "time_nsec"=>"1",
-#   "message"=>"message"}],
-# ["1613077715557-1",
-#  {"type"=>"LIMITS_CHANGE",
-#   "target_name"=>"TGT",
-#   "packet_name"=>"PKT",
-#   "item_name"=>"ITEM",
-#   "old_limits_state"=>"RED_LOW",
-#   "new_limits_state"=>"YELLOW_LOW",
-#   "time_nsec"=>"2",
-#   "message"=>"message"}]]
-# The last offset is the first item ([0]) in the last event ([-1])
-events = get_limits_event(events[-1][0])
-puts events
-#[["1613077715657-0",
-#  {"type"=>"LIMITS_CHANGE",
-#   ...
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -5221,6 +5191,39 @@ print(events)
 # The last offset is the first item ([0]) in the last event ([-1])
 events = get_limits_event(events[-1][0])
 print(events)
+#[["1613077715657-0",
+#  {"type"=>"LIMITS_CHANGE",
+#   ...
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+events = get_limits_event()
+puts events
+#[["1613077715557-0",
+#  {"type"=>"LIMITS_CHANGE",
+#   "target_name"=>"TGT",
+#   "packet_name"=>"PKT",
+#   "item_name"=>"ITEM",
+#   "old_limits_state"=>"YELLOW_LOW",
+#   "new_limits_state"=>"RED_LOW",
+#   "time_nsec"=>"1",
+#   "message"=>"message"}],
+# ["1613077715557-1",
+#  {"type"=>"LIMITS_CHANGE",
+#   "target_name"=>"TGT",
+#   "packet_name"=>"PKT",
+#   "item_name"=>"ITEM",
+#   "old_limits_state"=>"RED_LOW",
+#   "new_limits_state"=>"YELLOW_LOW",
+#   "time_nsec"=>"2",
+#   "message"=>"message"}]]
+# The last offset is the first item ([0]) in the last event ([-1])
+events = get_limits_event(events[-1][0])
+puts events
 #[["1613077715657-0",
 #  {"type"=>"LIMITS_CHANGE",
 #   ...
@@ -5240,18 +5243,18 @@ APIs for getting knowledge about plugins and packages.
 Returns all the installed plugins.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-plugin_list(default: false)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 plugin_list(default = False)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+plugin_list(default: false)
 ```
 
 </TabItem>
@@ -5262,11 +5265,11 @@ plugin_list(default = False)
 | default   | Whether to include the default COSMOS plugins (all the regular applications) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 plugins = plugin_list() # => ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539']
-plugins = plugin_list(default: true) # =>
+plugins = plugin_list(default=True) # =>
 # ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539',
 #  'openc3-cosmos-tool-admin-6.0.3.pre.beta0.20250115200004.gem__20250116211504',
 #  'openc3-cosmos-tool-bucketexplorer-6.0.3.pre.beta0.20250115200008.gem__20250116211525',
@@ -5288,11 +5291,11 @@ plugins = plugin_list(default: true) # =>
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 plugins = plugin_list() # => ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539']
-plugins = plugin_list(default=True) # =>
+plugins = plugin_list(default: true) # =>
 # ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539',
 #  'openc3-cosmos-tool-admin-6.0.3.pre.beta0.20250115200004.gem__20250116211504',
 #  'openc3-cosmos-tool-bucketexplorer-6.0.3.pre.beta0.20250115200008.gem__20250116211525',
@@ -5322,17 +5325,17 @@ plugins = plugin_list(default=True) # =>
 Returns information about an installed plugin.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 plugin_get(<Plugin Name>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 plugin_get(<Plugin Name>)
 ```
 
@@ -5344,9 +5347,9 @@ plugin_get(<Plugin Name>)
 | Plugin Name | Full name of the plugin (typically taken from plugin_list()) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539') # =>
 # { "name"=>"openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539",
 #   "variables"=>{"inst_target_name"=>"INST", ...},
@@ -5357,9 +5360,9 @@ plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__2025011621453
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539') # =>
 # { "name"=>"openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__20250116214539",
 #   "variables"=>{"inst_target_name"=>"INST", ...},
@@ -5378,20 +5381,20 @@ plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__2025011621453
 List all the packages installed in COSMOS.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-package_list() # => {"ruby"=>["openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem", ..., "openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem"],
-               #    "python"=>["numpy-2.1.1", "pip-24.0", "setuptools-65.5.0"]}
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 package_list() # => {'ruby': ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem', ..., 'openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem'],
                #    'python': ['numpy-2.1.1', 'pip-24.0', 'setuptools-65.5.0']}
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+package_list() # => {"ruby"=>["openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem", ..., "openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem"],
+               #    "python"=>["numpy-2.1.1", "pip-24.0", "setuptools-65.5.0"]}
 ```
 
 </TabItem>
@@ -5408,17 +5411,17 @@ APIs for getting knowledge about targets.
 Returns a list of the targets in the system in an array. Previously `get_target_list`.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 targets = get_target_names() # => ['INST', 'INST2', 'EXAMPLE', 'TEMPLATED']
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 targets = get_target_names() # => ['INST', 'INST2', 'EXAMPLE', 'TEMPLATED']
 ```
 
@@ -5432,17 +5435,17 @@ targets = get_target_names() # => ['INST', 'INST2', 'EXAMPLE', 'TEMPLATED']
 Returns a target hash containing all the information about the target.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_target("<Target Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_target("<Target Name>")
 ```
 
@@ -5454,11 +5457,11 @@ get_target("<Target Name>")
 | Target Name | Name of the target. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 target = get_target("INST")
-puts target
+print(target)
 # {"name"=>"INST",
 #  "folder_name"=>"INST",
 #  "requires"=>[],
@@ -5495,11 +5498,11 @@ puts target
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 target = get_target("INST")
-print(target)
+puts target
 # {"name"=>"INST",
 #  "folder_name"=>"INST",
 #  "requires"=>[],
@@ -5544,6 +5547,16 @@ print(target)
 Returns the interfaces for all targets. The return value is an array of arrays where each subarray contains the target name, and a String of all the interface names.
 
 <Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+target_ints = get_target_interfaces()
+for target_name, interfaces in target_ints:
+    print(f"Target: {target_name}, Interfaces: {interfaces}")
+```
+
+</TabItem>
+
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
@@ -5551,16 +5564,6 @@ target_ints = get_target_interfaces()
 target_ints.each do |target_name, interfaces|
   puts "Target: #{target_name}, Interfaces: #{interfaces}"
 end
-```
-
-</TabItem>
-
-<TabItem value="python" label="Python Example">
-
-```python
-target_ints = get_target_interfaces()
-for target_name, interfaces in target_ints:
-    print(f"Target: {target_name}, Interfaces: {interfaces}")
 ```
 
 </TabItem>
@@ -5577,17 +5580,17 @@ These methods allow the user to manipulate COSMOS interfaces.
 Returns an interface status including the as built interface and its current status (cmd/tlm counters, etc).
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_interface("<Interface Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_interface("<Interface Name>")
 ```
 
@@ -5599,11 +5602,11 @@ get_interface("<Interface Name>")
 | Interface Name | Name of the interface. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 interface = get_interface("INST_INT")
-puts interface
+print(interface)
 # {"name"=>"INST_INT",
 #  "config_params"=>["interface.rb"],
 #  "target_names"=>["INST"],
@@ -5629,11 +5632,11 @@ puts interface
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 interface = get_interface("INST_INT")
-print(interface)
+puts interface
 # {"name"=>"INST_INT",
 #  "config_params"=>["interface.rb"],
 #  "target_names"=>["INST"],
@@ -5667,17 +5670,17 @@ print(interface)
 Returns a list of the interfaces in the system in an array.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 interface_names = get_interface_names() # => ['INST_INT', 'INST2_INT', 'EXAMPLE_INT', 'TEMPLATED_INT']
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 interface_names = get_interface_names() # => ['INST_INT', 'INST2_INT', 'EXAMPLE_INT', 'TEMPLATED_INT']
 ```
 
@@ -5691,17 +5694,17 @@ interface_names = get_interface_names() # => ['INST_INT', 'INST2_INT', 'EXAMPLE_
 Connects to targets associated with a COSMOS interface.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 connect_interface("<Interface Name>", <Interface Parameters (optional)>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 connect_interface("<Interface Name>", <Interface Parameters (optional)>)
 ```
 
@@ -5714,18 +5717,18 @@ connect_interface("<Interface Name>", <Interface Parameters (optional)>)
 | Interface Parameters | Parameters used to initialize the interface. If none are given then the interface will use the parameters that were given in the server configuration file. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 connect_interface("INT1")
 connect_interface("INT1", hostname, port)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 connect_interface("INT1")
 connect_interface("INT1", hostname, port)
 ```
@@ -5740,17 +5743,17 @@ connect_interface("INT1", hostname, port)
 Disconnects from targets associated with a COSMOS interface.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 disconnect_interface("<Interface Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 disconnect_interface("<Interface Name>")
 ```
 
@@ -5762,17 +5765,17 @@ disconnect_interface("<Interface Name>")
 | Interface Name | Name of the interface. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 disconnect_interface("INT1")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 disconnect_interface("INT1")
 ```
 
@@ -5786,17 +5789,17 @@ disconnect_interface("INT1")
 Starts logging of raw data on one or all interfaces. This is for debugging purposes only.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 start_raw_logging_interface("<Interface Name (optional)>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 start_raw_logging_interface("<Interface Name (optional)>")
 ```
 
@@ -5808,17 +5811,17 @@ start_raw_logging_interface("<Interface Name (optional)>")
 | Interface Name | Name of the Interface to command to start raw data logging. Defaults to 'ALL' which causes all interfaces that support raw data logging to start logging raw data. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 start_raw_logging_interface("int1")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 start_raw_logging_interface("int1")
 ```
 
@@ -5832,17 +5835,17 @@ start_raw_logging_interface("int1")
 Stops logging of raw data on one or all interfaces. This is for debugging purposes only.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 stop_raw_logging_interface("<Interface Name (optional)>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 stop_raw_logging_interface("<Interface Name (optional)>")
 ```
 
@@ -5854,17 +5857,17 @@ stop_raw_logging_interface("<Interface Name (optional)>")
 | Interface Name | Name of the Interface to command to stop raw data logging. Defaults to 'ALL' which causes all interfaces that support raw data logging to stop logging raw data. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 stop_raw_logging_interface("int1")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 stop_raw_logging_interface("int1")
 ```
 
@@ -5878,19 +5881,6 @@ stop_raw_logging_interface("int1")
 Returns information about all interfaces. The return value is an array of arrays where each subarray contains the interface name, connection state, number of connected clients, transmit queue size, receive queue size, bytes transmitted, bytes received, command count, and telemetry count.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-interface_info = get_all_interface_info()
-interface_info.each do |interface_name, connection_state, num_clients, tx_q_size, rx_q_size, tx_bytes, rx_bytes, cmd_count, tlm_count|
-  puts "Interface: #{interface_name}, Connection state: #{connection_state}, Num connected clients: #{num_clients}"
-  puts "Transmit queue size: #{tx_q_size}, Receive queue size: #{rx_q_size}, Bytes transmitted: #{tx_bytes}, Bytes received: #{rx_bytes}"
-  puts "Cmd count: #{cmd_count}, Tlm count: #{tlm_count}"
-end
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -5903,6 +5893,19 @@ for interface in interface_info():
 ```
 
 </TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+interface_info = get_all_interface_info()
+interface_info.each do |interface_name, connection_state, num_clients, tx_q_size, rx_q_size, tx_bytes, rx_bytes, cmd_count, tlm_count|
+  puts "Interface: #{interface_name}, Connection state: #{connection_state}, Num connected clients: #{num_clients}"
+  puts "Transmit queue size: #{tx_q_size}, Receive queue size: #{rx_q_size}, Bytes transmitted: #{tx_bytes}, Bytes received: #{rx_bytes}"
+  puts "Cmd count: #{cmd_count}, Tlm count: #{tlm_count}"
+end
+```
+
+</TabItem>
 </Tabs>
 
 ### map_target_to_interface
@@ -5912,18 +5915,18 @@ for interface in interface_info():
 Map a target to an interface allowing target commands and telemetry to be processed by that interface. Note this will cause the interface to respawn.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only: false, tlm_only: false, unmap_old: true)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only=False, tlm_only=False, unmap_old=True)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only: false, tlm_only: false, unmap_old: true)
 ```
 
 </TabItem>
@@ -5938,22 +5941,22 @@ map_target_to_interface("<Target Name>", "<Interface Name>", cmd_only=False, tlm
 | unmap_old      | Named parameter whether remove the target from all existing interfaces (default: true) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-map_target_to_interface("INST", "INST_INT", unmap_old: false)
-map_target_to_interface("INST", "INST_INT", cmd_only: true)
-map_target_to_interface("INST", "INST_INT", tlm_only: true)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 map_target_to_interface("INST", "INST_INT", unmap_old=False)
 map_target_to_interface("INST", "INST_INT", cmd_only=True)
 map_target_to_interface("INST", "INST_INT", tlm_only=True)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+map_target_to_interface("INST", "INST_INT", unmap_old: false)
+map_target_to_interface("INST", "INST_INT", cmd_only: true)
+map_target_to_interface("INST", "INST_INT", tlm_only: true)
 ```
 
 </TabItem>
@@ -5966,18 +5969,18 @@ map_target_to_interface("INST", "INST_INT", tlm_only=True)
 Unmap a target from an interface. This removes all knowledge of the target and will cause the interface to respawn.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-unmap_target_from_interface("<Target Name>", "<Interface Name>", cmd_only: false, tlm_only: false)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 unmap_target_from_interface("<Target Name>", "<Interface Name>", cmd_only=False, tlm_only=False)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+unmap_target_from_interface("<Target Name>", "<Interface Name>", cmd_only: false, tlm_only: false)
 ```
 
 </TabItem>
@@ -5991,22 +5994,22 @@ unmap_target_from_interface("<Target Name>", "<Interface Name>", cmd_only=False,
 | tlm_only       | Named parameter whether to unmap target telemetry only to the interface (default: false) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-unmap_target_from_interface("INST", "INST_INT")
-unmap_target_from_interface("INST", "INST_INT", cmd_only: true)
-unmap_target_from_interface("INST", "INST_INT", tlm_only: true)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 unmap_target_from_interface("INST", "INST_INT")
 unmap_target_from_interface("INST", "INST_INT", cmd_only=True)
 unmap_target_from_interface("INST", "INST_INT", tlm_only=True)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+unmap_target_from_interface("INST", "INST_INT")
+unmap_target_from_interface("INST", "INST_INT", cmd_only: true)
+unmap_target_from_interface("INST", "INST_INT", tlm_only: true)
 ```
 
 </TabItem>
@@ -6019,17 +6022,17 @@ unmap_target_from_interface("INST", "INST_INT", tlm_only=True)
 Send a command directly to an interface. This has no effect in the standard COSMOS interfaces but can be implemented by a custom interface to change behavior.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 interface_cmd("<Interface Name>", "<Command Name>", "<Command Parameters>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 interface_cmd("<Interface Name>", "<Command Name>", "<Command Parameters>")
 ```
 
@@ -6043,17 +6046,17 @@ interface_cmd("<Interface Name>", "<Command Name>", "<Command Parameters>")
 | Command Parameters | Any parameters to send with the command |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 interface_cmd("INST", "DISABLE_CRC")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 interface_cmd("INST", "DISABLE_CRC")
 ```
 
@@ -6067,17 +6070,17 @@ interface_cmd("INST", "DISABLE_CRC")
 Send a command directly to an interface protocol. This has no effect in the standard COSMOS protocols but can be implemented by a custom protocol to change behavior.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 interface_protocol_cmd("<Interface Name>", "<Command Name>", "<Command Parameters>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 interface_protocol_cmd("<Interface Name>", "<Command Name>", "<Command Parameters>")
 ```
 
@@ -6093,18 +6096,18 @@ interface_protocol_cmd("<Interface Name>", "<Command Name>", "<Command Parameter
 | index              | Which protocol in the stack the command should apply to. The default is -1 which applies the command to all.                                               |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-interface_protocol_cmd("INST", "DISABLE_CRC", read_write: :READ_WRITE, index: -1)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 interface_protocol_cmd("INST", "DISABLE_CRC", read_write='READ_WRITE', index=-1)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+interface_protocol_cmd("INST", "DISABLE_CRC", read_write: :READ_WRITE, index: -1)
 ```
 
 </TabItem>
@@ -6117,18 +6120,18 @@ interface_protocol_cmd("INST", "DISABLE_CRC", read_write='READ_WRITE', index=-1)
 Enable commanding and telemetry processing for a given target in an interface.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-interface_target_enable("<Interface Name>", "<Target Name>", cmd_only: false, tlm_only: false)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 interface_target_enable("<Interface Name>", "<Target Name>", cmd_only=False, tlm_only=False)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+interface_target_enable("<Interface Name>", "<Target Name>", cmd_only: false, tlm_only: false)
 ```
 
 </TabItem>
@@ -6142,22 +6145,22 @@ interface_target_enable("<Interface Name>", "<Target Name>", cmd_only=False, tlm
 | tlm_only       | Named parameter whether to enable target telemetry only to the interface (default: false) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-interface_target_enable("INST_INT", "INST")
-interface_target_enable("INST_INT", "INST", cmd_only: true)
-interface_target_enable("INST_INT", "INST", tlm_only: true)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 interface_target_enable("INST_INT", "INST")
 interface_target_enable("INST_INT", "INST", cmd_only=True)
 interface_target_enable("INST_INT", "INST", tlm_only=True)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+interface_target_enable("INST_INT", "INST")
+interface_target_enable("INST_INT", "INST", cmd_only: true)
+interface_target_enable("INST_INT", "INST", tlm_only: true)
 ```
 
 </TabItem>
@@ -6170,18 +6173,18 @@ interface_target_enable("INST_INT", "INST", tlm_only=True)
 Disable commanding and telemetry processing for a given target in an interface.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-interface_target_disable("<Interface Name>", "<Target Name>", cmd_only: false, tlm_only: false)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 interface_target_disable("<Interface Name>", "<Target Name>", cmd_only=False, tlm_only=False)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+interface_target_disable("<Interface Name>", "<Target Name>", cmd_only: false, tlm_only: false)
 ```
 
 </TabItem>
@@ -6195,22 +6198,22 @@ interface_target_disable("<Interface Name>", "<Target Name>", cmd_only=False, tl
 | tlm_only       | Named parameter whether to disable target telemetry only to the interface (default: false) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-interface_target_disable("INST_INT", "INST")
-interface_target_disable("INST_INT", "INST", cmd_only: true)
-interface_target_disable("INST_INT", "INST", tlm_only: true)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 interface_target_disable("INST_INT", "INST")
 interface_target_disable("INST_INT", "INST", cmd_only=True)
 interface_target_disable("INST_INT", "INST", tlm_only=True)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+interface_target_disable("INST_INT", "INST")
+interface_target_disable("INST_INT", "INST", cmd_only: true)
+interface_target_disable("INST_INT", "INST", tlm_only: true)
 ```
 
 </TabItem>
@@ -6223,17 +6226,17 @@ interface_target_disable("INST_INT", "INST", tlm_only=True)
 Get details on the interface and its protocols.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 interface_details("<Interface Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 interface_details("<Interface Name>")
 ```
 
@@ -6245,17 +6248,17 @@ interface_details("<Interface Name>")
 | Interface Name | Name of the interface |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 interface_details("INST_INT")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 interface_details("INST_INT")
 ```
 
@@ -6273,17 +6276,17 @@ These methods allow the user to manipulate COSMOS routers.
 Connects a COSMOS router.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 connect_router("<Router Name>", <Router Parameters (optional)>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 connect_router("<Router Name>", <Router Parameters (optional)>)
 ```
 
@@ -6296,18 +6299,18 @@ connect_router("<Router Name>", <Router Parameters (optional)>)
 | Router Parameters | Parameters used to initialize the router. If none are given then the router will use the parameters that were given in the server configuration file. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 connect_router("INST_ROUTER")
 connect_router("INST_ROUTER", 7779, 7779, nil, 10.0, 'PREIDENTIFIED')
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 connect_router("INST_ROUTER")
 connect_router("INST_ROUTER", 7779, 7779, nil, 10.0, 'PREIDENTIFIED')
 ```
@@ -6322,17 +6325,17 @@ connect_router("INST_ROUTER", 7779, 7779, nil, 10.0, 'PREIDENTIFIED')
 Disconnects a COSMOS router.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 disconnect_router("<Router Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 disconnect_router("<Router Name>")
 ```
 
@@ -6344,17 +6347,17 @@ disconnect_router("<Router Name>")
 | Router Name | Name of the router. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 disconnect_router("INT1_ROUTER")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 disconnect_router("INT1_ROUTER")
 ```
 
@@ -6368,17 +6371,17 @@ disconnect_router("INT1_ROUTER")
 Returns a list of the routers in the system in an array.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 router_names = get_router_names() # => ['ROUTER_INT']
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 router_names = get_router_names() # => ['ROUTER_INT']
 ```
 
@@ -6392,17 +6395,17 @@ router_names = get_router_names() # => ['ROUTER_INT']
 Returns a router status including the as built router and its current status (cmd/tlm counters, etc).
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_router("<Router Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_router("<Router Name>")
 ```
 
@@ -6414,11 +6417,11 @@ get_router("<Router Name>")
 | Router Name | Name of the router. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 router = get_router("ROUTER_INT")
-puts router
+print(router)
 #{"name"=>"ROUTER_INT",
 # "config_params"=>["router.rb"],
 # "target_names"=>["INST"],
@@ -6444,11 +6447,11 @@ puts router
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 router = get_router("ROUTER_INT")
-print(router)
+puts router
 #{"name"=>"ROUTER_INT",
 # "config_params"=>["router.rb"],
 # "target_names"=>["INST"],
@@ -6482,19 +6485,6 @@ print(router)
 Returns information about all routers. The return value is an array of arrays where each subarray contains the router name, connection state, number of connected clients, transmit queue size, receive queue size, bytes transmitted, bytes received, packets received, and packets sent.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-router_info = get_all_router_info()
-router_info.each do |router_name, connection_state, num_clients, tx_q_size, rx_q_size, tx_bytes, rx_bytes, pkts_rcvd, pkts_sent|
-  puts "Router: #{router_name}, Connection state: #{connection_state}, Num connected clients: #{num_clients}"
-  puts "Transmit queue size: #{tx_q_size}, Receive queue size: #{rx_q_size}, Bytes transmitted: #{tx_bytes}, Bytes received: #{rx_bytes}"
-  puts "Packets received: #{pkts_rcvd}, Packets sent: #{pkts_sent}"
-end
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -6507,6 +6497,19 @@ for router in router_info:
 ```
 
 </TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+router_info = get_all_router_info()
+router_info.each do |router_name, connection_state, num_clients, tx_q_size, rx_q_size, tx_bytes, rx_bytes, pkts_rcvd, pkts_sent|
+  puts "Router: #{router_name}, Connection state: #{connection_state}, Num connected clients: #{num_clients}"
+  puts "Transmit queue size: #{tx_q_size}, Receive queue size: #{rx_q_size}, Bytes transmitted: #{tx_bytes}, Bytes received: #{rx_bytes}"
+  puts "Packets received: #{pkts_rcvd}, Packets sent: #{pkts_sent}"
+end
+```
+
+</TabItem>
 </Tabs>
 
 ### map_target_to_router
@@ -6516,18 +6519,18 @@ for router in router_info:
 Map a target to an router allowing target commands and telemetry to be processed by that router. Note: this will cause the router to respawn.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-map_target_to_router("<Target Name>", "<Router Name>", cmd_only: false, tlm_only: false, unmap_old: true)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 map_target_to_router("<Target Name>", "<Router Name>", cmd_only=False, tlm_only=False, unmap_old=True)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+map_target_to_router("<Target Name>", "<Router Name>", cmd_only: false, tlm_only: false, unmap_old: true)
 ```
 
 </TabItem>
@@ -6542,22 +6545,22 @@ map_target_to_router("<Target Name>", "<Router Name>", cmd_only=False, tlm_only=
 | unmap_old   | Named parameter whether remove the target from all existing routers (default: true) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-map_target_to_router("INST", "INST_ROUTER", unmap_old: false)
-map_target_to_router("INST", "INST_ROUTER", cmd_only: true)
-map_target_to_router("INST", "INST_ROUTER", tlm_only: true)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 map_target_to_router("INST", "INST_ROUTER", unmap_old=False)
 map_target_to_router("INST", "INST_ROUTER", cmd_only=True)
 map_target_to_router("INST", "INST_ROUTER", tlm_only=True)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+map_target_to_router("INST", "INST_ROUTER", unmap_old: false)
+map_target_to_router("INST", "INST_ROUTER", cmd_only: true)
+map_target_to_router("INST", "INST_ROUTER", tlm_only: true)
 ```
 
 </TabItem>
@@ -6570,18 +6573,18 @@ map_target_to_router("INST", "INST_ROUTER", tlm_only=True)
 Unmap a target from an router. This removes all knowledge of the target and will cause the router to respawn.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-unmap_target_from_router("<Target Name>", "<Router Name>", cmd_only: false, tlm_only: false)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 unmap_target_from_router("<Target Name>", "<Router Name>", cmd_only=False, tlm_only=False)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+unmap_target_from_router("<Target Name>", "<Router Name>", cmd_only: false, tlm_only: false)
 ```
 
 </TabItem>
@@ -6595,22 +6598,22 @@ unmap_target_from_router("<Target Name>", "<Router Name>", cmd_only=False, tlm_o
 | tlm_only    | Named parameter whether to unmap target telemetry only to the router (default: false) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-unmap_target_from_router("INST", "INST_ROUTER")
-unmap_target_from_router("INST", "INST_ROUTER", cmd_only: true)
-unmap_target_from_router("INST", "INST_ROUTER", tlm_only: true)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 unmap_target_from_router("INST", "INST_ROUTER")
 unmap_target_from_router("INST", "INST_ROUTER", cmd_only=True)
 unmap_target_from_router("INST", "INST_ROUTER", tlm_only=True)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+unmap_target_from_router("INST", "INST_ROUTER")
+unmap_target_from_router("INST", "INST_ROUTER", cmd_only: true)
+unmap_target_from_router("INST", "INST_ROUTER", tlm_only: true)
 ```
 
 </TabItem>
@@ -6623,17 +6626,17 @@ unmap_target_from_router("INST", "INST_ROUTER", tlm_only=True)
 Starts logging of raw data on one or all routers. This is for debugging purposes only.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 start_raw_logging_router("<Router Name (optional)>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 start_raw_logging_router("<Router Name (optional)>")
 ```
 
@@ -6645,17 +6648,17 @@ start_raw_logging_router("<Router Name (optional)>")
 | Router Name | Name of the Router to command to start raw data logging. Defaults to 'ALL' which causes all routers that support raw data logging to start logging raw data. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 start_raw_logging_router("router1")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 start_raw_logging_router("router1")
 ```
 
@@ -6669,17 +6672,17 @@ start_raw_logging_router("router1")
 Stops logging of raw data on one or all routers. This is for debugging purposes only.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 stop_raw_logging_router("<Router Name (optional)>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 stop_raw_logging_router("<Router Name (optional)>")
 ```
 
@@ -6691,17 +6694,17 @@ stop_raw_logging_router("<Router Name (optional)>")
 | Router Name | Name of the Router to command to stop raw data logging. Defaults to 'ALL' which causes all routers that support raw data logging to stop logging raw data. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 stop_raw_logging_router("router1")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 stop_raw_logging_router("router1")
 ```
 
@@ -6715,17 +6718,17 @@ stop_raw_logging_router("router1")
 Send a command directly to a router. This has no effect in the standard COSMOS routers but can be implemented by a custom router to change behavior.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 router_cmd("<Router Name>", "<Command Name>", "<Command Parameters>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 router_cmd("<Router Name>", "<Command Name>", "<Command Parameters>")
 ```
 
@@ -6739,17 +6742,17 @@ router_cmd("<Router Name>", "<Command Name>", "<Command Parameters>")
 | Command Parameters | Any parameters to send with the command |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 router_cmd("INST", "DISABLE_CRC")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 router_cmd("INST", "DISABLE_CRC")
 ```
 
@@ -6763,17 +6766,17 @@ router_cmd("INST", "DISABLE_CRC")
 Send a command directly to an router protocol. This has no effect in the standard COSMOS protocols but can be implemented by a custom protocol to change behavior.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 router_protocol_cmd("<Router Name>", "<Command Name>", "<Command Parameters>", read_write, index)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 router_protocol_cmd("<Router Name>", "<Command Name>", "<Command Parameters>", read_write, index)
 ```
 
@@ -6789,18 +6792,18 @@ router_protocol_cmd("<Router Name>", "<Command Name>", "<Command Parameters>", r
 | index              | Which protocol in the stack the command should apply to. The default is -1 which applies the command to all.                                               |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-router_protocol_cmd("INST", "DISABLE_CRC", read_write: :READ_WRITE, index: -1)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 router_protocol_cmd("INST", "DISABLE_CRC", read_write='READ_WRITE', index=-1)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+router_protocol_cmd("INST", "DISABLE_CRC", read_write: :READ_WRITE, index: -1)
 ```
 
 </TabItem>
@@ -6813,18 +6816,18 @@ router_protocol_cmd("INST", "DISABLE_CRC", read_write='READ_WRITE', index=-1)
 Enable commanding and telemetry processing for a given target in a router.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-router_target_enable("<Router Name>", "<Target Name>", cmd_only: false, tlm_only: false)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 router_target_enable("<Router Name>", "<Target Name>", cmd_only=False, tlm_only=False)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+router_target_enable("<Router Name>", "<Target Name>", cmd_only: false, tlm_only: false)
 ```
 
 </TabItem>
@@ -6838,22 +6841,22 @@ router_target_enable("<Router Name>", "<Target Name>", cmd_only=False, tlm_only=
 | tlm_only    | Named parameter whether to enable target telemetry only to the router (default: false) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-router_target_enable("INST_ROUTER", "INST")
-router_target_enable("INST_ROUTER", "INST", cmd_only: true)
-router_target_enable("INST_ROUTER", "INST", tlm_only: true)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 router_target_enable("INST_ROUTER", "INST")
 router_target_enable("INST_ROUTER", "INST", cmd_only=True)
 router_target_enable("INST_ROUTER", "INST", tlm_only=True)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+router_target_enable("INST_ROUTER", "INST")
+router_target_enable("INST_ROUTER", "INST", cmd_only: true)
+router_target_enable("INST_ROUTER", "INST", tlm_only: true)
 ```
 
 </TabItem>
@@ -6866,18 +6869,18 @@ router_target_enable("INST_ROUTER", "INST", tlm_only=True)
 Disable commanding and telemetry processing for a given target in a router.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-router_target_disable("<Router Name>", "<Target Name>", cmd_only: false, tlm_only: false)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 router_target_disable("<Router Name>", "<Target Name>", cmd_only=False, tlm_only=False)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+router_target_disable("<Router Name>", "<Target Name>", cmd_only: false, tlm_only: false)
 ```
 
 </TabItem>
@@ -6891,22 +6894,22 @@ router_target_disable("<Router Name>", "<Target Name>", cmd_only=False, tlm_only
 | tlm_only    | Named parameter whether to disable target telemetry only to the router (default: false) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-router_target_disable("INST_ROUTER", "INST")
-router_target_disable("INST_ROUTER", "INST", cmd_only: true)
-router_target_disable("INST_ROUTER", "INST", tlm_only: true)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 router_target_disable("INST_ROUTER", "INST")
 router_target_disable("INST_ROUTER", "INST", cmd_only=True)
 router_target_disable("INST_ROUTER", "INST", tlm_only=True)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+router_target_disable("INST_ROUTER", "INST")
+router_target_disable("INST_ROUTER", "INST", cmd_only: true)
+router_target_disable("INST_ROUTER", "INST", tlm_only: true)
 ```
 
 </TabItem>
@@ -6919,17 +6922,17 @@ router_target_disable("INST_ROUTER", "INST", tlm_only=True)
 Get details on the router and its protocols.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 router_details("<Router Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 router_details("<Router Name>")
 ```
 
@@ -6941,17 +6944,17 @@ router_details("<Router Name>")
 | Router Name | Name of the router |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 router_details("INST_ROUTER")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 router_details("INST_ROUTER")
 ```
 
@@ -6969,17 +6972,17 @@ These methods allow the user to script Table Manager.
 Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 table_create_binary(<Table Definition File>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 table_create_binary(<Table Definition File>)
 ```
 
@@ -6991,30 +6994,6 @@ table_create_binary(<Table Definition File>)
 | Table Definition File | Path to the table definition file, e.g. INST/tables/config/ConfigTables_def.txt |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-# Full example of using table_create_binary and then editing the binary
-require 'openc3/tools/table_manager/table_config'
-# This returns a hash: {"filename"=>"INST/tables/bin/MCConfigurationTable.bin"}
-table = table_create_binary("INST/tables/config/MCConfigurationTable_def.txt")
-file = get_target_file(table['filename'])
-table_binary = file.read()
-
-# Get the definition file so we can process the binary
-def_file = get_target_file("INST/tables/config/MCConfigurationTable_def.txt")
-# Access the internal TableConfig to process the definition
-config = OpenC3::TableConfig.process_file(def_file.path())
-# Grab the table by the definition name, e.g. TABLE "MC_Configuration"
-table = config.table('MC_CONFIGURATION')
-# Now you can read or write individual items in the table
-table.write("MEMORY_SCRUBBING", "DISABLE")
-# Finally write the table.buffer (the binary) back to storage
-put_target_file("INST/tables/bin/MCConfigurationTable_NoScrub.bin", table.buffer)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -7038,6 +7017,30 @@ put_target_file("INST2/tables/bin/MCConfigurationTable_NoScrub.bin", table.buffe
 ```
 
 </TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+# Full example of using table_create_binary and then editing the binary
+require 'openc3/tools/table_manager/table_config'
+# This returns a hash: {"filename"=>"INST/tables/bin/MCConfigurationTable.bin"}
+table = table_create_binary("INST/tables/config/MCConfigurationTable_def.txt")
+file = get_target_file(table['filename'])
+table_binary = file.read()
+
+# Get the definition file so we can process the binary
+def_file = get_target_file("INST/tables/config/MCConfigurationTable_def.txt")
+# Access the internal TableConfig to process the definition
+config = OpenC3::TableConfig.process_file(def_file.path())
+# Grab the table by the definition name, e.g. TABLE "MC_Configuration"
+table = config.table('MC_CONFIGURATION')
+# Now you can read or write individual items in the table
+table.write("MEMORY_SCRUBBING", "DISABLE")
+# Finally write the table.buffer (the binary) back to storage
+put_target_file("INST/tables/bin/MCConfigurationTable_NoScrub.bin", table.buffer)
+```
+
+</TabItem>
 </Tabs>
 
 ### table_create_report
@@ -7047,17 +7050,17 @@ put_target_file("INST2/tables/bin/MCConfigurationTable_NoScrub.bin", table.buffe
 Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Name (optional)>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Name (optional)>)
 ```
 
@@ -7073,17 +7076,6 @@ filename, definition, table_name
 | Table Name            | Name of the table to create the report. This only applies if the Table Binary and Table Definition consist of multiple tables. By default the report consists of all tables and is named after the binary file. If the table name is given, the report is just the specified table and is named after the table. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt") # =>
-# {"filename"=>"INST/tables/bin/ConfigTables.csv", "contents"=>"MC_CONFIGURATION\nLabel, ...
-table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name: "MC_CONFIGURATION") # =>
-# {"filename"=>"INST/tables/bin/McConfiguration.csv", "contents"=>"MC_CONFIGURATION\nLabel, ...
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -7091,6 +7083,17 @@ table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/con
 # {'filename': 'INST/tables/bin/ConfigTables.csv', 'contents': 'MC_CONFIGURATION\nLabel, ...
 table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name="MC_CONFIGURATION") # =>
 # {'filename': 'INST/tables/bin/ConfigTables.csv', 'contents': 'MC_CONFIGURATION\nLabel, ...
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt") # =>
+# {"filename"=>"INST/tables/bin/ConfigTables.csv", "contents"=>"MC_CONFIGURATION\nLabel, ...
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name: "MC_CONFIGURATION") # =>
+# {"filename"=>"INST/tables/bin/McConfiguration.csv", "contents"=>"MC_CONFIGURATION\nLabel, ...
 ```
 
 </TabItem>
@@ -7107,17 +7110,17 @@ These methods allow the user to store data into COSMOS and retrieve it. The stor
 Sets a stash item.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 stash_set("<Stash Key>", <Stash Value>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 stash_set("<Stash Key>", <Stash Value>)
 ```
 
@@ -7130,18 +7133,18 @@ stash_set("<Stash Key>", <Stash Value>)
 | Stash Value | Value to set                 |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 stash_set('run_count', 5)
 stash_set('setpoint', 23.4)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 stash_set('run_count', 5)
 stash_set('setpoint', 23.4)
 ```
@@ -7156,17 +7159,17 @@ stash_set('setpoint', 23.4)
 Returns the specified stash item.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 stash_get("<Stash Key>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 stash_get("<Stash Key>")
 ```
 
@@ -7178,17 +7181,17 @@ stash_get("<Stash Key>")
 | Stash Key | Name of the stash key to return |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 stash_get('run_count')  # => 5
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 stash_get('run_count')  # => 5
 ```
 
@@ -7202,18 +7205,18 @@ stash_get('run_count')  # => 5
 Returns all the stash items as a Ruby hash or Python dict.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-stash_all()  # => ['run_count' => 5, 'setpoint' => 23.4]
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 stash_all()  # => ['run_count': 5, 'setpoint': 23.4]
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+stash_all()  # => ['run_count' => 5, 'setpoint' => 23.4]
 ```
 
 </TabItem>
@@ -7226,17 +7229,17 @@ stash_all()  # => ['run_count': 5, 'setpoint': 23.4]
 Returns all the stash keys.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 stash_keys()  # => ['run_count', 'setpoint']
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 stash_keys()  # => ['run_count', 'setpoint']
 ```
 
@@ -7250,17 +7253,17 @@ stash_keys()  # => ['run_count', 'setpoint']
 Deletes a stash item. Note this actions is permanent!
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 stash_delete("<Stash Key>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 stash_delete("<Stash Key>")
 ```
 
@@ -7272,17 +7275,17 @@ stash_delete("<Stash Key>")
 | Stash Key | Name of the stash key to delete |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 stash_delete("run_count")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 stash_delete("run_count")
 ```
 
@@ -7300,17 +7303,17 @@ These methods allow the user to open, close or create unique telemetry screens f
 Opens a telemetry screen at the specified position.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 display_screen("<Target Name>", "<Screen Name>", <X Position (optional)>, <Y Position (optional)>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 display_screen("<Target Name>", "<Screen Name>", <X Position (optional)>, <Y Position (optional)>)
 ```
 
@@ -7325,17 +7328,17 @@ display_screen("<Target Name>", "<Screen Name>", <X Position (optional)>, <Y Pos
 | Y Position  | Y coordinate for the upper left hand corner of the screen |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 display_screen("INST", "ADCS", 100, 200)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 display_screen("INST", "ADCS", 100, 200)
 ```
 
@@ -7349,17 +7352,17 @@ display_screen("INST", "ADCS", 100, 200)
 Closes an open telemetry screen.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 clear_screen("<Target Name>", "<Screen Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 clear_screen("<Target Name>", "<Screen Name>")
 ```
 
@@ -7372,17 +7375,17 @@ clear_screen("<Target Name>", "<Screen Name>")
 | Screen Name | Screen name within the specified target                                     |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 clear_screen("INST", "ADCS")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 clear_screen("INST", "ADCS")
 ```
 
@@ -7396,17 +7399,17 @@ clear_screen("INST", "ADCS")
 Closes all open screens.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 clear_all_screens()
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 clear_all_screens()
 ```
 
@@ -7420,17 +7423,17 @@ clear_all_screens()
 Deletes an existing Telemetry Viewer screen.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 delete_screen("<Target Name>", "<Screen Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 delete_screen("<Target Name>", "<Screen Name>")
 ```
 
@@ -7443,17 +7446,17 @@ delete_screen("<Target Name>", "<Screen Name>")
 | Screen Name | Screen name within the specified target |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 delete_screen("INST", "ADCS")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 delete_screen("INST", "ADCS")
 ```
 
@@ -7467,17 +7470,17 @@ delete_screen("INST", "ADCS")
 Returns a list of available telemetry screens.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 get_screen_list() # => ['INST ADCS', 'INST COMMANDING', ...]
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 get_screen_list() # => ['INST ADCS', 'INST COMMANDING', ...]
 ```
 
@@ -7491,17 +7494,17 @@ get_screen_list() # => ['INST ADCS', 'INST COMMANDING', ...]
 Returns the text file contents of a telemetry screen definition.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_screen_definition("<Target Name>", "<Screen Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_screen_definition("<Target Name>", "<Screen Name>")
 ```
 
@@ -7514,17 +7517,17 @@ get_screen_definition("<Target Name>", "<Screen Name>")
 | Screen Name | Screen name within the specified target |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 screen_definition = get_screen_definition("INST", "HS")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 screen_definition = get_screen_definition("INST", "HS")
 ```
 
@@ -7538,17 +7541,17 @@ screen_definition = get_screen_definition("INST", "HS")
 Allows you to create a screen directly from a script. This screen is saved to Telemetry Viewer for future use in that application.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 create_screen("<Target Name>", "<Screen Name>" "<Definition>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 create_screen("<Target Name>", "<Screen Name>" "<Definition>")
 ```
 
@@ -7562,24 +7565,6 @@ create_screen("<Target Name>", "<Screen Name>" "<Definition>")
 | Definition  | The entire screen definition as a String |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-screen_def = '
-  SCREEN AUTO AUTO 0.1
-  VERTICAL
-    TITLE "New Screen"
-    VERTICALBOX
-      LABELVALUE INST HEALTH_STATUS TEMP1
-    END
-  END
-'
-# Here we pass in the screen definition as a string
-create_screen("INST", "LOCAL", screen_def)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -7597,6 +7582,24 @@ create_screen("INST", "LOCAL", screen_def)
 ```
 
 </TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+screen_def = '
+  SCREEN AUTO AUTO 0.1
+  VERTICAL
+    TITLE "New Screen"
+    VERTICALBOX
+      LABELVALUE INST HEALTH_STATUS TEMP1
+    END
+  END
+'
+# Here we pass in the screen definition as a string
+create_screen("INST", "LOCAL", screen_def)
+```
+
+</TabItem>
 </Tabs>
 
 ### local_screen
@@ -7606,17 +7609,17 @@ create_screen("INST", "LOCAL", screen_def)
 Allows you to create a local screen directly from a script which is not permanently saved to the Telemetry Viewer screen list. This is useful for one off screens that help users interact with scripts.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 local_screen("<Screen Name>", "<Definition>", <X Position (optional)>, <Y Position (optional)>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 local_screen("<Screen Name>", "<Definition>", <X Position (optional)>, <Y Position (optional)>)
 ```
 
@@ -7633,27 +7636,6 @@ local_screen("<Screen Name>", "<Definition>", <X Position (optional)>, <Y Positi
 NOTE: It is possible to specify a X, Y location off the visible display. If you do so and try to re-create the screen it will not display (because it is already displayed). Try issuing a `clear_all_screens()` first to clear any screens off the visible display space.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-screen_def = '
-  SCREEN AUTO AUTO 0.1
-  VERTICAL
-    TITLE "Local Screen"
-    VERTICALBOX
-      LABELVALUE INST HEALTH_STATUS TEMP1
-    END
-  END
-'
-# Here we pass in the screen definition as a string
-local_screen("TESTING", screen_def, 600, 75)
-wait 5
-# The local screen 'target' is 'LOCAL'
-clear_screen("LOCAL", "TESTING")
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -7674,6 +7656,27 @@ clear_screen("LOCAL", "TESTING")
 ```
 
 </TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+screen_def = '
+  SCREEN AUTO AUTO 0.1
+  VERTICAL
+    TITLE "Local Screen"
+    VERTICALBOX
+      LABELVALUE INST HEALTH_STATUS TEMP1
+    END
+  END
+'
+# Here we pass in the screen definition as a string
+local_screen("TESTING", screen_def, 600, 75)
+wait 5
+# The local screen 'target' is 'LOCAL'
+clear_screen("LOCAL", "TESTING")
+```
+
+</TabItem>
 </Tabs>
 
 ## Script Runner Scripts
@@ -7687,17 +7690,17 @@ These methods allow the user to control Script Runner scripts.
 Starts execution of another high level test procedure. Script Runner will load the file and immediately start executing it before jumping back to the calling procedure. Parameters are not directly given to high level test procedures, though they can use environment variables. If parameters are necessary, consider using a subroutine.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 start("<Procedure Filename>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 start("<Procedure Filename>")
 ```
 
@@ -7709,17 +7712,17 @@ start("<Procedure Filename>")
 | Procedure Filename | Name of the test procedure file. These files are normally in the procedures folder but may be anywhere in the Ruby search path. Additionally, absolute paths are supported. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 start("test1.rb")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 start("test1.rb")
 ```
 
@@ -7733,18 +7736,18 @@ start("test1.rb")
 Jumps to a specific line in either the current file or another file. Script context and local variables are retained if jumping in the same file. This method should not be used to create loops or in any other case where normal Python/Ruby functionality could perform the same function. Use of goto increases stack depth and excess use can lead to stack level too deep errors.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 goto(line_number)
 goto(filename, line_number)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 goto(line_number)
 goto(filename, line_number)
 ```
@@ -7758,9 +7761,9 @@ goto(filename, line_number)
 | Line Number                       | If the second argument, it is the line number in the filename given by the first argument to goto                                                     |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 goto(23)
 goto("TARGET/procedures/other_script.rb", 5)
 goto("TARGET/procedures/other_script.py", 12)
@@ -7768,9 +7771,9 @@ goto("TARGET/procedures/other_script.py", 12)
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 goto(23)
 goto("TARGET/procedures/other_script.rb", 5)
 goto("TARGET/procedures/other_script.py", 12)
@@ -7786,17 +7789,17 @@ goto("TARGET/procedures/other_script.py", 12)
 Reads in a script file that contains useful subroutines for use in your test procedure. When these subroutines run in ScriptRunner or TestRunner, their lines will be highlighted. If you want to import subroutines but do not want their lines to be highlighted in ScriptRunner or TestRunner, use the standard Ruby 'load' or 'require' statement or Python 'import' statement.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 load_utility("TARGET/lib/<Utility Filename>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 load_utility("TARGET/lib/<Utility Filename>")
 ```
 
@@ -7808,18 +7811,18 @@ load_utility("TARGET/lib/<Utility Filename>")
 | Utility Filename | Name of the script file containing subroutines including the .rb or .py extension. You need to include the full target name and path such as TARGET/lib/utility.rb |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 load_utility("TARGET/lib/mode_changes.rb") # Ruby
 load_utility("TARGET/lib/mode_changes.py") # Python
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 load_utility("TARGET/lib/mode_changes.rb") # Ruby
 load_utility("TARGET/lib/mode_changes.py") # Python
 ```
@@ -7834,23 +7837,23 @@ load_utility("TARGET/lib/mode_changes.py") # Python
 Returns all the available files in COSMOS as an array / list. This includes configuration files at every directory level to ensure the user has access to every file. You can filter the list client side to just the 'lib' and or 'procedures' directories if you wish. Note: script names do NOT include '\*' to indicate modified.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-scripts = script_list()
-puts scripts.length # => 139
-puts scripts.select {|script| script.include?('/lib/') || script.include?('/procedures/')} # =>
-# [EXAMPLE/lib/example_interface.rb, INST/lib/example_limits_response.rb, ...]
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 scripts = script_list()
 print(len(scripts))
 print(list(script for script in scripts if '/lib/' in script or '/procedures/' in script)) # =>
+# [EXAMPLE/lib/example_interface.rb, INST/lib/example_limits_response.rb, ...]
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+scripts = script_list()
+puts scripts.length # => 139
+puts scripts.select {|script| script.include?('/lib/') || script.include?('/procedures/')} # =>
 # [EXAMPLE/lib/example_interface.rb, INST/lib/example_limits_response.rb, ...]
 ```
 
@@ -7864,17 +7867,17 @@ print(list(script for script in scripts if '/lib/' in script or '/procedures/' i
 Creates a new script with the given contents.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 script_create("<Script Name>", "<Script Contents>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 script_create("<Script Name>", "<Script Contents>")
 ```
 
@@ -7887,20 +7890,20 @@ script_create("<Script Name>", "<Script Contents>")
 | Script Contents | Script contents as text                               |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-contents = 'puts "Hello from Ruby"'
-script_create("INST/procedures/new_script.rb", contents)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 contents = 'print("Hello from Python")'
 script_create("INST2/procedures/new_script.py", contents)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+contents = 'puts "Hello from Ruby"'
+script_create("INST/procedures/new_script.rb", contents)
 ```
 
 </TabItem>
@@ -7913,17 +7916,17 @@ script_create("INST2/procedures/new_script.py", contents)
 Returns the script contents.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 script_body("<Script Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 script_body("<Script Name>")
 ```
 
@@ -7935,20 +7938,20 @@ script_body("<Script Name>")
 | Script Name | Full path name of the script starting with the target |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-script = script_body("INST/procedures/checks.rb")
-puts script # => # Display all environment variables\nputs ENV.inspect ...
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 script = script_body("INST2/procedures/checks.py")
 print(script) # => # import os\n\n# Display the environment variables ...
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+script = script_body("INST/procedures/checks.rb")
+puts script # => # Display all environment variables\nputs ENV.inspect ...
 ```
 
 </TabItem>
@@ -7961,17 +7964,17 @@ print(script) # => # import os\n\n# Display the environment variables ...
 Deletes a script from COSMOS. Note, you can only _really_ delete TEMP scripts and modified scripts. Scripts that are part of an installed COSMOS plugin remain as they were installed.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 script_delete("<Script Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 script_delete("<Script Name>")
 ```
 
@@ -7983,17 +7986,17 @@ script_delete("<Script Name>")
 | Script Name | Full path name of the script starting with the target |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 script_delete("INST/procedures/checks.rb")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 script_delete("INST/procedures/checks.rb")
 ```
 
@@ -8009,18 +8012,18 @@ Runs a script in Script Runner. The script will run in the background and can be
 Note: In Enterprise, initialize_offline_access must have been called at least once for the user who calls this method.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-script_run("<Script Name>", disconnect: false, environment: nil, suite_runner: nil)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 script_run("<Script Name>", disconnect=False, environment=None, suite_runner=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+script_run("<Script Name>", disconnect: false, environment: nil, suite_runner: nil)
 ```
 
 </TabItem>
@@ -8034,17 +8037,6 @@ script_run("<Script Name>", disconnect=False, environment=None, suite_runner=Non
 | suite_runner | Hash / dict of suite runner options                                                                                 |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-id = script_run("INST/procedures/checks.rb", environment: { USER: 'JASON'})
-puts id
-id = script_run("INST/procedures/my_script_suite.rb", suite_runner: { suite: 'MySuite', group: 'ExampleGroup', script: 'script_2' })
-puts id
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -8052,6 +8044,17 @@ id = script_run("INST2/procedures/checks.py", environment={ 'USER': 'JASON'})
 print(id)
 id = script_run("INST2/procedures/my_script_suite.py", suite_runner={ 'suite': 'MySuite', 'group': 'ExampleGroup', 'script': 'script_2' })
 print(id)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+id = script_run("INST/procedures/checks.rb", environment: { USER: 'JASON'})
+puts id
+id = script_run("INST/procedures/my_script_suite.rb", suite_runner: { suite: 'MySuite', group: 'ExampleGroup', script: 'script_2' })
+puts id
 ```
 
 </TabItem>
@@ -8064,17 +8067,17 @@ print(id)
 Locks a script for editing. Subsequent users that open this script will get a warning that the script is currently locked.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 script_lock("<Script Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 script_lock("<Script Name>")
 ```
 
@@ -8086,17 +8089,17 @@ script_lock("<Script Name>")
 | Script Name | Full path name of the script starting with the target |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 script_lock("INST/procedures/checks.rb")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 script_lock("INST/procedures/checks.rb")
 ```
 
@@ -8110,17 +8113,17 @@ script_lock("INST/procedures/checks.rb")
 Unlocks a script for editing. If the script was not previously locked this does nothing.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 script_unlock("<Script Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 script_unlock("<Script Name>")
 ```
 
@@ -8132,17 +8135,17 @@ script_unlock("<Script Name>")
 | Script Name | Full path name of the script starting with the target |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 script_unlock("INST/procedures/checks.rb")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 script_unlock("INST/procedures/checks.rb")
 ```
 
@@ -8156,17 +8159,17 @@ script_unlock("INST/procedures/checks.rb")
 Performs a Ruby or Python syntax check on the given script.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 script_syntax_check("<Script Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 script_syntax_check("<Script Name>")
 ```
 
@@ -8178,20 +8181,20 @@ script_syntax_check("<Script Name>")
 | Script Name | Full path name of the script starting with the target |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-result = script_syntax_check("INST/procedures/checks.rb")
-puts result # => {"title"=>"Syntax Check Successful", "description"=>"[\"Syntax OK\\n\"]", "success"=>true}
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 result = script_syntax_check("INST2/procedures/checks.py")
 print(result) # => {'title': 'Syntax Check Successful', 'description': '["Syntax OK"]', 'success': True}
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+result = script_syntax_check("INST/procedures/checks.rb")
+puts result # => {"title"=>"Syntax Check Successful", "description"=>"[\"Syntax OK\\n\"]", "success"=>true}
 ```
 
 </TabItem>
@@ -8204,17 +8207,17 @@ print(result) # => {'title': 'Syntax Check Successful', 'description': '["Syntax
 Returns the instrumented script which allows COSMOS Script Runner to monitor the execution and provide line by line visualization. This is primarily a low level debugging method used by COSMOS developers.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 script_instrumented("<Script Name>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 script_instrumented("<Script Name>")
 ```
 
@@ -8226,20 +8229,20 @@ script_instrumented("<Script Name>")
 | Script Name | Full path name of the script starting with the target |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-script = script_instrumented("INST/procedures/checks.rb")
-puts script # => private; __return_val = nil; begin; RunningScript.instance.script_binding = binding(); ...
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 script = script_instrumented("INST2/procedures/checks.py")
 print(script) # => while True:\ntry:\nRunningScript.instance.pre_line_instrumentation ...
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+script = script_instrumented("INST/procedures/checks.rb")
+puts script # => private; __return_val = nil; begin; RunningScript.instance.script_binding = binding(); ...
 ```
 
 </TabItem>
@@ -8252,17 +8255,17 @@ print(script) # => while True:\ntry:\nRunningScript.instance.pre_line_instrument
 Delete _all_ breakpoints associated with _all_ scripts.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 script_delete_all_breakpoints()
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 script_delete_all_breakpoints()
 ```
 
@@ -8276,17 +8279,17 @@ script_delete_all_breakpoints()
 Places ScriptRunner into step mode where Go must be hit to proceed to the next line.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 step_mode()
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 step_mode()
 ```
 
@@ -8300,17 +8303,17 @@ step_mode()
 Places ScriptRunner into run mode where the next line is run automatically.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 run_mode()
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 run_mode()
 ```
 
@@ -8324,17 +8327,17 @@ run_mode()
 Puts scripting into disconnect mode. In disconnect mode, commands are not sent to targets, checks are all successful, and waits expire instantly. Requests for telemetry (tlm()) typically return 0. Disconnect mode is useful for dry-running scripts without having connected targets.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 disconnect_script()
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 disconnect_script()
 ```
 
@@ -8348,18 +8351,18 @@ disconnect_script()
 List the currently running scripts. Note, this will also include the script which is calling this method. Thus the list will never be empty but will always contain at least 1 item. Returns an array of hashes / list of dicts (see [script_get](#script_get) for hash / dict contents).
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-running_script_list(limit: <limit>, offset: <offset>)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 running_script_list(limit = <limit>, offset = <offset>)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+running_script_list(limit: <limit>, offset: <offset>)
 ```
 
 </TabItem>
@@ -8371,18 +8374,18 @@ running_script_list(limit = <limit>, offset = <offset>)
 | offset    | Offset into list to return (default 0) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-running_script_list(limit: 20, offset: 10) # => [{"name"=>"293", "state"=>"waiting", "shard"=>0, "filename"=>"INST/procedures/collect.rb", "current_filename"=>"INST/procedures/collect.rb", "line_no"=>4, "start_line_no"=>1, "end_line_no"=>nil, "username"=>"anonymous", "user_full_name"=>"Anonymous", "start_time"=>"2025-05-03T04:26:50Z", "end_time"=>nil, "disconnect"=>false, "environment"=>"{}", "suite_runner"=>nil, "errors"=>nil, "pid"=>414, "log"=>nil, "report"=>nil, "updated_at"=>1746246411160414638, "scope"=>"DEFAULT"}]
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 running_script_list(limit = 20, offset = 10) # =>  [{'name': '372', 'state': 'spawning', 'shard': 0, 'filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'current_filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'line_no': 0, 'start_line_no': 1, 'end_line_no': None, 'username': 'anonymous', 'user_full_name': 'Anonymous', 'start_time': '2025-05-03T14:34:11Z', 'end_time': None, 'disconnect': False, 'environment': '{}', 'suite_runner': None, 'errors': None, 'pid': None, 'log': None, 'report': None, 'updated_at': 1746282851410918174, 'scope': 'DEFAULT'}]
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+running_script_list(limit: 20, offset: 10) # => [{"name"=>"293", "state"=>"waiting", "shard"=>0, "filename"=>"INST/procedures/collect.rb", "current_filename"=>"INST/procedures/collect.rb", "line_no"=>4, "start_line_no"=>1, "end_line_no"=>nil, "username"=>"anonymous", "user_full_name"=>"Anonymous", "start_time"=>"2025-05-03T04:26:50Z", "end_time"=>nil, "disconnect"=>false, "environment"=>"{}", "suite_runner"=>nil, "errors"=>nil, "pid"=>414, "log"=>nil, "report"=>nil, "updated_at"=>1746246411160414638, "scope"=>"DEFAULT"}]
 ```
 
 </TabItem>
@@ -8410,17 +8413,17 @@ Possible script states:
 - killed - Forcefully killed
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 script_get("<Script Id>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 script_get("<Script Id>")
 ```
 
@@ -8432,18 +8435,18 @@ script_get("<Script Id>")
 | Script Id | Script ID returned by [script_run](#script_run) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-script_get(15) # => {"name"=>"293", "state"=>"waiting", "shard"=>0, "filename"=>"INST/procedures/collect.rb", "current_filename"=>"INST/procedures/collect.rb", "line_no"=>4, "start_line_no"=>1, "end_line_no"=>nil, "username"=>"anonymous", "user_full_name"=>"Anonymous", "start_time"=>"2025-05-03T04:26:50Z", "end_time"=>nil, "disconnect"=>false, "environment"=>"{}", "suite_runner"=>nil, "errors"=>nil, "pid"=>414, "log"=>nil, "report"=>nil, "updated_at"=>1746246411160414638, "scope"=>"DEFAULT"}
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 script_get(15) # => {'name': '372', 'state': 'spawning', 'shard': 0, 'filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'current_filename': '__TEMP__/2025_05_02_22_38_53_386_temp.py', 'line_no': 0, 'start_line_no': 1, 'end_line_no': None, 'username': 'anonymous', 'user_full_name': 'Anonymous', 'start_time': '2025-05-03T14:34:11Z', 'end_time': None, 'disconnect': False, 'environment': '{}', 'suite_runner': None, 'errors': None, 'pid': None, 'log': None, 'report': None, 'updated_at': 1746282851410918174, 'scope': 'DEFAULT'}
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+script_get(15) # => {"name"=>"293", "state"=>"waiting", "shard"=>0, "filename"=>"INST/procedures/collect.rb", "current_filename"=>"INST/procedures/collect.rb", "line_no"=>4, "start_line_no"=>1, "end_line_no"=>nil, "username"=>"anonymous", "user_full_name"=>"Anonymous", "start_time"=>"2025-05-03T04:26:50Z", "end_time"=>nil, "disconnect"=>false, "environment"=>"{}", "suite_runner"=>nil, "errors"=>nil, "pid"=>414, "log"=>nil, "report"=>nil, "updated_at"=>1746246411160414638, "scope"=>"DEFAULT"}
 ```
 
 </TabItem>
@@ -8456,17 +8459,17 @@ script_get(15) # => {'name': '372', 'state': 'spawning', 'shard': 0, 'filename':
 Stop the running script with the specified ID. This is equivalent to clicking the Stop button in the Script Runner GUI.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 running_script_stop("<Script Id>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 running_script_stop("<Script Id>")
 ```
 
@@ -8478,17 +8481,17 @@ running_script_stop("<Script Id>")
 | Script Id | Script ID returned by [script_run](#script_run) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 running_script_stop(15)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 running_script_stop(15)
 ```
 
@@ -8502,17 +8505,17 @@ running_script_stop(15)
 Pause the running script with the specified ID. This is equivalent to clicking the Pause button in the Script Runner GUI.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 running_script_pause("<Script Id>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 running_script_pause("<Script Id>")
 ```
 
@@ -8524,17 +8527,17 @@ running_script_pause("<Script Id>")
 | Script Id | Script ID returned by [script_run](#script_run) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 running_script_pause(15)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 running_script_pause(15)
 ```
 
@@ -8548,17 +8551,17 @@ running_script_pause(15)
 Retry the current line of the running script with the specified ID. This is equivalent to clicking the Retry button in the Script Runner GUI.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 running_script_retry("<Script Id>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 running_script_retry("<Script Id>")
 ```
 
@@ -8570,17 +8573,17 @@ running_script_retry("<Script Id>")
 | Script Id | Script ID returned by [script_run](#script_run) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 running_script_retry(15)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 running_script_retry(15)
 ```
 
@@ -8594,17 +8597,17 @@ running_script_retry(15)
 Unpause the running script with the specified ID. This is equivalent to clicking the Go button in the Script Runner GUI.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 running_script_go("<Script Id>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 running_script_go("<Script Id>")
 ```
 
@@ -8616,17 +8619,17 @@ running_script_go("<Script Id>")
 | Script Id | Script ID returned by [script_run](#script_run) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 running_script_go(15)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 running_script_go(15)
 ```
 
@@ -8640,17 +8643,17 @@ running_script_go(15)
 Perform a goto or execute selection on a running script.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 running_script_execute_while_paused("<Script Id>", "<Script File Path>", <Start Line Number>, <End Line Number>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 running_script_execute_while_paused("<Script Id>", "<Script File Path>", <Start Line Number>, <End Line Number>)
 ```
 
@@ -8665,9 +8668,9 @@ running_script_execute_while_paused("<Script Id>", "<Script File Path>", <Start 
 | End Line Number   | Optional - Line Number to End At. If given then execute selection, else goto. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 # Execute Selection
 running_script_execute_while_paused("23", "INST/procedures/myprocedure.rb", 2, 4)
 # Goto
@@ -8676,9 +8679,9 @@ running_script_execute_while_paused("33", "INST2/procedures/collect.py", 7)
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 # Execute Selection
 running_script_execute_while_paused("23", "INST/procedures/myprocedure.rb", 2, 4)
 # Goto
@@ -8695,17 +8698,17 @@ running_script_execute_while_paused("33", "INST2/procedures/collect.py", 7)
 Step the running script with the specified ID. This is equivalent to clicking the Step button in the Script Runner GUI's Debug window.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 running_script_step("<Script Id>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 running_script_step("<Script Id>")
 ```
 
@@ -8717,17 +8720,17 @@ running_script_step("<Script Id>")
 | Script Id | Script ID returned by [script_run](#script_run) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 running_script_step(15)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 running_script_step(15)
 ```
 
@@ -8741,17 +8744,17 @@ running_script_step(15)
 Force quit the running script with the specified ID. This is equivalent to clicking the Delete button under the Running Scripts in the Script Runner GUI's Script -> Execution Status pane. Note, the 'stop' signal is first sent to the specified script and then the script is forcibly removed. Normally you should use the [running_script_stop](#running_script_stop) method.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 running_script_delete("<Script Id>")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 running_script_delete("<Script Id>")
 ```
 
@@ -8763,17 +8766,17 @@ running_script_delete("<Script Id>")
 | Script Id | Script ID returned by [script_run](#script_run) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 running_script_delete(15)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 running_script_delete(15)
 ```
 
@@ -8787,18 +8790,18 @@ running_script_delete(15)
 List the completed scripts. Returns an array of hashes / list of dicts containing the id, username, script name, script log, and start time.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-completed_script_list(limit: <limit>, offset: <offset>)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 completed_script_list(limit = <limit>, offset = <offset>)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+completed_script_list(limit: <limit>, offset: <offset>)
 ```
 
 </TabItem>
@@ -8810,18 +8813,18 @@ completed_script_list(limit = <limit>, offset = <offset>)
 | offset    | Offset into list to return (default 0) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-completed_script_list(limit: 10, offset: 0) # => [{"id"=>"15", "user"=>"Anonymous", "name"=>"__TEMP__/2025_01_15_17_07_51_568_temp.rb", "log"=>"DEFAULT/tool_logs/sr/20250116/2025_01_16_00_28_43_sr_2025_01_15_17_07_51_568_temp.txt", "start"=>"2025-01-16 00:28:43 +0000"}, ...]
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 completed_script_list(limit = 10, offset = 0) # => [{'id': 16, 'user': 'Anonymous', 'name': 'INST2/procedures/new_script.py', 'log': 'DEFAULT/tool_logs/sr/20250116/2025_01_16_17_46_22_sr_new_script.txt', 'start': '2025-01-16 17:46:22 +0000'}, ...]
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+completed_script_list(limit: 10, offset: 0) # => [{"id"=>"15", "user"=>"Anonymous", "name"=>"__TEMP__/2025_01_15_17_07_51_568_temp.rb", "log"=>"DEFAULT/tool_logs/sr/20250116/2025_01_16_00_28_43_sr_2025_01_15_17_07_51_568_temp.txt", "start"=>"2025-01-16 00:28:43 +0000"}, ...]
 ```
 
 </TabItem>
@@ -8838,17 +8841,17 @@ These methods allow the user to control various Script Runner settings.
 This method sets the line delay in script runner.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 set_line_delay(<Delay>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 set_line_delay(<Delay>)
 ```
 
@@ -8860,17 +8863,17 @@ set_line_delay(<Delay>)
 | Delay     | The amount of time script runner will wait between lines when executing a script, in seconds. Should be ≥ 0.0 |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 set_line_delay(0.0)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 set_line_delay(0.0)
 ```
 
@@ -8884,17 +8887,17 @@ set_line_delay(0.0)
 The method gets the line delay that script runner is currently using.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 curr_line_delay = get_line_delay()
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 curr_line_delay = get_line_delay()
 ```
 
@@ -8908,17 +8911,17 @@ curr_line_delay = get_line_delay()
 This method sets the maximum number of characters to display in Script Runner output before truncating. Default is 50,000 characters.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 set_max_output(<Characters>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 set_max_output(<Characters>)
 ```
 
@@ -8930,17 +8933,17 @@ set_max_output(<Characters>)
 | Characters | Number of characters to output before truncating |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 set_max_output(100)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 set_max_output(100)
 ```
 
@@ -8954,18 +8957,18 @@ set_max_output(100)
 The method gets the maximum number of characters to display in Script Runner output before truncating. Default is 50,000 characters.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-puts get_max_output() # => 50000
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 print(get_max_output()) # => 50000
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+puts get_max_output() # => 50000
 ```
 
 </TabItem>
@@ -8983,6 +8986,17 @@ Disabling instrumentation will cause any error that occurs while disabled to cau
 :::
 
 <Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+with disable_instrumentation():
+    for x in range(1000):
+        # Don't want this to have to highlight 1000 times
+        pass
+```
+
+</TabItem>
+
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
@@ -8991,17 +9005,6 @@ disable_instrumentation do
     # Don't want this to have to highlight 1000 times
   end
 end
-```
-
-</TabItem>
-
-<TabItem value="python" label="Python Example">
-
-```python
-with disable_instrumentation():
-    for x in range(1000):
-        # Don't want this to have to highlight 1000 times
-        pass
 ```
 
 </TabItem>
@@ -9018,9 +9021,9 @@ Creating Script Runner suites utilizes APIs to add groups to the defined suites.
 Adds a group's methods to the suite. The add_group method adds all the group methods including setup, teardown, and all the methods starting with 'script\_' or 'test\_'. The add_group_setup method adds just the setup method defined in the group class. The add_group_teardown method adds just the teardown method defined in the group class. The add_script method adds an individual method to the suite. NOTE: add_script can add any method including those not named with 'script\_' or 'test\_'.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 add_group(<Group Class>)
 add_group_setup(<Group Class>)
 add_group_teardown(<Group Class>)
@@ -9029,9 +9032,9 @@ add_script(<Group Class>, <Method>)
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 add_group(<Group Class>)
 add_group_setup(<Group Class>)
 add_group_teardown(<Group Class>)
@@ -9047,6 +9050,37 @@ add_script(<Group Class>, <Method>)
 | Method      | Name of the method in the OpenC3 Group class. The Ruby API passes a String with the name of the method. The Python API passes the Group class directly.                                   |
 
 <Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+from openc3.script import *
+from openc3.script.suite import Group, Suite
+
+class ExampleGroup(Group):
+    def script_1(self):
+        # Insert test code here ...
+        pass
+class WrapperGroup(Group):
+    def setup(self):
+        # Insert test code here ...
+        pass
+    def my_method(self):
+        # Insert test code here ...
+        pass
+    def teardown(self):
+        # Insert test code here ...
+        pass
+class MySuite(Suite):
+    def __init__(self):
+        super().__init__()
+        self.add_group(ExampleGroup)
+        self.add_group_setup(WrapperGroup)
+        self.add_script(WrapperGroup, 'my_method')
+        self.add_group_teardown(WrapperGroup)
+```
+
+</TabItem>
+
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
@@ -9081,37 +9115,6 @@ end
 ```
 
 </TabItem>
-
-<TabItem value="python" label="Python Example">
-
-```python
-from openc3.script import *
-from openc3.script.suite import Group, Suite
-
-class ExampleGroup(Group):
-    def script_1(self):
-        # Insert test code here ...
-        pass
-class WrapperGroup(Group):
-    def setup(self):
-        # Insert test code here ...
-        pass
-    def my_method(self):
-        # Insert test code here ...
-        pass
-    def teardown(self):
-        # Insert test code here ...
-        pass
-class MySuite(Suite):
-    def __init__(self):
-        super().__init__()
-        self.add_group(ExampleGroup)
-        self.add_group_setup(WrapperGroup)
-        self.add_script(WrapperGroup, 'my_method')
-        self.add_group_teardown(WrapperGroup)
-```
-
-</TabItem>
 </Tabs>
 
 ## Timelines
@@ -9125,20 +9128,20 @@ The Timelines API allows you to manipulate Calendar timelines. Calendar is a COS
 Returns all the timelines in an array of hashes / list of dicts.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-timelines = list_timelines() # =>
-# [{"name"=>"Mine", "color"=>"#e67643", "execute"=>true, "shard"=>0, "scope"=>"DEFAULT", "updated_at"=>1737124024123643504}]
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 timelihes = list_timelines() # =>
 # [{'name': 'Mine', 'color': '#e67643', 'execute': True, 'shard': 0, 'scope': 'DEFAULT', 'updated_at': 1737124024123643504}]
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+timelines = list_timelines() # =>
+# [{"name"=>"Mine", "color"=>"#e67643", "execute"=>true, "shard"=>0, "scope"=>"DEFAULT", "updated_at"=>1737124024123643504}]
 ```
 
 </TabItem>
@@ -9151,18 +9154,18 @@ timelihes = list_timelines() # =>
 Create a new timeline in Calendar which can hold activities.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-create_timeline(name, color: nil)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 create_timeline(name, color=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+create_timeline(name, color: nil)
 ```
 
 </TabItem>
@@ -9174,20 +9177,20 @@ create_timeline(name, color=None)
 | color     | Color of the timeline. Must be given as a hex value, e.g. #FF0000. Default is a random color. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-tl = create_timeline("Mine") # =>
-# {"name"=>"Mine", "color"=>"#e67643", "execute"=>true, "shard"=>0, "scope"=>"DEFAULT", "updated_at"=>1737124024123643504}
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 tl = create_timeline("Other", color="#FF0000") # =>
 # {'name': 'Other', 'color': '#FF0000', 'execute': True, 'shard': 0, 'scope': 'DEFAULT', 'updated_at': 1737126348971941923}
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+tl = create_timeline("Mine") # =>
+# {"name"=>"Mine", "color"=>"#e67643", "execute"=>true, "shard"=>0, "scope"=>"DEFAULT", "updated_at"=>1737124024123643504}
 ```
 
 </TabItem>
@@ -9200,17 +9203,17 @@ tl = create_timeline("Other", color="#FF0000") # =>
 Get information about an existing timeline.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_timeline(name)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_timeline(name)
 ```
 
@@ -9222,20 +9225,20 @@ get_timeline(name)
 | name      | Name of the timeline |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-tl = get_timeline("Mine") # =>
-# {"name"=>"Mine", "color"=>"#e67643", "execute"=>true, "shard"=>0, "scope"=>"DEFAULT", "updated_at"=>1737124024123643504}
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 tl = get_timeline("Other") # =>
 # {'name': 'Other', 'color': '#FF0000', 'execute': True, 'shard': 0, 'scope': 'DEFAULT', 'updated_at': 1737126348971941923}
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+tl = get_timeline("Mine") # =>
+# {"name"=>"Mine", "color"=>"#e67643", "execute"=>true, "shard"=>0, "scope"=>"DEFAULT", "updated_at"=>1737124024123643504}
 ```
 
 </TabItem>
@@ -9248,17 +9251,17 @@ tl = get_timeline("Other") # =>
 Set the displayed color for an existing timeline.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 set_timeline_color(name, color)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 set_timeline_color(name, color)
 ```
 
@@ -9271,17 +9274,17 @@ set_timeline_color(name, color)
 | color     | Color of the timeline. Must be given as a hex value, e.g. #FF0000. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 set_timeline_color("Mine", "#4287f5")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 set_timeline_color("Mine", "#4287f5")
 ```
 
@@ -9295,18 +9298,18 @@ set_timeline_color("Mine", "#4287f5")
 Delete an existing timeline. Timelines with activities can only be deleted by passing force = true.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-delete_timeline(name, force: false)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 delete_timeline(name, force=False)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+delete_timeline(name, force: false)
 ```
 
 </TabItem>
@@ -9318,18 +9321,18 @@ delete_timeline(name, force=False)
 | force     | Whether to delete the timeline if it has activities. Default is false. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-delete_timeline("Mine", force: true)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 delete_timeline("Other", force=True)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+delete_timeline("Mine", force: true)
 ```
 
 </TabItem>
@@ -9342,18 +9345,18 @@ delete_timeline("Other", force=True)
 Create an activity on an existing timeline. Activities can be one of COMMAND, SCRIPT, or RESERVE. Activities have a start and stop time and commands and scripts take data on the command or script to execute.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-create_timeline_activity(name, kind:, start:, stop:, data: {})
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 create_timeline_activity(name, kind, start, stop, data={})
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+create_timeline_activity(name, kind:, start:, stop:, data: {})
 ```
 
 </TabItem>
@@ -9380,33 +9383,6 @@ create_timeline_activity(name, kind, start, stop, data={})
 | environment | Array of environment variable key/value pairs to set for SCRIPT type activities, e.g. `[{key: "USER", value: "JASON"}]`                                                |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-now = Time.now()
-start = now + 3600
-stop = start + 3600
-act = create_timeline_activity("RubyTL", kind: "RESERVE", start: start, stop: stop) # =>
-# { "name"=>"RubyTL", "updated_at"=>1737128705034982375, "start"=>1737132303, "stop"=>1737135903,
-#   "kind"=>"reserve", "data"=>{"username"=>"operator"},
-#   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"5f373846-eb6c-43cd-97bd-cca19a8ffb04",
-#   "events"=>[{"time"=>1737128705, "event"=>"created"}], "recurring"=>{}}
-act = create_timeline_activity("RubyTL", kind: "COMMAND", start: start, stop: stop,
-    data: {command: "INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10"}) # =>
-# { "name"=>"RubyTL", "updated_at"=>1737128761316084471, "start"=>1737132303, "stop"=>1737135903,
-#   "kind"=>"command", "data"=>{"command"=>"INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10", "username"=>"operator"},
-#   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"cdb661b4-a65b-44e7-95e2-5e1dba80c782",
-#   "events"=>[{"time"=>1737128761, "event"=>"created"}], "recurring"=>{}}
-act = create_timeline_activity("RubyTL", kind: "SCRIPT", start: start, stop: stop,
-  data: {environment: [{key: "USER", value: "JASON"}], script: "INST/procedures/checks.rb"}) # =>
-# { "name"=>"RubyTL", "updated_at"=>1737128791047885970, "start"=>1737135903, "stop"=>1737139503,
-#   "kind"=>"script", "data"=>{"environment"=>[{"key"=>"USER", "value"=>"JASON"}], "script"=>"INST/procedures/checks.rb", "username"=>"operator"},
-#   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"70426e3d-6313-4897-b159-6e5cd94ace1d",
-#   "events"=>[{"time"=>1737128791, "event"=>"created"}], "recurring"=>{}}
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -9435,6 +9411,33 @@ act = create_timeline_activity("PythonTL", kind="SCRIPT", start=start, stop=stop
 ```
 
 </TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+now = Time.now()
+start = now + 3600
+stop = start + 3600
+act = create_timeline_activity("RubyTL", kind: "RESERVE", start: start, stop: stop) # =>
+# { "name"=>"RubyTL", "updated_at"=>1737128705034982375, "start"=>1737132303, "stop"=>1737135903,
+#   "kind"=>"reserve", "data"=>{"username"=>"operator"},
+#   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"5f373846-eb6c-43cd-97bd-cca19a8ffb04",
+#   "events"=>[{"time"=>1737128705, "event"=>"created"}], "recurring"=>{}}
+act = create_timeline_activity("RubyTL", kind: "COMMAND", start: start, stop: stop,
+    data: {command: "INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10"}) # =>
+# { "name"=>"RubyTL", "updated_at"=>1737128761316084471, "start"=>1737132303, "stop"=>1737135903,
+#   "kind"=>"command", "data"=>{"command"=>"INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10", "username"=>"operator"},
+#   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"cdb661b4-a65b-44e7-95e2-5e1dba80c782",
+#   "events"=>[{"time"=>1737128761, "event"=>"created"}], "recurring"=>{}}
+act = create_timeline_activity("RubyTL", kind: "SCRIPT", start: start, stop: stop,
+  data: {environment: [{key: "USER", value: "JASON"}], script: "INST/procedures/checks.rb"}) # =>
+# { "name"=>"RubyTL", "updated_at"=>1737128791047885970, "start"=>1737135903, "stop"=>1737139503,
+#   "kind"=>"script", "data"=>{"environment"=>[{"key"=>"USER", "value"=>"JASON"}], "script"=>"INST/procedures/checks.rb", "username"=>"operator"},
+#   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"70426e3d-6313-4897-b159-6e5cd94ace1d",
+#   "events"=>[{"time"=>1737128791, "event"=>"created"}], "recurring"=>{}}
+```
+
+</TabItem>
 </Tabs>
 
 ### update_timeline_activity
@@ -9442,14 +9445,6 @@ act = create_timeline_activity("PythonTL", kind="SCRIPT", start=start, stop=stop
 Update an existing timeline activity. The activity is identified by its timeline name and current start time (id). All fields (kind, start, stop, data) are replaced with the provided values.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-update_timeline_activity(name, id:, kind:, start:, stop:, uuid:, data: {})
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
@@ -9457,43 +9452,28 @@ update_timeline_activity(name, id, kind, start, stop, uuid, data={})
 ```
 
 </TabItem>
-</Tabs>
 
-| Parameter | Description                                                                                                                                               |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| name      | Name of the timeline                                                                                                                                      |
-| id        | The current start time / score of the activity to update (integer, Unix seconds).                                                                         |
-| kind      | Type of the activity. One of COMMAND, SCRIPT, or RESERVE.                                                                                                 |
-| start     | New start time of the activity. Time / datetime instance.                                                                                                 |
-| stop      | New stop time of the activity. Time / datetime instance.                                                                                                  |
-| uuid      | UUID of the activity.                                                                                                                                     |
-| data      | Hash / dict of data for the activity. Default is empty hash / dict. Valid keys are described [above](#create_timeline_activity-data-parameter).            |
-| scope     | Scope of the activity. Must be the containing scope of the timeline specified by the `name` parameter.    |
-
-<Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-# First create an activity
-now = Time.now()
-start = now + 3600
-stop = start + 3600
-act = create_timeline_activity("RubyTL", kind: "COMMAND", start: start, stop: stop,
-  data: {command: "INST COLLECT with TYPE NORMAL, DURATION 5"})
-
-# Update the activity with a new custom title, notes, and extended stop time
-new_stop = stop + 1800
-updated = update_timeline_activity("RubyTL",
-  id: act['start'],
-  kind: "COMMAND", start: start, stop: new_stop,
-  uuid: act['uuid'],
-  data: {command: "INST COLLECT with TYPE NORMAL, DURATION 10",
-         customTitle: "Extended Collection",
-         notes: "Duration extended per ops request"})
+update_timeline_activity(name, id:, kind:, start:, stop:, uuid:, data: {})
 ```
 
 </TabItem>
+</Tabs>
 
+| Parameter | Description                                                                                                                                     |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| name      | Name of the timeline                                                                                                                            |
+| id        | The current start time / score of the activity to update (integer, Unix seconds).                                                               |
+| kind      | Type of the activity. One of COMMAND, SCRIPT, or RESERVE.                                                                                       |
+| start     | New start time of the activity. Time / datetime instance.                                                                                       |
+| stop      | New stop time of the activity. Time / datetime instance.                                                                                        |
+| uuid      | UUID of the activity.                                                                                                                           |
+| data      | Hash / dict of data for the activity. Default is empty hash / dict. Valid keys are described [above](#create_timeline_activity-data-parameter). |
+| scope     | Scope of the activity. Must be the containing scope of the timeline specified by the `name` parameter.                                          |
+
+<Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -9516,6 +9496,29 @@ updated = update_timeline_activity("PythonTL",
 ```
 
 </TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+# First create an activity
+now = Time.now()
+start = now + 3600
+stop = start + 3600
+act = create_timeline_activity("RubyTL", kind: "COMMAND", start: start, stop: stop,
+  data: {command: "INST COLLECT with TYPE NORMAL, DURATION 5"})
+
+# Update the activity with a new custom title, notes, and extended stop time
+new_stop = stop + 1800
+updated = update_timeline_activity("RubyTL",
+  id: act['start'],
+  kind: "COMMAND", start: start, stop: new_stop,
+  uuid: act['uuid'],
+  data: {command: "INST COLLECT with TYPE NORMAL, DURATION 10",
+         customTitle: "Extended Collection",
+         notes: "Duration extended per ops request"})
+```
+
+</TabItem>
 </Tabs>
 
 ### get_timeline_activity
@@ -9525,17 +9528,17 @@ updated = update_timeline_activity("PythonTL",
 Get an existing timeline activity.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_timeline_activity(name, start, uuid)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_timeline_activity(name, start, uuid)
 ```
 
@@ -9549,18 +9552,6 @@ get_timeline_activity(name, start, uuid)
 | uuid      | UUID of the activity                                  |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-act = get_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782") # =>
-# { "name"=>"RubyTL", "updated_at"=>1737128761316084471, "start"=>1737132303, "stop"=>1737135903,
-#   "kind"=>"command", "data"=>{"command"=>"INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10", "username"=>"operator"},
-#   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"cdb661b4-a65b-44e7-95e2-5e1dba80c782",
-#   "events"=>[{"time"=>1737128761, "event"=>"created"}], "recurring"=>{}}
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -9569,6 +9560,18 @@ act = get_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-265
 #  'kind': 'command', 'data': {'command': 'INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10', 'username': 'operator'},
 #  'scope': 'DEFAULT', 'fulfillment': False, 'uuid': 'cddbf034-ccdd-4c36-91c2-2653a39b06a5',
 #  'events': [{'time': 1737129508, 'event': 'created'}], 'recurring': {}}
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+act = get_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782") # =>
+# { "name"=>"RubyTL", "updated_at"=>1737128761316084471, "start"=>1737132303, "stop"=>1737135903,
+#   "kind"=>"command", "data"=>{"command"=>"INST COLLECT with TYPE NORMAL, DURATION 5, TEMP 10", "username"=>"operator"},
+#   "scope"=>"DEFAULT", "fulfillment"=>false, "uuid"=>"cdb661b4-a65b-44e7-95e2-5e1dba80c782",
+#   "events"=>[{"time"=>1737128761, "event"=>"created"}], "recurring"=>{}}
 ```
 
 </TabItem>
@@ -9581,18 +9584,18 @@ act = get_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-265
 Get a range of timeline activities between start and stop time. If called without a start / stop time it defaults to 1 week before "now" up to 1 week from "now" (2 weeks total).
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-get_timeline_activities(name, start: nil, stop: nil, limit: nil)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 get_timeline_activities(name, start=None, stop=None, limit=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+get_timeline_activities(name, start: nil, stop: nil, limit: nil)
 ```
 
 </TabItem>
@@ -9606,21 +9609,21 @@ get_timeline_activities(name, start=None, stop=None, limit=None)
 | limit     | Maximum number of activities to return. Default is 1 per minute of the time range.  |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-acts = get_timeline_activities("RubyTL", start: Time.now() - 3600, stop: Time.now(), limit: 1000) # =>
-# [{ "name"=>"RubyTL", ... }, { "name"=>"RubyTL", ... }]
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 now = datetime.now(timezone.utc)
 acts = get_timeline_activities("PythonTL", start=now - timedelta(hours=2), stop=now, limit=1000) # =>
 # [{ "name"=>"PythonTL", ... }, { "name"=>"PythonTL", ... }]
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+acts = get_timeline_activities("RubyTL", start: Time.now() - 3600, stop: Time.now(), limit: 1000) # =>
+# [{ "name"=>"RubyTL", ... }, { "name"=>"RubyTL", ... }]
 ```
 
 </TabItem>
@@ -9633,17 +9636,17 @@ acts = get_timeline_activities("PythonTL", start=now - timedelta(hours=2), stop=
 Delete an existing timeline activity.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 delete_timeline_activity(name, start, uuid)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 delete_timeline_activity(name, start, uuid)
 ```
 
@@ -9657,18 +9660,18 @@ delete_timeline_activity(name, start, uuid)
 | uuid      | UUID of the activity                                  |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-delete_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782")
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 delete_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a39b06a5")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+delete_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782")
 ```
 
 </TabItem>
@@ -9685,17 +9688,17 @@ Metadata allows you to mark the regular target / packet data logged in COSMOS wi
 Returns all the metadata that was previously set
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 metadata_all()
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 metadata_all()
 ```
 
@@ -9707,18 +9710,18 @@ metadata_all()
 | limit     | Amount of metadata items to return. Default is 100. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-metadata_all(limit: 500)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 metadata_all(limit='500')
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+metadata_all(limit: 500)
 ```
 
 </TabItem>
@@ -9731,17 +9734,17 @@ metadata_all(limit='500')
 Returns metadata that was previously set
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 metadata_get(start)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 metadata_get(start)
 ```
 
@@ -9753,18 +9756,18 @@ metadata_get(start)
 | start     | Named parameter, time at which to retrieve metadata as integer seconds from epoch |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-metadata_get(start: 500)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 metadata_get(start='500')
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+metadata_get(start: 500)
 ```
 
 </TabItem>
@@ -9777,17 +9780,17 @@ metadata_get(start='500')
 Sets metadata which appears on the Calendar and can be retried by metadata_get.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 metadata_set(<Metadata>, start, color)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 metadata_set(<Metadata>, start, color)
 ```
 
@@ -9801,20 +9804,20 @@ metadata_set(<Metadata>, start, color)
 | color     | Named parameter, color to display metadata in the calendar. Default is #003784. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-metadata_set({ 'key' => 'value' })
-metadata_set({ 'key' => 'value' }, color: '#ff5252')
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 metadata_set({ 'key': 'value' })
 metadata_set({ 'key': 'value' }, color='ff5252')
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+metadata_set({ 'key' => 'value' })
+metadata_set({ 'key' => 'value' }, color: '#ff5252')
 ```
 
 </TabItem>
@@ -9827,17 +9830,17 @@ metadata_set({ 'key': 'value' }, color='ff5252')
 Updates metadata that was previously set
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 metadata_update(<Metadata>, start, color)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 metadata_update(<Metadata>, start, color)
 ```
 
@@ -9851,18 +9854,18 @@ metadata_update(<Metadata>, start, color)
 | color     | Named parameter, color to display metadata in the calendar. Default is #003784. |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-metadata_update({ 'key' => 'value' })
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 metadata_update({ 'key': 'value' })
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+metadata_update({ 'key' => 'value' })
 ```
 
 </TabItem>
@@ -9875,17 +9878,17 @@ metadata_update({ 'key': 'value' })
 Prompts the user to set existing metadata values or create new a new one.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 metadata_input()
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 metadata_input()
 ```
 
@@ -9903,18 +9906,18 @@ COSMOS has several settings typically accessed through the Admin Settings tab. T
 Return all the current COSMOS setting name. These are the names that should be used in the other APIs.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-puts list_settings() # => ["pypi_url", "rubygems_url", "source_url", "version"]
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 print(list_settings()) # => ['pypi_url', 'rubygems_url', 'source_url', 'version']
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+puts list_settings() # => ["pypi_url", "rubygems_url", "source_url", "version"]
 ```
 
 </TabItem>
@@ -9927,18 +9930,6 @@ print(list_settings()) # => ['pypi_url', 'rubygems_url', 'source_url', 'version'
 Return all the current COSMOS settings along with their values.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-settings = get_all_settings() # =>
-# { "version"=>{"name"=>"version", "data"=>"5.11.4-beta0", "updated_at"=>1698074299509456507},
-#   "pypi_url"=>{"name"=>"pypi_url", "data"=>"https://pypi.org/simple", "updated_at"=>1698026776574347007},
-#   "rubygems_url"=>{"name"=>"rubygems_url", "data"=>"https://rubygems.org", "updated_at"=>1698026776574105465},
-#   "source_url"=>{"name"=>"source_url", "data"=>"https://github.com/OpenC3/cosmos", "updated_at"=>1698026776573904132} }
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -9947,6 +9938,18 @@ settings = get_all_settings() # =>
 #   'pypi_url': {'name': 'pypi_url', 'data': 'https://pypi.org/simple', 'updated_at': 1698026776574347007},
 #   'rubygems_url': {'name': 'rubygems_url', 'data': 'https://rubygems.org', 'updated_at': 1698026776574105465},
 #   'source_url': {'name': 'source_url', 'data': 'https://github.com/OpenC3/cosmos', 'updated_at': 1698026776573904132} }
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+settings = get_all_settings() # =>
+# { "version"=>{"name"=>"version", "data"=>"5.11.4-beta0", "updated_at"=>1698074299509456507},
+#   "pypi_url"=>{"name"=>"pypi_url", "data"=>"https://pypi.org/simple", "updated_at"=>1698026776574347007},
+#   "rubygems_url"=>{"name"=>"rubygems_url", "data"=>"https://rubygems.org", "updated_at"=>1698026776574105465},
+#   "source_url"=>{"name"=>"source_url", "data"=>"https://github.com/OpenC3/cosmos", "updated_at"=>1698026776573904132} }
 ```
 
 </TabItem>
@@ -9959,18 +9962,18 @@ settings = get_all_settings() # =>
 Return the data from the given COSMOS setting. Returns nil (Ruby) or None (Python) if the setting does not exist.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 get_setting(<Setting Name>)
 get_settings(<Setting Name1>, <Setting Name2>, ...)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 get_setting(<Setting Name>)
 get_settings(<Setting Name1>, <Setting Name2>, ...)
 ```
@@ -9983,20 +9986,20 @@ get_settings(<Setting Name1>, <Setting Name2>, ...)
 | Setting Name | Name of the setting to return |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-setting = get_setting('version') # => "5.11.4-beta0"
-setting = get_settings('version', 'rubygems_url') # => ["5.11.4-beta0", "https://rubygems.org"]
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 setting = get_setting('version') # => '5.11.4-beta0'
 setting = get_setting('version', 'rubygems_url') # => ['5.11.4-beta0', 'https://rubygems.org']
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+setting = get_setting('version') # => "5.11.4-beta0"
+setting = get_settings('version', 'rubygems_url') # => ["5.11.4-beta0", "https://rubygems.org"]
 ```
 
 </TabItem>
@@ -10013,17 +10016,17 @@ This API is only accessible externally (not within Script Runner) and requires t
 :::
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 set_setting(<Setting Name>, <Setting Value>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 set_setting(<Setting Name>, <Setting Value>)
 ```
 
@@ -10036,18 +10039,18 @@ set_setting(<Setting Name>, <Setting Value>)
 | Setting Value | Setting value to set          |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-set_setting('rubygems_url', 'https://mygemserver')
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 set_setting('pypi_url', 'https://mypypiserver')
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+set_setting('rubygems_url', 'https://mygemserver')
 ```
 
 </TabItem>
@@ -10064,18 +10067,18 @@ Many COSMOS tools have the ability to load and save a configuration. These APIs 
 List all the configuration tool names which are used as the first parameter in the other APIs.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-names = config_tool_names() # => ["telemetry_grapher", "data_viewer"]
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 names = config_tool_names() # => ['telemetry_grapher', 'data_viewer']
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+names = config_tool_names() # => ["telemetry_grapher", "data_viewer"]
 ```
 
 </TabItem>
@@ -10088,17 +10091,17 @@ names = config_tool_names() # => ['telemetry_grapher', 'data_viewer']
 List all the saved configuration names under the given tool name.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 list_configs(<Tool Name>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 list_configs(<Tool Name>)
 ```
 
@@ -10110,17 +10113,17 @@ list_configs(<Tool Name>)
 | Tool Name | Name of the tool to retrieve configuration names from |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 configs = list_configs('telemetry_grapher') # => ['adcs', 'temps']
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 configs = list_configs('telemetry_grapher') # => ['adcs', 'temps']
 ```
 
@@ -10138,17 +10141,17 @@ Tool configurations are not fully documented and subject to change between relea
 :::
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 load_config(<Tool Name>, <Configuration Name>)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 load_config(<Tool Name>, <Configuration Name>)
 ```
 
@@ -10161,9 +10164,9 @@ load_config(<Tool Name>, <Configuration Name>)
 | Configuration Name | Name of the configuration |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 config = load_config('telemetry_grapher', 'adcs') # =>
 # [ {
 #   "items": [
@@ -10176,9 +10179,9 @@ config = load_config('telemetry_grapher', 'adcs') # =>
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 config = load_config('telemetry_grapher', 'adcs') # =>
 # [ {
 #   "items": [
@@ -10199,17 +10202,17 @@ config = load_config('telemetry_grapher', 'adcs') # =>
 Save a particular tool configuration.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 save_config(<Tool Name>, <Configuration Name>, local_mode)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 save_config(<Tool Name>, <Configuration Name>, local_mode)
 ```
 
@@ -10223,17 +10226,17 @@ save_config(<Tool Name>, <Configuration Name>, local_mode)
 | local_mode         | Whether to save the configuration in local mode |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 save_config('telemetry_grapher', 'adcs', config)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 save_config('telemetry_grapher', 'adcs', config)
 ```
 
@@ -10247,17 +10250,17 @@ save_config('telemetry_grapher', 'adcs', config)
 Delete a particular tool configuration.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 delete_config(<Tool Name>, <Configuration Name>, local_mode)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 delete_config(<Tool Name>, <Configuration Name>, local_mode)
 ```
 
@@ -10271,17 +10274,17 @@ delete_config(<Tool Name>, <Configuration Name>, local_mode)
 | local_mode         | Whether to delete the configuration in local mode |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 delete_config('telemetry_grapher', 'adcs')
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 delete_config('telemetry_grapher', 'adcs')
 ```
 
@@ -10303,22 +10306,22 @@ In Enterprise, the `OPENC3_API_USER` and `OPENC3_API_PASSWORD` environment varia
 Depending on your deployment environment, there are several ways Secrets can be managed. In a Kubernetes deployment, [Secretes](https://kubernetes.io/docs/concepts/configuration/secret/) can be configured, or dynamically managed by a separate secrets management tool like [HashiCorp Vault](https://github.com/hashicorp/vault) or [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/).
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-# First setup environment variables. See examples/external_script.rb
-initialize_offline_access()
-script_run("INST/procedures/collect.rb")
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 # First setup environment variables. See examples/external_script.py
 initialize_offline_access()
 script_run("INST2/procedures/collect.py")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+# First setup environment variables. See examples/external_script.rb
+initialize_offline_access()
+script_run("INST/procedures/collect.rb")
 ```
 
 </TabItem>
@@ -10331,18 +10334,18 @@ script_run("INST2/procedures/collect.py")
 Returns true if the user needs to generate an offline access token. Note this will only be true if the user is at least authorized to view scripts, otherwise it will always be false if script_view permission is not available for the user.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-result = offline_access_needed() # => true
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 result = offline_access_needed() # => False
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+result = offline_access_needed() # => true
 ```
 
 </TabItem>
@@ -10355,17 +10358,17 @@ result = offline_access_needed() # => False
 Sets the offline access token in the backend. Note: You probably don't need to call this method directly, as it will be called by initialize_offline_access().
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 set_offline_access(offline_access_token)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 set_offline_access(offline_access_token)
 ```
 
@@ -10377,17 +10380,17 @@ set_offline_access(offline_access_token)
 | offline_access_token | Keycloak generated refresh token that contains the offline_access openid scope |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 set_offline_access(offline_access_token)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 set_offline_access(offline_access_token)
 ```
 
@@ -10405,18 +10408,18 @@ Autonomic provides automated reactions to telemetry conditions through triggers 
 Returns a list of all autonomic groups.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_group_list(scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_group_list(scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_group_list(scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -10427,17 +10430,17 @@ autonomic_group_list(scope=None)
 | scope     | Scope to operate in (optional) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 groups = autonomic_group_list()
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 groups = autonomic_group_list()
 ```
 
@@ -10451,18 +10454,18 @@ groups = autonomic_group_list()
 Creates a new autonomic group.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_group_create(name, scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_group_create(name, scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_group_create(name, scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -10474,17 +10477,17 @@ autonomic_group_create(name, scope=None)
 | scope     | Scope to operate in (optional) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 group = autonomic_group_create("SAFETY")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 group = autonomic_group_create("SAFETY")
 ```
 
@@ -10498,18 +10501,18 @@ group = autonomic_group_create("SAFETY")
 Shows details about a specific autonomic group.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_group_show(name, scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_group_show(name, scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_group_show(name, scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -10521,17 +10524,17 @@ autonomic_group_show(name, scope=None)
 | scope     | Scope to operate in (optional) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 group_info = autonomic_group_show("SAFETY")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 group_info = autonomic_group_show("SAFETY")
 ```
 
@@ -10545,18 +10548,18 @@ group_info = autonomic_group_show("SAFETY")
 Destroys an autonomic group.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_group_destroy(name, scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_group_destroy(name, scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_group_destroy(name, scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -10568,17 +10571,17 @@ autonomic_group_destroy(name, scope=None)
 | scope     | Scope to operate in (optional) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 autonomic_group_destroy("SAFETY")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 autonomic_group_destroy("SAFETY")
 ```
 
@@ -10592,18 +10595,18 @@ autonomic_group_destroy("SAFETY")
 Returns a list of triggers in a specific group.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_trigger_list(group: 'DEFAULT', scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_trigger_list(group='DEFAULT', scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_trigger_list(group: 'DEFAULT', scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -10615,18 +10618,18 @@ autonomic_trigger_list(group='DEFAULT', scope=None)
 | scope     | Scope to operate in (optional)                   |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-triggers = autonomic_trigger_list(group: "SAFETY")
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 triggers = autonomic_trigger_list(group="SAFETY")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+triggers = autonomic_trigger_list(group: "SAFETY")
 ```
 
 </TabItem>
@@ -10639,18 +10642,18 @@ triggers = autonomic_trigger_list(group="SAFETY")
 Creates a new trigger with the specified condition.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_trigger_create(left:, operator:, right:, group: 'DEFAULT', scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_trigger_create(left, operator, right, group='DEFAULT', scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_trigger_create(left:, operator:, right:, group: 'DEFAULT', scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -10665,6 +10668,26 @@ autonomic_trigger_create(left, operator, right, group='DEFAULT', scope=None)
 | scope     | Scope to operate in (optional)                              |
 
 <Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+left = {
+    "type": "item",
+    "target": "INST",
+    "packet": "HEALTH_STATUS",
+    "item": "TEMP1",
+    "valueType": "CONVERTED",
+}
+operator = ">"
+right = {
+    "type": "float",
+    "float": 0,
+}
+trigger = autonomic_trigger_create(left=left, operator=operator, right=right, group="SAFETY")
+```
+
+</TabItem>
+
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
@@ -10685,26 +10708,6 @@ trigger = autonomic_trigger_create(left: left, operator: operator, right: right,
 ```
 
 </TabItem>
-
-<TabItem value="python" label="Python Example">
-
-```python
-left = {
-    "type": "item",
-    "target": "INST",
-    "packet": "HEALTH_STATUS",
-    "item": "TEMP1",
-    "valueType": "CONVERTED",
-}
-operator = ">"
-right = {
-    "type": "float",
-    "float": 0,
-}
-trigger = autonomic_trigger_create(left=left, operator=operator, right=right, group="SAFETY")
-```
-
-</TabItem>
 </Tabs>
 
 ### autonomic_trigger_show
@@ -10714,18 +10717,18 @@ trigger = autonomic_trigger_create(left=left, operator=operator, right=right, gr
 Shows details about a specific trigger.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_trigger_show(name, group: 'DEFAULT', scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_trigger_show(name, group='DEFAULT', scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_trigger_show(name, group: 'DEFAULT', scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -10738,18 +10741,18 @@ autonomic_trigger_show(name, group='DEFAULT', scope=None)
 | scope     | Scope to operate in (optional)                    |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-trigger_info = autonomic_trigger_show("TRIG1", group: "SAFETY")
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 trigger_info = autonomic_trigger_show("TRIG1", group="SAFETY")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+trigger_info = autonomic_trigger_show("TRIG1", group: "SAFETY")
 ```
 
 </TabItem>
@@ -10762,18 +10765,18 @@ trigger_info = autonomic_trigger_show("TRIG1", group="SAFETY")
 Enables a trigger.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_trigger_enable(name, group: 'DEFAULT', scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_trigger_enable(name, group='DEFAULT', scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_trigger_enable(name, group: 'DEFAULT', scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -10786,18 +10789,18 @@ autonomic_trigger_enable(name, group='DEFAULT', scope=None)
 | scope     | Scope to operate in (optional)                    |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-autonomic_trigger_enable("TRIG1", group: "SAFETY")
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 autonomic_trigger_enable("TRIG1", group="SAFETY")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+autonomic_trigger_enable("TRIG1", group: "SAFETY")
 ```
 
 </TabItem>
@@ -10810,18 +10813,18 @@ autonomic_trigger_enable("TRIG1", group="SAFETY")
 Disables a trigger.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_trigger_disable(name, group: 'DEFAULT', scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_trigger_disable(name, group='DEFAULT', scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_trigger_disable(name, group: 'DEFAULT', scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -10834,18 +10837,18 @@ autonomic_trigger_disable(name, group='DEFAULT', scope=None)
 | scope     | Scope to operate in (optional)                    |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-autonomic_trigger_disable("TRIG1", group: "SAFETY")
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 autonomic_trigger_disable("TRIG1", group="SAFETY")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+autonomic_trigger_disable("TRIG1", group: "SAFETY")
 ```
 
 </TabItem>
@@ -10858,18 +10861,18 @@ autonomic_trigger_disable("TRIG1", group="SAFETY")
 Updates an existing trigger with new parameters.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_trigger_update(name, group: 'DEFAULT', left: left, operator: operator, right: right, scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_trigger_update(name, group='DEFAULT', left=left, operator=operator, right=right, scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_trigger_update(name, group: 'DEFAULT', left: left, operator: operator, right: right, scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -10885,22 +10888,6 @@ autonomic_trigger_update(name, group='DEFAULT', left=left, operator=operator, ri
 | scope     | Scope to operate in (optional)                     |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-right = {
-  type: "float",
-  float: 100,
-}
-updated_trigger = autonomic_trigger_update(
-  "TRIG1",
-  group: "SAFETY",
-  right: right
-)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -10916,6 +10903,22 @@ updated_trigger = autonomic_trigger_update(
 ```
 
 </TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+right = {
+  type: "float",
+  float: 100,
+}
+updated_trigger = autonomic_trigger_update(
+  "TRIG1",
+  group: "SAFETY",
+  right: right
+)
+```
+
+</TabItem>
 </Tabs>
 
 ### autonomic_trigger_destroy
@@ -10925,18 +10928,18 @@ updated_trigger = autonomic_trigger_update(
 Destroys a trigger.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_trigger_destroy(name, group: 'DEFAULT', scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_trigger_destroy(name, group='DEFAULT', scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_trigger_destroy(name, group: 'DEFAULT', scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -10949,18 +10952,18 @@ autonomic_trigger_destroy(name, group='DEFAULT', scope=None)
 | scope     | Scope to operate in (optional)                    |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-autonomic_trigger_destroy("TRIG1", group: "SAFETY")
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 autonomic_trigger_destroy("TRIG1", group="SAFETY")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+autonomic_trigger_destroy("TRIG1", group: "SAFETY")
 ```
 
 </TabItem>
@@ -10973,18 +10976,18 @@ autonomic_trigger_destroy("TRIG1", group="SAFETY")
 Returns a list of all reactions.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_reaction_list(scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_reaction_list(scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_reaction_list(scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -10995,17 +10998,17 @@ autonomic_reaction_list(scope=None)
 | scope     | Scope to operate in (optional) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 reactions = autonomic_reaction_list()
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 reactions = autonomic_reaction_list()
 ```
 
@@ -11019,18 +11022,18 @@ reactions = autonomic_reaction_list()
 Creates a new reaction that executes actions when triggers are activated.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_reaction_create(triggers:, actions:, trigger_level: 'EDGE', snooze: 0, scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_reaction_create(triggers, actions, trigger_level='EDGE', snooze=0, scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_reaction_create(triggers:, actions:, trigger_level: 'EDGE', snooze: 0, scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -11045,27 +11048,6 @@ autonomic_reaction_create(triggers, actions, trigger_level='EDGE', snooze=0, sco
 | scope         | Scope to operate in (optional)                          |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-triggers = [{
-  'name' => 'TRIG1',
-  'group' => 'SAFETY',
-}]
-actions = [{
-  'type' => 'command',
-  'value' => 'INST ABORT'
-}]
-reaction = autonomic_reaction_create(
-  triggers: triggers,
-  actions: actions,
-  trigger_level: 'EDGE',
-  snooze: 300
-)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
@@ -11086,6 +11068,27 @@ reaction = autonomic_reaction_create(
 ```
 
 </TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+triggers = [{
+  'name' => 'TRIG1',
+  'group' => 'SAFETY',
+}]
+actions = [{
+  'type' => 'command',
+  'value' => 'INST ABORT'
+}]
+reaction = autonomic_reaction_create(
+  triggers: triggers,
+  actions: actions,
+  trigger_level: 'EDGE',
+  snooze: 300
+)
+```
+
+</TabItem>
 </Tabs>
 
 ### autonomic_reaction_show
@@ -11095,18 +11098,18 @@ reaction = autonomic_reaction_create(
 Shows details about a specific reaction.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_reaction_show(name, scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_reaction_show(name, scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_reaction_show(name, scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -11118,17 +11121,17 @@ autonomic_reaction_show(name, scope=None)
 | scope     | Scope to operate in (optional) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 reaction_info = autonomic_reaction_show("REACT1")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 reaction_info = autonomic_reaction_show("REACT1")
 ```
 
@@ -11142,18 +11145,18 @@ reaction_info = autonomic_reaction_show("REACT1")
 Enables a reaction.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_reaction_enable(name, scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_reaction_enable(name, scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_reaction_enable(name, scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -11165,17 +11168,17 @@ autonomic_reaction_enable(name, scope=None)
 | scope     | Scope to operate in (optional) |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 autonomic_reaction_enable("REACT1")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 autonomic_reaction_enable("REACT1")
 ```
 
@@ -11189,18 +11192,18 @@ autonomic_reaction_enable("REACT1")
 Disables a reaction.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_reaction_disable(name, scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_reaction_disable(name, scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_reaction_disable(name, scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -11212,17 +11215,17 @@ autonomic_reaction_disable(name, scope=None)
 | scope     | Scope to operate in (optional)  |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 autonomic_reaction_disable("REACT1")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 autonomic_reaction_disable("REACT1")
 ```
 
@@ -11236,18 +11239,18 @@ autonomic_reaction_disable("REACT1")
 Manually executes a reaction's actions.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_reaction_execute(name, scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_reaction_execute(name, scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_reaction_execute(name, scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -11259,17 +11262,17 @@ autonomic_reaction_execute(name, scope=None)
 | scope     | Scope to operate in (optional)  |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 autonomic_reaction_execute("REACT1")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 autonomic_reaction_execute("REACT1")
 ```
 
@@ -11283,18 +11286,18 @@ autonomic_reaction_execute("REACT1")
 Updates an existing reaction with new parameters.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_reaction_update(name, triggers: nil, actions: nil, trigger_level: nil, snooze: nil, scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_reaction_update(name, triggers=None, actions=None, trigger_level=None, snooze=None, scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_reaction_update(name, triggers: nil, actions: nil, trigger_level: nil, snooze: nil, scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -11310,23 +11313,23 @@ autonomic_reaction_update(name, triggers=None, actions=None, trigger_level=None,
 | scope         | Scope to operate in (optional)        |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-updated_reaction = autonomic_reaction_update(
-  "REACT1",
-  snooze: 600
-)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Example">
 
 ```python
 updated_reaction = autonomic_reaction_update(
   "REACT1",
   snooze=600
+)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+updated_reaction = autonomic_reaction_update(
+  "REACT1",
+  snooze: 600
 )
 ```
 
@@ -11340,18 +11343,18 @@ updated_reaction = autonomic_reaction_update(
 Destroys a reaction.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-autonomic_reaction_destroy(name, scope: $openc3_scope)
-```
-
-</TabItem>
-
 <TabItem value="python" label="Python Syntax">
 
 ```python
 autonomic_reaction_destroy(name, scope=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+autonomic_reaction_destroy(name, scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -11363,17 +11366,17 @@ autonomic_reaction_destroy(name, scope=None)
 | scope     | Scope to operate in (optional)  |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 autonomic_reaction_destroy("REACT1")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 autonomic_reaction_destroy("REACT1")
 ```
 
@@ -11391,17 +11394,17 @@ Various utilities that can be used in scripts.
 Opens a new tab in the browser.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Syntax">
+<TabItem value="python" label="Python Syntax">
 
-```ruby
+```python
 open_tab(url)
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Syntax">
+<TabItem value="ruby" label="Ruby Syntax">
 
-```python
+```ruby
 open_tab(url)
 ```
 
@@ -11413,17 +11416,17 @@ open_tab(url)
 | url       | URL to open in a new tab |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby Example">
+<TabItem value="python" label="Python Example">
 
-```ruby
+```python
 open_tab("https://github.com/OpenC3/cosmos")
 ```
 
 </TabItem>
 
-<TabItem value="python" label="Python Example">
+<TabItem value="ruby" label="Ruby Example">
 
-```python
+```ruby
 open_tab("https://github.com/OpenC3/cosmos")
 ```
 

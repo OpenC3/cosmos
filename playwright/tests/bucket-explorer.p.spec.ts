@@ -260,11 +260,7 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
   }
 })
 
-test('auto refreshes to update files', async ({
-  page,
-  toolPath,
-  context,
-}) => {
+test('auto refreshes to update files', async ({ page, utils, context }) => {
   const identifier = Math.ceil(Math.random() * 1000)
   const filename = `refresh_package_${identifier}.json`
   // Create a file so we have something in __TEMP__
@@ -284,7 +280,7 @@ test('auto refreshes to update files', async ({
 
   // Open another tab and navigate to the __TEMP__ dir
   const pageTwo = await context.newPage()
-  pageTwo.goto(toolPath)
+  pageTwo.goto('/tools/bucketexplorer')
   await pageTwo.getByText('config').click()
   await pageTwo.getByRole('cell', { name: 'DEFAULT' }).click()
   await pageTwo.getByRole('cell', { name: 'targets_modified' }).click()
@@ -300,7 +296,7 @@ test('auto refreshes to update files', async ({
 
   // Upload a file from the first tab
   await page.goto(
-    `${toolPath}/config%2FDEFAULT%2Ftargets_modified%2F__TEMP__%2F`,
+    'tools/bucketexplorer/config%2FDEFAULT%2Ftargets_modified%2F__TEMP__%2F',
   )
   await expect(page.locator('.v-app-bar')).toContainText('Bucket Explorer')
   await expect(page.getByLabel('prepended action')).toBeVisible()
@@ -315,9 +311,9 @@ test('auto refreshes to update files', async ({
   await page.locator('[data-test="upload-file-submit-btn"]').click()
 
   // The second tab shouldn't have refreshed yet, so the file shouldn't be there
-  await expect(
-    pageTwo.getByRole('cell', { name: filename }),
-  ).not.toBeVisible({ timeout: 10000 })
+  await expect(pageTwo.getByRole('cell', { name: filename })).not.toBeVisible({
+    timeout: 10000,
+  })
 
   // Set the refresh interval on the second tab to 1s
   await pageTwo.locator('[data-test=bucket-explorer-file]').click()
@@ -328,9 +324,7 @@ test('auto refreshes to update files', async ({
   await pageTwo.getByRole('button', { name: 'Save' }).click()
 
   // Second tab should auto refresh in 1s and then the file should be there
-  await expect(
-    pageTwo.getByRole('cell', { name: filename }),
-  ).toBeVisible()
+  await expect(pageTwo.getByRole('cell', { name: filename })).toBeVisible()
 
   // Cleanup
   await page

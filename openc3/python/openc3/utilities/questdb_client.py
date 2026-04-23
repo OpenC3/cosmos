@@ -788,9 +788,9 @@ class QuestDBClient:
         query = f"SELECT {', '.join(names)} FROM "
         for index, (table_name, _) in enumerate(tables.items()):
             if index == 0:
-                query += f"{table_name} as T{index} "
+                query += f'"{table_name}" as T{index} '
             else:
-                query += f"ASOF JOIN {table_name} as T{index} "
+                query += f'ASOF JOIN "{table_name}" as T{index} '
 
         query_params = []
         if start_time and not end_time:
@@ -1084,30 +1084,18 @@ class QuestDBClient:
                         try:
                             if existing_type is None:
                                 # Column doesn't exist yet — add it
-                                alter = f'ALTER TABLE "{table_name}" ADD COLUMN {col_name} {desired_sql_type}'
+                                alter = f'ALTER TABLE "{table_name}" ADD COLUMN "{col_name}" {desired_sql_type}'
                                 cur.execute(alter)
                                 self._log_info(f"QuestDB: Added column: {alter}")
                                 altered = True
                             elif existing_type != desired_canonical:
-                                # Skip DECIMAL -> VARCHAR: blocked by QuestDB bug #6923.
-                                # String values sent via ILP are auto-cast to DECIMAL,
-                                # so the column remains usable without the ALTER.
-                                if "DECIMAL" in existing_type and desired_canonical == "VARCHAR":
-                                    self._log_warn(
-                                        f"QuestDB: Skipping ALTER {col_name} from {existing_type} to VARCHAR "
-                                        f"in table {table_name} — blocked by QuestDB bug #6923. "
-                                        f"Column will continue to function as DECIMAL."
-                                    )
-                                else:
-                                    # Type mismatch — ALTER the column type
-                                    alter = (
-                                        f'ALTER TABLE "{table_name}" ALTER COLUMN {col_name} TYPE {desired_sql_type}'
-                                    )
-                                    cur.execute(alter)
-                                    self._log_info(
-                                        f"QuestDB: Altered column type: {alter} (was {existing_type}, now {desired_canonical})"
-                                    )
-                                    altered = True
+                                # Type mismatch — ALTER the column type
+                                alter = f'ALTER TABLE "{table_name}" ALTER COLUMN "{col_name}" TYPE {desired_sql_type}'
+                                cur.execute(alter)
+                                self._log_info(
+                                    f"QuestDB: Altered column type: {alter} (was {existing_type}, now {desired_canonical})"
+                                )
+                                altered = True
                         except psycopg.Error as error:
                             self._log_error(f"QuestDB: Error reconciling table {table_name}: {error}")
             except psycopg.Error as error:

@@ -258,8 +258,15 @@ This installs:
 ### JavaScript/TypeScript
 
 - ESLint 9 with Vue parser
-- Prettier for formatting
+- Prettier for formatting (enforced via `prettier/prettier` ESLint rule)
 - Config in `openc3-cosmos-init/plugins/eslint.config.mjs`
+- **After editing Vue/JS files, always run the linter** to catch formatting issues before committing:
+  ```bash
+  cd openc3-cosmos-init/plugins/packages/<package-name>
+  pnpm lint              # check for issues
+  pnpm lint --fix        # auto-fix formatting
+  ```
+- CI runs `pnpm lint --max-warnings 0` — any warning fails the build
 
 ## Plugin Development
 
