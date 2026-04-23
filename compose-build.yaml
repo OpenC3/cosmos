@@ -97,6 +97,9 @@ services:
     build:
       context: "openc3-cosmos-cmd-tlm-api"
       network: host
+      cache_from:
+        - type=gha,scope=openc3-base
+        - type=gha,scope=openc3-ruby
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -109,6 +112,9 @@ services:
     build:
       context: "openc3-cosmos-script-runner-api"
       network: host
+      cache_from:
+        - type=gha,scope=openc3-base
+        - type=gha,scope=openc3-ruby
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -121,6 +127,9 @@ services:
     build:
       context: "openc3-operator"
       network: host
+      cache_from:
+        - type=gha,scope=openc3-base
+        - type=gha,scope=openc3-ruby
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -143,6 +152,10 @@ services:
       additional_contexts:
         docs: "docs.openc3.com"
       network: host
+      cache_from:
+        - type=gha,scope=openc3-node
+        - type=gha,scope=openc3-base
+        - type=gha,scope=openc3-ruby
       args:
         NPM_URL: ${NPM_URL}
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
