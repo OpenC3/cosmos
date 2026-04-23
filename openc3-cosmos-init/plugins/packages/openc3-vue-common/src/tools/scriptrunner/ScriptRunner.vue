@@ -79,7 +79,6 @@
         v-for="def in screens"
         :id="screenId(def.id)"
         :key="def.id"
-        ref="gridItem"
         class="item"
       >
         <div class="item-content">
@@ -112,179 +111,35 @@
           @button="suiteRunnerButton"
           @loaded="doResize"
         />
-        <div id="sr-controls">
-          <v-row no-gutters justify="space-between">
-            <v-icon v-if="showDisconnect" class="mt-2" color="red">
-              mdi-connection
-            </v-icon>
-            <div class="d-flex align-center mr-1">
-              <v-tooltip :open-delay="600" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-if="!scriptId"
-                    v-bind="props"
-                    icon="mdi-cached"
-                    variant="text"
-                    density="compact"
-                    :disabled="filename === NEW_FILENAME"
-                    aria-label="Reload File"
-                    @click="reloadFile"
-                  />
-                  <v-btn
-                    v-else
-                    v-bind="props"
-                    icon="mdi-arrow-left"
-                    variant="text"
-                    density="compact"
-                    @click="backToNewScript"
-                  />
-                </template>
-                <span v-if="!scriptId"> Reload File </span>
-                <span v-else> Back to New Script </span>
-              </v-tooltip>
-            </div>
-            <v-tooltip
-              location="bottom"
-              :text="filenameSelect"
-              :disabled="!filenameSelect || filenameSelect.length <= 45"
-            >
-              <template #activator="{ props }">
-                <div v-bind="props" style="width: 32rem">
-                  <v-select
-                    id="filename"
-                    v-model="filenameSelect"
-                    :items="fileList"
-                    :disabled="fileList.length <= 1"
-                    label="Filename"
-                    data-test="filename"
-                    density="compact"
-                    variant="outlined"
-                    hide-details
-                    @update:model-value="fileNameChanged"
-                  />
-                </div>
-              </template>
-            </v-tooltip>
-            <v-text-field
-              v-model="scriptId"
-              label="Script ID"
-              data-test="id"
-              class="shrink ml-2 script-state"
-              style="max-width: 100px"
-              density="compact"
-              variant="outlined"
-              readonly
-              hide-details
-            />
-            <v-text-field
-              v-model="stateTimer"
-              label="Script State"
-              data-test="state"
-              :class="['shrink', 'ml-2', 'script-state', stateColorClass]"
-              style="max-width: 120px"
-              density="compact"
-              variant="outlined"
-              readonly
-              hide-details
-            />
-            <v-progress-circular
-              v-if="state === 'Connecting...'"
-              :size="40"
-              class="mx-2"
-              indeterminate
-              color="primary"
-            />
-            <div v-else style="width: 40px; height: 40px" class="mx-2"></div>
-
-            <v-spacer />
-            <div v-if="startOrGoButton === 'Start'">
-              <v-tooltip
-                v-if="overridesCount > 0"
-                :open-delay="600"
-                location="top"
-              >
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    class="mr-4"
-                    icon
-                    variant="text"
-                    density="compact"
-                    data-test="tlm-override-button"
-                    aria-label="TLM Overrides"
-                    @click="showOverrides = !showOverrides"
-                  >
-                    <v-badge
-                      :content="overridesCount > 99 ? '99+' : overridesCount"
-                      floating
-                      color="primary"
-                    >
-                      <v-icon icon="mdi-application-cog-outline" />
-                    </v-badge>
-                  </v-btn>
-                </template>
-                <span> TLM Overrides ({{ overridesCount }}) </span>
-              </v-tooltip>
-              <v-tooltip :open-delay="600" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    class="mr-2"
-                    icon
-                    variant="text"
-                    density="compact"
-                    :disabled="envDisabled"
-                    data-test="env-button"
-                    aria-label="Script Environment"
-                    @click="scriptEnvironment.show = !scriptEnvironment.show"
-                  >
-                    <v-badge v-model="environmentModified" floating dot>
-                      <v-icon icon="mdi-application-variable" />
-                    </v-badge>
-                  </v-btn>
-                </template>
-                <span>
-                  Script Environment
-                  <template v-if="environmentModified"> (modified) </template>
-                </span>
-              </v-tooltip>
-              <v-btn
-                class="mx-1"
-                color="primary"
-                text="Start"
-                data-test="start-button"
-                :disabled="startOrGoDisabled || !executeUser"
-                :hidden="suiteRunner"
-                @click="startHandler"
-              />
-            </div>
-            <div v-else>
-              <v-btn
-                color="primary"
-                class="mr-2"
-                text="Go"
-                :disabled="startOrGoDisabled"
-                data-test="go-button"
-                @click="go"
-              />
-              <v-btn
-                color="primary"
-                class="mr-2"
-                :text="pauseOrRetryButton"
-                :disabled="pauseOrRetryDisabled"
-                data-test="pause-retry-button"
-                @click="pauseOrRetry"
-              />
-              <v-btn
-                color="primary"
-                text="Stop"
-                data-test="stop-button"
-                :disabled="stopDisabled"
-                @click="stop"
-              />
-            </div>
-          </v-row>
-        </div>
+        <script-control-bar
+          v-model="filenameSelect"
+          :show-disconnect="showDisconnect"
+          :script-id="scriptId"
+          :filename="filename"
+          :new-filename="NEW_FILENAME"
+          :file-list="fileList"
+          :state="state"
+          :start-or-go-button="startOrGoButton"
+          :start-or-go-disabled="startOrGoDisabled"
+          :env-disabled="envDisabled"
+          :pause-or-retry-button="pauseOrRetryButton"
+          :pause-or-retry-disabled="pauseOrRetryDisabled"
+          :stop-disabled="stopDisabled"
+          :overrides-count="overridesCount"
+          :environment-modified="environmentModified"
+          :execute-user="executeUser"
+          :suite-runner="suiteRunner"
+          :waiting-time="waitingTime"
+          @reload-file="reloadFile"
+          @back-to-new-script="backToNewScript"
+          @file-name-changed="fileNameChanged"
+          @toggle-overrides="showOverrides = !showOverrides"
+          @toggle-environment="scriptEnvironment.show = !scriptEnvironment.show"
+          @start="start"
+          @go="go"
+          @pause-or-retry="pauseOrRetry"
+          @stop="stop"
+        />
       </v-card-text>
     </v-card>
     <splitpanes
@@ -303,219 +158,59 @@
         >
           Saving...
         </v-snackbar>
-        <pre
+        <script-ace-editor
           ref="editor"
-          class="editor"
-          @contextmenu.prevent="showExecuteSelectionMenu"
-        ></pre>
-        <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
-          <v-list>
-            <v-list-item
-              :title="currentLineHasCommand ? 'Edit Command' : 'Insert Command'"
-              @click="openCommandEditor"
-            />
-            <v-divider />
-            <v-list-item title="Execute Selection" @click="executeSelection" />
-            <v-list-item
-              v-if="scriptId"
-              title="Goto Line"
-              @click="runFromCursor"
-            />
-            <v-list-item
-              v-if="!scriptId"
-              title="Run From Line"
-              @click="runFromCursor"
-            />
-            <v-list-item
-              v-if="!scriptId"
-              title="Clear Local Breakpoints"
-              @click="clearBreakpoints"
-            />
-            <v-divider />
-            <v-list-item
-              title="Toggle Vim mode"
-              prepend-icon="extras:vim"
-              @click="toggleVimMode"
-            />
-          </v-list>
-        </v-menu>
+          v-model="editorContent"
+          :filename-select="filenameSelect"
+          :hide-cursor="readOnlyUser || inline"
+          :language="editorLanguage"
+          :read-only="readOnlyUser || inline"
+          :script-id="scriptId"
+          show-context-menu
+          @command-editor="handleCommandEditor"
+          @resize="doResize"
+          @save="saveFile"
+          @save-as="saveAs"
+          @save-file="saveFile"
+          @start="start(...$event)"
+          @tokenizer-update="onChange"
+        />
       </pane>
-      <pane id="messages" class="mt-2" :size="100 - editorBoxSize">
-        <div v-if="showDebug" id="debug" class="pa-0">
-          <v-row no-gutters>
-            <v-btn
-              color="primary"
-              style="width: 100px"
-              class="mr-4"
-              text="Step"
-              append-icon="mdi-step-forward"
-              :disabled="!scriptId"
-              data-test="step-button"
-              @click="step"
-            />
-            <v-text-field
-              ref="debug"
-              v-model="debug"
-              class="mb-2"
-              variant="outlined"
-              density="compact"
-              hide-details
-              label="Debug"
-              data-test="debug-text"
-              @keydown="debugKeydown"
-            />
-          </v-row>
-        </div>
-        <script-log-messages
-          id="log-messages"
-          v-model="messages"
-          @sort="messageSortOrder"
+      <pane :size="100 - editorBoxSize">
+        <script-debug-panel
+          v-model:debug="debug"
+          v-model:messages="messages"
+          :show-debug="showDebug"
+          :script-id="scriptId"
+          @step="step"
+          @execute-debug="executeDebug"
+          @message-sort-order="messageSortOrder"
         />
       </pane>
     </splitpanes>
   </div>
 
-  <div
+  <script-runner-inline
     v-else
-    style="
-      background-color: var(--color-background-base-default);
-      margin: 0px;
-      padding: 0px;
-    "
-  >
-    <v-row no-gutters justify="right">
-      <v-tabs v-model="inlineTab" density="compact">
-        <v-tab value="script" text="Script" data-test="script-tab" />
-        <v-tab value="messages" text="Messages" data-test="messages-tab" />
-      </v-tabs>
-      <v-tooltip
-        location="bottom"
-        :text="filenameSelect"
-        :disabled="!filenameSelect || filenameSelect.length <= 45"
-      >
-        <template #activator="{ props }">
-          <div v-bind="props" style="width: 32rem">
-            <v-select
-              id="inline-filename"
-              v-model="filenameSelect"
-              :items="fileList"
-              :disabled="fileList.length <= 1"
-              label="Filename"
-              data-test="filename"
-              density="compact"
-              variant="outlined"
-              hide-details
-              @update:model-value="fileNameChanged"
-            />
-          </div>
-        </template>
-      </v-tooltip>
-      <v-text-field
-        v-model="scriptId"
-        label="Script ID"
-        data-test="id"
-        class="shrink ml-2 script-state"
-        style="max-width: 100px"
-        density="compact"
-        variant="outlined"
-        readonly
-        hide-details
-      />
-      <v-text-field
-        v-model="stateTimer"
-        label="Script State"
-        data-test="state"
-        :class="['shrink', 'ml-2', 'script-state', stateColorClass]"
-        style="max-width: 120px"
-        density="compact"
-        variant="outlined"
-        readonly
-        hide-details
-      />
-      <v-progress-circular
-        v-if="state === 'Connecting...'"
-        :size="40"
-        class="mx-2"
-        indeterminate
-        color="primary"
-      />
-    </v-row>
-    <v-tabs-window v-model="inlineTab">
-      <v-tabs-window-item value="script">
-        <v-row>
-          <v-col
-            class="v-col-10"
-            style="margin: 15px 0px 0px 0px; padding: 0px"
-          >
-            <pre
-              ref="editor"
-              class="editor"
-              style="height: 200px"
-              @contextmenu.prevent="showExecuteSelectionMenu"
-            ></pre>
-          </v-col>
-          <v-col
-            class="v-col-2"
-            style="
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              background-color: var(--color-background-surface-default);
-            "
-          >
-            <div v-if="startOrGoButton === 'Start'">
-              <v-btn
-                class="mx-1"
-                color="primary"
-                text="Start"
-                data-test="start-button"
-                :disabled="startOrGoDisabled || !executeUser"
-                :hidden="suiteRunner"
-                @click="startHandler"
-              />
-            </div>
-            <div v-else>
-              <v-btn
-                color="primary"
-                class="ma-2"
-                text="Go"
-                :disabled="startOrGoDisabled"
-                data-test="go-button"
-                @click="go"
-              />
-              <v-btn
-                color="primary"
-                class="ma-2"
-                :text="pauseOrRetryButton"
-                :disabled="pauseOrRetryDisabled"
-                data-test="pause-retry-button"
-                @click="pauseOrRetry"
-              />
-
-              <v-btn
-                color="primary"
-                class="ma-2"
-                text="Stop"
-                data-test="stop-button"
-                :disabled="stopDisabled"
-                @click="stop"
-              />
-            </div>
-          </v-col>
-        </v-row>
-      </v-tabs-window-item>
-
-      <v-tabs-window-item value="messages">
-        <div style="height: 200px; overflow: hidden">
-          <script-log-messages
-            v-model="messages"
-            :newest-on-top="messagesNewestOnTop"
-            @message-order-changed="messageOrderChanged"
-          />
-        </div>
-      </v-tabs-window-item>
-    </v-tabs-window>
-  </div>
+    ref="inlineEditor"
+    v-model:filename-select="filenameSelect"
+    v-model:messages="messages"
+    :file-list="fileList"
+    :start-or-go-button="startOrGoButton"
+    :start-or-go-disabled="startOrGoDisabled"
+    :execute-user="executeUser"
+    :suite-runner="suiteRunner"
+    :pause-or-retry-button="pauseOrRetryButton"
+    :pause-or-retry-disabled="pauseOrRetryDisabled"
+    :stop-disabled="stopDisabled"
+    :messages-newest-on-top="messagesNewestOnTop"
+    @show-execute-selection-menu="showExecuteSelectionMenu"
+    @start="start"
+    @go="go"
+    @pause-or-retry="pauseOrRetry"
+    @stop="stop"
+    @message-order-changed="messageSortOrder"
+  />
 
   <file-open-save-dialog
     v-if="fileOpen"
@@ -554,7 +249,7 @@
     :message="file.message"
     :multiple="file.multiple"
     :filter="file.filter"
-    @response="fileDialogCallback"
+    @response="(files) => fileDialogCallback(files, scriptId)"
   />
   <bucket-dialog
     v-if="bucket.show"
@@ -609,59 +304,14 @@
     :width="1000"
   />
   <critical-cmd-dialog
-    v-model="displayCriticalCmd"
-    :uuid="criticalCmdUuid"
-    :cmd-string="criticalCmdString"
-    :cmd-user="criticalCmdUser"
+    v-model="criticalCmd.display"
+    :uuid="criticalCmd.uuid"
+    :cmd-string="criticalCmd.string"
+    :cmd-user="criticalCmd.user"
     :persistent="true"
-    @status="promptDialogCallback"
+    @status="(value) => promptDialogCallback(value, scriptId)"
   />
-  <!-- Command Editor Dialog -->
-  <v-dialog
-    v-model="commandEditor.show"
-    max-width="1200"
-    persistent
-    scrollable
-    @keydown.esc="closeCommandDialog"
-  >
-    <v-card>
-      <v-card-title class="d-flex align-center">
-        <span>Insert Command</span>
-        <v-spacer />
-        <v-btn icon="mdi-close" variant="text" @click="closeCommandDialog" />
-      </v-card-title>
-      <v-card-text class="pa-0">
-        <div v-if="commandEditor.dialogError" class="error-message">
-          <v-icon class="mr-2" color="error">mdi-alert-circle</v-icon>
-          <span class="flex-grow-1">{{ commandEditor.dialogError }}</span>
-          <v-btn
-            icon="mdi-close"
-            size="small"
-            variant="text"
-            color="error"
-            class="ml-2"
-            @click="commandEditor.dialogError = null"
-          />
-        </div>
-        <command-editor
-          ref="commandEditor"
-          :initial-target-name="commandEditor.targetName"
-          :initial-packet-name="commandEditor.packetName"
-          :cmd-string="commandEditor.cmdString"
-          :send-disabled="false"
-          :show-command-button="false"
-          @build-cmd="insertCommand($event)"
-        />
-      </v-card-text>
-      <v-card-actions>
-        <v-spacer />
-        <v-btn variant="outlined" @click="closeCommandDialog"> Cancel </v-btn>
-        <v-btn color="primary" variant="flat" @click="insertCommand()">
-          Insert Command
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+  <command-editor-dialog ref="commandEditorDialog" @insert="insertCommand" />
   <v-bottom-sheet v-model="showScripts">
     <v-sheet class="pb-11 pt-5 px-5">
       <running-scripts
@@ -679,15 +329,15 @@
 </template>
 
 <script>
-import axios from 'axios'
 import { format } from 'date-fns'
 import { Splitpanes, Pane } from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
 
-import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
+import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { useContainerHeight } from '@/composables/useContainerHeight'
+import { computed, onBeforeMount, ref, useTemplateRef } from 'vue'
+import { useAsyncState } from '@vueuse/core'
 import {
-  AceEditorModes,
   AceEditorUtils,
   CriticalCmdDialog,
   EnvironmentDialog,
@@ -696,7 +346,7 @@ import {
   SimpleTextDialog,
   TopBar,
 } from '@/components'
-import { ClassificationBanners } from '@/tools/base'
+import { useClassificationBanner } from '@/tools/base'
 import { fileIcon } from '@/util'
 import { EventListDialog } from '@/tools/calendar'
 
@@ -708,27 +358,33 @@ import OverridesDialog from '@/tools/scriptrunner/Dialogs/OverridesDialog.vue'
 import PromptDialog from '@/tools/scriptrunner/Dialogs/PromptDialog.vue'
 import ResultsDialog from '@/tools/scriptrunner/Dialogs/ResultsDialog.vue'
 import ScriptEnvironmentDialog from '@/tools/scriptrunner/Dialogs/ScriptEnvironmentDialog.vue'
-import CommandEditor from '@/components/CommandEditor.vue'
 import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
-import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
-import {
-  CmdCompleter,
-  TlmCompleter,
-  MnemonicChecker,
-} from '@/tools/scriptrunner/autocomplete'
-import { SleepAnnotator } from '@/tools/scriptrunner/annotations'
+import ScriptControlBar from '@/tools/scriptrunner/ScriptControlBar.vue'
+import ScriptDebugPanel from '@/tools/scriptrunner/ScriptDebugPanel.vue'
+import ScriptRunnerInline from '@/tools/scriptrunner/ScriptRunnerInline.vue'
+import CommandEditorDialog from '@/tools/scriptrunner/Dialogs/CommandEditorDialog.vue'
+import { MnemonicChecker } from '@/tools/scriptrunner/autocomplete'
 import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
+import ScriptAceEditor from '@/tools/scriptrunner/ScriptAceEditor.vue'
+import { useHandleWaiting } from '@/tools/scriptrunner/useHandleWaiting'
+import { useScriptPrompts } from '@/tools/scriptrunner/useScriptPrompts'
+import {
+  useScriptOperations,
+  PAUSE,
+} from '@/tools/scriptrunner/useScriptOperations'
+
+import { detectLanguage, pythonTestSuiteText, rubyTestSuiteText } from './utils'
 
 // Matches target_file.rb TEMP_FOLDER
 const TEMP_FOLDER = '__TEMP__'
 const NEW_FILENAME = '<Untitled>'
 const START = 'Start'
 const GO = 'Go'
-const PAUSE = 'Pause'
 const RETRY = 'Retry'
 
 export default {
   components: {
+    ScriptAceEditor,
     FileOpenSaveDialog,
     Openc3Screen,
     EnvironmentDialog,
@@ -747,14 +403,16 @@ export default {
     SimpleTextDialog,
     SuiteRunner,
     RunningScripts,
-    ScriptLogMessages,
     CriticalCmdDialog,
-    CommandEditor,
+    CommandEditorDialog,
+    ScriptControlBar,
+    ScriptDebugPanel,
+    ScriptRunnerInline,
   },
-  mixins: [AceEditorModes, ClassificationBanners],
-  beforeRouteUpdate: function (to, from, next) {
+  beforeRouteUpdate: async function (to, from, next) {
     if (to.params.id) {
-      this.tryLoadRunningScript(to.params.id).then(next)
+      await this.tryLoadRunningScript(to.params.id)
+      next()
     } else {
       next()
     }
@@ -776,16 +434,173 @@ export default {
     },
   },
   emits: ['alert', 'script-id'],
-  setup() {
+  setup(props, { emit }) {
     const containerHeight = useContainerHeight()
 
-    return { containerHeight }
+    const state = ref(null)
+    const { handleWaiting, waitingTime } = useHandleWaiting(state)
+
+    // Template refs
+    const editorRef = useTemplateRef('editor')
+    const editor = computed(() => editorRef?.value?.editor || null)
+
+    // Script prompts and dialogs
+    const scriptPrompts = useScriptPrompts()
+
+    const { classificationStyles } = useClassificationBanner()
+
+    const api = new OpenC3Api()
+    const { state: screenKeywords } = useAsyncState(async () => {
+      const response = await Api.get('/openc3-api/autocomplete/keywords/screen')
+      return response.data
+    }, null)
+
+    const { state: timeZone } = useAsyncState(async () => {
+      try {
+        return await api.get_setting('time_zone')
+      } catch {
+        return 'local'
+      }
+    }, 'local')
+
+    const overridesCount = ref(0)
+    async function updateOverridesCount() {
+      const result = await api.get_overrides()
+      overridesCount.value = result.length
+    }
+
+    /** Whether to display the SuiteRunner GUI */
+    const suiteRunner = ref(false)
+    const disableSuiteButtons = ref(false)
+    const startOrGoButton = ref(START)
+    const startOrGoDisabled = ref(false)
+    const envDisabled = ref(false)
+    const pauseOrRetryButton = ref(PAUSE)
+    const pauseOrRetryDisabled = ref(false)
+    const stopDisabled = ref(false)
+
+    const readOnlyUser = ref(false)
+    const executeUser = ref(true)
+    const showAlert = ref(false)
+    const alertType = ref(null)
+    const alertText = ref('')
+
+    function resetButtons() {
+      disableSuiteButtons.value = false
+      startOrGoButton.value = START
+      pauseOrRetryButton.value = PAUSE
+      // Disable start if suiteRunner
+      startOrGoDisabled.value = suiteRunner.value
+      envDisabled.value = false
+      pauseOrRetryDisabled.value = true
+      stopDisabled.value = true
+    }
+
+    const scriptOperations = useScriptOperations(
+      emit,
+      { updateOverridesCount, resetButtons, reloadFile },
+      editor,
+      readOnlyUser,
+      () => props.inline,
+    )
+
+    onBeforeMount(async () => {
+      // Ensure Offline Access Is Setup For the Current User
+      api.ensure_offline_access()
+
+      await updateOverridesCount()
+      const user = OpenC3Auth.user()
+      const roles = OpenC3Auth.userroles()
+      readOnlyUser.value = true
+      executeUser.value = false
+      for (let role of roles) {
+        if (role == 'viewer') {
+          continue
+        }
+        if (role == 'admin' || role == 'operator') {
+          readOnlyUser.value = false
+          executeUser.value = true
+        } else if (role == 'runner') {
+          executeUser.value = true
+        } else {
+          const response = await Api.get(`/openc3-api/roles/${role}`)
+          if (
+            response.data !== null &&
+            response.data.permissions !== undefined
+          ) {
+            if (
+              response.data.permissions.some(
+                (i) => i.permission == 'script_edit',
+              )
+            ) {
+              readOnlyUser.value = false
+            }
+            if (
+              response.data.permissions.some(
+                (i) => i.permission == 'script_run',
+              )
+            ) {
+              executeUser.value = true
+            }
+          }
+        }
+      }
+      // Output the userinfo for use in the SuiteRunner component
+      if (!props.inline) {
+        localStorage['script_runner__userinfo'] = JSON.stringify({
+          name: user['preferred_username'],
+          readOnly: readOnlyUser.value,
+          execute: executeUser.value,
+        })
+      }
+      if (readOnlyUser.value) {
+        alertType.value = 'info'
+        let text = `User ${user['preferred_username']} is read only`
+        if (executeUser.value) {
+          text += ' but can execute scripts'
+        }
+        alertText.value = text
+        showAlert.value = true
+      }
+    })
+
+    return {
+      ...scriptOperations,
+      ...scriptPrompts,
+      alertText,
+      alertType,
+      api,
+      cable,
+      classificationStyles,
+      containerHeight,
+      disableSuiteButtons,
+      editor,
+      editorRef,
+      envDisabled,
+      executeUser,
+      // Make NEW_FILENAME available to the template
+      NEW_FILENAME,
+      overridesCount,
+      pauseOrRetryButton,
+      pauseOrRetryDisabled,
+      readOnlyUser,
+      screenKeywords,
+      showAlert,
+      showMetadata,
+      startOrGoButton,
+      startOrGoDisabled,
+      state,
+      stopDisabled,
+      suiteRunner,
+      timeZone,
+      handleWaiting,
+      updateOverridesCount,
+      waitingTime,
+    }
   },
   data() {
     return {
       title: 'Script Runner',
-      suiteRunner: false, // Whether to display the SuiteRunner GUI
-      disableSuiteButtons: false,
       suiteMap: {
         // Useful for testing the various options in the SuiteRunner GUI
         // Suite: {
@@ -804,29 +619,14 @@ export default {
       filenameSelect: null,
       currentFilename: null, // This is the currently shown filename while running
       showSave: false,
-      showAlert: false,
-      alertType: null,
-      alertText: '',
-      state: null,
-      scriptId: null,
-      startOrGoButton: START,
-      startOrGoDisabled: false,
-      envDisabled: false,
-      pauseOrRetryButton: PAUSE,
-      pauseOrRetryDisabled: false,
-      stopDisabled: false,
       showEnvironment: false,
       showDebug: false,
       debug: '',
-      debugHistory: [],
-      debugHistoryIndex: 0,
       showDisconnect: false,
       files: {},
       breakpoints: {},
       enableStackTraces: false,
       filename: NEW_FILENAME,
-      readOnlyUser: false,
-      executeUser: true,
       saveAllowed: true,
       tempFilename: null,
       fileModified: '',
@@ -834,133 +634,30 @@ export default {
       lockedBy: null,
       showEditingToast: false,
       showSaveAs: false,
-      areYouSure: false,
-      subscription: null,
-      cable: null,
-      fatal: false,
       updateInterval: null,
-      receivedEvents: [],
       messages: [],
       messagesNewestOnTop: true,
-      inlineTab: 'script',
       maxArrayLength: 200,
       Range: ace.require('ace/range').Range,
-      ask: {
-        show: false,
-        question: '',
-        default: null,
-        password: false,
-        answerRequired: true,
-        callback: () => {},
-      },
-      file: {
-        show: false,
-        message: '',
-        directory: null,
-        filter: '*',
-        multiple: false,
-        callback: () => {},
-      },
-      bucket: {
-        show: false,
-        title: '',
-        message: '',
-      },
-      prompt: {
-        show: false,
-        title: '',
-        subtitle: '',
-        message: '',
-        details: '',
-        buttons: null,
-        layout: 'horizontal',
-        callback: () => {},
-      },
-      information: {
-        show: false,
-        title: '',
-        text: [],
-        width: '600',
-      },
-      inputMetadata: {
-        show: false,
-        events: [],
-        callback: () => {},
-      },
-      results: {
-        show: false,
-        text: '',
-      },
       scriptEnvironment: {
         show: false,
         env: [],
       },
       showSuiteError: false,
       suiteError: '',
-      executeSelectionMenu: false,
-      menuX: 0,
-      menuY: 0,
       mnemonicChecker: new MnemonicChecker(),
       showScripts: false,
       showOverrides: false,
-      overridesCount: 0,
-      commandEditor: {
-        show: false,
-        targetName: null,
-        commandName: null,
-        dialogError: null,
-        cmdString: null,
-        isEditing: false,
-        editLine: null,
-      },
-      currentLineHasCommand: false,
-      activePromptId: '',
-      api: null,
-      timeZone: 'local',
       screens: [],
-      screenKeywords: null,
       idCounter: 0,
       updateCounter: 0,
       recent: [],
-      waitingInterval: null,
-      waitingTime: 0,
-      waitingStart: 0,
-      criticalCmdUuid: null,
-      criticalCmdString: null,
-      criticalCmdUser: null,
-      displayCriticalCmd: false,
       editorBoxSize: 50,
+      editorContent: '',
+      editorLanguage: 'ruby',
     }
   },
   computed: {
-    stateTimer: function () {
-      if (this.state === 'waiting' || this.state === 'paused') {
-        return `${this.state} ${this.waitingTime}s`
-      }
-      // Map completed_errors to completed for display
-      // it will be colored via the stateColorClass
-      if (this.state === 'completed_errors') {
-        return 'completed'
-      }
-      return this.state
-    },
-    stateColorClass: function () {
-      // All possible states: spawning, init, running, paused, waiting, breakpoint,
-      // error, crashed, stopped, completed, completed_errors, killed
-      if (
-        this.state === 'error' ||
-        this.state === 'crashed' ||
-        this.state === 'killed'
-      ) {
-        return 'script-state-red'
-      } else if (this.state === 'completed_errors') {
-        return 'script-state-orange'
-      } else if (this.state === 'completed') {
-        return 'script-state-green'
-      } else {
-        return ''
-      }
-    },
     // This is the list of files shown in the select dropdown
     fileList: function () {
       // this.files is the list of all files seen while running
@@ -1009,14 +706,14 @@ export default {
                   label: 'Ruby',
                   icon: 'mdi-language-ruby',
                   command: () => {
-                    this.newRubyTestSuite()
+                    this.newTestSuite('ruby')
                   },
                 },
                 {
                   label: 'Python',
                   icon: 'mdi-language-python',
                   command: () => {
-                    this.newPythonTestSuite()
+                    this.newTestSuite('python')
                   },
                 },
               ],
@@ -1271,139 +968,13 @@ export default {
         }
       }
     },
-    showOverrides: function (newVal, oldVal) {
+    showOverrides: async function (newVal, oldVal) {
       if (oldVal && !newVal) {
-        this.updateOverridesCount()
+        await this.updateOverridesCount()
       }
     },
   },
-  created: async function () {
-    // Ensure Offline Access Is Setup For the Current User
-    this.api = new OpenC3Api()
-    this.api.ensure_offline_access()
-    this.api
-      .get_setting('time_zone')
-      .then((response) => {
-        if (response) {
-          this.timeZone = response
-        }
-      })
-      .catch((error) => {
-        // Do nothing
-      })
-
-    this.updateOverridesCount()
-
-    // Make NEW_FILENAME available to the template
-    this.NEW_FILENAME = NEW_FILENAME
-
-    let user = OpenC3Auth.user()
-    let roles = OpenC3Auth.userroles()
-    this.readOnlyUser = true
-    this.executeUser = false
-    for (let role of roles) {
-      if (role == 'viewer') {
-        continue
-      }
-      if (role == 'admin' || role == 'operator') {
-        this.readOnlyUser = false
-        this.executeUser = true
-      } else if (role == 'runner') {
-        this.executeUser = true
-      } else {
-        await Api.get(`/openc3-api/roles/${role}`).then((response) => {
-          if (
-            response.data !== null &&
-            response.data.permissions !== undefined
-          ) {
-            if (
-              response.data.permissions.some(
-                (i) => i.permission == 'script_edit',
-              )
-            ) {
-              this.readOnlyUser = false
-            }
-            if (
-              response.data.permissions.some(
-                (i) => i.permission == 'script_run',
-              )
-            ) {
-              this.executeUser = true
-            }
-          }
-        })
-      }
-    }
-    // Output the userinfo for use in the SuiteRunner component
-    if (!this.inline) {
-      localStorage['script_runner__userinfo'] = JSON.stringify({
-        name: user['preferred_username'],
-        readOnly: this.readOnlyUser,
-        execute: this.executeUser,
-      })
-    }
-    if (this.readOnlyUser == true) {
-      this.alertType = 'info'
-      let text = `User ${user['preferred_username']} is read only`
-      if (this.executeUser) {
-        text += ' but can execute scripts'
-      }
-      this.alertText = text
-      this.showAlert = true
-    }
-
-    Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
-      this.screenKeywords = response.data
-    })
-
-    if (this.inline) {
-      this.readOnly = true
-    }
-  },
   mounted: async function () {
-    this.editor = ace.edit(this.$refs.editor)
-    this.editor.setTheme('ace/theme/twilight')
-    const RubyMode = this.buildRubyMode()
-    const PythonMode = this.buildPythonMode()
-    this.rubyMode = new RubyMode()
-    this.pythonMode = new PythonMode()
-    const language = AceEditorUtils.getDefaultScriptingLanguage()
-    if (language === 'python') {
-      this.editor.session.setMode(this.pythonMode)
-    } else {
-      this.editor.session.setMode(this.rubyMode)
-    }
-    this.editor.session.setTabSize(2)
-    this.editor.session.setUseWrapMode(true)
-    this.editor.$blockScrolling = Infinity
-    this.editor.setOption('enableBasicAutocompletion', true)
-    this.editor.setOption('enableLiveAutocompletion', true)
-    this.editor.completers = [new CmdCompleter(), new TlmCompleter()]
-    this.editor.setHighlightActiveLine(false)
-    AceEditorUtils.applyVimModeIfEnabled(this.editor, { saveFn: this.saveFile })
-    this.editor.focus()
-
-    this.editor.on('guttermousedown', this.toggleBreakpoint)
-    // We listen to tokenizerUpdate rather than change because this
-    // is the background process that updates as changes are processed
-    // while change fires immediately before the UndoManager is updated.
-    this.editor.session.on('tokenizerUpdate', this.onChange)
-    if (this.readOnlyUser || this.inline) {
-      this.editor.setReadOnly(true)
-      this.editor.renderer.$cursorLayer.element.style.display = 'none'
-    }
-
-    const sleepAnnotator = new SleepAnnotator(this.editor)
-    this.editor.session.on('change', ($event, session) => {
-      sleepAnnotator.annotate($event, session)
-      this.updateBreakpoints($event, session)
-    })
-
-    this.editor.container.addEventListener('resize', this.doResize)
-    this.editor.container.addEventListener('keydown', this.keydown)
-
-    this.cable = new Cable('/script-api/cable')
-
     if (!this.inline && localStorage['script_runner__recent']) {
       this.recent = JSON.parse(localStorage['script_runner__recent'])
       // Rebuild the command since that doesn't get stringified
@@ -1432,8 +1003,7 @@ export default {
       }
     } else {
       if (this.body) {
-        this.editor.setValue(this.body)
-        this.editor.clearSelection()
+        this.editorContent = this.body
         // If initialFilename is provided, use it for path resolution
         if (this.initialFilename) {
           this.filename = this.initialFilename
@@ -1448,68 +1018,24 @@ export default {
     if (this.scriptId && !this.inline) {
       sessionStorage.setItem('script_runner__script_id', this.scriptId)
     }
-    this.editor.destroy()
-    this.editor.container.remove()
   },
   unmounted() {
     this.unlockFile()
-    if (this.updateInterval != null) {
-      clearInterval(this.updateInterval)
-    }
-    if (this.subscription) {
-      this.subscription.unsubscribe()
-      this.subscription = null
-    }
-    this.cable.disconnect()
   },
   methods: {
-    updateOverridesCount: function () {
-      this.api.get_overrides().then((result) => {
-        this.overridesCount = result.length
+    handleCommandEditor({ cmdString, isEditing, editLine }) {
+      this.$refs.commandEditorDialog.open({
+        cmdString,
+        isEditing,
+        editLine,
       })
     },
-    toggleVimMode() {
-      AceEditorUtils.toggleVimMode(this.editor)
-    },
-    openCommandEditor() {
-      this.executeSelectionMenu = false
-      const position = this.editor.getCursorPosition()
-      const line = this.editor.session.getLine(position.row)
+    insertCommand({ commandString, isEditing, editLine }) {
+      if (!this.editor) return
 
-      if (this.currentLineHasCommand) {
-        // Extract and parse the command from the line
-        const cmdString = this.parseCommandFromLine(line)
-        this.commandEditor.cmdString = cmdString
-        this.commandEditor.isEditing = true
-        this.commandEditor.editLine = position.row
-      } else {
-        // Inserting a new command
-        this.commandEditor.cmdString = null
-        this.commandEditor.isEditing = false
-        this.commandEditor.editLine = null
-      }
-      this.commandEditor.show = true
-      this.commandEditor.dialogError = null
-    },
-    insertCommand(event) {
-      let commandString = ''
-      try {
-        commandString = this.$refs.commandEditor.getCmdString()
-        let parts = commandString.split(' ')
-        this.commandEditor.targetName = parts[0]
-        this.commandEditor.commandName = parts[1]
-      } catch (error) {
-        this.commandEditor.dialogError =
-          error.message || 'Please fix command parameters'
-        return
-      }
-
-      if (
-        this.commandEditor.isEditing &&
-        this.commandEditor.editLine !== null
-      ) {
+      if (isEditing && editLine !== null) {
         // Replace the existing line
-        const line = this.editor.session.getLine(this.commandEditor.editLine)
+        const line = this.editor.session.getLine(editLine)
         const indent = line.match(/^\s*/)[0] // Preserve indentation
         // Extract trailing comment if present
         const commentMatch = line.match(/\s+#.*$/)
@@ -1517,12 +1043,7 @@ export default {
         const newLine = `${indent}cmd("${commandString}")${trailingComment}`
         const Range = this.Range
         this.editor.session.replace(
-          new Range(
-            this.commandEditor.editLine,
-            0,
-            this.commandEditor.editLine,
-            line.length,
-          ),
+          new Range(editLine, 0, editLine, line.length),
           newLine,
         )
       } else {
@@ -1532,47 +1053,16 @@ export default {
       }
 
       this.fileModified = true
-      this.commandEditor.show = false
-    },
-    closeCommandDialog: function () {
-      this.commandEditor.show = false
     },
     doResize() {
-      this.editor.resize()
-    },
-    scriptDisconnect() {
-      if (this.subscription) {
-        this.subscription.unsubscribe()
-        this.subscription = null
-      }
-      this.receivedEvents.length = 0 // Clear any unprocessed events
-    },
-    showMetadata() {
-      Api.get('/openc3-api/metadata').then((response) => {
-        // TODO: This is how Calendar creates new metadata items via makeMetadataEvent
-        this.inputMetadata.events = response.data.map((event) => {
-          return {
-            name: 'Metadata',
-            start: new Date(event.start * 1000),
-            end: new Date(event.start * 1000),
-            color: event.color,
-            type: event.type,
-            timed: true,
-            metadata: event,
-          }
-        })
-        this.inputMetadata.show = true
-      })
+      this.editorRef?.resize()
     },
     messageSortOrder(order) {
       // See ScriptLogMessages for these strings
-      if (order === 'Newest on Top' && this.messagesNewestOnTop === false) {
+      if (order === 'Newest on Top' && !this.messagesNewestOnTop) {
         this.messagesNewestOnTop = true
         this.messages.reverse()
-      } else if (
-        order === 'Newest on Bottom' &&
-        this.messagesNewestOnTop === true
-      ) {
+      } else if (order === 'Newest on Bottom' && this.messagesNewestOnTop) {
         this.messagesNewestOnTop = false
         this.messages.reverse()
       }
@@ -1582,9 +1072,9 @@ export default {
     fileNameChanged(filename) {
       // Split off the '*' which indicates modified
       filename = filename.split('*')[0]
-      this.editor.setValue(this.files[filename].content)
+      this.editorContent = this.files[filename].content
       this.restoreBreakpoints(filename)
-      this.editor.clearSelection()
+      this.editorRef?.clearSelection()
       this.removeAllMarkers()
       this.editor.session.addMarker(
         new this.Range(
@@ -1598,45 +1088,44 @@ export default {
       )
       this.editor.gotoLine(this.files[filename].lineNo)
     },
-    tryLoadRunningScript: function (id) {
-      return Api.get(`/script-api/running-script/${id}`)
-        .then((response) => {
-          if (response.data) {
-            let state = response.data.state
-            // Check for all the completed states, see is_complete in script_status_model
-            if (
-              state !== 'completed' &&
-              state !== 'completed_errors' &&
-              state !== 'stopped' &&
-              state !== 'crashed' &&
-              state !== 'killed'
-            ) {
-              this.filename = response.data.filename
-              this.tryLoadSuites(response)
-              this.initScriptStart()
-              this.scriptStart(id)
-            } else {
-              this.$notify.caution({
-                title: `Script ${id} has already completed`,
-                body: 'Check the Completed Scripts below ...',
-              })
-              this.scriptComplete()
-              this.showScripts = true
-            }
+    tryLoadRunningScript: async function (id) {
+      try {
+        const response = await Api.get(`/script-api/running-script/${id}`)
+        if (response.data) {
+          let state = response.data.state
+          // Check for all the completed states, see is_complete in script_status_model
+          if (
+            state !== 'completed' &&
+            state !== 'completed_errors' &&
+            state !== 'stopped' &&
+            state !== 'crashed' &&
+            state !== 'killed'
+          ) {
+            this.filename = response.data.filename
+            this.tryLoadSuites(response)
+            this.initScriptStart()
+            this.scriptStart(id)
           } else {
-            throw new Error(`Unable to load state for running script ${id}`) // Get into the following catch block because this should be handled the same as an error like 404
+            this.$notify.caution({
+              title: `Script ${id} has already completed`,
+              body: 'Check the Completed Scripts below ...',
+            })
+            this.scriptComplete()
+            this.showScripts = true
           }
+        } else {
+          throw new Error(`Unable to load state for running script ${id}`) // Get into the following catch block because this should be handled the same as an error like 404
+        }
+      } catch {
+        // TODO: This is appearing on the main page which is blurred from the presence of the bottom sheet
+        // We should probably not allow the bottom sheet to blur the screen
+        this.$notify.caution({
+          title: `Running Script ${id} not found`,
+          body: 'Check the Completed Scripts below ...',
         })
-        .catch((error) => {
-          // TODO: This is appearing on the main page which is blurred from the presence of the bottom sheet
-          // We should probably not allow the bottom sheet to blur the screen
-          this.$notify.caution({
-            title: `Running Script ${id} not found`,
-            body: 'Check the Completed Scripts below ...',
-          })
-          this.scriptComplete()
-          this.showScripts = true
-        })
+        this.scriptComplete()
+        this.showScripts = true
+      }
     },
     tryLoadSuites: function (response) {
       if (response.data.suites) {
@@ -1646,132 +1135,22 @@ export default {
       }
       this.doResize()
     },
-    showExecuteSelectionMenu: function ($event) {
-      this.menuX = $event.pageX
-      this.menuY = $event.pageY
-      // Check if the current line contains a command
-      const position = this.editor.getCursorPosition()
-      const line = this.editor.session.getLine(position.row)
-      this.currentLineHasCommand = this.isCommandLine(line)
-      this.executeSelectionMenu = true
-    },
-    isCommandLine: function (line) {
-      // Check if line contains cmd() or cmd_no_hazardous_check() or similar command patterns
-      const trimmedLine = line.trim()
-      // Match patterns like: cmd("...", cmd_no_hazardous_check("...", cmd_raw("...", etc.
-      return /^\s*cmd(_\w+)?\s*\(/.test(trimmedLine)
-    },
-    parseCommandFromLine: function (line) {
-      // Extract the command string from patterns like: cmd("TARGET COMMAND with PARAM value")
-      const match = line.match(/cmd(_\w+)?\s*\(\s*["'](.+?)["']\s*\)/)
-      if (match) {
-        return match[2] // Return the command string
-      }
-      return null
-    },
-    runFromCursor: function () {
-      const start_row = this.editor.getCursorPosition().row + 1
-      if (!this.scriptId) {
-        this.start(null, null, start_row)
-      } else {
-        Api.post(
-          `/script-api/running-script/${this.scriptId}/executewhilepaused`,
-          {
-            data: {
-              args: [this.filenameSelect, start_row],
-            },
-          },
-        )
-      }
-    },
-    executeSelection: function () {
-      const range = this.editor.getSelectionRange()
-      let start_row = range.start.row + 1
-      let end_row = range.end.row + 1
-      if (range.end.column === 0) {
-        end_row -= 1
-      }
-      if (!this.scriptId) {
-        this.start(null, null, start_row, end_row)
-      } else {
-        Api.post(
-          `/script-api/running-script/${this.scriptId}/executewhilepaused`,
-          {
-            data: {
-              args: [this.filenameSelect, start_row, end_row],
-            },
-          },
-        )
-      }
-    },
-    clearBreakpoints: function () {
-      this.editor.session.clearBreakpoints()
-    },
-    toggleBreakpoint: function ($event) {
-      // Don't allow setting breakpoints while running
-      if (!this.scriptId) {
-        const row = $event.getDocumentPosition().row
-        if ($event.editor.session.getBreakpoints(row, 0)[row]) {
-          $event.editor.session.clearBreakpoint(row)
-        } else {
-          $event.editor.session.setBreakpoint(row)
-        }
-      }
-    },
-    updateBreakpoints: function ($event, session) {
-      if ($event.lines.length <= 1) {
-        return
-      }
-      const rowsToUpdate = this.getBreakpointRows(session).filter(
-        (row) =>
-          ($event.start.column === 0 && row === $event.start.row) ||
-          row > $event.start.row,
-      )
-      let rowsToDelete = []
-      let offset = 0
-      switch ($event.action) {
-        case 'insert':
-          offset = $event.lines.length - 1
-          rowsToUpdate.reverse() // shift the lower ones down out of the way first
-          break
-        case 'remove':
-          offset = -$event.lines.length + 1
-          rowsToDelete = [...Array($event.lines.length).keys()].map(
-            (row) => row + $event.start.row,
-          )
-          break
-      }
-      rowsToUpdate.forEach((row) => {
-        session.clearBreakpoint(row)
-        if (!rowsToDelete.includes(row)) {
-          session.setBreakpoint(row + offset)
-        }
-      })
-    },
-    getBreakpointRows: function (session = this.editor.session) {
-      return session
-        .getBreakpoints()
-        .map((breakpoint, row) => breakpoint && row) // [empty, 'ace_breakpoint', 'ace_breakpoint', empty] -> [empty, 1, 2, empty]
-        .filter(Number.isInteger) // [empty, 1, 2, empty] -> [1, 2]
+    getBreakpointRows: function () {
+      return this.editorRef?.getBreakpointRows() || []
     },
     restoreBreakpoints: function (filename) {
-      this.clearBreakpoints()
-      this.breakpoints[filename]?.forEach((breakpoint) => {
-        this.editor.session.setBreakpoint(breakpoint)
-      })
+      this.editorRef?.restoreBreakpoints(this.breakpoints[filename])
     },
-    deleteAllBreakpoints: function () {
-      this.$dialog
-        .confirm('Permanently delete all breakpoints for ALL scripts?', {
+    deleteAllBreakpoints: async function () {
+      await this.$dialog.confirm(
+        'Permanently delete all breakpoints for ALL scripts?',
+        {
           okText: 'Delete',
           cancelText: 'Cancel',
-        })
-        .then((dialog) => {
-          return Api.delete('/script-api/breakpoints/delete/all')
-        })
-        .then((response) => {
-          this.clearBreakpoints()
-        })
+        },
+      )
+      await Api.delete('/script-api/breakpoints/delete/all')
+      this.editorRef?.clearBreakpoints()
     },
     suiteRunnerButton(event) {
       if (this.startOrGoButton === START) {
@@ -1780,29 +1159,10 @@ export default {
         this.go(event, 'suiteRunner')
       }
     },
-    async keydown(event) {
-      // Don't ever save if running or readonly
-      if (this.scriptId || this.editor.getReadOnly() === true) {
-        return
-      }
-      // NOTE: Chrome does not allow overriding Ctrl-N, Ctrl-Shift-N, Ctrl-T, Ctrl-Shift-T, Ctrl-W
-      // NOTE: metaKey == Command on Mac
-      if (
-        (event.metaKey || event.ctrlKey) &&
-        event.keyCode === 'S'.charCodeAt(0)
-      ) {
-        if (event.shiftKey) {
-          event.preventDefault()
-          this.saveAs()
-        } else {
-          event.preventDefault()
-          await this.saveFile()
-        }
-      }
-    },
-    onChange(event) {
+
+    onChange() {
       // Don't track changes when we're running or read-only (locked)
-      if (this.scriptId || this.editor.getReadOnly() === true) {
+      if (this.scriptId || this.editor.getReadOnly()) {
         return
       }
       if (this.editor.session.getUndoManager().canUndo()) {
@@ -1811,45 +1171,47 @@ export default {
         this.fileModified = ''
       }
     },
-    checkMnemonics: function () {
+    checkMnemonics: async function () {
       let filename = this.filename
-      if (this.filename !== NEW_FILENAME) {
-        // Check if the extension is not .rb or .py
-        if (!(filename.endsWith('.rb') || filename.endsWith('.py'))) {
-          Api.post(`/script-api/scripts/${this.filename}/mnemonics`, {
-            data: this.editor.getValue(),
+      // Check if the extension is not .rb or .py
+      if (
+        this.filename !== NEW_FILENAME &&
+        !(filename.endsWith('.rb') || filename.endsWith('.py'))
+      ) {
+        const response = await Api.post(
+          `/script-api/scripts/${this.filename}/mnemonics`,
+          {
+            data: this.editorContent,
             headers: {
               Accept: 'application/json',
               'Content-Type': 'plain/text',
             },
-          }).then((response) => {
-            let alertText = ''
-            alertText += `<strong>${response.data.title}</strong><br/><br/>`
-            alertText += JSON.parse(response.data.description)
-            this.$dialog.alert(alertText.trim(), { html: true })
-            return
-          })
+          },
+        )
+        let alertText = ''
+        alertText += `<strong>${response.data.title}</strong><br/><br/>`
+        alertText += JSON.parse(response.data.description)
+        this.$dialog.alert(alertText.trim(), { html: true })
+      } else {
+        const { skipped, problems } = await this.mnemonicChecker.checkText(
+          this.editorContent,
+        )
+        let alertText = ''
+        if (problems.length) {
+          const problemText = problems
+            .map((problem) => `${problem.lineNumber}: ${problem.error}`)
+            .join('<br/>')
+          alertText += `<strong>The following lines have problems:</strong><br/>${problemText}<br/><br/>`
         }
+        if (skipped.length) {
+          alertText +=
+            '<strong>Mnemonics with string interpolation were not checked.</strong>'
+        }
+        if (alertText === '') {
+          alertText = '<strong>Everything looks good!</strong>'
+        }
+        this.$dialog.alert(alertText.trim(), { html: true })
       }
-      this.mnemonicChecker
-        .checkText(this.editor.getValue())
-        .then(({ skipped, problems }) => {
-          let alertText = ''
-          if (problems.length) {
-            const problemText = problems
-              .map((problem) => `${problem.lineNumber}: ${problem.error}`)
-              .join('<br/>')
-            alertText += `<strong>The following lines have problems:</strong><br/>${problemText}<br/><br/>`
-          }
-          if (skipped.length) {
-            alertText +=
-              '<strong>Mnemonics with string interpolation were not checked.</strong>'
-          }
-          if (alertText === '') {
-            alertText = '<strong>Everything looks good!</strong>'
-          }
-          this.$dialog.alert(alertText.trim(), { html: true })
-        })
     },
     initScriptStart() {
       this.disableSuiteButtons = true
@@ -1861,60 +1223,8 @@ export default {
       this.startOrGoButton = GO
       this.editor.setReadOnly(true)
     },
-    scriptStart(id) {
-      this.$emit('script-id', id)
-      this.scriptId = id
-      this.cable
-        .createSubscription(
-          'RunningScriptChannel',
-          window.openc3Scope,
-          {
-            received: (data) => this.received(data),
-          },
-          {
-            id: this.scriptId,
-          },
-        )
-        .then((subscription) => {
-          this.subscription = subscription
-        })
-    },
-    async scriptComplete() {
-      // Make sure we process no more events
-      if (this.subscription) {
-        await this.subscription.unsubscribe()
-        this.subscription = null
-      }
-      this.receivedEvents.length = 0 // Clear any unprocessed events
-
-      await this.reloadFile() // Make sure the right file is shown
-      // We may have changed the contents (if there were sub-scripts)
-      // so don't let the undo manager think this is a change
-      this.editor.session.getUndoManager().reset()
-      if (this.readOnlyUser == false && !this.inline) {
-        this.editor.setReadOnly(false)
-      }
-
-      this.scriptId = null // No current scriptId
-      sessionStorage.removeItem('script_runner__script_id')
-
-      // Lastly enable the buttons so another script can start
-      this.disableSuiteButtons = false
-      this.startOrGoButton = START
-      this.pauseOrRetryButton = PAUSE
-      // Disable start if suiteRunner
-      this.startOrGoDisabled = this.suiteRunner
-      this.envDisabled = false
-      this.pauseOrRetryDisabled = true
-      this.stopDisabled = true
-      // Overrides can be set from a script
-      this.updateOverridesCount()
-    },
     environmentHandler: function (event) {
       this.scriptEnvironment.env = event
-    },
-    startHandler: function () {
-      this.start()
     },
     async start(
       event = null,
@@ -1957,13 +1267,12 @@ export default {
       if (end_line_no !== null) {
         data['end_line_no'] = end_line_no
       }
-      Api.post(url, { data })
-        .then((response) => {
-          this.scriptStart(response.data)
-        })
-        .catch((error) => {
-          this.scriptComplete()
-        })
+      try {
+        const response = await Api.post(url, { data })
+        this.scriptStart(response.data)
+      } catch {
+        this.scriptComplete()
+      }
     },
     go() {
       // Ensure we're on the correct filename when we hit go
@@ -1971,40 +1280,6 @@ export default {
       this.filenameSelect = this.currentFilename
       this.fileNameChanged(this.currentFilename)
       Api.post(`/script-api/running-script/${this.scriptId}/go`)
-    },
-    pauseOrRetry() {
-      if (this.pauseOrRetryButton === PAUSE) {
-        Api.post(`/script-api/running-script/${this.scriptId}/pause`)
-      } else {
-        this.pauseOrRetryButton = PAUSE
-        Api.post(`/script-api/running-script/${this.scriptId}/retry`)
-      }
-    },
-    stop() {
-      Api.post(`/script-api/running-script/${this.scriptId}/stop`)
-    },
-    step() {
-      Api.post(`/script-api/running-script/${this.scriptId}/step`)
-    },
-    // This is called by processLine no matter the current state
-    handleWaiting() {
-      // First check if we're not waiting and if so clear the interval
-      if (this.state !== 'waiting' && this.state !== 'paused') {
-        this.clearWaiting()
-      } else if (this.waitingInterval !== null) {
-        // If we're waiting and the interval is active then nothing to do
-        return
-      }
-      this.waitingStart = Date.now()
-      // Create an interval to count every second
-      this.waitingInterval = setInterval(() => {
-        this.waitingTime = Math.round((Date.now() - this.waitingStart) / 1000)
-      }, 1000)
-    },
-    clearWaiting() {
-      this.waitingTime = 0
-      clearInterval(this.waitingInterval)
-      this.waitingInterval = null
     },
     processLine(data) {
       if (data.filename && data.filename !== this.currentFilename) {
@@ -2032,13 +1307,13 @@ export default {
             })
         } else {
           this.currentFilename = data.filename
-          this.editor.setValue(this.files[data.filename].content)
+          this.editorContent = this.files[data.filename].content
           this.restoreBreakpoints(data.filename)
-          this.editor.clearSelection()
+          this.editorRef?.clearSelection()
         }
       }
       this.state = data.state
-      const markers = this.editor.session.getMarkers()
+      const markers = this.editor?.session.getMarkers() || {}
       switch (this.state) {
         // Handle all the script states, see script_status_model for details
         // spawning, init, running, paused, waiting, breakpoint, error, crashed, stopped, completed, completed_errors, killed
@@ -2050,12 +1325,14 @@ export default {
           this.pauseOrRetryButton = PAUSE
 
           this.removeAllMarkers()
-          this.editor.session.addMarker(
-            new this.Range(data.line_no - 1, 0, data.line_no - 1, 1),
-            'runningMarker',
-            'fullLine',
-          )
-          this.editor.gotoLine(data.line_no)
+          if (this.editor) {
+            this.editor.session.addMarker(
+              new this.Range(data.line_no - 1, 0, data.line_no - 1, 1),
+              'runningMarker',
+              'fullLine',
+            )
+            this.editor.gotoLine(data.line_no)
+          }
           this.files[data.filename].lineNo = data.line_no
           break
         case 'error':
@@ -2076,12 +1353,14 @@ export default {
           if (existing.length === 0) {
             this.removeAllMarkers()
             let line = data.line_no > 0 ? data.line_no : 1
-            this.editor.session.addMarker(
-              new this.Range(line - 1, 0, line - 1, 1),
-              `${this.state}Marker`,
-              'fullLine',
-            )
-            this.editor.gotoLine(line)
+            if (this.editor) {
+              this.editor.session.addMarker(
+                new this.Range(line - 1, 0, line - 1, 1),
+                `${this.state}Marker`,
+                'fullLine',
+              )
+              this.editor.gotoLine(line)
+            }
             // Fatal errors don't always have a filename set
             if (data.filename) {
               this.files[data.filename].lineNo = line
@@ -2152,7 +1431,7 @@ export default {
             }
             break
           case 'script':
-            this.handleScript(data)
+            this.handleScript(data, this.scriptId, this.showMetadata)
             break
           // DEPRECATED because the 'complete' message now includes the report
           case 'report':
@@ -2220,13 +1499,11 @@ export default {
           case 'clearallscreens':
             this.screens = []
             break
-          case 'downloadfile':
-            // Make a link and then 'click' on it to start the download
-            const link = document.createElement('a')
-            link.href = window.location.origin + data.url
-            link.setAttribute('download', data.filename)
-            link.click()
+          case 'downloadfile': {
+            const url = window.location.origin + data.url
+            this.downloadFile(url, data.filename)
             break
+          }
           case 'opentab':
             window.open(data.url, '_blank')
             break
@@ -2239,245 +1516,6 @@ export default {
 
       // Remove all the events we processed
       this.receivedEvents.splice(0, count)
-    },
-    received(data) {
-      this.cable.recordPing()
-      this.receivedEvents.push(data)
-    },
-    promptDialogCallback(value) {
-      this.prompt.show = false
-      Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-        data: {
-          method: this.prompt.method,
-          answer: value,
-          prompt_id: this.activePromptId,
-          multiple: this.prompt.multiple,
-        },
-      })
-    },
-    handleScript(data) {
-      if (data.prompt_complete) {
-        this.activePromptId = ''
-        this.prompt.show = false
-        this.ask.show = false
-        this.file.show = false
-        this.bucket.show = false
-        return
-      }
-      this.activePromptId = data.prompt_id
-      this.prompt.method = data.method // Set it here since all prompts use this
-      this.prompt.layout = 'horizontal' // Reset the layout since most are horizontal
-      this.prompt.title = 'Prompt'
-      this.prompt.subtitle = ''
-      this.prompt.details = ''
-      this.prompt.buttons = []
-      this.prompt.multiple = null
-      switch (data.method) {
-        case 'ask':
-        case 'ask_string':
-          // Reset values since this dialog can be reused
-          this.ask.default = null
-          this.ask.answerRequired = true
-          this.ask.password = false
-          this.ask.question = data.args[0]
-          // If the second parameter is not true or false it indicates a default value
-          if (data.args[1] && data.args[1] !== true && data.args[1] !== false) {
-            this.ask.default = data.args[1].toString()
-          } else if (data.args[1] === true) {
-            // If the second parameter is true it means no value is required to be entered
-            this.ask.answerRequired = false
-          }
-          // The third parameter indicates a password textfield
-          if (data.args[2] === true) {
-            this.ask.password = true
-          }
-          this.ask.callback = (value) => {
-            this.ask.show = false // Close the dialog
-            if (this.ask.password) {
-              Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-                data: {
-                  method: data.method,
-                  password: value, // Using password as a key automatically filters it from rails logs
-                  prompt_id: this.activePromptId,
-                },
-              })
-            } else {
-              Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-                data: {
-                  method: data.method,
-                  answer: value,
-                  prompt_id: this.activePromptId,
-                },
-              })
-            }
-          }
-          this.ask.show = true // Display the dialog
-          break
-        case 'prompt_for_hazardous':
-          this.prompt.title = 'Hazardous Command'
-          this.prompt.message = `Warning: Command ${data.args[0]} ${data.args[1]} is Hazardous. `
-          if (data.args[2]) {
-            this.prompt.message += data.args[2] + ' '
-          }
-          this.prompt.message += 'Send?'
-          this.prompt.buttons = [{ text: 'Send', value: 'Send' }]
-          this.prompt.callback = this.promptDialogCallback
-          this.prompt.show = true
-          break
-        case 'prompt_for_critical_cmd':
-          this.criticalCmdUuid = data.args[0]
-          this.criticalCmdString = data.args[5]
-          this.criticalCmdUser = data.args[1]
-          this.displayCriticalCmd = true
-          break
-        case 'prompt':
-          if (data.kwargs && data.kwargs.informative) {
-            this.prompt.subtitle = data.kwargs.informative
-          }
-          if (data.kwargs && data.kwargs.details) {
-            this.prompt.details = data.kwargs.details
-          }
-          this.prompt.message = data.args[0]
-          this.prompt.buttons = [{ text: 'Ok', value: 'Ok' }]
-          this.prompt.callback = this.promptDialogCallback
-          this.prompt.show = true
-          break
-        case 'combo_box':
-        case 'check_box':
-          if (data.kwargs && data.kwargs.informative) {
-            this.prompt.subtitle = data.kwargs.informative
-          }
-          if (data.kwargs && data.kwargs.details) {
-            this.prompt.details = data.kwargs.details
-          }
-          // check_box is always multiple choice, combo_box is single choice unless kwargs.multiple is set to true
-          if (
-            data.method === 'check_box' ||
-            (data.kwargs && data.kwargs.multiple)
-          ) {
-            this.prompt.multiple = true
-          }
-          this.prompt.message = data.args[0]
-          data.args.slice(1).forEach((v) => {
-            this.prompt.buttons.push({ title: v, value: v })
-          })
-          this.prompt.layout = data.method.split('_')[0]
-          this.prompt.callback = this.promptDialogCallback
-          this.prompt.show = true
-          break
-        case 'message_box':
-        case 'vertical_message_box':
-          if (data.kwargs && data.kwargs.informative) {
-            this.prompt.subtitle = data.kwargs.informative
-          }
-          if (data.kwargs && data.kwargs.details) {
-            this.prompt.details = data.kwargs.details
-          }
-          this.prompt.message = data.args[0]
-          data.args.slice(1).forEach((v) => {
-            this.prompt.buttons.push({ text: v, value: v })
-          })
-          if (data.method.includes('vertical')) {
-            this.prompt.layout = 'vertical'
-          }
-          this.prompt.callback = this.promptDialogCallback
-          this.prompt.show = true
-          break
-        case 'backtrace':
-          this.information.title = 'Call Stack'
-          this.information.text = data.args
-          this.information.show = true
-          this.information.width = '600'
-          break
-        case 'metadata_input':
-          this.inputMetadata.callback = (value) => {
-            this.inputMetadata.show = false
-            Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-              data: {
-                method: data.method,
-                answer: value,
-                prompt_id: this.activePromptId,
-              },
-            })
-          }
-          this.showMetadata()
-          break
-        case 'open_bucket_dialog':
-          this.bucket.title = data.args[0]
-          this.bucket.message = data.args[1]
-          this.bucket.show = true
-          break
-        // This is called continuously by the backend
-        case 'open_file_dialog':
-        case 'open_files_dialog':
-          this.file.title = data.args[0]
-          this.file.message = data.args[1]
-          if (data.kwargs && data.kwargs.filter) {
-            this.file.filter = data.kwargs.filter
-          }
-          if (data.method == 'open_files_dialog') {
-            this.file.multiple = true
-          }
-          this.file.show = true
-          break
-        default:
-          // console.log(
-          // 'Unknown script method:' + data.method + ' with args:' + data.args
-          // )
-          break
-      }
-    },
-    async fileDialogCallback(files) {
-      // Set fileNames to 'COSMOS__CANCEL' in case they cancelled
-      // otherwise we will populate it with the file names they selected
-      let fileNames = 'COSMOS__CANCEL'
-      // Record all the API request promises so we can ensure they complete
-      let promises = []
-      if (files != 'COSMOS__CANCEL') {
-        fileNames = []
-        files.forEach((file) => {
-          fileNames.push(file.name)
-          promises.push(
-            Api.get(
-              `/openc3-api/storage/upload/${encodeURIComponent(
-                `${window.openc3Scope}/tmp/${file.name}`,
-              )}?bucket=OPENC3_CONFIG_BUCKET`,
-            ).then((response) => {
-              // This pushes the file into storage by using the fields in the presignedRequest
-              // See storage_controller.rb get_upload_presigned_request()
-              promises.push(
-                axios({
-                  ...response.data,
-                  data: file,
-                }),
-              )
-            }),
-          )
-        })
-      }
-      // We have to wait for all the upload API requests to finish before notifying the prompt
-      Promise.all(promises).then((responses) => {
-        Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-          data: {
-            method: this.file.multiple
-              ? 'open_files_dialog'
-              : 'open_file_dialog',
-            answer: fileNames,
-            prompt_id: this.activePromptId,
-          },
-        })
-        this.file.show = false // Close the dialog immediately to avoid race condition
-      })
-    },
-    bucketDialogCallback(response) {
-      this.bucket.show = false
-      Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-        data: {
-          method: 'open_bucket_dialog',
-          answer: response,
-          prompt_id: this.activePromptId,
-        },
-      })
     },
     setError(event) {
       this.alertType = 'error'
@@ -2509,7 +1547,7 @@ export default {
       this.currentFilename = null
       this.tempFilename = null
       this.files = {} // Clear the cached file list
-      this.editor.session.setValue('')
+      this.editorContent = ''
       this.saveAllowed = true
       this.fileModified = ''
       this.suiteRunner = false
@@ -2526,96 +1564,15 @@ export default {
       }
       this.doResize()
     },
-    async newRubyTestSuite() {
+    async newTestSuite(language) {
       const confirmed = await this.confirmUnsavedChanges()
       if (!confirmed) return
       this.newFile()
-      this.editor.session.setValue(`require 'openc3/script/suite.rb'
-
-# Group class name should indicate what the scripts are testing
-class Power < OpenC3::Group
-  # Methods beginning with script_ are added to Script dropdown
-  def script_power_on
-    # Using OpenC3::Group.puts adds the output to the Test Report
-    # This can be useful for requirements verification, QA notes, etc
-    OpenC3::Group.puts "Verifying requirement SR-1"
-    configure()
-  end
-
-  # Other methods are not added to Script dropdown
-  def configure
-  end
-
-  def setup
-    # Run when Group Setup button is pressed
-    # Run before all scripts when Group Start is pressed
-  end
-
-  def teardown
-    # Run when Group Teardown button is pressed
-    # Run after all scripts when Group Start is pressed
-  end
-end
-
-class TestSuite < OpenC3::Suite
-  def initialize
-    add_group('Power')
-  end
-  def setup
-    # Run when Suite Setup button is pressed
-    # Run before all groups when Suite Start is pressed
-  end
-  def teardown
-    # Run when Suite Teardown button is pressed
-    # Run after all groups when Suite Start is pressed
-  end
-end
-`)
-      await this.saveFile('auto')
-    },
-    async newPythonTestSuite() {
-      const confirmed = await this.confirmUnsavedChanges()
-      if (!confirmed) return
-      this.newFile()
-      this.editor.session.setValue(`from openc3.script.suite import Suite, Group
-
-# Group class name should indicate what the scripts are testing
-class Power(Group):
-    # Methods beginning with script_ are added to Script dropdown
-    def script_power_on(self):
-        # Using Group.print adds the output to the Test Report
-        # This can be useful for requirements verification, QA notes, etc
-        Group.print("Verifying requirement SR-1")
-        self.configure()
-
-    # Other methods are not added to Script dropdown
-    def configure(self):
-        pass
-
-    def setup(self):
-        # Run when Group Setup button is pressed
-        # Run before all scripts when Group Start is pressed
-        pass
-
-    def teardown(self):
-        # Run when Group Teardown button is pressed
-        # Run after all scripts when Group Start is pressed
-        pass
-
-class TestSuite(Suite):
-    def __init__(self):
-        self.add_group(Power)
-
-    def setup(self):
-        # Run when Suite Setup button is pressed
-        # Run before all groups when Suite Start is pressed
-        pass
-
-    def teardown(self):
-        # Run when Suite Teardown button is pressed
-        # Run after all groups when Suite Start is pressed
-        pass
-`)
+      if (language === 'ruby') {
+        this.editorContent = rubyTestSuiteText
+      } else if (language === 'python') {
+        this.editorContent = pythonTestSuiteText
+      }
       await this.saveFile('auto')
     },
     addToRecent(filename) {
@@ -2666,41 +1623,40 @@ class TestSuite(Suite):
       // before it's fully loaded and then save over it with a blank file
       this.saveAllowed = false
       this.startOrGoDisabled = true
-      await Api.get(`/script-api/scripts/${this.filename}`, {
-        headers: {
-          Accept: 'application/json',
-          'Ignore-Errors': '404',
-        },
-      })
-        .then((response) => {
-          const file = {
-            name: this.filename,
-            contents: response.data.contents,
-          }
-          if (response.data.suites) {
-            file['suites'] = JSON.parse(response.data.suites)
-          }
-          if (response.data.error) {
-            file['error'] = response.data.error
-          }
-          if (response.data.success) {
-            file['success'] = response.data.success
-          }
-          const locked = response.data.locked
-          const breakpoints = response.data.breakpoints
-          this.setFile({ file, locked, breakpoints }, true)
-          this.saveAllowed = true
+      try {
+        const response = await Api.get(`/script-api/scripts/${this.filename}`, {
+          headers: {
+            Accept: 'application/json',
+            'Ignore-Errors': '404',
+          },
         })
-        .catch((error) => {
-          if (showError === true) {
-            this.$notify.caution({
-              title: 'File Open Error',
-              body: `Failed to open ${this.filename} due to ${error}`,
-            })
-          }
-          this.removeFromRecent(this.filename)
-          this.newFile() // Reset the GUI
-        })
+        const file = {
+          name: this.filename,
+          contents: response.data.contents,
+        }
+        if (response.data.suites) {
+          file['suites'] = JSON.parse(response.data.suites)
+        }
+        if (response.data.error) {
+          file['error'] = response.data.error
+        }
+        if (response.data.success) {
+          file['success'] = response.data.success
+        }
+        const locked = response.data.locked
+        const breakpoints = response.data.breakpoints
+        this.setFile({ file, locked, breakpoints }, true)
+        this.saveAllowed = true
+      } catch (error) {
+        if (showError) {
+          this.$notify.caution({
+            title: 'File Open Error',
+            body: `Failed to open ${this.filename} due to ${error}`,
+          })
+        }
+        this.removeFromRecent(this.filename)
+        this.newFile() // Reset the GUI
+      }
     },
     // Called by the FileOpenDialog to set the file contents
     setFile({ file, locked, breakpoints }, local = false) {
@@ -2736,12 +1692,12 @@ class TestSuite(Suite):
       }
 
       if (this.filename.split('.').pop() === 'py') {
-        this.editor.session.setMode(this.pythonMode)
+        this.editorLanguage = 'python'
       } else {
-        this.editor.session.setMode(this.rubyMode)
+        this.editorLanguage = 'ruby'
       }
       this.currentFilename = null
-      this.editor.session.setValue(file.contents)
+      this.editorContent = file.contents
       this.breakpoints[this.filename] = breakpoints
       this.restoreBreakpoints(this.filename)
       this.fileModified = ''
@@ -2772,42 +1728,6 @@ class TestSuite(Suite):
         localStorage['script_runner__recent'] = JSON.stringify(this.recent)
       }
     },
-    detectLanguage() {
-      let rubyRegex1 = new RegExp('^\\s*(require|load|puts) ')
-      let pythonRegex1 = new RegExp('^\\s*(import|from) ')
-      let rubyRegex2 = new RegExp('^\\s*end\\s*$')
-      let pythonRegex2 = new RegExp(
-        '^\\s*(if|def|while|else|elif|class).*:\\s*$',
-      )
-      let pythonRegex3 = /\(f"/ // f strings
-      // Since python types are defined like "def method(string: str):"
-      // we make sure the line doesn't end in ':' which indicates Python
-      // (?!:)$ is a negative lookahead to ensure it doesn't end in ':'
-      let rubyRegex3 = /\(.*\w+:\s+.+\)(?!:)$/ // named parameters
-      let text = this.editor.getValue()
-      let lines = text.split('\n')
-      for (let line of lines) {
-        if (line.match(rubyRegex1)) {
-          return 'ruby'
-        }
-        if (line.match(pythonRegex1)) {
-          return 'python'
-        }
-        if (line.match(rubyRegex2)) {
-          return 'ruby'
-        }
-        if (line.match(pythonRegex2)) {
-          return 'python'
-        }
-        if (line.match(pythonRegex3)) {
-          return 'python'
-        }
-        if (line.match(rubyRegex3)) {
-          return 'ruby'
-        }
-      }
-      return 'unknown' // otherwise unknown
-    },
     // saveFile takes a type to indicate if it was called by the Menu
     // or automatically by 'Start' (to ensure a consistent backend file) or autoSave
     async saveFile(type = 'menu') {
@@ -2824,84 +1744,76 @@ class TestSuite(Suite):
           } else {
             // start or auto with NEW_FILENAME
             if (this.tempFilename === null) {
-              let language = this.detectLanguage()
+              let language = detectLanguage(this.editorContent)
               if (language === 'unknown') {
                 language = AceEditorUtils.getDefaultScriptingLanguage()
               }
               const uuid = crypto.randomUUID().split('-')[0]
+              let postfix
               if (language === 'ruby') {
-                this.tempFilename =
-                  TEMP_FOLDER +
-                  '/' +
-                  format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
-                  '_' +
-                  uuid +
-                  '_temp.rb'
+                postfix = '_temp.rb'
               } else if (language === 'python') {
-                this.tempFilename =
-                  TEMP_FOLDER +
-                  '/' +
-                  format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
-                  '_' +
-                  uuid +
-                  '_temp.py'
+                postfix = '_temp.py'
               } else {
                 // No autosave for unknown language
                 return
               }
+              this.tempFilename = `${TEMP_FOLDER}/${format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS')}_${uuid}${postfix}`
               this.filename = this.tempFilename
               this.addToRecent(this.filename)
             }
           }
         }
         this.showSave = true
-        await Api.post(`/script-api/scripts/${this.filename}`, {
-          data: {
-            text: this.editor.getValue(), // Pass in the raw file text
-            breakpoints,
-          },
-        })
-          .then((response) => {
-            if (response.status == 200) {
-              if (response.data.suites) {
-                this.startOrGoDisabled = true
-                this.suiteRunner = true
-                this.suiteMap = JSON.parse(response.data.suites)
-              } else {
-                this.startOrGoDisabled = false
-                this.suiteRunner = false
-                this.suiteMap = {}
-              }
-              if (response.data.error) {
-                this.suiteError = response.data.error
-                this.showSuiteError = true
-              }
-              this.fileModified = ''
-              setTimeout(() => {
-                this.showSave = false
-              }, 2000)
+        try {
+          const response = await Api.post(
+            `/script-api/scripts/${this.filename}`,
+            {
+              data: {
+                text: this.editorContent, // Pass in the raw file text
+                breakpoints,
+              },
+            },
+          )
+          if (response.status == 200) {
+            if (response.data.suites) {
+              this.startOrGoDisabled = true
+              this.suiteRunner = true
+              this.suiteMap = JSON.parse(response.data.suites)
             } else {
+              this.startOrGoDisabled = false
+              this.suiteRunner = false
+              this.suiteMap = {}
+            }
+            if (response.data.error) {
+              this.suiteError = response.data.error
+              this.showSuiteError = true
+            }
+            this.fileModified = ''
+            setTimeout(() => {
               this.showSave = false
-              this.alertType = 'error'
-              this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
-              this.showAlert = true
-            }
-            this.lockFile() // Ensure this file is locked for editing
-            this.doResize()
-          })
-          .catch(({ response }) => {
+            }, 2000)
+          } else {
             this.showSave = false
-            // 422 error means we couldn't parse the script file into Suites
-            // response.data.suites holds the parse result
-            if (response.status == 422) {
-              this.alertType = 'error'
-              this.alertText = response.data.suites
-            } else {
-              this.alertType = 'error'
-              this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
-            }
+            this.alertType = 'error'
+            this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
             this.showAlert = true
-          })
+          }
+          this.lockFile() // Ensure this file is locked for editing
+          this.doResize()
+        } catch ({ response }) {
+          this.showSave = false
+          // 422 error means we couldn't parse the script file into Suites
+          // response.data.suites holds the parse result
+          if (response.status == 422) {
+            this.alertType = 'error'
+            this.alertText = response.data.suites
+          } else {
+            this.alertType = 'error'
+            this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
+          }
+          this.showAlert = true
+        }
       } else {
         this.setError('Attempt to save file when not allowed')
       }
@@ -2918,73 +1830,68 @@ class TestSuite(Suite):
       }
       await this.saveFile('menu')
     },
-    delete() {
+    delete: async function () {
       let filename = this.filename
       if (this.tempFilename) {
         filename = this.tempFilename
       }
-      this.$dialog
-        .confirm(`Permanently delete file: ${filename}`, {
+      try {
+        await this.$dialog.confirm(`Permanently delete file: ${filename}`, {
           okText: 'Delete',
           cancelText: 'Cancel',
         })
-        .then((dialog) => {
-          return Api.post(`/script-api/scripts/${filename}/delete`, {
-            data: {},
-          })
+        await Api.post(`/script-api/scripts/${filename}/delete`, {
+          data: {},
         })
-        .then((response) => {
-          this.removeFromRecent(filename)
-          this.newFile()
-        })
-        .catch((error) => {
-          if (error !== true) {
-            const alertObject = {
-              text: `Failed Multi-Delete. ${error}`,
-              type: 'error',
-            }
-            this.$emit('alert', alertObject)
+        this.removeFromRecent(filename)
+        this.newFile()
+      } catch (error) {
+        if (error !== true) {
+          const alertObject = {
+            text: `Failed Multi-Delete. ${error}`,
+            type: 'error',
           }
-        })
+          this.$emit('alert', alertObject)
+        }
+      }
     },
-    download() {
-      const blob = new Blob([this.editor.getValue()], {
-        type: 'text/plain',
-      })
+    downloadFile(href, filename) {
       // Make a link and then 'click' on it to start the download
       const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.setAttribute('download', this.filename)
+      link.href = href
+      link.setAttribute('download', filename)
       link.click()
     },
-    // ScriptRunner Script menu actions
-    syntaxCheck() {
-      Api.post(`/script-api/scripts/${this.filename}/syntax`, {
-        data: this.editor.getValue(),
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'plain/text',
-        },
-      }).then((response) => {
-        this.information.title = response.data.title
-        this.information.text = JSON.parse(response.data.description)
-        this.information.show = true
-        this.information.width = '600'
+    download() {
+      const blob = new Blob([this.editorContent], {
+        type: 'text/plain',
       })
+      const url = URL.createObjectURL(blob)
+      this.downloadFile(url, this.filename)
     },
-    showInstrumented() {
-      Api.post(`/script-api/scripts/${this.filename}/instrumented`, {
-        data: this.editor.getValue(),
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'plain/text',
+    fetchInformation: async function (path) {
+      const response = await Api.post(
+        `/script-api/scripts/${this.filename}/${path}`,
+        {
+          data: this.editorContent,
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'plain/text',
+          },
         },
-      }).then((response) => {
-        this.information.title = response.data.title
-        this.information.text = JSON.parse(response.data.description)
-        this.information.show = true
-        this.information.width = '90vw'
-      })
+      )
+      this.information.title = response.data.title
+      this.information.text = JSON.parse(response.data.description)
+      this.information.show = true
+    },
+    // ScriptRunner Script menu actions
+    syntaxCheck: async function () {
+      await this.fetchInformation('syntax')
+      this.information.width = '600'
+    },
+    showInstrumented: async function () {
+      await this.fetchInformation('instrumented')
+      this.information.width = '90vw'
     },
     showCallStack() {
       Api.post(`/script-api/running-script/${this.scriptId}/backtrace`)
@@ -3000,55 +1907,23 @@ class TestSuite(Suite):
     toggleDisconnect() {
       this.showDisconnect = !this.showDisconnect
     },
-    debugKeydown(event) {
-      if (event.key === 'Escape') {
-        this.debug = ''
-        this.debugHistoryIndex = this.debugHistory.length
-      } else if (event.key === 'Enter') {
-        this.debugHistory.push(this.debug)
-        this.debugHistoryIndex = this.debugHistory.length
-        // Post the code to /debug, output is processed by receive()
-        Api.post(`/script-api/running-script/${this.scriptId}/debug`, {
-          data: {
-            args: this.debug,
-          },
-        })
-        this.debug = ''
-      } else if (event.key === 'ArrowUp') {
-        this.debugHistoryIndex -= 1
-        if (this.debugHistoryIndex < 0) {
-          this.debugHistoryIndex = this.debugHistory.length - 1
-        }
-        this.debug = this.debugHistory[this.debugHistoryIndex]
-        // Prevent the cursor/caret from moving to the front
-        event.preventDefault()
-      } else if (event.key === 'ArrowDown') {
-        this.debugHistoryIndex += 1
-        if (this.debugHistoryIndex >= this.debugHistory.length) {
-          this.debugHistoryIndex = 0
-        }
-        this.debug = this.debugHistory[this.debugHistoryIndex]
-      }
-    },
     removeAllMarkers: function () {
+      if (!this.editor) return
       const allMarkers = this.editor.session.getMarkers()
       Object.keys(allMarkers)
         .filter((key) => allMarkers[key].type === 'fullLine')
         .forEach((marker) => this.editor.session.removeMarker(marker))
     },
-    confirmLocalUnlock: function () {
-      this.$dialog
-        .confirm(
-          'Are you sure you want to unlock this script for editing? If another user is editing this script, your changes might conflict with each other.',
-          {
-            okText: 'Force Unlock',
-            cancelText: 'Cancel',
-          },
-        )
-        .then(() => {
-          this.lockedBy = null
-          return this.lockFile() // Re-lock it as this user so it's locked for anyone else who opens it
-        })
+    confirmLocalUnlock: async function () {
+      await this.$dialog.confirm(
+        'Are you sure you want to unlock this script for editing? If another user is editing this script, your changes might conflict with each other.',
+        {
+          okText: 'Force Unlock',
+          cancelText: 'Cancel',
+        },
+      )
+      this.lockedBy = null
+      this.lockFile() // Re-lock it as this user so it's locked for anyone else who opens it
     },
     lockFile: function () {
       if (!this.readOnlyUser) {
@@ -3056,11 +1931,7 @@ class TestSuite(Suite):
       }
     },
     unlockFile: function () {
-      if (
-        this.filename !== NEW_FILENAME &&
-        !this.readOnly &&
-        !this.readOnlyUser
-      ) {
+      if (this.filename !== NEW_FILENAME && !this.readOnlyUser) {
         Api.post(`/script-api/scripts/${this.filename}/unlock`)
       }
     },
@@ -3096,51 +1967,11 @@ hr {
   height: 3px;
 }
 
-.error-message {
-  border: 2px solid #f44336;
-  border-radius: 8px;
-  background-color: rgba(244, 67, 54, 0.1);
-  color: #d32f2f;
-  padding-left: 8px;
-  padding-right: 8px;
-  margin: 16px;
-  display: flex;
-  align-items: center;
-  font-weight: 500;
-  box-shadow: 0 2px 4px rgba(244, 67, 54, 0.2);
-}
-
-#sr-controls {
-  padding: 0px;
-}
-
 .editor {
   height: 100%;
   width: 100%;
   position: relative;
   font-size: 16px;
-}
-
-.script-state :deep(.v-field) {
-  background-color: var(--color-background-base-default);
-}
-
-.script-state :deep(input) {
-  text-transform: capitalize;
-}
-
-/* Taken from the various status-symbol-color-fill classes
-   on https://www.astrouxds.com/design-tokens/component/ */
-.script-state-red :deep(input) {
-  color: #ff3838 !important;
-}
-
-.script-state-orange :deep(input) {
-  color: #ffb302 !important;
-}
-
-.script-state-green :deep(input) {
-  color: #56f000 !important;
 }
 </style>
 <style>

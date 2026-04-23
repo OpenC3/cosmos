@@ -210,6 +210,7 @@
 
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount, inject } from 'vue'
+import { useAsyncState } from '@vueuse/core'
 import { useRouter } from 'vue-router'
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { OutputDialog } from '@/components'
@@ -235,7 +236,13 @@ const dialog = inject('dialog')
 const { formatDateTimeHMS } = TimeFilters.methods
 
 const api = new OpenC3Api()
-const timeZone = ref('local')
+const { state: timeZone } = useAsyncState(async () => {
+  try {
+    return await api.get_setting('time_zone')
+  } catch {
+    return 'local'
+  }
+}, 'local')
 const activeTab = ref('completed')
 const downloadScript = ref(null)
 const refreshTimer = ref(null)
@@ -310,15 +317,6 @@ watch(activeTab, (newTab) => {
 })
 
 onMounted(async () => {
-  try {
-    const response = await api.get_setting('time_zone')
-    if (response) {
-      timeZone.value = response
-    }
-  } catch (error) {
-    // Do nothing
-  }
-
   getRunningScripts()
   getCompletedScripts()
 

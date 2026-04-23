@@ -78,7 +78,6 @@
 <script>
 import * as ace from 'ace-builds'
 import 'ace-builds/src-min-noconflict/mode-text'
-import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
 import { ScreenCompleter } from './autocomplete'
@@ -164,24 +163,14 @@ export default {
       }
     },
     initEditor() {
-      this.editor = ace.edit(this.$refs.editor)
-      this.editor.setTheme('ace/theme/twilight')
       const screenMode = this.buildScreenMode()
-      this.editor.session.setMode(new screenMode())
-      this.editor.session.setTabSize(2)
-      this.editor.session.setUseWrapMode(true)
-      this.editor.$blockScrolling = Infinity
-      this.editor.setOption('enableBasicAutocompletion', true)
-      this.editor.setOption('enableLiveAutocompletion', true)
-      this.editor.completers = [new ScreenCompleter()]
-      this.editor.setHighlightActiveLine(false)
-      this.editor.setValue(this.modelValue)
-      this.editor.clearSelection()
-      AceEditorUtils.applyVimModeIfEnabled(this.editor)
-      this.editor.focus()
-
-      this.editor.session.on('change', () => {
-        this.$emit('update:modelValue', this.editor.getValue())
+      this.editor = AceEditorUtils.initializeEditor(this.$refs.editor, {
+        mode: new screenMode(),
+        completers: [new ScreenCompleter()],
+        value: this.modelValue,
+        onChange: () => {
+          this.$emit('update:modelValue', this.editor.getValue())
+        },
       })
     },
     getValue() {

@@ -75,6 +75,7 @@
     "@astrouxds/astro-web-components": "7.27.0",
     "@braintree/sanitize-url": "7.1.2",
     "@openc3/js-common": "workspace:*",
+    "@vueuse/core": "^14.2.1",
     "ace-builds": "1.43.6",
     "ace-diff": "4.0.0",
     "axios": "1.15.0",
