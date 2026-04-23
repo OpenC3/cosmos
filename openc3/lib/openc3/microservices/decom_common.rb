@@ -21,7 +21,7 @@ module OpenC3
   # ReingestJob (historical raw log replay). The reingest path passes
   # check_limits: false so historical data does not re-fire limits events.
   module DecomCommon
-    module_function
+    extend self
 
     # Decommutate a Packet and publish it on the TelemetryDecomTopic. This is the
     # step that lands data in the CVT and in the Python TsdbMicroservice → QuestDB.

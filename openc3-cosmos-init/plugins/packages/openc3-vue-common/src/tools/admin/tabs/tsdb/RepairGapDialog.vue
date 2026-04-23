@@ -266,7 +266,7 @@ export default {
       const nowSec = Date.now() / 1000
       const enabledSec = new Date(enabledAt).getTime() / 1000
       const remaining = Math.round(enabledSec + cooldown - nowSec)
-      return remaining > 0 ? remaining : 0
+      return Math.max(remaining, 0)
     },
     progressPercent() {
       const s = this.jobStatus

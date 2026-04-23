@@ -494,12 +494,10 @@ class StorageController < ApplicationController
 
     scope = params[:scope] || 'DEFAULT'
 
-    if params[:bucket] && bucket_requires_rbac?(params[:bucket])
-      unless authorize_bucket_path(params[:bucket], path)
-        path_scope = extract_scope_from_path(path)
-        render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: :forbidden
-        return
-      end
+    if params[:bucket] && bucket_requires_rbac?(params[:bucket]) && !authorize_bucket_path(params[:bucket], path)
+      path_scope = extract_scope_from_path(path)
+      render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: :forbidden
+      return
     end
 
     target_version = params[:target_version].to_s

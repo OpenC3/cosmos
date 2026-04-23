@@ -23,6 +23,8 @@ require 'openc3/microservices/decom_common'
 require 'openc3/models/reingest_job_model'
 
 module OpenC3
+  class ReingestJobError < StandardError; end
+
   # Replays raw .bin.gz log files from a bucket, decommutating each packet via
   # DecomCommon.decom_and_publish(check_limits: false) so historical data
   # reaches QuestDB without re-firing limits events.
@@ -130,7 +132,7 @@ module OpenC3
 
     def load_job
       ReingestJobModel.get_model(name: @job_id, scope: @scope) or
-        raise "ReingestJobModel #{@job_id} not found in scope #{@scope}"
+        raise ReingestJobError, "ReingestJobModel #{@job_id} not found in scope #{@scope}"
     end
 
     # Returns the target name embedded in the reingest path, e.g.
@@ -151,7 +153,7 @@ module OpenC3
     end
 
     def download_and_uncompress(job, tmp_dir)
-      bucket_name = ENV.fetch(@bucket_env) { |name| raise "Unknown bucket #{name}" }
+      bucket_name = ENV.fetch(@bucket_env) { |name| raise ReingestJobError, "Unknown bucket #{name}" }
       bucket_client = Bucket.getClient()
       local_files = []
       @files.each_with_index do |filename, i|

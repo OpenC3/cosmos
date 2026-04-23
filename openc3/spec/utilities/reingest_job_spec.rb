@@ -286,7 +286,7 @@ module OpenC3
       connection_calls = 0
       allow(QuestDBClient).to receive(:connection) do
         connection_calls += 1
-        raise 'pg connection dropped' if connection_calls >= 2
+        raise RuntimeError, 'pg connection dropped' if connection_calls >= 2
         @conn
       end
       allow(DecomCommon).to receive(:decom_and_publish).and_raise('ingest failed')
@@ -327,7 +327,7 @@ module OpenC3
     it 'warns and skips when DEDUP enable fails' do
       allow(@conn).to receive(:exec) do |sql|
         @alter_sql << sql
-        raise 'enable failed' if sql.include?('DEDUP ENABLE')
+        raise RuntimeError, 'enable failed' if sql.include?('DEDUP ENABLE')
       end
 
       run_job
@@ -354,7 +354,7 @@ module OpenC3
     it 'warns but continues when DEDUP disable fails' do
       allow(@conn).to receive(:exec) do |sql|
         @alter_sql << sql
-        raise 'disable failed' if sql.include?('DEDUP DISABLE')
+        raise RuntimeError, 'disable failed' if sql.include?('DEDUP DISABLE')
       end
 
       run_job
