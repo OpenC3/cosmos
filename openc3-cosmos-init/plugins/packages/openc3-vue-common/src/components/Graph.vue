@@ -599,7 +599,7 @@ export default {
       this.applyHideLegend(newVal)
     },
     notifyNonNumeric: function () {
-      // This is a watcher on a boolean so that it only happens once per page.
+      // This is a watcher on a boolean so that it only happens once per graph.
       // Otherwise, we spam the $notify function while receiving e.g. an array item.
       this.$notify.caution({
         title: 'Non-numeric item',

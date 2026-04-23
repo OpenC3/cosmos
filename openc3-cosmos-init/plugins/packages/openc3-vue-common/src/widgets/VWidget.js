@@ -155,7 +155,8 @@ export default {
       return ''
     },
     tlmGrapherUrl() {
-      let url = '/tools/tlmgrapher/' +
+      let url =
+        '/tools/tlmgrapher/' +
         encodeURIComponent(this.parameters[0]) +
         '/' +
         encodeURIComponent(this.parameters[1]) +
@@ -172,7 +173,6 @@ export default {
     if (this.value === null || this.limitsState === null) {
       // Remove double bracket escaping. This means they actually have an item
       // with a bracket in the name, not an array index.
-      console.log('before: ' + this.parameters)
       if (this.parameters[2].includes('[[')) {
         this.parameters[2] = this.parameters[2]
           .replace('[[', '[')
