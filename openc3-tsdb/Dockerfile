@@ -36,6 +36,12 @@ ENV QDB_LINE_TCP_IO_WORKER_SLEEP_THRESHOLD=1
 # enables :9003/metrics
 ENV QDB_METRICS_ENABLED=true
 
+# Require tables to be created explicitly via PostgreSQL DDL (not auto-created by ILP).
+# COSMOS needs specific columns (PACKET_TIMESECONDS, RECEIVED_TIMESECONDS, etc.) with
+# PACKET_TIMESECONDS as the designated TIMESTAMP — ILP auto-create can't provide that.
+# TsdbMicroservice recreates tables on IngressError when this is off.
+ENV QDB_LINE_AUTO_CREATE_NEW_TABLES=false
+
 USER root
 # Update packages to eliminate CVEs
 # QuestDB 9.3.3+ uses Fedora as the base image (dnf, not apt-get)

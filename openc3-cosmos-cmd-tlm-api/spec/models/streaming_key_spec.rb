@@ -197,9 +197,9 @@ RSpec.describe StreamingKey, type: :model do
       expect(key.has_glob?).to be true
     end
 
-    it 'returns true when item_name contains [' do
-      key = StreamingKey.parse('DECOM__TLM__INST__PARAMS__TEMP[12]__CONVERTED', item_key: true)
-      expect(key.has_glob?).to be true
+    it 'returns false when item_name contains [' do
+      key = StreamingKey.parse('DECOM__TLM__INST__HEALTH_STATUS__ARY[0]__CONVERTED', item_key: true)
+      expect(key.has_glob?).to be false
     end
 
     it 'returns false for a packet key without item_name' do
