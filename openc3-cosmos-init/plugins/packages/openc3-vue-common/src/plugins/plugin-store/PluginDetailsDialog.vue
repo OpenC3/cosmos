@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -193,17 +193,17 @@
         />
         <v-tooltip v-else :open-delay="600" location="top">
           <template #activator="{ props }">
-            <span v-bind="entitled ? null : props">
+            <span v-bind="canInstall ? null : props">
               <v-btn
                 text="Install"
                 append-icon="mdi-puzzle-plus"
                 variant="elevated"
-                :disabled="!entitled"
+                :disabled="!canInstall"
                 @click="install"
               />
             </span>
           </template>
-          <span> {{ accessTooltip }} </span>
+          <span> {{ installTooltip }} </span>
         </v-tooltip>
         <v-btn
           v-if="versionRepository"
