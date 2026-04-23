@@ -104,6 +104,7 @@ services:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
         OPENC3_TAG: ${OPENC3_TAG}
+        OPENC3_PATH: /openc3
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-cmd-tlm-api:${OPENC3_TAG}"
     depends_on:
       - "openc3-base"
@@ -119,6 +120,7 @@ services:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
         OPENC3_TAG: ${OPENC3_TAG}
+        OPENC3_PATH: /openc3
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-script-runner-api:${OPENC3_TAG}"
     depends_on:
       - "openc3-base"
