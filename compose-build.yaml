@@ -20,10 +20,6 @@ services:
     build:
       context: "openc3-ruby"
       network: host
-      cache_from:
-        - type=gha,scope=openc3-ruby
-      cache_to:
-        - type=gha,scope=openc3-ruby,mode=max
       args:
         ALPINE_VERSION: ${ALPINE_VERSION}
         ALPINE_BUILD: ${ALPINE_BUILD}
@@ -38,11 +34,6 @@ services:
     build:
       context: "openc3"
       network: host
-      cache_from:
-        - type=gha,scope=openc3-base
-        - type=gha,scope=openc3-ruby
-      cache_to:
-        - type=gha,scope=openc3-base,mode=max
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -55,12 +46,6 @@ services:
     build:
       context: "openc3-node"
       network: host
-      cache_from:
-        - type=gha,scope=openc3-node
-        - type=gha,scope=openc3-base
-        - type=gha,scope=openc3-ruby
-      cache_to:
-        - type=gha,scope=openc3-node,mode=max
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -73,6 +58,10 @@ services:
     build:
       context: "openc3-buckets"
       network: host
+      cache_to:
+        - type=gha,scope=openc3-buckets,mode=min
+      cache_from:
+        - type=gha,scope=openc3-buckets
       args:
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-buckets:${OPENC3_TAG}"
@@ -81,6 +70,10 @@ services:
     build:
       context: "openc3-tsdb"
       network: host
+      cache_to:
+        - type=gha,scope=openc3-tsdb,mode=min
+      cache_from:
+        - type=gha,scope=openc3-tsdb
       args:
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb:${OPENC3_TAG}"
@@ -89,6 +82,10 @@ services:
     build:
       context: "openc3-redis"
       network: host
+      cache_to:
+        - type=gha,scope=openc3-redis,mode=min
+      cache_from:
+        - type=gha,scope=openc3-redis
       args:
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis:${OPENC3_TAG}"
@@ -97,9 +94,6 @@ services:
     build:
       context: "openc3-cosmos-cmd-tlm-api"
       network: host
-      cache_from:
-        - type=gha,scope=openc3-base
-        - type=gha,scope=openc3-ruby
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -113,9 +107,6 @@ services:
     build:
       context: "openc3-cosmos-script-runner-api"
       network: host
-      cache_from:
-        - type=gha,scope=openc3-base
-        - type=gha,scope=openc3-ruby
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -129,9 +120,6 @@ services:
     build:
       context: "openc3-operator"
       network: host
-      cache_from:
-        - type=gha,scope=openc3-base
-        - type=gha,scope=openc3-ruby
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -144,6 +132,10 @@ services:
     build:
       context: "openc3-traefik"
       network: host
+      cache_to:
+        - type=gha,scope=openc3-traefik,mode=min
+      cache_from:
+        - type=gha,scope=openc3-traefik
       args:
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik:${OPENC3_TAG}"
@@ -154,10 +146,6 @@ services:
       additional_contexts:
         docs: "docs.openc3.com"
       network: host
-      cache_from:
-        - type=gha,scope=openc3-node
-        - type=gha,scope=openc3-base
-        - type=gha,scope=openc3-ruby
       args:
         NPM_URL: ${NPM_URL}
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
