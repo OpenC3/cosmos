@@ -391,3 +391,20 @@ test('plays back to a screen', async ({ page, utils }) => {
     .poll(async () => parseTime(await packetTimeInput.inputValue()))
     .toBe(previousTime + 15)
 })
+
+test('links array item to TlmGrapher', async ({ page, utils }) => {
+  await showScreen(page, utils, 'INST', 'ARRAY', true, async function () {
+    // Right-click the ARY[0] value widget to open the context menu
+    await page
+      .locator('[data-test="label"]:has-text("ARY[0]:")')
+      .locator('..')
+      .locator('[data-test="value"]')
+      .click({ button: 'right' })
+    // Click "Graph" in the context menu, which opens TlmGrapher in a new tab
+    const graphPagePromise = page.waitForEvent('popup')
+    await page.getByText('Graph', { exact: true }).click()
+    const graphPage = await graphPagePromise
+    await expect(graphPage).toHaveURL(/\/tools\/tlmgrapher\/INST\/HEALTH_STATUS\/ARY\[0\]/)
+    await graphPage.close()
+  })
+})

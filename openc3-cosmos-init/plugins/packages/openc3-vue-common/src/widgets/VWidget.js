@@ -65,16 +65,7 @@ export default {
         {
           title: 'Graph',
           action: () => {
-            window.open(
-              '/tools/tlmgrapher/' +
-                encodeURIComponent(this.parameters[0]) +
-                '/' +
-                encodeURIComponent(this.parameters[1]) +
-                '/' +
-                encodeURIComponent(this.parameters[2]) +
-                '/',
-              '_blank',
-            )
+            window.open(this.tlmGrapherUrl, '_blank')
           },
         },
       ],
@@ -162,6 +153,19 @@ export default {
         return c
       }
       return ''
+    },
+    tlmGrapherUrl() {
+      let url =
+        '/tools/tlmgrapher/' +
+        encodeURIComponent(this.parameters[0]) +
+        '/' +
+        encodeURIComponent(this.parameters[1]) +
+        '/' +
+        encodeURIComponent(this.parameters[2])
+      if (this.arrayIndex !== null) {
+        url += `[${this.arrayIndex}]`
+      }
+      return url + '/'
     },
   },
   created() {
