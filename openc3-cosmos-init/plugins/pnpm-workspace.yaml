@@ -4,3 +4,8 @@ packages:
 minimumReleaseAge: 1440 # 1 day
 minimumReleaseAgeExclude:
   - ace-diff # we control this package
+
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - esbuild
+  - vue-demi
