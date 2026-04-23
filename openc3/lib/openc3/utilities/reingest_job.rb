@@ -156,9 +156,15 @@ module OpenC3
       bucket_name = ENV.fetch(@bucket_env) { |name| raise ReingestJobError, "Unknown bucket #{name}" }
       bucket_client = Bucket.getClient()
       local_files = []
+      tmp_root = File.expand_path(tmp_dir) + File::SEPARATOR
       @files.each_with_index do |filename, i|
         key = "#{@path}#{filename}"
-        temp_file = File.join(tmp_dir, filename)
+        temp_file = File.expand_path(File.join(tmp_dir, filename))
+        # Defense-in-depth: the controller validates filenames, but refuse to
+        # write outside tmp_dir if any caller (tests, future callers) bypasses it.
+        unless temp_file.start_with?(tmp_root)
+          raise ReingestJobError, "Invalid filename escapes tmp dir: #{filename}"
+        end
         FileUtils.mkdir_p(File.dirname(temp_file))
         bucket_client.get_object(bucket: bucket_name, key: key, path: temp_file)
         if File.extname(filename) == '.gz'

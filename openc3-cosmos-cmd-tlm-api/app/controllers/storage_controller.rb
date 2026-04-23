@@ -488,6 +488,13 @@ class StorageController < ApplicationController
     invalid = files.reject { |f| f.end_with?('.bin.gz') }
     raise StorageError, "Only .bin.gz files can be reingested: #{invalid.join(', ')}" if invalid.any?
 
+    # Reject path traversal, absolute paths, or null bytes in filenames before
+    # they reach the job's temp-file layout. sanitize_path already rejects '..'.
+    files = files.map do |f|
+      raise StorageError, "Invalid filename: #{f}" if f.to_s.empty? || f.to_s.start_with?('/') || f.to_s.include?("\0")
+      sanitize_path(f)
+    end
+
     path = sanitize_path(params[:path] || '')
     storage_type, _storage_name = validate_storage_source
     raise StorageError, "Reingest only supported for buckets" unless storage_type == :bucket
