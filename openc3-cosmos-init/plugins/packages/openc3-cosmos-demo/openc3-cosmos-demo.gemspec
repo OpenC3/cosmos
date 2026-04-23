@@ -23,8 +23,8 @@ spec = Gem::Specification.new do |s|
     This plugin adds the OpenC3 COSMOS demo configuration to a base OpenC3 COSMOS installation.
     Install this to experiment with a configured OpenC3 COSMOS system.
   EOF
-  s.authors = ['Ryan Melton', 'Jason Thomas']
-  s.email = ['ryan@openc3.com', 'jason@openc3.com']
+  s.authors = ['OpenC3, Inc.']
+  s.email = ['plugins@openc3.com']
   s.homepage = 'https://github.com/OpenC3/cosmos'
 
   s.platform = Gem::Platform::RUBY

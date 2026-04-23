@@ -21,4 +21,10 @@ Gem::Specification.new do |s|
     s.version = '0.0.0' + ".#{time}"
   end
   s.files = Dir.glob("{targets,lib,public,tools,microservices}/**/*") + %w(Rakefile README.md LICENSE.md plugin.txt)
+
+  s.metadata = {
+    "openc3_store_title" => "<%= plugin_orig %>",
+    "openc3_store_description" => "Describe what your plugin does here.",
+    "openc3_store_keywords" => "some, comma-delimited, search terms",
+  }
 end

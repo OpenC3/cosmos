@@ -142,7 +142,8 @@ module OpenC3
       end
 
       # Create the local variables
-      plugin = args[1].downcase.gsub(/_+|-+/, '-')
+      plugin_orig = args[1]
+      plugin = plugin_orig.downcase.gsub(/_+|-+/, '-')
       plugin_name = "openc3-cosmos-#{plugin}"
       if File.exist?(plugin_name)
         abort("Plugin #{plugin_name} already exists!")
