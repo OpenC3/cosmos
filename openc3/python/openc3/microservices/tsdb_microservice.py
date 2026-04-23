@@ -11,6 +11,7 @@
 
 import json
 import os
+import re
 import sys
 import time
 import traceback
@@ -29,6 +30,11 @@ from openc3.utilities.thread_manager import ThreadManager
 
 class TsdbMicroservice(Microservice):
     TRIM_KEEP_MS = 60000  # 1 minute
+
+    # QuestDB returns "table does not exist" when QDB_LINE_AUTO_CREATE_NEW_TABLES=false
+    # and an ILP write targets a table we haven't created (e.g. after a DROP from the admin UI).
+    MISSING_TABLE_RE = re.compile(r"table\s+does\s+not\s+exist", re.IGNORECASE)
+    ERROR_TABLE_NAME_RE = re.compile(r"table[=:\s]+(\w+)")
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -140,8 +146,63 @@ class TsdbMicroservice(Microservice):
             self.questdb.flush()
 
         except IngressError as error:
-            # Cast the value to fit the column type and retry
-            self.questdb.handle_ingress_error(error)
+            if self.MISSING_TABLE_RE.search(str(error)):
+                # Table was dropped (e.g. via admin UI). Recreate with proper COSMOS schema
+                # and replay pending rows. ILP auto-create is disabled to prevent QuestDB
+                # from creating a schema-less table with the wrong designated TIMESTAMP.
+                self._handle_missing_table(error)
+            else:
+                # Cast the value to fit the column type and retry
+                self.questdb.handle_ingress_error(error)
+
+    def _handle_missing_table(self, error):
+        """Recreate a table that ILP rejected because it does not exist."""
+        error_message = str(error)
+        self.logger.warn(f"QuestDB: Missing table IngressError: {error_message}")
+
+        match = self.ERROR_TABLE_NAME_RE.search(error_message)
+        if not match:
+            self.logger.error(f"QuestDB: Could not parse table name from error: {error_message}")
+            self._reset_after_error()
+            return
+
+        table_name = match.group(1)
+        parts = table_name.split("__")
+        if len(parts) < 4:
+            self.logger.error(f"QuestDB: Invalid table name format '{table_name}' in error")
+            self._reset_after_error()
+            return
+
+        scope, cmd_or_tlm, target_name, packet_name = parts[0], parts[1], parts[2], parts[3]
+        try:
+            if cmd_or_tlm == "CMD":
+                packet = get_cmd(target_name, packet_name)
+                retain_time = self.cmd_decom_retain_time
+            else:
+                packet = get_tlm(target_name, packet_name)
+                retain_time = self.tlm_decom_retain_time
+
+            # create_table raises on fatal DDL failure (including connection errors after retry),
+            # so if this call returns, the table exists and we can safely replay.
+            self.questdb.create_table(
+                target_name, packet_name, packet, cmd_or_tlm, retain_time=retain_time, scope=scope
+            )
+            self.logger.info(f"QuestDB: Recreated missing table {table_name}, replaying pending rows")
+            pending_count = len(self.questdb.pending_rows)
+            self.questdb._reconnect_and_retry_pending()
+            self.questdb.flush()
+            self.logger.info(f"QuestDB: Replayed {pending_count} pending rows for {table_name}")
+        except Exception as exc:
+            self.logger.error(f"QuestDB: Failed to recreate table {table_name}: {exc}\n{traceback.format_exc()}")
+            self._reset_after_error()
+
+    def _reset_after_error(self):
+        """Discard pending rows and reopen the ILP sender."""
+        self.questdb.pending_rows.clear()
+        try:
+            self.questdb.connect_ingest()
+        except Exception:
+            self.logger.error(f"QuestDB: Failed to reconnect:\n{traceback.format_exc()}")
 
     def trim_topics(self):
         current_time_ms = int(time.time() * 1000)
