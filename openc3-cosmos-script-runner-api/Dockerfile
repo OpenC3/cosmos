@@ -10,10 +10,9 @@ COPY Gemfile ./
 
 USER root
 
-ARG OPENC3_PATH
 ENV SKIP_DEV_GEMS=1
 RUN bundle config set --local without 'development test'
-RUN ${OPENC3_PATH:+OPENC3_PATH=$OPENC3_PATH} bundle install --quiet
+RUN bundle install --quiet
 RUN rm -rf /usr/lib/ruby/gems/*/cache/* /var/cache/apk/* /tmp/* /var/tmp/*
 
 RUN ["chown", "-R", "openc3:openc3", "/src/"]
