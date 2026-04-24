@@ -13,7 +13,7 @@
 
 # anycable-go's gRPC client sends keepalive pings every 10s (hardcoded in
 # keepalive.ClientParameters.Time). AnyCable's default server enforcement
-# (min_recv_ping_interval_without_data_ms = 10_000) matches the client
+# (min_ping_interval_without_data_ms = 10_000) matches the client
 # exactly, so normal scheduling jitter can make a ping arrive just under the
 # threshold and accumulate strikes until the server emits
 # GoAway ENHANCE_YOUR_CALM "too_many_pings", tearing down active RPCs.
@@ -22,7 +22,6 @@
 AnyCable.configure do |config|
   config.rpc_server_args = {
     "grpc.keepalive_permit_without_calls" => 1,
-    "grpc.http2.min_recv_ping_interval_without_data_ms" => 5_000,
     "grpc.http2.min_ping_interval_without_data_ms" => 5_000,
   }
 end
