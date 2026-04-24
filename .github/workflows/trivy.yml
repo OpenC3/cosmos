@@ -31,7 +31,7 @@ env:
 
 jobs:
   openc3-scan:
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: false # ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

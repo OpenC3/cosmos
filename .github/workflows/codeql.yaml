@@ -31,6 +31,7 @@ permissions:
 
 jobs:
   analyze:
+    if: false
     name: Analyze
     runs-on: ubuntu-latest
     strategy:

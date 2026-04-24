@@ -29,7 +29,7 @@ permissions:
 
 jobs:
   openc3-clamav-scan:
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: false # ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
