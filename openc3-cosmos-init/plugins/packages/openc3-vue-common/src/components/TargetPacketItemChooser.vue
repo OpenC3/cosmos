@@ -420,7 +420,7 @@ export default {
     globEnabled: function (newVal) {
       if (!newVal) {
         // Clear any glob values when wildcards are disabled
-        const globPattern = /[*?]/
+        const globPattern = /[*?]|\[(?!\d+\])/
         if (
           typeof this.selectedPacketName === 'string' &&
           globPattern.test(this.selectedPacketName)
@@ -777,7 +777,7 @@ export default {
       } else if (
         this.globEnabled &&
         typeof value === 'string' &&
-        /[*?]/.test(value)
+        /[*?]|\[(?!\d+\])/.test(value)
       ) {
         // Accept free-text glob pattern even though it's not in the item list
         this.selectedItemName = value.toUpperCase()

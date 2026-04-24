@@ -100,7 +100,7 @@ class StreamingApi
     data["packets"] = expanded
   end
 
-  # Expand glob patterns (*, ?) in item keys into concrete item entries.
+  # Expand glob patterns (*, ?, []) in item keys into concrete item entries.
   # Mutates data["items"] in-place, replacing glob entries with expanded pairs.
   def expand_item_globs(data, scope:)
     return unless data["items"]
@@ -119,7 +119,7 @@ class StreamingApi
         # LATEST + item glob: resolve item names from the item-to-packet map
         item_map = OpenC3::TargetModel.get_item_to_packet_map(parsed.target_name, scope: scope)
         item_map.each_key do |item_name|
-          next unless File.fnmatch(parsed.item_name.to_s, item_name, File::FNM_CASEFOLD)
+          next unless File.fnmatch(escape_array_brackets(parsed.item_name.to_s), item_name, File::FNM_CASEFOLD)
           concrete_key = parsed.with(item_name: item_name).to_key_string
           expanded << [concrete_key, concrete_key]
         end
@@ -129,7 +129,7 @@ class StreamingApi
           packets = fetch_target_packets(parsed.target_name, type: parsed.packet_type, scope: scope)
           next unless packets
 
-          matched_packets = packets.select { |pkt| File.fnmatch(parsed.packet_name.to_s, pkt['packet_name'], File::FNM_CASEFOLD) }
+          matched_packets = packets.select { |pkt| File.fnmatch(escape_array_brackets(parsed.packet_name.to_s), pkt['packet_name'], File::FNM_CASEFOLD) }
         else
           matched_packets = [{ 'packet_name' => parsed.packet_name.to_s }]
         end
@@ -142,7 +142,7 @@ class StreamingApi
             packet_def = fetch_packet_definition(parsed.target_name, pkt_name, type: parsed.packet_type, scope: scope)
             next unless packet_def
 
-            item_pattern = parsed.item_name.to_s
+            item_pattern = escape_array_brackets(parsed.item_name.to_s)
             packet_def['items'].each do |item|
               next unless File.fnmatch(item_pattern, item['name'], File::FNM_CASEFOLD)
               concrete_key = parsed.with(packet_name: pkt_name, item_name: item['name']).to_key_string
@@ -364,6 +364,14 @@ class StreamingApi
     OpenC3::TargetModel.packet(target_name, packet_name, type: type, scope: scope)
   rescue RuntimeError
     nil
+  end
+
+  # Escape array-index brackets (e.g. [0], [12]) in a glob pattern so that
+  # File.fnmatch treats them as literal characters rather than character classes.
+  # Brackets containing non-digit content (e.g. [1-3], [A-C]) are left alone
+  # so they are still interpreted as glob character classes.
+  def escape_array_brackets(pattern)
+    pattern.gsub(/\[(\d+)\]/) { "\\[#{$1}\\]" }
   end
 
   # Build a packet key string for COSMOS_ALL expansion.

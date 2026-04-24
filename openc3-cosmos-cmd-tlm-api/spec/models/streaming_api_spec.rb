@@ -270,6 +270,9 @@ RSpec.describe StreamingApi, type: :model do
           { 'name' => 'TEMP2' },
           { 'name' => 'TEMP3' },
           { 'name' => 'DURATION' },
+          { 'name' => 'BRACKET[0]' },
+          { 'name' => 'ARY[0]' },
+          { 'name' => 'ARY[1]' },
         ]
       })
       allow(OpenC3::TargetModel).to receive(:packet).with('INST', 'PARAMS', type: :TLM, scope: 'DEFAULT').and_return({
@@ -292,6 +295,9 @@ RSpec.describe StreamingApi, type: :model do
         'VALUE1' => ['PARAMS'],
         'VALUE2' => ['PARAMS'],
         'DATA' => ['IMAGE'],
+        'BRACKET[0]' => ['HEALTH_STATUS'],
+        'ARY[0]' => ['HEALTH_STATUS'],
+        'ARY[1]' => ['HEALTH_STATUS'],
       })
     end
 
@@ -405,6 +411,89 @@ RSpec.describe StreamingApi, type: :model do
         ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED'],
         ['DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED'],
         ['DECOM__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED'],
+      ])
+    end
+
+    # --- Array-index bracket tests ---
+
+    it 'passes through ARY[0] unchanged (array index is not a glob)' do
+      data = { 'items' => [['DECOM__TLM__INST__HEALTH_STATUS__ARY[0]__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([['DECOM__TLM__INST__HEALTH_STATUS__ARY[0]__CONVERTED', '0']])
+    end
+
+    it 'passes through BRACKET[0] unchanged (array index is not a glob)' do
+      data = { 'items' => [['DECOM__TLM__INST__HEALTH_STATUS__BRACKET[0]__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([['DECOM__TLM__INST__HEALTH_STATUS__BRACKET[0]__CONVERTED', '0']])
+    end
+
+    it 'passes through ARY[1] unchanged (array index is not a glob)' do
+      data = { 'items' => [['DECOM__TLM__INST__HEALTH_STATUS__ARY[1]__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([['DECOM__TLM__INST__HEALTH_STATUS__ARY[1]__CONVERTED', '0']])
+    end
+
+    it 'expands bracket range glob TEMP[1-3] to TEMP1, TEMP2, TEMP3' do
+      data = { 'items' => [['DECOM__TLM__INST__HEALTH_STATUS__TEMP[1-3]__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED'],
+      ])
+    end
+
+    it 'star glob matches items with brackets in their names' do
+      data = { 'items' => [['DECOM__TLM__INST__HEALTH_STATUS__*__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      item_names = data['items'].map { |pair| StreamingKey.parse(pair[0], item_key: true).item_name }
+      expect(item_names).to include('BRACKET[0]', 'ARY[0]', 'ARY[1]')
+    end
+
+    it 'handles mixed concrete ARY[0] and glob TEMP* correctly' do
+      data = { 'items' => [
+        ['DECOM__TLM__INST__HEALTH_STATUS__ARY[0]__CONVERTED', '0'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP*__CONVERTED', '1'],
+      ], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([
+        ['DECOM__TLM__INST__HEALTH_STATUS__ARY[0]__CONVERTED', '0'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED'],
+      ])
+    end
+
+    it 'LATEST + BRACKET[0] passes through unchanged' do
+      data = { 'items' => [['DECOM__TLM__INST__LATEST__BRACKET[0]__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([['DECOM__TLM__INST__LATEST__BRACKET[0]__CONVERTED', '0']])
+    end
+
+    it 'LATEST + bracket range glob TEMP[1-3] expands correctly' do
+      data = { 'items' => [['DECOM__TLM__INST__LATEST__TEMP[1-3]__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([
+        ['DECOM__TLM__INST__LATEST__TEMP1__CONVERTED', 'DECOM__TLM__INST__LATEST__TEMP1__CONVERTED'],
+        ['DECOM__TLM__INST__LATEST__TEMP2__CONVERTED', 'DECOM__TLM__INST__LATEST__TEMP2__CONVERTED'],
+        ['DECOM__TLM__INST__LATEST__TEMP3__CONVERTED', 'DECOM__TLM__INST__LATEST__TEMP3__CONVERTED'],
+      ])
+    end
+
+    it 'packet glob HEALTH* + bracket item BRACKET[0] expands correctly' do
+      data = { 'items' => [['DECOM__TLM__INST__HEALTH*__BRACKET[0]__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([
+        ['DECOM__TLM__INST__HEALTH_STATUS__BRACKET[0]__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__BRACKET[0]__CONVERTED'],
+      ])
+    end
+
+    it 'packet glob HEALTH* + bracket item ARY[0] expands correctly' do
+      data = { 'items' => [['DECOM__TLM__INST__HEALTH*__ARY[0]__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([
+        ['DECOM__TLM__INST__HEALTH_STATUS__ARY[0]__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__ARY[0]__CONVERTED'],
       ])
     end
   end

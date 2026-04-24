@@ -174,6 +174,11 @@ RSpec.describe StreamingKey, type: :model do
       original = 'DECOM__CMD__INST__COLLECT__DURATION__RAW'
       expect(StreamingKey.parse(original, item_key: true).to_key_string).to eq(original)
     end
+
+    it 'round-trips an item key with array brackets' do
+      original = 'DECOM__TLM__INST__HEALTH_STATUS__ARY[0]__CONVERTED'
+      expect(StreamingKey.parse(original, item_key: true).to_key_string).to eq(original)
+    end
   end
 
   describe '#has_glob?' do
@@ -197,9 +202,39 @@ RSpec.describe StreamingKey, type: :model do
       expect(key.has_glob?).to be true
     end
 
-    it 'returns false when item_name contains [' do
+    it 'returns false when item_name is an array index [0]' do
       key = StreamingKey.parse('DECOM__TLM__INST__HEALTH_STATUS__ARY[0]__CONVERTED', item_key: true)
       expect(key.has_glob?).to be false
+    end
+
+    it 'returns false when item_name is a multi-digit array index [12]' do
+      key = StreamingKey.parse('DECOM__TLM__INST__HEALTH_STATUS__ARY[12]__CONVERTED', item_key: true)
+      expect(key.has_glob?).to be false
+    end
+
+    it 'returns false when item_name has a bracket literal like BRACKET[0]' do
+      key = StreamingKey.parse('DECOM__TLM__INST__HEALTH_STATUS__BRACKET[0]__CONVERTED', item_key: true)
+      expect(key.has_glob?).to be false
+    end
+
+    it 'returns false when item_name is a large array index [999]' do
+      key = StreamingKey.parse('DECOM__TLM__INST__HEALTH_STATUS__DATA[999]__CONVERTED', item_key: true)
+      expect(key.has_glob?).to be false
+    end
+
+    it 'returns true when item_name contains a bracket range [1-3]' do
+      key = StreamingKey.parse('DECOM__TLM__INST__HEALTH_STATUS__TEMP[1-3]__CONVERTED', item_key: true)
+      expect(key.has_glob?).to be true
+    end
+
+    it 'returns true when item_name contains a letter bracket range [A-C]' do
+      key = StreamingKey.parse('DECOM__TLM__INST__HEALTH_STATUS__ITEM[A-C]__CONVERTED', item_key: true)
+      expect(key.has_glob?).to be true
+    end
+
+    it 'returns true when item_name contains a bracket negation [!0]' do
+      key = StreamingKey.parse('DECOM__TLM__INST__HEALTH_STATUS__TEMP[!0]__CONVERTED', item_key: true)
+      expect(key.has_glob?).to be true
     end
 
     it 'returns false for a packet key without item_name' do
@@ -235,6 +270,16 @@ RSpec.describe StreamingKey, type: :model do
       key = StreamingKey.parse('DECOM__TLM__INST__HEALTH*__TEMP1__CONVERTED', item_key: true)
       expect(key.packet_glob?).to be true
     end
+
+    it 'returns false when packet_name has array index brackets [0]' do
+      key = StreamingKey.parse('DECOM__TLM__INST__PKT[0]__TEMP1__CONVERTED', item_key: true)
+      expect(key.packet_glob?).to be false
+    end
+
+    it 'returns true when packet_name has bracket range' do
+      key = StreamingKey.parse('DECOM__TLM__INST__PKT[1-3]__TEMP1__CONVERTED', item_key: true)
+      expect(key.packet_glob?).to be true
+    end
   end
 
   describe '#item_glob?' do
@@ -251,6 +296,16 @@ RSpec.describe StreamingKey, type: :model do
     it 'returns false when item_name is nil (packet key)' do
       key = StreamingKey.parse('DECOM__TLM__INST__PARAMS__CONVERTED')
       expect(key.item_glob?).to be false
+    end
+
+    it 'returns false when item_name has array index [0]' do
+      key = StreamingKey.parse('DECOM__TLM__INST__PARAMS__ARY[0]__CONVERTED', item_key: true)
+      expect(key.item_glob?).to be false
+    end
+
+    it 'returns true when item_name has bracket range [1-3]' do
+      key = StreamingKey.parse('DECOM__TLM__INST__PARAMS__TEMP[1-3]__CONVERTED', item_key: true)
+      expect(key.item_glob?).to be true
     end
   end
 
