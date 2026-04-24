@@ -100,7 +100,7 @@ class StreamingApi
     data["packets"] = expanded
   end
 
-  # Expand glob patterns (*, ?, []) in item keys into concrete item entries.
+  # Expand glob patterns (*, ?) in item keys into concrete item entries.
   # Mutates data["items"] in-place, replacing glob entries with expanded pairs.
   def expand_item_globs(data, scope:)
     return unless data["items"]

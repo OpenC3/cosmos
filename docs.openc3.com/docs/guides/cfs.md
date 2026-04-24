@@ -9,9 +9,13 @@ sidebar_custom_props:
 
 This tutorial has been tested using the following components:
 
-- COSMOS v6 release [6.3.0](https://github.com/OpenC3/cosmos/releases/tag/v6.3.0)
+- COSMOS v6 & v7 releases
 - cFS main-branch commit: 0ba1faa (April 23, 2025)
-- Docker Desktop 4.40.0 on MacOS
+- Docker Desktop 4.64.0 on MacOS
+
+:::info[cFS Plugin]
+NASA has released their own [cFS Plugin](https://github.com/nasa/cfs-cosmos-plugin). You can you use their instructions to run 2 copies of the cFS and connect with COSMOS or modify their plugin to suit your needs.
+:::
 
 Replace all `<xxxxxx>` with your matching paths and names. Example: `<USERNAME>`.
 

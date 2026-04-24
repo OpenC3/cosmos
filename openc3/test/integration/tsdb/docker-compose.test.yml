@@ -8,7 +8,7 @@
 
 services:
   questdb:
-    image: questdb/questdb:9.3.4
+    image: questdb/questdb:9.3.5
     ports:
       - "127.0.0.1:9000:9000" # HTTP ILP ingest + Console
       - "127.0.0.1:8812:8812" # PostgreSQL wire protocol
@@ -18,6 +18,8 @@ services:
       QDB_PG_PASSWORD: admin
       QDB_HTTP_USER: admin
       QDB_HTTP_PASSWORD: admin
+      # Match production openc3-tsdb config: reject ILP writes to missing tables.
+      QDB_LINE_AUTO_CREATE_NEW_TABLES: "false"
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/9000'"]
       interval: 5s

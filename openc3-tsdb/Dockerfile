@@ -1,7 +1,7 @@
 
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG OPENC3_TSDB_IMAGE=questdb/questdb
-ARG OPENC3_TSDB_VERSION=9.3.4
+ARG OPENC3_TSDB_VERSION=9.3.5
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/${OPENC3_TSDB_IMAGE}:${OPENC3_TSDB_VERSION}
 
@@ -35,6 +35,12 @@ ENV QDB_LINE_TCP_IO_WORKER_SLEEP_THRESHOLD=1
 
 # enables :9003/metrics
 ENV QDB_METRICS_ENABLED=true
+
+# Require tables to be created explicitly via PostgreSQL DDL (not auto-created by ILP).
+# COSMOS needs specific columns (PACKET_TIMESECONDS, RECEIVED_TIMESECONDS, etc.) with
+# PACKET_TIMESECONDS as the designated TIMESTAMP — ILP auto-create can't provide that.
+# TsdbMicroservice recreates tables on IngressError when this is off.
+ENV QDB_LINE_AUTO_CREATE_NEW_TABLES=false
 
 USER root
 # Update packages to eliminate CVEs
