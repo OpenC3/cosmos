@@ -59,7 +59,6 @@ services:
         - type=gha,scope=openc3-node,mode=max
       cache_from:
         - type=gha,scope=openc3-node
-        - type=gha,scope=openc3-base
         - type=gha,scope=openc3-ruby
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
