@@ -369,7 +369,7 @@ export default {
       let i = this.itemNames.findIndex(
         (item) => item.value === this.selectedItemName,
       )
-      let indexes = [...Array(this.itemNames[i].array).keys()]
+      let indexes = [...new Array(this.itemNames[i].array).keys()]
       if (this.allowAll || this.allowAllArrayIndex) {
         indexes.unshift(this.ALL.label)
       }
@@ -379,15 +379,11 @@ export default {
       let i = this.itemNames.findIndex(
         (item) => item.value === this.selectedItemName,
       )
-      if (
-        i === -1 ||
-        this.itemNames[i].array === undefined ||
-        Number.isNaN(this.itemNames[i].array)
-      ) {
-        return false
-      } else {
-        return true
-      }
+      return (
+        i !== -1 &&
+        this.itemNames[i].array !== undefined &&
+        !Number.isNaN(this.itemNames[i].array)
+      )
     },
     isHazardous: function () {
       return this.hazardous || this.parameterHazardous
@@ -504,12 +500,12 @@ export default {
       }
       // If the initial target name is not set, default to the first target
       // which also updates packets and items as needed
-      if (!this.selectedTargetName) {
-        this.selectedTargetName = this.targetNames[0].value
-        this.targetNameChanged(this.selectedTargetName)
-      } else {
+      if (this.selectedTargetName) {
         // Selected target name was set but we still have to update packets
         this.updatePackets()
+      } else {
+        this.selectedTargetName = this.targetNames[0].value
+        this.targetNameChanged(this.selectedTargetName)
       }
       if (this.unknown) {
         this.targetNames.push(this.UNKNOWN)
