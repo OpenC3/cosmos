@@ -18,6 +18,11 @@
 # For details on the DSL available within this file, see https://guides.rubyonrails.org/routing.html
 
 Rails.application.routes.draw do
+  # This is a route only utilized by COSMOS Enterprise when OPENC3_TOOLS_BUCKET_PRIVATE is enabled
+  # Served at the root (not under /openc3-api) so traefik can pass /tools/* through verbatim
+  # format: false preserves file extensions (e.g. .js, .css, .woff2) in the path.
+  get '/tools/*path', to: 'tools_bucket#show', format: false
+
   scope "openc3-api" do
     resources :routers, only: [:index, :create]
     get '/routers/:id', to: 'routers#show', id: /[^\/]+/
