@@ -1143,6 +1143,48 @@ if not ARGV[0].nil? # argument(s) given
     end
     cli_pkg_uninstall(ARGV[1], scope: ARGV[2])
 
+  when 'reingest'
+    # Internal command spawned by StorageController via ProcessManager so the
+    # reingest runs in its own process and System singleton resets cannot
+    # collide with the cmd-tlm-api Rails server.
+    if ARGV[1].nil? || ARGV[2].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli reingest JOB_ID SCOPE"
+      exit(ARGV[1].nil? ? 1 : 0)
+    end
+    require 'openc3/utilities/reingest_job'
+    require 'openc3/models/reingest_job_model'
+    job_id = ARGV[1]
+    scope = ARGV[2]
+    job = OpenC3::ReingestJobModel.get_model(name: job_id, scope: scope)
+    if job.nil?
+      OpenC3::Logger.error("Reingest job #{job_id} not found in scope #{scope}")
+      exit(1)
+    end
+    begin
+      OpenC3::ReingestJob.new(
+        job_id: job_id,
+        files: job.files,
+        path: job.path,
+        bucket: job.bucket,
+        scope: scope,
+        target_version: job.target_version,
+      ).run
+    rescue Exception => e
+      # ReingestJob#run already marks Crashed for errors raised during the run.
+      # This catches failures from the constructor itself (or anything before
+      # run gets its rescue installed) so the model doesn't sit in Queued forever.
+      OpenC3::Logger.error("Reingest job #{job_id} crashed before run: #{e.formatted}")
+      begin
+        job.state = 'Crashed'
+        job.error = e.message
+        job.finished_at = Time.now.utc.iso8601
+        job.update
+      rescue => ue
+        OpenC3::Logger.error("Reingest job #{job_id} failed to mark Crashed: #{ue.message}")
+      end
+      exit(1)
+    end
+
   when 'generate'
     # To test against a local copy call this file from the root cosmos directory like this:
     # ruby -Iopenc3/lib openc3/bin/openc3cli generate ...

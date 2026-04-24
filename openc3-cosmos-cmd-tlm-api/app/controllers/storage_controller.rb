@@ -19,8 +19,8 @@ require 'openc3/utilities/local_mode'
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/bucket_utilities'
 require 'openc3/utilities/ctrf'
+require 'openc3/utilities/process_manager'
 require 'openc3/utilities/questdb_client'
-require 'openc3/utilities/reingest_job'
 require 'openc3/logs/packet_log_reader'
 require 'openc3/models/reingest_job_model'
 require 'openc3/topics/telemetry_topic'
@@ -524,20 +524,13 @@ class StorageController < ApplicationController
     )
     job.create
 
-    Thread.new do
-      begin
-        OpenC3::ReingestJob.new(
-          job_id: job_id,
-          files: files,
-          path: path,
-          bucket: params[:bucket],
-          scope: scope,
-          target_version: target_version,
-        ).run
-      rescue Exception => e
-        OpenC3::Logger.error("Reingest job #{job_id} thread died: #{e.formatted}", user: username())
-      end
-    end
+    # Run the reingest in its own process so System.reset_instance! / setup_targets
+    # in ReingestJob can't race with the cmd-tlm-api server's System singleton.
+    timeout = (ENV['OPENC3_REINGEST_TIMEOUT_SECS'] || 24 * 3600).to_i
+    OpenC3::ProcessManager.instance.spawn(
+      ["ruby", "/openc3/bin/openc3cli", "reingest", job_id, scope],
+      "reingest", job_id, Time.now + timeout, scope: scope,
+    )
 
     OpenC3::Logger.info("Reingest job #{job_id} enqueued: #{files.length} file(s)", user: username())
     render json: { job_id: job_id, state: 'Queued' }, status: :accepted
