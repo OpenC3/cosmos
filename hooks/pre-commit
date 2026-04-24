@@ -28,14 +28,19 @@ INNER_COPYRIGHT = lambda do |year|
   HEADER
 end
 
+HASH_COMMENT_EXTENSIONS = %w[.rb .py .sh .rake .gemspec .yaml .yml].freeze
+JS_COMMENT_EXTENSIONS = %w[.js .ts .mjs .cjs .jsx .tsx].freeze
+HTML_COMMENT_EXTENSIONS = %w[.vue].freeze
+SUPPORTED_EXTENSIONS = (HASH_COMMENT_EXTENSIONS + JS_COMMENT_EXTENSIONS + HTML_COMMENT_EXTENSIONS).freeze
+
 def build_copyright_header(file, year)
   inner = INNER_COPYRIGHT.call(year)
   case File.extname(file).downcase
-  when '.rb', '.py', '.sh', '.rake', '.gemspec', '.yaml', '.yml'
+  when *HASH_COMMENT_EXTENSIONS
     "#{inner}\n\n"
-  when '.js', '.ts', '.mjs', '.cjs', '.jsx', '.tsx'
+  when *JS_COMMENT_EXTENSIONS
     "/*\n#{inner}\n*/\n\n"
-  when '.vue'
+  when *HTML_COMMENT_EXTENSIONS
     "<!--\n#{inner}\n-->\n\n"
   end
 end
@@ -47,8 +52,14 @@ staged_files.each do |file|
   # Skip if file doesn't exist (deleted files)
   next unless File.exist?(file)
 
+  # Only process files with specific extensions
+  next unless SUPPORTED_EXTENSIONS.include?(File.extname(file).downcase)
+
   # Skip files in the hooks directory
   next if file.start_with?('hooks/')
+
+  # Skip vendored/third-party JS files
+  next if file.start_with?('openc3-cosmos-init/plugins/packages/openc3-tool-base/public/js/')
 
   # Read file content with encoding handling
   begin
