@@ -1179,8 +1179,8 @@ if not ARGV[0].nil? # argument(s) given
         job.error = e.message
         job.finished_at = Time.now.utc.iso8601
         job.update
-      rescue => ue
-        OpenC3::Logger.error("Reingest job #{job_id} failed to mark Crashed: #{ue.message}")
+      rescue => e2
+        OpenC3::Logger.error("Reingest job #{job_id} failed to mark Crashed: #{e2.message}")
       end
       exit(1)
     end

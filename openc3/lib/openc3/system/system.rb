@@ -86,6 +86,11 @@ module OpenC3
         FileUtils.mkdir_p(targets_path)
         bucket = Bucket.getClient()
         target_names.each do |target_name|
+          # Remove any prior extraction so re-running setup_targets (e.g. after
+          # reset_instance! during reingest) starts from a clean slate. Without
+          # this, Zip::File#extract fails on files left behind by a previous run.
+          FileUtils.rm_rf("#{targets_path}/#{target_name}")
+
           # Retrieve bucket/targets/target_name/<TARGET>_current.zip
           zip_path = "#{targets_path}/#{target_name}_#{target_version}.zip"
           FileUtils.mkdir_p(File.dirname(zip_path))
