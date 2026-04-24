@@ -274,8 +274,8 @@
 </template>
 
 <script>
-import { Api } from '@openc3/js-common/services'
 import RepairGapDialog from './RepairGapDialog.vue'
+import { execSql } from './tsdbApi'
 
 export default {
   components: {
@@ -355,7 +355,7 @@ export default {
       this.metricsError = null
       this.metricsRows = []
       this.metricsLoading = true
-      this.execSql(
+      execSql(
         'SELECT tableName, partitionCount, rowCount, diskSize FROM table_storage;',
       )
         .then((response) => {
@@ -384,7 +384,7 @@ export default {
         })
     },
     dropTable(tableName) {
-      return this.execSql(`DROP TABLE '${tableName}';`)
+      return execSql(`DROP TABLE '${tableName}';`)
     },
     deleteTable(tableName) {
       let target = tableName.split('__')[2] || tableName
@@ -441,29 +441,6 @@ export default {
             })
         })
     },
-    async execSql(sql, retries = 3) {
-      for (let attempt = 1; attempt <= retries; attempt++) {
-        try {
-          return await Api.post('/openc3-api/tsdb/exec', {
-            data: sql,
-            headers: {
-              Accept: 'application/json',
-              'Content-Type': 'text/plain',
-            },
-          })
-        } catch (error) {
-          const msg = error.response?.data?.message || error.message || ''
-          const isConnectionError =
-            msg.includes('PQconsumeInput') ||
-            msg.includes('server closed the connection')
-          if (isConnectionError && attempt < retries) {
-            await new Promise((r) => setTimeout(r, 1000 * attempt))
-            continue
-          }
-          throw error
-        }
-      }
-    },
     formatDuration(ms) {
       const seconds = Math.floor(ms / 1000)
       const days = Math.floor(seconds / 86400)
@@ -500,7 +477,7 @@ export default {
       }
 
       // Get first and last timestamps
-      const rangeResp = await this.execSql(
+      const rangeResp = await execSql(
         `SELECT first(PACKET_TIMESECONDS) as first_ts, last(PACKET_TIMESECONDS) as last_ts FROM '${tableName}';`,
       )
       const rangeCols = rangeResp.data.columns
@@ -514,8 +491,8 @@ export default {
       const totalMs = new Date(lastTs) - new Date(firstTs)
 
       // Sample by the user-chosen interval with FILL(NULL) to detect gaps.
-      const gapResp = await this.execSql(
-        `(SELECT PACKET_TIMESECONDS, count() as cnt FROM '${tableName}' SAMPLE BY ${interval} FILL(NULL)) WHERE cnt = null`,
+      const gapResp = await execSql(
+        `(SELECT PACKET_TIMESECONDS, count() as cnt FROM '${tableName}' SAMPLE BY ${interval} FILL(NULL)) WHERE cnt IS NULL`,
       )
       const gapCols = gapResp.data.columns
       const gapRows = gapResp.data.rows.map((row) => {

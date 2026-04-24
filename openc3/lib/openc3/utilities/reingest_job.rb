@@ -74,6 +74,18 @@ module OpenC3
                started_at: Time.now.utc.iso8601,
                progress_total: @files.length)
 
+          # Parse target from path, e.g. "DEFAULT/raw_logs/tlm/INST/20260421/"
+          # → "INST". Fail fast if the path doesn't encode one — otherwise
+          # ingest would run against whatever System was loaded in this process
+          # from a prior job (or raise opaquely inside PacketLogReader), and
+          # the job could mark Complete with rows written under the wrong
+          # target config.
+          path_parts = @path.to_s.split('/').reject(&:empty?)
+          unless path_parts.length >= 4 && path_parts[1] == 'raw_logs'
+            raise ReingestJobError, "Cannot determine target from path '#{@path}'; expected '{scope}/raw_logs/{tlm|cmd}/{target}/'"
+          end
+          target = path_parts[3]
+
           local_files = download_and_uncompress(job, tmp_dir)
 
           # Pass 1: read raw (no System required) to discover table names and
@@ -96,7 +108,7 @@ module OpenC3
           mark(job, versions_used: groups.keys,
                progress_phase: 'ingesting', progress_current: 0,
                progress_total: 0, packets_written: 0)
-          ingest_all_groups(job, groups)
+          ingest_all_groups(job, groups, target)
 
           mark(job, progress_phase: 'dedup_cooldown')
           cooldown(job)
@@ -133,16 +145,6 @@ module OpenC3
     def load_job
       ReingestJobModel.get_model(name: @job_id, scope: @scope) or
         raise ReingestJobError, "ReingestJobModel #{@job_id} not found in scope #{@scope}"
-    end
-
-    # Returns the target name embedded in the reingest path, e.g.
-    # "DEFAULT/raw_logs/tlm/INST/20260421/" → "INST". Nil if the path
-    # doesn't match the expected raw_logs layout.
-    def target_from_path
-      parts = @path.to_s.split('/').reject(&:empty?)
-      return nil unless parts.length >= 4
-      return nil unless parts[1] == 'raw_logs'
-      parts[3]
     end
 
     # Merge attrs into the model and persist. Model#update refreshes updated_at,
@@ -230,20 +232,17 @@ module OpenC3
     # version — we fall back to 'current' and record a warning on the job so
     # the UI can surface it. This matters because the old historical archive
     # the log file references may no longer exist.
-    def ingest_all_groups(job, groups)
-      target = target_from_path
+    def ingest_all_groups(job, groups, target)
       packets_written = 0
       last_status_at = 0
       warnings = (job.warnings || []).dup
       groups.each do |version, files|
-        if target
-          resolved = load_system_with_fallback(target, version, warnings)
-          unless resolved
-            # Even the 'current' fallback failed; skip this group rather than
-            # publish empty json_data for every packet.
-            mark(job, warnings: warnings)
-            next
-          end
+        resolved = load_system_with_fallback(target, version, warnings)
+        unless resolved
+          # Even the 'current' fallback failed; skip this group rather than
+          # publish empty json_data for every packet.
+          mark(job, warnings: warnings)
+          next
         end
         mark(job, warnings: warnings) if warnings.any?
         files.each do |file|

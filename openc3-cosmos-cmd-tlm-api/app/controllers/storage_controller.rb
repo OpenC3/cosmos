@@ -563,11 +563,16 @@ class StorageController < ApplicationController
 
   def repair_candidates
     return unless authorization('admin')
-    scope = params[:scope] || 'DEFAULT'
+    scope = (params[:scope] || 'DEFAULT').to_s
     target = params[:target].to_s
     cmd_or_tlm = (params[:cmd_or_tlm] || 'TLM').to_s.upcase
     raise StorageError, "cmd_or_tlm must be TLM (CMD repair not yet supported)" unless cmd_or_tlm == 'TLM'
     raise StorageError, "target is required" if target.empty?
+    # scope and target are interpolated into an S3 key prefix below; reject
+    # anything that isn't a plain identifier so path separators, traversal
+    # sequences, and control characters can't reshape the prefix.
+    raise StorageError, "Invalid scope: #{scope}" unless scope.match?(/\A[A-Z0-9_]+\z/i)
+    raise StorageError, "Invalid target: #{target}" unless target.match?(/\A[A-Z0-9_]+\z/i)
 
     start_time = parse_repair_time(params[:start_time])
     end_time = parse_repair_time(params[:end_time])

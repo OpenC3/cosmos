@@ -63,7 +63,7 @@
 </template>
 
 <script>
-import { Api } from '@openc3/js-common/services'
+import { execSql } from './tsdbApi'
 
 export default {
   data() {
@@ -84,29 +84,6 @@ export default {
     },
   },
   methods: {
-    async execSql(sql, retries = 3) {
-      for (let attempt = 1; attempt <= retries; attempt++) {
-        try {
-          return await Api.post('/openc3-api/tsdb/exec', {
-            data: sql,
-            headers: {
-              Accept: 'application/json',
-              'Content-Type': 'text/plain',
-            },
-          })
-        } catch (error) {
-          const msg = error.response?.data?.message || error.message || ''
-          const isConnectionError =
-            msg.includes('PQconsumeInput') ||
-            msg.includes('server closed the connection')
-          if (isConnectionError && attempt < retries) {
-            await new Promise((r) => setTimeout(r, 1000 * attempt))
-            continue
-          }
-          throw error
-        }
-      }
-    },
     commandKeydown($event) {
       if (($event.metaKey || $event.ctrlKey) && $event.key === 'Enter') {
         this.executeQuery()
@@ -117,7 +94,7 @@ export default {
       this.columns = []
       this.rows = []
       this.loading = true
-      this.execSql(this.sqlText)
+      execSql(this.sqlText)
         .then((response) => {
           this.columns = response.data.columns
           this.rows = response.data.rows.map((row) => {

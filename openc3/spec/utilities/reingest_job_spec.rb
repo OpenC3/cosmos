@@ -109,8 +109,9 @@ module OpenC3
       run_job
     end
 
-    it 'skips target loading when the path is not a raw_logs path' do
+    it 'marks the job Crashed when the path does not encode a target' do
       expect(System).not_to receive(:setup_targets)
+      expect(DecomCommon).not_to receive(:decom_and_publish)
       ReingestJob.new(
         job_id: @job_id,
         files: ['sample.bin.gz'],
@@ -119,6 +120,9 @@ module OpenC3
         scope: 'DEFAULT',
         dedup_cooldown_seconds: 0,
       ).run
+      reloaded = ReingestJobModel.get_model(name: @job_id, scope: 'DEFAULT')
+      expect(reloaded.state).to eq('Crashed')
+      expect(reloaded.error).to include('some/custom/path/')
     end
 
     context 'target_version' do
