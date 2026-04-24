@@ -63,10 +63,10 @@ class StoreMeta(type):
             "instance",
             "instance_mutex",
             "my_instances",
-            "shard_for_target",
-            "_shard_cache",
-            "_shard_cache_lock",
-            "SHARD_CACHE_TIMEOUT",
+            "db_shard_for_target",
+            "_db_shard_cache",
+            "_db_shard_cache_lock",
+            "DB_SHARD_CACHE_TIMEOUT",
         }
     )
 
@@ -85,32 +85,32 @@ class StoreMeta(type):
 
 
 class Store(metaclass=StoreMeta):
-    # Variable that holds the singleton instances per shard
+    # Variable that holds the singleton instances per db_shard
     my_instances = {}
 
     # Mutex used to ensure that only one instance is created
     instance_mutex = threading.Lock()
 
-    # Shard cache
-    _shard_cache = {}
-    _shard_cache_lock = threading.Lock()
-    SHARD_CACHE_TIMEOUT = 60  # seconds
+    # DB_Shard cache
+    _db_shard_cache = {}
+    _db_shard_cache_lock = threading.Lock()
+    DB_SHARD_CACHE_TIMEOUT = 60  # seconds
 
-    # Get the singleton instance for a given shard
+    # Get the singleton instance for a given db_shard
     @classmethod
-    def instance(cls, pool_size=100, shard=0):
-        inst = cls.my_instances.get(shard)
+    def instance(cls, pool_size=100, db_shard=0):
+        inst = cls.my_instances.get(db_shard)
         if inst:
             return inst
 
         with cls.instance_mutex:
-            if shard not in cls.my_instances:
-                cls.my_instances[shard] = cls(pool_size, shard=shard)
-            return cls.my_instances[shard]
+            if db_shard not in cls.my_instances:
+                cls.my_instances[db_shard] = cls(pool_size, db_shard=db_shard)
+            return cls.my_instances[db_shard]
 
     @classmethod
-    def shard_for_target(cls, target_name, scope="DEFAULT"):
-        """Look up the shard number for a target with a 1-minute cache."""
+    def db_shard_for_target(cls, target_name, scope="DEFAULT"):
+        """Look up the db_shard number for a target with a 1-minute cache."""
         import json
         import time as _time
 
@@ -120,29 +120,29 @@ class Store(metaclass=StoreMeta):
         cache_key = f"{scope}__{target_name}"
         now = _time.time()
 
-        with cls._shard_cache_lock:
-            cached = cls._shard_cache.get(cache_key)
+        with cls._db_shard_cache_lock:
+            cached = cls._db_shard_cache.get(cache_key)
             if cached:
-                shard_val, cached_at = cached
-                if (now - cached_at) < cls.SHARD_CACHE_TIMEOUT:
-                    return shard_val
+                db_shard_val, cached_at = cached
+                if (now - cached_at) < cls.DB_SHARD_CACHE_TIMEOUT:
+                    return db_shard_val
 
         try:
-            result = Store.instance(shard=0).hget(f"{scope}__openc3_targets", target_name)
+            result = Store.instance(db_shard=0).hget(f"{scope}__openc3_targets", target_name)
             if result:
                 if isinstance(result, bytes):
                     result = result.decode()
-                shard_val = json.loads(result).get("shard", 0)
-                shard_val = int(shard_val) if shard_val else 0
+                db_shard_val = json.loads(result).get("db_shard", 0)
+                db_shard_val = int(db_shard_val) if db_shard_val else 0
             else:
-                shard_val = 0
+                db_shard_val = 0
         except Exception:
-            shard_val = 0
+            db_shard_val = 0
 
-        with cls._shard_cache_lock:
-            cls._shard_cache[cache_key] = (shard_val, now)
+        with cls._db_shard_cache_lock:
+            cls._db_shard_cache[cache_key] = (db_shard_val, now)
 
-        return shard_val
+        return db_shard_val
 
     # Delegate all unknown methods to redis through the @redis_pool
     def __getattr__(self, func):
@@ -153,9 +153,9 @@ class Store(metaclass=StoreMeta):
 
             return method
 
-    def __init__(self, pool_size=10, shard=0):
-        self.shard = shard
-        self.redis_host = OPENC3_REDIS_HOSTNAME.replace("SHARDNUM", str(shard))
+    def __init__(self, pool_size=10, db_shard=0):
+        self.db_shard = db_shard
+        self.redis_host = OPENC3_REDIS_HOSTNAME.replace("SHARDNUM", str(db_shard))
         self.redis_port = OPENC3_REDIS_PORT
         self.redis_pool = StoreConnectionPool(self.build_redis, pool_size)
         self.topic_offsets = {}
@@ -296,11 +296,11 @@ class Store(metaclass=StoreMeta):
 
 
 class EphemeralStore(Store):
-    # Variable that holds the singleton instances per shard
+    # Variable that holds the singleton instances per db_shard
     my_instances = {}
 
-    def __init__(self, pool_size=10, shard=0):
-        super().__init__(pool_size, shard=shard)
-        self.redis_host = OPENC3_REDIS_EPHEMERAL_HOSTNAME.replace("SHARDNUM", str(shard))
+    def __init__(self, pool_size=10, db_shard=0):
+        super().__init__(pool_size, db_shard=db_shard)
+        self.redis_host = OPENC3_REDIS_EPHEMERAL_HOSTNAME.replace("SHARDNUM", str(db_shard))
         self.redis_port = OPENC3_REDIS_EPHEMERAL_PORT
         self.redis_pool = StoreConnectionPool(self.build_redis, pool_size)

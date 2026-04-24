@@ -122,12 +122,12 @@ $store_queued = false
 module OpenC3
   class StoreQueued
     alias old_initialize initialize
-    def initialize(update_interval, shard: 0)
+    def initialize(update_interval, db_shard: 0)
       if $store_queued
-        old_initialize(update_interval, shard: shard)
+        old_initialize(update_interval, db_shard: db_shard)
       else
         @update_interval = update_interval
-        @shard = shard
+        @db_shard = db_shard
         @store = store_instance()
       end
     end
@@ -173,6 +173,11 @@ OpenC3.disable_warnings do
   require 'redis'
   require 'mock_redis'
   class MockRedis
+    class Database
+      def hexpire(*args)
+      end
+    end
+
     module StreamMethods
       private
 

@@ -63,20 +63,20 @@ ORDER BY
         super(areas, bucket)
       end
 
-      # Always check TSDB health across all shards
+      # Always check TSDB health across all db_shards
       if @scope == 'DEFAULT'
-        # Collect all unique shard numbers from targets
-        shards = Set.new([0]) # Always check shard 0
+        # Collect all unique db_shard numbers from targets
+        db_shards = Set.new([0]) # Always check db_shard 0
         begin
           targets = OpenC3::TargetModel.all(scope: @scope)
-          targets.each_value { |target| shards << target['shard'].to_i if target['shard'] }
+          targets.each_value { |target| db_shards << target['db_shard'].to_i if target['db_shard'] }
         rescue => e
-          @logger.error("QuestDB: Error getting target shards: #{e.formatted}")
+          @logger.error("QuestDB: Error getting target db_shards: #{e.formatted}")
         end
 
-        shards.each do |shard|
+        db_shards.each do |db_shard|
           begin
-            conn = OpenC3::QuestDBClient.connection(shard: shard)
+            conn = OpenC3::QuestDBClient.connection(db_shard: db_shard)
             result = conn.exec(TSDB_HEALTH_QUERY)
             columns = result.fields
             rows = result.values
@@ -88,18 +88,18 @@ ORDER BY
 
             rows.each do |values|
               table_name = values[table_name_column]
-              # Prefix with shard to avoid key collisions across shards
-              tracking_key = "s#{shard}__#{table_name}"
+              # Prefix with db_shard to avoid key collisions across db_shards
+              tracking_key = "s#{db_shard}__#{table_name}"
               wal_pending_row_count = values[wal_pending_row_count_column].to_i
               status = values[status_column]
               lag_txns = values[lag_txns_column].to_i
 
               if status != 'OK'
-                @logger.error("QuestDB shard #{shard}: #{table_name} in bad state: #{status}")
+                @logger.error("QuestDB db_shard #{db_shard}: #{table_name} in bad state: #{status}")
 
                 if status == 'SUSPENDED'
                   # Try to automatically unsuspend
-                  @logger.info("QuestDB shard #{shard}: Attempting to unsuspend: #{table_name}")
+                  @logger.info("QuestDB db_shard #{db_shard}: Attempting to unsuspend: #{table_name}")
                   conn.exec("ALTER TABLE #{table_name} RESUME WAL;")
                 end
               end
@@ -112,7 +112,7 @@ ORDER BY
               if @wal_pending_row_count[tracking_key].length > GROWTH_NUM_SAMPLE_PERIODS
                 if detect_growth(@wal_pending_row_count[tracking_key], GROWTH_NUM_SAMPLE_PERIODS)
                   # Crossed threshold of sample periods of growth
-                  @logger.error("QuestDB shard #{shard}: #{table_name} has growing wal_pending_row_count: #{wal_pending_row_count}")
+                  @logger.error("QuestDB db_shard #{db_shard}: #{table_name} has growing wal_pending_row_count: #{wal_pending_row_count}")
                 end
 
                 # Leave the last GROWTH_NUM_SAMPLE_PERIODS samples
@@ -122,7 +122,7 @@ ORDER BY
               if @lag_txns[tracking_key].length > GROWTH_NUM_SAMPLE_PERIODS
                 if detect_growth(@lag_txns[tracking_key], GROWTH_NUM_SAMPLE_PERIODS)
                   # Crossed threshold of sample periods of growth
-                  @logger.error("QuestDB shard #{shard}: #{table_name} has growing lag_txns: #{lag_txns}")
+                  @logger.error("QuestDB db_shard #{db_shard}: #{table_name} has growing lag_txns: #{lag_txns}")
                 end
 
                 # Leave the last GROWTH_NUM_SAMPLE_PERIODS samples
@@ -130,8 +130,8 @@ ORDER BY
               end
             end
           rescue => e
-            OpenC3::QuestDBClient.disconnect(shard: shard)
-            @logger.error("QuestDB shard #{shard} Error: #{e.formatted}")
+            OpenC3::QuestDBClient.disconnect(db_shard: db_shard)
+            @logger.error("QuestDB db_shard #{db_shard} Error: #{e.formatted}")
           end
         end
       end

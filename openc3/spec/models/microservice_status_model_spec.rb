@@ -21,7 +21,7 @@ module OpenC3
     before(:each) do
       mock_redis()
       local_s3()
-      MicroserviceStatusModel.instance_variable_set(:@shard_cache, {})
+      MicroserviceStatusModel.instance_variable_set(:@db_shard_cache, {})
     end
 
     after(:each) do
@@ -51,7 +51,7 @@ module OpenC3
         expect(result).to be_nil
       end
 
-      it "returns status from correct shard" do
+      it "returns status from correct db_shard" do
         MicroserviceModel.new(name: "DEFAULT__TYPE__TEST", scope: "DEFAULT").create
         MicroserviceStatusModel.set({ name: 'DEFAULT__TYPE__TEST', state: 'RUNNING' }, scope: 'DEFAULT')
         result = MicroserviceStatusModel.get(name: 'DEFAULT__TYPE__TEST', scope: 'DEFAULT')
@@ -60,10 +60,10 @@ module OpenC3
       end
 
       it "returns status when base model has non-zero db_shard" do
-        MicroserviceModel.new(name: "DEFAULT__TYPE__SHARD", scope: "DEFAULT", db_shard: 1).create
-        MicroserviceStatusModel.set({ name: 'DEFAULT__TYPE__SHARD', state: 'RUNNING' }, scope: 'DEFAULT')
-        result = MicroserviceStatusModel.get(name: 'DEFAULT__TYPE__SHARD', scope: 'DEFAULT')
-        expect(result['name']).to eq('DEFAULT__TYPE__SHARD')
+        MicroserviceModel.new(name: "DEFAULT__TYPE__DB_SHARD", scope: "DEFAULT", db_shard: 1).create
+        MicroserviceStatusModel.set({ name: 'DEFAULT__TYPE__DB_SHARD', state: 'RUNNING' }, scope: 'DEFAULT')
+        result = MicroserviceStatusModel.get(name: 'DEFAULT__TYPE__DB_SHARD', scope: 'DEFAULT')
+        expect(result['name']).to eq('DEFAULT__TYPE__DB_SHARD')
         expect(result['state']).to eq('RUNNING')
       end
     end
@@ -74,7 +74,7 @@ module OpenC3
         expect(names).to eq([])
       end
 
-      it "returns names across shards" do
+      it "returns names across db_shards" do
         MicroserviceModel.new(name: "DEFAULT__TYPE__MS1", scope: "DEFAULT", db_shard: 0).create
         MicroserviceModel.new(name: "DEFAULT__TYPE__MS2", scope: "DEFAULT", db_shard: 1).create
         MicroserviceStatusModel.set({ name: 'DEFAULT__TYPE__MS1', state: 'RUNNING' }, scope: 'DEFAULT')
@@ -90,7 +90,7 @@ module OpenC3
         expect(all).to eq({})
       end
 
-      it "returns all statuses across shards" do
+      it "returns all statuses across db_shards" do
         MicroserviceModel.new(name: "DEFAULT__TYPE__MS1", scope: "DEFAULT", db_shard: 0).create
         MicroserviceModel.new(name: "DEFAULT__TYPE__MS2", scope: "DEFAULT", db_shard: 1).create
         MicroserviceStatusModel.set({ name: 'DEFAULT__TYPE__MS1', state: 'RUNNING' }, scope: 'DEFAULT')
@@ -103,7 +103,7 @@ module OpenC3
     end
 
     describe "create and destroy" do
-      it "creates and destroys on the correct shard" do
+      it "creates and destroys on the correct db_shard" do
         MicroserviceModel.new(name: "DEFAULT__TYPE__TEST", scope: "DEFAULT", db_shard: 1).create
         model = MicroserviceStatusModel.new(name: 'DEFAULT__TYPE__TEST', state: 'RUNNING', scope: 'DEFAULT')
         model.create(force: true)
@@ -115,38 +115,38 @@ module OpenC3
       end
     end
 
-    describe "_shard_for_name" do
+    describe "_db_shard_for_name" do
       it "returns 0 when base model does not exist" do
-        shard = MicroserviceStatusModel._shard_for_name('DEFAULT__TYPE__NONE', scope: 'DEFAULT')
-        expect(shard).to eq(0)
+        db_shard = MicroserviceStatusModel._db_shard_for_name('DEFAULT__TYPE__NONE', scope: 'DEFAULT')
+        expect(db_shard).to eq(0)
       end
 
       it "returns db_shard from MicroserviceModel" do
         MicroserviceModel.new(name: "DEFAULT__TYPE__TEST", scope: "DEFAULT", db_shard: 2).create
-        shard = MicroserviceStatusModel._shard_for_name('DEFAULT__TYPE__TEST', scope: 'DEFAULT')
-        expect(shard).to eq(2)
+        db_shard = MicroserviceStatusModel._db_shard_for_name('DEFAULT__TYPE__TEST', scope: 'DEFAULT')
+        expect(db_shard).to eq(2)
       end
     end
 
-    describe "_active_shards" do
-      it "always includes shard 0" do
-        shards = MicroserviceStatusModel._active_shards(scope: 'DEFAULT')
-        expect(shards).to include(0)
+    describe "_active_db_shards" do
+      it "always includes db_shard 0" do
+        db_shards = MicroserviceStatusModel._active_db_shards(scope: 'DEFAULT')
+        expect(db_shards).to include(0)
       end
 
       it "includes all unique db_shards from MicroserviceModels" do
         MicroserviceModel.new(name: "DEFAULT__TYPE__MS1", scope: "DEFAULT", db_shard: 0).create
         MicroserviceModel.new(name: "DEFAULT__TYPE__MS2", scope: "DEFAULT", db_shard: 2).create
         MicroserviceModel.new(name: "DEFAULT__TYPE__MS3", scope: "DEFAULT", db_shard: 2).create
-        shards = MicroserviceStatusModel._active_shards(scope: 'DEFAULT')
-        expect(shards).to contain_exactly(0, 2)
+        db_shards = MicroserviceStatusModel._active_db_shards(scope: 'DEFAULT')
+        expect(db_shards).to contain_exactly(0, 2)
       end
 
-      it "only includes shards for the given scope" do
+      it "only includes db_shards for the given scope" do
         MicroserviceModel.new(name: "DEFAULT__TYPE__MS1", scope: "DEFAULT", db_shard: 1).create
         MicroserviceModel.new(name: "OTHER__TYPE__MS2", scope: "OTHER", db_shard: 3).create
-        shards = MicroserviceStatusModel._active_shards(scope: 'DEFAULT')
-        expect(shards).to contain_exactly(0, 1)
+        db_shards = MicroserviceStatusModel._active_db_shards(scope: 'DEFAULT')
+        expect(db_shards).to contain_exactly(0, 1)
       end
     end
   end

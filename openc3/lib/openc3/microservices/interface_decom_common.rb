@@ -47,7 +47,7 @@ module OpenC3
       cmd_params = build_cmd_hash['cmd_params']
       range_check = build_cmd_hash['range_check']
       raw = build_cmd_hash['raw']
-      shard = Store.shard_for_target(target_name, scope: @scope)
+      db_shard = Store.db_shard_for_target(target_name, scope: @scope)
       ack_topic = "{#{@scope}__ACKCMD}TARGET__#{target_name}"
       begin
         command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw)
@@ -70,14 +70,14 @@ module OpenC3
           message: error.message
         }
       end
-      Topic.write_topic(ack_topic, msg_hash, shard: shard)
+      Topic.write_topic(ack_topic, msg_hash, db_shard: db_shard)
     end
 
     def handle_get_tlm_buffer(get_tlm_buffer_json, msg_id)
       get_tlm_buffer_hash = JSON.parse(get_tlm_buffer_json, allow_nan: true, create_additions: true)
       target_name = get_tlm_buffer_hash['target_name']
       packet_name = get_tlm_buffer_hash['packet_name']
-      shard = Store.shard_for_target(target_name, scope: @scope)
+      db_shard = Store.db_shard_for_target(target_name, scope: @scope)
       ack_topic = "{#{@scope}__ACKCMD}TARGET__#{target_name}"
       begin
         packet = System.telemetry.packet(target_name, packet_name)
@@ -103,7 +103,7 @@ module OpenC3
           message: error.message
         }
       end
-      Topic.write_topic(ack_topic, msg_hash, shard: shard)
+      Topic.write_topic(ack_topic, msg_hash, db_shard: db_shard)
     end
   end
 end

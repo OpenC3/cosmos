@@ -238,8 +238,8 @@ module OpenC3
                   # This keeps one minute of data in Redis
                   instance.cleanup_offsets[index].each do |redis_topic, cleanup_offset|
                     target_match = redis_topic.match(/__\{?([^}_]+)\}?__/)
-                    topic_shard = target_match ? Store.shard_for_target(target_match[1]) : 0
-                    Topic.trim_topic(redis_topic, cleanup_offset, shard: topic_shard)
+                    db_shard = target_match ? Store.db_shard_for_target(target_match[1]) : 0
+                    Topic.trim_topic(redis_topic, cleanup_offset, db_shard: db_shard)
                   end
                   indexes_to_clear << index
                 end

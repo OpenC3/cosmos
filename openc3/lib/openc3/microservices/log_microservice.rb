@@ -63,7 +63,7 @@ module OpenC3
       while true
         break if @cancel_thread
 
-        Topic.read_topics(@topics, shard: @db_shard) do |topic, msg_id, msg_hash, redis|
+        Topic.read_topics(@topics, db_shard: @db_shard) do |topic, msg_id, msg_hash, redis|
           break if @cancel_thread
           if topic == @microservice_topic
             microservice_cmd(topic, msg_id, msg_hash, redis)

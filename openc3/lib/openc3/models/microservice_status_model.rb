@@ -16,11 +16,11 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/model'
-require 'openc3/models/sharded_model'
+require 'openc3/models/db_sharded_model'
 
 module OpenC3
   class MicroserviceStatusModel < Model
-    include ShardedModel
+    include DbShardedModel
 
     PRIMARY_KEY = 'openc3_microservice_status'
 
@@ -37,26 +37,26 @@ module OpenC3
 
     # Collect all unique db_shard values from MicroserviceModels.
     def self._collect_db_shards(scope:)
-      shards = Set.new([0])
+      db_shards = Set.new([0])
       Store.hgetall('openc3_microservices').each do |name, json|
         next if scope and name.split("__")[0] != scope
-        shards << (JSON.parse(json, allow_nan: true, create_additions: true)['db_shard'] || 0).to_i
+        db_shards << (JSON.parse(json, allow_nan: true, create_additions: true)['db_shard'] || 0).to_i
       end
-      shards
+      db_shards
     end
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     def self.get(name:, scope:)
-      _sharded_get("#{scope}__#{PRIMARY_KEY}", name: name, scope: scope)
+      _db_sharded_get("#{scope}__#{PRIMARY_KEY}", name: name, scope: scope)
     end
 
     def self.names(scope:)
-      _sharded_names("#{scope}__#{PRIMARY_KEY}", scope: scope)
+      _db_sharded_names("#{scope}__#{PRIMARY_KEY}", scope: scope)
     end
 
     def self.all(scope:)
-      _sharded_all("#{scope}__#{PRIMARY_KEY}", scope: scope)
+      _db_sharded_all("#{scope}__#{PRIMARY_KEY}", scope: scope)
     end
 
     def initialize(
@@ -77,11 +77,11 @@ module OpenC3
     end
 
     def create(update: false, force: false, queued: false, isoformat: false)
-      _sharded_create(self.class._shard_for_name(@name, scope: @scope, use_cache: true), update: update, force: force, queued: queued, isoformat: isoformat)
+      _db_sharded_create(self.class._db_shard_for_name(@name, scope: @scope, use_cache: true), update: update, force: force, queued: queued, isoformat: isoformat)
     end
 
     def destroy
-      _sharded_destroy(self.class._shard_for_name(@name, scope: @scope))
+      _db_sharded_destroy(self.class._db_shard_for_name(@name, scope: @scope))
     end
 
     def as_json(*a)

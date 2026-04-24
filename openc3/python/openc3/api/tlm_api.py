@@ -242,8 +242,8 @@ def get_tlm_buffer(*args, scope=OPENC3_SCOPE, timeout=5):
         return {k.decode(): v for (k, v) in msg_hash.items()}
     else:
         topic = f"{scope}__TELEMETRY__{{{target_name}}}__{packet_name}"
-        shard = Store.shard_for_target(target_name, scope=scope)
-        msg_id, msg_hash = Topic.get_newest_message(topic, shard=shard)
+        db_shard = Store.db_shard_for_target(target_name, scope=scope)
+        msg_id, msg_hash = Topic.get_newest_message(topic, db_shard=db_shard)
         if msg_id:
             # Decode the keys for user convenience
             return {k.decode(): v for (k, v) in msg_hash.items()}
@@ -515,8 +515,8 @@ def subscribe_packets(packets, scope=OPENC3_SCOPE):
             scope=scope,
         )
         topic = f"{scope}__DECOM__{{{target_name}}}__{packet_name}"
-        shard = Store.shard_for_target(target_name, scope=scope)
-        id_, _ = Topic.get_newest_message(topic, shard=shard)
+        db_shard = Store.db_shard_for_target(target_name, scope=scope)
+        id_, _ = Topic.get_newest_message(topic, db_shard=db_shard)
         result[topic] = id_ if id_ else "0-0"
 
     mylist = []
@@ -542,21 +542,21 @@ def get_packets(id, count=1000, scope=OPENC3_SCOPE):
     # Convert it back into a dict to create a lookup
     lookup = dict(zip(items[::2], items[1::2], strict=False))
     packets = []
-    # Group topics by shard for multi-shard support
+    # Group topics by db_shard for multi-db_shard support
     import re
 
-    shard_groups = {}
+    db_shard_groups = {}
     for topic, offset in lookup.items():
         match = re.search(r"__\{?([^}_]+)\}?__", topic)
         target_name = match.group(1) if match else None
-        shard = Store.shard_for_target(target_name, scope=scope)
-        if shard not in shard_groups:
-            shard_groups[shard] = {"topics": [], "offsets": []}
-        shard_groups[shard]["topics"].append(topic)
-        shard_groups[shard]["offsets"].append(offset)
-    for shard, group in shard_groups.items():
+        db_shard = Store.db_shard_for_target(target_name, scope=scope)
+        if db_shard not in db_shard_groups:
+            db_shard_groups[db_shard] = {"topics": [], "offsets": []}
+        db_shard_groups[db_shard]["topics"].append(topic)
+        db_shard_groups[db_shard]["offsets"].append(offset)
+    for db_shard, group in db_shard_groups.items():
         for topic, topic_id, msg_hash, _ in Topic.read_topics(
-            group["topics"], group["offsets"], None, count, shard=shard
+            group["topics"], group["offsets"], None, count, db_shard=db_shard
         ):
             lookup[topic] = topic_id  # save the new ID
             # decode the binary string keys and values to strings

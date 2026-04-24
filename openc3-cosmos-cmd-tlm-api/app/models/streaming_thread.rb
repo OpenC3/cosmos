@@ -86,15 +86,15 @@ class StreamingThread
     topics, offsets, item_objects_by_topic, packet_objects_by_topic = @collection.topics_offsets_and_objects
     results = []
     if topics.length > 0
-      # Build shard groups from the objects' pre-computed shards
-      shard_groups = build_shard_groups(topics, offsets, item_objects_by_topic, packet_objects_by_topic)
+      # Build db_shard groups from the objects' pre-computed db_shards
+      db_shard_groups = build_db_shard_groups(topics, offsets, item_objects_by_topic, packet_objects_by_topic)
 
-      # Read from each shard with proportionally shorter timeouts
-      timeout_per_shard = [500 / [shard_groups.length, 1].max, 100].max
+      # Read from each db_shard with proportionally shorter timeouts
+      timeout_per_db_shard = [500 / [db_shard_groups.length, 1].max, 100].max
       any_result = false
-      shard_groups.each do |shard, group|
+      db_shard_groups.each do |db_shard, group|
         break if @cancel_thread
-        xread_result = OpenC3::Topic.read_topics(group[:topics], group[:offsets], timeout_per_shard, shard: shard) do |topic, msg_id, msg_hash, _|
+        xread_result = OpenC3::Topic.read_topics(group[:topics], group[:offsets], timeout_per_db_shard, db_shard: db_shard) do |topic, msg_id, msg_hash, _|
           stored = OpenC3::ConfigParser.handle_true_false(msg_hash["stored"])
           next if stored # Ignore stored packets while realtime streaming
 
@@ -237,28 +237,28 @@ class StreamingThread
     @cancel_thread = true if @collection.empty?
   end
 
-  # Build shard groups from streaming objects' pre-computed shards.
-  # Each StreamingObject already knows its shard from initialization.
-  # Returns { shard => { topics: [], offsets: [] } } with fast path for all-shard-0.
-  def build_shard_groups(topics, offsets, item_objects_by_topic, packet_objects_by_topic)
-    # Build a topic-to-shard map from the objects
-    topic_shard = {}
+  # Build db_shard groups from streaming objects' pre-computed db_shards.
+  # Each StreamingObject already knows its db_shard from initialization.
+  # Returns { db_shard => { topics: [], offsets: [] } } with fast path for all-db_shard-0.
+  def build_db_shard_groups(topics, offsets, item_objects_by_topic, packet_objects_by_topic)
+    # Build a topic-to-db_shard map from the objects
+    topic_db_shard = {}
     item_objects_by_topic.each do |topic, objects|
-      topic_shard[topic] = objects[0].shard if objects && objects.length > 0
+      topic_db_shard[topic] = objects[0].db_shard if objects && objects.length > 0
     end
     packet_objects_by_topic.each do |topic, objects|
-      topic_shard[topic] = objects[0].shard if objects && objects.length > 0
+      topic_db_shard[topic] = objects[0].db_shard if objects && objects.length > 0
     end
 
     groups = {}
     topics.each_with_index do |topic, idx|
-      shard = topic_shard[topic] || 0
-      groups[shard] ||= { topics: [], offsets: [] }
-      groups[shard][:topics] << topic
-      groups[shard][:offsets] << offsets[idx]
+      db_shard = topic_db_shard[topic] || 0
+      groups[db_shard] ||= { topics: [], offsets: [] }
+      groups[db_shard][:topics] << topic
+      groups[db_shard][:offsets] << offsets[idx]
     end
 
-    # Fast path: if everything is on shard 0, use the original arrays
+    # Fast path: if everything is on db_shard 0, use the original arrays
     if groups.length == 1 && groups.key?(0)
       groups = { 0 => { topics: topics, offsets: offsets } }
     end

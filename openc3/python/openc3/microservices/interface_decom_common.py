@@ -48,7 +48,7 @@ def handle_build_cmd(build_cmd_json, msg_id, scope):
     cmd_params = build_cmd_hash["cmd_params"]
     range_check = build_cmd_hash["range_check"]
     raw = build_cmd_hash["raw"]
-    shard = Store.shard_for_target(target_name, scope=scope)
+    db_shard = Store.db_shard_for_target(target_name, scope=scope)
     ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
     try:
         command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw)
@@ -67,14 +67,14 @@ def handle_build_cmd(build_cmd_json, msg_id, scope):
     except Exception as error:
         # Return only the error message (not full traceback) to match Ruby behavior
         msg_hash = {"id": msg_id, "result": "ERROR", "message": str(error)}
-    Topic.write_topic(ack_topic, msg_hash, shard=shard)
+    Topic.write_topic(ack_topic, msg_hash, db_shard=db_shard)
 
 
 def handle_get_tlm_buffer(get_tlm_buffer_json, msg_id, scope):
     get_tlm_buffer_hash = json.loads(get_tlm_buffer_json, cls=JsonDecoder)
     target_name = get_tlm_buffer_hash["target_name"]
     packet_name = get_tlm_buffer_hash["packet_name"]
-    shard = Store.shard_for_target(target_name, scope=scope)
+    db_shard = Store.db_shard_for_target(target_name, scope=scope)
     ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
     try:
         packet = System.telemetry.packet(target_name, packet_name)
@@ -96,4 +96,4 @@ def handle_get_tlm_buffer(get_tlm_buffer_json, msg_id, scope):
     except Exception as error:
         # Return only the error message (not full traceback) to match Ruby behavior
         msg_hash = {"id": msg_id, "result": "ERROR", "message": str(error)}
-    Topic.write_topic(ack_topic, msg_hash, shard=shard)
+    Topic.write_topic(ack_topic, msg_hash, db_shard=db_shard)

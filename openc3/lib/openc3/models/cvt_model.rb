@@ -30,14 +30,14 @@ module OpenC3
       packet.decom
     end
 
-    # Get a Store instance routed to the correct shard for a target
+    # Get a Store instance routed to the correct db_shard for a target
     def self.store_for_target(target_name, scope:)
-      Store.instance(shard: Store.shard_for_target(target_name, scope: scope))
+      Store.instance(db_shard: Store.db_shard_for_target(target_name, scope: scope))
     end
 
-    # Get a StoreQueued instance routed to the correct shard for a target
+    # Get a StoreQueued instance routed to the correct db_shard for a target
     def self.store_queued_for_target(target_name, scope:)
-      StoreQueued.instance(shard: Store.shard_for_target(target_name, scope: scope))
+      StoreQueued.instance(db_shard: Store.db_shard_for_target(target_name, scope: scope))
     end
 
     # Delete the current value table for a target

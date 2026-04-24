@@ -69,10 +69,10 @@
           />
         </v-radio-group>
         <v-text-field
-          v-model="shard"
+          v-model="db_shard"
           type="number"
           min="0"
-          label="Shard"
+          label="DB Shard"
           hide-details
           density="compact"
           style="max-width: 100px"
@@ -103,7 +103,7 @@ export default {
       redisCommandText: '',
       redisResponse: null,
       redisEndpoint: 'persistent',
-      shard: '0',
+      db_shard: '0',
       prettyPrint: false,
       headers: [
         { text: 'Redis', value: 'redis', width: 150 },
@@ -151,8 +151,8 @@ export default {
       if (this.redisEndpoint === 'ephemeral') {
         params.push('ephemeral=1')
       }
-      if (this.shard && this.shard !== '0') {
-        params.push(`shard=${this.shard}`)
+      if (this.db_shard && this.db_shard !== '0') {
+        params.push(`db_shard=${this.db_shard}`)
       }
       if (params.length) {
         url += '?' + params.join('&')
@@ -167,8 +167,8 @@ export default {
         this.redisResponse = response.data.result
         let redis =
           this.redisEndpoint === 'ephemeral' ? 'Ephemeral' : 'Persistent'
-        if (this.shard !== '0') {
-          redis += ` (shard ${this.shard})`
+        if (this.db_shard !== '0') {
+          redis += ` (db_shard ${this.db_shard})`
         }
         this.commands.unshift({
           redis: redis,

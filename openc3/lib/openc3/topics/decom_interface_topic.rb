@@ -26,14 +26,14 @@ module OpenC3
       # DecomMicroservice is listening to the DECOMINTERFACE topic and is responsible
       # for actually building the command. This was deliberate to allow this to work
       # with or without an interface.
-      shard = Store.shard_for_target(target_name, scope: scope)
+      db_shard = Store.db_shard_for_target(target_name, scope: scope)
       ack_topic = "{#{scope}__ACKCMD}TARGET__#{target_name}"
-      Topic.update_topic_offsets([ack_topic], shard: shard)
+      Topic.update_topic_offsets([ack_topic], db_shard: db_shard)
       decom_id = Topic.write_topic("#{scope}__DECOMINTERFACE__{#{target_name}}",
-          { 'build_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100, shard: shard)
+          { 'build_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100, db_shard: db_shard)
       time = Time.now
       while (Time.now - time) < timeout
-        Topic.read_topics([ack_topic], shard: shard) do |_topic, _msg_id, msg_hash, _redis|
+        Topic.read_topics([ack_topic], db_shard: db_shard) do |_topic, _msg_id, msg_hash, _redis|
           if msg_hash["id"] == decom_id
             if msg_hash["result"] == "SUCCESS"
               return msg_hash
@@ -52,9 +52,9 @@ module OpenC3
       data['packet_name'] = packet_name.to_s.upcase
       data['item_hash'] = item_hash
       data['type'] = type
-      shard = Store.shard_for_target(target_name, scope: scope)
+      db_shard = Store.db_shard_for_target(target_name, scope: scope)
       Topic.write_topic("#{scope}__DECOMINTERFACE__{#{target_name}}",
-          { 'inject_tlm' => JSON.generate(data, allow_nan: true) }, '*', 100, shard: shard)
+          { 'inject_tlm' => JSON.generate(data, allow_nan: true) }, '*', 100, db_shard: db_shard)
     end
 
     def self.get_tlm_buffer(target_name, packet_name, timeout: 5, scope:)
@@ -63,14 +63,14 @@ module OpenC3
       data['packet_name'] = packet_name.to_s.upcase
       # DecomMicroservice is listening to the DECOMINTERFACE topic and has
       # the most recent decommed packets including subpackets
-      shard = Store.shard_for_target(target_name, scope: scope)
+      db_shard = Store.db_shard_for_target(target_name, scope: scope)
       ack_topic = "{#{scope}__ACKCMD}TARGET__#{target_name}"
-      Topic.update_topic_offsets([ack_topic], shard: shard)
+      Topic.update_topic_offsets([ack_topic], db_shard: db_shard)
       decom_id = Topic.write_topic("#{scope}__DECOMINTERFACE__{#{target_name}}",
-          { 'get_tlm_buffer' => JSON.generate(data, allow_nan: true) }, '*', 100, shard: shard)
+          { 'get_tlm_buffer' => JSON.generate(data, allow_nan: true) }, '*', 100, db_shard: db_shard)
       time = Time.now
       while (Time.now - time) < timeout
-        Topic.read_topics([ack_topic], shard: shard) do |_topic, _msg_id, msg_hash, _redis|
+        Topic.read_topics([ack_topic], db_shard: db_shard) do |_topic, _msg_id, msg_hash, _redis|
           if msg_hash["id"] == decom_id
             if msg_hash["result"] == "SUCCESS"
               msg_hash["stored"] = ConfigParser.handle_true_false(msg_hash["stored"])

@@ -51,10 +51,10 @@ class TargetModel(Model):
     sync_packet_count_delay_seconds = 1.0  # Sync packet counts every second
     stale_packet_keys_warned = set()  # Track stale keys already warned about
 
-    # Get a Store instance routed to the correct shard for a target
+    # Get a Store instance routed to the correct db_shard for a target
     @classmethod
     def _store_for_target(cls, target_name, scope):
-        return Store.instance(shard=Store.shard_for_target(target_name, scope=scope))
+        return Store.instance(db_shard=Store.db_shard_for_target(target_name, scope=scope))
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -289,19 +289,19 @@ class TargetModel(Model):
 
     @classmethod
     def get_telemetry_counts(cls, target_packets: list, scope: str = OPENC3_SCOPE):
-        # Group by shard, preserving original index
-        shard_groups = {}  # shard => [{"index": idx, "target_name": ..., "packet_name": ...}]
+        # Group by db_shard, preserving original index
+        db_shard_groups = {}  # db_shard => [{"index": idx, "target_name": ..., "packet_name": ...}]
         for idx, (target_name, packet_name) in enumerate(target_packets):
             target_name = target_name.upper()
             packet_name = packet_name.upper()
-            shard = Store.shard_for_target(target_name, scope=scope)
-            if shard not in shard_groups:
-                shard_groups[shard] = []
-            shard_groups[shard].append({"index": idx, "target_name": target_name, "packet_name": packet_name})
+            db_shard = Store.db_shard_for_target(target_name, scope=scope)
+            if db_shard not in db_shard_groups:
+                db_shard_groups[db_shard] = []
+            db_shard_groups[db_shard].append({"index": idx, "target_name": target_name, "packet_name": packet_name})
 
         counts = [0] * len(target_packets)
-        for shard, entries in shard_groups.items():
-            store = Store.instance(shard=shard)
+        for db_shard, entries in db_shard_groups.items():
+            store = Store.instance(db_shard=db_shard)
             with store.redis_pool.get() as redis:
                 pipeline = redis.pipeline(transaction=False)
                 for entry in entries:
@@ -434,19 +434,19 @@ class TargetModel(Model):
 
     @classmethod
     def get_command_counts(cls, target_packets: list, scope: str = OPENC3_SCOPE):
-        # Group by shard, preserving original index
-        shard_groups = {}  # shard => [{"index": idx, "target_name": ..., "packet_name": ...}]
+        # Group by db_shard, preserving original index
+        db_shard_groups = {}  # db_shard => [{"index": idx, "target_name": ..., "packet_name": ...}]
         for idx, (target_name, packet_name) in enumerate(target_packets):
             target_name = target_name.upper()
             packet_name = packet_name.upper()
-            shard = Store.shard_for_target(target_name, scope=scope)
-            if shard not in shard_groups:
-                shard_groups[shard] = []
-            shard_groups[shard].append({"index": idx, "target_name": target_name, "packet_name": packet_name})
+            db_shard = Store.db_shard_for_target(target_name, scope=scope)
+            if db_shard not in db_shard_groups:
+                db_shard_groups[db_shard] = []
+            db_shard_groups[db_shard].append({"index": idx, "target_name": target_name, "packet_name": packet_name})
 
         counts = [0] * len(target_packets)
-        for shard, entries in shard_groups.items():
-            store = Store.instance(shard=shard)
+        for db_shard, entries in db_shard_groups.items():
+            store = Store.instance(db_shard=db_shard)
             with store.redis_pool.get() as redis:
                 pipeline = redis.pipeline(transaction=False)
                 for entry in entries:
@@ -516,16 +516,16 @@ class TargetModel(Model):
         )
 
     def update_store_telemetry(self, packet_hash, clear_old=True):
-        shard_store = Store.instance(shard=self.shard)
+        db_shard_store = Store.instance(db_shard=self.db_shard)
         for target_name, packets in packet_hash.items():
             if clear_old:
-                shard_store.delete(f"{self.scope}__openc3tlm__{target_name}")
-                shard_store.delete(f"{self.scope}__openc3tlm__{target_name}__allitems")
-                shard_store.delete(f"{self.scope}__TELEMETRYCNTS__{{{target_name}}}")
+                db_shard_store.delete(f"{self.scope}__openc3tlm__{target_name}")
+                db_shard_store.delete(f"{self.scope}__openc3tlm__{target_name}__allitems")
+                db_shard_store.delete(f"{self.scope}__TELEMETRYCNTS__{{{target_name}}}")
             for packet_name, packet in packets.items():
                 Logger.debug(f"Configuring tlm packet= {target_name} {packet_name}")
                 try:
-                    shard_store.hset(
+                    db_shard_store.hset(
                         f"{self.scope}__openc3tlm__{target_name}",
                         packet_name,
                         json.dumps(packet.as_json()),
@@ -538,22 +538,22 @@ class TargetModel(Model):
                     json_hash[item.name] = None
                     TargetModel.add_to_target_allitems_list(target_name, item.name, scope=self.scope)
                 # Use Store.hset directly instead of CvtModel.set to avoid circular dependency
-                shard_store.hset(
+                db_shard_store.hset(
                     f"{self.scope}__tlm__{packet.target_name}",
                     packet.packet_name,
                     json.dumps(json_hash, cls=JsonEncoder),
                 )
 
     def update_store_commands(self, packet_hash, clear_old=True):
-        shard_store = Store.instance(shard=self.shard)
+        db_shard_store = Store.instance(db_shard=self.db_shard)
         for target_name, packets in packet_hash.items():
             if clear_old:
-                shard_store.delete(f"{self.scope}__openc3cmd__{target_name}")
-                shard_store.delete(f"{self.scope}__COMMANDCNTS__{{{target_name}}}")
+                db_shard_store.delete(f"{self.scope}__openc3cmd__{target_name}")
+                db_shard_store.delete(f"{self.scope}__COMMANDCNTS__{{{target_name}}}")
             for packet_name, packet in packets.items():
                 Logger.debug(f"Configuring cmd packet= {target_name} {packet_name}")
                 try:
-                    shard_store.hset(
+                    db_shard_store.hset(
                         f"{self.scope}__openc3cmd__{target_name}",
                         packet_name,
                         json.dumps(packet.as_json()),
@@ -566,7 +566,7 @@ class TargetModel(Model):
         # Create item_map
         item_map_key = f"{self.scope}__{self.name}__item_to_packet_map"
         item_map = TargetModel.build_item_to_packet_map(self.name, scope=self.scope)
-        Store.instance(shard=self.shard).set(item_map_key, json.dumps(item_map))
+        Store.instance(db_shard=self.db_shard).set(item_map_key, json.dumps(item_map))
         TargetModel.item_map_cache[self.name] = [time.time(), item_map]
 
     def dynamic_update(self, packets, cmd_or_tlm="TELEMETRY", filename="dynamic_tlm.txt"):
@@ -625,7 +625,7 @@ class TargetModel(Model):
                     "command": "ADD_TOPICS",
                     "topics": json.dumps(raw_topics, cls=JsonEncoder),
                 },
-                shard=self.db_shard,
+                db_shard=self.db_shard,
             )
             self.add_topics_to_microservice(f"{self.scope}__PACKETLOG__{self.name}", raw_topics)
             Topic.write_topic(
@@ -634,7 +634,7 @@ class TargetModel(Model):
                     "command": "ADD_TOPICS",
                     "topics": json.dumps(raw_topics, cls=JsonEncoder),
                 },
-                shard=self.db_shard,
+                db_shard=self.db_shard,
             )
             self.add_topics_to_microservice(f"{self.scope}__DECOM__{self.name}", raw_topics)
         else:
@@ -644,7 +644,7 @@ class TargetModel(Model):
                     "command": "ADD_TOPICS",
                     "topics": json.dumps(raw_topics, cls=JsonEncoder),
                 },
-                shard=self.db_shard,
+                db_shard=self.db_shard,
             )
             self.add_topics_to_microservice(f"{self.scope}__COMMANDLOG__{self.name}", raw_topics)
 

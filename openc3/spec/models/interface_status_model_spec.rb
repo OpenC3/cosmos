@@ -22,7 +22,7 @@ module OpenC3
   describe InterfaceStatusModel, type: :model do
     before(:each) do
       mock_redis()
-      InterfaceStatusModel.instance_variable_set(:@shard_cache, {})
+      InterfaceStatusModel.instance_variable_set(:@db_shard_cache, {})
     end
 
     describe "initialize" do
@@ -46,7 +46,7 @@ module OpenC3
         expect(name).to be_nil
       end
 
-      it "returns status from correct shard" do
+      it "returns status from correct db_shard" do
         # Create an InterfaceModel with db_shard 0 (default)
         InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT").create
         # Create and store the status
@@ -57,10 +57,10 @@ module OpenC3
       end
 
       it "returns status when base model has non-zero db_shard" do
-        InterfaceModel.new(name: "SHARD_INT", scope: "DEFAULT", db_shard: 1).create
-        InterfaceStatusModel.set({ name: 'SHARD_INT', state: 'ATTEMPTING' }, scope: 'DEFAULT')
-        result = InterfaceStatusModel.get(name: 'SHARD_INT', scope: 'DEFAULT')
-        expect(result['name']).to eq('SHARD_INT')
+        InterfaceModel.new(name: "DB_SHARD_INT", scope: "DEFAULT", db_shard: 1).create
+        InterfaceStatusModel.set({ name: 'DB_SHARD_INT', state: 'ATTEMPTING' }, scope: 'DEFAULT')
+        result = InterfaceStatusModel.get(name: 'DB_SHARD_INT', scope: 'DEFAULT')
+        expect(result['name']).to eq('DB_SHARD_INT')
         expect(result['state']).to eq('ATTEMPTING')
       end
     end
@@ -71,7 +71,7 @@ module OpenC3
         expect(names).to eq([])
       end
 
-      it "returns names across shards" do
+      it "returns names across db_shards" do
         InterfaceModel.new(name: "INT1", scope: "DEFAULT", db_shard: 0).create
         InterfaceModel.new(name: "INT2", scope: "DEFAULT", db_shard: 1).create
         InterfaceStatusModel.set({ name: 'INT1', state: 'CONNECTED' }, scope: 'DEFAULT')
@@ -87,7 +87,7 @@ module OpenC3
         expect(all).to eq({})
       end
 
-      it "returns all statuses across shards" do
+      it "returns all statuses across db_shards" do
         InterfaceModel.new(name: "INT1", scope: "DEFAULT", db_shard: 0).create
         InterfaceModel.new(name: "INT2", scope: "DEFAULT", db_shard: 1).create
         InterfaceStatusModel.set({ name: 'INT1', state: 'CONNECTED' }, scope: 'DEFAULT')
@@ -100,7 +100,7 @@ module OpenC3
     end
 
     describe "create and destroy" do
-      it "creates and destroys on the correct shard" do
+      it "creates and destroys on the correct db_shard" do
         InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT", db_shard: 1).create
         model = InterfaceStatusModel.new(name: 'TEST_INT', state: 'CONNECTED', scope: 'DEFAULT')
         model.create(force: true)
@@ -112,31 +112,31 @@ module OpenC3
       end
     end
 
-    describe "_shard_for_name" do
+    describe "_db_shard_for_name" do
       it "returns 0 when base model does not exist" do
-        shard = InterfaceStatusModel._shard_for_name('NONEXISTENT', scope: 'DEFAULT')
-        expect(shard).to eq(0)
+        db_shard = InterfaceStatusModel._db_shard_for_name('NONEXISTENT', scope: 'DEFAULT')
+        expect(db_shard).to eq(0)
       end
 
       it "returns db_shard from InterfaceModel" do
         InterfaceModel.new(name: "MY_INT", scope: "DEFAULT", db_shard: 2).create
-        shard = InterfaceStatusModel._shard_for_name('MY_INT', scope: 'DEFAULT')
-        expect(shard).to eq(2)
+        db_shard = InterfaceStatusModel._db_shard_for_name('MY_INT', scope: 'DEFAULT')
+        expect(db_shard).to eq(2)
       end
     end
 
-    describe "_active_shards" do
-      it "always includes shard 0" do
-        shards = InterfaceStatusModel._active_shards(scope: 'DEFAULT')
-        expect(shards).to include(0)
+    describe "_active_db_shards" do
+      it "always includes db_shard 0" do
+        db_shards = InterfaceStatusModel._active_db_shards(scope: 'DEFAULT')
+        expect(db_shards).to include(0)
       end
 
       it "includes all unique db_shards from InterfaceModels" do
         InterfaceModel.new(name: "INT1", scope: "DEFAULT", db_shard: 0).create
         InterfaceModel.new(name: "INT2", scope: "DEFAULT", db_shard: 2).create
         InterfaceModel.new(name: "INT3", scope: "DEFAULT", db_shard: 2).create
-        shards = InterfaceStatusModel._active_shards(scope: 'DEFAULT')
-        expect(shards).to contain_exactly(0, 2)
+        db_shards = InterfaceStatusModel._active_db_shards(scope: 'DEFAULT')
+        expect(db_shards).to contain_exactly(0, 2)
       end
     end
   end
@@ -144,11 +144,11 @@ module OpenC3
   describe RouterStatusModel, type: :model do
     before(:each) do
       mock_redis()
-      RouterStatusModel.instance_variable_set(:@shard_cache, {})
+      RouterStatusModel.instance_variable_set(:@db_shard_cache, {})
     end
 
     describe "self.get" do
-      it "returns status from correct shard" do
+      it "returns status from correct db_shard" do
         RouterModel.new(name: "TEST_RTR", scope: "DEFAULT", db_shard: 1).create
         RouterStatusModel.set({ name: 'TEST_RTR', state: 'CONNECTED' }, scope: 'DEFAULT')
         result = RouterStatusModel.get(name: 'TEST_RTR', scope: 'DEFAULT')
@@ -157,11 +157,11 @@ module OpenC3
       end
     end
 
-    describe "_shard_for_name" do
+    describe "_db_shard_for_name" do
       it "returns db_shard from RouterModel" do
         RouterModel.new(name: "MY_RTR", scope: "DEFAULT", db_shard: 3).create
-        shard = RouterStatusModel._shard_for_name('MY_RTR', scope: 'DEFAULT')
-        expect(shard).to eq(3)
+        db_shard = RouterStatusModel._db_shard_for_name('MY_RTR', scope: 'DEFAULT')
+        expect(db_shard).to eq(3)
       end
     end
   end

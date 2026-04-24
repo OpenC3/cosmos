@@ -31,9 +31,9 @@ class TelemetryTopic(Topic):
         }
         if packet.extra:
             msg_hash["extra"] = json.dumps(packet.extra)
-        shard = Store.shard_for_target(packet.target_name, scope=scope)
+        db_shard = Store.db_shard_for_target(packet.target_name, scope=scope)
         if queued:
-            EphemeralStoreQueued.instance(shard=shard).write_topic(
+            EphemeralStoreQueued.instance(db_shard=db_shard).write_topic(
                 f"{scope}__TELEMETRY__{{{packet.target_name}}}__{packet.packet_name}",
                 msg_hash,
             )
@@ -41,5 +41,5 @@ class TelemetryTopic(Topic):
             Topic.write_topic(
                 f"{scope}__TELEMETRY__{{{packet.target_name}}}__{packet.packet_name}",
                 msg_hash,
-                shard=shard,
+                db_shard=db_shard,
             )

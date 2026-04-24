@@ -33,7 +33,7 @@ class TsdbMicroservice(Microservice):
     def __init__(self, *args):
         super().__init__(*args)
 
-        # Note: topic offsets are initialized after shard is determined below
+        # Note: topic offsets are initialized after db_shard is determined below
         config_topic = f"{self.scope}{ConfigTopic.PRIMARY_KEY}"
         self.topic_offset = Topic.update_topic_offsets([config_topic])[0]
 
@@ -46,12 +46,12 @@ class TsdbMicroservice(Microservice):
             elif option[0] == "TLM_DECOM_RETAIN_TIME":
                 self.tlm_decom_retain_time = option[1]
 
-        # Use shared QuestDB client with shard from microservice config
+        # Use shared QuestDB client with db_shard from microservice config
         if len(self.topics) <= 0:
             raise RuntimeError("No topics provided")
         topic_parts = self.topics[0].split("__")
-        Topic.update_topic_offsets(self.topics, shard=self.db_shard)
-        self.questdb = QuestDBClient(logger=self.logger, name=f"Microservice {self.name}", shard=self.db_shard)
+        Topic.update_topic_offsets(self.topics, db_shard=self.db_shard)
+        self.questdb = QuestDBClient(logger=self.logger, name=f"Microservice {self.name}", db_shard=self.db_shard)
         self.questdb.connect_ingest()
         self.questdb.connect_query()
 
@@ -91,7 +91,7 @@ class TsdbMicroservice(Microservice):
         """Read topics and write data to QuestDB"""
         try:
             start = None
-            for topic, msg_id, msg_hash, redis in Topic.read_topics(self.topics, shard=self.db_shard):
+            for topic, msg_id, msg_hash, redis in Topic.read_topics(self.topics, db_shard=self.db_shard):
                 if self.cancel_thread:
                     break
 
@@ -179,7 +179,7 @@ class TsdbMicroservice(Microservice):
             self.next_trim_time_ms = current_time_ms + self.TRIM_KEEP_MS
             trim_time_ms = current_time_ms - self.TRIM_KEEP_MS
             trim_offset = f"{trim_time_ms}-0"
-            redis = EphemeralStore.instance(shard=self.db_shard)
+            redis = EphemeralStore.instance(db_shard=self.db_shard)
             pipeline = redis.pipeline(transaction=False)
             for topic in self.topics:
                 pipeline.xtrim(name=topic, minid=trim_offset, approximate=True, limit=0)

@@ -26,13 +26,13 @@ from openc3.utilities.store import Store
 # it helps maintain consistency as the topic and model are linked.
 class LimitsEventTopic(Topic):
     @classmethod
-    def _active_shards(cls, scope):
-        """Collect all unique target shards from TargetModel data on shard 0."""
-        shards = {0}
+    def _active_db_shards(cls, scope):
+        """Collect all unique target db_shards from TargetModel"""
+        db_shards = {0}
         for _name, json_data in Store.hgetall(f"{scope}__openc3_targets").items():
             parsed = json.loads(json_data)
-            shards.add(int(parsed.get("shard", 0) or 0))
-        return shards
+            db_shards.add(int(parsed.get("db_shard", 0) or 0))
+        return db_shards
 
     @classmethod
     def write(cls, event, scope):
@@ -99,14 +99,14 @@ class LimitsEventTopic(Topic):
             case _:
                 raise RuntimeError(f"Invalid limits event type '{event['type']}'")
 
-        # Write to all active shards so each decom microservice can read limits events inline
-        for shard in cls._active_shards(scope):
+        # Write to all active db_shards so each decom microservice can read limits events inline
+        for db_shard in cls._active_db_shards(scope):
             Topic.write_topic(
                 f"{scope}__openc3_limits_events",
                 {"event": json.dumps(event, cls=JsonEncoder)},
                 "*",
                 1000,
-                shard=shard,
+                db_shard=db_shard,
             )
 
     # Remove the JSON encoding to return hashes directly

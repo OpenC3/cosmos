@@ -106,7 +106,7 @@ module OpenC3
             @metric.set(name: 'interface_directive_total', value: @directive_count, type: 'counter') if @metric
             if msg_hash['shutdown']
               @logger.info "#{@interface.name}: Shutdown requested"
-              InterfaceTopic.clear_topics(InterfaceTopic.topics(@interface, scope: @scope), shard: @db_shard)
+              InterfaceTopic.clear_topics(InterfaceTopic.topics(@interface, scope: @scope), db_shard: @db_shard)
               return
             end
             if msg_hash['connect']
@@ -421,7 +421,7 @@ module OpenC3
 
           if msg_hash['shutdown']
             @logger.info "#{@router.name}: Shutdown requested"
-            RouterTopic.clear_topics(RouterTopic.topics(@router, scope: @scope), shard: @db_shard)
+            RouterTopic.clear_topics(RouterTopic.topics(@router, scope: @scope), db_shard: @db_shard)
             return
           end
           if msg_hash['connect']

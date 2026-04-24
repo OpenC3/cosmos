@@ -46,13 +46,13 @@ module OpenC3
   end
 
   class Store
-    # Variable that holds the singleton instances per shard
+    # Variable that holds the singleton instances per db_shard
     @instances = []
 
-    # Shard cache: { "scope__target_name" => [shard_number, Time] }
-    @@shard_cache = {}
-    @@shard_cache_mutex = Mutex.new
-    SHARD_CACHE_TIMEOUT = 60 # seconds
+    # DB_Shard cache: { "scope__target_name" => [db_shard_number, Time] }
+    @@db_shard_cache = {}
+    @@db_shard_cache_mutex = Mutex.new
+    DB_SHARD_CACHE_TIMEOUT = 60 # seconds
 
     # Mutex used to ensure that only one instance is created
     @@instance_mutex = Mutex.new
@@ -60,48 +60,48 @@ module OpenC3
     attr_reader :redis_url
     attr_reader :redis_pool
 
-    # Look up the shard number for a target with a 1-minute cache.
-    # Reads directly from Redis shard 0 to avoid circular deps with TargetModel.
-    # Non-target-specific data (nil target_name) always returns shard 0.
-    def self.shard_for_target(target_name, scope: "DEFAULT")
+    # Look up the db_shard number for a target with a 1-minute cache.
+    # Reads directly from Redis db_shard 0 to avoid circular deps with TargetModel.
+    # Non-target-specific data (nil target_name) always returns db_shard 0.
+    def self.db_shard_for_target(target_name, scope: "DEFAULT")
       return 0 unless target_name
 
       cache_key = "#{scope}__#{target_name}"
       now = Time.now
 
-      @@shard_cache_mutex.synchronize do
-        cached = @@shard_cache[cache_key]
+      @@db_shard_cache_mutex.synchronize do
+        cached = @@db_shard_cache[cache_key]
         if cached
-          shard, cached_at = cached
-          return shard if (now - cached_at) < SHARD_CACHE_TIMEOUT
+          db_shard, cached_at = cached
+          return db_shard if (now - cached_at) < DB_SHARD_CACHE_TIMEOUT
         end
       end
 
       begin
-        json = Store.instance(shard: 0).hget("#{scope}__openc3_targets", target_name)
-        shard = json ? JSON.parse(json)['shard'].to_i : 0
+        json = Store.instance(db_shard: 0).hget("#{scope}__openc3_targets", target_name)
+        db_shard = json ? JSON.parse(json)['db_shard'].to_i : 0
       rescue
-        shard = 0
+        db_shard = 0
       end
 
-      @@shard_cache_mutex.synchronize do
-        @@shard_cache[cache_key] = [shard, now]
+      @@db_shard_cache_mutex.synchronize do
+        @@db_shard_cache[cache_key] = [db_shard, now]
       end
 
-      shard
+      db_shard
     end
 
     # Get the singleton instance
-    def self.instance(pool_size = 100, shard: 0)
+    def self.instance(pool_size = 100, db_shard: 0)
       # Logger.level = Logger::DEBUG
       @instances ||= []
-      the_instance = @instances[shard]
+      the_instance = @instances[db_shard]
       return the_instance if the_instance
 
       @@instance_mutex.synchronize do
         @instances ||= []
-        @instances[shard] ||= self.new(pool_size, shard: shard)
-        return @instances[shard]
+        @instances[db_shard] ||= self.new(pool_size, db_shard: db_shard)
+        return @instances[db_shard]
       end
     end
 
@@ -115,10 +115,10 @@ module OpenC3
       @redis_pool.with { |redis| redis.public_send(message, *args, **kwargs, &block) }
     end
 
-    def initialize(pool_size = 10, shard: 0)
+    def initialize(pool_size = 10, db_shard: 0)
       @redis_username = ENV['OPENC3_REDIS_USERNAME']
       @redis_key = ENV['OPENC3_REDIS_PASSWORD']
-      hostname = ENV['OPENC3_REDIS_HOSTNAME'].to_s.gsub("SHARDNUM", shard.to_s)
+      hostname = ENV['OPENC3_REDIS_HOSTNAME'].to_s.gsub("SHARDNUM", db_shard.to_s)
       @redis_url = "redis://#{hostname}:#{ENV.fetch('OPENC3_REDIS_PORT', 6379)}"
       @redis_pool = StoreConnectionPool.new(size: pool_size) { build_redis() }
     end
@@ -258,9 +258,9 @@ module OpenC3
   end
 
   class EphemeralStore < Store
-    def initialize(pool_size = 10, shard: 0)
+    def initialize(pool_size = 10, db_shard: 0)
       super(pool_size)
-      hostname = ENV['OPENC3_REDIS_EPHEMERAL_HOSTNAME'].to_s.gsub("SHARDNUM", shard.to_s)
+      hostname = ENV['OPENC3_REDIS_EPHEMERAL_HOSTNAME'].to_s.gsub("SHARDNUM", db_shard.to_s)
       @redis_url = "redis://#{hostname}:#{ENV.fetch('OPENC3_REDIS_EPHEMERAL_PORT', 6380)}"
       @redis_pool = StoreConnectionPool.new(size: pool_size) { build_redis() }
     end

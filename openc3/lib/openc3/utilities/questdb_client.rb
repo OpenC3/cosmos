@@ -28,98 +28,98 @@ module OpenC3
     class QuestDBError < StandardError; end
 
     # Thread-local PG connection storage using Concurrent::ThreadLocalVar.
-    # Each thread gets its own connections (per shard) to avoid thread-safety issues with PG::Connection.
+    # Each thread gets its own connections (per db_shard) to avoid thread-safety issues with PG::Connection.
     # Connections are automatically garbage collected when threads terminate.
-    # Value is a Hash: { shard_number => PG::Connection }
+    # Value is a Hash: { db_shard_number => PG::Connection }
     @thread_conns = Concurrent::ThreadLocalVar.new { Hash.new } # NOSONAR
 
-    # Shard cache: { "scope__target_name" => [shard_number, Time] }
-    @shard_cache = {}
-    @shard_cache_mutex = Mutex.new
-    SHARD_CACHE_TIMEOUT = 60 # seconds
+    # DB_Shard cache: { "scope__target_name" => [db_shard_number, Time] }
+    @db_shard_cache = {}
+    @db_shard_cache_mutex = Mutex.new
+    DB_SHARD_CACHE_TIMEOUT = 60 # seconds
 
-    # Resolve the hostname for a given shard number.
-    # If OPENC3_TSDB_HOSTNAME contains "SHARDNUM", it is replaced with the shard number.
-    # Otherwise, all shards connect to the same host (backward compatible).
-    def self.hostname_for_shard(shard)
-      ENV['OPENC3_TSDB_HOSTNAME'].to_s.gsub("SHARDNUM", shard.to_s)
+    # Resolve the hostname for a given db_shard number.
+    # If OPENC3_TSDB_HOSTNAME contains "SHARDNUM", it is replaced with the db_shard number.
+    # Otherwise, all db_shards connect to the same host (backward compatible).
+    def self.hostname_for_db_shard(db_shard)
+      ENV['OPENC3_TSDB_HOSTNAME'].to_s.gsub("SHARDNUM", db_shard.to_s)
     end
 
-    # Look up the shard number for a target from TargetModel with a 1-minute cache.
-    # Non-target-specific data (nil target_name) always returns shard 0.
-    def self.shard_for_target(target_name, scope: "DEFAULT")
+    # Look up the db_shard number for a target from TargetModel with a 1-minute cache.
+    # Non-target-specific data (nil target_name) always returns db_shard 0.
+    def self.db_shard_for_target(target_name, scope: "DEFAULT")
       return 0 unless target_name
 
       cache_key = "#{scope}__#{target_name}"
       now = Time.now
 
-      @shard_cache_mutex.synchronize do
-        cached = @shard_cache[cache_key]
+      @db_shard_cache_mutex.synchronize do
+        cached = @db_shard_cache[cache_key]
         if cached
-          shard, cached_at = cached
-          return shard if (now - cached_at) < SHARD_CACHE_TIMEOUT
+          db_shard, cached_at = cached
+          return db_shard if (now - cached_at) < DB_SHARD_CACHE_TIMEOUT
         end
       end
 
       # Cache miss or expired — look up from TargetModel
       begin
         model = TargetModel.get(name: target_name, scope: scope)
-        shard = model ? model['shard'].to_i : 0
+        db_shard = model ? model['db_shard'].to_i : 0
       rescue
-        shard = 0
+        db_shard = 0
       end
 
-      @shard_cache_mutex.synchronize do
-        @shard_cache[cache_key] = [shard, now]
+      @db_shard_cache_mutex.synchronize do
+        @db_shard_cache[cache_key] = [db_shard, now]
       end
 
-      shard
+      db_shard
     end
 
-    # Get or create a thread-local PG connection for the given shard with type mapping configured.
+    # Get or create a thread-local PG connection for the given db_shard with type mapping configured.
     # Returns the thread-local connection - callers should not close it.
-    def self.connection(shard: 0)
+    def self.connection(db_shard: 0)
       conns = @thread_conns.value
-      conn = conns[shard]
+      conn = conns[db_shard]
       if conn.nil? || conn.finished?
         conn = PG::Connection.new(
-          host: hostname_for_shard(shard),
+          host: hostname_for_db_shard(db_shard),
           port: ENV['OPENC3_TSDB_QUERY_PORT'],
           user: ENV['OPENC3_TSDB_USERNAME'],
           password: ENV['OPENC3_TSDB_PASSWORD'],
           dbname: 'qdb'
         )
         conn.type_map_for_results = PG::BasicTypeMapForResults.new(conn)
-        conns[shard] = conn
+        conns[db_shard] = conn
         @thread_conns.value = conns
       end
       conn
     end
 
     # Reset the connection(s) for the current thread. Used after errors.
-    # If shard is nil, closes all shard connections. Otherwise closes only the specified shard.
-    def self.disconnect(shard: nil)
+    # If db_shard is nil, closes all db_shard connections. Otherwise closes only the specified db_shard.
+    def self.disconnect(db_shard: nil)
       conns = @thread_conns.value
-      if shard.nil?
+      if db_shard.nil?
         conns.each_value do |conn|
           conn.finish if conn && !conn.finished?
         end
         @thread_conns.value = {}
       else
-        conn = conns[shard]
+        conn = conns[db_shard]
         if conn && !conn.finished?
           conn.finish
         end
-        conns.delete(shard)
+        conns.delete(db_shard)
         @thread_conns.value = conns
       end
     end
 
     # Health check - attempt to connect and immediately close.
     # Returns true if successful, raises on failure.
-    def self.check_connection(shard: 0)
+    def self.check_connection(db_shard: 0)
       conn = PG::Connection.new(
-        host: hostname_for_shard(shard),
+        host: hostname_for_db_shard(db_shard),
         port: ENV['OPENC3_TSDB_QUERY_PORT'],
         user: ENV['OPENC3_TSDB_USERNAME'],
         password: ENV['OPENC3_TSDB_PASSWORD'],
@@ -346,10 +346,10 @@ module OpenC3
     # @param label [String, nil] Optional label for log messages
     # @return [PG::Result, nil] Query result
     # @raise [RuntimeError] After exhausting retries
-    def self.query_with_retry(query, params: [], max_retries: 5, label: nil, shard: 0)
+    def self.query_with_retry(query, params: [], max_retries: 5, label: nil, db_shard: 0)
       retry_count = 0
       begin
-        conn = connection(shard: shard)
+        conn = connection(db_shard: db_shard)
         if params.empty?
           return conn.exec(query)
         else
@@ -362,7 +362,7 @@ module OpenC3
         end
         Logger.warn("TSDB#{label ? " #{label}" : ""}: Retrying due to error: #{e.message}")
         Logger.warn("TSDB#{label ? " #{label}" : ""}: Last query: #{query}")
-        disconnect(shard: shard)
+        disconnect(db_shard: db_shard)
         sleep 0.1
         retry
       end
@@ -598,11 +598,11 @@ module OpenC3
     # @param start_time [Integer] Nanosecond start time
     # @param end_time [Integer, nil] Nanosecond end time
     # @return [Boolean]
-    def self.table_has_data?(table_name, start_time, end_time, shard: 0)
+    def self.table_has_data?(table_name, start_time, end_time, db_shard: 0)
       query = "SELECT 1 FROM #{table_name}"
       query += time_where_clause(start_time, end_time)
       query += " LIMIT 1"
-      result = query_with_retry(query, max_retries: 1, label: "table_has_data", shard: shard)
+      result = query_with_retry(query, max_retries: 1, label: "table_has_data", db_shard: db_shard)
       result && result.ntuples > 0
     rescue RuntimeError
       false
@@ -615,13 +615,13 @@ module OpenC3
     # @param page_size [Integer] Number of rows per page
     # @param label [String] Label for log messages
     # @yield [PG::Result] Each page of results
-    def self.paginate_query(query, page_size, label:, shard: 0)
+    def self.paginate_query(query, page_size, label:, db_shard: 0)
       min = 0
       max = page_size
       loop do
         query_offset = "#{query} LIMIT #{min}, #{max}"
         Logger.debug("QuestDB #{label}: #{query_offset}")
-        result = query_with_retry(query_offset, label: label, shard: shard)
+        result = query_with_retry(query_offset, label: label, db_shard: db_shard)
         min += page_size
         max += page_size
         if result.nil? or result.ntuples == 0
@@ -863,8 +863,8 @@ module OpenC3
 
     # Query historical telemetry data from QuestDB for a list of items.
     # Builds the SQL query, executes it, and decodes all results.
-    # Supports cross-shard queries by grouping items by shard, executing
-    # separate queries per shard, and merging results positionally.
+    # Supports cross-db_shard queries by grouping items by db_shard, executing
+    # separate queries per db_shard, and merging results positionally.
     #
     # @param items [Array] Array of [target_name, packet_name, item_name, value_type, limits]
     #   item_name may be nil to indicate a placeholder (non-existent item)
@@ -874,53 +874,53 @@ module OpenC3
     # @return [Array, Hash] Array of [value, limits_state] pairs per row, or {} if no results.
     #   Single-row results return a flat array; multi-row results return array of arrays.
     def self.tsdb_lookup(items, start_time:, end_time: nil, scope: "DEFAULT")
-      # Group items by shard number while preserving their original positions
-      shard_groups = {} # shard => { positions: [], items: [] }
+      # Group items by db_shard number while preserving their original positions
+      db_shard_groups = {} # db_shard => { positions: [], items: [] }
       items.each_with_index do |item, pos|
         target_name = item[0]
-        shard = shard_for_target(target_name, scope: scope)
-        shard_groups[shard] ||= { positions: [], items: [] }
-        shard_groups[shard][:positions] << pos
-        shard_groups[shard][:items] << item
+        db_shard = db_shard_for_target(target_name, scope: scope)
+        db_shard_groups[db_shard] ||= { positions: [], items: [] }
+        db_shard_groups[db_shard][:positions] << pos
+        db_shard_groups[db_shard][:items] << item
       end
 
-      # Single-shard fast path (most common case)
-      if shard_groups.length == 1
-        shard, group = shard_groups.first
-        return tsdb_lookup_single_shard(group[:items], start_time: start_time, end_time: end_time, scope: scope, shard: shard)
+      # Single-db_shard fast path (most common case)
+      if db_shard_groups.length == 1
+        db_shard, group = db_shard_groups.first
+        return tsdb_lookup_single_db_shard(group[:items], start_time: start_time, end_time: end_time, scope: scope, db_shard: db_shard)
       end
 
-      # Cross-shard: execute per-shard queries and merge results
-      shard_results = {} # shard => data
-      shard_groups.each do |shard, group|
-        result = tsdb_lookup_single_shard(group[:items], start_time: start_time, end_time: end_time, scope: scope, shard: shard)
-        shard_results[shard] = result
+      # Cross-db_shard: execute per-db_shard queries and merge results
+      db_shard_results = {} # db_shard => data
+      db_shard_groups.each do |db_shard, group|
+        result = tsdb_lookup_single_db_shard(group[:items], start_time: start_time, end_time: end_time, scope: scope, db_shard: db_shard)
+        db_shard_results[db_shard] = result
       end
 
-      # If all shards returned empty, return empty
-      return {} if shard_results.values.all? { |r| r == {} }
+      # If all db_shards returned empty, return empty
+      return {} if db_shard_results.values.all? { |r| r == {} }
 
       # Merge results positionally back into the original item order.
       # For single-row results (no end_time), merge flat arrays.
-      # For multi-row results, each shard may have different row counts;
+      # For multi-row results, each db_shard may have different row counts;
       # use the maximum row count and fill missing positions with [nil, nil].
       if !end_time
-        # Single-row mode: each shard returns a flat array of [value, limits] pairs.
+        # Single-row mode: each db_shard returns a flat array of [value, limits] pairs.
         # Merge them into the original item order.
         merged = Array.new(items.length) { [nil, nil] }
-        shard_groups.each do |shard, group|
-          result = shard_results[shard]
+        db_shard_groups.each do |db_shard, group|
+          result = db_shard_results[db_shard]
           next if result == {} || !result.is_a?(Array)
-          group[:positions].each_with_index do |orig_pos, shard_idx|
-            merged[orig_pos] = result[shard_idx] if result[shard_idx]
+          group[:positions].each_with_index do |orig_pos, db_shard_idx|
+            merged[orig_pos] = result[db_shard_idx] if result[db_shard_idx]
           end
         end
         merged
       else
-        # Multi-row mode: find max row count across shards
+        # Multi-row mode: find max row count across db_shards
         max_rows = 0
-        shard_groups.each do |shard, _group|
-          result = shard_results[shard]
+        db_shard_groups.each do |db_shard, _group|
+          result = db_shard_results[db_shard]
           next if result == {}
           count = result.is_a?(Array) ? result.length : 0
           max_rows = count if count > max_rows
@@ -928,14 +928,14 @@ module OpenC3
         return {} if max_rows == 0
 
         merged = Array.new(max_rows) { Array.new(items.length) { [nil, nil] } }
-        shard_groups.each do |shard, group|
-          result = shard_results[shard]
+        db_shard_groups.each do |db_shard, group|
+          result = db_shard_results[db_shard]
           next if result == {}
           rows = result.is_a?(Array) ? result : []
           rows.each_with_index do |row, row_num|
             next unless row.is_a?(Array)
-            group[:positions].each_with_index do |orig_pos, shard_idx|
-              merged[row_num][orig_pos] = row[shard_idx] if row[shard_idx]
+            group[:positions].each_with_index do |orig_pos, db_shard_idx|
+              merged[row_num][orig_pos] = row[db_shard_idx] if row[db_shard_idx]
             end
           end
         end
@@ -943,9 +943,9 @@ module OpenC3
       end
     end
 
-    # Execute a tsdb_lookup query against a single shard.
+    # Execute a tsdb_lookup query against a single db_shard.
     # This contains the original ASOF JOIN logic for items all on the same QuestDB instance.
-    def self.tsdb_lookup_single_shard(items, start_time:, end_time: nil, scope: "DEFAULT", shard: 0)
+    def self.tsdb_lookup_single_db_shard(items, start_time:, end_time: nil, scope: "DEFAULT", db_shard: 0)
       tables = {}
       names = []
       nil_count = 0
@@ -1032,7 +1032,7 @@ module OpenC3
         query_params << end_time
       end
 
-      result = query_with_retry(query, params: query_params, label: "tsdb_lookup", shard: shard)
+      result = query_with_retry(query, params: query_params, label: "tsdb_lookup", db_shard: db_shard)
       if result.nil? or result.ntuples == 0
         return {}
       end

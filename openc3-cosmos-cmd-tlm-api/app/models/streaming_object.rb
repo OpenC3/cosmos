@@ -34,7 +34,7 @@ class StreamingObject
   attr_accessor :end_time
   attr_accessor :offset
   attr_reader :topic
-  attr_reader :shard
+  attr_reader :db_shard
   attr_reader :scope
   attr_reader :id
   attr_reader :realtime
@@ -84,9 +84,9 @@ class StreamingObject
     permission = @cmd_or_tlm == :CMD ? 'cmd_info' : 'tlm'
     authorize(permission: permission, target_name: @target_name, packet_name: @packet_name, manual: false, scope: scope, token: token)
     @topic = "#{@scope}__#{type}__{#{@target_name}}__#{@packet_name}"
-    @shard = OpenC3::Store.shard_for_target(@target_name, scope: @scope)
+    @db_shard = OpenC3::Store.db_shard_for_target(@target_name, scope: @scope)
     @offset = "0-0"
-    @offset = OpenC3::Topic.get_last_offset(@topic, shard: @shard) unless @start_time
+    @offset = OpenC3::Topic.get_last_offset(@topic, db_shard: @db_shard) unless @start_time
     if @item_key
       @id = 'ITEM__' + key
     else

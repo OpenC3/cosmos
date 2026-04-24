@@ -50,7 +50,7 @@ module OpenC3
       if db_shard
         @db_shard = db_shard
       else
-        # Look up db_shard from MicroserviceModel stored on shard 0
+        # Look up db_shard from MicroserviceModel
         begin
           json = Store.hget('openc3_microservices', microservice)
           @db_shard = json ? JSON.parse(json)['db_shard'].to_i : 0

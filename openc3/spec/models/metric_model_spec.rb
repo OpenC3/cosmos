@@ -98,7 +98,7 @@ module OpenC3
         json['values'] = values
         model = MetricModel.set(json, scope: 'scope')
 
-        # Set up scope and target so redis_metrics can discover shards
+        # Set up scope and target so redis_metrics can discover db_shards
         scope_model = ScopeModel.new(name: "DEFAULT")
         scope_model.create
         target_model = TargetModel.new(name: "INST", scope: "DEFAULT")

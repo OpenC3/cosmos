@@ -25,14 +25,14 @@ module OpenC3
   # While this isn't a clean separation of topics (streams) and models (key-value)
   # it helps maintain consistency as the topic and model are linked.
   class LimitsEventTopic < Topic
-    # Collect all unique target shards from TargetModel data on shard 0.
-    def self._active_shards(scope:)
-      shards = Set.new([0])
+    # Collect all unique target db_shards from TargetModel
+    def self._active_db_shards(scope:)
+      db_shards = Set.new([0])
       Store.hgetall("#{scope}__openc3_targets").each do |_name, json|
         parsed = JSON.parse(json, allow_nan: true, create_additions: true)
-        shards << (parsed['shard'] || 0).to_i
+        db_shards << (parsed['db_shard'] || 0).to_i
       end
-      shards
+      db_shards
     end
 
     def self.write(event, scope:)
@@ -91,9 +91,9 @@ module OpenC3
         raise "Invalid limits event type '#{event[:type]}'"
       end
 
-      # Write to all active shards so each decom microservice can read limits events inline
-      _active_shards(scope: scope).each do |shard|
-        Topic.write_topic("#{scope}__openc3_limits_events", {event: JSON.generate(event, allow_nan: true)}, '*', 1000, shard: shard)
+      # Write to all active db_shards so each decom microservice can read limits events inline
+      _active_db_shards(scope: scope).each do |db_shard|
+        Topic.write_topic("#{scope}__openc3_limits_events", {event: JSON.generate(event, allow_nan: true)}, '*', 1000, db_shard: db_shard)
       end
     end
 

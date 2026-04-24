@@ -45,7 +45,7 @@ class Metric:
         self.data = {}
         self.mutex = threading.Lock()
 
-        # Look up db_shard from MicroserviceModel stored on shard 0
+        # Look up db_shard from MicroserviceModel
         if db_shard is not None:
             self.db_shard = db_shard
         else:
@@ -129,3 +129,8 @@ class Metric:
     @classmethod
     def add_update_generator(cls, object):
         Metric.update_generators.append(object)
+
+
+with contextlib.suppress(ModuleNotFoundError):
+    # ModuleNotFoundError expected in COSMOS Core
+    import openc3enterprise.utilities.metric  # noqa: F401

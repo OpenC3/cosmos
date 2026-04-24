@@ -16,14 +16,14 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/model'
-require 'openc3/models/sharded_model'
+require 'openc3/models/db_sharded_model'
 
 module OpenC3
   # Stores the status about an interface. This class also implements logic
   # to handle status for a router since the functionality is identical
   # (only difference is the Redis key used).
   class InterfaceStatusModel < Model
-    include ShardedModel
+    include DbShardedModel
 
     INTERFACES_PRIMARY_KEY = 'openc3_interface_status'
     ROUTERS_PRIMARY_KEY = 'openc3_router_status'
@@ -47,27 +47,27 @@ module OpenC3
 
     # Collect all unique db_shard values from InterfaceModels or RouterModels.
     def self._collect_db_shards(scope:)
-      shards = Set.new([0])
+      db_shards = Set.new([0])
       type = _get_type
       key = type == 'INTERFACESTATUS' ? "#{scope}__openc3_interfaces" : "#{scope}__openc3_routers"
       Store.hgetall(key).each do |_name, json|
-        shards << (JSON.parse(json, allow_nan: true, create_additions: true)['db_shard'] || 0).to_i
+        db_shards << (JSON.parse(json, allow_nan: true, create_additions: true)['db_shard'] || 0).to_i
       end
-      shards
+      db_shards
     end
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     def self.get(name:, scope:)
-      _sharded_get("#{scope}__#{_get_key}", name: name, scope: scope)
+      _db_sharded_get("#{scope}__#{_get_key}", name: name, scope: scope)
     end
 
     def self.names(scope:)
-      _sharded_names("#{scope}__#{_get_key}", scope: scope)
+      _db_sharded_names("#{scope}__#{_get_key}", scope: scope)
     end
 
     def self.all(scope:)
-      _sharded_all("#{scope}__#{_get_key}", scope: scope)
+      _db_sharded_all("#{scope}__#{_get_key}", scope: scope)
     end
     # END NOTE
 
@@ -119,11 +119,11 @@ module OpenC3
     end
 
     def create(update: false, force: false, queued: false, isoformat: false)
-      _sharded_create(self.class._shard_for_name(@name, scope: @scope, use_cache: true), update: update, force: force, queued: queued, isoformat: isoformat)
+      _db_sharded_create(self.class._db_shard_for_name(@name, scope: @scope, use_cache: true), update: update, force: force, queued: queued, isoformat: isoformat)
     end
 
     def destroy
-      _sharded_destroy(self.class._shard_for_name(@name, scope: @scope))
+      _db_sharded_destroy(self.class._db_shard_for_name(@name, scope: @scope))
     end
 
     def as_json(*a)

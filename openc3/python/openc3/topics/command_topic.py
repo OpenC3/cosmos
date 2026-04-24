@@ -35,8 +35,8 @@ class CommandTopic(Topic):
             "stored": str(packet.stored),
             "buffer": bytes(packet.buffer_no_copy()),
         }
-        shard = Store.shard_for_target(packet.target_name, scope=scope)
-        EphemeralStoreQueued.instance(shard=shard).write_topic(topic, msg_hash)
+        db_shard = Store.db_shard_for_target(packet.target_name, scope=scope)
+        EphemeralStoreQueued.instance(db_shard=db_shard).write_topic(topic, msg_hash)
 
     @classmethod
     def send_command(cls, command, timeout, scope, obfuscated_items=None):
@@ -56,7 +56,7 @@ class CommandTopic(Topic):
         cmd_params = command["cmd_params"]
         command["cmd_params"] = json.dumps(command["cmd_params"], cls=JsonEncoder)
 
-        cmd_shard = Store.shard_for_target(command["target_name"], scope=scope)
+        db_shard = Store.db_shard_for_target(command["target_name"], scope=scope)
 
         # Fire-and-forget mode: skip ACK waiting when timeout <= 0
         if timeout <= 0:
@@ -65,24 +65,24 @@ class CommandTopic(Topic):
                 command,
                 "*",
                 100,
-                shard=cmd_shard,
+                db_shard=db_shard,
             )
             command["cmd_params"] = cmd_params  # Restore the original cmd_params dict
             return command
 
         ack_topic = f"{{{scope}__ACKCMD}}TARGET__{command['target_name']}"
-        Topic.update_topic_offsets([ack_topic], shard=cmd_shard)
+        Topic.update_topic_offsets([ack_topic], db_shard=db_shard)
         cmd_id = Topic.write_topic(
             f"{{{scope}__CMD}}TARGET__{command['target_name']}",
             command,
             "*",
             100,
-            shard=cmd_shard,
+            db_shard=db_shard,
         )
         command["cmd_params"] = cmd_params  # Restore the original cmd_params dict
         start_time = time.time()
         while (time.time() - start_time) < timeout:
-            for _, _, msg_hash, _ in Topic.read_topics([ack_topic], shard=cmd_shard):
+            for _, _, msg_hash, _ in Topic.read_topics([ack_topic], db_shard=db_shard):
                 if msg_hash[b"id"] == cmd_id:
                     result = msg_hash[b"result"].decode()
                     if result == "SUCCESS":

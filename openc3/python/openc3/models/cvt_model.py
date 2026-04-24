@@ -34,13 +34,13 @@ class CvtModel(Model):
 
     @classmethod
     def _store_for_target(cls, target_name, scope):
-        """Get a Store instance routed to the correct shard for a target."""
-        return Store.instance(shard=Store.shard_for_target(target_name, scope=scope))
+        """Get a Store instance routed to the correct db_shard for a target."""
+        return Store.instance(db_shard=Store.db_shard_for_target(target_name, scope=scope))
 
     @classmethod
     def _store_queued_for_target(cls, target_name, scope):
-        """Get a StoreQueued instance routed to the correct shard for a target."""
-        return StoreQueued.instance(shard=Store.shard_for_target(target_name, scope=scope))
+        """Get a StoreQueued instance routed to the correct db_shard for a target."""
+        return StoreQueued.instance(db_shard=Store.db_shard_for_target(target_name, scope=scope))
 
     @classmethod
     def delete(cls, target_name: str, packet_name: str, scope: str = OPENC3_SCOPE):

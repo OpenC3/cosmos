@@ -32,11 +32,11 @@ module OpenC3
       }
       msg_hash[:extra] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
       topic = "#{scope}__TELEMETRY__{#{packet.target_name}}__#{packet.packet_name}"
-      shard = Store.shard_for_target(packet.target_name, scope: scope)
+      db_shard = Store.db_shard_for_target(packet.target_name, scope: scope)
       if queued
-        EphemeralStoreQueued.instance(shard: shard).write_topic(topic, msg_hash)
+        EphemeralStoreQueued.instance(db_shard: db_shard).write_topic(topic, msg_hash)
       else
-        Topic.write_topic(topic, msg_hash, shard: shard)
+        Topic.write_topic(topic, msg_hash, db_shard: db_shard)
       end
     end
   end

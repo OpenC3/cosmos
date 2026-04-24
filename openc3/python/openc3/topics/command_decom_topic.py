@@ -47,13 +47,13 @@ class CommandDecomTopic(Topic):
         msg_hash["json_data"] = json.dumps(json_hash, cls=JsonEncoder)
         if packet.extra:
             msg_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
-        shard = Store.shard_for_target(packet.target_name, scope=scope)
-        EphemeralStoreQueued.instance(shard=shard).write_topic(topic, msg_hash)
+        db_shard = Store.db_shard_for_target(packet.target_name, scope=scope)
+        EphemeralStoreQueued.instance(db_shard=db_shard).write_topic(topic, msg_hash)
 
     @classmethod
     def get_cmd_item(cls, target_name, packet_name, param_name, type="FORMATTED", scope=OPENC3_SCOPE):
-        shard = Store.shard_for_target(target_name, scope=scope)
-        msg_id, msg_hash = Topic.get_newest_message(f"{scope}__DECOMCMD__{{{target_name}}}__{packet_name}", shard=shard)
+        db_shard = Store.db_shard_for_target(target_name, scope=scope)
+        msg_id, msg_hash = Topic.get_newest_message(f"{scope}__DECOMCMD__{{{target_name}}}__{packet_name}", db_shard=db_shard)
         if msg_id:
             if param_name == "RECEIVED_COUNT":
                 return int(msg_hash[b"received_count"])

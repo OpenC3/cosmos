@@ -29,7 +29,7 @@ class OtherInterface(Interface):
 class TestInterfaceStatusModel(unittest.TestCase):
     def setUp(self):
         self.redis = mock_redis(self)
-        InterfaceStatusModel._shard_cache = {}
+        InterfaceStatusModel._db_shard_cache = {}
 
     def test_set_and_get(self):
         my = MyInterface()
@@ -54,7 +54,7 @@ class TestInterfaceStatusModel(unittest.TestCase):
         all = InterfaceStatusModel.all("OTHER")
         self.assertEqual(all, {})  # Nothing in 'OTHER' scope
 
-    def test_get_from_correct_shard(self):
+    def test_get_from_correct_db_shard(self):
         InterfaceModel(name="TEST_INT", scope="DEFAULT", db_shard=0).create()
         InterfaceStatusModel.set({"name": "TEST_INT", "state": "CONNECTED"}, "DEFAULT")
         result = InterfaceStatusModel.get("TEST_INT", "DEFAULT")
@@ -62,13 +62,13 @@ class TestInterfaceStatusModel(unittest.TestCase):
         self.assertEqual(result["state"], "CONNECTED")
 
     def test_get_with_nonzero_db_shard(self):
-        InterfaceModel(name="SHARD_INT", scope="DEFAULT", db_shard=1).create()
-        InterfaceStatusModel.set({"name": "SHARD_INT", "state": "ATTEMPTING"}, "DEFAULT")
-        result = InterfaceStatusModel.get("SHARD_INT", "DEFAULT")
-        self.assertEqual(result["name"], "SHARD_INT")
+        InterfaceModel(name="DB_SHARD_INT", scope="DEFAULT", db_shard=1).create()
+        InterfaceStatusModel.set({"name": "DB_SHARD_INT", "state": "ATTEMPTING"}, "DEFAULT")
+        result = InterfaceStatusModel.get("DB_SHARD_INT", "DEFAULT")
+        self.assertEqual(result["name"], "DB_SHARD_INT")
         self.assertEqual(result["state"], "ATTEMPTING")
 
-    def test_names_across_shards(self):
+    def test_names_across_db_shards(self):
         InterfaceModel(name="INT1", scope="DEFAULT", db_shard=0).create()
         InterfaceModel(name="INT2", scope="DEFAULT", db_shard=1).create()
         InterfaceStatusModel.set({"name": "INT1", "state": "CONNECTED"}, "DEFAULT")
@@ -77,7 +77,7 @@ class TestInterfaceStatusModel(unittest.TestCase):
         self.assertIn("INT1", names)
         self.assertIn("INT2", names)
 
-    def test_all_across_shards(self):
+    def test_all_across_db_shards(self):
         InterfaceModel(name="INT1", scope="DEFAULT", db_shard=0).create()
         InterfaceModel(name="INT2", scope="DEFAULT", db_shard=1).create()
         InterfaceStatusModel.set({"name": "INT1", "state": "CONNECTED"}, "DEFAULT")
@@ -98,22 +98,22 @@ class TestInterfaceStatusModel(unittest.TestCase):
         result = InterfaceStatusModel.get("TEST_INT", "DEFAULT")
         self.assertIsNone(result)
 
-    def test_shard_for_name_returns_0_when_missing(self):
-        shard = InterfaceStatusModel._shard_for_name("NONEXISTENT", "DEFAULT")
-        self.assertEqual(shard, 0)
+    def test_db_shard_for_name_returns_0_when_missing(self):
+        db_shard = InterfaceStatusModel._db_shard_for_name("NONEXISTENT", "DEFAULT")
+        self.assertEqual(db_shard, 0)
 
-    def test_shard_for_name_returns_db_shard(self):
+    def test_db_shard_for_name_returns_db_shard(self):
         InterfaceModel(name="MY_INT", scope="DEFAULT", db_shard=2).create()
-        shard = InterfaceStatusModel._shard_for_name("MY_INT", "DEFAULT")
-        self.assertEqual(shard, 2)
+        db_shard = InterfaceStatusModel._db_shard_for_name("MY_INT", "DEFAULT")
+        self.assertEqual(db_shard, 2)
 
-    def test_active_shards_always_includes_zero(self):
-        shards = InterfaceStatusModel._active_shards("DEFAULT")
-        self.assertIn(0, shards)
+    def test_active_db_shards_always_includes_zero(self):
+        db_shards = InterfaceStatusModel._active_db_shards("DEFAULT")
+        self.assertIn(0, db_shards)
 
-    def test_active_shards_includes_unique_db_shards(self):
+    def test_active_db_shards_includes_unique_db_shards(self):
         InterfaceModel(name="INT1", scope="DEFAULT", db_shard=0).create()
         InterfaceModel(name="INT2", scope="DEFAULT", db_shard=2).create()
         InterfaceModel(name="INT3", scope="DEFAULT", db_shard=2).create()
-        shards = InterfaceStatusModel._active_shards("DEFAULT")
-        self.assertEqual(shards, {0, 2})
+        db_shards = InterfaceStatusModel._active_db_shards("DEFAULT")
+        self.assertEqual(db_shards, {0, 2})

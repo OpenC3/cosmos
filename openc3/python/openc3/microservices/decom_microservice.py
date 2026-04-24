@@ -110,7 +110,7 @@ class DecomMicroservice(Microservice):
             self.topics.append(f"{self.scope}__DECOMINTERFACE__{{{self.target_names[0]}}}")
         self.limits_event_topic = f"{self.scope}__openc3_limits_events"
         self.topics.append(self.limits_event_topic)
-        Topic.update_topic_offsets(self.topics, shard=self.db_shard)
+        Topic.update_topic_offsets(self.topics, db_shard=self.db_shard)
         System.telemetry.set_limits_change_callback(self.limits_change_callback)
         LimitsEventTopic.sync_system(scope=self.scope)
         self.error_count = 0
@@ -134,7 +134,7 @@ class DecomMicroservice(Microservice):
             if self.cancel_thread:
                 break
             try:
-                for topic, msg_id, msg_hash, redis in Topic.read_topics(self.topics, shard=self.db_shard):
+                for topic, msg_id, msg_hash, redis in Topic.read_topics(self.topics, db_shard=self.db_shard):
                     if self.cancel_thread:
                         break
 

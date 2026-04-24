@@ -262,8 +262,8 @@ def get_cmd_buffer(*args, scope=OPENC3_SCOPE, manual=False):
     )
     TargetModel.packet(target_name, command_name, type="CMD", scope=scope)
     topic = f"{scope}__COMMAND__{{{target_name}}}__{command_name}"
-    shard = Store.shard_for_target(target_name, scope=scope)
-    msg_id, message = Topic.get_newest_message(topic, shard=shard)
+    db_shard = Store.db_shard_for_target(target_name, scope=scope)
+    msg_id, message = Topic.get_newest_message(topic, db_shard=db_shard)
     if msg_id:
         # Decode the keys for user convenience
         return {k.decode(): v for (k, v) in message.items()}

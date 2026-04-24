@@ -332,7 +332,7 @@ module OpenC3
       it "caches packet lookups" do
         # Clear cache before test
         TargetModel.clear_packet_cache
-        store_instance = Store.instance(shard: 0)
+        store_instance = Store.instance(db_shard: 0)
 
         # First call should hit the Store instance
         expect(store_instance).to receive(:hget).with("DEFAULT__openc3tlm__INST", "HEALTH_STATUS").once.and_call_original
@@ -349,7 +349,7 @@ module OpenC3
       it "expires cache after timeout" do
         # Clear cache before test
         TargetModel.clear_packet_cache
-        store_instance = Store.instance(shard: 0)
+        store_instance = Store.instance(db_shard: 0)
 
         # First call populates cache
         expect(store_instance).to receive(:hget).with("DEFAULT__openc3tlm__INST", "HEALTH_STATUS").once.and_call_original
@@ -374,7 +374,7 @@ module OpenC3
       it "invalidates cache on set_packet" do
         # Clear cache before test
         TargetModel.clear_packet_cache
-        store_instance = Store.instance(shard: 0)
+        store_instance = Store.instance(db_shard: 0)
 
         # Populate cache
         expect(store_instance).to receive(:hget).with("DEFAULT__openc3tlm__INST", "HEALTH_STATUS").once.and_call_original
@@ -391,7 +391,7 @@ module OpenC3
       it "caches different packet types separately" do
         # Clear cache before test
         TargetModel.clear_packet_cache
-        store_instance = Store.instance(shard: 0)
+        store_instance = Store.instance(db_shard: 0)
 
         # Get telemetry packet - should hit Store
         expect(store_instance).to receive(:hget).with("DEFAULT__openc3tlm__INST", "HEALTH_STATUS").once.and_call_original

@@ -49,10 +49,10 @@
           Execute
         </v-btn>
         <v-text-field
-          v-model="shard"
+          v-model="db_shard"
           type="number"
           min="0"
-          label="Shard"
+          label="DB Shard"
           hide-details
           density="compact"
           style="max-width: 100px"
@@ -81,7 +81,7 @@ export default {
   data() {
     return {
       sqlText: '',
-      shard: '0',
+      db_shard: '0',
       columns: [],
       rows: [],
       errorMessage: null,
@@ -108,8 +108,8 @@ export default {
       this.rows = []
       this.loading = true
       let url = '/openc3-api/tsdb/exec'
-      if (this.shard && this.shard !== '0') {
-        url += `?shard=${this.shard}`
+      if (this.db_shard && this.db_shard !== '0') {
+        url += `?db_shard=${this.db_shard}`
       }
       Api.post(url, {
         data: this.sqlText,

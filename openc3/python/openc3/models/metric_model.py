@@ -13,13 +13,14 @@ import json
 
 from openc3.environment import OPENC3_SCOPE
 from openc3.models.model import EphemeralModel
-from openc3.models.sharded_model import ShardedModel
+from openc3.models.db_sharded_model import DbShardedModel
 from openc3.utilities.store import Store
 
-class MetricModel(ShardedModel, EphemeralModel):
+class MetricModel(DbShardedModel, EphemeralModel):
     PRIMARY_KEY = "__openc3__metric"
+    METRIC_EXPIRE_SECONDS = 3600 # # Expire metrics after 1 hour
 
-    _shard_cache = {}
+    _db_shard_cache = {}
 
     @classmethod
     def _lookup_db_shard(cls, name, scope):
@@ -30,38 +31,38 @@ class MetricModel(ShardedModel, EphemeralModel):
     @classmethod
     def _collect_db_shards(cls, scope):
         """Collect all unique db_shard values from MicroserviceModels."""
-        shards = {0}
+        db_shards = {0}
         for name, json_data in Store.hgetall("openc3_microservices").items():
             decoded_name = name.decode() if isinstance(name, bytes) else name
             if scope and decoded_name.split("__")[0] != scope:
                 continue
-            shards.add(int(json.loads(json_data).get("db_shard", 0) or 0))
-        return shards
+            db_shards.add(int(json.loads(json_data).get("db_shard", 0) or 0))
+        return db_shards
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     @classmethod
     def get(cls, name: str, scope: str):
-        return cls._sharded_get(f"{scope}{MetricModel.PRIMARY_KEY}", name, scope)
+        return cls._db_sharded_get(f"{scope}{MetricModel.PRIMARY_KEY}", name, scope)
 
     @classmethod
     def names(cls, scope: str):
-        return cls._sharded_names(f"{scope}{MetricModel.PRIMARY_KEY}", scope)
+        return cls._db_sharded_names(f"{scope}{MetricModel.PRIMARY_KEY}", scope)
 
     @classmethod
     def all(cls, scope: str):
-        return cls._sharded_all(f"{scope}{MetricModel.PRIMARY_KEY}", scope)
+        return cls._db_sharded_all(f"{scope}{MetricModel.PRIMARY_KEY}", scope)
 
     # Sets (updates) the redis hash of this model
     @classmethod
     def set(cls, json_data: dict, scope: str = OPENC3_SCOPE, queued: bool = True):
         json_data["scope"] = scope
-        cls(**json_data).create(force=True, queued=queued)
+        cls(**json_data).create(force=True, queued=queued, expire_seconds=cls.METRIC_EXPIRE_SECONDS)
 
     @classmethod
     def destroy(cls, scope: str, name: str):
-        shard = cls._shard_for_name(name, scope)
-        cls.store().instance(shard=shard).hdel(f"{scope}{MetricModel.PRIMARY_KEY}", name)
+        db_shard = cls._db_shard_for_name(name, scope)
+        cls.store().instance(db_shard=db_shard).hdel(f"{scope}{MetricModel.PRIMARY_KEY}", name)
 
     def __init__(self, name: str, values: dict = None, db_shard: int = 0, scope: str = OPENC3_SCOPE):
         values = {} if values is None else values
@@ -69,8 +70,8 @@ class MetricModel(ShardedModel, EphemeralModel):
         self.values = values
         self.db_shard = db_shard if db_shard is not None else 0
 
-    def create(self, update=False, force=False, queued=False, isoformat=False):
-        self._sharded_create(self.db_shard, update=update, force=force, queued=queued)
+    def create(self, update=False, force=False, queued=False, isoformat=False, expire_seconds=None):
+        self._db_sharded_create(self.db_shard, update=update, force=force, queued=queued, expire_seconds=expire_seconds)
 
     def as_json(self):
         return {"name": self.name, "updated_at": self.updated_at, "values": self.values, "db_shard": self.db_shard}

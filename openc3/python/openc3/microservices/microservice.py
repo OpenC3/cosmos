@@ -221,7 +221,7 @@ class Microservice:
     def setup_microservice_topic(self):
         self.topics.append(self.microservice_topic)
         thread_id = threading.get_native_id()
-        ephemeral_store_instance = EphemeralStore.instance(shard=self.db_shard)
+        ephemeral_store_instance = EphemeralStore.instance(db_shard=self.db_shard)
         if thread_id not in ephemeral_store_instance.topic_offsets:
             ephemeral_store_instance.topic_offsets[thread_id] = {}
         ephemeral_store_instance.topic_offsets[thread_id][self.microservice_topic] = "0-0"
@@ -237,9 +237,9 @@ class Microservice:
                         self.topics.append(new_topic)
             else:
                 raise RuntimeError(f"Invalid topics given to microservice_cmd: {topics}")
-            Topic.trim_topic(topic, msg_id, shard=self.db_shard)
+            Topic.trim_topic(topic, msg_id, db_shard=self.db_shard)
             return True
-        Topic.trim_topic(topic, msg_id, shard=self.db_shard)
+        Topic.trim_topic(topic, msg_id, db_shard=self.db_shard)
         return False
 
     def _status_thread(self):

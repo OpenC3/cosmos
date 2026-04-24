@@ -84,7 +84,7 @@ module OpenC3
       result.merge!(sum_metrics)
 
       redis_metrics = MetricModel.redis_metrics
-      redis_metrics.each do |shard, values|
+      redis_metrics.each do |_db_shard, values|
         values.each do |key, value|
           existing = result[key]
           result[key] = value if existing.nil? or value > existing

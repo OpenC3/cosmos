@@ -47,9 +47,9 @@ def my_getattr(self, func):
     return method
 
 
-def my_init(self, update_interval, shard=0):
+def my_init(self, update_interval, db_shard=0):
     self.update_interval = update_interval
-    self.shard = shard
+    self.db_shard = db_shard
     self.store = self.store_instance()
     # Queue to hold the store requests
     self.store_queue = queue.Queue()
@@ -136,7 +136,7 @@ def mock_redis(self):
     self.addCleanup(patcher.stop)
     EphemeralStore.my_instances = {}
     Store.my_instances = {}
-    Store._shard_cache = {}
+    Store._db_shard_cache = {}
     EphemeralStoreQueued.my_instances = {}
     StoreQueued.my_instances = {}
     return redis

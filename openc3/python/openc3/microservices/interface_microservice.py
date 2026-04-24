@@ -131,7 +131,7 @@ class InterfaceCmdHandlerThread:
                 )
             if msg_hash.get(b"shutdown"):
                 self.logger.info(f"{self.interface.name}: Shutdown requested")
-                InterfaceTopic.clear_topics(InterfaceTopic.topics(self.interface, scope=self.scope), shard=self.db_shard)
+                InterfaceTopic.clear_topics(InterfaceTopic.topics(self.interface, scope=self.scope), db_shard=self.db_shard)
                 return "SHUTDOWN"
             if msg_hash.get(b"connect"):
                 self.logger.info(f"{self.interface.name}: Connect requested")
@@ -472,7 +472,7 @@ class RouterTlmHandlerThread:
 
                 if msg_hash.get(b"shutdown"):
                     self.logger.info(f"{self.router.name}: Shutdown requested")
-                    RouterTopic.clear_topics(RouterTopic.topics(self.router, scope=self.scope), shard=self.db_shard)
+                    RouterTopic.clear_topics(RouterTopic.topics(self.router, scope=self.scope), db_shard=self.db_shard)
                     result = "SHUTDOWN"
                 elif msg_hash.get(b"connect"):
                     self.logger.info(f"{self.router.name}: Connect requested")

@@ -241,7 +241,7 @@ module OpenC3
         parser.verify_num_parameters(1, 1, "#{keyword} <Shard Number Starting from 0>")
         @shard = Integer(parameters[0])
       when 'DB_SHARD'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Shard Number Starting from 0>")
+        parser.verify_num_parameters(1, 1, "#{keyword} <DB_Shard Number Starting from 0>")
         @db_shard = Integer(parameters[0])
       when 'STOPPED'
         parser.verify_num_parameters(0, 0, "#{keyword}")

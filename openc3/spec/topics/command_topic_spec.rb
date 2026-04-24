@@ -34,7 +34,7 @@ module OpenC3
       end
 
       it "writes packet to correct topic format" do
-        store_instance = EphemeralStoreQueued.instance(shard: 0)
+        store_instance = EphemeralStoreQueued.instance(db_shard: 0)
         expect(store_instance).to receive(:write_topic).with(
           "DEFAULT__COMMAND__{TARGET}__COMMAND",
           hash_including(
@@ -48,7 +48,7 @@ module OpenC3
       end
 
       it "includes time fields in nanoseconds" do
-        store_instance = EphemeralStoreQueued.instance(shard: 0)
+        store_instance = EphemeralStoreQueued.instance(db_shard: 0)
         expect(store_instance).to receive(:write_topic) do |_topic, msg_hash|
           expect(msg_hash[:time]).to be_a(Integer)
           expect(msg_hash[:received_time]).to be_a(Integer)
@@ -57,7 +57,7 @@ module OpenC3
       end
 
       it "includes packet buffer" do
-        store_instance = EphemeralStoreQueued.instance(shard: 0)
+        store_instance = EphemeralStoreQueued.instance(db_shard: 0)
         expect(store_instance).to receive(:write_topic) do |_topic, msg_hash|
           expect(msg_hash[:buffer]).to eq(packet.buffer(false))
         end
@@ -92,7 +92,7 @@ module OpenC3
           hash_including('target_name' => 'TARGET', 'cmd_name' => 'COMMAND'),
           '*',
           100,
-          shard: 0
+          db_shard: 0
         )
         CommandTopic.send_command(command, scope: 'DEFAULT')
       end
@@ -163,7 +163,7 @@ module OpenC3
         allow(Topic).to receive(:read_topics).and_yield('ack_topic', 'msg_id',
           { 'id' => 'test_cmd_id', 'result' => 'SUCCESS' }, 'redis')
 
-        expect(Topic).to receive(:update_topic_offsets).with(['{DEFAULT__ACKCMD}TARGET__TARGET'], shard: 0)
+        expect(Topic).to receive(:update_topic_offsets).with(['{DEFAULT__ACKCMD}TARGET__TARGET'], db_shard: 0)
 
         CommandTopic.send_command(command, scope: 'DEFAULT')
       end
