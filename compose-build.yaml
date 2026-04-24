@@ -66,7 +66,7 @@ services:
         OPENC3_TAG: ${OPENC3_TAG}
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-node:${OPENC3_TAG}"
     depends_on:
-      - "openc3-base"
+      - "openc3-ruby"
 
   openc3-buckets:
     build:
