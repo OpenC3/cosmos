@@ -114,7 +114,7 @@ module OpenC3
       OpenC3::ScopeModel.names.each do |scope|
         targets = OpenC3::TargetModel.all(scope: scope)
         targets.each do |_target_name, target_hash|
-          db_shards << target_hash['db_shard']
+          db_shards << target_hash['db_shard'].to_i
         end
       end
 
