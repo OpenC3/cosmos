@@ -1,5 +1,5 @@
 /*
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -111,25 +111,18 @@ export default {
       }
     })
     this.items = this.items.map((item) => {
-      let itemName = item.itemName
-      // Remove double bracket escaping. This means they actually have an item
-      // with a bracket in the name, not an array index.
-      if (item.itemName.includes('[[')) {
-        // Change the actual item and the the name we're passing to the screen
-        item.itemName = item.itemName.replace('[[', '[').replace(']]', ']')
-        itemName = item.itemName
-      } else if (item.itemName.includes('[')) {
-        // Brackets mean array indexes (normally, but see above)
-        let match = item.itemName.match(/\[(\d+)\]/)
-        this.arrayIndex = parseInt(match[1])
-        // Here we keep the original item name with the brackets but change
-        // the item we're passing to the screen to the non-bracket item
-        itemName = item.itemName.replace(match[0], '')
+      const parsed = this.parseItemName(item.itemName)
+      if (parsed.arrayIndex !== null) {
+        // Keep the original bracketed name on the item; record the index so
+        // downstream consumers can pick the element.
+        this.arrayIndex = parsed.arrayIndex
+      } else {
+        // Un-escape [[...]] for real items whose names contain brackets;
+        // a no-op for plain names.
+        item.itemName = parsed.name
       }
       // We don't emit 'addItem' because graphWidgets use streams in realtime
       // and manage their own playback requests
-
-      // Return the mapped values since we may have removed bracket escaping
       return item
     })
   },
