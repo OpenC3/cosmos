@@ -141,7 +141,7 @@ module OpenC3
         abort("Usage: cli generate #{args[0]} <NAME> (--ruby or --python)")
       end
 
-      # Create the local variables
+      # Create the local variables that are used in process_template below (see openc3/templates/plugin/plugin.gemspec as an example)
       plugin_orig = args[1]
       plugin = plugin_orig.downcase.gsub(/_+|-+/, '-')
       plugin_name = "openc3-cosmos-#{plugin}"
