@@ -117,6 +117,54 @@ module OpenC3
         expect(events[2][1]['message']).to match(/INST HEALTH_STATUS TEMP2 = .* is GREEN \(-55.0 to 30.0\)/)
       end
 
+      it "falls back to DEFAULT limits set when selected set is not defined for an item" do
+        packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+        packet.received_time = Time.now.sys
+        # TEMP4 only has DEFAULT limits (no TVAC), TEMP1 has both DEFAULT and TVAC
+        temp4 = packet.get_item("TEMP4")
+        temp1 = packet.get_item("TEMP1")
+
+        # Set the system limits set to TVAC
+        System.limits_set = :TVAC
+
+        # TEMP4 has no TVAC limits, so it should fall back to DEFAULT limits (-80.0 -70.0 60.0 80.0)
+        temp4.limits.state = :RED_LOW
+        capture_io do |stdout|
+          @dm.limits_change_callback(packet, temp4, nil, -100.0, true)
+          # Should not raise a KeyError, and should use DEFAULT limits values
+          expect(stdout.string).to include("INST HEALTH_STATUS TEMP4 = -100.0 is RED_LOW (-80.0)")
+        end
+
+        # TEMP1 has TVAC limits, so it should use TVAC limits (-80.0 -30.0 30.0 80.0)
+        temp1.limits.state = :RED_LOW
+        capture_io do |stdout|
+          @dm.limits_change_callback(packet, temp1, nil, -100.0, true)
+          expect(stdout.string).to include("INST HEALTH_STATUS TEMP1 = -100.0 is RED_LOW (-80.0)")
+        end
+
+        # Restore the default limits set
+        System.limits_set = :DEFAULT
+      end
+
+      it "falls back to DEFAULT limits set for GREEN and BLUE states" do
+        packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+        packet.received_time = Time.now.sys
+        temp4 = packet.get_item("TEMP4")
+
+        System.limits_set = :TVAC
+
+        # TEMP4 only has DEFAULT limits: -80.0 -70.0 60.0 80.0 (no green/blue range)
+        # Test GREEN state - should display YELLOW_LOW to YELLOW_HIGH range
+        temp4.limits.state = :GREEN
+        capture_io do |stdout|
+          @dm.limits_change_callback(packet, temp4, :RED_LOW, 0.0, true)
+          expect(stdout.string).to include("INST HEALTH_STATUS TEMP4 = 0.0 is GREEN (-70.0 to 60.0)")
+        end
+
+        # Restore the default limits set
+        System.limits_set = :DEFAULT
+      end
+
       it "handles exceptions in the thread" do
         expect(@dm).to receive(:microservice_cmd).and_raise("Bad command")
         capture_io do |stdout|

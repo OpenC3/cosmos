@@ -209,6 +209,59 @@ class TestDecomMicroservice(unittest.TestCase):
             # Should report the actual value and limits state
             self.assertIn("INST HEALTH_STATUS TEMP1 = 0 is BLUE", output)
 
+    @patch("openc3.microservices.decom_microservice.System.limits_set")
+    def test_falls_back_to_default_limits_set_when_selected_set_is_not_defined(self, mock_limits_set):
+        """When the system limits set (e.g. TVAC) is not defined for an item,
+        the limits_change_callback should fall back to using DEFAULT limits."""
+        mock_limits_set.return_value = "TVAC"
+
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+        packet.received_time = datetime.now(timezone.utc)
+
+        # TEMP4 only has DEFAULT limits (no TVAC), TEMP1 has both DEFAULT and TVAC
+        temp4 = packet.get_item("TEMP4")
+        temp1 = packet.get_item("TEMP1")
+
+        # TEMP4 has no TVAC limits, should fall back to DEFAULT limits (-80.0 -70.0 60.0 80.0)
+        temp4.limits.state = "RED_LOW"
+        for stdout in capture_io():
+            self.dm.limits_change_callback(packet, temp4, None, -100.0, True)
+            # Should not raise a KeyError, and should use DEFAULT limits values
+            self.assertIn(
+                "INST HEALTH_STATUS TEMP4 = -100.0 is RED_LOW (-80.0)",
+                stdout.getvalue(),
+            )
+
+        # TEMP1 has TVAC limits (-80.0 -30.0 30.0 80.0), should use TVAC
+        temp1.limits.state = "RED_LOW"
+        for stdout in capture_io():
+            self.dm.limits_change_callback(packet, temp1, None, -100.0, True)
+            self.assertIn(
+                "INST HEALTH_STATUS TEMP1 = -100.0 is RED_LOW (-80.0)",
+                stdout.getvalue(),
+            )
+
+    @patch("openc3.microservices.decom_microservice.System.limits_set")
+    def test_falls_back_to_default_limits_set_for_green_and_blue_states(self, mock_limits_set):
+        """When the system limits set is not defined for an item and the state
+        is GREEN or BLUE, the callback should display correct range from DEFAULT limits."""
+        mock_limits_set.return_value = "TVAC"
+
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+        packet.received_time = datetime.now(timezone.utc)
+
+        # TEMP4 only has DEFAULT limits: -80.0 -70.0 60.0 80.0 (no green/blue range)
+        temp4 = packet.get_item("TEMP4")
+
+        # Test GREEN state - should display YELLOW_LOW to YELLOW_HIGH range
+        temp4.limits.state = "GREEN"
+        for stdout in capture_io():
+            self.dm.limits_change_callback(packet, temp4, "RED_LOW", 0.0, True)
+            self.assertIn(
+                "INST HEALTH_STATUS TEMP4 = 0.0 is GREEN (-70.0 to 60.0)",
+                stdout.getvalue(),
+            )
+
     def test_handles_exceptions_in_the_thread(self):
         with patch.object(self.dm, "microservice_cmd") as mock_microservice_cmd:
             mock_microservice_cmd.side_effect = Exception("Bad command")

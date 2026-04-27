@@ -300,7 +300,8 @@ class DecomMicroservice(Microservice):
         if value is not None:
             message = f"{packet.target_name} {packet.packet_name} {item.name} = {value} is {item.limits.state}"
             if item.limits.values:
-                values = item.limits.values[System.limits_set()]
+                selected_limits_set = System.limits_set() if System.limits_set() in item.limits.values else "DEFAULT"
+                values = item.limits.values[selected_limits_set]
                 # Check if the state is RED_LOW, YELLOW_LOW, YELLOW_HIGH, RED_HIGH, GREEN_LOW, GREEN_HIGH
                 if DecomMicroservice.LIMITS_STATE_INDEX.get(item.limits.state, None) is not None:
                     # Directly index into the values and return the value

@@ -207,7 +207,12 @@ module OpenC3
       if value
         message = "#{packet.target_name} #{packet.packet_name} #{item.name} = #{value} is #{item.limits.state}"
         if item.limits.values
-          values = item.limits.values[System.limits_set]
+          selected_limits_set = if item.limits.values.has_key?(System.limits_set)
+            System.limits_set
+          else
+            :DEFAULT
+          end
+          values = item.limits.values[selected_limits_set]
           # Check if the state is RED_LOW, YELLOW_LOW, YELLOW_HIGH, RED_HIGH, GREEN_LOW, GREEN_HIGH
           if LIMITS_STATE_INDEX[item.limits.state]
             # Directly index into the values and return the value
