@@ -478,6 +478,7 @@ export default {
       pendingData: [],
       processingRAF: null,
       lastRenderTime: 0,
+      notifyNonNumeric: false,
       errorDialog: false,
       errors: [],
       colorIndex: 0,
@@ -596,6 +597,14 @@ export default {
     },
     legendHidden: function (newVal) {
       this.applyHideLegend(newVal)
+    },
+    notifyNonNumeric: function () {
+      // This is a watcher on a boolean so that it only happens once per graph.
+      // Otherwise, we spam the $notify function while receiving e.g. an array item.
+      this.$notify.caution({
+        title: 'Non-numeric item',
+        body: 'Received ungraphable data.',
+      })
     },
     state: function (newState, oldState) {
       switch (newState) {
@@ -1148,6 +1157,16 @@ export default {
           max += 1
         }
         this.graph.setScale('x', { min, max })
+      } else if (this.graphStartDateTime) {
+        const min = this.graphStartDateTime / 1_000_000_000
+        const max = this.graphEndDateTime
+          ? this.graphEndDateTime / 1_000_000_000
+          : Date.now() / 1000
+        this.graph.setScale('x', { min, max })
+        this.$notify.caution({
+          title: 'Empty graph data',
+          body: 'No data was returned for the selected time range.',
+        })
       }
 
       this.dataChanged = false
@@ -1407,10 +1426,17 @@ export default {
       return {
         scales: {
           x: {
-            range(u, dataMin, dataMax) {
+            range: (u, dataMin, dataMax) => {
               if (dataMin == null) {
+                if (this.graphStartDateTime) {
+                  const max = this.graphEndDateTime
+                    ? this.graphEndDateTime / 1_000_000_000
+                    : Date.now() / 1000
+                  return [this.graphStartDateTime / 1_000_000_000, max]
+                }
                 if (this.xAxisIsTime) {
-                  return [1566453600, 1566497660]
+                  const now = Date.now() / 1000
+                  return [now - 3600, now] // 1hr
                 }
                 return [0, 1]
               }
@@ -1419,7 +1445,7 @@ export default {
             time: this.xAxisIsTime,
           },
           y: {
-            range(u, dataMin, dataMax) {
+            range: (u, dataMin, dataMax) => {
               if (dataMin == null) return [-100, 100]
               return uPlot.rangeNum(dataMin, dataMax, 0.1, true)
             },
@@ -1904,9 +1930,10 @@ export default {
           // to 'NaN', '-Infinity', or 'Infinity', just set data to null
           if (value?.raw) {
             array[index] = null
-          } else if (typeof value === 'string') {
-            // Can't graph strings so just set to null
+          } else if (typeof value !== 'number') {
+            // Can only graph numbers so just set to null
             array[index] = null
+            this.notifyNonNumeric = true
             // If it's not already RAW, change the type to RAW
             // NOTE: Some items are RAW strings so they won't ever work
             if (!key.includes('__RAW')) {

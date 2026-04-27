@@ -41,7 +41,7 @@ openc3inc/openc3-node                       latest   b3ee86d3620a   8 days ago  
 openc3inc/openc3-ruby                       latest   aa158bbb9539   8 days ago     326MB
 ```
 
-:::info Offline Building
+:::info[Offline Building]
 
 If you're building in a offline environment or want to use a private Rubygems, NPM or APK server (e.g. Nexus), you can update the following environment variables: RUBYGEMS_URL, NPM_URL, APK_URL, and more in the [.env](https://github.com/openc3/cosmos/blob/main/.env) file. Example values:
 

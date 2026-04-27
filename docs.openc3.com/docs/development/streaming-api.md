@@ -5,7 +5,7 @@ sidebar_custom_props:
   myEmoji: 📝
 ---
 
-:::note This documentation is for COSMOS Developers
+:::note[This documentation is for COSMOS Developers]
 This information is just generally used behind the scenes in COSMOS tools
 :::
 

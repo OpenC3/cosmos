@@ -8,14 +8,14 @@ sidebar_custom_props:
 
 Protocols process data on behalf of an [Interface](interfaces). They can modify the data being written, data being read, or both. Protocols can also mark a packet as stored instead of real-time which means COSMOS will not update the current value table with the packet data. Protocols can be layered and will be processed in order. For example, if you have a low-level encryption layer that must be first removed before processing a higher level buffer length protocol.
 
-:::info Protocol Run Order
+:::info[Protocol Run Order]
 Read protocols execute in the order specified (first specified runs first). Write protocols execute in the reverse order (last specified executes first).
 
 This ordering is critical when combining packet delineation protocols (e.g. Length, Terminated) with helper protocols (e.g. CRC, Ignore). Delineation protocols must run before helper protocols on reads so they can assemble complete packets first. On writes, delineation protocols must run after helper protocols so fields like the length are filled in before the CRC is calculated. Since write protocols execute in reverse order, the helper protocol must be listed before the delineation protocol for writes.
 
 To satisfy both directions, you may need to define a helper protocol twice — once for WRITE (before the delineation protocol) and once for READ (after it). For example, with a Length protocol and CRC protocol:
 
-```ruby
+```cosmos
 PROTOCOL WRITE CrcProtocol ...
 PROTOCOL READ_WRITE LengthProtocol ...
 PROTOCOL READ CrcProtocol ...
@@ -53,7 +53,7 @@ The Consistent Overhead Byte Stuffing (COBS) Protocol is an algorithm for encodi
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ openc3/interfaces/protocols/cobs_protocol.py
 ```
@@ -63,7 +63,7 @@ Source code for [cobs_protocol.py](https://github.com/OpenC3/cosmos/blob/main/op
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ CobsProtocol
 ```
@@ -93,7 +93,7 @@ The Serial Line IP (SLIP) Protocol defines a sequence of characters that frame I
 
 Usage in plugin.txt:
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Since we're using the defaults, none of the parameters are actually required
   PROTOCOL READ openc3/interfaces/protocols/slip_protocol.py None True True True 0xC0 0xDB 0xDC 0xDD
@@ -106,7 +106,7 @@ Source code for [slip_protocol.py](https://github.com/OpenC3/cosmos/blob/main/op
 
 Usage in plugin.txt:
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Since we're using the defaults, none of the parameters are actually required
   PROTOCOL READ SlipProtocol nil true true true 0xC0 0xDB 0xDC 0xDD
@@ -130,7 +130,7 @@ The Burst Protocol simply reads as much data as it can from the interface before
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Use a sync pattern but discard it
   PROTOCOL READ openc3/interfaces/protocols/burst_protocol.py 4 0x1ACFFC1D
@@ -141,7 +141,7 @@ Source code for [burst_protocol.py](https://github.com/OpenC3/cosmos/blob/main/o
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Use a sync pattern but discard it
   PROTOCOL READ BurstProtocol 4 0x1ACFFC1D
@@ -168,7 +168,7 @@ The Fixed Protocol reads a preset minimum amount of data which is necessary to p
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ openc3/interfaces/protocols/fixed_protocol.py 6 4 0x1ACFFC1D True
 ```
@@ -178,7 +178,7 @@ Source code for [fixed_protocol.py](https://github.com/OpenC3/cosmos/blob/main/o
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ FixedProtocol 6 4 0x1ACFFC1D true
 ```
@@ -215,7 +215,7 @@ In this case the total length of the packet is 14 bytes: **4 + 4 + 2 + 4 = 14**.
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Example length protocol parameters for a CCSDS packet
   PROTOCOL READ openc3/interfaces/protocols/length_protocol.py 64 16 11 1 BIG_ENDIAN 4 0x1ACFFC1D None True
@@ -226,7 +226,7 @@ Source code for [length_protocol.py](https://github.com/OpenC3/cosmos/blob/main/
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Example length protocol parameters for a CCSDS packet
   PROTOCOL READ LengthProtocol 64 16 11 1 BIG_ENDIAN 4 0x1ACFFC1D nil true
@@ -253,7 +253,7 @@ The Terminated Protocol delineates packets using termination characters found at
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Example newline (0x0A) delimiter and sync pattern of 'DATA' (0x44415441 is ascii for 'DATA')
   PROTOCOL READ openc3/interfaces/protocols/terminated_protocol.py 0x0A 0x0A True 4 0x44415441
@@ -264,7 +264,7 @@ Source code for [terminated_protocol.py](https://github.com/OpenC3/cosmos/blob/m
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Example newline (0x0A) delimiter and sync pattern of 'DATA' (0x44415441 is ascii for 'DATA')
   PROTOCOL READ TerminatedProtocol 0x0A 0x0A True 4 0x44415441
@@ -284,7 +284,7 @@ The GEMS protocol doesn't take any parameters but should be added to an interfac
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE GEMS_INT tcpip_client_interface.rb openc3-operator 8080 8080 10.0 nil nil
   # TerminatedProtocol 0x7C454E44 0x7C454E44 false 0       0x7C47454D53 false ... means:
   #                    wtc        rtc        strip discard sync         fill
@@ -320,20 +320,9 @@ The CCSDS CLTU Protocol handles the CLTU (Communicates Link Transfer Unit) for C
 | Fill Byte | BCH encoding fill byte         | No       | 0x55               |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby">
-
-```ruby
-INTERFACE INTERFACE_NAME <params>
-  PROTOCOL WRITE CcsdsCltuProtocol
-```
-
-Source code for [cltu_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_cltu_protocol.rb)
-
-</TabItem>
-
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <params>
   PROTOCOL WRITE openc3/interfaces/protocols/ccsds_cltu_protocol.py
 ```
@@ -341,7 +330,16 @@ INTERFACE INTERFACE_NAME <params>
 Source code for [cltu_protocol.py](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols-python/openc3_ccsds_protocols/ccsds_cltu_protocol.py)
 
 </TabItem>
+<TabItem value="ruby" label="Ruby">
 
+```cosmos
+INTERFACE INTERFACE_NAME <params>
+  PROTOCOL WRITE CcsdsCltuProtocol
+```
+
+Source code for [cltu_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_cltu_protocol.rb)
+
+</TabItem>
 </Tabs>
 
 For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
@@ -359,24 +357,24 @@ The CCSDS TCTF Protocol handles the Telecommand Transfer Frame for Command Strea
 | VCID          | Virtual Channel Identifier (6 bits)                                           | No       | 0       |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby">
-
-```ruby
-INTERFACE INTERFACE_NAME <params>
-  PROTOCOL WRITE CcsdsTctfProtocol true false 1 0xA 0x1
-```
-
-Source code for [ccsds_tctf_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_tctf_protocol.rb)
-
-</TabItem>
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <params>
   PROTOCOL WRITE openc3/interfaces/protocols/ccsds_tctf_protocol.py True False 1 0xA 0x1
 ```
 
 Source code for [ccsds_tctf_protocol.py](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols-python/openc3_ccsds_protocols/ccsds_tctf_protocol.py)
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```cosmos
+INTERFACE INTERFACE_NAME <params>
+  PROTOCOL WRITE CcsdsTctfProtocol true false 1 0xA 0x1
+```
+
+Source code for [ccsds_tctf_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_tctf_protocol.rb)
 
 </TabItem>
 </Tabs>
@@ -397,20 +395,9 @@ The CCSDS TMTF Protocol handles the Telemetry Transfer Frame for Telemetry Strea
 | Fill Fields           | Whether to fill in the sync pattern on outgoing packets                                                                                                                                      | No       | true                     |
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby">
-
-```ruby
-INTERFACE INTERFACE_NAME <params>
-  PROTOCOL READ CcsdsTmtfProtocol true 0 0x1ACFFC1D true
-```
-
-Source code for [ccsds_tmtf_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_tmtf_protocol.rb)
-
-</TabItem>
-
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <params>
   PROTOCOL READ openc3/interfaces/protocols/ccsds_tmtf_protocol.py True 0 0x1ACFFC1D True
 ```
@@ -418,7 +405,16 @@ INTERFACE INTERFACE_NAME <params>
 Source code for [ccsds_tmtf_protocol.py](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols-python/openc3_ccsds_protocols/ccsds_tmtf_protocol.py)
 
 </TabItem>
+<TabItem value="ruby" label="Ruby">
 
+```cosmos
+INTERFACE INTERFACE_NAME <params>
+  PROTOCOL READ CcsdsTmtfProtocol true 0 0x1ACFFC1D true
+```
+
+Source code for [ccsds_tmtf_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_tmtf_protocol.rb)
+
+</TabItem>
 </Tabs>
 
 For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
@@ -435,7 +431,7 @@ The Preidentified Protocol delineates packets using the COSMOS header. This Prot
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ openc3/interfaces/protocols/preidentified_protocol.py
 ```
@@ -445,7 +441,7 @@ Source code for [preidentified_protocol.py](https://github.com/OpenC3/cosmos/blo
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ PreidentifiedProtocol
 ```
@@ -474,7 +470,7 @@ The Command Response Protocol waits for a response for any commands with a defin
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ openc3/interfaces/protocols/cmd_response_protocol.py 5.0 0.1 True
 ```
@@ -484,7 +480,7 @@ Source code for [cmd_response_protocol.py](https://github.com/OpenC3/cosmos/blob
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   PROTOCOL READ CmdResponseProtocol 5.0 0.1 true
 ```
@@ -498,7 +494,7 @@ Source code for [cmd_response_protocol.rb](https://github.com/OpenC3/cosmos/blob
 
 The Command Response Protocol utilizes the [RESPONSE](../configuration/command#response) keyword in the command definition to determine which telemetry packet should be expected when the given command is sent. This will block the command until the response is received.
 
-```ruby
+```cosmos
 COMMAND SCPI_PS GET_STATUS BIG_ENDIAN "Gets status"
   ACCESSOR TemplateAccessor
   TEMPLATE ":MEAS:VOLT? (@1:2)"
@@ -507,7 +503,7 @@ COMMAND SCPI_PS GET_STATUS BIG_ENDIAN "Gets status"
 
 The Response packet (STATUS) should be defined to contain the response data.
 
-```ruby
+```cosmos
 TELEMETRY SCPI_PS STATUS BIG_ENDIAN "Status"
   ACCESSOR TemplateAccessor
   TEMPLATE "<MEAS_VOLTAGE_1>,<MEAS_VOLTAGE_2>"
@@ -525,7 +521,7 @@ For a full example, please see the [openc3-cosmos-scpi-power-supply](https://git
 
 The CRC protocol can add CRCs to outgoing commands and verify CRCs on incoming telemetry packets. Note: You either have to give all the parameters for Poly, Seed, Xor, Reflect or just use the defaults. You can't mix and match setting some and not others.
 
-:::warning CRC Protocol Ordering
+:::warning[CRC Protocol Ordering]
 The CRC Protocol must run after packet delineation protocols (e.g. Length, Terminated) for both reads and writes. On reads, the delineation protocol must assemble a complete packet before the CRC can be verified — otherwise the CRC protocol may operate on partial or multiple packets. On writes, the delineation protocol must fill in fields like the length before the CRC is calculated — otherwise the CRC will be computed over incorrect data. Because read and write protocols execute in opposite orders, this typically requires defining the CRC protocol twice — once for WRITE before the delineation protocol, and once for READ after it. See "Protocol Run Order" for a full example.
 :::
 
@@ -545,7 +541,7 @@ The CRC Protocol must run after packet delineation protocols (e.g. Length, Termi
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Handle a trailing 32 bit CRC on telemetry by stripping it off
   # In this example I changed the Reflect default to false so I had to explicitly specify all the values
@@ -557,7 +553,7 @@ Source code for [crc_protocol.py](https://github.com/OpenC3/cosmos/blob/main/ope
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Handle a trailing 32 bit CRC on telemetry by stripping it off
   # In this example I changed the Reflect default to false so I had to explicitly specify all the values
@@ -581,7 +577,7 @@ The Ignore Packet protocol drops specified command packets sent by COSMOS or dro
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-```python
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Ignore the INST MECH packet
   PROTOCOL READ openc3/interfaces/protocols/ignore_packet_protocol.py INST MECH
@@ -592,7 +588,7 @@ Source code for [ignore_packet_protocol.py](https://github.com/OpenC3/cosmos/blo
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 
-```ruby
+```cosmos
 INTERFACE INTERFACE_NAME <parameters>
   # Ignore the INST MECH packet
   PROTOCOL READ IgnorePacketProtocol INST MECH
@@ -607,7 +603,7 @@ Source code for [ignore_packet_protocol.rb](https://github.com/OpenC3/cosmos/blo
 
 COSMOS supports implementing encryption at the protocol layer using OpenSSL. This allows you to encrypt and decrypt data transparently as it flows through the interface. Encryption protocols are typically placed at the beginning of the protocol chain (for reads) so they can decrypt data before other protocols process it.
 
-:::info Encryption Order
+:::info[Encryption Order]
 For reading, the encryption protocol should be first so it decrypts the raw data before other protocols process it. For writing, protocols execute in reverse order, so the encryption protocol (listed first) will encrypt the data last, just before it's sent.
 :::
 
@@ -616,6 +612,74 @@ For reading, the encryption protocol should be first so it decrypts the raw data
 Below is an example of a custom encryption protocol using OpenSSL's AES-256-GCM cipher. This protocol encrypts outgoing data and decrypts incoming data.
 
 <Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+# encryption_protocol.py
+# Place in targets/TARGET_NAME/lib/encryption_protocol.py
+
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+import os
+from openc3.interfaces.protocols.protocol import Protocol
+from openc3.system.system import System
+from openc3.utilities.logger import Logger
+
+class EncryptionProtocol(Protocol):
+    # key_secret_name: Name of the secret containing the encryption key
+    # iv_secret_name: Name of the secret containing the initialization vector (optional)
+    # allow_empty_data: See Protocol.__init__
+    def __init__(self, key_secret_name, iv_secret_name=None, allow_empty_data=None):
+        super().__init__(allow_empty_data)
+        self.key_secret_name = key_secret_name
+        self.iv_secret_name = iv_secret_name
+        self.key = None
+        self.iv = None
+        # AESGCM instance created in connect_reset after key is loaded
+        self.aesgcm = None
+
+    def connect_reset(self):
+        # Retrieve the encryption key from COSMOS secrets
+        secrets = System.secrets
+        self.key = secrets.get(self.key_secret_name, scope=self.interface.scope)
+        # IV can be from secrets or generated per message
+        if self.iv_secret_name:
+            self.iv = secrets.get(self.iv_secret_name, scope=self.interface.scope)
+        # Create the AESGCM instance with the key (reused for encrypt/decrypt)
+        self.aesgcm = AESGCM(self.key)
+
+    def read_data(self, data, extra=None):
+        if len(data) == 0:
+            return super().read_data(data, extra)
+
+        try:
+            # Extract IV and ciphertext from the data
+            # Format: [12-byte IV][ciphertext with auth tag]
+            iv = data[0:12]
+            ciphertext = data[12:]
+
+            plaintext = self.aesgcm.decrypt(iv, ciphertext, None)
+            return (plaintext, extra)
+        except Exception as e:
+            Logger.error(f"Decryption failed: {e}")
+            return "DISCONNECT"
+
+    def write_data(self, data, extra=None):
+        if len(data) == 0:
+            return super().write_data(data, extra)
+
+        # Generate a random IV for each message (recommended for GCM)
+        iv = self.iv if self.iv else os.urandom(12)
+
+        # encrypt() returns ciphertext with auth tag appended
+        ciphertext = self.aesgcm.encrypt(iv, data, None)
+
+        # Prepend IV to ciphertext
+        # Format: [12-byte IV][ciphertext with auth tag]
+        encrypted_data = iv + ciphertext
+        return (encrypted_data, extra)
+```
+
+</TabItem>
 <TabItem value="ruby" label="Ruby">
 
 ```ruby
@@ -700,81 +764,13 @@ end
 ```
 
 </TabItem>
-<TabItem value="python" label="Python">
-
-```python
-# encryption_protocol.py
-# Place in targets/TARGET_NAME/lib/encryption_protocol.py
-
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-import os
-from openc3.interfaces.protocols.protocol import Protocol
-from openc3.system.system import System
-from openc3.utilities.logger import Logger
-
-class EncryptionProtocol(Protocol):
-    # key_secret_name: Name of the secret containing the encryption key
-    # iv_secret_name: Name of the secret containing the initialization vector (optional)
-    # allow_empty_data: See Protocol.__init__
-    def __init__(self, key_secret_name, iv_secret_name=None, allow_empty_data=None):
-        super().__init__(allow_empty_data)
-        self.key_secret_name = key_secret_name
-        self.iv_secret_name = iv_secret_name
-        self.key = None
-        self.iv = None
-        # AESGCM instance created in connect_reset after key is loaded
-        self.aesgcm = None
-
-    def connect_reset(self):
-        # Retrieve the encryption key from COSMOS secrets
-        secrets = System.secrets
-        self.key = secrets.get(self.key_secret_name, scope=self.interface.scope)
-        # IV can be from secrets or generated per message
-        if self.iv_secret_name:
-            self.iv = secrets.get(self.iv_secret_name, scope=self.interface.scope)
-        # Create the AESGCM instance with the key (reused for encrypt/decrypt)
-        self.aesgcm = AESGCM(self.key)
-
-    def read_data(self, data, extra=None):
-        if len(data) == 0:
-            return super().read_data(data, extra)
-
-        try:
-            # Extract IV and ciphertext from the data
-            # Format: [12-byte IV][ciphertext with auth tag]
-            iv = data[0:12]
-            ciphertext = data[12:]
-
-            plaintext = self.aesgcm.decrypt(iv, ciphertext, None)
-            return (plaintext, extra)
-        except Exception as e:
-            Logger.error(f"Decryption failed: {e}")
-            return "DISCONNECT"
-
-    def write_data(self, data, extra=None):
-        if len(data) == 0:
-            return super().write_data(data, extra)
-
-        # Generate a random IV for each message (recommended for GCM)
-        iv = self.iv if self.iv else os.urandom(12)
-
-        # encrypt() returns ciphertext with auth tag appended
-        ciphertext = self.aesgcm.encrypt(iv, data, None)
-
-        # Prepend IV to ciphertext
-        # Format: [12-byte IV][ciphertext with auth tag]
-        encrypted_data = iv + ciphertext
-        return (encrypted_data, extra)
-```
-
-</TabItem>
 </Tabs>
 
 ### Using the Encryption Protocol
 
 To use the encryption protocol, first store your encryption key as a secret in COSMOS Admin under the Secrets tab. Then reference it in your plugin.txt:
 
-```ruby
+```cosmos
 INTERFACE ENCRYPTED_INT tcpip_client_interface.rb myhost.com 12345 12345 10.0 nil LENGTH 0 16 0 1 BIG_ENDIAN 0 nil true
   # The encryption protocol should be first for reading (decrypts before other protocols)
   # For writing, it will be last (encrypts after other protocols build the packet)
@@ -793,7 +789,7 @@ OpenSSL supports many encryption algorithms. Common choices include:
 | aes-256-cbc | AES-256 in CBC mode                            | 32 bytes | 16 bytes |
 | aes-128-cbc | AES-128 in CBC mode                            | 16 bytes | 16 bytes |
 
-:::warning Use Authenticated Encryption
+:::warning[Use Authenticated Encryption]
 We recommend using authenticated encryption modes like GCM (Galois/Counter Mode) which provide both confidentiality and integrity. Non-authenticated modes like CBC are vulnerable to certain attacks if not combined with a separate MAC (Message Authentication Code).
 :::
 
@@ -808,17 +804,17 @@ We recommend using authenticated encryption modes like GCM (Galois/Counter Mode)
 
 Creating a custom protocol is easy and should be the default solution for customizing COSMOS Interfaces (rather than creating a new Interface class). However, creating custom Interfaces is still useful for defaulting parameters to values that always are fixed for your target and for including the necessary Protocols. The COSMOS Interfaces take a lot of parameters that can be confusing to your end users. Thus you may want to create a custom Interface just to hard coded these values and cut the available parameters down to something like the hostname and port to connect to.
 
-:::info Stored Telemetry
+:::info[Stored Telemetry]
 Custom protocols that handle non-realtime data (e.g. recorded files, back-orbit data, or store-and-forward playback) should set `packet.stored = true` in the `read_packet()` method. Stored packets are fully processed through the COSMOS pipeline (identification, decommutation, logging) but do **not** update the Current Value Table (CVT). This prevents historical data from overwriting real-time values in displays like Packet Viewer and Telemetry Viewer. See [Stored Packets](../guides/packet-types#stored-packets) for more details. The [Preidentified Protocol](#preidentified-protocol) is one example that encodes and decodes the stored flag in its packet header.
 :::
 
 All custom Protocols should derive from the Protocol class [openc3/interfaces/protocols/protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/protocol.rb) (Ruby) and [openc3/interfaces/protocols/protocol.py](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/interfaces/protocols/protocol.py) (Python). This class defines the 9 methods that are relevant to writing your own protocol. The base class implementation for each method is included below as well as a discussion as to how the methods should be overridden and used in your own Protocols.
 
-:::info Ruby Protocol APIs
+:::info[Ruby Protocol APIs]
 Protocols should not `require 'openc3/script'` since they are part of a COSMOS interface. They should use the COSMOS library code directly like [System](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/system/system.rb), [Packet](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/packets/packet.rb), [Bucket](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/utilities/bucket.rb), [BinaryAccessor](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/accessors/binary_accessor.rb), etc. When in doubt, consult the existing COSMOS [protocol](https://github.com/OpenC3/cosmos/tree/main/openc3/lib/openc3/interfaces/protocols) classes.
 :::
 
-:::info Python Protocol APIs
+:::info[Python Protocol APIs]
 Protocols should not `from openc3.script import *` since they are part of a COSMOS interface. They should use the COSMOS library code directly like [System](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/system/system.py), [Packet](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/packets/packet.py), [Bucket](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/utilities/bucket.py), [BinaryAccessor](https://github.com/OpenC3/cosmos/blob/main/openc3/python/openc3/accessors/binary_accessor.py), etc. When in doubt, consult the existing COSMOS [protocol](https://github.com/OpenC3/cosmos/tree/main/openc3/python/openc3/interfaces/protocols) classes.
 :::
 
@@ -826,7 +822,7 @@ To really understand how Protocols work, you first must understand the logic wit
 
 Let's first discuss the read method.
 
-:::info Ruby Symbols, Python Strings
+:::info[Ruby Symbols, Python Strings]
 In the following discussions an all caps word is a symbol in Ruby and a string in Python. So a reference to STOP means :STOP in Ruby and "STOP" in Python.
 :::
 

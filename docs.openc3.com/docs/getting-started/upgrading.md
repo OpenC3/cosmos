@@ -12,7 +12,7 @@ OpenC3 releases new versions of COSMOS on a monthy or better cadence. This is do
 
 COSMOS is released as Docker containers. Since we're using Docker containers and volumes we can simply stop the existing COSMOS application, apply the upgrade, and run the new release.
 
-:::info Release Notes
+:::info[Release Notes]
 Always check the release notes associated with the release on the [releases](https://github.com/OpenC3/cosmos/releases) page. Sometimes there are migration notes. When upgrading older versions, be sure to upgrade to first 5.13.0, then 6.0.0, then 7.0.0 before proceeding. See [Upgrade Migration Process](/docs/getting-started/upgrading#upgrade-migration-process) for more information.
 :::
 
@@ -33,7 +33,7 @@ This example assumes an existing COSMOS project at `cosmos-project`. This should
 </TabItem>
 </Tabs>
 
-:::info Upgrade is new since v6.7.0
+:::info[Upgrade is new since v6.7.0]
 Before version 6.7.0 the COSMOS cli did not have an upgrade option. If you are on a version prior to COSMOS 6.10.1, simply check out the latest version of the upgrade script.
 
 <Tabs groupId="script-language">
@@ -123,7 +123,7 @@ Versions 5.13.0 and 6.0.0 _REQUIRE_ a stop to evaluate the upgrade. Thus if you'
 | [6.1.0](https://github.com/OpenC3/cosmos/releases/tag/v6.1.0)       | Changed from ActionCable to AnyCable. We also broke apart the COSMOS helm charts from a single chart to 3 charts.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | [7.0.0](https://github.com/OpenC3/cosmos/releases/tag/v7.0.0-rc1)   | Added a new time series database (TSDB) container. Switched from MINIO to versitygw and renamed the container from openc3-bucket to openc3-buckets. Running the migration script is required. See [MINIO to Versitygw Migration](/docs/getting-started/upgrading#minio-to-versitygw-migration). Once COSMOS 7 is running the [TSDB Migration](https://github.com/OpenC3/openc3-cosmos-tsdb-migration) plugin (also on the [App Store](https://store.openc3.com/cosmos_plugins/21)) is required to move data from existing bin files to the new TSDB.                                                                                                                                                                                                                     |
 
-:::warning Downgrades
+:::warning[Downgrades]
 Downgrades are not necessarily supported. When upgrading COSMOS we need to upgrade databases and sometimes migrate internal data structures. While we perform a full regression test on every release, we recommend upgrading an individual machine with your specific plugins and do local testing before rolling out the upgrade to your production system.
 
 In general, patch releases (x.y.Z) can be downgraded, minor releases (x.Y.z) _might_ be able to be downgraded and major releases (X.y.z) are NOT able to be downgraded.
@@ -287,7 +287,7 @@ OPENC3_BUCKET_USERNAME=your_user OPENC3_BUCKET_PASSWORD=your_pass ./scripts/linu
 | `OPENC3_BUCKET_USERNAME` | versitygw access key (COSMOS 7 dest) | `openc3bucket`         |
 | `OPENC3_BUCKET_PASSWORD` | versitygw secret key (COSMOS 7 dest) | `openc3bucketpassword` |
 
-:::tip Docker Compose Volume Prefixes
+:::tip[Docker Compose Volume Prefixes]
 The migration script automatically detects Docker Compose project prefixes. For example, if your volumes are named `cosmos_openc3-bucket-v` instead of `openc3-bucket-v`, the script handles this without additional configuration. You can also specify custom volume names with the `OLD_VOLUME` and `NEW_VOLUME` environment variables.
 :::
 
@@ -414,7 +414,7 @@ We removed a few rarely used [API methods](../guides/scripting-api#migration-fro
 
 Command parameters with states now enforce using defined states. If you need to send an arbitrary value for a command with states you will need to use cmd_no_range_check().
 
-:::info Developers Only
+:::info[Developers Only]
 If you haven't written any custom tools or widgets, there are no special changes required to upgrade from COSMOS 5 to COSMOS 6 other than updating your traefik configuration file. Simply follow the normal upgrade instructions above.
 :::
 
@@ -636,7 +636,7 @@ import { VWidget } from "@openc3/vue-common/widgets";
 
 ## Migrating From COSMOS 4 to COSMOS 5
 
-:::info All COSMOS Users
+:::info[All COSMOS Users]
 All COSMOS 4 users must upgrade their configuration to 5. However, the command, telemetry and screen definitions (keywords and syntax) have remained the same.
 :::
 

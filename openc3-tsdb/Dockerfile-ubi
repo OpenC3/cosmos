@@ -1,6 +1,6 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG OPENC3_TSDB_IMAGE=questdb/questdb
-ARG OPENC3_TSDB_VERSION=9.3.4
+ARG OPENC3_TSDB_VERSION=9.3.5
 
 # Use the RHEL variant of QuestDB (Red Hat UBI based)
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/${OPENC3_TSDB_IMAGE}:${OPENC3_TSDB_VERSION}-rhel
@@ -18,6 +18,12 @@ ENV QDB_CAIRO_SYSTEM_WAL_WRITER_DATA_APPEND_PAGE_SIZE=4K
 # trivy:ignore:DS010
 ENV QDB_CAIRO_WRITER_DATA_INDEX_KEY_APPEND_PAGE_SIZE=4K
 ENV QDB_CAIRO_WRITER_DATA_INDEX_VALUE_APPEND_PAGE_SIZE=4K
+
+# Require tables to be created explicitly via PostgreSQL DDL (not auto-created by ILP).
+# COSMOS needs specific columns (PACKET_TIMESECONDS, RECEIVED_TIMESECONDS, etc.) with
+# PACKET_TIMESECONDS as the designated TIMESTAMP — ILP auto-create can't provide that.
+# TsdbMicroservice recreates tables on IngressError when this is off.
+ENV QDB_LINE_AUTO_CREATE_NEW_TABLES=false
 
 # NOTE: No RUN instruction here intentionally.
 # QuestDB 9.3.3+ (Fedora-based) requires x86-64-v3 CPU instructions which QEMU

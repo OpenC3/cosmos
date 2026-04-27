@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 # Pre-commit hook to update Copyright year in modified files
+# and add copyright headers to newly created files
 
 require 'time'
 
@@ -9,6 +10,41 @@ current_year = Time.now.year
 # Get list of staged files
 staged_files = `git diff --cached --name-only --diff-filter=ACM`.split("\n")
 
+# Get list of newly added files (subset of staged_files)
+added_files = `git diff --cached --name-only --diff-filter=A`.split("\n")
+
+INNER_COPYRIGHT = lambda do |year|
+  <<~HEADER.chomp
+    # Copyright #{year} OpenC3, Inc.
+    # All Rights Reserved.
+    #
+    # This program is distributed in the hope that it will be useful,
+    # but WITHOUT ANY WARRANTY; without even the implied warranty of
+    # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+    # See LICENSE.md for more details.
+    #
+    # This file may also be used under the terms of a commercial license
+    # if purchased from OpenC3, Inc.
+  HEADER
+end
+
+HASH_COMMENT_EXTENSIONS = %w[.rb .py .sh .rake .gemspec .yaml .yml].freeze
+JS_COMMENT_EXTENSIONS = %w[.js .ts .mjs .cjs .jsx .tsx].freeze
+HTML_COMMENT_EXTENSIONS = %w[.vue].freeze
+SUPPORTED_EXTENSIONS = (HASH_COMMENT_EXTENSIONS + JS_COMMENT_EXTENSIONS + HTML_COMMENT_EXTENSIONS).freeze
+
+def build_copyright_header(file, year)
+  inner = INNER_COPYRIGHT.call(year)
+  case File.extname(file).downcase
+  when *HASH_COMMENT_EXTENSIONS
+    "#{inner}\n\n"
+  when *JS_COMMENT_EXTENSIONS
+    "/*\n#{inner}\n*/\n\n"
+  when *HTML_COMMENT_EXTENSIONS
+    "<!--\n#{inner}\n-->\n\n"
+  end
+end
+
 # Track if any files were modified
 files_modified = false
 
@@ -16,8 +52,14 @@ staged_files.each do |file|
   # Skip if file doesn't exist (deleted files)
   next unless File.exist?(file)
 
+  # Only process files with specific extensions
+  next unless SUPPORTED_EXTENSIONS.include?(File.extname(file).downcase)
+
   # Skip files in the hooks directory
   next if file.start_with?('hooks/')
+
+  # Skip vendored/third-party JS files
+  next if file.start_with?('openc3-cosmos-init/plugins/packages/openc3-tool-base/public/js/')
 
   # Read file content with encoding handling
   begin
@@ -33,8 +75,19 @@ staged_files.each do |file|
   has_copyright = content.match?(/^[#\/\*\s]*Copyright\s+\d{4}\s+OpenC3,\s+Inc\./i) ||
                   content.match?(/^[#\/\*\s]*All changes Copyright\s+\d{4},\s+OpenC3,\s+Inc\./i)
 
-  # Skip files without copyright headers
-  next unless has_copyright
+  # If no copyright and file is newly added, prepend a header
+  unless has_copyright
+    if added_files.include?(file)
+      header = build_copyright_header(file, current_year)
+      if header
+        File.write(file, header + content)
+        system("git add #{file}")
+        files_modified = true
+        puts "Added copyright header to: #{file}"
+      end
+    end
+    next
+  end
 
   # Pattern 1: Single OpenC3 copyright header
   # Match "Copyright YYYY OpenC3, Inc." and update year

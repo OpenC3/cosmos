@@ -19,7 +19,7 @@ Notebooks are similar to various e-procedure systems and Juypter notebooks.
 
 ### Notebook Menu Items
 
-<!-- Image sized to match up with bullets -->
+{/* Image sized to match up with bullets */}
 
 <img src={require('@site/static/img/notebooks/notebook_menu.png').default}
 alt="Notebook Menu"

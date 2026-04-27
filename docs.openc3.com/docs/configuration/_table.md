@@ -6,7 +6,7 @@ sidebar_custom_props:
   myEmoji: 🪑
 ---
 
-<!-- Be sure to edit _table.md because table.md is a generated file -->
+{/* Be sure to edit _table.md because table.md is a generated file */}
 
 ## Table Definition Files
 
@@ -25,8 +25,9 @@ COSMOS_META
 
 **Example File: TARGET/tables/config/MCConfigurationTable_def.txt**
 
-<!-- prettier-ignore -->
-```ruby
+{/* prettier-ignore */}
+
+```cosmos
 TABLE "MC_Configuration" BIG_ENDIAN KEY_VALUE "Memory Control Configuration Table"
   APPEND_PARAMETER "Scrub_Region_1_Start_Addr" 32 UINT 0 0x03FFFFFB 0
     FORMAT_STRING "0x%0X"

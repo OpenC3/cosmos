@@ -1,5 +1,5 @@
 /*
-# Copyright 2025, OpenC3, Inc.
+# Copyright 2026, OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -41,6 +41,10 @@ export default {
     current_version_id: Number,
     access: String,
     entitled: Boolean,
+    installAllowed: {
+      type: Boolean,
+      default: true,
+    },
   },
   data: function () {
     return {
@@ -75,7 +79,17 @@ export default {
         current_version_id: this.current_version_id,
         access: this.access,
         entitled: this.entitled,
+        installAllowed: this.installAllowed,
       }
+    },
+    canInstall: function () {
+      return this.entitled && this.installAllowed
+    },
+    installTooltip: function () {
+      if (!this.installAllowed) {
+        return 'Only admin users can install plugins.'
+      }
+      return this.accessTooltip
     },
     imageContentsWithMimeType: function () {
       if (this.imageContents) {
@@ -122,7 +136,7 @@ export default {
     },
     accessTooltip: function () {
       if (this.entitled) {
-        return null
+        return ''
       }
       if (localStorage.getItem('pluginStore.isApiKeySet') !== 'true') {
         return 'Please add your App Store API key using the settings cog icon.'

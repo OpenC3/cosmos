@@ -233,7 +233,7 @@ class QuestDBClient:
         - Arrays are JSON-encoded: "[1, 2, 3]" or '["a", "b"]'
         - Objects/Dicts are JSON-encoded: '{"key": "value"}'
         - Binary data (BLOCK) is base64-encoded
-        - Large integers (64-bit) are stored as DECIMAL (returned as Decimal objects)
+        - Large integers (≥64-bit) are stored as VARCHAR strings
 
         Args:
             value: The value to decode
@@ -243,7 +243,8 @@ class QuestDBClient:
         Returns:
             The decoded value
         """
-        # Handle Decimal values from QuestDB DECIMAL columns (used for 64-bit integers)
+        # Handle Decimal values from legacy QuestDB DECIMAL columns
+        # (pre-existing tables may still use DECIMAL; new tables use VARCHAR)
         if isinstance(value, Decimal):
             if data_type in ("INT", "UINT"):
                 return int(value)
@@ -278,7 +279,7 @@ class QuestDBClient:
             except json.JSONDecodeError:
                 return value
 
-        # Integer values stored as strings (fallback path, normally DECIMAL)
+        # Integer values stored as VARCHAR strings (≥64-bit integers)
         if data_type in ("INT", "UINT"):
             try:
                 return int(value)
@@ -333,12 +334,7 @@ class QuestDBClient:
         # Track columns that need JSON serialization due to type conflicts or DERIVED type
         # Key is "table__column", value is True
         self.json_columns = {}
-        # Track columns that store integers as DECIMAL (for 64-bit items)
-        # These need integer values converted to strings before ILP ingestion
-        # (QuestDB casts strings to DECIMAL for pre-created DECIMAL columns)
-        # Key is "table__column", value is True
-        self.decimal_int_columns = {}
-        # Track columns that are VARCHAR type (for state __C columns, etc.)
+        # Track columns that are VARCHAR type (for ≥64-bit integers, state __C columns, etc.)
         # Non-string values must be converted to strings before ILP ingestion.
         # Key is "table__column", value is True
         self.varchar_columns = {}
@@ -464,8 +460,10 @@ class QuestDBClient:
             elif converted_bit_size < 64:
                 return "long", False
             else:
-                self.decimal_int_columns[f"{table_name}__{column_name}"] = True
-                return "DECIMAL(20, 0)", False
+                # ≥64-bit integers stored as VARCHAR to avoid LONG NULL sentinel
+                # (0x8000000000000000) and DECIMAL limitations
+                self.varchar_columns[f"{table_name}__{column_name}"] = True
+                return "varchar", False
         elif converted_type == "TIME" or converted_type == "STRING":
             return "varchar", False
         elif converted_type == "BLOCK":
@@ -811,9 +809,9 @@ class QuestDBClient:
         query = f"SELECT {', '.join(names)} FROM "
         for index, (table_name, _) in enumerate(tables.items()):
             if index == 0:
-                query += f"{table_name} as T{index} "
+                query += f'"{table_name}" as T{index} '
             else:
-                query += f"ASOF JOIN {table_name} as T{index} "
+                query += f'ASOF JOIN "{table_name}" as T{index} '
 
         query_params = []
         if start_time and not end_time:
@@ -965,30 +963,74 @@ class QuestDBClient:
     def _canonical_type(sql_type):
         """Normalize a SQL type string for comparison.
 
-        Uppercases and strips internal whitespace so that e.g.
-        'DECIMAL(20, 0)' and 'DECIMAL(20,0)' compare equal,
-        while preserving parameters so DECIMAL(20,0) != DECIMAL(22,0).
+        Uppercases and strips internal whitespace so that parameterized types
+        like 'DECIMAL(20, 0)' and 'DECIMAL(20,0)' compare equal.
         """
         return re.sub(r"\s+", "", sql_type.upper())
 
-    def _get_existing_columns(self, table_name):
+    # psycopg errors that indicate the connection itself is broken (vs a SQL error).
+    # These are the only DDL failures we retry — schema errors, missing tables, etc.
+    # bubble up so the caller sees them.
+    _CONNECTION_ERROR_TYPES = (psycopg.OperationalError, psycopg.InterfaceError)
+
+    def _execute_ddl(self, sql, max_retries=3):
+        """Execute a DDL statement, reconnecting and retrying on connection errors.
+
+        Raises the last exception after retries are exhausted, or any non-connection
+        psycopg error immediately.
+        """
+        for attempt in range(max_retries):
+            try:
+                with self.query.cursor() as cur:
+                    cur.execute(sql)
+                return
+            except self._CONNECTION_ERROR_TYPES as error:
+                if attempt == max_retries - 1:
+                    raise
+                self._log_warn(
+                    f"QuestDB: DDL connection error on attempt {attempt + 1}/{max_retries}, reconnecting: {error}"
+                )
+                try:
+                    self.connect_query()
+                except Exception as reconnect_err:
+                    self._log_warn(f"QuestDB: Reconnect failed: {reconnect_err}")
+                time.sleep(0.1 * (attempt + 1))
+
+    def _get_existing_columns(self, table_name, max_retries=3):
         """Query QuestDB for existing column names and types.
 
         Returns:
-            Dict of column_name -> column_type (e.g., {"VALUE": "LONG", "STATUS": "VARCHAR"}),
-            or None if the table does not exist.
+            Dict of column_name -> column_type, or None if the table does not exist.
+
+        Raises:
+            psycopg.OperationalError / psycopg.InterfaceError if the connection
+            cannot be reestablished within max_retries.
         """
-        try:
-            with self.query.cursor() as cur:
-                cur.execute(f'SHOW COLUMNS FROM "{table_name}"')
-                columns = {}
-                for row in cur.fetchall():
-                    columns[row[0]] = row[1]
-                return columns
-        except (psycopg.Error, TypeError):
-            # psycopg.Error: table doesn't exist in QuestDB
-            # TypeError: can occur in unit tests with mock cursors
-            return None
+        for attempt in range(max_retries):
+            try:
+                with self.query.cursor() as cur:
+                    cur.execute(f'SHOW COLUMNS FROM "{table_name}"')
+                    columns = {}
+                    for row in cur.fetchall():
+                        columns[row[0]] = row[1]
+                    return columns
+            except self._CONNECTION_ERROR_TYPES as error:
+                if attempt == max_retries - 1:
+                    raise
+                self._log_warn(
+                    f"QuestDB: SHOW COLUMNS connection error on attempt {attempt + 1}/{max_retries}, "
+                    f"reconnecting: {error}"
+                )
+                try:
+                    self.connect_query()
+                except Exception as reconnect_err:
+                    self._log_warn(f"QuestDB: Reconnect failed: {reconnect_err}")
+                time.sleep(0.1 * (attempt + 1))
+            except (psycopg.Error, TypeError):
+                # psycopg.Error: table doesn't exist in QuestDB
+                # TypeError: can occur in unit tests with mock cursors
+                return None
+        return None
 
     def create_table(self, target_name, packet_name, packet, cmd_or_tlm="TLM", retain_time=None, scope="DEFAULT"):
         """
@@ -1096,34 +1138,37 @@ class QuestDBClient:
         existing_columns = self._get_existing_columns(table_name)
 
         if existing_columns is not None:
-            # Table exists — check for type mismatches and missing columns
+            # Table exists — check for type mismatches and missing columns.
+            # Connection errors bubble out of _execute_ddl (fatal). Non-connection
+            # errors on a single column are logged so other columns still reconcile.
             altered = False
-            try:
-                with self.query.cursor() as cur:
-                    for col_name, desired_sql_type in desired_columns.items():
-                        desired_canonical = self._canonical_type(desired_sql_type)
-                        existing_raw = existing_columns.get(col_name)
-                        existing_type = self._canonical_type(existing_raw) if existing_raw else None
+            for col_name, desired_sql_type in desired_columns.items():
+                desired_canonical = self._canonical_type(desired_sql_type)
+                existing_raw = existing_columns.get(col_name)
+                existing_type = self._canonical_type(existing_raw) if existing_raw else None
 
-                        try:
-                            if existing_type is None:
-                                # Column doesn't exist yet — add it
-                                alter = f'ALTER TABLE "{table_name}" ADD COLUMN {col_name} {desired_sql_type}'
-                                cur.execute(alter)
-                                self._log_info(f"QuestDB: Added column: {alter}")
-                                altered = True
-                            elif existing_type != desired_canonical:
-                                # Type mismatch — ALTER the column type
-                                alter = f'ALTER TABLE "{table_name}" ALTER COLUMN {col_name} TYPE {desired_sql_type}'
-                                cur.execute(alter)
-                                self._log_info(
-                                    f"QuestDB: Altered column type: {alter} (was {existing_type}, now {desired_canonical})"
-                                )
-                                altered = True
-                        except psycopg.Error as error:
-                            self._log_error(f"QuestDB: Error reconciling table {table_name}: {error}")
-            except psycopg.Error as error:
-                self._log_error(f"QuestDB: Error reconciling table {table_name}: {error}")
+                try:
+                    if existing_type is None:
+                        # Column doesn't exist yet — add it
+                        alter = f'ALTER TABLE "{table_name}" ADD COLUMN "{col_name}" {desired_sql_type}'
+                        self._execute_ddl(alter)
+                        self._log_info(f"QuestDB: Added column: {alter}")
+                        altered = True
+                    elif existing_type != desired_canonical:
+                        # Type mismatch — ALTER the column type
+                        alter = f'ALTER TABLE "{table_name}" ALTER COLUMN "{col_name}" TYPE {desired_sql_type}'
+                        self._execute_ddl(alter)
+                        self._log_info(
+                            f"QuestDB: Altered column type: {alter} (was {existing_type}, now {desired_canonical})"
+                        )
+                        altered = True
+                except self._CONNECTION_ERROR_TYPES:
+                    # Connection is fatally broken — let caller see it.
+                    raise
+                except psycopg.Error as error:
+                    # Per-column schema error (bad type, constraint, etc.) — log and continue
+                    # so other columns still reconcile.
+                    self._log_error(f"QuestDB: Error reconciling column {col_name} in table {table_name}: {error}")
 
             if altered:
                 # QuestDB applies ALTER asynchronously — wait for changes to propagate
@@ -1131,44 +1176,41 @@ class QuestDBClient:
                 # Reconnect ILP sender to clear its cached schema
                 self.connect_ingest()
         else:
-            # Table doesn't exist — create it
+            # Table doesn't exist — create it. _execute_ddl retries connection errors;
+            # any non-connection failure propagates so the caller knows table creation failed.
             columns_sql = ",\n".join(f'"{col}" {col_type}' for col, col_type in desired_columns.items())
 
-            try:
-                with self.query.cursor() as cur:
-                    # Create table with COSMOS_DATA_TAG as a symbol for use as filtering/indexing column,
-                    sql = f"""
-                        CREATE TABLE IF NOT EXISTS "{table_name}" (
-                            PACKET_TIMESECONDS timestamp_ns,
-                            RECEIVED_TIMESECONDS timestamp_ns,
-                            RECEIVED_COUNT long,
-                            COSMOS_DATA_TAG symbol """
+            # Create table with COSMOS_DATA_TAG as a symbol for use as filtering/indexing column,
+            sql = f"""
+                CREATE TABLE IF NOT EXISTS "{table_name}" (
+                    PACKET_TIMESECONDS timestamp_ns,
+                    RECEIVED_TIMESECONDS timestamp_ns,
+                    RECEIVED_COUNT long,
+                    COSMOS_DATA_TAG symbol """
 
-                    # COSMOS command packets have an extra field for command information: user, approver, etc
-                    # COSMOS telemetry packets may also have an extra field for additional information that doesn't fit in defined items
-                    sql += ",\nCOSMOS_EXTRA varchar"
-                    if columns_sql:
-                        sql += f",\n{columns_sql}"
+            # COSMOS command packets have an extra field for command information: user, approver, etc
+            # COSMOS telemetry packets may also have an extra field for additional information that doesn't fit in defined items
+            sql += ",\nCOSMOS_EXTRA varchar"
+            if columns_sql:
+                sql += f",\n{columns_sql}"
 
-                    # Primary DEDUP will be on PACKET_TIMESECONDS
-                    # If for some reason you're duplicating PACKET_TIMESECONDS you can
-                    # explicitly include COSMOS_DATA_TAG as well.
-                    sql += """
-                        ) TIMESTAMP(PACKET_TIMESECONDS)
-                            PARTITION BY DAY
-                    """
+            # Primary DEDUP will be on PACKET_TIMESECONDS
+            # If for some reason you're duplicating PACKET_TIMESECONDS you can
+            # explicitly include COSMOS_DATA_TAG as well.
+            sql += """
+                ) TIMESTAMP(PACKET_TIMESECONDS)
+                    PARTITION BY DAY
+            """
 
-                    # Add TTL clause if specified
-                    # QuestDB TTL format: TTL <value> <unit> where unit is HOUR, DAY, WEEK, MONTH, YEAR
-                    if retain_time:
-                        retain_time_sql = self._convert_retain_time_to_questdb_format(retain_time)
-                        if retain_time_sql:
-                            sql += f"\n                        TTL {retain_time_sql}"
+            # Add TTL clause if specified
+            # QuestDB TTL format: TTL <value> <unit> where unit is HOUR, DAY, WEEK, MONTH, YEAR
+            if retain_time:
+                retain_time_sql = self._convert_retain_time_to_questdb_format(retain_time)
+                if retain_time_sql:
+                    sql += f"\n                TTL {retain_time_sql}"
 
-                    self._log_info(f"QuestDB: Creating table:\n{sql}")
-                    cur.execute(sql)
-            except psycopg.Error as error:
-                self._log_error(f"QuestDB: Error creating table {table_name}: {error}")
+            self._log_info(f"QuestDB: Creating table:\n{sql}")
+            self._execute_ddl(sql)
 
         return table_name
 
@@ -1248,21 +1290,12 @@ class QuestDBClient:
         if is_varchar and not isinstance(value, str):
             return str(value), False
 
-        # Check if this column stores integers as DECIMAL (64-bit integer columns)
-        if table_name:
-            decimal_int_key = f"{table_name}__{item_name}"
-            is_decimal_int = decimal_int_key in self.decimal_int_columns
-        else:
-            is_decimal_int = False
-
         # Handle various data types for non-DERIVED columns
         match value:
             case int():
-                # 64-bit integer columns are stored as DECIMAL - send as string via ILP
-                # QuestDB casts string values to DECIMAL for pre-created DECIMAL columns.
                 # QuestDB Python client uses C long internally (signed 64-bit).
-                # Values outside this range must be strings for DECIMAL columns.
-                if is_decimal_int or value > 9223372036854775807 or value < -9223372036854775808:
+                # Values outside signed 64-bit range must be sent as strings.
+                if value > 9223372036854775807 or value < -9223372036854775808:
                     value = str(value)
 
             case float():
@@ -1407,6 +1440,7 @@ class QuestDBClient:
         "VARCHAR": str,
         "STRING": str,
         "SYMBOL": str,
+        # Legacy DECIMAL columns accept string values via ILP auto-cast
         "DECIMAL": str,
     }
 
@@ -1447,7 +1481,11 @@ class QuestDBClient:
         """
         self._log_warn(f"QuestDB: IngressError: {error}\n")
 
-        if "cast error from protocol type" not in str(error):
+        error_message = str(error)
+        is_cast_error = "cast error from protocol type" in error_message
+        is_value_error = "cannot be converted to column type" in error_message
+
+        if not is_cast_error and not is_value_error:
             self._log_error(f"QuestDB: Error writing to QuestDB: {error}\n")
             self.pending_rows.clear()
             try:
@@ -1459,22 +1497,26 @@ class QuestDBClient:
             return False
 
         try:
-            error_message = str(error)
             table_match = re.search(r"table:\s+(.+?),", error_message)
             column_match = re.search(r"column:\s+(.+?);", error_message)
-            type_match = re.search(r"protocol type:\s+([A-Z]+(?:\[\])?)\s", error_message)
             to_type_match = re.search(r"column type:\s+([A-Z]+)", error_message)
 
-            if not (table_match and column_match and type_match):
-                self._log_error("QuestDB: Could not parse table, column, or type from error message")
+            # "cast error from protocol type" includes the protocol type;
+            # "cannot be converted to column type" does not
+            type_match = re.search(r"protocol type:\s+([A-Z]+(?:\[\])?)\s", error_message)
+            protocol_type = type_match.group(1) if type_match else None
+
+            if not (table_match and column_match):
+                self._log_error("QuestDB: Could not parse table or column from error message")
                 return False
 
             err_table_name = table_match.group(1)
             column_name = column_match.group(1)
-            protocol_type = type_match.group(1)
             column_type = to_type_match.group(1) if to_type_match else ""
 
-            is_array_protocol = protocol_type.endswith("[]") or protocol_type.upper() == "ARRAY"
+            is_array_protocol = protocol_type is not None and (
+                protocol_type.endswith("[]") or protocol_type.upper() == "ARRAY"
+            )
 
             # Apply the fix to all pending rows for the affected table
             fixed = False
@@ -1486,13 +1528,6 @@ class QuestDBClient:
                 if is_array_protocol:
                     self._convert_column_to_json(err_table_name, column_name, columns)
                     fixed = True
-                    continue
-
-                # Handle INTEGER to DECIMAL cast error by converting value to string
-                if protocol_type == "INTEGER" and column_type == "DECIMAL":
-                    if column_name in columns:
-                        columns[column_name] = str(columns[column_name])
-                        fixed = True
                     continue
 
                 # For scalar type mismatches, cast the value to fit the column type
@@ -1522,14 +1557,8 @@ class QuestDBClient:
                     f"received array data but column type is {column_type}. "
                     f"Serializing as JSON string."
                 )
-            elif protocol_type == "INTEGER" and column_type == "DECIMAL":
-                self.decimal_int_columns[f"{err_table_name}__{column_name}"] = True
-                self._log_warn(
-                    f"QuestDB: Column {column_name} in table {err_table_name} "
-                    f"is DECIMAL but received INTEGER. Converting value to string."
-                )
             else:
-                if column_type in ("VARCHAR", "STRING"):
+                if column_type in ("VARCHAR", "STRING", "DECIMAL"):
                     self.varchar_columns[f"{err_table_name}__{column_name}"] = True
                 self._log_warn(
                     f"QuestDB: Column {column_name} in table {err_table_name} "

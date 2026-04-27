@@ -15,7 +15,7 @@ Script Runner is both an editor of COSMOS scripts as well as executes scripts. S
 
 ### File Menu Items
 
-<!-- Image sized to match up with bullets -->
+{/* Image sized to match up with bullets */}
 
 <img src={require('@site/static/img/script_runner/file_menu.png').default}
 alt="File Menu"
@@ -44,7 +44,7 @@ When saving a file for the first time, or using File Save As, the File Save As D
 
 ### Script Menu Items
 
-<!-- Image sized to match up with bullets -->
+{/* Image sized to match up with bullets */}
 
 <img src={require('@site/static/img/script_runner/script_menu.png').default}
 alt="Script Menu"
@@ -103,18 +103,18 @@ Environment variables are used for storing information about the runtime environ
 Click the "+" icon to add a new environment variable, and set its name and value in the text fields. These can then be read in your scripts.
 
 <Tabs groupId="script-language">
-<TabItem value="ruby" label="Ruby">
-
-```ruby
-puts ENV['MYVAR'] # prints "foo"
-```
-
-</TabItem>
 <TabItem value="python" label="Python">
 
 ```python
 import os
 print(os.environ['MYVAR']) # prints "foo"
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+puts ENV['MYVAR'] # prints "foo"
 ```
 
 </TabItem>
@@ -133,6 +133,20 @@ To generate a new Suite use the File -> New Suite and then choose either Ruby or
 The Group class contains the methods used to run the test or operations. Any methods starting with 'script', 'op', or 'test' which are implemented inside a Group class are automatically included as scripts to run. For example, in the above image, you'll notice the 'script_power_on' is in the Script drop down menu. Here's another simple example:
 
 <Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+from openc3.script.suite import Suite, Group
+class ExampleGroup(Group):
+    def setup(self):
+        print("setup")
+    def script_1(self):
+        print("script 1")
+    def teardown(self):
+        print("teardown")
+```
+
+</TabItem>
 <TabItem value="ruby" label="Ruby">
 
 ```ruby
@@ -151,20 +165,6 @@ end
 ```
 
 </TabItem>
-<TabItem value="python" label="Python">
-
-```python
-from openc3.script.suite import Suite, Group
-class ExampleGroup(Group):
-    def setup(self):
-        print("setup")
-    def script_1(self):
-        print("script 1")
-    def teardown(self):
-        print("teardown")
-```
-
-</TabItem>
 </Tabs>
 
 The setup and teardown methods are special methods which enable the Setup and Teardown buttons next to the Group drop down menu. Clicking these buttons runs the associated method.
@@ -174,6 +174,20 @@ The setup and teardown methods are special methods which enable the Setup and Te
 Groups are added to Suites by creating a class inheriting from Suite and then calling the add_group method. For example:
 
 <Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+from openc3.script.suite import Suite, Group
+class MySuite(Suite):
+    def __init__(self):
+        self.add_group(ExampleGroup)
+    def setup(self):
+        print("Suite setup")
+    def teardown(self):
+        print("Suite teardown")
+```
+
+</TabItem>
 <TabItem value="ruby" label="Ruby">
 
 ```ruby
@@ -188,20 +202,6 @@ class MySuite < OpenC3::Suite
     puts "Suite teardown"
   end
 end
-```
-
-</TabItem>
-<TabItem value="python" label="Python">
-
-```python
-from openc3.script.suite import Suite, Group
-class MySuite(Suite):
-    def __init__(self):
-        self.add_group(ExampleGroup)
-    def setup(self):
-        print("Suite setup")
-    def teardown(self):
-        print("Suite teardown")
 ```
 
 </TabItem>

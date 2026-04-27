@@ -5,7 +5,7 @@ sidebar_custom_props:
   myEmoji: 🖥️
 ---
 
-:::note This documentation is for COSMOS Developers
+:::note[This documentation is for COSMOS Developers]
 If you're looking for the methods available to write test procedures using the COSMOS scripting API, refer to the [Scripting API Guide](../guides/scripting-api.md) page. If you're trying to interface to COSMOS from an external application using any language then this is the right place.
 :::
 

@@ -1391,8 +1391,9 @@ if not ARGV[0].nil? # argument(s) given
         end
       end
     end
-    # Unless explicitly disabled, ensure the tools bucket is public
-    unless ENV.fetch("OPENC3_NO_BUCKET_POLICY", false)
+    # Unless explicitly disabled, ensure the tools bucket is public.
+    # OPENC3_TOOLS_BUCKET_PRIVATE keeps the tools bucket private; the cmd-tlm-api proxies reads via ToolsController.
+    unless ENV.fetch("OPENC3_NO_BUCKET_POLICY", false) || ENV.fetch("OPENC3_TOOLS_BUCKET_PRIVATE", false)
       client.ensure_public(ENV['OPENC3_TOOLS_BUCKET'])
     end
     # Always ensure the scriptrunner policy is in place since it is required for script execution

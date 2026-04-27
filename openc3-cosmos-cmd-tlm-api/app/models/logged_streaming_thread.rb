@@ -290,9 +290,8 @@ class LoggedStreamingThread < StreamingThread
     objects_by_topic.each do |topic, objects|
       break if @cancel_thread
       objects.each do |object|
-        _type, cmd_tlm, tgt, pkt, item, value_type = object.key.split('__')
-        items << "#{tgt}__#{pkt}__#{item}__#{value_type}"
-        item_cmd_or_tlm << cmd_tlm
+        items << "#{object.target_name}__#{object.packet_name}__#{object.item_name}__#{object.value_type}"
+        item_cmd_or_tlm << object.cmd_or_tlm.to_s
       end
     end
 
@@ -369,6 +368,7 @@ class LoggedStreamingThread < StreamingThread
         meta[:topics] << topic
 
         item = available[item_index]
+        next if item.nil? # API probably requested something that doesn't exist, so we'll ignore it and return nothing for it
         tgt, pkt, orig_item_name, value_type = item.split('__')
 
         # Check if this is a stored timestamp item (PACKET_TIMESECONDS or RECEIVED_TIMESECONDS)

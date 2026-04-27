@@ -45,7 +45,7 @@ If you're on Linux (recommended for production), we recommend installing Docker 
     swap=0
     ```
 
-:::warning Important: Modify Docker Connection Timeouts
+:::warning[Important: Modify Docker Connection Timeouts]
 Docker by default will break idle (no data) connections after a period of 5 minutes. This "feature" will eventually cause you problems if you don't adjust the Docker settings. This may manifest as idle connections dropping or simply failing to resume after data should have started flowing again. Find the file at C:\\Users\\username\\AppData\\Roaming\\Docker\\settings.json on Windows or ~/Library/Group Containers/group.com.docker/settings.json on MacOS. Modify the value `vpnKitMaxPortIdleTime` to change the timeout (recommend setting to 0). **Note:** 0 means no timeout (idle connections not dropped)
 :::
 
@@ -66,7 +66,7 @@ Once the project is cloned you can checkout a specific COSMOS version by using t
 git checkout vX.Y.Z # <- change to the specific version you want
 ```
 
-:::info Offline Installation
+:::info[Offline Installation]
 
   <p style={{"margin-bottom": 20 + 'px'}}>If you need to install in an offline environment you should first see if you're able to directly use the COSMOS containers. If so you can first save the containers. First checkout the specific version of the `cosmos-project` or `cosmos-enterprise-project` you want to save as shown above.</p>
 
@@ -83,7 +83,7 @@ git checkout vX.Y.Z # <- change to the specific version you want
 
 The COSMOS containers are designed to work and be built in the presence of an SSL Decryption device. To support this a cacert.pem file can be placed at the base of the COSMOS project that includes any certificates needed by your organization. **Note**: If you set the path to the ssl file in the `SSL_CERT_FILE` environment variables the openc3 setup script will copy it and place it for the docker container to load.
 
-:::warning SSL Issues
+:::warning[SSL Issues]
 
 Increasingly organizations are using some sort of SSL decryptor device which can cause curl and other command line tools like git to have SSL certificate problems. If installation fails with messages that involve "certificate", "SSL", "self-signed", or "secure" this is the problem. IT typically sets up browsers to work correctly but not command line applications. Note that the file extension might not be .pem, it could be .pem, crt, .ca-bundle, .cer, .p7b, .p7s, or potentially something else.
 
@@ -91,9 +91,9 @@ The workaround is to get a proper local certificate file from your IT department
 
 Then set the following environment variables to that path (ie. C:\Shared\Ball.pem)
 
-SSL_CERT_FILE<br/>
-CURL_CA_BUNDLE<br/>
-REQUESTS_CA_BUNDLE<br/>
+- SSL_CERT_FILE
+- CURL_CA_BUNDLE
+- REQUESTS_CA_BUNDLE
 
 Here are some directions on environment variables in Windows: [Windows Environment Variables](https://www.computerhope.com/issues/ch000549.htm)
 
@@ -156,7 +156,7 @@ COSMOS can be started up again with the `run` command, with previously used data
 
 If you need to remove COSMOS from your system or reset your installation, follow these steps.
 
-:::note Helpful guidance
+:::note[Helpful guidance]
 The `--help` option on the `./openc3.sh` command will provide helpful guidance of the available options and further descriptions. Example below:
 
 ```
@@ -191,7 +191,7 @@ To cleanup Docker volumes and data created by COSMOS:
 ./openc3.sh cleanup
 ```
 
-:::warning Data Loss
+:::warning[Data Loss]
 The cleanup command will remove all Docker volumes, which means **all your COSMOS data will be permanently deleted**.
 Make sure to backup any important data before running cleanup.
 :::
@@ -204,7 +204,7 @@ If you're running COSMOS with [Local Mode](../guides/local-mode.md), you may not
 ./openc3.sh cleanup local
 ```
 
-:::warning Data Loss
+:::warning[Data Loss]
 The cleanup command will remove all Docker volumes, which means **all your COSMOS data will be permanently deleted**, including **local mode changes added to your host machine**.
 Make sure to backup any important data before running cleanup.
 :::
@@ -235,7 +235,7 @@ Or to remove all unused Docker images:
 docker image prune -a
 ```
 
-:::warning Docker image prune -a removes all unused images
+:::warning[Docker image prune -a removes all unused images]
 With -a flag: The command docker image prune -a is more aggressive and removes all unused images, meaning any image that is not currently associated with a running or stopped container. Use this with caution, as it might remove base images you want to keep.
 :::
 
@@ -243,7 +243,7 @@ With -a flag: The command docker image prune -a is more aggressive and removes a
 
 ### Feedback
 
-:::note Find a problem in the documentation?
+:::note[Find a problem in the documentation?]
 
 Please [create an issue](https://github.com/OpenC3/cosmos/issues/new/choose) on
 GitHub describing what we can do to make it better.

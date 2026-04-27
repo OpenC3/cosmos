@@ -121,7 +121,7 @@ module OpenC3
                 LimitsEventTopic.process_event(event)
               elsif topic =~ /__DECOMINTERFACE/
                 if msg_hash.key?('inject_tlm')
-                  handle_inject_tlm(msg_hash['inject_tlm'])
+                  handle_inject_tlm_with_ack(msg_hash['inject_tlm'], msg_id)
                   next
                 end
                 if msg_hash.key?('build_cmd')

@@ -73,7 +73,7 @@ def _get_column_type(client, table_name, column_name="VALUE"):
 def _restart_and_create(client, target, packet, packet_def):
     """Simulate a microservice restart: reset metadata and call create_table."""
     client.json_columns = {}
-    client.decimal_int_columns = {}
+    client.varchar_columns = {}
     client.float_bit_sizes = {}
     return client.create_table(target, packet, packet_def)
 
@@ -298,6 +298,216 @@ class TestStringToFloat:
         assert len(rows) == 2
         assert abs(rows[0] - 3.14) < 1e-10  # Numeric string "3.14" survives as double
         assert abs(rows[1] - 2.718) < 1e-10
+
+@requires_questdb
+class TestLargeUintUsesVarchar:
+    """UINT > 64 bits should use VARCHAR instead of DECIMAL(20,0)."""
+
+    def test_large_uint_stored_as_varchar(self, questdb_client, clean_table, wait_for_data):
+        target = "TBLCHG"
+        packet = "LARGE_UINT"
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
+        base_ts = int(time.time() * 1e9)
+
+        # Create as UINT 88 — should use VARCHAR, not DECIMAL
+        questdb_client.create_table(
+            target, packet, _make_packet_def("UINT", bit_size=88)
+        )
+        assert _get_column_type(questdb_client, table_name) == "VARCHAR"
+
+        # Write a value that exceeds DECIMAL(20,0) capacity (27 digits)
+        large_value = 2**88 - 1  # 309485009821345068724781055
+        _write_value(questdb_client, table_name, large_value, base_ts)
+        wait_for_data(questdb_client, table_name, 1)
+
+        with questdb_client.query.cursor() as cur:
+            cur.execute(
+                f'SELECT "VALUE" FROM "{table_name}" ORDER BY PACKET_TIMESECONDS'
+            )
+            rows = [r[0] for r in cur.fetchall()]
+        assert len(rows) == 1
+        assert rows[0] == str(large_value)
+
+
+@requires_questdb
+class TestLongToVarchar:
+    """INT 32 (LONG) -> UINT 64 (VARCHAR).
+
+    Verifies that upgrading a 32-bit integer column (LONG) to a 64-bit
+    unsigned integer column (VARCHAR) works correctly via ALTER TABLE.
+    """
+
+    def test_long_to_varchar(self, questdb_client, clean_table, wait_for_data):
+        target = "TBLCHG"
+        packet = "LONG_TO_VARCHAR"
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
+        base_ts = int(time.time() * 1e9)
+
+        # Phase A: Create as INT 32 (long), write an integer
+        questdb_client.create_table(
+            target, packet, _make_packet_def("INT", bit_size=32)
+        )
+        assert _get_column_type(questdb_client, table_name) == "LONG"
+        _write_value(questdb_client, table_name, 42, base_ts)
+        wait_for_data(questdb_client, table_name, 1)
+
+        # Phase B: Restart with UINT 64 — create_table should ALTER LONG -> VARCHAR
+        _restart_and_create(
+            questdb_client, target, packet, _make_packet_def("UINT", bit_size=64)
+        )
+        assert _get_column_type(questdb_client, table_name) == "VARCHAR"
+
+        large_64bit = 2**64 - 1  # 18446744073709551615
+        _write_value(questdb_client, table_name, large_64bit, base_ts + 1_000_000_000)
+        wait_for_data(questdb_client, table_name, 2)
+
+        with questdb_client.query.cursor() as cur:
+            cur.execute(
+                f'SELECT "VALUE" FROM "{table_name}" ORDER BY PACKET_TIMESECONDS'
+            )
+            rows = [r[0] for r in cur.fetchall()]
+        assert len(rows) == 2
+        assert rows[0] == "42"  # Original long converted to string representation
+        assert rows[1] == str(large_64bit)
+
+
+@requires_questdb
+class TestLegacyDecimalMigratesToVarchar:
+    """Legacy DECIMAL(20,0) columns migrate to VARCHAR on restart.
+
+    We no longer create DECIMAL columns (≥64-bit integers use VARCHAR now),
+    but legacy tables may still have them. QuestDB 9.3.5 fixed bug #6923,
+    so create_table now ALTERs DECIMAL -> VARCHAR. This test verifies the
+    migration and that previously-written values are preserved as strings.
+    """
+
+    def test_legacy_decimal_migrates_to_varchar(self, questdb_client, clean_table, wait_for_data):
+        target = "TBLCHG"
+        packet = "LEGACY_DECIMAL"
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
+        base_ts = int(time.time() * 1e9)
+
+        # Phase A: Manually create a legacy table with DECIMAL(20,0) via SQL
+        with questdb_client.query.cursor() as cur:
+            cur.execute(
+                f'CREATE TABLE IF NOT EXISTS "{table_name}" ('
+                f"PACKET_TIMESECONDS timestamp_ns, "
+                f"RECEIVED_TIMESECONDS timestamp_ns, "
+                f"RECEIVED_COUNT long, "
+                f'COSMOS_DATA_TAG symbol, '
+                f'COSMOS_EXTRA varchar, '
+                f'"VALUE" DECIMAL(20, 0)'
+                f") TIMESTAMP(PACKET_TIMESECONDS) PARTITION BY DAY"
+            )
+        assert _get_column_type(questdb_client, table_name) == "DECIMAL(20,0)"
+        large_64bit = 2**64 - 1  # 18446744073709551615
+        _write_value(questdb_client, table_name, large_64bit, base_ts)
+        wait_for_data(questdb_client, table_name, 1)
+
+        # Phase B: Restart — create_table should ALTER DECIMAL -> VARCHAR
+        _restart_and_create(
+            questdb_client, target, packet, _make_packet_def("UINT", bit_size=64)
+        )
+        assert _get_column_type(questdb_client, table_name) == "VARCHAR"
+
+        # New values ingest as strings against the VARCHAR column
+        another_64bit = 2**63  # 9223372036854775808
+        _write_value(questdb_client, table_name, another_64bit, base_ts + 1_000_000_000)
+        wait_for_data(questdb_client, table_name, 2)
+
+        with questdb_client.query.cursor() as cur:
+            cur.execute(
+                f'SELECT "VALUE" FROM "{table_name}" ORDER BY PACKET_TIMESECONDS'
+            )
+            rows = [r[0] for r in cur.fetchall()]
+        assert len(rows) == 2
+        # After ALTER TYPE, prior DECIMAL values come back as their string representation
+        assert rows[0] == str(large_64bit)
+        assert rows[1] == str(another_64bit)
+
+
+@requires_questdb
+class TestDecimalToVarcharBug:
+    """Direct test of QuestDB ALTER DECIMAL -> VARCHAR.
+
+    QuestDB bug https://github.com/questdb/questdb/issues/6923 was fixed in
+    QuestDB 9.3.5. This test verifies the ALTER works so create_table can
+    migrate legacy DECIMAL columns to VARCHAR.
+    """
+
+    def test_alter_decimal_to_varchar(self, questdb_client, clean_table):
+        table_name = clean_table("DEFAULT__TLM__TBLCHG__DECIMAL_BUG")
+
+        with questdb_client.query.cursor() as cur:
+            cur.execute(
+                f'CREATE TABLE IF NOT EXISTS "{table_name}" ('
+                f"PACKET_TIMESECONDS timestamp_ns, "
+                f'"VALUE" DECIMAL(20, 0)'
+                f") TIMESTAMP(PACKET_TIMESECONDS) PARTITION BY DAY"
+            )
+        assert _get_column_type(questdb_client, table_name) == "DECIMAL(20,0)"
+
+        with questdb_client.query.cursor() as cur:
+            cur.execute(
+                f'ALTER TABLE "{table_name}" ALTER COLUMN "VALUE" TYPE varchar'
+            )
+
+        # QuestDB applies ALTER TYPE asynchronously; poll until visible
+        deadline = time.time() + 5.0
+        while time.time() < deadline:
+            if _get_column_type(questdb_client, table_name) == "VARCHAR":
+                break
+            time.sleep(0.1)
+        assert _get_column_type(questdb_client, table_name) == "VARCHAR"
+
+
+@requires_questdb
+class TestSpecialCharColumnMigration:
+    """Columns whose names contain SQL-identifier special chars (<, >, |)
+    must be double-quoted in ALTER TABLE statements. COSMOS generates such
+    names for bit-level parameters (e.g., P<_5|_>).
+    """
+
+    def test_add_column_with_special_chars(self, questdb_client, clean_table):
+        target = "TBLCHG"
+        packet = "SPECIAL_CHARS_ADD"
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
+
+        # Create table with just the base packet — no user items
+        questdb_client.create_table(
+            target, packet, {"items": []}
+        )
+
+        # Restart with a packet_def that adds a column containing <, >, |
+        _restart_and_create(
+            questdb_client,
+            target,
+            packet,
+            {"items": [{"name": "P<_5|_>", "data_type": "UINT", "bit_size": 5}]},
+        )
+        assert _get_column_type(questdb_client, table_name, "P<_5|_>") == "INT"
+
+    def test_alter_column_with_special_chars(self, questdb_client, clean_table):
+        target = "TBLCHG"
+        packet = "SPECIAL_CHARS_ALTER"
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
+
+        # Phase A: Create with INT 32 (LONG)
+        questdb_client.create_table(
+            target,
+            packet,
+            {"items": [{"name": "P<_5|_>", "data_type": "INT", "bit_size": 32}]},
+        )
+        assert _get_column_type(questdb_client, table_name, "P<_5|_>") == "LONG"
+
+        # Phase B: Restart with UINT 64 — should ALTER LONG -> VARCHAR
+        _restart_and_create(
+            questdb_client,
+            target,
+            packet,
+            {"items": [{"name": "P<_5|_>", "data_type": "UINT", "bit_size": 64}]},
+        )
+        assert _get_column_type(questdb_client, table_name, "P<_5|_>") == "VARCHAR"
 
 
 if __name__ == "__main__":

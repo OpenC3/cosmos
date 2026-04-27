@@ -183,14 +183,15 @@ module OpenC3
     # - Arrays are JSON-encoded: "[1, 2, 3]" or '["a", "b"]'
     # - Objects/Hashes are JSON-encoded: '{"key": "value"}'
     # - Binary data (BLOCK) is base64-encoded
-    # - Large integers (64-bit) are stored as DECIMAL
+    # - Large integers (≥64-bit) are stored as VARCHAR strings
     #
     # @param value [Object] The value to decode
     # @param data_type [String] COSMOS data type (INT, UINT, FLOAT, STRING, BLOCK, DERIVED, etc.)
     # @param array_size [Integer, nil] If not nil, indicates this is an array item
     # @return [Object] The decoded value
     def self.decode_value(value, data_type: nil, array_size: nil)
-      # Handle BigDecimal values from QuestDB DECIMAL columns (used for 64-bit integers)
+      # Handle BigDecimal values from legacy QuestDB DECIMAL columns
+      # (pre-existing tables may still use DECIMAL; new tables use VARCHAR)
       if value.is_a?(BigDecimal)
         return value.to_i if data_type == 'INT' || data_type == 'UINT'
         return value
@@ -223,7 +224,7 @@ module OpenC3
         end
       end
 
-      # Integer values stored as strings (fallback path, normally DECIMAL)
+      # Integer values stored as VARCHAR strings (≥64-bit integers)
       if data_type == 'INT' || data_type == 'UINT'
         begin
           return Integer(value)
@@ -599,7 +600,7 @@ module OpenC3
     # @param end_time [Integer, nil] Nanosecond end time
     # @return [Boolean]
     def self.table_has_data?(table_name, start_time, end_time, db_shard: 0)
-      query = "SELECT 1 FROM #{table_name}"
+      query = "SELECT 1 FROM \"#{table_name}\""
       query += time_where_clause(start_time, end_time)
       query += " LIMIT 1"
       result = query_with_retry(query, max_retries: 1, label: "table_has_data", db_shard: db_shard)
@@ -645,7 +646,7 @@ module OpenC3
       names << TIMESTAMP_SELECT
       names << "RECEIVED_TIMESECONDS" if include_received_ts
       names << "COSMOS_EXTRA"
-      query = "SELECT #{names.join(', ')} FROM #{table_name}"
+      query = "SELECT #{names.join(', ')} FROM \"#{table_name}\""
       query += time_where_clause(start_time, end_time)
       query
     end
@@ -1017,9 +1018,9 @@ module OpenC3
       query = "SELECT #{names.join(", ")} FROM "
       tables.each_with_index do |(table_name, _), index|
         if index == 0
-          query += "#{table_name} as T#{index} "
+          query += "\"#{table_name}\" as T#{index} "
         else
-          query += "ASOF JOIN #{table_name} as T#{index} "
+          query += "ASOF JOIN \"#{table_name}\" as T#{index} "
         end
       end
       query_params = []

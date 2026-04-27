@@ -216,7 +216,11 @@ class InterfaceCmdHandlerThread:
                     return str(e)
                 return "SUCCESS"
             if msg_hash.get(b"inject_tlm"):
-                handle_inject_tlm(msg_hash[b"inject_tlm"], self.scope)
+                try:
+                    handle_inject_tlm(msg_hash[b"inject_tlm"], self.scope)
+                except Exception as e:
+                    self.logger.error(f"{self.interface.name}: inject_tlm:{traceback.format_exc()}")
+                    return str(e)
                 return "SUCCESS"
             if msg_hash.get(b"release_critical"):
                 # Note: intentional fall through below this point

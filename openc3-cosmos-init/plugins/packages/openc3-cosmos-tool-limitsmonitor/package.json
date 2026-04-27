@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-limitsmonitor",
-  "version": "7.0.1-beta0",
+  "version": "7.0.2-beta0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,7 +13,7 @@
     "@astrouxds/astro-web-components": "7.27.0",
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
-    "axios": "1.14.0",
+    "axios": "1.15.0",
     "date-fns": "4.1.0",
     "lodash": "4.18.1",
     "single-spa-vue": "3.0.1",

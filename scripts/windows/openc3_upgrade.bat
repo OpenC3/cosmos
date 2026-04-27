@@ -16,20 +16,6 @@ if exist "%REPO_ROOT%\openc3-enterprise-traefik" (
     set IS_ENTERPRISE=false
 )
 
-REM Function to display usage
-:usage
-    echo Usage: openc3.bat upgrade ^<tag^> --preview
-    echo e.g. openc3.bat upgrade v6.4.1
-    echo The '--preview' flag will show the diff without applying changes.
-    if "%IS_ENTERPRISE%"=="false" (
-        echo.
-        echo You can also upgrade to Enterprise versions of OpenC3 if you have access
-        echo e.g. openc3.bat upgrade enterprise-v6.4.1
-        echo NOTE: Upgrading to Enterprise preserves all your existing data
-        echo but is a one-way operation and cannot be undone.
-    )
-    exit /b 1
-
 REM Check if arguments are provided
 if "%1"=="" goto usage
 
@@ -52,7 +38,7 @@ if "%IS_ENTERPRISE%"=="true" (
 if "%UPGRADING_TO_ENTERPRISE%"=="true" (
     set COSMOS_URL=https://github.com/OpenC3/cosmos-enterprise-project.git
     git remote -v | findstr /b "cosmos " >nul 2>&1
-    if %errorlevel% equ 0 (
+    if !errorlevel! equ 0 (
         echo Setting 'cosmos' remote to the enterprise repository.
         git remote set-url cosmos !COSMOS_URL!
     ) else (
@@ -77,7 +63,7 @@ if "%UPGRADING_TO_ENTERPRISE%"=="true" (
 ) else (
     set COSMOS_URL=https://github.com/OpenC3/cosmos-project.git
     git remote -v | findstr /b "cosmos " >nul 2>&1
-    if %errorlevel% equ 0 (
+    if !errorlevel! equ 0 (
         echo Setting 'cosmos' remote to the core repository.
         git remote set-url cosmos !COSMOS_URL!
     ) else (
@@ -89,36 +75,47 @@ if "%UPGRADING_TO_ENTERPRISE%"=="true" (
 REM Strip a leading "enterprise-" from the tag argument if present
 echo %1 | findstr /b /i "enterprise-" >nul 2>&1
 if %errorlevel% equ 0 (
-    set TAG=%1:enterprise-=%
+    set TAG=%1
     set TAG=!TAG:enterprise-=!
 )
 
 REM Fetch the latest changes from the 'cosmos' remote
 echo Fetching latest changes from 'cosmos' remote.
-git fetch cosmos
+git fetch cosmos --tags
 
-REM Check the tag is valid
-git tag | findstr /x "%TAG%" >nul 2>&1
-if %errorlevel% neq 0 (
+REM Check the tag is valid (native git lookup, tolerant of findstr/line-ending quirks)
+git rev-parse --verify "refs/tags/%TAG%" >nul 2>&1
+if errorlevel 1 (
     echo Error: '%TAG%' is not a valid git tag.
     echo Available tags:
     git tag | sort
     goto usage
 )
 
-REM Get the commit hash for the tag
-for /f "tokens=1" %%a in ('git ls-remote cosmos refs/tags/%TAG%') do set HASH=%%a
-
 REM If the --preview flag is set, show the diff without applying changes
 if "%2"=="--preview" (
-    git diff -R %HASH%
+    git diff -R "refs/tags/%TAG%"
     exit /b 0
 )
 
 REM Apply the changes
-git diff -R %HASH% | git apply --whitespace=fix --exclude="plugins/*"
+git diff -R "refs/tags/%TAG%" --binary | git apply --whitespace=fix --exclude="plugins/*"
 echo Applied changes from tag '%1'.
 echo We recommend committing these changes to your local repository.
 echo e.g. git commit -am "Upgrade to %1"
 echo You can now run 'openc3.bat run' to start the upgraded OpenC3 environment.
 echo.
+GOTO :EOF
+
+:usage
+    echo Usage: openc3.bat upgrade ^<tag^> --preview
+    echo e.g. openc3.bat upgrade v6.4.1
+    echo The '--preview' flag will show the diff without applying changes.
+    if "%IS_ENTERPRISE%"=="false" (
+        echo.
+        echo You can also upgrade to Enterprise versions of OpenC3 if you have access
+        echo e.g. openc3.bat upgrade enterprise-v6.4.1
+        echo NOTE: Upgrading to Enterprise preserves all your existing data
+        echo but is a one-way operation and cannot be undone.
+    )
+    exit /b 1

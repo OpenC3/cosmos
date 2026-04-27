@@ -131,7 +131,7 @@ def set_tlm(*args, type="CONVERTED", cache_timeout=0.1, scope=OPENC3_SCOPE):
 # @param packet_name [String] Packet name of the packet
 # @param item_hash [Hash] Hash of item_name and value for each item you want to change from the current value table
 # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
-def inject_tlm(target_name, packet_name, item_hash=None, type="CONVERTED", scope=OPENC3_SCOPE):
+def inject_tlm(target_name, packet_name, item_hash=None, type="CONVERTED", stored=False, scope=OPENC3_SCOPE):
     authorize(
         permission="tlm_set",
         target_name=target_name,
@@ -168,9 +168,11 @@ def inject_tlm(target_name, packet_name, item_hash=None, type="CONVERTED", scope
 
     # Use an interface microservice if it exists, other use the decom microservice
     if interface_name:
-        InterfaceTopic.inject_tlm(interface_name, target_name, packet_name, item_hash, type=type, scope=scope)
+        InterfaceTopic.inject_tlm(
+            interface_name, target_name, packet_name, item_hash, type=type, stored=stored, scope=scope
+        )
     else:
-        DecomInterfaceTopic.inject_tlm(target_name, packet_name, item_hash, type=type, scope=scope)
+        DecomInterfaceTopic.inject_tlm(target_name, packet_name, item_hash, type=type, stored=stored, scope=scope)
 
 
 # Override the current value table such that a particular item always

@@ -9,9 +9,13 @@ sidebar_custom_props:
 
 This tutorial has been tested using the following components:
 
-- COSMOS v6 release [6.3.0](https://github.com/OpenC3/cosmos/releases/tag/v6.3.0)
+- COSMOS v6 & v7 releases
 - cFS main-branch commit: 0ba1faa (April 23, 2025)
-- Docker Desktop 4.40.0 on MacOS
+- Docker Desktop 4.64.0 on MacOS
+
+:::info[cFS Plugin]
+NASA has released their own [cFS Plugin](https://github.com/nasa/cfs-cosmos-plugin). You can you use their instructions to run 2 copies of the cFS and connect with COSMOS or modify their plugin to suit your needs.
+:::
 
 Replace all `<xxxxxx>` with your matching paths and names. Example: `<USERNAME>`.
 
@@ -123,7 +127,7 @@ communication happens over UDP. `port_tm` is the port number on which cFS
 sends the telemetry messages. `port_tc` indicates the port on which cFS listens to the
 telecommands.
 
-```ruby
+```cosmos
 VARIABLE ip 127.0.0.1
 VARIABLE port_tm 1235
 VARIABLE port_tc 1234
@@ -164,7 +168,7 @@ content.
 
 `to_lab_cmds.txt`:
 
-```ruby
+```cosmos
 COMMAND CFS TO_LAB_ENABLE BIG_ENDIAN "Enable telemetry"
   #                   NAME      BITS TYPE   min VAL     max VAL    init VAL  DESCRIPTION
   APPEND_ID_PARAMETER STREAM_ID  16  UINT   0x1880      0x1880     0x1880    "Stream ID"
@@ -178,7 +182,7 @@ COMMAND CFS TO_LAB_ENABLE BIG_ENDIAN "Enable telemetry"
   APPEND_PARAMETER    DEST_IP   144  STRING "127.0.0.1"                      "Destination IP, i.e. 172.16.9.112, pc-57"
 ```
 
-:::info Enabling Telemetry
+:::info[Enabling Telemetry]
 The command `0x1880` is needed to enable telemetry. When the cFS receives
 this command, it starts sending telemetry to the IP address provided via the
 `DEST_IP` field.
@@ -186,7 +190,7 @@ this command, it starts sending telemetry to the IP address provided via the
 
 `cfs_cmds.txt`:
 
-```ruby
+```cosmos
 COMMAND CFS NOOP BIG_ENDIAN "NOOP Command"
   # cFS primary header
   APPEND_ID_PARAMETER    STREAM_ID   16   UINT   0x1882      0x1882      0x1882      "Packet Identification"
@@ -219,7 +223,7 @@ COMMAND CFS PROCESS BIG_ENDIAN "Process Command"
 
 `cfs_tlm.txt`:
 
-```ruby
+```cosmos
 TELEMETRY CFS HK BIG_ENDIAN "housekeeping telemetry"
   #                NAME       BITS  TYPE    ID      DESCRIPTION
   APPEND_ID_ITEM   STREAM_ID   16   UINT    0x0883  "Stream ID"
@@ -248,14 +252,14 @@ Build the plugin from the base of your plugin folder:
 $PATH_TO_OPENC3/openc3.sh cli rake build VERSION=1.0.0
 ```
 
-:::info Plugin versioning
+:::info[Plugin versioning]
 Do not forget to change the version number with every build if you want to
 better distinguish between the versions of the plugin. When the version is
 seen in the plugin's .gem file name, it is easier to visualize the existing
 versions and the newly uploaded versions.
 :::
 
-:::info Plugin parameters
+:::info[Plugin parameters]
 Multiple parameters are available for the plugin configuration. See the [plugin](../configuration/plugins.md) page.
 :::
 
@@ -277,7 +281,7 @@ docker network ls
 NETWORK ID     NAME             DRIVER    SCOPE
 d842f813f1c7   cosmos-project_default    bridge    local
 
-docker network inspect cosmos-project_default 
+docker network inspect cosmos-project_default
 [
     {
         "Name": "cosmos-project_default ",
@@ -307,12 +311,12 @@ step is optional as long as you are fine with your plugin showing up as `CFS`.
 
 ![Plugin Variable Settings](/img/guides/plugin_variables.png)
 
-:::warning Port subscription
+:::warning[Port subscription]
 The last uploaded plugin on COSMOS will subscribe to TM on port 1235.
 Other plugins will not receive any TM anymore.
 :::
 
-:::info Typo errors
+:::info[Typo errors]
 Presence of typos in one of the plugin files can cause problems when uploading and installing
 the plugin's .gem file. Make sure your configuration is typo-free.
 :::

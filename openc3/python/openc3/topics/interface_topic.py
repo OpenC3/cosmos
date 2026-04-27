@@ -153,10 +153,48 @@ class InterfaceTopic(Topic):
         Topic.write_topic(f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"protocol_cmd": json.dumps(data)}, "*", 100, db_shard=db_shard)
 
     @classmethod
-    def inject_tlm(cls, interface_name, target_name, packet_name, item_hash=None, type="CONVERTED", scope=OPENC3_SCOPE):
+    def inject_tlm(
+        cls,
+        interface_name,
+        target_name,
+        packet_name,
+        item_hash=None,
+        type="CONVERTED",
+        stored=False,
+        timeout=None,
+        scope=OPENC3_SCOPE,
+    ):
+        interface_name = interface_name.upper()
         db_shard = cls._db_shard_for_interface(interface_name, scope)
-        data = {"target_name": target_name.upper(), "packet_name": packet_name.upper(), "item_hash": item_hash, "type": type}
-        Topic.write_topic(f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"inject_tlm": json.dumps(data)}, "*", 100, db_shard=db_shard)
+
+        if timeout is None:
+            timeout = cls.COMMAND_ACK_TIMEOUT_S
+        ack_topic = f"{{{scope}__ACKCMD}}INTERFACE__{interface_name}"
+        Topic.update_topic_offsets([ack_topic], db_shard=db_shard)
+
+        data = {}
+        data["target_name"] = target_name.upper()
+        data["packet_name"] = packet_name.upper()
+        data["item_hash"] = item_hash
+        data["type"] = type
+        data["stored"] = stored
+        cmd_id = Topic.write_topic(
+            f"{{{scope}__CMD}}INTERFACE__{interface_name}",
+            {"inject_tlm": json.dumps(data)},
+            "*",
+            100,
+            db_shard=db_shard,
+        )
+        start_time = time.time()
+        while (time.time() - start_time) < timeout:
+            for _, _, msg_hash, _ in Topic.read_topics([ack_topic], db_shard=db_shard):
+                if msg_hash[b"id"] == cmd_id:
+                    result = msg_hash[b"result"].decode()
+                    if result == "SUCCESS":
+                        return
+                    else:
+                        raise RuntimeError(result)
+        raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack")
 
     @classmethod
     def interface_target_enable(cls, interface_name, target_name, cmd_only=False, tlm_only=False, scope=OPENC3_SCOPE):

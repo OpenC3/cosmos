@@ -313,5 +313,30 @@ export default {
     toQualifiedWidgetName(widgetName) {
       return `${this.screenId}:${widgetName}`
     },
+    // Parse a screen-definition item name into its semantic parts.
+    //   ITEM        → plain item
+    //   ITEM[0]     → array element (single brackets = array index)
+    //   ITEM[[0]]   → escape for a real item literally named ITEM[0]
+    //
+    // Returns { name, arrayIndex, display }:
+    //   name:       item name for API lookups — brackets un-escaped and any
+    //               array index stripped, so the server can always resolve it.
+    //   arrayIndex: numeric array index, or null.
+    //   display:    user-facing name — brackets un-escaped, array index kept.
+    parseItemName(itemName) {
+      if (itemName.includes('[[')) {
+        const unescaped = itemName.replaceAll('[[', '[').replaceAll(']]', ']')
+        return { name: unescaped, arrayIndex: null, display: unescaped }
+      }
+      const match = itemName.match(/\[(\d+)\]/)
+      if (match) {
+        return {
+          name: itemName.replace(match[0], ''),
+          arrayIndex: Number.parseInt(match[1]),
+          display: itemName,
+        }
+      }
+      return { name: itemName, arrayIndex: null, display: itemName }
+    },
   },
 }

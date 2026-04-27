@@ -59,7 +59,7 @@ class DecomInterfaceTopic(Topic):
                         msg_hash["buffer"] = json.loads(msg_hash["buffer"], cls=JsonDecoder)
                         return msg_hash
                     else:
-                        raise RuntimeError(msg_hash[b"message"])
+                        raise RuntimeError(msg_hash[b"result"].decode())
         raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack. Does target '{target_name}' exist?")
 
     @classmethod
@@ -69,6 +69,8 @@ class DecomInterfaceTopic(Topic):
         packet_name,
         item_hash=None,
         type="CONVERTED",
+        stored=False,
+        timeout=5,
         scope=OPENC3_SCOPE,
     ):
         data = {}
@@ -76,14 +78,27 @@ class DecomInterfaceTopic(Topic):
         data["packet_name"] = packet_name.upper()
         data["item_hash"] = item_hash
         data["type"] = type
+
         db_shard = Store.db_shard_for_target(target_name, scope=scope)
-        Topic.write_topic(
+        data["stored"] = stored
+        ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
+        Topic.update_topic_offsets([ack_topic], db_shard=db_shard)
+        decom_id = Topic.write_topic(
             f"{scope}__DECOMINTERFACE__{{{target_name}}}",
             {"inject_tlm": json.dumps(data)},
             "*",
             100,
             db_shard=db_shard,
         )
+        start_time = time.time()
+        while (time.time() - start_time) < timeout:
+            for _topic, _msg_id, msg_hash, _redis in Topic.read_topics([ack_topic]):
+                if msg_hash[b"id"] == decom_id:
+                    if msg_hash[b"result"] == b"SUCCESS":
+                        return
+                    else:
+                        raise RuntimeError(msg_hash[b"result"].decode())
+        raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack. Does target '{target_name}' exist?")
 
     @classmethod
     def get_tlm_buffer(cls, target_name, packet_name, timeout=5, scope=OPENC3_SCOPE):
@@ -115,5 +130,5 @@ class DecomInterfaceTopic(Topic):
                             msg_hash["extra"] = json.loads(extra)
                         return msg_hash
                     else:
-                        raise RuntimeError(msg_hash[b"message"])
+                        raise RuntimeError(msg_hash[b"result"].decode())
         raise RuntimeError(f"Timeout of {timeout}s waiting for ack. Does target '{target_name}' exist?")

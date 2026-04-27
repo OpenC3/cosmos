@@ -257,6 +257,158 @@ RSpec.describe StreamingApi, type: :model do
     end
   end
 
+  describe '#expand_item_globs' do
+    before(:each) do
+      allow(OpenC3::TargetModel).to receive(:packets).with('INST', type: :TLM, scope: 'DEFAULT').and_return([
+        { 'packet_name' => 'HEALTH_STATUS' },
+        { 'packet_name' => 'PARAMS' },
+        { 'packet_name' => 'IMAGE' },
+      ])
+      allow(OpenC3::TargetModel).to receive(:packet).with('INST', 'HEALTH_STATUS', type: :TLM, scope: 'DEFAULT').and_return({
+        'items' => [
+          { 'name' => 'TEMP1' },
+          { 'name' => 'TEMP2' },
+          { 'name' => 'TEMP3' },
+          { 'name' => 'DURATION' },
+        ]
+      })
+      allow(OpenC3::TargetModel).to receive(:packet).with('INST', 'PARAMS', type: :TLM, scope: 'DEFAULT').and_return({
+        'items' => [
+          { 'name' => 'VALUE1' },
+          { 'name' => 'VALUE2' },
+          { 'name' => 'TEMP1' },
+        ]
+      })
+      allow(OpenC3::TargetModel).to receive(:packet).with('INST', 'IMAGE', type: :TLM, scope: 'DEFAULT').and_return({
+        'items' => [
+          { 'name' => 'DATA' },
+        ]
+      })
+      allow(OpenC3::TargetModel).to receive(:get_item_to_packet_map).with('INST', scope: 'DEFAULT').and_return({
+        'TEMP1' => ['HEALTH_STATUS', 'PARAMS'],
+        'TEMP2' => ['HEALTH_STATUS'],
+        'TEMP3' => ['HEALTH_STATUS'],
+        'DURATION' => ['HEALTH_STATUS'],
+        'VALUE1' => ['PARAMS'],
+        'VALUE2' => ['PARAMS'],
+        'DATA' => ['IMAGE'],
+      })
+    end
+
+    it 'passes through non-glob entries unchanged' do
+      data = { 'items' => [['DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([['DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED', '0']])
+    end
+
+    it 'expands item glob for a specific packet' do
+      data = { 'items' => [['DECOM__TLM__INST__HEALTH_STATUS__TEMP*__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED'],
+      ])
+    end
+
+    it 'expands packet glob with concrete item name' do
+      data = { 'items' => [['DECOM__TLM__INST__HEALTH*__TEMP1__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED'],
+      ])
+    end
+
+    it 'expands both packet and item globs' do
+      data = { 'items' => [['DECOM__TLM__INST__*__TEMP1__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED'],
+        ['DECOM__TLM__INST__PARAMS__TEMP1__CONVERTED', 'DECOM__TLM__INST__PARAMS__TEMP1__CONVERTED'],
+      ])
+    end
+
+    it 'expands LATEST + item glob using item_to_packet_map' do
+      data = { 'items' => [['DECOM__TLM__INST__LATEST__TEMP*__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([
+        ['DECOM__TLM__INST__LATEST__TEMP1__CONVERTED', 'DECOM__TLM__INST__LATEST__TEMP1__CONVERTED'],
+        ['DECOM__TLM__INST__LATEST__TEMP2__CONVERTED', 'DECOM__TLM__INST__LATEST__TEMP2__CONVERTED'],
+        ['DECOM__TLM__INST__LATEST__TEMP3__CONVERTED', 'DECOM__TLM__INST__LATEST__TEMP3__CONVERTED'],
+      ])
+    end
+
+    it 'returns empty for no matches' do
+      data = { 'items' => [['DECOM__TLM__INST__HEALTH_STATUS__ZZZZZ*__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([])
+    end
+
+    it 'handles mixed glob and concrete entries' do
+      data = { 'items' => [
+        ['DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED', '0'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP*__CONVERTED', '1'],
+      ], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([
+        ['DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED', '0'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED'],
+      ])
+    end
+
+    it 'handles ? wildcard in item name' do
+      data = { 'items' => [['DECOM__TLM__INST__PARAMS__VALUE?__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([
+        ['DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED', 'DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED'],
+        ['DECOM__TLM__INST__PARAMS__VALUE2__CONVERTED', 'DECOM__TLM__INST__PARAMS__VALUE2__CONVERTED'],
+      ])
+    end
+
+    it 'preserves reduced type in expanded keys' do
+      data = { 'items' => [['REDUCED_MINUTE__TLM__INST__HEALTH_STATUS__TEMP*__CONVERTED__AVG', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([
+        ['REDUCED_MINUTE__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED__AVG', 'REDUCED_MINUTE__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED__AVG'],
+        ['REDUCED_MINUTE__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED__AVG', 'REDUCED_MINUTE__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED__AVG'],
+        ['REDUCED_MINUTE__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED__AVG', 'REDUCED_MINUTE__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED__AVG'],
+      ])
+    end
+
+    it 'does nothing when items key is absent' do
+      data = { 'packets' => ['DECOM__TLM__INST__PARAMS__CONVERTED'], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to be_nil
+    end
+
+    it 'handles nonexistent target gracefully for packet glob' do
+      allow(OpenC3::TargetModel).to receive(:packets).with('BOGUS', type: :TLM, scope: 'DEFAULT').and_raise(RuntimeError, "Target 'BOGUS' does not exist")
+      data = { 'items' => [['DECOM__TLM__BOGUS__*__TEMP1__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([])
+    end
+
+    it 'skips packets whose definition cannot be fetched' do
+      allow(OpenC3::TargetModel).to receive(:packet).with('INST', 'IMAGE', type: :TLM, scope: 'DEFAULT').and_raise(RuntimeError, "Packet not found")
+      data = { 'items' => [['DECOM__TLM__INST__*__DATA__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      # IMAGE packet raises, so only HEALTH_STATUS and PARAMS are checked — neither has DATA
+      expect(data['items']).to eq([])
+    end
+
+    it 'handles flat string entries (non-array items)' do
+      data = { 'items' => ['DECOM__TLM__INST__HEALTH_STATUS__TEMP*__CONVERTED'], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED'],
+      ])
+    end
+  end
+
   describe 'add with COSMOS_ALL packets and authorization' do
     it 'skips unauthorized packets when using COSMOS_ALL' do
       $openc3_authorize = true

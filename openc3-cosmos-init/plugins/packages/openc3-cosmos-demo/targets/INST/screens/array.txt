@@ -3,8 +3,13 @@ SCREEN AUTO AUTO 1.0
 VERTICAL
   TITLE "<%= target_name %> Instrument Array Data"
   ARRAY <%= target_name %> HEALTH_STATUS ARY
+  LABELVALUE <%= target_name %> HEALTH_STATUS ARY
   LABELVALUE <%= target_name %> HEALTH_STATUS ARY[0] RAW
   LABELVALUE <%= target_name %> HEALTH_STATUS ARY[1] FORMATTED
+  LABELVALUEDESC <%= target_name %> HEALTH_STATUS ARY
+  LABELVALUEDESC <%= target_name %> HEALTH_STATUS ARY "Full Array"
+  LABELVALUEDESC <%= target_name %> HEALTH_STATUS ARY[0]
+  LABELVALUEDESC <%= target_name %> HEALTH_STATUS ARY[0] "Array Item"
   # This item is actually called BRACKET[0] as the name
   # thus we have to escape the value here to avoid it
   # being treated like an array item

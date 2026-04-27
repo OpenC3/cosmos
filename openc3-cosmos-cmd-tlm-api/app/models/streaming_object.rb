@@ -16,6 +16,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3'
+require_relative 'streaming_key'
 OpenC3.require_file 'openc3/utilities/authorization'
 
 # Helper class to store information about the streaming item
@@ -44,34 +45,21 @@ class StreamingObject
     key = key.upcase
     @key = key
     @item_key = item_key
-    key_split = key.split('__')
-    @stream_mode = key_split[0].to_s.intern
-    @cmd_or_tlm = key_split[1].to_s.intern
+    parsed = StreamingKey.parse(key, item_key: !!item_key)
+    @stream_mode = parsed.stream_mode
+    @cmd_or_tlm = parsed.cmd_or_tlm
     @scope = scope
-    @target_name = key_split[2].to_s
-    @packet_name = key_split[3].to_s
-    @reduced_type = nil
-    type = nil
-    if stream_mode == :RAW
-      # value_type is implied to be :RAW and this must be a whole packet
-      @value_type = :RAW
+    @target_name = parsed.target_name
+    @packet_name = parsed.packet_name
+    @item_name = parsed.item_name
+    @value_type = parsed.value_type
+    @reduced_type = parsed.reduced_type
+    if @stream_mode == :RAW
       type = (@cmd_or_tlm == :CMD) ? 'COMMAND' : 'TELEMETRY'
+    elsif @stream_mode == :DECOM
+      type = (@cmd_or_tlm == :CMD) ? 'DECOMCMD' : 'DECOM'
     else
-      if stream_mode == :DECOM
-        type = (@cmd_or_tlm == :CMD) ? 'DECOMCMD' : 'DECOM'
-      else
-        type = stream_mode # REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
-      end
-
-      if @item_key
-        @item_name = key_split[4].to_s
-        @value_type = key_split[5].to_s.intern
-        @reduced_type = key_split[6].to_s.intern if key_split.length >= 7
-      else
-        # Full Packet
-        @value_type = key_split[4].to_s.intern
-        @reduced_type = key_split[5].to_s.intern if key_split.length >= 6
-      end
+      type = @stream_mode # REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
     end
     @start_time = start_time_nsec
     @end_time = end_time_nsec

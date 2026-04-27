@@ -27,15 +27,17 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # Need write permission to upload release asset
+    env:
+      VERSION: ${{ github.event.inputs.version }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 # v2.16.0
+        uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
         with:
           egress-policy: audit
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Set up Ruby 3.4
-        uses: ruby/setup-ruby@3ff19f5e2baf30647122352b96108b1fbe250c64 # v1.299.0
+        uses: ruby/setup-ruby@0cb964fd540e0a24c900370abf38a33466142735 # v1.305.0
         with:
           ruby-version: 3.4
           bundler-cache: false # runs 'bundle install' and caches installed gems automatically
@@ -44,53 +46,57 @@ jobs:
         run: mkdir scripts/release/clamav_results
       - name: Get current date
         id: date
-        run: echo "::set-output name=date::$(date -u '+%m_%d_%y_%H_%M_%S')"
+        run: echo "date=$(date -u '+%m_%d_%y_%H_%M_%S')" >> "$GITHUB_OUTPUT"
       - name: ClamAV setup and update definitions
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
         run: ./scripts/release/clamav_setup.sh
       - name: ClamAV scan image ruby
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-ruby:${{ github.event.inputs.version }} pull clamav_results/openc3-ruby.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-ruby:"$VERSION" pull clamav_results/openc3-ruby.txt
         working-directory: scripts/release
       - name: ClamAV scan image node
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-node:${{ github.event.inputs.version }} pull clamav_results/openc3-node.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-node:"$VERSION" pull clamav_results/openc3-node.txt
         working-directory: scripts/release
       - name: ClamAV scan image base
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-base:${{ github.event.inputs.version }} pull clamav_results/openc3-base.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-base:"$VERSION" pull clamav_results/openc3-base.txt
         working-directory: scripts/release
       - name: ClamAV scan image init
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-init:${{ github.event.inputs.version }} pull clamav_results/openc3-cosmos-init.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-init:"$VERSION" pull clamav_results/openc3-cosmos-init.txt
         working-directory: scripts/release
       - name: ClamAV scan image redis
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-redis:${{ github.event.inputs.version }} pull clamav_results/openc3-redis.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-redis:"$VERSION" pull clamav_results/openc3-redis.txt
         working-directory: scripts/release
       - name: ClamAV scan image bucket
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-buckets:${{ github.event.inputs.version }} pull clamav_results/openc3-buckets.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-buckets:"$VERSION" pull clamav_results/openc3-buckets.txt
         working-directory: scripts/release
       - name: ClamAV scan image tsdb
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-tsdb:${{ github.event.inputs.version }} pull clamav_results/openc3-tsdb.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-tsdb:"$VERSION" pull clamav_results/openc3-tsdb.txt
         working-directory: scripts/release
       - name: ClamAV scan image operator
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-operator:${{ github.event.inputs.version }} pull clamav_results/openc3-operator.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-operator:"$VERSION" pull clamav_results/openc3-operator.txt
         working-directory: scripts/release
       - name: ClamAV scan image cmd-tlm-api
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ github.event.inputs.version }} pull clamav_results/openc3-cosmos-cmd-tlm-api.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:"$VERSION" pull clamav_results/openc3-cosmos-cmd-tlm-api.txt
         working-directory: scripts/release
       - name: ClamAV scan image script-runner-api
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ github.event.inputs.version }} pull clamav_results/openc3-cosmos-script-runner-api.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-script-runner-api:"$VERSION" pull clamav_results/openc3-cosmos-script-runner-api.txt
         working-directory: scripts/release
       - name: ClamAV scan image traefik
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-traefik:${{ github.event.inputs.version }} pull clamav_results/openc3-traefik.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-traefik:"$VERSION" pull clamav_results/openc3-traefik.txt
         working-directory: scripts/release
       - name: Create zip of clamav results
         run: zip -r clamav_results.zip clamav_results
         working-directory: scripts/release
       - name: Upload release attachment
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          DATE: ${{ steps.date.outputs.date }}
         with:
           script: |
             const fs = require('fs');
-            const tag = "v${{ github.event.inputs.version }}"
+            const version = process.env.VERSION;
+            const date = process.env.DATE;
+            const tag = `v${version}`;
             // const tag = context.ref.replace("refs/tags/", "");
             console.log("tag = ", tag);
             // Get release for this tag
@@ -104,6 +110,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: release.data.id,
-              name: "${{ steps.date.outputs.date }}_clamav_results_v${{ github.event.inputs.version }}.zip",
+              name: `${date}_clamav_results_v${version}.zip`,
               data: await fs.readFileSync("scripts/release/clamav_results.zip")
             });

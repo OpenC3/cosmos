@@ -18,6 +18,7 @@
 require 'irb/ruby-lex'
 require 'ripper'
 require 'prism'
+require 'ripper'
 
 class RubyLexUtils
   OPENING_DELIMITER_TYPES = %i(PARENTHESIS_LEFT BRACKET_LEFT BRACE_LEFT BRACKET_LEFT_ARRAY)

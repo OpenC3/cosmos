@@ -34,11 +34,27 @@ def handle_inject_tlm(inject_tlm_json, scope):
     if item_hash:
         for name, value in item_hash.items():
             packet.write(str(name), value, data_type)
+    stored = inject_tlm_hash.get("stored", False)
+    packet.stored = str(stored).lower() == "true"
     packet.received_time = datetime.now(timezone.utc)
     packet.received_count = TargetModel.increment_telemetry_count(
         packet.target_name, packet.packet_name, 1, scope=scope
     )
     TelemetryTopic.write_packet(packet, scope)
+
+
+def handle_inject_tlm_with_ack(inject_tlm_json, msg_id, scope, logger=None):
+    inject_tlm_hash = json.loads(inject_tlm_json, cls=JsonDecoder)
+    target_name = inject_tlm_hash["target_name"]
+    ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
+    try:
+        handle_inject_tlm(inject_tlm_json, scope)
+        msg_hash = {"id": msg_id, "result": "SUCCESS"}
+    except Exception as error:
+        if logger:
+            logger.error(f"inject_tlm error due to {error}")
+        msg_hash = {"id": msg_id, "result": str(error)}
+    Topic.write_topic(ack_topic, msg_hash)
 
 
 def handle_build_cmd(build_cmd_json, msg_id, scope):
@@ -66,7 +82,7 @@ def handle_build_cmd(build_cmd_json, msg_id, scope):
     # write the ACKCMD}TARGET topic and allow the TelemetryDecomTopic.build_cmd to return
     except Exception as error:
         # Return only the error message (not full traceback) to match Ruby behavior
-        msg_hash = {"id": msg_id, "result": "ERROR", "message": str(error)}
+        msg_hash = {"id": msg_id, "result": str(error)}
     Topic.write_topic(ack_topic, msg_hash, db_shard=db_shard)
 
 
@@ -95,5 +111,5 @@ def handle_get_tlm_buffer(get_tlm_buffer_json, msg_id, scope):
     # write the ACKCMD}TARGET topic and allow the source to return
     except Exception as error:
         # Return only the error message (not full traceback) to match Ruby behavior
-        msg_hash = {"id": msg_id, "result": "ERROR", "message": str(error)}
+        msg_hash = {"id": msg_id, "result": str(error)}
     Topic.write_topic(ack_topic, msg_hash, db_shard=db_shard)

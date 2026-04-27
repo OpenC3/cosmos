@@ -39,7 +39,8 @@
         />
       </v-col>
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="select-packet">
-        <v-autocomplete
+        <component
+          :is="globEnabled ? 'v-combobox' : 'v-autocomplete'"
           ref="packetAutocomplete"
           v-model="selectedPacketName"
           label="Select Packet"
@@ -53,8 +54,7 @@
           item-value="value"
           @update:model-value="packetNameChanged"
           @focus="selectOnFocus('packetAutocomplete')"
-        >
-        </v-autocomplete>
+        />
       </v-col>
       <v-col
         v-if="mode === 'cmd' && showQueueSelect"
@@ -84,7 +84,8 @@
         class="tpic-select pr-4"
         data-test="select-item"
       >
-        <v-autocomplete
+        <component
+          :is="globEnabled ? 'v-combobox' : 'v-autocomplete'"
           ref="itemAutocomplete"
           v-model="selectedItemName"
           label="Select Item"
@@ -273,6 +274,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    allowGlob: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: ['on-set', 'addItem'],
   data() {
@@ -387,6 +392,11 @@ export default {
     isHazardous: function () {
       return this.hazardous || this.parameterHazardous
     },
+    // Glob mode is only safe for telemetry — command packets carry hazardous
+    // metadata that requires the per-packet API call in updatePacketDetails.
+    globEnabled: function () {
+      return this.allowGlob && this.mode === 'tlm'
+    },
   },
   watch: {
     initialTargetName: function (val) {
@@ -405,6 +415,25 @@ export default {
     initialItemName: function (val) {
       if (val) {
         this.selectedItemName = val.toUpperCase()
+      }
+    },
+    globEnabled: function (newVal) {
+      if (!newVal) {
+        // Clear any glob values when wildcards are disabled
+        const globPattern = /[*?]/
+        if (
+          typeof this.selectedPacketName === 'string' &&
+          globPattern.test(this.selectedPacketName)
+        ) {
+          this.selectedPacketName = null
+          this.selectedItemName = null
+        }
+        if (
+          typeof this.selectedItemName === 'string' &&
+          globPattern.test(this.selectedItemName)
+        ) {
+          this.selectedItemName = null
+        }
       }
     },
     mode: function (newVal, oldVal) {
@@ -558,6 +587,16 @@ export default {
       if (this.selectedPacketName === 'ALL') {
         return
       }
+      // In glob mode, skip API calls if the packet name is free text (not a known packet)
+      if (this.globEnabled && typeof this.selectedPacketName === 'string') {
+        const knownPacket = this.packetNames.find(
+          (p) => this.selectedPacketName === p.value,
+        )
+        if (!knownPacket && this.selectedPacketName !== 'LATEST') {
+          this.internalDisabled = false
+          return
+        }
+      }
       this.internalDisabled = true
 
       if (this.selectedPacketName === 'LATEST') {
@@ -636,11 +675,28 @@ export default {
 
     packetNameChanged: function (value) {
       this.selectedItemName = ''
+      // v-combobox may return a full item object instead of just the value string
+      if (value !== null && typeof value === 'object' && value.value) {
+        value = value.value
+        this.selectedPacketName = value
+      }
       // When the packet name is completed deleted in the v-autocomplete
       // the @change handler is fired but the value is null
       // In this case we don't want to update packet details
       if (value !== null) {
-        this.updatePacketDetails(value)
+        if (this.globEnabled && typeof value === 'string') {
+          // In glob mode, only call the API if the value matches a known packet
+          const knownPacket = this.packetNames.find((p) => value === p.value)
+          if (knownPacket) {
+            this.updatePacketDetails(value)
+          } else {
+            // Free-text entry (partial or glob): skip API calls
+            this.itemsDisabled = false
+            this.internalDisabled = false
+          }
+        } else {
+          this.updatePacketDetails(value)
+        }
       }
     },
 
@@ -698,6 +754,11 @@ export default {
     },
 
     itemNameChanged: function (value) {
+      // v-combobox may return a full item object instead of just the value string
+      if (value !== null && typeof value === 'object' && value.value) {
+        value = value.value
+        this.selectedItemName = value
+      }
       const item = this.itemNames.find((item) => {
         return value === item.value
       })
@@ -713,6 +774,13 @@ export default {
           reducedType: this.selectedReducedType,
           queueName: this.selectedQueueName,
         })
+      } else if (
+        this.globEnabled &&
+        typeof value === 'string' &&
+        /[*?]/.test(value)
+      ) {
+        // Accept free-text glob pattern even though it's not in the item list
+        this.selectedItemName = value.toUpperCase()
       }
     },
 

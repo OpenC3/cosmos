@@ -6,7 +6,7 @@ sidebar_custom_props:
   myEmoji: 🧮
 ---
 
-<!-- Be sure to edit _processors.md because processors.md is a generated file -->
+{/* Be sure to edit _processors.md because processors.md is a generated file */}
 
 # Overview
 
@@ -111,14 +111,14 @@ Values are retrieved using a [ProcessorConversion](/docs/configuration/conversio
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 PROCESSOR TEMP1WATER openc3/conversions/watermark_processor.py TEMP1
 ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
   READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1WATER HIGH_WATER
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
 ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
   READ_CONVERSION processor_conversion.rb TEMP1WATER HIGH_WATER
@@ -141,14 +141,14 @@ over a specified number of samples. Values are retrieved using a [ProcessorConve
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
-```python
+```cosmos
 PROCESSOR TEMP1STAT openc3/conversions/statistics_processor.py TEMP1 100
 ITEM TEMP1STDDEV 0 0 DERIVED "Stddev of most recent 100 samples for TEMP1"
   READ_CONVERSION openc3/conversions/processor_conversion.py TEMP1STAT STDDEV FLOAT 64
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
-```ruby
+```cosmos
 PROCESSOR TEMP1STAT statistics_processor.rb TEMP1 100
 ITEM TEMP1STDDEV 0 0 DERIVED "Stddev of most recent 100 samples for TEMP1"
   READ_CONVERSION processor_conversion.rb TEMP1STAT STDDEV FLOAT 64

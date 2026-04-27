@@ -7,7 +7,7 @@ sidebar_custom_props:
 
 ### Monitoring and observability
 
-:::warning Example Only
+:::warning[Example Only]
 Monitoring with Fluentd is not officially supported by OpenC3 and the documentation here is simply an example of how this could be performed.
 :::
 

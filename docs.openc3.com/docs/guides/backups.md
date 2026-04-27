@@ -124,7 +124,7 @@ The QuestDB data is stored in the `openc3-tsdb-v` Docker volume mounted at `/var
    docker logs -f openc3-tsdb-1
    ```
 
-:::info Version Compatibility
+:::info[Version Compatibility]
 QuestDB backups are compatible across patch versions within the same major version (e.g., 9.0.0 and 9.1.0 are compatible).
 :::
 

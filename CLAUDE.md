@@ -211,23 +211,6 @@ PWDEBUG=1 pnpm test:parallel --headed     # Debug mode
 
 ## Code Style
 
-### Installing Hooks
-
-After cloning the repository, install git hooks to ensure code quality and consistency:
-
-```bash
-./hooks/install.sh
-```
-
-This installs:
-
-- **pre-commit** - Automatically updates copyright years in modified files to the current year
-
-### File Headers
-
-- When modifying any file, update the "Copyright YYYY OpenC3, Inc." line in the file header to the current year (2026). Do NOT modify the Ball Aerospace copyright line.
-- The pre-commit hook automatically handles this if installed.
-
 ### Ruby
 
 - RuboCop configured in `.rubocop.yml` (many rules disabled)
@@ -258,8 +241,15 @@ This installs:
 ### JavaScript/TypeScript
 
 - ESLint 9 with Vue parser
-- Prettier for formatting
+- Prettier for formatting (enforced via `prettier/prettier` ESLint rule)
 - Config in `openc3-cosmos-init/plugins/eslint.config.mjs`
+- **After editing Vue/JS files, always run the linter** to catch formatting issues before committing:
+  ```bash
+  cd openc3-cosmos-init/plugins/packages/<package-name>
+  pnpm lint              # check for issues
+  pnpm lint --fix        # auto-fix formatting
+  ```
+- CI runs `pnpm lint --max-warnings 0` — any warning fails the build
 
 ## Plugin Development
 
