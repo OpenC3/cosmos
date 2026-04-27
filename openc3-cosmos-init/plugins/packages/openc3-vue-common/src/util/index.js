@@ -15,5 +15,18 @@ import * as AstroStatus from './AstroStatus'
 import { fileIcon } from './fileIcon'
 import TimeFilters from './timeFilters'
 import CmdUtilities from './cmdUtilities'
+import {
+  getCachedSetting,
+  peekCachedSetting,
+  resetSettingsCache,
+} from './settingsCache'
 
-export { AstroStatus, fileIcon, TimeFilters, CmdUtilities }
+export {
+  AstroStatus,
+  fileIcon,
+  TimeFilters,
+  CmdUtilities,
+  getCachedSetting,
+  peekCachedSetting,
+  resetSettingsCache,
+}
