@@ -177,6 +177,7 @@ module OpenC3
         @client.put_bucket_policy(options)
       rescue Aws::S3::Errors::NotImplemented, Aws::S3::Errors::ServiceError, Aws::S3::Errors::InternalError => e
         Logger.warn("put_bucket_policy for #{config_bucket} not supported by S3 backend: #{e.message}")
+        Logger.warn("Policy applied:\n#{config_policy}")
       end
 
       begin
@@ -186,6 +187,7 @@ module OpenC3
         @client.put_bucket_policy(options)
       rescue Aws::S3::Errors::NotImplemented, Aws::S3::Errors::ServiceError, Aws::S3::Errors::InternalError => e
         Logger.warn("put_bucket_policy for #{logs_bucket} not supported by S3 backend: #{e.message}")
+        Logger.warn("Policy applied:\n#{logs_policy}")
       end
     end
 
