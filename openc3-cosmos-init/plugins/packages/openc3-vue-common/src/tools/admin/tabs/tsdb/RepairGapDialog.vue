@@ -12,16 +12,10 @@
 -->
 
 <template>
-  <v-dialog
-    :model-value="modelValue"
-    max-width="900"
-    @update:model-value="close"
-  >
+  <v-dialog :model-value="modelValue" max-width="900" persistent>
     <v-card>
       <v-card-title class="d-flex align-center">
         Repair Gap: {{ context.target }} {{ context.packet }}
-        <v-spacer />
-        <v-btn icon="mdi-close" variant="text" @click="close" />
       </v-card-title>
       <v-card-subtitle v-if="context.gap">
         {{ context.gap.start }} &mdash; {{ context.gap.end }} ({{
@@ -167,14 +161,6 @@
         <v-spacer />
         <v-btn
           v-if="!jobId"
-          variant="text"
-          :disabled="loadingCandidates"
-          @click="close"
-        >
-          Cancel
-        </v-btn>
-        <v-btn
-          v-if="!jobId"
           color="warning"
           variant="elevated"
           :disabled="
@@ -187,18 +173,40 @@
         >
           Reingest {{ selectedKeys.length }}
         </v-btn>
-
-        <v-btn
-          v-if="jobId && !isRunning"
-          color="primary"
-          variant="elevated"
-          data-test="repair-done"
-          @click="finish"
-        >
-          Done
+        <v-btn variant="text" data-test="repair-close" @click="attemptClose">
+          Close
         </v-btn>
       </v-card-actions>
     </v-card>
+
+    <v-dialog v-model="confirmCloseOpen" max-width="500" persistent>
+      <v-card>
+        <v-card-title>Reingest Still Running</v-card-title>
+        <v-card-text>
+          The reingest job is still in progress. Closing this dialog will not
+          stop the job, but you will lose visibility into its status. Are you
+          sure you want to close?
+        </v-card-text>
+        <v-card-actions class="px-4 pb-4">
+          <v-spacer />
+          <v-btn
+            variant="text"
+            data-test="repair-close-cancel"
+            @click="confirmCloseOpen = false"
+          >
+            Keep Watching
+          </v-btn>
+          <v-btn
+            color="warning"
+            variant="elevated"
+            data-test="repair-close-confirm"
+            @click="confirmClose"
+          >
+            Close Anyway
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-dialog>
 </template>
 
@@ -241,6 +249,7 @@ export default {
       jobStatus: null,
       pollHandle: null,
       errorMessage: null,
+      confirmCloseOpen: false,
     }
   },
   computed: {
@@ -290,13 +299,21 @@ export default {
   methods: {
     close() {
       this.stopPolling()
+      const completed = this.jobStatus?.state === 'Complete'
       this.resetState()
       this.$emit('update:modelValue', false)
-    },
-    finish() {
-      const completed = this.jobStatus?.state === 'Complete'
-      this.close()
       if (completed) this.$emit('complete')
+    },
+    attemptClose() {
+      if (this.isRunning) {
+        this.confirmCloseOpen = true
+      } else {
+        this.close()
+      }
+    },
+    confirmClose() {
+      this.confirmCloseOpen = false
+      this.close()
     },
     resetState() {
       this.candidates = []
@@ -308,6 +325,7 @@ export default {
       this.jobStatus = null
       this.errorMessage = null
       this.loadingCandidates = false
+      this.confirmCloseOpen = false
     },
     async fetchCandidates() {
       this.resetState()
