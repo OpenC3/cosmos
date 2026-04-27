@@ -52,14 +52,9 @@ class DecomInterfaceTopic(Topic):
             for _topic, _msg_id, msg_hash, _redis in Topic.read_topics([ack_topic]):
                 if msg_hash[b"id"] == decom_id:
                     if msg_hash[b"result"] == b"SUCCESS":
-                        result = {}
-                        for k, v in msg_hash.items():
-                            key = k.decode()
-                            if key == "buffer":
-                                result[key] = v
-                            else:
-                                result[key] = v.decode()
-                        return result
+                        msg_hash = {k.decode(): v.decode() for (k, v) in msg_hash.items()}
+                        msg_hash["buffer"] = json.loads(msg_hash["buffer"], cls=JsonDecoder)
+                        return msg_hash
                     else:
                         raise RuntimeError(msg_hash[b"result"].decode())
         raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack. Does target '{target_name}' exist?")
