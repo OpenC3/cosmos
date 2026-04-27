@@ -279,6 +279,7 @@ class LoggedStreamingThread < StreamingThread
     objects_by_topic.each do |topic, objects|
       break if @cancel_thread
       objects.each do |object|
+        # Strip array index so get_tlm_available and find_item_def see the base item name (e.g. ARY not ARY[0])
         base_name, arr_idx = parse_array_index(object.item_name)
         items << "#{object.target_name}__#{object.packet_name}__#{base_name}__#{object.value_type}"
         array_indices[items.length - 1] = arr_idx if arr_idx
@@ -392,6 +393,7 @@ class LoggedStreamingThread < StreamingThread
         end
 
         meta[:item_keys] << object.item_key
+        # Record array index so apply_array_indices can extract the element after decode
         meta[:array_indices][object.item_key] = array_indices[item_index] if array_indices[item_index]
 
         # Look up item type info from packet definition
@@ -478,6 +480,7 @@ class LoggedStreamingThread < StreamingThread
       # Process this row
       entry = decode_cursor_row(min_cursor)
       if entry
+        # For array-indexed items (e.g. ARY[0]), replace the full array with the requested element
         apply_array_indices(entry, min_cursor[:meta])
         objects_by_topic.each_key { |t| track_tsdb_time(t, entry['__time']) }
         results << entry
@@ -569,8 +572,9 @@ class LoggedStreamingThread < StreamingThread
       # Group objects by item to build efficient query
       # Each object has: target_name, packet_name, item_name, value_type, reduced_type
       items_to_query = {}
-      reduced_array_indices = {} # object.item_key => integer array index
+      reduced_array_indices = {} # object.item_key => integer array index for element extraction
       objects.each do |object|
+        # Use base name (without array index) so column names and grouping match the DB schema
         base_name, arr_idx = parse_array_index(object.item_name)
         items_to_query[base_name] ||= { objects: [], value_types: Set.new }
         items_to_query[base_name][:objects] << object
@@ -611,11 +615,13 @@ class LoggedStreamingThread < StreamingThread
             item_name, reduced_type, value_type = mapping
 
             objects.each do |object|
+              # Match using base name since column_mapping keys are base names (no array index)
               obj_base_name = parse_array_index(object.item_name)[0]
               if obj_base_name == item_name &&
                  object.reduced_type == reduced_type &&
                  object.value_type == value_type
                 value = decoded_value
+                # Extract specific array element if this is an array-indexed item (e.g. ARY[0])
                 arr_idx = reduced_array_indices[object.item_key]
                 if arr_idx && value.is_a?(Array)
                   value = (arr_idx < value.length) ? value[arr_idx] : nil
