@@ -27,7 +27,7 @@ export function getCachedSetting(name, fallback) {
     const promise = new OpenC3Api()
       .get_setting(name)
       .then((response) => {
-        const value = response || fallback
+        const value = response ?? fallback
         cache.set(name, value)
         return value
       })
