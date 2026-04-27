@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -71,11 +71,18 @@ export default {
     if (this.parameters.length > 3) {
       this.description = this.parameters[3]
     } else {
-      new OpenC3Api()
-        .get_item(this.parameters[0], this.parameters[1], this.parameters[2])
-        .then((details) => {
-          this.description = details['description']
-        })
+      const parsed = this.parseItemName(this.parameters[2])
+      if (parsed.arrayIndex !== null) {
+        // Array elements have no per-element description; fall back to the
+        // item name as the label, matching the LABELVALUE default.
+        this.description = parsed.display
+      } else {
+        new OpenC3Api()
+          .get_item(this.parameters[0], this.parameters[1], parsed.name)
+          .then((details) => {
+            this.description = details['description']
+          })
+      }
     }
   },
 }

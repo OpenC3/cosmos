@@ -68,16 +68,11 @@ export default {
   created() {
     this.api = new OpenC3Api()
 
-    // Remove double bracket escaping. This means they actually have an item
-    // with a bracket in the name, not an array index.
-    if (this.parameters[2].includes('[[')) {
-      this.parameters[2] = this.parameters[2]
-        .replace('[[', '[')
-        .replace(']]', ']')
-    }
+    const parsed = this.parseItemName(this.parameters[2])
+    this.parameters[2] = parsed.name
 
     this.api
-      .get_limits(this.parameters[0], this.parameters[1], this.parameters[2])
+      .get_limits(this.parameters[0], this.parameters[1], parsed.name)
       .then((data) => {
         this.limitsSettings = data
       })
