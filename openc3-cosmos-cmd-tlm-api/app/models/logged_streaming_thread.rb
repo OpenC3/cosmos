@@ -275,10 +275,13 @@ class LoggedStreamingThread < StreamingThread
     start_time, end_time = compute_time_range(objects_by_topic)
 
     item_cmd_or_tlm = [] # Track CMD/TLM per item for type-aware lookups
+    array_indices = {} # maps global item index to integer array index for items like ARY[0]
     objects_by_topic.each do |topic, objects|
       break if @cancel_thread
       objects.each do |object|
-        items << "#{object.target_name}__#{object.packet_name}__#{object.item_name}__#{object.value_type}"
+        base_name, arr_idx = parse_array_index(object.item_name)
+        items << "#{object.target_name}__#{object.packet_name}__#{base_name}__#{object.value_type}"
+        array_indices[items.length - 1] = arr_idx if arr_idx
         item_cmd_or_tlm << object.cmd_or_tlm.to_s
       end
     end
@@ -349,13 +352,17 @@ class LoggedStreamingThread < StreamingThread
           stored_timestamp_item_keys: {},
           calculated_positions: {},  # local_index => { source:, format: }
           timestamp_source_columns: {},
+          array_indices: {},  # item_key => integer index for array element extraction
           topics: Set.new
         }
         meta = per_table[table_name]
         meta[:topics] << topic
 
         item = available[item_index]
-        next if item.nil? # API probably requested something that doesn't exist, so we'll ignore it and return nothing for it
+        if item.nil?
+          item_index += 1
+          next # API probably requested something that doesn't exist, so we'll ignore it and return nothing for it
+        end
         tgt, pkt, orig_item_name, value_type = item.split('__')
 
         # Check if this is a stored timestamp item (PACKET_TIMESECONDS or RECEIVED_TIMESECONDS)
@@ -385,6 +392,7 @@ class LoggedStreamingThread < StreamingThread
         end
 
         meta[:item_keys] << object.item_key
+        meta[:array_indices][object.item_key] = array_indices[item_index] if array_indices[item_index]
 
         # Look up item type info from packet definition
         pkt_type = (item_cmd_or_tlm[item_index] == 'CMD') ? :CMD : :TLM
@@ -470,6 +478,7 @@ class LoggedStreamingThread < StreamingThread
       # Process this row
       entry = decode_cursor_row(min_cursor)
       if entry
+        apply_array_indices(entry, min_cursor[:meta])
         objects_by_topic.each_key { |t| track_tsdb_time(t, entry['__time']) }
         results << entry
       end
@@ -560,11 +569,13 @@ class LoggedStreamingThread < StreamingThread
       # Group objects by item to build efficient query
       # Each object has: target_name, packet_name, item_name, value_type, reduced_type
       items_to_query = {}
+      reduced_array_indices = {} # object.item_key => integer array index
       objects.each do |object|
-        item_key = object.item_name
-        items_to_query[item_key] ||= { objects: [], value_types: Set.new }
-        items_to_query[item_key][:objects] << object
-        items_to_query[item_key][:value_types] << object.value_type
+        base_name, arr_idx = parse_array_index(object.item_name)
+        items_to_query[base_name] ||= { objects: [], value_types: Set.new }
+        items_to_query[base_name][:objects] << object
+        items_to_query[base_name][:value_types] << object.value_type
+        reduced_array_indices[object.item_key] = arr_idx if arr_idx
       end
 
       # Build the SELECT clause with aggregations
@@ -600,10 +611,16 @@ class LoggedStreamingThread < StreamingThread
             item_name, reduced_type, value_type = mapping
 
             objects.each do |object|
-              if object.item_name == item_name &&
+              obj_base_name = parse_array_index(object.item_name)[0]
+              if obj_base_name == item_name &&
                  object.reduced_type == reduced_type &&
                  object.value_type == value_type
-                entry[object.item_key] = decoded_value
+                value = decoded_value
+                arr_idx = reduced_array_indices[object.item_key]
+                if arr_idx && value.is_a?(Array)
+                  value = (arr_idx < value.length) ? value[arr_idx] : nil
+                end
+                entry[object.item_key] = value
               end
             end
           end
@@ -850,6 +867,26 @@ class LoggedStreamingThread < StreamingThread
   # Returns true if end_time is set and has been reached.
   def past_end_time?(end_time)
     end_time and end_time <= Time.now.to_nsec_from_epoch
+  end
+
+  # Splits "ARY[0]" into ["ARY", 0] and "TEMP1" into ["TEMP1", nil]
+  def parse_array_index(item_name)
+    if item_name =~ /\A(.+)\[(\d+)\]\z/
+      [$1, $2.to_i]
+    else
+      [item_name, nil]
+    end
+  end
+
+  # Extracts array elements for items that have array indices tracked in meta
+  def apply_array_indices(entry, meta)
+    return unless meta[:array_indices] && !meta[:array_indices].empty?
+    meta[:array_indices].each do |item_key, idx|
+      value = entry[item_key]
+      if value.is_a?(Array)
+        entry[item_key] = (idx < value.length) ? value[idx] : nil
+      end
+    end
   end
 
   def handle_packet(packet, objects)
