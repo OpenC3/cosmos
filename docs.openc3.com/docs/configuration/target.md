@@ -16,7 +16,7 @@ Targets are the external embedded systems that COSMOS connects to. Targets are d
 ## LANGUAGE
 <span class="badge badge--secondary since-right">Since 5.11.1</span>**Programming language of the target interfaces and microservices**
 
-The target language must be either Ruby or Python. The language determines how the target's interfaces and microservices are run. Note that both Ruby and Python still use ERB to perform templating.
+The target language must be either Ruby or Python. The language determines how the target's interfaces and microservices are run. A target must pick one language for its interfaces and microservices &mdash; you cannot mix Ruby and Python interfaces/microservices within the same target. Scripts executed in Script Runner are independent of this setting and may be written in either Ruby or Python regardless of the target's LANGUAGE. Note that both Ruby and Python still use ERB to perform templating.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|

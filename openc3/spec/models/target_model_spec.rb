@@ -727,7 +727,7 @@ module OpenC3
         expect(MicroserviceModel.names()).to be_empty
       end
 
-      it "deploys only command microservices if no telemetry" do
+      it "deploys COMMANDLOG and DECOM microservices if no telemetry" do
         @target = "EMPTY"
         FileUtils.mkdir_p("#{@target_dir}/targets/#{@target}/cmd_tlm")
         File.open("#{@target_dir}/targets/#{@target}/cmd_tlm/cmd.txt", 'w') do |file|
@@ -740,9 +740,12 @@ module OpenC3
           model.deploy(@target_dir, {})
           expect(stdout.string).to include("#{@scope}__COMMANDLOG__#{@target}")
           expect(stdout.string).to_not include("#{@scope}__PACKETLOG__#{@target}")
-          expect(stdout.string).to_not include("#{@scope}__DECOM__#{@target}")
+          # DECOM deploys even without telemetry so build_cmd (routed via DECOMINTERFACE) still works
+          expect(stdout.string).to include("#{@scope}__DECOM__#{@target}")
         end
-        expect(MicroserviceModel.names()).to include("#{@scope}__COMMANDLOG__#{@target}")
+        expect(MicroserviceModel.names()).to include(
+          "#{@scope}__COMMANDLOG__#{@target}",
+          "#{@scope}__DECOM__#{@target}")
         FileUtils.rm_rf("#{@target_dir}/targets/#{@target}/cmd_tlm")
       end
 

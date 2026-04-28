@@ -1139,11 +1139,19 @@ module OpenC3
         deploy_target_microservices('PACKETLOG', packet_topic_list, "#{@scope}__TELEMETRY__{#{@name}}") do |topics, instance, parent|
           deploy_packetlog_microservice(gem_path, variables, topics, instance, parent)
         end
+      end
 
-        # Decommutation Microservice
+      # Decommutation Microservice - also handles build_cmd / inject_tlm /
+      # get_tlm_buffer via the DECOMINTERFACE topic, so deploy whenever the
+      # target has commands or telemetry, not just telemetry.
+      if packet_topic_list.any?
         deploy_target_microservices('DECOM', packet_topic_list, "#{@scope}__TELEMETRY__{#{@name}}") do |topics, instance, parent|
           deploy_decom_microservice(system.targets[@name], gem_path, variables, topics, instance, parent)
         end
+      elsif command_topic_list.any?
+        # Cmd-only target: deploy DECOM with no tlm topics so build_cmd works.
+        # DecomMicroservice subscribes to DECOMINTERFACE in its initializer.
+        deploy_decom_microservice(system.targets[@name], gem_path, variables, [], nil, @parent)
       end
 
       # TSDB Microservice - subscribes to both decommutated telemetry and commands
