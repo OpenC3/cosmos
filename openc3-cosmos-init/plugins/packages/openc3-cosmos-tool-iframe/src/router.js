@@ -27,7 +27,7 @@ const routes = [
     component: NotFound,
   },
 ]
-routes.forEach(prependBasePath)
+routes.forEach((route) => prependBasePath(route))
 
 export default createRouter({
   history: createWebHistory(),

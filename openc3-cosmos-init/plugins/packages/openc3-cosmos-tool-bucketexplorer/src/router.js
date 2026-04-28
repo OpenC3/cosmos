@@ -1,5 +1,5 @@
 /*
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -22,7 +22,7 @@ const routes = [
   },
   // No NotFound component because we're matching everything with :path*
 ]
-routes.forEach(prependBasePath)
+routes.forEach((route) => prependBasePath(route))
 
 export default createRouter({
   history: createWebHistory(),

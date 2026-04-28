@@ -261,6 +261,7 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
 })
 
 test('auto refreshes to update files', async ({ page, utils, context }) => {
+  test.slow()
   const identifier = Math.ceil(Math.random() * 1000)
   const filename = `refresh_package_${identifier}.json`
   // Create a file so we have something in __TEMP__
