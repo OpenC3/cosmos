@@ -211,7 +211,7 @@ class SimInst(SimulatedTarget):
                 hs_packet.write("cmd_acpt_cnt", hs_packet.read("cmd_acpt_cnt") + 1)
                 kill_thread(self, self.solar_panel_thread)
                 self.solar_panel_positions = SimInst.SOLAR_PANEL_DFLTS[:]
-            case "MEMLOAD":
+            case "MEMLOAD" | "BLOCK":
                 hs_packet.write("cmd_acpt_cnt", hs_packet.read("cmd_acpt_cnt") + 1)
                 hs_packet.write("blocktest", packet.read("data"))
             case "QUIET":
