@@ -32,7 +32,6 @@ from openc3.top_level import kill_thread
 from openc3.topics.limits_event_topic import LimitsEventTopic
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.topics.topic import Topic
-from openc3.utilities.store import Store
 from openc3.utilities.thread_manager import ThreadManager
 from openc3.utilities.time import from_nsec_from_epoch, to_nsec_from_epoch
 

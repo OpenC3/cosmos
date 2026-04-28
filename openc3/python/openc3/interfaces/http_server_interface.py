@@ -23,10 +23,10 @@ from openc3.utilities.logger import Logger
 
 
 class Handler(BaseHTTPRequestHandler):
-    def do_POST(self):
+    def do_POST(self): # noqa
         self.handle_request()
 
-    def do_GET(self):
+    def do_GET(self): # noqa
         self.handle_request()
 
     def handle_request(self):

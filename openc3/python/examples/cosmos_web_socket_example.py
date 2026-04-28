@@ -1,5 +1,6 @@
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+
 
 # Example Use
 # The following lines are only for outside of the COSMOS Docker or Kubernetes Cluster
@@ -17,8 +18,8 @@ os.environ["OPENC3_SCRIPT_API_PORT"] = "2900"
 os.environ["OPENC3_API_PASSWORD"] = "password"
 # END OUTSIDE OF DOCKER ONLY
 
+from openc3.script.web_socket_api import MessagesWebSocketApi, StreamingWebSocketApi
 from openc3.utilities.time import to_nsec_from_epoch
-from openc3.script.web_socket_api import StreamingWebSocketApi, MessagesWebSocketApi
 
 
 with StreamingWebSocketApi() as api:
@@ -54,7 +55,6 @@ data = StreamingWebSocketApi.read_all(
 print(data)
 
 
-import time
 
 now = datetime.now(timezone.utc)
 with MessagesWebSocketApi(

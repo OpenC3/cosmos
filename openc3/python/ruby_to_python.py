@@ -1,6 +1,7 @@
-import re
 import os
+import re
 import sys
+
 
 base = os.path.basename(sys.argv[1])
 spec = False

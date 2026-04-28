@@ -199,23 +199,23 @@ class PacketItem(StructureItem):
                                 f"{self.name}: maximum must be a int but is a {self.maximum.__class__.__name__}"
                             )
                     case "FLOAT":
-                        if not isinstance(self.default, (float, int)):
+                        if not isinstance(self.default, float | int):
                             raise TypeError(
                                 f"{self.name}: default must be a float but is a {self.default.__class__.__name__}"
                             )
 
                         self.default = float(self.default)
 
-                        if not isinstance(self.minimum, (int, float)):
+                        if not isinstance(self.minimum, int | float):
                             raise TypeError(
                                 f"{self.name}: minimum must be a float but is a {self.minimum.__class__.__name__}"
                             )
-                        if not isinstance(self.maximum, (int, float)):
+                        if not isinstance(self.maximum, int | float):
                             raise TypeError(
                                 f"{self.name}: maximum must be a float but is a {self.maximum.__class__.__name__}"
                             )
                     case "BLOCK" | "STRING":
-                        if not isinstance(self.default, (str, bytes, bytearray)):
+                        if not isinstance(self.default, str | bytes | bytearray):
                             raise TypeError(
                                 f"{self.name}: default must be a str but is a {self.default.__class__.__name__}"
                             )

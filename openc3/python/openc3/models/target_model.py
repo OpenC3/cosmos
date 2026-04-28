@@ -259,7 +259,7 @@ class TargetModel(Model):
         result = cls._store_for_target(target_name, scope).hincrby(
             f"{scope}__TELEMETRYCNTS__{{{target_name}}}", packet_name, count
         )
-        if isinstance(result, (bytes, bytearray)):
+        if isinstance(result, bytes | bytearray):
             return int(result)
         else:
             return result
@@ -282,7 +282,7 @@ class TargetModel(Model):
         )
         if value is None:
             return 0
-        elif isinstance(value, (bytes, bytearray)):
+        elif isinstance(value, bytes | bytearray):
             return int(value)
         else:
             return value
@@ -406,7 +406,7 @@ class TargetModel(Model):
         result = cls._store_for_target(target_name, scope).hincrby(
             f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name, count
         )
-        if isinstance(result, (bytes, bytearray)):
+        if isinstance(result, bytes | bytearray):
             return int(result)
         else:
             return result
@@ -427,7 +427,7 @@ class TargetModel(Model):
         value = cls._store_for_target(target_name, scope).hget(f"{scope}__COMMANDCNTS__{{{target_name}}}", packet_name)
         if value is None:
             return 0
-        elif isinstance(value, (bytes, bytearray)):
+        elif isinstance(value, bytes | bytearray):
             return int(value)
         else:
             return value

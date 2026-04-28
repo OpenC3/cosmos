@@ -12,8 +12,8 @@
 import json
 
 from openc3.environment import OPENC3_SCOPE
-from openc3.models.model import Model
 from openc3.models.db_sharded_model import DbShardedModel
+from openc3.models.model import Model
 from openc3.utilities.store import Store
 
 

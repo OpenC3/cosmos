@@ -12,9 +12,10 @@
 import json
 
 from openc3.environment import OPENC3_SCOPE
-from openc3.models.model import EphemeralModel
 from openc3.models.db_sharded_model import DbShardedModel
+from openc3.models.model import EphemeralModel
 from openc3.utilities.store import Store
+
 
 class MetricModel(DbShardedModel, EphemeralModel):
     PRIMARY_KEY = "__openc3__metric"

@@ -24,7 +24,7 @@ from openc3.microservices.microservice import Microservice
 from openc3.topics.config_topic import ConfigTopic
 from openc3.topics.topic import Topic
 from openc3.utilities.questdb_client import QuestDBClient
-from openc3.utilities.store import EphemeralStore, Store
+from openc3.utilities.store import EphemeralStore
 from openc3.utilities.thread_manager import ThreadManager
 
 
