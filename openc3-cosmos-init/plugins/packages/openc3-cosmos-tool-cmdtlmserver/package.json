@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "7.27.0",
-    "@dagrejs/dagre": "2.0.4",
+    "@dagrejs/dagre": "3.0.0",
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
     "@vue-flow/background": "1.3.2",
