@@ -90,8 +90,8 @@ require 'openc3/top_level'
 
 # Create a easy alias to the base of the spec directory
 SPEC_DIR = File.dirname(__FILE__)
-$openc3_scope = ENV['OPENC3_SCOPE']
-$openc3_password = ENV['OPENC3_API_PASSWORD']
+$openc3_scope = ENV.fetch('OPENC3_SCOPE', 'DEFAULT')
+$openc3_password = ENV.fetch('OPENC3_API_PASSWORD', 'password')
 $openc3_authorize = false
 $openc3_mock_token = 'mock_token'
 $openc3_mock_otp = 'mock_otp'

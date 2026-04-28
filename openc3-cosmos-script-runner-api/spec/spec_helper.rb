@@ -78,8 +78,8 @@ ENV['OPENC3_BUCKET_PASSWORD'] = 'openc3bucketpassword'
 ENV['OPENC3_SCOPE'] = 'DEFAULT'
 ENV['OPENC3_CLOUD'] = 'aws'
 
-$openc3_scope = ENV['OPENC3_SCOPE']
-$openc3_token = ENV['OPENC3_API_PASSWORD']
+$openc3_scope = ENV.fetch('OPENC3_SCOPE', 'DEFAULT')
+$openc3_token = ENV.fetch('OPENC3_API_PASSWORD', 'password')
 $openc3_mock_token = 'mock_token'
 
 # Mock the HTTP request for OpenC3Authentication
