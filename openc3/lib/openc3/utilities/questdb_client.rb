@@ -87,7 +87,6 @@ module OpenC3
           return conn
         rescue
           # Will need to reconnect
-          conn = nil
         end
       end
       conn = PG::Connection.new(
