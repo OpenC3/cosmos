@@ -55,7 +55,7 @@ Repository = "https://github.com/OpenC3/cosmos"
 Issues = "https://github.com/OpenC3/cosmos/issues"
 
 [project.scripts]
-openc3pycli = "openc3.cli:main"
+openc3pycli = "openc3pycli:main"
 
 [dependency-groups]
 dev = [
@@ -69,6 +69,12 @@ dev = [
 [build-system]
 requires = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["openc3pycli"]
+
+[tool.setuptools.packages.find]
+include = ["openc3*"]
 
 [tool.ruff]
 # Line length to match Black

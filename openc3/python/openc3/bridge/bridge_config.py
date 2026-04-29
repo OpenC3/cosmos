@@ -10,6 +10,8 @@
 # if purchased from OpenC3, Inc.
 
 import os
+import re
+import tempfile
 
 from openc3.config.config_parser import ConfigParser
 from openc3.logs.stream_log_pair import StreamLogPair
@@ -106,110 +108,134 @@ ROUTER SERIAL_ROUTER openc3/interfaces/tcpip_server_interface.py <%= router_port
                 if existing_variables and variable_name in existing_variables:
                     variables[variable_name] = existing_variables[variable_name]
 
-        parser = ConfigParser()
-        for keyword, params in parser.parse_file(filename, False, True, True):
-            match keyword:
-                case "VARIABLE":
-                    # Ignore during this pass, below is to make CodeScanner pass (pass was not accepted)
-                    ...
-                case "INTERFACE":
-                    usage = "INTERFACE <Name> <Filename> <Specific Parameters>"
-                    parser.verify_num_parameters(2, None, usage)
-                    interface_name = params[0].upper()
-                    if interface_name in self.interfaces:
-                        raise parser.error(f"Interface '{interface_name}' defined twice")
+        # The Python ConfigParser does not perform ERB-style variable
+        # substitution like Ruby does, so substitute <%= name %> placeholders
+        # manually using the VARIABLE values collected above.
+        with open(filename) as f:
+            content = f.read()
+        content = re.sub(
+            r"<%=\s*(\w+)\s*%>",
+            lambda m: variables.get(m.group(1), m.group(0)),
+            content,
+        )
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False
+        ) as tf:
+            tf.write(content)
+            substituted_filename = tf.name
 
-                    interface_class = get_class_from_module(
-                        filename_to_module(params[1]), filename_to_class_name(params[1])
-                    )
-                    if params[2]:
-                        current_interface_or_router = interface_class(*params[2:])
-                    else:
-                        current_interface_or_router = interface_class()
+        try:
+            parser = ConfigParser()
+            for keyword, params in parser.parse_file(substituted_filename, False, True, True):
+                match keyword:
+                    case "VARIABLE":
+                        # Ignore during this pass, below is to make CodeScanner pass (pass was not accepted)
+                        ...
+                    case "INTERFACE":
+                        usage = "INTERFACE <Name> <Filename> <Specific Parameters>"
+                        parser.verify_num_parameters(2, None, usage)
+                        interface_name = params[0].upper()
+                        if interface_name in self.interfaces:
+                            raise parser.error(f"Interface '{interface_name}' defined twice")
 
-                    current_type = "INTERFACE"
-                    current_interface_or_router.name = interface_name
-                    current_interface_or_router.config_params = params[1:]
-                    self.interfaces[interface_name] = current_interface_or_router
-
-                case "RECONNECT_DELAY" | "LOG_STREAM" | "OPTION" | "PROTOCOL":
-                    if current_interface_or_router is None:
-                        raise parser.error(f"No current interface or router for {keyword}")
-
-                    match keyword:
-                        case "RECONNECT_DELAY":
-                            parser.verify_num_parameters(1, 1, f"{keyword} <Delay in Seconds>")
-                            current_interface_or_router.reconnect_delay = float(params[0])
-
-                        case "LOG_STREAM":
-                            parser.verify_num_parameters(
-                                0,
-                                None,
-                                f"{keyword} <Log Stream Class File (optional)> <Log Stream Parameters (optional)>",
-                            )
-                            current_interface_or_router.stream_log_pair = StreamLogPair(
-                                current_interface_or_router.name, params
-                            )
-                            current_interface_or_router.start_raw_logging()
-
-                        case "OPTION":
-                            parser.verify_num_parameters(
-                                2,
-                                None,
-                                f"{keyword} <Option Name> <Option Value 1> <Option Value 2 (optional)> <etc>",
-                            )
-                            current_interface_or_router.set_option(params[0], params[1:])
-
-                        case "PROTOCOL":
-                            usage = f"{keyword} <READ WRITE READ_WRITE> <protocol filename or classname> <Protocol specific parameters>"
-                            parser.verify_num_parameters(2, None, usage)
-                            if params[0].upper() not in ["READ", "WRITE", "READ_WRITE"]:
-                                raise parser.error(f"Invalid protocol type: {params[0]}", usage)
-
-                            try:
-                                protocol_class = get_class_from_module(
-                                    filename_to_module(params[1]),
-                                    filename_to_class_name(params[1]),
-                                )
-                                current_interface_or_router.add_protocol(protocol_class, params[2:], params[0].upper())
-                            except Exception as error:
-                                raise parser.error(str(error), usage) from error
-
-                case "ROUTER":
-                    usage = "ROUTER <Name> <Filename> <Specific Parameters>"
-                    parser.verify_num_parameters(2, None, usage)
-                    router_name = params[0].upper()
-                    if router_name in self.routers:
-                        raise parser.error(f"Router '{router_name}' defined twice")
-
-                    router_class = get_class_from_module(
-                        filename_to_module(params[1]), filename_to_class_name(params[1])
-                    )
-                    if len(params) > 2:
-                        current_interface_or_router = router_class(*params[2:])
-                    else:
-                        current_interface_or_router = router_class()
-
-                    current_type = "ROUTER"
-                    current_interface_or_router.name = router_name
-                    self.routers[router_name] = current_interface_or_router
-
-                case "ROUTE":
-                    if current_interface_or_router is None or current_type != "ROUTER":
-                        raise parser.error(f"No current router for {keyword}")
-
-                    usage = "ROUTE <Interface Name>"
-                    parser.verify_num_parameters(1, 1, usage)
-                    interface_name = params[0].upper()
-                    interface = self.interfaces.get(interface_name)
-                    if interface is None:
-                        raise parser.error(
-                            f"Unknown interface {interface_name} mapped to router {current_interface_or_router.name}"
+                        interface_class = get_class_from_module(
+                            filename_to_module(params[1]), filename_to_class_name(params[1])
                         )
+                        if len(params) > 2:
+                            current_interface_or_router = interface_class(*params[2:])
+                        else:
+                            current_interface_or_router = interface_class()
 
-                    if interface not in current_interface_or_router.interfaces:
-                        current_interface_or_router.interfaces.append(interface)
-                        interface.routers.append(current_interface_or_router)
+                        current_type = "INTERFACE"
+                        current_interface_or_router.name = interface_name
+                        current_interface_or_router.config_params = params[1:]
+                        self.interfaces[interface_name] = current_interface_or_router
 
-                case _:
-                    raise parser.error(f"Unknown keyword: {keyword}")
+                    case "RECONNECT_DELAY" | "LOG_STREAM" | "OPTION" | "PROTOCOL":
+                        if current_interface_or_router is None:
+                            raise parser.error(f"No current interface or router for {keyword}")
+
+                        match keyword:
+                            case "RECONNECT_DELAY":
+                                parser.verify_num_parameters(1, 1, f"{keyword} <Delay in Seconds>")
+                                current_interface_or_router.reconnect_delay = float(params[0])
+
+                            case "LOG_STREAM":
+                                parser.verify_num_parameters(
+                                    0,
+                                    None,
+                                    f"{keyword} <Log Stream Class File (optional)> <Log Stream Parameters (optional)>",
+                                )
+                                current_interface_or_router.stream_log_pair = StreamLogPair(
+                                    current_interface_or_router.name, params
+                                )
+                                current_interface_or_router.start_raw_logging()
+
+                            case "OPTION":
+                                parser.verify_num_parameters(
+                                    2,
+                                    None,
+                                    f"{keyword} <Option Name> <Option Value 1> <Option Value 2 (optional)> <etc>",
+                                )
+                                current_interface_or_router.set_option(params[0], params[1:])
+
+                            case "PROTOCOL":
+                                usage = f"{keyword} <READ WRITE READ_WRITE> <protocol filename or classname> <Protocol specific parameters>"
+                                parser.verify_num_parameters(2, None, usage)
+                                if params[0].upper() not in ["READ", "WRITE", "READ_WRITE"]:
+                                    raise parser.error(f"Invalid protocol type: {params[0]}", usage)
+
+                                try:
+                                    protocol_class = get_class_from_module(
+                                        filename_to_module(params[1]),
+                                        filename_to_class_name(params[1]),
+                                    )
+                                    current_interface_or_router.add_protocol(
+                                        protocol_class, params[2:], params[0].upper()
+                                    )
+                                except Exception as error:
+                                    raise parser.error(str(error), usage) from error
+
+                    case "ROUTER":
+                        usage = "ROUTER <Name> <Filename> <Specific Parameters>"
+                        parser.verify_num_parameters(2, None, usage)
+                        router_name = params[0].upper()
+                        if router_name in self.routers:
+                            raise parser.error(f"Router '{router_name}' defined twice")
+
+                        router_class = get_class_from_module(
+                            filename_to_module(params[1]), filename_to_class_name(params[1])
+                        )
+                        if len(params) > 2:
+                            current_interface_or_router = router_class(*params[2:])
+                        else:
+                            current_interface_or_router = router_class()
+
+                        current_type = "ROUTER"
+                        current_interface_or_router.name = router_name
+                        self.routers[router_name] = current_interface_or_router
+
+                    case "ROUTE":
+                        if current_interface_or_router is None or current_type != "ROUTER":
+                            raise parser.error(f"No current router for {keyword}")
+
+                        usage = "ROUTE <Interface Name>"
+                        parser.verify_num_parameters(1, 1, usage)
+                        interface_name = params[0].upper()
+                        interface = self.interfaces.get(interface_name)
+                        if interface is None:
+                            raise parser.error(
+                                f"Unknown interface {interface_name} mapped to router {current_interface_or_router.name}"
+                            )
+
+                        if interface not in current_interface_or_router.interfaces:
+                            current_interface_or_router.interfaces.append(interface)
+                            interface.routers.append(current_interface_or_router)
+
+                    case _:
+                        raise parser.error(f"Unknown keyword: {keyword}")
+        finally:
+            try:
+                os.unlink(substituted_filename)
+            except OSError:
+                pass
