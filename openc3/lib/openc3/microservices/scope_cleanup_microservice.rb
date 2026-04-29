@@ -100,7 +100,7 @@ ORDER BY
                 if status == 'SUSPENDED'
                   # Try to automatically unsuspend
                   @logger.info("QuestDB db_shard #{db_shard}: Attempting to unsuspend: #{table_name}")
-                  conn.exec("ALTER TABLE #{table_name} RESUME WAL;")
+                  conn.exec("ALTER TABLE \"#{table_name}\" RESUME WAL;")
                 end
               end
 
