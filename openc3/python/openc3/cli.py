@@ -25,28 +25,31 @@ OpenC3 Python CLI - Command line interface for OpenC3 Python tools
 
 import argparse
 import os
-import sys
+
+
+# OPENC3_NO_STORE tells the Logger to skip publishing log messages to a Redis
+# store that doesn't exist when running the CLI on a host (e.g. a bridge).
+# It must be set before any openc3 module is imported, because
+# openc3/environment.py reads it once at import time and freezes it as a
+# module-level constant. All openc3 imports below are deferred into the
+# command handlers so this assignment lands first. setdefault preserves any
+# value the user already exported.
+os.environ.setdefault("OPENC3_NO_STORE", "1")
 
 
 def main(args: list[str] | None = None) -> None:
     """Main entry point for the OpenC3 Python CLI"""
-
-    # Check if OPENC3_NO_STORE is set - this prevents Redis connection attempts
-    # Something with the module loading order, the os.environ['OPENC3_NO_STORE'] refused to set it correctly
-    if not os.environ.get("OPENC3_NO_STORE"):
-        print("Error: OPENC3_NO_STORE environment variable must be set to use the CLI.")
-        print("Please run: export OPENC3_NO_STORE=1")
-        print("Then run the CLI command again.")
-        sys.exit(1)
 
     parser = argparse.ArgumentParser(prog="openc3pycli", description="OpenC3 Python Command Line Interface")
 
     parser.add_argument("--version", action="version", version="openc3pycli 6.7.1-beta0")
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
-    bridge_parser = subparsers.add_parser("bridge", help="Bridge related commands")
+    bridge_parser = subparsers.add_parser("bridge", help="Run a COSMOS bridge from a bridge configuration file")
     bridge_parser.add_argument("filename", nargs="?", default="bridge.txt", help="Bridge configuration file")
     bridge_parser.add_argument("variables", nargs="*", help="Variables in key=value format")
+    bridgesetup_parser = subparsers.add_parser("bridgesetup", help="Generate a default bridge configuration file")
+    bridgesetup_parser.add_argument("filename", nargs="?", default="bridge.txt", help="Output filename")
     parsed_args = parser.parse_args(args)
 
     if parsed_args.command is None:
@@ -56,6 +59,8 @@ def main(args: list[str] | None = None) -> None:
     # Handle commands
     if parsed_args.command == "bridge":
         handle_bridge_command(parsed_args)
+    elif parsed_args.command == "bridgesetup":
+        handle_bridgesetup_command(parsed_args)
 
 
 def run_bridge(filename, params):
@@ -77,6 +82,14 @@ def handle_bridge_command(args) -> None:
     filename = args.filename
     variables = args.variables or []
     run_bridge(filename, variables)
+
+
+def handle_bridgesetup_command(args) -> None:
+    from openc3.bridge.bridge_config import BridgeConfig
+
+    filename = args.filename
+    if not os.path.exists(filename):
+        BridgeConfig.generate_default(filename)
 
 
 if __name__ == "__main__":
