@@ -34,7 +34,7 @@ class Structure:
     ):
         if (default_endianness == "BIG_ENDIAN") or (default_endianness == "LITTLE_ENDIAN"):
             self.default_endianness = default_endianness
-            if buffer is not None and not isinstance(buffer, (bytes, bytearray)):
+            if buffer is not None and not isinstance(buffer, bytes | bytearray):
                 raise TypeError(f"wrong argument type {buffer.__class__.__name__} (expected bytes)")
             if buffer is None:
                 self._buffer = None
@@ -447,7 +447,7 @@ class Structure:
                     string += f"{indent_string}{item.name}: {self.read_item(item, value_type, buffer)}\n"
                 else:
                     value = self.read_item(item, value_type, buffer)
-                    if isinstance(value, (str, bytes, bytearray)):
+                    if isinstance(value, str | bytes | bytearray):
                         string += f"{indent_string}{item.name}:\n"
                         string += formatted(value, 1, 16, " ", indent + 2)
                     else:
@@ -596,7 +596,7 @@ class Structure:
                         adjustment += new_bit_size - item.original_bit_size
 
     def internal_buffer_equals(self, buffer):
-        if not isinstance(buffer, (bytes, bytearray)):
+        if not isinstance(buffer, bytes | bytearray):
             raise TypeError(f"Buffer class is {buffer.__class__.__name__} but must be bytearray")
 
         self._buffer = bytearray(buffer[:])

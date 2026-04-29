@@ -1059,7 +1059,7 @@ class RunningScript:
             self.scriptrunner_puts(f"Script completed: {self.script_status.filename}")
 
         except Exception as error:
-            if isinstance(error, (StopScriptError, SkipScriptError)):
+            if isinstance(error, StopScriptError | SkipScriptError):
                 self.handle_output_io()
                 self.scriptrunner_puts(f"Script stopped: {self.script_status.filename}")
             else:

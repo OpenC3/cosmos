@@ -44,7 +44,7 @@ describe Class do
 
     it "does not allow arbitrary code" do
       saved_verbose = $VERBOSE
-      $VERBOSE = false
+      $VERBOSE = nil
       expect {
         class MyClass
           instance_attr_reader "test;puts 'HI'"
@@ -63,7 +63,7 @@ describe Class do
   describe "instance_attr_accessor" do
     it "adds instance attribute readers for class variables" do
       saved_verbose = $VERBOSE
-      $VERBOSE = false
+      $VERBOSE = nil
       class MyClass
         instance_attr_accessor :test
         @@instance = nil

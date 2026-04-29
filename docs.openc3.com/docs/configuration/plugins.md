@@ -602,6 +602,20 @@ Example Usage:
 SHARD 0
 ```
 
+### DB_SHARD
+<span class="badge badge--secondary since-right">Since 7.1.0</span>**Shard for target database database if sharding Redis/TSDB**
+
+DB Shard. Only used if running multiple database shards typically in Kubernetes
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| DB Shard | DB Shard number starting from 0 | True |
+
+Example Usage:
+```cosmos
+DB_SHARD 0
+```
+
 ## MICROSERVICE
 **Defines a new microservice**
 
@@ -790,11 +804,25 @@ Operator Shard. Only used if running multiple operator containers typically in K
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Shard | Shard number starting from 0 | False |
+| Shard | Shard number starting from 0 | True |
 
 Example Usage:
 ```cosmos
 SHARD 0
+```
+
+### DB_SHARD
+<span class="badge badge--secondary since-right">Since 7.1.0</span>**Shard for target database database if sharding Redis/TSDB**
+
+DB Shard. Only used if running multiple database shards typically in Kubernetes
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| DB Shard | DB Shard number starting from 0 | True |
+
+Example Usage:
+```cosmos
+DB_SHARD 0
 ```
 
 ### STOPPED

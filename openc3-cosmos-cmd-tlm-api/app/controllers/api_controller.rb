@@ -16,28 +16,10 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/open_telemetry'
-require 'openc3/utilities/questdb_client'
-
-$tsdb_connection = nil
 
 class ApiController < ApplicationController
   def ping
     render plain: 'OK'
-  end
-
-  # Time Seriese Database (TSDB) presence check
-  def tsdb
-    if $tsdb_connection
-      render plain: 'OK', status: :ok
-      return
-    end
-    begin
-      OpenC3::QuestDBClient.check_connection
-      $tsdb_connection = 'OK'
-      render plain: 'OK', status: :ok
-    rescue => e
-      render plain: e.message, status: :not_found
-    end
   end
 
   def api

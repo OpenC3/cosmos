@@ -30,6 +30,17 @@
         >
           Refresh
         </v-btn>
+        <v-text-field
+          v-model="db_shard"
+          type="number"
+          min="0"
+          label="DB Shard"
+          hint="DB Shard is N/A in Core"
+          hide-details
+          density="compact"
+          style="max-width: 100px"
+          class="ml-4"
+        />
         <v-spacer />
         <v-text-field
           v-model="gapSampleInterval"
@@ -311,6 +322,7 @@ export default {
       repairDialog: false,
       repairContext: null,
       gapSampleInterval: '1m',
+      db_shard: '0',
     }
   },
   computed: {
@@ -357,6 +369,7 @@ export default {
       this.metricsLoading = true
       execSql(
         'SELECT tableName, partitionCount, rowCount, diskSize FROM table_storage;',
+        this.db_shard,
       )
         .then((response) => {
           const cols = response.data.columns
@@ -384,7 +397,7 @@ export default {
         })
     },
     dropTable(tableName) {
-      return execSql(`DROP TABLE '${tableName}';`)
+      return execSql(`DROP TABLE '${tableName}';`, this.db_shard)
     },
     deleteTable(tableName) {
       let target = tableName.split('__')[2] || tableName
@@ -479,6 +492,7 @@ export default {
       // Get first and last timestamps
       const rangeResp = await execSql(
         `SELECT first(PACKET_TIMESECONDS) as first_ts, last(PACKET_TIMESECONDS) as last_ts FROM '${tableName}';`,
+        this.db_shard,
       )
       const rangeCols = rangeResp.data.columns
       const rangeRow = rangeResp.data.rows[0]
@@ -493,6 +507,7 @@ export default {
       // Sample by the user-chosen interval with FILL(NULL) to detect gaps.
       const gapResp = await execSql(
         `(SELECT PACKET_TIMESECONDS, count() as cnt FROM '${tableName}' SAMPLE BY ${interval} FILL(NULL)) WHERE cnt IS NULL`,
+        this.db_shard,
       )
       const gapCols = gapResp.data.columns
       const gapRows = gapResp.data.rows.map((row) => {

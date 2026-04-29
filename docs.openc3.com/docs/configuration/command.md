@@ -372,7 +372,7 @@ OVERFLOW TRUNCATE
 ```
 
 #### HIDDEN
-**Hides this parameter from all the OpenC3 tools**
+<span class="badge badge--secondary since-right">Since 6.10.0</span>**Hides this parameter from all the OpenC3 tools**
 
 This item will not appear in CmdSender. It also hides this item from appearing in the Script Runner popup helper when writing scripts. The parameter should not be provided to commands.
 

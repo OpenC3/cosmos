@@ -16,10 +16,14 @@ import { Api } from '@openc3/js-common/services'
 // QuestDB's PG wire occasionally drops idle connections; retry with backoff
 // so transient PQconsumeInput / "server closed the connection" errors from
 // the backend don't surface to the user.
-export async function execSql(sql, retries = 3) {
+export async function execSql(sql, db_shard, retries = 3) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      return await Api.post('/openc3-api/tsdb/exec', {
+      let url = '/openc3-api/tsdb/exec'
+      if (db_shard && db_shard !== '0') {
+        url += `?db_shard=${db_shard}`
+      }
+      return await Api.post(url, {
         data: sql,
         headers: {
           Accept: 'application/json',

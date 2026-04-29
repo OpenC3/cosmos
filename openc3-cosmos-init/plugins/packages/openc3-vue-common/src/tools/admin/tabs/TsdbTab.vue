@@ -17,7 +17,6 @@
       <v-tab value="metrics" data-test="tsdb-metrics-tab">Metrics</v-tab>
       <v-tab value="queries" data-test="tsdb-queries-tab">Queries</v-tab>
     </v-tabs>
-
     <v-window v-model="activeTab">
       <v-window-item value="metrics">
         <tsdb-metrics />

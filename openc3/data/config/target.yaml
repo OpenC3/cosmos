@@ -159,3 +159,14 @@ TARGET:
           values: \d+
       example: |
         SHARD 0
+    DB_SHARD:
+      summary: Shard for target database database if sharding Redis/TSDB
+      description: DB Shard. Only used if running multiple database shards typically in Kubernetes
+      since: 7.1.0
+      parameters:
+        - name: DB Shard
+          required: true
+          description: DB Shard number starting from 0
+          values: \d+
+      example: |
+        DB_SHARD 0

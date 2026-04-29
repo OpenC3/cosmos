@@ -68,6 +68,7 @@ module OpenC3
       tmp_dir = Dir.mktmpdir
       job = load_job
       dedup_enabled_by_us = []
+      db_shard = 0
       @@run_mutex.synchronize do
         begin
           mark(job, state: 'Running', progress_phase: 'downloading',
@@ -85,6 +86,7 @@ module OpenC3
             raise ReingestJobError, "Cannot determine target from path '#{@path}'; expected '{scope}/raw_logs/{tlm|cmd}/{target}/'"
           end
           target = path_parts[3]
+          db_shard = QuestDBClient.db_shard_for_target(target, scope: @scope)
 
           local_files = download_and_uncompress(job, tmp_dir)
 
@@ -96,7 +98,7 @@ module OpenC3
           table_names, file_versions = discover_tables_and_versions(local_files)
           mark(job, table_names: table_names, progress_total: table_names.length)
 
-          dedup_enabled_by_us, preexisting = enable_dedup(job, table_names)
+          dedup_enabled_by_us, preexisting = enable_dedup(job, table_names, db_shard)
           mark(job,
                dedup_enabled_by_us: dedup_enabled_by_us,
                dedup_preexisting: preexisting,
@@ -114,7 +116,7 @@ module OpenC3
           cooldown(job)
 
           mark(job, progress_phase: 'disabling_dedup')
-          disabled = disable_dedup(job, dedup_enabled_by_us)
+          disabled = disable_dedup(job, dedup_enabled_by_us, db_shard)
           mark(job, dedup_disabled_tables: disabled,
                dedup_disabled_at: Time.now.utc.iso8601,
                state: 'Complete',
@@ -124,7 +126,7 @@ module OpenC3
           # Always try to revert DEDUP even on crash so user tables are not left altered
           disabled_on_crash = []
           begin
-            disabled_on_crash = disable_dedup(job, dedup_enabled_by_us)
+            disabled_on_crash = disable_dedup(job, dedup_enabled_by_us, db_shard)
           rescue => de
             @logger.error("Reingest job #{@job_id} failed to disable DEDUP during crash cleanup: #{de.message}")
           end
@@ -308,10 +310,10 @@ module OpenC3
 
     # Returns [enabled_by_us, preexisting]. Only tables we enable are recorded
     # in enabled_by_us; pre-existing DEDUP tables are left untouched on teardown.
-    def enable_dedup(job, table_names)
+    def enable_dedup(job, table_names, db_shard)
       enabled_by_us = []
       preexisting = []
-      conn = QuestDBClient.connection
+      conn = QuestDBClient.connection(db_shard: db_shard)
       table_names.each_with_index do |table_name, i|
         begin
           already = dedup_already_enabled?(conn, table_name)
@@ -357,9 +359,9 @@ module OpenC3
       end
     end
 
-    def disable_dedup(job, tables)
+    def disable_dedup(job, tables, db_shard)
       disabled = []
-      conn = QuestDBClient.connection
+      conn = QuestDBClient.connection(db_shard: db_shard)
       tables.each_with_index do |table_name, i|
         begin
           conn.exec("ALTER TABLE '#{table_name}' DEDUP DISABLE")

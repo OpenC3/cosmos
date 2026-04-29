@@ -20,27 +20,16 @@ require 'hiredis-client'
 require 'json'
 require 'connection_pool'
 
-if ENV['OPENC3_REDIS_CLUSTER']
-  require 'openc3-enterprise/utilities/store'
-  $openc3_redis_cluster = true
-else
-  $openc3_redis_cluster = false
-end
-
 module OpenC3
   class StoreConnectionPool < ConnectionPool
     def pipelined
-      if $openc3_redis_cluster
-        yield # TODO: Update keys to support pipelining in cluster
-      else
-        with do |redis|
-          redis.pipelined do |pipeline|
-            Thread.current[:pipeline] = pipeline
-            begin
-              yield
-            ensure
-              Thread.current[:pipeline] = nil
-            end
+      with do |redis|
+        redis.pipelined do |pipeline|
+          Thread.current[:pipeline] = pipeline
+          begin
+            yield
+          ensure
+            Thread.current[:pipeline] = nil
           end
         end
       end
@@ -57,8 +46,13 @@ module OpenC3
   end
 
   class Store
-    # Variable that holds the singleton instance
-    @instance = nil
+    # Variable that holds the singleton instances per db_shard
+    @instances = []
+
+    # DB_Shard cache: { "scope__target_name" => [db_shard_number, Time] }
+    @@db_shard_cache = {}
+    @@db_shard_cache_mutex = Mutex.new
+    DB_SHARD_CACHE_TIMEOUT = 60 # seconds
 
     # Mutex used to ensure that only one instance is created
     @@instance_mutex = Mutex.new
@@ -66,14 +60,48 @@ module OpenC3
     attr_reader :redis_url
     attr_reader :redis_pool
 
+    # Look up the db_shard number for a target with a 1-minute cache.
+    # Reads directly from Redis db_shard 0 to avoid circular deps with TargetModel.
+    # Non-target-specific data (nil target_name) always returns db_shard 0.
+    def self.db_shard_for_target(target_name, scope: "DEFAULT")
+      return 0 unless target_name
+
+      cache_key = "#{scope}__#{target_name}"
+      now = Time.now
+
+      @@db_shard_cache_mutex.synchronize do
+        cached = @@db_shard_cache[cache_key]
+        if cached
+          db_shard, cached_at = cached
+          return db_shard if (now - cached_at) < DB_SHARD_CACHE_TIMEOUT
+        end
+      end
+
+      begin
+        json = Store.instance(db_shard: 0).hget("#{scope}__openc3_targets", target_name)
+        db_shard = json ? JSON.parse(json)['db_shard'].to_i : 0
+      rescue
+        db_shard = 0
+      end
+
+      @@db_shard_cache_mutex.synchronize do
+        @@db_shard_cache[cache_key] = [db_shard, now]
+      end
+
+      db_shard
+    end
+
     # Get the singleton instance
-    def self.instance(pool_size = 100)
+    def self.instance(pool_size = 100, db_shard: 0)
       # Logger.level = Logger::DEBUG
-      return @instance if @instance
+      @instances ||= []
+      the_instance = @instances[db_shard]
+      return the_instance if the_instance
 
       @@instance_mutex.synchronize do
-        @instance ||= self.new(pool_size)
-        return @instance
+        @instances ||= []
+        @instances[db_shard] ||= self.new(pool_size, db_shard: db_shard)
+        return @instances[db_shard]
       end
     end
 
@@ -87,17 +115,16 @@ module OpenC3
       @redis_pool.with { |redis| redis.public_send(message, *args, **kwargs, &block) }
     end
 
-    def initialize(pool_size = 10)
+    def initialize(pool_size = 10, db_shard: 0)
       @redis_username = ENV['OPENC3_REDIS_USERNAME']
       @redis_key = ENV['OPENC3_REDIS_PASSWORD']
-      @redis_url = "redis://#{ENV['OPENC3_REDIS_HOSTNAME']}:#{ENV['OPENC3_REDIS_PORT']}"
+      hostname = ENV['OPENC3_REDIS_HOSTNAME'].to_s.gsub("SHARDNUM", db_shard.to_s)
+      @redis_url = "redis://#{hostname}:#{ENV.fetch('OPENC3_REDIS_PORT', 6379)}"
       @redis_pool = StoreConnectionPool.new(size: pool_size) { build_redis() }
     end
 
-    unless $openc3_redis_cluster
-      def build_redis
-        return Redis.new(url: @redis_url, username: @redis_username, password: @redis_key)
-      end
+    def build_redis
+      return Redis.new(url: @redis_url, username: @redis_username, password: @redis_key)
     end
 
     ###########################################################################
@@ -160,30 +187,28 @@ module OpenC3
       return offsets
     end
 
-    unless $openc3_redis_cluster
-      def read_topics(topics, offsets = nil, timeout_ms = 1000, count = nil)
-        return {} if topics.empty?
-        Thread.current[:topic_offsets] ||= {}
-        topic_offsets = Thread.current[:topic_offsets]
-        begin
-          # Logger.debug "read_topics: #{topics}, #{offsets} pool:#{@redis_pool}"
-          @redis_pool.with do |redis|
-            offsets = update_topic_offsets(topics) unless offsets
-            result = redis.xread(topics, offsets, block: timeout_ms, count: count)
-            if result and result.length > 0
-              result.each do |topic, messages|
-                messages.each do |msg_id, msg_hash|
-                  topic_offsets[topic] = msg_id
-                  yield topic, msg_id, msg_hash, redis if block_given?
-                end
+    def read_topics(topics, offsets = nil, timeout_ms = 1000, count = nil)
+      return {} if topics.empty?
+      Thread.current[:topic_offsets] ||= {}
+      topic_offsets = Thread.current[:topic_offsets]
+      begin
+        # Logger.debug "read_topics: #{topics}, #{offsets} pool:#{@redis_pool}"
+        @redis_pool.with do |redis|
+          offsets = update_topic_offsets(topics) unless offsets
+          result = redis.xread(topics, offsets, block: timeout_ms, count: count)
+          if result and result.length > 0
+            result.each do |topic, messages|
+              messages.each do |msg_id, msg_hash|
+                topic_offsets[topic] = msg_id
+                yield topic, msg_id, msg_hash, redis if block_given?
               end
             end
-            # Logger.debug "result:#{result}" if result and result.length > 0
-            return result
           end
-        rescue Redis::TimeoutError
-          return {} # Should return an empty hash not array - xread returns a hash
+          # Logger.debug "result:#{result}" if result and result.length > 0
+          return result
         end
+      rescue Redis::TimeoutError
+        return {} # Should return an empty hash not array - xread returns a hash
       end
     end
 
@@ -233,9 +258,10 @@ module OpenC3
   end
 
   class EphemeralStore < Store
-    def initialize(pool_size = 10)
+    def initialize(pool_size = 10, db_shard: 0)
       super(pool_size)
-      @redis_url = "redis://#{ENV['OPENC3_REDIS_EPHEMERAL_HOSTNAME']}:#{ENV['OPENC3_REDIS_EPHEMERAL_PORT']}"
+      hostname = ENV['OPENC3_REDIS_EPHEMERAL_HOSTNAME'].to_s.gsub("SHARDNUM", db_shard.to_s)
+      @redis_url = "redis://#{hostname}:#{ENV.fetch('OPENC3_REDIS_EPHEMERAL_PORT', 6380)}"
       @redis_pool = StoreConnectionPool.new(size: pool_size) { build_redis() }
     end
   end

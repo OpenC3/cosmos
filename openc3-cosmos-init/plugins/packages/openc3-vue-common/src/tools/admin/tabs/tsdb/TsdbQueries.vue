@@ -48,6 +48,16 @@
       >
         Execute
       </v-btn>
+      <v-text-field
+        v-model="db_shard"
+        type="number"
+        min="0"
+        label="DB Shard"
+        hide-details
+        density="compact"
+        style="max-width: 100px"
+        class="ml-4"
+      />
     </v-card-actions>
 
     <v-data-table
@@ -69,6 +79,7 @@ export default {
   data() {
     return {
       sqlText: '',
+      db_shard: '0',
       columns: [],
       rows: [],
       errorMessage: null,
@@ -94,7 +105,7 @@ export default {
       this.columns = []
       this.rows = []
       this.loading = true
-      execSql(this.sqlText)
+      execSql(this.sqlText, this.db_shard)
         .then((response) => {
           this.columns = response.data.columns
           this.rows = response.data.rows.map((row) => {

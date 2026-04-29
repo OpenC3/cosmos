@@ -69,6 +69,7 @@ class MicroserviceModel(Model):
         disable_erb=None,
         ignore_changes=None,
         shard=0,
+        db_shard=0,
         enabled: bool = True,
         scope: str = OPENC3_SCOPE,
     ):
@@ -111,6 +112,9 @@ class MicroserviceModel(Model):
         self.shard = shard
         if self.shard is None:
             self.shard = 0
+        self.db_shard = db_shard
+        if self.db_shard is None:
+            self.db_shard = 0
         self.enabled = enabled
         if self.enabled is None:
             self.enabled = True
@@ -137,5 +141,6 @@ class MicroserviceModel(Model):
             "disable_erb": self.disable_erb,
             "ignore_changes": self.ignore_changes,
             "shard": self.shard,
+            "db_shard": self.db_shard,
             "enabled": self.enabled,
         }

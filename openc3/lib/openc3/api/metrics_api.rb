@@ -28,9 +28,11 @@ module OpenC3
     DELAY_METRICS['log_topic_delta_seconds'] = 0.0
     DELAY_METRICS['router_topic_delta_seconds'] = 0.0
     DELAY_METRICS['text_log_topic_delta_seconds'] = 0.0
+    DELAY_METRICS['tsdb_ingest_topic_delta_seconds'] = 0.0
 
     DURATION_METRICS = {}
     DURATION_METRICS['decom_duration_seconds'] = 0.0
+    DURATION_METRICS['tsdb_ingest_duration_seconds'] = 0.0
 
     SUM_METRICS = {}
     SUM_METRICS['cleanup_total'] = 0
@@ -48,6 +50,8 @@ module OpenC3
     SUM_METRICS['router_directive_total'] = 0
     SUM_METRICS['text_log_total'] = 0
     SUM_METRICS['text_log_error_total'] = 0
+    SUM_METRICS['tsdb_ingest_total'] = 0
+    SUM_METRICS['tsdb_ingest_error_total'] = 0
 
     def get_metrics(manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', manual: manual, scope: scope, token: token)
@@ -79,7 +83,13 @@ module OpenC3
       result.merge!(duration_metrics)
       result.merge!(sum_metrics)
 
-      result.merge!(MetricModel.redis_metrics)
+      redis_metrics = MetricModel.redis_metrics
+      redis_metrics.each do |_db_shard, values|
+        values.each do |key, value|
+          existing = result[key]
+          result[key] = value if existing.nil? or value > existing
+        end
+      end
 
       return result
     end
