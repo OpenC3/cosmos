@@ -553,7 +553,7 @@ class XtceConverter:
         if item.default and item.array_size is None:
             try:
                 # Try to determine if printable
-                if isinstance(item.default, (bytes, bytearray)):
+                if isinstance(item.default, bytes | bytearray):
                     if all(32 <= b < 127 for b in item.default):
                         attrs["initialValue"] = repr(item.default.decode("utf-8"))
                     else:

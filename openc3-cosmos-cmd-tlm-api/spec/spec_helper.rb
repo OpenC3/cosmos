@@ -107,8 +107,8 @@ def mock_redis
   require 'mock_redis'
   redis = MockRedis.new
   allow(Redis).to receive(:new).and_return(redis)
-  OpenC3::Store.instance_variable_set(:@instance, nil)
-  OpenC3::EphemeralStore.instance_variable_set(:@instance, nil)
+  OpenC3::Store.instance_variable_set(:@instances, [])
+  OpenC3::EphemeralStore.instance_variable_set(:@instances, [])
   redis
 end
 

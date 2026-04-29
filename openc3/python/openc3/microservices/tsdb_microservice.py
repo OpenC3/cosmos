@@ -39,7 +39,7 @@ class TsdbMicroservice(Microservice):
     def __init__(self, *args):
         super().__init__(*args)
 
-        Topic.update_topic_offsets(self.topics)
+        # Note: topic offsets are initialized after db_shard is determined below
         config_topic = f"{self.scope}{ConfigTopic.PRIMARY_KEY}"
         self.topic_offset = Topic.update_topic_offsets([config_topic])[0]
 
@@ -52,8 +52,11 @@ class TsdbMicroservice(Microservice):
             elif option[0] == "TLM_DECOM_RETAIN_TIME":
                 self.tlm_decom_retain_time = option[1]
 
-        # Use shared QuestDB client
-        self.questdb = QuestDBClient(logger=self.logger, name=f"Microservice {self.name}")
+        # Use shared QuestDB client with db_shard from microservice config
+        if len(self.topics) <= 0:
+            raise RuntimeError("No topics provided")
+        Topic.update_topic_offsets(self.topics, db_shard=self.db_shard)
+        self.questdb = QuestDBClient(logger=self.logger, name=f"Microservice {self.name}", db_shard=self.db_shard)
         self.questdb.connect_ingest()
         self.questdb.connect_query()
 
@@ -68,6 +71,12 @@ class TsdbMicroservice(Microservice):
 
         # Setup first trim time
         self.next_trim_time_ms = int(time.time() * 1000) + self.TRIM_KEEP_MS
+
+        # Initialize metrics
+        self.ingest_count = 0
+        self.error_count = 0
+        self.metric.set(name="tsdb_ingest_total", value=self.ingest_count, type="counter")
+        self.metric.set(name="tsdb_ingest_error_total", value=self.error_count, type="counter")
 
     def _create_table(self, target_name, packet_name, topic):
         """Create a table for a target/packet combination."""
@@ -86,13 +95,26 @@ class TsdbMicroservice(Microservice):
     def read_topics(self):
         """Read topics and write data to QuestDB"""
         try:
-            for topic, msg_id, msg_hash, redis in Topic.read_topics(self.topics):
+            start = None
+            for topic, msg_id, msg_hash, redis in Topic.read_topics(self.topics, db_shard=self.db_shard):
                 if self.cancel_thread:
                     break
 
                 if topic == self.microservice_topic:
                     self.microservice_cmd(topic, msg_id, msg_hash, redis)
                     continue
+
+                if start is None:
+                    start = time.time()
+                    msgid_seconds_from_epoch = int(msg_id.split("-")[0]) / 1000.0
+                    delta = time.time() - msgid_seconds_from_epoch
+                    self.metric.set(
+                        name="tsdb_ingest_topic_delta_seconds",
+                        value=delta,
+                        type="gauge",
+                        unit="seconds",
+                        help="Delta time between data written to stream and tsdb ingest start",
+                    )
 
                 target_name_bytes = msg_hash.get(b"target_name")
                 packet_name_bytes = msg_hash.get(b"packet_name")
@@ -141,11 +163,19 @@ class TsdbMicroservice(Microservice):
 
                 # Write to QuestDB with packet timestamp and received timestamp
                 self.questdb.write_row(table_name, values, timestamp_ns, rx_timestamp_ns)
+                self.ingest_count += 1
 
             # Flush the sender after the full topic read
             self.questdb.flush()
+            if start is not None:
+                diff = time.time() - start  # seconds as a float
+                self.metric.set(name="tsdb_ingest_duration_seconds", value=diff, type="gauge", unit="seconds")
+            self.metric.set(name="tsdb_ingest_total", value=self.ingest_count, type="counter")
 
         except IngressError as error:
+            # Cast the value to fit the column type and retry
+            self.error_count += 1
+            self.metric.set(name="tsdb_ingest_error_total", value=self.error_count, type="counter")
             if self.MISSING_TABLE_RE.search(str(error)):
                 # Table was dropped (e.g. via admin UI). Recreate with proper COSMOS schema
                 # and replay pending rows. ILP auto-create is disabled to prevent QuestDB
@@ -210,7 +240,7 @@ class TsdbMicroservice(Microservice):
             self.next_trim_time_ms = current_time_ms + self.TRIM_KEEP_MS
             trim_time_ms = current_time_ms - self.TRIM_KEEP_MS
             trim_offset = f"{trim_time_ms}-0"
-            redis = EphemeralStore.instance()
+            redis = EphemeralStore.instance(db_shard=self.db_shard)
             pipeline = redis.pipeline(transaction=False)
             for topic in self.topics:
                 pipeline.xtrim(name=topic, minid=trim_offset, approximate=True, limit=0)
@@ -218,6 +248,7 @@ class TsdbMicroservice(Microservice):
 
     def run(self):
         """Main run loop"""
+        self.setup_microservice_topic()
         while True:
             if self.cancel_thread:
                 break

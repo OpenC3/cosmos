@@ -17,13 +17,30 @@ module OpenC3
   class SystemEventsTopic < Topic
     PRIMARY_KEY = "OPENC3__SYSTEM__EVENTS".freeze
 
+    # Collect all unique target db_shards from TargetModel
+    def self._active_db_shards
+      db_shards = Set.new([0])
+      # Iterate all scopes to find all target db_shards
+      Store.scan_each(match: '*__openc3_targets', type: 'hash') do |key|
+        Store.hgetall(key).each do |_name, json|
+          parsed = JSON.parse(json, allow_nan: true, create_additions: true)
+          db_shards << (parsed['db_shard'] || 0).to_i
+        end
+      end
+      db_shards
+    end
+
     def self.update_topic_offsets()
       Topic.update_topic_offsets([PRIMARY_KEY])
     end
 
     def self.write(type, event)
       event['type'] = type
-      Topic.write_topic(PRIMARY_KEY, {event: JSON.generate(event, allow_nan: true)}, '*', 1000)
+      msg = {event: JSON.generate(event, allow_nan: true)}
+      # Write to all active db_shards so every interface microservice can read system events inline
+      _active_db_shards.each do |db_shard|
+        Topic.write_topic(PRIMARY_KEY, msg, '*', 1000, db_shard: db_shard)
+      end
     end
 
     def self.read()

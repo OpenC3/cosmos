@@ -389,8 +389,9 @@ module OpenC3
       end
 
       # Delete the topics we created for the scope
-      Topic.del("#{@scope}__COMMAND__{UNKNOWN}__UNKNOWN")
-      Topic.del("#{@scope}__TELEMETRY__{UNKNOWN}__UNKNOWN")
+      db_shard = Store.db_shard_for_target('UNKNOWN', scope: @scope)
+      Topic.del("#{@scope}__COMMAND__{UNKNOWN}__UNKNOWN", db_shard: db_shard)
+      Topic.del("#{@scope}__TELEMETRY__{UNKNOWN}__UNKNOWN", db_shard: db_shard)
       Topic.del("#{@scope}__openc3_targets")
       Topic.del("#{@scope}__CONFIG")
     end

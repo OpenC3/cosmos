@@ -12,6 +12,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/scope_model'
+require 'openc3/models/target_model'
 require 'openc3/microservices/cleanup_microservice'
 
 module OpenC3
@@ -62,63 +63,76 @@ ORDER BY
         super(areas, bucket)
       end
 
-      # Always check TSDB health
+      # Always check TSDB health across all db_shards
       if @scope == 'DEFAULT'
+        # Collect all unique db_shard numbers from targets
+        db_shards = Set.new([0]) # Always check db_shard 0
         begin
-          conn = OpenC3::QuestDBClient.connection
-          result = conn.exec(TSDB_HEALTH_QUERY)
-          columns = result.fields
-          rows = result.values
-
-          table_name_column = columns.index("table_name")
-          wal_pending_row_count_column = columns.index("wal_pending_row_count")
-          status_column = columns.index("status")
-          lag_txns_column = columns.index("lag_txns")
-
-          rows.each do |values|
-            table_name = values[table_name_column]
-            wal_pending_row_count = values[wal_pending_row_count_column].to_i
-            status = values[status_column]
-            lag_txns = values[lag_txns_column].to_i
-
-            if status != 'OK'
-              @logger.error("QuestDB: #{table_name} in bad state: #{status}")
-
-              if status == 'SUSPENDED'
-                # Try to automatically unsuspend
-                @logger.info("QuestDB: Attempting to unsuspend: #{table_name}")
-                conn.exec("ALTER TABLE #{table_name} RESUME WAL;")
-              end
-            end
-
-            @wal_pending_row_count[table_name] ||= []
-            @wal_pending_row_count[table_name] << wal_pending_row_count
-            @lag_txns[table_name] ||= []
-            @lag_txns[table_name] << lag_txns
-
-            if @wal_pending_row_count[table_name].length > GROWTH_NUM_SAMPLE_PERIODS
-              if detect_growth(@wal_pending_row_count[table_name], GROWTH_NUM_SAMPLE_PERIODS)
-                # Crossed threshold of sample periods of growth
-                @logger.error("QuestDB: #{table_name} has growing wal_pending_row_count: #{wal_pending_row_count}")
-              end
-
-              # Leave the last GROWTH_NUM_SAMPLE_PERIODS samples
-              @wal_pending_row_count[table_name] = @wal_pending_row_count[table_name][-GROWTH_NUM_SAMPLE_PERIODS..-1]
-            end
-
-            if @lag_txns[table_name].length > GROWTH_NUM_SAMPLE_PERIODS
-              if detect_growth(@lag_txns[table_name], GROWTH_NUM_SAMPLE_PERIODS)
-                # Crossed threshold of sample periods of growth
-                @logger.error("QuestDB: #{table_name} has growing lag_txns: #{lag_txns}")
-              end
-
-              # Leave the last GROWTH_NUM_SAMPLE_PERIODS samples
-              @lag_txns[table_name] = @lag_txns[table_name][-GROWTH_NUM_SAMPLE_PERIODS..-1]
-            end
-          end
+          targets = OpenC3::TargetModel.all(scope: @scope)
+          targets.each_value { |target| db_shards << target['db_shard'].to_i if target['db_shard'] }
         rescue => e
-          OpenC3::QuestDBClient.disconnect
-          @logger.error("QuestDB Error: #{e.formatted}")
+          @logger.error("QuestDB: Error getting target db_shards: #{e.formatted}")
+        end
+
+        db_shards.each do |db_shard|
+          begin
+            conn = OpenC3::QuestDBClient.connection(db_shard: db_shard)
+            result = conn.exec(TSDB_HEALTH_QUERY)
+            columns = result.fields
+            rows = result.values
+
+            table_name_column = columns.index("table_name")
+            wal_pending_row_count_column = columns.index("wal_pending_row_count")
+            status_column = columns.index("status")
+            lag_txns_column = columns.index("lag_txns")
+
+            rows.each do |values|
+              table_name = values[table_name_column]
+              # Prefix with db_shard to avoid key collisions across db_shards
+              tracking_key = "s#{db_shard}__#{table_name}"
+              wal_pending_row_count = values[wal_pending_row_count_column].to_i
+              status = values[status_column]
+              lag_txns = values[lag_txns_column].to_i
+
+              if status != 'OK'
+                @logger.error("QuestDB db_shard #{db_shard}: #{table_name} in bad state: #{status}")
+
+                if status == 'SUSPENDED'
+                  # Try to automatically unsuspend
+                  @logger.info("QuestDB db_shard #{db_shard}: Attempting to unsuspend: #{table_name}")
+                  conn.exec("ALTER TABLE #{table_name} RESUME WAL;")
+                end
+              end
+
+              @wal_pending_row_count[tracking_key] ||= []
+              @wal_pending_row_count[tracking_key] << wal_pending_row_count
+              @lag_txns[tracking_key] ||= []
+              @lag_txns[tracking_key] << lag_txns
+
+              if @wal_pending_row_count[tracking_key].length > GROWTH_NUM_SAMPLE_PERIODS
+                if detect_growth(@wal_pending_row_count[tracking_key], GROWTH_NUM_SAMPLE_PERIODS)
+                  # Crossed threshold of sample periods of growth
+                  @logger.error("QuestDB db_shard #{db_shard}: #{table_name} has growing wal_pending_row_count: #{wal_pending_row_count}")
+                end
+
+                # Leave the last GROWTH_NUM_SAMPLE_PERIODS samples
+                @wal_pending_row_count[tracking_key] = @wal_pending_row_count[tracking_key][-GROWTH_NUM_SAMPLE_PERIODS..-1]
+              end
+
+              if @lag_txns[tracking_key].length > GROWTH_NUM_SAMPLE_PERIODS
+                if detect_growth(@lag_txns[tracking_key], GROWTH_NUM_SAMPLE_PERIODS)
+                  # Crossed threshold of sample periods of growth
+                  @logger.error("QuestDB db_shard #{db_shard}: #{table_name} has growing lag_txns: #{lag_txns}")
+                end
+
+                # Leave the last GROWTH_NUM_SAMPLE_PERIODS samples
+                @lag_txns[tracking_key] = @lag_txns[tracking_key][-GROWTH_NUM_SAMPLE_PERIODS..-1]
+              end
+            end
+          rescue => e
+            OpenC3::QuestDBClient.disconnect(db_shard: db_shard)
+            @logger.error("QuestDB db_shard #{db_shard} Error: #{e.formatted}")
+          end
         end
       end
     end

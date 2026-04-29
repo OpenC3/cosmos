@@ -349,7 +349,7 @@ class Packet(Structure):
     def template(self, template):
         """Sets the packet template"""
         if template is not None:
-            if not isinstance(template, (bytes, bytearray)):
+            if not isinstance(template, bytes | bytearray):
                 raise TypeError(f"template must be bytes but is a {template.__class__.__name__}")
 
             self.__template = template

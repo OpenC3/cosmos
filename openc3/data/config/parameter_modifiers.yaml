@@ -172,3 +172,4 @@ HIDDEN:
   description: This item will not appear in CmdSender.
     It also hides this item from appearing in the Script Runner popup helper
     when writing scripts. The parameter should not be provided to commands.
+  since: 6.10.0

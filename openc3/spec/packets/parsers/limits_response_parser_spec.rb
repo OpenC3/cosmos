@@ -137,7 +137,7 @@ module OpenC3
           file.puts "end"
         end
         saved_verbose = $VERBOSE
-        $VERBOSE = false
+        $VERBOSE = nil
         load 'limits_response2.rb'
         $VERBOSE = saved_verbose
 

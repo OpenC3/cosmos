@@ -1,5 +1,6 @@
 import os
 
+
 # See openc3/docs/environment.md for environment documentation
 # These VALUES are required for COSMOS Enterprise
 # os.environ["OPENC3_API_USER"] = "operator"
@@ -13,6 +14,7 @@ os.environ["OPENC3_API_HOSTNAME"] = "127.0.0.1"
 os.environ["OPENC3_API_PORT"] = "2900"
 # This import must be after the os.environ settings
 from openc3.script import *
+
 
 # telemetry.py
 print(tlm("INST HEALTH_STATUS TEMP1"))

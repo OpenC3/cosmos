@@ -18,6 +18,10 @@
 require_relative 'streaming_thread'
 
 class RealtimeStreamingThread < StreamingThread
+  def initialize(streaming_api, collection, scope: nil)
+    super(streaming_api, collection, scope: scope)
+  end
+
   def thread_body
     redis_thread_body()
   end

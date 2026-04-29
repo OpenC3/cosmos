@@ -66,17 +66,9 @@ module OpenC3
         keys = self.store.zrevrange("#{RUNNING_PRIMARY_KEY}__#{scope}__LIST", offset.to_i, offset.to_i + limit.to_i - 1)
         return [] if keys.empty?
         result = []
-        if $openc3_redis_cluster
-          # No pipelining for cluster mode
-          # because it requires using the same shard for all keys
+        result = self.store.redis_pool.pipelined do
           keys.each do |key|
-            result << self.store.hget("#{RUNNING_PRIMARY_KEY}__#{scope}", key)
-          end
-        else
-          result = self.store.redis_pool.pipelined do
-            keys.each do |key|
-              self.store.hget("#{RUNNING_PRIMARY_KEY}__#{scope}", key)
-            end
+            self.store.hget("#{RUNNING_PRIMARY_KEY}__#{scope}", key)
           end
         end
         result = result.map do |r|
@@ -91,17 +83,9 @@ module OpenC3
         keys = self.store.zrevrange("#{COMPLETED_PRIMARY_KEY}__#{scope}__LIST", offset.to_i, offset.to_i + limit.to_i - 1)
         return [] if keys.empty?
         result = []
-        if $openc3_redis_cluster
-          # No pipelining for cluster mode
-          # because it requires using the same shard for all keys
+        result = self.store.redis_pool.pipelined do
           keys.each do |key|
-            result << self.store.hget("#{COMPLETED_PRIMARY_KEY}__#{scope}", key)
-          end
-        else
-          result = self.store.redis_pool.pipelined do
-            keys.each do |key|
-              self.store.hget("#{COMPLETED_PRIMARY_KEY}__#{scope}", key)
-            end
+            self.store.hget("#{COMPLETED_PRIMARY_KEY}__#{scope}", key)
           end
         end
         result = result.map do |r|

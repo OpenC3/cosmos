@@ -41,6 +41,7 @@ module OpenC3
     attr_accessor :disable_erb
     attr_accessor :ignore_changes
     attr_accessor :shard
+    attr_accessor :db_shard
     attr_accessor :enabled
 
     # NOTE: The following three class methods are used by the ModelController
@@ -104,6 +105,7 @@ module OpenC3
       disable_erb: nil,
       ignore_changes: nil,
       shard: 0,
+      db_shard: 0,
       enabled: true,
       scope:
     )
@@ -132,6 +134,7 @@ module OpenC3
       @disable_erb = disable_erb
       @ignore_changes = ignore_changes
       @shard = shard.to_i # to_i to handle nil
+      @db_shard = db_shard.to_i # to_i to handle nil
       @enabled = enabled
       @enabled = true if @enabled.nil?
       @bucket = Bucket.getClient()
@@ -158,6 +161,7 @@ module OpenC3
         'disable_erb' => @disable_erb,
         'ignore_changes' => @ignore_changes,
         'shard' => @shard,
+        'db_shard' => @db_shard,
         'enabled' => @enabled,
       }
     end
@@ -236,6 +240,9 @@ module OpenC3
       when 'SHARD'
         parser.verify_num_parameters(1, 1, "#{keyword} <Shard Number Starting from 0>")
         @shard = Integer(parameters[0])
+      when 'DB_SHARD'
+        parser.verify_num_parameters(1, 1, "#{keyword} <DB_Shard Number Starting from 0>")
+        @db_shard = Integer(parameters[0])
       when 'STOPPED'
         parser.verify_num_parameters(0, 0, "#{keyword}")
         @enabled = false

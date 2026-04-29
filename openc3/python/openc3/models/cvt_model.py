@@ -33,12 +33,22 @@ class CvtModel(Model):
         return packet.decom()
 
     @classmethod
+    def _store_for_target(cls, target_name, scope):
+        """Get a Store instance routed to the correct db_shard for a target."""
+        return Store.instance(db_shard=Store.db_shard_for_target(target_name, scope=scope))
+
+    @classmethod
+    def _store_queued_for_target(cls, target_name, scope):
+        """Get a StoreQueued instance routed to the correct db_shard for a target."""
+        return StoreQueued.instance(db_shard=Store.db_shard_for_target(target_name, scope=scope))
+
+    @classmethod
     def delete(cls, target_name: str, packet_name: str, scope: str = OPENC3_SCOPE):
         """Delete the current value table for a target"""
         key = f"{scope}__tlm__{target_name}"
         tgt_pkt_key = key + f"__{packet_name}"
         CvtModel.packet_cache[tgt_pkt_key] = None
-        Store.hdel(key, packet_name)
+        cls._store_for_target(target_name, scope).hdel(key, packet_name)
 
     @classmethod
     def set(
@@ -55,9 +65,9 @@ class CvtModel(Model):
         tgt_pkt_key = key + f"__{packet_name}"
         CvtModel.packet_cache[tgt_pkt_key] = [time.time(), hash]
         if queued:
-            StoreQueued.hset(key, packet_name, packet_json)
+            cls._store_queued_for_target(target_name, scope).hset(key, packet_name, packet_json)
         else:
-            Store.hset(key, packet_name, packet_json)
+            cls._store_for_target(target_name, scope).hset(key, packet_name, packet_json)
 
     @classmethod
     def set_json(
@@ -79,9 +89,9 @@ class CvtModel(Model):
         tgt_pkt_key = key + f"__{packet_name}"
         CvtModel.packet_cache[tgt_pkt_key] = [time.time(), hash]
         if queued:
-            StoreQueued.hset(key, packet_name, packet_json)
+            cls._store_queued_for_target(target_name, scope).hset(key, packet_name, packet_json)
         else:
-            Store.hset(key, packet_name, packet_json)
+            cls._store_for_target(target_name, scope).hset(key, packet_name, packet_json)
 
     # Get the dict for packet in the CVT
     # Note: Does not apply overrides
@@ -100,7 +110,7 @@ class CvtModel(Model):
             cache_time, pkt_hash = CvtModel.packet_cache[tgt_pkt_key]
             if (now - cache_time) < cache_timeout:
                 return pkt_hash
-        packet = Store.hget(key, packet_name)
+        packet = cls._store_for_target(target_name, scope).hget(key, packet_name)
         if packet is None:
             raise RuntimeError(f"Packet '{target_name} {packet_name}' does not exist")
         pkt_hash = json.loads(packet, cls=JsonDecoder)
@@ -254,12 +264,12 @@ class CvtModel(Model):
         """Return all the overrides"""
         overrides = []
         for target_name in TargetModel.names(scope):
-            all = Store.hgetall(f"{scope}__override__{target_name}")
-            if len(all) == 0:
+            all_overrides = cls._store_for_target(target_name, scope).hgetall(f"{scope}__override__{target_name}")
+            if len(all_overrides) == 0:
                 continue
             # decode the binary string keys to strings
-            all = {k.decode(): v for (k, v) in all.items()}
-            for packet_name, pkt_hash in all.items():
+            all_overrides = {k.decode(): v for (k, v) in all_overrides.items()}
+            for packet_name, pkt_hash in all_overrides.items():
                 items = json.loads(pkt_hash, cls=JsonDecoder)
                 for key, value in items.items():
                     item = {}
@@ -285,7 +295,8 @@ class CvtModel(Model):
     @classmethod
     def override(cls, target_name, packet_name, item_name, value, type="ALL", scope=OPENC3_SCOPE):
         """Override a current value table item such that it always returns the same value for the given type"""
-        pkt_hash = Store.hget(f"{scope}__override__{target_name}", packet_name)
+        store = cls._store_for_target(target_name, scope)
+        pkt_hash = store.hget(f"{scope}__override__{target_name}", packet_name)
         if pkt_hash is not None:
             pkt_hash = json.loads(pkt_hash)
         else:
@@ -305,12 +316,13 @@ class CvtModel(Model):
                 raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
         CvtModel.override_cache[tgt_pkt_key] = [time.time(), pkt_hash]
-        Store.hset(f"{scope}__override__{target_name}", packet_name, json.dumps(pkt_hash))
+        store.hset(f"{scope}__override__{target_name}", packet_name, json.dumps(pkt_hash))
 
     # Normalize a current value table item such that it returns the actual value
     @classmethod
     def normalize(cls, target_name, packet_name, item_name, type="ALL", scope=OPENC3_SCOPE):
-        pkt_hash = Store.hget(f"{scope}__override__{target_name}", packet_name)
+        store = cls._store_for_target(target_name, scope)
+        pkt_hash = store.hget(f"{scope}__override__{target_name}", packet_name)
         if pkt_hash is not None:
             pkt_hash = json.loads(pkt_hash)
         else:
@@ -335,10 +347,10 @@ class CvtModel(Model):
         if len(pkt_hash) == 0:
             if tgt_pkt_key in CvtModel.override_cache:
                 CvtModel.override_cache.pop(tgt_pkt_key)
-            Store.hdel(f"{scope}__override__{target_name}", packet_name)
+            store.hdel(f"{scope}__override__{target_name}", packet_name)
         else:
             CvtModel.override_cache[tgt_pkt_key] = [time.time(), pkt_hash]
-            Store.hset(f"{scope}__override__{target_name}", packet_name, json.dumps(pkt_hash))
+            store.hset(f"{scope}__override__{target_name}", packet_name, json.dumps(pkt_hash))
 
     @classmethod
     def determine_latest_packet_for_item(cls, target_name, item_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
@@ -410,7 +422,7 @@ class CvtModel(Model):
             if (now - cache_time) < cache_timeout:
                 overrides[tgt_pkt_key] = pkt_hash
                 return pkt_hash
-        override_data = Store.hget(f"{scope}__override__{target_name}", packet_name)
+        override_data = cls._store_for_target(target_name, scope).hget(f"{scope}__override__{target_name}", packet_name)
         if override_data is not None:
             pkt_hash = json.loads(override_data)
             overrides[tgt_pkt_key] = pkt_hash

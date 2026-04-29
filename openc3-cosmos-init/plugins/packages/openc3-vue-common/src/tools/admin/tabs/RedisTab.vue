@@ -59,15 +59,25 @@
         <v-radio-group v-model="redisEndpoint" inline hide-details class="mt-0">
           <v-radio
             label="Persistent"
-            value="/openc3-api/redis/exec"
+            value="persistent"
             data-test="persistent-radio"
           />
           <v-radio
             label="Ephemeral"
-            value="/openc3-api/redis/exec?ephemeral=1"
+            value="ephemeral"
             data-test="ephemeral-radio"
           />
         </v-radio-group>
+        <v-text-field
+          v-model="db_shard"
+          type="number"
+          min="0"
+          label="DB Shard"
+          hide-details
+          density="compact"
+          style="max-width: 100px"
+          class="ml-4"
+        />
       </v-card-actions>
 
       <v-data-table
@@ -92,7 +102,8 @@ export default {
     return {
       redisCommandText: '',
       redisResponse: null,
-      redisEndpoint: '/openc3-api/redis/exec',
+      redisEndpoint: 'persistent',
+      db_shard: '0',
       prettyPrint: false,
       headers: [
         { text: 'Redis', value: 'redis', width: 150 },
@@ -135,7 +146,18 @@ export default {
     },
     executeRaw: function () {
       this.redisResponse = null
-      Api.post(this.redisEndpoint, {
+      let url = '/openc3-api/redis/exec'
+      const params = []
+      if (this.redisEndpoint === 'ephemeral') {
+        params.push('ephemeral=1')
+      }
+      if (this.db_shard && this.db_shard !== '0') {
+        params.push(`db_shard=${this.db_shard}`)
+      }
+      if (params.length) {
+        url += '?' + params.join('&')
+      }
+      Api.post(url, {
         data: this.redisCommandText,
         headers: {
           Accept: 'application/json',
@@ -143,9 +165,10 @@ export default {
         },
       }).then((response) => {
         this.redisResponse = response.data.result
-        let redis = 'Ephemeral'
-        if (this.redisEndpoint === '/openc3-api/redis/exec') {
-          redis = 'Persistent'
+        let redis =
+          this.redisEndpoint === 'ephemeral' ? 'Ephemeral' : 'Persistent'
+        if (this.db_shard !== '0') {
+          redis += ` (db_shard ${this.db_shard})`
         }
         this.commands.unshift({
           redis: redis,

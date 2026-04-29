@@ -218,7 +218,7 @@ class Telemetry:
         settings = []
 
         # Verify item_array is a nested list
-        if not isinstance(item_array[0], (list, tuple)):
+        if not isinstance(item_array[0], list | tuple):
             raise ValueError("item_array must be a nested array consisting of [[tgt,pkt,item],[tgt,pkt,item],...]")
 
         limits_set = self.system.limits_set()

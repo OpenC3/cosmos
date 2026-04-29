@@ -32,6 +32,7 @@ from openc3.utilities.extract import (
     extract_fields_from_set_tlm_text,
     extract_fields_from_tlm_text,
 )
+from openc3.utilities.store import Store
 
 
 WHITELIST.extend(
@@ -243,7 +244,8 @@ def get_tlm_buffer(*args, scope=OPENC3_SCOPE, timeout=5):
         return {k.decode(): v for (k, v) in msg_hash.items()}
     else:
         topic = f"{scope}__TELEMETRY__{{{target_name}}}__{packet_name}"
-        msg_id, msg_hash = Topic.get_newest_message(topic)
+        db_shard = Store.db_shard_for_target(target_name, scope=scope)
+        msg_id, msg_hash = Topic.get_newest_message(topic, db_shard=db_shard)
         if msg_id:
             # Decode the keys for user convenience
             return {k.decode(): v for (k, v) in msg_hash.items()}
@@ -515,7 +517,8 @@ def subscribe_packets(packets, scope=OPENC3_SCOPE):
             scope=scope,
         )
         topic = f"{scope}__DECOM__{{{target_name}}}__{packet_name}"
-        id_, _ = Topic.get_newest_message(topic)
+        db_shard = Store.db_shard_for_target(target_name, scope=scope)
+        id_, _ = Topic.get_newest_message(topic, db_shard=db_shard)
         result[topic] = id_ if id_ else "0-0"
 
     mylist = []
@@ -541,16 +544,28 @@ def get_packets(id, count=1000, scope=OPENC3_SCOPE):
     # Convert it back into a dict to create a lookup
     lookup = dict(zip(items[::2], items[1::2], strict=False))
     packets = []
-    for topic, topic_id, msg_hash, _ in Topic.read_topics(lookup.keys(), list(lookup.values()), None, count):
-        # # Return the original ID and empty array if we didn't get anything
-        # for topic, data in xread:
-        # for id, msg_hash in data:
-        lookup[topic] = topic_id  # save the new ID
-        # decode the binary string keys and values to strings
-        msg_hash = {k.decode(): v.decode() for (k, v) in msg_hash.items()}
-        json_hash = json.loads(msg_hash["json_data"])
-        msg_hash.pop("json_data")
-        packets.append(msg_hash | json_hash)
+    # Group topics by db_shard for multi-db_shard support
+    import re
+
+    db_shard_groups = {}
+    for topic, offset in lookup.items():
+        match = re.search(r"__\{?([^}_]+)\}?__", topic)
+        target_name = match.group(1) if match else None
+        db_shard = Store.db_shard_for_target(target_name, scope=scope)
+        if db_shard not in db_shard_groups:
+            db_shard_groups[db_shard] = {"topics": [], "offsets": []}
+        db_shard_groups[db_shard]["topics"].append(topic)
+        db_shard_groups[db_shard]["offsets"].append(offset)
+    for db_shard, group in db_shard_groups.items():
+        for topic, topic_id, msg_hash, _ in Topic.read_topics(
+            group["topics"], group["offsets"], None, count, db_shard=db_shard
+        ):
+            lookup[topic] = topic_id  # save the new ID
+            # decode the binary string keys and values to strings
+            msg_hash = {k.decode(): v.decode() for (k, v) in msg_hash.items()}
+            json_hash = json.loads(msg_hash["json_data"])
+            msg_hash.pop("json_data")
+            packets.append(msg_hash | json_hash)
     mylist = []
     for k, v in lookup.items():
         mylist += [k, v]
