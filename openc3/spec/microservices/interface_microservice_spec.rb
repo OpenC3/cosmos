@@ -28,7 +28,7 @@ module OpenC3
     before(:each) do
       # This must be here in order to work when running more than this individual file
       saved_verbose = $VERBOSE
-      $VERBOSE = false
+      $VERBOSE = nil
       class TestInterface < Interface
         def initialize(hostname = "default", port = 12345)
           @hostname = hostname

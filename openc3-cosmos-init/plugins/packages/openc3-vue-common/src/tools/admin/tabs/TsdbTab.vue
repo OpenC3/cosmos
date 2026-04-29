@@ -13,127 +13,34 @@
 
 <template>
   <div>
-    <v-card>
-      <v-card-title> Send SQL Queries to QuestDB </v-card-title>
-      <v-card-subtitle>
-        THIS IS DANGEROUS. This allows you to interact directly with the
-        underlying QuestDB time series database, making it easy to modify or
-        delete data.
-        <br /><br />
-        Enter SQL queries like:
-        <code>SELECT * FROM DEFAULT__TLM__INST__HEALTH_STATUS LIMIT 10</code> or
-        <code>SHOW TABLES</code>
-      </v-card-subtitle>
-      <v-card-text class="pb-0 ml-2">
-        <v-textarea
-          v-model="sqlText"
-          hide-details
-          label="SQL query"
-          class="monospace"
-          rows="3"
-          @keydown="commandKeydown"
-        />
-        <div v-if="errorMessage" class="mt-2 text-red monospace">
-          Error: {{ errorMessage }}
-        </div>
-      </v-card-text>
-      <v-card-actions class="px-2">
-        <v-btn
-          :disabled="!sqlText.length"
-          :loading="loading"
-          color="success"
-          variant="text"
-          data-test="tsdb-execute"
-          @click="executeQuery"
-        >
-          Execute
-        </v-btn>
-      </v-card-actions>
-
-      <v-data-table
-        v-if="columns.length"
-        :headers="tableHeaders"
-        :items="rows"
-        class="monospace"
-        :items-per-page="50"
-        density="compact"
-        height="45vh"
-      >
-      </v-data-table>
-    </v-card>
+    <v-tabs v-model="activeTab">
+      <v-tab value="metrics" data-test="tsdb-metrics-tab">Metrics</v-tab>
+      <v-tab value="queries" data-test="tsdb-queries-tab">Queries</v-tab>
+    </v-tabs>
+    <v-window v-model="activeTab">
+      <v-window-item value="metrics">
+        <tsdb-metrics />
+      </v-window-item>
+      <v-window-item value="queries">
+        <tsdb-queries />
+      </v-window-item>
+    </v-window>
   </div>
 </template>
 
 <script>
-import { Api } from '@openc3/js-common/services'
+import TsdbMetrics from './tsdb/TsdbMetrics.vue'
+import TsdbQueries from './tsdb/TsdbQueries.vue'
 
 export default {
+  components: {
+    TsdbMetrics,
+    TsdbQueries,
+  },
   data() {
     return {
-      sqlText: '',
-      columns: [],
-      rows: [],
-      errorMessage: null,
-      loading: false,
+      activeTab: 'metrics',
     }
-  },
-  computed: {
-    tableHeaders() {
-      return this.columns.map((col) => ({
-        title: col,
-        key: col,
-      }))
-    },
-  },
-  methods: {
-    commandKeydown($event) {
-      if (($event.metaKey || $event.ctrlKey) && $event.key === 'Enter') {
-        this.executeQuery()
-      }
-    },
-    executeQuery() {
-      this.errorMessage = null
-      this.columns = []
-      this.rows = []
-      this.loading = true
-      Api.post('/openc3-api/tsdb/exec', {
-        data: this.sqlText,
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'plain/text',
-        },
-      })
-        .then((response) => {
-          this.columns = response.data.columns
-          this.rows = response.data.rows.map((row) => {
-            const obj = {}
-            this.columns.forEach((col, i) => {
-              obj[col] = row[i]
-            })
-            return obj
-          })
-        })
-        .catch((error) => {
-          if (error.response && error.response.data) {
-            this.errorMessage = error.response.data.message
-          } else {
-            this.errorMessage = error.message
-          }
-        })
-        .finally(() => {
-          this.loading = false
-        })
-    },
   },
 }
 </script>
-
-<style scoped>
-.monospace {
-  font-family: monospace;
-  font-size: 14px;
-}
-.text-red {
-  color: rgb(var(--v-theme-error));
-}
-</style>

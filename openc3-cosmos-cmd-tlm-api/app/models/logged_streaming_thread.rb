@@ -1,4 +1,4 @@
-# encoding: ascii-8bit
+# encoding: utf-8
 
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
@@ -31,9 +31,8 @@ class LoggedStreamingThread < StreamingThread
   ALLOWABLE_START_TIME_OFFSET_NSEC = 60 * Time::NSEC_PER_SECOND
 
   def initialize(streaming_api, collection, max_batch_size = 600, scope:, token:)
-    super(streaming_api, collection, max_batch_size)
+    super(streaming_api, collection, max_batch_size, scope: scope)
     @thread_mode = :SETUP
-    @scope = scope
     @token = token
     @local_api = OpenC3::LocalApi.new
     @last_tsdb_times = {} # topic => last nanosecond timestamp read from TSDB
@@ -72,7 +71,7 @@ class LoggedStreamingThread < StreamingThread
     end
 
     # Check the topic to figure out what we have in Redis
-    oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(first_object.topic)
+    oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(first_object.topic, db_shard: first_object.db_shard)
 
     if oldest_msg_id
       # We have data in Redis
@@ -166,8 +165,13 @@ class LoggedStreamingThread < StreamingThread
 
     # Calculate Valkey stream offset per topic
     offset_by_topic = {}
+    # Build topic-to-db_shard map from objects
+    topic_db_shard_map = {}
+    @collection.objects.each { |obj| topic_db_shard_map[obj.topic] = obj.db_shard }
+
     @last_tsdb_times.each do |topic, last_time|
-      oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(topic)
+      topic_db_shard = topic_db_shard_map[topic] || 0
+      oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(topic, db_shard: topic_db_shard)
       if oldest_msg_id
         oldest_time = oldest_msg_hash['time'].to_i
         # Use the same interpolation formula as setup_thread_body
@@ -196,69 +200,77 @@ class LoggedStreamingThread < StreamingThread
       topics, offsets, item_objects_by_topic, packet_objects_by_topic = @collection.topics_offsets_and_objects
       results = []
       if topics.length > 0
-        xread_result = OpenC3::Topic.read_topics(topics, offsets, 500) do |topic, msg_id, msg_hash, _|
-          stored = OpenC3::ConfigParser.handle_true_false(msg_hash["stored"])
-          next if stored
+        db_shard_groups = build_db_shard_groups(topics, offsets, item_objects_by_topic, packet_objects_by_topic)
 
+        timeout_per_db_shard = [500 / [db_shard_groups.length, 1].max, 100].max
+        any_result = false
+        db_shard_groups.each do |db_shard, group|
           break if @cancel_thread
+          xread_result = OpenC3::Topic.read_topics(group[:topics], group[:offsets], timeout_per_db_shard, db_shard: db_shard) do |topic, msg_id, msg_hash, _|
+            stored = OpenC3::ConfigParser.handle_true_false(msg_hash["stored"])
+            next if stored
 
-          # Check per-topic overlap filter
-          last_time = @last_tsdb_times[topic]
-          if last_time
-            time = msg_hash['time'].to_i
-            if time <= last_time
-              # Skip messages already delivered from TSDB, but advance offsets
-              objects = item_objects_by_topic[topic]
-              objects.each { |object| object.offset = msg_id } if objects
-              objects = packet_objects_by_topic[topic]
-              objects.each { |object| object.offset = msg_id } if objects
-              next
+            break if @cancel_thread
+
+            # Check per-topic overlap filter
+            last_time = @last_tsdb_times[topic]
+            if last_time
+              time = msg_hash['time'].to_i
+              if time <= last_time
+                # Skip messages already delivered from TSDB, but advance offsets
+                objects = item_objects_by_topic[topic]
+                objects.each { |object| object.offset = msg_id } if objects
+                objects = packet_objects_by_topic[topic]
+                objects.each { |object| object.offset = msg_id } if objects
+                next
+              end
+              # Past the overlap for this topic - clear its filter
+              @last_tsdb_times.delete(topic)
             end
-            # Past the overlap for this topic - clear its filter
-            @last_tsdb_times.delete(topic)
-          end
 
-          break if @cancel_thread
+            break if @cancel_thread
 
-          objects = item_objects_by_topic[topic]
-          break if @cancel_thread
-          if objects and objects.length > 0
-            objects.each do |object|
-              object.offset = msg_id
-            end
-            result_entry = handle_message(msg_hash, objects)
-            results << result_entry if result_entry
-          end
-          break if @cancel_thread
-
-          if results.length >= @max_batch_size
-            @streaming_api.transmit_results(results)
-            results.clear
-          end
-
-          objects = packet_objects_by_topic[topic]
-          if objects
-            objects.each do |object|
-              object.offset = msg_id
-            end
-            objects.each do |object|
-              break if @cancel_thread
-              result_entry = handle_message(msg_hash, [object])
+            objects = item_objects_by_topic[topic]
+            break if @cancel_thread
+            if objects and objects.length > 0
+              objects.each do |object|
+                object.offset = msg_id
+              end
+              result_entry = handle_message(msg_hash, objects)
               results << result_entry if result_entry
-              if results.length >= @max_batch_size
-                @streaming_api.transmit_results(results)
-                results.clear
+            end
+            break if @cancel_thread
+
+            if results.length >= @max_batch_size
+              @streaming_api.transmit_results(results)
+              results.clear
+            end
+
+            objects = packet_objects_by_topic[topic]
+            if objects
+              objects.each do |object|
+                object.offset = msg_id
+              end
+              objects.each do |object|
+                break if @cancel_thread
+                result_entry = handle_message(msg_hash, [object])
+                results << result_entry if result_entry
+                if results.length >= @max_batch_size
+                  @streaming_api.transmit_results(results)
+                  results.clear
+                end
               end
             end
-          end
 
-          break if @cancel_thread
+            break if @cancel_thread
+          end
+          any_result = true if xread_result and xread_result.length > 0
         end
 
         @streaming_api.transmit_results(results)
         results.clear
 
-        check_for_completed_objects() if xread_result and xread_result.length == 0
+        check_for_completed_objects() unless any_result
       else
         @cancel_thread = true
       end
@@ -353,8 +365,14 @@ class LoggedStreamingThread < StreamingThread
           stored_timestamp_item_keys: {},
           calculated_positions: {},  # local_index => { source:, format: }
           timestamp_source_columns: {},
+<<<<<<< HEAD
           array_indices: {},  # item_key => integer index for array element extraction
           topics: Set.new
+=======
+          array_indices: {},  # item_key => integer index for array element extraction
+          topics: Set.new,
+          db_shard: OpenC3::QuestDBClient.db_shard_for_target(object.target_name, scope: @scope)
+>>>>>>> main
         }
         meta = per_table[table_name]
         meta[:topics] << topic
@@ -416,7 +434,10 @@ class LoggedStreamingThread < StreamingThread
 
     # Filter to tables that exist and have data in the queried range
     if per_table.size > 1
-      per_table.select! { |table_name, _| OpenC3::QuestDBClient.table_has_data?(table_name, start_time, end_time) }
+      per_table.select! do |table_name, meta|
+        db_shard = meta[:db_shard]
+        OpenC3::QuestDBClient.table_has_data?(table_name, start_time, end_time, db_shard: db_shard)
+      end
     end
 
     # Build per-table queries independently.
@@ -447,7 +468,8 @@ class LoggedStreamingThread < StreamingThread
         row_index: 0,      # position within current page
         offset: 0,         # LIMIT offset for next fetch
         exhausted: false,
-        table_name: table_name
+        table_name: table_name,
+        db_shard: meta[:db_shard]
       }
     end
 
@@ -522,7 +544,7 @@ class LoggedStreamingThread < StreamingThread
     return if cursor[:exhausted]
     query_offset = "#{cursor[:query]} LIMIT #{cursor[:offset]}, #{cursor[:offset] + @max_batch_size}"
     OpenC3::Logger.debug("QuestDB cursor fetch: #{query_offset}")
-    result = OpenC3::QuestDBClient.query_with_retry(query_offset, label: "cursor fetch")
+    result = OpenC3::QuestDBClient.query_with_retry(query_offset, label: "cursor fetch", db_shard: cursor[:db_shard])
     cursor[:offset] += @max_batch_size
     if result.nil? || result.ntuples == 0
       cursor[:result] = nil
@@ -555,8 +577,8 @@ class LoggedStreamingThread < StreamingThread
         break if @cancel_thread
         table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm, scope: @scope)
         key = [table_name, object.stream_mode]
-        objects_by_table_and_mode[key] ||= []
-        objects_by_table_and_mode[key] << object
+        objects_by_table_and_mode[key] ||= { objects: [], db_shard: OpenC3::QuestDBClient.db_shard_for_target(object.target_name, scope: @scope) }
+        objects_by_table_and_mode[key][:objects] << object
       end
     end
 
@@ -564,8 +586,10 @@ class LoggedStreamingThread < StreamingThread
 
     done = false
 
-    objects_by_table_and_mode.each do |(table_name, stream_mode), objects|
+    objects_by_table_and_mode.each do |(table_name, stream_mode), group_info|
       break if @cancel_thread
+      objects = group_info[:objects]
+      db_shard = group_info[:db_shard]
 
       sample_interval = OpenC3::QuestDBClient.sample_interval_for(stream_mode)
 
@@ -599,7 +623,7 @@ class LoggedStreamingThread < StreamingThread
 
       query = OpenC3::QuestDBClient.build_reduced_query(table_name, selects, start_time, end_time, sample_interval)
 
-      OpenC3::QuestDBClient.paginate_query(query, @max_batch_size, label: "reduced query") do |result|
+      OpenC3::QuestDBClient.paginate_query(query, @max_batch_size, label: "reduced query", db_shard: db_shard) do |result|
         break if @cancel_thread
         results = []
         result.each do |tuples|
@@ -744,14 +768,16 @@ class LoggedStreamingThread < StreamingThread
     packet_objects.each do |object|
       # Same sanitization as tsdb_microservice.py create_table()
       table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm, scope: @scope)
-      objects_by_table[table_name] ||= []
-      objects_by_table[table_name] << object
+      objects_by_table[table_name] ||= { objects: [], db_shard: OpenC3::QuestDBClient.db_shard_for_target(object.target_name, scope: @scope) }
+      objects_by_table[table_name][:objects] << object
     end
 
     done = false
 
-    objects_by_table.each do |table_name, objects|
+    objects_by_table.each do |table_name, group_info|
       break if @cancel_thread
+      objects = group_info[:objects]
+      db_shard = group_info[:db_shard]
 
       first_object = objects[0]
       value_type = first_object.value_type
@@ -761,7 +787,7 @@ class LoggedStreamingThread < StreamingThread
 
       query = OpenC3::QuestDBClient.build_packet_query(table_name, start_time, end_time)
 
-      OpenC3::QuestDBClient.paginate_query(query, @max_batch_size, label: "packet query") do |result|
+      OpenC3::QuestDBClient.paginate_query(query, @max_batch_size, label: "packet query", db_shard: db_shard) do |result|
         break if @cancel_thread
         results = []
         result.each do |tuples|
@@ -804,14 +830,16 @@ class LoggedStreamingThread < StreamingThread
     packet_objects.each do |object|
       table_name = OpenC3::QuestDBClient.sanitize_table_name(object.target_name, object.packet_name, object.cmd_or_tlm, scope: @scope)
       key = [table_name, object.stream_mode]
-      objects_by_table_and_mode[key] ||= []
-      objects_by_table_and_mode[key] << object
+      objects_by_table_and_mode[key] ||= { objects: [], db_shard: OpenC3::QuestDBClient.db_shard_for_target(object.target_name, scope: @scope) }
+      objects_by_table_and_mode[key][:objects] << object
     end
 
     done = false
 
-    objects_by_table_and_mode.each do |(table_name, stream_mode), objects|
+    objects_by_table_and_mode.each do |(table_name, stream_mode), group_info|
       break if @cancel_thread
+      objects = group_info[:objects]
+      db_shard = group_info[:db_shard]
 
       first_object = objects[0]
       value_type = first_object.value_type
@@ -828,7 +856,7 @@ class LoggedStreamingThread < StreamingThread
 
       query = OpenC3::QuestDBClient.build_reduced_query(table_name, selects, start_time, end_time, sample_interval)
 
-      OpenC3::QuestDBClient.paginate_query(query, @max_batch_size, label: "reduced packet query") do |result|
+      OpenC3::QuestDBClient.paginate_query(query, @max_batch_size, label: "reduced packet query", db_shard: db_shard) do |result|
         break if @cancel_thread
         results = []
         result.each do |tuples|

@@ -193,4 +193,4 @@ HIDDEN:
   description: This item will not appear in PacketViewer or Item Choosers.
     It also hides this item from appearing in the Script Runner popup helper
     when writing scripts. The item will also not be included in decom data.
-  since: 6.10.1
+  since: 6.10.0

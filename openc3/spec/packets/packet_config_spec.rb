@@ -1455,6 +1455,26 @@ module OpenC3
           expect(@pc.tlm_subpacket_unique_id_mode["TGT1"]).to be true
           tf.unlink
         end
+
+        # Packets with identical ID layouts but different accessors (e.g. CBOR + JSON)
+        # must trigger unique_id_mode. Otherwise the hash-lookup path uses the first
+        # packet's accessor for every incoming buffer, which fails when the buffer's
+        # encoding differs from that accessor's expected format. See issue #3178.
+        it "detects unique_id_mode when accessors differ within a target" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 cbor_pkt BIG_ENDIAN "CBOR Packet"'
+          tf.puts '  ACCESSOR CborAccessor'
+          tf.puts '  APPEND_ID_ITEM id 16 UINT 100 "ID"'
+          tf.puts '    KEY $.id'
+          tf.puts 'TELEMETRY tgt1 json_pkt BIG_ENDIAN "JSON Packet"'
+          tf.puts '  ACCESSOR JsonAccessor'
+          tf.puts '  APPEND_ID_ITEM id 16 UINT 101 "ID"'
+          tf.puts '    KEY $.id'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.tlm_unique_id_mode["TGT1"]).to be true
+          tf.unlink
+        end
       end
 
       context "with SUBPACKETIZER" do

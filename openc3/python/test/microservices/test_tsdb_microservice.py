@@ -1379,8 +1379,10 @@ class TestTsdbMicroservice(unittest.TestCase):
         model = MicroserviceModel(
             "DEFAULT__TSDB__TEST",
             scope="DEFAULT",
-            topics=[],
-            target_names=[],
+            topics=[
+                "DEFAULT__DECOM__{INST}__HEALTH_STATUS",
+            ],
+            target_names=["INST"],
         )
         model.create()
 

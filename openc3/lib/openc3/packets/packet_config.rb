@@ -437,9 +437,12 @@ module OpenC3
       if packet.id_items.length > 0
         key = []
         id_signature = ""
+        # Accessor class is part of the signature so packets in the same target
+        # with different accessors trigger unique_id_mode (different accessors
+        # decode the buffer differently, so the hash-lookup path is unsafe).
         packet.id_items.each do |item|
           key << item.id_value
-          id_signature << "__#{item.key}__#{item.bit_offset}__#{item.bit_size}__#{item.data_type}"
+          id_signature << "__#{item.key}__#{item.bit_offset}__#{item.bit_size}__#{item.data_type}__#{packet.accessor.class.to_s}"
         end
         target_id_value_hash[key] = packet
         target_id_signature = id_signature_hash[packet.target_name]

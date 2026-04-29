@@ -216,7 +216,7 @@ export default {
         }
         return this.formatValueBase(value, this.formatString)
       } catch (e) {
-        // eslint-disable-next-line
+        // eslint-disable-next-line no-console
         console.log(
           `${this.valueId} formatValue on ${value} with ${this.formatString} failed due to ${e}`,
         )

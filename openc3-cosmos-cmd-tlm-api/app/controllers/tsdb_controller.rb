@@ -23,15 +23,17 @@ class TsdbController < ApplicationController
       return
     end
 
+    db_shard = (params[:db_shard] || 0).to_i
+
     begin
-      conn = OpenC3::QuestDBClient.connection
+      conn = OpenC3::QuestDBClient.connection(db_shard: db_shard)
       result = conn.exec(sql)
       columns = result.fields
       rows = result.values
-      OpenC3::Logger.info("TSDB query executed: #{sql}", user: username())
+      OpenC3::Logger.info("TSDB query executed (db_shard #{db_shard}): #{sql}", user: username())
       render json: { columns: columns, rows: rows }, status: :ok
     rescue => e
-      OpenC3::QuestDBClient.disconnect
+      OpenC3::QuestDBClient.disconnect(db_shard: db_shard)
       render json: { status: 'error', message: e.message }, status: :unprocessable_entity
     end
   end

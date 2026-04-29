@@ -18,6 +18,7 @@
 require 'time'
 require 'thread'
 require 'openc3/microservices/microservice'
+require 'openc3/microservices/decom_common'
 require 'openc3/microservices/interface_decom_common'
 require 'openc3/microservices/interface_microservice'
 require 'openc3/topics/telemetry_decom_topic'
@@ -90,7 +91,9 @@ module OpenC3
       if @name =~ /__DECOM__/
         @topics << "#{@scope}__DECOMINTERFACE__{#{@target_names[0]}}"
       end
-      Topic.update_topic_offsets(@topics)
+      @limits_event_topic = "#{@scope}__openc3_limits_events"
+      @topics << @limits_event_topic
+      Topic.update_topic_offsets(@topics, db_shard: @db_shard)
       System.telemetry.limits_change_callback = method(:limits_change_callback)
       LimitsEventTopic.sync_system(scope: @scope)
       @error_count = 0
@@ -110,10 +113,13 @@ module OpenC3
 
         begin
           OpenC3.in_span("read_topics") do
-            Topic.read_topics(@topics) do |topic, msg_id, msg_hash, redis|
+            Topic.read_topics(@topics, db_shard: @db_shard) do |topic, msg_id, msg_hash, redis|
               break if @cancel_thread
               if topic == @microservice_topic
                 microservice_cmd(topic, msg_id, msg_hash, redis)
+              elsif topic == @limits_event_topic
+                event = JSON.parse(msg_hash['event'], allow_nan: true, create_additions: true)
+                LimitsEventTopic.process_event(event)
               elsif topic =~ /__DECOMINTERFACE/
                 if msg_hash.key?('inject_tlm')
                   handle_inject_tlm_with_ack(msg_hash['inject_tlm'], msg_id)
@@ -134,7 +140,6 @@ module OpenC3
               @count += 1
             end
           end
-          LimitsEventTopic.sync_system_thread_body(scope: @scope)
         rescue => e
           @error_count += 1
           @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')
@@ -153,8 +158,6 @@ module OpenC3
         delta = Time.now.to_f - msgid_seconds_from_epoch
         @metric.set(name: 'decom_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and decom start')
 
-        start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-
         #######################################
         # Build packet object from topic data
         #######################################
@@ -172,98 +175,21 @@ module OpenC3
         end
         packet.buffer = msg_hash["buffer"]
 
-        ################################################################################
-        # Break packet into subpackets (if necessary)
-        # Subpackets are typically channelized data
-        ################################################################################
-        packet_and_subpackets = packet.subpacketize
-
-        packet_and_subpackets.each do |packet_or_subpacket|
-          if packet_or_subpacket.subpacket
-            packet_or_subpacket = handle_subpacket(packet, packet_or_subpacket)
-          end
-
-          #####################################################################################
-          # Run Processors
-          # This must be before the full decom so that processor derived values are available
-          #####################################################################################
-          begin
-            packet_or_subpacket.process # Run processors
-          rescue Exception => e
+        DecomCommon.decom_and_publish(
+          packet,
+          scope: @scope,
+          target_names: @target_names,
+          logger: @logger,
+          name: @name,
+          check_limits: true,
+          metric: @metric,
+          error_callback: ->(e) {
             @error_count += 1
             @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')
             @error = e
-            @logger.error e.message
-          end
-
-          #############################################################################
-          # Process all the limits and call the limits_change_callback (as necessary)
-          # This must be before the full decom so that limits states are available
-          #############################################################################
-          packet_or_subpacket.check_limits(System.limits_set)
-
-          # This is what actually decommutates the packet and updates the CVT
-          TelemetryDecomTopic.write_packet(packet_or_subpacket, scope: @scope)
-        end
-
-        diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
-        @metric.set(name: 'decom_duration_seconds', value: diff, type: 'gauge', unit: 'seconds')
+          },
+        )
       end
-    end
-
-    def handle_subpacket(packet, subpacket)
-      # Subpacket received time always = packet.received_time
-      # Use packet_time appropriately if another timestamp is needed
-      subpacket.received_time = packet.received_time
-      subpacket.stored = packet.stored
-      subpacket.extra = packet.extra
-
-      if subpacket.stored
-        # Stored telemetry does not update the current value table
-        identified_subpacket = System.telemetry.identify_and_define_packet(subpacket, @target_names, subpackets: true)
-      else
-        # Identify and update subpacket
-        if subpacket.identified?
-          begin
-            # Preidentifed subpacket - place it into the current value table
-            identified_subpacket = System.telemetry.update!(subpacket.target_name,
-                                                            subpacket.packet_name,
-                                                            subpacket.buffer)
-          rescue RuntimeError
-            # Subpacket identified but we don't know about it
-            # Clear packet_name and target_name and try to identify
-            @logger.warn "#{@name}: Received unknown identified subpacket: #{subpacket.target_name} #{subpacket.packet_name}"
-            subpacket.target_name = nil
-            subpacket.packet_name = nil
-            identified_subpacket = System.telemetry.identify!(subpacket.buffer,
-                                                              @target_names, subpackets: true)
-          end
-        else
-          # Packet needs to be identified
-          identified_subpacket = System.telemetry.identify!(subpacket.buffer,
-                                                            @target_names, subpackets: true)
-        end
-      end
-
-      if identified_subpacket
-        identified_subpacket.received_time = subpacket.received_time
-        identified_subpacket.stored = subpacket.stored
-        identified_subpacket.extra = subpacket.extra
-        subpacket = identified_subpacket
-      else
-        unknown_subpacket = System.telemetry.update!('UNKNOWN', 'UNKNOWN', subpacket.buffer)
-        unknown_subpacket.received_time = subpacket.received_time
-        unknown_subpacket.stored = subpacket.stored
-        unknown_subpacket.extra = subpacket.extra
-        subpacket = unknown_subpacket
-        num_bytes_to_print = [InterfaceMicroservice::UNKNOWN_BYTES_TO_PRINT, subpacket.length].min
-        data = subpacket.buffer(false)[0..(num_bytes_to_print - 1)]
-        prefix = data.each_byte.map { | byte | sprintf("%02X", byte) }.join()
-        @logger.warn "#{@name} #{subpacket.target_name} packet length: #{subpacket.length} starting with: #{prefix}"
-      end
-
-      TargetModel.sync_tlm_packet_counts(subpacket, @target_names, scope: @scope)
-      return subpacket
     end
 
     # Called when an item in any packet changes limits states.
@@ -285,7 +211,12 @@ module OpenC3
       if value
         message = "#{packet.target_name} #{packet.packet_name} #{item.name} = #{value} is #{item.limits.state}"
         if item.limits.values
-          values = item.limits.values[System.limits_set]
+          selected_limits_set = if item.limits.values.has_key?(System.limits_set)
+            System.limits_set
+          else
+            :DEFAULT
+          end
+          values = item.limits.values[selected_limits_set]
           # Check if the state is RED_LOW, YELLOW_LOW, YELLOW_HIGH, RED_HIGH, GREEN_LOW, GREEN_HIGH
           if LIMITS_STATE_INDEX[item.limits.state]
             # Directly index into the values and return the value

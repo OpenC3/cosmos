@@ -90,8 +90,8 @@ require 'openc3/top_level'
 
 # Create a easy alias to the base of the spec directory
 SPEC_DIR = File.dirname(__FILE__)
-$openc3_scope = ENV['OPENC3_SCOPE']
-$openc3_password = ENV['OPENC3_API_PASSWORD']
+$openc3_scope = ENV.fetch('OPENC3_SCOPE', 'DEFAULT')
+$openc3_password = ENV.fetch('OPENC3_API_PASSWORD', 'password')
 $openc3_authorize = false
 $openc3_mock_token = 'mock_token'
 $openc3_mock_otp = 'mock_otp'
@@ -122,11 +122,12 @@ $store_queued = false
 module OpenC3
   class StoreQueued
     alias old_initialize initialize
-    def initialize(update_interval)
+    def initialize(update_interval, db_shard: 0)
       if $store_queued
-        old_initialize(update_interval)
+        old_initialize(update_interval, db_shard: db_shard)
       else
         @update_interval = update_interval
+        @db_shard = db_shard
         @store = store_instance()
       end
     end
@@ -172,6 +173,12 @@ OpenC3.disable_warnings do
   require 'redis'
   require 'mock_redis'
   class MockRedis
+    class Database
+      def hexpire(*_args)
+        # Stub out as a NOOP
+      end
+    end
+
     module StreamMethods
       private
 
@@ -237,10 +244,10 @@ def mock_redis
   # pool = double(ConnectionPool)
   # allow(pool).to receive(:with) { redis }
   # allow(ConnectionPool).to receive(:new).and_return(pool)
-  OpenC3::Store.instance_variable_set(:@instance, nil)
-  OpenC3::EphemeralStore.instance_variable_set(:@instance, nil)
-  OpenC3::StoreQueued.instance_variable_set(:@instance, nil)
-  OpenC3::EphemeralStoreQueued.instance_variable_set(:@instance, nil)
+  OpenC3::Store.instance_variable_set(:@instances, [])
+  OpenC3::EphemeralStore.instance_variable_set(:@instances, [])
+  OpenC3::StoreQueued.instance_variable_set(:@instances, [])
+  OpenC3::EphemeralStoreQueued.instance_variable_set(:@instances, [])
   require 'openc3/models/auth_model'
   OpenC3::AuthModel.set($openc3_password, nil)
   $openc3_token = OpenC3::AuthModel.generate_session()

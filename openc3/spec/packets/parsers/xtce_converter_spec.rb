@@ -987,7 +987,7 @@ module OpenC3
           file.puts "end"
         end
         saved_verbose = $VERBOSE
-        $VERBOSE = false
+        $VERBOSE = nil
         load 'conversion2.rb'
         $VERBOSE = saved_verbose
 
@@ -1038,7 +1038,7 @@ module OpenC3
           file.puts "end"
         end
         saved_verbose = $VERBOSE
-        $VERBOSE = false
+        $VERBOSE = nil
         load 'conversion2.rb'
         $VERBOSE = saved_verbose
 

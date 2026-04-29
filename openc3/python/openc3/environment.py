@@ -56,7 +56,6 @@ _openc3_api_client = "OPENC3_API_CLIENT"
 _openc3_api_token = "OPENC3_API_TOKEN"
 _openc3_keycloak_realm = "OPENC3_KEYCLOAK_REALM"
 _openc3_keycloak_url = "OPENC3_KEYCLOAK_URL"
-_openc3_redis_cluster = "OPENC3_REDIS_CLUSTER"
 
 
 def get_env_bool(key: str, default: bool = False) -> bool:
@@ -158,7 +157,6 @@ OPENC3_API_CLIENT = os.environ.get(_openc3_api_client, "api")
 OPENC3_API_TOKEN = os.environ.get(_openc3_api_token)
 OPENC3_KEYCLOAK_REALM = os.environ.get(_openc3_keycloak_realm, "openc3")
 OPENC3_KEYCLOAK_URL = os.environ.get(_openc3_keycloak_url, "http://openc3-keycloak/auth")
-OPENC3_REDIS_CLUSTER = os.environ.get(_openc3_redis_cluster)
 
 # User agent used by all
 _openc3_default_user_agent = [

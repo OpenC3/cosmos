@@ -19,27 +19,18 @@ from openc3.environment import *
 from openc3.utilities.connection_pool import ConnectionPool
 
 
-if OPENC3_REDIS_CLUSTER:
-    openc3_redis_cluster = True
-else:
-    openc3_redis_cluster = False
-
-
 class StoreConnectionPool(ConnectionPool):
     @contextmanager
     def pipelined(self):
-        if openc3_redis_cluster:
-            yield  # TODO: Update keys to support pipelining in cluster
-        else:
-            with self.get() as redis:
-                pipeline = redis.pipeline(transaction=False)
-                thread_id = threading.get_native_id()
-                self.pipelines[thread_id] = pipeline
-                try:
-                    yield
-                finally:
-                    pipeline.execute()
-                    self.pipelines[thread_id] = None
+        with self.get() as redis:
+            pipeline = redis.pipeline(transaction=False)
+            thread_id = threading.get_native_id()
+            self.pipelines[thread_id] = pipeline
+            try:
+                yield
+            finally:
+                pipeline.execute()
+                self.pipelines[thread_id] = None
 
     @contextmanager
     def get(self):
@@ -66,8 +57,21 @@ class StoreConnectionPool(ConnectionPool):
 
 
 class StoreMeta(type):
+    # Class attributes that should not be delegated to the instance
+    _CLASS_ATTRS = frozenset(
+        {
+            "instance",
+            "instance_mutex",
+            "my_instances",
+            "db_shard_for_target",
+            "_db_shard_cache",
+            "_db_shard_cache_lock",
+            "DB_SHARD_CACHE_TIMEOUT",
+        }
+    )
+
     def __getattribute__(cls, func):
-        if func == "instance" or func == "instance_mutex" or func == "my_instance":
+        if func in StoreMeta._CLASS_ATTRS:
             return super().__getattribute__(func)
 
         # Handle dunder methods to support help() and other introspection
@@ -81,21 +85,64 @@ class StoreMeta(type):
 
 
 class Store(metaclass=StoreMeta):
-    # Variable that holds the singleton instance
-    my_instance = None
+    # Variable that holds the singleton instances per db_shard
+    my_instances = {}
 
     # Mutex used to ensure that only one instance is created
     instance_mutex = threading.Lock()
 
-    # Get the singleton instance
+    # DB_Shard cache
+    _db_shard_cache = {}
+    _db_shard_cache_lock = threading.Lock()
+    DB_SHARD_CACHE_TIMEOUT = 60  # seconds
+
+    # Get the singleton instance for a given db_shard
     @classmethod
-    def instance(cls, pool_size=100):
-        if cls.my_instance:
-            return cls.my_instance
+    def instance(cls, pool_size=100, db_shard=0):
+        inst = cls.my_instances.get(db_shard)
+        if inst:
+            return inst
 
         with cls.instance_mutex:
-            cls.my_instance = cls(pool_size)
-            return cls.my_instance
+            if db_shard not in cls.my_instances:
+                cls.my_instances[db_shard] = cls(pool_size, db_shard=db_shard)
+            return cls.my_instances[db_shard]
+
+    @classmethod
+    def db_shard_for_target(cls, target_name, scope="DEFAULT"):
+        """Look up the db_shard number for a target with a 1-minute cache."""
+        import json
+        import time as _time
+
+        if not target_name:
+            return 0
+
+        cache_key = f"{scope}__{target_name}"
+        now = _time.time()
+
+        with cls._db_shard_cache_lock:
+            cached = cls._db_shard_cache.get(cache_key)
+            if cached:
+                db_shard_val, cached_at = cached
+                if (now - cached_at) < cls.DB_SHARD_CACHE_TIMEOUT:
+                    return db_shard_val
+
+        try:
+            result = Store.instance(db_shard=0).hget(f"{scope}__openc3_targets", target_name)
+            if result:
+                if isinstance(result, bytes):
+                    result = result.decode()
+                db_shard_val = json.loads(result).get("db_shard", 0)
+                db_shard_val = int(db_shard_val) if db_shard_val else 0
+            else:
+                db_shard_val = 0
+        except Exception:
+            db_shard_val = 0
+
+        with cls._db_shard_cache_lock:
+            cls._db_shard_cache[cache_key] = (db_shard_val, now)
+
+        return db_shard_val
 
     # Delegate all unknown methods to redis through the @redis_pool
     def __getattr__(self, func):
@@ -106,25 +153,24 @@ class Store(metaclass=StoreMeta):
 
             return method
 
-    def __init__(self, pool_size=10):
-        self.redis_host = OPENC3_REDIS_HOSTNAME
+    def __init__(self, pool_size=10, db_shard=0):
+        self.db_shard = db_shard
+        self.redis_host = OPENC3_REDIS_HOSTNAME.replace("SHARDNUM", str(db_shard))
         self.redis_port = OPENC3_REDIS_PORT
         self.redis_pool = StoreConnectionPool(self.build_redis, pool_size)
         self.topic_offsets = {}
         self.pipelines = {}
 
-    if not openc3_redis_cluster:
-
-        def build_redis(self):
-            # NOTE: We can't use decode_response because it tries to decode the binary
-            # packet buffer which does not work. Thus strings come back as bytes like
-            # b"target_name" and we decode them using b"target_name".decode()
-            return valkey.Valkey(
-                host=self.redis_host,
-                port=self.redis_port,
-                username=OPENC3_REDIS_USERNAME,
-                password=OPENC3_REDIS_PASSWORD,
-            )
+    def build_redis(self):
+        # NOTE: We can't use decode_response because it tries to decode the binary
+        # packet buffer which does not work. Thus strings come back as bytes like
+        # b"target_name" and we decode them using b"target_name".decode()
+        return valkey.Valkey(
+            host=self.redis_host,
+            port=self.redis_port,
+            username=OPENC3_REDIS_USERNAME,
+            password=OPENC3_REDIS_PASSWORD,
+        )
 
     ###########################################################################
     # Stream APIs
@@ -178,36 +224,34 @@ class Store(metaclass=StoreMeta):
                 topic_offsets[topic] = offsets[-1]
         return offsets
 
-    if not openc3_redis_cluster:
-
-        def read_topics(self, topics, offsets=None, timeout_ms=1000, count=None):
-            if len(topics) == 0:
-                return {}
-            thread_id = threading.get_native_id()
-            if thread_id not in self.topic_offsets:
-                self.topic_offsets[thread_id] = {}
-            topic_offsets = self.topic_offsets[thread_id]
-            try:
-                with self.redis_pool.get() as redis:
-                    if not offsets:
-                        offsets = self.update_topic_offsets(topics)
-                    streams = {}
-                    for index, topic in enumerate(topics):
-                        streams[topic] = offsets[index]
-                    result = redis.xread(streams, block=timeout_ms, count=count)
-                    if result and len(result) > 0:
-                        for topic, messages in result:
-                            for msg_id, msg_hash in messages:
-                                if isinstance(topic, bytes):
-                                    topic = topic.decode()
-                                if isinstance(msg_id, bytes):
-                                    msg_id = msg_id.decode()
-                                topic_offsets[topic] = msg_id
-                                yield topic, msg_id, msg_hash, redis
-                    return result
-            except TimeoutError:
-                # Should return an empty hash not array - xread returns a hash
-                return {}
+    def read_topics(self, topics, offsets=None, timeout_ms=1000, count=None):
+        if len(topics) == 0:
+            return {}
+        thread_id = threading.get_native_id()
+        if thread_id not in self.topic_offsets:
+            self.topic_offsets[thread_id] = {}
+        topic_offsets = self.topic_offsets[thread_id]
+        try:
+            with self.redis_pool.get() as redis:
+                if not offsets:
+                    offsets = self.update_topic_offsets(topics)
+                streams = {}
+                for index, topic in enumerate(topics):
+                    streams[topic] = offsets[index]
+                result = redis.xread(streams, block=timeout_ms, count=count)
+                if result and len(result) > 0:
+                    for topic, messages in result:
+                        for msg_id, msg_hash in messages:
+                            if isinstance(topic, bytes):
+                                topic = topic.decode()
+                            if isinstance(msg_id, bytes):
+                                msg_id = msg_id.decode()
+                            topic_offsets[topic] = msg_id
+                            yield topic, msg_id, msg_hash, redis
+                return result
+        except TimeoutError:
+            # Should return an empty hash not array - xread returns a hash
+            return {}
 
     # Add new entry to the redis stream.
     # > https://www.rubydoc.info/github/redis/redis-rb/Redis:xadd
@@ -252,11 +296,11 @@ class Store(metaclass=StoreMeta):
 
 
 class EphemeralStore(Store):
-    # Variable that holds the singleton instance
-    my_instance = None
+    # Variable that holds the singleton instances per db_shard
+    my_instances = {}
 
-    def __init__(self, pool_size=10):
-        super().__init__(pool_size)
-        self.redis_host = OPENC3_REDIS_EPHEMERAL_HOSTNAME
+    def __init__(self, pool_size=10, db_shard=0):
+        super().__init__(pool_size, db_shard=db_shard)
+        self.redis_host = OPENC3_REDIS_EPHEMERAL_HOSTNAME.replace("SHARDNUM", str(db_shard))
         self.redis_port = OPENC3_REDIS_EPHEMERAL_PORT
         self.redis_pool = StoreConnectionPool(self.build_redis, pool_size)

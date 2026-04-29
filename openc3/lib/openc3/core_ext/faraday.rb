@@ -1,6 +1,6 @@
 # Remove warnings in CGI
 saved_verbose = $VERBOSE
-$VERBOSE = false
+$VERBOSE = nil
 require 'faraday'
 $VERBOSE = saved_verbose
 

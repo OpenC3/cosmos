@@ -17,7 +17,7 @@ class JsonEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, datetime.datetime):
             return o.strftime("%Y-%m-%d %H:%M:%S.%f")
-        if isinstance(o, (bytes, bytearray)):
+        if isinstance(o, bytes | bytearray):
             return {
                 "json_class": "String",
                 "raw": list(o),

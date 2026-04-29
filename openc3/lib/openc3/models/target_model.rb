@@ -81,6 +81,7 @@ module OpenC3
     attr_accessor :children
     attr_accessor :disable_erb
     attr_accessor :shard
+    attr_accessor :db_shard
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -202,6 +203,11 @@ module OpenC3
       return result
     end
 
+    # Get a Store instance routed to the correct db_shard for a target
+    def self.store_for_target(target_name, scope:)
+      Store.instance(db_shard: Store.db_shard_for_target(target_name, scope: scope))
+    end
+
     # @return [Hash] Packet hash or raises an exception
     def self.packet(target_name, packet_name, type: :TLM, scope:)
       raise "Unknown type #{type} for #{target_name} #{packet_name}" unless VALID_TYPES.include?(type)
@@ -216,7 +222,7 @@ module OpenC3
       end
 
       # Assume it exists and just try to get it to avoid an extra call to Store.exist?
-      json = Store.hget("#{scope}__openc3#{type.to_s.downcase}__#{target_name}", packet_name)
+      json = store_for_target(target_name, scope: scope).hget("#{scope}__openc3#{type.to_s.downcase}__#{target_name}", packet_name)
       raise "Packet '#{target_name} #{packet_name}' does not exist" if json.nil?
 
       packet = JSON.parse(json, allow_nan: true, create_additions: true)
@@ -241,7 +247,7 @@ module OpenC3
       raise "Target '#{target_name}' does not exist for scope: #{scope}" unless get(name: target_name, scope: scope)
 
       result = []
-      packets = Store.hgetall("#{scope}__openc3#{type.to_s.downcase}__#{target_name}")
+      packets = store_for_target(target_name, scope: scope).hgetall("#{scope}__openc3#{type.to_s.downcase}__#{target_name}")
       packets.sort.each do |_packet_name, packet_json|
         result << JSON.parse(packet_json, allow_nan: true, create_additions: true)
       end
@@ -263,7 +269,7 @@ module OpenC3
       end
 
       begin
-        Store.hset("#{scope}__openc3#{type.to_s.downcase}__#{target_name}", packet_name, JSON.generate(packet.as_json, allow_nan: true))
+        store_for_target(target_name, scope: scope).hset("#{scope}__openc3#{type.to_s.downcase}__#{target_name}", packet_name, JSON.generate(packet.as_json, allow_nan: true))
       rescue JSON::GeneratorError => e
         Logger.error("Invalid text present in #{target_name} #{packet_name} #{type.to_s.downcase} packet")
         raise e
@@ -296,7 +302,7 @@ module OpenC3
 
     # @return [Array<String>] All the item names for every packet in a target
     def self.all_item_names(target_name, type: :TLM, scope:)
-      items = Store.zrange("#{scope}__openc3tlm__#{target_name}__allitems", 0, -1)
+      items = store_for_target(target_name, scope: scope).zrange("#{scope}__openc3tlm__#{target_name}__allitems", 0, -1)
       items = rebuild_target_allitems_list(target_name, type: type, scope: scope) if items.empty?
       items
     end
@@ -308,12 +314,12 @@ module OpenC3
           TargetModel.add_to_target_allitems_list(target_name, item['name'], scope: scope)
         end
       end
-      Store.zrange("#{scope}__openc3tlm__#{target_name}__allitems", 0, -1) # return the new sorted set to let redis do the sorting
+      store_for_target(target_name, scope: scope).zrange("#{scope}__openc3tlm__#{target_name}__allitems", 0, -1) # return the new sorted set to let redis do the sorting
     end
 
     def self.add_to_target_allitems_list(target_name, item_name, scope:)
       score = 0 # https://redis.io/docs/latest/develop/data-types/sorted-sets/#lexicographical-scores
-      Store.zadd("#{scope}__openc3tlm__#{target_name}__allitems", score, item_name)
+      store_for_target(target_name, scope: scope).zadd("#{scope}__openc3tlm__#{target_name}__allitems", score, item_name)
     end
 
     # @return [Hash{String => Array<Array<String, String, String>>}]
@@ -331,12 +337,13 @@ module OpenC3
       return item_map if item_map and (Time.now - cache_time) < ITEM_MAP_CACHE_TIMEOUT
       item_map_key = "#{scope}__#{target_name}__item_to_packet_map"
       target_name = target_name.upcase
-      json_data = Store.get(item_map_key)
+      store = store_for_target(target_name, scope: scope)
+      json_data = store.get(item_map_key)
       if json_data
         item_map = JSON.parse(json_data, allow_nan: true, create_additions: true)
       else
         item_map = build_item_to_packet_map(target_name, scope: scope)
-        Store.set(item_map_key, JSON.generate(item_map, allow_nan: true))
+        store.set(item_map_key, JSON.generate(item_map, allow_nan: true))
       end
       @@item_map_cache[target_name] = [Time.now, item_map]
       return item_map
@@ -396,6 +403,7 @@ module OpenC3
       target_microservices: {},
       disable_erb: nil,
       shard: 0,
+      db_shard: 0,
       scope:
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at, scope: scope)
@@ -421,6 +429,7 @@ module OpenC3
       @target_microservices = target_microservices
       @disable_erb = disable_erb
       @shard = shard.to_i # to_i to handle nil
+      @db_shard = db_shard.to_i # to_i to handle nil
       @bucket = Bucket.getClient()
       @children = []
     end
@@ -452,6 +461,7 @@ module OpenC3
         'target_microservices' => @target_microservices.as_json(),
         'disable_erb' => @disable_erb,
         'shard' => @shard,
+        'db_shard' => @db_shard,
       }
     end
 
@@ -543,6 +553,10 @@ module OpenC3
         parser.verify_num_parameters(1, 1, "#{keyword} <Shard Number Starting from 0>")
         @shard = Integer(parameters[0])
 
+      when 'DB_SHARD'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Shard Number Starting from 0>")
+        @db_shard = Integer(parameters[0])
+
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Target: #{keyword} #{parameters.join(" ")}")
       end
@@ -626,19 +640,20 @@ module OpenC3
         Store.hdel("#{@scope}__limits_groups", group)
       end
       self.class.packets(@name, type: :CMD, scope: @scope).each do |packet|
-        Topic.del("#{@scope}__COMMAND__{#{@name}}__#{packet['packet_name']}")
-        Topic.del("#{@scope}__DECOMCMD__{#{@name}}__#{packet['packet_name']}")
+        Topic.del("#{@scope}__COMMAND__{#{@name}}__#{packet['packet_name']}", db_shard: @db_shard)
+        Topic.del("#{@scope}__DECOMCMD__{#{@name}}__#{packet['packet_name']}", db_shard: @db_shard)
       end
       self.class.packets(@name, scope: @scope).each do |packet|
-        Topic.del("#{@scope}__TELEMETRY__{#{@name}}__#{packet['packet_name']}")
-        Topic.del("#{@scope}__DECOM__{#{@name}}__#{packet['packet_name']}")
+        Topic.del("#{@scope}__TELEMETRY__{#{@name}}__#{packet['packet_name']}", db_shard: @db_shard)
+        Topic.del("#{@scope}__DECOM__{#{@name}}__#{packet['packet_name']}", db_shard: @db_shard)
         CvtModel.del(target_name: @name, packet_name: packet['packet_name'], scope: @scope)
       end
       LimitsEventTopic.delete(@name, scope: @scope)
-      Store.del("#{@scope}__openc3tlm__#{@name}")
-      Store.del("#{@scope}__openc3cmd__#{@name}")
-      Store.del("#{@scope}__TELEMETRYCNTS__{#{@name}}")
-      Store.del("#{@scope}__COMMANDCNTS__{#{@name}}")
+      db_shard_store = Store.instance(db_shard: @db_shard)
+      db_shard_store.del("#{@scope}__openc3tlm__#{@name}")
+      db_shard_store.del("#{@scope}__openc3cmd__#{@name}")
+      db_shard_store.del("#{@scope}__TELEMETRYCNTS__{#{@name}}")
+      db_shard_store.del("#{@scope}__COMMANDCNTS__{#{@name}}")
 
       # Note: these match the names of the services in deploy_microservices
       %w(MULTI DECOM COMMANDLOG PACKETLOG CLEANUP).each do |type|
@@ -657,7 +672,7 @@ module OpenC3
       end
       # Delete item_map
       item_map_key = "#{@scope}__#{@name}__item_to_packet_map"
-      Store.del(item_map_key)
+      db_shard_store.del(item_map_key)
       @@item_map_cache[@name] = nil
 
       topic = { kind: 'deleted', type: 'target', name: @name }
@@ -752,16 +767,17 @@ module OpenC3
     end
 
     def update_store_telemetry(packet_hash, clear_old: true)
+      db_shard_store = Store.instance(db_shard: @db_shard)
       packet_hash.each do |target_name, packets|
         if clear_old
-          Store.del("#{@scope}__openc3tlm__#{target_name}")
-          Store.del("#{@scope}__openc3tlm__#{target_name}__allitems")
-          Store.del("#{@scope}__TELEMETRYCNTS__{#{target_name}}")
+          db_shard_store.del("#{@scope}__openc3tlm__#{target_name}")
+          db_shard_store.del("#{@scope}__openc3tlm__#{target_name}__allitems")
+          db_shard_store.del("#{@scope}__TELEMETRYCNTS__{#{target_name}}")
         end
         packets.each do |packet_name, packet|
           Logger.debug "Configuring tlm packet: #{target_name} #{packet_name}"
           begin
-            Store.hset("#{@scope}__openc3tlm__#{target_name}", packet_name, JSON.generate(packet.as_json, allow_nan: true))
+            db_shard_store.hset("#{@scope}__openc3tlm__#{target_name}", packet_name, JSON.generate(packet.as_json, allow_nan: true))
           rescue JSON::GeneratorError => e
             Logger.error("Invalid text present in #{target_name} #{packet_name} tlm packet")
             raise e
@@ -777,15 +793,16 @@ module OpenC3
     end
 
     def update_store_commands(packet_hash, clear_old: true)
+      db_shard_store = Store.instance(db_shard: @db_shard)
       packet_hash.each do |target_name, packets|
         if clear_old
-          Store.del("#{@scope}__openc3cmd__#{target_name}")
-          Store.del("#{@scope}__COMMANDCNTS__{#{target_name}}")
+          db_shard_store.del("#{@scope}__openc3cmd__#{target_name}")
+          db_shard_store.del("#{@scope}__COMMANDCNTS__{#{target_name}}")
         end
         packets.each do |packet_name, packet|
           Logger.debug "Configuring cmd packet: #{target_name} #{packet_name}"
           begin
-            Store.hset("#{@scope}__openc3cmd__#{target_name}", packet_name, JSON.generate(packet.as_json, allow_nan: true))
+            db_shard_store.hset("#{@scope}__openc3cmd__#{target_name}", packet_name, JSON.generate(packet.as_json, allow_nan: true))
           rescue JSON::GeneratorError => e
             Logger.error("Invalid text present in #{target_name} #{packet_name} cmd packet")
             raise e
@@ -818,7 +835,7 @@ module OpenC3
       # Create item_map
       item_map_key = "#{@scope}__#{@name}__item_to_packet_map"
       item_map = self.class.build_item_to_packet_map(@name, scope: @scope)
-      Store.set(item_map_key, JSON.generate(item_map, allow_nan: true))
+      Store.instance(db_shard: @db_shard).set(item_map_key, JSON.generate(item_map, allow_nan: true))
       @@item_map_cache[@name] = [Time.now, item_map]
     end
 
@@ -888,15 +905,15 @@ module OpenC3
         end
       end
       if cmd_or_tlm == :TELEMETRY
-        Topic.write_topic("MICROSERVICE__#{@scope}__PACKETLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json})
+        Topic.write_topic("MICROSERVICE__#{@scope}__PACKETLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json}, db_shard: @db_shard)
         add_topics_to_microservice("#{@scope}__PACKETLOG__#{@name}", raw_topics)
-        Topic.write_topic("MICROSERVICE__#{@scope}__DECOM__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json})
+        Topic.write_topic("MICROSERVICE__#{@scope}__DECOM__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json}, db_shard: @db_shard)
         add_topics_to_microservice("#{@scope}__DECOM__#{@name}", raw_topics)
       else
-        Topic.write_topic("MICROSERVICE__#{@scope}__COMMANDLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json})
+        Topic.write_topic("MICROSERVICE__#{@scope}__COMMANDLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json}, db_shard: @db_shard)
         add_topics_to_microservice("#{@scope}__COMMANDLOG__#{@name}", raw_topics)
       end
-      Topic.write_topic("MICROSERVICE__#{@scope}__TSDB__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => decom_topics.as_json.to_json})
+      Topic.write_topic("MICROSERVICE__#{@scope}__TSDB__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => decom_topics.as_json.to_json}, db_shard: @db_shard)
       add_topics_to_microservice("#{@scope}__TSDB__#{@name}", decom_topics)
     end
 
@@ -927,6 +944,7 @@ module OpenC3
         parent: parent,
         needs_dependencies: @needs_dependencies,
         shard: @shard,
+        db_shard: @db_shard,
         scope: @scope
       )
       microservice.create
@@ -954,6 +972,7 @@ module OpenC3
         parent: parent,
         needs_dependencies: @needs_dependencies,
         shard: @shard,
+        db_shard: @db_shard,
         scope: @scope
       )
       microservice.create
@@ -986,6 +1005,7 @@ module OpenC3
         parent: parent,
         needs_dependencies: @needs_dependencies,
         shard: @shard,
+        db_shard: @db_shard,
         scope: @scope
       )
       microservice.create
@@ -1010,6 +1030,7 @@ module OpenC3
         parent: nil,
         needs_dependencies: @needs_dependencies,
         shard: @shard,
+        db_shard: @db_shard,
         scope: @scope
       )
       microservice.create
@@ -1026,6 +1047,7 @@ module OpenC3
         plugin: @plugin,
         parent: parent,
         shard: @shard,
+        db_shard: @db_shard,
         scope: @scope
       )
       microservice.create
@@ -1044,6 +1066,7 @@ module OpenC3
           plugin: @plugin,
           needs_dependencies: @needs_dependencies,
           shard: @shard,
+          db_shard: @db_shard,
           scope: @scope
         )
         microservice.create
@@ -1139,11 +1162,19 @@ module OpenC3
         deploy_target_microservices('PACKETLOG', packet_topic_list, "#{@scope}__TELEMETRY__{#{@name}}") do |topics, instance, parent|
           deploy_packetlog_microservice(gem_path, variables, topics, instance, parent)
         end
+      end
 
-        # Decommutation Microservice
+      # Decommutation Microservice - also handles build_cmd / inject_tlm /
+      # get_tlm_buffer via the DECOMINTERFACE topic, so deploy whenever the
+      # target has commands or telemetry, not just telemetry.
+      if packet_topic_list.any?
         deploy_target_microservices('DECOM', packet_topic_list, "#{@scope}__TELEMETRY__{#{@name}}") do |topics, instance, parent|
           deploy_decom_microservice(system.targets[@name], gem_path, variables, topics, instance, parent)
         end
+      elsif command_topic_list.any?
+        # Cmd-only target: deploy DECOM with no tlm topics so build_cmd works.
+        # DecomMicroservice subscribes to DECOMINTERFACE in its initializer.
+        deploy_decom_microservice(system.targets[@name], gem_path, variables, [], nil, @parent)
       end
 
       # TSDB Microservice - subscribes to both decommutated telemetry and commands
@@ -1168,7 +1199,7 @@ module OpenC3
     end
 
     def self.increment_telemetry_count(target_name, packet_name, count, scope:)
-      result = Store.hincrby("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name, count)
+      result = store_for_target(target_name, scope: scope).hincrby("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name, count)
       if String === result
         return result.to_i
       else
@@ -1178,7 +1209,7 @@ module OpenC3
 
     def self.get_all_telemetry_counts(target_name, scope:)
       result = {}
-      get_all = Store.hgetall("#{scope}__TELEMETRYCNTS__{#{target_name}}")
+      get_all = store_for_target(target_name, scope: scope).hgetall("#{scope}__TELEMETRYCNTS__{#{target_name}}")
       if Hash === get_all
         get_all.each do |key, value|
           result[key] = value.to_i
@@ -1189,7 +1220,7 @@ module OpenC3
     end
 
     def self.get_telemetry_count(target_name, packet_name, scope:)
-      value = Store.hget("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name)
+      value = store_for_target(target_name, scope: scope).hget("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name)
       if String === value
         return value.to_i
       elsif value.nil?
@@ -1200,30 +1231,26 @@ module OpenC3
     end
 
     def self.get_telemetry_counts(target_packets, scope:)
-      result = []
-      if $openc3_redis_cluster
-        # No pipelining for cluster mode
-        # because it requires using the same shard for all keys
-        target_packets.each do |target_name, packet_name|
-          target_name = target_name.upcase
-          packet_name = packet_name.upcase
-          result << Store.hget("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name)
-        end
-      else
-        result = Store.redis_pool.pipelined do
-          target_packets.each do |target_name, packet_name|
-            target_name = target_name.upcase
-            packet_name = packet_name.upcase
-            Store.hget("#{scope}__TELEMETRYCNTS__{#{target_name}}", packet_name)
+      # Group by db_shard, preserving original index
+      db_shard_groups = {} # db_shard => [{index:, target_name:, packet_name:}]
+      target_packets.each_with_index do |(target_name, packet_name), idx|
+        target_name = target_name.upcase
+        packet_name = packet_name.upcase
+        db_shard = Store.db_shard_for_target(target_name, scope: scope)
+        db_shard_groups[db_shard] ||= []
+        db_shard_groups[db_shard] << { index: idx, target_name: target_name, packet_name: packet_name }
+      end
+
+      counts = Array.new(target_packets.length, 0)
+      db_shard_groups.each do |db_shard, entries|
+        store = Store.instance(db_shard: db_shard)
+        result = store.redis_pool.pipelined do
+          entries.each do |entry|
+            store.hget("#{scope}__TELEMETRYCNTS__{#{entry[:target_name]}}", entry[:packet_name])
           end
         end
-      end
-      counts = []
-      result.each do |count|
-        if count
-          counts << count.to_i
-        else
-          counts << 0
+        entries.each_with_index do |entry, i|
+          counts[entry[:index]] = result[i] ? result[i].to_i : 0
         end
       end
       return counts
@@ -1267,7 +1294,7 @@ module OpenC3
     end
 
     def self.sync_tlm_packet_counts(packet, tlm_target_names, scope:)
-      if @@sync_packet_count_delay_seconds <= 0 or $openc3_redis_cluster
+      if @@sync_packet_count_delay_seconds <= 0
         # Perfect but slow method
         packet.received_count = increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope: scope)
       else
@@ -1288,26 +1315,17 @@ module OpenC3
         if @@sync_packet_count_time.nil? or (Time.now - @@sync_packet_count_time) > @@sync_packet_count_delay_seconds
           @@sync_packet_count_time = Time.now
 
-          inc_count = 0
-          # Use pipeline to make this one transaction
-          result = Store.redis_pool.pipelined do
-            # Increment global counters for packets received
-            @@sync_packet_count_data.each do |target_name, packet_data|
-              packet_data.each do |packet_name, count|
-                increment_telemetry_count(target_name, packet_name, count, scope: scope)
-                inc_count += 1
-              end
+          # Increment global counters for packets received
+          @@sync_packet_count_data.each do |target_name, packet_data|
+            packet_data.each do |packet_name, count|
+              increment_telemetry_count(target_name, packet_name, count, scope: scope)
             end
-            @@sync_packet_count_data = {}
-
-            # Get all the packet counts with the global counters
-            tlm_target_names.each do |target_name|
-              get_all_telemetry_counts(target_name, scope: scope)
-            end
-            get_all_telemetry_counts('UNKNOWN', scope: scope)
           end
+          @@sync_packet_count_data = {}
+
+          # Get all the packet counts with the global counters
           tlm_target_names.each do |target_name|
-            result[inc_count].each do |packet_name, count|
+            get_all_telemetry_counts(target_name, scope: scope).each do |packet_name, count|
               begin
                 update_packet = System.telemetry.packet(target_name, packet_name)
                 update_packet.received_count = count.to_i
@@ -1319,9 +1337,8 @@ module OpenC3
                 end
               end
             end
-            inc_count += 1
           end
-          result[inc_count].each do |packet_name, count|
+          get_all_telemetry_counts('UNKNOWN', scope: scope).each do |packet_name, count|
             begin
               update_packet = System.telemetry.packet('UNKNOWN', packet_name)
               update_packet.received_count = count.to_i
@@ -1338,7 +1355,7 @@ module OpenC3
     end
 
     def self.increment_command_count(target_name, packet_name, count, scope:)
-      result = Store.hincrby("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name, count)
+      result = store_for_target(target_name, scope: scope).hincrby("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name, count)
       if String === result
         return result.to_i
       else
@@ -1348,7 +1365,7 @@ module OpenC3
 
     def self.get_all_command_counts(target_name, scope:)
       result = {}
-      get_all = Store.hgetall("#{scope}__COMMANDCNTS__{#{target_name}}")
+      get_all = store_for_target(target_name, scope: scope).hgetall("#{scope}__COMMANDCNTS__{#{target_name}}")
       if Hash === get_all
         get_all.each do |key, value|
           result[key] = value.to_i
@@ -1359,7 +1376,7 @@ module OpenC3
     end
 
     def self.get_command_count(target_name, packet_name, scope:)
-      value = Store.hget("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name)
+      value = store_for_target(target_name, scope: scope).hget("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name)
       if String === value
         return value.to_i
       elsif value.nil?
@@ -1370,30 +1387,26 @@ module OpenC3
     end
 
     def self.get_command_counts(target_packets, scope:)
-      result = []
-      if $openc3_redis_cluster
-        # No pipelining for cluster mode
-        # because it requires using the same shard for all keys
-        target_packets.each do |target_name, packet_name|
-          target_name = target_name.upcase
-          packet_name = packet_name.upcase
-          result << Store.hget("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name)
-        end
-      else
-        result = Store.redis_pool.pipelined do
-          target_packets.each do |target_name, packet_name|
-            target_name = target_name.upcase
-            packet_name = packet_name.upcase
-            Store.hget("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name)
+      # Group by db_shard, preserving original index
+      db_shard_groups = {} # db_shard => [{index:, target_name:, packet_name:}]
+      target_packets.each_with_index do |(target_name, packet_name), idx|
+        target_name = target_name.upcase
+        packet_name = packet_name.upcase
+        db_shard = Store.db_shard_for_target(target_name, scope: scope)
+        db_shard_groups[db_shard] ||= []
+        db_shard_groups[db_shard] << { index: idx, target_name: target_name, packet_name: packet_name }
+      end
+
+      counts = Array.new(target_packets.length, 0)
+      db_shard_groups.each do |db_shard, entries|
+        store = Store.instance(db_shard: db_shard)
+        result = store.redis_pool.pipelined do
+          entries.each do |entry|
+            store.hget("#{scope}__COMMANDCNTS__{#{entry[:target_name]}}", entry[:packet_name])
           end
         end
-      end
-      counts = []
-      result.each do |count|
-        if count
-          counts << count.to_i
-        else
-          counts << 0
+        entries.each_with_index do |entry, i|
+          counts[entry[:index]] = result[i] ? result[i].to_i : 0
         end
       end
       return counts

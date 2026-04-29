@@ -58,7 +58,7 @@
 </template>
 
 <script>
-import { OpenC3Api } from '@openc3/js-common/services'
+import { getCachedSetting, peekCachedSetting } from '../util'
 
 export default {
   inheritAttrs: false,
@@ -108,7 +108,9 @@ export default {
   data() {
     return {
       menu: false,
-      timeFormat: 'ampm',
+      // peek returns undefined until the first instance resolves the setting;
+      // null then marks "still loading" so the watcher defers formatting.
+      timeFormat: peekCachedSetting('time_format') ?? null,
       tempTime: null,
       inputValue: '',
     }
@@ -133,8 +135,9 @@ export default {
     modelValue: {
       immediate: true,
       handler(newVal) {
-        // Update input display when modelValue changes externally
-        if (!this.menu) {
+        // Skip until timeFormat has loaded — created() will do the initial
+        // format. Otherwise we'd flash the default ('ampm') style first.
+        if (!this.menu && this.timeFormat !== null) {
           this.inputValue = this.formatForDisplay(newVal)
         }
       },
@@ -160,27 +163,17 @@ export default {
     },
   },
   async created() {
-    // Capture current display before async call
+    // If the cache was already populated, the immediate modelValue watcher has
+    // already done the initial format — nothing to do.
+    if (this.timeFormat !== null) return
     const previousDisplay = this.inputValue
-    await this.loadTimeFormat()
-    // Only update display if it hasn't been changed externally during the await
-    if (this.inputValue === previousDisplay) {
+    this.timeFormat = await getCachedSetting('time_format', 'ampm')
+    // Only overwrite if the user hasn't typed during the await.
+    if (!this.menu && this.inputValue === previousDisplay) {
       this.inputValue = this.formatForDisplay(this.modelValue)
     }
   },
   methods: {
-    async loadTimeFormat() {
-      try {
-        const api = new OpenC3Api()
-        const response = await api.get_setting('time_format')
-        if (response) {
-          this.timeFormat = response
-        }
-      } catch (error) {
-        // Default to 'ampm' if setting is not found
-        this.timeFormat = 'ampm'
-      }
-    },
     formatForDisplay(time24) {
       if (!time24) return ''
       if (this.timeFormat === '24hr') {

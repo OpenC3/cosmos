@@ -11,6 +11,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require path
+
 # Set openc3 main gem version path
 base_path = File.expand_path(File.join(__dir__, '..', '..'))
 path = File.join(base_path, 'openc3', 'lib', 'openc3', 'version.rb')
@@ -64,8 +66,6 @@ File.open(path, 'wb') do |file|
   file.puts "end"
 end
 puts "Updated: #{path}"
-
-require path
 
 gemspec_files = [
   'openc3/openc3.gemspec',

@@ -47,31 +47,3 @@ class TestMetricModel(unittest.TestCase):
         MetricModel(name="baz", scope="scope", values={"test ": {"value": 6}})
         result = MetricModel.names(scope="scope")
         self.assertListEqual(result, [])  # self.assertEqual(result[0], ('baz'))
-
-    def test_returns_redis_metrics_from_store_and_ephemeral_store(self):
-        values = {
-            "connected_clients": {"value": 37},
-            "used_memory_rss": {"value": 0},
-            "total_commands_processed": {"value": 0},
-            "instantaneous_ops_per_sec": {"value": 0},
-            "instantaneous_input_kbps": {"value": 0},
-            "instantaneous_output_kbps": {"value": 0},
-            "latency_percentiles_usec_hget": {"value": "1,2"},
-        }
-        model = MetricModel(name="all", scope="scope", values={"test": {"value": 7}})
-        model.create(force=True)
-
-        json = {}
-        json["name"] = "all"
-        json["values"] = values
-        MetricModel.set(json, scope="scope")
-
-        # awaiting FakeRedis support for the server INFO command
-        # allow(openc3.Store.instance).to receive(:info) do
-        # values
-        # allow(openc3.EphemeralStore.instance).to receive(:info) do
-        # values
-
-        self.assertRaises(Exception, MetricModel.redis_metrics)
-        # self.assertEqual(result.empty?, (False))
-        # self.assertEqual(result['redis_connected_clients_total']['value'], (37))

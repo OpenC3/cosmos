@@ -16,6 +16,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'irb/ruby-lex'
+require 'ripper'
 require 'prism'
 require 'ripper'
 

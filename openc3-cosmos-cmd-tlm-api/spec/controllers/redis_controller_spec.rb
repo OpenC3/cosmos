@@ -27,7 +27,7 @@ RSpec.describe RedisController, type: :controller do
     end
 
     it "executes command on main store" do
-      expect(OpenC3::Store).to receive(:method_missing).with("GET", ["key"]).and_return("value")
+      expect_any_instance_of(OpenC3::Store).to receive(:method_missing).with(:GET, ["key"]).and_return("value")
       request.content_type = "text/plain"
       post :execute_raw, body: "GET key", params: {scope: "DEFAULT"}
       expect(response).to have_http_status(:created)
@@ -36,7 +36,7 @@ RSpec.describe RedisController, type: :controller do
     end
 
     it "executes command on ephemeral store" do
-      expect(OpenC3::EphemeralStore).to receive(:method_missing).with("SET", ["key", "value"]).and_return("OK")
+      expect_any_instance_of(OpenC3::EphemeralStore).to receive(:method_missing).with(:SET, ["key", "value"]).and_return("OK")
       request.content_type = "text/plain"
       post :execute_raw, body: "SET key value", params: {ephemeral: true, scope: "DEFAULT"}
       expect(response).to have_http_status(:created)

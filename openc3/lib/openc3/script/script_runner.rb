@@ -37,9 +37,9 @@ module OpenC3
 
     def script_syntax_check(script, scope: $openc3_scope)
       endpoint = "/script-api/scripts/temp.rb/syntax"
-      # Explicitly set the headers to plain/text so the request.body is set correctly
+      # Explicitly set the headers to text/plain so the request.body is set correctly
       headers = {
-        'Content-Type': 'plain/text',
+        'Content-Type': 'text/plain',
       }
       response = $script_runner_api_server.request('post', endpoint, headers: headers, data: script, scope: scope)
       if response.nil? || response.status != 200
@@ -129,9 +129,9 @@ module OpenC3
 
     def script_instrumented(script, scope: $openc3_scope)
       endpoint = "/script-api/scripts/temp.rb/instrumented"
-      # Explicitly set the headers to plain/text so the request.body is set correctly
+      # Explicitly set the headers to text/plain so the request.body is set correctly
       headers = {
-        'Content-Type': 'plain/text',
+        'Content-Type': 'text/plain',
       }
       response = $script_runner_api_server.request('post', endpoint, headers: headers, data: script, scope: scope)
       if response.nil? || response.status != 200

@@ -107,7 +107,9 @@ class DecomMicroservice(Microservice):
         # First Decom microservice has no number in the name
         if "__DECOM__" in self.name:
             self.topics.append(f"{self.scope}__DECOMINTERFACE__{{{self.target_names[0]}}}")
-        Topic.update_topic_offsets(self.topics)
+        self.limits_event_topic = f"{self.scope}__openc3_limits_events"
+        self.topics.append(self.limits_event_topic)
+        Topic.update_topic_offsets(self.topics, db_shard=self.db_shard)
         System.telemetry.set_limits_change_callback(self.limits_change_callback)
         LimitsEventTopic.sync_system(scope=self.scope)
         self.error_count = 0
@@ -131,13 +133,15 @@ class DecomMicroservice(Microservice):
             if self.cancel_thread:
                 break
             try:
-                # OpenC3.in_span("read_topics") do
-                for topic, msg_id, msg_hash, redis in Topic.read_topics(self.topics):
+                for topic, msg_id, msg_hash, redis in Topic.read_topics(self.topics, db_shard=self.db_shard):
                     if self.cancel_thread:
                         break
 
                     if topic == self.microservice_topic:
                         self.microservice_cmd(topic, msg_id, msg_hash, redis)
+                    elif topic == self.limits_event_topic:
+                        event = json.loads(msg_hash[b"event"])
+                        LimitsEventTopic.process_event(event)
                     elif "__DECOMINTERFACE__" in topic:
                         if msg_hash.get(b"inject_tlm"):
                             handle_inject_tlm_with_ack(msg_hash[b"inject_tlm"], msg_id, self.scope, self.logger)
@@ -152,7 +156,6 @@ class DecomMicroservice(Microservice):
                         self.decom_packet(topic, msg_id, msg_hash, redis)
                         self.metric.set(name="decom_total", value=self.count, type="counter")
                     self.count += 1
-                LimitsEventTopic.sync_system_thread_body(scope=self.scope)
             except Exception as error:
                 self.error_count += 1
                 self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
@@ -300,7 +303,8 @@ class DecomMicroservice(Microservice):
         if value is not None:
             message = f"{packet.target_name} {packet.packet_name} {item.name} = {value} is {item.limits.state}"
             if item.limits.values:
-                values = item.limits.values[System.limits_set()]
+                selected_limits_set = System.limits_set() if System.limits_set() in item.limits.values else "DEFAULT"
+                values = item.limits.values[selected_limits_set]
                 # Check if the state is RED_LOW, YELLOW_LOW, YELLOW_HIGH, RED_HIGH, GREEN_LOW, GREEN_HIGH
                 if DecomMicroservice.LIMITS_STATE_INDEX.get(item.limits.state, None) is not None:
                     # Directly index into the values and return the value

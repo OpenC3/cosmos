@@ -36,7 +36,7 @@ def script_list(scope=OPENC3_SCOPE):
 
 def script_syntax_check(script, scope=OPENC3_SCOPE):
     endpoint = "/script-api/scripts/temp.py/syntax"
-    # Explicitly set the headers to plain/text so the request.body is set correctly
+    # Explicitly set the headers to text/plain so the request.body is set correctly
     headers = {"Content-Type": "text/plain"}
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
         "post", endpoint, json=False, data=script, headers=headers, scope=scope
@@ -118,7 +118,7 @@ def script_unlock(filename, scope=OPENC3_SCOPE):
 
 def script_instrumented(script, scope=OPENC3_SCOPE):
     endpoint = "/script-api/scripts/temp.py/instrumented"
-    # Explicitly set the headers to plain/text so the request.body is set correctly
+    # Explicitly set the headers to text/plain so the request.body is set correctly
     headers = {"Content-Type": "text/plain"}
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
         "post", endpoint, json=False, data=script, headers=headers, scope=scope

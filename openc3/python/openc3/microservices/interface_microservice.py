@@ -54,10 +54,11 @@ with contextlib.suppress(ModuleNotFoundError):
 
 
 class InterfaceCmdHandlerThread:
-    def __init__(self, interface, tlm, logger=None, metric=None, scope=None):
+    def __init__(self, interface, tlm, logger=None, metric=None, db_shard=0, scope=None):
         self.interface = interface
         self.tlm = tlm
         self.scope = scope
+        self.db_shard = int(db_shard or 0)
         scope_model = ScopeModel.get_model(name=scope)
         if scope_model is not None:
             self.critical_commanding = scope_model.critical_commanding
@@ -92,7 +93,7 @@ class InterfaceCmdHandlerThread:
 
     def run(self):
         # receive_commands does a while True and does not return
-        InterfaceTopic.receive_commands(self.process_cmd, self.interface, self.scope)
+        InterfaceTopic.receive_commands(self.process_cmd, self.interface, self.scope, db_shard=self.db_shard)
 
     def process_cmd(self, topic, msg_id, msg_hash, _redis):
         # OpenC3.with_context(msg_hash) do
@@ -130,7 +131,9 @@ class InterfaceCmdHandlerThread:
                 )
             if msg_hash.get(b"shutdown"):
                 self.logger.info(f"{self.interface.name}: Shutdown requested")
-                InterfaceTopic.clear_topics(InterfaceTopic.topics(self.interface, scope=self.scope))
+                InterfaceTopic.clear_topics(
+                    InterfaceTopic.topics(self.interface, scope=self.scope), db_shard=self.db_shard
+                )
                 return "SHUTDOWN"
             if msg_hash.get(b"connect"):
                 self.logger.info(f"{self.interface.name}: Connect requested")
@@ -411,10 +414,11 @@ class InterfaceCmdHandlerThread:
 
 
 class RouterTlmHandlerThread:
-    def __init__(self, router, tlm, logger=None, metric=None, scope=None):
+    def __init__(self, router, tlm, logger=None, metric=None, db_shard=0, scope=None):
         self.router = router
         self.tlm = tlm
         self.scope = scope
+        self.db_shard = int(db_shard or 0)
         self.logger = logger
         if not self.logger:
             self.logger = Logger
@@ -444,7 +448,7 @@ class RouterTlmHandlerThread:
         time.sleep(0.001)  # Allow other threads to run
 
     def run(self):
-        generator = RouterTopic.receive_telemetry(self.router, scope=self.scope)
+        generator = RouterTopic.receive_telemetry(self.router, scope=self.scope, db_shard=self.db_shard)
         topic, msg_id, msg_hash, _redis = next(generator)
         result = None
 
@@ -474,7 +478,7 @@ class RouterTlmHandlerThread:
 
                 if msg_hash.get(b"shutdown"):
                     self.logger.info(f"{self.router.name}: Shutdown requested")
-                    RouterTopic.clear_topics(RouterTopic.topics(self.router, scope=self.scope))
+                    RouterTopic.clear_topics(RouterTopic.topics(self.router, scope=self.scope), db_shard=self.db_shard)
                     result = "SHUTDOWN"
                 elif msg_hash.get(b"connect"):
                     self.logger.info(f"{self.router.name}: Connect requested")
@@ -653,6 +657,7 @@ class InterfaceMicroservice(Microservice):
                 self,
                 logger=self.logger,
                 metric=self.metric,
+                db_shard=self.db_shard,
                 scope=self.scope,
             )
         else:
@@ -661,6 +666,7 @@ class InterfaceMicroservice(Microservice):
                 self,
                 logger=self.logger,
                 metric=self.metric,
+                db_shard=self.db_shard,
                 scope=self.scope,
             )
         self.handler_thread.start()

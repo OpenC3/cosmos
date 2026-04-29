@@ -183,7 +183,8 @@ module OpenC3
       authorize(permission: 'cmd_info', target_name: target_name, packet_name: command_name, manual: manual, scope: scope, token: token)
       TargetModel.packet(target_name, command_name, type: :CMD, scope: scope)
       topic = "#{scope}__COMMAND__{#{target_name}}__#{command_name}"
-      msg_id, msg_hash = Topic.get_newest_message(topic)
+      db_shard = Store.db_shard_for_target(target_name, scope: scope)
+      msg_id, msg_hash = Topic.get_newest_message(topic, db_shard: db_shard)
       if msg_id
         msg_hash['buffer'] = msg_hash['buffer'].b
         return msg_hash
