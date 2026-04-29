@@ -270,6 +270,9 @@ RSpec.describe StreamingApi, type: :model do
           { 'name' => 'TEMP2' },
           { 'name' => 'TEMP3' },
           { 'name' => 'DURATION' },
+          { 'name' => 'BRACKET[0]' },
+          { 'name' => 'ARY[0]' },
+          { 'name' => 'ARY[1]' },
         ]
       })
       allow(OpenC3::TargetModel).to receive(:packet).with('INST', 'PARAMS', type: :TLM, scope: 'DEFAULT').and_return({
@@ -292,6 +295,9 @@ RSpec.describe StreamingApi, type: :model do
         'VALUE1' => ['PARAMS'],
         'VALUE2' => ['PARAMS'],
         'DATA' => ['IMAGE'],
+        'BRACKET[0]' => ['HEALTH_STATUS'],
+        'ARY[0]' => ['HEALTH_STATUS'],
+        'ARY[1]' => ['HEALTH_STATUS'],
       })
     end
 
@@ -405,6 +411,89 @@ RSpec.describe StreamingApi, type: :model do
         ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED'],
         ['DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED'],
         ['DECOM__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED'],
+      ])
+    end
+
+    # --- Array-index bracket tests ---
+
+    it 'passes through ARY[0] unchanged (array index is not a glob)' do
+      data = { 'items' => [['DECOM__TLM__INST__HEALTH_STATUS__ARY[0]__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([['DECOM__TLM__INST__HEALTH_STATUS__ARY[0]__CONVERTED', '0']])
+    end
+
+    it 'passes through BRACKET[0] unchanged (array index is not a glob)' do
+      data = { 'items' => [['DECOM__TLM__INST__HEALTH_STATUS__BRACKET[0]__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([['DECOM__TLM__INST__HEALTH_STATUS__BRACKET[0]__CONVERTED', '0']])
+    end
+
+    it 'passes through ARY[1] unchanged (array index is not a glob)' do
+      data = { 'items' => [['DECOM__TLM__INST__HEALTH_STATUS__ARY[1]__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([['DECOM__TLM__INST__HEALTH_STATUS__ARY[1]__CONVERTED', '0']])
+    end
+
+    it 'expands bracket range glob TEMP[1-3] to TEMP1, TEMP2, TEMP3' do
+      data = { 'items' => [['DECOM__TLM__INST__HEALTH_STATUS__TEMP[1-3]__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED'],
+      ])
+    end
+
+    it 'star glob matches items with brackets in their names' do
+      data = { 'items' => [['DECOM__TLM__INST__HEALTH_STATUS__*__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      item_names = data['items'].map { |pair| StreamingKey.parse(pair[0], item_key: true).item_name }
+      expect(item_names).to include('BRACKET[0]', 'ARY[0]', 'ARY[1]')
+    end
+
+    it 'handles mixed concrete ARY[0] and glob TEMP* correctly' do
+      data = { 'items' => [
+        ['DECOM__TLM__INST__HEALTH_STATUS__ARY[0]__CONVERTED', '0'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP*__CONVERTED', '1'],
+      ], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([
+        ['DECOM__TLM__INST__HEALTH_STATUS__ARY[0]__CONVERTED', '0'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED'],
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP3__CONVERTED'],
+      ])
+    end
+
+    it 'LATEST + BRACKET[0] passes through unchanged' do
+      data = { 'items' => [['DECOM__TLM__INST__LATEST__BRACKET[0]__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([['DECOM__TLM__INST__LATEST__BRACKET[0]__CONVERTED', '0']])
+    end
+
+    it 'LATEST + bracket range glob TEMP[1-3] expands correctly' do
+      data = { 'items' => [['DECOM__TLM__INST__LATEST__TEMP[1-3]__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([
+        ['DECOM__TLM__INST__LATEST__TEMP1__CONVERTED', 'DECOM__TLM__INST__LATEST__TEMP1__CONVERTED'],
+        ['DECOM__TLM__INST__LATEST__TEMP2__CONVERTED', 'DECOM__TLM__INST__LATEST__TEMP2__CONVERTED'],
+        ['DECOM__TLM__INST__LATEST__TEMP3__CONVERTED', 'DECOM__TLM__INST__LATEST__TEMP3__CONVERTED'],
+      ])
+    end
+
+    it 'packet glob HEALTH* + bracket item BRACKET[0] expands correctly' do
+      data = { 'items' => [['DECOM__TLM__INST__HEALTH*__BRACKET[0]__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([
+        ['DECOM__TLM__INST__HEALTH_STATUS__BRACKET[0]__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__BRACKET[0]__CONVERTED'],
+      ])
+    end
+
+    it 'packet glob HEALTH* + bracket item ARY[0] expands correctly' do
+      data = { 'items' => [['DECOM__TLM__INST__HEALTH*__ARY[0]__CONVERTED', '0']], 'scope' => 'DEFAULT' }
+      @api.send(:expand_item_globs, data, scope: 'DEFAULT')
+      expect(data['items']).to eq([
+        ['DECOM__TLM__INST__HEALTH_STATUS__ARY[0]__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__ARY[0]__CONVERTED'],
       ])
     end
   end
@@ -678,6 +767,136 @@ RSpec.describe StreamingApi, type: :model do
           end
         end
       end
+    end
+  end
+
+  context 'streaming array-indexed items from TSDB' do
+    before(:each) do
+      OpenC3::QuestDBClient.disconnect
+      # Mock get_tlm_available to resolve CONVERTED -> RAW (as real API does for arrays)
+      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available) do |_instance, items, **_kwargs|
+        items.map { |item| item.gsub('CONVERTED', 'RAW') }
+      end
+      # Mock packet definition with array item
+      allow(OpenC3::TargetModel).to receive(:packet).with('INST', 'PARAMS', type: :TLM, scope: 'DEFAULT').and_return({
+        'items' => [
+          { 'name' => 'VALUE1', 'data_type' => 'FLOAT', 'array_size' => nil },
+          { 'name' => 'ARY', 'data_type' => 'FLOAT', 'array_size' => 64, 'read_conversion' => nil, 'states' => nil },
+        ]
+      })
+    end
+
+    after(:each) do
+      OpenC3::QuestDBClient.disconnect
+    end
+
+    it 'extracts single array element ARY[0] from TSDB' do
+      mock_conn = instance_double(PG::Connection)
+      allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
+      allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
+
+      # DB returns the ARY column as a JSON array string (how QuestDB stores arrays)
+      pg_data = [
+        [["ARY", "[1.0, 2.0, 3.0]"], ["PACKET_TIMESECONDS", @file_start_time]]
+      ]
+      pg_data.define_singleton_method(:ntuples) { 1 }
+
+      $exec_cnt = 0
+      allow(mock_conn).to receive(:exec) do
+        $exec_cnt += 1
+        $exec_cnt == 1 ? pg_data : nil
+      end
+
+      msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }
+      allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
+
+      data = { 'items' => ['DECOM__TLM__INST__PARAMS__ARY[0]__CONVERTED'], 'scope' => 'DEFAULT' }
+      data['start_time'] = @file_start_time
+      data['end_time'] = @file_start_time + 1000
+      @api.add(data)
+      sleep 1.65
+
+      expect(@messages.length).to eq(2)
+      expect(@messages[-1]).to eq([])
+
+      first_entry = @messages[0][0]
+      expect(first_entry['__type']).to eq('ITEMS')
+      # The value should be the extracted element, not the full array
+      item_key = 'DECOM__TLM__INST__PARAMS__ARY[0]__CONVERTED'
+      expect(first_entry[item_key]).to eq(1.0)
+    end
+
+    it 'extracts different array indices from same array item' do
+      mock_conn = instance_double(PG::Connection)
+      allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
+      allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
+
+      # DB returns two ARY columns (one per requested index) both with same JSON array
+      pg_data = [
+        [["ARY", "[10.0, 20.0, 30.0]"], ["ARY", "[10.0, 20.0, 30.0]"], ["PACKET_TIMESECONDS", @file_start_time]]
+      ]
+      pg_data.define_singleton_method(:ntuples) { 1 }
+
+      $exec_cnt = 0
+      allow(mock_conn).to receive(:exec) do
+        $exec_cnt += 1
+        $exec_cnt == 1 ? pg_data : nil
+      end
+
+      msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }
+      allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
+
+      data = { 'items' => [
+        'DECOM__TLM__INST__PARAMS__ARY[0]__CONVERTED',
+        'DECOM__TLM__INST__PARAMS__ARY[2]__CONVERTED',
+      ], 'scope' => 'DEFAULT' }
+      data['start_time'] = @file_start_time
+      data['end_time'] = @file_start_time + 1000
+      @api.add(data)
+      sleep 1.65
+
+      expect(@messages.length).to eq(2)
+      expect(@messages[-1]).to eq([])
+
+      first_entry = @messages[0][0]
+      expect(first_entry['DECOM__TLM__INST__PARAMS__ARY[0]__CONVERTED']).to eq(10.0)
+      expect(first_entry['DECOM__TLM__INST__PARAMS__ARY[2]__CONVERTED']).to eq(30.0)
+    end
+
+    it 'handles mixed array-indexed and scalar items' do
+      mock_conn = instance_double(PG::Connection)
+      allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
+      allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
+
+      pg_data = [
+        [["VALUE1", 42.0], ["ARY", "[5.0, 6.0, 7.0]"], ["PACKET_TIMESECONDS", @file_start_time]]
+      ]
+      pg_data.define_singleton_method(:ntuples) { 1 }
+
+      $exec_cnt = 0
+      allow(mock_conn).to receive(:exec) do
+        $exec_cnt += 1
+        $exec_cnt == 1 ? pg_data : nil
+      end
+
+      msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }
+      allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
+
+      data = { 'items' => [
+        'DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED',
+        'DECOM__TLM__INST__PARAMS__ARY[1]__CONVERTED',
+      ], 'scope' => 'DEFAULT' }
+      data['start_time'] = @file_start_time
+      data['end_time'] = @file_start_time + 1000
+      @api.add(data)
+      sleep 1.65
+
+      expect(@messages.length).to eq(2)
+      expect(@messages[-1]).to eq([])
+
+      first_entry = @messages[0][0]
+      expect(first_entry['DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED']).to eq(42.0)
+      expect(first_entry['DECOM__TLM__INST__PARAMS__ARY[1]__CONVERTED']).to eq(6.0)
     end
   end
 
