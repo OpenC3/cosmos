@@ -235,7 +235,7 @@ module OpenC3
         hs_packet.cmd_acpt_cnt += 1
         OpenC3.kill_thread(self, @solar_panel_thread)
         @solar_panel_positions = SOLAR_PANEL_DFLTS.dup
-      when 'MEMLOAD'
+      when 'MEMLOAD', 'BLOCK'
         hs_packet.cmd_acpt_cnt += 1
         hs_packet.blocktest = packet.read('data')
       when 'QUIET'

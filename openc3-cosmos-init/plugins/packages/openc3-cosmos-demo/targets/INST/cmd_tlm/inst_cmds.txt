@@ -268,6 +268,17 @@ COMMAND <%= target_name %> VARIABLE_ARRAYS BIG_ENDIAN "Command with variable len
   APPEND_ARRAY_PARAMETER ARRAY2 8 UINT 0 "Array of data"
     VARIABLE_BIT_SIZE ARRAY2_LENGTH
 
+COMMAND <%= target_name %> BLOCK BIG_ENDIAN "Send variable block of data"
+  DISABLE_MESSAGES # Disable messages on a command that could be sent many many times
+  <%= render "_ccsds_cmd.txt", locals: {id: 16} %>
+  APPEND_PARAMETER BYTE 8 UINT MIN MAX 0x55 "Byte to duplicate"
+    FORMAT_STRING "0x%0X"
+  APPEND_PARAMETER LENGTH 32 UINT MIN MAX 0 "Length of data"
+  APPEND_PARAMETER DATA 0 BLOCK "" "Variable block of data"
+    WRITE_CONVERSION block_conversion.rb
+    HIDDEN
+  RELATED_ITEM <%= target_name %> HEALTH_STATUS BLOCKTEST
+
 # Throughput Testing Commands (for use with external throughput server)
 COMMAND <%= target_name %> START_STREAM BIG_ENDIAN "Start telemetry streaming from throughput server"
   <%= render "_ccsds_cmd.txt", locals: {id: 200} %>
