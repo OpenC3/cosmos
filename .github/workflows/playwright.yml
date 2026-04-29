@@ -27,6 +27,16 @@ on:
 
 env:
   OPENC3_ARGON2_PROFILE: "unsafe_cheapest"
+  OPENC3_TAG: latest
+  OPENC3_REGISTRY: docker.io
+  OPENC3_NAMESPACE: openc3inc
+  OPENC3_DEPENDENCY_REGISTRY: docker.io
+  ALPINE_VERSION: "3.23"
+  ALPINE_BUILD: "3"
+  APK_URL: https://dl-cdn.alpinelinux.org
+  RUBYGEMS_URL: https://rubygems.org
+  PYPI_URL: https://pypi.org
+  NPM_URL: https://registry.npmjs.org
 
 permissions:
   contents: read
@@ -39,6 +49,7 @@ jobs:
       fail-fast: false
     permissions:
       contents: read
+      actions: write
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
@@ -49,10 +60,145 @@ jobs:
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 24
-      - name: openc3.sh build
-        # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
-        shell: 'script -q -e -c "bash {0}"'
-        run: ./openc3.sh build
+      - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.4.0
+
+      - name: Setup (download cacert.pem)
+        run: ./scripts/linux/openc3_setup.sh
+
+      - name: Build openc3-ruby
+        run: |
+          docker buildx build \
+            --load \
+            --network host \
+            --cache-to type=gha,scope=openc3-ruby,mode=max \
+            --cache-from type=gha,scope=openc3-ruby \
+            --build-arg ALPINE_VERSION=$ALPINE_VERSION \
+            --build-arg ALPINE_BUILD=$ALPINE_BUILD \
+            --build-arg APK_URL=$APK_URL \
+            --build-arg RUBYGEMS_URL=$RUBYGEMS_URL \
+            --build-arg PYPI_URL=$PYPI_URL \
+            --build-arg OPENC3_DEPENDENCY_REGISTRY=$OPENC3_DEPENDENCY_REGISTRY \
+            --build-arg OPENC3_TAG=$OPENC3_TAG \
+            -t $OPENC3_REGISTRY/$OPENC3_NAMESPACE/openc3-ruby:$OPENC3_TAG \
+            openc3-ruby
+
+      - name: Build openc3-base
+        run: |
+          docker buildx build \
+            --load \
+            --network host \
+            --cache-to type=gha,scope=openc3-base,mode=max \
+            --cache-from type=gha,scope=openc3-base \
+            --cache-from type=gha,scope=openc3-ruby \
+            --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
+            --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
+            --build-arg OPENC3_TAG=$OPENC3_TAG \
+            -t $OPENC3_REGISTRY/$OPENC3_NAMESPACE/openc3-base:$OPENC3_TAG \
+            openc3
+
+      - name: Build openc3-node
+        run: |
+          docker buildx build \
+            --load \
+            --network host \
+            --cache-to type=gha,scope=openc3-node,mode=max \
+            --cache-from type=gha,scope=openc3-node \
+            --cache-from type=gha,scope=openc3-ruby \
+            --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
+            --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
+            --build-arg OPENC3_TAG=$OPENC3_TAG \
+            -t $OPENC3_REGISTRY/$OPENC3_NAMESPACE/openc3-node:$OPENC3_TAG \
+            openc3-node
+
+      - name: Build remaining services
+        run: |
+          docker buildx build \
+            --load \
+            --network host \
+            --cache-to type=gha,scope=openc3-buckets,mode=min \
+            --cache-from type=gha,scope=openc3-buckets \
+            --build-arg OPENC3_DEPENDENCY_REGISTRY=$OPENC3_DEPENDENCY_REGISTRY \
+            -t $OPENC3_REGISTRY/$OPENC3_NAMESPACE/openc3-buckets:$OPENC3_TAG \
+            openc3-buckets
+          docker buildx build \
+            --load \
+            --network host \
+            --cache-to type=gha,scope=openc3-tsdb,mode=min \
+            --cache-from type=gha,scope=openc3-tsdb \
+            --build-arg OPENC3_DEPENDENCY_REGISTRY=$OPENC3_DEPENDENCY_REGISTRY \
+            -t $OPENC3_REGISTRY/$OPENC3_NAMESPACE/openc3-tsdb:$OPENC3_TAG \
+            openc3-tsdb
+          docker buildx build \
+            --load \
+            --network host \
+            --cache-to type=gha,scope=openc3-redis,mode=min \
+            --cache-from type=gha,scope=openc3-redis \
+            --build-arg OPENC3_DEPENDENCY_REGISTRY=$OPENC3_DEPENDENCY_REGISTRY \
+            -t $OPENC3_REGISTRY/$OPENC3_NAMESPACE/openc3-redis:$OPENC3_TAG \
+            openc3-redis
+          docker buildx build \
+            --load \
+            --network host \
+            --cache-to type=gha,scope=openc3-traefik,mode=min \
+            --cache-from type=gha,scope=openc3-traefik \
+            --build-arg OPENC3_DEPENDENCY_REGISTRY=$OPENC3_DEPENDENCY_REGISTRY \
+            -t $OPENC3_REGISTRY/$OPENC3_NAMESPACE/openc3-traefik:$OPENC3_TAG \
+            openc3-traefik
+          docker buildx build \
+            --load \
+            --network host \
+            --cache-to type=gha,scope=openc3-cosmos-cmd-tlm-api,mode=max \
+            --cache-from type=gha,scope=openc3-cosmos-cmd-tlm-api \
+            --cache-from type=gha,scope=openc3-base \
+            --cache-from type=gha,scope=openc3-ruby \
+            --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
+            --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
+            --build-arg OPENC3_TAG=$OPENC3_TAG \
+            --build-arg OPENC3_PATH=/openc3 \
+            -t $OPENC3_REGISTRY/$OPENC3_NAMESPACE/openc3-cosmos-cmd-tlm-api:$OPENC3_TAG \
+            openc3-cosmos-cmd-tlm-api
+          docker buildx build \
+            --load \
+            --network host \
+            --cache-to type=gha,scope=openc3-script-runner-api,mode=max \
+            --cache-from type=gha,scope=openc3-script-runner-api \
+            --cache-from type=gha,scope=openc3-base \
+            --cache-from type=gha,scope=openc3-ruby \
+            --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
+            --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
+            --build-arg OPENC3_TAG=$OPENC3_TAG \
+            --build-arg OPENC3_PATH=/openc3 \
+            -t $OPENC3_REGISTRY/$OPENC3_NAMESPACE/openc3-cosmos-script-runner-api:$OPENC3_TAG \
+            openc3-cosmos-script-runner-api
+          docker buildx build \
+            --load \
+            --network host \
+            --cache-to type=gha,scope=openc3-operator,mode=max \
+            --cache-from type=gha,scope=openc3-operator \
+            --cache-from type=gha,scope=openc3-base \
+            --cache-from type=gha,scope=openc3-ruby \
+            --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
+            --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
+            --build-arg OPENC3_TAG=$OPENC3_TAG \
+            -t $OPENC3_REGISTRY/$OPENC3_NAMESPACE/openc3-operator:$OPENC3_TAG \
+            openc3-operator
+          docker buildx build \
+            --load \
+            --network host \
+            --cache-to type=gha,scope=openc3-cosmos-init,mode=max \
+            --cache-from type=gha,scope=openc3-cosmos-init \
+            --cache-from type=gha,scope=openc3-node \
+            --cache-from type=gha,scope=openc3-base \
+            --cache-from type=gha,scope=openc3-ruby \
+            --build-arg NPM_URL=$NPM_URL \
+            --build-arg OPENC3_DEPENDENCY_REGISTRY=$OPENC3_DEPENDENCY_REGISTRY \
+            --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
+            --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
+            --build-arg OPENC3_TAG=$OPENC3_TAG \
+            --build-context docs=docs.openc3.com \
+            -t $OPENC3_REGISTRY/$OPENC3_NAMESPACE/openc3-cosmos-init:$OPENC3_TAG \
+            openc3-cosmos-init
+
       - uses: pnpm/action-setup@08c4be7e2e672a47d11bd04269e27e5f3e8529cb # v6.0.0
         with:
           version: 10

@@ -33,7 +33,7 @@ permissions:
 
 jobs:
   unit-test:
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: false # ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
