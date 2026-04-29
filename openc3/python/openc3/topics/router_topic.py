@@ -117,9 +117,17 @@ class RouterTopic(Topic):
     def connect_router(cls, router_name, *router_params, scope=OPENC3_SCOPE):
         db_shard = cls._db_shard_for_router(router_name, scope)
         if router_params and len(router_params) == 0:
-            Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"connect": "True", "params": json.dumps(router_params)}, "*", 100, db_shard=db_shard)
+            Topic.write_topic(
+                f"{{{scope}__CMD}}ROUTER__{router_name}",
+                {"connect": "True", "params": json.dumps(router_params)},
+                "*",
+                100,
+                db_shard=db_shard,
+            )
         else:
-            Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"connect": "True"}, "*", 100, db_shard=db_shard)
+            Topic.write_topic(
+                f"{{{scope}__CMD}}ROUTER__{router_name}", {"connect": "True"}, "*", 100, db_shard=db_shard
+            )
 
     @classmethod
     def disconnect_router(cls, router_name, scope=OPENC3_SCOPE):
@@ -134,7 +142,9 @@ class RouterTopic(Topic):
     @classmethod
     def stop_raw_logging(cls, router_name, scope=OPENC3_SCOPE):
         db_shard = cls._db_shard_for_router(router_name, scope)
-        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"log_stream": "False"}, "*", 100, db_shard=db_shard)
+        Topic.write_topic(
+            f"{{{scope}__CMD}}ROUTER__{router_name}", {"log_stream": "False"}, "*", 100, db_shard=db_shard
+        )
 
     @classmethod
     def shutdown(cls, router, scope=OPENC3_SCOPE):
@@ -145,25 +155,33 @@ class RouterTopic(Topic):
     def router_cmd(cls, router_name, cmd_name, *cmd_params, scope=OPENC3_SCOPE):
         db_shard = cls._db_shard_for_router(router_name, scope)
         data = {"cmd_name": cmd_name, "cmd_params": cmd_params}
-        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"router_cmd": json.dumps(data)}, "*", 100, db_shard=db_shard)
+        Topic.write_topic(
+            f"{{{scope}__CMD}}ROUTER__{router_name}", {"router_cmd": json.dumps(data)}, "*", 100, db_shard=db_shard
+        )
 
     @classmethod
     def protocol_cmd(cls, router_name, cmd_name, *cmd_params, read_write="READ_WRITE", index=-1, scope=OPENC3_SCOPE):
         db_shard = cls._db_shard_for_router(router_name, scope)
         data = {"cmd_name": cmd_name, "cmd_params": cmd_params, "read_write": str(read_write).upper(), "index": index}
-        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"protocol_cmd": json.dumps(data)}, "*", 100, db_shard=db_shard)
+        Topic.write_topic(
+            f"{{{scope}__CMD}}ROUTER__{router_name}", {"protocol_cmd": json.dumps(data)}, "*", 100, db_shard=db_shard
+        )
 
     @classmethod
     def router_target_enable(cls, router_name, target_name, cmd_only=False, tlm_only=False, scope=OPENC3_SCOPE):
         db_shard = cls._db_shard_for_router(router_name, scope)
         data = {"target_name": target_name.upper(), "cmd_only": cmd_only, "tlm_only": tlm_only, "action": "enable"}
-        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"target_control": json.dumps(data)}, "*", 100, db_shard=db_shard)
+        Topic.write_topic(
+            f"{{{scope}__CMD}}ROUTER__{router_name}", {"target_control": json.dumps(data)}, "*", 100, db_shard=db_shard
+        )
 
     @classmethod
     def router_target_disable(cls, router_name, target_name, cmd_only=False, tlm_only=False, scope=OPENC3_SCOPE):
         db_shard = cls._db_shard_for_router(router_name, scope)
         data = {"target_name": target_name.upper(), "cmd_only": cmd_only, "tlm_only": tlm_only, "action": "disable"}
-        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"target_control": json.dumps(data)}, "*", 100, db_shard=db_shard)
+        Topic.write_topic(
+            f"{{{scope}__CMD}}ROUTER__{router_name}", {"target_control": json.dumps(data)}, "*", 100, db_shard=db_shard
+        )
 
     @classmethod
     def router_details(cls, router_name, scope=OPENC3_SCOPE, timeout=None):
@@ -175,7 +193,9 @@ class RouterTopic(Topic):
         ack_topic = f"{{{scope}__ACKCMD}}ROUTER__{router_name}"
         Topic.update_topic_offsets([ack_topic], db_shard=db_shard)
 
-        cmd_id = Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"router_details": "true"}, "*", 100, db_shard=db_shard)
+        cmd_id = Topic.write_topic(
+            f"{{{scope}__CMD}}ROUTER__{router_name}", {"router_details": "true"}, "*", 100, db_shard=db_shard
+        )
         start_time = time.time()
         while (time.time() - start_time) < timeout:
             for _, _, msg_hash, _ in Topic.read_topics([ack_topic], db_shard=db_shard):

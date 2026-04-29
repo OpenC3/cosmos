@@ -117,7 +117,12 @@ class InterfaceStatusModel(DbShardedModel, Model):
         self.rxcnt = rxcnt
 
     def create(self, update=False, force=False, queued=False, isoformat=False):
-        self._db_sharded_create(self.__class__._db_shard_for_name(self.name, self.scope, use_cache=True), update=update, force=force, queued=queued)
+        self._db_sharded_create(
+            self.__class__._db_shard_for_name(self.name, self.scope, use_cache=True),
+            update=update,
+            force=force,
+            queued=queued,
+        )
 
     def destroy(self):
         self._db_sharded_destroy(self.__class__._db_shard_for_name(self.name, self.scope))

@@ -19,7 +19,7 @@ from openc3.utilities.store import Store
 
 class MetricModel(DbShardedModel, EphemeralModel):
     PRIMARY_KEY = "__openc3__metric"
-    METRIC_EXPIRE_SECONDS = 3600 # # Expire metrics after 1 hour
+    METRIC_EXPIRE_SECONDS = 3600  # # Expire metrics after 1 hour
 
     _db_shard_cache = {}
 

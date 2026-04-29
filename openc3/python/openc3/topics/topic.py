@@ -30,7 +30,11 @@ class Topic(metaclass=TopicMeta):
     @classmethod
     def topics(cls, key, scope, db_shard=0):
         return sorted(
-            set(EphemeralStore.instance(db_shard=db_shard).scan_iter(match=f"{scope}__{key}__*", type="stream", count=100))
+            set(
+                EphemeralStore.instance(db_shard=db_shard).scan_iter(
+                    match=f"{scope}__{key}__*", type="stream", count=100
+                )
+            )
         )
 
     @classmethod

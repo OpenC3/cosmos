@@ -95,9 +95,7 @@ class DbShardedModel:
 
         if queued:
             store = self.__class__.store_queued().instance(db_shard=db_shard)
-            store.hset(
-                self.primary_key, self.name, json.dumps(self.as_json())
-            )
+            store.hset(self.primary_key, self.name, json.dumps(self.as_json()))
             if expire_seconds is not None:
                 store.execute_command("HEXPIRE", self.primary_key, expire_seconds, "FIELDS", 1, self.name)
         else:

@@ -55,7 +55,6 @@ data = StreamingWebSocketApi.read_all(
 print(data)
 
 
-
 now = datetime.now(timezone.utc)
 with MessagesWebSocketApi(
     history_count=0,

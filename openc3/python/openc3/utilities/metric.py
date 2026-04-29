@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import contextlib
+import importlib
 import json
 import threading
 import time
@@ -39,7 +40,7 @@ class Metric:
     # Objects with a generate method to be called on each metric cycle (to generate metrics)
     update_generators = []
 
-    def __init__(self, microservice, scope, db_shard = None):
+    def __init__(self, microservice, scope, db_shard=None):
         self.scope = scope
         self.microservice = microservice
         self.data = {}
@@ -133,4 +134,4 @@ class Metric:
 
 with contextlib.suppress(ModuleNotFoundError):
     # ModuleNotFoundError expected in COSMOS Core
-    import openc3enterprise.utilities.metric  # noqa: F401
+    importlib.import_module("openc3enterprise.utilities.metric")

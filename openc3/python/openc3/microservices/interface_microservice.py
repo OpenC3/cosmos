@@ -131,7 +131,9 @@ class InterfaceCmdHandlerThread:
                 )
             if msg_hash.get(b"shutdown"):
                 self.logger.info(f"{self.interface.name}: Shutdown requested")
-                InterfaceTopic.clear_topics(InterfaceTopic.topics(self.interface, scope=self.scope), db_shard=self.db_shard)
+                InterfaceTopic.clear_topics(
+                    InterfaceTopic.topics(self.interface, scope=self.scope), db_shard=self.db_shard
+                )
                 return "SHUTDOWN"
             if msg_hash.get(b"connect"):
                 self.logger.info(f"{self.interface.name}: Connect requested")

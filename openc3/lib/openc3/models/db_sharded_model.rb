@@ -26,6 +26,8 @@ module OpenC3
       # Hard-cached only when use_cache: true (intended for the set/create path
       # where the db_shard won't change within the process lifetime).
       def _db_shard_for_name(name, scope:, use_cache: false)
+        cache = nil
+
         if use_cache
           cache = (@db_shard_cache ||= {})
           cache_key = "#{scope}__#{name}"

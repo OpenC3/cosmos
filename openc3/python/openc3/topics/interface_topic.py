@@ -87,7 +87,9 @@ class InterfaceTopic(Topic):
         ack_topic = f"{{{scope}__ACKCMD}}INTERFACE__{interface_name}"
         Topic.update_topic_offsets([ack_topic], db_shard=db_shard)
 
-        cmd_id = Topic.write_topic(f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"raw": data}, "*", 100, db_shard=db_shard)
+        cmd_id = Topic.write_topic(
+            f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"raw": data}, "*", 100, db_shard=db_shard
+        )
         start_time = time.time()
         while (time.time() - start_time) < timeout:
             for _, _, msg_hash, _ in Topic.read_topics([ack_topic], db_shard=db_shard):
@@ -122,35 +124,55 @@ class InterfaceTopic(Topic):
     @classmethod
     def disconnect_interface(cls, interface_name, scope=OPENC3_SCOPE):
         db_shard = cls._db_shard_for_interface(interface_name, scope)
-        Topic.write_topic(f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"disconnect": "true"}, "*", 100, db_shard=db_shard)
+        Topic.write_topic(
+            f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"disconnect": "true"}, "*", 100, db_shard=db_shard
+        )
 
     @classmethod
     def start_raw_logging(cls, interface_name, scope=OPENC3_SCOPE):
         db_shard = cls._db_shard_for_interface(interface_name, scope)
-        Topic.write_topic(f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"log_stream": "true"}, "*", 100, db_shard=db_shard)
+        Topic.write_topic(
+            f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"log_stream": "true"}, "*", 100, db_shard=db_shard
+        )
 
     @classmethod
     def stop_raw_logging(cls, interface_name, scope=OPENC3_SCOPE):
         db_shard = cls._db_shard_for_interface(interface_name, scope)
-        Topic.write_topic(f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"log_stream": "false"}, "*", 100, db_shard=db_shard)
+        Topic.write_topic(
+            f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"log_stream": "false"}, "*", 100, db_shard=db_shard
+        )
 
     @classmethod
     def shutdown(cls, interface, scope=OPENC3_SCOPE):
         db_shard = cls._db_shard_for_interface(interface.name, scope)
         InterfaceTopic.while_receive_commands = False
-        Topic.write_topic(f"{{{scope}__CMD}}INTERFACE__{interface.name}", {"shutdown": "true"}, "*", 100, db_shard=db_shard)
+        Topic.write_topic(
+            f"{{{scope}__CMD}}INTERFACE__{interface.name}", {"shutdown": "true"}, "*", 100, db_shard=db_shard
+        )
 
     @classmethod
     def interface_cmd(cls, interface_name, cmd_name, *cmd_params, scope=OPENC3_SCOPE):
         db_shard = cls._db_shard_for_interface(interface_name, scope)
         data = {"cmd_name": cmd_name, "cmd_params": cmd_params}
-        Topic.write_topic(f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"interface_cmd": json.dumps(data)}, "*", 100, db_shard=db_shard)
+        Topic.write_topic(
+            f"{{{scope}__CMD}}INTERFACE__{interface_name}",
+            {"interface_cmd": json.dumps(data)},
+            "*",
+            100,
+            db_shard=db_shard,
+        )
 
     @classmethod
     def protocol_cmd(cls, interface_name, cmd_name, *cmd_params, read_write="READ_WRITE", index=-1, scope=OPENC3_SCOPE):
         db_shard = cls._db_shard_for_interface(interface_name, scope)
         data = {"cmd_name": cmd_name, "cmd_params": cmd_params, "read_write": str(read_write).upper(), "index": index}
-        Topic.write_topic(f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"protocol_cmd": json.dumps(data)}, "*", 100, db_shard=db_shard)
+        Topic.write_topic(
+            f"{{{scope}__CMD}}INTERFACE__{interface_name}",
+            {"protocol_cmd": json.dumps(data)},
+            "*",
+            100,
+            db_shard=db_shard,
+        )
 
     @classmethod
     def inject_tlm(
@@ -200,13 +222,25 @@ class InterfaceTopic(Topic):
     def interface_target_enable(cls, interface_name, target_name, cmd_only=False, tlm_only=False, scope=OPENC3_SCOPE):
         db_shard = cls._db_shard_for_interface(interface_name, scope)
         data = {"target_name": target_name.upper(), "cmd_only": cmd_only, "tlm_only": tlm_only, "action": "enable"}
-        Topic.write_topic(f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"target_control": json.dumps(data)}, "*", 100, db_shard=db_shard)
+        Topic.write_topic(
+            f"{{{scope}__CMD}}INTERFACE__{interface_name}",
+            {"target_control": json.dumps(data)},
+            "*",
+            100,
+            db_shard=db_shard,
+        )
 
     @classmethod
     def interface_target_disable(cls, interface_name, target_name, cmd_only=False, tlm_only=False, scope=OPENC3_SCOPE):
         db_shard = cls._db_shard_for_interface(interface_name, scope)
         data = {"target_name": target_name.upper(), "cmd_only": cmd_only, "tlm_only": tlm_only, "action": "disable"}
-        Topic.write_topic(f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"target_control": json.dumps(data)}, "*", 100, db_shard=db_shard)
+        Topic.write_topic(
+            f"{{{scope}__CMD}}INTERFACE__{interface_name}",
+            {"target_control": json.dumps(data)},
+            "*",
+            100,
+            db_shard=db_shard,
+        )
 
     @classmethod
     def interface_details(cls, interface_name, scope=OPENC3_SCOPE, timeout=None):
@@ -218,7 +252,9 @@ class InterfaceTopic(Topic):
         ack_topic = f"{{{scope}__ACKCMD}}INTERFACE__{interface_name}"
         Topic.update_topic_offsets([ack_topic], db_shard=db_shard)
 
-        cmd_id = Topic.write_topic(f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"interface_details": "true"}, "*", 100, db_shard=db_shard)
+        cmd_id = Topic.write_topic(
+            f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"interface_details": "true"}, "*", 100, db_shard=db_shard
+        )
         start_time = time.time()
         while (time.time() - start_time) < timeout:
             for _, _, msg_hash, _ in Topic.read_topics([ack_topic], db_shard=db_shard):

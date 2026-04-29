@@ -53,7 +53,9 @@ class CommandDecomTopic(Topic):
     @classmethod
     def get_cmd_item(cls, target_name, packet_name, param_name, type="FORMATTED", scope=OPENC3_SCOPE):
         db_shard = Store.db_shard_for_target(target_name, scope=scope)
-        msg_id, msg_hash = Topic.get_newest_message(f"{scope}__DECOMCMD__{{{target_name}}}__{packet_name}", db_shard=db_shard)
+        msg_id, msg_hash = Topic.get_newest_message(
+            f"{scope}__DECOMCMD__{{{target_name}}}__{packet_name}", db_shard=db_shard
+        )
         if msg_id:
             if param_name == "RECEIVED_COUNT":
                 return int(msg_hash[b"received_count"])
