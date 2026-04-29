@@ -22,7 +22,7 @@ ENV['OPENC3_TSDB_PASSWORD'] ||= 'admin'
 ENV['OPENC3_SCOPE'] ||= 'DEFAULT'
 
 # Set global scope variable used by OpenC3 models
-$openc3_scope = ENV['OPENC3_SCOPE']
+$openc3_scope = ENV.fetch('OPENC3_SCOPE', 'DEFAULT')
 
 # Add openc3 lib path
 # Path: openc3/test/integration/tsdb/ruby -> openc3/lib

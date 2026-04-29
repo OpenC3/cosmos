@@ -539,9 +539,12 @@ class PacketConfig:
         if packet.id_items and len(packet.id_items) > 0:
             key = []
             id_signature = ""
+            # Accessor class is part of the signature so packets in the same target
+            # with different accessors trigger unique_id_mode (different accessors
+            # decode the buffer differently, so the hash-lookup path is unsafe).
             for item in packet.id_items:
                 key.append(item.id_value)
-                id_signature += f"__{item.name}___{item.bit_offset}__{item.bit_size}__{item.data_type}"
+                id_signature += f"__{item.name}___{item.bit_offset}__{item.bit_size}__{item.data_type}__{packet.accessor.__class__.__name__}"
             target_id_value_hash[repr(key)] = packet
             target_id_signature = id_signature_hash.get(packet.target_name)
             if target_id_signature:

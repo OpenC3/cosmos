@@ -1536,6 +1536,26 @@ class TestPacketConfig(unittest.TestCase):
 
         os.unlink(tf.name)
 
+    def test_unique_id_mode_autodetection_for_mixed_accessors(self):
+        # Packets with identical ID layouts but different accessors (e.g. CBOR + JSON)
+        # must trigger unique_id_mode. Otherwise the hash-lookup path uses the first
+        # packet's accessor for every incoming buffer, which fails when the buffer's
+        # encoding differs from that accessor's expected format. See issue #3178.
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
+            tf.write("TELEMETRY TGT1 CBOR_PKT BIG_ENDIAN\n")
+            tf.write("  ACCESSOR CborAccessor\n")
+            tf.write("  APPEND_ID_ITEM ID 16 UINT 100\n")
+            tf.write("    KEY $.id\n")
+            tf.write("TELEMETRY TGT1 JSON_PKT BIG_ENDIAN\n")
+            tf.write("  ACCESSOR JsonAccessor\n")
+            tf.write("  APPEND_ID_ITEM ID 16 UINT 101\n")
+            tf.write("    KEY $.id\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.assertTrue(self.pc.tlm_unique_id_mode.get("TGT1"))
+
+        os.unlink(tf.name)
+
     def test_subpacket_id_value_hash_separation(self):
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
             # Create a normal packet and a subpacket with the same ID

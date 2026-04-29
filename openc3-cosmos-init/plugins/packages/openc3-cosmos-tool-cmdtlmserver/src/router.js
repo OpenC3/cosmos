@@ -73,7 +73,7 @@ const routes = [
   },
 ]
 
-routes.forEach(prependBasePath)
+routes.forEach((route) => prependBasePath(route))
 
 export default createRouter({
   history: createWebHistory(),
