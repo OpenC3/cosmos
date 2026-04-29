@@ -81,18 +81,25 @@ module OpenC3
     def self.connection(db_shard: 0)
       conns = @thread_conns.value
       conn = conns[db_shard]
-      if conn.nil? || conn.finished?
-        conn = PG::Connection.new(
-          host: hostname_for_db_shard(db_shard),
-          port: ENV['OPENC3_TSDB_QUERY_PORT'],
-          user: ENV['OPENC3_TSDB_USERNAME'],
-          password: ENV['OPENC3_TSDB_PASSWORD'],
-          dbname: 'qdb'
-        )
-        conn.type_map_for_results = PG::BasicTypeMapForResults.new(conn)
-        conns[db_shard] = conn
-        @thread_conns.value = conns
+      if conn and not conn.finished?
+        begin
+          conn.check_socket
+          return conn
+        rescue
+          # Will need to reconnect
+          conn = nil
+        end
       end
+      conn = PG::Connection.new(
+        host: hostname_for_db_shard(db_shard),
+        port: ENV['OPENC3_TSDB_QUERY_PORT'],
+        user: ENV['OPENC3_TSDB_USERNAME'],
+        password: ENV['OPENC3_TSDB_PASSWORD'],
+        dbname: 'qdb'
+      )
+      conn.type_map_for_results = PG::BasicTypeMapForResults.new(conn)
+      conns[db_shard] = conn
+      @thread_conns.value = conns
       conn
     end
 
