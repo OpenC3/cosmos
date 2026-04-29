@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import contextlib
 import os
 import re
 import tempfile
@@ -118,9 +119,7 @@ ROUTER SERIAL_ROUTER openc3/interfaces/tcpip_server_interface.py <%= router_port
             lambda m: variables.get(m.group(1), m.group(0)),
             content,
         )
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False
-        ) as tf:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
             tf.write(content)
             substituted_filename = tf.name
 
@@ -129,8 +128,7 @@ ROUTER SERIAL_ROUTER openc3/interfaces/tcpip_server_interface.py <%= router_port
             for keyword, params in parser.parse_file(substituted_filename, False, True, True):
                 match keyword:
                     case "VARIABLE":
-                        # Ignore during this pass, below is to make CodeScanner pass (pass was not accepted)
-                        ...
+                        continue
                     case "INTERFACE":
                         usage = "INTERFACE <Name> <Filename> <Specific Parameters>"
                         parser.verify_num_parameters(2, None, usage)
@@ -235,7 +233,5 @@ ROUTER SERIAL_ROUTER openc3/interfaces/tcpip_server_interface.py <%= router_port
                     case _:
                         raise parser.error(f"Unknown keyword: {keyword}")
         finally:
-            try:
+            with contextlib.suppress(OSError):
                 os.unlink(substituted_filename)
-            except OSError:
-                pass

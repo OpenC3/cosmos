@@ -26,6 +26,7 @@ OpenC3 Python CLI - Command line interface for OpenC3 Python tools
 import argparse
 import os
 
+
 # OPENC3_NO_STORE tells the Logger to skip publishing log messages to a Redis
 # store that doesn't exist when running the CLI on a host (e.g. a bridge).
 # It must be set before any openc3 module is imported, because
