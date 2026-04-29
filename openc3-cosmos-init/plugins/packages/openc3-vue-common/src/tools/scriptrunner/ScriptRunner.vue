@@ -1820,7 +1820,7 @@ export default {
             data: this.editor.getValue(),
             headers: {
               Accept: 'application/json',
-              'Content-Type': 'plain/text',
+              'Content-Type': 'text/plain',
             },
           }).then((response) => {
             let alertText = ''
@@ -2963,7 +2963,7 @@ class TestSuite(Suite):
         data: this.editor.getValue(),
         headers: {
           Accept: 'application/json',
-          'Content-Type': 'plain/text',
+          'Content-Type': 'text/plain',
         },
       }).then((response) => {
         this.information.title = response.data.title
@@ -2977,7 +2977,7 @@ class TestSuite(Suite):
         data: this.editor.getValue(),
         headers: {
           Accept: 'application/json',
-          'Content-Type': 'plain/text',
+          'Content-Type': 'text/plain',
         },
       }).then((response) => {
         this.information.title = response.data.title

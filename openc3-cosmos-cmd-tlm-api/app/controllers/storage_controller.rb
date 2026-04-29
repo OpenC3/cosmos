@@ -17,8 +17,15 @@
 
 require 'openc3/utilities/local_mode'
 require 'openc3/utilities/bucket'
+require 'openc3/utilities/bucket_utilities'
 require 'openc3/utilities/ctrf'
+require 'openc3/utilities/process_manager'
+require 'openc3/utilities/questdb_client'
+require 'openc3/logs/packet_log_reader'
+require 'openc3/models/reingest_job_model'
+require 'openc3/topics/telemetry_topic'
 require 'fileutils'
+require 'securerandom'
 begin
   require 'openc3-enterprise/version'
   STORAGE_VERSION = OPENC3_ENTERPRISE_VERSION
@@ -472,6 +479,126 @@ class StorageController < ApplicationController
     render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 
+  def reingest_files
+    return unless authorization('admin')
+
+    files = params[:files] || []
+    raise StorageError, "No files specified" if files.empty?
+
+    invalid = files.reject { |f| f.end_with?('.bin.gz') }
+    raise StorageError, "Only .bin.gz files can be reingested: #{invalid.join(', ')}" if invalid.any?
+
+    # Reject path traversal, absolute paths, or null bytes in filenames before
+    # they reach the job's temp-file layout. sanitize_path already rejects '..'.
+    files = files.map do |f|
+      raise StorageError, "Invalid filename: #{f}" if f.to_s.empty? || f.to_s.start_with?('/') || f.to_s.include?("\0")
+      sanitize_path(f)
+    end
+
+    path = sanitize_path(params[:path] || '')
+    storage_type, _storage_name = validate_storage_source
+    raise StorageError, "Reingest only supported for buckets" unless storage_type == :bucket
+
+    scope = params[:scope] || 'DEFAULT'
+
+    if params[:bucket] && bucket_requires_rbac?(params[:bucket]) && !authorize_bucket_path(params[:bucket], path)
+      path_scope = extract_scope_from_path(path)
+      render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: :forbidden
+      return
+    end
+
+    target_version = params[:target_version].to_s
+    target_version = 'as_logged' if target_version.empty?
+    unless %w[as_logged current].include?(target_version) || target_version.match?(/\A[a-f0-9]{32,}\z/)
+      raise StorageError, "Invalid target_version: #{target_version}"
+    end
+
+    job_id = SecureRandom.uuid
+    job = OpenC3::ReingestJobModel.new(
+      name: job_id,
+      files: files,
+      bucket: params[:bucket],
+      path: path,
+      target_version: target_version,
+      scope: scope,
+    )
+    job.create
+
+    # Run the reingest in its own process so System.reset_instance! / setup_targets
+    # in ReingestJob can't race with the cmd-tlm-api server's System singleton.
+    timeout = (ENV['OPENC3_REINGEST_TIMEOUT_SECS'] || 24 * 3600).to_i
+    OpenC3::ProcessManager.instance.spawn(
+      ["ruby", "/openc3/bin/openc3cli", "reingest", job_id, scope],
+      "reingest", job_id, Time.now + timeout, scope: scope,
+    )
+
+    OpenC3::Logger.info("Reingest job #{job_id} enqueued: #{files.length} file(s)", user: username())
+    render json: { job_id: job_id, state: 'Queued' }, status: :accepted
+  rescue Exception => e
+    log_error(e)
+    OpenC3::Logger.error("Reingest enqueue failed: #{e.message}", user: username())
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
+  def reingest_status
+    return unless authorization('admin')
+    scope = params[:scope] || 'DEFAULT'
+    job = OpenC3::ReingestJobModel.get_model(name: params[:job_id], scope: scope)
+    if job.nil?
+      render json: { status: 'error', message: "Reingest job not found: #{params[:job_id]}" }, status: :not_found
+      return
+    end
+    render json: job.as_json, status: :ok
+  rescue Exception => e
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
+  def repair_candidates
+    return unless authorization('admin')
+    scope = (params[:scope] || 'DEFAULT').to_s
+    target = params[:target].to_s
+    cmd_or_tlm = (params[:cmd_or_tlm] || 'TLM').to_s.upcase
+    raise StorageError, "cmd_or_tlm must be TLM (CMD repair not yet supported)" unless cmd_or_tlm == 'TLM'
+    raise StorageError, "target is required" if target.empty?
+    # scope and target are interpolated into an S3 key prefix below; reject
+    # anything that isn't a plain identifier so path separators, traversal
+    # sequences, and control characters can't reshape the prefix.
+    raise StorageError, "Invalid scope: #{scope}" unless scope.match?(/\A[A-Z0-9_]+\z/i)
+    raise StorageError, "Invalid target: #{target}" unless target.match?(/\A[A-Z0-9_]+\z/i)
+
+    start_time = parse_repair_time(params[:start_time])
+    end_time = parse_repair_time(params[:end_time])
+
+    bucket_env = 'OPENC3_LOGS_BUCKET'
+    bucket_name = ENV.fetch(bucket_env) { |n| raise StorageError, "Unknown bucket #{n}" }
+    prefix = "#{scope}/raw_logs/tlm/#{target}"
+
+    if bucket_requires_rbac?(bucket_env) && !authorize_bucket_path(bucket_env, "#{prefix}/")
+      render json: { status: 'error', message: "Not authorized for scope: #{scope}" }, status: :forbidden
+      return
+    end
+
+    keys = OpenC3::BucketUtilities.files_between_time(
+      bucket_name, prefix, start_time, end_time,
+      file_suffix: '.bin.gz', overlap: true,
+    )
+
+    files = keys.map do |key|
+      basename = key.split('/').last
+      { 'key' => key, 'filename' => basename }
+    end
+
+    render json: {
+      bucket: bucket_env,
+      path: "#{prefix}/",
+      files: files,
+    }, status: :ok
+  rescue Exception => e
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
   private
 
   def sanitize_path(path)
@@ -609,6 +736,19 @@ class StorageController < ApplicationController
 
   # Validates and returns storage source information
   # @return [Array<Symbol, String>] Storage type (:volume or :bucket) and storage name
+  # Accepts a time param as nsec-from-epoch integer, an ISO8601 string, or nil.
+  # Returns a Ruby Time (UTC) or nil.
+  def parse_repair_time(value)
+    return nil if value.nil? || value.to_s.empty?
+    s = value.to_s
+    if s.match?(/\A\d+\z/)
+      # Raw logs use nsec-from-epoch throughout the codebase; use that.
+      Time.from_nsec_from_epoch(s.to_i)
+    else
+      Time.parse(s).utc
+    end
+  end
+
   def validate_storage_source
     if params[:volume]
       volume = ENV.fetch(params[:volume]) { |name| raise StorageError, "Unknown volume #{name}" }

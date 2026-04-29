@@ -208,7 +208,7 @@ export default {
     },
     downloadRawData: function () {
       const blob = new Blob([this.buildRawData()], {
-        type: 'plain/text',
+        type: 'text/plain',
       })
       // Make a link and then 'click' on it to start the download
       const link = document.createElement('a')

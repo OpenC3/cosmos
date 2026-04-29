@@ -1,5 +1,5 @@
 /*
-# Copyright 2024, OpenC3, Inc.
+# Copyright 2026, OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -11,9 +11,12 @@
 # if purchased from OpenC3, Inc.
 */
 
-import * as AstroStatus from './AstroStatus'
-import { fileIcon } from './fileIcon'
-import TimeFilters from './timeFilters'
-import CmdUtilities from './cmdUtilities'
-
-export { AstroStatus, fileIcon, TimeFilters, CmdUtilities }
+export * as AstroStatus from './AstroStatus'
+export { fileIcon } from './fileIcon'
+export { default as TimeFilters } from './timeFilters'
+export { default as CmdUtilities } from './cmdUtilities'
+export {
+  getCachedSetting,
+  peekCachedSetting,
+  resetSettingsCache,
+} from './settingsCache'
