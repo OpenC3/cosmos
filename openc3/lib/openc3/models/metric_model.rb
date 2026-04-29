@@ -29,7 +29,7 @@ module OpenC3
     attr_accessor :db_shard
 
     # Look up db_shard from the corresponding MicroserviceModel.
-    def self._lookup_db_shard(name, scope:)
+    def self._lookup_db_shard(name, scope:) # NOSONAR
       json = Store.hget('openc3_microservices', name)
       json ? (JSON.parse(json, allow_nan: true, create_additions: true)['db_shard'] || 0).to_i : 0
     end

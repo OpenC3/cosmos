@@ -55,7 +55,6 @@ class TsdbMicroservice(Microservice):
         # Use shared QuestDB client with db_shard from microservice config
         if len(self.topics) <= 0:
             raise RuntimeError("No topics provided")
-        topic_parts = self.topics[0].split("__")
         Topic.update_topic_offsets(self.topics, db_shard=self.db_shard)
         self.questdb = QuestDBClient(logger=self.logger, name=f"Microservice {self.name}", db_shard=self.db_shard)
         self.questdb.connect_ingest()

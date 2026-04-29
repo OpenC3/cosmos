@@ -82,9 +82,9 @@ module OpenC3
       unless force
         existing = db_shard_store.hget(@primary_key, @name)
         if existing
-          raise "#{@primary_key}:#{@name} already exists at create" unless update
+          raise RuntimeError.new("#{@primary_key}:#{@name} already exists at create") unless update
         else
-          raise "#{@primary_key}:#{@name} doesn't exist at update" if update
+          raise RuntimeError.new("#{@primary_key}:#{@name} doesn't exist at update") if update
         end
       end
       @updated_at = isoformat ? Time.now.utc.iso8601 : Time.now.utc.to_nsec_from_epoch

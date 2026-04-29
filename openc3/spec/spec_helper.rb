@@ -174,7 +174,8 @@ OpenC3.disable_warnings do
   require 'mock_redis'
   class MockRedis
     class Database
-      def hexpire(*args)
+      def hexpire(*_args)
+        # Stub out as a NOOP
       end
     end
 

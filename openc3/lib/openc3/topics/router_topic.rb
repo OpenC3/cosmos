@@ -46,7 +46,7 @@ module OpenC3
 
       target_topics = []
       router.tlm_target_names.each do |target_name|
-        System.telemetry.packets(target_name).each do |packet_name, packet|
+        System.telemetry.packets(target_name).each do |_packet_name, packet|
           target_topics << "#{scope}__TELEMETRY__{#{packet.target_name}}__#{packet.packet_name}"
         end
       end
