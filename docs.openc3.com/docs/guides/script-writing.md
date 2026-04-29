@@ -736,11 +736,57 @@ wait_check_expression("one > 0 and one < 10 # init value one = #{one}", 1)
 </TabItem>
 </Tabs>
 
-### COSMOS Scripting Differences from Regular Ruby Scripting
+### COSMOS Scripting Insrumentation Pitfalls and Differences from Regular Ruby Scripting
 
-#### Do not use single line if statements
+COSMOS scripting instruments each line to catch exceptions if things go wrong, but this instrumentation cannot be done for the evaluation of `if` expressions. This means that if you had the following example code, the error would not be caught by COSMOS instrumentation, and associated features such as "Pause on Error" will not work.
 
-COSMOS scripting instruments each line to catch exceptions if things go wrong. With single line if statements the exception handling doesn't know which part of the statement failed and cannot properly continue. If an exception is raised in a single line if statement, then the entire script will stop and not be able to continue. Do not use single line if statements in COSMOS scripts. (However, they are fine to use in interfaces and other Ruby code, just not COSMOS scripts).
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+if tlm("malformed-target-packet-item"): # tlm() throws a RuntimeError inside the `if` expression
+  print("hello")
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+if tlm("malformed-target-packet-item") # tlm() throws a RuntimeError inside the `if` expression
+  puts "hello"
+end
+```
+
+</TabItem>
+</Tabs>
+
+A recommended approach to avoid this is to not execute any code that could fail in an if statement. To fix the above example, you could instead write the code like this:
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+tlm_result = tlm("malformed-target-packet-item"): # tlm() throws a RuntimeError which is caught by instrumentation
+if tlm_result:
+  print("hello")
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+tlm_result = tlm("malformed-target-packet-item") # tlm() throws a RuntimeError which is caught by instrumentation
+if tlm_result
+  puts "hello"
+end
+```
+
+</TabItem>
+</Tabs>
+
+#### Do not use single line if statements in Ruby
+
+Ruby's single line `if` statements add another layer to this instrumentation pitfall. Here, the exception handling doesn't know which part of the compound statement failed. If an exception is raised in a single line if statement, then the entire script will stop and not be able to continue. Do not use single line if statements in COSMOS scripts. (However, they are fine to use in interfaces and other Ruby code, just not COSMOS scripts).
 
 Don't do this:
 
@@ -755,7 +801,9 @@ Do this instead:
 # tlm() could fail if the CmdTlmServer was not running or a mnemonic
 # was misspelled
 temp1 = tlm("INST HEALTH_STATUS TEMP1")
-if temp1 > 10.0
+# temp1 > 10.0 could fail if temp1 is nil
+temp1_is_above_threshold = temp1 > 10.0
+if temp1_is_above_threshold
   run_method()
 end
 ```

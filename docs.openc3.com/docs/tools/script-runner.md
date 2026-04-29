@@ -221,6 +221,10 @@ Opening a Script Suite creates six checkboxes which provide options to the runni
 
 Pauses the script if an error is encountered. This is the default and identical to how normal scripts are executed. Unchecking this box allows the script to continue past errors without user intervention. Similar to the User clicking Go upon encountering an error.
 
+:::info[This depends on script instrumentation.]
+Please refer to [COSMOS Scripting Instrumentation Pitfalls](/docs/guides/script-writing#cosmos-scripting-insrumentation-pitfalls-and-differences-from-regular-ruby-scripting).
+:::
+
 #### Continue after Error
 
 Continue the script if an error is encountered. This is the default and identical to how normal scripts are executed. Unchecking this box means that the script will end after the first encountered error and execution will continue with any other scripts in the Suite/Group.
