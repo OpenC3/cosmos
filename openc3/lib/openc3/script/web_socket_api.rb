@@ -50,34 +50,41 @@ module OpenC3
       start_time = Time.now
       while true
         message = read_message()
-        if message
+        # Empty string is a normal end-of-stream signal when ActionCable / anycable-go
+        # closes the WS. Treat it the same as nil so consumer `while (resp = api.read)`
+        # loops exit cleanly instead of hitting JSON::ParserError on JSON.parse("").
+        return nil if message.nil? || message.empty?
+
+        begin
           json_hash = JSON.parse(message, allow_nan: true, create_additions: true)
-          if ignore_protocol_messages
-            type = json_hash['type']
-            if type # ping, welcome, confirm_subscription, reject_subscription, disconnect
-              if type == 'disconnect'
-                if json_hash['reason'] == 'unauthorized'
-                  raise "Unauthorized"
-                end
-              end
-              if type == 'reject_subscription'
-                raise "Subscription Rejected"
-              end
-              if timeout
-                end_time = Time.now
-                if (end_time - start_time) > timeout
-                  raise Timeout::Error, "No Data Timeout"
-                end
-              end
-              if defined? RunningScript and RunningScript.instance
-                raise StopScript if RunningScript.instance.stop?
-              end
-              next
-            end
-          end
-          return json_hash['message']
+        rescue JSON::ParserError
+          # Defense-in-depth: treat malformed frames as end-of-stream rather than crashing.
+          return nil
         end
-        return message
+        if ignore_protocol_messages
+          type = json_hash['type']
+          if type # ping, welcome, confirm_subscription, reject_subscription, disconnect
+            if type == 'disconnect'
+              if json_hash['reason'] == 'unauthorized'
+                raise "Unauthorized"
+              end
+            end
+            if type == 'reject_subscription'
+              raise "Subscription Rejected"
+            end
+            if timeout
+              end_time = Time.now
+              if (end_time - start_time) > timeout
+                raise Timeout::Error, "No Data Timeout"
+              end
+            end
+            if defined? RunningScript and RunningScript.instance
+              raise StopScript if RunningScript.instance.stop?
+            end
+            next
+          end
+        end
+        return json_hash['message']
       end
     end
 
