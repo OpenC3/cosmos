@@ -1,29 +1,63 @@
 name: Build COSMOS
 description: |
-  Build all COSMOS Docker images via `openc3.sh build`, with the GitHub Actions
-  cache backend wired in for the slow ruby/base/node base images.
+  Build all COSMOS Docker images via `docker compose build`, with type=gha
+  layer cache for the slow ruby/base/node base images.
 
-  The default docker driver only supports `type=gha` cache export when the
-  containerd image store is enabled — that's what `docker/setup-docker-action`
-  configures. We deliberately do NOT use `docker/setup-buildx-action`: the
-  docker-container builder runs BuildKit in its own container with a separate
-  image store, so sequential `docker compose build` calls in `openc3.sh build`
-  would fall back to registry pulls for `FROM ...openc3-base:latest` and
-  inherit the published (stale) parent.
+  We use the docker-container buildx driver so that type=gha cache works.
+  That driver isolates BuildKit from the host docker daemon's image store,
+  which by itself would break `FROM ...openc3-base:latest` lookups in leaf
+  images — they'd pull the published openc3-base from Docker Hub instead of
+  the just-built local one and fail bundle install for openc3-7.0.2.pre.beta0.
+
+  Workaround: stand up a local registry on the runner and configure BuildKit
+  to use it as a pull-through mirror for docker.io. Each base image we build
+  is tagged + pushed to localhost:5000, so the mirror has the just-built
+  copy. Subsequent FROM lookups in BuildKit hit the mirror and resolve to
+  our local image instead of the upstream registry.
 
 runs:
   using: composite
   steps:
-    - uses: docker/setup-docker-action@b2189fbf2a6592b51fee7cdd93ee2bfaeba733db # v5.1.0
-      with:
-        daemon-config: |
-          {
-            "features": {
-              "containerd-snapshotter": true
-            }
-          }
+    - name: Start local registry (mirror for docker.io)
+      shell: bash
+      run: |
+        docker run -d --rm \
+          --network=host \
+          --name local-registry \
+          registry:2
 
-    - name: openc3.sh build
-      # script -q -e -c works around https://github.com/actions/runner/issues/241
+    - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.4.0
+      with:
+        driver-opts: |
+          network=host
+        buildkitd-config-inline: |
+          [registry."docker.io"]
+            mirrors = ["localhost:5000"]
+          [registry."localhost:5000"]
+            http = true
+            insecure = true
+
+    - name: Setup (download cacert.pem)
+      shell: bash
+      run: ./scripts/linux/openc3_setup.sh
+
+    - name: Build base images and push to local registry
+      # Build openc3-ruby/base/node sequentially. After each, tag and push to
+      # localhost:5000 so the BuildKit mirror finds our just-built image when
+      # subsequent FROM lookups go through docker.io.
       shell: 'script -q -e -c "bash {0}"'
-      run: ./openc3.sh build
+      run: |
+        set -e
+        umask 0022
+        chmod -R +r .
+        for img in openc3-ruby openc3-base openc3-node; do
+          docker compose -f compose.yaml -f compose-build.yaml build "$img"
+          docker tag \
+            "docker.io/openc3inc/$img:${OPENC3_TAG:-latest}" \
+            "localhost:5000/openc3inc/$img:${OPENC3_TAG:-latest}"
+          docker push "localhost:5000/openc3inc/$img:${OPENC3_TAG:-latest}"
+        done
+
+    - name: Build remaining images
+      shell: 'script -q -e -c "bash {0}"'
+      run: docker compose -f compose.yaml -f compose-build.yaml build
