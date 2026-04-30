@@ -235,12 +235,12 @@ in the TIME_OFFSET command definition of the COSMOS Demo
 [INST inst_cmds.txt](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets/INST/cmd_tlm/inst_cmds.txt)
 or [INST2 inst_cmds.txt](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/targets/INST2/cmd_tlm/inst_cmds.txt).
 
-:::info Multiple write conversions on command parameters
+:::info[Multiple write conversions on command parameters]
 When a command is built, each item gets written (and write conversions are run)
 to set the default value. Then items are written (again write conversions are run)
 with user provided values. Thus write conversions can be run twice. Also there are
 no guarantees which parameters have already been written. The packet itself has a
-given_values() method which can be used to retrieve a hash of the user provided
+`given_values` attribute which can be used to retrieve a hash of the user provided
 values to the command. That can be used to check parameter values passed in.
 :::
 
@@ -253,12 +253,50 @@ values to the command. That can be used to check parameter values passed in.
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 ```cosmos
-WRITE_CONVERSION openc3/conversions/ip_write_conversion.py
+# Example command with a WRITE_CONVERSION that sets a command parameter
+# based on the given values of other parameters
+COMMAND INST BLOCK BIG_ENDIAN "Send variable block of data"
+  APPEND_PARAMETER BYTE 8 UINT MIN MAX 0x55 "Byte to duplicate"
+    FORMAT_STRING "0x%0X"
+  APPEND_PARAMETER LENGTH 32 UINT MIN MAX 0 "Length of data"
+  APPEND_PARAMETER DATA 0 BLOCK "" "Variable block of data"
+    WRITE_CONVERSION block_conversion.py
+    HIDDEN # Because we're filling it in with a conversion
+
+# Implemented in INST/lib/block_conversion.py:
+from openc3.conversions.conversion import Conversion
+class BlockConversion(Conversion):
+    def call(self, value, packet, buffer):
+        # Use the packet.given_values hash to access user provided values to the command
+        byte = packet.given_values.get('BYTE', 0x55)
+        length = packet.given_values.get('LENGTH', 0)
+        return bytes([byte]) * length
 ```
 </TabItem>
 <TabItem value="ruby" label="Ruby">
 ```cosmos
-WRITE_CONVERSION ip_write_conversion.rb
+# Example command with a WRITE_CONVERSION that sets a command parameter
+# based on the given values of other parameters
+COMMAND INST BLOCK BIG_ENDIAN "Send variable block of data"
+  APPEND_PARAMETER BYTE 8 UINT MIN MAX 0x55 "Byte to duplicate"
+    FORMAT_STRING "0x%0X"
+  APPEND_PARAMETER LENGTH 32 UINT MIN MAX 0 "Length of data"
+  APPEND_PARAMETER DATA 0 BLOCK "" "Variable block of data"
+    WRITE_CONVERSION block_conversion.rb
+    HIDDEN # Because we're filling it in with a conversion
+
+# Implemented in INST/lib/block_conversion.rb:
+require 'openc3/conversions/conversion'
+module OpenC3
+  class BlockConversion < Conversion
+    def call(value, packet, buffer)
+      # Use the packet.given_values hash to access user provided values to the command
+      byte = packet.given_values['BYTE'] || 0x55
+      length = packet.given_values['LENGTH'] || 0
+      [byte].pack('C') * length
+    end
+  end
+end
 ```
 </TabItem>
 </Tabs>
@@ -288,12 +326,12 @@ compatibility). The last line of code should return the converted
 value. The GENERIC_WRITE_CONVERSION_END keyword specifies that all lines of
 code for the conversion have been given.
 
-:::info Multiple write conversions on command parameters
+:::info[Multiple write conversions on command parameters]
 When a command is built, each item gets written (and write conversions are run)
 to set the default value. Then items are written (again write conversions are run)
 with user provided values. Thus write conversions can be run twice. Also there are
 no guarantees which parameters have already been written. The packet itself has a
-given_values() method which can be used to retrieve a hash of the user provided
+`given_values` attribute which can be used to retrieve a hash of the user provided
 values to the command. That can be used to check parameter values passed in.
 :::
 
