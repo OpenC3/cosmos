@@ -9,7 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import contextlib
+import multiprocessing
 import queue
 import select
 import socket
@@ -175,9 +175,7 @@ class TcpipServerInterface(StreamInterface):
         if self.read_queue:
             self.read_queue.put(None)
         for pipe in self.listen_pipes:
-            with contextlib.suppress(OSError):
-                pipe.send(b".")
-            close_socket(pipe)
+            pipe.send(".")
         self.listen_pipes = []
 
         # Shutdown listen thread(s)
@@ -348,10 +346,7 @@ class TcpipServerInterface(StreamInterface):
         listen_socket.listen(5)
         self.listen_sockets.append(listen_socket)
 
-        # socket.socketpair (rather than multiprocessing.Pipe) so the
-        # readable end can be passed to select.select on Windows, where
-        # select only accepts sockets.
-        thread_reader, thread_writer = socket.socketpair()
+        thread_reader, thread_writer = multiprocessing.Pipe()
         self.listen_pipes.append(thread_writer)
         thread = threading.Thread(
             target=self._listen_thread_body,

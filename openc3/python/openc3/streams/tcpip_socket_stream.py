@@ -9,7 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import contextlib
+import multiprocessing
 import select
 import socket
 import threading
@@ -43,10 +43,7 @@ class TcpipSocketStream(Stream):
         # Mutex on write is needed to protect from commands coming in from more
         # than one tool
         self.write_mutex = threading.Lock()
-        # socket.socketpair (rather than multiprocessing.Pipe) so the
-        # readable end can be passed to select.select on Windows, where
-        # select only accepts sockets.
-        self.pipe_reader, self.pipe_writer = socket.socketpair()
+        self.pipe_reader, self.pipe_writer = multiprocessing.Pipe()
         self._connected = False
 
     # self.return [String] Returns a binary string of data from the socket
@@ -129,8 +126,5 @@ class TcpipSocketStream(Stream):
             return
         close_socket(self.write_socket)
         close_socket(self.read_socket)
-        with contextlib.suppress(OSError):
-            self.pipe_writer.send(b".")
-        close_socket(self.pipe_writer)
-        close_socket(self.pipe_reader)
+        self.pipe_writer.send(".")
         self._connected = False
