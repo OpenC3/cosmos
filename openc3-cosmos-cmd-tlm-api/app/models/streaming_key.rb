@@ -57,18 +57,29 @@ StreamingKey = Data.define(:stream_mode, :cmd_or_tlm, :target_name, :packet_name
 
   # Returns true if packet_name contains glob wildcard characters.
   def packet_glob?
-    !!(packet_name && packet_name.match?(/[*?]/))
+    !!(packet_name && glob_pattern?(packet_name))
   end
 
   # Returns true if item_name contains glob wildcard characters.
   def item_glob?
-    !!(item_name && item_name.match?(/[*?]/))
+    !!(item_name && glob_pattern?(item_name))
   end
 
   # Returns true if packet_name or item_name contain glob wildcard characters.
   def has_glob?
     packet_glob? || item_glob?
   end
+
+  private
+
+  # Returns true if the string contains glob wildcard characters (* or ?),
+  # or bracket expressions that are NOT pure array indices (e.g. [1-3], [A-C], [!0]).
+  # Brackets containing only digits ([0], [12], [999]) are treated as literal array indices.
+  def glob_pattern?(str)
+    str.match?(/[*?]/) || str.match?(/\[(?!\d+\])/)
+  end
+
+  public
 
   # Reconstruct the __-delimited key string from fields.
   def to_key_string
