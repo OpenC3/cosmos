@@ -35,13 +35,15 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: write # required for type=gha cache export
-    env:
-      OPENC3_TAG: ${{ github.sha }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - id: build
-        uses: ./.github/actions/build-cosmos
+      - name: openc3.sh build
+        id: build
+        # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
+        shell: 'script -q -e -c "bash {0}"'
+        run: ./openc3.sh build
+        env:
+          OPENC3_TAG: ${{ github.sha }}
       - name: Manual Trivy Setup
         uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514
         with:

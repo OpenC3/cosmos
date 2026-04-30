@@ -5,11 +5,8 @@ ARG OPENC3_TAG=latest
 ARG OPENC3_NODE_IMAGE=openc3-node
 ARG OPENC3_BASE_IMAGE=openc3-base
 
-# Setup our node build image. The `openc3-node` stage is overridable via a
-# named build context (used by CI bake to swap in the just-built target image
-# instead of pulling the published image from the registry).
-FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_NODE_IMAGE}:${OPENC3_TAG} AS openc3-node
-FROM openc3-node AS openc3-frontend-tmp
+# Setup our node build image
+FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_NODE_IMAGE}:${OPENC3_TAG} AS openc3-frontend-tmp
 
 # Set work dir to start building the plugins
 WORKDIR /openc3/plugins/
@@ -116,8 +113,7 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-scriptrunner
 COPY ./plugins/packages/openc3-cosmos-demo/ packages/openc3-cosmos-demo/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-demo"]
 
-FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG} AS openc3-base
-FROM openc3-base AS base
+FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG} AS base
 FROM openc3-frontend-tmp AS openc3-tmp5
 
 # Build docs tool
@@ -129,7 +125,7 @@ WORKDIR /openc3/openc3-cosmos-tool-docs
 RUN pnpm install --frozen-lockfile --ignore-scripts
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs", "/openc3/openc3-cosmos-tool-docs"]
 
-FROM openc3-base
+FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG}
 
 # Switch back to openc3 user for copies
 USER ${USER_ID}:${GROUP_ID}
