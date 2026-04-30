@@ -1475,6 +1475,26 @@ module OpenC3
           expect(@pc.tlm_unique_id_mode["TGT1"]).to be true
           tf.unlink
         end
+
+        # With language='python', packet.accessor is a PythonProxy whose `class`
+        # method returns a String (the python class name) rather than a Class
+        # object. The id signature must use a method that works on both Class
+        # and String — calling `.name` on a String raises NoMethodError.
+        it "detects unique_id_mode when python accessors differ within a target" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 cbor_pkt BIG_ENDIAN "CBOR Packet"'
+          tf.puts '  ACCESSOR openc3.accessors.cbor_accessor.CborAccessor'
+          tf.puts '  APPEND_ID_ITEM id 16 UINT 100 "ID"'
+          tf.puts '    KEY $.id'
+          tf.puts 'TELEMETRY tgt1 json_pkt BIG_ENDIAN "JSON Packet"'
+          tf.puts '  ACCESSOR openc3.accessors.json_accessor.JsonAccessor'
+          tf.puts '  APPEND_ID_ITEM id 16 UINT 101 "ID"'
+          tf.puts '    KEY $.id'
+          tf.close
+          @pc.process_file(tf.path, "TGT1", 'python')
+          expect(@pc.tlm_unique_id_mode["TGT1"]).to be true
+          tf.unlink
+        end
       end
 
       context "with SUBPACKETIZER" do
