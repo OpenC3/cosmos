@@ -124,7 +124,7 @@ class Model:
         write_store = self.store_queued() if queued else self.store()
         write_store.hset(self.primary_key, self.name, json.dumps(self.as_json()))
 
-    def update(self, force=False, queued=True):
+    def update(self, force=False, queued=False):
         """Alias for create(update: true)"""
         self.create(update=True, force=force, queued=queued)
 
