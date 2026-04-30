@@ -1,0 +1,29 @@
+name: Build COSMOS
+description: |
+  Build all COSMOS Docker images via `openc3.sh build`, with the GitHub Actions
+  cache backend wired in for the slow ruby/base/node base images.
+
+  The default docker driver only supports `type=gha` cache export when the
+  containerd image store is enabled — that's what `docker/setup-docker-action`
+  configures. We deliberately do NOT use `docker/setup-buildx-action`: the
+  docker-container builder runs BuildKit in its own container with a separate
+  image store, so sequential `docker compose build` calls in `openc3.sh build`
+  would fall back to registry pulls for `FROM ...openc3-base:latest` and
+  inherit the published (stale) parent.
+
+runs:
+  using: composite
+  steps:
+    - uses: docker/setup-docker-action@b2189fbf2a6592b51fee7cdd93ee2bfaeba733db # v5.1.0
+      with:
+        daemon-config: |
+          {
+            "features": {
+              "containerd-snapshotter": true
+            }
+          }
+
+    - name: openc3.sh build
+      # script -q -e -c works around https://github.com/actions/runner/issues/241
+      shell: 'script -q -e -c "bash {0}"'
+      run: ./openc3.sh build

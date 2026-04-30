@@ -20,6 +20,14 @@ services:
     build:
       context: "openc3-ruby"
       network: host
+      # type=gha cache requires the default docker driver with the containerd
+      # image store enabled — see docker/setup-docker-action in CI workflows.
+      # Local builds without that setup will warn and skip the cache, which is
+      # harmless.
+      cache_from:
+        - type=gha,scope=openc3-ruby
+      cache_to:
+        - type=gha,scope=openc3-ruby,mode=max
       args:
         ALPINE_VERSION: ${ALPINE_VERSION}
         ALPINE_BUILD: ${ALPINE_BUILD}
@@ -33,6 +41,10 @@ services:
     build:
       context: "openc3"
       network: host
+      cache_from:
+        - type=gha,scope=openc3-base
+      cache_to:
+        - type=gha,scope=openc3-base,mode=max
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -45,6 +57,10 @@ services:
     build:
       context: "openc3-node"
       network: host
+      cache_from:
+        - type=gha,scope=openc3-node
+      cache_to:
+        - type=gha,scope=openc3-node,mode=max
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
