@@ -33,6 +33,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: write # required for type=gha cache export
+    env:
+      OPENC3_TAG: ${{ github.sha }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
@@ -46,12 +49,7 @@ jobs:
           ruby-version: 3.4
           bundler-cache: false # runs 'bundle install' and caches installed gems automatically
           working-directory: openc3
-      - name: openc3.sh build
-        # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
-        shell: 'script -q -e -c "bash {0}"'
-        run: ./openc3.sh build
-        env:
-          OPENC3_TAG: ${{ github.sha }}
+      - uses: ./.github/actions/build-cosmos
       - name: ClamAV setup and update definitions
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'

@@ -1,0 +1,21 @@
+name: Build COSMOS
+description: Build all COSMOS Docker images using buildx bake with GHA layer cache.
+
+runs:
+  using: composite
+  steps:
+    - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.4.0
+
+    - name: Setup (download cacert.pem)
+      shell: bash
+      run: ./scripts/linux/openc3_setup.sh
+
+    - name: Build images with cache
+      # script -q -e -c works around https://github.com/actions/runner/issues/241
+      shell: 'script -q -e -c "bash {0}"'
+      run: |
+        docker buildx bake \
+          -f compose.yaml \
+          -f compose-build.yaml \
+          -f build-cache.hcl \
+          --load
