@@ -37,6 +37,13 @@ runs:
             http = true
             insecure = true
 
+    # Expose ACTIONS_CACHE_URL / ACTIONS_RUNTIME_TOKEN to subsequent steps so
+    # that `docker buildx bake` can authenticate to the GHA cache backend.
+    # setup-buildx-action only injects these for docker/build-push-action; for
+    # manually invoked buildx commands they have to be exported explicitly.
+    # See https://docs.docker.com/build/cache/backends/gha/
+    - uses: crazy-max/ghaction-github-runtime@3cb05d89e1f492524af3d41a1c98c83bc3025124 # v3.0.0
+
     - name: Setup (download cacert.pem)
       shell: bash
       run: ./scripts/linux/openc3_setup.sh
