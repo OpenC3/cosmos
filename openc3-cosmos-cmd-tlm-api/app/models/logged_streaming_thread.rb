@@ -365,14 +365,9 @@ class LoggedStreamingThread < StreamingThread
           stored_timestamp_item_keys: {},
           calculated_positions: {},  # local_index => { source:, format: }
           timestamp_source_columns: {},
-<<<<<<< HEAD
-          array_indices: {},  # item_key => integer index for array element extraction
-          topics: Set.new
-=======
           array_indices: {},  # item_key => integer index for array element extraction
           topics: Set.new,
           db_shard: OpenC3::QuestDBClient.db_shard_for_target(object.target_name, scope: @scope)
->>>>>>> main
         }
         meta = per_table[table_name]
         meta[:topics] << topic
