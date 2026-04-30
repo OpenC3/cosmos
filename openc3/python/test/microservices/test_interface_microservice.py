@@ -216,6 +216,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
                 stdout.getvalue(),
             )
             im.shutdown()
+            thread.join(timeout=5)
 
     def test_handles_exceptions_while_reading(self):
         MyInterface.read_interface_raise = True
@@ -236,6 +237,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
             all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
             self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
             im.shutdown()
+            thread.join(timeout=5)
 
     def test_connect_handles_parameters(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
@@ -266,6 +268,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
 
             self.assertEqual(im.interface.port, 54321)
             im.shutdown()
+            thread.join(timeout=5)
 
     # def test_handles_exceptions_in_monitor_thread(self):
     #     im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
@@ -313,6 +316,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
             self.assertEqual(all_interfaces["INST_INT"]["state"], "DISCONNECTED")
             self.assertEqual(im.interface.disconnect_count, 1)
             im.shutdown()
+            thread.join(timeout=5)
 
     # TODO: Not sure why this doesn't work ... the disconnect command never gets processed
     # def test_handles_a_interface_that_doesnt_allow_reads(self):
@@ -380,6 +384,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
             self.assertEqual(packet.read("TEMP1", "RAW"), 10)
 
         im.shutdown()
+        thread.join(timeout=5)
 
     def test_supports_interface_cmd(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
@@ -397,6 +402,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
         self.assertEqual("DO_THE_THING", im.interface.interface_cmd_name)
         self.assertEqual(("PARAM1", 2), im.interface.interface_cmd_args)
         im.shutdown()
+        thread.join(timeout=5)
 
     def test_supports_protocol_cmd(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
@@ -424,6 +430,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
         self.assertEqual("READ", im.interface.protocol_read_write)
         self.assertEqual(3, im.interface.protocol_index)
         im.shutdown()
+        thread.join(timeout=5)
 
     def test_supports_update_interval_option_to_enable_queued_writes(self):
         # Update the model to use UPDATE_INTERVAL option
@@ -467,8 +474,6 @@ class TestInterfaceMicroservice(unittest.TestCase):
     def test_stale_tlmcnt_redis_key_does_not_disconnect_interface(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
         im.interface.reconnect_delay = 0.1
-        # Ensure shutdown is called even if assertions fail, so the thread doesn't hang
-        self.addCleanup(im.shutdown)
 
         # Inject the stale key AFTER init so init_tlm_packet_counts succeeds.
         # This simulates a plugin upgrade mid-operation where a packet is removed
@@ -483,6 +488,9 @@ class TestInterfaceMicroservice(unittest.TestCase):
         for stdout in capture_io():
             thread = threading.Thread(target=im.run)
             thread.start()
+            # Cleanups run LIFO: shutdown signals stop, then join waits.
+            self.addCleanup(thread.join, 5)
+            self.addCleanup(im.shutdown)
             time.sleep(0.2)  # Allow connect + at least one packet + sync cycle
 
             # The interface should remain CONNECTED after encountering the stale key
@@ -499,9 +507,11 @@ class TestInterfaceMicroservice(unittest.TestCase):
     def test_process_cmd_with_all_fields_and_missing_optional_fields(self):
         """Test process_cmd succeeds with full msg_hash and with only required fields."""
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
-        self.addCleanup(im.shutdown)
         thread = threading.Thread(target=im.run)
         thread.start()
+        # Cleanups run LIFO: shutdown signals stop, then join waits.
+        self.addCleanup(thread.join, 5)
+        self.addCleanup(im.shutdown)
         time.sleep(0.1)
 
         handler = im.handler_thread
