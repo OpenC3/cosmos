@@ -113,6 +113,5 @@ class JsonApi:
     def _request(self, *method_params, **kw_params):
         if not kw_params.get("scope"):
             kw_params["scope"] = OPENC3_SCOPE
-        if not kw_params.get("json"):
-            kw_params["json"] = True
+        kw_params["json"] = True # This is JsonApi so should always be speaking json
         return self.json_api.request(*method_params, **kw_params)
