@@ -15,6 +15,7 @@ runs:
       shell: 'script -q -e -c "bash {0}"'
       run: |
         docker buildx bake \
+          --allow=network.host \
           -f compose.yaml \
           -f compose-build.yaml \
           -f build-cache.hcl \
