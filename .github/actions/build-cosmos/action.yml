@@ -42,16 +42,23 @@ runs:
       run: ./scripts/linux/openc3_setup.sh
 
     - name: Build base images and push to local registry
-      # Build openc3-ruby/base/node sequentially. After each, tag and push to
-      # localhost:5000 so the BuildKit mirror finds our just-built image when
-      # subsequent FROM lookups go through docker.io.
+      # Build openc3-ruby/base/node sequentially via `docker buildx bake`,
+      # which (unlike `docker compose build`) actually forwards the
+      # cache_from/cache_to directives from compose-build.yaml to BuildKit.
+      # After each, tag and push to localhost:5000 so the BuildKit mirror
+      # finds our just-built image when subsequent FROM lookups go through
+      # docker.io.
       shell: 'script -q -e -c "bash {0}"'
       run: |
         set -e
         umask 0022
         chmod -R +r .
         for img in openc3-ruby openc3-base openc3-node; do
-          docker compose -f compose.yaml -f compose-build.yaml build "$img"
+          docker buildx bake \
+            --allow=network.host \
+            -f compose.yaml -f compose-build.yaml \
+            --load \
+            "$img"
           docker tag \
             "docker.io/openc3inc/$img:${OPENC3_TAG:-latest}" \
             "localhost:5000/openc3inc/$img:${OPENC3_TAG:-latest}"
@@ -60,4 +67,8 @@ runs:
 
     - name: Build remaining images
       shell: 'script -q -e -c "bash {0}"'
-      run: docker compose -f compose.yaml -f compose-build.yaml build
+      run: |
+        docker buildx bake \
+          --allow=network.host \
+          -f compose.yaml -f compose-build.yaml \
+          --load
