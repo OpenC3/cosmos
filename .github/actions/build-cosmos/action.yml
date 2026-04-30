@@ -1,18 +1,23 @@
 name: Build COSMOS
 description: |
-  Build all COSMOS Docker images, with GHCR-backed caching.
+  Build COSMOS Docker images with per-image GHCR-backed caching.
 
-  On cache hit (image-input hash matches a previously-pushed cache), pulls the
-  11 prebuilt images from ghcr.io/openc3/openc3-{name}-buildcache:cache-<hash>
-  and retags them as docker.io/openc3inc/openc3-{name}:<tag>. On cache miss
-  (or first push of the input-hash), runs `./openc3.sh build` and pushes the
-  resulting images to GHCR for future runs.
+  Each image's cache key is a hash of (its own context paths) + (its parent
+  images' hashes, chained) + (global build inputs: compose.yaml,
+  compose-build.yaml, .env). A change to one image (e.g. openc3-traefik)
+  only invalidates that image's cache; an openc3-base change invalidates
+  openc3-base and its 4 children but leaves the 6 unrelated images cached.
 
-  This is the "build once, pull elsewhere" pattern. Local developer builds
-  are unaffected — they continue to use `./openc3.sh build` directly.
+  On per-image hit: pull ghcr.io/openc3/${img}-buildcache:cache-<hash> and
+  retag as docker.io/openc3inc/${img}:${tag}. On miss: rebuild only the
+  missed services in topological order; pulled parents satisfy their FROM
+  lines locally without being rebuilt. After the build, only the newly
+  built images are pushed to GHCR.
 
-  The cleanup workflow at .github/workflows/cleanup-ghcr.yml prunes old cache
-  entries nightly so the *-buildcache packages don't accumulate.
+  Local developer builds via ./openc3.sh build are unaffected.
+
+  The cleanup workflow at .github/workflows/cleanup-ghcr.yml prunes old
+  cache entries nightly so the *-buildcache packages don't accumulate.
 
 inputs:
   tag:
@@ -23,22 +28,45 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Compute image-input hash
-      id: hash
+    - name: Compute per-image hashes
       shell: bash
-      # Hash everything that affects image content. Using `git ls-tree` (vs
-      # hashFiles) keeps the input list maintainable and ignores untracked
-      # build artifacts. The 12-char prefix is plenty for collision avoidance
-      # given our scale.
+      # Spec rows are <name>|<context paths>|<parent images>, in topological
+      # order (parents before children). Each image's hash chains its parents'
+      # hashes so a base change cascades. 12 hex chars is plenty at our scale.
       run: |
-        HASH=$(git ls-tree -r HEAD \
-          openc3-ruby openc3 openc3-node openc3-buckets openc3-tsdb openc3-redis \
-          openc3-cosmos-cmd-tlm-api openc3-cosmos-script-runner-api openc3-operator \
-          openc3-traefik openc3-cosmos-init docs.openc3.com \
-          compose.yaml compose-build.yaml .env \
+        set -e
+        common=$(git ls-tree -r HEAD compose.yaml compose-build.yaml .env \
           | sha256sum | cut -c1-12)
-        echo "hash=$HASH" >> "$GITHUB_OUTPUT"
-        echo "Image-input hash: $HASH"
+
+        declare -A HASH
+        : > "$RUNNER_TEMP/cosmos-images.env"
+
+        while IFS='|' read -r name ctx_str parents_str; do
+          [ -z "$name" ] && continue
+          read -ra ctx <<< "$ctx_str"
+          own=$(git ls-tree -r HEAD "${ctx[@]}" | sha256sum | cut -c1-12)
+          parent_hashes=""
+          for p in $parents_str; do
+            parent_hashes="$parent_hashes ${HASH[$p]}"
+          done
+          h=$(printf '%s %s %s' "$common" "$own" "$parent_hashes" \
+            | sha256sum | cut -c1-12)
+          HASH[$name]=$h
+          echo "${name}=${h}" >> "$RUNNER_TEMP/cosmos-images.env"
+          echo "Hash[$name] = $h"
+        done <<'EOF'
+        openc3-ruby|openc3-ruby|
+        openc3-buckets|openc3-buckets|
+        openc3-tsdb|openc3-tsdb|
+        openc3-redis|openc3-redis|
+        openc3-traefik|openc3-traefik|
+        openc3-base|openc3|openc3-ruby
+        openc3-node|openc3-node|openc3-base
+        openc3-cosmos-cmd-tlm-api|openc3-cosmos-cmd-tlm-api|openc3-base
+        openc3-cosmos-script-runner-api|openc3-cosmos-script-runner-api|openc3-base
+        openc3-operator|openc3-operator|openc3-base
+        openc3-cosmos-init|openc3-cosmos-init docs.openc3.com|openc3-node openc3-base
+        EOF
 
     - name: Login to GHCR
       shell: bash
@@ -48,60 +76,80 @@ runs:
         echo "$GH_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin \
           || echo "::warning::GHCR login failed (likely a fork PR); cache pull/push will be skipped"
 
-    - name: Try GHCR cache pull
-      id: pull
+    - name: Pull cached images
       shell: bash
       env:
-        IMAGES: openc3-ruby openc3-base openc3-node openc3-buckets openc3-tsdb openc3-redis openc3-cosmos-cmd-tlm-api openc3-cosmos-script-runner-api openc3-operator openc3-traefik openc3-cosmos-init
-        CACHE_TAG: cache-${{ steps.hash.outputs.hash }}
         TAG: ${{ inputs.tag }}
+      # For each image, attempt to pull its per-hash cache tag. On hit, retag
+      # to docker.io/openc3inc/${name}:${TAG} so it serves as a local FROM
+      # source for any downstream miss. Misses are recorded for the build step.
       run: |
         set -e
-        miss=false
-        for img in $IMAGES; do
-          if ! docker pull "ghcr.io/openc3/${img}-buildcache:${CACHE_TAG}"; then
-            echo "::notice::Cache miss for ${img}:${CACHE_TAG}"
-            miss=true
-            break
+        : > "$RUNNER_TEMP/cosmos-misses.txt"
+        hits=0
+        misses=0
+        while IFS='=' read -r name hash; do
+          [ -z "$name" ] && continue
+          src="ghcr.io/openc3/${name}-buildcache:cache-${hash}"
+          if docker pull "$src" 2>/dev/null; then
+            docker tag "$src" "docker.io/openc3inc/${name}:${TAG}"
+            hits=$((hits+1))
+            echo "::notice::Cache HIT  ${name} (${hash})"
+          else
+            echo "$name" >> "$RUNNER_TEMP/cosmos-misses.txt"
+            misses=$((misses+1))
+            echo "::notice::Cache MISS ${name} (${hash})"
           fi
-        done
-        if [ "$miss" = "false" ]; then
-          for img in $IMAGES; do
-            docker tag \
-              "ghcr.io/openc3/${img}-buildcache:${CACHE_TAG}" \
-              "docker.io/openc3inc/${img}:${TAG}"
-          done
-          echo "hit=true" >> "$GITHUB_OUTPUT"
-          echo "::notice::Build cache HIT - skipped openc3.sh build (${CACHE_TAG})"
-        else
-          echo "hit=false" >> "$GITHUB_OUTPUT"
-          echo "::notice::Build cache MISS - will run openc3.sh build (${CACHE_TAG})"
-        fi
+        done < "$RUNNER_TEMP/cosmos-images.env"
+        echo "::notice::Build cache: ${hits} hit, ${misses} miss"
 
-    - name: openc3.sh build
-      if: steps.pull.outputs.hit != 'true'
+    - name: Build missed images
       # script -q -e -c works around https://github.com/actions/runner/issues/241
       shell: 'script -q -e -c "bash {0}"'
       env:
         OPENC3_TAG: ${{ inputs.tag }}
-      run: ./openc3.sh build
+      # Misses are already in topological order (the hash step writes them
+      # that way). Pulled parents are tagged locally as openc3inc/${name}:${TAG},
+      # so a child-only miss resolves its FROM without rebuilding the parent.
+      run: |
+        set -e
+        if [ ! -s "$RUNNER_TEMP/cosmos-misses.txt" ]; then
+          echo "::notice::All images cached - skipping build"
+          exit 0
+        fi
+        ./scripts/linux/openc3_setup.sh
+        umask 0022
+        chmod -R +r .
+        while read -r name; do
+          [ -z "$name" ] && continue
+          echo "::group::docker compose build ${name}"
+          docker compose -f compose.yaml -f compose-build.yaml build "$name"
+          echo "::endgroup::"
+        done < "$RUNNER_TEMP/cosmos-misses.txt"
 
-    - name: Push to GHCR cache
-      if: steps.pull.outputs.hit != 'true'
+    - name: Push built images to GHCR cache
       shell: bash
       env:
-        IMAGES: openc3-ruby openc3-base openc3-node openc3-buckets openc3-tsdb openc3-redis openc3-cosmos-cmd-tlm-api openc3-cosmos-script-runner-api openc3-operator openc3-traefik openc3-cosmos-init
-        CACHE_TAG: cache-${{ steps.hash.outputs.hash }}
         TAG: ${{ inputs.tag }}
       # Best-effort: a push failure (e.g. fork PR with no packages:write) is
-      # logged but does not fail the build for this run.
+      # logged but does not fail the run.
       run: |
         set +e
-        for img in $IMAGES; do
-          docker tag \
-            "docker.io/openc3inc/${img}:${TAG}" \
-            "ghcr.io/openc3/${img}-buildcache:${CACHE_TAG}"
-          if ! docker push "ghcr.io/openc3/${img}-buildcache:${CACHE_TAG}"; then
-            echo "::warning::Push failed for ${img}-buildcache:${CACHE_TAG}"
+        if [ ! -s "$RUNNER_TEMP/cosmos-misses.txt" ]; then
+          echo "::notice::No images to push (all cached)"
+          exit 0
+        fi
+        declare -A H
+        while IFS='=' read -r name hash; do
+          [ -z "$name" ] && continue
+          H[$name]=$hash
+        done < "$RUNNER_TEMP/cosmos-images.env"
+
+        while read -r name; do
+          [ -z "$name" ] && continue
+          dst="ghcr.io/openc3/${name}-buildcache:cache-${H[$name]}"
+          docker tag "docker.io/openc3inc/${name}:${TAG}" "$dst"
+          if ! docker push "$dst"; then
+            echo "::warning::Push failed for ${dst}"
           fi
-        done
+        done < "$RUNNER_TEMP/cosmos-misses.txt"
