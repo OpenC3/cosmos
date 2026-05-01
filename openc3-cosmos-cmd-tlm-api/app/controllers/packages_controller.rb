@@ -36,7 +36,7 @@ class PackagesController < ApplicationController
         if File.extname(package_file_path) == '.gem'
           process_name = OpenC3::GemModel.put(package_file_path, gem_install: true, scope: params[:scope])
         else
-          process_name = OpenC3::PythonPackageModel.put(package_file_path, package_install: true, scope: params[:scope])
+          process_name = OpenC3::PythonPackageModel.put(package_file_path, package_install: true, scope: params[:scope], plugin: params[:plugin])
         end
         OpenC3::Logger.info("Package created: #{params[:package]}", scope: params[:scope], user: username())
         render json: process_name

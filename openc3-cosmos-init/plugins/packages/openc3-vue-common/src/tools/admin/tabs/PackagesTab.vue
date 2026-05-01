@@ -137,6 +137,32 @@
       title="Process Output"
       :text="processOutput"
     />
+    <v-dialog v-model="showPluginSelect" max-width="500" persistent>
+      <v-card>
+        <v-card-title>Select Plugin Environment</v-card-title>
+        <v-card-text>
+          <v-select
+            v-model="selectedPlugin"
+            :items="pluginVenvOptions"
+            label="Install into plugin venv"
+            density="comfortable"
+            data-test="plugin-venv-select"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="cancelPluginSelect">Cancel</v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            :disabled="!selectedPlugin"
+            @click="confirmPluginInstall"
+          >
+            OK
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -166,7 +192,15 @@ export default {
       expandedPlugins: {},
       processes: {},
       timeZone: 'local',
+      showPluginSelect: false,
+      selectedPlugin: null,
+      pendingFiles: null,
     }
+  },
+  computed: {
+    pluginVenvOptions() {
+      return Object.keys(this.python).filter((k) => k !== 'shared')
+    },
   },
   created() {
     new OpenC3Api()
@@ -219,39 +253,68 @@ export default {
     fileChange(event) {
       const files = event.target.files
       if (files.length > 0) {
-        this.loadingPackage = true
-        let self = this
-        const promises = [...files].map((file) => {
-          const formData = new FormData()
-          formData.append('package', file, file.name)
-          return Api.post('/openc3-api/packages', {
-            data: formData,
-            headers: { 'Content-Type': 'multipart/form-data' },
-            onUploadProgress: function (progressEvent) {
-              let percentCompleted = Math.round(
-                (progressEvent.loaded * 100) / progressEvent.total,
-              )
-              self.progress = percentCompleted
-            },
-          })
-        })
-        Promise.all(promises)
-          .then((responses) => {
-            this.$notify.normal({
-              body: `Uploaded ${responses.length} package${
-                responses.length > 1 ? 's' : ''
-              }`,
-            })
-            this.loadingPackage = false
-            this.files = []
-            setTimeout(() => {
-              this.updateProcesses()
-            }, 2500)
-          })
-          .catch((error) => {
-            this.loadingPackage = false
-          })
+        const hasWheel = [...files].some((f) => !f.name.endsWith('.gem'))
+        const pluginNames = Object.keys(this.python).filter(
+          (k) => k !== 'shared',
+        )
+        if (hasWheel && pluginNames.length > 0) {
+          this.pendingFiles = files
+          this.selectedPlugin = null
+          this.showPluginSelect = true
+        } else {
+          this.uploadFiles(files)
+        }
       }
+    },
+    uploadFiles(files, plugin = null) {
+      this.loadingPackage = true
+      let self = this
+      const promises = [...files].map((file) => {
+        const formData = new FormData()
+        formData.append('package', file, file.name)
+        if (plugin && !file.name.endsWith('.gem')) {
+          formData.append('plugin', plugin)
+        }
+        return Api.post('/openc3-api/packages', {
+          data: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: function (progressEvent) {
+            let percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total,
+            )
+            self.progress = percentCompleted
+          },
+        })
+      })
+      Promise.all(promises)
+        .then((responses) => {
+          this.$notify.normal({
+            body: `Uploaded ${responses.length} package${
+              responses.length > 1 ? 's' : ''
+            }`,
+          })
+          this.loadingPackage = false
+          this.files = []
+          setTimeout(() => {
+            this.updateProcesses()
+          }, 2500)
+        })
+        .catch((error) => {
+          this.loadingPackage = false
+        })
+    },
+    confirmPluginInstall() {
+      const files = this.pendingFiles
+      const plugin = this.selectedPlugin
+      this.showPluginSelect = false
+      this.pendingFiles = null
+      this.uploadFiles(files, plugin)
+    },
+    cancelPluginSelect() {
+      this.showPluginSelect = false
+      this.pendingFiles = null
+      this.selectedPlugin = null
+      this.$refs.fileInput.value = ''
     },
     togglePlugin(pluginName) {
       this.expandedPlugins[pluginName] = !this.expandedPlugins[pluginName]
@@ -301,7 +364,7 @@ export default {
 }
 .dep-tree {
   font-family: monospace;
-  font-size: 0.85rem;
+  font-size: 1rem;
   line-height: 1.4;
   padding: 8px 16px 8px 32px;
   margin: 0;

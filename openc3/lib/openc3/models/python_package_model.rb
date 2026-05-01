@@ -95,14 +95,14 @@ module OpenC3
       raise "Package #{name} not found"
     end
 
-    def self.put(package_file_path, package_install: true, scope:)
+    def self.put(package_file_path, package_install: true, scope:, plugin: nil)
       if File.file?(package_file_path)
         package_filename = File.basename(package_file_path)
         FileUtils.mkdir_p("#{ENV['PYTHONUSERBASE']}/cache") unless Dir.exist?("#{ENV['PYTHONUSERBASE']}/cache")
         cache_path = "#{ENV['PYTHONUSERBASE']}/cache/#{File.basename(package_file_path)}"
         FileUtils.cp(package_file_path, cache_path)
         if package_install
-          return self.install(cache_path, scope: scope)
+          return self.install(cache_path, scope: scope, plugin: plugin)
         end
       else
         message = "Package file #{package_file_path} does not exist!"
@@ -112,7 +112,7 @@ module OpenC3
       return nil
     end
 
-    def self.install(name_or_path, scope:)
+    def self.install(name_or_path, scope:, plugin: nil)
       if File.exist?(name_or_path)
         package_file_path = name_or_path
       else
@@ -142,7 +142,12 @@ module OpenC3
       else
         pip_args = ["-i", pypi_url, "--trusted-host", URI.parse(pypi_url).host, package_file_path]
       end
-      result = OpenC3::ProcessManager.instance.spawn(["/openc3/bin/pipinstall"] + pip_args, "package_install", package_filename, Time.now + 3600.0, scope: scope)
+      spawn_env = {}
+      if plugin
+        venv_path = "#{PLUGIN_VENVS_DIR}/#{plugin}/.venv"
+        spawn_env['PIPINSTALL_VENV'] = venv_path
+      end
+      result = OpenC3::ProcessManager.instance.spawn(["/openc3/bin/pipinstall"] + pip_args, "package_install", package_filename, Time.now + 3600.0, scope: scope, env: spawn_env)
       return result.name
     end
 
