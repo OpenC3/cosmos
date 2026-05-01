@@ -23,6 +23,10 @@ from openc3.top_level import close_socket, kill_thread
 from openc3.utilities.logger import Logger
 
 
+# socket.MSG_DONTWAIT is Unix-only; on Windows we rely on setblocking(False).
+_MSG_DONTWAIT = getattr(socket, "MSG_DONTWAIT", 0)
+
+
 # Data class which stores the interface and associated information
 class InterfaceInfo:
     # attr_reader :interface, :hostname, :host_ip, :port
@@ -383,6 +387,7 @@ class TcpipServerInterface(StreamInterface):
 
             # Configure TCP_NODELAY option
             client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            client_socket.setblocking(False)
 
             # Accept Connection
             write_socket = None
@@ -549,7 +554,7 @@ class TcpipServerInterface(StreamInterface):
                 for interface_info in self.write_interface_infos:
                     if self.write_port != self.read_port:
                         # Socket should return EWOULDBLOCK if it is still cleanly connected
-                        interface_info.interface.stream.write_socket.recv(10, socket.MSG_DONTWAIT)
+                        interface_info.interface.stream.write_socket.recv(10, _MSG_DONTWAIT)
                     elif interface_info.interface.stream.write_socket.fileno() != -1:
                         # Let read thread detect disconnect
                         continue
