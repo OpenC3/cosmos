@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -863,6 +863,7 @@ export default {
       criticalCmdUser: null,
       displayCriticalCmd: false,
       editorBoxSize: 50,
+      lockingEnabled: true,
     }
   },
   computed: {
@@ -905,6 +906,9 @@ export default {
       return this.scriptEnvironment.env.length > 0
     },
     isLocked: function () {
+      if (!this.lockingEnabled) {
+        return false
+      }
       return !!this.lockedBy
     },
     // Returns the currently shown filename
@@ -1219,6 +1223,16 @@ export default {
       .then((response) => {
         if (response) {
           this.timeZone = response
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
+    this.api
+      .get_setting('script_runner_locking')
+      .then((response) => {
+        if (response !== null && response !== undefined) {
+          this.lockingEnabled = response
         }
       })
       .catch((error) => {
