@@ -97,9 +97,9 @@ export default {
           }
           return jstr
         }
-        if (upcaseStr === 'INFINITY') return Infinity
-        if (upcaseStr === '-INFINITY') return -Infinity
-        if (upcaseStr === 'NAN') return NaN
+        if (upcaseStr === 'INFINITY') return Number.POSITIVE_INFINITY
+        if (upcaseStr === '-INFINITY') return Number.NEGATIVE_INFINITY
+        if (upcaseStr === 'NAN') return Number.NaN
         if (this.isFloat(str)) return Number.parseFloat(str)
         if (this.isInt(str)) {
           if (!Number.isSafeInteger(Number(str))) return BigInt(str)
