@@ -584,7 +584,7 @@ case $1 in
     cd "$(dirname -- "$0")"
     set -a
     . "$(dirname -- "$0")/${ENV_FILE:-.env}"
-    if test -f /etc/ssl/certs/ca-bundle.crt
+    if [[ -f /etc/ssl/certs/ca-bundle.crt ]]
     then
       cp /etc/ssl/certs/ca-bundle.crt "$(dirname -- "$0")/cacert.pem"
     fi

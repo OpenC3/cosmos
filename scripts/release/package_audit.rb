@@ -27,11 +27,13 @@ traefik_version = get_docker_version("openc3-traefik/Dockerfile")
 valkey_version = get_docker_version("openc3-redis/Dockerfile")
 versitygw_version = get_docker_version("openc3-buckets/Dockerfile", arg: 'OPENC3_VERSITYGW_VERSION')
 tsdb_version = get_docker_version("openc3-tsdb/Dockerfile", arg: 'OPENC3_TSDB_VERSION')
+alpine_version = ENV.fetch('ALPINE_VERSION', '3.23')
+alpine_build = ENV.fetch('ALPINE_BUILD', '4')
 
 # Manual list - MAKE SURE UP TO DATE especially base images
 containers = [
   # This should match the values in the .env file
-  { name: "openc3inc/openc3-ruby:#{version_tag}", base_image: "alpine:#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}", apk: true, gems: true, python: true },
+  { name: "openc3inc/openc3-ruby:#{version_tag}", base_image: "alpine:#{alpine_version}.#{alpine_build}", apk: true, gems: true, python: true },
   { name: "openc3inc/openc3-node:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true },
   { name: "openc3inc/openc3-base:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true, gems: true, python: true },
   { name: "openc3inc/openc3-cosmos-cmd-tlm-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
@@ -41,7 +43,7 @@ containers = [
   { name: "openc3inc/openc3-cosmos-script-runner-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
   { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "valkey:#{valkey_version}", apk: true },
   { name: "openc3inc/openc3-traefik:#{version_tag}", base_image: "traefik:#{traefik_version}", apk: true },
-  { name: "openc3inc/openc3-buckets:#{version_tag}", base_image: "alpine:#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}", apk: true },
+  { name: "openc3inc/openc3-buckets:#{version_tag}", base_image: "alpine:#{alpine_version}.#{alpine_build}", apk: true },
   { name: "openc3inc/openc3-tsdb:#{version_tag}", base_image: "tsdb:#{tsdb_version}", dnf: true },
 ]
 # Update the bundles
