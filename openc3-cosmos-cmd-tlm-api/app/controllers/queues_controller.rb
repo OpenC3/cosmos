@@ -134,12 +134,17 @@ class QueuesController < ApplicationController
   end
 
   def insert_command
+    target_name = params[:target_name]
+    cmd_name = params[:cmd_name]
     command = params[:command]
-    if command.nil?
-      render json: { status: 'error', message: 'command is required' }, status: :bad_request
+    if target_name && cmd_name
+      packet_name = cmd_name
+    elsif command
+      target_name, packet_name = command.strip.split(' ')
+    else
+      render json: { status: 'error', message: 'target_name/cmd_name or command is required' }, status: :bad_request
       return
     end
-    target_name, packet_name = command.strip.split(' ')
     return unless authorization('cmd', target_name: target_name, packet_name: packet_name)
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
@@ -152,7 +157,14 @@ class QueuesController < ApplicationController
         id = params[:id].to_f
       end
       # If params[:id] is not given this will be nil which means insert at the end
-      command_data = { username: username(), value: command, timestamp: Time.now.to_nsec_from_epoch }
+      command_data = { username: username(), timestamp: Time.now.to_nsec_from_epoch }
+      if params[:target_name] && params[:cmd_name]
+        command_data[:target_name] = params[:target_name]
+        command_data[:cmd_name] = params[:cmd_name]
+        command_data[:cmd_params] = JSON.generate(params[:cmd_params].as_json, allow_nan: true) unless params[:cmd_params].nil?
+      else
+        command_data[:value] = command
+      end
       command_data[:validate] = params[:validate] unless params[:validate].nil?
       command_data[:timeout] = params[:timeout] unless params[:timeout].nil?
       model.insert_command(id, command_data)
@@ -185,12 +197,17 @@ class QueuesController < ApplicationController
   end
 
   def update_command
+    target_name = params[:target_name]
+    cmd_name = params[:cmd_name]
     command = params[:command]
-    if command.nil?
-      render json: { status: 'error', message: 'command is required' }, status: :bad_request
+    if target_name && cmd_name
+      packet_name = cmd_name
+    elsif command
+      target_name, packet_name = command.strip.split(' ')
+    else
+      render json: { status: 'error', message: 'target_name/cmd_name or command is required' }, status: :bad_request
       return
     end
-    target_name, packet_name = command.strip.split(' ')
     return unless authorization('cmd', target_name: target_name, packet_name: packet_name)
     begin
       model = @model_class.get_model(name: params[:name], scope: params[:scope])
@@ -206,7 +223,11 @@ class QueuesController < ApplicationController
       # validate should be true or false, default to true if not given
       validate = params[:validate].nil? ? true : params[:validate]
       # timeout can be nil which means use system default timeout
-      model.update_command(id: id, username: username(), command: command, validate: validate, timeout: params[:timeout])
+      if params[:target_name] && params[:cmd_name]
+        model.update_command(id: id, username: username(), target_name: params[:target_name], cmd_name: params[:cmd_name], cmd_params: params[:cmd_params], validate: validate, timeout: params[:timeout])
+      else
+        model.update_command(id: id, username: username(), command: command, validate: validate, timeout: params[:timeout])
+      end
       render json: { status: 'success', message: 'Command updated' }
     rescue OpenC3::QueueError => e
       log_error(e)

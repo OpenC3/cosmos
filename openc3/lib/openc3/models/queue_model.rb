@@ -142,7 +142,7 @@ module OpenC3
       notify(kind: 'command')
     end
 
-    def update_command(id:, command:, username:, validate: nil, timeout: nil)
+    def update_command(id:, username:, command: nil, target_name: nil, cmd_name: nil, cmd_params: nil, validate: nil, timeout: nil)
       if @state == 'DISABLE'
         raise QueueError, "Queue '#{@name}' is disabled. Command at id #{id} not updated."
       end
@@ -155,7 +155,18 @@ module OpenC3
 
       # Remove the existing command and add the new one at the same id
       Store.zremrangebyscore("#{@scope}:#{@name}", id, id)
-      command_data = { username: username, value: command, timestamp: Time.now.to_nsec_from_epoch }
+      command_data = { username: username, timestamp: Time.now.to_nsec_from_epoch }
+      if target_name && cmd_name
+        # New format: store target_name, cmd_name, and cmd_params separately
+        command_data[:target_name] = target_name
+        command_data[:cmd_name] = cmd_name
+        command_data[:cmd_params] = JSON.generate(cmd_params.as_json, allow_nan: true) if cmd_params
+      elsif command
+        # Legacy format: store command string for backwards compatibility
+        command_data[:value] = command
+      else
+        raise QueueError, "Must provide either command string or target_name/cmd_name parameters"
+      end
       command_data[:validate] = validate unless validate.nil?
       command_data[:timeout] = timeout unless timeout.nil?
       Store.zadd("#{@scope}:#{@name}", id, command_data.to_json)

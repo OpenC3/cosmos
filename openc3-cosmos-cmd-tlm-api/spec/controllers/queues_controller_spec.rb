@@ -312,7 +312,7 @@ RSpec.describe QueuesController, type: :controller do
       expect(response).to have_http_status(400)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
-      expect(json["message"]).to eql("command is required")
+      expect(json["message"]).to eql("target_name/cmd_name or command is required")
     end
 
     it "returns 500 when an unexpected error occurs" do
@@ -451,7 +451,7 @@ RSpec.describe QueuesController, type: :controller do
       expect(response).to have_http_status(400)
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
-      expect(json["message"]).to eql("command is required")
+      expect(json["message"]).to eql("target_name/cmd_name or command is required")
     end
 
     it "returns 400 when id is missing" do
