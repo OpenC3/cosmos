@@ -29,7 +29,7 @@
       Error saving due to {{ errorText }}
     </v-alert>
     <v-alert v-model="successSaving" type="success" closable density="compact">
-      Saved!
+      Saved! (Refresh the page to see changes)
     </v-alert>
     <v-card-text class="pb-0">
       <v-select
