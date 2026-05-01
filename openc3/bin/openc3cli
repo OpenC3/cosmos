@@ -444,6 +444,9 @@ def unload_plugin(plugin_name, scope:)
       plugin_model = OpenC3::PluginModel.get_model(name: plugin_name, scope: scope)
       plugin_model.destroy
       OpenC3::LocalMode.remove_local_plugin(plugin_name, scope: scope)
+      # Remove the backing gem now that no PluginModel references it,
+      # so it disappears from the admin Packages tab.
+      OpenC3::PluginModel.cleanup_gem(plugin_name, scope: scope)
       OpenC3::Logger.info("PluginModel destroyed: #{plugin_name}", scope: scope)
     rescue => e
       abort("Error uninstalling plugin: #{scope}: #{plugin_name}: #{e.formatted}")

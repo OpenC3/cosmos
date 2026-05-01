@@ -39,7 +39,7 @@ jobs:
       id-token: write # Required for OIDC
       contents: read
       packages: write # Required for pushing to ghcr.io
-    environment: Release
+    environment: Release # See https://github.com/OpenC3/cosmos/settings/environments
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
@@ -161,6 +161,17 @@ jobs:
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b
         with:
           packages-dir: openc3/python/dist
+      # Publish npm packages. We continue on error here because we don't want a failure to block the version update.
+      # We're using trusted publishing for npm packages which is defined at
+      #   https://www.npmjs.com/package/@openc3/js-common/access
+      #   https://www.npmjs.com/package/@openc3/vue-common/access
+      # Both reference our Release environment: https://github.com/OpenC3/cosmos/settings/environments
+      # If the publish fails for some reason you can manually build and publish by running
+      #   cd openc3-cosmos-init/plugins/
+      #   pnpm install --frozen-lockfile --ignore-scripts
+      #   pnpm build:common
+      #   npm login
+      #   pnpm -F "@openc3/*-common" publish --no-git-checks --access public
       - name: publish common npm packages
         if: ${{ github.event.inputs.update_latest == 'true' }}
         continue-on-error: true
