@@ -1228,16 +1228,19 @@ export default {
       .catch((error) => {
         // Do nothing
       })
-    this.api
-      .get_setting('script_runner_locking')
-      .then((response) => {
-        if (response !== null && response !== undefined) {
-          this.lockingEnabled = response
-        }
-      })
-      .catch((error) => {
-        // Do nothing
-      })
+    // Await this so that lockingEnabled is known before any file load /
+    // setFile runs. Otherwise isLocked can briefly compute true with the
+    // default and flash the editor into read-only mode before settling.
+    try {
+      const lockingResponse = await this.api.get_setting(
+        'script_runner_locking',
+      )
+      if (lockingResponse !== null && lockingResponse !== undefined) {
+        this.lockingEnabled = lockingResponse
+      }
+    } catch (error) {
+      // Keep default (true)
+    }
 
     this.updateOverridesCount()
 
