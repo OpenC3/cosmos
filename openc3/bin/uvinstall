@@ -38,7 +38,7 @@ if [ -f "${GEM_PATH}/uv.lock" ] && [ -f "${GEM_PATH}/pyproject.toml" ]; then
     # Create venv and sync dependencies
     cd "${VENV_BASE}"
     uv venv "${VENV_DIR}" --allow-existing
-    uv sync --frozen --no-install-project ${UV_ARGS}
+    uv sync --frozen --no-dev --no-install-project ${UV_ARGS}
     RESULT=$?
 
     if [ $RESULT -eq 0 ]; then

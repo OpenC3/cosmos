@@ -98,15 +98,42 @@
         <v-divider />
       </div>
       <v-row class="px-4"><v-col class="text-h6">Python Packages</v-col></v-row>
-      <template v-for="(packages, pluginName) in python" :key="pluginName">
-        <v-list-subheader>{{ pluginName }}</v-list-subheader>
-        <div v-for="(pkg, index) in packages" :key="`${pluginName}-${index}`">
-          <v-list-item>
-            <v-list-item-title>{{ pkg }}</v-list-item-title>
-          </v-list-item>
-          <v-divider />
+      <div
+        v-for="(packages, pluginName) in python"
+        :key="pluginName"
+        class="plugin-group"
+      >
+        <v-list-item class="plugin-header" @click="togglePlugin(pluginName)">
+          <template #prepend>
+            <v-icon>
+              {{
+                expandedPlugins[pluginName]
+                  ? 'mdi-chevron-down'
+                  : 'mdi-chevron-right'
+              }}
+            </v-icon>
+          </template>
+          <v-list-item-title class="font-weight-bold">
+            {{ formatPluginName(pluginName) }}
+          </v-list-item-title>
+          <template #append>
+            <v-chip size="x-small" variant="outlined">
+              {{ packages.length }}
+            </v-chip>
+          </template>
+        </v-list-item>
+        <div v-show="expandedPlugins[pluginName]">
+          <div v-for="(pkg, index) in packages" :key="`${pluginName}-${index}`">
+            <v-list-item class="pl-10">
+              <v-list-item-title class="text-body-2">
+                {{ pkg }}
+              </v-list-item-title>
+            </v-list-item>
+            <v-divider class="ml-10" />
+          </div>
         </div>
-      </template>
+        <v-divider />
+      </div>
     </v-list>
     <download-dialog v-model="showDownloadDialog" />
     <simple-text-dialog
@@ -139,6 +166,7 @@ export default {
       progress: 0,
       gems: [],
       python: {},
+      expandedPlugins: {},
       processes: {},
       timeZone: 'local',
     }
@@ -225,6 +253,14 @@ export default {
           })
       }
     },
+    togglePlugin(pluginName) {
+      this.expandedPlugins[pluginName] = !this.expandedPlugins[pluginName]
+    },
+    formatPluginName(name) {
+      // Strip the sanitized version/counter suffix for readability
+      // e.g. "openc3-cosmos-demo-7_1_1_pre_beta0_gem__0" -> "openc3-cosmos-demo"
+      return name.replace(/-\d+[\d_a-z]*_gem__\d+$/, '').replace(/__\d+$/, '')
+    },
     deletePackage(pkg) {
       this.$dialog
         .confirm(`Are you sure you want to remove: ${pkg}`, {
@@ -255,11 +291,11 @@ export default {
 </script>
 
 <style scoped>
-.v-subheader {
-  font-size: 1rem;
-}
 .list {
   background-color: var(--color-background-surface-default) !important;
   overflow-x: hidden;
+}
+.plugin-header {
+  cursor: pointer;
 }
 </style>

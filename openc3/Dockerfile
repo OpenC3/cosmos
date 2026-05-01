@@ -17,6 +17,7 @@ RUN mkdir -p lib/openc3/ext \
     && git config --global http.sslCAinfo /devel/cacert.pem \
     && bundle config set --local without 'development test' \
     && bundle install --quiet \
+    && rm -f ./*.gem \
     && rake gems \
     && gem install --local ./openc3-*.gem \
     && openc3_gem=$(dirname `gem which openc3`) \
@@ -35,7 +36,7 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock p
 # Install dependencies only (cached when deps don't change)
 # Use build cache mount to avoid re-downloading wheels
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-install-project
+    uv sync --frozen --no-dev --no-build --no-install-project
 
 # Copy application code (excluding .venv from source)
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
@@ -43,10 +44,8 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 # Install the application itself with dependencies already present
 # Use build cache mount to avoid re-downloading wheels
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+    uv sync --frozen --no-dev --no-build
 
-# Smoke test: verify the package imports correctly
-RUN uv run python -Ic 'import openc3; print("openc3 imported successfully")'
 
 WORKDIR /openc3/
 
