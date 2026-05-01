@@ -667,7 +667,7 @@ module OpenC3
         stop = (dt_now + (1.0 / 24.0)).strftime("%s").to_i
         expect {
           ActivityModel.new(name: name, scope: scope, start: start, stop: stop, kind: "COMMAND", data: {})
-      }.to raise_error(ActivityInputError, /activity must not be more than #{ActivityModel::START_GRACE_SECONDS} seconds in the past/)
+        }.to raise_error(ActivityInputError, /activity must not be more than #{ActivityModel::START_GRACE_SECONDS} seconds in the past/)
       end
 
       it "allows activities within the grace window" do
