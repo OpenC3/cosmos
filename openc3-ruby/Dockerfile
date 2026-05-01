@@ -13,11 +13,13 @@ ARG ALPINE_VERSION
 ARG APK_URL
 ARG RUBYGEMS_URL
 ARG PYPI_URL=https://pypi.org
+ARG UV_VERSION=0.11.8
 
 ENV ALPINE_VERSION=${ALPINE_VERSION}
 ENV APK_URL=${APK_URL}
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
 ENV PYPI_URL=${PYPI_URL}
+ENV UV_VERSION=${UV_VERSION}
 
 # NOTE: This must match the alpine image used above in FROM
 RUN echo "${APK_URL}/alpine/v${ALPINE_VERSION}/main" > /etc/apk/repositories && \
@@ -61,10 +63,10 @@ RUN apk update && \
       libc6-compat \
       # Ruby 3.2+ no longer bundles libffi so explicitly include
       libffi-dev \
+      libpq-dev \
       libtool \
       libxml2-dev \
       libxslt-dev \
-      libpq-dev \
       openblas-dev \
       openssl \
       openssl-dev \
@@ -86,7 +88,7 @@ RUN apk update && \
     gem cleanup && \
     bundle config build.nokogiri --use-system-libraries && \
     bundle config git.allow_insecure true && \
-    python3 -m pip install --break-system-packages uv
+    python3 -m pip install --break-system-packages uv==${UV_VERSION}
 
 # Configure UV for production container usage
 ENV UV_LINK_MODE=copy
@@ -95,6 +97,7 @@ ENV UV_PYTHON_DOWNLOADS=never
 
 # Set Python executable path for microservices (uses venv to support editable installs)
 ENV OPENC3_PYTHON_BIN=/openc3/python/.venv/bin/python
+
 
 # libsocketcan - used by libcsp - https://github.com/linux-can/libsocketcan
 COPY libsocketcan-0.0.12.tar.gz /opt/libsocketcan-0.0.12.tar.gz

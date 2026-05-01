@@ -47,10 +47,25 @@ module OpenC3
       env = microservice_config["env"].dup
       if microservice_config["needs_dependencies"]
         env['GEM_HOME'] = '/gems'
-        env['PYTHONUSERBASE'] = '/gems/python_packages'
-        # Ensure PYTHONPATH includes both the UV venv (for base openc3 module) and user packages
-        # This is critical for UV-based Python installations where openc3 is installed as editable
-        env['PYTHONPATH'] = "#{ENV['PYTHONPATH']}"
+
+        # Check for per-plugin Python venv
+        plugin_name = microservice_config["plugin"]
+        plugin_venv_dir = nil
+        if plugin_name
+          sanitized_name = plugin_name.tr('^a-zA-Z0-9_-', '_')
+          candidate = "/gems/plugin_venvs/#{sanitized_name}/.venv"
+          plugin_venv_dir = candidate if File.directory?(candidate)
+        end
+
+        if plugin_venv_dir
+          env['VIRTUAL_ENV'] = plugin_venv_dir
+          env['PATH'] = "#{plugin_venv_dir}/bin:#{ENV['PATH']}"
+          env['PYTHONUSERBASE'] = plugin_venv_dir
+          env['PYTHONPATH'] = "#{ENV['PYTHONPATH']}"
+        else
+          env['PYTHONUSERBASE'] = '/gems/python_packages'
+          env['PYTHONPATH'] = "#{ENV['PYTHONPATH']}"
+        end
       else
         env['GEM_HOME'] = nil
         env['PYTHONUSERBASE'] = nil

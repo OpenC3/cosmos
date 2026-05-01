@@ -515,7 +515,28 @@ class RunningScript
       end
     end
     process.environment['GEM_HOME'] = ENV['GEM_HOME']
-    process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE']
+
+    # Check for per-plugin Python venv based on the script's target
+    plugin_venv_dir = nil
+    begin
+      target_name = name.split('/')[0].to_s.upcase
+      target_info = OpenC3::TargetModel.get(name: target_name, scope: scope)
+      if target_info && target_info['plugin']
+        sanitized_name = target_info['plugin'].tr('^a-zA-Z0-9_-', '_')
+        candidate = "/gems/plugin_venvs/#{sanitized_name}/.venv"
+        plugin_venv_dir = candidate if File.directory?(candidate)
+      end
+    rescue => e
+      Logger.debug("Could not resolve plugin venv for script '#{name}': #{e.message}")
+    end
+
+    if plugin_venv_dir
+      process.environment['VIRTUAL_ENV'] = plugin_venv_dir
+      process.environment['PATH'] = "#{plugin_venv_dir}/bin:#{ENV['PATH']}"
+      process.environment['PYTHONUSERBASE'] = plugin_venv_dir
+    else
+      process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE']
+    end
     # Preserve PYTHONPATH to ensure Python can find both UV venv and user packages
     process.environment['PYTHONPATH'] = ENV['PYTHONPATH']
 

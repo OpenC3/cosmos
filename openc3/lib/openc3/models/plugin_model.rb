@@ -265,29 +265,43 @@ module OpenC3
             end
           end
           unless validate_only
-            if File.exist?(pyproject_path)
-              Logger.info "Installing python packages from pyproject.toml with pypi_url=#{pypi_url}"
-              if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
-                pip_args = "-i #{pypi_url} #{gem_path}"
-              else
-                pip_args = "-i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} #{gem_path}"
-              end
+            # Determine pypi args for trusted host support
+            if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
+              pypi_args = "-i #{pypi_url}"
             else
-              Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
-              if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
-                pip_args = "-i #{pypi_url} -r #{requirements_path}"
-              else
-                pip_args = "-i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} -r #{requirements_path}"
+              pypi_args = "-i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host}"
+            end
+
+            # Try per-plugin UV venv first, fall back to shared pipinstall
+            uv_installed = ENV['OPENC3_USE_UV'] != 'false' && system('which uv > /dev/null 2>&1')
+            if uv_installed
+              plugin_venv_name = plugin_model.name.tr('^a-zA-Z0-9_-', '_')
+              Logger.info "Installing python packages into per-plugin venv '#{plugin_venv_name}' with pypi_url=#{pypi_url}"
+              output = `/openc3/bin/uvinstall #{plugin_venv_name} #{gem_path} #{pypi_args}`
+              puts output
+              unless $?.success?
+                Logger.warn "UV per-plugin install failed, falling back to shared pipinstall"
+                uv_installed = false
               end
             end
-            # Capture output and check exit code so failures surface as a warning
-            # rather than silently succeeding. pipinstall is non-fatal: the plugin
-            # continues to install even if Python packages fail so that non-Python
-            # functionality still works.
-            output = `/openc3/bin/pipinstall #{pip_args}`
-            puts output
-            unless $?.success?
-              Logger.warn "Python package installation failed. Plugin Python microservices may not function correctly."
+
+            unless uv_installed
+              if File.exist?(pyproject_path)
+                Logger.info "Installing python packages from pyproject.toml with pypi_url=#{pypi_url}"
+                pip_args = "#{pypi_args} #{gem_path}"
+              else
+                Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
+                pip_args = "#{pypi_args} -r #{requirements_path}"
+              end
+              # Capture output and check exit code so failures surface as a warning
+              # rather than silently succeeding. pipinstall is non-fatal: the plugin
+              # continues to install even if Python packages fail so that non-Python
+              # functionality still works.
+              output = `/openc3/bin/pipinstall #{pip_args}`
+              puts output
+              unless $?.success?
+                Logger.warn "Python package installation failed. Plugin Python microservices may not function correctly."
+              end
             end
           end
           needs_dependencies = true
@@ -479,6 +493,17 @@ module OpenC3
         rescue Exception => e
           errors << e
         end
+      end
+      # Cleanup per-plugin Python venv if it exists
+      begin
+        plugin_venv_name = @name.tr('^a-zA-Z0-9_-', '_')
+        plugin_venv_path = File.join('/gems', 'plugin_venvs', plugin_venv_name)
+        if File.directory?(plugin_venv_path)
+          Logger.info("Removing per-plugin Python venv: #{plugin_venv_path}")
+          FileUtils.rm_rf(plugin_venv_path)
+        end
+      rescue Exception => e
+        errors << e
       end
       # Raise all the errors at once
       if errors.length > 0

@@ -1,0 +1,79 @@
+[project]
+name = "openc3-cosmos-demo"
+version = "0.0.0"
+description = "OpenC3 COSMOS Demo Plugin Python Dependencies"
+authors = [
+  {name = "OpenC3, Inc.", email = "support@openc3.com"}
+]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=2.0,<3.0",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# COSMOS loads Python code from lib/ directory directly at runtime,
+# so we don't need setuptools to install any packages.
+# Setting packages to empty list allows dependency installation
+# without attempting to build the package itself.
+packages = []
+
+[dependency-groups]
+dev = [
+    "openc3",  # Only needed for development/testing; provided by COSMOS at runtime
+    "ruff>=0.15,<0.16",
+]
+
+# Uncomment to use a private PyPI repository.
+#
+# For project commands (uv sync, uv lock):
+# See: https://docs.astral.sh/uv/configuration/indexes/
+#
+# [[tool.uv.index]]
+# name = "private"
+# url = "https://private-pypi.example.com/simple"
+#
+# For pip commands (uv pip install):
+# See: https://docs.astral.sh/uv/reference/settings/#pip
+#
+# [tool.uv.pip]
+# index-url = "https://private-pypi.example.com/simple"
+# extra-index-url = ["https://pypi.org/simple"]
+#
+# Uncomment to skip SSL verification (e.g. self-signed certificates).
+# Applies to both project and pip commands.
+#
+# [tool.uv]
+# allow-insecure-host = ["private-pypi.example.com"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "W", "C4", "SIM"]
+ignore = [
+    "E402",   # Module level import not at top of file
+    "E501",   # Line too long (handled by formatter)
+    "F402",   # Import shadowed by loop var
+    "F403",   # Star imports used
+    "F405",   # Name may be undefined due to star import
+    "N815",   # Mixed case variable in class scope
+    "SIM108", # Use ternary operator
+]
+fixable = ["ALL"]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 120
+
+[tool.ruff.lint.isort]
+known-first-party = ["openc3"]
+lines-after-imports = 2
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"

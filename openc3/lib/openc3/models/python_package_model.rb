@@ -15,6 +15,7 @@ require 'fileutils'
 require 'openc3/utilities/process_manager'
 require 'openc3/api/api'
 require 'pathname'
+require 'json'
 
 module OpenC3
   # This class acts like a Model but doesn't inherit from Model because it doesn't
@@ -25,14 +26,62 @@ module OpenC3
     extend Api
 
     DIST_INFO =  '.dist-info'
+    PLUGIN_VENVS_DIR = '/gems/plugin_venvs'
 
     def self.names
-      paths = Dir.glob("#{ENV['PYTHONUSERBASE']}/lib/*")
-      results = []
-      paths.each do |path|
-        results.concat(Pathname.new(File.join(path, 'site-packages')).children.select { |c| c.directory? and File.extname(c) == DIST_INFO }.collect { |p| File.basename(p, DIST_INFO) })
+      result = {}
+
+      # Collect packages from per-plugin venvs
+      if File.directory?(PLUGIN_VENVS_DIR)
+        Dir.glob("#{PLUGIN_VENVS_DIR}/*/").each do |plugin_dir|
+          plugin_name = File.basename(plugin_dir)
+          venv_dir = File.join(plugin_dir, '.venv')
+          next unless File.directory?(venv_dir)
+
+          packages = packages_in_venv(venv_dir)
+          result[plugin_name] = packages.sort unless packages.empty?
+        end
       end
-      return results.sort
+
+      # Also collect packages from the shared venv for backwards compatibility
+      shared_packages = shared_venv_packages
+      result['shared'] = shared_packages.sort unless shared_packages.empty?
+
+      return result
+    end
+
+    # List packages in a specific venv by scanning dist-info directories
+    def self.packages_in_venv(venv_dir)
+      packages = []
+      # Look for site-packages in the venv's lib directory
+      Dir.glob("#{venv_dir}/lib/*/site-packages").each do |site_packages|
+        next unless File.directory?(site_packages)
+        Pathname.new(site_packages).children.each do |child|
+          if child.directory? && File.extname(child) == DIST_INFO
+            packages << File.basename(child, DIST_INFO)
+          end
+        end
+      end
+      packages
+    end
+
+    # List packages in the shared venv (backwards compatibility)
+    def self.shared_venv_packages
+      packages = []
+      pythonuserbase = ENV['PYTHONUSERBASE']
+      return packages unless pythonuserbase
+
+      paths = Dir.glob("#{pythonuserbase}/lib/*")
+      paths.each do |path|
+        site_packages = File.join(path, 'site-packages')
+        next unless File.directory?(site_packages)
+        Pathname.new(site_packages).children.each do |child|
+          if child.directory? && File.extname(child) == DIST_INFO
+            packages << File.basename(child, DIST_INFO)
+          end
+        end
+      end
+      packages
     end
 
     def self.get(name)

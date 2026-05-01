@@ -98,21 +98,15 @@
         <v-divider />
       </div>
       <v-row class="px-4"><v-col class="text-h6">Python Packages</v-col></v-row>
-      <div v-for="(pkg, index) in python" :key="index">
-        <v-list-item>
-          <v-list-item-title>{{ pkg }}</v-list-item-title>
-
-          <template #append>
-            <v-btn
-              icon="mdi-delete"
-              variant="text"
-              aria-label="Delete Python Package"
-              @click="deletePackage(pkg)"
-            />
-          </template>
-        </v-list-item>
-        <v-divider />
-      </div>
+      <template v-for="(packages, pluginName) in python" :key="pluginName">
+        <v-list-subheader>{{ pluginName }}</v-list-subheader>
+        <div v-for="(pkg, index) in packages" :key="`${pluginName}-${index}`">
+          <v-list-item>
+            <v-list-item-title>{{ pkg }}</v-list-item-title>
+          </v-list-item>
+          <v-divider />
+        </div>
+      </template>
     </v-list>
     <download-dialog v-model="showDownloadDialog" />
     <simple-text-dialog
@@ -144,7 +138,7 @@ export default {
       loadingPackage: false,
       progress: 0,
       gems: [],
-      python: [],
+      python: {},
       processes: {},
       timeZone: 'local',
     }
