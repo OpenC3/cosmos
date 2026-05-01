@@ -43,6 +43,7 @@ Rails.application.routes.draw do
     post '/targets/:id/download', to: 'targets#download', id: /[^\/]+/
     post '/targets/:id/delete_modified', to: 'targets#delete_modified', id: /[^\/]+/
 
+    get '/packages/trees', to: 'packages#trees'
     resources :packages, only: [:index, :create]
     delete '/packages/:id', to: 'packages#destroy', id: /[^\/]+/
     post '/packages/:id/download', to: 'packages#download', id: /[^\/]+/

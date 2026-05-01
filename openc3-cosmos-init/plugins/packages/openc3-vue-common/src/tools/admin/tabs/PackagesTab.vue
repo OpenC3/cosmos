@@ -99,15 +99,35 @@
       </div>
       <v-row class="px-4"><v-col class="text-h6">Python Packages</v-col></v-row>
       <div v-for="(packages, pluginName) in python" :key="pluginName">
-        <v-list-subheader class="font-weight-bold">
+        <v-list-subheader
+          class="font-weight-bold plugin-header"
+          @click="togglePlugin(pluginName)"
+        >
+          <v-icon size="small" class="mr-1">
+            {{
+              expandedPlugins[pluginName]
+                ? 'mdi-chevron-down'
+                : 'mdi-chevron-right'
+            }}
+          </v-icon>
           {{ formatPluginName(pluginName) }}
           ({{ packages.length }})
         </v-list-subheader>
-        <div v-for="(pkg, index) in packages" :key="`${pluginName}-${index}`">
-          <v-list-item class="pl-8">
-            <v-list-item-title>{{ pkg }}</v-list-item-title>
-          </v-list-item>
-          <v-divider />
+        <div v-if="expandedPlugins[pluginName]">
+          <pre v-if="pythonTrees[pluginName]" class="dep-tree">{{
+            pythonTrees[pluginName]
+          }}</pre>
+          <div v-else>
+            <div
+              v-for="(pkg, index) in packages"
+              :key="`${pluginName}-${index}`"
+            >
+              <v-list-item class="pl-8">
+                <v-list-item-title>{{ pkg }}</v-list-item-title>
+              </v-list-item>
+              <v-divider />
+            </div>
+          </div>
         </div>
       </div>
     </v-list>
@@ -142,6 +162,8 @@ export default {
       progress: 0,
       gems: [],
       python: {},
+      pythonTrees: {},
+      expandedPlugins: {},
       processes: {},
       timeZone: 'local',
     }
@@ -171,6 +193,9 @@ export default {
       Api.get('/openc3-api/packages').then((response) => {
         this.gems = response.data.ruby
         this.python = response.data.python
+      })
+      Api.get('/openc3-api/packages/trees').then((response) => {
+        this.pythonTrees = response.data
       })
     },
     updateProcesses: function () {
@@ -228,6 +253,9 @@ export default {
           })
       }
     },
+    togglePlugin(pluginName) {
+      this.expandedPlugins[pluginName] = !this.expandedPlugins[pluginName]
+    },
     formatPluginName(name) {
       // Strip the sanitized version/counter suffix for readability
       // e.g. "openc3-cosmos-demo-7_1_1_pre_beta0_gem__0" -> "openc3-cosmos-demo"
@@ -266,5 +294,18 @@ export default {
 .list {
   background-color: var(--color-background-surface-default) !important;
   overflow-x: hidden;
+}
+.plugin-header {
+  cursor: pointer;
+  user-select: none;
+}
+.dep-tree {
+  font-family: monospace;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  padding: 8px 16px 8px 32px;
+  margin: 0;
+  white-space: pre;
+  overflow-x: auto;
 }
 </style>

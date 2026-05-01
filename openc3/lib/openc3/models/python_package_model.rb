@@ -12,6 +12,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'fileutils'
+require 'open3'
 require 'openc3/utilities/process_manager'
 require 'openc3/api/api'
 require 'pathname'
@@ -151,6 +152,39 @@ module OpenC3
       pip_args = [package_name]
       result = OpenC3::ProcessManager.instance.spawn(["/openc3/bin/pipuninstall"] + pip_args, "package_uninstall", name, Time.now + 3600.0, scope: scope)
       return result.name
+    end
+
+    # Returns a hash of plugin_name => "uv tree" text output for each plugin venv.
+    # Falls back to a flat package list for venvs without pyproject.toml (pip-installed).
+    def self.trees
+      result = {}
+      flat = self.names
+
+      if File.directory?(PLUGIN_VENVS_DIR)
+        Dir.glob("#{PLUGIN_VENVS_DIR}/*/").each do |plugin_dir|
+          plugin_name = File.basename(plugin_dir)
+          venv_dir = File.join(plugin_dir, '.venv')
+          pyproject = File.join(plugin_dir, 'pyproject.toml')
+          next unless File.directory?(venv_dir)
+
+          if File.exist?(pyproject)
+            stdout, status = Open3.capture2('uv', 'tree', '--no-dev', '--frozen', chdir: plugin_dir)
+            if status.success?
+              # Strip the first line (root project name/version) from the tree output
+              lines = stdout.lines
+              lines.shift
+              tree_text = lines.join.rstrip
+              result[plugin_name] = tree_text unless tree_text.empty?
+            elsif flat[plugin_name]
+              result[plugin_name] = flat[plugin_name].join("\n")
+            end
+          elsif flat[plugin_name]
+            result[plugin_name] = flat[plugin_name].join("\n")
+          end
+        end
+      end
+
+      result
     end
 
     def self.extract_name_and_version(name)

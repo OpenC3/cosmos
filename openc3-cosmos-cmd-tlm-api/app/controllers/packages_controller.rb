@@ -74,6 +74,11 @@ class PackagesController < ApplicationController
     end
   end
 
+  def trees
+    return unless authorization('system')
+    render json: OpenC3::PythonPackageModel.trees
+  end
+
   def download
     return unless authorization('admin')
     begin
