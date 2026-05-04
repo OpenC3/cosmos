@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -166,10 +166,14 @@ module OpenC3
           query += "ASOF JOIN #{table_name} as T#{index} "
         end
       end
+      query_params = []
       if start_time && !end_time
-        query += "WHERE T0.timestamp < '#{start_time}' LIMIT -1"
+        query += "WHERE T0.PACKET_TIMESECONDS < $1 LIMIT -1"
+        query_params << start_time
       elsif start_time && end_time
-        query += "WHERE T0.timestamp >= '#{start_time}' AND T0.timestamp < '#{end_time}'"
+        query += "WHERE T0.PACKET_TIMESECONDS >= $1 AND T0.PACKET_TIMESECONDS < $2"
+        query_params << start_time
+        query_params << end_time
       end
 
       retry_count = 0
@@ -187,7 +191,7 @@ module OpenC3
             @@conn.type_map_for_results = PG::BasicTypeMapForResults.new @@conn
           end
 
-          result = @@conn.exec(query)
+          result = @@conn.exec_params(query, query_params)
           if result.nil? or result.ntuples == 0
             return {}
           else

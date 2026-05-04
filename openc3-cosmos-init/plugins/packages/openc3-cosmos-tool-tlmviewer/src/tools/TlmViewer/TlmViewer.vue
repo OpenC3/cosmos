@@ -446,11 +446,11 @@ export default {
       localStorage[`${this.configKey}__time`] = this.playbackTime
     },
   },
-  created() {
+  async created() {
     // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
     this.api.ensure_offline_access()
-    this.api
+    await this.api
       .get_setting('time_zone')
       .then((response) => {
         if (response) {
@@ -807,7 +807,8 @@ export default {
       }
 
       this.playbackTimer = setInterval(() => {
-        if (this.playbackDateTime) {
+        // Don't advance time while previous playback requests are still loading
+        if (this.playbackDateTime && !this.playbackLoading) {
           this.playbackDateTime = new Date(
             this.playbackDateTime.getTime() + 1000 * this.playbackStep,
           )
