@@ -1,0 +1,31 @@
+name: Cleanup GHCR Build Cache
+
+# Prunes the *-buildcache GHCR packages used by .github/actions/build-cosmos.
+# Keeps the most recent N tagged versions per package and deletes untagged
+# manifests left behind when cache tags are overwritten.
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # daily at 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  packages: write
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prune *-buildcache packages
+        # https://github.com/dataaxiom/ghcr-cleanup-action
+        uses: dataaxiom/ghcr-cleanup-action@cd0cdb900b5dbf3a6f2cc869f0dbb0b8211f50c4 # v1.0.16
+        with:
+          owner: openc3
+          # Wildcards enabled by expand-packages — matches every cache package
+          # created by .github/actions/build-cosmos in one shot.
+          packages: openc3-*-buildcache
+          expand-packages: true
+          # Keep enough headroom for in-flight PRs while preventing the cache
+          # backlog from growing unbounded.
+          keep-n-tagged: 50
+          delete-untagged: true

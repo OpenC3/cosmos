@@ -37,6 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: write # required to push the GHCR build cache
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
@@ -44,10 +45,7 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: openc3.sh build
-        # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
-        shell: 'script -q -e -c "bash {0}"'
-        run: ./openc3.sh build
+      - uses: ./.github/actions/build-cosmos
       - name: openc3.sh run
         shell: 'script -q -e -c "bash {0}"'
         run: |

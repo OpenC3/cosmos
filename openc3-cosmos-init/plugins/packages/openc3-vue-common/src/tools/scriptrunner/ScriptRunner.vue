@@ -930,6 +930,7 @@ export default {
       criticalCmdUser: null,
       displayCriticalCmd: false,
       editorBoxSize: 50,
+      lockingEnabled: true,
     }
   },
   computed: {
@@ -972,6 +973,9 @@ export default {
       return this.scriptEnvironment.env.length > 0
     },
     isLocked: function () {
+      if (!this.lockingEnabled) {
+        return false
+      }
       return !!this.lockedBy
     },
     // Returns the currently shown filename
@@ -1291,6 +1295,16 @@ export default {
       .catch((error) => {
         // Do nothing
       })
+    try {
+      const lockingResponse = await this.api.get_setting(
+        'script_runner_locking',
+      )
+      if (lockingResponse !== null && lockingResponse !== undefined) {
+        this.lockingEnabled = lockingResponse
+      }
+    } catch (error) {
+      // Keep default (true)
+    }
 
     this.updateOverridesCount()
 

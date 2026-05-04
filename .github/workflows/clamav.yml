@@ -33,6 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: write # required to push the GHCR build cache
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
@@ -46,12 +47,9 @@ jobs:
           ruby-version: 3.4
           bundler-cache: false # runs 'bundle install' and caches installed gems automatically
           working-directory: openc3
-      - name: openc3.sh build
-        # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
-        shell: 'script -q -e -c "bash {0}"'
-        run: ./openc3.sh build
-        env:
-          OPENC3_TAG: ${{ github.sha }}
+      - uses: ./.github/actions/build-cosmos
+        with:
+          tag: ${{ github.sha }}
       - name: ClamAV setup and update definitions
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'

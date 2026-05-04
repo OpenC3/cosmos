@@ -17,6 +17,7 @@
 
 require 'spec_helper'
 require 'openc3/models/plugin_model'
+require 'openc3/models/scope_model'
 require 'openc3/utilities/aws_bucket'
 
 module OpenC3
@@ -552,6 +553,51 @@ module OpenC3
         expect(model2.name).to eq("TEST__1")
         names = PluginModel.names(scope: "DEFAULT")
         expect(names).to contain_exactly("TEST__20250904175756", "TEST__0", "TEST__1")
+      end
+    end
+
+    describe "self.cleanup_gem" do
+      it "removes the gem when no PluginModel references it" do
+        ScopeModel.new(name: "DEFAULT").create
+
+        plugin_name = "openc3-cosmos-tool-foo-1.0.0.gem__0"
+        # No PluginModel exists for this gem (simulating post-destroy state),
+        # so GemModel.destroy should run the uninstaller.
+        uninstaller = instance_double("Gem::Uninstaller").as_null_object
+        expect(Gem::Uninstaller).to receive(:new).with(
+          "openc3-cosmos-tool-foo", hash_including(:version => "1.0.0")
+        ).and_return(uninstaller)
+        expect(uninstaller).to receive(:uninstall)
+
+        PluginModel.cleanup_gem(plugin_name, scope: "DEFAULT")
+      end
+
+      it "skips removal when another PluginModel still references the gem" do
+        ScopeModel.new(name: "DEFAULT").create
+        ScopeModel.new(name: "OTHER").create
+
+        # A second PluginModel for the same gem exists in another scope.
+        other = PluginModel.new(name: "openc3-cosmos-tool-foo-1.0.0.gem", scope: "OTHER")
+        other.create
+        # Sanity check: the unload target doesn't exist anymore (already destroyed),
+        # but the OTHER scope's instance does — so the gem must be preserved.
+        expect(PluginModel.gem_names).to include("openc3-cosmos-tool-foo-1.0.0.gem")
+
+        # Gem::Uninstaller must NOT be called.
+        expect(Gem::Uninstaller).not_to receive(:new)
+
+        PluginModel.cleanup_gem("openc3-cosmos-tool-foo-1.0.0.gem__0", scope: "DEFAULT")
+      end
+
+      it "logs and swallows errors from GemModel.destroy" do
+        ScopeModel.new(name: "DEFAULT").create
+
+        allow(GemModel).to receive(:destroy).and_raise(StandardError, "boom")
+        expect(Logger).to receive(:warn).with(/Could not remove gem .*boom/, scope: "DEFAULT")
+
+        expect {
+          PluginModel.cleanup_gem("openc3-cosmos-tool-foo-1.0.0.gem__0", scope: "DEFAULT")
+        }.not_to raise_error
       end
     end
 

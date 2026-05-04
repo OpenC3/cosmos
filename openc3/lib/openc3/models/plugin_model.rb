@@ -550,5 +550,16 @@ module OpenC3
       end
       return result.sort
     end
+
+    # Remove the backing gem for an unloaded plugin so it disappears from
+    # GemModel.names (and the admin Packages tab). Skips the removal if any
+    # other PluginModel (any scope, any counter) still references the gem,
+    # via the existing PluginModel.gem_names check inside GemModel.destroy.
+    def self.cleanup_gem(plugin_name, scope:)
+      gem_filename = plugin_name.split("__")[0]
+      OpenC3::GemModel.destroy(gem_filename, log_and_raise_needed_errors: false)
+    rescue => e
+      Logger.warn("Could not remove gem #{gem_filename}: #{e.message}", scope: scope)
+    end
   end
 end
