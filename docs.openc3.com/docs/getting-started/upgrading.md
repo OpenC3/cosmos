@@ -20,7 +20,7 @@ This example assumes an existing COSMOS project at `cosmos-project`. This should
 
 1. Stop the current COSMOS application
 
-<Tabs groupId="script-language">
+<Tabs groupId="platform">
 <TabItem value="linux" label="Linux">
   ```sh
   cosmos-project % ./openc3.sh stop
@@ -36,7 +36,7 @@ This example assumes an existing COSMOS project at `cosmos-project`. This should
 :::info[Upgrade is new since v6.7.0]
 Before version 6.7.0 the COSMOS cli did not have an upgrade option. If you are on a version prior to COSMOS 6.10.1, simply check out the latest version of the upgrade script.
 
-<Tabs groupId="script-language">
+<Tabs groupId="platform">
 <TabItem value="linux" label="Linux">
   ```sh
   cosmos-project % git checkout main -- openc3.sh scripts/linux/openc3_upgrade.sh
@@ -58,7 +58,7 @@ For step by step instructions see our [COSMOS Upgrade](https://youtu.be/Z3o1RACK
 
 2. Apply the upgrade to version vX.Y.Z (e.g. v6.10.3). Note the 'v' because this is a git tag.
 
-<Tabs groupId="script-language">
+<Tabs groupId="platform">
 <TabItem value="linux" label="Linux">
   ```sh
   cosmos-project % ./openc3.sh upgrade vX.Y.Z
@@ -73,7 +73,7 @@ For step by step instructions see our [COSMOS Upgrade](https://youtu.be/Z3o1RACK
 
 3. Run the new COSMOS version
 
-<Tabs groupId="script-language">
+<Tabs groupId="platform">
 <TabItem value="linux" label="Linux">
   ```sh
   cosmos-project % ./openc3.sh run
@@ -90,7 +90,7 @@ For step by step instructions see our [COSMOS Upgrade](https://youtu.be/Z3o1RACK
 
 5. Commit the changes to the project
 
-<Tabs groupId="script-language">
+<Tabs groupId="platform">
 <TabItem value="linux" label="Linux">
   ```sh
   cosmos-project % git add .
