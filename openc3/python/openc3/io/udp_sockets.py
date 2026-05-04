@@ -14,6 +14,10 @@ import select
 import socket
 
 
+# socket.MSG_DONTWAIT is Unix-only; on Windows we rely on setblocking(False).
+_MSG_DONTWAIT = getattr(socket, "MSG_DONTWAIT", 0)
+
+
 class UdpReadWriteSocket:
     # @param bind_port [Integer[ Port to write data out from and receive data on (0 = randomly assigned)
     # @param bind_address [String] Local address to bind to (0.0.0.0 = All local addresses)
@@ -35,6 +39,7 @@ class UdpReadWriteSocket:
         write_multicast=True,
     ):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.setblocking(False)
 
         # Basic setup to reuse address
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -96,7 +101,7 @@ class UdpReadWriteSocket:
         data = None
         while True:
             try:
-                data, _ = self.socket.recvfrom(65536, socket.MSG_DONTWAIT)
+                data, _ = self.socket.recvfrom(65536, _MSG_DONTWAIT)
             except OSError as e:
                 if e.args[0] == socket.EAGAIN or e.args[0] == socket.EWOULDBLOCK:
                     result = select.select([self.socket], [], [], read_timeout)
