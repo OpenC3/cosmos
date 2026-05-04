@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -205,10 +205,14 @@ class CvtModel(Model):
             else:
                 query += f"ASOF JOIN {table_name} as T{index} "
 
+        query_params = []
         if start_time and not end_time:
-            query += f"WHERE T0.timestamp < '{start_time}' LIMIT -1"
+            query += "WHERE T0.PACKET_TIMESECONDS < %s LIMIT -1"
+            query_params.append(start_time)
         elif start_time and end_time:
-            query += f"WHERE T0.timestamp >= '{start_time}' AND T0.timestamp < '{end_time}'"
+            query += "WHERE T0.PACKET_TIMESECONDS >= %s AND T0.PACKET_TIMESECONDS < %s"
+            query_params.append(start_time)
+            query_params.append(end_time)
 
         retry_count = 0
         while retry_count <= 4:
@@ -224,7 +228,7 @@ class CvtModel(Model):
                         )
 
                     with cls._conn.cursor(binary=True) as cursor:
-                        cursor.execute(query)
+                        cursor.execute(query, query_params or None)
                         result = cursor.fetchall()
 
                         if not result:
