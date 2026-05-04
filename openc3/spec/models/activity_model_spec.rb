@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -659,7 +659,7 @@ module OpenC3
         }.to raise_error(ActivityInputError)
       end
 
-      it "raises error due to start before now" do
+      it "raises error due to start too far in the past" do
         name = "foobar"
         scope = "scope"
         dt_now = DateTime.now
@@ -667,7 +667,27 @@ module OpenC3
         stop = (dt_now + (1.0 / 24.0)).strftime("%s").to_i
         expect {
           ActivityModel.new(name: name, scope: scope, start: start, stop: stop, kind: "COMMAND", data: {})
-        }.to raise_error(ActivityInputError, /activity must be in the future/)
+        }.to raise_error(ActivityInputError, /activity must not be more than #{ActivityModel::START_GRACE_SECONDS} seconds in the past/)
+      end
+
+      it "allows activities within the grace window" do
+        name = "foobar"
+        scope = "scope"
+        now_f = Time.now.to_f
+        start = now_f - 10
+        stop = now_f + 50
+        ActivityModel.new(name: name, scope: scope, start: start, stop: stop, kind: "COMMAND", data: {})
+      end
+
+      it "rejects activities beyond the grace window" do
+        name = "foobar"
+        scope = "scope"
+        now_f = Time.now.to_f
+        start = now_f - 20
+        stop = now_f + 40
+        expect {
+          ActivityModel.new(name: name, scope: scope, start: start, stop: stop, kind: "COMMAND", data: {})
+        }.to raise_error(ActivityInputError, /activity must not be more than #{ActivityModel::START_GRACE_SECONDS} seconds in the past/)
       end
 
       it "allows EXPIRE activities with start before now" do

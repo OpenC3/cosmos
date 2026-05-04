@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -863,6 +863,7 @@ export default {
       criticalCmdUser: null,
       displayCriticalCmd: false,
       editorBoxSize: 50,
+      lockingEnabled: true,
     }
   },
   computed: {
@@ -905,6 +906,9 @@ export default {
       return this.scriptEnvironment.env.length > 0
     },
     isLocked: function () {
+      if (!this.lockingEnabled) {
+        return false
+      }
       return !!this.lockedBy
     },
     // Returns the currently shown filename
@@ -1224,6 +1228,19 @@ export default {
       .catch((error) => {
         // Do nothing
       })
+    // Await this so that lockingEnabled is known before any file load /
+    // setFile runs. Otherwise isLocked can briefly compute true with the
+    // default and flash the editor into read-only mode before settling.
+    try {
+      const lockingResponse = await this.api.get_setting(
+        'script_runner_locking',
+      )
+      if (lockingResponse !== null && lockingResponse !== undefined) {
+        this.lockingEnabled = lockingResponse
+      }
+    } catch (error) {
+      // Keep default (true)
+    }
 
     this.updateOverridesCount()
 
