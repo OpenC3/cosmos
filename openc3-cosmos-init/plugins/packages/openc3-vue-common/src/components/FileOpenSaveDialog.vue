@@ -98,6 +98,7 @@
             ref="submitBtn"
             type="submit"
             color="primary"
+            variant="elevated"
             class="mx-2"
             data-test="file-open-save-submit-btn"
             :disabled="disableButtons || !!error"
