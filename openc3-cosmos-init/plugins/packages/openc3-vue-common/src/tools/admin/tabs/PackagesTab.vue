@@ -111,7 +111,7 @@
             }}
           </v-icon>
           {{ formatPluginName(pluginName) }}
-          ({{ packages.length }})
+          ({{ packages.length }}) [{{ venvPath(pluginName) }}]
         </v-list-subheader>
         <div v-if="expandedPlugins[pluginName]">
           <div
@@ -352,6 +352,12 @@ export default {
       // Strip the sanitized version/counter suffix for readability
       // e.g. "openc3-cosmos-demo-7_1_1_pre_beta0_gem__0" -> "openc3-cosmos-demo"
       return name.replace(/-\d+[\d_a-z]*_gem__\d+$/, '').replace(/__\d+$/, '')
+    },
+    venvPath(pluginName) {
+      if (pluginName === 'shared') {
+        return '/gems/python_packages'
+      }
+      return `/gems/plugin_venvs/${pluginName}/.venv`
     },
     deletePackage(pkg) {
       this.$dialog

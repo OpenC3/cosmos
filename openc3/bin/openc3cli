@@ -77,6 +77,7 @@ def print_usage
   puts "  cli xtce_converter                # Convert to and from the XTCE format. Run with --help for more info."
   puts "  cli cstol_converter               # Converts CSTOL files (.prc) to COSMOS. Run with --help for more info."
   puts "  cli setpassword                   # Set the initial password from OPENC3_API_PASSWORD env var"
+  puts "  cli migratetouv PLUGIN_NAME SCOPE # Migrate plugin to per-plugin UV virtual environment"
   puts ""
 end
 
@@ -1474,6 +1475,37 @@ if not ARGV[0].nil? # argument(s) given
 
   when 'migratepassword'
     migrate_password_hash()
+
+  when 'migratetouv'
+    if ARGV[1].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli migratetouv PLUGIN_NAME [SCOPE]"
+      puts ""
+      puts "Migrate a plugin from the shared Python venv to a per-plugin UV virtual environment"
+      puts ""
+      puts "Arguments:"
+      puts "  PLUGIN_NAME       Name of the plugin to migrate (required)"
+      puts "  SCOPE             Scope of the plugin (optional, default: DEFAULT)"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit(ARGV[1].nil? ? 1 : 0)
+    end
+    scope = ARGV[2] || 'DEFAULT'
+    check_environment()
+    begin
+      plugin_model = OpenC3::PluginModel.get_model(name: ARGV[1], scope: scope)
+      if plugin_model.nil?
+        abort("Plugin '#{ARGV[1]}' not found in scope '#{scope}'")
+      end
+      if plugin_model.migrate_to_uv!(scope: scope)
+        puts "Successfully migrated plugin '#{ARGV[1]}' to per-plugin UV venv"
+      else
+        puts "Migration failed for plugin '#{ARGV[1]}'. Check logs for details."
+        exit 1
+      end
+    rescue => e
+      abort("Error migrating plugin: #{e.formatted}")
+    end
 
   else # Unknown task
     print_usage()

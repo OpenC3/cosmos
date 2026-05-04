@@ -93,6 +93,7 @@ Rails.application.routes.draw do
     resources :permissions, only: [:index]
 
     post '/plugins/install/:id', to: 'plugins#install', id: /[^\/]+/
+    post '/plugins/:id/migrate_to_uv', to: 'plugins#migrate_to_uv', id: /[^\/]+/
     resources :plugins, only: [:index, :create]
     get '/plugins/:id', to: 'plugins#show', id: /[^\/]+/
     match '/plugins/:id', to: 'plugins#update', id: /[^\/]+/, via: [:patch, :put]

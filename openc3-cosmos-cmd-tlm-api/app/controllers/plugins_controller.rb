@@ -224,4 +224,20 @@ class PluginsController < ModelController
       render json: { status: 'error', message: error.message }, status: :internal_server_error
     end
   end
+
+  def migrate_to_uv
+    return unless authorization('admin')
+    begin
+      id, scope = sanitize_params([:id, :scope])
+      return unless id and scope
+      result = OpenC3::ProcessManager.instance.spawn(
+        ["ruby", "/openc3/bin/openc3cli", "migratetouv", id, scope],
+        "plugin_migrate_to_uv", id, Time.now + 1.hour, scope: scope
+      )
+      render json: result.name
+    rescue Exception => error
+      logger.error(error.formatted)
+      render json: { status: 'error', message: error.message }, status: :internal_server_error
+    end
+  end
 end
