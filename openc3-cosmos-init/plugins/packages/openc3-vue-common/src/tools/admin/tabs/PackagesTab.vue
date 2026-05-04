@@ -114,19 +114,14 @@
           ({{ packages.length }})
         </v-list-subheader>
         <div v-if="expandedPlugins[pluginName]">
-          <pre v-if="pythonTrees[pluginName]" class="dep-tree">{{
-            pythonTrees[pluginName]
-          }}</pre>
-          <div v-else>
-            <div
-              v-for="(pkg, index) in packages"
-              :key="`${pluginName}-${index}`"
-            >
-              <v-list-item class="pl-8">
-                <v-list-item-title>{{ pkg }}</v-list-item-title>
-              </v-list-item>
-              <v-divider />
-            </div>
+          <div
+            v-for="(pkg, index) in formattedPackages(pluginName, packages)"
+            :key="`${pluginName}-${index}`"
+          >
+            <v-list-item class="pl-8">
+              <v-list-item-title>{{ pkg }}</v-list-item-title>
+            </v-list-item>
+            <v-divider />
           </div>
         </div>
       </div>
@@ -319,6 +314,40 @@ export default {
     togglePlugin(pluginName) {
       this.expandedPlugins[pluginName] = !this.expandedPlugins[pluginName]
     },
+    formattedPackages(pluginName, packages) {
+      if (this.pythonTrees[pluginName]) {
+        return this.parseTreeOutput(this.pythonTrees[pluginName])
+      }
+      return packages.map((pkg) => this.formatPackageName(pkg))
+    },
+    formatPackageName(pkg) {
+      // Transform dist-info format "numpy-2.4.4" to pip format "numpy==2.4.4"
+      const match = pkg.match(/^(.+?)-(\d.*)$/)
+      if (match) {
+        return `${match[1]}==${match[2]}`
+      }
+      return pkg
+    },
+    parseTreeOutput(treeText) {
+      // Parse "uv pip list" output, skip header lines, return name==version strings
+      const lines = treeText.split('\n')
+      const packages = []
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (
+          !trimmed ||
+          trimmed.startsWith('Package') ||
+          trimmed.startsWith('---')
+        ) {
+          continue
+        }
+        const parts = trimmed.split(/\s+/)
+        if (parts.length >= 2) {
+          packages.push(`${parts[0]}==${parts[1]}`)
+        }
+      }
+      return packages
+    },
     formatPluginName(name) {
       // Strip the sanitized version/counter suffix for readability
       // e.g. "openc3-cosmos-demo-7_1_1_pre_beta0_gem__0" -> "openc3-cosmos-demo"
@@ -361,14 +390,5 @@ export default {
 .plugin-header {
   cursor: pointer;
   user-select: none;
-}
-.dep-tree {
-  font-family: monospace;
-  font-size: 1rem;
-  line-height: 1.4;
-  padding: 8px 16px 8px 32px;
-  margin: 0;
-  white-space: pre;
-  overflow-x: auto;
 }
 </style>
