@@ -671,6 +671,8 @@ module OpenC3
       end
 
       it "allows activities within the grace window" do
+        name = "foobar"
+        scope = "scope"
         now_f = Time.now.to_f
         start = now_f - 10
         stop = now_f + 50
@@ -678,6 +680,8 @@ module OpenC3
       end
 
       it "rejects activities beyond the grace window" do
+        name = "foobar"
+        scope = "scope"
         now_f = Time.now.to_f
         start = now_f - 20
         stop = now_f + 40
