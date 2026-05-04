@@ -243,7 +243,7 @@ YOURCUSTOM <%= target_name %> HEALTH_STATUS TEMP1
 
 In order to build a widget, a container containing `node` and `pnpm` is necessary.
 
-<Tabs groupId="operating-system">
+<Tabs groupId="platform">
 <TabItem value="linux" label="Linux / macOS">
 
 ```bash
