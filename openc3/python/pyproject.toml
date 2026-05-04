@@ -1,6 +1,6 @@
 [project]
 name = "openc3"
-version = "6.10.5"
+version = "6.10.6"
 description = "Python support for OpenC3 COSMOS"
 authors = [
   {name = "Support", email = "support@openc3.com"}
