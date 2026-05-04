@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -632,15 +632,21 @@ export default {
                   }
                 }
               }
-              // Decrement store counter now that playback data has been processed
+              this.dataChanged = true
+              this.updateGraphData()
+            })
+            .catch((error) => {
+              // eslint-disable-next-line no-console
+              console.error('Error fetching playback telemetry:', error)
+            })
+            .finally(() => {
+              // Decrement store counter now that playback request has completed
               this.$store.commit('playback', {
                 playbackLoading: Math.max(
                   0,
                   this.$store.state.playback.playbackLoading - 1,
                 ),
               })
-              this.dataChanged = true
-              this.updateGraphData()
             })
         }
         this.lastPlaybackDateTime = this.playbackDateTime
