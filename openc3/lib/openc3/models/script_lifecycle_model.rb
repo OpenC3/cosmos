@@ -21,7 +21,9 @@ module OpenC3
   # Per-version record shape:
   #   saved_by, saved_at         — base metadata, set on every save
   #   validated: { passed, errors, at, by } | nil
-  #   reviewed:  { by, notes, at }          | nil
+  #   reviewed:  { by, notes, at, decision } | nil
+  #     decision is 'approved' or 'changes_requested'. Only 'approved' locks
+  #     the version against further saves.
   #   executions: [ { by, at, disconnect, environment, suite_runner, running_script_id } ]
   #   tainted, tainted_from_version_id, tainted_from_reviewed_by — provenance
   #     flags set when a save overrides a previously reviewed version
@@ -106,10 +108,29 @@ module OpenC3
       state_of(@latest_version_id)
     end
 
-    # Reviewed = read-only. Saving over the latest version requires force_taint.
+    # Reviewed and approved = read-only. A 'changes_requested' review does not
+    # lock — the reviewer is asking for edits, so saves should be allowed.
+    # Records without a decision field are treated as 'approved' for backward
+    # compatibility with reviews recorded before the field existed.
     def locked_for_review?
       rec = latest_record
-      !!(rec && rec['reviewed'])
+      return false unless rec && rec['reviewed']
+      decision = rec['reviewed']['decision'] || 'approved'
+      decision == 'approved'
+    end
+
+    # True iff some non-latest version has an approved review. The UI uses
+    # this to render the reviewed badge as "dull green" when the script's
+    # history includes an approved review even though the current version
+    # has not (yet) been reviewed.
+    def had_prior_approved_review?
+      @versions.each do |vid, rec|
+        next if vid == @latest_version_id
+        next unless rec['reviewed']
+        decision = rec['reviewed']['decision'] || 'approved'
+        return true if decision == 'approved'
+      end
+      false
     end
 
     def latest_record
@@ -160,13 +181,15 @@ module OpenC3
     end
 
     # Record sign-off. Latest reviewer wins (reviews can happen multiple times).
-    def record_review(version_id:, username:, notes: nil, timestamp: nil)
+    # decision is 'approved' (default) or 'changes_requested'.
+    def record_review(version_id:, username:, notes: nil, decision: 'approved', timestamp: nil)
       return self unless @versions[version_id]
       timestamp ||= Time.now.utc.iso8601
       @versions[version_id]['reviewed'] = {
         'by' => username,
         'notes' => notes,
-        'at' => timestamp
+        'at' => timestamp,
+        'decision' => decision
       }
       persist
       self

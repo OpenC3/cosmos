@@ -65,7 +65,8 @@ class ScriptsController < ApplicationController
         breakpoints: breakpoints,
         version_id: lifecycle.latest_version_id,
         lifecycle: lifecycle.latest_record,
-        locked_for_review: lifecycle.locked_for_review?
+        locked_for_review: lifecycle.locked_for_review?,
+        had_prior_approved_review: lifecycle.had_prior_approved_review?
       }
       if ((File.extname(name) == '.py') and (file =~ PYTHON_SUITE_REGEX)) or ((File.extname(name) != '.py') and (file =~ SUITE_REGEX))
         results_suites, results_error, success = Script.process_suite(name, file, username: username(), scope: scope)
@@ -91,11 +92,15 @@ class ScriptsController < ApplicationController
     args[:username] = username()
 
     # Refuse to overwrite a reviewed version unless the caller explicitly
-    # opts into tainting it. The frontend confirms with the user before retrying
-    # with force_taint=true.
+    # opts into tainting it. A save with content identical to the existing
+    # body is treated as a no-op and bypasses the lock — Script Runner saves
+    # on Start to keep the backend in sync, and that should never prompt the
+    # user when nothing has actually changed.
     lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
     force_taint = params[:force_taint].to_s == 'true'
-    if lifecycle.locked_for_review? && !force_taint
+    existing_body = Script.body(scope, name)
+    text_unchanged = !existing_body.nil? && existing_body == params[:text]
+    if !text_unchanged && lifecycle.locked_for_review? && !force_taint
       prior_reviewed = lifecycle.latest_record&.dig('reviewed') || {}
       render json: {
         status: 'locked_for_review',
@@ -244,6 +249,40 @@ class ScriptsController < ApplicationController
     else
       head :error
     end
+  end
+
+  # POST /scripts/*name/validate — combined syntax + mnemonic check.
+  # Records the result on the latest lifecycle version's validated block so
+  # the badge updates immediately. Returns { passed, errors, syntax, mnemonics }.
+  def validate
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
+    return unless scope
+    target_name = name.split('/')[0]
+    return unless authorization('script_run', target_name: target_name)
+    body = request.body.read
+    result = inline_validate(name, body)
+
+    lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+    if lifecycle.latest_version_id
+      lifecycle.record_validation(
+        version_id: lifecycle.latest_version_id,
+        passed: result[:passed],
+        errors: result[:errors] || [],
+        username: username()
+      )
+    end
+
+    render json: {
+      passed: result[:passed],
+      errors: result[:errors] || [],
+      syntax: result[:syntax],
+      mnemonics: result[:mnemonics],
+      version_id: lifecycle.latest_version_id,
+      validated: lifecycle.latest_version_id ? lifecycle.versions[lifecycle.latest_version_id]['validated'] : nil
+    }
+  rescue => e
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 
   def instrumented
@@ -424,6 +463,8 @@ class ScriptsController < ApplicationController
       return
     end
     notes = params[:notes]
+    decision = params[:decision].to_s
+    decision = 'approved' unless %w[approved changes_requested].include?(decision)
 
     lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
     if lifecycle.latest_version_id != version_id
@@ -435,11 +476,17 @@ class ScriptsController < ApplicationController
       return
     end
 
-    lifecycle.record_review(version_id: version_id, username: username(), notes: notes)
-    OpenC3::Logger.info("Script reviewed: #{name} #{version_id}", scope: scope, user: username())
+    lifecycle.record_review(
+      version_id: version_id,
+      username: username(),
+      notes: notes,
+      decision: decision
+    )
+    OpenC3::Logger.info("Script #{decision}: #{name} #{version_id}", scope: scope, user: username())
     render json: {
       version_id: version_id,
-      reviewed: lifecycle.versions[version_id]['reviewed']
+      reviewed: lifecycle.versions[version_id]['reviewed'],
+      locked_for_review: lifecycle.locked_for_review?
     }
   rescue => e
     log_error(e)

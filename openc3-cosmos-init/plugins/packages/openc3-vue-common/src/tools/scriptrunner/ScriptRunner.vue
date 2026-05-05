@@ -165,6 +165,14 @@
             />
             <div v-else style="width: 40px; height: 40px" class="mx-2"></div>
 
+            <script-lifecycle-badges
+              v-if="filename !== NEW_FILENAME"
+              :lifecycle="lifecycle"
+              :had-prior-approved-review="hadPriorApprovedReview"
+              :latest-execution-status="latestExecutionStatus"
+              class="ml-2"
+            />
+
             <v-spacer />
             <div v-if="startOrGoButton === 'Start'">
               <v-tooltip
@@ -408,6 +416,13 @@
         indeterminate
         color="primary"
       />
+      <script-lifecycle-badges
+        v-if="filename !== NEW_FILENAME"
+        :lifecycle="lifecycle"
+        :had-prior-approved-review="hadPriorApprovedReview"
+        :latest-execution-status="latestExecutionStatus"
+        class="ml-2"
+      />
     </v-row>
     <v-tabs-window v-model="inlineTab">
       <v-tabs-window-item value="script">
@@ -645,6 +660,65 @@
       />
     </v-sheet>
   </v-bottom-sheet>
+  <v-dialog v-model="showSignOffDialog" width="540" data-test="sign-off-dialog">
+    <v-card>
+      <v-card-title>Review Version</v-card-title>
+      <v-card-text>
+        <p class="mb-3">
+          <strong>Approve</strong> marks the version reviewed and locks it
+          against further saves until the lock is explicitly overridden (which
+          marks the new version tainted). <strong>Request Changes</strong>
+          records review feedback without locking — the author can keep editing.
+        </p>
+        <p class="text-caption mb-3">
+          Version <code>{{ versionId }}</code>
+        </p>
+        <v-textarea
+          v-model="signOffNotes"
+          label="Review notes"
+          hint="Required when requesting changes."
+          persistent-hint
+          rows="4"
+          variant="outlined"
+          data-test="sign-off-notes"
+        />
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn
+          variant="outlined"
+          :disabled="signOffSubmitting"
+          @click="showSignOffDialog = false"
+        >
+          Cancel
+        </v-btn>
+        <v-btn
+          color="error"
+          variant="flat"
+          :loading="
+            signOffSubmitting && signOffDecision === 'changes_requested'
+          "
+          :disabled="
+            signOffSubmitting && signOffDecision !== 'changes_requested'
+          "
+          data-test="sign-off-request-changes"
+          @click="submitSignOff('changes_requested')"
+        >
+          Request Changes
+        </v-btn>
+        <v-btn
+          color="success"
+          variant="flat"
+          :loading="signOffSubmitting && signOffDecision === 'approved'"
+          :disabled="signOffSubmitting && signOffDecision !== 'approved'"
+          data-test="sign-off-approve"
+          @click="submitSignOff('approved')"
+        >
+          Approve
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script>
@@ -687,6 +761,7 @@ import {
 } from '@/tools/scriptrunner/autocomplete'
 import { SleepAnnotator } from '@/tools/scriptrunner/annotations'
 import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
+import ScriptLifecycleBadges from '@/tools/scriptrunner/ScriptLifecycleBadges.vue'
 
 // Matches target_file.rb TEMP_FOLDER
 const TEMP_FOLDER = '__TEMP__'
@@ -719,6 +794,7 @@ export default {
     ScriptLogMessages,
     CriticalCmdDialog,
     CommandEditor,
+    ScriptLifecycleBadges,
   },
   mixins: [AceEditorModes, ClassificationBanners],
   beforeRouteUpdate: function (to, from, next) {
@@ -800,6 +876,15 @@ export default {
       tempFilename: null,
       fileModified: '',
       fileOpen: false,
+      versionId: null, // S3 VersionId of the currently-loaded body
+      lifecycle: null, // latest version's lifecycle record (validated/reviewed/executions)
+      lockedForReview: false, // true when latest version is reviewed; saving requires force_taint
+      hadPriorApprovedReview: false, // any non-latest version had an approved review (drives dull-green badge)
+      latestExecutionStatus: null, // ScriptStatusModel.state of the most recent execution (drives executed badge color)
+      showSignOffDialog: false,
+      signOffNotes: '',
+      signOffSubmitting: false,
+      signOffDecision: null, // 'approved' or 'changes_requested' — decided when user clicks the matching button
       showSaveAs: false,
       areYouSure: false,
       subscription: null,
@@ -1124,19 +1209,19 @@ export default {
               divider: true,
             },
             {
-              label: 'Syntax Check',
+              label: 'Validate',
               icon: 'mdi-file-check',
               disabled: this.scriptId,
               command: () => {
-                this.syntaxCheck()
+                this.validate()
               },
             },
             {
-              label: 'Mnemonic Check',
-              icon: 'mdi-spellcheck',
-              disabled: this.scriptId,
+              label: 'Sign Off…',
+              icon: 'mdi-account-check',
+              disabled: !this.versionId || !!this.scriptId,
               command: () => {
-                this.checkMnemonics()
+                this.openSignOffDialog()
               },
             },
             {
@@ -1227,6 +1312,21 @@ export default {
     showOverrides: function (newVal, oldVal) {
       if (oldVal && !newVal) {
         this.updateOverridesCount()
+      }
+    },
+    // Mirror live ScriptStatusModel state into latestExecutionStatus while
+    // the user is running the script in this session. Avoids a separate
+    // ActionCable subscription — `state` is already wired up to receive WS
+    // updates for `this.scriptId`.
+    state: function (newState) {
+      const executions = this.lifecycle?.executions || []
+      const latest = executions[executions.length - 1]
+      if (
+        this.scriptId &&
+        latest &&
+        String(latest.running_script_id) === String(this.scriptId)
+      ) {
+        this.latestExecutionStatus = newState
       }
     },
   },
@@ -1763,45 +1863,92 @@ export default {
         this.fileModified = ''
       }
     },
-    checkMnemonics: function () {
-      let filename = this.filename
-      if (this.filename !== NEW_FILENAME) {
-        // Check if the extension is not .rb or .py
-        if (!(filename.endsWith('.rb') || filename.endsWith('.py'))) {
-          Api.post(`/script-api/scripts/${this.filename}/mnemonics`, {
-            data: this.editor.getValue(),
+    // Combined Script -> Validate. Calls the server-side /validate endpoint
+    // (syntax + mnemonic check, recorded into the validated lifecycle block)
+    // and merges in the browser-side mnemonicChecker findings (which catch
+    // tlm/cmd identifiers in ruby/python that the server check can't see).
+    // Updates lifecycle.validated from the server response so the badge
+    // refreshes immediately, then shows a single combined dialog.
+    async validate() {
+      if (this.filename === NEW_FILENAME) return
+      const text = this.editor.getValue()
+      const isRubyOrPython =
+        this.filename.endsWith('.rb') || this.filename.endsWith('.py')
+      const sections = []
+
+      try {
+        const response = await Api.post(
+          `/script-api/scripts/${this.filename}/validate`,
+          {
+            data: text,
             headers: {
               Accept: 'application/json',
               'Content-Type': 'text/plain',
             },
-          }).then((response) => {
-            let alertText = ''
-            alertText += `<strong>${response.data.title}</strong><br/><br/>`
-            alertText += JSON.parse(response.data.description)
-            this.$dialog.alert(alertText.trim(), { html: true })
-            return
-          })
+          },
+        )
+        if (response.data.validated) {
+          this.lifecycle = {
+            ...(this.lifecycle || {}),
+            validated: response.data.validated,
+          }
         }
+        const syntax = response.data.syntax
+        if (syntax) {
+          sections.push(`<strong>${syntax.title}</strong>`)
+          try {
+            const desc = JSON.parse(syntax.description)
+            sections.push(
+              Array.isArray(desc) ? desc.join('<br/>') : String(desc),
+            )
+          } catch (_) {
+            sections.push(String(syntax.description))
+          }
+        }
+        const mnemonics = response.data.mnemonics
+        if (mnemonics) {
+          sections.push(`<strong>${mnemonics.title}</strong>`)
+          try {
+            const desc = JSON.parse(mnemonics.description)
+            sections.push(
+              Array.isArray(desc) ? desc.join('<br/>') : String(desc),
+            )
+          } catch (_) {
+            sections.push(String(mnemonics.description))
+          }
+        }
+      } catch ({ response }) {
+        sections.push(
+          `<strong>Validation request failed</strong><br/>${
+            response?.data?.message || response?.statusText || 'unknown error'
+          }`,
+        )
       }
-      this.mnemonicChecker
-        .checkText(this.editor.getValue())
-        .then(({ skipped, problems }) => {
-          let alertText = ''
+
+      if (isRubyOrPython) {
+        try {
+          const { skipped, problems } =
+            await this.mnemonicChecker.checkText(text)
           if (problems.length) {
             const problemText = problems
-              .map((problem) => `${problem.lineNumber}: ${problem.error}`)
+              .map((p) => `${p.lineNumber}: ${p.error}`)
               .join('<br/>')
-            alertText += `<strong>The following lines have problems:</strong><br/>${problemText}<br/><br/>`
+            sections.push(
+              `<strong>Mnemonic Check (browser):</strong><br/>${problemText}`,
+            )
+          } else if (skipped.length) {
+            sections.push(
+              '<strong>Mnemonic Check (browser):</strong><br/>Mnemonics with string interpolation were not checked.',
+            )
+          } else {
+            sections.push('<strong>Mnemonic Check (browser):</strong><br/>OK')
           }
-          if (skipped.length) {
-            alertText +=
-              '<strong>Mnemonics with string interpolation were not checked.</strong>'
-          }
-          if (alertText === '') {
-            alertText = '<strong>Everything looks good!</strong>'
-          }
-          this.$dialog.alert(alertText.trim(), { html: true })
-        })
+        } catch (e) {
+          sections.push(`<strong>Browser mnemonic check failed:</strong> ${e}`)
+        }
+      }
+
+      this.$dialog.alert(sections.join('<br/><br/>'), { html: true })
     },
     initScriptStart() {
       this.disableSuiteButtons = true
@@ -2463,6 +2610,11 @@ export default {
       this.editor.session.setValue('')
       this.saveAllowed = true
       this.fileModified = ''
+      this.versionId = null
+      this.lifecycle = null
+      this.lockedForReview = false
+      this.hadPriorApprovedReview = false
+      this.latestExecutionStatus = null
       this.suiteRunner = false
       this.startOrGoDisabled = false
       this.envDisabled = false
@@ -2638,7 +2790,22 @@ class TestSuite(Suite):
             file['success'] = response.data.success
           }
           const breakpoints = response.data.breakpoints
-          this.setFile({ file, breakpoints }, true)
+          const versionId = response.data.version_id
+          const lifecycle = response.data.lifecycle
+          const lockedForReview = response.data.locked_for_review === true
+          const hadPriorApprovedReview =
+            response.data.had_prior_approved_review === true
+          this.setFile(
+            {
+              file,
+              breakpoints,
+              versionId,
+              lifecycle,
+              lockedForReview,
+              hadPriorApprovedReview,
+            },
+            true,
+          )
           this.saveAllowed = true
         })
         .catch((error) => {
@@ -2653,11 +2820,27 @@ class TestSuite(Suite):
         })
     },
     // Called by the FileOpenDialog to set the file contents
-    setFile({ file, breakpoints }, local = false) {
+    setFile(
+      {
+        file,
+        breakpoints,
+        versionId = null,
+        lifecycle = null,
+        lockedForReview = false,
+        hadPriorApprovedReview = false,
+      },
+      local = false,
+    ) {
       this.files = {} // Clear the cached file list
       // Split off the ' *' which indicates a file is modified on the server
       let newFilename = file.name.split('*')[0]
       this.filename = newFilename
+      this.versionId = versionId
+      this.lifecycle = lifecycle
+      this.lockedForReview = lockedForReview
+      this.hadPriorApprovedReview = hadPriorApprovedReview
+      this.latestExecutionStatus = null
+      this.refreshLatestExecutionStatus()
       if (!this.inline) {
         // Update the URL with the filename
         this.$router
@@ -2752,9 +2935,23 @@ class TestSuite(Suite):
       return 'unknown' // otherwise unknown
     },
     // saveFile takes a type to indicate if it was called by the Menu
-    // or automatically by 'Start' (to ensure a consistent backend file) or autoSave
-    async saveFile(type = 'menu') {
+    // or automatically by 'Start' (to ensure a consistent backend file) or autoSave.
+    // forceTaint is set when retrying after a 409 locked_for_review — the
+    // server records the new version with provenance back to the prior reviewed one.
+    async saveFile(type = 'menu', { forceTaint = false } = {}) {
       if (this.readOnlyUser) {
+        return
+      }
+      // For non-menu saves (auto-save, save-on-Start) skip the round-trip
+      // entirely when there are no local edits. Avoids triggering the
+      // locked_for_review 409 dialog when running an unmodified reviewed
+      // script. Menu-driven saves always go through.
+      if (
+        type !== 'menu' &&
+        !forceTaint &&
+        this.fileModified === '' &&
+        this.filename !== NEW_FILENAME
+      ) {
         return
       }
       if (this.saveAllowed) {
@@ -2798,7 +2995,10 @@ class TestSuite(Suite):
           }
         }
         this.showSave = true
-        await Api.post(`/script-api/scripts/${this.filename}`, {
+        const saveUrl = forceTaint
+          ? `/script-api/scripts/${this.filename}?force_taint=true`
+          : `/script-api/scripts/${this.filename}`
+        await Api.post(saveUrl, {
           data: {
             text: this.editor.getValue(), // Pass in the raw file text
             breakpoints,
@@ -2819,6 +3019,34 @@ class TestSuite(Suite):
                 this.suiteError = response.data.error
                 this.showSuiteError = true
               }
+              if (response.data.version_id) {
+                this.versionId = response.data.version_id
+              }
+              if (response.data.validation) {
+                // Reflect the inline syntax + mnemonic check in the lifecycle
+                // so the validated badge updates immediately on save.
+                const validation = response.data.validation
+                this.lifecycle = {
+                  ...(this.lifecycle || {}),
+                  validated: {
+                    passed: validation.passed,
+                    errors: validation.errors || [],
+                    by: null,
+                    at: new Date().toISOString(),
+                  },
+                  // A new save resets reviewed/executions for THIS version.
+                  reviewed: null,
+                  executions: [],
+                }
+                this.lockedForReview = false
+                // Surface validation failures explicitly on user-initiated
+                // saves. Autosave and save-on-Start stay silent — the red
+                // badge is still visible and the user will see errors when
+                // the script runs.
+                if (!validation.passed && type === 'menu') {
+                  this.showValidationFailureDialog(validation)
+                }
+              }
               this.fileModified = ''
               setTimeout(() => {
                 this.showSave = false
@@ -2838,18 +3066,177 @@ class TestSuite(Suite):
             if (response.status == 422) {
               this.alertType = 'error'
               this.alertText = response.data.suites
+              this.showAlert = true
+            } else if (
+              response.status == 409 &&
+              response.data?.status === 'locked_for_review'
+            ) {
+              this.confirmTaintAndSave(type, response.data.reviewed)
             } else {
               this.alertType = 'error'
               this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
+              this.showAlert = true
             }
-            this.showAlert = true
           })
       } else {
         this.setError('Attempt to save file when not allowed')
       }
     },
+    // Called from the save catch when the server refuses with 409
+    // locked_for_review. Shows the prior reviewer + notes and offers to retry
+    // the save with force_taint=true, which marks the new version tainted.
+    confirmTaintAndSave(type, reviewed) {
+      const reviewer = reviewed?.by || 'someone'
+      const at = reviewed?.at ? ` on ${reviewed.at}` : ''
+      const notes = reviewed?.notes
+        ? `\n\nReview notes: "${reviewed.notes}"`
+        : ''
+      this.$dialog
+        .confirm(
+          `This script was reviewed by ${reviewer}${at} and is locked for review.${notes}\n\nEdit anyway? The new version will be marked tainted.`,
+          {
+            okText: 'Edit Anyway',
+            cancelText: 'Cancel',
+          },
+        )
+        .then(() => {
+          this.saveFile(type, { forceTaint: true })
+        })
+        .catch(() => {
+          // user cancelled, no-op
+        })
+    },
     saveAs() {
       this.showSaveAs = true
+    },
+    // Render the inline-save validation result (when it fails) in the same
+    // shape Script -> Validate uses, so the user sees what's wrong without
+    // having to click Validate after every save.
+    showValidationFailureDialog(validation) {
+      const sections = []
+      const syntax = validation.syntax
+      if (syntax) {
+        sections.push(`<strong>${syntax.title}</strong>`)
+        try {
+          const desc = JSON.parse(syntax.description)
+          sections.push(Array.isArray(desc) ? desc.join('<br/>') : String(desc))
+        } catch (_) {
+          sections.push(String(syntax.description))
+        }
+      }
+      const mnemonics = validation.mnemonics
+      if (mnemonics) {
+        sections.push(`<strong>${mnemonics.title}</strong>`)
+        try {
+          const desc = JSON.parse(mnemonics.description)
+          sections.push(Array.isArray(desc) ? desc.join('<br/>') : String(desc))
+        } catch (_) {
+          sections.push(String(mnemonics.description))
+        }
+      }
+      // Fallback when the server only returned a flattened errors list
+      // (e.g. exception path in inline_validate).
+      if (sections.length === 0 && (validation.errors || []).length) {
+        sections.push('<strong>Validation Failed</strong>')
+        sections.push(validation.errors.join('<br/>'))
+      }
+      this.$dialog.alert(sections.join('<br/><br/>'), { html: true })
+    },
+    openSignOffDialog() {
+      this.signOffNotes = ''
+      this.signOffDecision = null
+      this.showSignOffDialog = true
+    },
+    // Look up the ScriptStatusModel for the most recent recorded execution
+    // and stash its state, so the executed badge can color itself by outcome.
+    // Live updates while the user runs a script in this session come through
+    // the existing `state` watcher below — this fetch handles historical
+    // executions on file load.
+    async refreshLatestExecutionStatus() {
+      const executions = this.lifecycle?.executions || []
+      const latest = executions[executions.length - 1]
+      const id = latest?.running_script_id
+      if (!id) {
+        this.latestExecutionStatus = null
+        return
+      }
+      try {
+        const response = await Api.get(`/script-api/running-script/${id}`, {
+          headers: { 'Ignore-Errors': '404' },
+        })
+        this.latestExecutionStatus = response?.data?.state || null
+      } catch (_) {
+        // ScriptStatusModel rotates completed entries out eventually; treat
+        // a missing record as "outcome unknown" rather than failing the badge.
+        this.latestExecutionStatus = null
+      }
+    },
+    async submitSignOff(decision) {
+      if (this.signOffSubmitting || !this.versionId) return
+      // Require notes when requesting changes — otherwise the author has no
+      // signal about what to fix.
+      if (
+        decision === 'changes_requested' &&
+        !this.signOffNotes.trim().length
+      ) {
+        this.$notify.caution({
+          title: 'Notes required',
+          body: 'Add review notes describing the changes you want before requesting changes.',
+        })
+        return
+      }
+      this.signOffSubmitting = true
+      this.signOffDecision = decision
+      try {
+        const response = await Api.post(
+          `/script-api/scripts/${this.filename}/review`,
+          {
+            data: {
+              version_id: this.versionId,
+              notes: this.signOffNotes,
+              decision,
+            },
+          },
+        )
+        // Reflect the new reviewed block in local lifecycle so the badge
+        // updates immediately. lockedForReview comes back from the server
+        // since only 'approved' decisions lock.
+        this.lifecycle = {
+          ...(this.lifecycle || {}),
+          reviewed: response.data.reviewed,
+        }
+        this.lockedForReview = response.data.locked_for_review === true
+        this.showSignOffDialog = false
+        this.$notify.normal({
+          title:
+            decision === 'approved' ? 'Sign Off Recorded' : 'Changes Requested',
+          body: `Reviewed by ${response.data.reviewed?.by}`,
+        })
+      } catch ({ response }) {
+        if (
+          response?.status === 409 &&
+          response?.data?.status === 'version_mismatch'
+        ) {
+          this.$notify.caution({
+            title: 'Newer version exists',
+            body: 'Reload the file before signing off — the script was edited since you opened it.',
+          })
+          this.showSignOffDialog = false
+        } else if (response?.status === 403) {
+          this.$notify.caution({
+            title: 'Not Authorized',
+            body: 'You do not have permission to sign off on scripts.',
+          })
+          this.showSignOffDialog = false
+        } else {
+          this.$notify.caution({
+            title: 'Sign Off Failed',
+            body: response?.data?.message || `HTTP ${response?.status}`,
+          })
+        }
+      } finally {
+        this.signOffSubmitting = false
+      }
     },
     async saveAsFilename(filename) {
       this.filename = filename.split('*')[0]
@@ -2898,21 +3285,6 @@ class TestSuite(Suite):
       link.href = URL.createObjectURL(blob)
       link.setAttribute('download', this.filename)
       link.click()
-    },
-    // ScriptRunner Script menu actions
-    syntaxCheck() {
-      Api.post(`/script-api/scripts/${this.filename}/syntax`, {
-        data: this.editor.getValue(),
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'text/plain',
-        },
-      }).then((response) => {
-        this.information.title = response.data.title
-        this.information.text = JSON.parse(response.data.description)
-        this.information.show = true
-        this.information.width = '600'
-      })
     },
     showInstrumented() {
       Api.post(`/script-api/scripts/${this.filename}/instrumented`, {

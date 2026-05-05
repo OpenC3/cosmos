@@ -101,10 +101,12 @@ RSpec.describe ScriptsController, type: :controller do
 
     it "saves when text changes" do
       s3 = instance_double("Aws::S3::Client")
-      # Simulate returning a file with 'new text'
+      # Simulate returning a file with 'new text'. Controller pre-checks the
+      # existing body to support save-on-Start no-op semantics, so get_object
+      # is called once by the controller and once by Script.create.
       file = double("file")
       allow(file).to receive_message_chain(:body, read: "new text")
-      expect(s3).to receive(:get_object).and_return(file)
+      allow(s3).to receive(:get_object).and_return(file)
       # Expect to call put_object to store the changed script
       expect(s3).to receive(:put_object)
       expect(s3).to receive(:wait_until)
@@ -116,10 +118,10 @@ RSpec.describe ScriptsController, type: :controller do
 
     it "does not save when text is the same" do
       s3 = instance_double("Aws::S3::Client")
-      # Simulate returning a file with identical 'text'
+      # Simulate returning a file with identical 'text'.
       file = double("file")
       allow(file).to receive_message_chain(:body, read: "text")
-      expect(s3).to receive(:get_object).and_return(file)
+      allow(s3).to receive(:get_object).and_return(file)
       expect(s3).to_not receive(:put_object)
       allow(Aws::S3::Client).to receive(:new).and_return(s3)
 
@@ -128,6 +130,7 @@ RSpec.describe ScriptsController, type: :controller do
     end
 
     it "does not pass params which aren't permitted" do
+      allow(Script).to receive(:body).and_return(nil)
       expect(Script).to receive(:create) do |params|
         # Check that we don't pass extra params (username is added by the
         # controller from the auth header, not from the request body)
@@ -481,6 +484,7 @@ RSpec.describe ScriptsController, type: :controller do
         .record_save(version_id: "V1", username: "alice")
         .record_review(version_id: "V1", username: "bob", notes: "lgtm")
 
+      allow(Script).to receive(:body).and_return("existing reviewed text")
       expect(Script).not_to receive(:create)
 
       post :create, params: {scope: scope, name: name, text: "new"}
@@ -490,11 +494,27 @@ RSpec.describe ScriptsController, type: :controller do
       expect(json["reviewed"]["by"]).to eq("bob")
     end
 
+    it "treats a save with identical body as a no-op even when reviewed" do
+      OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+        .record_save(version_id: "V1", username: "alice")
+        .record_review(version_id: "V1", username: "bob", notes: "lgtm")
+
+      allow(Script).to receive(:body).and_return("identical body")
+      # Script.create will internally skip the write because text matches;
+      # the controller MUST allow the request through (no 409) to support
+      # save-on-Start syncing for unmodified reviewed scripts.
+      allow(Script).to receive(:create).and_return(nil)
+
+      post :create, params: {scope: scope, name: name, text: "identical body"}
+      expect(response).to have_http_status(:ok)
+    end
+
     it "marks the new version tainted when force_taint=true" do
       OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
         .record_save(version_id: "V1", username: "alice")
         .record_review(version_id: "V1", username: "bob", notes: "lgtm")
 
+      allow(Script).to receive(:body).and_return("existing reviewed text")
       expect(Script).to receive(:create).and_return("V2")
 
       post :create, params: {scope: scope, name: name, text: "new", force_taint: 'true'}

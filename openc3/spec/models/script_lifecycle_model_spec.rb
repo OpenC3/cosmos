@@ -147,6 +147,53 @@ module OpenC3
         expect(model.versions[v1]['reviewed']['by']).to eq('carol')
         expect(model.versions[v1]['reviewed']['notes']).to eq('second pass')
       end
+
+      it 'defaults decision to approved when not specified' do
+        model = ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+          .record_save(version_id: v1, username: 'alice')
+          .record_review(version_id: v1, username: 'bob')
+        expect(model.versions[v1]['reviewed']['decision']).to eq('approved')
+        expect(model.locked_for_review?).to be(true)
+      end
+
+      it 'changes_requested decision does not lock the script' do
+        model = ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+          .record_save(version_id: v1, username: 'alice')
+          .record_review(version_id: v1, username: 'bob', decision: 'changes_requested', notes: 'fix the typo')
+        expect(model.versions[v1]['reviewed']['decision']).to eq('changes_requested')
+        expect(model.locked_for_review?).to be(false)
+      end
+    end
+
+    describe '#had_prior_approved_review?' do
+      it 'returns false when nothing is reviewed' do
+        model = ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+          .record_save(version_id: v1, username: 'alice')
+        expect(model.had_prior_approved_review?).to be(false)
+      end
+
+      it 'returns false when only the latest version is reviewed' do
+        model = ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+          .record_save(version_id: v1, username: 'alice')
+          .record_review(version_id: v1, username: 'bob')
+        expect(model.had_prior_approved_review?).to be(false)
+      end
+
+      it 'returns true when a non-latest version was approved' do
+        model = ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+          .record_save(version_id: v1, username: 'alice')
+          .record_review(version_id: v1, username: 'bob')
+          .record_taint(version_id: v2, username: 'alice', prev_version_id: v1, prev_reviewer: 'bob')
+        expect(model.had_prior_approved_review?).to be(true)
+      end
+
+      it 'ignores prior changes_requested reviews' do
+        model = ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+          .record_save(version_id: v1, username: 'alice')
+          .record_review(version_id: v1, username: 'bob', decision: 'changes_requested')
+          .record_save(version_id: v2, username: 'alice')
+        expect(model.had_prior_approved_review?).to be(false)
+      end
     end
 
     describe '#record_validation' do

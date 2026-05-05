@@ -26,6 +26,7 @@ Rails.application.routes.draw do
     post "/scripts/*name/delete" => "scripts#destroy", format: false, defaults: { format: 'html' }
     post "/scripts/*name/syntax" => "scripts#syntax"
     post "/scripts/*name/mnemonics" => "scripts#mnemonics"
+    post "/scripts/*name/validate" => "scripts#validate", format: false, defaults: { format: 'html' }
     post "/scripts/*name/instrumented" => "scripts#instrumented"
     # Version history / sign-off / restore. The :version_id route uses a
     # placeholder since the wildcard *name greedily consumes path segments,
