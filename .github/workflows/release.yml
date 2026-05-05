@@ -156,6 +156,17 @@ jobs:
         working-directory: scripts/release
         env:
           GEM_HOST_API_KEY: ${{ secrets.GEM_HOST_API_KEY }}
+      # Publish python package. We continue on error here because we don't want a failure to block the version update.
+      # We're using trusted publishing for the python package which is defined at
+      #   https://pypi.org/manage/project/openc3/settings/publishing/
+      # This references our Release environment: https://github.com/OpenC3/cosmos/settings/environments
+      # If the publish fails for some reason you can manually build and publish by running
+      #   cd openc3/python
+      #   python3 -m venv venv
+      #   source venv/bin/activate
+      #   python3 -m pip install build twine
+      #   python3 -m build
+      #   python3 -m twine upload dist/*
       - name: Publish python package
         continue-on-error: true
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b
