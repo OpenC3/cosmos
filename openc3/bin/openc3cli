@@ -1443,6 +1443,9 @@ if not ARGV[0].nil? # argument(s) given
     end
     # Always ensure the scriptrunner policy is in place since it is required for script execution
     client.ensure_scriptrunner_policy(ENV['OPENC3_CONFIG_BUCKET'], ENV['OPENC3_LOGS_BUCKET'])
+    # Enable versioning on the config bucket so script edits, plugin uploads,
+    # and other config writes accumulate version history. Idempotent.
+    client.ensure_versioning_enabled(ENV['OPENC3_CONFIG_BUCKET']) if ENV['OPENC3_CONFIG_BUCKET']
 
   when 'runmigrations'
     if ARGV[1] == '--help' || ARGV[1] == '-h'

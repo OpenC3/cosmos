@@ -14,6 +14,7 @@
 require "rails_helper"
 require "openc3/utilities/aws_bucket"
 require 'openc3/utilities/script'
+require 'openc3/models/script_lifecycle_model'
 
 RSpec.describe ScriptsController, type: :controller do
   before(:each) do
@@ -128,8 +129,9 @@ RSpec.describe ScriptsController, type: :controller do
 
     it "does not pass params which aren't permitted" do
       expect(Script).to receive(:create) do |params|
-        # Check that we don't pass extra params
-        expect(params.keys).to eql(%w[text breakpoints scope name])
+        # Check that we don't pass extra params (username is added by the
+        # controller from the auth header, not from the request body)
+        expect(params.keys).to eql(%w[text breakpoints scope name username])
       end
       post :create, params: {scope: "DEFAULT", name: "script.rb", text: "text", breakpoints: [1], other: "nope"}
       expect(response).to have_http_status(:ok)
@@ -156,8 +158,6 @@ RSpec.describe ScriptsController, type: :controller do
       breakpoints = [1, 5]
 
       expect(Script).to receive(:body).with("DEFAULT", "INST/procedures/test.rb").and_return(script_content)
-      expect(Script).to receive(:locked?).with("DEFAULT", "INST/procedures/test.rb").and_return(false)
-      expect(Script).to receive(:lock).with("DEFAULT", "INST/procedures/test.rb", "anonymous")
       expect(Script).to receive(:get_breakpoints).with("DEFAULT", "INST/procedures/test.rb").and_return(breakpoints)
 
       get :body, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
@@ -166,24 +166,27 @@ RSpec.describe ScriptsController, type: :controller do
       json = JSON.parse(response.body)
       expect(json["contents"]).to eq(script_content)
       expect(json["breakpoints"]).to eq(breakpoints)
-      expect(json["locked"]).to eq(false)
+      # Fresh model has no recorded versions yet
+      expect(json["version_id"]).to be_nil
+      expect(json["locked_for_review"]).to eq(false)
     end
 
-    it "does not lock script if already locked" do
+    it "exposes the lifecycle of the latest version when one exists" do
       script_content = "puts 'Hello World'"
-      breakpoints = [1, 5]
+      OpenC3::ScriptLifecycleModel.get_or_build(name: "INST/procedures/test.rb", scope: "DEFAULT")
+        .record_save(version_id: "01ABCDEFGHJKMNPQRSTVWXYZ", username: "alice")
+        .record_review(version_id: "01ABCDEFGHJKMNPQRSTVWXYZ", username: "bob")
 
       expect(Script).to receive(:body).with("DEFAULT", "INST/procedures/test.rb").and_return(script_content)
-      expect(Script).to receive(:locked?).with("DEFAULT", "INST/procedures/test.rb").and_return(true)
-      expect(Script).not_to receive(:lock)
-      expect(Script).to receive(:get_breakpoints).with("DEFAULT", "INST/procedures/test.rb").and_return(breakpoints)
+      expect(Script).to receive(:get_breakpoints).with("DEFAULT", "INST/procedures/test.rb").and_return([])
 
       get :body, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
 
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
-      expect(json["contents"]).to eq(script_content)
-      expect(json["locked"]).to eq(true)
+      expect(json["version_id"]).to eq("01ABCDEFGHJKMNPQRSTVWXYZ")
+      expect(json["locked_for_review"]).to eq(true)
+      expect(json["lifecycle"]["reviewed_by"]).to eq("bob")
     end
 
     it "processes suite files correctly" do
@@ -192,8 +195,6 @@ RSpec.describe ScriptsController, type: :controller do
       suites_data = "{\"suites\":[]}"
 
       expect(Script).to receive(:body).with("DEFAULT", "INST/procedures/test.rb").and_return(script_content)
-      expect(Script).to receive(:locked?).with("DEFAULT", "INST/procedures/test.rb").and_return(false)
-      expect(Script).to receive(:lock).with("DEFAULT", "INST/procedures/test.rb", "anonymous")
       expect(Script).to receive(:get_breakpoints).with("DEFAULT", "INST/procedures/test.rb").and_return(breakpoints)
       expect(Script).to receive(:process_suite).with("INST/procedures/test.rb", script_content, username: "anonymous", scope: "DEFAULT").and_return([suites_data, nil, true])
 
@@ -212,8 +213,6 @@ RSpec.describe ScriptsController, type: :controller do
       suites_data = "{\"suites\":[]}"
 
       expect(Script).to receive(:body).with("DEFAULT", "INST/procedures/test.py").and_return(script_content)
-      expect(Script).to receive(:locked?).with("DEFAULT", "INST/procedures/test.py").and_return(false)
-      expect(Script).to receive(:lock).with("DEFAULT", "INST/procedures/test.py", "anonymous")
       expect(Script).to receive(:get_breakpoints).with("DEFAULT", "INST/procedures/test.py").and_return(breakpoints)
       expect(Script).to receive(:process_suite).with("INST/procedures/test.py", script_content, username: "anonymous", scope: "DEFAULT").and_return([suites_data, nil, true])
 
@@ -235,48 +234,6 @@ RSpec.describe ScriptsController, type: :controller do
 
     it "handles authorization failure" do
       get :body, params: {name: "INST/procedures/test.rb"}
-
-      expect(response).to have_http_status(:unauthorized)
-    end
-  end
-
-  describe "lock" do
-    it "locks a script" do
-      expect(Script).to receive(:lock).with("DEFAULT", "INST/procedures/test.rb", "anonymous")
-
-      post :lock, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
-
-      expect(response).to have_http_status(:ok)
-    end
-
-    it "handles authorization failure" do
-      post :lock, params: {name: "INST/procedures/test.rb"}
-
-      expect(response).to have_http_status(:unauthorized)
-    end
-  end
-
-  describe "unlock" do
-    it "unlocks a script that is locked by the user" do
-      expect(Script).to receive(:locked?).with("DEFAULT", "INST/procedures/test.rb").and_return("anonymous")
-      expect(Script).to receive(:unlock).with("DEFAULT", "INST/procedures/test.rb")
-
-      post :unlock, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
-
-      expect(response).to have_http_status(:ok)
-    end
-
-    it "does not unlock a script locked by another user" do
-      expect(Script).to receive(:locked?).with("DEFAULT", "INST/procedures/test.rb").and_return("another_user")
-      expect(Script).not_to receive(:unlock)
-
-      post :unlock, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
-
-      expect(response).to have_http_status(:ok)
-    end
-
-    it "handles authorization failure" do
-      post :unlock, params: {name: "INST/procedures/test.rb"}
 
       expect(response).to have_http_status(:unauthorized)
     end

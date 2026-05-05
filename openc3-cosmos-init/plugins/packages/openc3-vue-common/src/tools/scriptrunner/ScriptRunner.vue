@@ -43,37 +43,6 @@
         />
       </template>
     </v-snackbar>
-    <v-snackbar
-      v-model="showEditingToast"
-      absolute
-      class="apply-top"
-      :style="classificationStyles"
-      :timeout="-1"
-      color="orange"
-    >
-      <v-icon> mdi-pencil-off </v-icon>
-      {{ lockedBy }} is editing this script. Editor is in read-only mode
-      <template #actions="{ attrs }">
-        <v-btn
-          variant="text"
-          v-bind="attrs"
-          color="danger"
-          text="Unlock"
-          data-test="unlock-button"
-          @click="confirmLocalUnlock"
-        />
-        <v-btn
-          variant="text"
-          text="Dismiss"
-          v-bind="attrs"
-          @click="
-            () => {
-              showEditingToast = false
-            }
-          "
-        />
-      </template>
-    </v-snackbar>
     <div class="grid">
       <div
         v-for="def in screens"
@@ -831,8 +800,6 @@ export default {
       tempFilename: null,
       fileModified: '',
       fileOpen: false,
-      lockedBy: null,
-      showEditingToast: false,
       showSaveAs: false,
       areYouSure: false,
       subscription: null,
@@ -930,7 +897,6 @@ export default {
       criticalCmdUser: null,
       displayCriticalCmd: false,
       editorBoxSize: 50,
-      lockingEnabled: true,
     }
   },
   computed: {
@@ -971,12 +937,6 @@ export default {
     },
     environmentModified: function () {
       return this.scriptEnvironment.env.length > 0
-    },
-    isLocked: function () {
-      if (!this.lockingEnabled) {
-        return false
-      }
-      return !!this.lockedBy
     },
     // Returns the currently shown filename
     fullFilename: function () {
@@ -1241,17 +1201,6 @@ export default {
     },
   },
   watch: {
-    isLocked: function (val) {
-      this.showEditingToast = val
-      if (!this.suiteRunner) {
-        this.startOrGoDisabled = val
-      }
-      if (this.readOnlyUser == false && val == false && !this.inline) {
-        this.editor.setReadOnly(val)
-      } else {
-        this.editor.setReadOnly(true)
-      }
-    },
     fullFilename: function (filename) {
       this.filenameSelect = filename
       if (!this.inline) {
@@ -1295,16 +1244,6 @@ export default {
       .catch((error) => {
         // Do nothing
       })
-    try {
-      const lockingResponse = await this.api.get_setting(
-        'script_runner_locking',
-      )
-      if (lockingResponse !== null && lockingResponse !== undefined) {
-        this.lockingEnabled = lockingResponse
-      }
-    } catch (error) {
-      // Keep default (true)
-    }
 
     this.updateOverridesCount()
 
@@ -1466,7 +1405,6 @@ export default {
     this.editor.container.remove()
   },
   unmounted() {
-    this.unlockFile()
     if (this.updateInterval != null) {
       clearInterval(this.updateInterval)
     }
@@ -1815,7 +1753,7 @@ export default {
       }
     },
     onChange(event) {
-      // Don't track changes when we're running or read-only (locked)
+      // Don't track changes when we're running or the editor is read-only
       if (this.scriptId || this.editor.getReadOnly() === true) {
         return
       }
@@ -2518,7 +2456,6 @@ export default {
       }
     },
     newFile() {
-      this.unlockFile()
       this.filename = NEW_FILENAME
       this.currentFilename = null
       this.tempFilename = null
@@ -2700,9 +2637,8 @@ class TestSuite(Suite):
           if (response.data.success) {
             file['success'] = response.data.success
           }
-          const locked = response.data.locked
           const breakpoints = response.data.breakpoints
-          this.setFile({ file, locked, breakpoints }, true)
+          this.setFile({ file, breakpoints }, true)
           this.saveAllowed = true
         })
         .catch((error) => {
@@ -2717,17 +2653,10 @@ class TestSuite(Suite):
         })
     },
     // Called by the FileOpenDialog to set the file contents
-    setFile({ file, locked, breakpoints }, local = false) {
+    setFile({ file, breakpoints }, local = false) {
       this.files = {} // Clear the cached file list
       // Split off the ' *' which indicates a file is modified on the server
       let newFilename = file.name.split('*')[0]
-      if (local === false) {
-        // We only need to unlock if the file is different
-        if (this.filename !== newFilename) {
-          this.unlockFile() // first unlock what was just being edited
-          this.lockedBy = locked
-        }
-      }
       this.filename = newFilename
       if (!this.inline) {
         // Update the URL with the filename
@@ -2900,7 +2829,6 @@ class TestSuite(Suite):
               this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
               this.showAlert = true
             }
-            this.lockFile() // Ensure this file is locked for editing
             this.doResize()
           })
           .catch(({ response }) => {
@@ -3049,34 +2977,6 @@ class TestSuite(Suite):
       Object.keys(allMarkers)
         .filter((key) => allMarkers[key].type === 'fullLine')
         .forEach((marker) => this.editor.session.removeMarker(marker))
-    },
-    confirmLocalUnlock: function () {
-      this.$dialog
-        .confirm(
-          'Are you sure you want to unlock this script for editing? If another user is editing this script, your changes might conflict with each other.',
-          {
-            okText: 'Force Unlock',
-            cancelText: 'Cancel',
-          },
-        )
-        .then(() => {
-          this.lockedBy = null
-          return this.lockFile() // Re-lock it as this user so it's locked for anyone else who opens it
-        })
-    },
-    lockFile: function () {
-      if (!this.readOnlyUser) {
-        return Api.post(`/script-api/scripts/${this.filename}/lock`)
-      }
-    },
-    unlockFile: function () {
-      if (
-        this.filename !== NEW_FILENAME &&
-        !this.readOnly &&
-        !this.readOnlyUser
-      ) {
-        Api.post(`/script-api/scripts/${this.filename}/unlock`)
-      }
     },
     backToNewScript: async function () {
       // Disconnect from the current script

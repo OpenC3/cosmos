@@ -120,26 +120,31 @@ module OpenC3
       end
     end
 
-    def self.create(scope, name, text, content_type: 'text/plain')
+    # Returns the new S3 VersionId (String) on success when the bucket is
+    # versioned, true on success when not versioned, or false on failure.
+    def self.create(scope, name, text, content_type: 'text/plain', username: nil)
       return false unless text
       if ENV['OPENC3_LOCAL_MODE']
         OpenC3::LocalMode.put_target_file("#{scope}/targets_modified/#{name}", text, scope: scope)
       end
       client = Bucket.getClient()
-      client.put_object(
+      metadata = username ? { 'username' => username } : nil
+      resp = client.put_object(
         # Use targets_modified to save modifications
         # This keeps the original target clean (read-only)
         bucket: ENV['OPENC3_CONFIG_BUCKET'],
         key: "#{scope}/targets_modified/#{name}",
         body: text,
         content_type: content_type,
+        metadata: metadata,
       )
       # Wait for the object to exist
       if client.check_object(
         bucket: ENV['OPENC3_CONFIG_BUCKET'],
         key: "#{scope}/targets_modified/#{name}",
       )
-        true
+        version_id = resp.respond_to?(:version_id) ? resp.version_id : nil
+        (version_id && !version_id.empty?) ? version_id : true
       else
         false
       end

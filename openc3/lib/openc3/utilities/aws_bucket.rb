@@ -191,6 +191,18 @@ module OpenC3
       end
     end
 
+    # Idempotently enable bucket versioning. Versitygw needs the gateway started
+    # with --versioning-dir for this to succeed; if it isn't, versitygw responds
+    # with VersioningNotConfigured and we surface a warning rather than failing
+    # bucket bootstrap.
+    def ensure_versioning_enabled(bucket)
+      options = { bucket: bucket, versioning_configuration: { status: 'Enabled' } }
+      options[:checksum_algorithm] = "SHA256" if @use_checksum
+      @client.put_bucket_versioning(options)
+    rescue Aws::S3::Errors::NotImplemented, Aws::S3::Errors::ServiceError, Aws::S3::Errors::InternalError => e
+      Logger.warn("put_bucket_versioning for #{bucket} not supported by S3 backend: #{e.message}")
+    end
+
     def exist?(bucket)
       @client.head_bucket({ bucket: bucket })
       true
@@ -204,15 +216,46 @@ module OpenC3
       end
     end
 
-    def get_object(bucket:, key:, path: nil, range: nil)
+    def get_object(bucket:, key:, path: nil, range: nil, version_id: nil)
+      args = { bucket: bucket, key: key, range: range }
+      args[:version_id] = version_id if version_id
       if path
-        @client.get_object(bucket: bucket, key: key, response_target: path, range: range)
+        @client.get_object(**args, response_target: path)
       else
-        @client.get_object(bucket: bucket, key: key, range: range)
+        @client.get_object(**args)
       end
     # If the key is not found return nil
     rescue Aws::S3::Errors::NoSuchKey
       nil
+    end
+
+    # Lists all versions (and delete markers) of objects matching a prefix.
+    # Each Versions entry has: key, version_id, is_latest, last_modified, size, etag
+    # Each DeleteMarkers entry has: key, version_id, is_latest, last_modified
+    # Returns { versions: [...], delete_markers: [...] }.
+    def list_object_versions(bucket:, prefix: nil, max_request: 1000, max_total: 100_000)
+      key_marker = nil
+      version_id_marker = nil
+      versions = []
+      delete_markers = []
+      while true
+        resp = @client.list_object_versions({
+          bucket: bucket,
+          max_keys: max_request,
+          prefix: prefix,
+          key_marker: key_marker,
+          version_id_marker: version_id_marker
+        })
+        versions.concat(resp.versions || [])
+        delete_markers.concat(resp.delete_markers || [])
+        break if (versions.length + delete_markers.length) >= max_total
+        break unless resp.is_truncated
+        key_marker = resp.next_key_marker
+        version_id_marker = resp.next_version_id_marker
+      end
+      { versions: versions, delete_markers: delete_markers }
+    rescue Aws::S3::Errors::NoSuchBucket
+      raise NotFound, "Bucket '#{bucket}' does not exist."
     end
 
     def list_objects(bucket:, prefix: nil, max_request: 1000, max_total: 100_000)
@@ -287,11 +330,10 @@ module OpenC3
     end
 
     # get metadata for a specific object
-    def head_object(bucket:, key:)
-      @client.head_object({
-        bucket: bucket,
-        key: key
-      })
+    def head_object(bucket:, key:, version_id: nil)
+      args = { bucket: bucket, key: key }
+      args[:version_id] = version_id if version_id
+      @client.head_object(args)
     rescue Aws::S3::Errors::NotFound
       raise NotFound, "Object '#{bucket}/#{key}' does not exist."
     end
@@ -331,8 +373,10 @@ module OpenC3
       false
     end
 
-    def delete_object(bucket:, key:)
-      @client.delete_object(bucket: bucket, key: key)
+    def delete_object(bucket:, key:, version_id: nil)
+      args = { bucket: bucket, key: key }
+      args[:version_id] = version_id if version_id
+      @client.delete_object(args)
     rescue Exception => e
       Logger.error("Error deleting object bucket: #{bucket}, key: #{key}: #{e.message}")
     end

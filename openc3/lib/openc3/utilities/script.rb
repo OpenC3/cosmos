@@ -29,23 +29,6 @@ class Script < OpenC3::TargetFile
     super(scope, nil, target: target) # No path matchers
   end
 
-  def self.lock(scope, name, username)
-    name = name.split('*')[0] # Split '*' that indicates modified
-    OpenC3::Store.hset("#{scope}__script-locks", name, username)
-  end
-
-  def self.unlock(scope, name)
-    name = name.split('*')[0] # Split '*' that indicates modified
-    OpenC3::Store.hdel("#{scope}__script-locks", name)
-  end
-
-  def self.locked?(scope, name)
-    name = name.split('*')[0] # Split '*' that indicates modified
-    locked_by = OpenC3::Store.hget("#{scope}__script-locks", name)
-    locked_by ||= false
-    locked_by
-  end
-
   def self.get_breakpoints(scope, name)
     breakpoints = OpenC3::Store.hget("#{scope}__script-breakpoints", name.split('*')[0]) # Split '*' that indicates modified
     return JSON.parse(breakpoints, allow_nan: true, create_additions: true) if breakpoints
@@ -162,11 +145,15 @@ class Script < OpenC3::TargetFile
     return stdout_results, stderr_results, success
   end
 
+  # Returns the new S3 VersionId (String) when the bucket write produced a new
+  # version, true when no new version was needed, false on failure, or nil when
+  # the text was unchanged from the existing body and no write happened.
   def self.create(params)
+    write_result = nil
     existing = body(params[:scope], params[:name])
     # Commit if there is no existing or something has changed
     if existing.nil? or existing != params[:text]
-      super(params[:scope], params[:name], params[:text])
+      write_result = super(params[:scope], params[:name], params[:text], username: params[:username])
     end
     breakpoints = params[:breakpoints]
     if breakpoints
@@ -177,6 +164,7 @@ class Script < OpenC3::TargetFile
           breakpoints.as_json().to_json(allow_nan: true))
       end
     end
+    write_result
   end
 
   def self.delete_temp(scope)

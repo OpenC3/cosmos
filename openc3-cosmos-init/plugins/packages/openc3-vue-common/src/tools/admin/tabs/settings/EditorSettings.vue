@@ -39,15 +39,6 @@
         data-test="default-language"
       />
       <v-switch v-model="vimMode" label="Vim mode" color="primary" />
-      <v-switch
-        v-model="scriptLockingEnabled"
-        label="Script File Locking - When enabled, a script being edited
-        by one user is read-only for other users until they explicitly force
-        unlock. Disable to allow multiple users to edit the same script
-        concurrently (last save wins)."
-        color="primary"
-        data-test="script-locking-enabled"
-      />
     </v-card-text>
     <v-card-actions>
       <v-btn
@@ -66,14 +57,11 @@
 import { AceEditorUtils } from '@/components/ace'
 import Settings from './settings.js'
 
-const SCRIPT_LOCKING_SETTING = 'script_runner_locking'
-
 export default {
   mixins: [Settings],
   data() {
     return {
       vimMode: AceEditorUtils.isVimModeEnabled(),
-      scriptLockingEnabled: true,
       defaultLanguage: AceEditorUtils.getDefaultScriptingLanguage(),
       languageOptions: [
         { text: 'Ruby', value: 'ruby' },
@@ -81,19 +69,10 @@ export default {
       ],
     }
   },
-  created() {
-    this.loadSetting(SCRIPT_LOCKING_SETTING)
-  },
   methods: {
     save: function () {
       AceEditorUtils.setVimMode(this.vimMode)
       AceEditorUtils.setDefaultScriptingLanguage(this.defaultLanguage)
-      this.saveSetting(SCRIPT_LOCKING_SETTING, this.scriptLockingEnabled)
-    },
-    parseSetting: function (response) {
-      if (response !== null && response !== undefined) {
-        this.scriptLockingEnabled = response
-      }
     },
   },
 }

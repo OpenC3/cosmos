@@ -30,36 +30,6 @@ RSpec.describe Script, type: :model do
     end
   end
 
-  describe "self.lock, self.unlock, self.locked?" do
-    it "locks and unlocks scripts" do
-      name = "script.rb"
-      username = "user1"
-
-      # Not locked initially
-      expect(Script.locked?("DEFAULT", name)).to be false
-
-      # Lock the script
-      Script.lock("DEFAULT", name, username)
-      expect(Script.locked?("DEFAULT", name)).to eq username
-
-      # Unlock the script
-      Script.unlock("DEFAULT", name)
-      expect(Script.locked?("DEFAULT", name)).to be false
-    end
-
-    it "handles modified script names with asterisks" do
-      name = "script.rb*"
-      username = "user1"
-
-      Script.lock("DEFAULT", name, username)
-      expect(Script.locked?("DEFAULT", name)).to eq username
-      expect(Script.locked?("DEFAULT", "script.rb")).to eq username
-
-      Script.unlock("DEFAULT", name)
-      expect(Script.locked?("DEFAULT", name)).to be false
-    end
-  end
-
   describe "self.get_breakpoints" do
     it "returns breakpoints for a script" do
       name = "script.rb"
@@ -99,7 +69,7 @@ RSpec.describe Script, type: :model do
       }
 
       allow(Script).to receive(:body).and_return(nil)
-      expect(OpenC3::TargetFile).to receive(:create).with("DEFAULT", "new_script.rb", "puts 'Hello'")
+      expect(OpenC3::TargetFile).to receive(:create).with("DEFAULT", "new_script.rb", "puts 'Hello'", username: nil)
 
       Script.create(params)
 
@@ -117,7 +87,7 @@ RSpec.describe Script, type: :model do
       }
 
       allow(Script).to receive(:body).and_return("puts 'Original'")
-      expect(OpenC3::TargetFile).to receive(:create).with("DEFAULT", "existing_script.rb", "puts 'Updated'")
+      expect(OpenC3::TargetFile).to receive(:create).with("DEFAULT", "existing_script.rb", "puts 'Updated'", username: nil)
 
       Script.create(params)
 
@@ -153,7 +123,7 @@ RSpec.describe Script, type: :model do
       }
 
       allow(Script).to receive(:body).and_return(nil)
-      expect(OpenC3::TargetFile).to receive(:create).with("DEFAULT", "script.rb", "puts 'Hello'")
+      expect(OpenC3::TargetFile).to receive(:create).with("DEFAULT", "script.rb", "puts 'Hello'", username: nil)
 
       # Pre-store breakpoints
       OpenC3::Store.hset("DEFAULT__script-breakpoints", "script.rb", [5, 10].to_json)

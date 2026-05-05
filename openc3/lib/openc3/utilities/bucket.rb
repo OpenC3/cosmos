@@ -45,6 +45,13 @@ module OpenC3
       # No-op by default, implemented by AwsBucket for local mode
     end
 
+    # Idempotently enable bucket versioning. Implementations should swallow
+    # backend-not-supported errors so missing versioning support never blocks
+    # bucket bootstrap.
+    def ensure_versioning_enabled(bucket)
+      raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
+    end
+
     def exist?(bucket)
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
@@ -53,11 +60,17 @@ module OpenC3
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 
-    def get_object(bucket:, key:, path: nil, range: nil)
+    def get_object(bucket:, key:, path: nil, range: nil, version_id: nil)
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 
     def list_objects(bucket:, prefix: nil, max_request: nil, max_total: nil)
+      raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
+    end
+
+    # List all object versions (and delete markers) under a key prefix.
+    # Returns an array of hashes — see AwsBucket implementation for the shape.
+    def list_object_versions(bucket:, prefix: nil, max_request: nil, max_total: nil)
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 
@@ -73,7 +86,7 @@ module OpenC3
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 
-    def delete_object(bucket:, key:)
+    def delete_object(bucket:, key:, version_id: nil)
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 
