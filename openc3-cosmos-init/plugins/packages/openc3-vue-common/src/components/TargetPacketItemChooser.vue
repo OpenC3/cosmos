@@ -819,7 +819,7 @@ export default {
 
     allTargetPacketItems: function () {
       this.packetNames.forEach((packetName) => {
-        if (packetName === this.ALL) return
+        if (packetName === this.ALL || packetName === this.LATEST) return
         const cmd = this.mode === 'tlm' ? 'get_tlm' : 'get_cmd'
         this.api[cmd](this.selectedTargetName, packetName.value).then(
           (packet) => {
