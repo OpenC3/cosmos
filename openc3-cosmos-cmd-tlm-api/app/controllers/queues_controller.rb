@@ -152,22 +152,15 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
-      id = nil
-      if params[:id]
-        id = params[:id].to_f
-      end
-      # If params[:id] is not given this will be nil which means insert at the end
-      command_data = { username: username(), timestamp: Time.now.to_nsec_from_epoch }
-      if params[:target_name] && params[:cmd_name]
-        command_data[:target_name] = params[:target_name]
-        command_data[:cmd_name] = params[:cmd_name]
-        command_data[:cmd_params] = JSON.generate(params[:cmd_params].as_json, allow_nan: true) unless params[:cmd_params].nil?
+      id = params[:id]&.to_f
+      # If id is nil this means insert at the end
+      if target_name && cmd_name
+        model.insert_command(id: id, username: username(), target_name: target_name, cmd_name: cmd_name,
+                             cmd_params: params[:cmd_params], validate: params[:validate], timeout: params[:timeout])
       else
-        command_data[:value] = command
+        model.insert_command(id: id, username: username(), command: command,
+                             validate: params[:validate], timeout: params[:timeout])
       end
-      command_data[:validate] = params[:validate] unless params[:validate].nil?
-      command_data[:timeout] = params[:timeout] unless params[:timeout].nil?
-      model.insert_command(id, command_data)
       render json: { status: 'success', message: 'Command added to queue' }
     rescue StandardError => e
       log_error(e)
@@ -223,8 +216,9 @@ class QueuesController < ApplicationController
       # validate should be true or false, default to true if not given
       validate = params[:validate].nil? ? true : params[:validate]
       # timeout can be nil which means use system default timeout
-      if params[:target_name] && params[:cmd_name]
-        model.update_command(id: id, username: username(), target_name: params[:target_name], cmd_name: params[:cmd_name], cmd_params: params[:cmd_params], validate: validate, timeout: params[:timeout])
+      if target_name && cmd_name
+        model.update_command(id: id, username: username(), target_name: target_name, cmd_name: cmd_name,
+                             cmd_params: params[:cmd_params], validate: validate, timeout: params[:timeout])
       else
         model.update_command(id: id, username: username(), command: command, validate: validate, timeout: params[:timeout])
       end

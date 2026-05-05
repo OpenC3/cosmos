@@ -277,7 +277,13 @@ RSpec.describe QueuesController, type: :controller do
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("success")
       expect(json["message"]).to eql("Command added to queue")
-      expect(queue_model).to have_received(:insert_command).with(nil, { username: "anonymous", value: "TEST COMMAND", timestamp: anything })
+      expect(queue_model).to have_received(:insert_command).with(
+        id: nil,
+        username: "anonymous",
+        command: "TEST COMMAND",
+        validate: nil,
+        timeout: nil
+      )
     end
 
     it "inserts a command at id and returns status code 200" do
@@ -291,7 +297,13 @@ RSpec.describe QueuesController, type: :controller do
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("success")
       expect(json["message"]).to eql("Command added to queue")
-      expect(queue_model).to have_received(:insert_command).with(id.to_f, { username: "anonymous", value: "TEST COMMAND", timestamp: anything })
+      expect(queue_model).to have_received(:insert_command).with(
+        id: id.to_f,
+        username: "anonymous",
+        command: "TEST COMMAND",
+        validate: nil,
+        timeout: nil
+      )
     end
 
     it "returns 404 when the queue is not found" do
