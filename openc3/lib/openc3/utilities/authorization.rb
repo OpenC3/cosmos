@@ -54,6 +54,14 @@ rescue LoadError
       def user_info(_token)
         {} # Enterprise does stuff here
       end
+
+      # Predicate for who is allowed to sign off (review) on a script. Core
+      # has no role model, so anyone authenticated can approve. Enterprise
+      # overrides this in openc3-enterprise/utilities/authorization to check
+      # for the existing approver role.
+      def can_approve_script?(scope:, token: nil)
+        true
+      end
     end
   end
 end

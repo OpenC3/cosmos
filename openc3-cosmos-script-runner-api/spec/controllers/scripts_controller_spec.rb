@@ -186,7 +186,7 @@ RSpec.describe ScriptsController, type: :controller do
       json = JSON.parse(response.body)
       expect(json["version_id"]).to eq("01ABCDEFGHJKMNPQRSTVWXYZ")
       expect(json["locked_for_review"]).to eq(true)
-      expect(json["lifecycle"]["reviewed_by"]).to eq("bob")
+      expect(json["lifecycle"]["reviewed"]["by"]).to eq("bob")
     end
 
     it "processes suite files correctly" do
@@ -345,6 +345,166 @@ RSpec.describe ScriptsController, type: :controller do
       post :instrumented, params: {name: "script.rb"}
 
       expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe "versions" do
+    let(:name) { "INST/procedures/test.rb" }
+    let(:scope) { "DEFAULT" }
+    let(:key) { "DEFAULT/targets_modified/INST/procedures/test.rb" }
+
+    def mock_s3_version(version_id, key:, is_latest: false, size: 100, last_modified: Time.now, etag: '"abc"')
+      double('s3_version', version_id: version_id, key: key, is_latest: is_latest,
+                            size: size, last_modified: last_modified, etag: etag)
+    end
+
+    it "returns versions newest-first merged with lifecycle data" do
+      OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+        .record_save(version_id: "V1", username: "alice")
+        .record_validation(version_id: "V1", passed: true)
+        .record_save(version_id: "V2", username: "bob")
+        .record_validation(version_id: "V2", passed: true)
+        .record_review(version_id: "V2", username: "carol", notes: "lgtm")
+
+      bucket = instance_double(OpenC3::AwsBucket)
+      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket)
+      expect(bucket).to receive(:list_object_versions).and_return({
+        versions: [
+          mock_s3_version("V2", key: key, is_latest: true),
+          mock_s3_version("V1", key: key, is_latest: false)
+        ],
+        delete_markers: []
+      })
+
+      get :versions, params: {scope: scope, name: name}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      expect(json["versions"].length).to eq(2)
+      expect(json["versions"][0]["version_id"]).to eq("V2")
+      expect(json["versions"][0]["state"]).to eq("reviewed")
+      expect(json["versions"][0]["reviewed"]["by"]).to eq("carol")
+      expect(json["versions"][1]["state"]).to eq("validated")
+      expect(json["versions"][1]["validated"]["passed"]).to be(true)
+      expect(json["latest_version_id"]).to eq("V2")
+    end
+
+    it "handles authorization failure" do
+      get :versions, params: {name: name}
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe "version_body" do
+    it "returns the body of a specific version" do
+      bucket = instance_double(OpenC3::AwsBucket)
+      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket)
+      body_io = StringIO.new("puts 'old version'")
+      resp = double('s3_resp', body: body_io)
+      expect(bucket).to receive(:get_object).with(
+        bucket: anything,
+        key: "DEFAULT/targets_modified/INST/procedures/test.rb",
+        version_id: "V1"
+      ).and_return(resp)
+
+      get :version_body, params: {scope: "DEFAULT", name: "INST/procedures/test.rb", version_id: "V1"}
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to eq("puts 'old version'")
+    end
+
+    it "returns 400 when version_id is missing" do
+      get :version_body, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it "returns 404 when version is not found" do
+      bucket = instance_double(OpenC3::AwsBucket)
+      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket)
+      expect(bucket).to receive(:get_object).and_return(nil)
+
+      get :version_body, params: {scope: "DEFAULT", name: "INST/procedures/test.rb", version_id: "BOGUS"}
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe "review" do
+    let(:name) { "INST/procedures/test.rb" }
+    let(:scope) { "DEFAULT" }
+
+    it "records review when version_id matches latest" do
+      OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+        .record_save(version_id: "V1", username: "alice")
+
+      post :review, params: {scope: scope, name: name, version_id: "V1", notes: "ok"}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      expect(json["reviewed"]["by"]).to eq("anonymous")
+      expect(json["reviewed"]["notes"]).to eq("ok")
+
+      lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+      expect(lifecycle.locked_for_review?).to be(true)
+    end
+
+    it "rejects review when version_id is stale" do
+      OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+        .record_save(version_id: "V1", username: "alice")
+        .record_save(version_id: "V2", username: "bob")
+
+      post :review, params: {scope: scope, name: name, version_id: "V1", notes: "stale"}
+      expect(response).to have_http_status(:conflict)
+      json = JSON.parse(response.body)
+      expect(json["status"]).to eq("version_mismatch")
+      expect(json["latest_version_id"]).to eq("V2")
+    end
+
+    it "rejects review when approver predicate denies" do
+      OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+        .record_save(version_id: "V1", username: "alice")
+
+      allow_any_instance_of(ScriptsController).to receive(:can_approve_script?).and_return(false)
+
+      post :review, params: {scope: scope, name: name, version_id: "V1", notes: "x"}
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it "returns 400 when version_id is missing" do
+      post :review, params: {scope: scope, name: name}
+      expect(response).to have_http_status(:bad_request)
+    end
+  end
+
+  describe "create with review-lock" do
+    let(:name) { "INST/procedures/test.rb" }
+    let(:scope) { "DEFAULT" }
+
+    it "returns 409 when latest version is reviewed and force_taint is not set" do
+      OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+        .record_save(version_id: "V1", username: "alice")
+        .record_review(version_id: "V1", username: "bob", notes: "lgtm")
+
+      expect(Script).not_to receive(:create)
+
+      post :create, params: {scope: scope, name: name, text: "new"}
+      expect(response).to have_http_status(:conflict)
+      json = JSON.parse(response.body)
+      expect(json["status"]).to eq("locked_for_review")
+      expect(json["reviewed"]["by"]).to eq("bob")
+    end
+
+    it "marks the new version tainted when force_taint=true" do
+      OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+        .record_save(version_id: "V1", username: "alice")
+        .record_review(version_id: "V1", username: "bob", notes: "lgtm")
+
+      expect(Script).to receive(:create).and_return("V2")
+
+      post :create, params: {scope: scope, name: name, text: "new", force_taint: 'true'}
+      expect(response).to have_http_status(:ok)
+
+      lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+      expect(lifecycle.latest_version_id).to eq("V2")
+      expect(lifecycle.versions["V2"]["tainted"]).to be(true)
+      expect(lifecycle.versions["V2"]["tainted_from_version_id"]).to eq("V1")
+      expect(lifecycle.versions["V2"]["tainted_from_reviewed_by"]).to eq("bob")
     end
   end
 end

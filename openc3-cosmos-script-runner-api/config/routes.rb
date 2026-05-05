@@ -27,6 +27,13 @@ Rails.application.routes.draw do
     post "/scripts/*name/syntax" => "scripts#syntax"
     post "/scripts/*name/mnemonics" => "scripts#mnemonics"
     post "/scripts/*name/instrumented" => "scripts#instrumented"
+    # Version history / sign-off / restore. The :version_id route uses a
+    # placeholder since the wildcard *name greedily consumes path segments,
+    # so we keep the version_id as a query param on the GET body endpoint.
+    get  "/scripts/*name/versions" => "scripts#versions", format: false, defaults: { format: 'html' }
+    get  "/scripts/*name/version" => "scripts#version_body", format: false, defaults: { format: 'html' }
+    post "/scripts/*name/restore" => "scripts#restore", format: false, defaults: { format: 'html' }
+    post "/scripts/*name/review" => "scripts#review", format: false, defaults: { format: 'html' }
     # Must be last so /run, /delete, etc will match first
     post "/scripts/*name" => "scripts#create", format: false, defaults: { format: 'html' }
 

@@ -14,16 +14,27 @@
 require 'openc3/models/model'
 
 module OpenC3
-  # Tracks per-version lifecycle events for a script: when it was saved (and by
-  # whom), when its syntax + mnemonic check passed, when it was reviewed/signed
-  # off, and each time it was executed (with or without targets connected).
-  # Also records taint provenance — when a reviewed version is overridden, the
-  # next saved version is marked tainted with a pointer back to the prior
-  # reviewed version + reviewer.
+  # Tracks per-version lifecycle facets for a script. The UI surfaces these as
+  # three badges (validated, reviewed, executed) that start greyed out and
+  # fill in as each facet acquires data.
+  #
+  # Per-version record shape:
+  #   saved_by, saved_at         — base metadata, set on every save
+  #   validated: { passed, errors, at, by } | nil
+  #   reviewed:  { by, notes, at }          | nil
+  #   executions: [ { by, at, disconnect, environment, suite_runner, running_script_id } ]
+  #   tainted, tainted_from_version_id, tainted_from_reviewed_by — provenance
+  #     flags set when a save overrides a previously reviewed version
+  #   restored_from_version_id   — set when this version was created via restore
+  #
+  # Final execution status (completed / completed_errors / stopped / etc.) is
+  # NOT denormalized into the lifecycle — the frontend dereferences the linked
+  # running_script_id against ScriptStatusModel to display live status on the
+  # executed badge. Avoids cross-process writes from the spawned RunningScript.
   #
   # Stored under key "#{scope}__script-lifecycle", one hash field per script
-  # name. The field value is a JSON document that holds a `versions` map keyed
-  # by S3 VersionId.
+  # name. The field value is a JSON document holding a `versions` map keyed by
+  # S3 VersionId.
   class ScriptLifecycleModel < Model
     PRIMARY_KEY = 'script-lifecycle'
 
@@ -48,8 +59,7 @@ module OpenC3
     end
 
     # Returns the model for this script, building an empty one in memory (not
-    # yet persisted) if no entry exists. Most transition recording flows want
-    # this — they don't care whether a row already existed.
+    # yet persisted) if no entry exists.
     def self.get_or_build(name:, scope:)
       existing = get(name: name, scope: scope)
       return from_json(existing, scope: scope) if existing
@@ -79,25 +89,27 @@ module OpenC3
       }
     end
 
-    # Derived primary state for a single version. A version that has been
-    # reviewed counts as 'reviewed' even if executions happened later — those
-    # are recorded as orthogonal events.
+    # Derived primary state used for the UI badge color. Each badge is
+    # independently rendered from its own block in the record, but for places
+    # that need a single string (logs, list views) we fold the most-advanced
+    # facet into a primary state.
     def state_of(version_id)
       rec = @versions[version_id]
       return 'unknown' unless rec
-      return 'reviewed' if rec['reviewed_at']
-      return 'validated' if rec['validated_at']
-      'new'
+      return 'executed' if rec['executions']&.any?
+      return 'reviewed' if rec['reviewed']
+      return 'validated' if rec['validated']
+      'unknown'
     end
 
     def latest_state
       state_of(@latest_version_id)
     end
 
-    # True iff saving over this script should be refused unless the caller
-    # explicitly opts into tainting. Reviewed = read-only.
+    # Reviewed = read-only. Saving over the latest version requires force_taint.
     def locked_for_review?
-      latest_state == 'reviewed'
+      rec = latest_record
+      !!(rec && rec['reviewed'])
     end
 
     def latest_record
@@ -115,11 +127,9 @@ module OpenC3
       self
     end
 
-    # Record a save that overrides a previously reviewed version. The new
-    # version is flagged tainted with provenance back to the prior reviewer.
-    # Review of a tainted version cleans it (caller invokes record_review
-    # later — taint flag is preserved as historical fact, but state derivation
-    # treats reviewed as authoritative).
+    # Save that overrides a previously reviewed version. Tainted with provenance.
+    # Review of a tainted version cleans it (state derives from the reviewed
+    # block; the tainted flag is preserved as historical fact).
     def record_taint(version_id:, username:, prev_version_id:, prev_reviewer:, timestamp: nil)
       timestamp ||= Time.now.utc.iso8601
       rec = @versions[version_id] ||= {}
@@ -133,12 +143,18 @@ module OpenC3
       self
     end
 
-    # Record that the syntax + mnemonic check passed for this version. Idempotent.
-    def record_validation(version_id:, username: nil, timestamp: nil)
+    # Record a syntax + mnemonic check result. Re-validation overwrites the
+    # prior validated block; the latest result wins.
+    # @param errors [Array<String>] human-readable error lines (empty when passed=true)
+    def record_validation(version_id:, passed:, errors: [], username: nil, timestamp: nil)
       return self unless @versions[version_id]
       timestamp ||= Time.now.utc.iso8601
-      @versions[version_id]['validated_at'] = timestamp
-      @versions[version_id]['validated_by'] = username if username
+      @versions[version_id]['validated'] = {
+        'passed' => passed,
+        'errors' => errors || [],
+        'at' => timestamp,
+        'by' => username
+      }
       persist
       self
     end
@@ -147,30 +163,35 @@ module OpenC3
     def record_review(version_id:, username:, notes: nil, timestamp: nil)
       return self unless @versions[version_id]
       timestamp ||= Time.now.utc.iso8601
-      @versions[version_id]['reviewed_at'] = timestamp
-      @versions[version_id]['reviewed_by'] = username
-      @versions[version_id]['reviewed_notes'] = notes if notes
-      persist
-      self
-    end
-
-    # Append an execution event. type: 'executed' for connected runs,
-    # 'executed_disconnect' for disconnect-mode runs.
-    def record_execution(version_id:, username:, disconnect: false, timestamp: nil)
-      return self unless @versions[version_id]
-      timestamp ||= Time.now.utc.iso8601
-      @versions[version_id]['executions'] ||= []
-      @versions[version_id]['executions'] << {
-        'type' => disconnect ? 'executed_disconnect' : 'executed',
-        'username' => username,
+      @versions[version_id]['reviewed'] = {
+        'by' => username,
+        'notes' => notes,
         'at' => timestamp
       }
       persist
       self
     end
 
-    # Record a restore operation: a new version_id was created by re-PUTting
-    # the body of a prior version. The new version becomes latest.
+    # Record an execution with the launch settings. Final status is not stored
+    # here — the UI dereferences running_script_id against ScriptStatusModel
+    # to show live status on the executed badge.
+    def record_execution(version_id:, username:, disconnect: false, environment: nil, suite_runner: nil, running_script_id: nil, timestamp: nil)
+      return self unless @versions[version_id]
+      timestamp ||= Time.now.utc.iso8601
+      @versions[version_id]['executions'] ||= []
+      @versions[version_id]['executions'] << {
+        'by' => username,
+        'at' => timestamp,
+        'disconnect' => disconnect,
+        'environment' => environment,
+        'suite_runner' => suite_runner,
+        'running_script_id' => running_script_id
+      }
+      persist
+      self
+    end
+
+    # Restore: a new version_id created by re-PUTting the body of a prior version.
     def record_restore(version_id:, username:, restored_from_version_id:, timestamp: nil)
       timestamp ||= Time.now.utc.iso8601
       rec = @versions[version_id] ||= {}
@@ -182,8 +203,8 @@ module OpenC3
       self
     end
 
-    # Persist the current in-memory state. Upsert semantics — first call is an
-    # insert, subsequent calls overwrite.
+    # Persist current state. Upsert semantics — first call inserts, subsequent
+    # calls overwrite.
     def persist
       create(force: true)
     end

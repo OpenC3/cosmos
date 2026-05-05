@@ -96,19 +96,17 @@ class ScriptsController < ApplicationController
     lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
     force_taint = params[:force_taint].to_s == 'true'
     if lifecycle.locked_for_review? && !force_taint
-      prior = lifecycle.latest_record || {}
+      prior_reviewed = lifecycle.latest_record&.dig('reviewed') || {}
       render json: {
         status: 'locked_for_review',
-        reviewed_by: prior['reviewed_by'],
-        reviewed_at: prior['reviewed_at'],
-        reviewed_notes: prior['reviewed_notes'],
+        reviewed: prior_reviewed,
         version_id: lifecycle.latest_version_id
       }, status: :conflict
       return
     end
 
     prev_reviewed_version_id = lifecycle.latest_version_id if lifecycle.locked_for_review?
-    prev_reviewer = lifecycle.latest_record&.dig('reviewed_by') if lifecycle.locked_for_review?
+    prev_reviewer = lifecycle.latest_record&.dig('reviewed', 'by') if lifecycle.locked_for_review?
 
     write_result = Script.create(args)
     results = {}
@@ -125,14 +123,17 @@ class ScriptsController < ApplicationController
         lifecycle.record_save(version_id: write_result, username: username())
       end
 
-      # Auto-validate inline so scripts saved via API still acquire a
-      # validated_at timestamp. Combines syntax + mnemonic check; both must
-      # pass for the version to be marked validated.
+      # Auto-validate inline so every saved version acquires a validated
+      # block. Combines syntax + mnemonic check; pass/fail and any error
+      # lines are recorded for the UI's validated badge.
       validation = inline_validate(name, params[:text])
       results['validation'] = validation
-      if validation && validation[:passed]
-        lifecycle.record_validation(version_id: write_result, username: username())
-      end
+      lifecycle.record_validation(
+        version_id: write_result,
+        passed: validation[:passed],
+        errors: validation[:errors] || [],
+        username: username()
+      )
     end
 
     if ((File.extname(name) == '.py') and (params[:text] =~ PYTHON_SUITE_REGEX)) or ((File.extname(name) != '.py') and (params[:text] =~ SUITE_REGEX))
@@ -166,7 +167,14 @@ class ScriptsController < ApplicationController
       OpenC3::Logger.info("Script started: #{name}", scope: scope, user: username())
       lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
       if lifecycle.latest_version_id
-        lifecycle.record_execution(version_id: lifecycle.latest_version_id, username: username(), disconnect: disconnect)
+        lifecycle.record_execution(
+          version_id: lifecycle.latest_version_id,
+          username: username(),
+          disconnect: disconnect,
+          environment: environment,
+          suite_runner: suite_runner,
+          running_script_id: running_script_id
+        )
       end
       render plain: running_script_id.to_s
     else
@@ -211,13 +219,25 @@ class ScriptsController < ApplicationController
     body = request.body.read
     script = Script.syntax(name, body)
     if script
-      # Record a validated_at on the latest version when the explicit syntax
-      # check is invoked from the UI and passes. Scope is optional in this
-      # endpoint (the route doesn't include it); skip recording when absent.
-      if script['title'].to_s.include?('Successful') && params[:scope]
+      # Update the validated block on the latest version when an explicit
+      # syntax check is invoked from the UI. Scope is optional on this route
+      # (path has only the name); skip recording when absent.
+      if params[:scope]
+        passed = script['title'].to_s.include?('Successful')
+        errors = []
+        unless passed
+          desc = script['description']
+          lines = desc.is_a?(String) ? (JSON.parse(desc) rescue [desc]) : Array(desc)
+          errors.concat(lines.compact.map(&:to_s))
+        end
         lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: params[:scope])
         if lifecycle.latest_version_id
-          lifecycle.record_validation(version_id: lifecycle.latest_version_id, username: username())
+          lifecycle.record_validation(
+            version_id: lifecycle.latest_version_id,
+            passed: passed,
+            errors: errors,
+            username: username()
+          )
         end
       end
       render json: script
@@ -248,14 +268,193 @@ class ScriptsController < ApplicationController
     head :ok
   end
 
+  # GET /scripts/*name/versions — list S3 versions merged with lifecycle data.
+  # Returns versions newest-first.
+  def versions
+    return unless authorization('script_view')
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
+    return unless scope
+    bucket_name = ENV['OPENC3_CONFIG_BUCKET']
+    key = "#{scope}/targets_modified/#{name}"
+    bucket = OpenC3::Bucket.getClient()
+    s3 = bucket.list_object_versions(bucket: bucket_name, prefix: key)
+    lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+    versions = s3[:versions].select { |v| v.key == key }.map do |v|
+      record = lifecycle.versions[v.version_id] || {}
+      {
+        version_id: v.version_id,
+        size: v.size,
+        last_modified: v.last_modified,
+        is_latest: v.is_latest,
+        etag: v.etag,
+        state: lifecycle.state_of(v.version_id),
+        saved_by: record['saved_by'],
+        saved_at: record['saved_at'],
+        validated: record['validated'],
+        reviewed: record['reviewed'],
+        executions: record['executions'] || [],
+        tainted: record['tainted'] == true,
+        tainted_from_version_id: record['tainted_from_version_id'],
+        tainted_from_reviewed_by: record['tainted_from_reviewed_by'],
+        restored_from_version_id: record['restored_from_version_id']
+      }
+    end
+    delete_markers = s3[:delete_markers].select { |dm| dm.key == key }.map do |dm|
+      { version_id: dm.version_id, last_modified: dm.last_modified, is_latest: dm.is_latest, deleted: true }
+    end
+    render json: { versions: versions, delete_markers: delete_markers, latest_version_id: lifecycle.latest_version_id }
+  rescue => e
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
+  # GET /scripts/*name/version?version_id=... — return body of a specific version.
+  def version_body
+    return unless authorization('script_view')
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
+    return unless scope
+    version_id = params[:version_id]
+    if version_id.nil? || version_id.empty?
+      render json: { status: 'error', message: 'version_id required' }, status: :bad_request
+      return
+    end
+    bucket = OpenC3::Bucket.getClient()
+    resp = bucket.get_object(
+      bucket: ENV['OPENC3_CONFIG_BUCKET'],
+      key: "#{scope}/targets_modified/#{name}",
+      version_id: version_id
+    )
+    if resp && resp.body
+      body = File.extname(name) == '.bin' ? (resp.body.binmode; resp.body.read) : resp.body.read.force_encoding('UTF-8')
+      render plain: body
+    else
+      head :not_found
+    end
+  rescue => e
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
+  # POST /scripts/*name/restore body {version_id, force_taint?} — re-PUT the
+  # body of an old version. Same review-lock semantics as save: refused with
+  # 409 if the latest version is reviewed unless force_taint=true, in which
+  # case the new (restored) version is marked tainted with provenance.
+  def restore
+    return unless authorization('script_edit')
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
+    return unless scope
+    version_id = params[:version_id]
+    if version_id.nil? || version_id.empty?
+      render json: { status: 'error', message: 'version_id required' }, status: :bad_request
+      return
+    end
+
+    lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+    force_taint = params[:force_taint].to_s == 'true'
+    if lifecycle.locked_for_review? && !force_taint
+      prior_reviewed = lifecycle.latest_record&.dig('reviewed') || {}
+      render json: {
+        status: 'locked_for_review',
+        reviewed: prior_reviewed,
+        version_id: lifecycle.latest_version_id
+      }, status: :conflict
+      return
+    end
+
+    prev_reviewed_version_id = lifecycle.latest_version_id if lifecycle.locked_for_review?
+    prev_reviewer = lifecycle.latest_record&.dig('reviewed', 'by') if lifecycle.locked_for_review?
+
+    bucket = OpenC3::Bucket.getClient()
+    bucket_name = ENV['OPENC3_CONFIG_BUCKET']
+    key = "#{scope}/targets_modified/#{name}"
+    src = bucket.get_object(bucket: bucket_name, key: key, version_id: version_id)
+    if src.nil? || src.body.nil?
+      head :not_found
+      return
+    end
+    body = src.body.read
+
+    write_result = OpenC3::TargetFile.create(scope, name, body, username: username())
+    new_version_id = write_result.is_a?(String) ? write_result : nil
+
+    if new_version_id
+      if force_taint && prev_reviewed_version_id
+        lifecycle.record_taint(
+          version_id: new_version_id,
+          username: username(),
+          prev_version_id: prev_reviewed_version_id,
+          prev_reviewer: prev_reviewer
+        )
+        # record_taint sets latest_version_id; layer the restore provenance on top
+        lifecycle.versions[new_version_id]['restored_from_version_id'] = version_id
+        lifecycle.persist
+      else
+        lifecycle.record_restore(
+          version_id: new_version_id,
+          username: username(),
+          restored_from_version_id: version_id
+        )
+      end
+    end
+
+    OpenC3::Logger.info("Script restored: #{name} from #{version_id}", scope: scope, user: username())
+    render json: { version_id: new_version_id, restored_from_version_id: version_id }
+  rescue => e
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
+  # POST /scripts/*name/review body {version_id, notes} — sign off on the
+  # specified version. The version_id must match the current latest_version_id
+  # (otherwise the script has been edited since the reviewer loaded it, and
+  # they'd be signing off on a different version than they reviewed).
+  def review
+    return unless authorization('script_edit')
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
+    return unless scope
+
+    unless can_approve_script?(scope: scope, token: request.headers['HTTP_AUTHORIZATION'])
+      render json: { status: 'error', message: 'not authorized to approve scripts' }, status: :forbidden
+      return
+    end
+
+    version_id = params[:version_id]
+    if version_id.nil? || version_id.empty?
+      render json: { status: 'error', message: 'version_id required' }, status: :bad_request
+      return
+    end
+    notes = params[:notes]
+
+    lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+    if lifecycle.latest_version_id != version_id
+      render json: {
+        status: 'version_mismatch',
+        message: 'A newer version exists; reload before signing off',
+        latest_version_id: lifecycle.latest_version_id
+      }, status: :conflict
+      return
+    end
+
+    lifecycle.record_review(version_id: version_id, username: username(), notes: notes)
+    OpenC3::Logger.info("Script reviewed: #{name} #{version_id}", scope: scope, user: username())
+    render json: {
+      version_id: version_id,
+      reviewed: lifecycle.versions[version_id]['reviewed']
+    }
+  rescue => e
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
   private
 
   # Combined syntax + mnemonic check used to decide whether to mark a save as
   # validated. Mnemonic check is a hard fail when applicable (script-engine
   # languages); for ruby/python it's still browser-side, so this method only
-  # exercises the syntax check for those.
+  # exercises the syntax check for those. Returns a hash with :passed,
+  # :errors (flattened lines from both checks for the UI), :syntax, :mnemonics.
   def inline_validate(name, text)
-    return { passed: false, syntax: nil, mnemonics: nil } if text.nil?
+    return { passed: false, errors: ['no text'], syntax: nil, mnemonics: nil } if text.nil?
     syntax = Script.syntax(name, text)
     syntax_passed = syntax && syntax['title'].to_s.include?('Successful')
 
@@ -272,8 +471,20 @@ class ScriptsController < ApplicationController
       end
     end
 
-    { passed: syntax_passed && mnemonics_passed, syntax: syntax, mnemonics: mnemonics }
+    errors = []
+    if syntax && !syntax_passed
+      desc = syntax['description']
+      lines = desc.is_a?(String) ? (JSON.parse(desc) rescue [desc]) : Array(desc)
+      errors.concat(lines.compact.map(&:to_s))
+    end
+    if mnemonics && !mnemonics_passed
+      desc = mnemonics['description']
+      lines = desc.is_a?(String) ? (JSON.parse(desc) rescue [desc]) : Array(desc)
+      errors.concat(lines.compact.map(&:to_s))
+    end
+
+    { passed: syntax_passed && mnemonics_passed, errors: errors, syntax: syntax, mnemonics: mnemonics }
   rescue => e
-    { passed: false, error: e.message }
+    { passed: false, errors: [e.message] }
   end
 end

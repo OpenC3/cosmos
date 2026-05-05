@@ -44,30 +44,41 @@ module OpenC3
     end
 
     describe 'state derivation' do
-      it 'returns new for a fresh save' do
+      it 'returns unknown until validation runs' do
         model = ScriptLifecycleModel.get_or_build(name: name, scope: scope)
           .record_save(version_id: v1, username: 'alice')
-        expect(model.latest_state).to eq('new')
+        expect(model.latest_state).to eq('unknown')
         expect(model.locked_for_review?).to be(false)
       end
 
-      it 'returns validated after record_validation' do
+      it 'returns validated after record_validation regardless of pass/fail' do
         model = ScriptLifecycleModel.get_or_build(name: name, scope: scope)
           .record_save(version_id: v1, username: 'alice')
-          .record_validation(version_id: v1)
+          .record_validation(version_id: v1, passed: false, errors: ['line 3: syntax error'])
         expect(model.latest_state).to eq('validated')
-        expect(model.locked_for_review?).to be(false)
+        expect(model.versions[v1]['validated']['passed']).to be(false)
+        expect(model.versions[v1]['validated']['errors']).to eq(['line 3: syntax error'])
       end
 
       it 'returns reviewed after record_review and locks the script' do
         model = ScriptLifecycleModel.get_or_build(name: name, scope: scope)
           .record_save(version_id: v1, username: 'alice')
-          .record_validation(version_id: v1)
+          .record_validation(version_id: v1, passed: true)
           .record_review(version_id: v1, username: 'bob', notes: 'looks good')
         expect(model.latest_state).to eq('reviewed')
         expect(model.locked_for_review?).to be(true)
-        expect(model.versions[v1]['reviewed_by']).to eq('bob')
-        expect(model.versions[v1]['reviewed_notes']).to eq('looks good')
+        expect(model.versions[v1]['reviewed']['by']).to eq('bob')
+        expect(model.versions[v1]['reviewed']['notes']).to eq('looks good')
+      end
+
+      it 'returns executed once at least one execution is recorded' do
+        model = ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+          .record_save(version_id: v1, username: 'alice')
+          .record_validation(version_id: v1, passed: true)
+          .record_review(version_id: v1, username: 'bob')
+          .record_execution(version_id: v1, username: 'alice', disconnect: false, running_script_id: 99)
+        expect(model.latest_state).to eq('executed')
+        expect(model.locked_for_review?).to be(true) # executing doesn't unlock
       end
     end
 
@@ -83,10 +94,10 @@ module OpenC3
       it 'preserves prior versions immutably' do
         model = ScriptLifecycleModel.get_or_build(name: name, scope: scope)
           .record_save(version_id: v1, username: 'alice')
-          .record_validation(version_id: v1)
+          .record_validation(version_id: v1, passed: true)
           .record_save(version_id: v2, username: 'alice')
-        expect(model.versions[v1]['validated_at']).not_to be_nil
-        expect(model.versions[v2]['validated_at']).to be_nil
+        expect(model.versions[v1]['validated']['passed']).to be(true)
+        expect(model.versions[v2]['validated']).to be_nil
       end
     end
 
@@ -118,12 +129,12 @@ module OpenC3
           .record_save(version_id: v1, username: 'alice')
           .record_review(version_id: v1, username: 'bob')
           .record_taint(version_id: v2, username: 'alice', prev_version_id: v1, prev_reviewer: 'bob')
-          .record_validation(version_id: v2)
+          .record_validation(version_id: v2, passed: true)
           .record_review(version_id: v2, username: 'bob', notes: 're-reviewed after edit')
         expect(model.latest_state).to eq('reviewed')
         expect(model.locked_for_review?).to be(true)
         expect(model.versions[v2]['tainted']).to be(true)
-        expect(model.versions[v2]['reviewed_by']).to eq('bob')
+        expect(model.versions[v2]['reviewed']['by']).to eq('bob')
       end
     end
 
@@ -133,21 +144,40 @@ module OpenC3
           .record_save(version_id: v1, username: 'alice')
           .record_review(version_id: v1, username: 'bob', notes: 'first pass')
           .record_review(version_id: v1, username: 'carol', notes: 'second pass')
-        expect(model.versions[v1]['reviewed_by']).to eq('carol')
-        expect(model.versions[v1]['reviewed_notes']).to eq('second pass')
+        expect(model.versions[v1]['reviewed']['by']).to eq('carol')
+        expect(model.versions[v1]['reviewed']['notes']).to eq('second pass')
+      end
+    end
+
+    describe '#record_validation' do
+      it 'overwrites the validated block on re-validation (latest result wins)' do
+        model = ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+          .record_save(version_id: v1, username: 'alice')
+          .record_validation(version_id: v1, passed: false, errors: ['oops'])
+          .record_validation(version_id: v1, passed: true, errors: [])
+        expect(model.versions[v1]['validated']['passed']).to be(true)
+        expect(model.versions[v1]['validated']['errors']).to eq([])
       end
     end
 
     describe '#record_execution' do
-      it 'appends connected and disconnect runs as separate events' do
+      it 'appends executions with launch metadata' do
         model = ScriptLifecycleModel.get_or_build(name: name, scope: scope)
           .record_save(version_id: v1, username: 'alice')
-          .record_execution(version_id: v1, username: 'alice', disconnect: true)
-          .record_execution(version_id: v1, username: 'alice', disconnect: false)
+          .record_execution(
+            version_id: v1, username: 'alice', disconnect: true,
+            environment: [{ key: 'A', value: '1' }],
+            suite_runner: { mode: 'all' },
+            running_script_id: 42
+          )
+          .record_execution(version_id: v1, username: 'alice', disconnect: false, running_script_id: 43)
         execs = model.versions[v1]['executions']
         expect(execs.size).to eq(2)
-        expect(execs[0]['type']).to eq('executed_disconnect')
-        expect(execs[1]['type']).to eq('executed')
+        expect(execs[0]['disconnect']).to be(true)
+        expect(execs[0]['running_script_id']).to eq(42)
+        expect(execs[0]['environment']).to eq([{ key: 'A', value: '1' }])
+        expect(execs[0]['suite_runner']).to eq({ mode: 'all' })
+        expect(execs[1]['running_script_id']).to eq(43)
       end
     end
 
@@ -165,7 +195,7 @@ module OpenC3
     describe 'transitions on missing versions are no-ops' do
       it 'does not crash when validating a version that was never saved' do
         model = ScriptLifecycleModel.get_or_build(name: name, scope: scope)
-          .record_validation(version_id: v1)
+          .record_validation(version_id: v1, passed: true)
         expect(model.versions).to eq({})
       end
     end
@@ -174,16 +204,17 @@ module OpenC3
       it 'preserves all fields through save and reload' do
         ScriptLifecycleModel.get_or_build(name: name, scope: scope)
           .record_save(version_id: v1, username: 'alice')
-          .record_validation(version_id: v1)
+          .record_validation(version_id: v1, passed: true, errors: [])
           .record_review(version_id: v1, username: 'bob', notes: 'ok')
-          .record_execution(version_id: v1, username: 'alice', disconnect: false)
+          .record_execution(version_id: v1, username: 'alice', running_script_id: 7)
           .record_taint(version_id: v2, username: 'alice', prev_version_id: v1, prev_reviewer: 'bob')
 
         rehydrated = ScriptLifecycleModel.get_or_build(name: name, scope: scope)
         expect(rehydrated.latest_version_id).to eq(v2)
-        expect(rehydrated.versions[v1]['validated_at']).not_to be_nil
-        expect(rehydrated.versions[v1]['reviewed_by']).to eq('bob')
+        expect(rehydrated.versions[v1]['validated']['passed']).to be(true)
+        expect(rehydrated.versions[v1]['reviewed']['by']).to eq('bob')
         expect(rehydrated.versions[v1]['executions'].size).to eq(1)
+        expect(rehydrated.versions[v1]['executions'][0]['running_script_id']).to eq(7)
         expect(rehydrated.versions[v2]['tainted']).to be(true)
       end
     end
