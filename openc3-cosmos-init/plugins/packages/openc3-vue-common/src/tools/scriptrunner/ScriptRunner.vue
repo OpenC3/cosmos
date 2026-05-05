@@ -270,6 +270,85 @@
       @resize="({ prevPane }) => (editorBoxSize = prevPane.size)"
     >
       <pane class="editorbox" :size="editorBoxSize">
+        <v-alert
+          v-if="editorLockedForReview"
+          type="warning"
+          variant="tonal"
+          density="compact"
+          class="review-lock-banner"
+          data-test="review-lock-banner"
+        >
+          <div class="d-flex align-center">
+            <span>
+              <strong>Locked for review</strong> —
+              {{ lockedReviewerLabel }}
+              <template v-if="lifecycle?.reviewed?.notes">
+                <em>({{ lifecycle.reviewed.notes }})</em>
+              </template>
+            </span>
+            <v-spacer />
+            <v-btn
+              size="small"
+              variant="text"
+              class="mr-2"
+              data-test="review-lock-history"
+              @click="showVersionHistory = true"
+            >
+              View History
+            </v-btn>
+            <v-btn
+              size="small"
+              variant="tonal"
+              color="warning"
+              data-test="review-lock-edit-anyway"
+              @click="enterEditOverride"
+            >
+              Edit Anyway
+            </v-btn>
+          </div>
+        </v-alert>
+        <v-alert
+          v-else-if="lockedForReview && editOverride"
+          type="info"
+          variant="tonal"
+          density="compact"
+          class="review-lock-banner"
+          data-test="review-taint-banner"
+        >
+          You're editing past
+          <strong>{{ lockedReviewerLabel }}</strong
+          >'s approval. Saving will create a new version marked
+          <strong>tainted</strong>.
+        </v-alert>
+        <v-alert
+          v-if="versionStale"
+          type="info"
+          variant="tonal"
+          density="compact"
+          closable
+          class="version-stale-banner"
+          data-test="version-stale-banner"
+        >
+          <div class="d-flex align-center">
+            <span>
+              A newer version of this script was saved. Reload to see the
+              changes
+              <template v-if="fileModified === '*'">
+                (you have unsaved local edits)</template
+              >.
+            </span>
+            <v-spacer />
+            <v-btn
+              size="small"
+              variant="tonal"
+              color="primary"
+              data-test="version-stale-reload"
+              @click="reloadFile(false)"
+            >
+              Reload
+            </v-btn>
+          </div>
+        </v-alert>
         <v-snackbar
           v-model="showSave"
           absolute
@@ -424,6 +503,56 @@
         class="ml-2"
       />
     </v-row>
+    <v-alert
+      v-if="editorLockedForReview"
+      type="warning"
+      variant="tonal"
+      density="compact"
+      class="review-lock-banner mt-1"
+      data-test="review-lock-banner-inline"
+    >
+      <div class="d-flex align-center">
+        <span>
+          <strong>Locked for review</strong> — {{ lockedReviewerLabel }}
+        </span>
+        <v-spacer />
+        <v-btn
+          size="small"
+          variant="tonal"
+          color="warning"
+          @click="enterEditOverride"
+        >
+          Edit Anyway
+        </v-btn>
+      </div>
+    </v-alert>
+    <v-alert
+      v-if="versionStale"
+      type="info"
+      variant="tonal"
+      density="compact"
+      closable
+      class="version-stale-banner mt-1"
+      data-test="version-stale-banner-inline"
+    >
+      <div class="d-flex align-center">
+        <span>
+          A newer version of this script was saved.
+          <template v-if="fileModified === '*'">
+            (you have unsaved local edits)
+          </template>
+        </span>
+        <v-spacer />
+        <v-btn
+          size="small"
+          variant="tonal"
+          color="primary"
+          @click="reloadFile(false)"
+        >
+          Reload
+        </v-btn>
+      </div>
+    </v-alert>
     <v-tabs-window v-model="inlineTab">
       <v-tabs-window-item value="script">
         <v-row>
@@ -660,6 +789,16 @@
       />
     </v-sheet>
   </v-bottom-sheet>
+  <script-version-history-dialog
+    v-model="showVersionHistory"
+    :filename="filename"
+    :current-version-id="versionId"
+    :current-body="editor ? editor.getValue() : ''"
+    :locked-for-review="lockedForReview"
+    :current-reviewer="lifecycle?.reviewed?.by"
+    :current-reviewer-notes="lifecycle?.reviewed?.notes"
+    @restored="onVersionRestored"
+  />
   <v-dialog v-model="showSignOffDialog" width="540" data-test="sign-off-dialog">
     <v-card>
       <v-card-title>Review Version</v-card-title>
@@ -762,6 +901,7 @@ import {
 import { SleepAnnotator } from '@/tools/scriptrunner/annotations'
 import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
 import ScriptLifecycleBadges from '@/tools/scriptrunner/ScriptLifecycleBadges.vue'
+import ScriptVersionHistoryDialog from '@/tools/scriptrunner/ScriptVersionHistoryDialog.vue'
 
 // Matches target_file.rb TEMP_FOLDER
 const TEMP_FOLDER = '__TEMP__'
@@ -795,6 +935,7 @@ export default {
     CriticalCmdDialog,
     CommandEditor,
     ScriptLifecycleBadges,
+    ScriptVersionHistoryDialog,
   },
   mixins: [AceEditorModes, ClassificationBanners],
   beforeRouteUpdate: function (to, from, next) {
@@ -879,8 +1020,12 @@ export default {
       versionId: null, // S3 VersionId of the currently-loaded body
       lifecycle: null, // latest version's lifecycle record (validated/reviewed/executions)
       lockedForReview: false, // true when latest version is reviewed; saving requires force_taint
+      editOverride: false, // user clicked "Edit Anyway" past a reviewed lock; next save will set force_taint
       hadPriorApprovedReview: false, // any non-latest version had an approved review (drives dull-green badge)
       latestExecutionStatus: null, // ScriptStatusModel.state of the most recent execution (drives executed badge color)
+      latestServerVersionId: null, // result of the polling check; if it differs from versionId, banner shows
+      versionPollIntervalId: null,
+      showVersionHistory: false,
       showSignOffDialog: false,
       signOffNotes: '',
       signOffSubmitting: false,
@@ -1022,6 +1167,27 @@ export default {
     },
     environmentModified: function () {
       return this.scriptEnvironment.env.length > 0
+    },
+    versionStale: function () {
+      return (
+        !!this.versionId &&
+        !!this.latestServerVersionId &&
+        this.versionId !== this.latestServerVersionId
+      )
+    },
+    // Editor read-only state due to the review lock specifically. Other
+    // sources of read-only (readOnlyUser, inline mode) are still handled by
+    // their own watchers — this only deals with the review-lock case so the
+    // user can opt back into editing via "Edit Anyway" without affecting
+    // the other sources.
+    editorLockedForReview: function () {
+      return this.lockedForReview && !this.editOverride
+    },
+    lockedReviewerLabel: function () {
+      const reviewed = this.lifecycle?.reviewed
+      if (!reviewed) return 'this version was approved'
+      const at = reviewed.at ? ` on ${reviewed.at}` : ''
+      return `approved by ${reviewed.by || 'someone'}${at}`
     },
     // Returns the currently shown filename
     fullFilename: function () {
@@ -1225,6 +1391,14 @@ export default {
               },
             },
             {
+              label: 'Version History…',
+              icon: 'mdi-history',
+              disabled: this.filename === NEW_FILENAME,
+              command: () => {
+                this.showVersionHistory = true
+              },
+            },
+            {
               label: 'Instrumented Script',
               icon: 'mdi-code-braces-box',
               disabled: this.scriptId,
@@ -1312,6 +1486,17 @@ export default {
     showOverrides: function (newVal, oldVal) {
       if (oldVal && !newVal) {
         this.updateOverridesCount()
+      }
+    },
+    // Flip the Ace editor between read-only and writable when the review
+    // lock changes. Don't re-enable when other read-only sources are still
+    // active (readOnlyUser permission gate, or inline-embedded mode).
+    editorLockedForReview: function (locked) {
+      if (!this.editor) return
+      if (locked) {
+        this.editor.setReadOnly(true)
+      } else if (!this.readOnlyUser && !this.inline) {
+        this.editor.setReadOnly(false)
       }
     },
     // Mirror live ScriptStatusModel state into latestExecutionStatus while
@@ -1507,6 +1692,9 @@ export default {
   unmounted() {
     if (this.updateInterval != null) {
       clearInterval(this.updateInterval)
+    }
+    if (this.versionPollIntervalId != null) {
+      clearInterval(this.versionPollIntervalId)
     }
     if (this.subscription) {
       this.subscription.unsubscribe()
@@ -2613,8 +2801,11 @@ export default {
       this.versionId = null
       this.lifecycle = null
       this.lockedForReview = false
+      this.editOverride = false
       this.hadPriorApprovedReview = false
       this.latestExecutionStatus = null
+      this.latestServerVersionId = null
+      this.stopVersionPolling()
       this.suiteRunner = false
       this.startOrGoDisabled = false
       this.envDisabled = false
@@ -2839,8 +3030,15 @@ class TestSuite(Suite):
       this.lifecycle = lifecycle
       this.lockedForReview = lockedForReview
       this.hadPriorApprovedReview = hadPriorApprovedReview
+      // Loading a fresh file resets the per-session unlock decision — the
+      // user has to opt in again on each open. Same on newFile().
+      this.editOverride = false
       this.latestExecutionStatus = null
       this.refreshLatestExecutionStatus()
+      // Reset stale-version banner state and (re)start the poll. Server-side
+      // pull is a single Redis HGET, so a 10s cadence is fine.
+      this.latestServerVersionId = null
+      this.startVersionPolling()
       if (!this.inline) {
         // Update the URL with the filename
         this.$router
@@ -2995,7 +3193,11 @@ class TestSuite(Suite):
           }
         }
         this.showSave = true
-        const saveUrl = forceTaint
+        // editOverride means the user has already accepted the taint up
+        // front via "Edit Anyway" on the lock banner — fold it into the
+        // force_taint flag so the save proceeds without an extra prompt.
+        const taint = forceTaint || this.editOverride
+        const saveUrl = taint
           ? `/script-api/scripts/${this.filename}?force_taint=true`
           : `/script-api/scripts/${this.filename}`
         await Api.post(saveUrl, {
@@ -3146,6 +3348,86 @@ class TestSuite(Suite):
       this.signOffNotes = ''
       this.signOffDecision = null
       this.showSignOffDialog = true
+    },
+    // User clicked "Edit Anyway" on the lock banner. Confirm intent and
+    // flip editOverride so the editor becomes writable; subsequent save
+    // automatically sends force_taint=true (see saveFile).
+    enterEditOverride() {
+      const reviewer = this.lifecycle?.reviewed?.by || 'someone'
+      this.$dialog
+        .confirm(
+          `This script was approved by ${reviewer}. Edit anyway? The next save will be marked tainted.`,
+          { okText: 'Edit Anyway', cancelText: 'Cancel' },
+        )
+        .then(() => {
+          this.editOverride = true
+        })
+        .catch(() => {
+          // user cancelled — leave the lock in place
+        })
+    },
+    // After a restore creates a new version, pull the file fresh so the
+    // editor + lifecycle badges + version_id all reflect the new state.
+    onVersionRestored() {
+      if (this.filename !== NEW_FILENAME) {
+        this.reloadFile(false)
+      }
+    },
+    // Poll the lightweight /latest endpoint to detect when someone else
+    // (or this user in another tab) saves a newer version. The banner just
+    // surfaces it; the user decides whether to reload.
+    startVersionPolling() {
+      this.stopVersionPolling()
+      if (this.filename === NEW_FILENAME) return
+      this.versionPollIntervalId = setInterval(this.pollLatestVersion, 10000)
+    },
+    stopVersionPolling() {
+      if (this.versionPollIntervalId != null) {
+        clearInterval(this.versionPollIntervalId)
+        this.versionPollIntervalId = null
+      }
+    },
+    async pollLatestVersion() {
+      if (this.filename === NEW_FILENAME) return
+      try {
+        const response = await Api.get(
+          `/script-api/scripts/${this.filename}/latest`,
+          { headers: { 'Ignore-Errors': '404' } },
+        )
+        const data = response?.data || {}
+        this.latestServerVersionId = data.latest_version_id || null
+
+        // When the user is viewing the latest version, mirror its lifecycle
+        // so reviewed/executed badges reflect actions other users took on
+        // the same version (sign-off, runs) without a manual reload. We
+        // skip this when the user is on a stale version — the banner above
+        // is already prompting them to reload.
+        if (
+          data.latest_version_id &&
+          data.latest_version_id === this.versionId &&
+          data.lifecycle
+        ) {
+          const prevLatestExecId = this.lifecycle?.executions?.length
+            ? this.lifecycle.executions[this.lifecycle.executions.length - 1]
+                .running_script_id
+            : null
+          this.lifecycle = data.lifecycle
+          this.lockedForReview = data.locked_for_review === true
+          this.hadPriorApprovedReview = data.had_prior_approved_review === true
+          // If a new execution appeared (different running_script_id at the
+          // tail), re-fetch its status so the executed badge color refreshes
+          // to whatever ScriptStatusModel reports for that run.
+          const newLatestExecId = this.lifecycle?.executions?.length
+            ? this.lifecycle.executions[this.lifecycle.executions.length - 1]
+                .running_script_id
+            : null
+          if (newLatestExecId && newLatestExecId !== prevLatestExecId) {
+            this.refreshLatestExecutionStatus()
+          }
+        }
+      } catch (_) {
+        // network blip — leave previous value; next tick will retry
+      }
     },
     // Look up the ScriptStatusModel for the most recent recorded execution
     // and stash its state, so the executed badge can color itself by outcome.

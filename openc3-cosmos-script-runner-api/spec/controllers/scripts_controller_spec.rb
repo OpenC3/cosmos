@@ -527,4 +527,80 @@ RSpec.describe ScriptsController, type: :controller do
       expect(lifecycle.versions["V2"]["tainted_from_reviewed_by"]).to eq("bob")
     end
   end
+
+  describe "create — first-edit baseline capture" do
+    let(:name) { "INST/procedures/baseline_test.rb" }
+    let(:scope) { "DEFAULT" }
+    let(:original_body) { "puts 'original from plugin'" }
+    let(:user_edit) { "puts 'user edit'" }
+    let(:bucket) { instance_double(OpenC3::AwsBucket) }
+
+    it "writes targets/ baseline as the first version before user edit" do
+      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket)
+      # First Script.body call from the controller's text_unchanged check —
+      # nothing in targets_modified/ yet, so the original is what flows back.
+      allow(Script).to receive(:body).with(scope, name).and_return(original_body)
+      # Inside capture_original_baseline: targets_modified/ does not yet exist,
+      # targets/ does. Return the original body wrapped to look like an S3 resp.
+      allow(bucket).to receive(:get_object)
+        .with(bucket: anything, key: "#{scope}/targets_modified/#{name}")
+        .and_return(nil)
+      orig_resp = double(body: StringIO.new(original_body))
+      allow(bucket).to receive(:get_object)
+        .with(bucket: anything, key: "#{scope}/targets/#{name}")
+        .and_return(orig_resp)
+      # Baseline put_object returns a synthetic version id — TargetFile.create
+      # uses bucket.put_object directly. Stub both put + check.
+      baseline_put = double(version_id: "BASELINE")
+      allow(bucket).to receive(:put_object).and_return(baseline_put)
+      allow(bucket).to receive(:check_object).and_return(true)
+      # Then Script.create runs — return the user's version_id.
+      allow(Script).to receive(:create).and_return("USER_V1")
+
+      post :create, params: {scope: scope, name: name, text: user_edit}
+      expect(response).to have_http_status(:ok)
+
+      lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+      expect(lifecycle.versions.keys).to include("BASELINE", "USER_V1")
+      expect(lifecycle.versions["BASELINE"]["saved_by"]).to eq("<original>")
+      expect(lifecycle.versions["USER_V1"]["saved_by"]).to eq("anonymous")
+      expect(lifecycle.latest_version_id).to eq("USER_V1")
+    end
+
+    it "skips baseline capture when targets_modified/ already exists" do
+      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket)
+      allow(Script).to receive(:body).with(scope, name).and_return("existing modified body")
+      # targets_modified/ already there — capture_original_baseline early-returns.
+      modified_resp = double(body: StringIO.new("existing modified body"))
+      allow(bucket).to receive(:get_object)
+        .with(bucket: anything, key: "#{scope}/targets_modified/#{name}")
+        .and_return(modified_resp)
+      # targets/ get_object should never be called in this branch.
+      expect(bucket).not_to receive(:get_object)
+        .with(bucket: anything, key: "#{scope}/targets/#{name}")
+      allow(Script).to receive(:create).and_return("USER_V1")
+
+      post :create, params: {scope: scope, name: name, text: user_edit}
+      expect(response).to have_http_status(:ok)
+
+      lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+      expect(lifecycle.versions.keys).to contain_exactly("USER_V1")
+    end
+
+    it "skips baseline capture when text is unchanged from original" do
+      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket)
+      allow(Script).to receive(:body).with(scope, name).and_return(original_body)
+      # Controller still calls Script.create (which internally no-ops on
+      # identical content), but the baseline-capture branch should be skipped
+      # so no bucket.get_object call is made and no lifecycle entry is recorded.
+      expect(bucket).not_to receive(:get_object)
+      allow(Script).to receive(:create).and_return(nil)
+
+      post :create, params: {scope: scope, name: name, text: original_body}
+      expect(response).to have_http_status(:ok)
+
+      lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+      expect(lifecycle.versions).to be_empty
+    end
+  end
 end

@@ -116,29 +116,6 @@
         </template>
       </span>
     </v-tooltip>
-
-    <!-- Tainted indicator -->
-    <v-tooltip v-if="tainted" location="bottom">
-      <template #activator="{ props }">
-        <v-chip
-          v-bind="props"
-          size="small"
-          color="warning"
-          variant="flat"
-          prepend-icon="mdi-alert"
-          class="mr-2"
-          data-test="lifecycle-badge-tainted"
-        >
-          Tainted
-        </v-chip>
-      </template>
-      <span class="badge-tooltip">
-        <strong>Tainted</strong><br />
-        Edited from a previously reviewed version (signed off by
-        <strong>{{ taintedFromReviewedBy }}</strong
-        >).
-      </span>
-    </v-tooltip>
   </div>
 </template>
 
@@ -177,12 +154,6 @@ export default {
     },
     latestExecution() {
       return this.executions[this.executions.length - 1] || {}
-    },
-    tainted() {
-      return this.lifecycle?.tainted === true
-    },
-    taintedFromReviewedBy() {
-      return this.lifecycle?.tainted_from_reviewed_by
     },
     // Empty (grey outline) when no data. Filled with color once the facet
     // acquires data; validation pass = success, fail = error.

@@ -115,6 +115,7 @@ module OpenC3
             "Principal": ["#{sr_username}"],
             "Action": [
               "s3:ListBucket",
+              "s3:ListBucketVersions",
               "s3:GetBucketLocation"
             ],
             "Resource": "#{@aws_arn}:s3:::#{config_bucket}"
@@ -123,7 +124,10 @@ module OpenC3
             "Sid": "ScriptRunnerReadTargets",
             "Effect": "Allow",
             "Principal": ["#{sr_username}"],
-            "Action": "s3:GetObject",
+            "Action": [
+              "s3:GetObject",
+              "s3:GetObjectVersion"
+            ],
             "Resource": "#{@aws_arn}:s3:::#{config_bucket}/*"
           },
           {

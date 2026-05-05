@@ -113,6 +113,20 @@ class ScriptsController < ApplicationController
     prev_reviewed_version_id = lifecycle.latest_version_id if lifecycle.locked_for_review?
     prev_reviewer = lifecycle.latest_record&.dig('reviewed', 'by') if lifecycle.locked_for_review?
 
+    # First-edit baseline capture: plugins install scripts under
+    # {scope}/targets/{name} (the read-only baseline prefix) but the
+    # versioned object lives at {scope}/targets_modified/{name}. Without
+    # this step the user's first save would become V1 and the
+    # plugin-installed original would never appear in history. So before
+    # writing the user's edit, copy targets/ -> targets_modified/ once and
+    # record it in the lifecycle as the original baseline.
+    if !text_unchanged && lifecycle.latest_version_id.nil?
+      capture_original_baseline(scope, name, lifecycle)
+      # Reload so subsequent record_save / record_taint sees the baseline
+      # we just inserted as latest.
+      lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+    end
+
     write_result = Script.create(args)
     results = {}
     if write_result.is_a?(String)
@@ -347,6 +361,29 @@ class ScriptsController < ApplicationController
     render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 
+  # GET /scripts/*name/latest — small-payload endpoint used by the editor's
+  # poll loop. Returns the latest version_id (so the editor can show its
+  # "newer version exists" banner when someone else saves) plus the latest
+  # version's lifecycle record. With the lifecycle in the response, the
+  # reviewed and executed badges update in near-real-time for any user
+  # watching the script — when user A signs off or runs, user B's badges
+  # transition on the next 10s poll without a manual reload.
+  def latest_version
+    return unless authorization('script_view')
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
+    return unless scope
+    lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
+    render json: {
+      latest_version_id: lifecycle.latest_version_id,
+      lifecycle: lifecycle.latest_record,
+      locked_for_review: lifecycle.locked_for_review?,
+      had_prior_approved_review: lifecycle.had_prior_approved_review?
+    }
+  rescue => e
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
   # GET /scripts/*name/version?version_id=... — return body of a specific version.
   def version_body
     return unless authorization('script_view')
@@ -358,11 +395,22 @@ class ScriptsController < ApplicationController
       return
     end
     bucket = OpenC3::Bucket.getClient()
-    resp = bucket.get_object(
-      bucket: ENV['OPENC3_CONFIG_BUCKET'],
-      key: "#{scope}/targets_modified/#{name}",
-      version_id: version_id
-    )
+    begin
+      resp = bucket.get_object(
+        bucket: ENV['OPENC3_CONFIG_BUCKET'],
+        key: "#{scope}/targets_modified/#{name}",
+        version_id: version_id
+      )
+    rescue Aws::Errors::ServiceError => e
+      # Backends (real AWS S3, etc.) reject lookups with versionIds
+      # that aren't valid for that bucket — for example null-version markers
+      # returned by list_object_versions on a bucket whose versioning was
+      # only just enabled. Surface as 404 with the backend's reason rather
+      # than letting the controller blow up with a 500.
+      OpenC3::Logger.warn("get_object(version_id=#{version_id}) failed for #{scope}/#{name}: #{e.message}", scope: scope)
+      render json: { status: 'error', message: "Version unavailable: #{e.message}" }, status: :not_found
+      return
+    end
     if resp && resp.body
       body = File.extname(name) == '.bin' ? (resp.body.binmode; resp.body.read) : resp.body.read.force_encoding('UTF-8')
       render plain: body
@@ -406,7 +454,13 @@ class ScriptsController < ApplicationController
     bucket = OpenC3::Bucket.getClient()
     bucket_name = ENV['OPENC3_CONFIG_BUCKET']
     key = "#{scope}/targets_modified/#{name}"
-    src = bucket.get_object(bucket: bucket_name, key: key, version_id: version_id)
+    begin
+      src = bucket.get_object(bucket: bucket_name, key: key, version_id: version_id)
+    rescue Aws::Errors::ServiceError => e
+      OpenC3::Logger.warn("restore get_object(version_id=#{version_id}) failed for #{scope}/#{name}: #{e.message}", scope: scope)
+      render json: { status: 'error', message: "Version unavailable: #{e.message}" }, status: :not_found
+      return
+    end
     if src.nil? || src.body.nil?
       head :not_found
       return
@@ -494,6 +548,33 @@ class ScriptsController < ApplicationController
   end
 
   private
+
+  # Copy {scope}/targets/{name} -> {scope}/targets_modified/{name} and record
+  # it in the lifecycle as the original/baseline version. No-op when there's
+  # no targets/ baseline (file was created in Script Runner directly) or when
+  # targets_modified/ already exists (lifecycle should already be tracking it).
+  def capture_original_baseline(scope, name, lifecycle)
+    bucket = OpenC3::Bucket.getClient()
+    config_bucket = ENV['OPENC3_CONFIG_BUCKET']
+    modified_key = "#{scope}/targets_modified/#{name}"
+    # Already-versioned content (e.g. an earlier plugin install that wrote
+    # to targets_modified/ directly) shows up in /versions on its own —
+    # nothing to back-fill here.
+    return if bucket.get_object(bucket: config_bucket, key: modified_key)
+
+    orig_resp = bucket.get_object(bucket: config_bucket, key: "#{scope}/targets/#{name}")
+    return unless orig_resp && orig_resp.body
+    orig_body = orig_resp.body.read
+    orig_body = orig_body.force_encoding('UTF-8') unless File.extname(name) == '.bin'
+
+    baseline_version_id = OpenC3::TargetFile.create(scope, name, orig_body, username: '<original>')
+    return unless baseline_version_id.is_a?(String)
+    lifecycle.record_save(version_id: baseline_version_id, username: '<original>')
+  rescue => e
+    # Don't block the user's save just because we couldn't snapshot the
+    # baseline — log it and let the regular save proceed.
+    OpenC3::Logger.warn("baseline capture failed for #{scope}/#{name}: #{e.message}", scope: scope)
+  end
 
   # Combined syntax + mnemonic check used to decide whether to mark a save as
   # validated. Mnemonic check is a hard fail when applicable (script-engine
