@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import contextlib
+import json
 import re
 import threading
 import time
@@ -27,6 +28,7 @@ from openc3.system.system import System
 from openc3.topics.limits_event_topic import LimitsEventTopic
 from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.topics.topic import Topic
+from openc3.utilities.store import Store
 from test.test_helper import capture_io, mock_redis, setup_system
 
 
@@ -311,6 +313,47 @@ class TestDecomMicroservice(unittest.TestCase):
 
         # Verify that even though the limits response sleeps for 0.1s, the decom thread is not blocked
         self.assertLess(self.dm.metric.data["decom_duration_seconds"]["value"], 0.02)
+
+    def test_constructor_handles_disabled_limits_during_sync_system(self):
+        # Regression: limits_response_queue must be initialized before the
+        # limits_change_callback is registered. LimitsEventTopic.sync_system
+        # (called from __init__) calls System.limits.disable on items persisted
+        # as disabled, which fires the callback - which writes to the queue.
+        self.dm.shutdown()
+        self.dm_thread.join()
+
+        class NoOpLimitsResponse(LimitsResponse):
+            def call(self, packet, item, old_limits_state):
+                pass
+
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+        packet.get_item("TEMP1").limits.response = NoOpLimitsResponse()
+
+        Store.hset(
+            "DEFAULT__current_limits_settings",
+            "INST__HEALTH_STATUS__TEMP1",
+            json.dumps(
+                {
+                    "enabled": False,
+                    "persistence_setting": 1,
+                    "DEFAULT": {
+                        "red_low": -80.0,
+                        "yellow_low": -70.0,
+                        "yellow_high": 60.0,
+                        "red_high": 80.0,
+                    },
+                }
+            ),
+        )
+
+        # Before the fix this raised AttributeError: 'DecomMicroservice'
+        # object has no attribute 'limits_response_queue'.
+        self.dm = DecomMicroservice("DEFAULT__DECOM__INST_INT")
+        self.assertEqual(self.dm.limits_response_queue.qsize(), 1)
+        # Restart the run thread so tearDown can shut it down cleanly.
+        self.dm_thread = threading.Thread(target=self.dm.run)
+        self.dm_thread.start()
+        time.sleep(0.01)
 
     def test_handles_exceptions_in_limits_responses(self):
         class BadLimitsResponse(LimitsResponse):

@@ -94,13 +94,15 @@ module OpenC3
       @limits_event_topic = "#{@scope}__openc3_limits_events"
       @topics << @limits_event_topic
       Topic.update_topic_offsets(@topics, db_shard: @db_shard)
+      # Initialize before assigning limits_change_callback - sync_system below
+      # can fire the callback synchronously for any persisted-disabled items.
+      @limits_response_queue = Queue.new
+      @limits_response_thread = nil
       System.telemetry.limits_change_callback = method(:limits_change_callback)
       LimitsEventTopic.sync_system(scope: @scope)
       @error_count = 0
       @metric.set(name: 'decom_total', value: @count, type: 'counter')
       @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')
-      @limits_response_queue = Queue.new
-      @limits_response_thread = nil
     end
 
     def run
