@@ -324,6 +324,7 @@ class TestDecomMicroservice(unittest.TestCase):
 
         class NoOpLimitsResponse(LimitsResponse):
             def call(self, packet, item, old_limits_state):
+                # Simple stub to test the callback
                 pass
 
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")

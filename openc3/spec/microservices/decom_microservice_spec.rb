@@ -222,7 +222,9 @@ module OpenC3
         @dm_thread.join
 
         klass = Class.new(LimitsResponse) do
-          def call(packet, item, old_limits_state); end
+          def call(_packet, _item, _old_limits_state)
+            # Simple stub to test the callback
+          end
         end
         System.telemetry.packet('INST', 'HEALTH_STATUS').get_item('TEMP1').limits.response = klass.new
 
