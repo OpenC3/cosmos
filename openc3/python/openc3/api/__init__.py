@@ -12,6 +12,7 @@
 WHITELIST = []
 
 from .api_shared import *
+from .calendar_api import *
 from .cmd_api import *
 from .config_api import *
 from .interface_api import *
