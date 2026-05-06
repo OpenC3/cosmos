@@ -342,21 +342,21 @@ class ActivityController < ApplicationController
 
     ret = []
     input_activities.each do |input|
-      next if input.is_a?(Hash) == false || input['start'].nil? || input['stop'].nil? || input['name'].nil?
+      next if input.is_a?(Hash) == false || input[:start].nil? || input[:stop].nil? || input[:name].nil?
 
       begin
         hash = input.dup
-        hash['data'] ||= {}
-        hash['data']['username'] = username()
-        name = hash.delete('name')
-        hash['start'] = DateTime.parse(hash['start']).strftime('%s').to_i
-        hash['stop'] = DateTime.parse(hash['stop']).strftime('%s').to_i
+        hash[:data] ||= {}
+        hash[:data][:username] = username()
+        name = hash.delete(:name)
+        hash[:start] = DateTime.parse(hash[:start]).strftime('%s').to_i
+        hash[:stop] = DateTime.parse(hash[:stop]).strftime('%s').to_i
         model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
         model.create(username: username())
         OpenC3::Logger.info(
           "Activity created: #{name} #{hash}",
           scope: params[:scope],
-          user: hash['data']['username']
+          user: hash[:data][:username]
         )
         ret << model.as_json()
       rescue ArgumentError, TypeError => e
@@ -409,12 +409,12 @@ class ActivityController < ApplicationController
 
     ret = []
     input_activities.each do |input|
-      next if input.is_a?(Hash) == false || input['id'].nil? || input['name'].nil? || input['uuid'].nil?
+      next if input.is_a?(Hash) == false || input[:id].nil? || input[:name].nil? || input[:uuid].nil?
 
       begin
         result = @model_class.destroy(name: input[:name], score: input[:id].to_i, uuid: input[:uuid], scope: params[:scope])
-        OpenC3::Logger.info("Activity destroyed: #{input['name']}", scope: params[:scope], user: username())
-        ret << { status: 'removed', removed: result, input: input, type: e.class }
+        OpenC3::Logger.info("Activity destroyed: #{input[:name]}", scope: params[:scope], user: username())
+        ret << { status: 'removed', removed: result, input: input }
       rescue StandardError => e # includes OpenC3::ActivityInputError
         log_error(e)
         ret << { status: 'error', message: e.message, input: input, type: e.class, err: 400 }

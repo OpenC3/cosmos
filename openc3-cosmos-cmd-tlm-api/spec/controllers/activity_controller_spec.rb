@@ -480,5 +480,35 @@ RSpec.describe ActivityController, type: :controller do
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json.empty?).to eql(true)
     end
+
+    it "reports 'removed' status (not 'error') for each successfully destroyed activity" do
+      # The success branch references `e.class` outside the rescue, so every
+      # successful destroy raises NameError and gets caught by the rescue, leaving
+      # the client with a misleading 'error' response even though the activity
+      # was destroyed. This test asserts the response body matches what callers expect.
+      dt = DateTime.now.new_offset(0)
+      start_time = dt + (1 / 24.0)
+      stop_time = dt + (1.5 / 24.0)
+      post :multi_create, params: {"scope" => timeline_scope, "multi" => [{
+        "name" => timeline_name,
+        "start" => start_time.to_s,
+        "stop" => stop_time.to_s,
+        "kind" => "COMMAND",
+        "data" => {"cmd" => "destroy-me"}
+      }]}
+      expect(response).to have_http_status(:ok)
+      activity = JSON.parse(response.body, allow_nan: true, create_additions: true).first
+
+      post :multi_destroy, params: {"scope" => timeline_scope, "multi" => [{
+        "name" => activity["name"],
+        "id" => activity["start"],
+        "uuid" => activity["uuid"]
+      }]}
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(body.length).to eql(1)
+      expect(body[0]["status"]).to eql("removed")
+      expect(body[0]["removed"]).to be > 0
+    end
   end
 end
