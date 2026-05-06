@@ -60,6 +60,9 @@
     {
       "path": "../openc3-cosmos-tsdb-migration",
     },
+    {
+      "path": "../openc3-cosmos-cognitive-space",
+    },
   ],
   "settings": {
     "rubyLsp.bundleGemfile": "openc3/Gemfile",
