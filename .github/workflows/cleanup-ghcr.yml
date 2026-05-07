@@ -29,3 +29,4 @@ jobs:
           # backlog from growing unbounded.
           keep-n-tagged: 50
           delete-untagged: true
+          token: ${{ secrets.CLEANUP_GHCR_TOKEN }}
