@@ -15,7 +15,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
-from test.test_helper import *
+from test.test_helper import mock_redis
 
 
 class TestTelemetryDecomTopic(unittest.TestCase):

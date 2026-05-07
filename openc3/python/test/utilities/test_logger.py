@@ -11,13 +11,13 @@
 
 import json
 import os
+import sys
 import time
 import unittest
 from io import StringIO
-from unittest.mock import *
+from unittest.mock import patch
 
 from openc3.utilities.logger import Logger
-from test.test_helper import *
 
 
 class TestLogger(unittest.TestCase):
@@ -98,6 +98,12 @@ class TestLogMessage(unittest.TestCase):
         Logger.no_store = True
         Logger.microservice_name = None
         Logger.detail_string = None
+        # conftest imports openc3.utilities.logger before any test sets
+        # OPENC3_NO_STORE, so the module-level constant is None. Patch it so
+        # newly-constructed Logger instances skip the EphemeralStoreQueued write.
+        no_store_patch = patch("openc3.utilities.logger.OPENC3_NO_STORE", "1")
+        no_store_patch.start()
+        self.addCleanup(no_store_patch.stop)
 
     def tearDown(self):
         sys.stdout = sys.__stdout__

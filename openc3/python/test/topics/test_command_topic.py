@@ -15,7 +15,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from openc3.topics.command_topic import CommandTopic
-from test.test_helper import *
+from test.test_helper import mock_redis
 
 
 class TestCommandTopic(unittest.TestCase):
