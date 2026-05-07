@@ -34,9 +34,6 @@
       "path": "../../Development/openc3-cosmos-zendir",
     },
     {
-      "path": "../../Development/openc3-cosmos-vueflow",
-    },
-    {
       "path": "../../Development/fprime",
     },
     {
@@ -53,12 +50,6 @@
     },
     {
       "path": "../core",
-    },
-    {
-      "path": "../ace-diff",
-    },
-    {
-      "path": "../openc3-cosmos-tsdb-migration",
     },
     {
       "path": "../openc3-cosmos-cognitive-space",
