@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -19,7 +19,7 @@
   <v-footer v-if="!chromeless" id="footer" app height="33">
     <img :src="icon" alt="OpenC3" />
     <span :class="footerClass" @click="upgrade">
-      OpenC3 {{ edition }} {{ version }} &copy; 2025 - License:
+      OpenC3 {{ edition }} {{ version }} &copy; {{ currentYear }} - License:
       {{ license }}
     </span>
     <v-spacer />
@@ -55,6 +55,7 @@ export default {
       version: '',
       showUpgradeToEnterpriseDialog: false,
       chromeless: null,
+      currentYear: new Date().getFullYear(),
     }
   },
   computed: {
