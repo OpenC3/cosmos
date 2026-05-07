@@ -209,6 +209,68 @@ test('upload and delete', async ({ page, utils }) => {
   await page.locator('[data-test="confirm-dialog-delete"]').click()
 })
 
+// Helper to upload package.json to a renamed path inside __TEMP__
+async function uploadAs(page: any, filename: string) {
+  await expect(page.getByLabel('prepended action')).toBeVisible()
+  const [fileChooser] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    page.getByLabel('prepended action').click(),
+  ])
+  await fileChooser.setFiles('package.json')
+  await page
+    .locator('[data-test="upload-file-path"] input')
+    .fill(`DEFAULT/targets_modified/__TEMP__/${filename}`)
+  await page.locator('[data-test="upload-file-submit-btn"]').click()
+  await expect(page.getByRole('cell', { name: filename })).toBeVisible()
+}
+
+test('delete multiple selected files', async ({ page, utils }) => {
+  const id = Math.ceil(Math.random() * 1_000_000)
+  const files = [`multi_${id}_a.json`, `multi_${id}_b.json`, `multi_${id}_c.json`]
+
+  await page.goto(
+    '/tools/bucketexplorer/config%2FDEFAULT%2Ftargets_modified%2F__TEMP__%2F',
+  )
+  await expect(page.locator('.v-app-bar')).toContainText('Bucket Explorer')
+
+  for (const f of files) {
+    await uploadAs(page, f)
+  }
+
+  // Select all uploaded files via per-row checkbox
+  for (const f of files) {
+    await page.locator(`tr:has-text("${f}") input[type="checkbox"]`).check()
+  }
+
+  // Both action buttons visible with count
+  await expect(page.locator('[data-test="delete-selected"]')).toContainText(
+    'Delete 3 Selected',
+  )
+  await expect(page.locator('[data-test="download-selected"]')).toContainText(
+    'Download 3 Selected',
+  )
+
+  // Trigger delete + confirm
+  await page.locator('[data-test="delete-selected"]').click()
+  await page.locator('[data-test="confirm-dialog-delete"]').click()
+
+  // Results phase shown, success summary, OK to dismiss
+  await expect(page.locator('[data-test="delete-results"]')).toContainText(
+    'Deleted 3 of 3',
+  )
+  await expect(page.locator('[data-test="delete-failed-list"]')).toHaveCount(0)
+  await page.locator('[data-test="delete-results-ok"]').click()
+
+  // Files gone, action button gone
+  for (const f of files) {
+    await expect(page.getByRole('cell', { name: f })).not.toBeVisible()
+  }
+  await expect(page.locator('[data-test="delete-selected"]')).not.toBeVisible()
+  await expect(
+    page.locator('[data-test="download-selected"]'),
+  ).not.toBeVisible()
+})
+
 test('navigate logs and tools bucket', async ({ page, utils }) => {
   test.setTimeout(3 * 60 * 1000) // 3 minutes
   // Keep clicking alternatively on tools and then logs to force a refresh
