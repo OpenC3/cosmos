@@ -73,9 +73,7 @@ class ActivityModel(Model):
     def get(cls, name, start, stop, scope, limit=100):
         if start > stop:
             raise ActivityInputError(f"start: {start} must be <= stop: {stop}")
-        array = Store.zrangebyscore(
-            f"{scope}{cls.PRIMARY_KEY}__{name}", start, stop, start=0, num=limit
-        )
+        array = Store.zrangebyscore(f"{scope}{cls.PRIMARY_KEY}__{name}", start, stop, start=0, num=limit)
         return [json.loads(_decode(value)) for value in array]
 
     # Up to ``limit`` activities (as dicts) stored under the primary key.
@@ -115,9 +113,7 @@ class ActivityModel(Model):
         if recurring:
             activity = cls.score(name=name, score=score, scope=scope)
             if activity and activity.recurring.get("end") and activity.recurring.get("uuid"):
-                json_values = Store.zrangebyscore(
-                    primary, activity.recurring["start"], activity.recurring["end"]
-                )
+                json_values = Store.zrangebyscore(primary, activity.recurring["start"], activity.recurring["end"])
                 parsed = [cls.from_json(value, name=name, scope=scope) for value in json_values]
                 for index, value in enumerate(parsed):
                     if value.recurring.get("uuid") == uuid:
@@ -259,9 +255,7 @@ class ActivityModel(Model):
         elif duration <= 0:
             raise ActivityInputError(f"start: {start} must be before stop: {stop}")
         elif kind not in self.VALID_KINDS:
-            raise ActivityInputError(
-                f"unknown kind: {kind}, must be one of {', '.join(self.VALID_KINDS)}"
-            )
+            raise ActivityInputError(f"unknown kind: {kind}, must be one of {', '.join(self.VALID_KINDS)}")
         elif data is None:
             raise ActivityInputError(f"data must not be nil: {data}")
         elif not isinstance(data, dict):
@@ -344,9 +338,7 @@ class ActivityModel(Model):
                             value["start"] < self.stop <= value["stop"]
                         ):
                             self.events.pop()  # Remove previously created event
-                            raise ActivityOverlapError(
-                                f"activity overlaps existing at {value['start']}"
-                            )
+                            raise ActivityOverlapError(f"activity overlaps existing at {value['start']}")
                 Store.zadd(self.primary_key, {json.dumps(self.as_json()): self.start})
                 last_stop = self.stop
                 start_time += recurrence

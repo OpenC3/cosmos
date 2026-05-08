@@ -405,7 +405,7 @@ module OpenC3
         expect(@api.send(:_cal_to_epoch, dt)).to eql(dt.strftime('%s').to_i)
       end
 
-      it 'raises ArgumentError on unparseable strings' do
+      it 'raises ArgumentError on unparsable strings' do
         expect { @api.send(:_cal_to_epoch, 'not-a-date') }.to raise_error(ArgumentError)
       end
 
