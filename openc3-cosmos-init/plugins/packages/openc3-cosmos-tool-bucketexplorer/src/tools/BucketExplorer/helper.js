@@ -1,3 +1,36 @@
+// Volumes prepend a slash to root (e.g. "/foo") so we strip it before upcasing.
+export function storageName(mode, root) {
+  const upper =
+    mode === 'volume' ? root.toUpperCase().slice(1) : root.toUpperCase()
+  return `OPENC3_${upper}_${mode.toUpperCase()}`
+}
+
+// "?bucket=OPENC3_FOO_BUCKET" or "?volume=OPENC3_FOO_VOLUME"
+export function storageQueryString(mode, root) {
+  return `?${mode}=${storageName(mode, root)}`
+}
+
+// Run async fn over items with at most `limit` in flight at once.
+// Returns Promise.allSettled-style results in input order.
+export async function runPool(items, limit, fn) {
+  const results = new Array(items.length)
+  let next = 0
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++
+      try {
+        results[i] = { status: 'fulfilled', value: await fn(items[i], i) }
+      } catch (reason) {
+        results[i] = { status: 'rejected', reason }
+      }
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, worker),
+  )
+  return results
+}
+
 // Helper function to download a base64-encoded file
 export function downloadBase64File(base64Contents, filename) {
   // Decode Base64 string
