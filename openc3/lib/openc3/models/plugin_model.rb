@@ -158,12 +158,12 @@ module OpenC3
             variables[current_variable_name]['description'] = params[0]
           when 'VARIABLE_STATE'
             usage = "#{keyword} <Display Text> <Value>"
-            parser.verify_num_parameters(2, 2, usage)
+            parser.verify_num_parameters(1, 2, usage)
             unless current_variable_name
               raise "VARIABLE_STATE must follow a VARIABLE definition"
             end
             variables[current_variable_name]['options'] ||= []
-            option = { 'value' => params[1], 'text' => params[0] }
+            option = { 'value' => params[1] || params[0], 'text' => params[0] }
             variables[current_variable_name]['options'] << option
           end
         end
