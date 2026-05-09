@@ -12,14 +12,14 @@
     "@astrouxds/astro-web-components": "7.27.0",
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
-    "axios": "1.15.2",
+    "axios": "1.16.0",
     "date-fns": "4.1.0",
     "import-map-overrides": "6.1.0",
     "systemjs": "6.15.1",
     "vuetify": "3.12.2"
   },
   "devDependencies": {
-    "@babel/plugin-transform-modules-systemjs": "7.29.0",
+    "@babel/plugin-transform-modules-systemjs": "7.29.4",
     "@types/systemjs": "6.15.4",
     "@vitejs/plugin-vue": "6.0.6",
     "prettier": "3.8.3",
