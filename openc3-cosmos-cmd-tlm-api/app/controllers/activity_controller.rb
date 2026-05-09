@@ -72,7 +72,7 @@ class ActivityController < ApplicationController
   # ```
   def create
     return unless authorization('script_run')
-    hash = params.to_unsafe_h.slice(:start, :stop, :kind, :data, :recurring).to_h
+    hash = params.permit(:start, :stop, :kind, :data, :recurring).to_h
     begin
       hash['data'] ||= {}
       hash['data']['username'] = username()
@@ -187,7 +187,7 @@ class ActivityController < ApplicationController
   def event
     return unless authorization('script_run')
     begin
-      hash = params.to_unsafe_h.slice(:status, :message).to_h
+      hash = params.permit(:status, :message).to_h
       result = commit_timeline_activity(
         params[:name],
         params[:id],
@@ -240,7 +240,7 @@ class ActivityController < ApplicationController
   # ```
   def update
     return unless authorization('script_run')
-    hash = params.to_unsafe_h.slice(:start, :stop, :kind, :data).to_h
+    hash = params.permit(:start, :stop, :kind, :data).to_h
     begin
       hash['data'] ||= {}
       hash['data']['username'] = username()

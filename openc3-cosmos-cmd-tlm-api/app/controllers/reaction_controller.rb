@@ -101,7 +101,7 @@ class ReactionController < ApplicationController
   def create
     return unless authorization('script_run')
     begin
-      hash = params.to_unsafe_h.slice(:triggers, :trigger_level, :actions, :snooze, :label, :name).to_h
+      hash = params.permit(:triggers, :trigger_level, :actions, :snooze, :label, :name).to_h
       name = hash.delete('name')
       if name.nil? || name.strip.empty?
         name = @model_class.create_unique_name(scope: params[:scope])
@@ -149,7 +149,7 @@ class ReactionController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
-      hash = params.to_unsafe_h.slice(:snooze, :triggers, :trigger_level, :actions, :label).to_h
+      hash = params.permit(:snooze, :triggers, :trigger_level, :actions, :label).to_h
       model.triggers = hash['triggers'] if hash['triggers']
       model.actions = hash['actions'] if hash['actions']
       model.trigger_level = hash['trigger_level'] if hash['trigger_level']
