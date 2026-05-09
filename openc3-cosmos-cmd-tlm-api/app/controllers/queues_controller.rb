@@ -13,6 +13,7 @@
 
 require 'openc3/models/queue_model'
 require 'openc3/models/offline_access_model'
+require 'openc3/topics/decom_interface_topic'
 require 'openc3/utilities/authentication'
 require 'openc3/api/api'
 
@@ -152,6 +153,16 @@ class QueuesController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
+      if target_name && cmd_name
+        cmd_params = params[:cmd_params]
+        cmd_params = cmd_params.to_unsafe_h if cmd_params.respond_to?(:to_unsafe_h)
+        begin
+          OpenC3::DecomInterfaceTopic.build_cmd(target_name, cmd_name, cmd_params || {}, true, false, scope: params[:scope])
+        rescue StandardError => e
+          render json: { status: 'error', message: e.message, type: e.class.to_s }, status: :bad_request
+          return
+        end
+      end
       id = params[:id]&.to_f
       # If id is nil this means insert at the end
       if target_name && cmd_name
@@ -212,6 +223,16 @@ class QueuesController < ApplicationController
       if id.nil?
         render json: { status: 'error', message: 'id is required' }, status: :bad_request
         return
+      end
+      if target_name && cmd_name
+        cmd_params = params[:cmd_params]
+        cmd_params = cmd_params.to_unsafe_h if cmd_params.respond_to?(:to_unsafe_h)
+        begin
+          OpenC3::DecomInterfaceTopic.build_cmd(target_name, cmd_name, cmd_params || {}, true, false, scope: params[:scope])
+        rescue StandardError => e
+          render json: { status: 'error', message: e.message, type: e.class.to_s }, status: :bad_request
+          return
+        end
       end
       # validate should be true or false, default to true if not given
       validate = params[:validate].nil? ? true : params[:validate]
