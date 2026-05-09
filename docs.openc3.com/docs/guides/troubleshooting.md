@@ -9,7 +9,7 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
 
 1. After dozens of installed targets and interfaces, the CmdTlmServer logs indicate "unable to create thread". Microservices are crashing or not starting.
 
-   This is typically due to hard limits on processes or file handles imposed by Linux. If you're on Podman, ensure you've followed the directions from the [Podman](/docs/getting-started/podman) page and have increased the `pids_limit` in `/etc/containers/containers.conf`. Also check your `ulimit` variables by typing `ulimit -a` and increase your file descriptors (`ulimit -t 65536`).
+   This is typically due to hard limits on processes or file handles imposed by Linux. If you're on Podman, ensure you've followed the directions from the [Podman](/docs/guides/podman) page and have increased the `pids_limit` in `/etc/containers/containers.conf`. Also check your `ulimit` variables by typing `ulimit -a` and increase your file descriptors (`ulimit -t 65536`).
 
 1. COSMOS becomes slow or unresponsive especially as additional plugins are added
 
@@ -35,7 +35,7 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
 
    Check your `/etc/resolve.conf` and make sure you don't have any `search` entries. You should have simple `nameserver` entries.
 
-   If you're on RHEL 9.x with rootless Podman make sure you've followed the directions from the [Podman](/docs/getting-started/podman) page and have configured Podman to use Netavark for DNS.
+   If you're on RHEL 9.x with rootless Podman make sure you've followed the directions from the [Podman](/docs/guides/podman) page and have configured Podman to use Netavark for DNS.
 
 1. You've enabled certificates and you're getting networking errors
 
@@ -70,7 +70,6 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
 1. When exposing COSMOS to the network through http, Chrome [DevTools](https://developer.chrome.com/docs/devtools/open) shows "Web crypto API is not available".
 
    Make sure to follow all the instructions in the [COSMOS Enterprise Project README](https://github.com/OpenC3/cosmos-enterprise-project/blob/main/README.md). In this case you need to do the following:
-
    - In Chrome go to: chrome://flags/#unsafely-treat-insecure-origin-as-secure
    - For Edge to to: edge://flags/#unsafely-treat-insecure-origin-as-secure
    - Add your http://&lt;Your IP Address&gt;:2900

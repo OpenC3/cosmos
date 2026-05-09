@@ -1,5 +1,4 @@
 ---
-sidebar_position: 9
 title: Requirements and Design
 description: COSMOS Requirements and Design
 sidebar_custom_props:
