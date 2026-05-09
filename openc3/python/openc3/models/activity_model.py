@@ -361,7 +361,9 @@ class ActivityModel(Model):
     # and re-inserting at the new score. The remove and create are issued sequentially.
     # start / stop / kind / data are required in practice; they default to None so the
     # signature stays compatible with Model.update(force=False, queued=False).
-    def update(self, start=None, stop=None, kind=None, data=None, overlap=True, username=None, force=False, queued=False):
+    def update(
+        self, start=None, stop=None, kind=None, data=None, overlap=True, username=None, force=False, queued=False
+    ):
         del force, queued  # unused — kept for base-class compatibility
         array = Store.zrangebyscore(self._zset_key, self.start, self.start)
         if len(array) == 0:
