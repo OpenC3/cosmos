@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -148,7 +148,7 @@ export default {
             Api.get('/openc3-api/criticalcmd/status/' + this.uuid).then(
               (response) => {
                 if (response.data.status !== 'WAITING') {
-                  this.$emit('status', response.data.status)
+                  this.$emit('status', response.data.status, this.uuid)
                   this.show = false
                 }
               },
@@ -179,7 +179,7 @@ export default {
         await Api.post('/openc3-api/criticalcmd/approve/' + this.uuid, {}).then(
           (response) => {
             if (response.status == 200) {
-              this.$emit('status', 'APPROVED')
+              this.$emit('status', 'APPROVED', this.uuid)
               this.show = false
               this.error = false
             }
@@ -203,7 +203,7 @@ export default {
             },
           )
           .then((_response) => {
-            this.$emit('status', 'APPROVED')
+            this.$emit('status', 'APPROVED', this.uuid)
             this.show = false
             this.error = false
           })
@@ -222,7 +222,7 @@ export default {
         await Api.post('/openc3-api/criticalcmd/reject/' + this.uuid, {}).then(
           (response) => {
             if (response.status == 200) {
-              this.$emit('status', 'REJECTED')
+              this.$emit('status', 'REJECTED', this.uuid)
               this.show = false
               this.error = false
             }
@@ -245,7 +245,7 @@ export default {
           },
         )
         if (response.status == 200) {
-          this.$emit('status', 'REJECTED')
+          this.$emit('status', 'REJECTED', this.uuid)
           this.show = false
           this.error = false
         }
