@@ -71,7 +71,10 @@ class MetadataController < ApplicationController
   def create
     return unless authorization('script_run')
     action do
-      hash = params.permit(:start, :color, :metadata).to_h
+      hash = params.permit(:start, :color).to_h
+      if params.key?(:metadata)
+        hash['metadata'] = params[:metadata].is_a?(ActionController::Parameters) ? params[:metadata].to_unsafe_h : params[:metadata]
+      end
       if hash['start'].nil?
         hash['start'] = Time.now.to_i
       else
@@ -143,7 +146,10 @@ class MetadataController < ApplicationController
       end
       model = @model_class.from_json(hash.symbolize_keys, scope: params[:scope])
 
-      hash = params.permit(:start, :color, :metadata).to_h
+      hash = params.permit(:start, :color).to_h
+      if params.key?(:metadata)
+        hash['metadata'] = params[:metadata].is_a?(ActionController::Parameters) ? params[:metadata].to_unsafe_h : params[:metadata]
+      end
       hash['start'] = Time.parse(hash['start']).to_i
       model.update(
         start: hash['start'],
