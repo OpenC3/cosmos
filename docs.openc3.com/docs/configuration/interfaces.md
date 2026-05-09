@@ -32,13 +32,13 @@ COSMOS provides the following interfaces: TCP/IP Client, TCP/IP Server, UDP, HTT
 
 COSMOS Enterprise provides the following interfaces: SNMP, SNMP Trap, gRPC, InfluxDB.
 
-#### All Interface Options
+### All Interface Options
 
 The following options apply to all interfaces. Options are added directly beneath the interface definition as shown in the example.
 
-| Option       | Description                                                                                                                                   |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| PERIODIC_CMD | Command to send at periodic intervals. Takes 3 parameters: LOG/DONT_LOG, the interval in seconds, and the actual command to send as a string. |
+#### PERIODIC_CMD
+
+Command to send at periodic intervals. Takes 3 parameters: LOG/DONT_LOG, the interval in seconds, and the actual command to send as a string.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -58,9 +58,9 @@ INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 808
 </TabItem>
 </Tabs>
 
-| Option      | Description                                                                                                               |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------- |
-| CONNECT_CMD | Command to send when the interface connects. Takes 2 parameters: LOG/DONT_LOG and the actual command to send as a string. |
+#### CONNECT_CMD
+
+Command to send when the interface connects. Takes 2 parameters: LOG/DONT_LOG and the actual command to send as a string.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -80,9 +80,9 @@ INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 808
 </TabItem>
 </Tabs>
 
-| Option          | Description                                                                                                                                                                                                                                                                                                                                                          |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| UPDATE_INTERVAL | Number of seconds to wait before writing packets to Redis. By default packets are written to Redis every second (both the Current Value Table (CVT) and the stream). If you have high rate data and you want faster updates you can lower this value. Note that this will increase processor utilization! This option was previously known as `OPTIMIZE_THROUGHPUT`. |
+#### UPDATE_INTERVAL
+
+Number of seconds to wait before writing packets to Redis. By default packets are written to Redis every second (both the Current Value Table (CVT) and the stream). If you have high rate data and you want faster updates you can lower this value. Note that this will increase processor utilization! This option was previously known as `OPTIMIZE_THROUGHPUT`.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -101,9 +101,9 @@ INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 808
 </TabItem>
 </Tabs>
 
-| Option                          | Description                                                                                                                                                                                                                                                                                                                                                                   |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SYNC_PACKET_COUNT_DELAY_SECONDS | Amount of time to wait before syncing packet counts across interfaces. This only applies to targets mapped to multiple interfaces like the UNKNOWN packet which is mapped to all interfaces. By default this is set to 1 second. Note that it can be set to 0 to force immediate synchronization in Redis but this results in additional Redis calls and slows the interface. |
+#### SYNC_PACKET_COUNT_DELAY_SECONDS
+
+Amount of time to wait before syncing packet counts across interfaces. This only applies to targets mapped to multiple interfaces like the UNKNOWN packet which is mapped to all interfaces. By default this is set to 1 second. Note that it can be set to 0 to force immediate synchronization in Redis but this results in additional Redis calls and slows the interface.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -182,13 +182,9 @@ openc3-operator:
 | Protocol Type      | See Protocols.                                                                        | No       |
 | Protocol Arguments | See Protocols for the arguments each stream protocol takes.                           | No       |
 
-#### Interface Options
+#### LISTEN_ADDRESS
 
-Options are added directly beneath the interface definition as shown in the example.
-
-| Option         | Description                         | Default |
-| -------------- | ----------------------------------- | ------- |
-| LISTEN_ADDRESS | IP address to accept connections on | 0.0.0.0 |
+IP address to accept connections on. Default: `0.0.0.0`.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -287,13 +283,9 @@ The HTTP server interface creates a simple unencrypted, unauthenticated HTTP ser
 | --------- | ------------------------------------------------- | -------- | ------- |
 | Port      | Port to write commands to and read telemetry from | No       | 80      |
 
-#### Interface Options
+#### LISTEN_ADDRESS
 
-Options are added directly beneath the interface definition as shown in the example.
-
-| Option         | Description                         | Default |
-| -------------- | ----------------------------------- | ------- |
-| LISTEN_ADDRESS | IP address to accept connections on | 0.0.0.0 |
+IP address to accept connections on. Default: `0.0.0.0`.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -320,19 +312,35 @@ The MQTT interface is typically used for connecting to Internet of Things (IoT) 
 | Port      | Port on the MQTT broker to connect to. Keep in mind whether you're using SSL or not. | No       | 1883    |
 | SSL       | Whether to use SSL to connect                                                        | No       | false   |
 
-#### Interface Options
-
 Options are added directly beneath the interface definition as shown in the example.
 
-| Option           | Description                                                                                |
-| ---------------- | ------------------------------------------------------------------------------------------ |
-| ACK_TIMEOUT      | Time to wait when connecting to the MQTT broker                                            |
-| USERNAME         | Username for authentication with the MQTT broker                                           |
-| PASSWORD         | Password for authentication with the MQTT broker                                           |
-| CERT             | PEM encoded client certificate filename used with KEY for client TLS based authentication  |
-| KEY              | PEM encoded client private keys filename                                                   |
-| KEYFILE_PASSWORD | Password to decrypt the CERT and KEY files (Python only)                                   |
-| CA_FILE          | Certificate Authority certificate filename that is to be treated as trusted by this client |
+#### ACK_TIMEOUT
+
+Time to wait when connecting to the MQTT broker.
+
+#### USERNAME
+
+Username for authentication with the MQTT broker.
+
+#### PASSWORD
+
+Password for authentication with the MQTT broker.
+
+#### CERT
+
+PEM encoded client certificate filename used with KEY for client TLS based authentication.
+
+#### KEY
+
+PEM encoded client private keys filename.
+
+#### KEYFILE_PASSWORD
+
+Password to decrypt the CERT and KEY files (Python only).
+
+#### CA_FILE
+
+Certificate Authority certificate filename that is to be treated as trusted by this client.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -397,19 +405,7 @@ The MQTT streaming interface is typically used for connecting to Internet of Thi
 | Protocol Type      | See Protocols.                                                                          | No       |
 | Protocol Arguments | See Protocols for the arguments each stream protocol takes.                             | No       |
 
-#### Interface Options
-
-Options are added directly beneath the interface definition as shown in the example.
-
-| Option           | Description                                                                                |
-| ---------------- | ------------------------------------------------------------------------------------------ |
-| ACK_TIMEOUT      | Time to wait when connecting to the MQTT broker                                            |
-| USERNAME         | Username for authentication with the MQTT broker                                           |
-| PASSWORD         | Password for authentication with the MQTT broker                                           |
-| CERT             | PEM encoded client certificate filename used with KEY for client TLS based authentication  |
-| KEY              | PEM encoded client private keys filename                                                   |
-| KEYFILE_PASSWORD | Password to decrypt the CERT and KEY files (Python only)                                   |
-| CA_FILE          | Certificate Authority certificate filename that is to be treated as trusted by this client |
+Options are added directly beneath the interface definition as shown in the example. Same options as the [MQTT Interface](#mqtt-interface): ACK_TIMEOUT, USERNAME, PASSWORD, CERT, KEY, KEYFILE_PASSWORD, CA_FILE.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -462,14 +458,15 @@ The serial interface connects to a target over a serial port. COSMOS provides dr
 | Protocol Type      | See Protocols.                                                                                     | No       |
 | Protocol Arguments | See Protocols for the arguments each stream protocol takes.                                        | No       |
 
-#### Interface Options
-
 Options are added directly beneath the interface definition as shown in the example.
 
-| Option       | Description                                              | Default |
-| ------------ | -------------------------------------------------------- | ------- |
-| FLOW_CONTROL | Serial port flow control. Must be one of NONE or RTSCTS. | NONE    |
-| DATA_BITS    | Number of data bits.                                     | 8       |
+#### FLOW_CONTROL
+
+Serial port flow control. Must be one of NONE or RTSCTS. Default: `NONE`.
+
+#### DATA_BITS
+
+Number of data bits. Default: `8`.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -514,18 +511,31 @@ The file interface monitors a directory which is mapped via the compose.yaml fil
 | Protocol Type            | See Protocols.                                                                                                                         | No       | nil / None  |
 | Protocol Arguments       | See Protocols for the arguments each stream protocol takes.                                                                            | No       | []          |
 
-#### Interface Options
-
 Options are added directly beneath the interface definition as shown in the example.
 
-| Option                    | Description                                                                                                                                                                                        | Default       |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| LABEL                     | Label used when creating files in the command write folder                                                                                                                                         | command       |
-| EXTENSION                 | File extension used when creating files in the command write folder                                                                                                                                | .bin          |
-| POLLING                   | Whether to poll the file system for changes or use native notifications. Some filesystems won't work without polling including Windows volumes, VM/Vagrant Shared folders, NFS, Samba, sshfs, etc. | false / False |
-| RECURSIVE                 | Whether to recursively monitor the telemetry read folder                                                                                                                                           | false / False |
-| THROTTLE                  | Amount of time to wait between file reads                                                                                                                                                          | nil / None    |
-| DISCARD_FILE_HEADER_BYTES | Number of bytes to discard at the start of each file                                                                                                                                               | nil / None    |
+#### LABEL
+
+Label used when creating files in the command write folder. Default: `command`.
+
+#### EXTENSION
+
+File extension used when creating files in the command write folder. Default: `.bin`.
+
+#### POLLING
+
+Whether to poll the file system for changes or use native notifications. Some filesystems won't work without polling including Windows volumes, VM/Vagrant Shared folders, NFS, Samba, sshfs, etc. Default: `false / False`.
+
+#### RECURSIVE
+
+Whether to recursively monitor the telemetry read folder. Default: `false / False`.
+
+#### THROTTLE
+
+Amount of time to wait between file reads. Default: `nil / None`.
+
+#### DISCARD_FILE_HEADER_BYTES
+
+Number of bytes to discard at the start of each file. Default: `nil / None`.
 
 #### Docker compose.yaml
 
@@ -578,23 +588,51 @@ The SNMP Interface is for connecting to Simple Network Management Protocol devic
 | Host      | Host name of the SNMP device | Yes      |         |
 | Port      | Port on the SNMP device      | No       | 161     |
 
-#### Interface Options
-
 Options are added directly beneath the interface definition as shown in the example.
 
-| Option         | Description                                        | Default |
-| -------------- | -------------------------------------------------- | ------- |
-| VERSION        | SNMP Version: 1, 2, or 3                           | 1       |
-| COMMUNITY      | Password or user ID that allows access to a device | private |
-| USERNAME       | Username                                           | N/A     |
-| RETRIES        | Retries when sending requests                      | N/A     |
-| TIMEOUT        | Timeout waiting for a response from an agent       | N/A     |
-| CONTEXT        | SNMP context                                       | N/A     |
-| SECURITY_LEVEL | Must be one of NO_AUTH, AUTH_PRIV, or AUTH_NO_PRIV | N/A     |
-| AUTH_PROTOCOL  | Must be one of MD5, SHA, or SHA256                 | N/A     |
-| PRIV_PROTOCOL  | Must be one of DES or AES                          | N/A     |
-| AUTH_PASSWORD  | Auth password                                      | N/A     |
-| PRIV_PASSWORD  | Priv password                                      | N/A     |
+#### VERSION
+
+SNMP Version: 1, 2, or 3. Default: `1`.
+
+#### COMMUNITY
+
+Password or user ID that allows access to a device. Default: `private`.
+
+#### USERNAME
+
+Username.
+
+#### RETRIES
+
+Retries when sending requests.
+
+#### TIMEOUT
+
+Timeout waiting for a response from an agent.
+
+#### CONTEXT
+
+SNMP context.
+
+#### SECURITY_LEVEL
+
+Must be one of NO_AUTH, AUTH_PRIV, or AUTH_NO_PRIV.
+
+#### AUTH_PROTOCOL
+
+Must be one of MD5, SHA, or SHA256.
+
+#### PRIV_PROTOCOL
+
+Must be one of DES or AES.
+
+#### AUTH_PASSWORD
+
+Auth password.
+
+#### PRIV_PASSWORD
+
+Priv password.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby">
@@ -617,13 +655,11 @@ The SNMP Trap Interface is for receiving Simple Network Management Protocol trap
 | Read Timeout | Read timeout                | No       | nil     |
 | Bind Address | Address to bind UDP port to | Yes      | 0.0.0.0 |
 
-#### Interface Options
-
 Options are added directly beneath the interface definition as shown in the example.
 
-| Option  | Description              | Default |
-| ------- | ------------------------ | ------- |
-| VERSION | SNMP Version: 1, 2, or 3 | 1       |
+#### VERSION
+
+SNMP Version: 1, 2, or 3. Default: `1`.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby">

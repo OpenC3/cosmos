@@ -10,7 +10,7 @@ sidebar_custom_props:
 
 This document provides the information necessary to generate and use COSMOS Telemetry Screens, which are displayed by the COSMOS Telemetry Viewer application.
 
-<div style={{"clear": 'both'}}></div>
+<div style={{ clear: "both" }}></div>
 
 ## Definitions
 
@@ -1958,8 +1958,6 @@ END
 ## Example File
 
 Example File: TARGET/myscreen.txt
-
-{/* prettier-ignore */}
 
 ```cosmos
 SCREEN AUTO AUTO 0.5
