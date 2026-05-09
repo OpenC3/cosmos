@@ -186,7 +186,7 @@ class ActivityModel(Model):
         super().__init__(f"{scope}{self.PRIMARY_KEY}__{name}", name=name, scope=scope)
         # Alias the base-class lowercase ``primary_key`` instance attribute under
         # a name that does not case-clash with the ``PRIMARY_KEY`` class constant.
-        self._zset_key = self.primary_key
+        self._zset_key = self.primary_key # NOSONAR
         # Default mutable args
         if recurring is None:
             recurring = {}
