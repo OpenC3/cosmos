@@ -15,13 +15,10 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3/models/timeline_model'
+require 'openc3/api/calendar_api'
 
 class TimelineController < ApplicationController
-  def initialize
-    super()
-    @model_class = OpenC3::TimelineModel
-  end
+  include OpenC3::Api
 
   # Returns an array/list of timeline values in json.
   #
@@ -29,14 +26,7 @@ class TimelineController < ApplicationController
   # @return [String] the array of timeline names converted into json format
   def index
     return unless authorization('system')
-    timelines = @model_class.all
-    ret = []
-    timelines.each do |timeline, value|
-      if params[:scope] == timeline.split('__')[0]
-        ret << value
-      end
-    end
-    render json: ret
+    render json: list_timelines(scope: params[:scope])
   end
 
   # Create a new timeline returns object/hash of the timeline in json.
@@ -61,11 +51,9 @@ class TimelineController < ApplicationController
   def create
     return unless authorization('script_run')
     begin
-      model = @model_class.new(name: params['name'], color: params['color'], scope: params[:scope])
-      model.create()
-      model.deploy()
+      result = create_timeline(params['name'], color: params['color'], scope: params[:scope])
       OpenC3::Logger.info("Timeline created: #{params['name']}", scope: params[:scope], user: username())
-      render json: model.as_json(), status: :created
+      render json: result, status: :created
     rescue RuntimeError, JSON::ParserError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
@@ -86,11 +74,11 @@ class TimelineController < ApplicationController
   def show
     return unless authorization('system')
     begin
-      model = @model_class.get(name: params['name'], scope: params[:scope])
-      if model.nil?
+      result = get_timeline(params[:name], scope: params[:scope])
+      if result.nil?
         render json: { status: 'error', message: 'not found' }, status: :not_found
       else
-        render json: model.as_json()
+        render json: result
       end
     rescue StandardError => e
       log_error(e)
@@ -119,20 +107,13 @@ class TimelineController < ApplicationController
   #```
   def color
     return unless authorization('script_run')
-    model = @model_class.get(name: params[:name], scope: params[:scope])
-    if model.nil?
-      render json: {
-        status: 'error',
-        message: "failed to find timeline: #{params[:name]}",
-      }, status: :not_found
-      return
-    end
     begin
-      # Model color=(value) method handles the color validation
-      model.color = params['color']
-      model.update()
-      model.notify(kind: 'updated')
-      render json: model.as_json()
+      result = set_timeline_color(params[:name], params['color'], scope: params[:scope])
+      if result.nil?
+        render json: { status: 'error', message: "failed to find timeline: #{params[:name]}" }, status: :not_found
+      else
+        render json: result
+      end
     rescue RuntimeError, JSON::ParserError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
@@ -166,20 +147,13 @@ class TimelineController < ApplicationController
   #```
   def execute
     return unless authorization('script_run')
-    model = @model_class.get(name: params[:name], scope: params[:scope])
-    if model.nil?
-      render json: {
-        status: 'error',
-        message: "failed to find timeline: #{params[:name]}",
-      }, status: :not_found
-      return
-    end
     begin
-      # Model execute=(value) method handles the conversion of the string to a boolean
-      model.execute = params['enable']
-      model.update()
-      model.notify(kind: 'updated')
-      render json: model.as_json()
+      result = set_timeline_execute(params[:name], params['enable'], scope: params[:scope])
+      if result.nil?
+        render json: { status: 'error', message: "failed to find timeline: #{params[:name]}" }, status: :not_found
+      else
+        render json: result
+      end
     rescue RuntimeError, JSON::ParserError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
@@ -199,21 +173,18 @@ class TimelineController < ApplicationController
   # @return [String] hash/object of timeline name in json with a 200 status code
   def destroy
     return unless authorization('script_run')
-    model = @model_class.get(name: params[:name], scope: params[:scope])
-    if model.nil?
-      render json: { status: 'error', message: "failed to find timeline: #{params[:name]}" }, status: :not_found
-    else
-      begin
-        use_force = params[:force].nil? == false && params[:force] == 'true'
-        @model_class.delete(name: params[:name], scope: params[:scope], force: use_force)
-        model.undeploy()
-        model.notify(kind: 'deleted')
+    begin
+      use_force = params[:force].nil? == false && params[:force] == 'true'
+      result = delete_timeline(params[:name], force: use_force, scope: params[:scope])
+      if result.nil?
+        render json: { status: 'error', message: "failed to find timeline: #{params[:name]}" }, status: :not_found
+      else
         OpenC3::Logger.info("Timeline destroyed: #{params[:name]}", scope: params[:scope], user: username())
-        render json: { name: params[:name]}
-      rescue OpenC3::TimelineError => e
-        log_error(e)
-        render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
+        render json: result
       end
+    rescue OpenC3::TimelineError => e
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class }, status: :bad_request
     end
   end
 end

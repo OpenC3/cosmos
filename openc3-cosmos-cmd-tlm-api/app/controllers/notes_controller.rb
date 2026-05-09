@@ -36,7 +36,7 @@ class NotesController < ApplicationController
   def index
     return unless authorization('system')
     action do
-      hash = params.to_unsafe_h.slice(:start, :stop, :limit)
+      hash = params.permit(:start, :stop, :limit).to_h
       if (hash['start'] && hash['stop'])
         hash['start'] = Time.parse(hash['start']).to_i
         hash['stop'] = Time.parse(hash['stop']).to_i
@@ -72,7 +72,7 @@ class NotesController < ApplicationController
   def create
     return unless authorization('script_run')
     action do
-      hash = params.to_unsafe_h.slice(:start, :stop, :color, :description).to_h
+      hash = params.permit(:start, :stop, :color, :description).to_h
       if hash['start'].nil? || hash['stop'].nil?
         raise ArgumentError.new "Param '#{hash['start'].nil? ? 'start' : 'stop'}' is required"
       end
@@ -146,7 +146,7 @@ class NotesController < ApplicationController
       end
       model = @model_class.from_json(hash.symbolize_keys, scope: params[:scope])
 
-      hash = params.to_unsafe_h.slice(:start, :stop, :color, :description).to_h
+      hash = params.permit(:start, :stop, :color, :description).to_h
       hash['start'] = Time.parse(hash['start']).to_i
       hash['stop'] = Time.parse(hash['stop']).to_i
       model.update(
