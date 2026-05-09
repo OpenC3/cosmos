@@ -35,7 +35,7 @@ from openc3.models.activity_model import (
     ActivityModel,
 )
 from openc3.models.timeline_model import TimelineError, TimelineInputError
-from test.test_helper import *
+from test.test_helper import BucketMock, mock_redis
 
 
 SCOPE = "DEFAULT"

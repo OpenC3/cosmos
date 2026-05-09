@@ -1,14 +1,10 @@
-# Copyright 2022 Ball Aerospace & Technologies Corp.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See LICENSE.md for more details.
-
-# Modified by OpenC3, Inc.
-# All changes Copyright 2026, OpenC3, Inc.
-# All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
@@ -188,6 +184,9 @@ class ActivityModel(Model):
         recurring=None,
     ):
         super().__init__(f"{scope}{self.PRIMARY_KEY}__{name}", name=name, scope=scope)
+        # Alias the base-class lowercase ``primary_key`` instance attribute under
+        # a name that does not case-clash with the ``PRIMARY_KEY`` class constant.
+        self._zset_key = self.primary_key
         # Default mutable args
         if recurring is None:
             recurring = {}
@@ -218,7 +217,7 @@ class ActivityModel(Model):
     # or None if none was found.
     def validate_time(self, start, stop, ignore_score=None):
         # Adding a '(' makes the max value exclusive
-        array = Store.zrevrangebyscore(self.primary_key, f"({stop}", start - self.MAX_DURATION)
+        array = Store.zrevrangebyscore(self._zset_key, f"({stop}", start - self.MAX_DURATION)
         for value in array:
             activity = json.loads(_decode(value))
             if ignore_score == activity["start"]:
@@ -278,7 +277,10 @@ class ActivityModel(Model):
 
     # Update the Redis hash at primary_key and set the score equal to the start Epoch time.
     # The member is set to the JSON generated via calling as_json.
-    def create(self, overlap=True, username=None):
+    # update / force / queued / isoformat are accepted for Liskov compatibility with
+    # Model.create but are not used by this override (which writes to a sorted set).
+    def create(self, update=False, force=False, queued=False, isoformat=False, overlap=True, username=None):
+        del update, force, queued, isoformat  # unused — kept for base-class compatibility
         # Avoid circular import: timeline_model imports activity-related modules indirectly
         from openc3.models.timeline_model import TimelineModel
 
@@ -310,7 +312,7 @@ class ActivityModel(Model):
                 # Get all the existing events in the recurring time range as well as those before
                 # the start of the recurring time range to ensure we don't start inside an existing event
                 raw = Store.zrevrangebyscore(
-                    self.primary_key,
+                    self._zset_key,
                     self.recurring["end"] - 1,
                     self.recurring["start"] - self.MAX_DURATION,
                 )
@@ -339,7 +341,7 @@ class ActivityModel(Model):
                         ):
                             self.events.pop()  # Remove previously created event
                             raise ActivityOverlapError(f"activity overlaps existing at {value['start']}")
-                Store.zadd(self.primary_key, {json.dumps(self.as_json()): self.start})
+                Store.zadd(self._zset_key, {json.dumps(self.as_json()): self.start})
                 last_stop = self.stop
                 start_time += recurrence
             self.notify(kind="created")
@@ -352,13 +354,16 @@ class ActivityModel(Model):
                     raise ActivityOverlapError(f"activity overlaps existing at {collision}")
             self.updated_at = to_nsec_from_epoch(datetime.now(timezone.utc))
             self.add_event(status="created", username=username)
-            Store.zadd(self.primary_key, {json.dumps(self.as_json()): self.start})
+            Store.zadd(self._zset_key, {json.dumps(self.as_json()): self.start})
             self.notify(kind="created")
 
     # Update the Redis hash at primary_key by removing the current activity at the current score
     # and re-inserting at the new score. The remove and create are issued sequentially.
-    def update(self, start, stop, kind, data, overlap=True, username=None):
-        array = Store.zrangebyscore(self.primary_key, self.start, self.start)
+    # start / stop / kind / data are required in practice; they default to None so the
+    # signature stays compatible with Model.update(force=False, queued=False).
+    def update(self, start=None, stop=None, kind=None, data=None, overlap=True, username=None, force=False, queued=False):
+        del force, queued  # unused — kept for base-class compatibility
+        array = Store.zrangebyscore(self._zset_key, self.start, self.start)
         if len(array) == 0:
             raise ActivityError(f"failed to find activity at: {self.start}")
 
@@ -386,12 +391,12 @@ class ActivityModel(Model):
         self.updated_at = to_nsec_from_epoch(datetime.now(timezone.utc))
 
         self.add_event(status="updated", username=username, changes=changes if changes else None)
-        json_values = Store.zrangebyscore(self.primary_key, old_start, old_start)
+        json_values = Store.zrangebyscore(self._zset_key, old_start, old_start)
         parsed = [json.loads(_decode(value)) for value in json_values]
         for index, value in enumerate(parsed):
             if value.get("uuid") == old_uuid:
-                Store.zrem(self.primary_key, json_values[index])
-                Store.zadd(self.primary_key, {json.dumps(self.as_json()): self.start})
+                Store.zrem(self._zset_key, json_values[index])
+                Store.zadd(self._zset_key, {json.dumps(self.as_json()): self.start})
         self.notify(kind="updated", extra={"old_start": old_start, "old_uuid": old_uuid})
         return self.start
 
@@ -411,12 +416,12 @@ class ActivityModel(Model):
             self.fulfillment = fulfillment
         self.events.append(event)
 
-        json_values = Store.zrangebyscore(self.primary_key, self.start, self.start)
+        json_values = Store.zrangebyscore(self._zset_key, self.start, self.start)
         parsed = [json.loads(_decode(value)) for value in json_values]
         for index, value in enumerate(parsed):
             if value.get("uuid") == self.uuid:
-                Store.zrem(self.primary_key, json_values[index])
-                Store.zadd(self.primary_key, {json.dumps(self.as_json()): self.start})
+                Store.zrem(self._zset_key, json_values[index])
+                Store.zadd(self._zset_key, {json.dumps(self.as_json()): self.start})
         self.notify(kind="event")
 
     # add_event will make an event. This will NOT save the object to the redis database.

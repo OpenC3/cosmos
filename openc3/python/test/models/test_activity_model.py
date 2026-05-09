@@ -19,7 +19,7 @@ from openc3.models.activity_model import (
     ActivityOverlapError,
 )
 from openc3.models.timeline_model import TimelineModel
-from test.test_helper import *
+from test.test_helper import mock_redis
 
 
 TIMELINE = "tl"

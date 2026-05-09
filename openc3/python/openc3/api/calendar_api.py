@@ -17,6 +17,23 @@ from openc3.models.activity_model import ActivityModel
 from openc3.models.timeline_model import TimelineModel
 
 
+__all__ = [
+    "list_timelines",
+    "create_timeline",
+    "get_timeline",
+    "set_timeline_color",
+    "set_timeline_execute",
+    "delete_timeline",
+    "create_timeline_activity",
+    "update_timeline_activity",
+    "get_timeline_activity",
+    "get_timeline_activities",
+    "delete_timeline_activity",
+    "count_timeline_activities",
+    "commit_timeline_activity",
+]
+
+
 # NOTE: These methods are intentionally NOT added to WHITELIST. Their signatures
 # match openc3/lib/openc3/script/calendar.rb (no manual/token kwargs), so they
 # cannot be dispatched via JSON-RPC (which auto-injects manual/token from

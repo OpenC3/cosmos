@@ -14,7 +14,7 @@ import unittest
 
 from openc3.topics.timeline_topic import TimelineTopic
 from openc3.utilities.store import EphemeralStore
-from test.test_helper import *
+from test.test_helper import mock_redis
 
 
 class TestTimelineTopic(unittest.TestCase):

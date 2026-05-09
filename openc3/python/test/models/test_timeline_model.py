@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 from openc3.models.activity_model import ActivityModel
 from openc3.models.timeline_model import TimelineError, TimelineInputError, TimelineModel
-from test.test_helper import *
+from test.test_helper import BucketMock, mock_redis
 
 
 class TestTimelineModel(unittest.TestCase):
