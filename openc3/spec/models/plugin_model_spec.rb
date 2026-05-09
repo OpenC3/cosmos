@@ -119,6 +119,7 @@ module OpenC3
             file.puts '  VARIABLE_DESCRIPTION "Select the target"'
             file.puts '  VARIABLE_STATE "Primary instrument" INST'
             file.puts '  VARIABLE_STATE "Secondary instrument" INST2'
+            file.puts '  VARIABLE_STATE "Another"'
           end
         end
         spec = double("spec")
@@ -132,7 +133,8 @@ module OpenC3
           'description' => 'Select the target',
           'options' => [
             { 'value' => 'INST', 'text' => 'Primary instrument' },
-            { 'value' => 'INST2', 'text' => 'Secondary instrument' }
+            { 'value' => 'INST2', 'text' => 'Secondary instrument' },
+            { 'value' => 'Another', 'text' => 'Another' }
           ]
         })
       end
