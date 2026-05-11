@@ -17,7 +17,7 @@
     v-model="show"
     persistent
     width="75vw"
-    @keydown.esc="$emit('cancel')"
+    @keydown.esc.stop="handleEsc"
   >
     <v-card>
       <v-toolbar height="24">
@@ -105,6 +105,7 @@ export default {
   data() {
     return {
       editorContent: this.definition,
+      editorIsDirty: false,
     }
   },
   computed: {
@@ -140,6 +141,9 @@ export default {
     },
   },
   watch: {
+    editorContent() {
+      this.editorIsDirty = true
+    },
     definition(newValue) {
       this.editorContent = newValue
     },
@@ -154,6 +158,31 @@ export default {
         .then((dialog) => {
           this.$emit('delete')
         })
+        .catch(() => {
+          // Catch the exception so it doesn't log
+          // but do nothing
+        })
+    },
+    handleEsc: function () {
+      if (this.editorIsDirty) {
+        this.$dialog
+          .confirm(
+            'You have unsaved changes. Are you sure you want to close?',
+            {
+              okText: 'Close without saving',
+              cancelText: 'Cancel',
+            },
+          )
+          .then(() => {
+            this.$emit('cancel')
+          })
+          .catch(() => {
+            // Catch the exception so it doesn't log
+            // but do nothing
+          })
+      } else {
+        this.$emit('cancel')
+      }
     },
   },
 }
