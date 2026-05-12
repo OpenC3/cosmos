@@ -1,4 +1,13 @@
 import time
+
+# Add any plugin lib directories to the Python search path so this microservice
+# can import helpers from `/lib` folders inside installed plugins (Ruby gets this
+# for free via gem `$LOAD_PATH`; Python does not).
+import glob
+from openc3.top_level import add_to_search_path
+for path in glob.glob("/gems/gems/**/lib"):
+    add_to_search_path(path, True)
+
 from openc3.microservices.microservice import Microservice
 from openc3.utilities.sleeper import Sleeper
 from openc3.api import *
