@@ -1209,7 +1209,8 @@ class QuestDBClient:
                 if retain_time_sql:
                     sql += f"\n                TTL {retain_time_sql}"
 
-            self._log_info(f"QuestDB: Creating table:\n{sql}")
+            # This is good debugging info but can be noisy in production especially with a lot of packets
+            # self._log_info(f"QuestDB: Creating table:\n{sql}")
             self._execute_ddl(sql)
 
         return table_name
