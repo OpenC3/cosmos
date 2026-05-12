@@ -177,8 +177,7 @@ export default {
             this.$emit('cancel')
           })
           .catch(() => {
-            // Catch the exception so it doesn't log
-            // but do nothing
+            this.$refs.screenEditor?.editor?.focus()
           })
       } else {
         this.$emit('cancel')

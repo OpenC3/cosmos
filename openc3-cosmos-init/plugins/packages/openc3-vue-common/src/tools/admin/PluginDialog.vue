@@ -474,8 +474,7 @@ export default {
             this.close()
           })
           .catch(() => {
-            // Catch the exception so it doesn't log
-            // but do nothing
+            this.editor?.focus()
           })
       }
     },
