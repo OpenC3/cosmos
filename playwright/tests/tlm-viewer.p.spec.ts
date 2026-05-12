@@ -392,6 +392,65 @@ test('plays back to a screen', async ({ page, utils }) => {
     .toBe(previousTime + 15)
 })
 
+test('prompts before closing dirty edit screen on ESC', async ({
+  page,
+  utils,
+}) => {
+  await showScreen(page, utils, 'INST', 'ADCS', true, async function () {
+    // Open the edit screen dialog
+    await page.locator('[data-test=edit-screen-icon]').click()
+    await expect(
+      page.locator('.v-toolbar:has-text("Edit Screen")'),
+    ).toBeVisible()
+
+    // Press ESC without making changes - dialog should close immediately
+    await page.keyboard.press('Escape')
+    await expect(
+      page.locator('.v-toolbar:has-text("Edit Screen")'),
+    ).not.toBeVisible()
+
+    // Reopen the edit screen dialog
+    await page.locator('[data-test=edit-screen-icon]').click()
+    await expect(
+      page.locator('.v-toolbar:has-text("Edit Screen")'),
+    ).toBeVisible()
+
+    // Type something into the Ace editor to make it dirty
+    await page.locator('textarea').first().fill('SCREEN AUTO AUTO 0.5\nLABEL DIRTY_CHANGE')
+    await utils.sleep(500)
+
+    // Press ESC - should show the unsaved changes confirmation dialog
+    await page.keyboard.press('Escape')
+    await expect(
+      page.getByText('You have unsaved changes'),
+    ).toBeVisible()
+
+    // Click Cancel to stay in the editor
+    await page
+      .locator('[data-test="confirm-dialog-cancel"]')
+      .click()
+    // The edit dialog should still be open
+    await expect(
+      page.locator('.v-toolbar:has-text("Edit Screen")'),
+    ).toBeVisible()
+
+    // Press ESC again to re-trigger the confirmation
+    await page.keyboard.press('Escape')
+    await expect(
+      page.getByText('You have unsaved changes'),
+    ).toBeVisible()
+
+    // This time confirm closing without saving
+    await page
+      .locator('[data-test="confirm-dialog-close without saving"]')
+      .click()
+    // The edit dialog should now be closed
+    await expect(
+      page.locator('.v-toolbar:has-text("Edit Screen")'),
+    ).not.toBeVisible()
+  })
+})
+
 test('links array item to TlmGrapher', async ({ page, utils }) => {
   await showScreen(page, utils, 'INST', 'ARRAY', true, async function () {
     // Right-click the ARY[0] value widget to open the context menu

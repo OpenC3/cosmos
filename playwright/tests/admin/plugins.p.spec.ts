@@ -231,6 +231,70 @@ test('shows targets associated with plugins', async ({ page, utils }) => {
   ).toContainText('TEMPLATED')
 })
 
+test('prompts before closing dirty plugin editor on ESC', async ({
+  page,
+  utils,
+}) => {
+  const plugin = 'openc3-cosmos-demo'
+  // Open the edit dialog for the demo plugin
+  await page
+    .locator('[data-test=plugin-list-item]')
+    .filter({ hasText: plugin })
+    .locator('[data-test=plugin-actions]')
+    .click()
+  await page.locator('[data-test=edit-plugin]').click()
+  await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
+
+  // Switch to the plugin.txt tab where the Ace editor is
+  await page.getByRole('tab', { name: 'plugin.txt' }).click()
+  await utils.sleep(500)
+
+  // Press ESC without making changes - dialog should close immediately
+  await page.keyboard.press('Escape')
+  await expect(
+    page.locator('.v-dialog:has-text("Variables")'),
+  ).not.toBeVisible()
+
+  // Reopen the edit dialog
+  await page
+    .locator('[data-test=plugin-list-item]')
+    .filter({ hasText: plugin })
+    .locator('[data-test=plugin-actions]')
+    .click()
+  await page.locator('[data-test=edit-plugin]').click()
+  await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
+
+  // Switch to the plugin.txt tab
+  await page.getByRole('tab', { name: 'plugin.txt' }).click()
+  await utils.sleep(500)
+
+  // Type something into the Ace editor to make it dirty
+  await page.locator('.v-dialog .editor textarea').first().fill('# dirty edit')
+  await utils.sleep(500)
+
+  // Press ESC - should show the unsaved changes confirmation dialog
+  await page.keyboard.press('Escape')
+  await expect(page.getByText('You have unsaved changes')).toBeVisible()
+
+  // Click Cancel to stay in the editor
+  await page.locator('[data-test="confirm-dialog-cancel"]').click()
+  // The plugin dialog should still be open
+  await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
+
+  // Press ESC again to re-trigger the confirmation
+  await page.keyboard.press('Escape')
+  await expect(page.getByText('You have unsaved changes')).toBeVisible()
+
+  // This time confirm closing without saving
+  await page
+    .locator('[data-test="confirm-dialog-close without saving"]')
+    .click()
+  // The plugin dialog should now be closed
+  await expect(
+    page.locator('.v-dialog:has-text("Variables")'),
+  ).not.toBeVisible()
+})
+
 // Playwright requires a separate test.describe to then call test.use
 test.describe(() => {
   // Must be the operator to modify files
