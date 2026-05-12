@@ -159,6 +159,14 @@ export default {
       type: String,
       default: null,
     },
+    defaultPath: {
+      type: String,
+      default: null,
+    },
+    filter: {
+      type: String,
+      default: null,
+    },
     modelValue: Boolean,
   },
   emits: ['update:modelValue', 'response'],
@@ -171,6 +179,9 @@ export default {
       selectedFile: null,
       search: '',
       loading: false,
+      // Used to track a file to preselect after loading a new folder.
+      // This is needed to support the defaultPath prop which may specify a file to preselect.
+      pendingPreselect: null,
     }
   },
   computed: {
@@ -191,14 +202,31 @@ export default {
       }))
     },
     filteredFiles() {
-      if (!this.search) return this.files
+      let files = this.files
+      if (this.filter) {
+        // Match the open_file_dialog filter behavior - suffix match on file name.
+        // Folders are always shown so users can navigate into them.
+        const filters = this.filter
+          .split(',')
+          .map((f) => f.trim().toLowerCase())
+          .filter((f) => !!f)
+        if (filters.length > 0) {
+          files = files.filter(
+            (f) =>
+              f.icon === 'mdi-folder' ||
+              filters.some((suffix) => f.name.toLowerCase().endsWith(suffix)),
+          )
+        }
+      }
+      if (!this.search) return files
       const term = this.search.toLowerCase()
-      return this.files.filter((f) => f.name.toLowerCase().includes(term))
+      return files.filter((f) => f.name.toLowerCase().includes(term))
     },
   },
   created() {
     Api.get('/openc3-api/storage/buckets').then((response) => {
       this.buckets = response.data
+      this.applyDefaultPath()
     })
   },
   methods: {
@@ -207,10 +235,42 @@ export default {
       if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
       return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
     },
+    applyDefaultPath() {
+      if (!this.defaultPath) return
+      // Strip leading slashes then split.
+      const raw = this.defaultPath.replace(/^\/+/, '')
+      const parts = raw.split('/').filter((p) => !!p)
+      if (parts.length === 0) return
+      // Block `..` traversal segments. A literal `.` is harmless but stripped.
+      // Silently ignore an invalid default_path - the user can still browse manually.
+      if (parts.some((p) => p === '..')) {
+        return
+      }
+      const cleanParts = parts.filter((p) => p !== '.')
+      const bucketName = cleanParts.shift().toLowerCase()
+      const match = this.buckets.find((b) => b.toLowerCase() === bucketName)
+      if (!match) {
+        return
+      }
+      this.selectedBucket = match
+      const endsWithSlash =
+        cleanParts.length > 0 && this.defaultPath.endsWith('/')
+      let preselect = null
+      let folderParts = cleanParts
+      if (cleanParts.length > 0 && !endsWithSlash) {
+        // Treat the last segment as a potential filename to preselect.
+        preselect = cleanParts[cleanParts.length - 1]
+        folderParts = cleanParts.slice(0, -1)
+      }
+      this.path = folderParts.length > 0 ? folderParts.join('/') + '/' : ''
+      this.pendingPreselect = preselect
+      this.updateFiles()
+    },
     selectBucket(bucket) {
       this.selectedBucket = bucket
       this.path = ''
       this.selectedFile = null
+      this.pendingPreselect = null
       this.updateFiles()
     },
     backArrow() {
@@ -260,10 +320,21 @@ export default {
             })),
           )
           this.loading = false
+          if (this.pendingPreselect) {
+            const target = this.pendingPreselect
+            this.pendingPreselect = null
+            const hit = this.files.find(
+              (f) => f.name === target && f.icon === 'mdi-file',
+            )
+            if (hit) {
+              this.selectedFile = target
+            }
+          }
         })
         .catch(() => {
           this.files = []
           this.loading = false
+          this.pendingPreselect = null
         })
     },
     submitHandler() {

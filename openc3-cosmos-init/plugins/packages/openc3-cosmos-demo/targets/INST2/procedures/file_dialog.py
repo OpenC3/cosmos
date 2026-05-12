@@ -24,3 +24,14 @@ print(file)  # Python tempfile.NamedTemporaryFile object
 print(file.filename())  # Filename that was selected in the dialog
 print(file.read())
 file.close()
+
+# Pre-select the procedures folder and restrict to .py files.
+# default_path uses the form bucket/path - trailing slash means folder.
+file = open_bucket_dialog(
+    "Pick a procedure",
+    "Defaults to INST2 procedures, .py only",
+    default_path="config/DEFAULT/targets/INST2/procedures/",
+    filter=".py",
+)
+print(file.filename())
+file.close()

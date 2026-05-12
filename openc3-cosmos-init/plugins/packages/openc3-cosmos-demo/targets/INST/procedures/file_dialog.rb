@@ -21,3 +21,14 @@ puts file.path # Path of the tempfile (generally not used)
 puts file.filename # Filename that was selected in the dialog
 puts file.read
 file.delete
+
+# Pre-select the procedures folder and restrict to .rb files.
+# default_path uses the form bucket/path - trailing slash means folder.
+file = open_bucket_dialog(
+  "Pick a procedure",
+  "Defaults to INST procedures, .rb only",
+  default_path: "config/DEFAULT/targets/INST/procedures/",
+  filter: ".rb"
+)
+puts file.filename
+file.delete
