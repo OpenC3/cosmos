@@ -243,7 +243,7 @@ export default {
       if (parts.length === 0) return
       // Block `..` traversal segments. A literal `.` is harmless but stripped.
       // Silently ignore an invalid default_path - the user can still browse manually.
-      if (parts.some((p) => p === '..')) {
+      if (parts.includes('..')) {
         return
       }
       const cleanParts = parts.filter((p) => p !== '.')

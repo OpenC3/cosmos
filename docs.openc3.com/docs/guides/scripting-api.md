@@ -488,7 +488,7 @@ print(file.filename) # The name of the selected file
 print(file.read())
 file.close()
 
-# Pre-select the procedures folder and restrict to Python files
+# Preselect the procedures folder and restrict to Python files
 file = open_bucket_dialog(
     "Select a Procedure",
     "Choose a procedure",
@@ -510,7 +510,7 @@ puts file.filename # The name of the selected file
 puts file.read
 file.delete
 
-# Pre-select the procedures folder and restrict to Ruby files
+# Preselect the procedures folder and restrict to Ruby files
 file = open_bucket_dialog(
   "Select a Procedure",
   "Choose a procedure",

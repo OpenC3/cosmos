@@ -25,7 +25,7 @@ print(file.filename())  # Filename that was selected in the dialog
 print(file.read())
 file.close()
 
-# Pre-select the procedures folder and restrict to .py files.
+# Preselect the procedures folder and restrict to .py files.
 # default_path uses the form bucket/path - trailing slash means folder.
 file = open_bucket_dialog(
     "Pick a procedure",
