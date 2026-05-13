@@ -64,6 +64,10 @@ NFS does not work for holding container storage due to issues with user ids and 
 The above "echo ip_tables" line is added because RHEL 9.x uses nftables by default. The legacy ip_tables kernel module is not guaranteed to be loaded at boot — particularly on cloud images such as AWS EC2. However, netavark still requires ip_tables to implement NAT and forwarding for rootless Podman containers. Rootless users cannot load kernel modules, so if ip_tables is missing, netavark networking fails silently. If using rootless Podman with netavark ensure the ip_tables kernel module is preload.
 :::
 
+## Configure the Podman User
+
+The following instructions must be performed for each user using COSMOS. Individual podman users store their own container image in their local home directory. This is especially important if you're in an airgapped environment as you will need to [load](/docs/getting-started/cli#load) the containers for each user.
+
 1. Start rootless podman socket service
 
    ```bash
