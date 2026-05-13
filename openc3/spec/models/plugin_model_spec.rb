@@ -448,6 +448,64 @@ module OpenC3
         plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
         expect(plugin_model['needs_dependencies']).to eql true
       end
+
+      it "leaves img_path nil when openc3_store_image points to a missing file" do
+        # The generator-created plugin.gemspec hardcodes
+        # "openc3_store_image" => "public/store_img.png" but does not create the
+        # file. Install must not record a non-existent img_path or the frontend
+        # 500s when fetching it.
+        s3 = instance_double("Aws::S3::Client").as_null_object
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+
+        expect(GemModel).to receive(:get).and_return("my_plugin.gem")
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') { |f| f.puts "" }
+        end
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        spec = double("spec")
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:name).and_return("test-plugin")
+        allow(spec).to receive(:version).and_return("1.0.0")
+        allow(spec).to receive(:runtime_dependencies).and_return([])
+        allow(spec).to receive(:metadata).and_return({ 'openc3_store_image' => 'public/store_img.png' })
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
+
+        expect(GemModel).to receive(:install).and_return(nil)
+        plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => []}, scope: "DEFAULT")
+        expect(plugin_model['img_path']).to be_nil
+      end
+
+      it "records img_path when the store image file exists on disk" do
+        s3 = instance_double("Aws::S3::Client").as_null_object
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+
+        expect(GemModel).to receive(:get).and_return("my_plugin.gem")
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') { |f| f.puts "" }
+          FileUtils.mkdir_p(File.join(path, 'public'))
+          File.write(File.join(path, 'public', 'store_img.png'), 'fake png bytes')
+        end
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        spec = double("spec")
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:name).and_return("test-plugin")
+        allow(spec).to receive(:version).and_return("1.0.0")
+        allow(spec).to receive(:runtime_dependencies).and_return([])
+        allow(spec).to receive(:metadata).and_return({ 'openc3_store_image' => 'public/store_img.png' })
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
+
+        expect(GemModel).to receive(:install).and_return(nil)
+        plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => []}, scope: "DEFAULT")
+        expect(plugin_model['img_path']).to eql 'gems/test-plugin-1.0.0/public/store_img.png'
+      end
     end
 
     describe "self.undeploy" do
