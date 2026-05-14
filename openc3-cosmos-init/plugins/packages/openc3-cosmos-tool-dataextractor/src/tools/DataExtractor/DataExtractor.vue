@@ -1111,7 +1111,7 @@ export default {
         s.includes('\n') ||
         s.includes('\r')
       ) {
-        return '"' + s.replace(/"/g, '""') + '"'
+        return '"' + s.replaceAll('"', '""') + '"'
       }
       return s
     },
