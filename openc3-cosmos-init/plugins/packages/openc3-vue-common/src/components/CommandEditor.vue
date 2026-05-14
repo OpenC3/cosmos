@@ -271,26 +271,24 @@ export default {
       input.value = ''
       input.click()
     },
-    onBlockUploadFile(event) {
+    async onBlockUploadFile(event) {
       const file = event.target.files && event.target.files[0]
       if (!file || !this.selectedRow) return
       const targetRow = this.selectedRow
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const bytes = new Uint8Array(e.target.result)
+      try {
+        const buffer = await file.arrayBuffer()
+        const bytes = new Uint8Array(buffer)
         let hex = '0x'
-        for (let i = 0; i < bytes.length; i++) {
-          hex += bytes[i].toString(16).padStart(2, '0').toUpperCase()
+        for (const byte of bytes) {
+          hex += byte.toString(16).padStart(2, '0').toUpperCase()
         }
         // Setting val on the row updates the bound CommandParameterEditor.
         // The "0x..." prefix lets convertToValue parse it as a binary BLOCK.
         targetRow.val = hex
-      }
-      reader.onerror = () => {
+      } catch (err) {
         // eslint-disable-next-line no-console
-        console.error('Error reading uploaded file:', reader.error)
+        console.error('Error reading uploaded file:', err)
       }
-      reader.readAsArrayBuffer(file)
     },
     updateCmdParams() {
       this.ignoredParams = []

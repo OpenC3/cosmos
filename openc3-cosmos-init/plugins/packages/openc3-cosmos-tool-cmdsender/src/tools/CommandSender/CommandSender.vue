@@ -869,10 +869,10 @@ export default {
     setupRawCmd() {
       this.api.get_interface_names().then(
         (response) => {
-          let interfaces = []
-          for (let i = 0; i < response.length; i++) {
-            interfaces.push({ label: response[i], value: response[i] })
-          }
+          const interfaces = response.map((name) => ({
+            label: name,
+            value: name,
+          }))
           this.interfaces = interfaces
           this.selectedInterface = interfaces.length ? interfaces[0].value : ''
           this.rawCmdFile = null
@@ -889,30 +889,7 @@ export default {
       this.rawCmdFile = event.target.files[0]
     },
 
-    onLoad(event) {
-      let bufView = new Uint8Array(event.target.result)
-      let jstr = { json_class: 'String', raw: [] }
-      for (let i = 0; i < bufView.length; i++) {
-        jstr.raw.push(bufView[i])
-      }
-
-      this.api.send_raw(this.selectedInterface, jstr).then(
-        () => {
-          this.displaySendRaw = false
-          this.status =
-            'Sent ' +
-            bufView.length +
-            ' bytes to interface ' +
-            this.selectedInterface
-        },
-        (error) => {
-          this.displaySendRaw = false
-          this.displayError('sending raw data', error, true)
-        },
-      )
-    },
-
-    sendRawCmd() {
+    async sendRawCmd() {
       if (!this.selectedInterface) {
         this.displayError(
           'sending raw data',
@@ -929,17 +906,30 @@ export default {
         )
         return
       }
-      let self = this
-      let reader = new FileReader()
-      reader.onload = function (e) {
-        self.onLoad(e)
+      let bufView
+      try {
+        const buffer = await this.rawCmdFile.arrayBuffer()
+        bufView = new Uint8Array(buffer)
+      } catch (err) {
+        this.displaySendRaw = false
+        this.displayError('sending raw data', err, true)
+        return
       }
-      reader.onerror = function (e) {
-        self.displaySendRaw = false
-        let target = e.target
-        self.displayError('sending raw data', target.error, true)
-      }
-      reader.readAsArrayBuffer(this.rawCmdFile)
+      const jstr = { json_class: 'String', raw: Array.from(bufView) }
+      this.api.send_raw(this.selectedInterface, jstr).then(
+        () => {
+          this.displaySendRaw = false
+          this.status =
+            'Sent ' +
+            bufView.length +
+            ' bytes to interface ' +
+            this.selectedInterface
+        },
+        (error) => {
+          this.displaySendRaw = false
+          this.displayError('sending raw data', error, true)
+        },
+      )
     },
 
     cancelRawCmd() {
