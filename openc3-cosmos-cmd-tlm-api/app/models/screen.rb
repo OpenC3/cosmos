@@ -16,16 +16,22 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/target_file'
+require 'openc3/models/target_model'
 
 class Screen < OpenC3::TargetFile
   def self.all(scope)
     result = super(scope, ['screens'])
+    # Only list screens belonging to currently installed targets. Modified
+    # screens for uninstalled targets remain in storage so they're restored
+    # if the target is reinstalled, but they aren't displayed in TlmViewer.
+    installed_targets = OpenC3::TargetModel.names(scope: scope)
     screens = []
     result.each do |path|
       filename = path.split('*')[0] # Don't differentiate modified - TODO: Should we?
-      split_filename = filename.split('/')
       next unless File.extname(filename) == ".txt"
       next if File.basename(filename, ".txt")[0] == '_' # underscore filenames are partials
+      target = filename.split('/')[0]
+      next unless installed_targets.include?(target)
       screens << filename
     end
     screens
