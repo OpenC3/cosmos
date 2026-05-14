@@ -58,8 +58,8 @@
           <div class="edit-box">
             <v-card-text class="pa-0 d-flex align-center">
               <span>
-                Select a start date/time for the graph. Leave blank for start
-                now.
+                Select a start date/time for the graph. Leave blank to start at
+                current time.
               </span>
               <v-spacer />
               <v-btn
@@ -97,7 +97,6 @@
                   label="Start Time"
                   :rules="[rules.time]"
                   :error-messages="startTimeError"
-                  @focus="onStartTimeFocus"
                 />
               </v-col>
             </v-row>
@@ -133,7 +132,6 @@
                   label="End Time"
                   :rules="[rules.time]"
                   :error-messages="endTimeError"
-                  @focus="onEndTimeFocus"
                 />
               </v-col>
             </v-row>
@@ -485,22 +483,6 @@ export default {
         this.graph.endDateTime = null
       }
       this.$emit('ok', this.graph)
-    },
-    onStartTimeFocus() {
-      if (this.startTime) return
-      const now = new Date()
-      this.startTime = this.formatTimeHMS(now, this.timeZone)
-      if (!this.startDate) {
-        this.startDate = this.formatDate(now, this.timeZone)
-      }
-    },
-    onEndTimeFocus() {
-      if (this.endTime) return
-      const now = new Date()
-      this.endTime = this.formatTimeHMS(now, this.timeZone)
-      if (!this.endDate) {
-        this.endDate = this.formatDate(now, this.timeZone)
-      }
     },
     setLastHour() {
       const date = new Date(Date.now() - 3600000)
