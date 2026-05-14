@@ -37,7 +37,14 @@ export default {
       if (value === null || value === undefined) {
         return 'null'
       }
-      return String(value)
+      const str = String(value)
+      // Escape special whitespace so they display visibly in single-line widgets.
+      // Widgets that support multi-line display (e.g. TextboxWidget) set
+      // escapeSpecialCharacters: false in their data() to opt out.
+      if (this.escapeSpecialCharacters !== false) {
+        return str.replace(/\r\n/g, '\\r\\n').replace(/\r/g, '\\r').replace(/\n/g, '\\n').replace(/\t/g, '\\t')
+      }
+      return str
     },
     // sprintf-js doesn't support BigInt values so we handle common
     // integer format specifiers manually to preserve full precision

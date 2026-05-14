@@ -66,6 +66,8 @@ export default {
     return {
       width: 200,
       height: 200,
+      // Allow actual newlines to render as line breaks in v-textarea
+      escapeSpecialCharacters: false,
     }
   },
   computed: {
