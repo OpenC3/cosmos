@@ -87,6 +87,14 @@
       </v-list>
     </v-menu>
 
+    <!-- Hidden file input for BLOCK parameter upload -->
+    <input
+      ref="blockFileInput"
+      type="file"
+      style="display: none"
+      @change="onBlockFileSelected($event)"
+    />
+
     <details-dialog
       v-model="viewDetails"
       :target-name="targetName"
@@ -182,10 +190,18 @@ export default {
       contextMenuShown: false,
       viewDetails: false,
       parameterName: '',
+      contextMenuRow: null,
       hazardousParameters: {},
       x: 0,
       y: 0,
-      contextMenuOptions: [
+    }
+  },
+  computed: {
+    hasHazardousParameter() {
+      return Object.values(this.hazardousParameters).some((v) => v === true)
+    },
+    contextMenuOptions() {
+      const options = [
         {
           title: 'Details',
           action: () => {
@@ -193,12 +209,17 @@ export default {
             this.viewDetails = true
           },
         },
-      ],
-    }
-  },
-  computed: {
-    hasHazardousParameter() {
-      return Object.values(this.hazardousParameters).some((v) => v === true)
+      ]
+      if (this.contextMenuRow?.type === 'BLOCK') {
+        options.push({
+          title: 'Upload Data',
+          action: () => {
+            this.contextMenuShown = false
+            this.$refs.blockFileInput.click()
+          },
+        })
+      }
+      return options
     },
   },
   created() {
@@ -232,12 +253,30 @@ export default {
     showContextMenu(event, row) {
       event.preventDefault()
       this.parameterName = row.item.parameter_name
+      this.contextMenuRow = row.item
       this.contextMenuShown = false
       this.x = event.clientX
       this.y = event.clientY
       this.$nextTick(() => {
         this.contextMenuShown = true
       })
+    },
+    onBlockFileSelected(event) {
+      const file = event.target.files[0]
+      if (!file || !this.contextMenuRow) return
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const bytes = new Uint8Array(e.target.result)
+        // Convert to space-separated hex string so the parameter text field
+        // shows a human-readable representation (e.g. "DE AD BE EF")
+        const hex = Array.from(bytes)
+          .map((b) => b.toString(16).padStart(2, '0').toUpperCase())
+          .join(' ')
+        this.contextMenuRow.val = hex
+        // Reset input so the same file can be re-selected if needed
+        event.target.value = ''
+      }
+      reader.readAsArrayBuffer(file)
     },
     updateCmdParams() {
       this.ignoredParams = []
