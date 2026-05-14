@@ -1094,24 +1094,26 @@ export default {
       })
     },
     // Quote a single field for the active delimiter following RFC 4180:
-    // wrap in double quotes when the value contains the delimiter, a double
-    // quote, CR, or LF, and double any embedded double quotes. Numbers,
-    // booleans, etc. can never contain those characters, so we return them
-    // untouched and let Array.prototype.join stringify them. Arrays are
-    // pre-stringified at the call site (as "[a,b,c]") and arrive here as
-    // strings, so they take the normal string path.
+    // wrap in double quotes when the stringified value contains the
+    // delimiter, a double quote, CR, or LF, and double any embedded
+    // double quotes. Numbers, booleans, and BigInts cannot contain those
+    // characters, so we return them untouched and let Array.prototype.join
+    // stringify them at the join. Objects/arrays are stringified defensively
+    // and run through the same scan.
     quoteField: function (value) {
       if (value === null || value === undefined) return ''
-      if (typeof value !== 'string') return value
+      const t = typeof value
+      if (t === 'number' || t === 'boolean' || t === 'bigint') return value
+      const s = t === 'string' ? value : String(value)
       if (
-        value.includes(this.delimiter) ||
-        value.includes('"') ||
-        value.includes('\n') ||
-        value.includes('\r')
+        s.includes(this.delimiter) ||
+        s.includes('"') ||
+        s.includes('\n') ||
+        s.includes('\r')
       ) {
-        return '"' + value.replace(/"/g, '""') + '"'
+        return '"' + s.replace(/"/g, '""') + '"'
       }
-      return value
+      return s
     },
     finished: async function () {
       this.progress = 95 // Indicate we're almost done
