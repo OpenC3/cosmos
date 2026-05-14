@@ -16,6 +16,7 @@
     v-model="inputValue"
     :label="label"
     :rules="computedRules"
+    :error-messages="errorMessages"
     :hide-details="hideDetails"
     :variant="variant"
     :density="density"
@@ -24,6 +25,7 @@
     :disabled="disabled"
     :data-test="dataTest"
     @blur="handleBlur"
+    @focus="$emit('focus', $event)"
     @keydown.enter="handleBlur"
   >
     <template #prepend-inner>
@@ -75,6 +77,10 @@ export default {
       type: Array,
       default: () => [],
     },
+    errorMessages: {
+      type: [String, Array],
+      default: () => [],
+    },
     hideDetails: {
       type: [Boolean, String],
       default: false,
@@ -104,7 +110,7 @@ export default {
       default: false,
     },
   },
-  emits: ['update:modelValue'],
+  emits: ['update:modelValue', 'focus'],
   data() {
     return {
       menu: false,

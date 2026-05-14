@@ -56,8 +56,29 @@
             </v-row>
           </div>
           <div class="edit-box">
-            <v-card-text class="pa-0">
-              Select a start date/time for the graph. Leave blank for start now.
+            <v-card-text class="pa-0 d-flex align-center">
+              <span>
+                Select a start date/time for the graph. Leave blank to start at
+                current time.
+              </span>
+              <v-spacer />
+              <v-btn
+                size="small"
+                variant="outlined"
+                class="mr-2"
+                data-test="edit-graph-last-hour"
+                @click="setLastHour"
+              >
+                Last Hour
+              </v-btn>
+              <v-btn
+                size="small"
+                variant="outlined"
+                data-test="edit-graph-clear-start"
+                @click="clearStart"
+              >
+                Clear
+              </v-btn>
             </v-card-text>
             <v-row>
               <v-col>
@@ -66,6 +87,7 @@
                   label="Start Date"
                   :name="`date${Date.now()}`"
                   :rules="[rules.date]"
+                  :error-messages="startDateError"
                   type="date"
                 />
               </v-col>
@@ -74,12 +96,24 @@
                   v-model="startTime"
                   label="Start Time"
                   :rules="[rules.time]"
+                  :error-messages="startTimeError"
                 />
               </v-col>
             </v-row>
-            <v-card-text class="pa-0">
-              Select a end date/time for the graph. Leave blank for continuous
-              real-time graphing.
+            <v-card-text class="pa-0 d-flex align-center">
+              <span>
+                Select a end date/time for the graph. Leave blank for continuous
+                real-time graphing.
+              </span>
+              <v-spacer />
+              <v-btn
+                size="small"
+                variant="outlined"
+                data-test="edit-graph-clear-end"
+                @click="clearEnd"
+              >
+                Clear
+              </v-btn>
             </v-card-text>
             <v-row>
               <v-col>
@@ -88,6 +122,7 @@
                   label="End Date"
                   :name="`date${Date.now()}`"
                   :rules="[rules.date]"
+                  :error-messages="endDateError"
                   type="date"
                 />
               </v-col>
@@ -96,6 +131,7 @@
                   v-model="endTime"
                   label="End Time"
                   :rules="[rules.time]"
+                  :error-messages="endTimeError"
                 />
               </v-col>
             </v-row>
@@ -235,7 +271,9 @@
       <v-card-actions class="px-2">
         <v-spacer />
         <v-btn variant="outlined" @click="$emit('cancel')"> Cancel </v-btn>
-        <v-btn variant="flat" @click="closeOk"> Ok </v-btn>
+        <v-btn variant="flat" :disabled="isInvalid" @click="closeOk">
+          Ok
+        </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -327,7 +365,11 @@ export default {
         { title: 'Item Name', value: 'itemName' },
         { title: 'Actions', value: 'actions', sortable: false },
       ],
-      rules: {
+    }
+  },
+  computed: {
+    rules() {
+      return {
         date: (value) => {
           if (!value) return true
           try {
@@ -350,10 +392,26 @@ export default {
             return 'Invalid time (HH:MM:SS)'
           }
         },
-      },
-    }
-  },
-  computed: {
+      }
+    },
+    startDateError() {
+      return this.startTime && !this.startDate ? ['Start Date required'] : []
+    },
+    startTimeError() {
+      return this.startDate && !this.startTime ? ['Start Time required'] : []
+    },
+    endDateError() {
+      return this.endTime && !this.endDate ? ['End Date required'] : []
+    },
+    endTimeError() {
+      return this.endDate && !this.endTime ? ['End Time required'] : []
+    },
+    isInvalid() {
+      return (
+        !!this.startDate !== !!this.startTime ||
+        !!this.endDate !== !!this.endTime
+      )
+    },
     show: {
       get() {
         return this.modelValue
@@ -396,11 +454,6 @@ export default {
       let date = toDate(this.startDateTime / 1000000)
       this.startDate = this.formatDate(date, this.timeZone)
       this.startTime = this.formatTimeHMS(date, this.timeZone)
-    } else {
-      // Create a new date 1 hr in the past as a default
-      let date = new Date() - 3600000
-      this.startDate = this.formatDate(date, this.timeZone)
-      this.startTime = this.formatTimeHMS(date, this.timeZone)
     }
     // Only set end date / time if it is explicitly passed
     if (this.endDateTime) {
@@ -411,17 +464,38 @@ export default {
   },
   methods: {
     closeOk() {
-      if (!!this.startDate && !!this.startTime) {
+      if (!!this.startDate !== !!this.startTime) {
+        this.tab = 0
+        return
+      }
+      if (!!this.endDate !== !!this.endTime) {
+        this.tab = 0
+        return
+      }
+      if (this.startDate && this.startTime) {
         this.graph.startDateTime = this.startDate + ' ' + this.startTime
       } else {
         this.graph.startDateTime = null
       }
-      if (!!this.endDate && !!this.endTime) {
+      if (this.endDate && this.endTime) {
         this.graph.endDateTime = this.endDate + ' ' + this.endTime
       } else {
         this.graph.endDateTime = null
       }
       this.$emit('ok', this.graph)
+    },
+    setLastHour() {
+      const date = new Date(Date.now() - 3600000)
+      this.startDate = this.formatDate(date, this.timeZone)
+      this.startTime = this.formatTimeHMS(date, this.timeZone)
+    },
+    clearStart() {
+      this.startDate = null
+      this.startTime = null
+    },
+    clearEnd() {
+      this.endDate = null
+      this.endTime = null
     },
     addLine() {
       this.graph.lines.push({ yValue: 0, color: 'white' })

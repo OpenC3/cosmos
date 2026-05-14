@@ -478,6 +478,8 @@ export default {
       pendingData: [],
       processingRAF: null,
       lastRenderTime: 0,
+      subscribeTime: null,
+      emptyDataNotified: false,
       notifyNonNumeric: false,
       errorDialog: false,
       errors: [],
@@ -1126,7 +1128,26 @@ export default {
     },
     updateGraphData: function () {
       // Ignore changes to the data while we're paused
-      if (this.state === 'pause' || !this.dataChanged) {
+      if (this.state === 'pause') {
+        return
+      }
+      // Check for empty-data notification independent of dataChanged: a truly
+      // empty time range never triggers a received() so dataChanged stays
+      // false and we'd never notify otherwise.
+      if (
+        !this.emptyDataNotified &&
+        this.graphStartDateTime &&
+        this.subscribeTime !== null &&
+        performance.now() - this.subscribeTime > 5000 &&
+        (!this.data[0] || this.data[0].length === 0)
+      ) {
+        this.emptyDataNotified = true
+        this.$notify.caution({
+          title: 'Empty graph data',
+          body: 'No data was returned for the selected time range.',
+        })
+      }
+      if (!this.dataChanged) {
         return
       }
       // Throttle renders while still receiving/processing burst data
@@ -1163,10 +1184,6 @@ export default {
           ? this.graphEndDateTime / 1_000_000_000
           : Date.now() / 1000
         this.graph.setScale('x', { min, max })
-        this.$notify.caution({
-          title: 'Empty graph data',
-          body: 'No data was returned for the selected time range.',
-        })
       }
 
       this.dataChanged = false
@@ -1731,6 +1748,8 @@ export default {
         }
       })
       if (this.subscription) {
+        this.subscribeTime = performance.now()
+        this.emptyDataNotified = false
         OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
           (refreshed) => {
             if (refreshed) {
