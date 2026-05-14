@@ -27,7 +27,7 @@ export default {
       if (this.isJsonString(value)) {
         return this.formatJsonString(value)
       }
-      const preserveWhitespace = options && options.preserveWhitespace === true
+      const preserveWhitespace = options?.preserveWhitespace === true
       if (Array.isArray(value)) {
         return this.escapeWhitespace(JSON.stringify(value), preserveWhitespace)
       }
@@ -64,9 +64,9 @@ export default {
         return value
       }
       return value.replace(WHITESPACE_CONTROL_REGEX_G, (m) => {
-        if (m === '\n') return '\\n'
-        if (m === '\r') return '\\r'
-        return '\\t'
+        if (m === '\n') return String.raw`\n`
+        if (m === '\r') return String.raw`\r`
+        return String.raw`\t`
       })
     },
     // sprintf-js doesn't support BigInt values so we handle common

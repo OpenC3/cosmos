@@ -168,7 +168,7 @@ test('displays embedded newlines in string telemetry values', async ({
   await page
     .locator('textarea')
     .fill(
-      `override_tlm("INST HEALTH_STATUS ASCIICMD = \\"line1\\nline2\\nline3\\"")`,
+      String.raw`override_tlm("INST HEALTH_STATUS ASCIICMD = \"line1\nline2\nline3\"")`,
     )
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
@@ -186,7 +186,7 @@ test('displays embedded newlines in string telemetry values', async ({
         await page.inputValue('tr:has(td div:text-is("ASCIICMD")) input'),
       { timeout: 10000 },
     )
-    .toBe('line1\\nline2\\nline3')
+    .toBe(String.raw`line1\nline2\nline3`)
 
   // 3) Clear the override so we don't leak state into other tests.
   await page.goto('/tools/scriptrunner')
