@@ -377,7 +377,7 @@ WORK_DIR '/openc3/lib/openc3/microservices'
 ### PORT
 <span class="badge badge--secondary since-right">Since 5.7.0</span>**Open port for the microservice**
 
-Kubernetes needs a Service to be applied to open a port so this is required for Kubernetes support
+Kubernetes needs a Service to be applied to open a port so this is required for Kubernetes support See [Exposing Microservices](/docs/guides/exposing-microservices) for more information.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -667,7 +667,7 @@ MICROSERVICE EXAMPLE openc3-example
 ### PORT
 <span class="badge badge--secondary since-right">Since 5.0.10</span>**Open port for the microservice**
 
-Kubernetes needs a Service to be applied to open a port so this is required for Kubernetes support
+Kubernetes needs a Service to be applied to open a port so this is required for Kubernetes support. See [Exposing Microservices](/docs/guides/exposing-microservices) for more information.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|

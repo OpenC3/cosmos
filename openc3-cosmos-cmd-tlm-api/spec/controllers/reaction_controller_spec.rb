@@ -99,6 +99,72 @@ RSpec.describe ReactionController, type: :controller do
     end
   end
 
+  describe "POST create preserves action fields" do
+    it "preserves the severity value on a notify action" do
+      generate_trigger
+      hash = generate_reaction_hash(
+        actions: [{"type" => "notify", "value" => "Something happened", "severity" => "WARN"}]
+      )
+      post :create, params: hash.merge({"scope" => "DEFAULT"})
+      expect(response).to have_http_status(:created)
+      created = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(created["actions"].length).to eql(1)
+      expect(created["actions"][0]["type"]).to eql("notify")
+      expect(created["actions"][0]["value"]).to eql("Something happened")
+      expect(created["actions"][0]["severity"]).to eql("WARN")
+
+      get :show, params: {scope: "DEFAULT", name: created["name"]}
+      expect(response).to have_http_status(:ok)
+      shown = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(shown["actions"][0]["severity"]).to eql("WARN")
+    end
+
+    it "preserves multiple action fields across action types" do
+      generate_trigger
+      hash = generate_reaction_hash(
+        actions: [
+          {"type" => "command", "value" => "INST ABORT"},
+          {"type" => "notify", "value" => "Alert", "severity" => "FATAL"},
+        ]
+      )
+      post :create, params: hash.merge({"scope" => "DEFAULT"})
+      expect(response).to have_http_status(:created)
+      created = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(created["actions"].length).to eql(2)
+      expect(created["actions"][0]["type"]).to eql("command")
+      expect(created["actions"][0]["value"]).to eql("INST ABORT")
+      expect(created["actions"][1]["type"]).to eql("notify")
+      expect(created["actions"][1]["value"]).to eql("Alert")
+      expect(created["actions"][1]["severity"]).to eql("FATAL")
+    end
+  end
+
+  describe "PUT update preserves action fields" do
+    it "preserves the severity value on a notify action" do
+      generate_trigger
+      hash = generate_reaction_hash
+      post :create, params: hash.merge({"scope" => "DEFAULT"})
+      expect(response).to have_http_status(:created)
+      created = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      reaction_name = created["name"]
+
+      put :update, params: {
+        scope: "DEFAULT",
+        name: reaction_name,
+        snooze: 300,
+        triggers: [{"name" => "TRIG1", "group" => GROUP}],
+        trigger_level: "EDGE",
+        actions: [{"type" => "notify", "value" => "Updated alert", "severity" => "ERROR"}],
+      }
+      expect(response).to have_http_status(:ok)
+      updated = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(updated["actions"].length).to eql(1)
+      expect(updated["actions"][0]["type"]).to eql("notify")
+      expect(updated["actions"][0]["value"]).to eql("Updated alert")
+      expect(updated["actions"][0]["severity"]).to eql("ERROR")
+    end
+  end
+
   describe "Error handling for GET index" do
     before(:each) do
       allow(controller).to receive(:log_error)
