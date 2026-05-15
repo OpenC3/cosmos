@@ -2466,12 +2466,10 @@ export default {
             ).then((response) => {
               // This pushes the file into storage by using the fields in the presignedRequest
               // See storage_controller.rb get_upload_presigned_request()
-              promises.push(
-                axios({
-                  ...response.data,
-                  data: file,
-                }),
-              )
+              return axios({
+                ...response.data,
+                data: file,
+              })
             }),
           )
         })
