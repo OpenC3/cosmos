@@ -117,7 +117,7 @@
             <v-icon v-if="showDisconnect" class="mt-2" color="red">
               mdi-connection
             </v-icon>
-            <div v-if="scriptId || localMode" class="d-flex align-center mr-1">
+            <div v-if="localMode" class="d-flex align-center mr-1">
               <v-tooltip :open-delay="600" location="top">
                 <template #activator="{ props }">
                   <v-btn
@@ -139,7 +139,7 @@
                     @click="backToNewScript"
                   />
                 </template>
-                <span>Reload File</span>
+                <span v-if="!scriptId">Reload File</span>
               </v-tooltip>
             </div>
             <v-tooltip

@@ -250,11 +250,8 @@ export default {
   methods: {
     formatTimestamp(ts) {
       if (!ts) return ''
-      try {
-        return new Date(ts).toLocaleString()
-      } catch (_) {
-        return String(ts)
-      }
+      const formatted = new Date(ts).toLocaleString()
+      return formatted === 'Invalid Date' ? String(ts) : formatted
     },
     async loadVersions() {
       this.loading = true
@@ -363,10 +360,9 @@ export default {
     },
     teardownDiffer() {
       if (this.differ) {
-        try {
+        // ace-diff doesn't always expose destroy on older versions
+        if (typeof this.differ.destroy === 'function') {
           this.differ.destroy()
-        } catch (_) {
-          // ace-diff doesn't always expose destroy on older versions
         }
         this.differ = null
       }

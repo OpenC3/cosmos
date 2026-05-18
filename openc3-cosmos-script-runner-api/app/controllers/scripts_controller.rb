@@ -215,7 +215,7 @@ class ScriptsController < ApplicationController
     return unless authorization('script_view')
     scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
-    bucket_name = ENV['OPENC3_CONFIG_BUCKET']
+    bucket_name = ENV.fetch('OPENC3_CONFIG_BUCKET', 'config')
     key = "#{scope}/targets_modified/#{name}"
     bucket = OpenC3::Bucket.getClient()
     s3 = bucket.list_object_versions(bucket: bucket_name, prefix: key)
@@ -250,7 +250,7 @@ class ScriptsController < ApplicationController
     bucket = OpenC3::Bucket.getClient()
     begin
       resp = bucket.get_object(
-        bucket: ENV['OPENC3_CONFIG_BUCKET'],
+        bucket: ENV.fetch('OPENC3_CONFIG_BUCKET', 'config'),
         key: "#{scope}/targets_modified/#{name}",
         version_id: version_id
       )
@@ -288,7 +288,7 @@ class ScriptsController < ApplicationController
     end
 
     bucket = OpenC3::Bucket.getClient()
-    bucket_name = ENV['OPENC3_CONFIG_BUCKET']
+    bucket_name = ENV.fetch('OPENC3_CONFIG_BUCKET', 'config')
     key = "#{scope}/targets_modified/#{name}"
     begin
       src = bucket.get_object(bucket: bucket_name, key: key, version_id: version_id)
