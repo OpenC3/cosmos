@@ -15,51 +15,6 @@
     {
       "path": "../cosmos-enterprise-plugins",
     },
-    {
-      "path": "../openc3-news",
-    },
-    {
-      "path": "../openc3-cosmos-cfdp",
-    },
-    {
-      "path": "../app-store",
-    },
-    {
-      "path": "../openc3-cosmos-load-sim",
-    },
-    {
-      "path": "../openc3-schedule",
-    },
-    {
-      "path": "../../Development/openc3-cosmos-zendir",
-    },
-    {
-      "path": "../../Development/openc3-cosmos-vueflow",
-    },
-    {
-      "path": "../../Development/fprime",
-    },
-    {
-      "path": "../openc3-cosmos-fprime",
-    },
-    {
-      "path": "../openc3-cosmos-script-engine-cstol",
-    },
-    {
-      "path": "../api_tutorial",
-    },
-    {
-      "path": "../openc3-cosmos-nemesis",
-    },
-    {
-      "path": "../core",
-    },
-    {
-      "path": "../ace-diff",
-    },
-    {
-      "path": "../openc3-cosmos-tsdb-migration",
-    },
   ],
   "settings": {
     "rubyLsp.bundleGemfile": "openc3/Gemfile",

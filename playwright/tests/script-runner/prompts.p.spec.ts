@@ -402,6 +402,15 @@ async function runScript(page, utils, filename) {
   await page.getByText('target.txt').click()
   await page.locator('[data-test="bucket-ok"]').click()
 
+  await expect(page.locator('.v-dialog')).toBeVisible()
+  await expect(page.locator('.v-dialog')).toContainText('Pick a procedure')
+  if (filename.endsWith('.rb')) {
+    await page.getByText('checks.rb').click()
+  } else {
+    await page.getByText('checks.py').click()
+  }
+  await page.locator('[data-test="bucket-ok"]').click()
+
   await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     /File\(s\): \[['"].prettierrc.js['"]\]/,

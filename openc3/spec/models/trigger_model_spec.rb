@@ -292,6 +292,35 @@ module OpenC3
         ).create()
       end
 
+      it "allows omitting right entirely when operator is CHANGE oriented" do
+        # Simulates strong params filtering nil right from controller payload
+        json = {
+          'group' => TMO_GROUP,
+          'left' => {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM', 'valueType' => 'CONVERTED'},
+          'operator' => 'DOES NOT CHANGE',
+          'label' => nil,
+        }
+        model = TriggerModel.from_json(json, name: 'TRIG3', scope: $openc3_scope)
+        expect(model.right).to be_nil
+        model.create()
+
+        json['operator'] = 'CHANGES'
+        model = TriggerModel.from_json(json, name: 'TRIG4', scope: $openc3_scope)
+        expect(model.right).to be_nil
+        model.create()
+      end
+
+      it "raises when right is omitted and operator requires it" do
+        json = {
+          'group' => TMO_GROUP,
+          'left' => {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM', 'valueType' => 'CONVERTED'},
+          'operator' => '>',
+        }
+        expect {
+          TriggerModel.from_json(json, name: 'TRIG5', scope: $openc3_scope)
+        }.to raise_error(TriggerInputError, /invalid operand/)
+      end
+
       it "raises when given a bad operand" do
         expect {
           generate_trigger(

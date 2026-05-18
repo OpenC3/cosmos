@@ -112,6 +112,77 @@ module OpenC3
       end
     end
 
+    describe "generate_microservice" do
+      before(:each) do
+        CliGenerator.generate_plugin(['plugin', 'test-plugin', '--ruby'])
+      end
+
+      it "generates a Ruby microservice" do
+        result = CliGenerator.generate_microservice(['microservice', 'BACKGROUND', '--ruby'])
+        expect(result).to eql('BACKGROUND')
+        expect(File.exist?('microservices/BACKGROUND/background.rb')).to be true
+
+        plugin_txt = File.read('plugin.txt')
+        expect(plugin_txt).to include('MICROSERVICE BACKGROUND background-microservice')
+        expect(plugin_txt).to include('CMD ruby background.rb')
+      end
+
+      it "generates a Python microservice with plugin lib path setup" do
+        ENV['OPENC3_LANGUAGE'] = 'python'
+        CliGenerator.class_variable_set(:@@language, 'py')
+        result = CliGenerator.generate_microservice(['microservice', 'BACKGROUND', '--python'])
+        expect(result).to eql('BACKGROUND')
+        microservice_path = 'microservices/BACKGROUND/background.py'
+        expect(File.exist?(microservice_path)).to be true
+
+        # Verifies the fix for issue #3322: generated Python microservices must
+        # prepend plugin `lib/` directories to sys.path before any user imports,
+        # because Python has no equivalent to Ruby's gem `$LOAD_PATH` mechanism.
+        contents = File.read(microservice_path)
+        expect(contents).to include('from openc3.top_level import add_to_search_path')
+        expect(contents).to include('glob.glob("/gems/gems/**/lib")')
+        expect(contents).to include('add_to_search_path(path, True)')
+        # The path setup must come before the Microservice import so plugin lib
+        # imports added by the user further down resolve correctly.
+        path_setup_index = contents.index('add_to_search_path(path, True)')
+        microservice_import_index = contents.index('from openc3.microservices.microservice import Microservice')
+        expect(path_setup_index).to be < microservice_import_index
+
+        plugin_txt = File.read('plugin.txt')
+        expect(plugin_txt).to include('CMD python background.py')
+      end
+
+      it "prevents duplicate microservice generation" do
+        CliGenerator.generate_microservice(['microservice', 'BACKGROUND', '--ruby'])
+        expect { CliGenerator.generate_microservice(['microservice', 'BACKGROUND', '--ruby']) }
+          .to raise_error(SystemExit)
+      end
+
+      it "rejects regeneration when plugin.txt already lists the microservice" do
+        # Simulate user deleting microservices/NAME but leaving the plugin.txt
+        # entry behind. Without this guard the generator would append a second
+        # MICROSERVICE entry, which causes plugin install to fail with
+        # "openc3_microservices:...already exists at create".
+        CliGenerator.generate_microservice(['microservice', 'BACKGROUND', '--ruby'])
+        FileUtils.rm_rf('microservices/BACKGROUND')
+        expect { CliGenerator.generate_microservice(['microservice', 'BACKGROUND', '--ruby']) }
+          .to raise_error(SystemExit)
+        # plugin.txt must still have exactly one entry, not two.
+        plugin_txt = File.read('plugin.txt')
+        expect(plugin_txt.scan(/^MICROSERVICE\s+BACKGROUND\b/).size).to eq(1)
+      end
+
+      it "shows help with --help flag" do
+        expect { CliGenerator.generate_microservice(['microservice', '--help']) }
+          .to raise_error(SystemExit) { |error| expect(error.status).to eq(0) }
+      end
+
+      it "requires a microservice name" do
+        expect { CliGenerator.generate_microservice(['microservice']) }
+          .to raise_error(SystemExit)
+      end
+    end
+
     describe "generate_widget" do
       before(:each) do
         # generate_plugin already changes into the plugin directory

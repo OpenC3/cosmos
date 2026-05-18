@@ -58,16 +58,39 @@ RSpec.describe ScreensController, :type => :controller do
 
   describe "index" do
     it "lists all screens for a target" do
-      class Screen < OpenC3::TargetFile
-        def self.all(scope)
-          # Override Screen.all to return a fake list of files
-          ['INST/screens/screen1.txt','INST/screens/screen2.txt']
-        end
-      end
+      allow(OpenC3::TargetModel).to receive(:names).with(scope: 'DEFAULT').and_return(['INST'])
+      allow(OpenC3::TargetFile).to receive(:all).and_return(
+        ['INST/screens/screen1.txt', 'INST/screens/screen2.txt']
+      )
       get :index, params: { scope: 'DEFAULT' }
       expect(response).to have_http_status(:ok)
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(ret).to eql(['INST/screens/screen1.txt', 'INST/screens/screen2.txt'])
+    end
+
+    it "filters out screens from uninstalled targets" do
+      allow(OpenC3::TargetModel).to receive(:names).with(scope: 'DEFAULT').and_return(['INST'])
+      # INST is installed (with a modified screen marked '*') but OLD is uninstalled
+      # with orphaned modified files still present in the bucket.
+      allow(OpenC3::TargetFile).to receive(:all).and_return(
+        ['INST/screens/screen1.txt', 'INST/screens/screen2.txt*',
+         'OLD/screens/orphan.txt', 'OLD/screens/orphan2.txt*']
+      )
+      get :index, params: { scope: 'DEFAULT' }
+      expect(response).to have_http_status(:ok)
+      ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(ret).to eql(['INST/screens/screen1.txt', 'INST/screens/screen2.txt'])
+    end
+
+    it "ignores partial screen files starting with underscore" do
+      allow(OpenC3::TargetModel).to receive(:names).with(scope: 'DEFAULT').and_return(['INST'])
+      allow(OpenC3::TargetFile).to receive(:all).and_return(
+        ['INST/screens/screen1.txt', 'INST/screens/_partial.txt']
+      )
+      get :index, params: { scope: 'DEFAULT' }
+      expect(response).to have_http_status(:ok)
+      ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(ret).to eql(['INST/screens/screen1.txt'])
     end
   end
 

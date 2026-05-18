@@ -63,6 +63,24 @@ module OpenC3
         end
         CommandTopic.write_packet(packet, scope: 'DEFAULT')
       end
+
+      it "includes extra field when packet.extra is set" do
+        packet.extra = { 'foo' => 'bar', 'count' => 42 }
+        store_instance = EphemeralStoreQueued.instance(db_shard: 0)
+        expect(store_instance).to receive(:write_topic) do |_topic, msg_hash|
+          expect(msg_hash[:extra]).to eq(JSON.generate({ 'foo' => 'bar', 'count' => 42 }))
+        end
+        CommandTopic.write_packet(packet, scope: 'DEFAULT')
+      end
+
+      it "omits extra field when packet.extra is nil" do
+        packet.extra = nil
+        store_instance = EphemeralStoreQueued.instance(db_shard: 0)
+        expect(store_instance).to receive(:write_topic) do |_topic, msg_hash|
+          expect(msg_hash).not_to have_key(:extra)
+        end
+        CommandTopic.write_packet(packet, scope: 'DEFAULT')
+      end
     end
 
     describe "self.send_command" do

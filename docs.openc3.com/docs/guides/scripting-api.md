@@ -458,7 +458,7 @@ The open_bucket_dialog method creates a dialog box that allows the user to brows
 <TabItem value="python" label="Python Syntax">
 
 ```python
-open_bucket_dialog("<Title>", "<Message>")
+open_bucket_dialog("<Title>", "<Message>", default_path=<default_path>, filter=<filter>)
 ```
 
 </TabItem>
@@ -466,16 +466,18 @@ open_bucket_dialog("<Title>", "<Message>")
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-open_bucket_dialog("<Title>", "<Message>")
+open_bucket_dialog("<Title>", "<Message>", default_path: <default_path>, filter: <filter>)
 ```
 
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                   |
-| --------- | ------------------------------------------------------------- |
-| Title     | The title to put on the dialog. Required.                     |
-| Message   | The message to display in the dialog box. Optional parameter. |
+| Parameter                                                            | Description                                                                                                                                                                                                                                                                                                                           |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Title                                                                | The title to put on the dialog. Required.                                                                                                                                                                                                                                                                                             |
+| Message                                                              | The message to display in the dialog box. Optional parameter.                                                                                                                                                                                                                                                                         |
+| default_path <span class="badge badge--secondary">Since 7.1.1</span> | Path to preselect inside the dialog in the form `bucket/path/to/file.ext` (or `bucket/path/to/folder/` for a folder with a trailing slash `/`). The user can still navigate elsewhere. Path traversal segments (`..`) are rejected. Per-scope bucket permissions are still enforced server-side. Optional parameter, defaults to nil. |
+| filter <span class="badge badge--secondary">Since 7.1.1</span>       | Comma-separated list of file suffixes used to restrict the listing (e.g. `".txt"` or `".txt,.json"`). Folders are always shown so the user can navigate. Optional parameter, defaults to nil.                                                                                                                                         |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -484,6 +486,17 @@ open_bucket_dialog("<Title>", "<Message>")
 file = open_bucket_dialog("Select a File", "Choose a file from a bucket")
 print(file.filename) # The name of the selected file
 print(file.read())
+file.close()
+
+# Preselect the procedures folder and restrict to Python files
+file = open_bucket_dialog(
+    "Select a Procedure",
+    "Choose a procedure",
+    # trailing slash indicates folder, otherwise assumes a file
+    default_path="config/DEFAULT/targets/INST2/procedures/",
+    filter=".py",
+)
+print(file.filename)
 file.close()
 ```
 
@@ -495,6 +508,17 @@ file.close()
 file = open_bucket_dialog("Select a File", "Choose a file from a bucket")
 puts file.filename # The name of the selected file
 puts file.read
+file.delete
+
+# Preselect the procedures folder and restrict to Ruby files
+file = open_bucket_dialog(
+  "Select a Procedure",
+  "Choose a procedure",
+  # trailing slash indicates folder, otherwise assumes a file
+  default_path: "config/DEFAULT/targets/INST/procedures/",
+  filter: ".rb"
+)
+puts file.filename
 file.delete
 ```
 

@@ -709,6 +709,26 @@ module OpenC3
       end
     end
 
+    def set_item_range_and_default(item)
+      return if item.range
+      return if item.data_type == :STRING || item.data_type == :BLOCK
+
+      if item.data_type == :INT
+        item.range = (-(2**(item.bit_size - 1)))..((2**(item.bit_size - 1)) - 1)
+        item.default = 0 if item.default.nil?
+      elsif item.data_type == :UINT
+        item.range = 0..((2**item.bit_size) - 1)
+        item.default = 0 if item.default.nil?
+      elsif item.data_type == :FLOAT
+        if item.bit_size == 32
+          item.range = -3.402823e38..3.402823e38
+        else
+          item.range = -Float::MAX..Float::MAX
+        end
+        item.default = 0.0 if item.default.nil?
+      end
+    end
+
     def set_limits(item, type)
       return unless @current_cmd_or_tlm == PacketConfig::TELEMETRY
 
@@ -756,7 +776,9 @@ module OpenC3
                 @current_packet.get_item(item.name)
               rescue
                 # Item hasn't already been added so define it
-                @current_packet.define(item.clone)
+                cloned_item = item.clone
+                @current_packet.define(cloned_item)
+                set_item_range_and_default(cloned_item) if @current_cmd_or_tlm == PacketConfig::COMMAND
                 count += 1
               end
             end

@@ -77,6 +77,7 @@ The \_TIMEFORMATTED items returns the date and time in a YYYY/MM/DD HH:MM:SS.sss
 
 COSMOS provides a Unix time conversion class which returns a Ruby Time object or Python date object based on the number of seconds and (optionally) microseconds since the Unix epoch. Note: This returns a native object and not a float or string!
 
+{/* prettier-ignore */}
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 ```python
@@ -94,7 +95,7 @@ ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
 
 Defining PACKET_TIME allows the PACKET_TIMESECONDS and PACKET_TIMEFORMATTED to be calculated against an internal Packet time rather than the time COSMOS receives the packet.
 
-<div style={{"clear": 'both'}}></div>
+<div style={{ clear: "both" }}></div>
 
 # Telemetry Keywords
 
@@ -103,8 +104,6 @@ COSMOS_META
 ## Example File
 
 **Example File: TARGET/cmd_tlm/tlm.txt**
-
-{/* prettier-ignore */}
 
 ```cosmos
 TELEMETRY TARGET HS BIG_ENDIAN "Health and Status for My Target"

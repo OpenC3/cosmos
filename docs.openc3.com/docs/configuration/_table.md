@@ -15,7 +15,7 @@ Table definition files define the binary tables that can be displayed in COSMOS 
 
 The Table definition files share a lot of similarity with the [Command Configuration](command.md). You have the same data types: INT, UINT, FLOAT, STRING, BLOCK. These correspond to integers, unsigned integers, floating point numbers, strings and binary blocks of data. Additional data types of BOOL, ARRAY, OBJECT, and ANY are also available if you are using an Accessor that supports them. These are Booleans (true/false), arrays of unknown data type, objects with unknown contents, and a completely unknown data type with ANY.
 
-<div style={{"clear": 'both'}}></div>
+<div style={{ clear: "both" }}></div>
 
 # Table Keywords
 
@@ -24,8 +24,6 @@ COSMOS_META
 ## Example File
 
 **Example File: TARGET/tables/config/MCConfigurationTable_def.txt**
-
-{/* prettier-ignore */}
 
 ```cosmos
 TABLE "MC_Configuration" BIG_ENDIAN KEY_VALUE "Memory Control Configuration Table"

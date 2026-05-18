@@ -110,13 +110,15 @@ class DecomMicroservice(Microservice):
         self.limits_event_topic = f"{self.scope}__openc3_limits_events"
         self.topics.append(self.limits_event_topic)
         Topic.update_topic_offsets(self.topics, db_shard=self.db_shard)
+        # Initialize before set_limits_change_callback - sync_system below can
+        # fire the callback synchronously for any persisted-disabled items.
+        self.limits_response_queue = queue.Queue()
+        self.limits_response_thread = None
         System.telemetry.set_limits_change_callback(self.limits_change_callback)
         LimitsEventTopic.sync_system(scope=self.scope)
         self.error_count = 0
         self.metric.set(name="decom_total", value=self.count, type="counter")
         self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
-        self.limits_response_queue = queue.Queue()
-        self.limits_response_thread = None
 
     def run(self):
         self.limits_response_thread = LimitsResponseThread(

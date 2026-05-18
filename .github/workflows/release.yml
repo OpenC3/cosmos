@@ -42,7 +42,7 @@ jobs:
     environment: Release # See https://github.com/OpenC3/cosmos/settings/environments
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        uses: step-security/harden-runner@9ca718d3bf646d6534007c269a635b3e54cadf99 # v2.19.2
         with:
           egress-policy: audit
 
@@ -106,7 +106,7 @@ jobs:
       - name: Build Python Package
         working-directory: openc3/python
         run: python -m build
-      - uses: pnpm/action-setup@08c4be7e2e672a47d11bd04269e27e5f3e8529cb # v6.0.0
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
         with:
           version: 10
       - name: Build pnpm Packages

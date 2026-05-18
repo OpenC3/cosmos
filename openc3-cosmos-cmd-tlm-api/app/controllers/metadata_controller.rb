@@ -35,7 +35,7 @@ class MetadataController < ApplicationController
   def index
     return unless authorization('system')
     action do
-      hash = params.to_unsafe_h.slice(:start, :stop, :limit)
+      hash = params.permit(:start, :stop, :limit).to_h
       limit = hash['limit'] ? hash['limit'].to_i : 100
       if (hash['start'] && hash['stop'])
         start = Time.parse(hash['start']).to_i
@@ -71,7 +71,10 @@ class MetadataController < ApplicationController
   def create
     return unless authorization('script_run')
     action do
-      hash = params.to_unsafe_h.slice(:start, :color, :metadata).to_h
+      hash = params.permit(:start, :color).to_h
+      if params.key?(:metadata)
+        hash['metadata'] = params[:metadata].is_a?(ActionController::Parameters) ? params[:metadata].to_unsafe_h : params[:metadata]
+      end
       if hash['start'].nil?
         hash['start'] = Time.now.to_i
       else
@@ -143,7 +146,10 @@ class MetadataController < ApplicationController
       end
       model = @model_class.from_json(hash.symbolize_keys, scope: params[:scope])
 
-      hash = params.to_unsafe_h.slice(:start, :color, :metadata).to_h
+      hash = params.permit(:start, :color).to_h
+      if params.key?(:metadata)
+        hash['metadata'] = params[:metadata].is_a?(ActionController::Parameters) ? params[:metadata].to_unsafe_h : params[:metadata]
+      end
       hash['start'] = Time.parse(hash['start']).to_i
       model.update(
         start: hash['start'],
@@ -217,7 +223,7 @@ class MetadataController < ApplicationController
   #   action do
   #     # TODO: This whole search operation needs a method in the model or we're
   #     # basically just searching through the limited results returned
-  #     hash = params.to_unsafe_h.slice(:start, :stop, :limit, :key, :value)
+  #     hash = params.permit(:start, :stop, :limit, :key, :value).to_h
   #     if (hash['start'] && hash['stop'])
   #       hash['start'] = Time.parse(hash['start']).to_i
   #       hash['stop'] = Time.parse(hash['stop']).to_i

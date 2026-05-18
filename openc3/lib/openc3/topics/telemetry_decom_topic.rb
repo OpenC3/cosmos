@@ -43,6 +43,7 @@ module OpenC3
           :received_count => packet.received_count,
           :json_data => json_data,
         }
+        msg_hash[:extra] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
         db_shard = Store.db_shard_for_target(packet.target_name, scope: scope)
         Topic.write_topic("#{scope}__DECOM__{#{packet.target_name}}__#{packet.packet_name}", msg_hash, id, db_shard: db_shard)
 

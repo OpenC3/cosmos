@@ -674,6 +674,8 @@
     v-model="bucket.show"
     :title="bucket.title"
     :message="bucket.message"
+    :default-path="bucket.defaultPath"
+    :filter="bucket.filter"
     @response="bucketDialogCallback"
   />
   <information-dialog
@@ -1062,6 +1064,8 @@ export default {
         show: false,
         title: '',
         message: '',
+        defaultPath: null,
+        filter: null,
       },
       prompt: {
         show: false,
@@ -2692,6 +2696,9 @@ export default {
         case 'open_bucket_dialog':
           this.bucket.title = data.args[0]
           this.bucket.message = data.args[1]
+          this.bucket.defaultPath =
+            (data.kwargs && data.kwargs.default_path) || null
+          this.bucket.filter = (data.kwargs && data.kwargs.filter) || null
           this.bucket.show = true
           break
         // This is called continuously by the backend
@@ -2732,12 +2739,10 @@ export default {
             ).then((response) => {
               // This pushes the file into storage by using the fields in the presignedRequest
               // See storage_controller.rb get_upload_presigned_request()
-              promises.push(
-                axios({
-                  ...response.data,
-                  data: file,
-                }),
-              )
+              return axios({
+                ...response.data,
+                data: file,
+              })
             }),
           )
         })

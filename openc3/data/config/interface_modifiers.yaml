@@ -212,7 +212,9 @@ WORK_DIR:
     WORK_DIR '/openc3/lib/openc3/microservices'
 PORT:
   summary: Open port for the microservice
-  description: Kubernetes needs a Service to be applied to open a port so this is required for Kubernetes support
+  description:
+    Kubernetes needs a Service to be applied to open a port so this is required for Kubernetes support
+    See [Exposing Microservices](/docs/guides/exposing-microservices) for more information.
   since: 5.7.0
   parameters:
     - name: Number

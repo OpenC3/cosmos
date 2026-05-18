@@ -44,34 +44,37 @@ module OpenC3
       model = get_model(name: name, scope: scope)
       raise QueueError, "Queue '#{name}' not found in scope '#{scope}'" unless model
 
-      if model.state != 'DISABLE'
-        result = Store.zrevrange("#{scope}:#{name}", 0, 0, with_scores: true)
-        if result.empty?
-          id = 1.0
-        else
-          id = result[0][1].to_f + 1
-        end
-
-        # Build command data with support for both formats
-        command_data = { username: username, timestamp: Time.now.to_nsec_from_epoch, validate: validate, timeout: timeout }
-        if target_name && cmd_name
-          # New format: store target_name, cmd_name, and cmd_params separately
-          command_data[:target_name] = target_name
-          command_data[:cmd_name] = cmd_name
-          command_data[:cmd_params] = JSON.generate(cmd_params.as_json, allow_nan: true) if cmd_params
-        elsif command
-          # Legacy format: store command string for backwards compatibility
-          command_data[:value] = command
-        else
-          raise QueueError, "Must provide either command string or target_name/cmd_name parameters"
-        end
-
-        Store.zadd("#{scope}:#{name}", id, command_data.to_json)
-        model.notify(kind: 'command')
-      else
+      if model.state == 'DISABLE'
         error_msg = command || "#{target_name} #{cmd_name}"
         raise QueueError, "Queue '#{name}' is disabled. Command '#{error_msg}' not queued."
       end
+
+      result = Store.zrevrange("#{scope}:#{name}", 0, 0, with_scores: true)
+      id = result.empty? ? 1.0 : result[0][1].to_f + 1
+
+      command_data = build_command_data(username: username, command: command, target_name: target_name,
+                                        cmd_name: cmd_name, cmd_params: cmd_params, validate: validate, timeout: timeout)
+      Store.zadd("#{scope}:#{name}", id, command_data.to_json)
+      model.notify(kind: 'command')
+    end
+
+    # Build the hash that gets serialized into Redis. Always uses symbol keys so
+    # downstream code in this class can access values consistently. cmd_params is
+    # JSON-encoded as a string so binary data survives the round-trip via as_json.
+    def self.build_command_data(username:, command: nil, target_name: nil, cmd_name: nil, cmd_params: nil, validate: nil, timeout: nil)
+      command_data = { username: username, timestamp: Time.now.to_nsec_from_epoch }
+      if target_name && cmd_name
+        command_data[:target_name] = target_name
+        command_data[:cmd_name] = cmd_name
+        command_data[:cmd_params] = JSON.generate(cmd_params.as_json, allow_nan: true) if cmd_params
+      elsif command
+        command_data[:value] = command
+      else
+        raise QueueError, "Must provide either command string or target_name/cmd_name parameters"
+      end
+      command_data[:validate] = validate unless validate.nil?
+      command_data[:timeout] = timeout unless timeout.nil?
+      command_data
     end
 
     attr_accessor :name, :state
@@ -115,49 +118,36 @@ module OpenC3
       QueueTopic.write_notification(notification, scope: @scope)
     end
 
-    def insert_command(id, command_data)
+    def insert_command(id: nil, username:, command: nil, target_name: nil, cmd_name: nil, cmd_params: nil, validate: nil, timeout: nil)
       if @state == 'DISABLE'
-        if command_data['value']
-          command_name = command_data['value']
-        else
-          command_name = "#{command_data['target_name']} #{command_data['cmd_name']}"
-        end
+        command_name = command || "#{target_name} #{cmd_name}"
         raise QueueError, "Queue '#{@name}' is disabled. Command '#{command_name}' not queued."
       end
 
       unless id
         result = Store.zrevrange("#{@scope}:#{@name}", 0, 0, with_scores: true)
-        if result.empty?
-          id = 1.0
-        else
-          id = result[0][1].to_f + 1
-        end
+        id = result.empty? ? 1.0 : result[0][1].to_f + 1
       end
 
-      # Convert cmd_params values to JSON-safe format if present
-      if command_data['cmd_params']
-        command_data['cmd_params'] = JSON.generate(command_data['cmd_params'].as_json, allow_nan: true)
-      end
+      command_data = self.class.build_command_data(username: username, command: command, target_name: target_name,
+                                                   cmd_name: cmd_name, cmd_params: cmd_params, validate: validate, timeout: timeout)
       Store.zadd("#{@scope}:#{@name}", id, command_data.to_json)
       notify(kind: 'command')
     end
 
-    def update_command(id:, command:, username:, validate: nil, timeout: nil)
+    def update_command(id:, username:, command: nil, target_name: nil, cmd_name: nil, cmd_params: nil, validate: nil, timeout: nil)
       if @state == 'DISABLE'
         raise QueueError, "Queue '#{@name}' is disabled. Command at id #{id} not updated."
       end
 
-      # Check if command exists at the given id
       existing = Store.zrangebyscore("#{@scope}:#{@name}", id, id)
       if existing.empty?
         raise QueueError, "No command found at id #{id} in queue '#{@name}'"
       end
 
-      # Remove the existing command and add the new one at the same id
       Store.zremrangebyscore("#{@scope}:#{@name}", id, id)
-      command_data = { username: username, value: command, timestamp: Time.now.to_nsec_from_epoch }
-      command_data[:validate] = validate unless validate.nil?
-      command_data[:timeout] = timeout unless timeout.nil?
+      command_data = self.class.build_command_data(username: username, command: command, target_name: target_name,
+                                                   cmd_name: cmd_name, cmd_params: cmd_params, validate: validate, timeout: timeout)
       Store.zadd("#{@scope}:#{@name}", id, command_data.to_json)
       notify(kind: 'command')
     end

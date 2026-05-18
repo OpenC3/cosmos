@@ -1016,25 +1016,24 @@ class RunningScript:
                 )
                 RunningScript.output_thread.start()
 
-            if self.script_engine is not None:
-                if self.script_status.start_line_no != 1 or self.script_status.end_line_no is not None:
-                    if self.script_status.end_line_no is None:
-                        # Goto line
-                        start(
-                            self.script_status.filename,
-                            line_no=self.script_status.start_line_no,
-                            complete=True,
-                        )
-                    else:
-                        # Execute selection
-                        start(
-                            self.script_status.filename,
-                            line_no=self.script_status.start_line_no,
-                            end_line_no=self.script_status.end_line_no,
-                            complete=True,
-                        )
+            if self.script_status.start_line_no != 1 or self.script_status.end_line_no is not None:
+                if self.script_status.end_line_no is None:
+                    # Run From Line / Goto line
+                    start(
+                        self.script_status.filename,
+                        line_no=self.script_status.start_line_no,
+                        complete=True,
+                    )
                 else:
-                    self.script_engine.run_text(text, filename=self.script_status.filename)
+                    # Execute Selection
+                    start(
+                        self.script_status.filename,
+                        line_no=self.script_status.start_line_no,
+                        end_line_no=self.script_status.end_line_no,
+                        complete=True,
+                    )
+            elif self.script_engine is not None:
+                self.script_engine.run_text(text, filename=self.script_status.filename)
             else:
                 if initial_filename == "SCRIPTRUNNER":
                     # Don't instrument pseudo scripts
