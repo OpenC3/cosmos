@@ -108,9 +108,6 @@ Rails.application.routes.draw do
     post '/timeline/:name/execute', to: 'timeline#execute', name: /[^\/]+/
     delete '/timeline/:name', to: 'timeline#destroy', name: /[^\/]+/
 
-    post '/timeline/activities/create', to: 'activity#multi_create'
-    post '/timeline/activities/delete', to: 'activity#multi_destroy'
-
     get '/timeline/:name/count', to: 'activity#count', name: /[^\/]+/
     get '/timeline/:name/activities', to: 'activity#index', name: /[^\/]+/
     post '/timeline/:name/activities', to: 'activity#create', name: /[^\/]+/

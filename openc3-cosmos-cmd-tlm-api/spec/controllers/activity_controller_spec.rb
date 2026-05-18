@@ -162,6 +162,41 @@ RSpec.describe ActivityController, type: :controller do
       expect(ret["name"]).to eql("test")
       expect(response).to have_http_status(:created)
     end
+
+    it "passes recurring hash through strong params and creates multiple activities" do
+      dt = DateTime.now.new_offset(0)
+      start_time = dt + (1.0 / 24.0)
+      stop_time = start_time + (30.0 / 1440.0) # 30 minutes after start
+      end_time = start_time + (5.0 / 24.0) # 5 hours after start
+      hash = {
+        "start" => start_time.to_s,
+        "stop" => stop_time.to_s,
+        "kind" => "RESERVE",
+        "data" => {"reserve" => ""},
+        "recurring" => {
+          "frequency" => "60",
+          "span" => "minutes",
+          "end" => end_time.to_s,
+        }
+      }
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
+      expect(response).to have_http_status(:created)
+      ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(ret["recurring"]).not_to be_nil
+      expect(ret["recurring"]["frequency"]).to eql("60")
+      expect(ret["recurring"]["span"]).to eql("minutes")
+      expect(ret["recurring"]["end"]).not_to be_nil
+
+      # Verify multiple activities were created across the recurring window
+      get :index, params: {
+        "scope" => timeline_scope,
+        "name" => timeline_name,
+        "start" => start_time.to_s,
+        "stop" => (end_time + (1.0 / 24.0)).to_s,
+      }
+      activities = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(activities.length).to be > 1
+    end
   end
 
   describe "POST event" do
@@ -381,104 +416,6 @@ RSpec.describe ActivityController, type: :controller do
       expect(ret["status"]).to eq("error")
       expect(ret["message"]).to eq("Destroy failed")
       expect(response).to have_http_status(:bad_request)
-    end
-  end
-
-  describe "POST multi_create" do
-    it "returns an array and status code 200" do
-      post_array = []
-      for i in (1..10) do
-        dt = DateTime.now.new_offset(0)
-        start_time = dt + (i / 24.0)
-        stop_time = dt + ((i + 0.5) / 24.0)
-        post_array << {
-          "name" => timeline_name,
-          "start" => start_time.to_s,
-          "stop" => stop_time.to_s,
-          "kind" => "COMMAND",
-          "data" => {"test" => "test #{i}"}
-        }
-      end
-      post :multi_create, params: {"scope" => timeline_scope, "multi" => post_array}
-      expect(response).to have_http_status(:ok)
-      get :index, params: {"scope" => timeline_scope, "name" => timeline_name}
-      expect(response).to have_http_status(:ok)
-      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
-      expect(json.empty?).to eql(false)
-      expect(json.length).to eql(10)
-    end
-
-    it "returns an array and status code 200 with errors" do
-      dt = DateTime.now.new_offset(0)
-      start_time = dt + (1 / 24.0)
-      stop_time = dt + (1.5 / 24.0)
-      post_array = [
-        {"name" => "foo", "start" => start_time.to_s, "stop" => stop_time.to_s},
-        {"start" => start_time.to_s, "stop" => stop_time.to_s},
-        "Test",
-        1
-      ]
-      post :multi_create, params: {"scope" => timeline_scope, "multi" => post_array}
-      expect(response).to have_http_status(:ok)
-      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
-      expect(json.empty?).to eql(false)
-      expect(json.length).to eql(1)
-    end
-  end
-
-  describe "POST multi_destroy" do
-    it "returns a hash and status code 400" do
-      post :multi_create, params: {"scope" => timeline_scope, "multi" => "TEST"}
-      expect(response).to have_http_status(:bad_request)
-      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
-      expect(json["status"]).to eql("error")
-      expect(json["message"]).not_to be_nil
-      post :multi_destroy, params: {"scope" => timeline_scope, "multi" => "TEST"}
-      expect(response).to have_http_status(:bad_request)
-      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
-      expect(json["status"]).to eql("error")
-      expect(json["message"]).not_to be_nil
-    end
-
-    it "returns an array and status code 200" do
-      create_post_array = []
-      for i in (1..10) do
-        dt = DateTime.now.new_offset(0)
-        start_time = dt + (i / 24.0)
-        stop_time = dt + ((i + 0.5) / 24.0)
-        create_post_array << {
-          "name" => timeline_name,
-          "start" => start_time.to_s,
-          "stop" => stop_time.to_s,
-          "kind" => "COMMAND",
-          "data" => {"cmd" => "test #{i}"}
-        }
-      end
-      post :multi_create, params: {"scope" => timeline_scope, "multi" => create_post_array}
-      expect(response).to have_http_status(:ok)
-      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
-      destroy_post_array = []
-      json.each do |hash|
-        destroy_post_array << {"name" => hash["name"], "id" => hash["start"], "uuid" => hash["uuid"]}
-      end
-      post :multi_destroy, params: {"scope" => timeline_scope, "multi" => destroy_post_array}
-      expect(response).to have_http_status(:ok)
-      get :index, params: {"scope" => timeline_scope, "name" => timeline_name}
-      expect(response).to have_http_status(:ok)
-      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
-      expect(json.empty?).to eql(true)
-    end
-
-    it "returns an array and status code 200 with errors" do
-      destroy_post_array = [
-        {"id" => "123456"},
-        "Test",
-        1
-      ]
-      post :multi_destroy, params: {"scope" => timeline_scope, "multi" => destroy_post_array}
-      expect(response).to have_http_status(:ok)
-      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
-      expect(json.empty?).to eql(true)
     end
   end
 end

@@ -129,6 +129,49 @@ OpenC3::BackgroundMicroservice.run if __FILE__ == $0
 </TabItem>
 </Tabs>
 
+## Importing Plugin Helpers from `lib/`
+
+A plugin may have a top-level `lib/` directory holding shared helper files that
+multiple targets and microservices import (for example `lib/foo.py` or
+`lib/foo.rb`).
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+In Ruby, every plugin gem's `lib/` directory is automatically prepended to the
+load path when the gem is installed. Python has no equivalent mechanism, so a
+microservice generated with `cli generate microservice ... --python` includes
+the following at the top of the generated file:
+
+```python
+import glob
+from openc3.top_level import add_to_search_path
+for path in glob.glob("/gems/gems/**/lib"):
+    add_to_search_path(path, True)
+```
+
+This must run **before** any `from foo import bar` statements that pull from a
+plugin `lib/` folder, otherwise the import raises `ModuleNotFoundError`. If you
+hand-write a Python microservice (rather than using the generator), add the
+same block at the top of the file.
+
+:::note[First match wins]
+`add_to_search_path` prepends to `sys.path`, so the first `lib/foo.py` found
+across all installed plugins is the one Python imports. Pick distinct module
+names in plugin `lib/` directories to avoid collisions.
+:::
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+Ruby gems automatically add every `lib/` directory to `$LOAD_PATH` at install
+time, so `require 'foo'` resolves `lib/foo.rb` without any extra setup. The
+first `lib/foo.rb` found across all installed plugins is the one that loads —
+pick distinct file names in plugin `lib/` directories to avoid collisions.
+
+</TabItem>
+</Tabs>
+
 ## Plugin Configuration
 
 Microservices are declared in the [plugin.txt](/docs/configuration/plugins#microservice) file:

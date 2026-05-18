@@ -42,6 +42,8 @@ class TelemetryDecomTopic(Topic):
             "received_count": packet.received_count,
             "json_data": json_data,
         }
+        if packet.extra:
+            msg_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
         db_shard = Store.db_shard_for_target(packet.target_name, scope=scope)
         Topic.write_topic(
             f"{scope}__DECOM__{{{packet.target_name}}}__{packet.packet_name}",

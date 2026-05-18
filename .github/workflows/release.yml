@@ -42,7 +42,7 @@ jobs:
     environment: Release # See https://github.com/OpenC3/cosmos/settings/environments
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        uses: step-security/harden-runner@9ca718d3bf646d6534007c269a635b3e54cadf99 # v2.19.2
         with:
           egress-policy: audit
 
@@ -106,7 +106,7 @@ jobs:
       - name: Build Python Package
         working-directory: openc3/python
         run: python -m build
-      - uses: pnpm/action-setup@08c4be7e2e672a47d11bd04269e27e5f3e8529cb # v6.0.0
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
         with:
           version: 10
       - name: Build pnpm Packages
@@ -156,6 +156,17 @@ jobs:
         working-directory: scripts/release
         env:
           GEM_HOST_API_KEY: ${{ secrets.GEM_HOST_API_KEY }}
+      # Publish python package. We continue on error here because we don't want a failure to block the version update.
+      # We're using trusted publishing for the python package which is defined at
+      #   https://pypi.org/manage/project/openc3/settings/publishing/
+      # This references our Release environment: https://github.com/OpenC3/cosmos/settings/environments
+      # If the publish fails for some reason you can manually build and publish by running
+      #   cd openc3/python
+      #   python3 -m venv venv
+      #   source venv/bin/activate
+      #   python3 -m pip install build twine
+      #   python3 -m build
+      #   python3 -m twine upload dist/*
       - name: Publish python package
         continue-on-error: true
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b

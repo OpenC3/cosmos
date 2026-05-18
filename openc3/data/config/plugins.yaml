@@ -38,6 +38,7 @@ VARIABLE_STATE:
     VARIABLE log_retain_time 172800
     VARIABLE_STATE "24 hours" 86400
     VARIABLE_STATE "48 hours" 172800
+    VARIABLE_STATE 60 # Both description and value are set to 60
   parameters:
     - name: State Description
       required: false

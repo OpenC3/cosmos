@@ -1301,18 +1301,16 @@ class RunningScript
         # Start Output Thread
         @@output_thread = Thread.new { output_thread() } unless @@output_thread
 
-        if @script_engine
-          if @script_status.start_line_no != 1 or !@script_status.end_line_no.nil?
-            if @script_status.end_line_no.nil?
-              # Goto line
-              start(@script_status.filename, line_no: @script_status.start_line_no, complete: true)
-            else
-              # Execute selection
-              start(@script_status.filename, line_no: @script_status.start_line_no, end_line_no: @script_status.end_line_no, complete: true)
-            end
+        if @script_status.start_line_no != 1 or !@script_status.end_line_no.nil?
+          if @script_status.end_line_no.nil?
+            # Run From Line / Goto line
+            start(@script_status.filename, line_no: @script_status.start_line_no, complete: true)
           else
-            @script_engine.run_text(text, filename: @script_status.filename)
+            # Execute Selection
+            start(@script_status.filename, line_no: @script_status.start_line_no, end_line_no: @script_status.end_line_no, complete: true)
           end
+        elsif @script_engine
+          @script_engine.run_text(text, filename: @script_status.filename)
         else
           if initial_filename == 'SCRIPTRUNNER'
             # Don't instrument pseudo scripts

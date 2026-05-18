@@ -107,7 +107,7 @@ module OpenC3
       group:,
       left:,
       operator:,
-      right:,
+      right: nil,
       state: false,
       enabled: true,
       dependents: nil,

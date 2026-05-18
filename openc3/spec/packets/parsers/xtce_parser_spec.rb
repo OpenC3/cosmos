@@ -571,6 +571,125 @@ module OpenC3
         tf.unlink
       end
 
+      context "with BaseContainer in CommandContainer referencing a TM SequenceContainer" do
+        def base_container_xtce(target)
+          tf = Tempfile.new(['unittest', '.xtce'])
+          tf.puts '<?xml version="1.0" encoding="UTF-8"?>'
+          tf.puts "<xtce:SpaceSystem name=\"#{target}\" xmlns:xtce=\"http://www.omg.org/spec/XTCE/20180204\">"
+          tf.puts '  <xtce:TelemetryMetaData>'
+          tf.puts '    <xtce:ParameterTypeSet>'
+          tf.puts '      <xtce:IntegerParameterType name="uint3Type" signed="false">'
+          tf.puts '        <xtce:IntegerDataEncoding sizeInBits="3" encoding="unsigned"/>'
+          tf.puts '      </xtce:IntegerParameterType>'
+          tf.puts '      <xtce:IntegerParameterType name="uint1Type" signed="false">'
+          tf.puts '        <xtce:IntegerDataEncoding sizeInBits="1" encoding="unsigned"/>'
+          tf.puts '      </xtce:IntegerParameterType>'
+          tf.puts '      <xtce:IntegerParameterType name="uint11Type" signed="false">'
+          tf.puts '        <xtce:IntegerDataEncoding sizeInBits="11" encoding="unsigned"/>'
+          tf.puts '      </xtce:IntegerParameterType>'
+          tf.puts '    </xtce:ParameterTypeSet>'
+          tf.puts '    <xtce:ParameterSet>'
+          tf.puts '      <xtce:Parameter name="pkt_version" parameterTypeRef="uint3Type"/>'
+          tf.puts '      <xtce:Parameter name="pkt_type" parameterTypeRef="uint1Type"/>'
+          tf.puts '      <xtce:Parameter name="apid" parameterTypeRef="uint11Type"/>'
+          tf.puts '    </xtce:ParameterSet>'
+          tf.puts '    <xtce:ContainerSet>'
+          tf.puts '      <xtce:SequenceContainer name="CCSDS_Header" abstract="true">'
+          tf.puts '        <xtce:EntryList>'
+          tf.puts '          <xtce:ParameterRefEntry parameterRef="pkt_version"/>'
+          tf.puts '          <xtce:ParameterRefEntry parameterRef="pkt_type"/>'
+          tf.puts '          <xtce:ParameterRefEntry parameterRef="apid"/>'
+          tf.puts '        </xtce:EntryList>'
+          tf.puts '      </xtce:SequenceContainer>'
+          tf.puts '    </xtce:ContainerSet>'
+          tf.puts '  </xtce:TelemetryMetaData>'
+          tf.puts '  <xtce:CommandMetaData>'
+          tf.puts '    <xtce:ArgumentTypeSet>'
+          tf.puts '      <xtce:IntegerArgumentType name="uint16ArgType" signed="false" initialValue="0">'
+          tf.puts '        <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned"/>'
+          tf.puts '      </xtce:IntegerArgumentType>'
+          tf.puts '    </xtce:ArgumentTypeSet>'
+          tf.puts '    <xtce:MetaCommandSet>'
+          tf.puts '      <xtce:MetaCommand name="CMD1" shortDescription="Test command">'
+          tf.puts '        <xtce:ArgumentList>'
+          tf.puts '          <xtce:Argument name="payload" argumentTypeRef="uint16ArgType"/>'
+          tf.puts '        </xtce:ArgumentList>'
+          tf.puts '        <xtce:CommandContainer name="CMD1_Container">'
+          tf.puts '          <xtce:EntryList>'
+          tf.puts '            <xtce:ArgumentRefEntry argumentRef="payload"/>'
+          tf.puts '          </xtce:EntryList>'
+          tf.puts '          <xtce:BaseContainer containerRef="CCSDS_Header">'
+          tf.puts '            <xtce:RestrictionCriteria>'
+          tf.puts '              <xtce:ComparisonList>'
+          tf.puts '                <xtce:Comparison parameterRef="apid" value="100"/>'
+          tf.puts '                <xtce:Comparison parameterRef="pkt_type" value="1"/>'
+          tf.puts '              </xtce:ComparisonList>'
+          tf.puts '            </xtce:RestrictionCriteria>'
+          tf.puts '          </xtce:BaseContainer>'
+          tf.puts '        </xtce:CommandContainer>'
+          tf.puts '      </xtce:MetaCommand>'
+          tf.puts '    </xtce:MetaCommandSet>'
+          tf.puts '  </xtce:CommandMetaData>'
+          tf.puts '</xtce:SpaceSystem>'
+          tf.close
+          tf
+        end
+
+        it "clones TM items into the command packet with correct range and default" do
+          tf = base_container_xtce("TGT")
+          @pc.process_file(tf.path, 'TGT')
+
+          packet = @pc.commands['TGT']['CMD1']
+          expect(packet).to_not be_nil
+
+          pkt_version = packet.get_item('PKT_VERSION')
+          expect(pkt_version.bit_size).to eql 3
+          expect(pkt_version.data_type).to eql :UINT
+          expect(pkt_version.range).to eql(0..7)
+          expect(pkt_version.default).to eql 0
+
+          pkt_type = packet.get_item('PKT_TYPE')
+          expect(pkt_type.bit_size).to eql 1
+          expect(pkt_type.data_type).to eql :UINT
+          expect(pkt_type.range).to eql(0..1)
+
+          apid = packet.get_item('APID')
+          expect(apid.bit_size).to eql 11
+          expect(apid.data_type).to eql :UINT
+          expect(apid.range).to eql(0..2047)
+
+          payload = packet.get_item('PAYLOAD')
+          expect(payload.bit_size).to eql 16
+          expect(payload.data_type).to eql :UINT
+          expect(payload.range).to eql(0..65535)
+          expect(payload.default).to eql 0
+          tf.unlink
+        end
+
+        it "sets id_value from RestrictionCriteria Comparisons" do
+          tf = base_container_xtce("TGT")
+          @pc.process_file(tf.path, 'TGT')
+
+          packet = @pc.commands['TGT']['CMD1']
+          apid = packet.get_item('APID')
+          expect(apid.id_value).to eql 100
+          expect(apid.default).to eql 100
+
+          pkt_type = packet.get_item('PKT_TYPE')
+          expect(pkt_type.id_value).to eql 1
+          expect(pkt_type.default).to eql 1
+          tf.unlink
+        end
+
+        it "does not crash when calling to_config(:COMMAND)" do
+          tf = base_container_xtce("TGT")
+          @pc.process_file(tf.path, 'TGT')
+
+          expect { @pc.commands['TGT']['CMD1'].to_config(:COMMAND) }.to_not raise_error
+          tf.unlink
+        end
+      end
+
       it "outputs parsed definitions back to a file" do
         tf = Tempfile.new('unittest')
         cmd = "COMMAND TGT1 CMDPKT LITTLE_ENDIAN \"Command\"\n"\

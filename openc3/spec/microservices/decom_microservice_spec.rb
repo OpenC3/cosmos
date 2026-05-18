@@ -211,6 +211,46 @@ module OpenC3
         expect(@dm.instance_variable_get("@metric").data['decom_duration_seconds']['value']).to be < 0.01
       end
 
+      it "initializes limits_response_queue before sync_system can fire the callback" do
+        # Regression: @limits_response_queue must be initialized before the
+        # limits_change_callback is registered. LimitsEventTopic.sync_system
+        # (called from initialize) calls System.limits.disable on items
+        # persisted as disabled, which fires the callback - which writes to
+        # @limits_response_queue. Without the fix the callback hits a nil
+        # queue and raises NoMethodError on `<<`.
+        @dm.shutdown
+        @dm_thread.join
+
+        klass = Class.new(LimitsResponse) do
+          def call(_packet, _item, _old_limits_state)
+            # Simple stub to test the callback
+          end
+        end
+        System.telemetry.packet('INST', 'HEALTH_STATUS').get_item('TEMP1').limits.response = klass.new
+
+        Store.hset(
+          "DEFAULT__current_limits_settings",
+          "INST__HEALTH_STATUS__TEMP1",
+          JSON.generate({
+            'enabled' => false,
+            'persistence_setting' => 1,
+            'DEFAULT' => {
+              'red_low' => -80.0,
+              'yellow_low' => -70.0,
+              'yellow_high' => 60.0,
+              'red_high' => 80.0,
+            },
+          })
+        )
+
+        expect { @dm = DecomMicroservice.new("DEFAULT__DECOM__INST_INT") }.not_to raise_error
+        queue = @dm.instance_variable_get("@limits_response_queue")
+        expect(queue).not_to be_nil
+        expect(queue.size).to eql(1)
+        @dm_thread = Thread.new { @dm.run }
+        sleep 0.001
+      end
+
       it "handles exceptions in limits responses" do
         class BadLimitsResponse < LimitsResponse
           def call(packet, item, old_limits_state)

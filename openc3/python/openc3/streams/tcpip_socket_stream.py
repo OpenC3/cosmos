@@ -20,6 +20,10 @@ from openc3.top_level import close_socket
 from openc3.utilities.logger import Logger
 
 
+# socket.MSG_DONTWAIT is Unix-only; on Windows we rely on setblocking(False).
+_MSG_DONTWAIT = getattr(socket, "MSG_DONTWAIT", 0)
+
+
 class TcpipSocketStream(Stream):
     # self.param write_socket [Socket] Socket to write
     # self.param read_socket [Socket] Socket to read
@@ -58,7 +62,7 @@ class TcpipSocketStream(Stream):
         # No read mutex is needed because reads happen serially
         while True:  # Loop until we get some data
             try:
-                data = self.read_socket.recv(65535, socket.MSG_DONTWAIT)
+                data = self.read_socket.recv(65535, _MSG_DONTWAIT)
             # Non-blocking sockets return an errno EAGAIN or EWOULDBLOCK
             # if there is no data available
             except OSError as error:
@@ -92,7 +96,7 @@ class TcpipSocketStream(Stream):
 
             while True:
                 try:
-                    bytes_sent = self.write_socket.send(data_to_send, socket.MSG_DONTWAIT)
+                    bytes_sent = self.write_socket.send(data_to_send, _MSG_DONTWAIT)
                 # Non-blocking sockets return an errno EAGAIN or EWOULDBLOCK
                 # if the write would block
                 except OSError as error:

@@ -103,7 +103,7 @@ module OpenC3
         QueueModel.queue_command("TEST", command: command, username: 'anonymous', scope: "DEFAULT")
 
         commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
-        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => command, "validate" => true, "timeout" => nil, "timestamp" => anything })
+        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => command, "validate" => true, "timestamp" => anything })
       end
 
       it "queues command when queue is in RELEASE state" do
@@ -114,7 +114,7 @@ module OpenC3
         QueueModel.queue_command("TEST", command: command, username: 'anonymous', scope: "DEFAULT")
 
         commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
-        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => command, "validate" => true, "timeout" => nil, "timestamp" => anything })
+        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => command, "validate" => true, "timestamp" => anything })
       end
 
       it "sends command notification" do
@@ -139,12 +139,12 @@ module OpenC3
         QueueModel.queue_command("TEST", command: command, username: 'anonymous', scope: "DEFAULT")
 
         commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
-        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => first_command, "validate" => true, "timeout" => nil, "timestamp" => anything },
-          { "username" => "anonymous", "value" => command, "validate" => true, "timeout" => nil, "timestamp" => anything })
+        expect(commands).to contain_exactly({ "username" => "anonymous", "value" => first_command, "validate" => true, "timestamp" => anything },
+          { "username" => "anonymous", "value" => command, "validate" => true, "timestamp" => anything })
 
         list = model.list()
-        expect(list).to contain_exactly({ "username" => "anonymous", "value" => first_command, "validate" => true, "timeout" => nil, "timestamp" => anything, "id" => 1.0 },
-          { "username" => "anonymous", "value" => command, "validate" => true, "timeout" => nil, "timestamp" => anything, "id" => 2.0 })
+        expect(list).to contain_exactly({ "username" => "anonymous", "value" => first_command, "validate" => true, "timestamp" => anything, "id" => 1.0 },
+          { "username" => "anonymous", "value" => command, "validate" => true, "timestamp" => anything, "id" => 2.0 })
       end
 
       it "queues command with target_name, cmd_name, and cmd_params (new format)" do
@@ -161,7 +161,6 @@ module OpenC3
           "cmd_name" => "COLLECT",
           "cmd_params" => "{\"TYPE\":\"NORMAL\"}",
           "validate" => true,
-          "timeout" => nil,
           "timestamp" => anything
         })
       end
@@ -179,7 +178,6 @@ module OpenC3
           "target_name" => "INST",
           "cmd_name" => "ABORT",
           "validate" => true,
-          "timeout" => nil,
           "timestamp" => anything
         })
       end
@@ -330,7 +328,7 @@ module OpenC3
 
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
         model.create
-        model.insert_command(1, { username: "anonymous", value: "TGT CMD", timestamp: 12345 })
+        model.insert_command(id: 1, username: "anonymous", command: "TGT CMD")
         model.destroy
 
         queue = QueueModel.get(name: "TEST", scope: "DEFAULT")
@@ -355,12 +353,14 @@ module OpenC3
       it "inserts command data to the store" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command_data = { username: "anonymous", value: "TGT CMD", timestamp: 1 }
 
-        model.insert_command(1, command_data)
+        model.insert_command(id: 1, username: "anonymous", command: "TGT CMD")
 
         commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
-        expect(commands).to contain_exactly(command_data.transform_keys(&:to_s))
+        expect(commands.length).to eq(1)
+        expect(commands[0]["username"]).to eq("anonymous")
+        expect(commands[0]["value"]).to eq("TGT CMD")
+        expect(commands[0]).to have_key("timestamp")
       end
 
       it "sends command notification when inserting" do
@@ -369,16 +369,32 @@ module OpenC3
           scope: "DEFAULT"
         )
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        model.insert_command(1, { username: "anonymous", value: "TGT CMD", timestamp: 12345 })
+        model.insert_command(id: 1, username: "anonymous", command: "TGT CMD")
       end
 
       it "raises error when queue state is DISABLE" do
         model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "DISABLE")
-        command_data = { "username" => "anonymous", "value" => "TGT CMD", "timestamp" => 1 }
 
         expect {
-          model.insert_command(1, command_data)
+          model.insert_command(id: 1, username: "anonymous", command: "TGT CMD")
         }.to raise_error(QueueError, "Queue 'TEST' is disabled. Command 'TGT CMD' not queued.")
+      end
+
+      it "raises error when queue state is DISABLE with target_name/cmd_name" do
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT", state: "DISABLE")
+
+        expect {
+          model.insert_command(id: 1, username: "anonymous", target_name: "INST", cmd_name: "ABORT")
+        }.to raise_error(QueueError, "Queue 'TEST' is disabled. Command 'INST ABORT' not queued.")
+      end
+
+      it "raises error when neither command nor target_name/cmd_name provided" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+
+        expect {
+          model.insert_command(id: 1, username: "anonymous")
+        }.to raise_error(QueueError, "Must provide either command string or target_name/cmd_name parameters")
       end
 
       it "handles binary data in cmd_params when inserting" do
@@ -387,15 +403,9 @@ module OpenC3
 
         # Create a binary string parameter
         binary_data = "\xDE\xAD\xBE\xEF".b
-        command_data = {
-          'username' => "test_user",
-          'target_name' => "INST",
-          'cmd_name' => "UPLOAD",
-          'cmd_params' => { "DATA" => binary_data },
-          'timestamp' => Time.now.to_nsec_from_epoch
-        }
 
-        model.insert_command(1, command_data)
+        model.insert_command(id: 1, username: "test_user", target_name: "INST", cmd_name: "UPLOAD",
+                             cmd_params: { "DATA" => binary_data })
 
         # Verify the command was inserted successfully with binary data
         commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
@@ -414,16 +424,17 @@ module OpenC3
       it "updates existing command at given id" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        original_command = { username: "user1", value: "TGT CMD1", timestamp: 1000 }
 
-        model.insert_command(1.5, original_command)
+        model.insert_command(id: 1.5, username: "user1", command: "TGT CMD1")
+        original_timestamp = JSON.parse(Store.zrange("DEFAULT:TEST", 0, -1).first)["timestamp"]
+        sleep 0.001
         model.update_command(id: 1.5, command: "TGT CMD2", username: "user2")
 
         commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
         expect(commands.length).to eq(1)
         expect(commands[0]["username"]).to eq("user2")
         expect(commands[0]["value"]).to eq("TGT CMD2")
-        expect(commands[0]["timestamp"]).to be > 1000
+        expect(commands[0]["timestamp"]).to be > original_timestamp
       end
 
       it "raises error when updating non-existent command" do
@@ -437,7 +448,7 @@ module OpenC3
       it "sends command notification when updating" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        model.insert_command(1.0, { username: "user1", value: "TGT CMD1", timestamp: 1000 })
+        model.insert_command(id: 1.0, username: "user1", command: "TGT CMD1")
 
         expect(QueueTopic).to receive(:write_notification).with(
           hash_including('kind' => 'command'),
@@ -449,8 +460,8 @@ module OpenC3
       it "preserves command id when updating" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        model.insert_command(1.0, { username: "user1", value: "TGT CMD1", timestamp: 1000 })
-        model.insert_command(2.0, { username: "user1", value: "TGT CMD3", timestamp: 3000 })
+        model.insert_command(id: 1.0, username: "user1", command: "TGT CMD1")
+        model.insert_command(id: 2.0, username: "user1", command: "TGT CMD3")
 
         model.update_command(id: 1.0, command: "TGT CMD2", username: "user2")
 
@@ -466,7 +477,7 @@ module OpenC3
       it "raises error when queue state is DISABLE" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        model.insert_command(1.0, { username: "user1", value: "TGT CMD1", timestamp: 1000 })
+        model.insert_command(id: 1.0, username: "user1", command: "TGT CMD1")
 
         # Change state to DISABLE after inserting the command
         model.state = "DISABLE"
@@ -488,55 +499,37 @@ module OpenC3
       it "returns all commands in the queue" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command1 = { username: "user1", value: "TGT CMD1", timestamp: 1000 }
-        command2 = { username: "user2", value: "TGT CMD2", timestamp: 2000 }
-        command3 = { username: "user3", value: "TGT CMD3", timestamp: 3000 }
 
-        model.insert_command(1, command1)
-        model.insert_command(2, command2)
-        model.insert_command(3, command3)
+        model.insert_command(id: 1, username: "user1", command: "TGT CMD1")
+        model.insert_command(id: 2, username: "user2", command: "TGT CMD2")
+        model.insert_command(id: 3, username: "user3", command: "TGT CMD3")
 
         result = model.list
         expect(result.length).to eql 3
-        one = command1.transform_keys(&:to_s)
-        one["id"] = 1.0
-        two = command2.transform_keys(&:to_s)
-        two["id"] = 2.0
-        three = command3.transform_keys(&:to_s)
-        three["id"] = 3.0
-        expect(result[0]).to eql one
-        expect(result[1]).to eql two
-        expect(result[2]).to eql three
+        expect(result[0]).to include("id" => 1.0, "username" => "user1", "value" => "TGT CMD1")
+        expect(result[1]).to include("id" => 2.0, "username" => "user2", "value" => "TGT CMD2")
+        expect(result[2]).to include("id" => 3.0, "username" => "user3", "value" => "TGT CMD3")
       end
 
       it "returns commands in FIFO order" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        first_command = { username: "user1", value: "FIRST_CMD", timestamp: 1000 }
-        second_command = { username: "user2", value: "SECOND_CMD", timestamp: 2000 }
 
-        model.insert_command(1, first_command)
-        model.insert_command(2, second_command)
+        model.insert_command(id: 1, username: "user1", command: "FIRST_CMD")
+        model.insert_command(id: 2, username: "user2", command: "SECOND_CMD")
 
         result = model.list
-        one = first_command.transform_keys(&:to_s)
-        one["id"] = 1.0
-        two = second_command.transform_keys(&:to_s)
-        two["id"] = 2.0
-        expect(result[0]).to eql one
-        expect(result[1]).to eql two
+        expect(result[0]).to include("id" => 1.0, "value" => "FIRST_CMD")
+        expect(result[1]).to include("id" => 2.0, "value" => "SECOND_CMD")
       end
 
       it "reflects queue state after remove operations" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
-        command2 = { username: "user2", value: "CMD2", timestamp: 2000 }
-        command3 = { username: "user3", value: "CMD3", timestamp: 3000 }
 
-        model.insert_command(1, command1)
-        model.insert_command(3, command3)
-        model.insert_command(2, command2)
+        model.insert_command(id: 1, username: "user1", command: "CMD1")
+        model.insert_command(id: 3, username: "user3", command: "CMD3")
+        model.insert_command(id: 2, username: "user2", command: "CMD2")
 
         expect(model.list.length).to eql 3
 
@@ -545,12 +538,8 @@ module OpenC3
         expect(result_removed).to_not be_nil
         result = model.list
         expect(result.length).to eql 2
-        two = command2.transform_keys(&:to_s)
-        two["id"] = 2.0
-        three = command3.transform_keys(&:to_s)
-        three["id"] = 3.0
-        expect(result[0]).to eql two
-        expect(result[1]).to eql three
+        expect(result[0]).to include("id" => 2.0, "value" => "CMD2")
+        expect(result[1]).to include("id" => 3.0, "value" => "CMD3")
       end
     end
 
@@ -681,19 +670,15 @@ module OpenC3
       it "removes the first command when no id is specified" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
-        command2 = { username: "user2", value: "CMD2", timestamp: 2000 }
-        command3 = { username: "user3", value: "CMD3", timestamp: 3000 }
 
-        model.insert_command(1.0, command1)
-        model.insert_command(2.0, command2)
-        model.insert_command(3.0, command3)
+        model.insert_command(id: 1.0, username: "user1", command: "CMD1")
+        model.insert_command(id: 2.0, username: "user2", command: "CMD2")
+        model.insert_command(id: 3.0, username: "user3", command: "CMD3")
 
         result = model.remove_command
 
         expect(result["username"]).to eq("user1")
         expect(result["value"]).to eq("CMD1")
-        expect(result["timestamp"]).to eq(1000)
         expect(result["id"]).to eq(1.0)
 
         # Verify the command was removed from the queue
@@ -706,19 +691,15 @@ module OpenC3
       it "removes command at specific id when id is provided" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
-        command2 = { username: "user2", value: "CMD2", timestamp: 2000 }
-        command3 = { username: "user3", value: "CMD3", timestamp: 3000 }
 
-        model.insert_command(1.0, command1)
-        model.insert_command(2.0, command2)
-        model.insert_command(3.0, command3)
+        model.insert_command(id: 1.0, username: "user1", command: "CMD1")
+        model.insert_command(id: 2.0, username: "user2", command: "CMD2")
+        model.insert_command(id: 3.0, username: "user3", command: "CMD3")
 
         result = model.remove_command(2.0)
 
         expect(result["username"]).to eq("user2")
         expect(result["value"]).to eq("CMD2")
-        expect(result["timestamp"]).to eq(2000)
         expect(result["id"]).to eq(2.0)
 
         # Verify the middle command was removed from the queue
@@ -731,9 +712,8 @@ module OpenC3
       it "returns nil when trying to remove non-existent id" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
 
-        model.insert_command(1.0, command1)
+        model.insert_command(id: 1.0, username: "user1", command: "CMD1")
 
         result = model.remove_command(5.0)
         expect(result).to be_nil
@@ -747,9 +727,8 @@ module OpenC3
       it "sends command notification when removing without id" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
 
-        model.insert_command(1.0, command1)
+        model.insert_command(id: 1.0, username: "user1", command: "CMD1")
 
         expect(QueueTopic).to receive(:write_notification).with(
           hash_including('kind' => 'command'),
@@ -762,11 +741,9 @@ module OpenC3
       it "sends command notification when removing with specific id" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
-        command2 = { username: "user2", value: "CMD2", timestamp: 2000 }
 
-        model.insert_command(1.0, command1)
-        model.insert_command(2.0, command2)
+        model.insert_command(id: 1.0, username: "user1", command: "CMD1")
+        model.insert_command(id: 2.0, username: "user2", command: "CMD2")
 
         expect(QueueTopic).to receive(:write_notification).with(
           hash_including('kind' => 'command'),
@@ -788,9 +765,8 @@ module OpenC3
       it "does not send notification when removing non-existent id" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
 
-        model.insert_command(1.0, command1)
+        model.insert_command(id: 1.0, username: "user1", command: "CMD1")
 
         expect(QueueTopic).not_to receive(:write_notification)
 
@@ -801,9 +777,8 @@ module OpenC3
       it "handles removing from single item queue" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
 
-        model.insert_command(1.0, command1)
+        model.insert_command(id: 1.0, username: "user1", command: "CMD1")
 
         result = model.remove_command
 
@@ -819,13 +794,10 @@ module OpenC3
       it "removes commands in FIFO order when called multiple times without id" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command1 = { username: "user1", value: "FIRST", timestamp: 1000 }
-        command2 = { username: "user2", value: "SECOND", timestamp: 2000 }
-        command3 = { username: "user3", value: "THIRD", timestamp: 3000 }
 
-        model.insert_command(1.0, command1)
-        model.insert_command(2.0, command2)
-        model.insert_command(3.0, command3)
+        model.insert_command(id: 1.0, username: "user1", command: "FIRST")
+        model.insert_command(id: 2.0, username: "user2", command: "SECOND")
+        model.insert_command(id: 3.0, username: "user3", command: "THIRD")
 
         first_pop = model.remove_command
         expect(first_pop["value"]).to eq("FIRST")
@@ -847,11 +819,9 @@ module OpenC3
       it "handles fractional indices correctly" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
-        command2 = { username: "user2", value: "CMD2", timestamp: 2000 }
 
-        model.insert_command(1.5, command1)
-        model.insert_command(2.7, command2)
+        model.insert_command(id: 1.5, username: "user1", command: "CMD1")
+        model.insert_command(id: 2.7, username: "user2", command: "CMD2")
 
         result = model.remove_command(1.5)
 
@@ -866,9 +836,8 @@ module OpenC3
       it "raises error when queue state is DISABLE" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
 
-        model.insert_command(1.0, command1)
+        model.insert_command(id: 1.0, username: "user1", command: "CMD1")
 
         # Change state to DISABLE after inserting the command
         model.state = "DISABLE"
@@ -881,9 +850,8 @@ module OpenC3
       it "raises error when queue state is DISABLE and removing by id" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")
-        command1 = { username: "user1", value: "CMD1", timestamp: 1000 }
 
-        model.insert_command(1.0, command1)
+        model.insert_command(id: 1.0, username: "user1", command: "CMD1")
 
         # Change state to DISABLE after inserting the command
         model.state = "DISABLE"
@@ -901,11 +869,11 @@ module OpenC3
         model.create
 
         # Add commands using both methods
-        model.insert_command(nil, { username: "user1", value: "CMD1", timestamp: 1000 })
+        model.insert_command(username: "user1", command: "CMD1")
         QueueModel.queue_command("TEST", command: "CMD2", username: "user2", scope: "DEFAULT")
-        model.insert_command(nil, { username: "user3", value: "CMD3", timestamp: 3000 })
+        model.insert_command(username: "user3", command: "CMD3")
         QueueModel.queue_command("TEST", command: "CMD4", username: "user4", scope: "DEFAULT")
-        model.insert_command(nil, { username: "user5", value: "CMD5", timestamp: 5000 })
+        model.insert_command(username: "user5", command: "CMD5")
 
         # Get all commands with their scores
         commands_withscores = Store.zrange("DEFAULT:TEST", 0, -1, withscores: true)

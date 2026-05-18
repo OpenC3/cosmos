@@ -54,6 +54,11 @@ const config = {
       "@docusaurus/plugin-client-redirects",
       {
         redirects: [
+          { to: "/docs/guides/podman", from: "/docs/getting-started/podman" },
+          {
+            to: "/docs/meta/requirements",
+            from: "/docs/getting-started/requirements",
+          },
           { to: "/docs/", from: "/docs/v5/" },
           { to: "/docs/tools", from: "/docs/v5/tools" },
           {
@@ -66,10 +71,10 @@ const config = {
           },
           { to: "/docs/getting-started/upgrading", from: "/docs/v5/upgrading" },
           {
-            to: "/docs/getting-started/requirements",
+            to: "/docs/meta/requirements",
             from: "/docs/v5/requirements",
           },
-          { to: "/docs/getting-started/podman", from: "/docs/v5/podman" },
+          { to: "/docs/guides/podman", from: "/docs/v5/podman" },
           { to: "/docs/configuration/format", from: "/docs/v5/format" },
           { to: "/docs/configuration/plugins", from: "/docs/v5/plugins" },
           { to: "/docs/configuration/target", from: "/docs/v5/target" },

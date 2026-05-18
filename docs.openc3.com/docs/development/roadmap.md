@@ -13,6 +13,10 @@ Our roadmap is captured via Github [Milestones](https://github.com/OpenC3/cosmos
 
 We are dedicated to monthly releases that update dependencies and close CVEs. This ensures that COSMOS stays current with the latest security patches and library updates.
 
+## Long Term Support (LTS)
+
+COSMOS is a continuously developed product, and we encourage all customers to stay up to date with our releases as noted above. However, we understand that migration between major releases requires planning and testing. Therefore, we continue to publish patch releases on the previous major version to address significant bugs and CVEs. Previous major releases do not receive new features. If you need extended support or new development on a previous major release, please contact us at [sales@openc3.com](mailto:sales@openc3.com).
+
 ## Language and Runtime Support
 
 Our Ruby and Python client APIs support the currently supported versions of each language:

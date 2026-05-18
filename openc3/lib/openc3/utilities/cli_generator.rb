@@ -293,6 +293,13 @@ RUBY
       if File.exist?(microservice_path)
         abort("Microservice #{microservice_path} already exists!")
       end
+      # plugin.txt is checked separately because the user may have deleted the
+      # microservices/NAME directory without cleaning up the plugin.txt entry.
+      # A duplicate MICROSERVICE entry causes plugin install to fail with
+      # "openc3_microservices:...already exists at create".
+      if File.exist?('plugin.txt') && File.read('plugin.txt') =~ /^MICROSERVICE\s+#{Regexp.escape(microservice_name)}\b/
+        abort("plugin.txt already declares MICROSERVICE #{microservice_name}. Remove that entry before regenerating.")
+      end
       microservice_filename = "#{microservice_name.downcase}.#{@@language}"
       microservice_class = microservice_filename.filename_to_class_name
       microservice_class.inspect # Remove unused variable warning. These are used in binding for generator

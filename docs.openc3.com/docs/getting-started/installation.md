@@ -14,6 +14,7 @@ The following sections describe how to get OpenC3 COSMOS installed on various op
 
 ### Installation Videos
 
+{/* prettier-ignore */}
 <div style={{display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap'}}>
   <div style={{textAlign: 'center', flex: '1 1 280px', minWidth: '280px', maxWidth: '400px'}}>
     <iframe style={{width: '100%', aspectRatio: '16/9'}} src="https://www.youtube.com/embed/Luiy30mUYHs" title="Getting Started with COSMOS on Windows 11" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
@@ -31,7 +32,7 @@ The following sections describe how to get OpenC3 COSMOS installed on various op
 
 ### Prerequisites
 
-If you're on Linux (recommended for production), we recommend installing Docker using the [Install Docker Engine](https://docs.docker.com/engine/install/) instructions (do not use Docker Desktop on Linux). Note: Red Hat users should read the [Podman](podman) documentation. If you're on Windows or Mac, install [Docker Desktop](https://docs.docker.com/get-docker/). All platforms also need to install [Docker Compose](https://docs.docker.com/compose/install/).
+If you're on Linux (recommended for production), we recommend installing Docker using the [Install Docker Engine](https://docs.docker.com/engine/install/) instructions (do not use Docker Desktop on Linux). Note: Red Hat users should read the [Podman](/docs/guides/podman) documentation. If you're on Windows or Mac, install [Docker Desktop](https://docs.docker.com/get-docker/). All platforms also need to install [Docker Compose](https://docs.docker.com/compose/install/).
 
 - Minimum Resources allocated to Docker: 8GB RAM, 1 CPU, 80GB Disk
 - Recommended Resources allocated to Docker: 16GB RAM, 2+ CPUs, 100GB Disk
@@ -68,15 +69,16 @@ git checkout vX.Y.Z # <- change to the specific version you want
 
 :::info[Offline Installation]
 
-  <p style={{"margin-bottom": 20 + 'px'}}>If you need to install in an offline environment you should first see if you're able to directly use the COSMOS containers. If so you can first save the containers. First checkout the specific version of the `cosmos-project` or `cosmos-enterprise-project` you want to save as shown above.</p>
-
-  <p style={{"margin-bottom": 20 + 'px'}}><code>./openc3.sh util save docker.io openc3inc X.Y.Z # &lt;- update to save a specific version</code></p>
-
-  <p style={{"margin-bottom": 20 + 'px'}}>This will download the COSMOS containers from the docker.io repo using the openc3inc namespace and version 5.16.2. The repo, namespace and version are all configurable. Tar files are created in the 'tmp' directory which you can transfer to your offline environment. Transfer the tar files to your offline environment's project 'tmp' dir and  import them with:</p>
-
-  <p style={{"margin-bottom": 20 + 'px'}}><code>./openc3.sh util load X.Y.Z # &lt;- update to match the save version</code></p>
-
-  <p style={{"margin-bottom": 20 + 'px'}}>Note the version specified in save needs to match the version in load.</p>
+{/* prettier-ignore */}
+<p style={{"margin-bottom": 20 + 'px'}}>If you need to install in an offline environment you should first see if you're able to directly use the COSMOS containers. If so you can first save the containers. First checkout the specific version of the `cosmos-project` or `cosmos-enterprise-project` you want to save as shown above.</p>
+{/* prettier-ignore */}
+<p style={{"margin-bottom": 20 + 'px'}}><code>./openc3.sh util save docker.io openc3inc X.Y.Z # &lt;- update to save a specific version</code></p>
+{/* prettier-ignore */}
+<p style={{"margin-bottom": 20 + 'px'}}>This will download the COSMOS containers from the docker.io repo using the openc3inc namespace and version 5.16.2. The repo, namespace and version are all configurable. Tar files are created in the 'tmp' directory which you can transfer to your offline environment. Transfer the tar files to your offline environment's project 'tmp' dir and  import them with:</p>
+{/* prettier-ignore */}
+<p style={{"margin-bottom": 20 + 'px'}}><code>./openc3.sh util load X.Y.Z # &lt;- update to match the save version</code></p>
+{/* prettier-ignore */}
+<p style={{"margin-bottom": 20 + 'px'}}>Note the version specified in save needs to match the version in load.</p>
 :::
 
 ### Certificates
@@ -129,12 +131,6 @@ Usage: ./openc3.sh [cli, cliroot, start, stop, cleanup, run, util]
 ### Connect
 
 Connect a web browser to http://localhost:2900. Set the password to whatever you want. This frontend password is separate from the backend service credentials in the `.env` file. See [Security](security) for details on how COSMOS credentials work.
-
-### Next Steps
-
-Continue to [Getting Started](gettingstarted).
-
----
 
 ### Stop COSMOS
 

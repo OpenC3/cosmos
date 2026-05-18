@@ -55,6 +55,10 @@ class DoubleConversion(Conversion):
 
 There are a lot of comments to help you implement the `call` method.
 
+:::info[Conversions Across Packets]
+The `call` method passes in the current packet but if you want to use values from different packets you need to use the various tlm APIs. Note that for Python you need to add `from openc3.api.tlm_api import tlm`.
+:::
+
 ### call
 
 The call method is where the actual conversion logic is implemented. In our case we want to double the input value so we simply return the value multiplied by 2. The final result with comments removed looks like the following:
