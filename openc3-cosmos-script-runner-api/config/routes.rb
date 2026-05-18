@@ -27,17 +27,16 @@ Rails.application.routes.draw do
     # name="foo.rb/versions".
     get  "/scripts/*name/versions" => "scripts#versions", format: false, defaults: { format: 'html' }
     get  "/scripts/*name/version" => "scripts#version_body", format: false, defaults: { format: 'html' }
-    get  "/scripts/*name/latest" => "scripts#latest_version", format: false, defaults: { format: 'html' }
     # Catchall body route — must be last among GETs.
     get  "/scripts/*name" => "scripts#body", format: false, defaults: { format: 'html' }
     post "/scripts/*name/run(/:disconnect)" => "scripts#run", format: false, defaults: { format: 'html' }
     post "/scripts/*name/delete" => "scripts#destroy", format: false, defaults: { format: 'html' }
+    post "/scripts/*name/lock" => "scripts#lock"
+    post "/scripts/*name/unlock" => "scripts#unlock"
     post "/scripts/*name/syntax" => "scripts#syntax"
     post "/scripts/*name/mnemonics" => "scripts#mnemonics"
-    post "/scripts/*name/validate" => "scripts#validate", format: false, defaults: { format: 'html' }
     post "/scripts/*name/instrumented" => "scripts#instrumented"
     post "/scripts/*name/restore" => "scripts#restore", format: false, defaults: { format: 'html' }
-    post "/scripts/*name/review" => "scripts#review", format: false, defaults: { format: 'html' }
     # Must be last so /run, /delete, etc will match first
     post "/scripts/*name" => "scripts#create", format: false, defaults: { format: 'html' }
 

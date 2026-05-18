@@ -14,7 +14,6 @@
 require "rails_helper"
 require "openc3/utilities/aws_bucket"
 require 'openc3/utilities/script'
-require 'openc3/models/script_lifecycle_model'
 
 RSpec.describe ScriptsController, type: :controller do
   before(:each) do
@@ -101,12 +100,10 @@ RSpec.describe ScriptsController, type: :controller do
 
     it "saves when text changes" do
       s3 = instance_double("Aws::S3::Client")
-      # Simulate returning a file with 'new text'. Controller pre-checks the
-      # existing body to support save-on-Start no-op semantics, so get_object
-      # is called once by the controller and once by Script.create.
+      # Simulate returning a file with 'new text'
       file = double("file")
       allow(file).to receive_message_chain(:body, read: "new text")
-      allow(s3).to receive(:get_object).and_return(file)
+      expect(s3).to receive(:get_object).and_return(file)
       # Expect to call put_object to store the changed script
       expect(s3).to receive(:put_object)
       expect(s3).to receive(:wait_until)
@@ -118,10 +115,10 @@ RSpec.describe ScriptsController, type: :controller do
 
     it "does not save when text is the same" do
       s3 = instance_double("Aws::S3::Client")
-      # Simulate returning a file with identical 'text'.
+      # Simulate returning a file with identical 'text'
       file = double("file")
       allow(file).to receive_message_chain(:body, read: "text")
-      allow(s3).to receive(:get_object).and_return(file)
+      expect(s3).to receive(:get_object).and_return(file)
       expect(s3).to_not receive(:put_object)
       allow(Aws::S3::Client).to receive(:new).and_return(s3)
 
@@ -130,7 +127,6 @@ RSpec.describe ScriptsController, type: :controller do
     end
 
     it "does not pass params which aren't permitted" do
-      allow(Script).to receive(:body).and_return(nil)
       expect(Script).to receive(:create) do |params|
         # Check that we don't pass extra params (username is added by the
         # controller from the auth header, not from the request body)
@@ -161,6 +157,8 @@ RSpec.describe ScriptsController, type: :controller do
       breakpoints = [1, 5]
 
       expect(Script).to receive(:body).with("DEFAULT", "INST/procedures/test.rb").and_return(script_content)
+      expect(Script).to receive(:locked?).with("DEFAULT", "INST/procedures/test.rb").and_return(false)
+      expect(Script).to receive(:lock).with("DEFAULT", "INST/procedures/test.rb", "anonymous")
       expect(Script).to receive(:get_breakpoints).with("DEFAULT", "INST/procedures/test.rb").and_return(breakpoints)
 
       get :body, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
@@ -169,27 +167,24 @@ RSpec.describe ScriptsController, type: :controller do
       json = JSON.parse(response.body)
       expect(json["contents"]).to eq(script_content)
       expect(json["breakpoints"]).to eq(breakpoints)
-      # Fresh model has no recorded versions yet
-      expect(json["version_id"]).to be_nil
-      expect(json["locked_for_review"]).to eq(false)
+      expect(json["locked"]).to eq(false)
     end
 
-    it "exposes the lifecycle of the latest version when one exists" do
+    it "does not lock script if already locked" do
       script_content = "puts 'Hello World'"
-      OpenC3::ScriptLifecycleModel.get_or_build(name: "INST/procedures/test.rb", scope: "DEFAULT")
-        .record_save(version_id: "01ABCDEFGHJKMNPQRSTVWXYZ", username: "alice")
-        .record_review(version_id: "01ABCDEFGHJKMNPQRSTVWXYZ", username: "bob")
+      breakpoints = [1, 5]
 
       expect(Script).to receive(:body).with("DEFAULT", "INST/procedures/test.rb").and_return(script_content)
-      expect(Script).to receive(:get_breakpoints).with("DEFAULT", "INST/procedures/test.rb").and_return([])
+      expect(Script).to receive(:locked?).with("DEFAULT", "INST/procedures/test.rb").and_return(true)
+      expect(Script).not_to receive(:lock)
+      expect(Script).to receive(:get_breakpoints).with("DEFAULT", "INST/procedures/test.rb").and_return(breakpoints)
 
       get :body, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
 
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
-      expect(json["version_id"]).to eq("01ABCDEFGHJKMNPQRSTVWXYZ")
-      expect(json["locked_for_review"]).to eq(true)
-      expect(json["lifecycle"]["reviewed"]["by"]).to eq("bob")
+      expect(json["contents"]).to eq(script_content)
+      expect(json["locked"]).to eq(true)
     end
 
     it "processes suite files correctly" do
@@ -198,6 +193,8 @@ RSpec.describe ScriptsController, type: :controller do
       suites_data = "{\"suites\":[]}"
 
       expect(Script).to receive(:body).with("DEFAULT", "INST/procedures/test.rb").and_return(script_content)
+      expect(Script).to receive(:locked?).with("DEFAULT", "INST/procedures/test.rb").and_return(false)
+      expect(Script).to receive(:lock).with("DEFAULT", "INST/procedures/test.rb", "anonymous")
       expect(Script).to receive(:get_breakpoints).with("DEFAULT", "INST/procedures/test.rb").and_return(breakpoints)
       expect(Script).to receive(:process_suite).with("INST/procedures/test.rb", script_content, username: "anonymous", scope: "DEFAULT").and_return([suites_data, nil, true])
 
@@ -216,6 +213,8 @@ RSpec.describe ScriptsController, type: :controller do
       suites_data = "{\"suites\":[]}"
 
       expect(Script).to receive(:body).with("DEFAULT", "INST/procedures/test.py").and_return(script_content)
+      expect(Script).to receive(:locked?).with("DEFAULT", "INST/procedures/test.py").and_return(false)
+      expect(Script).to receive(:lock).with("DEFAULT", "INST/procedures/test.py", "anonymous")
       expect(Script).to receive(:get_breakpoints).with("DEFAULT", "INST/procedures/test.py").and_return(breakpoints)
       expect(Script).to receive(:process_suite).with("INST/procedures/test.py", script_content, username: "anonymous", scope: "DEFAULT").and_return([suites_data, nil, true])
 
@@ -237,6 +236,48 @@ RSpec.describe ScriptsController, type: :controller do
 
     it "handles authorization failure" do
       get :body, params: {name: "INST/procedures/test.rb"}
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe "lock" do
+    it "locks a script" do
+      expect(Script).to receive(:lock).with("DEFAULT", "INST/procedures/test.rb", "anonymous")
+
+      post :lock, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "handles authorization failure" do
+      post :lock, params: {name: "INST/procedures/test.rb"}
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe "unlock" do
+    it "unlocks a script that is locked by the user" do
+      expect(Script).to receive(:locked?).with("DEFAULT", "INST/procedures/test.rb").and_return("anonymous")
+      expect(Script).to receive(:unlock).with("DEFAULT", "INST/procedures/test.rb")
+
+      post :unlock, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "does not unlock a script locked by another user" do
+      expect(Script).to receive(:locked?).with("DEFAULT", "INST/procedures/test.rb").and_return("another_user")
+      expect(Script).not_to receive(:unlock)
+
+      post :unlock, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "handles authorization failure" do
+      post :unlock, params: {name: "INST/procedures/test.rb"}
 
       expect(response).to have_http_status(:unauthorized)
     end
@@ -348,259 +389,6 @@ RSpec.describe ScriptsController, type: :controller do
       post :instrumented, params: {name: "script.rb"}
 
       expect(response).to have_http_status(:unauthorized)
-    end
-  end
-
-  describe "versions" do
-    let(:name) { "INST/procedures/test.rb" }
-    let(:scope) { "DEFAULT" }
-    let(:key) { "DEFAULT/targets_modified/INST/procedures/test.rb" }
-
-    def mock_s3_version(version_id, key:, is_latest: false, size: 100, last_modified: Time.now, etag: '"abc"')
-      double('s3_version', version_id: version_id, key: key, is_latest: is_latest,
-                            size: size, last_modified: last_modified, etag: etag)
-    end
-
-    it "returns versions newest-first merged with lifecycle data" do
-      OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
-        .record_save(version_id: "V1", username: "alice")
-        .record_validation(version_id: "V1", passed: true)
-        .record_save(version_id: "V2", username: "bob")
-        .record_validation(version_id: "V2", passed: true)
-        .record_review(version_id: "V2", username: "carol", notes: "lgtm")
-
-      bucket = instance_double(OpenC3::AwsBucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket)
-      expect(bucket).to receive(:list_object_versions).and_return({
-        versions: [
-          mock_s3_version("V2", key: key, is_latest: true),
-          mock_s3_version("V1", key: key, is_latest: false)
-        ],
-        delete_markers: []
-      })
-
-      get :versions, params: {scope: scope, name: name}
-      expect(response).to have_http_status(:ok)
-      json = JSON.parse(response.body)
-      expect(json["versions"].length).to eq(2)
-      expect(json["versions"][0]["version_id"]).to eq("V2")
-      expect(json["versions"][0]["state"]).to eq("reviewed")
-      expect(json["versions"][0]["reviewed"]["by"]).to eq("carol")
-      expect(json["versions"][1]["state"]).to eq("validated")
-      expect(json["versions"][1]["validated"]["passed"]).to be(true)
-      expect(json["latest_version_id"]).to eq("V2")
-    end
-
-    it "handles authorization failure" do
-      get :versions, params: {name: name}
-      expect(response).to have_http_status(:unauthorized)
-    end
-  end
-
-  describe "version_body" do
-    it "returns the body of a specific version" do
-      bucket = instance_double(OpenC3::AwsBucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket)
-      body_io = StringIO.new("puts 'old version'")
-      resp = double('s3_resp', body: body_io)
-      expect(bucket).to receive(:get_object).with(
-        bucket: anything,
-        key: "DEFAULT/targets_modified/INST/procedures/test.rb",
-        version_id: "V1"
-      ).and_return(resp)
-
-      get :version_body, params: {scope: "DEFAULT", name: "INST/procedures/test.rb", version_id: "V1"}
-      expect(response).to have_http_status(:ok)
-      expect(response.body).to eq("puts 'old version'")
-    end
-
-    it "returns 400 when version_id is missing" do
-      get :version_body, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
-      expect(response).to have_http_status(:bad_request)
-    end
-
-    it "returns 404 when version is not found" do
-      bucket = instance_double(OpenC3::AwsBucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket)
-      expect(bucket).to receive(:get_object).and_return(nil)
-
-      get :version_body, params: {scope: "DEFAULT", name: "INST/procedures/test.rb", version_id: "BOGUS"}
-      expect(response).to have_http_status(:not_found)
-    end
-  end
-
-  describe "review" do
-    let(:name) { "INST/procedures/test.rb" }
-    let(:scope) { "DEFAULT" }
-
-    it "records review when version_id matches latest" do
-      OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
-        .record_save(version_id: "V1", username: "alice")
-
-      post :review, params: {scope: scope, name: name, version_id: "V1", notes: "ok"}
-      expect(response).to have_http_status(:ok)
-      json = JSON.parse(response.body)
-      expect(json["reviewed"]["by"]).to eq("anonymous")
-      expect(json["reviewed"]["notes"]).to eq("ok")
-
-      lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
-      expect(lifecycle.locked_for_review?).to be(true)
-    end
-
-    it "rejects review when version_id is stale" do
-      OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
-        .record_save(version_id: "V1", username: "alice")
-        .record_save(version_id: "V2", username: "bob")
-
-      post :review, params: {scope: scope, name: name, version_id: "V1", notes: "stale"}
-      expect(response).to have_http_status(:conflict)
-      json = JSON.parse(response.body)
-      expect(json["status"]).to eq("version_mismatch")
-      expect(json["latest_version_id"]).to eq("V2")
-    end
-
-    it "rejects review when approver predicate denies" do
-      OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
-        .record_save(version_id: "V1", username: "alice")
-
-      allow_any_instance_of(ScriptsController).to receive(:can_approve_script?).and_return(false)
-
-      post :review, params: {scope: scope, name: name, version_id: "V1", notes: "x"}
-      expect(response).to have_http_status(:forbidden)
-    end
-
-    it "returns 400 when version_id is missing" do
-      post :review, params: {scope: scope, name: name}
-      expect(response).to have_http_status(:bad_request)
-    end
-  end
-
-  describe "create with review-lock" do
-    let(:name) { "INST/procedures/test.rb" }
-    let(:scope) { "DEFAULT" }
-
-    it "returns 409 when latest version is reviewed and force_taint is not set" do
-      OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
-        .record_save(version_id: "V1", username: "alice")
-        .record_review(version_id: "V1", username: "bob", notes: "lgtm")
-
-      allow(Script).to receive(:body).and_return("existing reviewed text")
-      expect(Script).not_to receive(:create)
-
-      post :create, params: {scope: scope, name: name, text: "new"}
-      expect(response).to have_http_status(:conflict)
-      json = JSON.parse(response.body)
-      expect(json["status"]).to eq("locked_for_review")
-      expect(json["reviewed"]["by"]).to eq("bob")
-    end
-
-    it "treats a save with identical body as a no-op even when reviewed" do
-      OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
-        .record_save(version_id: "V1", username: "alice")
-        .record_review(version_id: "V1", username: "bob", notes: "lgtm")
-
-      allow(Script).to receive(:body).and_return("identical body")
-      # Script.create will internally skip the write because text matches;
-      # the controller MUST allow the request through (no 409) to support
-      # save-on-Start syncing for unmodified reviewed scripts.
-      allow(Script).to receive(:create).and_return(nil)
-
-      post :create, params: {scope: scope, name: name, text: "identical body"}
-      expect(response).to have_http_status(:ok)
-    end
-
-    it "marks the new version tainted when force_taint=true" do
-      OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
-        .record_save(version_id: "V1", username: "alice")
-        .record_review(version_id: "V1", username: "bob", notes: "lgtm")
-
-      allow(Script).to receive(:body).and_return("existing reviewed text")
-      expect(Script).to receive(:create).and_return("V2")
-
-      post :create, params: {scope: scope, name: name, text: "new", force_taint: 'true'}
-      expect(response).to have_http_status(:ok)
-
-      lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
-      expect(lifecycle.latest_version_id).to eq("V2")
-      expect(lifecycle.versions["V2"]["tainted"]).to be(true)
-      expect(lifecycle.versions["V2"]["tainted_from_version_id"]).to eq("V1")
-      expect(lifecycle.versions["V2"]["tainted_from_reviewed_by"]).to eq("bob")
-    end
-  end
-
-  describe "create — first-edit baseline capture" do
-    let(:name) { "INST/procedures/baseline_test.rb" }
-    let(:scope) { "DEFAULT" }
-    let(:original_body) { "puts 'original from plugin'" }
-    let(:user_edit) { "puts 'user edit'" }
-    let(:bucket) { instance_double(OpenC3::AwsBucket) }
-
-    it "writes targets/ baseline as the first version before user edit" do
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket)
-      # First Script.body call from the controller's text_unchanged check —
-      # nothing in targets_modified/ yet, so the original is what flows back.
-      allow(Script).to receive(:body).with(scope, name).and_return(original_body)
-      # Inside capture_original_baseline: targets_modified/ does not yet exist,
-      # targets/ does. Return the original body wrapped to look like an S3 resp.
-      allow(bucket).to receive(:get_object)
-        .with(bucket: anything, key: "#{scope}/targets_modified/#{name}")
-        .and_return(nil)
-      orig_resp = double(body: StringIO.new(original_body))
-      allow(bucket).to receive(:get_object)
-        .with(bucket: anything, key: "#{scope}/targets/#{name}")
-        .and_return(orig_resp)
-      # Baseline put_object returns a synthetic version id — TargetFile.create
-      # uses bucket.put_object directly. Stub both put + check.
-      baseline_put = double(version_id: "BASELINE")
-      allow(bucket).to receive(:put_object).and_return(baseline_put)
-      allow(bucket).to receive(:check_object).and_return(true)
-      # Then Script.create runs — return the user's version_id.
-      allow(Script).to receive(:create).and_return("USER_V1")
-
-      post :create, params: {scope: scope, name: name, text: user_edit}
-      expect(response).to have_http_status(:ok)
-
-      lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
-      expect(lifecycle.versions.keys).to include("BASELINE", "USER_V1")
-      expect(lifecycle.versions["BASELINE"]["saved_by"]).to eq("<original>")
-      expect(lifecycle.versions["USER_V1"]["saved_by"]).to eq("anonymous")
-      expect(lifecycle.latest_version_id).to eq("USER_V1")
-    end
-
-    it "skips baseline capture when targets_modified/ already exists" do
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket)
-      allow(Script).to receive(:body).with(scope, name).and_return("existing modified body")
-      # targets_modified/ already there — capture_original_baseline early-returns.
-      modified_resp = double(body: StringIO.new("existing modified body"))
-      allow(bucket).to receive(:get_object)
-        .with(bucket: anything, key: "#{scope}/targets_modified/#{name}")
-        .and_return(modified_resp)
-      # targets/ get_object should never be called in this branch.
-      expect(bucket).not_to receive(:get_object)
-        .with(bucket: anything, key: "#{scope}/targets/#{name}")
-      allow(Script).to receive(:create).and_return("USER_V1")
-
-      post :create, params: {scope: scope, name: name, text: user_edit}
-      expect(response).to have_http_status(:ok)
-
-      lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
-      expect(lifecycle.versions.keys).to contain_exactly("USER_V1")
-    end
-
-    it "skips baseline capture when text is unchanged from original" do
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket)
-      allow(Script).to receive(:body).with(scope, name).and_return(original_body)
-      # Controller still calls Script.create (which internally no-ops on
-      # identical content), but the baseline-capture branch should be skipped
-      # so no bucket.get_object call is made and no lifecycle entry is recorded.
-      expect(bucket).not_to receive(:get_object)
-      allow(Script).to receive(:create).and_return(nil)
-
-      post :create, params: {scope: scope, name: name, text: original_body}
-      expect(response).to have_http_status(:ok)
-
-      lifecycle = OpenC3::ScriptLifecycleModel.get_or_build(name: name, scope: scope)
-      expect(lifecycle.versions).to be_empty
     end
   end
 end

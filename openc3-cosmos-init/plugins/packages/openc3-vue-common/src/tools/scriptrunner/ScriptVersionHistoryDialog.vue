@@ -42,91 +42,82 @@
           </v-alert>
         </div>
         <v-row v-else no-gutters class="h-100">
-          <v-col cols="4" class="version-list-pane overflow-auto">
-            <v-list density="compact" data-test="version-list">
+          <v-col
+            class="version-list-pane overflow-auto"
+            style="flex: 0 0 25%; max-width: 25%"
+          >
+            <div
+              v-if="versions.length === 0"
+              class="pa-6 text-center text-medium-emphasis"
+              data-test="version-list-empty"
+            >
+              No version history available for this script.
+            </div>
+            <v-list v-else density="compact" data-test="version-list">
               <v-list-item
-                v-for="v in versions"
+                v-for="(v, idx) in versions"
                 :key="v.version_id"
                 :active="selectedVersionId === v.version_id"
                 @click="selectVersion(v.version_id)"
               >
                 <template #prepend>
-                  <v-icon
-                    :color="
-                      v.version_id === currentVersionId ? 'primary' : undefined
-                    "
-                  >
-                    {{
-                      v.version_id === currentVersionId
-                        ? 'mdi-bookmark'
-                        : 'mdi-bookmark-outline'
-                    }}
-                  </v-icon>
+                  <v-tooltip :open-delay="600" location="top">
+                    <template #activator="{ props: tt }">
+                      <v-icon
+                        v-bind="tt"
+                        :color="
+                          v.version_id === compareVersionId
+                            ? 'primary'
+                            : undefined
+                        "
+                        style="cursor: pointer"
+                        data-test="version-compare"
+                        @click.stop="setCompare(v.version_id)"
+                      >
+                        {{
+                          v.version_id === compareVersionId
+                            ? 'mdi-bookmark'
+                            : 'mdi-bookmark-outline'
+                        }}
+                      </v-icon>
+                    </template>
+                    <span>Diff to this version</span>
+                  </v-tooltip>
                 </template>
                 <v-list-item-title class="text-body-2">
-                  <span class="text-truncate">{{
-                    v.saved_by || 'unknown'
-                  }}</span>
-                  <span v-if="v.version_id === currentVersionId" class="ml-2">
+                  <span>Version {{ versions.length - idx }}</span>
+                  <span v-if="idx === 0" class="ml-2">
                     <v-chip size="x-small" color="primary" variant="tonal">
                       Current
                     </v-chip>
                   </span>
                 </v-list-item-title>
                 <v-list-item-subtitle>
-                  {{ formatTimestamp(v.last_modified || v.saved_at) }}
-                  <v-chip
-                    v-if="v.tainted"
-                    size="x-small"
-                    color="warning"
-                    variant="tonal"
-                    class="ml-1"
-                  >
-                    tainted
-                  </v-chip>
+                  {{ formatTimestamp(v.last_modified) }}
                 </v-list-item-subtitle>
-                <div class="version-mini-badges mt-1 d-flex flex-wrap">
-                  <v-chip
-                    size="x-small"
-                    :color="badgeColor('validated', v)"
-                    :variant="badgeVariant('validated', v)"
-                    class="mr-1"
-                  >
-                    Validated
-                  </v-chip>
-                  <v-chip
-                    size="x-small"
-                    :color="badgeColor('reviewed', v)"
-                    :variant="badgeVariant('reviewed', v)"
-                    class="mr-1"
-                  >
-                    {{ reviewedLabel(v) }}
-                  </v-chip>
-                  <v-chip
-                    size="x-small"
-                    :color="badgeColor('executed', v)"
-                    :variant="badgeVariant('executed', v)"
-                  >
-                    Exec ({{ (v.executions || []).length }})
-                  </v-chip>
-                </div>
                 <template #append>
                   <v-btn
-                    v-if="v.version_id !== currentVersionId"
+                    v-if="idx !== 0"
                     size="small"
                     variant="outlined"
                     :loading="restoringVersionId === v.version_id"
                     :disabled="!!restoringVersionId"
                     data-test="version-restore"
-                    @click.stop="confirmRestore(v.version_id)"
+                    @click.stop="doRestore(v.version_id)"
                   >
                     Restore
                   </v-btn>
                 </template>
               </v-list-item>
+              <v-list-item>
+                <span>Restoring a version creates a new version.</span>
+              </v-list-item>
             </v-list>
           </v-col>
-          <v-col cols="8" class="version-diff-pane">
+          <v-col
+            class="version-diff-pane"
+            style="flex: 0 0 75%; max-width: 75%"
+          >
             <div
               v-if="!selectedVersionId"
               class="pa-6 text-center text-medium-emphasis"
@@ -137,20 +128,21 @@
               <v-progress-circular indeterminate color="primary" />
             </div>
             <div v-else class="diff-frame">
-              <div class="diff-header text-caption pa-2 d-flex align-center">
-                <span>
-                  Left:
-                  <code>{{ selectedVersionId }}</code>
-                  ({{ formatTimestamp(selectedVersionTimestamp) }})
-                </span>
-                <v-spacer />
-                <span>Right: Current ({{ currentVersionId }})</span>
+              <div class="diff-header d-flex align-stretch">
+                <div class="diff-header-half diff-header-left">
+                  <span class="diff-header-label">Left</span>
+                  <span class="diff-header-value">{{ leftLabel }}</span>
+                </div>
+                <div class="diff-header-half diff-header-right">
+                  <span class="diff-header-label">Right</span>
+                  <span class="diff-header-value">{{ rightLabel }}</span>
+                </div>
                 <v-btn
                   icon="mdi-close"
                   size="small"
                   variant="text"
                   density="compact"
-                  class="ml-2"
+                  class="ml-2 align-self-center"
                   aria-label="Close diff"
                   data-test="version-diff-close"
                   @click="closeDiff"
@@ -170,17 +162,19 @@ import { Api } from '@openc3/js-common/services'
 import AceDiff from 'ace-diff'
 import 'ace-diff/styles.css'
 import 'ace-diff/styles-twilight.css'
+// Register the language modes so ace-diff editors get syntax highlighting.
+// Importing these from ace-builds wires them into the global ace registry.
+import 'ace-builds/src-noconflict/mode-ruby'
+import 'ace-builds/src-noconflict/mode-python'
+import 'ace-builds/src-noconflict/mode-javascript'
+import 'ace-builds/src-noconflict/mode-text'
 
 export default {
   name: 'ScriptVersionHistoryDialog',
   props: {
     modelValue: { type: Boolean, default: false },
     filename: { type: String, required: true },
-    currentVersionId: { type: String, default: null },
     currentBody: { type: String, default: '' },
-    lockedForReview: { type: Boolean, default: false },
-    currentReviewer: { type: String, default: null },
-    currentReviewerNotes: { type: String, default: null },
   },
   emits: ['update:modelValue', 'restored'],
   data() {
@@ -190,10 +184,48 @@ export default {
       versions: [],
       selectedVersionId: null,
       selectedVersionTimestamp: null,
+      compareVersionId: null,
       diffLoading: false,
       differ: null,
       restoringVersionId: null,
     }
+  },
+  computed: {
+    aceMode() {
+      const ext = (this.filename || '').toLowerCase().split('.').pop()
+      if (ext === 'py') return 'ace/mode/python'
+      if (ext === 'rb' || ext === 'rake' || ext === 'gemspec')
+        return 'ace/mode/ruby'
+      if (ext === 'js') return 'ace/mode/javascript'
+      return 'ace/mode/text'
+    },
+    versionLabel() {
+      // version_id → "Version N" using the list ordering (newest first).
+      return (versionId) => {
+        const idx = this.versions.findIndex((x) => x.version_id === versionId)
+        if (idx < 0) return versionId
+        return `Version ${this.versions.length - idx}`
+      }
+    },
+    leftLabel() {
+      if (!this.selectedVersionId) return ''
+      const ts = this.formatTimestamp(this.selectedVersionTimestamp)
+      return `${this.versionLabel(this.selectedVersionId)} (${ts})`
+    },
+    rightLabel() {
+      if (!this.compareVersionId) return 'Current'
+      const v = this.versions.find(
+        (x) => x.version_id === this.compareVersionId,
+      )
+      const ts = v ? this.formatTimestamp(v.last_modified) : ''
+      const label = this.versionLabel(this.compareVersionId)
+      // The newest version is what the editor shows as "Current".
+      const suffix =
+        this.compareVersionId === this.versions[0]?.version_id
+          ? ' — Current'
+          : ''
+      return `${label}${suffix} (${ts})`
+    },
   },
   watch: {
     modelValue: function (open) {
@@ -204,6 +236,13 @@ export default {
         this.selectedVersionId = null
       }
     },
+  },
+  mounted() {
+    // Parent uses v-if to remount on each open, so modelValue is already true
+    // here and the watcher won't fire — load versions on initial mount.
+    if (this.modelValue) {
+      this.loadVersions()
+    }
   },
   beforeUnmount() {
     this.teardownDiffer()
@@ -217,33 +256,6 @@ export default {
         return String(ts)
       }
     },
-    reviewedLabel(v) {
-      if (!v.reviewed) return 'Reviewed'
-      const decision = v.reviewed.decision || 'approved'
-      return decision === 'changes_requested' ? 'Changes' : 'Reviewed'
-    },
-    badgeColor(kind, v) {
-      if (kind === 'validated') {
-        if (!v.validated) return undefined
-        return v.validated.passed ? 'success' : 'error'
-      }
-      if (kind === 'reviewed') {
-        if (!v.reviewed) return undefined
-        const decision = v.reviewed.decision || 'approved'
-        return decision === 'changes_requested' ? 'error' : 'success'
-      }
-      if (kind === 'executed') {
-        return (v.executions || []).length > 0 ? 'info' : undefined
-      }
-      return undefined
-    },
-    badgeVariant(kind, v) {
-      let filled = false
-      if (kind === 'validated') filled = !!v.validated
-      else if (kind === 'reviewed') filled = !!v.reviewed
-      else if (kind === 'executed') filled = (v.executions || []).length > 0
-      return filled ? 'flat' : 'outlined'
-    },
     async loadVersions() {
       this.loading = true
       this.loadError = null
@@ -252,6 +264,9 @@ export default {
           `/script-api/scripts/${this.filename}/versions`,
         )
         this.versions = response.data?.versions || []
+        // Default the diff target (right side) to the newest version, which
+        // is what the editor is currently displaying.
+        this.compareVersionId = this.versions[0]?.version_id || null
       } catch ({ response }) {
         this.loadError =
           response?.data?.message || response?.statusText || 'unknown'
@@ -265,46 +280,74 @@ export default {
       this.teardownDiffer()
     },
     async selectVersion(versionId) {
-      // Re-clicking the active row closes the diff — gives the user a way
-      // back to the list overview without leaving the dialog.
+      // Re-clicking the active row closes the diff.
       if (versionId === this.selectedVersionId) {
         this.closeDiff()
         return
       }
-      if (versionId === this.currentVersionId) {
-        // Selecting current = no meaningful diff. Show no diff.
+      // Selecting the same version as the diff target = no meaningful diff.
+      if (versionId === this.compareVersionId) {
         this.closeDiff()
         return
       }
+      const idx = this.versions.findIndex((x) => x.version_id === versionId)
       this.selectedVersionId = versionId
-      const v = this.versions.find((x) => x.version_id === versionId)
-      this.selectedVersionTimestamp = v?.last_modified || v?.saved_at
+      this.selectedVersionTimestamp = this.versions[idx]?.last_modified
+      await this.renderDiff()
+    },
+    async setCompare(versionId) {
+      this.compareVersionId = versionId
+      // Reset the left side if the user just made the diff trivial.
+      if (this.selectedVersionId === versionId) {
+        this.closeDiff()
+        return
+      }
+      if (this.selectedVersionId) {
+        await this.renderDiff()
+      }
+    },
+    async fetchVersionBody(versionId) {
+      // Latest version body lives in the parent editor — avoid a round-trip
+      // and use it directly so the right side stays in sync with unsaved
+      // edits if the user is mid-edit.
+      if (versionId === this.versions[0]?.version_id) {
+        return this.currentBody
+      }
+      const response = await Api.get(
+        `/script-api/scripts/${this.filename}/version`,
+        { params: { version_id: versionId } },
+      )
+      return typeof response.data === 'string'
+        ? response.data
+        : String(response.data ?? '')
+    },
+    async renderDiff() {
+      if (!this.selectedVersionId || !this.compareVersionId) return
       this.diffLoading = true
       this.teardownDiffer()
       try {
-        const response = await Api.get(
-          `/script-api/scripts/${this.filename}/version`,
-          { params: { version_id: versionId } },
-        )
-        const oldBody =
-          typeof response.data === 'string'
-            ? response.data
-            : String(response.data ?? '')
-        // Wait for the next tick so the differ container is in the DOM
+        const [leftBody, rightBody] = await Promise.all([
+          this.fetchVersionBody(this.selectedVersionId),
+          this.fetchVersionBody(this.compareVersionId),
+        ])
         await this.$nextTick()
         this.diffLoading = false
         await this.$nextTick()
         if (this.$refs.differContainer) {
+          const mode = this.aceMode
           this.differ = new AceDiff({
             element: this.$refs.differContainer,
+            mode,
             theme: 'ace/theme/twilight',
             left: {
-              content: oldBody,
+              content: leftBody,
+              mode,
               editable: false,
               copyLinkEnabled: false,
             },
             right: {
-              content: this.currentBody,
+              content: rightBody,
+              mode,
               editable: false,
               copyLinkEnabled: false,
             },
@@ -328,37 +371,13 @@ export default {
         this.differ = null
       }
     },
-    async confirmRestore(versionId) {
-      // If the current version is reviewed-and-approved, restoring will
-      // taint just like saving over a reviewed version.
-      const proceed = this.lockedForReview
-        ? await this.askTaintConfirm(versionId)
-        : true
-      if (!proceed) return
-      await this.doRestore(versionId, this.lockedForReview)
-    },
-    askTaintConfirm(versionId) {
-      const reviewer = this.currentReviewer || 'someone'
-      const notes = this.currentReviewerNotes
-        ? `\n\nReview notes: "${this.currentReviewerNotes}"`
-        : ''
-      return this.$dialog
-        .confirm(
-          `Restoring version ${versionId} will replace the current version, which was approved by ${reviewer}.${notes}\n\nProceed? The new version will be marked tainted.`,
-          { okText: 'Restore Anyway', cancelText: 'Cancel' },
-        )
-        .then(() => true)
-        .catch(() => false)
-    },
-    async doRestore(versionId, forceTaint) {
+    async doRestore(versionId) {
       this.restoringVersionId = versionId
       try {
-        const url = forceTaint
-          ? `/script-api/scripts/${this.filename}/restore?force_taint=true`
-          : `/script-api/scripts/${this.filename}/restore`
-        const response = await Api.post(url, {
-          data: { version_id: versionId },
-        })
+        const response = await Api.post(
+          `/script-api/scripts/${this.filename}/restore`,
+          { data: { version_id: versionId } },
+        )
         this.$notify.normal({
           title: 'Restored',
           body: `New version ${response.data?.version_id} created from ${versionId}.`,
@@ -366,22 +385,10 @@ export default {
         this.$emit('restored', response.data?.version_id)
         this.$emit('update:modelValue', false)
       } catch ({ response }) {
-        if (
-          response?.status === 409 &&
-          response?.data?.status === 'locked_for_review' &&
-          !forceTaint
-        ) {
-          // Race: lock state changed between dialog open and restore click.
-          const ok = await this.askTaintConfirm(versionId)
-          if (ok) {
-            await this.doRestore(versionId, true)
-          }
-        } else {
-          this.$notify.caution({
-            title: 'Restore Failed',
-            body: response?.data?.message || `HTTP ${response?.status}`,
-          })
-        }
+        this.$notify.caution({
+          title: 'Restore Failed',
+          body: response?.data?.message || `HTTP ${response?.status}`,
+        })
       } finally {
         this.restoringVersionId = null
       }
@@ -409,13 +416,42 @@ export default {
 }
 .diff-header {
   flex-shrink: 0;
+  background-color: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--v-theme-outline);
+}
+/* Two halves match ace-diff's 50/50 internal split so each label sits over
+   the editor it describes. */
+.diff-header-half {
+  flex: 1 1 50%;
+  min-width: 0;
+  padding: 6px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.diff-header-left {
+  border-right: 1px solid var(--v-theme-outline);
+}
+.diff-header-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.6;
+}
+.diff-header-value {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .differ-container {
   flex: 1 1 auto;
   width: 100%;
   min-height: 0;
-}
-.version-mini-badges {
-  margin-top: 4px;
+  /* ace-diff positions its editors absolute; without an explicit positioning
+     context they anchor to the .diff-frame and overlap the header above. */
+  position: relative;
+  overflow: hidden;
 }
 </style>

@@ -43,6 +43,37 @@
         />
       </template>
     </v-snackbar>
+    <v-snackbar
+      v-model="showEditingToast"
+      absolute
+      class="apply-top"
+      :style="classificationStyles"
+      :timeout="-1"
+      color="orange"
+    >
+      <v-icon> mdi-pencil-off </v-icon>
+      {{ lockedBy }} is editing this script. Editor is in read-only mode
+      <template #actions="{ attrs }">
+        <v-btn
+          variant="text"
+          v-bind="attrs"
+          color="danger"
+          text="Unlock"
+          data-test="unlock-button"
+          @click="confirmLocalUnlock"
+        />
+        <v-btn
+          variant="text"
+          text="Dismiss"
+          v-bind="attrs"
+          @click="
+            () => {
+              showEditingToast = false
+            }
+          "
+        />
+      </template>
+    </v-snackbar>
     <div class="grid">
       <div
         v-for="def in screens"
@@ -86,7 +117,7 @@
             <v-icon v-if="showDisconnect" class="mt-2" color="red">
               mdi-connection
             </v-icon>
-            <div class="d-flex align-center mr-1">
+            <div v-if="scriptId || localMode" class="d-flex align-center mr-1">
               <v-tooltip :open-delay="600" location="top">
                 <template #activator="{ props }">
                   <v-btn
@@ -108,8 +139,7 @@
                     @click="backToNewScript"
                   />
                 </template>
-                <span v-if="!scriptId"> Reload File </span>
-                <span v-else> Back to New Script </span>
+                <span>Reload File</span>
               </v-tooltip>
             </div>
             <v-tooltip
@@ -164,14 +194,6 @@
               color="primary"
             />
             <div v-else style="width: 40px; height: 40px" class="mx-2"></div>
-
-            <script-lifecycle-badges
-              v-if="filename !== NEW_FILENAME"
-              :lifecycle="lifecycle"
-              :had-prior-approved-review="hadPriorApprovedReview"
-              :latest-execution-status="latestExecutionStatus"
-              class="ml-2"
-            />
 
             <v-spacer />
             <div v-if="startOrGoButton === 'Start'">
@@ -270,85 +292,6 @@
       @resize="({ prevPane }) => (editorBoxSize = prevPane.size)"
     >
       <pane class="editorbox" :size="editorBoxSize">
-        <v-alert
-          v-if="editorLockedForReview"
-          type="warning"
-          variant="tonal"
-          density="compact"
-          class="review-lock-banner"
-          data-test="review-lock-banner"
-        >
-          <div class="d-flex align-center">
-            <span>
-              <strong>Locked for review</strong> —
-              {{ lockedReviewerLabel }}
-              <template v-if="lifecycle?.reviewed?.notes">
-                <em>({{ lifecycle.reviewed.notes }})</em>
-              </template>
-            </span>
-            <v-spacer />
-            <v-btn
-              size="small"
-              variant="text"
-              class="mr-2"
-              data-test="review-lock-history"
-              @click="showVersionHistory = true"
-            >
-              View History
-            </v-btn>
-            <v-btn
-              size="small"
-              variant="tonal"
-              color="warning"
-              data-test="review-lock-edit-anyway"
-              @click="enterEditOverride"
-            >
-              Edit Anyway
-            </v-btn>
-          </div>
-        </v-alert>
-        <v-alert
-          v-else-if="lockedForReview && editOverride"
-          type="info"
-          variant="tonal"
-          density="compact"
-          class="review-lock-banner"
-          data-test="review-taint-banner"
-        >
-          You're editing past
-          <strong>{{ lockedReviewerLabel }}</strong
-          >'s approval. Saving will create a new version marked
-          <strong>tainted</strong>.
-        </v-alert>
-        <v-alert
-          v-if="versionStale"
-          type="info"
-          variant="tonal"
-          density="compact"
-          closable
-          class="version-stale-banner"
-          data-test="version-stale-banner"
-        >
-          <div class="d-flex align-center">
-            <span>
-              A newer version of this script was saved. Reload to see the
-              changes
-              <template v-if="fileModified === '*'">
-                (you have unsaved local edits)</template
-              >.
-            </span>
-            <v-spacer />
-            <v-btn
-              size="small"
-              variant="tonal"
-              color="primary"
-              data-test="version-stale-reload"
-              @click="reloadFile(false)"
-            >
-              Reload
-            </v-btn>
-          </div>
-        </v-alert>
         <v-snackbar
           v-model="showSave"
           absolute
@@ -495,64 +438,7 @@
         indeterminate
         color="primary"
       />
-      <script-lifecycle-badges
-        v-if="filename !== NEW_FILENAME"
-        :lifecycle="lifecycle"
-        :had-prior-approved-review="hadPriorApprovedReview"
-        :latest-execution-status="latestExecutionStatus"
-        class="ml-2"
-      />
     </v-row>
-    <v-alert
-      v-if="editorLockedForReview"
-      type="warning"
-      variant="tonal"
-      density="compact"
-      class="review-lock-banner mt-1"
-      data-test="review-lock-banner-inline"
-    >
-      <div class="d-flex align-center">
-        <span>
-          <strong>Locked for review</strong> — {{ lockedReviewerLabel }}
-        </span>
-        <v-spacer />
-        <v-btn
-          size="small"
-          variant="tonal"
-          color="warning"
-          @click="enterEditOverride"
-        >
-          Edit Anyway
-        </v-btn>
-      </div>
-    </v-alert>
-    <v-alert
-      v-if="versionStale"
-      type="info"
-      variant="tonal"
-      density="compact"
-      closable
-      class="version-stale-banner mt-1"
-      data-test="version-stale-banner-inline"
-    >
-      <div class="d-flex align-center">
-        <span>
-          A newer version of this script was saved.
-          <template v-if="fileModified === '*'">
-            (you have unsaved local edits)
-          </template>
-        </span>
-        <v-spacer />
-        <v-btn
-          size="small"
-          variant="tonal"
-          color="primary"
-          @click="reloadFile(false)"
-        >
-          Reload
-        </v-btn>
-      </div>
-    </v-alert>
     <v-tabs-window v-model="inlineTab">
       <v-tabs-window-item value="script">
         <v-row>
@@ -731,6 +617,13 @@
     :persistent="true"
     @status="promptDialogCallback"
   />
+  <script-version-history-dialog
+    v-if="showVersionHistory"
+    v-model="showVersionHistory"
+    :filename="filename"
+    :current-body="editor ? editor.getValue() : ''"
+    @restored="onVersionRestored"
+  />
   <!-- Command Editor Dialog -->
   <v-dialog
     v-model="commandEditor.show"
@@ -791,75 +684,6 @@
       />
     </v-sheet>
   </v-bottom-sheet>
-  <script-version-history-dialog
-    v-model="showVersionHistory"
-    :filename="filename"
-    :current-version-id="versionId"
-    :current-body="editor ? editor.getValue() : ''"
-    :locked-for-review="lockedForReview"
-    :current-reviewer="lifecycle?.reviewed?.by"
-    :current-reviewer-notes="lifecycle?.reviewed?.notes"
-    @restored="onVersionRestored"
-  />
-  <v-dialog v-model="showSignOffDialog" width="540" data-test="sign-off-dialog">
-    <v-card>
-      <v-card-title>Review Version</v-card-title>
-      <v-card-text>
-        <p class="mb-3">
-          <strong>Approve</strong> marks the version reviewed and locks it
-          against further saves until the lock is explicitly overridden (which
-          marks the new version tainted). <strong>Request Changes</strong>
-          records review feedback without locking — the author can keep editing.
-        </p>
-        <p class="text-caption mb-3">
-          Version <code>{{ versionId }}</code>
-        </p>
-        <v-textarea
-          v-model="signOffNotes"
-          label="Review notes"
-          hint="Required when requesting changes."
-          persistent-hint
-          rows="4"
-          variant="outlined"
-          data-test="sign-off-notes"
-        />
-      </v-card-text>
-      <v-card-actions>
-        <v-spacer />
-        <v-btn
-          variant="outlined"
-          :disabled="signOffSubmitting"
-          @click="showSignOffDialog = false"
-        >
-          Cancel
-        </v-btn>
-        <v-btn
-          color="error"
-          variant="flat"
-          :loading="
-            signOffSubmitting && signOffDecision === 'changes_requested'
-          "
-          :disabled="
-            signOffSubmitting && signOffDecision !== 'changes_requested'
-          "
-          data-test="sign-off-request-changes"
-          @click="submitSignOff('changes_requested')"
-        >
-          Request Changes
-        </v-btn>
-        <v-btn
-          color="success"
-          variant="flat"
-          :loading="signOffSubmitting && signOffDecision === 'approved'"
-          :disabled="signOffSubmitting && signOffDecision !== 'approved'"
-          data-test="sign-off-approve"
-          @click="submitSignOff('approved')"
-        >
-          Approve
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
 </template>
 
 <script>
@@ -895,6 +719,7 @@ import ScriptEnvironmentDialog from '@/tools/scriptrunner/Dialogs/ScriptEnvironm
 import CommandEditor from '@/components/CommandEditor.vue'
 import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
 import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
+import ScriptVersionHistoryDialog from '@/tools/scriptrunner/ScriptVersionHistoryDialog.vue'
 import {
   CmdCompleter,
   TlmCompleter,
@@ -902,8 +727,6 @@ import {
 } from '@/tools/scriptrunner/autocomplete'
 import { SleepAnnotator } from '@/tools/scriptrunner/annotations'
 import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
-import ScriptLifecycleBadges from '@/tools/scriptrunner/ScriptLifecycleBadges.vue'
-import ScriptVersionHistoryDialog from '@/tools/scriptrunner/ScriptVersionHistoryDialog.vue'
 
 // Matches target_file.rb TEMP_FOLDER
 const TEMP_FOLDER = '__TEMP__'
@@ -934,10 +757,9 @@ export default {
     SuiteRunner,
     RunningScripts,
     ScriptLogMessages,
+    ScriptVersionHistoryDialog,
     CriticalCmdDialog,
     CommandEditor,
-    ScriptLifecycleBadges,
-    ScriptVersionHistoryDialog,
   },
   mixins: [AceEditorModes, ClassificationBanners],
   beforeRouteUpdate: function (to, from, next) {
@@ -1019,19 +841,10 @@ export default {
       tempFilename: null,
       fileModified: '',
       fileOpen: false,
-      versionId: null, // S3 VersionId of the currently-loaded body
-      lifecycle: null, // latest version's lifecycle record (validated/reviewed/executions)
-      lockedForReview: false, // true when latest version is reviewed; saving requires force_taint
-      editOverride: false, // user clicked "Edit Anyway" past a reviewed lock; next save will set force_taint
-      hadPriorApprovedReview: false, // any non-latest version had an approved review (drives dull-green badge)
-      latestExecutionStatus: null, // ScriptStatusModel.state of the most recent execution (drives executed badge color)
-      latestServerVersionId: null, // result of the polling check; if it differs from versionId, banner shows
-      versionPollIntervalId: null,
+      lockedBy: null,
+      showEditingToast: false,
       showVersionHistory: false,
-      showSignOffDialog: false,
-      signOffNotes: '',
-      signOffSubmitting: false,
-      signOffDecision: null, // 'approved' or 'changes_requested' — decided when user clicks the matching button
+      localMode: false,
       showSaveAs: false,
       areYouSure: false,
       subscription: null,
@@ -1131,6 +944,7 @@ export default {
       criticalCmdUser: null,
       displayCriticalCmd: false,
       editorBoxSize: 50,
+      lockingEnabled: true,
     }
   },
   computed: {
@@ -1172,26 +986,11 @@ export default {
     environmentModified: function () {
       return this.scriptEnvironment.env.length > 0
     },
-    versionStale: function () {
-      return (
-        !!this.versionId &&
-        !!this.latestServerVersionId &&
-        this.versionId !== this.latestServerVersionId
-      )
-    },
-    // Editor read-only state due to the review lock specifically. Other
-    // sources of read-only (readOnlyUser, inline mode) are still handled by
-    // their own watchers — this only deals with the review-lock case so the
-    // user can opt back into editing via "Edit Anyway" without affecting
-    // the other sources.
-    editorLockedForReview: function () {
-      return this.lockedForReview && !this.editOverride
-    },
-    lockedReviewerLabel: function () {
-      const reviewed = this.lifecycle?.reviewed
-      if (!reviewed) return 'this version was approved'
-      const at = reviewed.at ? ` on ${reviewed.at}` : ''
-      return `approved by ${reviewed.by || 'someone'}${at}`
+    isLocked: function () {
+      if (!this.lockingEnabled) {
+        return false
+      }
+      return !!this.lockedBy
     },
     // Returns the currently shown filename
     fullFilename: function () {
@@ -1379,27 +1178,19 @@ export default {
               divider: true,
             },
             {
-              label: 'Validate',
+              label: 'Syntax Check',
               icon: 'mdi-file-check',
               disabled: this.scriptId,
               command: () => {
-                this.validate()
+                this.syntaxCheck()
               },
             },
             {
-              label: 'Sign Off…',
-              icon: 'mdi-account-check',
-              disabled: !this.versionId || !!this.scriptId,
+              label: 'Mnemonic Check',
+              icon: 'mdi-spellcheck',
+              disabled: this.scriptId,
               command: () => {
-                this.openSignOffDialog()
-              },
-            },
-            {
-              label: 'Version History…',
-              icon: 'mdi-history',
-              disabled: this.filename === NEW_FILENAME,
-              command: () => {
-                this.showVersionHistory = true
+                this.checkMnemonics()
               },
             },
             {
@@ -1458,12 +1249,37 @@ export default {
                 this.deleteAllBreakpoints()
               },
             },
+            {
+              divider: true,
+            },
+            {
+              label: 'Version History',
+              icon: 'mdi-history',
+              disabled:
+                this.scriptId ||
+                !this.filename ||
+                this.filename === NEW_FILENAME,
+              command: () => {
+                this.showVersionHistory = true
+              },
+            },
           ],
         },
       ]
     },
   },
   watch: {
+    isLocked: function (val) {
+      this.showEditingToast = val
+      if (!this.suiteRunner) {
+        this.startOrGoDisabled = val
+      }
+      if (this.readOnlyUser == false && val == false && !this.inline) {
+        this.editor.setReadOnly(val)
+      } else {
+        this.editor.setReadOnly(true)
+      }
+    },
     fullFilename: function (filename) {
       this.filenameSelect = filename
       if (!this.inline) {
@@ -1492,32 +1308,6 @@ export default {
         this.updateOverridesCount()
       }
     },
-    // Flip the Ace editor between read-only and writable when the review
-    // lock changes. Don't re-enable when other read-only sources are still
-    // active (readOnlyUser permission gate, or inline-embedded mode).
-    editorLockedForReview: function (locked) {
-      if (!this.editor) return
-      if (locked) {
-        this.editor.setReadOnly(true)
-      } else if (!this.readOnlyUser && !this.inline) {
-        this.editor.setReadOnly(false)
-      }
-    },
-    // Mirror live ScriptStatusModel state into latestExecutionStatus while
-    // the user is running the script in this session. Avoids a separate
-    // ActionCable subscription — `state` is already wired up to receive WS
-    // updates for `this.scriptId`.
-    state: function (newState) {
-      const executions = this.lifecycle?.executions || []
-      const latest = executions[executions.length - 1]
-      if (
-        this.scriptId &&
-        latest &&
-        String(latest.running_script_id) === String(this.scriptId)
-      ) {
-        this.latestExecutionStatus = newState
-      }
-    },
   },
   created: async function () {
     // Ensure Offline Access Is Setup For the Current User
@@ -1533,8 +1323,26 @@ export default {
       .catch((error) => {
         // Do nothing
       })
+    try {
+      const lockingResponse = await this.api.get_setting(
+        'script_runner_locking',
+      )
+      if (lockingResponse !== null && lockingResponse !== undefined) {
+        this.lockingEnabled = lockingResponse
+      }
+    } catch (error) {
+      // Keep default (true)
+    }
 
     this.updateOverridesCount()
+
+    Api.get('/openc3-api/info')
+      .then((response) => {
+        this.localMode = !!response.data?.local_mode
+      })
+      .catch(() => {
+        this.localMode = false
+      })
 
     // Make NEW_FILENAME available to the template
     this.NEW_FILENAME = NEW_FILENAME
@@ -1694,11 +1502,9 @@ export default {
     this.editor.container.remove()
   },
   unmounted() {
+    this.unlockFile()
     if (this.updateInterval != null) {
       clearInterval(this.updateInterval)
-    }
-    if (this.versionPollIntervalId != null) {
-      clearInterval(this.versionPollIntervalId)
     }
     if (this.subscription) {
       this.subscription.unsubscribe()
@@ -2045,7 +1851,7 @@ export default {
       }
     },
     onChange(event) {
-      // Don't track changes when we're running or the editor is read-only
+      // Don't track changes when we're running or read-only (locked)
       if (this.scriptId || this.editor.getReadOnly() === true) {
         return
       }
@@ -2055,92 +1861,45 @@ export default {
         this.fileModified = ''
       }
     },
-    // Combined Script -> Validate. Calls the server-side /validate endpoint
-    // (syntax + mnemonic check, recorded into the validated lifecycle block)
-    // and merges in the browser-side mnemonicChecker findings (which catch
-    // tlm/cmd identifiers in ruby/python that the server check can't see).
-    // Updates lifecycle.validated from the server response so the badge
-    // refreshes immediately, then shows a single combined dialog.
-    async validate() {
-      if (this.filename === NEW_FILENAME) return
-      const text = this.editor.getValue()
-      const isRubyOrPython =
-        this.filename.endsWith('.rb') || this.filename.endsWith('.py')
-      const sections = []
-
-      try {
-        const response = await Api.post(
-          `/script-api/scripts/${this.filename}/validate`,
-          {
-            data: text,
+    checkMnemonics: function () {
+      let filename = this.filename
+      if (this.filename !== NEW_FILENAME) {
+        // Check if the extension is not .rb or .py
+        if (!(filename.endsWith('.rb') || filename.endsWith('.py'))) {
+          Api.post(`/script-api/scripts/${this.filename}/mnemonics`, {
+            data: this.editor.getValue(),
             headers: {
               Accept: 'application/json',
               'Content-Type': 'text/plain',
             },
-          },
-        )
-        if (response.data.validated) {
-          this.lifecycle = {
-            ...(this.lifecycle || {}),
-            validated: response.data.validated,
-          }
+          }).then((response) => {
+            let alertText = ''
+            alertText += `<strong>${response.data.title}</strong><br/><br/>`
+            alertText += JSON.parse(response.data.description)
+            this.$dialog.alert(alertText.trim(), { html: true })
+            return
+          })
         }
-        const syntax = response.data.syntax
-        if (syntax) {
-          sections.push(`<strong>${syntax.title}</strong>`)
-          try {
-            const desc = JSON.parse(syntax.description)
-            sections.push(
-              Array.isArray(desc) ? desc.join('<br/>') : String(desc),
-            )
-          } catch (_) {
-            sections.push(String(syntax.description))
-          }
-        }
-        const mnemonics = response.data.mnemonics
-        if (mnemonics) {
-          sections.push(`<strong>${mnemonics.title}</strong>`)
-          try {
-            const desc = JSON.parse(mnemonics.description)
-            sections.push(
-              Array.isArray(desc) ? desc.join('<br/>') : String(desc),
-            )
-          } catch (_) {
-            sections.push(String(mnemonics.description))
-          }
-        }
-      } catch ({ response }) {
-        sections.push(
-          `<strong>Validation request failed</strong><br/>${
-            response?.data?.message || response?.statusText || 'unknown error'
-          }`,
-        )
       }
-
-      if (isRubyOrPython) {
-        try {
-          const { skipped, problems } =
-            await this.mnemonicChecker.checkText(text)
+      this.mnemonicChecker
+        .checkText(this.editor.getValue())
+        .then(({ skipped, problems }) => {
+          let alertText = ''
           if (problems.length) {
             const problemText = problems
-              .map((p) => `${p.lineNumber}: ${p.error}`)
+              .map((problem) => `${problem.lineNumber}: ${problem.error}`)
               .join('<br/>')
-            sections.push(
-              `<strong>Mnemonic Check (browser):</strong><br/>${problemText}`,
-            )
-          } else if (skipped.length) {
-            sections.push(
-              '<strong>Mnemonic Check (browser):</strong><br/>Mnemonics with string interpolation were not checked.',
-            )
-          } else {
-            sections.push('<strong>Mnemonic Check (browser):</strong><br/>OK')
+            alertText += `<strong>The following lines have problems:</strong><br/>${problemText}<br/><br/>`
           }
-        } catch (e) {
-          sections.push(`<strong>Browser mnemonic check failed:</strong> ${e}`)
-        }
-      }
-
-      this.$dialog.alert(sections.join('<br/><br/>'), { html: true })
+          if (skipped.length) {
+            alertText +=
+              '<strong>Mnemonics with string interpolation were not checked.</strong>'
+          }
+          if (alertText === '') {
+            alertText = '<strong>Everything looks good!</strong>'
+          }
+          this.$dialog.alert(alertText.trim(), { html: true })
+        })
     },
     initScriptStart() {
       this.disableSuiteButtons = true
@@ -2796,6 +2555,7 @@ export default {
       }
     },
     newFile() {
+      this.unlockFile()
       this.filename = NEW_FILENAME
       this.currentFilename = null
       this.tempFilename = null
@@ -2803,14 +2563,6 @@ export default {
       this.editor.session.setValue('')
       this.saveAllowed = true
       this.fileModified = ''
-      this.versionId = null
-      this.lifecycle = null
-      this.lockedForReview = false
-      this.editOverride = false
-      this.hadPriorApprovedReview = false
-      this.latestExecutionStatus = null
-      this.latestServerVersionId = null
-      this.stopVersionPolling()
       this.suiteRunner = false
       this.startOrGoDisabled = false
       this.envDisabled = false
@@ -2985,23 +2737,9 @@ class TestSuite(Suite):
           if (response.data.success) {
             file['success'] = response.data.success
           }
+          const locked = response.data.locked
           const breakpoints = response.data.breakpoints
-          const versionId = response.data.version_id
-          const lifecycle = response.data.lifecycle
-          const lockedForReview = response.data.locked_for_review === true
-          const hadPriorApprovedReview =
-            response.data.had_prior_approved_review === true
-          this.setFile(
-            {
-              file,
-              breakpoints,
-              versionId,
-              lifecycle,
-              lockedForReview,
-              hadPriorApprovedReview,
-            },
-            true,
-          )
+          this.setFile({ file, locked, breakpoints }, true)
           this.saveAllowed = true
         })
         .catch((error) => {
@@ -3016,34 +2754,18 @@ class TestSuite(Suite):
         })
     },
     // Called by the FileOpenDialog to set the file contents
-    setFile(
-      {
-        file,
-        breakpoints,
-        versionId = null,
-        lifecycle = null,
-        lockedForReview = false,
-        hadPriorApprovedReview = false,
-      },
-      local = false,
-    ) {
+    setFile({ file, locked, breakpoints }, local = false) {
       this.files = {} // Clear the cached file list
       // Split off the ' *' which indicates a file is modified on the server
       let newFilename = file.name.split('*')[0]
+      if (local === false) {
+        // We only need to unlock if the file is different
+        if (this.filename !== newFilename) {
+          this.unlockFile() // first unlock what was just being edited
+          this.lockedBy = locked
+        }
+      }
       this.filename = newFilename
-      this.versionId = versionId
-      this.lifecycle = lifecycle
-      this.lockedForReview = lockedForReview
-      this.hadPriorApprovedReview = hadPriorApprovedReview
-      // Loading a fresh file resets the per-session unlock decision — the
-      // user has to opt in again on each open. Same on newFile().
-      this.editOverride = false
-      this.latestExecutionStatus = null
-      this.refreshLatestExecutionStatus()
-      // Reset stale-version banner state and (re)start the poll. Server-side
-      // pull is a single Redis HGET, so a 10s cadence is fine.
-      this.latestServerVersionId = null
-      this.startVersionPolling()
       if (!this.inline) {
         // Update the URL with the filename
         this.$router
@@ -3138,23 +2860,9 @@ class TestSuite(Suite):
       return 'unknown' // otherwise unknown
     },
     // saveFile takes a type to indicate if it was called by the Menu
-    // or automatically by 'Start' (to ensure a consistent backend file) or autoSave.
-    // forceTaint is set when retrying after a 409 locked_for_review — the
-    // server records the new version with provenance back to the prior reviewed one.
-    async saveFile(type = 'menu', { forceTaint = false } = {}) {
+    // or automatically by 'Start' (to ensure a consistent backend file) or autoSave
+    async saveFile(type = 'menu') {
       if (this.readOnlyUser) {
-        return
-      }
-      // For non-menu saves (auto-save, save-on-Start) skip the round-trip
-      // entirely when there are no local edits. Avoids triggering the
-      // locked_for_review 409 dialog when running an unmodified reviewed
-      // script. Menu-driven saves always go through.
-      if (
-        type !== 'menu' &&
-        !forceTaint &&
-        this.fileModified === '' &&
-        this.filename !== NEW_FILENAME
-      ) {
         return
       }
       if (this.saveAllowed) {
@@ -3198,14 +2906,7 @@ class TestSuite(Suite):
           }
         }
         this.showSave = true
-        // editOverride means the user has already accepted the taint up
-        // front via "Edit Anyway" on the lock banner — fold it into the
-        // force_taint flag so the save proceeds without an extra prompt.
-        const taint = forceTaint || this.editOverride
-        const saveUrl = taint
-          ? `/script-api/scripts/${this.filename}?force_taint=true`
-          : `/script-api/scripts/${this.filename}`
-        await Api.post(saveUrl, {
+        await Api.post(`/script-api/scripts/${this.filename}`, {
           data: {
             text: this.editor.getValue(), // Pass in the raw file text
             breakpoints,
@@ -3226,34 +2927,6 @@ class TestSuite(Suite):
                 this.suiteError = response.data.error
                 this.showSuiteError = true
               }
-              if (response.data.version_id) {
-                this.versionId = response.data.version_id
-              }
-              if (response.data.validation) {
-                // Reflect the inline syntax + mnemonic check in the lifecycle
-                // so the validated badge updates immediately on save.
-                const validation = response.data.validation
-                this.lifecycle = {
-                  ...(this.lifecycle || {}),
-                  validated: {
-                    passed: validation.passed,
-                    errors: validation.errors || [],
-                    by: null,
-                    at: new Date().toISOString(),
-                  },
-                  // A new save resets reviewed/executions for THIS version.
-                  reviewed: null,
-                  executions: [],
-                }
-                this.lockedForReview = false
-                // Surface validation failures explicitly on user-initiated
-                // saves. Autosave and save-on-Start stay silent — the red
-                // badge is still visible and the user will see errors when
-                // the script runs.
-                if (!validation.passed && type === 'menu') {
-                  this.showValidationFailureDialog(validation)
-                }
-              }
               this.fileModified = ''
               setTimeout(() => {
                 this.showSave = false
@@ -3264,6 +2937,7 @@ class TestSuite(Suite):
               this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
               this.showAlert = true
             }
+            this.lockFile() // Ensure this file is locked for editing
             this.doResize()
           })
           .catch(({ response }) => {
@@ -3273,257 +2947,18 @@ class TestSuite(Suite):
             if (response.status == 422) {
               this.alertType = 'error'
               this.alertText = response.data.suites
-              this.showAlert = true
-            } else if (
-              response.status == 409 &&
-              response.data?.status === 'locked_for_review'
-            ) {
-              this.confirmTaintAndSave(type, response.data.reviewed)
             } else {
               this.alertType = 'error'
               this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
-              this.showAlert = true
             }
+            this.showAlert = true
           })
       } else {
         this.setError('Attempt to save file when not allowed')
       }
     },
-    // Called from the save catch when the server refuses with 409
-    // locked_for_review. Shows the prior reviewer + notes and offers to retry
-    // the save with force_taint=true, which marks the new version tainted.
-    confirmTaintAndSave(type, reviewed) {
-      const reviewer = reviewed?.by || 'someone'
-      const at = reviewed?.at ? ` on ${reviewed.at}` : ''
-      const notes = reviewed?.notes
-        ? `\n\nReview notes: "${reviewed.notes}"`
-        : ''
-      this.$dialog
-        .confirm(
-          `This script was reviewed by ${reviewer}${at} and is locked for review.${notes}\n\nEdit anyway? The new version will be marked tainted.`,
-          {
-            okText: 'Edit Anyway',
-            cancelText: 'Cancel',
-          },
-        )
-        .then(() => {
-          this.saveFile(type, { forceTaint: true })
-        })
-        .catch(() => {
-          // user cancelled, no-op
-        })
-    },
     saveAs() {
       this.showSaveAs = true
-    },
-    // Render the inline-save validation result (when it fails) in the same
-    // shape Script -> Validate uses, so the user sees what's wrong without
-    // having to click Validate after every save.
-    showValidationFailureDialog(validation) {
-      const sections = []
-      const syntax = validation.syntax
-      if (syntax) {
-        sections.push(`<strong>${syntax.title}</strong>`)
-        try {
-          const desc = JSON.parse(syntax.description)
-          sections.push(Array.isArray(desc) ? desc.join('<br/>') : String(desc))
-        } catch (_) {
-          sections.push(String(syntax.description))
-        }
-      }
-      const mnemonics = validation.mnemonics
-      if (mnemonics) {
-        sections.push(`<strong>${mnemonics.title}</strong>`)
-        try {
-          const desc = JSON.parse(mnemonics.description)
-          sections.push(Array.isArray(desc) ? desc.join('<br/>') : String(desc))
-        } catch (_) {
-          sections.push(String(mnemonics.description))
-        }
-      }
-      // Fallback when the server only returned a flattened errors list
-      // (e.g. exception path in inline_validate).
-      if (sections.length === 0 && (validation.errors || []).length) {
-        sections.push('<strong>Validation Failed</strong>')
-        sections.push(validation.errors.join('<br/>'))
-      }
-      this.$dialog.alert(sections.join('<br/><br/>'), { html: true })
-    },
-    openSignOffDialog() {
-      this.signOffNotes = ''
-      this.signOffDecision = null
-      this.showSignOffDialog = true
-    },
-    // User clicked "Edit Anyway" on the lock banner. Confirm intent and
-    // flip editOverride so the editor becomes writable; subsequent save
-    // automatically sends force_taint=true (see saveFile).
-    enterEditOverride() {
-      const reviewer = this.lifecycle?.reviewed?.by || 'someone'
-      this.$dialog
-        .confirm(
-          `This script was approved by ${reviewer}. Edit anyway? The next save will be marked tainted.`,
-          { okText: 'Edit Anyway', cancelText: 'Cancel' },
-        )
-        .then(() => {
-          this.editOverride = true
-        })
-        .catch(() => {
-          // user cancelled — leave the lock in place
-        })
-    },
-    // After a restore creates a new version, pull the file fresh so the
-    // editor + lifecycle badges + version_id all reflect the new state.
-    onVersionRestored() {
-      if (this.filename !== NEW_FILENAME) {
-        this.reloadFile(false)
-      }
-    },
-    // Poll the lightweight /latest endpoint to detect when someone else
-    // (or this user in another tab) saves a newer version. The banner just
-    // surfaces it; the user decides whether to reload.
-    startVersionPolling() {
-      this.stopVersionPolling()
-      if (this.filename === NEW_FILENAME) return
-      this.versionPollIntervalId = setInterval(this.pollLatestVersion, 10000)
-    },
-    stopVersionPolling() {
-      if (this.versionPollIntervalId != null) {
-        clearInterval(this.versionPollIntervalId)
-        this.versionPollIntervalId = null
-      }
-    },
-    async pollLatestVersion() {
-      if (this.filename === NEW_FILENAME) return
-      try {
-        const response = await Api.get(
-          `/script-api/scripts/${this.filename}/latest`,
-          { headers: { 'Ignore-Errors': '404' } },
-        )
-        const data = response?.data || {}
-        this.latestServerVersionId = data.latest_version_id || null
-
-        // When the user is viewing the latest version, mirror its lifecycle
-        // so reviewed/executed badges reflect actions other users took on
-        // the same version (sign-off, runs) without a manual reload. We
-        // skip this when the user is on a stale version — the banner above
-        // is already prompting them to reload.
-        if (
-          data.latest_version_id &&
-          data.latest_version_id === this.versionId &&
-          data.lifecycle
-        ) {
-          const prevLatestExecId = this.lifecycle?.executions?.length
-            ? this.lifecycle.executions[this.lifecycle.executions.length - 1]
-                .running_script_id
-            : null
-          this.lifecycle = data.lifecycle
-          this.lockedForReview = data.locked_for_review === true
-          this.hadPriorApprovedReview = data.had_prior_approved_review === true
-          // If a new execution appeared (different running_script_id at the
-          // tail), re-fetch its status so the executed badge color refreshes
-          // to whatever ScriptStatusModel reports for that run.
-          const newLatestExecId = this.lifecycle?.executions?.length
-            ? this.lifecycle.executions[this.lifecycle.executions.length - 1]
-                .running_script_id
-            : null
-          if (newLatestExecId && newLatestExecId !== prevLatestExecId) {
-            this.refreshLatestExecutionStatus()
-          }
-        }
-      } catch (_) {
-        // network blip — leave previous value; next tick will retry
-      }
-    },
-    // Look up the ScriptStatusModel for the most recent recorded execution
-    // and stash its state, so the executed badge can color itself by outcome.
-    // Live updates while the user runs a script in this session come through
-    // the existing `state` watcher below — this fetch handles historical
-    // executions on file load.
-    async refreshLatestExecutionStatus() {
-      const executions = this.lifecycle?.executions || []
-      const latest = executions[executions.length - 1]
-      const id = latest?.running_script_id
-      if (!id) {
-        this.latestExecutionStatus = null
-        return
-      }
-      try {
-        const response = await Api.get(`/script-api/running-script/${id}`, {
-          headers: { 'Ignore-Errors': '404' },
-        })
-        this.latestExecutionStatus = response?.data?.state || null
-      } catch (_) {
-        // ScriptStatusModel rotates completed entries out eventually; treat
-        // a missing record as "outcome unknown" rather than failing the badge.
-        this.latestExecutionStatus = null
-      }
-    },
-    async submitSignOff(decision) {
-      if (this.signOffSubmitting || !this.versionId) return
-      // Require notes when requesting changes — otherwise the author has no
-      // signal about what to fix.
-      if (
-        decision === 'changes_requested' &&
-        !this.signOffNotes.trim().length
-      ) {
-        this.$notify.caution({
-          title: 'Notes required',
-          body: 'Add review notes describing the changes you want before requesting changes.',
-        })
-        return
-      }
-      this.signOffSubmitting = true
-      this.signOffDecision = decision
-      try {
-        const response = await Api.post(
-          `/script-api/scripts/${this.filename}/review`,
-          {
-            data: {
-              version_id: this.versionId,
-              notes: this.signOffNotes,
-              decision,
-            },
-          },
-        )
-        // Reflect the new reviewed block in local lifecycle so the badge
-        // updates immediately. lockedForReview comes back from the server
-        // since only 'approved' decisions lock.
-        this.lifecycle = {
-          ...(this.lifecycle || {}),
-          reviewed: response.data.reviewed,
-        }
-        this.lockedForReview = response.data.locked_for_review === true
-        this.showSignOffDialog = false
-        this.$notify.normal({
-          title:
-            decision === 'approved' ? 'Sign Off Recorded' : 'Changes Requested',
-          body: `Reviewed by ${response.data.reviewed?.by}`,
-        })
-      } catch ({ response }) {
-        if (
-          response?.status === 409 &&
-          response?.data?.status === 'version_mismatch'
-        ) {
-          this.$notify.caution({
-            title: 'Newer version exists',
-            body: 'Reload the file before signing off — the script was edited since you opened it.',
-          })
-          this.showSignOffDialog = false
-        } else if (response?.status === 403) {
-          this.$notify.caution({
-            title: 'Not Authorized',
-            body: 'You do not have permission to sign off on scripts.',
-          })
-          this.showSignOffDialog = false
-        } else {
-          this.$notify.caution({
-            title: 'Sign Off Failed',
-            body: response?.data?.message || `HTTP ${response?.status}`,
-          })
-        }
-      } finally {
-        this.signOffSubmitting = false
-      }
     },
     async saveAsFilename(filename) {
       this.filename = filename.split('*')[0]
@@ -3572,6 +3007,21 @@ class TestSuite(Suite):
       link.href = URL.createObjectURL(blob)
       link.setAttribute('download', this.filename)
       link.click()
+    },
+    // ScriptRunner Script menu actions
+    syntaxCheck() {
+      Api.post(`/script-api/scripts/${this.filename}/syntax`, {
+        data: this.editor.getValue(),
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'text/plain',
+        },
+      }).then((response) => {
+        this.information.title = response.data.title
+        this.information.text = JSON.parse(response.data.description)
+        this.information.show = true
+        this.information.width = '600'
+      })
     },
     showInstrumented() {
       Api.post(`/script-api/scripts/${this.filename}/instrumented`, {
@@ -3636,6 +3086,37 @@ class TestSuite(Suite):
       Object.keys(allMarkers)
         .filter((key) => allMarkers[key].type === 'fullLine')
         .forEach((marker) => this.editor.session.removeMarker(marker))
+    },
+    confirmLocalUnlock: function () {
+      this.$dialog
+        .confirm(
+          'Are you sure you want to unlock this script for editing? If another user is editing this script, your changes might conflict with each other.',
+          {
+            okText: 'Force Unlock',
+            cancelText: 'Cancel',
+          },
+        )
+        .then(() => {
+          this.lockedBy = null
+          return this.lockFile() // Re-lock it as this user so it's locked for anyone else who opens it
+        })
+    },
+    lockFile: function () {
+      if (!this.readOnlyUser) {
+        return Api.post(`/script-api/scripts/${this.filename}/lock`)
+      }
+    },
+    onVersionRestored: function () {
+      this.reloadFile()
+    },
+    unlockFile: function () {
+      if (
+        this.filename !== NEW_FILENAME &&
+        !this.readOnly &&
+        !this.readOnlyUser
+      ) {
+        Api.post(`/script-api/scripts/${this.filename}/unlock`)
+      }
     },
     backToNewScript: async function () {
       // Disconnect from the current script

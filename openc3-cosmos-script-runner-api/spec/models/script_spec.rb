@@ -30,6 +30,36 @@ RSpec.describe Script, type: :model do
     end
   end
 
+  describe "self.lock, self.unlock, self.locked?" do
+    it "locks and unlocks scripts" do
+      name = "script.rb"
+      username = "user1"
+
+      # Not locked initially
+      expect(Script.locked?("DEFAULT", name)).to be false
+
+      # Lock the script
+      Script.lock("DEFAULT", name, username)
+      expect(Script.locked?("DEFAULT", name)).to eq username
+
+      # Unlock the script
+      Script.unlock("DEFAULT", name)
+      expect(Script.locked?("DEFAULT", name)).to be false
+    end
+
+    it "handles modified script names with asterisks" do
+      name = "script.rb*"
+      username = "user1"
+
+      Script.lock("DEFAULT", name, username)
+      expect(Script.locked?("DEFAULT", name)).to eq username
+      expect(Script.locked?("DEFAULT", "script.rb")).to eq username
+
+      Script.unlock("DEFAULT", name)
+      expect(Script.locked?("DEFAULT", name)).to be false
+    end
+  end
+
   describe "self.get_breakpoints" do
     it "returns breakpoints for a script" do
       name = "script.rb"

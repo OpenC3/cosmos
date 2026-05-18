@@ -29,6 +29,23 @@ class Script < OpenC3::TargetFile
     super(scope, nil, target: target) # No path matchers
   end
 
+  def self.lock(scope, name, username)
+    name = name.split('*')[0] # Split '*' that indicates modified
+    OpenC3::Store.hset("#{scope}__script-locks", name, username)
+  end
+
+  def self.unlock(scope, name)
+    name = name.split('*')[0] # Split '*' that indicates modified
+    OpenC3::Store.hdel("#{scope}__script-locks", name)
+  end
+
+  def self.locked?(scope, name)
+    name = name.split('*')[0] # Split '*' that indicates modified
+    locked_by = OpenC3::Store.hget("#{scope}__script-locks", name)
+    locked_by ||= false
+    locked_by
+  end
+
   def self.get_breakpoints(scope, name)
     breakpoints = OpenC3::Store.hget("#{scope}__script-breakpoints", name.split('*')[0]) # Split '*' that indicates modified
     return JSON.parse(breakpoints, allow_nan: true, create_additions: true) if breakpoints

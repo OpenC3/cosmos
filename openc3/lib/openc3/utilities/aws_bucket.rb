@@ -260,6 +260,12 @@ module OpenC3
       { versions: versions, delete_markers: delete_markers }
     rescue Aws::S3::Errors::NoSuchBucket
       raise NotFound, "Bucket '#{bucket}' does not exist."
+    rescue Aws::S3::Errors::NotImplemented, Aws::S3::Errors::InternalError => e
+      # Backend (e.g. versitygw started without --versioning-dir) doesn't
+      # support versioning. Treat as "no versions available" so callers like
+      # the Version History dialog render an empty list rather than 500.
+      Logger.warn("list_object_versions on #{bucket} not supported by backend: #{e.message}")
+      { versions: [], delete_markers: [] }
     end
 
     def list_objects(bucket:, prefix: nil, max_request: 1000, max_total: 100_000)
