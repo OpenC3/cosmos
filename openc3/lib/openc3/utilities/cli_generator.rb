@@ -98,12 +98,8 @@ module OpenC3
 
       # If a language flag is present but no positional NAME follows the generator name,
       # the user wrote something like `cli generate plugin --python`. Abort with guidance.
-      unless flag_indices.empty?
-        first_flag_idx = flag_indices.min
-        has_positional_name = args[1...first_flag_idx].any? { |a| a != '--ruby' && a != '--python' }
-        unless has_positional_name
-          abort("NAME must come before the language flag. Example: cli generate #{generator} MyName #{lang_flags.first}")
-        end
+      if args[1] == '--ruby' || args[1] == '--python'
+        abort("NAME must come before the language flag. Example: cli generate #{generator} MyName #{args[1]}")
       end
 
       # Remove flag tokens from args in-place so downstream argument-position checks work.
@@ -383,7 +379,7 @@ module OpenC3
           exit_code: (args[1].nil? ? 1 : 0),
         )
       end
-      if args.length < 2 or args.length > 2
+      if args.length != 2
         abort("Usage: cli generate #{args[0]} <NAME> [--ruby | --python]")
       end
 
@@ -722,6 +718,7 @@ RUBY
         help_example: 'STATUS',
       })
     end
+
     def self.generate_processor(args)
       generate_target_artifact(args, {
         suffix: 'PROCESSOR',
@@ -736,6 +733,7 @@ RUBY
         help_example: 'DATA',
       })
     end
+
     def self.generate_limits_response(args)
       generate_target_artifact(args, {
         suffix: 'LIMITS_RESPONSE',
@@ -750,6 +748,7 @@ RUBY
         help_example: 'CUSTOM',
       })
     end
+
     def self.generate_command_validator(args)
       generate_target_artifact(args, {
         suffix: 'COMMAND_VALIDATOR',
