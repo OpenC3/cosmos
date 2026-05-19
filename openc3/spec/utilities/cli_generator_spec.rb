@@ -41,6 +41,34 @@ module OpenC3
       CliGenerator.generate(args)
     end
 
+    # --- Shared examples ---------------------------------------------------
+
+    # Common boilerplate exercised by nearly every generator. Pass the
+    # generator name; help-exit-status defaults to 0 (the user explicitly
+    # asked for --help) but is 1 for target-derived generators which exit 1
+    # whenever required args are missing.
+    shared_examples 'standard help/arg behavior' do |generator, help_status: 0|
+      it "shows help with --help flag" do
+        expect { run_gen([generator, '--help']) }
+          .to raise_error(SystemExit) { |error| expect(error.status).to eq(help_status) }
+      end
+
+      it "requires a #{generator} name" do
+        expect { run_gen([generator]) }
+          .to raise_error(SystemExit)
+      end
+    end
+
+    # Generators that accept (but ignore + warn about) --ruby/--python.
+    # `flag` is the flag to pass; `args` is the full arg array.
+    shared_examples 'ignores language flag with warning' do |args, regex|
+      it "ignores a language flag and warns when one is supplied" do
+        expect { run_gen(args) }.to output(regex).to_stdout
+      end
+    end
+
+    # --- Tests --------------------------------------------------------------
+
     describe "generate plugin" do
       it "generates a Ruby plugin with --ruby flag" do
         result = run_gen(['plugin', 'test-plugin', '--ruby'])
@@ -87,16 +115,6 @@ module OpenC3
           .to raise_error(SystemExit)
       end
 
-      it "shows help with --help flag" do
-        expect { run_gen(['plugin', '--help']) }
-          .to raise_error(SystemExit) { |error| expect(error.status).to eq(0) }
-      end
-
-      it "requires a plugin name" do
-        expect { run_gen(['plugin']) }
-          .to raise_error(SystemExit)
-      end
-
       it "aborts when language flag appears before the name" do
         # `cli generate plugin --python` — no NAME positional arg
         expect { run_gen(['plugin', '--python']) }
@@ -107,6 +125,8 @@ module OpenC3
         expect { run_gen(['plugin', 'test-plugin', '--ruby', '--python']) }
           .to raise_error(SystemExit)
       end
+
+      include_examples 'standard help/arg behavior', 'plugin'
     end
 
     describe "generate target" do
@@ -165,20 +185,12 @@ module OpenC3
           .to raise_error(SystemExit)
       end
 
-      it "shows help with --help flag" do
-        expect { run_gen(['target', '--help']) }
-          .to raise_error(SystemExit) { |error| expect(error.status).to eq(0) }
-      end
-
-      it "requires a target name" do
-        expect { run_gen(['target']) }
-          .to raise_error(SystemExit)
-      end
-
       it "aborts when language flag appears before the name" do
         expect { run_gen(['target', '--ruby']) }
           .to raise_error(SystemExit)
       end
+
+      include_examples 'standard help/arg behavior', 'target'
     end
 
     describe "generate microservice" do
@@ -252,15 +264,7 @@ module OpenC3
         expect(plugin_txt.scan(/^MICROSERVICE\s+BACKGROUND\b/).size).to eq(1)
       end
 
-      it "shows help with --help flag" do
-        expect { run_gen(['microservice', '--help']) }
-          .to raise_error(SystemExit) { |error| expect(error.status).to eq(0) }
-      end
-
-      it "requires a microservice name" do
-        expect { run_gen(['microservice']) }
-          .to raise_error(SystemExit)
-      end
+      include_examples 'standard help/arg behavior', 'microservice'
     end
 
     describe "generate widget" do
@@ -279,11 +283,9 @@ module OpenC3
         expect(plugin_txt).to include('WIDGET Test')
       end
 
-      it "ignores a language flag and warns when one is supplied" do
-        expect { run_gen(['widget', 'TestWidget', '--python']) }
-          .to output(/--ruby\/--python is ignored for the widget generator/).to_stdout
-        expect(File.exist?('src/TestWidget.vue')).to be true
-      end
+      include_examples 'ignores language flag with warning',
+                       ['widget', 'TestWidget', '--python'],
+                       %r{--ruby/--python is ignored for the widget generator}
 
       it "rejects widget names without Widget suffix" do
         expect { run_gen(['widget', 'BadName']) }
@@ -301,15 +303,7 @@ module OpenC3
           .to raise_error(SystemExit)
       end
 
-      it "shows help with --help flag" do
-        expect { run_gen(['widget', '--help']) }
-          .to raise_error(SystemExit) { |error| expect(error.status).to eq(0) }
-      end
-
-      it "requires a widget name" do
-        expect { run_gen(['widget']) }
-          .to raise_error(SystemExit)
-      end
+      include_examples 'standard help/arg behavior', 'widget'
     end
 
     describe "generate tool" do
@@ -330,11 +324,9 @@ module OpenC3
         expect(plugin_txt).to include('INLINE_URL main.js')
       end
 
-      it "ignores a language flag and warns when one is supplied" do
-        expect { run_gen(['tool_vue', 'Test Tool', '--ruby']) }
-          .to output(/--ruby\/--python is ignored for the tool_vue generator/).to_stdout
-        expect(File.exist?('src/tools/testtool/testtool.vue')).to be true
-      end
+      include_examples 'ignores language flag with warning',
+                       ['tool_vue', 'Test Tool', '--ruby'],
+                       %r{--ruby/--python is ignored for the tool_vue generator}
 
       it "handles tool names with spaces and special characters" do
         result = run_gen(['tool_vue', 'My-Cool Tool'])
@@ -370,82 +362,98 @@ module OpenC3
         expect(File.exist?('src/App.svelte')).to be true
       end
 
-      it "shows help with --help flag" do
-        expect { run_gen(['tool_vue', '--help']) }
-          .to raise_error(SystemExit) { |error| expect(error.status).to eq(0) }
-      end
+      include_examples 'standard help/arg behavior', 'tool_vue'
+    end
 
-      it "requires a tool name" do
-        expect { run_gen(['tool_vue']) }
-          .to raise_error(SystemExit)
+    # --- Target-derived generators (conversion / processor / limits_response /
+    # command_validator) all share the same ruby/python/help/required-args shape.
+    # Per-generator extras are captured in :ruby_class and :ruby_class_methods
+    # below; we only run those assertions when the test row provides them.
+    [
+      {
+        generator:          'conversion',
+        suffix:             'CONVERSION',
+        file_basename:      'test_conversion',
+        ruby_class:         'TestConversion',
+        ruby_class_methods: ['def call'],
+      },
+      {
+        generator:          'processor',
+        suffix:             'PROCESSOR',
+        file_basename:      'test_processor',
+      },
+      {
+        generator:          'limits_response',
+        suffix:             'LIMITS_RESPONSE',
+        file_basename:      'test_limits_response',
+        ruby_class:         'TestLimitsResponse',
+        ruby_class_methods: ['def call'],
+      },
+      {
+        generator:          'command_validator',
+        suffix:             'COMMAND_VALIDATOR',
+        file_basename:      'test_command_validator',
+        ruby_class:         'TestCommandValidator',
+        ruby_class_methods: ['def pre_check(command)', 'def post_check(command)'],
+      },
+    ].each do |row|
+      describe "generate #{row[:generator]}" do
+        let(:gen) { row[:generator] }
+        let(:suffix) { row[:suffix] }
+        let(:base) { row[:file_basename] }
+
+        before(:each) do
+          run_gen(['plugin', "#{gen.tr('_', '-')}-test", '--ruby'])
+          run_gen(['target', 'EXAMPLE', '--ruby'])
+        end
+
+        it "generates a Ruby #{row[:generator].tr('_', ' ')} (language read from target.txt)" do
+          result = run_gen([gen, 'EXAMPLE', 'test'])
+          expect(result).to eql("TEST_#{suffix}")
+          rb_path = "targets/EXAMPLE/lib/#{base}.rb"
+          expect(File.exist?(rb_path)).to be true
+
+          if row[:ruby_class]
+            content = File.read(rb_path)
+            expect(content).to include("class #{row[:ruby_class]}")
+            row[:ruby_class_methods].each { |m| expect(content).to include(m) }
+          end
+        end
+
+        it "generates a Python #{row[:generator].tr('_', ' ')} when target is Python" do
+          run_gen(['target', 'PYTARGET', '--python'])
+          result = run_gen([gen, 'PYTARGET', 'test'])
+          expect(result).to eql("TEST_#{suffix}")
+          expect(File.exist?("targets/PYTARGET/lib/#{base}.py")).to be true
+        end
+
+        include_examples 'standard help/arg behavior', row[:generator], help_status: 1
       end
     end
 
-    describe "generate command_validator" do
-      before(:each) do
-        run_gen(['plugin', 'validator-test', '--ruby'])
-        run_gen(['target', 'EXAMPLE', '--ruby'])
-      end
-
-      it "generates a Ruby command validator (language read from target.txt)" do
-        result = run_gen(['command_validator', 'EXAMPLE', 'test'])
-        expect(result).to eql('TEST_COMMAND_VALIDATOR')
-        expect(File.exist?('targets/EXAMPLE/lib/test_command_validator.rb')).to be true
-
-        validator_content = File.read('targets/EXAMPLE/lib/test_command_validator.rb')
-        expect(validator_content).to include('class TestCommandValidator')
-        expect(validator_content).to include('def pre_check(command)')
-        expect(validator_content).to include('def post_check(command)')
-      end
-
-      it "generates a Python command validator when target is Python" do
-        run_gen(['target', 'PYTARGET', '--python'])
-        result = run_gen(['command_validator', 'PYTARGET', 'test'])
-        expect(result).to eql('TEST_COMMAND_VALIDATOR')
-        expect(File.exist?('targets/PYTARGET/lib/test_command_validator.py')).to be true
-      end
-
-      it "shows help with --help flag" do
-        expect { run_gen(['command_validator', '--help']) }
-          .to raise_error(SystemExit) { |error| expect(error.status).to eq(1) }
-      end
-
-      it "requires target and validator names" do
-        expect { run_gen(['command_validator']) }
-          .to raise_error(SystemExit)
-      end
-    end
-
-    describe "generate conversion" do
+    # Extra conversion-specific tests that don't apply to all target-derived
+    # generators (target.txt corruption, missing target, language flag warning).
+    describe "generate conversion edge cases" do
       before(:each) do
         run_gen(['plugin', 'conversion-test', '--ruby'])
         run_gen(['target', 'EXAMPLE', '--ruby'])
       end
 
-      it "generates a Ruby conversion (language read from target.txt)" do
-        result = run_gen(['conversion', 'EXAMPLE', 'test'])
-        expect(result).to eql('TEST_CONVERSION')
-        expect(File.exist?('targets/EXAMPLE/lib/test_conversion.rb')).to be true
+      include_examples 'ignores language flag with warning',
+                       ['conversion', 'EXAMPLE', 'test', '--python'],
+                       %r{--ruby/--python is ignored for the conversion generator}
 
-        conversion_content = File.read('targets/EXAMPLE/lib/test_conversion.rb')
-        expect(conversion_content).to include('class TestConversion')
-        expect(conversion_content).to include('def call')
-      end
-
-      it "generates a Python conversion when target is Python" do
-        run_gen(['target', 'PYTARGET', '--python'])
-        result = run_gen(['conversion', 'PYTARGET', 'test'])
-        expect(result).to eql('TEST_CONVERSION')
-        expect(File.exist?('targets/PYTARGET/lib/test_conversion.py')).to be true
-        expect(File.exist?('targets/PYTARGET/lib/test_conversion.rb')).to be false
-      end
-
-      it "ignores a language flag and warns when one is supplied" do
-        expect { run_gen(['conversion', 'EXAMPLE', 'test', '--python']) }
-          .to output(/--ruby\/--python is ignored for the conversion generator/).to_stdout
-        # The actual language must come from target.txt (Ruby in this case)
+      it "ignored flag does not affect output language (still Ruby from target.txt)" do
+        expect { run_gen(['conversion', 'EXAMPLE', 'test', '--python']) }.to output.to_stdout
         expect(File.exist?('targets/EXAMPLE/lib/test_conversion.rb')).to be true
         expect(File.exist?('targets/EXAMPLE/lib/test_conversion.py')).to be false
+      end
+
+      it "produces only the .py file when target is Python" do
+        run_gen(['target', 'PYTARGET', '--python'])
+        run_gen(['conversion', 'PYTARGET', 'test'])
+        expect(File.exist?('targets/PYTARGET/lib/test_conversion.py')).to be true
+        expect(File.exist?('targets/PYTARGET/lib/test_conversion.rb')).to be false
       end
 
       it "aborts when target.txt has no LANGUAGE keyword" do
@@ -457,60 +465,6 @@ module OpenC3
       it "aborts when target does not exist" do
         expect { run_gen(['conversion', 'NOPE', 'test']) }
           .to raise_error(SystemExit)
-      end
-
-      it "shows help with --help flag" do
-        expect { run_gen(['conversion', '--help']) }
-          .to raise_error(SystemExit) { |error| expect(error.status).to eq(1) }
-      end
-    end
-
-    describe "generate processor" do
-      before(:each) do
-        run_gen(['plugin', 'processor-test', '--ruby'])
-        run_gen(['target', 'EXAMPLE', '--ruby'])
-      end
-
-      it "generates a Ruby processor (language read from target.txt)" do
-        result = run_gen(['processor', 'EXAMPLE', 'test'])
-        expect(result).to eql('TEST_PROCESSOR')
-        expect(File.exist?('targets/EXAMPLE/lib/test_processor.rb')).to be true
-      end
-
-      it "generates a Python processor when target is Python" do
-        run_gen(['target', 'PYTARGET', '--python'])
-        result = run_gen(['processor', 'PYTARGET', 'test'])
-        expect(result).to eql('TEST_PROCESSOR')
-        expect(File.exist?('targets/PYTARGET/lib/test_processor.py')).to be true
-      end
-    end
-
-    describe "generate limits_response" do
-      before(:each) do
-        run_gen(['plugin', 'limits-test', '--ruby'])
-        run_gen(['target', 'EXAMPLE', '--ruby'])
-      end
-
-      it "generates a Ruby limits response (language read from target.txt)" do
-        result = run_gen(['limits_response', 'EXAMPLE', 'test'])
-        expect(result).to eql('TEST_LIMITS_RESPONSE')
-        expect(File.exist?('targets/EXAMPLE/lib/test_limits_response.rb')).to be true
-
-        limits_content = File.read('targets/EXAMPLE/lib/test_limits_response.rb')
-        expect(limits_content).to include('class TestLimitsResponse')
-        expect(limits_content).to include('def call')
-      end
-
-      it "generates a Python limits response when target is Python" do
-        run_gen(['target', 'PYTARGET', '--python'])
-        result = run_gen(['limits_response', 'PYTARGET', 'test'])
-        expect(result).to eql('TEST_LIMITS_RESPONSE')
-        expect(File.exist?('targets/PYTARGET/lib/test_limits_response.py')).to be true
-      end
-
-      it "shows help with --help flag" do
-        expect { run_gen(['limits_response', '--help']) }
-          .to raise_error(SystemExit) { |error| expect(error.status).to eq(1) }
       end
     end
 

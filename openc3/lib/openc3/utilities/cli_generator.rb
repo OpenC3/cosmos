@@ -181,6 +181,37 @@ module OpenC3
       end
     end
 
+    # Shared prelude for generators that resolve language via the flag → env var
+    # → plugin.txt comment chain (target and microservice). Handles the --help
+    # branch and the "exactly one positional NAME arg" arity check. Returns
+    # normally only when args are valid and the caller should proceed.
+    def self.validate_language_inheriting_args!(generator, args, example:, docs:)
+      if args[1].nil? || args[1] == '--help' || args[1] == '-h'
+        print_help(
+          usage: "cli generate #{generator} NAME [--ruby | --python]",
+          description: "Generate a new #{generator} within an existing plugin",
+          arguments: [
+            "NAME              Name of the #{generator} (required)",
+            '                  Will be uppercased and underscores/hyphens converted to underscores',
+          ],
+          options: [
+            "--ruby            Generate Ruby #{generator} (optional)",
+            "--python          Generate Python #{generator} (optional)",
+          ],
+          language_defaults: [
+            '1. OPENC3_LANGUAGE environment variable',
+            "2. '# LANGUAGE ruby|python' comment in plugin.txt",
+          ],
+          example: example,
+          docs: docs,
+          exit_code: (args[1].nil? ? 1 : 0),
+        )
+      end
+      if args.length != 2
+        abort("Usage: cli generate #{generator} <NAME> [--ruby | --python]")
+      end
+    end
+
     # Shared structure for every per-generator help block. Pass a hash with the
     # generator's usage line, description, arg/option/example lines, etc.
     # See generate_plugin / generate_target_artifact for examples.
@@ -387,33 +418,9 @@ module OpenC3
     end
 
     def self.generate_target(args)
-      if args[1].nil? || args[1] == '--help' || args[1] == '-h'
-        print_help(
-          usage: 'cli generate target NAME [--ruby | --python]',
-          description: 'Generate a new target within an existing plugin',
-          arguments: [
-            'NAME              Name of the target (required)',
-            '                  Will be uppercased and underscores/hyphens converted to underscores',
-          ],
-          options: [
-            '--ruby            Generate Ruby target (optional)',
-            '--python          Generate Python target (optional)',
-          ],
-          language_defaults: [
-            '1. OPENC3_LANGUAGE environment variable',
-            "2. '# LANGUAGE ruby|python' comment in plugin.txt",
-          ],
-          example: [
-            'cli generate target EXAMPLE --ruby',
-            'Creates: targets/EXAMPLE/',
-          ],
-          docs: 'https://docs.openc3.com/docs/configuration/target',
-          exit_code: (args[1].nil? ? 1 : 0),
-        )
-      end
-      if args.length != 2
-        abort("Usage: cli generate #{args[0]} <NAME> [--ruby | --python]")
-      end
+      validate_language_inheriting_args!('target', args,
+        example: ['cli generate target EXAMPLE --ruby', 'Creates: targets/EXAMPLE/'],
+        docs: 'https://docs.openc3.com/docs/configuration/target')
 
       # Create the local variables
       target_name = args[1].upcase.gsub(/_+|-+/, '_')
@@ -485,33 +492,9 @@ RUBY
     end
 
     def self.generate_microservice(args)
-      if args[1].nil? || args[1] == '--help' || args[1] == '-h'
-        print_help(
-          usage: 'cli generate microservice NAME [--ruby | --python]',
-          description: 'Generate a new microservice within an existing plugin',
-          arguments: [
-            'NAME              Name of the microservice (required)',
-            '                  Will be uppercased and underscores/hyphens converted to underscores',
-          ],
-          options: [
-            '--ruby            Generate Ruby microservice (optional)',
-            '--python          Generate Python microservice (optional)',
-          ],
-          language_defaults: [
-            '1. OPENC3_LANGUAGE environment variable',
-            "2. '# LANGUAGE ruby|python' comment in plugin.txt",
-          ],
-          example: [
-            'cli generate microservice DATA_PROCESSOR --ruby',
-            'Creates: microservices/DATA_PROCESSOR/',
-          ],
-          docs: 'https://docs.openc3.com/docs/configuration/plugins#microservices',
-          exit_code: (args[1].nil? ? 1 : 0),
-        )
-      end
-      if args.length != 2
-        abort("Usage: cli generate #{args[0]} <NAME> [--ruby | --python]")
-      end
+      validate_language_inheriting_args!('microservice', args,
+        example: ['cli generate microservice DATA_PROCESSOR --ruby', 'Creates: microservices/DATA_PROCESSOR/'],
+        docs: 'https://docs.openc3.com/docs/configuration/plugins#microservices')
 
       # Create the local variables
       microservice_name = args[1].upcase.gsub(/_+|-+/, '_')
