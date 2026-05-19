@@ -12,9 +12,23 @@ If you followed the [Installation Guide](installation.md) you should already be 
 
 ```bash
 % openc3.sh cli generate
-Unknown generator ''. Valid generators: plugin, target, microservice, widget, conversion,
-  processor, limits_response, tool, tool_vue, tool_angular, tool_react, tool_svelte
+Usage: cli generate GENERATOR [ARGS...] [--ruby | --python]
 ```
+
+## Language Flag Handling
+
+Different generators handle the `--ruby` / `--python` language flag differently:
+
+| Generator | Language flag behavior |
+| --- | --- |
+| `plugin` | Optional. If `--ruby`/`--python` is supplied (or `OPENC3_LANGUAGE` is set in the environment), a `# LANGUAGE ruby` or `# LANGUAGE python` comment is written to `plugin.txt` so future `target`/`microservice` generators inside this plugin default to that language. |
+| `target` | Optional. Language is resolved from: (1) the `--ruby`/`--python` flag, (2) the `OPENC3_LANGUAGE` environment variable, (3) the `# LANGUAGE` comment in `plugin.txt`. If none of these are present, the generator aborts. |
+| `microservice` | Same resolution chain as `target`. |
+| `widget` | Ignored. Widgets are JavaScript-only — passing a language flag prints a notice and is otherwise ignored. |
+| `tool`, `tool_vue`, `tool_angular`, `tool_react`, `tool_svelte` | Ignored. Tools are JavaScript-only — the flag is accepted but ignored with a notice. |
+| `conversion`, `processor`, `limits_response`, `command_validator` | Ignored. Language is inherited from the target's `target.txt` (`LANGUAGE` keyword). Passing the flag prints a notice and is otherwise ignored. |
+
+The language flag must appear **after** the NAME positional argument. `cli generate plugin --python` (with no name) is rejected — use `cli generate plugin MyPlugin --python` instead.
 
 :::note[Training Available]
 If any of this gets confusing, contact us at [support@openc3.com](mailto:support@openc3.com). We have training classes available!
@@ -22,13 +36,13 @@ If any of this gets confusing, contact us at [support@openc3.com](mailto:support
 
 ## Plugin Generator
 
-The plugin generator creates the scaffolding for a new COSMOS Plugin. It requires a plugin name and will create a new directory called `openc3-cosmos-<name>`. For example:
+The plugin generator creates the scaffolding for a new COSMOS Plugin. It requires a plugin name and will create a new directory called `openc3-cosmos-<name>`. The `--ruby` / `--python` flag is optional; when supplied (or when `OPENC3_LANGUAGE` is set), a `# LANGUAGE` comment is added to `plugin.txt` so that subsequent `target` and `microservice` generators inside this plugin default to that language. For example:
 
 ```bash
 % openc3.sh cli generate plugin
-Usage: cli generate plugin <NAME>
+Usage: cli generate plugin <NAME> [--ruby | --python]
 
-% openc3.sh cli generate plugin GSE
+% openc3.sh cli generate plugin GSE --python
 Plugin openc3-cosmos-gse successfully generated!
 ```
 
@@ -48,13 +62,17 @@ While this structure is required, it is not very useful by itself. The plugin ge
 
 ## Target Generator
 
-The target generator creates the scaffolding for a new COSMOS Target. It must operate inside an existing COSMOS plugin and requires a target name. For example:
+The target generator creates the scaffolding for a new COSMOS Target. It must operate inside an existing COSMOS plugin and requires a target name. The language is resolved from (in order): the `--ruby`/`--python` flag, the `OPENC3_LANGUAGE` environment variable, or the `# LANGUAGE` comment in `plugin.txt` (written automatically by `generate plugin --ruby`/`--python`). If none of those are set, the generator aborts. For example:
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate target
-Usage: cli generate target <NAME> (--ruby or --python)
+Usage: cli generate target <NAME> [--ruby | --python]
 
 openc3-cosmos-gse % openc3.sh cli generate target GSE --python
+Target GSE successfully generated!
+
+# Or, if the plugin was generated with --python (so plugin.txt has '# LANGUAGE python'):
+openc3-cosmos-gse % openc3.sh cli generate target GSE
 Target GSE successfully generated!
 ```
 
@@ -88,11 +106,11 @@ INTERFACE <%= gse_target_name %>_INT openc3/interfaces/tcpip_client_interface.py
 
 ## Microservice Generator
 
-The microservice generator creates the scaffolding for a new COSMOS Microservice. It must operate inside an existing COSMOS plugin and requires a target name. For example:
+The microservice generator creates the scaffolding for a new COSMOS Microservice. It must operate inside an existing COSMOS plugin and requires a target name. The language is resolved using the same chain as the `target` generator: `--ruby`/`--python` flag, `OPENC3_LANGUAGE` env var, or `# LANGUAGE` comment in `plugin.txt`. For example:
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate microservice
-Usage: cli generate microservice <NAME> (--ruby or --python)
+Usage: cli generate microservice <NAME> [--ruby | --python]
 
 openc3-cosmos-gse % openc3.sh cli generate microservice background --python
 Microservice BACKGROUND successfully generated!
@@ -114,13 +132,13 @@ MICROSERVICE BACKGROUND background-microservice
 
 ## Conversion Generator
 
-The conversion generator creates the scaffolding for a new COSMOS [Conversion](/docs/configuration/conversions). It must operate inside an existing COSMOS plugin and requires both a target name and conversion name. For example:
+The conversion generator creates the scaffolding for a new COSMOS [Conversion](/docs/configuration/conversions). It must operate inside an existing COSMOS plugin and requires both a target name and conversion name. The language is inherited from the target's `target.txt` (`LANGUAGE` keyword) — a `--ruby`/`--python` flag here is ignored. For example:
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate conversion
-Usage: cli generate conversion <TARGET> <NAME> (--ruby or --python)
+Usage: cli generate conversion <TARGET> <NAME>
 
-openc3-cosmos-gse % openc3.sh cli generate conversion GSE double --python
+openc3-cosmos-gse % openc3.sh cli generate conversion GSE double
 Conversion targets/GSE/lib/double_conversion.py successfully generated!
 To use the conversion add the following to a telemetry item:
   READ_CONVERSION double_conversion.py
@@ -130,13 +148,13 @@ For more information about creating custom conversions and how to apply them, se
 
 ## Processor Generator
 
-The processor generator creates the scaffolding for a new COSMOS [Processor](/docs/configuration/processors). It must operate inside an existing COSMOS plugin and requires both a target name and processor name. For example:
+The processor generator creates the scaffolding for a new COSMOS [Processor](/docs/configuration/processors). It must operate inside an existing COSMOS plugin and requires both a target name and processor name. The language is inherited from the target's `target.txt` (`LANGUAGE` keyword) — a `--ruby`/`--python` flag here is ignored. For example:
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate processor
-Usage: cli generate processor <TARGET> <NAME> (--ruby or --python)
+Usage: cli generate processor <TARGET> <NAME>
 
-openc3-cosmos-gse % openc3.sh cli generate processor GSE slope --python
+openc3-cosmos-gse % openc3.sh cli generate processor GSE slope
 Processor targets/GSE/lib/slope_processor.py successfully generated!
 To use the processor add the following to a telemetry packet:
   PROCESSOR SLOPE slope_processor.py <PARAMS...>
@@ -146,13 +164,13 @@ For more information about creating custom processors and how to apply them, see
 
 ## Limits Response Generator
 
-The limits_response generator creates the scaffolding for a new COSMOS [Limits Response](/docs/configuration/limits-response). It must operate inside an existing COSMOS plugin and requires both a target name and limits response name. For example:
+The limits_response generator creates the scaffolding for a new COSMOS [Limits Response](/docs/configuration/limits-response). It must operate inside an existing COSMOS plugin and requires both a target name and limits response name. The language is inherited from the target's `target.txt` (`LANGUAGE` keyword) — a `--ruby`/`--python` flag here is ignored. For example:
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate limits_response
-Usage: cli generate limits_response <TARGET> <NAME> (--ruby or --python)
+Usage: cli generate limits_response <TARGET> <NAME>
 
-openc3-cosmos-gse % openc3.sh cli generate limits_response GSE safe --python
+openc3-cosmos-gse % openc3.sh cli generate limits_response GSE safe
 Limits response targets/GSE/lib/safe_limits_response.py successfully generated!
 To use the limits response add the following to a telemetry item:
   LIMITS_RESPONSE safe_limits_response.py
@@ -160,9 +178,25 @@ To use the limits response add the following to a telemetry item:
 
 For more information about creating limits responses and how to apply them, see the [Limits Response](/docs/configuration/limits-response) documentation.
 
+## Command Validator Generator
+
+The command_validator generator creates the scaffolding for a new COSMOS Command Validator. It must operate inside an existing COSMOS plugin and requires both a target name and command validator name. The language is inherited from the target's `target.txt` (`LANGUAGE` keyword) — a `--ruby`/`--python` flag here is ignored. For example:
+
+```bash
+openc3-cosmos-gse % openc3.sh cli generate command_validator
+Usage: cli generate command_validator <TARGET> <NAME>
+
+openc3-cosmos-gse % openc3.sh cli generate command_validator GSE range
+Command validator targets/GSE/lib/range_command_validator.py successfully generated!
+To use the command validator add the following to a command:
+  VALIDATOR range_command_validator.py
+```
+
+For more information about creating command validators and how to apply them, see the [Command Validator](/docs/configuration/command#validator) documentation.
+
 ## Widget Generator
 
-The widget generator creates the scaffolding for a new COSMOS Widget for use in [Telemetry Viewer Screens](/docs/configuration/telemetry-screens). For more information see the [Custom Widget](/docs/guides/custom-widgets) guide. It must operate inside an existing COSMOS plugin and requires a widget name. For example:
+The widget generator creates the scaffolding for a new COSMOS Widget for use in [Telemetry Viewer Screens](/docs/configuration/telemetry-screens). For more information see the [Custom Widget](/docs/guides/custom-widgets) guide. It must operate inside an existing COSMOS plugin and requires a widget name. Widgets are JavaScript-only, so a `--ruby`/`--python` flag is not required and will be ignored if supplied. For example:
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate widget
@@ -187,7 +221,7 @@ WIDGET Helloworld
 
 ## Tool Generator
 
-The tool generator creates the scaffolding for a new COSMOS Tool. It's It must operate inside an existing COSMOS plugin and requires a tool name. Developing a custom tool requires intensive knowledge of a Javascript framework such as Vue.js, Angular, React, or Svelte. Since all the COSMOS tools are built in Vue.js, that is the recommended framework for new tool development. For additional help on frontend development, see [Running a Frontend Application](../development/developing#running-a-frontend-application).
+The tool generator creates the scaffolding for a new COSMOS Tool. It must operate inside an existing COSMOS plugin and requires a tool name. Developing a custom tool requires intensive knowledge of a Javascript framework such as Vue.js, Angular, React, or Svelte. Since all the COSMOS tools are built in Vue.js, that is the recommended framework for new tool development. For additional help on frontend development, see [Running a Frontend Application](../development/developing#running-a-frontend-application). Tools are JavaScript-only, so a `--ruby`/`--python` flag is not required and will be ignored if supplied.
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate tool
