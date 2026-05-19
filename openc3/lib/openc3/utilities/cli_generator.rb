@@ -98,7 +98,7 @@ module OpenC3
 
       # If a language flag is present but no positional NAME follows the generator name,
       # the user wrote something like `cli generate plugin --python`. Abort with guidance.
-      if !flag_indices.empty?
+      unless flag_indices.empty?
         first_flag_idx = flag_indices.min
         has_positional_name = args[1...first_flag_idx].any? { |a| a != '--ruby' && a != '--python' }
         unless has_positional_name
@@ -181,6 +181,109 @@ module OpenC3
       end
     end
 
+    # Shared structure for every per-generator help block. Pass a hash with the
+    # generator's usage line, description, arg/option/example lines, etc.
+    # See generate_plugin / generate_target_artifact for examples.
+    def self.print_help(opts)
+      puts "Usage: #{opts[:usage]}"
+      puts ""
+      puts opts[:description]
+      puts ""
+      puts "Arguments:"
+      opts.fetch(:arguments, []).each { |line| puts "  #{line}" }
+      puts ""
+      puts "Options:"
+      opts.fetch(:options, []).each { |line| puts "  #{line}" }
+      puts "  -h, --help        Show this help message"
+      Array(opts[:notes]).each do |note|
+        puts ""
+        puts note
+      end
+      if opts[:language_defaults]
+        puts ""
+        puts "Language Defaults (used when --ruby/--python is not given):"
+        opts[:language_defaults].each { |line| puts "  #{line}" }
+      end
+      if opts[:extra_section]
+        puts ""
+        puts "#{opts[:extra_section][:title]}:"
+        opts[:extra_section][:lines].each { |line| puts "  #{line}" }
+      end
+      puts ""
+      puts "Example:"
+      Array(opts[:example]).each { |line| puts line.empty? ? "" : "  #{line}" }
+      unless opts[:is_plugin]
+        puts ""
+        puts "Note: Must be run from within an existing plugin directory"
+        Array(opts[:in_plugin_extra]).each { |line| puts "      #{line}" }
+      end
+      puts ""
+      puts "Documentation:"
+      puts "  #{opts[:docs]}"
+      exit(opts[:exit_code])
+    end
+
+    # Single implementation backing the four target-derived generators.
+    def self.generate_target_artifact(args, config)
+      generator = args[0]
+      if args[1].nil? || args[2].nil? || args[1] == '--help' || args[1] == '-h'
+        print_help(
+          usage: "cli generate #{generator} TARGET NAME",
+          description: "Generate a new #{config[:kind].downcase} for an existing target",
+          arguments: [
+            'TARGET            Target name (required, must exist)',
+            "NAME              #{config[:kind]} name (required)",
+            "                  Will be uppercased with '_#{config[:suffix]}' suffix",
+          ],
+          notes: [
+            "Note: Language is inherited from the target's target.txt (LANGUAGE keyword).",
+            '      --ruby/--python flags are ignored.',
+          ],
+          example: [
+            "cli generate #{generator} EXAMPLE #{config[:help_example]}",
+            "Creates: targets/EXAMPLE/lib/#{config[:help_example].downcase}_#{generator}.rb (or .py)",
+          ],
+          docs: config[:docs],
+          exit_code: (args[1].nil? || args[2].nil? ? 1 : 0),
+        )
+      end
+      if args.length != 3
+        abort("Usage: cli generate #{generator} <TARGET> <NAME>")
+      end
+
+      target_name = args[1].upcase
+      target_path = "targets/#{target_name}"
+      unless File.exist?(target_path)
+        abort("Target '#{target_name}' does not exist! #{config[:kind_plural]} must be created for existing targets.")
+      end
+      @@language = read_target_language(target_path)
+
+      artifact_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_#{config[:suffix]}"
+      basename = "#{artifact_name.downcase}.#{@@language}"
+      filename = "#{target_path}/lib/#{basename}"
+
+      if File.exist?(filename)
+        abort("#{config[:kind]} #{filename} already exists!")
+      end
+
+      # Bind the class name to the template-specific local-variable name
+      # (e.g. conversion_class, processor_class) so the ERB templates resolve it.
+      template_binding = binding
+      template_binding.local_variable_set(config[:class_var].to_sym, basename.filename_to_class_name)
+
+      template_source = "#{config[:template_source]}.#{@@language}"
+      process_template("#{TEMPLATES_DIR}/#{config[:template]}", template_binding) do |fname|
+        fname.sub!(template_source, filename)
+        false
+      end
+
+      puts "#{config[:kind]} #{filename} successfully generated!"
+      puts config[:usage_intro]
+      directive = config[:usage_directive] % { basename: basename, name_upcase: args[2].upcase }
+      puts "  #{directive}"
+      artifact_name
+    end
+
     # Read 'LANGUAGE ruby|python' from a target's target.txt. Aborts if missing.
     def self.read_target_language(target_path)
       target_txt = "#{target_path}/target.txt"
@@ -222,33 +325,32 @@ module OpenC3
 
     def self.generate_plugin(args)
       if args[1].nil? || args[1] == '--help' || args[1] == '-h'
-        puts "Usage: cli generate plugin NAME [--ruby | --python]"
-        puts ""
-        puts "Generate a new COSMOS plugin"
-        puts ""
-        puts "Arguments:"
-        puts "  NAME              Name of the plugin (required)"
-        puts "                    Will be prefixed with 'openc3-cosmos-'"
-        puts "                    Spaces, underscores, and hyphens will be converted to hyphens"
-        puts ""
-        puts "Options:"
-        puts "  --ruby            Set the plugin's default language to Ruby. Subsequent"
-        puts "                    'cli generate target/microservice' invocations inside this"
-        puts "                    plugin will default to Ruby. Recorded as a"
-        puts "                    '# LANGUAGE ruby' comment in plugin.txt."
-        puts "  --python          Same as --ruby, but sets the default to Python."
-        puts "  -h, --help        Show this help message"
-        puts ""
-        puts "Example:"
-        puts "  cli generate plugin demo --ruby"
-        puts "  Creates: openc3-cosmos-demo/ with '# LANGUAGE ruby' in plugin.txt"
-        puts ""
-        puts "  cli generate plugin demo"
-        puts "  Creates: openc3-cosmos-demo/ with no language default"
-        puts ""
-        puts "Documentation:"
-        puts "  https://docs.openc3.com/docs/configuration/plugins"
-        exit(args[1].nil? ? 1 : 0)
+        print_help(
+          usage: 'cli generate plugin NAME [--ruby | --python]',
+          description: 'Generate a new COSMOS plugin',
+          arguments: [
+            'NAME              Name of the plugin (required)',
+            "                  Will be prefixed with 'openc3-cosmos-'",
+            '                  Spaces, underscores, and hyphens will be converted to hyphens',
+          ],
+          options: [
+            "--ruby            Set the plugin's default language to Ruby. Subsequent",
+            "                  'cli generate target/microservice' invocations inside this",
+            '                  plugin will default to Ruby. Recorded as a',
+            "                  '# LANGUAGE ruby' comment in plugin.txt.",
+            '--python          Same as --ruby, but sets the default to Python.',
+          ],
+          example: [
+            'cli generate plugin demo --ruby',
+            "Creates: openc3-cosmos-demo/ with '# LANGUAGE ruby' in plugin.txt",
+            '',
+            'cli generate plugin demo',
+            'Creates: openc3-cosmos-demo/ with no language default',
+          ],
+          is_plugin: true,
+          docs: 'https://docs.openc3.com/docs/configuration/plugins',
+          exit_code: (args[1].nil? ? 1 : 0),
+        )
       end
       if args.length < 2 or args.length > 2
         abort("Usage: cli generate #{args[0]} <NAME> [--ruby | --python]")
@@ -286,32 +388,28 @@ module OpenC3
 
     def self.generate_target(args)
       if args[1].nil? || args[1] == '--help' || args[1] == '-h'
-        puts "Usage: cli generate target NAME [--ruby | --python]"
-        puts ""
-        puts "Generate a new target within an existing plugin"
-        puts ""
-        puts "Arguments:"
-        puts "  NAME              Name of the target (required)"
-        puts "                    Will be uppercased and underscores/hyphens converted to underscores"
-        puts ""
-        puts "Options:"
-        puts "  --ruby            Generate Ruby target (optional)"
-        puts "  --python          Generate Python target (optional)"
-        puts "  -h, --help        Show this help message"
-        puts ""
-        puts "Language Defaults (used when --ruby/--python is not given):"
-        puts "  1. OPENC3_LANGUAGE environment variable"
-        puts "  2. '# LANGUAGE ruby|python' comment in plugin.txt"
-        puts ""
-        puts "Example:"
-        puts "  cli generate target EXAMPLE --ruby"
-        puts "  Creates: targets/EXAMPLE/"
-        puts ""
-        puts "Note: Must be run from within an existing plugin directory"
-        puts ""
-        puts "Documentation:"
-        puts "  https://docs.openc3.com/docs/configuration/target"
-        exit(args[1].nil? ? 1 : 0)
+        print_help(
+          usage: 'cli generate target NAME [--ruby | --python]',
+          description: 'Generate a new target within an existing plugin',
+          arguments: [
+            'NAME              Name of the target (required)',
+            '                  Will be uppercased and underscores/hyphens converted to underscores',
+          ],
+          options: [
+            '--ruby            Generate Ruby target (optional)',
+            '--python          Generate Python target (optional)',
+          ],
+          language_defaults: [
+            '1. OPENC3_LANGUAGE environment variable',
+            "2. '# LANGUAGE ruby|python' comment in plugin.txt",
+          ],
+          example: [
+            'cli generate target EXAMPLE --ruby',
+            'Creates: targets/EXAMPLE/',
+          ],
+          docs: 'https://docs.openc3.com/docs/configuration/target',
+          exit_code: (args[1].nil? ? 1 : 0),
+        )
       end
       if args.length != 2
         abort("Usage: cli generate #{args[0]} <NAME> [--ruby | --python]")
@@ -388,32 +486,28 @@ RUBY
 
     def self.generate_microservice(args)
       if args[1].nil? || args[1] == '--help' || args[1] == '-h'
-        puts "Usage: cli generate microservice NAME [--ruby | --python]"
-        puts ""
-        puts "Generate a new microservice within an existing plugin"
-        puts ""
-        puts "Arguments:"
-        puts "  NAME              Name of the microservice (required)"
-        puts "                    Will be uppercased and underscores/hyphens converted to underscores"
-        puts ""
-        puts "Options:"
-        puts "  --ruby            Generate Ruby microservice (optional)"
-        puts "  --python          Generate Python microservice (optional)"
-        puts "  -h, --help        Show this help message"
-        puts ""
-        puts "Language Defaults (used when --ruby/--python is not given):"
-        puts "  1. OPENC3_LANGUAGE environment variable"
-        puts "  2. '# LANGUAGE ruby|python' comment in plugin.txt"
-        puts ""
-        puts "Example:"
-        puts "  cli generate microservice DATA_PROCESSOR --ruby"
-        puts "  Creates: microservices/DATA_PROCESSOR/"
-        puts ""
-        puts "Note: Must be run from within an existing plugin directory"
-        puts ""
-        puts "Documentation:"
-        puts "  https://docs.openc3.com/docs/configuration/plugins#microservices"
-        exit(args[1].nil? ? 1 : 0)
+        print_help(
+          usage: 'cli generate microservice NAME [--ruby | --python]',
+          description: 'Generate a new microservice within an existing plugin',
+          arguments: [
+            'NAME              Name of the microservice (required)',
+            '                  Will be uppercased and underscores/hyphens converted to underscores',
+          ],
+          options: [
+            '--ruby            Generate Ruby microservice (optional)',
+            '--python          Generate Python microservice (optional)',
+          ],
+          language_defaults: [
+            '1. OPENC3_LANGUAGE environment variable',
+            "2. '# LANGUAGE ruby|python' comment in plugin.txt",
+          ],
+          example: [
+            'cli generate microservice DATA_PROCESSOR --ruby',
+            'Creates: microservices/DATA_PROCESSOR/',
+          ],
+          docs: 'https://docs.openc3.com/docs/configuration/plugins#microservices',
+          exit_code: (args[1].nil? ? 1 : 0),
+        )
       end
       if args.length != 2
         abort("Usage: cli generate #{args[0]} <NAME> [--ruby | --python]")
@@ -463,29 +557,22 @@ RUBY
 
     def self.generate_widget(args)
       if args[1].nil? || args[1] == '--help' || args[1] == '-h'
-        puts "Usage: cli generate widget NAME"
-        puts ""
-        puts "Generate a new custom Vue.js widget within an existing plugin"
-        puts ""
-        puts "Arguments:"
-        puts "  NAME              Name of the widget (required)"
-        puts "                    Must be CapitalCase ending with 'Widget'"
-        puts "                    Example: SuperdataWidget, StatusWidget"
-        puts ""
-        puts "Options:"
-        puts "  -h, --help        Show this help message"
-        puts ""
-        puts "Note: Widgets are JavaScript only. --ruby/--python flags are ignored."
-        puts ""
-        puts "Example:"
-        puts "  cli generate widget SuperdataWidget"
-        puts "  Creates: src/SuperdataWidget.vue"
-        puts ""
-        puts "Note: Must be run from within an existing plugin directory"
-        puts ""
-        puts "Documentation:"
-        puts "  https://docs.openc3.com/docs/guides/custom-widgets"
-        exit(args[1].nil? ? 1 : 0)
+        print_help(
+          usage: 'cli generate widget NAME',
+          description: 'Generate a new custom Vue.js widget within an existing plugin',
+          arguments: [
+            'NAME              Name of the widget (required)',
+            "                  Must be CapitalCase ending with 'Widget'",
+            '                  Example: SuperdataWidget, StatusWidget',
+          ],
+          notes: 'Note: Widgets are JavaScript only. --ruby/--python flags are ignored.',
+          example: [
+            'cli generate widget SuperdataWidget',
+            'Creates: src/SuperdataWidget.vue',
+          ],
+          docs: 'https://docs.openc3.com/docs/guides/custom-widgets',
+          exit_code: (args[1].nil? ? 1 : 0),
+        )
       end
       if args.length != 2
         abort("Usage: cli generate #{args[0]} <SuperdataWidget>")
@@ -535,8 +622,13 @@ RUBY
     def self.generate_tool(args)
       if args[1].nil? || args[1] == '--help' || args[1] == '-h'
         tool_type = args[0].to_s.downcase.gsub('-', '_')
+        common_args = [
+          'TOOL NAME         Display name of the tool (required, can include spaces)',
+          '                  Will be converted to lowercase without spaces for directory name',
+        ]
+        common_note = 'Note: Tools are JavaScript only. --ruby/--python flags are ignored.'
+        docs_url = 'https://docs.openc3.com/docs/guides/custom-tools'
 
-        # Specific help for tool variants
         if tool_type != 'tool'
           framework = case tool_type
                       when 'tool_vue' then 'Vue.js'
@@ -545,61 +637,42 @@ RUBY
                       when 'tool_svelte' then 'Svelte'
                       else 'Custom'
                       end
-
-          puts "Usage: cli generate #{args[0]} 'TOOL NAME'"
-          puts ""
-          puts "Generate a new #{framework} tool within an existing plugin"
-          puts ""
-          puts "Arguments:"
-          puts "  TOOL NAME         Display name of the tool (required, can include spaces)"
-          puts "                    Will be converted to lowercase without spaces for directory name"
-          puts ""
-          puts "Options:"
-          puts "  -h, --help        Show this help message"
-          puts ""
-          puts "Note: Tools are JavaScript only. --ruby/--python flags are ignored."
-          puts ""
-          puts "Example:"
-          puts "  cli generate #{args[0]} 'Data Viewer'"
-          puts "  Creates: tools/dataviewer/ (#{framework}-based)"
-          puts ""
-          puts "Note: Must be run from within an existing plugin directory"
-          puts "      For other tool types, see: cli generate tool --help"
-          puts ""
-          puts "Documentation:"
-          puts "  https://docs.openc3.com/docs/guides/custom-tools"
-          exit(args[1].nil? ? 1 : 0)
+          print_help(
+            usage: "cli generate #{args[0]} 'TOOL NAME'",
+            description: "Generate a new #{framework} tool within an existing plugin",
+            arguments: common_args,
+            notes: common_note,
+            example: [
+              "cli generate #{args[0]} 'Data Viewer'",
+              "Creates: tools/dataviewer/ (#{framework}-based)",
+            ],
+            in_plugin_extra: 'For other tool types, see: cli generate tool --help',
+            docs: docs_url,
+            exit_code: (args[1].nil? ? 1 : 0),
+          )
         else
-          # Generic help showing all types
-          puts "Usage: cli generate #{args[0]} 'TOOL NAME'"
-          puts ""
-          puts "Generate a new custom tool within an existing plugin"
-          puts ""
-          puts "Arguments:"
-          puts "  TOOL NAME         Display name of the tool (required, can include spaces)"
-          puts "                    Will be converted to lowercase without spaces for directory name"
-          puts ""
-          puts "Options:"
-          puts "  -h, --help        Show this help message"
-          puts ""
-          puts "Note: Tools are JavaScript only. --ruby/--python flags are ignored."
-          puts ""
-          puts "Tool Types:"
-          puts "  tool              Generate Vue.js tool (default)"
-          puts "  tool_vue          Generate Vue.js tool"
-          puts "  tool_angular      Generate Angular tool"
-          puts "  tool_react        Generate React tool"
-          puts "  tool_svelte       Generate Svelte tool"
-          puts ""
-          puts "Example:"
-          puts "  cli generate tool 'Data Viewer'"
-          puts "  Creates: tools/dataviewer/"
-          puts ""
-          puts "Note: Must be run from within an existing plugin directory"
-          puts ""
-          puts "Documentation:"
-          puts "  https://docs.openc3.com/docs/guides/custom-tools"
-          exit(args[1].nil? ? 1 : 0)
+          print_help(
+            usage: "cli generate #{args[0]} 'TOOL NAME'",
+            description: 'Generate a new custom tool within an existing plugin',
+            arguments: common_args,
+            notes: common_note,
+            extra_section: {
+              title: 'Tool Types',
+              lines: [
+                'tool              Generate Vue.js tool (default)',
+                'tool_vue          Generate Vue.js tool',
+                'tool_angular      Generate Angular tool',
+                'tool_react        Generate React tool',
+                'tool_svelte       Generate Svelte tool',
+              ],
+            },
+            example: [
+              "cli generate tool 'Data Viewer'",
+              'Creates: tools/dataviewer/',
+            ],
+            docs: docs_url,
+            exit_code: (args[1].nil? ? 1 : 0),
+          )
         end
       end
       if args.length != 2
@@ -653,235 +726,60 @@ RUBY
     self.singleton_class.send(:alias_method, :generate_tool_svelte, :generate_tool)
 
     def self.generate_conversion(args)
-      if args[1].nil? || args[2].nil? || args[1] == '--help' || args[1] == '-h'
-        puts "Usage: cli generate conversion TARGET NAME"
-        puts ""
-        puts "Generate a new conversion class for an existing target"
-        puts ""
-        puts "Arguments:"
-        puts "  TARGET            Target name (required, must exist)"
-        puts "  NAME              Conversion name (required)"
-        puts "                    Will be uppercased with '_CONVERSION' suffix"
-        puts ""
-        puts "Options:"
-        puts "  -h, --help        Show this help message"
-        puts ""
-        puts "Note: Language is inherited from the target's target.txt (LANGUAGE keyword)."
-        puts "      --ruby/--python flags are ignored."
-        puts ""
-        puts "Example:"
-        puts "  cli generate conversion EXAMPLE STATUS"
-        puts "  Creates: targets/EXAMPLE/lib/status_conversion.rb (or .py)"
-        puts ""
-        puts "Note: Must be run from within an existing plugin directory"
-        puts ""
-        puts "Documentation:"
-        puts "  https://docs.openc3.com/docs/configuration/telemetry#read_conversion"
-        exit(args[1].nil? || args[2].nil? ? 1 : 0)
-      end
-      if args.length != 3
-        abort("Usage: cli generate conversion <TARGET> <NAME>")
-      end
-
-      # Create the local variables
-      target_name = args[1].upcase
-      target_path = "targets/#{target_name}"
-      unless File.exist?(target_path)
-        abort("Target '#{target_name}' does not exist! Conversions must be created for existing targets.")
-      end
-      @@language = read_target_language(target_path)
-      conversion_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_CONVERSION"
-      conversion_basename = "#{conversion_name.downcase}.#{@@language}"
-      conversion_class = conversion_basename.filename_to_class_name
-      conversion_class.inspect # Remove unused variable warning. These are used in binding for generator
-      conversion_filename = "targets/#{target_name}/lib/#{conversion_basename}"
-      if File.exist?(conversion_filename)
-        abort("Conversion #{conversion_filename} already exists!")
-      end
-
-      process_template("#{TEMPLATES_DIR}/conversion", binding) do |filename|
-        filename.sub!("conversion.#{@@language}", conversion_filename)
-        false
-      end
-
-      puts "Conversion #{conversion_filename} successfully generated!"
-      puts "To use the conversion add the following to a telemetry item:"
-      puts "  READ_CONVERSION #{conversion_basename}"
-      return conversion_name
+      generate_target_artifact(args, {
+        suffix: 'CONVERSION',
+        kind: 'Conversion',
+        kind_plural: 'Conversions',
+        template: 'conversion',
+        template_source: 'conversion', # template file is conversion.rb / conversion.py
+        class_var: 'conversion_class',
+        usage_intro: 'To use the conversion add the following to a telemetry item:',
+        usage_directive: 'READ_CONVERSION %{basename}',
+        docs: 'https://docs.openc3.com/docs/configuration/telemetry#read_conversion',
+        help_example: 'STATUS',
+      })
     end
-
     def self.generate_processor(args)
-      if args[1].nil? || args[2].nil? || args[1] == '--help' || args[1] == '-h'
-        puts "Usage: cli generate processor TARGET NAME"
-        puts ""
-        puts "Generate a new processor for an existing target"
-        puts ""
-        puts "Arguments:"
-        puts "  TARGET            Target name (required, must exist)"
-        puts "  NAME              Processor name (required)"
-        puts "                    Will be uppercased with '_PROCESSOR' suffix"
-        puts ""
-        puts "Options:"
-        puts "  -h, --help        Show this help message"
-        puts ""
-        puts "Note: Language is inherited from the target's target.txt (LANGUAGE keyword)."
-        puts "      --ruby/--python flags are ignored."
-        puts ""
-        puts "Example:"
-        puts "  cli generate processor EXAMPLE DATA"
-        puts "  Creates: targets/EXAMPLE/lib/data_processor.rb (or .py)"
-        puts ""
-        puts "Note: Must be run from within an existing plugin directory"
-        puts ""
-        puts "Documentation:"
-        puts "  https://docs.openc3.com/docs/configuration/telemetry#processor"
-        exit(args[1].nil? || args[2].nil? ? 1 : 0)
-      end
-      if args.length != 3
-        abort("Usage: cli generate processor <TARGET> <NAME>")
-      end
-
-      # Create the local variables
-      target_name = args[1].upcase
-      target_path = "targets/#{target_name}"
-      unless File.exist?(target_path)
-        abort("Target '#{target_name}' does not exist! Processors must be created for existing targets.")
-      end
-      @@language = read_target_language(target_path)
-      processor_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_PROCESSOR"
-      processor_basename = "#{processor_name.downcase}.#{@@language}"
-      processor_class = processor_basename.filename_to_class_name
-      processor_class.inspect # Remove unused variable warning. These are used in binding for generator
-      processor_filename = "targets/#{target_name}/lib/#{processor_basename}"
-      if File.exist?(processor_filename)
-        abort("Processor #{processor_filename} already exists!")
-      end
-
-      process_template("#{TEMPLATES_DIR}/processor", binding) do |filename|
-        filename.sub!("processor.#{@@language}", processor_filename)
-        false
-      end
-
-      puts "Processor #{processor_filename} successfully generated!"
-      puts "To use the processor add the following to a telemetry packet:"
-      puts "  PROCESSOR #{args[2].upcase} #{processor_basename} <PARAMS...>"
-      return processor_name
+      generate_target_artifact(args, {
+        suffix: 'PROCESSOR',
+        kind: 'Processor',
+        kind_plural: 'Processors',
+        template: 'processor',
+        template_source: 'processor',
+        class_var: 'processor_class',
+        usage_intro: 'To use the processor add the following to a telemetry packet:',
+        usage_directive: 'PROCESSOR %{name_upcase} %{basename} <PARAMS...>',
+        docs: 'https://docs.openc3.com/docs/configuration/telemetry#processor',
+        help_example: 'DATA',
+      })
     end
-
     def self.generate_limits_response(args)
-      if args[1].nil? || args[2].nil? || args[1] == '--help' || args[1] == '-h'
-        puts "Usage: cli generate limits_response TARGET NAME"
-        puts ""
-        puts "Generate a new limits response for an existing target"
-        puts ""
-        puts "Arguments:"
-        puts "  TARGET            Target name (required, must exist)"
-        puts "  NAME              Limits response name (required)"
-        puts "                    Will be uppercased with '_LIMITS_RESPONSE' suffix"
-        puts ""
-        puts "Options:"
-        puts "  -h, --help        Show this help message"
-        puts ""
-        puts "Note: Language is inherited from the target's target.txt (LANGUAGE keyword)."
-        puts "      --ruby/--python flags are ignored."
-        puts ""
-        puts "Example:"
-        puts "  cli generate limits_response EXAMPLE CUSTOM"
-        puts "  Creates: targets/EXAMPLE/lib/custom_limits_response.rb (or .py)"
-        puts ""
-        puts "Note: Must be run from within an existing plugin directory"
-        puts ""
-        puts "Documentation:"
-        puts "  https://docs.openc3.com/docs/configuration/telemetry#limits_response"
-        exit(args[1].nil? || args[2].nil? ? 1 : 0)
-      end
-      if args.length != 3
-        abort("Usage: cli generate limits_response <TARGET> <NAME>")
-      end
-
-      # Create the local variables
-      target_name = args[1].upcase
-      target_path = "targets/#{target_name}"
-      unless File.exist?(target_path)
-        abort("Target '#{target_name}' does not exist! Limits responses must be created for existing targets.")
-      end
-      @@language = read_target_language(target_path)
-      response_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_LIMITS_RESPONSE"
-      response_basename = "#{response_name.downcase}.#{@@language}"
-      response_filename = "targets/#{target_name}/lib/#{response_basename}"
-      response_class = response_basename.filename_to_class_name
-      response_class.inspect # Remove unused variable warning. These are used in binding for generator
-      if File.exist?(response_filename)
-        abort("response #{response_filename} already exists!")
-      end
-
-      process_template("#{TEMPLATES_DIR}/limits_response", binding) do |filename|
-        filename.sub!("response.#{@@language}", response_filename)
-        false
-      end
-
-      puts "Limits response #{response_filename} successfully generated!"
-      puts "To use the limits response add the following to a telemetry item:"
-      puts "  LIMITS_RESPONSE #{response_basename}"
-      return response_name
+      generate_target_artifact(args, {
+        suffix: 'LIMITS_RESPONSE',
+        kind: 'Limits response',
+        kind_plural: 'Limits responses',
+        template: 'limits_response',
+        template_source: 'response', # template file is response.rb / response.py
+        class_var: 'response_class',
+        usage_intro: 'To use the limits response add the following to a telemetry item:',
+        usage_directive: 'LIMITS_RESPONSE %{basename}',
+        docs: 'https://docs.openc3.com/docs/configuration/telemetry#limits_response',
+        help_example: 'CUSTOM',
+      })
     end
-
     def self.generate_command_validator(args)
-      if args[1].nil? || args[2].nil? || args[1] == '--help' || args[1] == '-h'
-        puts "Usage: cli generate command_validator TARGET NAME"
-        puts ""
-        puts "Generate a new command validator for an existing target"
-        puts ""
-        puts "Arguments:"
-        puts "  TARGET            Target name (required, must exist)"
-        puts "  NAME              Command validator name (required)"
-        puts "                    Will be uppercased with '_COMMAND_VALIDATOR' suffix"
-        puts ""
-        puts "Options:"
-        puts "  -h, --help        Show this help message"
-        puts ""
-        puts "Note: Language is inherited from the target's target.txt (LANGUAGE keyword)."
-        puts "      --ruby/--python flags are ignored."
-        puts ""
-        puts "Example:"
-        puts "  cli generate command_validator EXAMPLE RANGE"
-        puts "  Creates: targets/EXAMPLE/lib/range_command_validator.rb (or .py)"
-        puts ""
-        puts "Note: Must be run from within an existing plugin directory"
-        puts ""
-        puts "Documentation:"
-        puts "  https://docs.openc3.com/docs/configuration/command#validator"
-        exit(args[1].nil? || args[2].nil? ? 1 : 0)
-      end
-      if args.length != 3
-        abort("Usage: cli generate command_validator <TARGET> <NAME>")
-      end
-
-      # Create the local variables
-      target_name = args[1].upcase
-      target_path = "targets/#{target_name}"
-      unless File.exist?(target_path)
-        abort("Target '#{target_name}' does not exist! Command validators must be created for existing targets.")
-      end
-      @@language = read_target_language(target_path)
-      validator_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_COMMAND_VALIDATOR"
-      validator_basename = "#{validator_name.downcase}.#{@@language}"
-      validator_class = validator_basename.filename_to_class_name
-      validator_class.inspect # Remove unused variable warning. These are used in binding for generator
-      validator_filename = "targets/#{target_name}/lib/#{validator_basename}"
-      if File.exist?(validator_filename)
-        abort("Command validator #{validator_filename} already exists!")
-      end
-
-      process_template("#{TEMPLATES_DIR}/command_validator", binding) do |filename|
-        filename.sub!("command_validator.#{@@language}", validator_filename)
-        false
-      end
-
-      puts "Command validator #{validator_filename} successfully generated!"
-      puts "To use the command validator add the following to a command:"
-      puts "  VALIDATOR #{validator_basename}"
-      return validator_name
+      generate_target_artifact(args, {
+        suffix: 'COMMAND_VALIDATOR',
+        kind: 'Command validator',
+        kind_plural: 'Command validators',
+        template: 'command_validator',
+        template_source: 'command_validator',
+        class_var: 'validator_class',
+        usage_intro: 'To use the command validator add the following to a command:',
+        usage_directive: 'VALIDATOR %{basename}',
+        docs: 'https://docs.openc3.com/docs/configuration/command#validator',
+        help_example: 'RANGE',
+      })
     end
   end
 end
