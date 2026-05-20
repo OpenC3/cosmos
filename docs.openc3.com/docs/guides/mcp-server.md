@@ -11,7 +11,7 @@ COSMOS Enterprise include an MCP Server that gives AI systems the ability to dis
 
 ## Overview
 
-The COSMOS MCP Server is available at `<Your COSMOS URL>/mcp`. It performs Automatic Oauth authenication with the client and will generally authenticate as the currently logged in COSMOS user in your web browswer, or prompt you for a login if no one is currently logged in.
+The COSMOS MCP Server is available at `<Your COSMOS URL>/mcp`. It performs Automatic Oauth authentication with the client and will generally authenticate as the currently logged in COSMOS user in your web browser, or prompt you for a login if no one is currently logged in.
 
 ## Using with the Built-In AI Interface
 
