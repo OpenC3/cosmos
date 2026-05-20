@@ -43,6 +43,9 @@ export default {
   emits: ['addItem', 'deleteItem', 'open'],
   data() {
     return {
+      // Subclasses (e.g. TextboxWidget) set this true to let embedded
+      // newlines / tabs pass through to multi-line displays unchanged.
+      preserveWhitespace: false,
       appliedTimeZone: 'local',
       curValue: null,
       prevValue: null,
@@ -214,7 +217,9 @@ export default {
             this.appliedTimeZone,
           )
         }
-        return this.formatValueBase(value, this.formatString)
+        return this.formatValueBase(value, this.formatString, {
+          preserveWhitespace: this.preserveWhitespace,
+        })
       } catch (e) {
         // eslint-disable-next-line no-console
         console.log(
