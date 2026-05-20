@@ -176,7 +176,11 @@
             <v-row no-gutters>
               <v-col>Filename:</v-col>
               <v-col>
-                <input type="file" @change="selectRawCmdFile($event)" />
+                <input
+                  type="file"
+                  data-test="send-raw-file"
+                  @change="selectRawCmdFile($event)"
+                />
               </v-col>
             </v-row>
             <v-row>
@@ -265,18 +269,17 @@ export default {
   computed: {
     menus: function () {
       return [
-        // TODO: Implement send raw
-        // {
-        //   label: 'File',
-        //   items: [
-        //     {
-        //       label: 'Send Raw',
-        //       command: () => {
-        //         this.setupRawCmd()
-        //       },
-        //     },
-        //   ],
-        // },
+        {
+          label: 'File',
+          items: [
+            {
+              label: 'Send Raw File',
+              command: () => {
+                this.setupRawCmd()
+              },
+            },
+          ],
+        },
         {
           label: 'Mode',
           items: [
@@ -863,71 +866,71 @@ export default {
       })
     },
 
-    // setupRawCmd() {
-    //   this.api.get_interface_names().then(
-    //     (response) => {
-    //       let interfaces = []
-    //       for (let i = 0; i < response.length; i++) {
-    //         interfaces.push({ label: response[i], value: response[i] })
-    //       }
-    //       this.interfaces = interfaces
-    //       this.selectedInterface = interfaces[0].value
-    //       this.displaySendRaw = true
-    //     },
-    //     (error) => {
-    //       this.displaySendRaw = false
-    //       this.displayError('getting interface names', error, true)
-    //     }
-    //   )
-    // },
+    setupRawCmd() {
+      this.api.get_interface_names().then(
+        (response) => {
+          const interfaces = response.map((name) => ({
+            label: name,
+            value: name,
+          }))
+          this.interfaces = interfaces
+          this.selectedInterface = interfaces.length ? interfaces[0].value : ''
+          this.rawCmdFile = null
+          this.displaySendRaw = true
+        },
+        (error) => {
+          this.displaySendRaw = false
+          this.displayError('getting interface names', error, true)
+        },
+      )
+    },
 
-    // selectRawCmdFile(event) {
-    //   this.rawCmdFile = event.target.files[0]
-    // },
+    selectRawCmdFile(event) {
+      this.rawCmdFile = event.target.files[0]
+    },
 
-    // onLoad(event) {
-    //   let bufView = new Uint8Array(event.target.result)
-    //   let jstr = { json_class: 'String', raw: [] }
-    //   for (let i = 0; i < bufView.length; i++) {
-    //     jstr.raw.push(bufView[i])
-    //   }
-
-    //   this.api.send_raw(this.selectedInterface, jstr).then(
-    //     () => {
-    //       this.displaySendRaw = false
-    //       this.status =
-    //         'Sent ' +
-    //         bufView.length +
-    //         ' bytes to interface ' +
-    //         this.selectedInterface
-    //     },
-    //     (error) => {
-    //       this.displaySendRaw = false
-    //       this.displayError('sending raw data', error, true)
-    //     }
-    //   )
-    // },
-
-    // sendRawCmd() {
-    //   let self = this
-    //   let reader = new FileReader()
-    //   reader.onload = function (e) {
-    //     self.onLoad(e)
-    //   }
-    //   reader.onerror = function (e) {
-    //     self.displaySendRaw = false
-    //     let target = e.target
-    //     self.displayError('sending raw data', target.error, true)
-    //   }
-    //   // TBD - use the other event handlers to implement a progress bar for the
-    //   // file upload.  Handle abort as well?
-    //   //reader.onloadstart = function(e) {}
-    //   //reader.onprogress = function(e) {}
-    //   //reader.onloadend = function(e) {}
-    //   //reader.onabort = function(e) {}
-
-    //   reader.readAsArrayBuffer(this.rawCmdFile)
-    // },
+    async sendRawCmd() {
+      if (!this.selectedInterface) {
+        this.displayError(
+          'sending raw data',
+          { name: 'Error', message: 'No interface selected' },
+          true,
+        )
+        return
+      }
+      if (!this.rawCmdFile) {
+        this.displayError(
+          'sending raw data',
+          { name: 'Error', message: 'No file selected' },
+          true,
+        )
+        return
+      }
+      let bufView
+      try {
+        const buffer = await this.rawCmdFile.arrayBuffer()
+        bufView = new Uint8Array(buffer)
+      } catch (err) {
+        this.displaySendRaw = false
+        this.displayError('sending raw data', err, true)
+        return
+      }
+      const jstr = { json_class: 'String', raw: Array.from(bufView) }
+      this.api.send_raw(this.selectedInterface, jstr).then(
+        () => {
+          this.displaySendRaw = false
+          this.status =
+            'Sent ' +
+            bufView.length +
+            ' bytes to interface ' +
+            this.selectedInterface
+        },
+        (error) => {
+          this.displaySendRaw = false
+          this.displayError('sending raw data', error, true)
+        },
+      )
+    },
 
     cancelRawCmd() {
       this.displaySendRaw = false
