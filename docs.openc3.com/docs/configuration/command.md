@@ -781,13 +781,13 @@ class CustomValidator(CommandValidator):
             return [False, "TGT PKT ITEM is 0"]
         self.cmd_acpt_cnt = tlm("INST HEALTH_STATUS CMD_ACPT_CNT")
         # Return true to indicate Success, false to indicate Failure,
-        # and nil to indicate Unknown. The second value is the optional message.
+        # and None to indicate Unknown. The second value is the optional message.
         return [True, None]
 
     def post_check(self, command):
         wait_check(f"INST HEALTH_STATUS CMD_ACPT_CNT > {self.cmd_acpt_cnt}", 10)
         # Return true to indicate Success, false to indicate Failure,
-        # and nil to indicate Unknown. The second value is the optional message.
+        # and None to indicate Unknown. The second value is the optional message.
         return [True, None]
 ```
 </TabItem>
