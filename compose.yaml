@@ -22,6 +22,7 @@ services:
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-buckets${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     volumes:
       - "openc3-object-v:/data"
+      - "openc3-object-versions-v:/versions"
       - "./cacert.pem:/devel/cacert.pem:z"
     restart: "unless-stopped"
     logging:
@@ -34,6 +35,7 @@ services:
       ROOT_SECRET_KEY: "${OPENC3_BUCKET_PASSWORD}"
       OPENC3_SR_BUCKET_USERNAME: "${OPENC3_SR_BUCKET_USERNAME}"
       OPENC3_SR_BUCKET_PASSWORD: "${OPENC3_SR_BUCKET_PASSWORD}"
+      VGW_VERSIONING_DIR: "/versions"
       SSL_CERT_FILE: "/devel/cacert.pem"
       CURL_CA_BUNDLE: "/devel/cacert.pem"
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
@@ -326,6 +328,7 @@ volumes:
   openc3-redis-v: {}
   openc3-redis-ephemeral-v: {}
   openc3-object-v: {}
+  openc3-object-versions-v: {}
   openc3-gems-v: {}
   openc3-cmd-tlm-api-tmp-v: {}
   openc3-script-runner-api-tmp-v: {}

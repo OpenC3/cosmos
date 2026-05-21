@@ -162,11 +162,15 @@ class Script < OpenC3::TargetFile
     return stdout_results, stderr_results, success
   end
 
+  # Returns the new S3 VersionId (String) when the bucket write produced a new
+  # version, true when no new version was needed, false on failure, or nil when
+  # the text was unchanged from the existing body and no write happened.
   def self.create(params)
+    write_result = nil
     existing = body(params[:scope], params[:name])
     # Commit if there is no existing or something has changed
     if existing.nil? or existing != params[:text]
-      super(params[:scope], params[:name], params[:text])
+      write_result = super(params[:scope], params[:name], params[:text], username: params[:username])
     end
     breakpoints = params[:breakpoints]
     if breakpoints
@@ -177,6 +181,7 @@ class Script < OpenC3::TargetFile
           breakpoints.as_json().to_json(allow_nan: true))
       end
     end
+    write_result
   end
 
   def self.delete_temp(scope)

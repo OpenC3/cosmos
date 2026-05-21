@@ -21,6 +21,13 @@ Rails.application.routes.draw do
     get "/ping" => "scripts#ping"
     get  "/scripts" => "scripts#index"
     delete "/scripts/temp_files" => "scripts#delete_temp"
+    # Specific GET routes must come BEFORE the catchall body route, since
+    # Rails routes match in declaration order and *name is greedy — without
+    # this ordering a request to /scripts/foo.rb/versions matches body with
+    # name="foo.rb/versions".
+    get  "/scripts/*name/versions" => "scripts#versions", format: false, defaults: { format: 'html' }
+    get  "/scripts/*name/version" => "scripts#version_body", format: false, defaults: { format: 'html' }
+    # Catchall body route — must be last among GETs.
     get  "/scripts/*name" => "scripts#body", format: false, defaults: { format: 'html' }
     post "/scripts/*name/run(/:disconnect)" => "scripts#run", format: false, defaults: { format: 'html' }
     post "/scripts/*name/delete" => "scripts#destroy", format: false, defaults: { format: 'html' }
@@ -29,6 +36,7 @@ Rails.application.routes.draw do
     post "/scripts/*name/syntax" => "scripts#syntax"
     post "/scripts/*name/mnemonics" => "scripts#mnemonics"
     post "/scripts/*name/instrumented" => "scripts#instrumented"
+    post "/scripts/*name/restore" => "scripts#restore", format: false, defaults: { format: 'html' }
     # Must be last so /run, /delete, etc will match first
     post "/scripts/*name" => "scripts#create", format: false, defaults: { format: 'html' }
 

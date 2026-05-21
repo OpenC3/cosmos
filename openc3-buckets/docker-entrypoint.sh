@@ -24,6 +24,13 @@ if [ "${1}" = "versitygw" ] || [ "${1#-}" != "$1" ]; then
     # Create IAM directory if it doesn't exist
     mkdir -p "${VGW_IAM_DIR}"
 
+    # versitygw posix backend requires the versioning dir to live OUTSIDE the
+    # data root (it errors with "the root directory contains the directory ..."
+    # otherwise), so this must be a separately mounted path.
+    if [ -n "${VGW_VERSIONING_DIR}" ]; then
+        mkdir -p "${VGW_VERSIONING_DIR}"
+    fi
+
     # Pre-create ScriptRunner user account if credentials are provided and different from root
     # versitygw expects accounts in a users.json file with accessAccounts structure
     if [ -n "${OPENC3_SR_BUCKET_USERNAME}" ] && [ -n "${OPENC3_SR_BUCKET_PASSWORD}" ]; then
@@ -55,9 +62,15 @@ EOF
     fi
 
     # If no arguments provided, use defaults with IAM enabled
-    # Note: --iam-dir is a global option that must come BEFORE the backend command
+    # Note: --iam-dir is a global option that must come BEFORE the backend command;
+    # --versioning-dir is a posix backend flag, so it goes after "posix" and before
+    # the data dir argument.
     if [ $# -eq 0 ]; then
-        set -- versitygw --iam-dir "${VGW_IAM_DIR}" "${VGW_BACKEND}" "${VGW_BACKEND_ARG}"
+        if [ "${VGW_BACKEND}" = "posix" ] && [ -n "${VGW_VERSIONING_DIR}" ]; then
+            set -- versitygw --iam-dir "${VGW_IAM_DIR}" "${VGW_BACKEND}" --versioning-dir "${VGW_VERSIONING_DIR}" "${VGW_BACKEND_ARG}"
+        else
+            set -- versitygw --iam-dir "${VGW_IAM_DIR}" "${VGW_BACKEND}" "${VGW_BACKEND_ARG}"
+        fi
     else
         set -- versitygw "$@"
     fi

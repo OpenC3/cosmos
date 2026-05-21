@@ -99,7 +99,7 @@ RSpec.describe Script, type: :model do
       }
 
       allow(Script).to receive(:body).and_return(nil)
-      expect(OpenC3::TargetFile).to receive(:create).with("DEFAULT", "new_script.rb", "puts 'Hello'")
+      expect(OpenC3::TargetFile).to receive(:create).with("DEFAULT", "new_script.rb", "puts 'Hello'", username: nil)
 
       Script.create(params)
 
@@ -117,7 +117,7 @@ RSpec.describe Script, type: :model do
       }
 
       allow(Script).to receive(:body).and_return("puts 'Original'")
-      expect(OpenC3::TargetFile).to receive(:create).with("DEFAULT", "existing_script.rb", "puts 'Updated'")
+      expect(OpenC3::TargetFile).to receive(:create).with("DEFAULT", "existing_script.rb", "puts 'Updated'", username: nil)
 
       Script.create(params)
 
@@ -153,7 +153,7 @@ RSpec.describe Script, type: :model do
       }
 
       allow(Script).to receive(:body).and_return(nil)
-      expect(OpenC3::TargetFile).to receive(:create).with("DEFAULT", "script.rb", "puts 'Hello'")
+      expect(OpenC3::TargetFile).to receive(:create).with("DEFAULT", "script.rb", "puts 'Hello'", username: nil)
 
       # Pre-store breakpoints
       OpenC3::Store.hset("DEFAULT__script-breakpoints", "script.rb", [5, 10].to_json)

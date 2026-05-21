@@ -88,8 +88,10 @@ class ScriptsController < ApplicationController
     args = params.permit(:text, breakpoints: [])
     args[:scope] = scope
     args[:name] = name
-    Script.create(args)
+    args[:username] = username()
+    write_result = Script.create(args)
     results = {}
+    results['version_id'] = write_result if write_result.is_a?(String)
     if ((File.extname(name) == '.py') and (params[:text] =~ PYTHON_SUITE_REGEX)) or ((File.extname(name) != '.py') and (params[:text] =~ SUITE_REGEX))
       results_suites, results_error, success = Script.process_suite(name, params[:text], username: username(), scope: scope)
       results['suites'] = results_suites
@@ -204,5 +206,110 @@ class ScriptsController < ApplicationController
     scope = scope[0]
     OpenC3::Store.del("#{scope}__script-breakpoints")
     head :ok
+  end
+
+  # GET /scripts/*name/versions — list S3 versions for this script body,
+  # newest-first. Each entry carries version_id, size, last_modified, is_latest,
+  # and etag.
+  def versions
+    return unless authorization('script_view')
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
+    return unless scope
+    bucket_name = ENV.fetch('OPENC3_CONFIG_BUCKET', 'config')
+    key = "#{scope}/targets_modified/#{name}"
+    bucket = OpenC3::Bucket.getClient()
+    s3 = bucket.list_object_versions(bucket: bucket_name, prefix: key)
+    versions = s3[:versions].select { |v| v.key == key }.map do |v|
+      {
+        version_id: v.version_id,
+        size: v.size,
+        last_modified: v.last_modified,
+        is_latest: v.is_latest,
+        etag: v.etag
+      }
+    end
+    delete_markers = s3[:delete_markers].select { |dm| dm.key == key }.map do |dm|
+      { version_id: dm.version_id, last_modified: dm.last_modified, is_latest: dm.is_latest, deleted: true }
+    end
+    render json: { versions: versions, delete_markers: delete_markers }
+  rescue => e
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
+  # GET /scripts/*name/version?version_id=... — return body of a specific version.
+  def version_body
+    return unless authorization('script_view')
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
+    return unless scope
+    version_id = params[:version_id]
+    if version_id.nil? || version_id.empty?
+      render json: { status: 'error', message: 'version_id required' }, status: :bad_request
+      return
+    end
+    bucket = OpenC3::Bucket.getClient()
+    begin
+      resp = bucket.get_object(
+        bucket: ENV.fetch('OPENC3_CONFIG_BUCKET', 'config'),
+        key: "#{scope}/targets_modified/#{name}",
+        version_id: version_id
+      )
+    rescue Aws::Errors::ServiceError => e
+      # Backends (real AWS S3, etc.) reject lookups with versionIds that
+      # aren't valid for the bucket — for example null-version markers
+      # returned by list_object_versions on a bucket whose versioning was
+      # only just enabled. Surface as 404 rather than 500.
+      OpenC3::Logger.warn("get_object(version_id=#{version_id}) failed for #{scope}/#{name}: #{e.message}", scope: scope)
+      render json: { status: 'error', message: "Version unavailable: #{e.message}" }, status: :not_found
+      return
+    end
+    if resp && resp.body
+      body = File.extname(name) == '.bin' ? (resp.body.binmode; resp.body.read) : resp.body.read.force_encoding('UTF-8')
+      render plain: body
+    else
+      head :not_found
+    end
+  rescue => e
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
+  # POST /scripts/*name/restore body {version_id} — re-PUT the body of an
+  # older version as a new current version. Caller must hold the edit lock
+  # the same way a normal save does.
+  def restore
+    return unless authorization('script_edit')
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
+    return unless scope
+    version_id = params[:version_id]
+    if version_id.nil? || version_id.empty?
+      render json: { status: 'error', message: 'version_id required' }, status: :bad_request
+      return
+    end
+
+    bucket = OpenC3::Bucket.getClient()
+    bucket_name = ENV.fetch('OPENC3_CONFIG_BUCKET', 'config')
+    key = "#{scope}/targets_modified/#{name}"
+    begin
+      src = bucket.get_object(bucket: bucket_name, key: key, version_id: version_id)
+    rescue Aws::Errors::ServiceError => e
+      OpenC3::Logger.warn("restore get_object(version_id=#{version_id}) failed for #{scope}/#{name}: #{e.message}", scope: scope)
+      render json: { status: 'error', message: "Version unavailable: #{e.message}" }, status: :not_found
+      return
+    end
+    if src.nil? || src.body.nil?
+      head :not_found
+      return
+    end
+    body = src.body.read
+
+    write_result = OpenC3::TargetFile.create(scope, name, body, username: username())
+    new_version_id = write_result.is_a?(String) ? write_result : nil
+
+    OpenC3::Logger.info("Script restored: #{name} from #{version_id}", scope: scope, user: username())
+    render json: { version_id: new_version_id, restored_from_version_id: version_id }
+  rescue => e
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 end

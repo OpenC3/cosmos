@@ -117,7 +117,7 @@
             <v-icon v-if="showDisconnect" class="mt-2" color="red">
               mdi-connection
             </v-icon>
-            <div class="d-flex align-center mr-1">
+            <div v-if="localMode" class="d-flex align-center mr-1">
               <v-tooltip :open-delay="600" location="top">
                 <template #activator="{ props }">
                   <v-btn
@@ -139,8 +139,7 @@
                     @click="backToNewScript"
                   />
                 </template>
-                <span v-if="!scriptId"> Reload File </span>
-                <span v-else> Back to New Script </span>
+                <span v-if="!scriptId">Reload File</span>
               </v-tooltip>
             </div>
             <v-tooltip
@@ -618,6 +617,13 @@
     :persistent="true"
     @status="promptDialogCallback"
   />
+  <script-version-history-dialog
+    v-if="showVersionHistory"
+    v-model="showVersionHistory"
+    :filename="filename"
+    :current-body="editor ? editor.getValue() : ''"
+    @restored="onVersionRestored"
+  />
   <!-- Command Editor Dialog -->
   <v-dialog
     v-model="commandEditor.show"
@@ -713,6 +719,7 @@ import ScriptEnvironmentDialog from '@/tools/scriptrunner/Dialogs/ScriptEnvironm
 import CommandEditor from '@/components/CommandEditor.vue'
 import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
 import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
+import ScriptVersionHistoryDialog from '@/tools/scriptrunner/ScriptVersionHistoryDialog.vue'
 import {
   CmdCompleter,
   TlmCompleter,
@@ -750,6 +757,7 @@ export default {
     SuiteRunner,
     RunningScripts,
     ScriptLogMessages,
+    ScriptVersionHistoryDialog,
     CriticalCmdDialog,
     CommandEditor,
   },
@@ -835,6 +843,8 @@ export default {
       fileOpen: false,
       lockedBy: null,
       showEditingToast: false,
+      showVersionHistory: false,
+      localMode: false,
       showSaveAs: false,
       areYouSure: false,
       subscription: null,
@@ -1239,6 +1249,20 @@ export default {
                 this.deleteAllBreakpoints()
               },
             },
+            {
+              divider: true,
+            },
+            {
+              label: 'Version History',
+              icon: 'mdi-history',
+              disabled:
+                this.scriptId ||
+                !this.filename ||
+                this.filename === NEW_FILENAME,
+              command: () => {
+                this.showVersionHistory = true
+              },
+            },
           ],
         },
       ]
@@ -1311,6 +1335,14 @@ export default {
     }
 
     this.updateOverridesCount()
+
+    Api.get('/openc3-api/info')
+      .then((response) => {
+        this.localMode = !!response.data?.local_mode
+      })
+      .catch(() => {
+        this.localMode = false
+      })
 
     // Make NEW_FILENAME available to the template
     this.NEW_FILENAME = NEW_FILENAME
@@ -3073,6 +3105,9 @@ class TestSuite(Suite):
       if (!this.readOnlyUser) {
         return Api.post(`/script-api/scripts/${this.filename}/lock`)
       }
+    },
+    onVersionRestored: function () {
+      this.reloadFile()
     },
     unlockFile: function () {
       if (

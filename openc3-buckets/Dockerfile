@@ -34,9 +34,9 @@ RUN apk update && \
     chmod +x /usr/bin/docker-entrypoint.sh && \
     addgroup -g ${GROUP_ID} -S ${IMAGE_GROUP} && \
     adduser -u ${USER_ID} -G ${IMAGE_GROUP} -s /bin/ash -S ${IMAGE_USER} && \
-    mkdir /data && \
-    chown -R ${USER_ID}:${IMAGE_GROUP} /data && \
-    chmod -R 777 /data
+    mkdir /data /versions && \
+    chown -R ${USER_ID}:${IMAGE_GROUP} /data /versions && \
+    chmod -R 777 /data /versions
 
 # Switch to user
 USER ${USER_ID}:${GROUP_ID}

@@ -128,8 +128,9 @@ RSpec.describe ScriptsController, type: :controller do
 
     it "does not pass params which aren't permitted" do
       expect(Script).to receive(:create) do |params|
-        # Check that we don't pass extra params
-        expect(params.keys).to eql(%w[text breakpoints scope name])
+        # Check that we don't pass extra params (username is added by the
+        # controller from the auth header, not from the request body)
+        expect(params.keys).to eql(%w[text breakpoints scope name username])
       end
       post :create, params: {scope: "DEFAULT", name: "script.rb", text: "text", breakpoints: [1], other: "nope"}
       expect(response).to have_http_status(:ok)

@@ -17,7 +17,12 @@ begin
 rescue LoadError
   class InfoController < ApplicationController
     def info
-      render json: { version: OPENC3_VERSION, license: 'OpenC3', enterprise: false }
+      render json: {
+        version: OPENC3_VERSION,
+        license: 'OpenC3',
+        enterprise: false,
+        local_mode: !ENV['OPENC3_LOCAL_MODE'].to_s.empty?
+      }
     end
   end
 end
