@@ -130,7 +130,7 @@ To generate a new Suite use the File -> New Suite and then choose either Ruby or
 
 ### Group
 
-The Group class contains the methods used to run the test or operations. Any methods starting with 'script', 'op', or 'test' which are implemented inside a Group class are automatically included as scripts to run. For example, in the above image, you'll notice the 'script_power_on' is in the Script drop down menu. Here's another simple example:
+The Group class contains the methods used to run the test or operations. Any methods starting with 'script_', 'op_', or 'test_' which are implemented inside a Group class are automatically included as scripts to run. For example, in the above image, you'll notice the 'script_power_on' is in the Script drop down menu. Here's another simple example:
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -142,6 +142,10 @@ class ExampleGroup(Group):
         print("setup")
     def script_1(self):
         print("script 1")
+    def test_1(self):
+        print("test 1")
+    def op_1(self):
+        print("op 1")
     def teardown(self):
         print("teardown")
 ```
@@ -157,6 +161,12 @@ class ExampleGroup < OpenC3::Group
   end
   def script_1
     puts "script 1"
+  end
+  def test_1
+    puts "test 1"
+  end
+  def op_1
+    puts "op 1"
   end
   def teardown
     puts "teardown"
