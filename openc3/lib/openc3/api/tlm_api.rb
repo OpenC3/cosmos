@@ -457,6 +457,12 @@ module OpenC3
     alias subscribe_packet subscribe_packets
 
     # Get packets based on ID returned from subscribe_packet.
+    # Packets are ordered within each subscribed packet stream (target/packet pair)
+    # but are NOT interleaved by time across streams. If chronological order across
+    # streams is required, sort the returned array by the 'time' field. Sorting only
+    # orders the current batch - packets across separate get_packets calls may still
+    # arrive out of order, so subscribers needing global ordering must buffer and merge
+    # across calls.
     # @param id [String] ID returned from subscribe_packets or last call to get_packets
     # @param block [Integer] Unused - Blocking must be implemented at the client
     # @param count [Integer] Maximum number of packets to return from EACH packet stream
