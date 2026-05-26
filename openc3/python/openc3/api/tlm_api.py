@@ -530,6 +530,13 @@ def subscribe_packets(packets, scope=OPENC3_SCOPE):
 def get_packets(id, count=1000, scope=OPENC3_SCOPE):
     """Get packets based on ID returned from subscribe_packet.
 
+    Packets are ordered within each subscribed packet stream (target/packet pair)
+    but are NOT interleaved by time across streams. If chronological order across
+    streams is required, sort the returned list by the 'time' field. Sorting only
+    orders the current batch - packets across separate get_packets calls may still
+    arrive out of order, so subscribers needing global ordering must buffer and merge
+    across calls.
+
     Args:
         id (str) ID returned from subscribe_packets or last call to get_packets
         count (int) Maximum number of packets to return from EACH packet stream
