@@ -19,6 +19,8 @@ class StreamingChannel < ApplicationCable::Channel
   @@broadcasters = {}
 
   def subscribed
+    # Defensive: if the auth before_subscribe callback rejected us, skip work.
+    return if subscription_rejected?
     subscription_key = "streaming_#{uuid}"
     stream_from subscription_key
     @@broadcasters[subscription_key] = StreamingApi.new(subscription_key, scope: scope)
