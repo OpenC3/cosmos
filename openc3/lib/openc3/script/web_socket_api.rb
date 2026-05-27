@@ -94,6 +94,9 @@ module OpenC3
         json_hash = {}
         json_hash['command'] = 'subscribe'
         json_hash['identifier'] = JSON.generate(@identifier, allow_nan: true)
+        data_hash = {}
+        data_hash['token'] = @authentication.token(include_bearer: false)
+        json_hash['data'] = JSON.generate(data_hash, allow_nan: true)
         @stream.write(JSON.generate(json_hash, allow_nan: true))
         @subscribed = true
       end
@@ -128,7 +131,7 @@ module OpenC3
     # Connect to the websocket with authorization in query params
     def connect
       disconnect()
-      final_url = @url + "?scope=#{@scope}&authorization=#{@authentication.get_otp(scope: @scope)}"
+      final_url = @url + "?scope=#{@scope}"
       @stream = WebSocketClientStream.new(final_url, @write_timeout, @read_timeout, @connect_timeout)
       @stream.headers = {
         'Sec-WebSocket-Protocol' => 'actioncable-v1-json, actioncable-unsupported',
