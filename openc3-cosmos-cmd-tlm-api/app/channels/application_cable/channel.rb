@@ -32,7 +32,7 @@ module ApplicationCable
       token = params[:token]
       if token
         begin
-          authorize(permission: 'system', scope: scope, token: token)
+          authorize(permission: 'system', scope: connection.scope, token: token)
           return
         rescue OpenC3::AuthError, OpenC3::ForbiddenError
           # fall through to reject

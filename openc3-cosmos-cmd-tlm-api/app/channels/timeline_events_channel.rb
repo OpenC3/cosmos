@@ -19,6 +19,8 @@ class TimelineEventsChannel < ApplicationCable::Channel
   @@broadcasters = {}
 
   def subscribed
+    # Defensive: if the auth before_subscribe callback rejected us, skip work.
+    return if subscription_rejected?
     subscription_key = "timeline_events_#{uuid}"
     stream_from subscription_key
     @@broadcasters[subscription_key] = TimelineEventsApi.new(subscription_key, params['history_count'], scope: scope)

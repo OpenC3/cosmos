@@ -17,6 +17,8 @@
 
 class RunningScriptChannel < ApplicationCable::Channel
   def subscribed
+    # Defensive: if the auth before_subscribe callback rejected us, skip work.
+    return if subscription_rejected?
     stream_from "script-api:running-script-channel:#{params[:id]}"
   end
 end
