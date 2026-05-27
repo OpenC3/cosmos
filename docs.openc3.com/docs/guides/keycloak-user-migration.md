@@ -44,6 +44,8 @@ Upload the `myrealm.json` file exported above.
 
 Select **Users** in the list of resources to import. Set **If a resource exists** to **Skip** so any users already present in the new Keycloak are left untouched.
 
+You might also want to import **realm_roles** or other categories if you need to port those over as well.
+
 ![Select Users and set If a resource exists to Skip](/img/guides/keycloak_migration/skip_existing_users.png)
 
 Run the import. Verify the migrated users appear under **Users** in the new realm and that role mappings carried over as expected.
