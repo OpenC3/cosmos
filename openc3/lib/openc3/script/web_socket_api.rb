@@ -91,12 +91,13 @@ module OpenC3
     # Will subscribe to the channel based on @identifier
     def subscribe
       unless @subscribed
+        # Token is part of the identifier so it surfaces as params[:token] in
+        # ApplicationCable::Channel#authenticate_subscription! — ActionCable
+        # ignores `data` on `subscribe` commands.
+        @identifier['token'] = @authentication.token(include_bearer: false)
         json_hash = {}
         json_hash['command'] = 'subscribe'
         json_hash['identifier'] = JSON.generate(@identifier, allow_nan: true)
-        data_hash = {}
-        data_hash['token'] = @authentication.token(include_bearer: false)
-        json_hash['data'] = JSON.generate(data_hash, allow_nan: true)
         @stream.write(JSON.generate(json_hash, allow_nan: true))
         @subscribed = true
       end

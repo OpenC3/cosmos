@@ -101,12 +101,13 @@ class WebSocketApi:
     def subscribe(self):
         """Will subscribe to the channel based on @identifier"""
         if not self.subscribed:
+            # Token is part of the identifier so it surfaces as params[:token]
+            # in ApplicationCable::Channel#authenticate_subscription! —
+            # ActionCable ignores `data` on `subscribe` commands.
+            self.identifier["token"] = self.authentication.token(include_bearer=False)
             json_hash = {}
             json_hash["command"] = "subscribe"
             json_hash["identifier"] = json.dumps(self.identifier)
-            data_hash = {}
-            data_hash["token"] = self.authentication.token(include_bearer=False)
-            json_hash["data"] = json.dumps(data_hash)
             self.stream.write(json.dumps(json_hash))
             self.subscribed = True
 

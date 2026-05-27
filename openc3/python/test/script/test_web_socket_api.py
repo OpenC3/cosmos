@@ -31,9 +31,12 @@ class TestMessagesWebSocketApiConnectionClosed(unittest.TestCase):
         """Test that ConnectionClosedOK exception is handled and returns None"""
         from openc3.streams.web_socket_client_stream import WebSocketClientStream
 
+        mock_auth = Mock()
+        mock_auth.token.return_value = "test-token"
         api = MessagesWebSocketApi(
             start_time=to_nsec_from_epoch(datetime.now(timezone.utc) - timedelta(minutes=5)),
             end_time=to_nsec_from_epoch(datetime.now(timezone.utc)),
+            authentication=mock_auth,
         )
 
         # Create a mock connection that raises ConnectionClosedOK
@@ -73,9 +76,11 @@ class TestWebSocketApiEdgeCases(unittest.TestCase):
     @patch("openc3.script.web_socket_api.WebSocketClientStream")
     def test_read_with_timeout(self, mock_stream_class):
         """Test read with timeout parameter"""
+        mock_auth = Mock()
+        mock_auth.token.return_value = "test-token"
         api = WebSocketApi(
             url="ws://test.com/cable",
-            authentication=Mock(),
+            authentication=mock_auth,
         )
         api.identifier = {"channel": "TestChannel"}
         api.stream = Mock()
@@ -101,6 +106,40 @@ class TestWebSocketApiEdgeCases(unittest.TestCase):
         self.assertLess(elapsed, 1.0)
         # Should have called read at least twice
         self.assertGreaterEqual(call_count[0], 2)
+
+
+class TestWebSocketApiSubscribe(unittest.TestCase):
+    """Verify the subscribe wire format the server is actually expecting."""
+
+    def _make_api(self):
+        mock_auth = Mock()
+        mock_auth.token.return_value = "test_token"
+        api = WebSocketApi(url="ws://test.com/cable", authentication=mock_auth)
+        api.identifier = {"channel": "TestChannel"}
+        api.stream = Mock()
+        return api
+
+    # ActionCable derives `params` (which the server uses for
+    # authenticate_subscription!) from the channel identifier JSON, NOT from
+    # the `data` field. Putting the token in `data` silently broke every CLI
+    # subscription — see commit 8cabbb341.
+    def test_token_goes_in_identifier_not_data(self):
+        api = self._make_api()
+        api.subscribe()
+
+        api.stream.write.assert_called_once()
+        outer = json.loads(api.stream.write.call_args[0][0])
+        self.assertEqual(outer["command"], "subscribe")
+        self.assertNotIn("data", outer)
+        identifier = json.loads(outer["identifier"])
+        self.assertEqual(identifier["channel"], "TestChannel")
+        self.assertEqual(identifier["token"], "test_token")
+
+    def test_subscribe_is_idempotent(self):
+        api = self._make_api()
+        api.subscribe()
+        api.subscribe()
+        self.assertEqual(api.stream.write.call_count, 1)
 
 
 if __name__ == "__main__":
