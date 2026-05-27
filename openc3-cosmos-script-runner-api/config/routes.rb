@@ -21,6 +21,17 @@ Rails.application.routes.draw do
     get "/ping" => "scripts#ping"
     get  "/scripts" => "scripts#index"
     delete "/scripts/temp_files" => "scripts#delete_temp"
+    # Enterprise-only: literal POST before the *name catchall so it doesn't
+    # match scripts#create. ScriptVersionController lives in the
+    # openc3-enterprise gem; in Core builds requests here 500 with
+    # uninitialized constant (matches the notebooks/chat pattern).
+    post "/scripts/history-import" => "script_version#import_history"
+    # Specific GET routes must precede the catchall body route below — Rails
+    # matches in declaration order and *name is greedy, so /foo.rb/versions
+    # would otherwise match #body with name="foo.rb/versions". Enterprise-only.
+    get  "/scripts/*name/versions" => "script_version#versions", format: false, defaults: { format: 'html' }
+    get  "/scripts/*name/version" => "script_version#version_body", format: false, defaults: { format: 'html' }
+    get  "/scripts/*name/history-export" => "script_version#export_history", format: false, defaults: { format: 'html' }
     get  "/scripts/*name" => "scripts#body", format: false, defaults: { format: 'html' }
     post "/scripts/*name/run(/:disconnect)" => "scripts#run", format: false, defaults: { format: 'html' }
     post "/scripts/*name/delete" => "scripts#destroy", format: false, defaults: { format: 'html' }
@@ -29,6 +40,8 @@ Rails.application.routes.draw do
     post "/scripts/*name/syntax" => "scripts#syntax"
     post "/scripts/*name/mnemonics" => "scripts#mnemonics"
     post "/scripts/*name/instrumented" => "scripts#instrumented"
+    # Enterprise-only restore.
+    post "/scripts/*name/restore" => "script_version#restore", format: false, defaults: { format: 'html' }
     # Must be last so /run, /delete, etc will match first
     post "/scripts/*name" => "scripts#create", format: false, defaults: { format: 'html' }
 

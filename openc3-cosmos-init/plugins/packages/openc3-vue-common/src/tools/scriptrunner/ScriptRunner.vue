@@ -618,6 +618,13 @@
     :persistent="true"
     @status="promptDialogCallback"
   />
+  <script-version-history-dialog
+    v-if="showVersionHistory"
+    v-model="showVersionHistory"
+    :filename="filename"
+    :current-body="editor ? editor.getValue() : ''"
+    @restored="onVersionRestored"
+  />
   <!-- Command Editor Dialog -->
   <v-dialog
     v-model="commandEditor.show"
@@ -720,6 +727,7 @@ import {
 } from '@/tools/scriptrunner/autocomplete'
 import { SleepAnnotator } from '@/tools/scriptrunner/annotations'
 import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
+import ScriptVersionHistoryDialog from '@/tools/scriptrunner/ScriptVersionHistoryDialog.vue'
 
 // Matches target_file.rb TEMP_FOLDER
 const TEMP_FOLDER = '__TEMP__'
@@ -752,6 +760,7 @@ export default {
     ScriptLogMessages,
     CriticalCmdDialog,
     CommandEditor,
+    ScriptVersionHistoryDialog,
   },
   mixins: [AceEditorModes, ClassificationBanners],
   beforeRouteUpdate: function (to, from, next) {
@@ -827,6 +836,9 @@ export default {
       breakpoints: {},
       enableStackTraces: false,
       filename: NEW_FILENAME,
+      showVersionHistory: false,
+      // Enterprise-only feature; populated from /openc3-api/info on mount.
+      isEnterprise: false,
       readOnlyUser: false,
       executeUser: true,
       saveAllowed: true,
@@ -1239,6 +1251,25 @@ export default {
                 this.deleteAllBreakpoints()
               },
             },
+            // Enterprise-only Version History entry. ScriptVersionController
+            // lives in the openc3-enterprise gem; omit the divider + item
+            // entirely so Core builds don't render a dead menu option.
+            ...(this.isEnterprise
+              ? [
+                  { divider: true },
+                  {
+                    label: 'Version History',
+                    icon: 'mdi-history',
+                    disabled:
+                      this.scriptId ||
+                      !this.filename ||
+                      this.filename === NEW_FILENAME,
+                    command: () => {
+                      this.showVersionHistory = true
+                    },
+                  },
+                ]
+              : []),
           ],
         },
       ]
@@ -1289,6 +1320,14 @@ export default {
     // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
     this.api.ensure_offline_access()
+    // Detect Enterprise so we can show the Version History menu item.
+    Api.get('/openc3-api/info')
+      .then((response) => {
+        this.isEnterprise = !!response.data?.enterprise
+      })
+      .catch(() => {
+        this.isEnterprise = false
+      })
     this.api
       .get_setting('time_zone')
       .then((response) => {
@@ -3082,6 +3121,9 @@ class TestSuite(Suite):
       ) {
         Api.post(`/script-api/scripts/${this.filename}/unlock`)
       }
+    },
+    onVersionRestored: function () {
+      this.reloadFile()
     },
     backToNewScript: async function () {
       // Disconnect from the current script
