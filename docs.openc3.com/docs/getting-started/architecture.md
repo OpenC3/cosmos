@@ -173,6 +173,8 @@ These sentinels allow special float values to be stored and retrieved without da
 
 COSMOS provides a [migration plugin](https://store.openc3.com/cosmos_plugins/21) for ingesting historical decommutated telemetry and command data from binary log files into QuestDB. The plugin reads COSMOS binary packet log files (`.bin` and `.bin.gz`) from S3-compatible storage and batch-ingests the data into QuestDB. It processes files in reverse chronological order (newest first) and rate-limits ingestion to avoid overwhelming operational systems.
 
+QuestDB tables are partitioned by day, so individual partitions can be detached for long-term archival and reattached later. See [Removing and Restoring Partitions](/docs/guides/backups#removing-and-restoring-partitions) in the Backups guide for the workflow.
+
 ### Keycloak (Enterprise)
 
 [COSMOS Enterprise](https://openc3.com/enterprise) uses [Keycloak](https://www.keycloak.org/) as its Single Sign-On (SSO) solution. Keycloak is an open-source Identity and Access Management system that provides authentication, authorization, and user federation capabilities. Keycloak implements the OAuth 2.0 and OpenID Connect protocols and issues several types of tokens to manage user sessions.
