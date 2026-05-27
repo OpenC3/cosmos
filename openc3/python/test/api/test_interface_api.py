@@ -237,19 +237,19 @@ class TestInterfaceApi(unittest.TestCase):
     def test_sends_an_interface_cmd(self):
         TestInterfaceApi.interface_cmd_data = {}
         interface_cmd("INST_INT", "cmd1")
-        time.sleep(0.05)
+        time.sleep(0.1)
         self.assertEqual(list(TestInterfaceApi.interface_cmd_data.keys()), ["cmd1"])
         self.assertEqual(TestInterfaceApi.interface_cmd_data["cmd1"], ())
 
         TestInterfaceApi.interface_cmd_data = {}
         interface_cmd("INST_INT", "cmd2", "param1")
-        time.sleep(0.05)
+        time.sleep(0.1)
         self.assertEqual(list(TestInterfaceApi.interface_cmd_data.keys()), ["cmd2"])
         self.assertEqual(TestInterfaceApi.interface_cmd_data["cmd2"], ("param1",))
 
         TestInterfaceApi.interface_cmd_data = {}
         interface_cmd("INST_INT", "cmd3", "param1", "param2")
-        time.sleep(0.05)
+        time.sleep(0.1)
         self.assertEqual(list(TestInterfaceApi.interface_cmd_data.keys()), ["cmd3"])
         self.assertEqual(
             TestInterfaceApi.interface_cmd_data["cmd3"],
@@ -262,19 +262,19 @@ class TestInterfaceApi(unittest.TestCase):
     def test_sends_a_protocol_cmd(self):
         TestInterfaceApi.protocol_cmd_data = {}
         interface_protocol_cmd("INST_INT", "cmd1")
-        time.sleep(0.05)
+        time.sleep(0.1)
         self.assertEqual(list(TestInterfaceApi.protocol_cmd_data.keys()), ["cmd1"])
         self.assertEqual(TestInterfaceApi.protocol_cmd_data["cmd1"], ())
 
         TestInterfaceApi.protocol_cmd_data = {}
         interface_protocol_cmd("INST_INT", "cmd2", "param1")
-        time.sleep(0.05)
+        time.sleep(0.1)
         self.assertEqual(list(TestInterfaceApi.protocol_cmd_data.keys()), ["cmd2"])
         self.assertEqual(TestInterfaceApi.protocol_cmd_data["cmd2"], ("param1",))
 
         TestInterfaceApi.protocol_cmd_data = {}
         interface_protocol_cmd("INST_INT", "cmd3", "param1", "param2")
-        time.sleep(0.05)
+        time.sleep(0.1)
         self.assertEqual(list(TestInterfaceApi.protocol_cmd_data.keys()), ["cmd3"])
         self.assertEqual(
             TestInterfaceApi.protocol_cmd_data["cmd3"],

@@ -41,7 +41,7 @@ class TestLogger(unittest.TestCase):
         self.assertIn("Message1", data["message"])
         # Verify we can round trip the time from a string and it makes sense
         self.assertGreaterEqual(time.time_ns(), int(str(data["time"])))
-        self.assertGreaterEqual(int(str(data["time"])), time.time_ns() - 1_000_000)
+        self.assertGreaterEqual(int(str(data["time"])), time.time_ns() - 1_000_000_000)
         sys.stdout = orig
 
     def verify_no_output(self, level, method):

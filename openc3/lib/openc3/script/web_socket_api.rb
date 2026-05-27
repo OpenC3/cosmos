@@ -91,6 +91,10 @@ module OpenC3
     # Will subscribe to the channel based on @identifier
     def subscribe
       unless @subscribed
+        # Token is part of the identifier so it surfaces as params[:token] in
+        # ApplicationCable::Channel#authenticate_subscription! — ActionCable
+        # ignores `data` on `subscribe` commands.
+        @identifier['token'] = @authentication.token(include_bearer: false)
         json_hash = {}
         json_hash['command'] = 'subscribe'
         json_hash['identifier'] = JSON.generate(@identifier, allow_nan: true)
@@ -128,7 +132,7 @@ module OpenC3
     # Connect to the websocket with authorization in query params
     def connect
       disconnect()
-      final_url = @url + "?scope=#{@scope}&authorization=#{@authentication.get_otp(scope: @scope)}"
+      final_url = @url + "?scope=#{@scope}"
       @stream = WebSocketClientStream.new(final_url, @write_timeout, @read_timeout, @connect_timeout)
       @stream.headers = {
         'Sec-WebSocket-Protocol' => 'actioncable-v1-json, actioncable-unsupported',
