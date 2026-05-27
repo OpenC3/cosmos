@@ -41,7 +41,7 @@ Update localhost:2900 as needed.
 
 At the command line run:
 
-`claude mcp add openc3 http://localhost:2900/mcp`
+`claude mcp add --transport http openc3 http://localhost:2900/mcp`
 
 Then start claude and run the following to authenticate:
 
