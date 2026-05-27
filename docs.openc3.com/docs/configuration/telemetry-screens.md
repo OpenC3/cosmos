@@ -1805,6 +1805,8 @@ END
 | Image filename | Name of a image file. The file must be in the plugin's targets/TARGET/public directory. | True |
 | X Position | X position of the upper-left corner of the image on the canvas | True |
 | Y Position | Y position of the upper-left corner of the image on the canvas | True |
+| Width | Width of the image in pixels (default is 100%) | False |
+| Height | Height of the image in pixels (default is 100%) | False |
 
 Example Usage:
 ```cosmos
