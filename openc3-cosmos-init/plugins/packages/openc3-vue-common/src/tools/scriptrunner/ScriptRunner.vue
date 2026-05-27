@@ -727,7 +727,14 @@ import {
 } from '@/tools/scriptrunner/autocomplete'
 import { SleepAnnotator } from '@/tools/scriptrunner/annotations'
 import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
-import ScriptVersionHistoryDialog from '@/tools/scriptrunner/ScriptVersionHistoryDialog.vue'
+// Lazy-load the Enterprise-only Version History dialog so Monaco (~3 MB
+// minified) lives in its own chunk that only downloads when the user
+// opens version history. Core builds never reach this code path because
+// the menu item is gated on the /openc3-api/info enterprise flag.
+import { defineAsyncComponent } from 'vue'
+const ScriptVersionHistoryDialog = defineAsyncComponent(() =>
+  import('@/tools/scriptrunner/ScriptVersionHistoryDialog.vue'),
+)
 
 // Matches target_file.rb TEMP_FOLDER
 const TEMP_FOLDER = '__TEMP__'

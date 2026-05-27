@@ -210,16 +210,26 @@
 </template>
 
 <script>
+import { markRaw } from 'vue'
 import { Api } from '@openc3/js-common/services'
-import AceDiff from 'ace-diff'
-import 'ace-diff/styles.css'
-import 'ace-diff/styles-twilight.css'
-// Register the language modes so ace-diff editors get syntax highlighting.
-// Importing these from ace-builds wires them into the global ace registry.
-import 'ace-builds/src-noconflict/mode-ruby'
-import 'ace-builds/src-noconflict/mode-python'
-import 'ace-builds/src-noconflict/mode-javascript'
-import 'ace-builds/src-noconflict/mode-text'
+import * as monaco from 'monaco-editor'
+// Bundle Monaco's base worker so syntax highlighting and tokenization run
+// off the main thread. Inline form (?worker&inline) emits the worker as a
+// base64 blob URL so it loads independent of the asset path — required
+// under COSMOS's microfrontend routing where a normal worker URL would
+// resolve relative to the wrong base and throw an unhelpful Worker error.
+import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker&inline'
+
+// Wire workers on both self and window — Monaco checks self in some code
+// paths and window in others. Defining once at module load is fine; Monaco
+// only reads MonacoEnvironment when it needs a worker.
+if (typeof self !== 'undefined' && !self.MonacoEnvironment) {
+  self.MonacoEnvironment = {
+    getWorker(_workerId, _label) {
+      return new EditorWorker()
+    },
+  }
+}
 
 export default {
   name: 'ScriptVersionHistoryDialog',
@@ -245,13 +255,12 @@ export default {
     }
   },
   computed: {
-    aceMode() {
+    monacoLanguage() {
       const ext = (this.filename || '').toLowerCase().split('.').pop()
-      if (ext === 'py') return 'ace/mode/python'
-      if (ext === 'rb' || ext === 'rake' || ext === 'gemspec')
-        return 'ace/mode/ruby'
-      if (ext === 'js') return 'ace/mode/javascript'
-      return 'ace/mode/text'
+      if (ext === 'py') return 'python'
+      if (ext === 'rb' || ext === 'rake' || ext === 'gemspec') return 'ruby'
+      if (ext === 'js') return 'javascript'
+      return 'plaintext'
     },
     versionLabel() {
       // version_id → "Version N" using the list ordering (newest first).
@@ -385,24 +394,50 @@ export default {
         this.diffLoading = false
         await this.$nextTick()
         if (this.$refs.differContainer) {
-          const mode = this.aceMode
-          this.differ = new AceDiff({
-            element: this.$refs.differContainer,
-            mode,
-            theme: 'ace/theme/twilight',
-            left: {
-              content: leftBody,
-              mode,
-              editable: false,
-              copyLinkEnabled: false,
-            },
-            right: {
-              content: rightBody,
-              mode,
-              editable: false,
-              copyLinkEnabled: false,
-            },
-          })
+          const language = this.monacoLanguage
+          // markRaw is critical. Vue 3's Options API wraps data() refs in
+          // Proxies, and Monaco's editor has thousands of internal
+          // self-references — the resulting traversal infinite-loops and
+          // freezes the page. markRaw opts the object out of reactivity.
+          const editor = markRaw(
+            monaco.editor.createDiffEditor(this.$refs.differContainer, {
+              readOnly: true,
+              originalEditable: false,
+              renderSideBySide: true,
+              automaticLayout: true,
+              theme: 'vs-dark',
+              renderIndicators: true,
+              renderMarginRevertIcon: false,
+              ignoreTrimWhitespace: false,
+              scrollBeyondLastLine: false,
+            }),
+          )
+          // Explicit, unique URIs. createModel auto-generates anonymous
+          // ones but in some Monaco versions diff computation short-circuits
+          // when both sides lack URIs of the same language — no decorations
+          // get applied even though content differs.
+          const stamp = Date.now()
+          const ext = (this.filename || '').split('.').pop() || 'txt'
+          const original = markRaw(
+            monaco.editor.createModel(
+              leftBody,
+              language,
+              monaco.Uri.parse(
+                `inmemory://script-version/${stamp}-left.${ext}`,
+              ),
+            ),
+          )
+          const modified = markRaw(
+            monaco.editor.createModel(
+              rightBody,
+              language,
+              monaco.Uri.parse(
+                `inmemory://script-version/${stamp}-right.${ext}`,
+              ),
+            ),
+          )
+          editor.setModel({ original, modified })
+          this.differ = editor
         }
       } catch ({ response }) {
         this.diffLoading = false
@@ -414,10 +449,11 @@ export default {
     },
     teardownDiffer() {
       if (this.differ) {
-        // ace-diff doesn't always expose destroy on older versions
-        if (typeof this.differ.destroy === 'function') {
-          this.differ.destroy()
-        }
+        // Capture model before dispose; getModel() returns null after.
+        const model = this.differ.getModel()
+        this.differ.dispose()
+        model?.original?.dispose()
+        model?.modified?.dispose()
         this.differ = null
       }
     },
@@ -530,10 +566,9 @@ export default {
 .version-list-pane {
   border-right: 1px solid var(--v-theme-outline);
 }
-/* Pin the diff frame to fill the column. ace-diff creates ace editors
-   that don't respect a flex-grow chain; without absolute positioning they
-   expand to fit content and overflow the entire dialog (hiding the title
-   bar and version list). */
+/* Pin the diff frame to fill the column. Monaco's diff editor sizes
+   itself from the container; without absolute positioning + an explicit
+   parent height it would expand to fit content and overflow the dialog. */
 .version-diff-pane {
   position: relative;
 }
@@ -548,8 +583,8 @@ export default {
   background-color: rgba(255, 255, 255, 0.04);
   border-bottom: 1px solid var(--v-theme-outline);
 }
-/* Two halves match ace-diff's 50/50 internal split so each label sits over
-   the editor it describes. */
+/* Two halves match Monaco's 50/50 side-by-side split so each label sits
+   directly over the editor it describes. */
 .diff-header-half {
   flex: 1 1 50%;
   min-width: 0;
@@ -578,8 +613,9 @@ export default {
   flex: 1 1 auto;
   width: 100%;
   min-height: 0;
-  /* ace-diff positions its editors absolute; without an explicit positioning
-     context they anchor to the .diff-frame and overlap the header above. */
+  /* Monaco positions its internal layers absolute; an explicit positioning
+     context keeps them anchored here instead of bubbling up into .diff-frame
+     and overlapping the header. */
   position: relative;
   overflow: hidden;
 }
