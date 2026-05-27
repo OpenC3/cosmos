@@ -539,12 +539,23 @@ class PacketConfig:
         if packet.id_items and len(packet.id_items) > 0:
             key = []
             id_signature = ""
-            # Accessor class is part of the signature so packets in the same target
-            # with different accessors trigger unique_id_mode (different accessors
-            # decode the buffer differently, so the hash-lookup path is unsafe).
+            # Accessor class AND args are part of the signature so packets in the
+            # same target with different accessors -- or the same accessor class
+            # configured with different args -- trigger unique_id_mode. Different
+            # accessors (or same accessor, different args) decode the buffer
+            # differently, so the shared hash-lookup path is unsafe.
             for item in packet.id_items:
                 key.append(item.id_value)
-                id_signature += f"__{item.name}___{item.bit_offset}__{item.bit_size}__{item.data_type}__{packet.accessor.__class__.__name__}"
+                id_signature += f"__{item.name}___{item.bit_offset}__{item.bit_size}__{item.data_type}__{packet.accessor.__class__.__name__}__{packet.accessor.args!r}"
+                # STRUCTURE-derived id_items are decoded by the parent's structure
+                # accessor (see Accessor.read_item), so include that accessor's
+                # class and args in the signature too.
+                if item.parent_item is not None:
+                    parent = packet.get_item(item.parent_item)
+                    structure = parent.structure
+                    if structure is not None:
+                        structure_accessor = structure.accessor
+                        id_signature += f"__{structure_accessor.__class__.__name__}__{structure_accessor.args!r}"
             target_id_value_hash[repr(key)] = packet
             target_id_signature = id_signature_hash.get(packet.target_name)
             if target_id_signature:

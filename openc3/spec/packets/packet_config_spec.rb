@@ -1495,6 +1495,79 @@ module OpenC3
           expect(@pc.tlm_unique_id_mode["TGT1"]).to be true
           tf.unlink
         end
+
+        # Same accessor class with different args (e.g. HttpAccessor wrapping
+        # JsonAccessor vs CborAccessor) still decodes the buffer differently,
+        # so unique_id_mode must trigger. Without args in the signature both
+        # packets would look identical and the wrong accessor would be used
+        # for any buffer that doesn't match the first-registered packet's body.
+        it "detects unique_id_mode when accessor args differ within a target" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 http_json BIG_ENDIAN "Http JSON Packet"'
+          tf.puts '  ACCESSOR HttpAccessor JsonAccessor'
+          tf.puts '  APPEND_ID_ITEM id 16 UINT 100 "ID"'
+          tf.puts '    KEY $.id'
+          tf.puts 'TELEMETRY tgt1 http_cbor BIG_ENDIAN "Http CBOR Packet"'
+          tf.puts '  ACCESSOR HttpAccessor CborAccessor'
+          tf.puts '  APPEND_ID_ITEM id 16 UINT 101 "ID"'
+          tf.puts '    KEY $.id'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.tlm_unique_id_mode["TGT1"]).to be true
+          tf.unlink
+        end
+
+        # Two packets with the same outer (default Binary) accessor but
+        # STRUCTUREs whose source packets have different accessors must
+        # trigger unique_id_mode. The cloned structure id_items are decoded
+        # via the parent's structure accessor, so the structure accessor
+        # belongs in the signature.
+        it "detects unique_id_mode when structure accessors differ within a target" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 sub_a BIG_ENDIAN "Structure Source A"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  ACCESSOR JsonAccessor'
+          tf.puts '  APPEND_ID_ITEM id 16 UINT 100 "ID"'
+          tf.puts '    KEY $.id'
+          tf.puts 'TELEMETRY tgt1 sub_b BIG_ENDIAN "Structure Source B"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  ACCESSOR CborAccessor'
+          tf.puts '  APPEND_ID_ITEM id 16 UINT 101 "ID"'
+          tf.puts '    KEY $.id'
+          tf.puts 'TELEMETRY tgt1 pkt_a BIG_ENDIAN "Packet A"'
+          tf.puts '  APPEND_STRUCTURE my_struct 16 TLM TGT1 SUB_A'
+          tf.puts 'TELEMETRY tgt1 pkt_b BIG_ENDIAN "Packet B"'
+          tf.puts '  APPEND_STRUCTURE my_struct 16 TLM TGT1 SUB_B'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.tlm_unique_id_mode["TGT1"]).to be true
+          tf.unlink
+        end
+
+        # Two packets with the same outer accessor AND structures with the
+        # same accessor (and same args) must NOT trigger unique_id_mode —
+        # the signature should match so the shared hash-lookup path is used.
+        it "does not trigger unique_id_mode when structure accessors match" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 sub_a BIG_ENDIAN "Structure Source A"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  ACCESSOR JsonAccessor'
+          tf.puts '  APPEND_ID_ITEM id 16 UINT 100 "ID"'
+          tf.puts '    KEY $.id'
+          tf.puts 'TELEMETRY tgt1 sub_b BIG_ENDIAN "Structure Source B"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  ACCESSOR JsonAccessor'
+          tf.puts '  APPEND_ID_ITEM id 16 UINT 101 "ID"'
+          tf.puts '    KEY $.id'
+          tf.puts 'TELEMETRY tgt1 pkt_a BIG_ENDIAN "Packet A"'
+          tf.puts '  APPEND_STRUCTURE my_struct 16 TLM TGT1 SUB_A'
+          tf.puts 'TELEMETRY tgt1 pkt_b BIG_ENDIAN "Packet B"'
+          tf.puts '  APPEND_STRUCTURE my_struct 16 TLM TGT1 SUB_B'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.tlm_unique_id_mode["TGT1"]).to be_falsey
+          tf.unlink
+        end
       end
 
       context "with SUBPACKETIZER" do

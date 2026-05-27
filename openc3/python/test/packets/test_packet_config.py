@@ -1556,6 +1556,79 @@ class TestPacketConfig(unittest.TestCase):
 
         os.unlink(tf.name)
 
+    def test_unique_id_mode_autodetection_for_mixed_accessor_args(self):
+        # Same accessor class with different args (e.g. HttpAccessor wrapping
+        # JsonAccessor vs CborAccessor) still decodes the buffer differently,
+        # so unique_id_mode must trigger. Without args in the signature both
+        # packets would look identical and the wrong accessor would be used
+        # for any buffer that doesn't match the first-registered packet's body.
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
+            tf.write("TELEMETRY TGT1 HTTP_JSON BIG_ENDIAN\n")
+            tf.write("  ACCESSOR HttpAccessor JsonAccessor\n")
+            tf.write("  APPEND_ID_ITEM ID 16 UINT 100\n")
+            tf.write("    KEY $.id\n")
+            tf.write("TELEMETRY TGT1 HTTP_CBOR BIG_ENDIAN\n")
+            tf.write("  ACCESSOR HttpAccessor CborAccessor\n")
+            tf.write("  APPEND_ID_ITEM ID 16 UINT 101\n")
+            tf.write("    KEY $.id\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.assertTrue(self.pc.tlm_unique_id_mode.get("TGT1"))
+
+        os.unlink(tf.name)
+
+    def test_unique_id_mode_autodetection_for_mixed_structure_accessors(self):
+        # Two packets with the same outer (default Binary) accessor but
+        # STRUCTUREs whose source packets have different accessors must
+        # trigger unique_id_mode. The cloned structure id_items are decoded
+        # via the parent's structure accessor, so the structure accessor
+        # belongs in the signature.
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
+            tf.write("TELEMETRY TGT1 SUB_A BIG_ENDIAN\n")
+            tf.write("  SUBPACKET\n")
+            tf.write("  ACCESSOR JsonAccessor\n")
+            tf.write("  APPEND_ID_ITEM ID 16 UINT 100\n")
+            tf.write("    KEY $.id\n")
+            tf.write("TELEMETRY TGT1 SUB_B BIG_ENDIAN\n")
+            tf.write("  SUBPACKET\n")
+            tf.write("  ACCESSOR CborAccessor\n")
+            tf.write("  APPEND_ID_ITEM ID 16 UINT 101\n")
+            tf.write("    KEY $.id\n")
+            tf.write("TELEMETRY TGT1 PKT_A BIG_ENDIAN\n")
+            tf.write("  APPEND_STRUCTURE MY_STRUCT 16 TLM TGT1 SUB_A\n")
+            tf.write("TELEMETRY TGT1 PKT_B BIG_ENDIAN\n")
+            tf.write("  APPEND_STRUCTURE MY_STRUCT 16 TLM TGT1 SUB_B\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.assertTrue(self.pc.tlm_unique_id_mode.get("TGT1"))
+
+        os.unlink(tf.name)
+
+    def test_unique_id_mode_not_triggered_when_structure_accessors_match(self):
+        # Two packets with the same outer accessor AND structures with the
+        # same accessor (and same args) must NOT trigger unique_id_mode --
+        # the signature should match so the shared hash-lookup path is used.
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
+            tf.write("TELEMETRY TGT1 SUB_A BIG_ENDIAN\n")
+            tf.write("  SUBPACKET\n")
+            tf.write("  ACCESSOR JsonAccessor\n")
+            tf.write("  APPEND_ID_ITEM ID 16 UINT 100\n")
+            tf.write("    KEY $.id\n")
+            tf.write("TELEMETRY TGT1 SUB_B BIG_ENDIAN\n")
+            tf.write("  SUBPACKET\n")
+            tf.write("  ACCESSOR JsonAccessor\n")
+            tf.write("  APPEND_ID_ITEM ID 16 UINT 101\n")
+            tf.write("    KEY $.id\n")
+            tf.write("TELEMETRY TGT1 PKT_A BIG_ENDIAN\n")
+            tf.write("  APPEND_STRUCTURE MY_STRUCT 16 TLM TGT1 SUB_A\n")
+            tf.write("TELEMETRY TGT1 PKT_B BIG_ENDIAN\n")
+            tf.write("  APPEND_STRUCTURE MY_STRUCT 16 TLM TGT1 SUB_B\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.assertFalse(self.pc.tlm_unique_id_mode.get("TGT1"))
+
+        os.unlink(tf.name)
+
     def test_subpacket_id_value_hash_separation(self):
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
             # Create a normal packet and a subpacket with the same ID
