@@ -584,7 +584,7 @@ def prompt_for_upgrade(name, current, candidates)
   nil
 end
 
-def check_keycloak(client, containers)
+def check_keycloak(client, containers, dockerfile_path: nil)
   container = containers.select { |val| val[:name].include?('keycloak') }[0]
   version = container[:base_image].split(':')[-1]
   versions = []
@@ -600,7 +600,13 @@ def check_keycloak(client, containers)
       break
     end
   end
-  validate_versions(versions, version, 'keycloak')
+  candidates = validate_versions(versions, version, 'keycloak')
+  new_version = prompt_for_upgrade('keycloak', version, candidates)
+  return nil unless new_version
+  if dockerfile_path && File.exist?(dockerfile_path)
+    update_key_value(dockerfile_path, 'OPENC3_KEYCLOAK_VERSION', new_version)
+  end
+  new_version
 end
 
 # Returns true if `tag` is an exact tag on the Docker Hub repository `repo`.
@@ -833,11 +839,11 @@ end
 # local `openc3` gem via ENV['OPENC3_PATH'] (falling back to a rubygems version
 # that may not exist yet), so we point OPENC3_PATH at the openc3/ directory in
 # this repo for every bundle call.
-def update_outdated_gems(dir)
+def update_outdated_gems(dir, extra_env = {})
   label = dir.sub(ROOT_DIR + '/', '')
   puts "\nChecking outdated gems in #{label}:"
   updated = 0
-  env = { 'OPENC3_PATH' => File.join(ROOT_DIR, 'openc3') }
+  env = { 'OPENC3_PATH' => File.join(ROOT_DIR, 'openc3') }.merge(extra_env)
   Dir.chdir(dir) do
     system(env, 'bundle install') unless File.exist?('Gemfile.lock')
 
@@ -858,13 +864,15 @@ def update_outdated_gems(dir)
 end
 
 # Walk `uv pip list --outdated` in a uv-managed project and prompt per package.
-# Accepted packages are updated via `uv lock --upgrade-package <name>` and a
-# single trailing `uv sync` brings the venv in line with the new lockfile.
+# Direct-dep constraint violations are skipped at prompt time (analogous to
+# `bundle outdated --strict`). Transitive constraint blocks are detected
+# post-hoc by checking that the uv.lock actually changed.
 def update_outdated_wheels(dir)
   label = dir.sub(ROOT_DIR + '/', '')
   puts "\nChecking outdated wheels in #{label}:"
   updated = 0
   Dir.chdir(dir) do
+    direct_constraints = read_pyproject_dep_constraints('pyproject.toml')
     output, _stderr, _status = Open3.capture3('uv pip list --outdated --format=json')
     data =
       begin
@@ -877,15 +885,79 @@ def update_outdated_wheels(dir)
       current = pkg['version']
       latest = pkg['latest_version']
       next if current == latest
-      if prompt_update?("[#{label}] Update wheel #{name} from #{current} to #{latest}?", current, latest)
-        system("uv lock --upgrade-package #{name}")
+
+      constraint = direct_constraints[name.downcase]
+      if constraint && !pep440_satisfies?(latest, constraint)
+        puts "  Skipping #{name} #{current} -> #{latest} (pyproject.toml constraint #{constraint} blocks it)"
+        next
+      end
+
+      next unless prompt_update?("[#{label}] Update wheel #{name} from #{current} to #{latest}?", current, latest)
+
+      # Even when the direct constraint allows it, a transitive constraint may
+      # still prevent the resolver from moving. Snapshot uv.lock and check.
+      lock_before = File.exist?('uv.lock') ? File.read('uv.lock') : nil
+      system("uv lock --upgrade-package #{name}")
+      lock_after = File.exist?('uv.lock') ? File.read('uv.lock') : nil
+      if lock_before && lock_after && lock_before == lock_after
+        puts "  No change for #{name} (transitive constraint blocks #{latest})"
+      else
         updated += 1
       end
     end
     system('uv sync') if updated > 0
   end
-  puts "  No outdated wheels." if updated == 0
+  puts "  No updatable wheels." if updated == 0
   updated
+end
+
+# Returns { 'package-name-lowercased' => 'specifier-string' } from a
+# pyproject.toml `dependencies = [ ... ]` block. Recognises both
+# `"name (>=1.0,<2.0)"` and `"name>=1.0,<2.0"` shapes.
+def read_pyproject_dep_constraints(path)
+  return {} unless File.exist?(path)
+  body = File.read(path)
+  block = body[/^dependencies\s*=\s*\[(.*?)^\]/m, 1]
+  return {} unless block
+  result = {}
+  block.scan(/"([^"]+)"/).flatten.each do |entry|
+    # Strip extras like `psycopg[binary,pool]` for the name
+    m = entry.match(/^\s*([A-Za-z0-9_.\-]+)(?:\[[^\]]*\])?\s*(?:\(([^)]+)\)|([^,]\S.*))?$/)
+    next unless m
+    name = m[1].downcase
+    spec = (m[2] || m[3] || '').strip
+    result[name] = spec unless spec.empty?
+  end
+  result
+end
+
+# True if `version` satisfies the PEP 440 specifier string `spec` (comma-joined
+# list of `<op><target>` clauses). Supports >=, <=, >, <, ==, !=, ~=.
+def pep440_satisfies?(version, spec)
+  v = Gem::Version.new(version.sub(/^v/, ''))
+  spec.split(',').all? do |clause|
+    m = clause.strip.match(/^(>=|<=|==|!=|~=|>|<)\s*(.+)$/)
+    next true unless m
+    op, target = m.captures
+    t = Gem::Version.new(target.strip.sub(/^v/, ''))
+    case op
+    when '>=' then v >= t
+    when '>'  then v > t
+    when '<=' then v <= t
+    when '<'  then v < t
+    when '==' then v == t
+    when '!=' then v != t
+    when '~='
+      # ~=X.Y allows >=X.Y, <(X+1); ~=X.Y.Z allows >=X.Y.Z, <X.(Y+1)
+      segs = t.segments
+      next false unless v >= t
+      upper_segs = segs[0..-2].dup
+      upper_segs[-1] = upper_segs[-1].to_i + 1
+      v < Gem::Version.new(upper_segs.join('.'))
+    end
+  end
+rescue ArgumentError
+  true # unparseable -> don't filter
 end
 
 # requirements.txt-based projects with exact pins (==version). Prompts per pin
