@@ -46,76 +46,57 @@ containers = [
   { name: "openc3inc/openc3-buckets:#{version_tag}", base_image: "alpine:#{alpine_version}.#{alpine_build}", apk: true },
   { name: "openc3inc/openc3-tsdb:#{version_tag}", base_image: "tsdb:#{tsdb_version}", dnf: true },
 ]
-# Update the bundles
-Dir.chdir(File.join(__dir__, '../../openc3')) do
-  `rm Gemfile.lock 2>&1`
-  `bundle update --all`
-end
-Dir.chdir(File.join(__dir__, '../../openc3-cosmos-cmd-tlm-api')) do
-  `rm Gemfile.lock 2>&1`
-  `bundle update --all`
-end
-Dir.chdir(File.join(__dir__, '../../openc3-cosmos-script-runner-api')) do
-  `rm Gemfile.lock 2>&1`
-  `bundle update --all`
-end
 
 client = Faraday.new do |f|
   f.response :follow_redirects
 end
 
-# Build reports
+# Build reports (uses currently-running container images for the package inventory)
 report = build_report(containers, client)
 summary_report = build_summary_report(containers)
 
-# Now check for latest versions
+# Check for new versions of all third-party base images / binaries and prompt the
+# user to apply each update inline. The previous version of this script only
+# printed NOTEs; it now edits the Dockerfiles, .env, and build scripts.
 check_alpine(client)
 check_container_version(client, containers, 'traefik')
-check_versitygw(client, versitygw_version)
-check_tsdb(client, tsdb_version)
-check_build_files(versitygw_version, traefik_version)
 check_container_version(client, containers, 'redis') # valkey base image
+new_versitygw = check_versitygw(client, versitygw_version)
+new_tsdb = check_tsdb(client, tsdb_version)
+ruby_container = containers.find { |c| c[:name].include?('openc3-ruby') }
+check_anycable(client, ruby_container[:name]) if ruby_container
+
+# After per-image prompts, ensure the build scripts still match the Dockerfiles.
+# Re-read the canonical version values in case they just changed.
+check_build_files(
+  new_versitygw || get_docker_version('openc3-buckets/Dockerfile', arg: 'OPENC3_VERSITYGW_VERSION'),
+  get_docker_version('openc3-traefik/Dockerfile')
+)
+
 base_pkgs = %w(import-map-overrides pinia single-spa systemjs vue vue-router vuetify)
 check_tool_base('openc3-cosmos-init/plugins/packages/openc3-tool-base', base_pkgs)
 puts "\n*** If you update a container version re-run to ensure there aren't additional updates! ***\n\n"
 
-# Check the bundles
-Dir.chdir(File.join(__dir__, '../../openc3')) do
-  puts "\nChecking outdated gems in openc3:"
-  puts `bundle outdated`
-end
-Dir.chdir(File.join(__dir__, '../../openc3-cosmos-cmd-tlm-api')) do
-  puts "\nChecking outdated gems in openc3-cosmos-cmd-tlm-api:"
-  puts `bundle outdated`
-end
-Dir.chdir(File.join(__dir__, '../../openc3-cosmos-script-runner-api')) do
-  puts "\nChecking outdated gems in openc3-cosmos-script-runner-api:"
-  puts `bundle outdated`
+# Per-language outdated dependency prompts. Each helper enumerates outdated
+# packages and asks the user yes/no before updating that single package.
+%w(openc3 openc3-cosmos-cmd-tlm-api openc3-cosmos-script-runner-api).each do |dir|
+  update_outdated_gems(File.join(__dir__, '..', '..', dir))
 end
 
-# Check the wheels
-Dir.chdir(File.join(__dir__, '../../openc3/python')) do
-  puts "\nChecking outdated wheels in openc3/python:"
-  puts `uv pip list --outdated`
-end
-Dir.chdir(File.join(__dir__, '../../openc3-cosmos-init/plugins/packages/openc3-cosmos-demo')) do
-  puts "\nChecking outdated wheels in openc3-cosmos-demo:"
-  if system('which uv > /dev/null 2>&1')
-    puts `uv venv venv; source venv/bin/activate; uv pip install -r requirements.txt; uv pip list --outdated; deactivate; rm -rf venv`
-  else
-    puts `python -m venv venv; source venv/bin/activate; pip install -r requirements.txt; pip list --outdated; deactivate; rm -rf venv`
-  end
+update_outdated_wheels(File.join(__dir__, '..', '..', 'openc3', 'python'))
+update_outdated_requirements_txt(
+  File.join(__dir__, '..', '..', 'openc3-cosmos-init', 'plugins', 'packages', 'openc3-cosmos-demo'),
+  client
+)
+
+%w(openc3-cosmos-init/plugins playwright docs.openc3.com).each do |dir|
+  update_outdated_pnpm(File.join(__dir__, '..', '..', dir))
 end
 
 File.open("openc3_package_report.txt", "w") do |file|
   file.write(summary_report)
   file.write(report)
 end
-
-puts "\n\nRun the following:"
-puts "cd openc3-cosmos-init/plugins; pnpm install; pnpm update --interactive --latest --recursive; cd ../.."
-puts "cd playwright; pnpm install; pnpm update --interactive --latest; cd .."
-puts "cd docs.openc3.com; pnpm install; pnpm update --interactive --latest; cd .."
 
 # Commenting this out since the templates don't really need to be updated, and updates broke them over time
 # puts "\n\nYou can run the following, but check that the templates still work if you do:"
