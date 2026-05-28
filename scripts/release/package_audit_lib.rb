@@ -963,7 +963,7 @@ def pep440_satisfies?(version, spec)
     end
   end
 rescue ArgumentError
-  true # unparseable -> don't filter
+  true # unparsable -> don't filter
 end
 
 # requirements.txt-based projects with exact pins (==version). Prompts per pin
