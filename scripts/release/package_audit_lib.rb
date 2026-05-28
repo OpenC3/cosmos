@@ -29,13 +29,31 @@ $overall_pnpm = []
 
 ROOT_DIR = File.expand_path(File.join(__dir__, '..', '..'))
 
-def prompt_yes_no(message, default: false)
+def prompt_yes_no(message, default: true)
   default_str = default ? 'Y/n' : 'y/N'
   print "#{message} [#{default_str}]: "
   STDOUT.flush
   response = STDIN.gets&.strip&.downcase
   return default if response.nil? || response.empty?
   response.start_with?('y')
+end
+
+# True if `new_v` increments the major component of `old_v` (semver-shaped).
+# Both can be plain "1.2.3" or have a "v" prefix and/or trailing suffix like
+# "-alpine". Returns false if either string doesn't look like semver.
+def major_version_change?(old_v, new_v)
+  old_m = old_v.to_s.match(/v?(\d+)\.(\d+)\.(\d+)/)
+  new_m = new_v.to_s.match(/v?(\d+)\.(\d+)\.(\d+)/)
+  return false unless old_m && new_m
+  new_m[1].to_i > old_m[1].to_i
+end
+
+# Upgrade-aware prompt. Defaults to yes; if the change crosses a major version
+# boundary, asks a follow-up "Are you sure?" that defaults to no.
+def prompt_update?(message, current, new_version)
+  return false unless prompt_yes_no(message)
+  return true unless major_version_change?(current, new_version)
+  prompt_yes_no("  Major version change (#{current} -> #{new_version}). Are you sure?", default: false)
 end
 
 # Update `KEY=value` (no quotes) on the same line. Used for Dockerfile ARGs,
@@ -421,7 +439,11 @@ def check_alpine(client)
   target_build = (new_major || new_minor) ? '0' : (new_patch_build || current_build)
   return if target_version == current_version && target_build == current_build
 
-  if prompt_yes_no("Update Alpine from #{current_version}.#{current_build} to #{target_version}.#{target_build}?")
+  if prompt_update?(
+    "Update Alpine from #{current_version}.#{current_build} to #{target_version}.#{target_build}?",
+    "#{current_version}.#{current_build}",
+    "#{target_version}.#{target_build}"
+  )
     update_alpine_files(target_version, target_build)
   end
 end
@@ -551,7 +573,7 @@ end
 # is empty.
 def prompt_for_upgrade(name, current, candidates)
   candidates.each do |new_version|
-    return new_version if prompt_yes_no("Update #{name} from #{current} to #{new_version}?")
+    return new_version if prompt_update?("Update #{name} from #{current} to #{new_version}?", current, new_version)
   end
   nil
 end
@@ -670,7 +692,8 @@ def check_tool_base(path, base_pkgs)
     # Process refs/tags/v7.0.96 into 7.0.96
     latest = md.split('/')[-1].strip[1..-1]
     existing = Dir['public/css/materialdesignicons-*'][-1]
-    if !existing.include?(latest) && prompt_yes_no("Update MaterialDesignIcons from #{existing} to #{latest}?")
+    existing_version = existing.to_s[/(\d+\.\d+\.\d+)/, 1]
+    if !existing.include?(latest) && prompt_update?("Update MaterialDesignIcons from #{existing} to #{latest}?", existing_version, latest)
       puts "Existing MaterialDesignIcons: #{existing}, doesn't match latest: #{latest}. Upgrading..."
       `curl https://cdnjs.cloudflare.com/ajax/libs/MaterialDesign-Webfont/#{latest}/css/materialdesignicons.min.css --output public/css/materialdesignicons-#{latest}.min.css`
       `curl https://cdnjs.cloudflare.com/ajax/libs/MaterialDesign-Webfont/#{latest}/css/materialdesignicons.css.map --output public/css/materialdesignicons.css.map`
@@ -723,7 +746,8 @@ def check_tool_base(path, base_pkgs)
         puts "ERROR: Could not find latest version for #{package} in #{Dir.pwd}/package.json"
         next
       end
-      if !existing.include?(latest) && prompt_yes_no("Update #{package} (#{alt_package}) from #{existing} to #{latest}?")
+      existing_version = existing.to_s[/(\d+\.\d+\.\d+)/, 1]
+      if !existing.include?(latest) && prompt_update?("Update #{package} (#{alt_package}) from #{existing} to #{latest}?", existing_version, latest)
         puts "Existing #{package}: #{existing}, doesn't match latest: #{latest}. Upgrading..."
         # Handle nuances in individual packages
         # Search here to get the URLs: https://cdnjs.com/
@@ -829,7 +853,7 @@ def update_outdated_gems(dir)
       name, newest, installed = m.captures
       updatable_names << name
       next if newest == installed
-      if prompt_yes_no("[#{label}] Update gem #{name} from #{installed} to #{newest}?")
+      if prompt_update?("[#{label}] Update gem #{name} from #{installed} to #{newest}?", installed, newest)
         system(env, "bundle update #{name}")
         updated += 1
       end
@@ -866,7 +890,7 @@ def update_outdated_wheels(dir)
       current = pkg['version']
       latest = pkg['latest_version']
       next if current == latest
-      if prompt_yes_no("[#{label}] Update wheel #{name} from #{current} to #{latest}?")
+      if prompt_update?("[#{label}] Update wheel #{name} from #{current} to #{latest}?", current, latest)
         system("uv lock --upgrade-package #{name}")
         updated += 1
       end
@@ -896,7 +920,7 @@ def update_outdated_requirements_txt(dir, client)
     next unless resp.status == 200
     latest = JSON.parse(resp.body)['info']['version'] rescue nil
     next unless latest && latest != current
-    if prompt_yes_no("[#{label}] Update #{name} from #{current} to #{latest}?")
+    if prompt_update?("[#{label}] Update #{name} from #{current} to #{latest}?", current, latest)
       new_content = new_content.sub(/^#{Regexp.escape(name)}==[\w.]+/, "#{name}==#{latest}")
       updated += 1
     end
@@ -910,8 +934,14 @@ def update_outdated_requirements_txt(dir, client)
   updated
 end
 
-# pnpm-managed workspace; prompts per outdated package and applies via
-# `pnpm update <name>@latest -r` so the change reaches every workspace member.
+# pnpm-managed workspace; prompts per outdated package and surgically rewrites
+# only the accepted package's version pin in each workspace package.json that
+# declares it. A single `pnpm install` at the end syncs the lockfile.
+#
+# This is intentionally NOT `pnpm update X@latest --recursive`. That command
+# re-resolves the whole workspace and pnpm freely bumps unrelated direct deps
+# (e.g. vite 7.3.3 → 8.0.14) as part of its resolution — the user reported vite
+# being upgraded without ever being prompted for it.
 def update_outdated_pnpm(dir)
   label = dir.sub(ROOT_DIR + '/', '')
   puts "\nChecking outdated pnpm packages in #{label}:"
@@ -926,16 +956,39 @@ def update_outdated_pnpm(dir)
         {}
       end
     data = {} unless data.is_a?(Hash)
+
+    package_jsons = Dir.glob(File.join(dir, '**', 'package.json')).reject { |p| p.include?('/node_modules/') }
+
     data.each do |name, info|
       current = info['current']
       latest = info['latest']
       next if current.nil? || latest.nil? || current == latest
-      if prompt_yes_no("[#{label}] Update pnpm #{name} from #{current} to #{latest}?")
-        system("pnpm update #{name}@latest --recursive")
-        updated += 1
+      next unless prompt_update?("[#{label}] Update pnpm #{name} from #{current} to #{latest}?", current, latest)
+
+      touched = false
+      package_jsons.each do |pkg_path|
+        body = File.read(pkg_path)
+        new_body = bump_pnpm_dep(body, name, latest)
+        next if new_body == body
+        File.write(pkg_path, new_body)
+        puts "  Updated #{name}=#{latest} in #{pkg_path.sub(ROOT_DIR + '/', '')}"
+        touched = true
       end
+      updated += 1 if touched
     end
+
+    system('pnpm install --silent', out: File::NULL) if updated > 0
   end
   puts "  No outdated pnpm packages." if updated == 0
   updated
+end
+
+# Replace just the version string of `name` inside any of dependencies /
+# devDependencies / peerDependencies / optionalDependencies. Preserves a
+# leading "^" or "~" range marker if present. Leaves all other formatting and
+# unrelated deps untouched.
+def bump_pnpm_dep(json_text, name, new_version)
+  json_text.gsub(/("#{Regexp.escape(name)}"\s*:\s*")([\^~]?)([^"]+)(")/) do
+    %{#{$1}#{$2}#{new_version}#{$4}}
+  end
 end
