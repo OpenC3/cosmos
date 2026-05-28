@@ -584,6 +584,24 @@ def prompt_for_upgrade(name, current, candidates)
   nil
 end
 
+def check_grafana(client, containers, dockerfile_path: nil, build_files: [])
+  container = containers.select { |val| val[:name].include?('grafana') }[0]
+  version = container[:base_image].split(':')[-1]
+  # Both grafana/grafana and grafana/grafana-oss share the same version tags;
+  # use grafana/grafana to match the container base_image above.
+  versions = docker_hub_candidate_tags(client, 'grafana/grafana', version)
+  candidates = validate_versions(versions, version, 'grafana')
+  new_version = prompt_for_upgrade('grafana', version, candidates)
+  return nil unless new_version
+  if dockerfile_path && File.exist?(dockerfile_path)
+    update_key_value(dockerfile_path, 'GRAFANA_VERSION', new_version)
+  end
+  build_files.each do |path|
+    update_key_value(path, 'GRAFANA_VERSION', new_version)
+  end
+  new_version
+end
+
 def check_keycloak(client, containers, dockerfile_path: nil)
   container = containers.select { |val| val[:name].include?('keycloak') }[0]
   version = container[:base_image].split(':')[-1]
