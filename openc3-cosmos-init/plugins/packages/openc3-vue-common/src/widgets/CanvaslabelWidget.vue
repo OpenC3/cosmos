@@ -16,7 +16,12 @@
 -->
 
 <template>
-  <text :x="parameters[0]" :y="parameters[1]" :font-size="fontSize" :fill="fillColor">
+  <text
+    :x="parameters[0]"
+    :y="parameters[1]"
+    :font-size="fontSize"
+    :fill="fillColor"
+  >
     {{ parameters[2] }}
   </text>
 </template>

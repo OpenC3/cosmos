@@ -13,6 +13,7 @@ import gzip
 import os
 import pathlib
 import queue
+import shutil
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
@@ -199,7 +200,9 @@ class FileInterface(Interface):
             os.remove(self.file_path)
         else:
             new_path = os.path.join(self.telemetry_archive_folder, os.path.basename(self.file_path))
-            os.rename(self.file_path, new_path)
+            # shutil.move falls back to copy+delete across filesystems (e.g.
+            # separate Docker bind mounts where os.rename raises EXDEV).
+            shutil.move(self.file_path, new_path)
         self.file_path = None
 
     def get_next_telemetry_file(self):

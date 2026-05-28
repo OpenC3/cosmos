@@ -91,19 +91,25 @@ class Metric:
         while True:
             start_time = time.time()
 
-            with Metric.mutex:
-                for generator in Metric.update_generators:
-                    generator.generate(Metric.instances[0])
+            try:
+                with Metric.mutex:
+                    for generator in Metric.update_generators:
+                        generator.generate(Metric.instances[0])
 
-                for instance in Metric.instances:
-                    with instance.mutex:
-                        metric_json = {}
-                        metric_json["name"] = instance.microservice
-                        metric_json["db_shard"] = instance.db_shard
-                        values = instance.data
-                        metric_json["values"] = values
-                        if len(values) > 0:
-                            MetricModel.set(metric_json, scope=instance.scope)
+                    for instance in Metric.instances:
+                        with instance.mutex:
+                            metric_json = {}
+                            metric_json["name"] = instance.microservice
+                            metric_json["db_shard"] = instance.db_shard
+                            values = instance.data
+                            metric_json["values"] = values
+                            if len(values) > 0:
+                                MetricModel.set(metric_json, scope=instance.scope)
+            except Exception:
+                # Don't let a transient store failure (e.g. Redis briefly
+                # unavailable) kill this background thread with an unhandled
+                # exception. Skip this cycle and try again on the next interval.
+                pass
 
             # Only check whether to update at a set interval
             run_time = time.time() - start_time
