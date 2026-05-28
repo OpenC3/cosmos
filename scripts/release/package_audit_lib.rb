@@ -364,7 +364,7 @@ def build_summary_report(containers)
   report
 end
 
-def build_container_report(container, client)
+def build_container_report(container)
   report = ""
   report << "Container: #{container[:name]}\n"
   report << "Base Image: #{container[:base_image]}\n" if container[:base_image]
@@ -379,13 +379,13 @@ def build_container_report(container, client)
   report
 end
 
-def build_report(containers, client)
+def build_report(containers)
   report = ""
   report << "Individual Container Reports\n"
   report << ("-" * 80)
   report << "\n\n"
   containers.each do |container|
-    report << build_container_report(container, client)
+    report << build_container_report(container)
   end
   report
 end
@@ -425,7 +425,7 @@ def check_alpine(client)
   new_patch_build = arm_resp.include?("alpine-virt-#{current_version}.#{next_build}-armv7.iso") ? next_build.to_s : nil
   puts "NOTE: Alpine has a new patch version: #{current_version}.#{new_patch_build}" if new_patch_build
 
-  if !arm_resp.include?("alpine-virt-#{current_version}.#{current_build}-armv7.iso")
+  unless arm_resp.include?("alpine-virt-#{current_version}.#{current_build}-armv7.iso")
     puts "ERROR: Could not find Alpine build: #{current_version}.#{current_build}"
   end
 
@@ -647,10 +647,12 @@ end
 def check_container_version(client, containers, image_name)
   container = containers.select { |val| val[:name].include?(image_name) }[0]
   name, version = container[:base_image].split(':')
-  case image_name
-  when 'traefik' then repo = 'library/traefik'
-  when 'redis' then repo = 'valkey/valkey'
-  end
+  repo =
+    case image_name
+    when 'traefik' then 'library/traefik'
+    when 'redis' then 'valkey/valkey'
+    else raise "Unsupported image_name: #{image_name}"
+    end
   versions = docker_hub_candidate_tags(client, repo, version)
   candidates = validate_versions(versions, version, name)
   new_version = prompt_for_upgrade(name, version, candidates)
@@ -662,6 +664,8 @@ def check_container_version(client, containers, image_name)
     update_key_value(File.join(ROOT_DIR, 'scripts/linux/openc3_build_ubi.sh'), 'OPENC3_TRAEFIK_RELEASE', new_version)
   when 'redis'
     update_key_value(File.join(ROOT_DIR, 'openc3-redis/Dockerfile'), 'OPENC3_REDIS_VERSION', new_version)
+  else
+    raise "Unsupported image_name: #{image_name}"
   end
   new_version
 end
@@ -954,6 +958,8 @@ def pep440_satisfies?(version, spec)
       upper_segs = segs[0..-2].dup
       upper_segs[-1] = upper_segs[-1].to_i + 1
       v < Gem::Version.new(upper_segs.join('.'))
+    else
+      true # unknown operator -> don't filter
     end
   end
 rescue ArgumentError
