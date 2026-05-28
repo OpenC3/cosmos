@@ -643,6 +643,8 @@ value = tlm("INST LATEST TEMP")
 
 When writing COSMOS scripts, checking the most recent value of a telemetry point normally gets the job done. The tlm(), tlm_raw(), etc methods all retrieve the most recent value of a telemetry point. Sometimes you need to perform analysis on every single sample of a telemetry point. This can be done using the COSMOS packet subscription system. The packet subscription system lets you choose one or more packets and receive them all from a queue. You can then pick out the specific telemetry points you care about from each packet. See the [Packet Data Subscriptions](scripting-api.md#packet-data-subscriptions) section of the Scripting API guide for the complete API documentation including the packet hash/dictionary structure.
 
+Note: when subscribing to multiple packets, packets returned from `get_packets` are ordered within each packet stream but are NOT interleaved by time across streams. Sort the returned array by the `time` field if you need chronological order across packets from different streams.
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
