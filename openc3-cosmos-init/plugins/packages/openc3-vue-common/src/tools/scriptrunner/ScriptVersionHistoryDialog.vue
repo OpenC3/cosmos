@@ -41,8 +41,8 @@
           </template>
           <span>
             Download git bundle of this scope's script history. Apply locally
-            with `git clone &lt;file&gt;.bundle` or
-            `git fetch &lt;file&gt;.bundle '*:*'`.
+            with `git clone &lt;file&gt;.bundle` or `git fetch
+            &lt;file&gt;.bundle '*:*'`.
           </span>
         </v-tooltip>
         <v-tooltip :open-delay="600" location="bottom">
@@ -62,9 +62,9 @@
             </v-btn>
           </template>
           <span>
-            Import a git bundle into this scope. If bundle HEAD matches the
-            live scripts the history applies cleanly; otherwise a final
-            commit captures the current bucket state as the divergence.
+            Import a git bundle into this scope. If bundle HEAD matches the live
+            scripts the history applies cleanly; otherwise a final commit
+            captures the current bucket state as the divergence.
           </span>
         </v-tooltip>
         <input
@@ -223,8 +223,11 @@ import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker&inlin
 // Wire workers on both self and window — Monaco checks self in some code
 // paths and window in others. Defining once at module load is fine; Monaco
 // only reads MonacoEnvironment when it needs a worker.
-if (typeof self !== 'undefined' && !self.MonacoEnvironment) {
-  self.MonacoEnvironment = {
+if (
+  typeof globalThis.self !== 'undefined' &&
+  !globalThis.self.MonacoEnvironment
+) {
+  globalThis.self.MonacoEnvironment = {
     getWorker(_workerId, _label) {
       return new EditorWorker()
     },
@@ -471,13 +474,10 @@ export default {
       try {
         const form = new FormData()
         form.append('bundle', file)
-        const response = await Api.post(
-          '/script-api/scripts/history-import',
-          {
-            data: form,
-            headers: { Accept: 'application/json' },
-          },
-        )
+        const response = await Api.post('/script-api/scripts/history-import', {
+          data: form,
+          headers: { Accept: 'application/json' },
+        })
         const data = response.data || {}
         this.$notify.normal({
           title: data.reconciled

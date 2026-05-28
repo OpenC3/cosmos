@@ -732,8 +732,8 @@ import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
 // opens version history. Core builds never reach this code path because
 // the menu item is gated on the /openc3-api/info enterprise flag.
 import { defineAsyncComponent } from 'vue'
-const ScriptVersionHistoryDialog = defineAsyncComponent(() =>
-  import('@/tools/scriptrunner/ScriptVersionHistoryDialog.vue'),
+const ScriptVersionHistoryDialog = defineAsyncComponent(
+  () => import('@/tools/scriptrunner/ScriptVersionHistoryDialog.vue'),
 )
 
 // Matches target_file.rb TEMP_FOLDER
