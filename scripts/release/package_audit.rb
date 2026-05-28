@@ -90,7 +90,7 @@ update_outdated_requirements_txt(
 )
 
 %w(openc3-cosmos-init/plugins playwright docs.openc3.com).each do |dir|
-  update_outdated_pnpm(File.join(__dir__, '..', '..', dir))
+  update_outdated_pnpm(File.join(__dir__, '..', '..', dir), client)
 end
 
 File.open("openc3_package_report.txt", "w") do |file|

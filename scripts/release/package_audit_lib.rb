@@ -18,6 +18,7 @@ require 'open3'
 require 'fileutils'
 require 'json'
 require 'yaml'
+require 'time'
 
 $overall_apk = []
 $overall_apt = []
@@ -258,11 +259,16 @@ def extract_pnpm(container)
   name_versions = []
   pnpm_lock_paths = container[:pnpm]
   pnpm_lock_paths.each do |path|
+    local_name = path.split('/')[-1]
     id = `docker create #{container_name}`.strip
     `docker cp #{id}:#{path} .`
     `docker rm -v #{id}`
-    data = File.read(path.split('/')[-1])
-    name_versions.concat(process_pnpm(data))
+    begin
+      data = File.read(local_name)
+      name_versions.concat(process_pnpm(data))
+    ensure
+      FileUtils.rm_f(local_name)
+    end
   end
   $overall_pnpm.concat(name_versions)
   make_sorted_hash(name_versions)
@@ -831,42 +837,23 @@ def update_outdated_gems(dir)
   label = dir.sub(ROOT_DIR + '/', '')
   puts "\nChecking outdated gems in #{label}:"
   updated = 0
-  blocked = []
   env = { 'OPENC3_PATH' => File.join(ROOT_DIR, 'openc3') }
   Dir.chdir(dir) do
     system(env, 'bundle install') unless File.exist?('Gemfile.lock')
 
-    # Report gems whose latest published version is constraint-blocked so the
-    # user knows they'd have to edit the Gemfile to bump them. Informational
-    # only — we don't prompt because `bundle update` can't satisfy them.
-    all_output, _stderr, _status = Open3.capture3(env, 'bundle outdated --parseable')
-    all_outdated = all_output.lines.filter_map do |line|
-      m = line.match(/^([\w\-.]+)\s*\(newest\s+([\w\-.]+),\s*installed\s+([\w\-.]+)/)
-      m && m.captures
-    end
-
     strict_output, _stderr, _status = Open3.capture3(env, 'bundle outdated --parseable --strict')
-    updatable_names = []
     strict_output.each_line do |line|
       m = line.match(/^([\w\-.]+)\s*\(newest\s+([\w\-.]+),\s*installed\s+([\w\-.]+)/)
       next unless m
       name, newest, installed = m.captures
-      updatable_names << name
       next if newest == installed
       if prompt_update?("[#{label}] Update gem #{name} from #{installed} to #{newest}?", installed, newest)
         system(env, "bundle update #{name}")
         updated += 1
       end
     end
-
-    blocked = all_outdated.reject { |name, _, _| updatable_names.include?(name) }
   end
-
-  if blocked.any?
-    puts "  Newer versions exist but are blocked by constraints (direct or transitive):"
-    blocked.each { |name, newest, installed| puts "    #{name}: #{installed} -> #{newest}" }
-  end
-  puts "  No updatable gems." if updated == 0 && blocked.empty?
+  puts "  No updatable gems." if updated == 0
   updated
 end
 
@@ -942,12 +929,21 @@ end
 # re-resolves the whole workspace and pnpm freely bumps unrelated direct deps
 # (e.g. vite 7.3.3 → 8.0.14) as part of its resolution — the user reported vite
 # being upgraded without ever being prompted for it.
-def update_outdated_pnpm(dir)
+def update_outdated_pnpm(dir, client = nil)
   label = dir.sub(ROOT_DIR + '/', '')
   puts "\nChecking outdated pnpm packages in #{label}:"
   updated = 0
   Dir.chdir(dir) do
     system('pnpm install --silent', out: File::NULL) unless File.directory?('node_modules')
+
+    # pnpm 10 enforces `minimumReleaseAge` (minutes since publish). Pulling a
+    # newer version of a too-fresh package makes the subsequent `pnpm install`
+    # fail, which the user has hit. Skip those at prompt time and tell them why.
+    min_age = pnpm_min_release_age_minutes
+    if min_age > 0
+      puts "  pnpm minimumReleaseAge = #{min_age} min; newer-than-that releases will be skipped."
+    end
+
     output, _stderr, _status = Open3.capture3('pnpm outdated --format json --recursive')
     data =
       begin
@@ -963,8 +959,21 @@ def update_outdated_pnpm(dir)
       current = info['current']
       latest = info['latest']
       next if current.nil? || latest.nil? || current == latest
+
+      if min_age > 0 && client
+        age = npm_published_age_minutes(client, name, latest)
+        if age && age < min_age
+          puts "  Skipping #{name} #{current} -> #{latest} (published #{format_age(age)} ago, below minimumReleaseAge of #{min_age} min)."
+          next
+        end
+      end
+
       next unless prompt_update?("[#{label}] Update pnpm #{name} from #{current} to #{latest}?", current, latest)
 
+      # Try to rewrite the version pin in any workspace package.json that has
+      # this package as a direct dep. If none changed, it's either transitive
+      # or package.json is already at the target (and only the lockfile is
+      # stale) — either way we still want `pnpm install` to reconcile.
       touched = false
       package_jsons.each do |pkg_path|
         body = File.read(pkg_path)
@@ -974,10 +983,16 @@ def update_outdated_pnpm(dir)
         puts "  Updated #{name}=#{latest} in #{pkg_path.sub(ROOT_DIR + '/', '')}"
         touched = true
       end
-      updated += 1 if touched
+      unless touched
+        puts "  No package.json edit needed for #{name} (transitive dep or pin already at #{latest}); pnpm install will refresh the lockfile."
+      end
+      updated += 1
     end
 
-    system('pnpm install --silent', out: File::NULL) if updated > 0
+    if updated > 0
+      puts "  Running pnpm install to sync lockfile..."
+      system('pnpm install')
+    end
   end
   puts "  No outdated pnpm packages." if updated == 0
   updated
@@ -991,4 +1006,36 @@ def bump_pnpm_dep(json_text, name, new_version)
   json_text.gsub(/("#{Regexp.escape(name)}"\s*:\s*")([\^~]?)([^"]+)(")/) do
     %{#{$1}#{$2}#{new_version}#{$4}}
   end
+end
+
+# Effective pnpm `minimumReleaseAge` for the current working directory, in
+# minutes. Returns 0 if unset or non-numeric.
+def pnpm_min_release_age_minutes
+  out, _err, status = Open3.capture3('pnpm config get minimumReleaseAge')
+  return 0 unless status.success?
+  value = out.strip
+  return 0 if value.empty? || value == 'undefined'
+  Integer(value, 10)
+rescue ArgumentError
+  0
+end
+
+# Minutes since `version` of `name` was published to npm, or nil if unknown.
+def npm_published_age_minutes(client, name, version)
+  resp = client.get("https://registry.npmjs.org/#{name}")
+  return nil unless resp.status == 200
+  data = JSON.parse(resp.body)
+  pub = data.dig('time', version)
+  return nil unless pub
+  ((Time.now - Time.parse(pub)) / 60.0).to_i
+rescue StandardError
+  nil
+end
+
+def format_age(minutes)
+  return "#{minutes}m" if minutes < 60
+  hours = minutes / 60
+  return "#{hours}h #{minutes % 60}m" if hours < 24
+  days = hours / 24
+  "#{days}d #{hours % 24}h"
 end
