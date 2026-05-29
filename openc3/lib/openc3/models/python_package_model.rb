@@ -28,9 +28,19 @@ module OpenC3
 
     DIST_INFO =  '.dist-info'
     PLUGIN_VENVS_DIR = '/gems/plugin_venvs'
+    SYSTEM_VENV_DIR = '/openc3/python/.venv'
+    DEFAULT_UV_CACHE_DIR = '/gems/uv'
 
     def self.names
       result = {}
+
+      # Collect packages from the system venv (core openc3 Python dependencies)
+      system_packages = system_venv_packages
+      result['system'] = system_packages.sort
+
+      # Collect packages from the UV download cache
+      cached = cached_packages
+      result['cached'] = cached.sort unless cached.empty?
 
       # Collect packages from per-plugin venvs
       if File.directory?(PLUGIN_VENVS_DIR)
@@ -64,6 +74,37 @@ module OpenC3
         end
       end
       packages
+    end
+
+    # List packages in the system venv (/openc3/python/.venv)
+    def self.system_venv_packages
+      packages_in_venv(SYSTEM_VENV_DIR)
+    end
+
+    # List unique packages in the UV download cache.
+    # UV cache structure: wheels-v<N>/<registry>/<package-name>/<version-pytag-abitag-platform>
+    # e.g. wheels-v6/pypi/numpy/2.4.6-cp312-cp312-musllinux_1_2_aarch64
+    def self.cached_packages
+      require 'set'
+      cache_dir = ENV.fetch('UV_CACHE_DIR', DEFAULT_UV_CACHE_DIR)
+      return [] unless File.directory?(cache_dir)
+
+      packages = Set.new
+      # Glob 4 levels deep: wheels-v<N>/<registry>/<package-name>/<version-entry>
+      Dir.glob("#{cache_dir}/wheels-v*/*/*/*").each do |entry|
+        basename = File.basename(entry)
+        # Skip UV metadata sidecar files (.http, .msgpack)
+        next if basename.end_with?('.http', '.msgpack')
+
+        # Version entries start with a digit
+        match = basename.match(/\A(\d[^-]*)/)
+        next unless match
+
+        # Parent directory name is the package name
+        pkg_name = File.basename(File.dirname(entry)).tr('_', '-').downcase
+        packages.add("#{pkg_name}-#{match[1]}")
+      end
+      packages.to_a
     end
 
     # List packages in the shared venv (backwards compatibility)

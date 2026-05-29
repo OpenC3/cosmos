@@ -98,7 +98,7 @@
         <v-divider />
       </div>
       <v-row class="px-4"><v-col class="text-h6">Python Packages</v-col></v-row>
-      <div v-for="(packages, pluginName) in python" :key="pluginName">
+      <div v-for="pluginName in orderedPluginNames" :key="pluginName">
         <v-list-subheader
           class="font-weight-bold plugin-header"
           @click="togglePlugin(pluginName)"
@@ -111,11 +111,14 @@
             }}
           </v-icon>
           {{ formatPluginName(pluginName) }}
-          ({{ packages.length }}) [{{ venvPath(pluginName) }}]
+          ({{ python[pluginName].length }}) [{{ venvPath(pluginName) }}]
         </v-list-subheader>
         <div v-if="expandedPlugins[pluginName]">
           <div
-            v-for="(pkg, index) in formattedPackages(pluginName, packages)"
+            v-for="(pkg, index) in formattedPackages(
+              pluginName,
+              python[pluginName],
+            )"
             :key="`${pluginName}-${index}`"
           >
             <v-list-item class="pl-8">
@@ -194,7 +197,19 @@ export default {
   },
   computed: {
     pluginVenvOptions() {
-      return Object.keys(this.python).filter((k) => k !== 'shared')
+      return Object.keys(this.python).filter(
+        (k) => k !== 'system' && k !== 'cached' && k !== 'shared',
+      )
+    },
+    orderedPluginNames() {
+      const names = Object.keys(this.python)
+      const reserved = ['system', 'cached', 'shared']
+      // System first, then cached, then plugin venvs sorted, then shared last
+      const system = names.filter((k) => k === 'system')
+      const cached = names.filter((k) => k === 'cached')
+      const plugins = names.filter((k) => !reserved.includes(k)).sort()
+      const shared = names.filter((k) => k === 'shared')
+      return [...system, ...cached, ...plugins, ...shared]
     },
   },
   created() {
@@ -349,11 +364,26 @@ export default {
       return packages
     },
     formatPluginName(name) {
+      if (name === 'system') {
+        return 'System'
+      }
+      if (name === 'cached') {
+        return 'Cached'
+      }
+      if (name === 'shared') {
+        return 'Shared'
+      }
       // Strip the sanitized version/counter suffix for readability
       // e.g. "openc3-cosmos-demo-7_1_1_pre_beta0_gem__0" -> "openc3-cosmos-demo"
       return name.replace(/-\d+[\d_a-z]*_gem__\d+$/, '').replace(/__\d+$/, '')
     },
     venvPath(pluginName) {
+      if (pluginName === 'system') {
+        return '/openc3/python/.venv'
+      }
+      if (pluginName === 'cached') {
+        return '/gems/uv'
+      }
       if (pluginName === 'shared') {
         return '/gems/python_packages'
       }
