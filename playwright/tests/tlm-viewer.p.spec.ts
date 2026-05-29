@@ -337,7 +337,7 @@ test('plays back to a screen', async ({ page, utils }) => {
     .fill(format(start, 'HH:mm:ss'))
 
   // Capture the live telemetry time just before entering playback
-  const liveTime = parseTime(await packetTimeInput.inputValue())
+  const live_time = parseTime(await packetTimeInput.inputValue())
 
   // Click play and wait for playback to take over the display. Playback starts
   // ~2 minutes in the past, so the displayed time drops well below the live
@@ -347,7 +347,7 @@ test('plays back to a screen', async ({ page, utils }) => {
   await page.getByRole('button', { name: 'Play / Pause' }).click()
   await expect
     .poll(async () => parseTime(await packetTimeInput.inputValue()))
-    .toBeLessThan(liveTime)
+    .toBeLessThan(live_time)
 
   // Now that playback is driving the display, verify the time increments
   let previousTime = parseTime(await packetTimeInput.inputValue())
@@ -426,19 +426,18 @@ test('prompts before closing dirty edit screen on ESC', async ({
     ).toBeVisible()
 
     // Type something into the Ace editor to make it dirty
-    await page.locator('textarea').first().fill('SCREEN AUTO AUTO 0.5\nLABEL DIRTY_CHANGE')
+    await page
+      .locator('textarea')
+      .first()
+      .fill('SCREEN AUTO AUTO 0.5\nLABEL DIRTY_CHANGE')
     await utils.sleep(500)
 
     // Press ESC - should show the unsaved changes confirmation dialog
     await page.keyboard.press('Escape')
-    await expect(
-      page.getByText('You have unsaved changes'),
-    ).toBeVisible()
+    await expect(page.getByText('You have unsaved changes')).toBeVisible()
 
     // Click Cancel to stay in the editor
-    await page
-      .locator('[data-test="confirm-dialog-cancel"]')
-      .click()
+    await page.locator('[data-test="confirm-dialog-cancel"]').click()
     // The edit dialog should still be open
     await expect(
       page.locator('.v-toolbar:has-text("Edit Screen")'),
@@ -446,9 +445,7 @@ test('prompts before closing dirty edit screen on ESC', async ({
 
     // Press ESC again to re-trigger the confirmation
     await page.keyboard.press('Escape')
-    await expect(
-      page.getByText('You have unsaved changes'),
-    ).toBeVisible()
+    await expect(page.getByText('You have unsaved changes')).toBeVisible()
 
     // This time confirm closing without saving
     await page
@@ -473,7 +470,9 @@ test('links array item to TlmGrapher', async ({ page, utils }) => {
     const graphPagePromise = page.waitForEvent('popup')
     await page.getByText('Graph', { exact: true }).click()
     const graphPage = await graphPagePromise
-    await expect(graphPage).toHaveURL(/\/tools\/tlmgrapher\/INST\/HEALTH_STATUS\/ARY\[0\]/)
+    await expect(graphPage).toHaveURL(
+      /\/tools\/tlmgrapher\/INST\/HEALTH_STATUS\/ARY\[0\]/,
+    )
     await graphPage.close()
   })
 })
