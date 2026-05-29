@@ -327,11 +327,22 @@ This keyword is used in conjunction with DERIVED items to specify the bit size, 
 #### LIMITS
 **Defines a set of limits for a telemetry item**
 
-If limits are violated a message is printed in the Command and Telemetry Server to indicate an item went out of limits. Other tools also use this information to update displays with different colored telemetry items or other useful information. The concept of "limits sets" is defined to allow for different limits values in different environments. For example, you might want tighter or looser limits on telemetry if your environment changes such as during thermal vacuum testing.
+If limits are violated a message is printed in the Command and Telemetry Server
+to indicate an item went out of limits. Other tools also use this information
+to update displays with different colored telemetry items or other useful information.
+The concept of "limits sets" is defined to allow for different limits values
+in different environments. For example, you might want tighter or looser limits
+on telemetry if your environment changes such as during thermal vacuum testing.
+
+A DEFAULT limits set is required for every telemetry item with limits. If you
+define additional named sets (e.g. TVAC), the DEFAULT set must be defined first.
+Attempting to define a named set before DEFAULT will raise an error of the form
+"DEFAULT limits set must be defined for TARGET PACKET ITEM before setting limits set NAME".
+
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Limits Set | Name of the limits set. If you have no unique limits sets use the keyword DEFAULT. | True |
+| Limits Set | Name of the limits set. A DEFAULT set is required and must be defined before any other named sets for this item. If you have no unique limits sets use the keyword DEFAULT. | True |
 | Persistence | Number of consecutive times the telemetry item must be within a different limits range before changing limits state. | True |
 | Initial State | Whether limits monitoring for this telemetry item is initially enabled or disabled. Note if you have multiple LIMITS items they should all have the same initial state.<br/><br/>Valid Values: <span class="values">ENABLED, DISABLED</span> | True |
 | Red Low Limit | If the telemetry value is less than or equal to this value a Red Low condition will be detected | True |

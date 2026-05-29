@@ -128,6 +128,89 @@ The QuestDB data is stored in the `openc3-tsdb-v` Docker volume mounted at `/var
 QuestDB backups are compatible across patch versions within the same major version (e.g., 9.0.0 and 9.1.0 are compatible).
 :::
 
+#### Removing and Restoring Partitions
+
+COSMOS creates QuestDB tables partitioned by day (`PARTITION BY DAY`). Each day of telemetry/command data for a given packet lives in its own partition directory under `/var/lib/questdb/db/<table_name>/`. This allows individual partitions to be detached from the live database for long-term archival, then reattached when the historical data is needed again. See the [QuestDB DETACH PARTITION](https://questdb.com/docs/reference/sql/alter-table-detach-partition/) and [ATTACH PARTITION](https://questdb.com/docs/reference/sql/alter-table-attach-partition/) reference for the underlying SQL semantics.
+
+:::warning
+Detaching a partition removes it from query results until it is reattached. Verify that downstream consumers (Data Extractor, Tlm Grapher, scripts) do not need the partition before detaching it. Always copy the detached partition directory to long-term storage before deleting it.
+:::
+
+##### Identifying Partitions
+
+List the partitions for a table to find the boundaries and disk size. Run the query from the **TSDB tab of the Admin Console** or via the HTTP API:
+
+```sql
+SELECT name, minTimestamp, maxTimestamp, diskSize FROM table_partitions('DEFAULT__TLM__INST__HEALTH_STATUS');
+```
+
+Partition names use the format `YYYY-MM-DD` for daily partitions (e.g., `2026-04-15`). COSMOS uses the table naming convention `<SCOPE>__TLM__<TARGET>__<PACKET>` for telemetry and `<SCOPE>__CMD__<TARGET>__<PACKET>` for commands (e.g., `DEFAULT__TLM__INST__HEALTH_STATUS`).
+
+##### Detach Procedure
+
+1. **Detach the partition(s).** This atomically renames the partition directory from `2026-04-15.<n>` to `2026-04-15.detached` and removes it from the active table. The data remains on disk inside the QuestDB volume.
+
+   ```sql
+   ALTER TABLE 'DEFAULT__TLM__INST__HEALTH_STATUS' DETACH PARTITION LIST '2026-04-15';
+   ```
+
+   Multiple partitions or a range can be detached in one statement:
+
+   ```sql
+   ALTER TABLE 'DEFAULT__TLM__INST__HEALTH_STATUS' DETACH PARTITION LIST '2026-04-15', '2026-04-16', '2026-04-17';
+   ALTER TABLE 'DEFAULT__TLM__INST__HEALTH_STATUS' DETACH PARTITION WHERE timestamp < dateadd('d', -90, now());
+   ```
+
+2. **Archive the detached partition** to your long-term storage. The detached partition is now named `<date>.detached` inside the table directory. Copy it out using a temporary container:
+
+   ```bash
+   docker run --rm --volumes-from openc3-tsdb-1 \
+     -v $(pwd):/backup eeacms/rsync \
+     rsync -a /var/lib/questdb/db/DEFAULT__TLM__INST__HEALTH_STATUS/2026-04-15.detached \
+     /backup/archive/DEFAULT__TLM__INST__HEALTH_STATUS/
+   ```
+
+3. **(Optional) Delete the detached partition from the live volume** once archival is verified. Removing the `.detached` directory frees the disk space:
+
+   ```bash
+   docker run --rm --volumes-from openc3-tsdb-1 alpine \
+     rm -rf /var/lib/questdb/db/DEFAULT__TLM__INST__HEALTH_STATUS/2026-04-15.detached
+   ```
+
+##### Restore Procedure
+
+1. **Stage the archived partition** back into the table directory with the `.attachable` suffix. QuestDB only attaches partition directories that end in `.attachable`.
+
+   ```bash
+   docker run --rm --volumes-from openc3-tsdb-1 \
+     -v $(pwd):/backup eeacms/rsync \
+     rsync -a /backup/archive/DEFAULT__TLM__INST__HEALTH_STATUS/2026-04-15.detached/ \
+     /var/lib/questdb/db/DEFAULT__TLM__INST__HEALTH_STATUS/2026-04-15.attachable/
+   ```
+
+   Ensure the directory is owned by the QuestDB process user inside the container (`questdb:questdb`, typically uid `10001`):
+
+   ```bash
+   docker exec openc3-tsdb-1 chown -R 10001:10001 \
+     /var/lib/questdb/db/DEFAULT__TLM__INST__HEALTH_STATUS/2026-04-15.attachable
+   ```
+
+2. **Attach the partition** back into the active table:
+
+   ```sql
+   ALTER TABLE 'DEFAULT__TLM__INST__HEALTH_STATUS' ATTACH PARTITION LIST '2026-04-15';
+   ```
+
+3. **Verify** the partition is queryable:
+
+   ```sql
+   SELECT count() FROM 'DEFAULT__TLM__INST__HEALTH_STATUS' WHERE PACKET_TIMESECONDS IN '2026-04-15';
+   ```
+
+:::info[Schema Compatibility]
+A detached partition must be reattached to a table whose schema is compatible with the partition's schema at detach time. If columns were added, removed, or had their type changed via [ALTER TYPE](https://questdb.com/docs/reference/sql/alter-table-alter-column-type/) since detachment, the attach may fail or only attach a subset of columns. Detach and reattach against the same major QuestDB version where possible.
+:::
+
 ## COSMOS 6
 
 The primary data to backup in COSMOS 6 is the bucket storage in MINIO.

@@ -42,7 +42,7 @@ jobs:
     environment: Release # See https://github.com/OpenC3/cosmos/settings/environments
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@9ca718d3bf646d6534007c269a635b3e54cadf99 # v2.19.2
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: audit
 
@@ -50,7 +50,7 @@ jobs:
         with:
           token: ${{ secrets.QA_PAT }}
       - name: Set up Ruby 3.4
-        uses: ruby/setup-ruby@c4e5b1316158f92e3d49443a9d58b31d25ac0f8f # v1.306.0
+        uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
         with:
           ruby-version: 3.4
           bundler-cache: false # runs 'bundle install' and caches installed gems automatically
@@ -77,18 +77,18 @@ jobs:
           IRONBANK_REGISTRY_CLI: ${{ secrets.IRONBANK_REGISTRY_CLI }}
         run: echo "$IRONBANK_REGISTRY_CLI" | docker login registry1.dso.mil -u jmthomas --password-stdin
       - name: Login to DockerHub
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Login to the GitHub Container registry
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
         with:
           driver: cloud
           endpoint: "openc3inc/github-builder"
