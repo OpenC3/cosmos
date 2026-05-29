@@ -546,7 +546,7 @@ class PacketConfig:
             # differently, so the shared hash-lookup path is unsafe.
             for item in packet.id_items:
                 key.append(item.id_value)
-                id_signature += f"__{item.name}___{item.bit_offset}__{item.bit_size}__{item.data_type}__{packet.accessor.__class__.__name__}__{packet.accessor.args!r}"
+                id_signature += f"__{item.name}__{item.bit_offset}__{item.bit_size}__{item.data_type}__{packet.accessor.__class__.__name__}__{packet.accessor.args!r}"
                 # STRUCTURE-derived id_items are decoded by the parent's structure
                 # accessor (see Accessor.read_item), so include that accessor's
                 # class and args in the signature too.
