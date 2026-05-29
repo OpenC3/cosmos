@@ -17,6 +17,8 @@ The Plugins tab is where you install new plugins into the COSMOS system. Plugins
 
 The plugin gem name is listed along with all the targets it contains. You can Download, Edit, Upgrade, or Delete (uninstall) the plugin using the buttons to the right. If a plugin's target has been modified, the target name turns into a link which when clicked will download the changed files. New plugins are installed by clicking the top field.
 
+Plugins that were installed before the UV per-plugin virtual environment feature was added show a **Migrate to UV** button. Clicking this button creates an isolated UV virtual environment for the plugin and reinstalls its Python dependencies, giving it the same dependency isolation as newly installed plugins.
+
 ### Targets
 
 The Targets tab shows all the targets installed and what plugin they came from. Clicking the eyeball shows the raw JSON that makes up the target configuration.
@@ -44,6 +46,12 @@ The Microservices tab shows all the microservices installed, their update time, 
 ### Packages
 
 The Packages tab shows all the Ruby gems and Python packages installed in the system. You can also install packages from this tab if you're in an offline (air gapped) environment where COSMOS can't pull dependencies from Rubygems or Pypi.
+
+The Python packages section is organized into the following subsections:
+
+- **Cached** — Python wheels available in the UV download cache. This includes system packages (seeded from the COSMOS Docker image at first startup) plus any packages downloaded during plugin installs. This section shows what's available for installation without network access, which is useful for planning plugin installs in airgapped environments. You can upload additional `.whl` files here to make them available to future plugin installs.
+- **Plugin venvs** — Lists each installed plugin's isolated virtual environment and the packages installed in it. Each plugin gets its own venv at `/gems/plugin_venvs/<plugin>/.venv`, so different plugins can use different versions of the same package without conflicts.
+- **Shared** (legacy) — Packages from the pre-UV shared install path. This section only appears when packages are present from plugins that were installed before the UV per-plugin virtual environment feature was added. Use the **Migrate to UV** button on the Plugins tab to migrate these plugins to isolated virtual environments.
 
 ![Packages](/img/admin/packages.png)
 
