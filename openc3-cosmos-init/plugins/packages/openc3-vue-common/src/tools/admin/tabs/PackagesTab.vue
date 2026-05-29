@@ -198,18 +198,17 @@ export default {
   computed: {
     pluginVenvOptions() {
       return Object.keys(this.python).filter(
-        (k) => k !== 'system' && k !== 'cached' && k !== 'shared',
+        (k) => k !== 'cached' && k !== 'shared',
       )
     },
     orderedPluginNames() {
       const names = Object.keys(this.python)
-      const reserved = ['system', 'cached', 'shared']
-      // System first, then cached, then plugin venvs sorted, then shared last
-      const system = names.filter((k) => k === 'system')
+      const reserved = ['cached', 'shared']
+      // Cached first, then plugin venvs sorted, then shared last
       const cached = names.filter((k) => k === 'cached')
       const plugins = names.filter((k) => !reserved.includes(k)).sort()
       const shared = names.filter((k) => k === 'shared')
-      return [...system, ...cached, ...plugins, ...shared]
+      return [...cached, ...plugins, ...shared]
     },
   },
   created() {
@@ -364,9 +363,6 @@ export default {
       return packages
     },
     formatPluginName(name) {
-      if (name === 'system') {
-        return 'System'
-      }
       if (name === 'cached') {
         return 'Cached'
       }
@@ -378,9 +374,6 @@ export default {
       return name.replace(/-\d+[\d_a-z]*_gem__\d+$/, '').replace(/__\d+$/, '')
     },
     venvPath(pluginName) {
-      if (pluginName === 'system') {
-        return '/openc3/python/.venv'
-      }
       if (pluginName === 'cached') {
         return '/gems/uv'
       }

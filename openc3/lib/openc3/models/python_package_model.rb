@@ -13,6 +13,7 @@
 
 require 'fileutils'
 require 'open3'
+require 'set'
 require 'openc3/utilities/process_manager'
 require 'openc3/api/api'
 require 'pathname'
@@ -31,14 +32,17 @@ module OpenC3
     SYSTEM_VENV_DIR = '/openc3/python/.venv'
     DEFAULT_UV_CACHE_DIR = '/gems/uv'
 
+    # Normalize a package name to lowercase with hyphens (PEP 503 canonical form)
+    def self.normalize_pkg_name(name)
+      name.tr('_', '-').downcase
+    end
+
     def self.names
       result = {}
 
-      # Collect packages from the system venv (core openc3 Python dependencies)
-      system_packages = system_venv_packages
-      result['system'] = system_packages.sort
-
-      # Collect packages from the UV download cache
+      # Collect all packages available in the UV download cache
+      # This includes system packages (seeded from the Docker image) plus
+      # any additional packages downloaded during plugin installs
       cached = cached_packages
       result['cached'] = cached.sort unless cached.empty?
 
@@ -61,7 +65,8 @@ module OpenC3
       return result
     end
 
-    # List packages in a specific venv by scanning dist-info directories
+    # List packages in a specific venv by scanning dist-info directories.
+    # Returns normalized names (lowercase, hyphens) for consistent display.
     def self.packages_in_venv(venv_dir)
       packages = []
       # Look for site-packages in the venv's lib directory
@@ -69,7 +74,14 @@ module OpenC3
         next unless File.directory?(site_packages)
         Pathname.new(site_packages).children.each do |child|
           if child.directory? && File.extname(child) == DIST_INFO
-            packages << File.basename(child, DIST_INFO)
+            raw_name = File.basename(child, DIST_INFO)
+            # Normalize: split name from version, normalize name, rejoin
+            match = raw_name.match(/\A(.+?)-(\d.*)/)
+            if match
+              packages << "#{normalize_pkg_name(match[1])}-#{match[2]}"
+            else
+              packages << normalize_pkg_name(raw_name)
+            end
           end
         end
       end
@@ -85,7 +97,6 @@ module OpenC3
     # UV cache structure: wheels-v<N>/<registry>/<package-name>/<version-pytag-abitag-platform>
     # e.g. wheels-v6/pypi/numpy/2.4.6-cp312-cp312-musllinux_1_2_aarch64
     def self.cached_packages
-      require 'set'
       cache_dir = ENV.fetch('UV_CACHE_DIR', DEFAULT_UV_CACHE_DIR)
       return [] unless File.directory?(cache_dir)
 

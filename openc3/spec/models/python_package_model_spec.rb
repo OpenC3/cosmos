@@ -18,17 +18,16 @@ module OpenC3
   describe PythonPackageModel do
     describe ".names" do
       before(:each) do
-        allow(PythonPackageModel).to receive(:system_venv_packages).and_return([])
         allow(PythonPackageModel).to receive(:cached_packages).and_return([])
       end
 
-      it "returns hash with empty system key when no plugin venvs directory exists" do
+      it "returns empty hash when no cache or plugin venvs exist" do
         allow(File).to receive(:directory?).with(PythonPackageModel::PLUGIN_VENVS_DIR).and_return(false)
         allow(ENV).to receive(:[]).and_call_original
         allow(ENV).to receive(:[]).with('PYTHONUSERBASE').and_return(nil)
 
         result = PythonPackageModel.names
-        expect(result).to eq({"system" => []})
+        expect(result).to eq({})
       end
 
       it "includes cached packages under 'cached' key when present" do
@@ -48,17 +47,8 @@ module OpenC3
         expect(result).not_to have_key("cached")
       end
 
-      it "includes system venv packages under 'system' key" do
-        allow(PythonPackageModel).to receive(:system_venv_packages).and_return(["boto3-1.36.13", "numpy-2.0.0"])
-        allow(File).to receive(:directory?).with(PythonPackageModel::PLUGIN_VENVS_DIR).and_return(false)
-        allow(PythonPackageModel).to receive(:shared_venv_packages).and_return([])
-
-        result = PythonPackageModel.names
-        expect(result["system"]).to eq(["boto3-1.36.13", "numpy-2.0.0"])
-      end
-
-      it "places system key before plugin keys" do
-        allow(PythonPackageModel).to receive(:system_venv_packages).and_return(["numpy-2.0.0"])
+      it "places cached key before plugin keys" do
+        allow(PythonPackageModel).to receive(:cached_packages).and_return(["numpy-2.0.0"])
         allow(File).to receive(:directory?).with(PythonPackageModel::PLUGIN_VENVS_DIR).and_return(true)
         allow(Dir).to receive(:glob).with("#{PythonPackageModel::PLUGIN_VENVS_DIR}/*/").and_return(
           ["/gems/plugin_venvs/demo/"]
@@ -68,7 +58,7 @@ module OpenC3
         allow(PythonPackageModel).to receive(:shared_venv_packages).and_return([])
 
         result = PythonPackageModel.names
-        expect(result.keys.first).to eq("system")
+        expect(result.keys.first).to eq("cached")
       end
 
       it "collects packages from per-plugin venvs" do
