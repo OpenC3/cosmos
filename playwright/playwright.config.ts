@@ -29,14 +29,19 @@ export default defineConfig({
   globalTimeout: 60 * 60 * 1000,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry once on CI */
-  retries: process.env.CI ? 1 : 0,
+  /* Retry on CI. The full COSMOS stack and the browsers share one runner, so a
+     momentarily starved JS event loop (seen in traces as "Stale connection:
+     Nms without pings") can freeze a page long enough to time out a single
+     action. Two retries lets a test ride out a transient freeze. */
+  retries: process.env.CI ? 2 : 0,
   /* Allows multiple tests from each file to be run at the same time */
   fullyParallel: true,
   workers: process.env.WORKERS
     ? parseInt(process.env.WORKERS) // Use explicit worker count if given
     : process.env.CI
-      ? 3 // Otherwise use 3 on CI/CD
+      ? 2 // Otherwise use 2 on CI/CD. The COSMOS Docker stack runs on the same
+        // runner as the browsers; 3 workers starved the event loop and caused
+        // the data-viewer/docs streaming tests to time out (see retries note).
       : undefined, // and a bunch locally (seems to be 7, but the default isn't documented)
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI ? 'github' : 'list',
@@ -46,8 +51,11 @@ export default defineConfig({
     launchOptions: {
       slowMo: 100,
     }, */
-    /* Maximum time each action such as `click()` can take. Defaults to 0 (no limit). */
-    actionTimeout: 0,
+    /* Maximum time each action such as `click()` can take. Defaults to 0 (no
+       limit), which let a single click on a frozen page consume the entire test
+       timeout with an opaque "Test timeout exceeded" error. A finite cap makes a
+       stuck action fail fast with a clear message and hand off to a retry. */
+    actionTimeout: 30 * 1000,
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: 'http://localhost:2900',
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */

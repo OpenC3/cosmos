@@ -213,12 +213,12 @@ test('controls playback', async ({ page, utils }) => {
     page.locator('[data-test=history-component-text-area] textarea'),
   ).not.toHaveValue(content)
   await page.getByLabel('appended action').click()
-  expect(
+  await expect(
     page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(content)
   // Resume
   await page.locator('[data-test=history-component-play-pause]').click()
-  expect(
+  await expect(
     page.locator('[data-test=history-component-text-area] textarea'),
   ).not.toHaveValue(content)
   // Stop
@@ -228,7 +228,7 @@ test('controls playback', async ({ page, utils }) => {
     .locator('[data-test=history-component-text-area] textarea')
     .inputValue()
   await utils.sleep(500) // Wait for potential changes
-  expect(
+  await expect(
     page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(content)
 })

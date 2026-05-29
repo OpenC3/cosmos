@@ -249,6 +249,12 @@ end`)
   ).toBeVisible()
   await utils.sleep(2000)
   await page.locator('[data-test=go-button]').click()
+  // Verify clicking Go actually resumed the script (left the waiting state).
+  // This gives a clearer failure than the results dialog timeout if Go is a no-op.
+  await expect(page.locator('[data-test=state] input')).not.toHaveValue(
+    /waiting \d+s/,
+    { timeout: 20000 },
+  )
   // Wait for the results
   await expect(page.locator('.v-dialog')).toContainText('Script Results', {
     timeout: 30000,

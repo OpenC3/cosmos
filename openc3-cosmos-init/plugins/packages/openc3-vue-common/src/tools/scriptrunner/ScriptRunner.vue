@@ -1985,9 +1985,14 @@ export default {
     },
     go() {
       // Ensure we're on the correct filename when we hit go
-      // They may have changed it using the drop down
-      this.filenameSelect = this.currentFilename
-      this.fileNameChanged(this.currentFilename)
+      // They may have changed it using the drop down.
+      // currentFilename can briefly be null when connected to a running
+      // script (the file is fetched asynchronously), so guard against it
+      // to ensure the go request is always sent.
+      if (this.currentFilename) {
+        this.filenameSelect = this.currentFilename
+        this.fileNameChanged(this.currentFilename)
+      }
       Api.post(`/script-api/running-script/${this.scriptId}/go`)
     },
     pauseOrRetry() {
