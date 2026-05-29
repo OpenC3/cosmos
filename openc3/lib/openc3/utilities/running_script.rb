@@ -527,7 +527,7 @@ class RunningScript
         plugin_venv_dir = candidate if File.directory?(candidate)
       end
     rescue => e
-      Logger.debug("Could not resolve plugin venv for script '#{name}': #{e.message}")
+      OpenC3::Logger.debug("Could not resolve plugin venv for script '#{name}': #{e.message}")
     end
 
     if plugin_venv_dir

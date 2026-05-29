@@ -506,6 +506,148 @@ module OpenC3
         plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => []}, scope: "DEFAULT")
         expect(plugin_model['img_path']).to eql 'gems/test-plugin-1.0.0/public/store_img.png'
       end
+
+      context "with python dependencies" do
+        let(:plugin_txt_lines) { [] }
+        let(:spec_double) do
+          spec = double("spec")
+          allow(spec).to receive(:name).and_return("test-plugin")
+          allow(spec).to receive(:version).and_return("1.0.0")
+          allow(spec).to receive(:runtime_dependencies).and_return([])
+          allow(spec).to receive(:metadata).and_return({})
+          allow(spec).to receive(:summary).and_return("Test plugin")
+          allow(spec).to receive(:description).and_return("Test plugin description")
+          allow(spec).to receive(:licenses).and_return([])
+          allow(spec).to receive(:homepage).and_return(nil)
+          spec
+        end
+
+        before(:each) do
+          s3 = instance_double("Aws::S3::Client").as_null_object
+          allow(Aws::S3::Client).to receive(:new).and_return(s3)
+          allow(PluginModel).to receive(:get_setting).and_return(nil)
+        end
+
+        it "uses uvinstall for python packages when UV is available" do
+          expect(GemModel).to receive(:get).and_return("my_plugin.gem")
+          gem = double("gem")
+          expect(gem).to receive(:extract_files) do |path|
+            File.open("#{path}/plugin.txt", 'w') { |f| f.puts "" }
+            File.open("#{path}/pyproject.toml", 'w') { |f| f.puts "[project]" }
+          end
+          expect(Gem::Package).to receive(:new).and_return(gem)
+          allow(gem).to receive(:spec).and_return(spec_double)
+          expect(GemModel).to receive(:install).and_return(nil)
+
+          allow(ENV).to receive(:[]).and_call_original
+          allow(ENV).to receive(:[]).with('OPENC3_USE_UV').and_return(nil)
+          allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
+          allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
+
+          # system('which uv') returns true; uvinstall succeeds (set $? via `true`)
+          allow(PluginModel).to receive(:system).with('which uv > /dev/null 2>&1').and_return(true)
+          allow(PluginModel).to receive(:`) { |cmd|
+            `true` # Sets $? to success
+            "ok"
+          }
+
+          plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
+          expect(plugin_model['needs_dependencies']).to eql true
+        end
+
+        it "falls back to pipinstall when uvinstall fails" do
+          expect(GemModel).to receive(:get).and_return("my_plugin.gem")
+          gem = double("gem")
+          expect(gem).to receive(:extract_files) do |path|
+            File.open("#{path}/plugin.txt", 'w') { |f| f.puts "" }
+            File.open("#{path}/pyproject.toml", 'w') { |f| f.puts "[project]" }
+          end
+          expect(Gem::Package).to receive(:new).and_return(gem)
+          allow(gem).to receive(:spec).and_return(spec_double)
+          expect(GemModel).to receive(:install).and_return(nil)
+
+          allow(ENV).to receive(:[]).and_call_original
+          allow(ENV).to receive(:[]).with('OPENC3_USE_UV').and_return(nil)
+          allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
+          allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
+
+          allow(PluginModel).to receive(:system).with('which uv > /dev/null 2>&1').and_return(true)
+
+          # uvinstall fails, then pipinstall succeeds
+          call_count = 0
+          allow(PluginModel).to receive(:`) { |cmd|
+            call_count += 1
+            if call_count == 1
+              `false` # Sets $? to failure for uvinstall
+              "uv failed"
+            else
+              `true` # Sets $? to success for pipinstall
+              "pip ok"
+            end
+          }
+
+          plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
+          expect(plugin_model['needs_dependencies']).to eql true
+        end
+
+        it "skips UV and uses pipinstall when OPENC3_USE_UV is 'false'" do
+          expect(GemModel).to receive(:get).and_return("my_plugin.gem")
+          gem = double("gem")
+          expect(gem).to receive(:extract_files) do |path|
+            File.open("#{path}/plugin.txt", 'w') { |f| f.puts "" }
+            File.open("#{path}/requirements.txt", 'w') { |f| f.puts "requests" }
+          end
+          expect(Gem::Package).to receive(:new).and_return(gem)
+          allow(gem).to receive(:spec).and_return(spec_double)
+          expect(GemModel).to receive(:install).and_return(nil)
+
+          allow(ENV).to receive(:[]).and_call_original
+          allow(ENV).to receive(:[]).with('OPENC3_USE_UV').and_return('false')
+          allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
+          allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
+
+          # Should NOT call system for uv check
+          expect(PluginModel).not_to receive(:system)
+
+          # Should go straight to pipinstall
+          allow(PluginModel).to receive(:`) { |cmd|
+            `true`
+            "pip ok"
+          }
+
+          plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
+          expect(plugin_model['needs_dependencies']).to eql true
+        end
+
+        it "falls back to pipinstall when uv is not on PATH" do
+          expect(GemModel).to receive(:get).and_return("my_plugin.gem")
+          gem = double("gem")
+          expect(gem).to receive(:extract_files) do |path|
+            File.open("#{path}/plugin.txt", 'w') { |f| f.puts "" }
+            File.open("#{path}/pyproject.toml", 'w') { |f| f.puts "[project]" }
+          end
+          expect(Gem::Package).to receive(:new).and_return(gem)
+          allow(gem).to receive(:spec).and_return(spec_double)
+          expect(GemModel).to receive(:install).and_return(nil)
+
+          allow(ENV).to receive(:[]).and_call_original
+          allow(ENV).to receive(:[]).with('OPENC3_USE_UV').and_return(nil)
+          allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
+          allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
+
+          # system('which uv') returns false
+          allow(PluginModel).to receive(:system).with('which uv > /dev/null 2>&1').and_return(false)
+
+          # Should fall back to pipinstall
+          allow(PluginModel).to receive(:`) { |cmd|
+            `true`
+            "pip ok"
+          }
+
+          plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
+          expect(plugin_model['needs_dependencies']).to eql true
+        end
+      end
     end
 
     describe "self.undeploy" do
@@ -538,6 +680,30 @@ module OpenC3
         expect_any_instance_of(MicroserviceModel).to receive(:undeploy).once
 
         plugin = PluginModel.new(name: "PLUG", scope: "DEFAULT")
+        plugin.undeploy
+      end
+
+      it "removes per-plugin Python venv directory when it exists" do
+        plugin = PluginModel.new(name: "PLUG", scope: "DEFAULT")
+        venv_path = '/gems/plugin_venvs/PLUG'
+        expect(File).to receive(:directory?).with(venv_path).and_return(true)
+        expect(FileUtils).to receive(:rm_rf).with(venv_path)
+        plugin.undeploy
+      end
+
+      it "does not error when per-plugin Python venv directory does not exist" do
+        plugin = PluginModel.new(name: "PLUG", scope: "DEFAULT")
+        venv_path = '/gems/plugin_venvs/PLUG'
+        expect(File).to receive(:directory?).with(venv_path).and_return(false)
+        expect(FileUtils).not_to receive(:rm_rf).with(venv_path)
+        expect { plugin.undeploy }.not_to raise_error
+      end
+
+      it "sanitizes plugin name for venv directory path" do
+        plugin = PluginModel.new(name: "my.plugin@1.0__0", scope: "DEFAULT")
+        sanitized_path = '/gems/plugin_venvs/my_plugin_1_0__0'
+        expect(File).to receive(:directory?).with(sanitized_path).and_return(true)
+        expect(FileUtils).to receive(:rm_rf).with(sanitized_path)
         plugin.undeploy
       end
     end
@@ -658,6 +824,118 @@ module OpenC3
         expect {
           PluginModel.cleanup_gem("openc3-cosmos-tool-foo-1.0.0.gem__0", scope: "DEFAULT")
         }.not_to raise_error
+      end
+    end
+
+    describe "needs_uv_migration?" do
+      it "returns false when needs_dependencies is false" do
+        model = PluginModel.new(name: "TEST", needs_dependencies: false, scope: "DEFAULT")
+        expect(model.needs_uv_migration?).to be false
+      end
+
+      it "returns true when needs_dependencies is true and .uv_managed marker is absent" do
+        model = PluginModel.new(name: "TEST", needs_dependencies: true, scope: "DEFAULT")
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST/.uv_managed').and_return(false)
+        expect(model.needs_uv_migration?).to be true
+      end
+
+      it "returns false when .uv_managed marker exists" do
+        model = PluginModel.new(name: "TEST", needs_dependencies: true, scope: "DEFAULT")
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST/.uv_managed').and_return(true)
+        expect(model.needs_uv_migration?).to be false
+      end
+
+      it "sanitizes plugin name for marker path" do
+        model = PluginModel.new(name: "my.plugin@1.0", needs_dependencies: true, scope: "DEFAULT")
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/my_plugin_1_0/.uv_managed').and_return(false)
+        expect(model.needs_uv_migration?).to be true
+      end
+    end
+
+    describe "migrate_to_uv!" do
+      it "returns true immediately when already migrated (marker exists)" do
+        model = PluginModel.new(name: "TEST__0", needs_dependencies: true, scope: "DEFAULT")
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST__0/.uv_managed').and_return(true)
+        expect(model.migrate_to_uv!(scope: "DEFAULT")).to be true
+      end
+
+      it "extracts gem, runs uvinstall, and returns true on success" do
+        model = PluginModel.new(name: "TEST__0", needs_dependencies: true, scope: "DEFAULT")
+        model.create
+
+        # Marker doesn't exist
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST__0/.uv_managed').and_return(false)
+
+        # GemModel.get returns a path
+        expect(GemModel).to receive(:get).with("TEST").and_return("/gems/cache/test.gem")
+
+        # Gem extraction
+        gem = double("gem")
+        expect(Gem::Package).to receive(:new).with("/gems/cache/test.gem").and_return(gem)
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/pyproject.toml", 'w') { |f| f.puts "[project]" }
+        end
+
+        # pypi_url resolution
+        allow(PluginModel).to receive(:get_setting).and_return(nil)
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
+        allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
+
+        # uvinstall succeeds - use `true` to set $? to success
+        allow(model).to receive(:`) { |cmd|
+          `true`
+          "ok"
+        }
+
+        expect(model.migrate_to_uv!(scope: "DEFAULT")).to be true
+      end
+
+      it "returns false on uvinstall failure" do
+        model = PluginModel.new(name: "TEST__0", needs_dependencies: true, scope: "DEFAULT")
+        model.create
+
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST__0/.uv_managed').and_return(false)
+
+        expect(GemModel).to receive(:get).with("TEST").and_return("/gems/cache/test.gem")
+
+        gem = double("gem")
+        expect(Gem::Package).to receive(:new).with("/gems/cache/test.gem").and_return(gem)
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/requirements.txt", 'w') { |f| f.puts "requests" }
+        end
+
+        allow(PluginModel).to receive(:get_setting).and_return(nil)
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
+        allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
+
+        # uvinstall fails - use `false` to set $? to failure
+        allow(model).to receive(:`) { |cmd|
+          `false`
+          "fail"
+        }
+
+        expect(model.migrate_to_uv!(scope: "DEFAULT")).to be false
+      end
+
+      it "returns true when no Python dependency files found" do
+        model = PluginModel.new(name: "TEST__0", needs_dependencies: true, scope: "DEFAULT")
+        model.create
+
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST__0/.uv_managed').and_return(false)
+
+        expect(GemModel).to receive(:get).with("TEST").and_return("/gems/cache/test.gem")
+
+        gem = double("gem")
+        expect(Gem::Package).to receive(:new).with("/gems/cache/test.gem").and_return(gem)
+        # No pyproject.toml or requirements.txt created during extract
+        expect(gem).to receive(:extract_files)
+
+        expect(model.migrate_to_uv!(scope: "DEFAULT")).to be true
       end
     end
 
