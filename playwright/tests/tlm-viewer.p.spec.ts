@@ -336,10 +336,20 @@ test('plays back to a screen', async ({ page, utils }) => {
     .locator('[data-test=playback-time] input')
     .fill(format(start, 'HH:mm:ss'))
 
-  // Click play, wait for time to increment, then pause
+  // Capture the live telemetry time just before entering playback
+  const liveTime = parseTime(await packetTimeInput.inputValue())
+
+  // Click play and wait for playback to take over the display. Playback starts
+  // ~2 minutes in the past, so the displayed time drops well below the live
+  // time. We must wait for this transition before measuring increments;
+  // otherwise we'd capture the stale (higher) live value, which the playback
+  // values never exceed within the timeout, causing a flaky failure.
   await page.getByRole('button', { name: 'Play / Pause' }).click()
-  await utils.sleep(1100)
-  // Get time after starting playback
+  await expect
+    .poll(async () => parseTime(await packetTimeInput.inputValue()))
+    .toBeLessThan(liveTime)
+
+  // Now that playback is driving the display, verify the time increments
   let previousTime = parseTime(await packetTimeInput.inputValue())
   await expect
     .poll(async () => parseTime(await packetTimeInput.inputValue()))
