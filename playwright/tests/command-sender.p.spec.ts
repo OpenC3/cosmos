@@ -642,6 +642,13 @@ for (const target of ['INST', 'INST2']) {
     const array1LengthRow = page.locator('tr:has(td:text-is("ARRAY1_LENGTH"))')
     const array2LengthRow = page.locator('tr:has(td:text-is("ARRAY2_LENGTH"))')
 
+    // selectTargetPacketItem only confirms the packet dropdown updated, not that
+    // the parameter table re-rendered for the new packet. On a slow runner the
+    // LENGTH rows may not exist yet, so wait for them before asserting state
+    // (otherwise toBeDisabled fails with "element(s) not found").
+    await expect(array1LengthRow).toBeVisible({ timeout: 15000 })
+    await expect(array2LengthRow).toBeVisible({ timeout: 15000 })
+
     // Check that the LENGTH input fields are disabled
     await expect(
       array1LengthRow.locator('[data-test=cmd-param-value] input'),

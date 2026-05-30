@@ -442,6 +442,10 @@ test('prompts before closing dirty edit screen on ESC', async ({
     await expect(
       page.locator('.v-toolbar:has-text("Edit Screen")'),
     ).toBeVisible()
+    // Wait for the confirmation dialog to fully close before re-triggering it.
+    // Otherwise the reopened dialog overlaps the closing one and the overlay
+    // churn detaches the "close without saving" button mid-click.
+    await expect(page.getByText('You have unsaved changes')).not.toBeVisible()
 
     // Press ESC again to re-trigger the confirmation
     await page.keyboard.press('Escape')
