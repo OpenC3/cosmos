@@ -28,22 +28,35 @@ export default class Cable {
       this._cable = null
     }
   }
+  // Lazily create the underlying anycable consumer. The token is passed
+  // per-subscription as `params[:token]` (see
+  // ApplicationCable::Channel#authenticate_subscription!) so it stays out of
+  // the WebSocket URL — and therefore out of browser history and proxy logs.
+  _ensureConsumer(scope) {
+    if (this._cable == null) {
+      const finalUrl = new URL(this._url, document.baseURI)
+      finalUrl.searchParams.set('scope', scope)
+      this._cable = createConsumer(finalUrl.href)
+    }
+    return this._cable
+  }
+  // Eagerly open the WebSocket connection ahead of any subscription. Channels
+  // are Redis pub/sub with no history, so a subscription established after a
+  // fast-starting backend resource has already published will miss those
+  // events permanently. Warming the (cold) connection at mount removes the
+  // handshake from the critical path so the later subscription is fast enough
+  // to win the race. Connection-level auth is not required (auth is
+  // per-subscription), so no token is needed here. Safe to call repeatedly.
+  connect(scope) {
+    return this._ensureConsumer(scope).cable.connect()
+  }
   createSubscription(channel, scope, callbacks = {}, additionalOptions = {}) {
     return OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
       (refreshed) => {
         if (refreshed) {
           OpenC3Auth.setTokens()
         }
-        if (this._cable == null) {
-          // Token is passed per-subscription as `params[:token]` (see
-          // ApplicationCable::Channel#authenticate_subscription!) so it stays
-          // out of the WebSocket URL — and therefore out of browser history
-          // and proxy logs.
-          const finalUrl = new URL(this._url, document.baseURI)
-          finalUrl.searchParams.set('scope', scope)
-          this._cable = createConsumer(finalUrl.href)
-        }
-        return this._cable.subscriptions.create(
+        return this._ensureConsumer(scope).subscriptions.create(
           {
             channel,
             token: localStorage.openc3Token,

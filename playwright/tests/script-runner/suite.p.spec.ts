@@ -22,6 +22,15 @@ test.use({
   toolName: 'Script Runner',
 })
 
+// Opening, saving, or reloading a suite file makes the backend run
+// Script.process_suite, which spawns a fresh Ruby/Python interpreter to
+// enumerate the suite. Under CI load that synchronous call has been observed
+// taking 8-12s (traces show GETs at ~11-12s, save POSTs at ~8.6s), so the
+// suite controls (start-suite button, #sr-controls filename, post-run
+// re-enable) and the "Saving..." snackbar can take longer than the 10s
+// default. Use a generous timeout for assertions gated on that work.
+const SUITE_PROCESSING_TIMEOUT = 30000
+
 async function saveAs(page, filename: string) {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Save As...').click()
@@ -38,9 +47,12 @@ async function saveAs(page, filename: string) {
     await page.locator('button:has-text("Overwrite")').click()
   }
 
-  await expect(page.locator('[data-test=start-suite]')).toBeVisible()
-  expect(await page.locator('#sr-controls')).toContainText(
+  await expect(page.locator('[data-test=start-suite]')).toBeVisible({
+    timeout: SUITE_PROCESSING_TIMEOUT,
+  })
+  await expect(page.locator('#sr-controls')).toContainText(
     `INST/procedures/${filename}`,
+    { timeout: SUITE_PROCESSING_TIMEOUT },
   )
 }
 
@@ -82,8 +94,11 @@ async function runAndCheckResults(
   await page.locator('button:has-text("Ok")').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
 
-  // Verify we're ready to run again
-  await expect(page.locator('[data-test=start-suite]')).toBeEnabled()
+  // Verify we're ready to run again. scriptComplete() reloads the file, which
+  // re-runs process_suite, so allow the same generous timeout here.
+  await expect(page.locator('[data-test=start-suite]')).toBeEnabled({
+    timeout: SUITE_PROCESSING_TIMEOUT,
+  })
   await expect(page.locator('[data-test=start-group]')).toBeEnabled()
   await expect(page.locator('[data-test=start-script]')).toBeEnabled()
 }
@@ -93,8 +108,10 @@ async function suiteTemplate(page, utils, type) {
   await page.getByText('New Suite').hover()
   await page.getByText(type).click()
   await utils.sleep(1000)
-  // Verify the drop downs are populated
-  await expect(page.getByText('Suite:TestSuiteSuite:')).toBeEnabled()
+  // Verify the drop downs are populated (gated on process_suite, see above)
+  await expect(page.getByText('Suite:TestSuiteSuite:')).toBeEnabled({
+    timeout: SUITE_PROCESSING_TIMEOUT,
+  })
   await expect(page.getByText('Group:PowerGroup:')).toBeEnabled()
   await expect(page.getByText('Script:power_onScript:')).toBeEnabled()
   // Verify Suite Start buttons are enabled
@@ -136,6 +153,7 @@ test('loads Suite controls when opening a suite', async ({ page, utils }) => {
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('#sr-controls')).toContainText(
     `INST/procedures/my_script_suite.rb`,
+    { timeout: SUITE_PROCESSING_TIMEOUT },
   )
   // Verify defaults in the Suite options
   await expect(page.locator('[data-test=pause-on-error] input')).toBeChecked()
@@ -426,8 +444,11 @@ class TestSuite(Suite):
   } else {
     await page.keyboard.press('Control+S')
   }
-  // Wait for save to complete before continuing
-  await expect(page.getByText('Saving...')).not.toBeVisible()
+  // Wait for save to complete before continuing. The save runs process_suite,
+  // so the "Saving..." snackbar can linger longer than the 10s default.
+  await expect(page.getByText('Saving...')).not.toBeVisible({
+    timeout: SUITE_PROCESSING_TIMEOUT,
+  })
 
   // Verify the suite startup, teardown buttons are disabled
   await expect(page.locator('[data-test=setup-suite]')).toBeDisabled()
@@ -551,8 +572,11 @@ end`)
   } else {
     await page.keyboard.press('Control+S')
   }
-  // Wait for save to complete before continuing
-  await expect(page.getByText('Saving...')).not.toBeVisible()
+  // Wait for save to complete before continuing. The save runs process_suite,
+  // so the "Saving..." snackbar can linger longer than the 10s default.
+  await expect(page.getByText('Saving...')).not.toBeVisible({
+    timeout: SUITE_PROCESSING_TIMEOUT,
+  })
 
   // Verify the group startup, teardown buttons are disabled
   await expect(page.locator('[data-test=setup-group]')).toBeDisabled()

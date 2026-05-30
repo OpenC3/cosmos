@@ -1421,6 +1421,17 @@ export default {
     this.editor.container.addEventListener('keydown', this.keydown)
 
     this.cable = new Cable('/script-api/cable')
+    // Warm the WebSocket now so the cold connection handshake is done before
+    // the user starts a script. The per-script subscription is only created
+    // after the run POST returns (see scriptStart), and the channel keeps no
+    // history; without a warm connection a fast script (e.g. a parse-time
+    // crash or a message_box on the first line) can publish its output before
+    // the subscription is established and that output is lost. Applies to
+    // inline mode too, which runs scripts through the same path.
+    // Fire-and-forget.
+    this.cable.connect(window.openc3Scope).catch(() => {
+      // Ignore: createSubscription will (re)establish the connection on start
+    })
 
     if (!this.inline && localStorage['script_runner__recent']) {
       this.recent = JSON.parse(localStorage['script_runner__recent'])
