@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import contextlib
 import json
 import os
 import shutil
@@ -31,7 +32,7 @@ from openc3.utilities.running_script import (  # noqa: E402
     running_script_anycable_publish,
 )
 from openc3.utilities.store import EphemeralStore, Store  # noqa: E402
-from openc3.utilities.store_queued import StoreQueued, EphemeralStoreQueued  # noqa: E402
+from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued  # noqa: E402
 
 
 def run_script_log(script_id, message, color="BLACK", message_log=True):
@@ -318,10 +319,9 @@ finally:
         # StoreQueued.shutdown above, so without this their replay-stream writes
         # could be lost and a late-subscribing client would never see the script
         # finish.
-        try:
+        # best-effort; the live broadcast already went out
+        with contextlib.suppress(Exception):
             EphemeralStoreQueued.instance().shutdown()
-        except Exception:
-            pass  # best-effort; the live broadcast already went out
     finally:
         if running_script:
             running_script.stop_message_log()
