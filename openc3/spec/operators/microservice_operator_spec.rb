@@ -47,7 +47,7 @@ module OpenC3
 
     describe "start_new" do
       before(:each) do
-        @saved_max = ENV['OPENC3_OPERATOR_MAX_START_PER_CYCLE']
+        @saved_max = ENV.fetch('OPENC3_OPERATOR_MAX_START_PER_CYCLE', nil)
       end
 
       after(:each) do

@@ -64,7 +64,7 @@ module OpenC3
         # Minimal plugin config; cmd is accessed during initialize
         @config = { 'cmd' => [], 'topics' => [], 'target_names' => [], 'secrets' => nil, 'plugin' => nil, 'work_dir' => nil }
         allow(MicroserviceModel).to receive(:get).and_return(@config)
-        @saved_timeout = ENV['OPENC3_MICROSERVICE_STARTUP_BUCKET_TIMEOUT']
+        @saved_timeout = ENV.fetch('OPENC3_MICROSERVICE_STARTUP_BUCKET_TIMEOUT', nil)
       end
 
       after(:each) do
@@ -80,7 +80,7 @@ module OpenC3
         client = double("BucketClient")
         allow(client).to receive(:list_objects) do
           call_count += 1
-          raise "connection timed out" if call_count < 3
+          raise RuntimeError, "connection timed out" if call_count < 3
           [] # Succeed on the third attempt with no files
         end
         allow(Bucket).to receive(:getClient).and_return(client)
