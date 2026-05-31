@@ -15,7 +15,7 @@ import os
 import sys
 
 import openc3.utilities.target_file_importer
-from openc3.script import *
+from openc3.script import *  # noqa: F403
 from openc3.script.suite_runner import SuiteRunner
 from openc3.top_level import add_to_search_path
 from openc3.utilities.target_file import TargetFile
@@ -35,7 +35,9 @@ def load_utility(procedure_name):
     # Retrieve file
     text = TargetFile.body(openc3_scope, procedure_name)
     if not text:
-        raise RuntimeError(f"Unable to retrieve: {procedure_name} in scope {openc3_scope}")
+        raise RuntimeError(
+            f"Unable to retrieve: {procedure_name} in scope {openc3_scope}"
+        )
     else:
         text = text.decode()
 
