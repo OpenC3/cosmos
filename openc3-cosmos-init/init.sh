@@ -39,19 +39,33 @@ if [ ! -z "${OPENC3_ISTIO_ENABLED}" ]; then
     echo "Sidecar available. Running the command..."
 fi
 
+# Maximum seconds to wait for a dependency before exiting non-zero so the init
+# hook pod restarts (restartPolicy OnFailure) and retries on a fresh network
+# path, rather than hanging forever and stalling the deploy.
+OPENC3_INIT_WAIT_TIMEOUT=${OPENC3_INIT_WAIT_TIMEOUT:-300}
+
 if [ "${OPENC3_CLOUD}" = "local" ]; then
+    deadline=$(( $(date +%s) + OPENC3_INIT_WAIT_TIMEOUT ))
     RC=1
     while [ $RC -gt 0 ]; do
         # Check if buckets endpoint is responding (accept any HTTP response, even 403)
         # Remove -f flag so curl only fails on connection errors, not HTTP errors
-        curl -s ${OPENC3_BUCKET_URL}/ -o /dev/null
+        # --connect-timeout/--max-time keep each probe short so the loop retries
+        # quickly instead of blocking ~2 min on an unanswered TCP connect (which
+        # also masks the moment the endpoint becomes reachable)
+        curl -s --connect-timeout 5 --max-time 10 ${OPENC3_BUCKET_URL}/ -o /dev/null
         RC=$?
         T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         echo "${T} waiting for buckets ${OPENC3_BUCKET_URL} RC: ${RC}";
+        if [ $(date +%s) -ge $deadline ]; then
+            echo "${T} ERROR: timed out after ${OPENC3_INIT_WAIT_TIMEOUT}s waiting for buckets ${OPENC3_BUCKET_URL}; exiting to restart init"
+            exit 1
+        fi
         sleep 1
     done
 fi
 
+deadline=$(( $(date +%s) + OPENC3_INIT_WAIT_TIMEOUT ))
 RC=1
 while [ $RC -gt 0 ]; do
     hostname=$(echo "${OPENC3_REDIS_HOSTNAME}" | sed "s/SHARDNUM/0/")
@@ -59,8 +73,13 @@ while [ $RC -gt 0 ]; do
     RC=$?
     T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     echo "${T} waiting for Redis ${hostname}:${OPENC3_REDIS_PORT}. RC: ${RC}";
+    if [ $(date +%s) -ge $deadline ]; then
+        echo "${T} ERROR: timed out after ${OPENC3_INIT_WAIT_TIMEOUT}s waiting for Redis ${hostname}:${OPENC3_REDIS_PORT}; exiting to restart init"
+        exit 1
+    fi
     sleep 1
 done
+deadline=$(( $(date +%s) + OPENC3_INIT_WAIT_TIMEOUT ))
 RC=1
 while [ $RC -gt 0 ]; do
     hostname=$(echo "${OPENC3_REDIS_EPHEMERAL_HOSTNAME}" | sed "s/SHARDNUM/0/")
@@ -68,6 +87,10 @@ while [ $RC -gt 0 ]; do
     RC=$?
     T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     echo "${T} waiting for Redis Ephemeral ${hostname}:${OPENC3_REDIS_EPHEMERAL_PORT}. RC: ${RC}";
+    if [ $(date +%s) -ge $deadline ]; then
+        echo "${T} ERROR: timed out after ${OPENC3_INIT_WAIT_TIMEOUT}s waiting for Redis Ephemeral ${hostname}:${OPENC3_REDIS_EPHEMERAL_PORT}; exiting to restart init"
+        exit 1
+    fi
     sleep 1
 done
 
