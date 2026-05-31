@@ -38,9 +38,7 @@ from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued  # n
 def run_script_log(script_id, message, color="BLACK", message_log=True):
     line_to_write = (
         # Can't use isoformat because it appends "+00:00" instead of "Z"
-        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-        + " (SCRIPTRUNNER): "
-        + message
+        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") + " (SCRIPTRUNNER): " + message
     )
     if message_log:
         RunningScript.message_log().write(line_to_write + "\n", True)
@@ -135,9 +133,7 @@ try:
 
     for msg in p.listen():
         parsed_cmd = json.loads(msg["data"])
-        if parsed_cmd != "shutdown" or (
-            isinstance(parsed_cmd, dict) and not parsed_cmd.get("method")
-        ):
+        if parsed_cmd != "shutdown" or (isinstance(parsed_cmd, dict) and not parsed_cmd.get("method")):
             run_script_log(script_id, f"Script {path} received command: {msg['data']}")
         match parsed_cmd:
             case "go":
@@ -173,19 +169,11 @@ try:
                             | "open_bucket_dialog"
                         ):
                             if running_script.prompt_id is not None:
-                                if (
-                                    "prompt_id" in parsed_cmd
-                                    and running_script.prompt_id
-                                    == parsed_cmd["prompt_id"]
-                                ):
+                                if "prompt_id" in parsed_cmd and running_script.prompt_id == parsed_cmd["prompt_id"]:
                                     if "password" in parsed_cmd:
-                                        running_script.user_input = str(
-                                            parsed_cmd["password"]
-                                        )
+                                        running_script.user_input = str(parsed_cmd["password"])
                                     elif "multiple" in parsed_cmd:
-                                        running_script.user_input = json.loads(
-                                            parsed_cmd["multiple"]
-                                        )
+                                        running_script.user_input = json.loads(parsed_cmd["multiple"])
                                         run_script_log(
                                             script_id,
                                             f"Multiple input: {running_script.user_input}",
@@ -206,15 +194,9 @@ try:
                                             f"File(s): {running_script.user_input}",
                                         )
                                     else:
-                                        running_script.user_input = str(
-                                            parsed_cmd["answer"]
-                                        )
+                                        running_script.user_input = str(parsed_cmd["answer"])
                                         if parsed_cmd["method"] == "ask":
-                                            running_script.user_input = (
-                                                convert_to_value(
-                                                    running_script.user_input
-                                                )
-                                            )
+                                            running_script.user_input = convert_to_value(running_script.user_input)
                                         run_script_log(
                                             script_id,
                                             f"User input: {running_script.user_input}",
@@ -246,12 +228,8 @@ try:
                                 },
                             )
                         case "debug":
-                            run_script_log(
-                                script_id, f"DEBUG: {parsed_cmd['args']}"
-                            )  # Log what we were passed
-                            running_script.debug(
-                                parsed_cmd["args"]
-                            )  # debug() logs the output of the command
+                            run_script_log(script_id, f"DEBUG: {parsed_cmd['args']}")  # Log what we were passed
+                            running_script.debug(parsed_cmd["args"])  # debug() logs the output of the command
                         case "executewhilepaused":
                             run_script_log(
                                 script_id,
@@ -285,11 +263,7 @@ finally:
         # Ensure script is marked as complete with an end time
         if not script_status.is_complete():
             script_status.state = "completed"
-        script_status.end_time = (
-            datetime.now(timezone.utc)
-            .isoformat(timespec="seconds")
-            .replace("+00:00", "Z")
-        )
+        script_status.end_time = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
         script_status.update()
 
         running = ScriptStatusModel.all(scope=scope, type="running")

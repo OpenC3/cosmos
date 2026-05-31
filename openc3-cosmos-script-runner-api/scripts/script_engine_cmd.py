@@ -26,9 +26,7 @@ for path in glob.glob("/gems/gems/**/lib"):
 
 
 class RunningScriptProxy:
-    def pre_line_instrumentation(
-        self, filename, line_number, global_variables, local_variables
-    ):
+    def pre_line_instrumentation(self, filename, line_number, global_variables, local_variables):
         pass
 
     def post_line_instrumentation(self, filename, line_number):
