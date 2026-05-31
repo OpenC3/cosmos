@@ -31,7 +31,7 @@ from openc3.utilities.running_script import (
     running_script_anycable_publish,
 )
 from openc3.utilities.store import EphemeralStore, Store
-from openc3.utilities.store_queued import StoreQueued
+from openc3.utilities.store_queued import StoreQueued, EphemeralStoreQueued
 
 
 def run_script_log(script_id, message, color="BLACK", message_log=True):
@@ -275,6 +275,16 @@ finally:
                 "scope": scope,
             },
         )
+
+        # Flush the queued replay-stream writes before the process exits. The
+        # complete (and any crash) events above are published after the
+        # StoreQueued.shutdown above, so without this their replay-stream writes
+        # could be lost and a late-subscribing client would never see the script
+        # finish.
+        try:
+            EphemeralStoreQueued.instance().shutdown()
+        except Exception:
+            pass  # best-effort; the live broadcast already went out
     finally:
         if running_script:
             running_script.stop_message_log()
