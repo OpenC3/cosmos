@@ -285,12 +285,22 @@ module OpenC3
     def respawn_changed
       @mutex.synchronize do
         if @changed_processes.length > 0
-          Logger.info("Cycling #{@changed_processes.length} changed microservices...")
-          shutdown_processes(@changed_processes)
+          # Cycle at most @max_start_per_cycle changed microservices this cycle;
+          # any remaining stay queued in @changed_processes and are cycled on
+          # later cycles. This avoids a restart stampede when many microservices
+          # change at once (e.g. a configmap change) overwhelming shared
+          # services. Processes not yet cycled keep running until their turn.
+          cycle_names = @changed_processes.keys
+          cycle_names = cycle_names[0...@max_start_per_cycle] if @max_start_per_cycle > 0
+          cycle = @changed_processes.slice(*cycle_names)
+          Logger.info("Cycling #{cycle.length} of #{@changed_processes.length} changed microservices...")
+          shutdown_processes(cycle)
           break if @shutdown
 
-          @changed_processes.each { |_name, p| p.start }
-          @changed_processes = {}
+          cycle_names.each do |name|
+            @changed_processes[name].start
+            @changed_processes.delete(name)
+          end
         end
       end
     end
