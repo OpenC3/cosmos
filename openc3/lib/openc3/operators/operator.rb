@@ -238,6 +238,11 @@ module OpenC3
 
       OperatorProcess.setup()
       @cycle_time = (ENV['OPERATOR_CYCLE_TIME'] and ENV['OPERATOR_CYCLE_TIME'].to_f) || CYCLE_TIME # time in seconds
+      # Maximum number of new microservices to start per cycle. This spreads a
+      # large startup burst (e.g. installing a plugin with many targets) across
+      # multiple cycles so the shared services (object store, redis) aren't
+      # stampeded by every microservice connecting at once. 0 = no limit.
+      @max_start_per_cycle = (ENV['OPENC3_OPERATOR_MAX_START_PER_CYCLE'] || 5).to_i
 
       @ruby_process_name = ENV['OPENC3_RUBY']
       if RUBY_ENGINE != 'ruby'
@@ -262,10 +267,17 @@ module OpenC3
     def start_new
       @mutex.synchronize do
         if @new_processes.length > 0
-          # Start all the processes
-          Logger.info("#{self.class} starting each new process...")
-          @new_processes.each { |_name, p| p.start }
-          @new_processes = {}
+          # Start at most @max_start_per_cycle processes this cycle; any
+          # remaining stay queued in @new_processes and start on later cycles.
+          # This avoids a startup stampede when many microservices appear at
+          # once (e.g. a plugin install) overwhelming the object store / redis.
+          start_names = @new_processes.keys
+          start_names = start_names[0...@max_start_per_cycle] if @max_start_per_cycle > 0
+          Logger.info("#{self.class} starting #{start_names.length} of #{@new_processes.length} new process(es)...")
+          start_names.each do |name|
+            @new_processes[name].start
+            @new_processes.delete(name)
+          end
         end
       end
     end
@@ -295,8 +307,11 @@ module OpenC3
 
     def respawn_dead
       @mutex.synchronize do
-        @processes.each do |_name, p|
+        @processes.each do |name, p|
           break if @shutdown
+          # Skip processes still queued by the per-cycle start limit; they
+          # haven't been started yet so they aren't "dead" to be respawned.
+          next if @new_processes[name]
           p.output_increment
           unless p.alive?
             # Respawn process

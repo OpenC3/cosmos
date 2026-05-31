@@ -17,6 +17,7 @@ import shutil
 import sys
 import tempfile
 import threading
+import time
 import traceback
 
 from openc3.environment import OPENC3_CONFIG_BUCKET
@@ -160,11 +161,30 @@ class Microservice:
 
             prefix = f"{self.scope}/microservices/{self.name}/"
             file_count = 0
-            for object in client.list_objects(bucket=bucket, prefix=prefix):
-                response_target = os.path.join(self.temp_dir, object.key.split(prefix)[-1])
-                os.makedirs(os.path.dirname(response_target), exist_ok=True)
-                client.get_object(bucket=bucket, key=object.key, path=response_target)
-                file_count += 1
+            # Tolerate transient object store failures during startup. On a busy
+            # or underpowered cluster the bucket store (e.g. MinIO) can be
+            # briefly unreachable while many microservices start at once. Rather
+            # than crash and CrashLoopBackOff (which can outlast deploy
+            # timeouts), retry for a bounded time before giving up.
+            startup_timeout = float(os.environ.get("OPENC3_MICROSERVICE_STARTUP_BUCKET_TIMEOUT", 60))
+            startup_deadline = time.time() + startup_timeout
+            while True:
+                try:
+                    file_count = 0
+                    for object in client.list_objects(bucket=bucket, prefix=prefix):
+                        response_target = os.path.join(self.temp_dir, object.key.split(prefix)[-1])
+                        os.makedirs(os.path.dirname(response_target), exist_ok=True)
+                        client.get_object(bucket=bucket, key=object.key, path=response_target)
+                        file_count += 1
+                    break
+                except Exception as error:
+                    if time.time() >= startup_deadline:
+                        raise
+                    self.logger.warn(
+                        f"Microservice {self.name} startup: bucket access failed "
+                        f"({type(error).__name__}: {error}); retrying for up to {int(startup_timeout)}s"
+                    )
+                    time.sleep(5)
 
             # Adjust @work_dir to microservice files downloaded if files and a relative path
             if file_count > 0 and self.work_dir[0] != "/":
