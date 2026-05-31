@@ -80,7 +80,7 @@ module OpenC3
         client = double("BucketClient")
         allow(client).to receive(:list_objects) do
           call_count += 1
-          raise RuntimeError, "connection timed out" if call_count < 3
+          raise "connection timed out" if call_count < 3
           [] # Succeed on the third attempt with no files
         end
         allow(Bucket).to receive(:getClient).and_return(client)
