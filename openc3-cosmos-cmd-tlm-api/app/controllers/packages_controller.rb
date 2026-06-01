@@ -60,7 +60,7 @@ class PackagesController < ApplicationController
         if params[:id] =~ /\.gem/
           OpenC3::GemModel.destroy(params[:id])
         else
-          OpenC3::PythonPackageModel.destroy(params[:id], scope: params[:scope])
+          OpenC3::PythonPackageModel.destroy(params[:id], scope: params[:scope], plugin: params[:plugin])
         end
         OpenC3::Logger.info("Package destroyed: #{params[:id]}", scope: params[:scope], user: username())
         head :ok

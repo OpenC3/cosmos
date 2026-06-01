@@ -31,10 +31,40 @@ module OpenC3
     PLUGIN_VENVS_DIR = '/gems/plugin_venvs'       # Per-plugin isolated venvs created by uvinstall
     SYSTEM_VENV_DIR = '/openc3/python/.venv'       # Core openc3 Python library venv (read-only)
     DEFAULT_UV_CACHE_DIR = '/gems/uv'              # UV wheel cache, seeded from the Docker image at init
+    UPLOADS_DIR_NAME = 'uploads'                   # Subdirectory under UV cache for uploaded .whl files
 
     # Normalize a package name to lowercase with hyphens (PEP 503 canonical form)
     def self.normalize_pkg_name(name)
       name.tr('_', '-').downcase
+    end
+
+    # Parse a PEP 427 wheel filename into [normalized_name, version].
+    # Handles browser-appended duplicate suffixes like "(1)" on the stem.
+    # Returns nil for non-wheel files or malformed names.
+    # Example: "numpy-2.4.6-cp312-cp312-musllinux_1_2_aarch64.whl" => ["numpy", "2.4.6"]
+    def self.parse_wheel_filename(filename)
+      # Strip browser duplicate suffixes like " (1)" before the .whl extension
+      clean = filename.sub(/\s*\(\d+\)\.whl\z/i, '.whl')
+      return nil unless clean.end_with?('.whl')
+
+      # PEP 427: {name}-{version}(-{build})?-{python}-{abi}-{platform}.whl
+      # We need at least name-version-python-abi-platform (5 segments)
+      stem = clean.chomp('.whl')
+      parts = stem.split('-')
+      return nil if parts.length < 5
+
+      # The version is always the second segment; everything before it is the name
+      # (some packages have hyphens in their name that become underscores in the wheel)
+      # PEP 427 guarantees: last 3 segments are python-abi-platform,
+      # optional build tag before those, then version, then name (may have multiple segments)
+      # Simplest reliable approach: version is always at index 1
+      name = normalize_pkg_name(parts[0])
+      version = parts[1]
+
+      # Sanity check: version should start with a digit
+      return nil unless version.match?(/\A\d/)
+
+      [name, version]
     end
 
     def self.names
@@ -53,8 +83,10 @@ module OpenC3
           venv_dir = File.join(plugin_dir, '.venv')
           next unless File.directory?(venv_dir)
 
+          # Always include plugin venvs even if empty so they remain visible
+          # in the Admin UI and selectable as install targets
           packages = packages_in_venv(venv_dir)
-          result[plugin_name] = packages.sort unless packages.empty?
+          result[plugin_name] = packages.sort
         end
       end
 
@@ -96,6 +128,7 @@ module OpenC3
     # List unique packages in the UV download cache.
     # UV cache structure: wheels-v<N>/<registry>/<package-name>/<version-pytag-abitag-platform>
     # e.g. wheels-v6/pypi/numpy/2.4.6-cp312-cp312-musllinux_1_2_aarch64
+    # Also scans the uploads/ subdirectory for user-uploaded .whl files.
     def self.cached_packages
       cache_dir = ENV.fetch('UV_CACHE_DIR', DEFAULT_UV_CACHE_DIR)
       return [] unless File.directory?(cache_dir)
@@ -115,6 +148,18 @@ module OpenC3
         pkg_name = File.basename(File.dirname(entry)).tr('_', '-').downcase
         packages.add("#{pkg_name}-#{match[1]}")
       end
+
+      # Scan uploaded wheels stored at <cache_dir>/uploads/*.whl
+      uploads_dir = File.join(cache_dir, UPLOADS_DIR_NAME)
+      if File.directory?(uploads_dir)
+        Dir.glob("#{uploads_dir}/*.whl").each do |whl_path|
+          parsed = parse_wheel_filename(File.basename(whl_path))
+          next unless parsed
+
+          packages.add("#{parsed[0]}-#{parsed[1]}")
+        end
+      end
+
       packages.to_a
     end
 
@@ -153,6 +198,15 @@ module OpenC3
         FileUtils.mkdir_p("#{ENV['PYTHONUSERBASE']}/cache") unless Dir.exist?("#{ENV['PYTHONUSERBASE']}/cache")
         cache_path = "#{ENV['PYTHONUSERBASE']}/cache/#{File.basename(package_file_path)}"
         FileUtils.cp(package_file_path, cache_path)
+
+        # Copy uploaded .whl files to the UV uploads directory so they appear
+        # in the "Cached" section of the Admin Packages UI
+        if package_filename.end_with?('.whl')
+          uploads_dir = File.join(ENV.fetch('UV_CACHE_DIR', DEFAULT_UV_CACHE_DIR), UPLOADS_DIR_NAME)
+          FileUtils.mkdir_p(uploads_dir)
+          FileUtils.cp(package_file_path, File.join(uploads_dir, package_filename))
+        end
+
         if package_install
           return self.install(cache_path, scope: scope, plugin: plugin)
         end
@@ -207,11 +261,18 @@ module OpenC3
       return result.name
     end
 
-    def self.destroy(name, scope:)
+    # Uninstall a Python package. When +plugin+ is provided, the package is
+    # removed from that plugin's per-plugin venv; otherwise from the shared venv.
+    def self.destroy(name, scope:, plugin: nil)
       package_name, version = self.extract_name_and_version(name)
       Logger.info "Uninstalling package: #{name}"
       pip_args = [package_name]
-      result = OpenC3::ProcessManager.instance.spawn(["/openc3/bin/pipuninstall"] + pip_args, "package_uninstall", name, Time.now + 3600.0, scope: scope)
+      spawn_env = {}
+      if plugin
+        venv_path = "#{PLUGIN_VENVS_DIR}/#{plugin}/.venv"
+        spawn_env['PIPINSTALL_VENV'] = venv_path
+      end
+      result = OpenC3::ProcessManager.instance.spawn(["/openc3/bin/pipuninstall"] + pip_args, "package_uninstall", name, Time.now + 3600.0, scope: scope, env: spawn_env)
       return result.name
     end
 

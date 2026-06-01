@@ -131,6 +131,7 @@ module OpenC3
       it "extracts package names and versions from cached wheel entries" do
         allow(ENV).to receive(:fetch).with('UV_CACHE_DIR', PythonPackageModel::DEFAULT_UV_CACHE_DIR).and_return('/gems/uv')
         allow(File).to receive(:directory?).with('/gems/uv').and_return(true)
+        allow(File).to receive(:directory?).with('/gems/uv/uploads').and_return(false)
         allow(Dir).to receive(:glob).with("/gems/uv/wheels-v*/*/*/*").and_return([
           "/gems/uv/wheels-v6/pypi/numpy/2.4.6-cp312-cp312-musllinux_1_2_aarch64",
           "/gems/uv/wheels-v6/pypi/numpy/2.4.6-cp312-cp312-musllinux_1_2_aarch64.http",
@@ -146,6 +147,7 @@ module OpenC3
       it "normalizes underscores to hyphens and lowercases package directory names" do
         allow(ENV).to receive(:fetch).with('UV_CACHE_DIR', PythonPackageModel::DEFAULT_UV_CACHE_DIR).and_return('/gems/uv')
         allow(File).to receive(:directory?).with('/gems/uv').and_return(true)
+        allow(File).to receive(:directory?).with('/gems/uv/uploads').and_return(false)
         allow(Dir).to receive(:glob).with("/gems/uv/wheels-v*/*/*/*").and_return([
           "/gems/uv/wheels-v6/pypi/typing_extensions/4.15.0-py3-none-any",
         ])
@@ -157,6 +159,7 @@ module OpenC3
       it "deduplicates multiple platform variants and lists multiple versions" do
         allow(ENV).to receive(:fetch).with('UV_CACHE_DIR', PythonPackageModel::DEFAULT_UV_CACHE_DIR).and_return('/gems/uv')
         allow(File).to receive(:directory?).with('/gems/uv').and_return(true)
+        allow(File).to receive(:directory?).with('/gems/uv/uploads').and_return(false)
         allow(Dir).to receive(:glob).with("/gems/uv/wheels-v*/*/*/*").and_return([
           "/gems/uv/wheels-v6/pypi/numpy/2.4.6-cp312-cp312-musllinux_1_2_aarch64",
           "/gems/uv/wheels-v6/pypi/numpy/2.4.4-cp312-cp312-musllinux_1_2_aarch64",
@@ -169,6 +172,7 @@ module OpenC3
       it "skips metadata files with dots in the basename" do
         allow(ENV).to receive(:fetch).with('UV_CACHE_DIR', PythonPackageModel::DEFAULT_UV_CACHE_DIR).and_return('/gems/uv')
         allow(File).to receive(:directory?).with('/gems/uv').and_return(true)
+        allow(File).to receive(:directory?).with('/gems/uv/uploads').and_return(false)
         allow(Dir).to receive(:glob).with("/gems/uv/wheels-v*/*/*/*").and_return([
           "/gems/uv/wheels-v6/pypi/boto3/1.43.17-py3-none-any",
           "/gems/uv/wheels-v6/pypi/boto3/1.43.17-py3-none-any.http",
@@ -177,6 +181,86 @@ module OpenC3
 
         result = PythonPackageModel.cached_packages
         expect(result).to eq(["boto3-1.43.17"])
+      end
+
+      it "includes uploaded wheels from the uploads directory" do
+        allow(ENV).to receive(:fetch).with('UV_CACHE_DIR', PythonPackageModel::DEFAULT_UV_CACHE_DIR).and_return('/gems/uv')
+        allow(File).to receive(:directory?).with('/gems/uv').and_return(true)
+        allow(Dir).to receive(:glob).with("/gems/uv/wheels-v*/*/*/*").and_return([])
+        allow(File).to receive(:directory?).with('/gems/uv/uploads').and_return(true)
+        allow(Dir).to receive(:glob).with("/gems/uv/uploads/*.whl").and_return([
+          "/gems/uv/uploads/my_custom_lib-1.0.0-py3-none-any.whl",
+        ])
+
+        result = PythonPackageModel.cached_packages
+        expect(result).to eq(["my-custom-lib-1.0.0"])
+      end
+
+      it "deduplicates uploaded wheels against UV cache entries" do
+        allow(ENV).to receive(:fetch).with('UV_CACHE_DIR', PythonPackageModel::DEFAULT_UV_CACHE_DIR).and_return('/gems/uv')
+        allow(File).to receive(:directory?).with('/gems/uv').and_return(true)
+        allow(Dir).to receive(:glob).with("/gems/uv/wheels-v*/*/*/*").and_return([
+          "/gems/uv/wheels-v6/pypi/numpy/2.4.6-cp312-cp312-musllinux_1_2_aarch64",
+        ])
+        allow(File).to receive(:directory?).with('/gems/uv/uploads').and_return(true)
+        allow(Dir).to receive(:glob).with("/gems/uv/uploads/*.whl").and_return([
+          "/gems/uv/uploads/numpy-2.4.6-cp312-cp312-musllinux_1_2_aarch64.whl",
+        ])
+
+        result = PythonPackageModel.cached_packages
+        expect(result).to eq(["numpy-2.4.6"])
+      end
+
+      it "skips non-wheel files in uploads directory" do
+        allow(ENV).to receive(:fetch).with('UV_CACHE_DIR', PythonPackageModel::DEFAULT_UV_CACHE_DIR).and_return('/gems/uv')
+        allow(File).to receive(:directory?).with('/gems/uv').and_return(true)
+        allow(Dir).to receive(:glob).with("/gems/uv/wheels-v*/*/*/*").and_return([])
+        allow(File).to receive(:directory?).with('/gems/uv/uploads').and_return(true)
+        allow(Dir).to receive(:glob).with("/gems/uv/uploads/*.whl").and_return([])
+
+        result = PythonPackageModel.cached_packages
+        expect(result).to eq([])
+      end
+
+      it "skips uploads directory when it does not exist" do
+        allow(ENV).to receive(:fetch).with('UV_CACHE_DIR', PythonPackageModel::DEFAULT_UV_CACHE_DIR).and_return('/gems/uv')
+        allow(File).to receive(:directory?).with('/gems/uv').and_return(true)
+        allow(Dir).to receive(:glob).with("/gems/uv/wheels-v*/*/*/*").and_return([
+          "/gems/uv/wheels-v6/pypi/requests/2.34.2-py3-none-any",
+        ])
+        allow(File).to receive(:directory?).with('/gems/uv/uploads').and_return(false)
+
+        result = PythonPackageModel.cached_packages
+        expect(result).to eq(["requests-2.34.2"])
+      end
+    end
+
+    describe ".parse_wheel_filename" do
+      it "parses a standard wheel filename" do
+        result = PythonPackageModel.parse_wheel_filename("numpy-2.4.6-cp312-cp312-musllinux_1_2_aarch64.whl")
+        expect(result).to eq(["numpy", "2.4.6"])
+      end
+
+      it "normalizes underscores to hyphens in package name" do
+        result = PythonPackageModel.parse_wheel_filename("my_custom_lib-1.0.0-py3-none-any.whl")
+        expect(result).to eq(["my-custom-lib", "1.0.0"])
+      end
+
+      it "handles browser-appended duplicate suffixes" do
+        result = PythonPackageModel.parse_wheel_filename("numpy-2.4.6-cp312-cp312-musllinux_1_2_aarch64 (1).whl")
+        expect(result).to eq(["numpy", "2.4.6"])
+      end
+
+      it "returns nil for non-wheel files" do
+        expect(PythonPackageModel.parse_wheel_filename("requests-2.31.0.tar.gz")).to be_nil
+      end
+
+      it "returns nil for malformed wheel names with too few segments" do
+        expect(PythonPackageModel.parse_wheel_filename("bad-name.whl")).to be_nil
+      end
+
+      it "returns nil when version does not start with a digit" do
+        expect(PythonPackageModel.parse_wheel_filename("pkg-abc-py3-none-any.whl")).to be_nil
       end
     end
 

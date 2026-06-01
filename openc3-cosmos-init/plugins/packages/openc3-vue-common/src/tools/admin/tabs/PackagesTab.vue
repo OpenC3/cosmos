@@ -123,6 +123,18 @@
           >
             <v-list-item class="pl-8">
               <v-list-item-title>{{ pkg }}</v-list-item-title>
+
+              <template
+                v-if="pluginName !== 'cached' && pluginName !== 'shared'"
+                #append
+              >
+                <v-btn
+                  icon="mdi-delete"
+                  variant="text"
+                  aria-label="Delete Python Package"
+                  @click="deletePythonPackage(pkg, pluginName)"
+                />
+              </template>
             </v-list-item>
             <v-divider />
           </div>
@@ -404,6 +416,33 @@ export default {
         .catch((error) => {
           this.$notify.serious({
             body: `Failed to remove package ${pkg}`,
+          })
+        })
+    },
+    deletePythonPackage(formattedPkg, pluginName) {
+      // Convert display format "name==version" to dist-info format "name-version"
+      const rawPkg = formattedPkg.replace('==', '-')
+      this.$dialog
+        .confirm(`Are you sure you want to remove: ${formattedPkg}`, {
+          okText: 'Delete',
+          cancelText: 'Cancel',
+        })
+        .then((dialog) => {
+          return Api.delete(
+            `/openc3-api/packages/${rawPkg}?plugin=${pluginName}`,
+          )
+        })
+        .then((response) => {
+          this.$notify.normal({
+            body: `Removed package ${formattedPkg}`,
+          })
+          setTimeout(() => {
+            this.updateProcesses()
+          }, 2500)
+        })
+        .catch((error) => {
+          this.$notify.serious({
+            body: `Failed to remove package ${formattedPkg}`,
           })
         })
     },
