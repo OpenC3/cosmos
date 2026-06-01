@@ -55,6 +55,26 @@ The Python packages section is organized into the following subsections:
 
 ![Packages](/img/admin/packages.png)
 
+Expanding the **Cached** section shows all the Python wheels available in the UV download cache. The number in parentheses indicates the total count of cached packages:
+
+![Cached Packages Expanded](/img/admin/packages_cache.png)
+
+Each plugin has its own isolated virtual environment. Expanding a plugin section shows the packages installed in that plugin's venv. In this example, the demo plugin has only its direct dependency (numpy) installed:
+
+![Plugin with numpy](/img/admin/packages_venv.png)
+
+You can install additional packages into a plugin's venv from the Packages tab. After installing a package like `requests`, the plugin's venv shows the new package along with its transitive dependencies. Each package has a delete button to remove it from the venv:
+
+![Plugin with requests added](/img/admin/packages_venv_added.png)
+
+Expanding the plugin venv further shows the full list of installed packages with their versions:
+
+![Plugin venv expanded](/img/admin/packages_venv_full.png)
+
+When multiple plugins install different versions of the same package, the Cached section lists all versions. This is expected — each plugin's venv is isolated, so different plugins can use different versions without conflicts:
+
+![Multiple versions in cache](/img/admin/packages_cache_versions.png)
+
 ### Tools
 
 The Tools tab lists all the tools installed. You can reorder the tools in the Navigation bar by dragging and dropping the left side grab handle.
