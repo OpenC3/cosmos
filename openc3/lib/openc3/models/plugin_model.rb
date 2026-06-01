@@ -608,7 +608,7 @@ module OpenC3
           Logger.error("Failed to retrieve pypi_url: #{e.formatted}")
         ensure
           if pypi_url.nil?
-            pypi_url = ENV['PYPI_URL']
+            pypi_url = ENV.fetch('PYPI_URL', nil)
             pypi_url += '/simple' if pypi_url
             pypi_url ||= 'https://pypi.org/simple'
           end

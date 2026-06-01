@@ -136,8 +136,8 @@ module OpenC3
           "plugin" => "test-plugin"
         }
         allow(File).to receive(:directory?).and_return(false)
-        allow(ENV).to receive(:[]).and_call_original
-        allow(ENV).to receive(:[]).with('PYTHONPATH').and_return('/some/python/path')
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('PYTHONPATH', nil).and_return('/some/python/path')
 
         _cmd, _work_dir, env, _scope, _container = @operator.convert_microservice_to_process_definition("DEFAULT__TYPE__NAME", config)
 

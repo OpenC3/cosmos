@@ -62,12 +62,12 @@ module OpenC3
 
         if plugin_venv_dir
           env['VIRTUAL_ENV'] = plugin_venv_dir
-          env['PATH'] = "#{plugin_venv_dir}/bin:#{ENV['PATH']}"
+          env['PATH'] = "#{plugin_venv_dir}/bin:#{ENV.fetch('PATH', '')}"
           env['PYTHONUSERBASE'] = plugin_venv_dir
-          env['PYTHONPATH'] = "#{ENV['PYTHONPATH']}"
+          env['PYTHONPATH'] = ENV.fetch('PYTHONPATH', nil)
         else
           env['PYTHONUSERBASE'] = '/gems/python_packages'
-          env['PYTHONPATH'] = "#{ENV['PYTHONPATH']}"
+          env['PYTHONPATH'] = ENV.fetch('PYTHONPATH', nil)
         end
       else
         env['GEM_HOME'] = nil

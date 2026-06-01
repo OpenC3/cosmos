@@ -568,7 +568,7 @@ class RunningScript
 
     if plugin_venv_dir
       process.environment['VIRTUAL_ENV'] = plugin_venv_dir
-      process.environment['PATH'] = "#{plugin_venv_dir}/bin:#{ENV['PATH']}"
+      process.environment['PATH'] = "#{plugin_venv_dir}/bin:#{ENV.fetch('PATH', '')}"
       process.environment['PYTHONUSERBASE'] = plugin_venv_dir
     else
       process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE']

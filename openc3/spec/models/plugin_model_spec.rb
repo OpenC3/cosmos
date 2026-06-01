@@ -546,7 +546,7 @@ module OpenC3
 
           # system('which uv') returns true; uvinstall succeeds (set $? via `true`)
           allow(PluginModel).to receive(:system).with('which uv > /dev/null 2>&1').and_return(true)
-          allow(PluginModel).to receive(:`) { |cmd|
+          allow(PluginModel).to receive(:`) { |_cmd|
             `true` # Sets $? to success
             "ok"
           }
