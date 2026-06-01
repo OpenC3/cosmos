@@ -44,7 +44,7 @@ module OpenC3
     # Example: "numpy-2.4.6-cp312-cp312-musllinux_1_2_aarch64.whl" => ["numpy", "2.4.6"]
     def self.parse_wheel_filename(filename)
       # Strip browser duplicate suffixes like " (1)" before the .whl extension
-      clean = filename.sub(/\s*\(\d+\)\.whl\z/i, '.whl')
+      clean = filename.sub(/ *\(\d+\)\.whl\z/i, '.whl')
       return nil unless clean.end_with?('.whl')
 
       # PEP 427: {name}-{version}(-{build})?-{python}-{abi}-{platform}.whl
