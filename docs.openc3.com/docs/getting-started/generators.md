@@ -61,7 +61,22 @@ This creates the following files:
 :::note[Python Dependency Management]
 Python plugins can declare dependencies using either `pyproject.toml` (recommended) or `requirements.txt`. When a plugin is installed, COSMOS creates an isolated UV virtual environment for it, so each plugin's dependencies are fully isolated from other plugins.
 
-If you use `pyproject.toml`, you can include a `uv.lock` file alongside it to enable reproducible installs via `uv sync --frozen`. This ensures the exact same package versions are installed every time. To generate a lockfile, run `uv lock` in your plugin directory during development.
+If you use `pyproject.toml`, you can include a `uv.lock` file alongside it to enable reproducible installs via `uv sync --frozen`. This ensures the exact same package versions are installed every time.
+
+**Managing dependencies during development:**
+
+```bash
+# Generate or regenerate the lockfile after editing pyproject.toml
+uv lock
+
+# Upgrade a single package to its latest compatible version
+uv lock --upgrade-package urllib3
+
+# Upgrade all packages to their latest compatible versions
+uv lock --upgrade
+```
+
+Always commit `uv.lock` alongside `pyproject.toml` so that production installs are reproducible.
 :::
 
 While this structure is required, it is not very useful by itself. The plugin generator just creates the framework for other generators to use.
