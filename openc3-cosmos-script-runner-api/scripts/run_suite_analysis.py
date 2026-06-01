@@ -15,7 +15,7 @@ import os
 import sys
 
 import openc3.utilities.target_file_importer
-from openc3.script import *
+from openc3.script import *  # noqa: F403
 from openc3.script.suite_runner import SuiteRunner
 from openc3.top_level import add_to_search_path
 from openc3.utilities.target_file import TargetFile

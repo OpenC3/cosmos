@@ -1421,17 +1421,6 @@ export default {
     this.editor.container.addEventListener('keydown', this.keydown)
 
     this.cable = new Cable('/script-api/cable')
-    // Warm the WebSocket now so the cold connection handshake is done before
-    // the user starts a script. The per-script subscription is only created
-    // after the run POST returns (see scriptStart), and the channel keeps no
-    // history; without a warm connection a fast script (e.g. a parse-time
-    // crash or a message_box on the first line) can publish its output before
-    // the subscription is established and that output is lost. Applies to
-    // inline mode too, which runs scripts through the same path.
-    // Fire-and-forget.
-    this.cable.connect(window.openc3Scope).catch(() => {
-      // Ignore: createSubscription will (re)establish the connection on start
-    })
 
     if (!this.inline && localStorage['script_runner__recent']) {
       this.recent = JSON.parse(localStorage['script_runner__recent'])
@@ -1890,23 +1879,30 @@ export default {
       this.startOrGoButton = GO
       this.editor.setReadOnly(true)
     },
-    scriptStart(id) {
+    async scriptStart(id) {
       this.$emit('script-id', id)
       this.scriptId = id
-      this.cable
-        .createSubscription(
-          'RunningScriptChannel',
-          window.openc3Scope,
-          {
-            received: (data) => this.received(data),
-          },
-          {
-            id: this.scriptId,
-          },
-        )
-        .then((subscription) => {
-          this.subscription = subscription
-        })
+      // Ensure only one subscription is ever active. scriptStart can be reached
+      // again while a subscription already exists -- most notably "Connect to
+      // Running Script", which updates the route (beforeRouteUpdate) on the
+      // already-mounted component. A second subscription on the same connection
+      // streams the same key and would deliver (and the frontend would process)
+      // every event twice. Tear the old one down first.
+      if (this.subscription) {
+        await this.subscription.unsubscribe()
+        this.subscription = null
+      }
+      this.receivedEvents.length = 0 // Drop any events not yet processed
+      this.subscription = await this.cable.createSubscription(
+        'RunningScriptChannel',
+        window.openc3Scope,
+        {
+          received: (data) => this.received(data),
+        },
+        {
+          id: this.scriptId,
+        },
+      )
     },
     async scriptComplete() {
       // Make sure we process no more events
