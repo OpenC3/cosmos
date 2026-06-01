@@ -134,7 +134,12 @@ COPY libzmq-34f7fa22022bed9e0e390ed3580a1c83ac4a2834.zip /opt/libzmq-34f7fa22022
 WORKDIR /opt
 RUN unzip libzmq-34f7fa22022bed9e0e390ed3580a1c83ac4a2834.zip
 WORKDIR /opt/libzmq-34f7fa22022bed9e0e390ed3580a1c83ac4a2834/build
-RUN cmake .. -D WITH_PERF_TOOL=OFF -D ZMQ_BUILD_TESTS=OFF -D ENABLE_CPACK=OFF -D CMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_LIBDIR=/usr/lib64 && \
+RUN cmake .. \
+      -D WITH_PERF_TOOL=OFF \
+      -D ZMQ_BUILD_TESTS=OFF \
+      -D ENABLE_CPACK=OFF \
+      -D CMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_LIBDIR=/usr/lib64 && \
     make && \
     make install && \
     rm -rf /opt/libzmq-34f7fa22022bed9e0e390ed3580a1c83ac4a2834 && \
@@ -145,8 +150,10 @@ COPY libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip /opt/libcsp-6b6e2dd2870
 WORKDIR /opt
 RUN unzip libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip && \
     # Patches to fix compilation issues
-    sed -i '1s/^/#include <sys\/select.h>/' libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632/src/drivers/can/can_socketcan.c && \
-    sed -i '2s/^/#include <endian.h>/' libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632/src/drivers/eth/eth_linux.c
+    sed -i '1s/^/#include <sys\/select.h>/' \
+      libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632/src/drivers/can/can_socketcan.c && \
+    sed -i '2s/^/#include <endian.h>/' \
+      libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632/src/drivers/eth/eth_linux.c
 WORKDIR /opt/libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632/build
 RUN cmake .. -DCSP_ENABLE_PYTHON3_BINDINGS=ON -DCSP_USR_RTABLE=ON -DCMAKE_INSTALL_LIBDIR=/usr/lib64 && \
     make && \

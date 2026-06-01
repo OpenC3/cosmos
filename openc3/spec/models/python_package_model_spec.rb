@@ -296,8 +296,8 @@ module OpenC3
 
     describe ".shared_venv_packages" do
       it "reads from PYTHONUSERBASE environment variable" do
-        allow(ENV).to receive(:[]).and_call_original
-        allow(ENV).to receive(:[]).with('PYTHONUSERBASE').and_return('/gems/python_packages')
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('PYTHONUSERBASE', nil).and_return('/gems/python_packages')
 
         site_packages = "/gems/python_packages/lib/python3.12/site-packages"
         allow(Dir).to receive(:glob).with("/gems/python_packages/lib/*").and_return(["/gems/python_packages/lib/python3.12"])
@@ -312,8 +312,8 @@ module OpenC3
       end
 
       it "returns empty array when PYTHONUSERBASE is nil" do
-        allow(ENV).to receive(:[]).and_call_original
-        allow(ENV).to receive(:[]).with('PYTHONUSERBASE').and_return(nil)
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('PYTHONUSERBASE', nil).and_return(nil)
 
         result = PythonPackageModel.shared_venv_packages
         expect(result).to eq([])

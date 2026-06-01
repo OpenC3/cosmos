@@ -575,7 +575,7 @@ module OpenC3
 
           # uvinstall fails, then pipinstall succeeds
           call_count = 0
-          allow(PluginModel).to receive(:`) { |cmd|
+          allow(PluginModel).to receive(:`) { |_cmd|
             call_count += 1
             if call_count == 1
               `false` # Sets $? to failure for uvinstall
@@ -610,7 +610,7 @@ module OpenC3
           expect(PluginModel).not_to receive(:system)
 
           # Should go straight to pipinstall
-          allow(PluginModel).to receive(:`) { |cmd|
+          allow(PluginModel).to receive(:`) { |_cmd|
             `true`
             "pip ok"
           }
@@ -639,7 +639,7 @@ module OpenC3
           allow(PluginModel).to receive(:system).with('which uv > /dev/null 2>&1').and_return(false)
 
           # Should fall back to pipinstall
-          allow(PluginModel).to receive(:`) { |cmd|
+          allow(PluginModel).to receive(:`) { |_cmd|
             `true`
             "pip ok"
           }
@@ -884,7 +884,7 @@ module OpenC3
         allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
 
         # uvinstall succeeds - use `true` to set $? to success
-        allow(model).to receive(:`) { |cmd|
+        allow(model).to receive(:`) { |_cmd|
           `true`
           "ok"
         }
@@ -913,7 +913,7 @@ module OpenC3
         allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
 
         # uvinstall fails - use `false` to set $? to failure
-        allow(model).to receive(:`) { |cmd|
+        allow(model).to receive(:`) { |_cmd|
           `false`
           "fail"
         }

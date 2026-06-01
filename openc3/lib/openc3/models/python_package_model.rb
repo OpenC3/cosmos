@@ -170,7 +170,7 @@ module OpenC3
     # List packages in the shared venv (backwards compatibility)
     def self.shared_venv_packages
       packages = []
-      pythonuserbase = ENV['PYTHONUSERBASE']
+      pythonuserbase = ENV.fetch('PYTHONUSERBASE', nil)
       return packages unless pythonuserbase
 
       paths = Dir.glob("#{pythonuserbase}/lib/*")
