@@ -13,19 +13,25 @@
 
 require 'openc3'
 
-# Tails a running script's replay stream and re-broadcasts each event to a
+# Tails a running script's replay stream and re-broadcasts each new event to a
 # single ActionCable subscription. The running script (running_script.rb /
 # running_script.py) mirrors every per-script frontend event into the stream
-# "script-api:running-script-channel:<id>:replay" (capped + short TTL). Reading
-# from '0-0' yields the existing backlog first and then blocks for live events,
-# so a client that subscribes after the script started still receives the events
-# it missed -- in order, from a single source (no pub/sub history gap, no dedup
-# needed on the client). Modeled on MessagesThread/TopicsThread in cmd-tlm-api.
+# "running-script-channel:<id>:replay" (capped + short TTL).
+#
+# IMPORTANT: this thread only handles LIVE events (those written after the
+# subscription was established). The already-present backlog is delivered
+# separately by RunningScriptChannel#subscribed via transmit(), because a
+# stream broadcast issued from this thread can race the gateway registering the
+# subscriber's stream_from and be dropped -- which is exactly how a
+# fast-completing script's output used to be lost. The channel reads the backlog
+# up to @start_offset and starts us there, so there is no gap and no duplicate
+# delivery. Modeled on MessagesThread/TopicsThread in cmd-tlm-api.
 class RunningScriptReplayThread
-  def initialize(subscription_key, id)
+  def initialize(subscription_key, id, start_offset = '0-0')
     @subscription_key = subscription_key
     @topic = "running-script-channel:#{id}:replay"
-    @offsets = ['0-0'] # Start at the beginning to replay the backlog, then tail
+    # Tail strictly after the backlog the channel already transmitted.
+    @offsets = [start_offset]
     @cancel_thread = false
     @thread = nil
   end
