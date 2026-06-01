@@ -203,6 +203,30 @@ RSpec.describe RunningScript, type: :model do
         env = @process_double.environment
         expect(env['PYTHONPATH']).to eq('/custom/python/path')
       end
+
+      it "uses plugin_venv directly for venv resolution on temp scripts" do
+        plugin_name = "my-demo-plugin__0"
+        venv_dir = "/gems/plugin_venvs/#{plugin_name}/.venv"
+        allow(File).to receive(:directory?).and_call_original
+        allow(File).to receive(:directory?).with(venv_dir).and_return(true)
+
+        RunningScript.spawn("DEFAULT", "__TEMP__/temp_script.py", nil, false, nil, nil, nil, nil, nil, plugin_name)
+
+        env = @process_double.environment
+        expect(env['VIRTUAL_ENV']).to eq(venv_dir)
+        expect(env['PATH']).to start_with("#{venv_dir}/bin:")
+        expect(env['PYTHONUSERBASE']).to eq(venv_dir)
+      end
+
+      it "falls back to shared PYTHONUSERBASE for temp scripts without plugin_venv" do
+        allow(OpenC3::TargetModel).to receive(:get).with(name: "__TEMP__", scope: "DEFAULT").and_return(nil)
+
+        RunningScript.spawn("DEFAULT", "__TEMP__/temp_script.py")
+
+        env = @process_double.environment
+        expect(env['VIRTUAL_ENV']).to be_nil
+        expect(env['PYTHONUSERBASE']).to eq(ENV['PYTHONUSERBASE'])
+      end
     end
   end
 

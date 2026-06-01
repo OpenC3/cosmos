@@ -200,7 +200,7 @@ RSpec.describe Script, type: :model do
   describe "self.run" do
     it "spawns a running script" do
       expect(RunningScript).to receive(:spawn).with(
-        "DEFAULT", "script.rb", nil, false, nil, "User Name", "username", nil, nil
+        "DEFAULT", "script.rb", nil, false, nil, "User Name", "username", nil, nil, nil
       )
 
       Script.run("DEFAULT", "script.rb", nil, false, nil, "User Name", "username")

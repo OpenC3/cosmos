@@ -432,7 +432,7 @@ class RunningScript
     self.class.message_log
   end
 
-  def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, user_full_name = nil, username = nil, line_no = nil, end_line_no = nil)
+  def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, user_full_name = nil, username = nil, line_no = nil, end_line_no = nil, plugin_venv = nil)
     extension = File.extname(name).to_s.downcase
     script_engine = nil
     if extension == '.py'
@@ -549,18 +549,24 @@ class RunningScript
     end
     process.environment['GEM_HOME'] = ENV['GEM_HOME']
 
-    # Resolve the per-plugin Python venv for this script. Scripts are stored
-    # under TARGET_NAME/..., so we look up which plugin owns the target and
-    # check whether that plugin has an isolated UV venv. This ensures scripts
-    # run with the same Python dependencies their plugin was installed with.
+    # Resolve the per-plugin Python venv for this script. For saved scripts
+    # we look up which plugin owns the target and check whether that plugin
+    # has an isolated UV venv. For temp scripts the frontend can pass a
+    # plugin_venv name directly, skipping the target lookup entirely.
     plugin_venv_dir = nil
     begin
       target_name = name.split('/')[0].to_s.upcase
-      target_info = OpenC3::TargetModel.get(name: target_name, scope: scope)
-      if target_info && target_info['plugin']
-        sanitized_name = target_info['plugin'].tr('^a-zA-Z0-9_-', '_')
-        candidate = "/gems/plugin_venvs/#{sanitized_name}/.venv"
+      if target_name == '__TEMP__' && plugin_venv
+        # Temp script with explicit plugin venv selection
+        candidate = "/gems/plugin_venvs/#{plugin_venv}/.venv"
         plugin_venv_dir = candidate if File.directory?(candidate)
+      else
+        target_info = OpenC3::TargetModel.get(name: target_name, scope: scope)
+        if target_info && target_info['plugin']
+          sanitized_name = target_info['plugin'].tr('^a-zA-Z0-9_-', '_')
+          candidate = "/gems/plugin_venvs/#{sanitized_name}/.venv"
+          plugin_venv_dir = candidate if File.directory?(candidate)
+        end
       end
     rescue => e
       OpenC3::Logger.debug("Could not resolve plugin venv for script '#{name}': #{e.message}")
