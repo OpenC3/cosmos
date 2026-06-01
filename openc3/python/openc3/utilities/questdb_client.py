@@ -614,6 +614,23 @@ class QuestDBClient:
             # Assume PG timestamp-like object
             return QuestDBClient.pg_timestamp_to_utc(value)
 
+    # QuestDB column types that can be aggregated with min/max/avg/stddev. Used by reduced
+    # queries to decide whether a converted (__C) column is numeric or must fall back to the
+    # raw column (e.g. states stored as VARCHAR).
+    NUMERIC_COLUMN_TYPES = frozenset({"BYTE", "SHORT", "INT", "LONG", "FLOAT", "DOUBLE"})
+
+    @staticmethod
+    def numeric_column_type(column_type):
+        """Return True if the given QuestDB column type can be numerically aggregated.
+
+        Args:
+            column_type: QuestDB column type (e.g. 'DOUBLE', 'VARCHAR'), or None
+
+        Returns:
+            True if the type can be aggregated with min/max/avg/stddev
+        """
+        return column_type is not None and str(column_type).upper() in QuestDBClient.NUMERIC_COLUMN_TYPES
+
     @staticmethod
     def column_suffix_for_value_type(value_type):
         """Return the QuestDB column suffix for a given value type.
@@ -681,7 +698,7 @@ class QuestDBClient:
         return result
 
     @staticmethod
-    def build_aggregation_selects(safe_item_name, value_type, item_name=None):
+    def build_aggregation_selects(safe_item_name, value_type, item_name=None, existing_columns=None):
         """Build aggregation SELECT columns (min/max/avg/stddev) for a single item.
 
         Args:
@@ -689,6 +706,10 @@ class QuestDBClient:
             value_type: 'RAW' or 'CONVERTED'
             item_name: Original (unsanitized) item name for mapping values.
                 Defaults to safe_item_name if not provided.
+            existing_columns: Optional dict mapping column name to QuestDB column type for the
+                table. When provided and a converted (__C) column is absent or non-numeric
+                (e.g. a states column stored as VARCHAR), CONVERTED aggregation falls back to
+                the raw column (mirrors the non-reduced read path).
 
         Returns:
             Tuple of (select_fragments_list, column_mapping_dict)
@@ -705,7 +726,13 @@ class QuestDBClient:
                 selects.append(f'{reduced_type.lower()}("{col}") as "{alias_name}"')
                 mapping[alias_name] = [item_name, reduced_type, "RAW"]
         elif value_type == "CONVERTED":
+            # The converted (__C) column only exists, and is only numerically aggregatable, when
+            # the item has a numeric conversion. When it is absent (e.g. an item with only a
+            # format string) or non-numeric (e.g. a states column stored as VARCHAR), aggregate
+            # the raw column instead.
             col = f"{safe_item_name}__C"
+            if existing_columns is not None and not QuestDBClient.numeric_column_type(existing_columns.get(col)):
+                col = safe_item_name
             for suffix, reduced_type in [("CN", "MIN"), ("CX", "MAX"), ("CA", "AVG"), ("CS", "STDDEV")]:
                 alias_name = f"{safe_item_name}__{suffix}"
                 selects.append(f'{reduced_type.lower()}("{col}") as "{alias_name}"')
