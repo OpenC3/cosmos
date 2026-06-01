@@ -1050,6 +1050,19 @@ RSpec.describe StreamingApi, type: :model do
     context 'for reduced items (aggregated from TSDB)' do
       let(:data) { { 'items' => ['REDUCED_MINUTE__TLM__INST__PARAMS__VALUE1__CONVERTED__AVG'], 'scope' => 'DEFAULT' } }
 
+      # Mock result for the SHOW COLUMNS query that CONVERTED reduced queries issue to
+      # determine which columns exist. Responds to #values like a PG::Result, returning
+      # rows of [column_name, type, ...]. VALUE1__C is numeric so aggregation uses it.
+      def reduced_columns_result
+        rows = [
+          ["PACKET_TIMESECONDS", "TIMESTAMP"],
+          ["VALUE1", "INT"],
+          ["VALUE1__C", "DOUBLE"],
+        ]
+        rows.define_singleton_method(:values) { self }
+        rows
+      end
+
       before(:each) do
         # Mock get_tlm_available since the TargetModel isn't populated in mock redis
         allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available) do |_instance, items, **_kwargs|
@@ -1070,8 +1083,14 @@ RSpec.describe StreamingApi, type: :model do
         ]
         pg_data.define_singleton_method(:ntuples) { 2 }
 
+        # CONVERTED reduced queries first issue a SHOW COLUMNS query to determine which
+        # columns exist. Return a numeric VALUE1__C so the aggregation uses the __C column.
+        columns_data = reduced_columns_result
+
         $exec_cnt = 0
         allow(mock_conn).to receive(:exec) do |query|
+          next columns_data if query.include?('SHOW COLUMNS')
+
           $exec_cnt += 1
           # Verify the query uses SAMPLE BY
           expect(query).to include('SAMPLE BY 1m') if $exec_cnt == 1
@@ -1109,8 +1128,12 @@ RSpec.describe StreamingApi, type: :model do
         ]
         pg_data.define_singleton_method(:ntuples) { 1 }
 
+        columns_data = reduced_columns_result
+
         $exec_cnt = 0
         allow(mock_conn).to receive(:exec) do |query|
+          next columns_data if query.include?('SHOW COLUMNS')
+
           $exec_cnt += 1
           expect(query).to include('SAMPLE BY 1h') if $exec_cnt == 1
           $exec_cnt == 1 ? pg_data : nil
@@ -1142,8 +1165,12 @@ RSpec.describe StreamingApi, type: :model do
         ]
         pg_data.define_singleton_method(:ntuples) { 1 }
 
+        columns_data = reduced_columns_result
+
         $exec_cnt = 0
         allow(mock_conn).to receive(:exec) do |query|
+          next columns_data if query.include?('SHOW COLUMNS')
+
           $exec_cnt += 1
           expect(query).to include('SAMPLE BY 1d') if $exec_cnt == 1
           $exec_cnt == 1 ? pg_data : nil
