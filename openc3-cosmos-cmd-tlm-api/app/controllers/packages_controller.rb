@@ -74,6 +74,9 @@ class PackagesController < ApplicationController
     end
   end
 
+  # Return per-plugin Python dependency lists (package name + version) for each
+  # plugin venv. Used by the Admin Packages tab to show installed dependencies
+  # in a collapsible tree view per plugin.
   def trees
     return unless authorization('system')
     render json: OpenC3::PythonPackageModel.trees

@@ -28,9 +28,9 @@ module OpenC3
     extend Api
 
     DIST_INFO =  '.dist-info'
-    PLUGIN_VENVS_DIR = '/gems/plugin_venvs'
-    SYSTEM_VENV_DIR = '/openc3/python/.venv'
-    DEFAULT_UV_CACHE_DIR = '/gems/uv'
+    PLUGIN_VENVS_DIR = '/gems/plugin_venvs'       # Per-plugin isolated venvs created by uvinstall
+    SYSTEM_VENV_DIR = '/openc3/python/.venv'       # Core openc3 Python library venv (read-only)
+    DEFAULT_UV_CACHE_DIR = '/gems/uv'              # UV wheel cache, seeded from the Docker image at init
 
     # Normalize a package name to lowercase with hyphens (PEP 503 canonical form)
     def self.normalize_pkg_name(name)
@@ -164,6 +164,10 @@ module OpenC3
       return nil
     end
 
+    # Install a Python package via pipinstall. When +plugin+ is provided, the
+    # package is installed into that plugin's per-plugin venv instead of the
+    # shared PYTHONUSERBASE. This is used by the Admin Packages tab when a user
+    # selects a specific plugin venv as the install target.
     def self.install(name_or_path, scope:, plugin: nil)
       if File.exist?(name_or_path)
         package_file_path = name_or_path

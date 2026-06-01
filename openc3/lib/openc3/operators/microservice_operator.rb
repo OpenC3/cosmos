@@ -48,7 +48,10 @@ module OpenC3
       if microservice_config["needs_dependencies"]
         env['GEM_HOME'] = '/gems'
 
-        # Check for per-plugin Python venv
+        # Resolve the Python virtual environment for this microservice.
+        # If the microservice belongs to a plugin that has a per-plugin UV venv
+        # (created by uvinstall during plugin install), use that isolated venv.
+        # Otherwise fall back to the shared PYTHONUSERBASE for legacy plugins.
         plugin_name = microservice_config["plugin"]
         plugin_venv_dir = nil
         if plugin_name

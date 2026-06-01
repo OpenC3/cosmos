@@ -516,7 +516,10 @@ class RunningScript
     end
     process.environment['GEM_HOME'] = ENV['GEM_HOME']
 
-    # Check for per-plugin Python venv based on the script's target
+    # Resolve the per-plugin Python venv for this script. Scripts are stored
+    # under TARGET_NAME/..., so we look up which plugin owns the target and
+    # check whether that plugin has an isolated UV venv. This ensures scripts
+    # run with the same Python dependencies their plugin was installed with.
     plugin_venv_dir = nil
     begin
       target_name = name.split('/')[0].to_s.upcase

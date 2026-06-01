@@ -225,6 +225,8 @@ class PluginsController < ModelController
     end
   end
 
+  # Migrate a legacy plugin from the shared Python venv to a per-plugin UV
+  # virtual environment. Spawns `openc3cli migratetouv` as a background process.
   def migrate_to_uv
     return unless authorization('admin')
     begin

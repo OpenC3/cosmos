@@ -273,7 +273,11 @@ module OpenC3
               pypi_args = "-i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host}"
             end
 
-            # Try per-plugin UV venv first, fall back to shared pipinstall
+            # Install Python dependencies into an isolated per-plugin venv when UV
+            # is available. Each plugin gets its own venv at /gems/plugin_venvs/<name>/.venv
+            # so that plugins with conflicting Python dependency versions don't interfere.
+            # If UV is unavailable or the install fails, fall back to the shared pipinstall
+            # which installs into PYTHONUSERBASE (the legacy shared environment).
             uv_installed = ENV['OPENC3_USE_UV'] != 'false' && system('which uv > /dev/null 2>&1')
             if uv_installed
               plugin_venv_name = plugin_model.name.tr('^a-zA-Z0-9_-', '_')
@@ -495,7 +499,9 @@ module OpenC3
           errors << e
         end
       end
-      # Cleanup per-plugin Python venv if it exists
+      # Remove the per-plugin UV virtual environment directory that was created
+      # during install_phase2. This cleans up the .venv, pyproject.toml, uv.lock,
+      # and .uv_managed marker so disk space is reclaimed on plugin uninstall.
       begin
         plugin_venv_name = @name.tr('^a-zA-Z0-9_-', '_')
         plugin_venv_path = File.join('/gems', 'plugin_venvs', plugin_venv_name)
