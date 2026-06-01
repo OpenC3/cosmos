@@ -44,8 +44,39 @@ fi
 # path, rather than hanging forever and stalling the deploy.
 OPENC3_INIT_WAIT_TIMEOUT=${OPENC3_INIT_WAIT_TIMEOUT:-300}
 
+# Diagnostic: when a dependency wait stalls, a curl/nc timeout doesn't tell us
+# whether name resolution or the TCP connection is the problem. This resolves
+# the host, then connects to the resolved IP separately, so the logs show which
+# layer is failing (DNS vs the kube-proxy ClusterIP path). Uses ruby (always
+# present in this image) so it works regardless of busybox nc/nslookup flags.
+# Args: host port
+probe_conn() {
+    ruby -rresolv -rsocket -e '
+host, port = ARGV[0], ARGV[1].to_i
+begin
+  ips = Resolv.getaddresses(host)
+  if ips.empty?
+    puts "  PROBE DNS: no addresses resolved for #{host}"
+  else
+    puts "  PROBE DNS: #{host} -> #{ips.join(",")}"
+    begin
+      Socket.tcp(ips.first, port, connect_timeout: 5) {}
+      puts "  PROBE TCP: #{ips.first}:#{port} connect OK"
+    rescue => e
+      puts "  PROBE TCP: #{ips.first}:#{port} FAIL #{e.class}: #{e.message}"
+    end
+  end
+rescue => e
+  puts "  PROBE DNS: resolve error #{e.class}: #{e.message}"
+end' "$1" "$2" 2>&1
+}
+
 if [ "${OPENC3_CLOUD}" = "local" ]; then
+    # Parse host/port out of the bucket URL for the DNS/TCP probe
+    bhp=${OPENC3_BUCKET_URL#*://}; bhp=${bhp%%/*}
+    bhost=${bhp%%:*}; bport=${bhp##*:}; [ "$bport" = "$bhp" ] && bport=80
     deadline=$(( $(date +%s) + OPENC3_INIT_WAIT_TIMEOUT ))
+    attempt=0
     RC=1
     while [ $RC -gt 0 ]; do
         # Check if buckets endpoint is responding (accept any HTTP response, even 403)
@@ -57,6 +88,13 @@ if [ "${OPENC3_CLOUD}" = "local" ]; then
         RC=$?
         T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         echo "${T} waiting for buckets ${OPENC3_BUCKET_URL} RC: ${RC}";
+        # On the 1st and every 5th failure, log whether DNS or TCP is the problem
+        if [ $RC -gt 0 ]; then
+            attempt=$(( attempt + 1 ))
+            if [ $(( attempt % 5 )) -eq 1 ]; then
+                probe_conn "${bhost}" "${bport}"
+            fi
+        fi
         if [ $(date +%s) -ge $deadline ]; then
             echo "${T} ERROR: timed out after ${OPENC3_INIT_WAIT_TIMEOUT}s waiting for buckets ${OPENC3_BUCKET_URL}; exiting to restart init"
             exit 1
@@ -66,6 +104,7 @@ if [ "${OPENC3_CLOUD}" = "local" ]; then
 fi
 
 deadline=$(( $(date +%s) + OPENC3_INIT_WAIT_TIMEOUT ))
+attempt=0
 RC=1
 while [ $RC -gt 0 ]; do
     hostname=$(echo "${OPENC3_REDIS_HOSTNAME}" | sed "s/SHARDNUM/0/")
@@ -73,6 +112,13 @@ while [ $RC -gt 0 ]; do
     RC=$?
     T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     echo "${T} waiting for Redis ${hostname}:${OPENC3_REDIS_PORT}. RC: ${RC}";
+    # On the 1st and every 5th failure, log whether DNS or TCP is the problem
+    if [ $RC -gt 0 ]; then
+        attempt=$(( attempt + 1 ))
+        if [ $(( attempt % 5 )) -eq 1 ]; then
+            probe_conn "${hostname}" "${OPENC3_REDIS_PORT}"
+        fi
+    fi
     if [ $(date +%s) -ge $deadline ]; then
         echo "${T} ERROR: timed out after ${OPENC3_INIT_WAIT_TIMEOUT}s waiting for Redis ${hostname}:${OPENC3_REDIS_PORT}; exiting to restart init"
         exit 1
@@ -80,6 +126,7 @@ while [ $RC -gt 0 ]; do
     sleep 1
 done
 deadline=$(( $(date +%s) + OPENC3_INIT_WAIT_TIMEOUT ))
+attempt=0
 RC=1
 while [ $RC -gt 0 ]; do
     hostname=$(echo "${OPENC3_REDIS_EPHEMERAL_HOSTNAME}" | sed "s/SHARDNUM/0/")
@@ -87,6 +134,13 @@ while [ $RC -gt 0 ]; do
     RC=$?
     T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     echo "${T} waiting for Redis Ephemeral ${hostname}:${OPENC3_REDIS_EPHEMERAL_PORT}. RC: ${RC}";
+    # On the 1st and every 5th failure, log whether DNS or TCP is the problem
+    if [ $RC -gt 0 ]; then
+        attempt=$(( attempt + 1 ))
+        if [ $(( attempt % 5 )) -eq 1 ]; then
+            probe_conn "${hostname}" "${OPENC3_REDIS_EPHEMERAL_PORT}"
+        fi
+    fi
     if [ $(date +%s) -ge $deadline ]; then
         echo "${T} ERROR: timed out after ${OPENC3_INIT_WAIT_TIMEOUT}s waiting for Redis Ephemeral ${hostname}:${OPENC3_REDIS_EPHEMERAL_PORT}; exiting to restart init"
         exit 1
@@ -96,6 +150,12 @@ done
 
 # Fail on errors
 set -e
+
+# Trace every command (to stderr, captured by `kubectl logs`) with a UTC
+# timestamp so a silent hang during a plugin load is visible: the last traced
+# line shows exactly which `openc3cli load` was running when it stalled.
+export PS4='+ [$(date -u +%H:%M:%SZ)] '
+set -x
 
 if [ -z "${OPENC3_NO_MIGRATE}" ]; then
     ruby /openc3/bin/openc3cli runmigrations || exit 1
@@ -158,6 +218,9 @@ fi
 if [ -z $OPENC3_NO_DOCS ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-docs-*.gem || exit 1
 fi
+
+# Stop command tracing now that all plugin loads are done
+set +x
 
 # Need to allow errors during this wait
 set +e
