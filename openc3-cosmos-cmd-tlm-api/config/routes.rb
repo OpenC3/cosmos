@@ -261,5 +261,9 @@ Rails.application.routes.draw do
     post '/criticalcmd/approve/:id', to: 'critical_cmd#approve'
     post '/criticalcmd/reject/:id', to: 'critical_cmd#reject'
     get '/criticalcmd/canapprove/:id', to: 'critical_cmd#canapprove'
+
+    post '/chat/stream', to: 'chat#stream'
+    get '/chat/config', to: 'chat#config_show'
+    post '/chat/config', to: 'chat#config_update'
   end
 end

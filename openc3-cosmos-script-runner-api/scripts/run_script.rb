@@ -188,6 +188,17 @@ ensure
 
     # Inform frontend of number of running scripts in this scope
     running_script_anycable_publish("all-scripts-channel", { type: :complete, filename: script_status.filename, active_scripts: running.length, scope: scope })
+
+    # Flush the queued replay-stream writes (EphemeralStoreQueued) before the
+    # process exits. The :complete (and any crash) events above are published
+    # after the StoreQueued.shutdown above, so without this their replay-stream
+    # writes could be lost and a late-subscribing client would never see the
+    # script finish.
+    begin
+      OpenC3::EphemeralStoreQueued.instance.shutdown
+    rescue StandardError
+      # best-effort; the live broadcast already went out
+    end
   ensure
     running_script.stop_message_log if running_script
     FileUtils.remove_entry_secure(working_dir, true)

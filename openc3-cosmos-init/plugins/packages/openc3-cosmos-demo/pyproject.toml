@@ -5,9 +5,9 @@ description = "OpenC3 COSMOS Demo Plugin Python Dependencies"
 authors = [
   {name = "OpenC3, Inc.", email = "support@openc3.com"}
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
-    "numpy>=2.0,<3.0",
+    "numpy>=2.4.6,<3.0",
 ]
 
 [build-system]

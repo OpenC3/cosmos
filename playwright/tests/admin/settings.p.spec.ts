@@ -128,7 +128,9 @@ test('changes the source url', async ({ page, utils }) => {
     .locator('input')
     .fill('https://openc3.com')
   await page.locator('[data-test=save-source-url]').click()
-  await expect(page.getByText('Source code URL').first()).toBeVisible()
+  // Wait for the save to actually persist before reloading; reloading while the
+  // set_setting request is still in flight aborts it and the value is lost.
+  await expect(page.getByText('Saved!').first()).toBeVisible()
   await page.reload()
   await expect(page.locator('footer a')).toHaveAttribute(
     'href',
@@ -142,6 +144,9 @@ test('changes the rubygems url', async ({ page, utils }) => {
     .locator('input')
     .fill('https://myrubygems.com')
   await page.locator('[data-test=save-rubygems-url]').click()
+  // Wait for the save to actually persist before reloading; reloading while the
+  // set_setting request is still in flight aborts it and the value is lost.
+  await expect(page.getByText('Saved!').first()).toBeVisible()
   await page.reload()
   await expect(page.getByText('Rubygems URL').first()).toBeVisible()
   await expect(
@@ -155,6 +160,9 @@ test('changes the pypi url', async ({ page, utils }) => {
     .locator('input')
     .fill('https://mypypi.com')
   await page.locator('[data-test=save-pypi-url]').click()
+  // Wait for the save to actually persist before reloading; reloading while the
+  // set_setting request is still in flight aborts it and the value is lost.
+  await expect(page.getByText('Saved!').first()).toBeVisible()
   await page.reload()
   await expect(page.getByText('Pypi URL').first()).toBeVisible()
   await expect(
@@ -176,6 +184,10 @@ test('changes scripting settings', async ({ page, utils }) => {
   // Enable Vim mode
   await page.getByRole('checkbox', { name: 'Vim mode' }).check()
   await page.locator('[data-test=save-editor-settings]').click()
+
+  // Wait for the save to actually persist before reloading; reloading while the
+  // set_setting request is still in flight aborts it and the value is lost.
+  await expect(page.getByText('Saved!').first()).toBeVisible()
 
   // Verify Ruby setting
   await page.reload()

@@ -101,6 +101,10 @@ class WebSocketApi:
     def subscribe(self):
         """Will subscribe to the channel based on @identifier"""
         if not self.subscribed:
+            # Token is part of the identifier so it surfaces as params[:token]
+            # in ApplicationCable::Channel#authenticate_subscription! —
+            # ActionCable ignores `data` on `subscribe` commands.
+            self.identifier["token"] = self.authentication.token(include_bearer=False)
             json_hash = {}
             json_hash["command"] = "subscribe"
             json_hash["identifier"] = json.dumps(self.identifier)
@@ -134,7 +138,7 @@ class WebSocketApi:
         self.disconnect()
         # Add the token directly in the URL since adding it to the header doesn't seem to work
         # Note in the this case we remove the "Bearer " string which is part of the token
-        final_url = self.url + f"?scope={self.scope}&authorization={self.authentication.get_otp(self.scope)}"
+        final_url = self.url + f"?scope={self.scope}"
         self.stream = WebSocketClientStream(final_url, self.write_timeout, self.read_timeout, self.connect_timeout)
         self.stream.headers = {
             "Sec-WebSocket-Protocol": "actioncable-v1-json, actioncable-unsupported",

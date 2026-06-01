@@ -145,6 +145,132 @@ module OpenC3
       end
     end
 
+    describe "start_new" do
+      before(:each) do
+        @saved_max = ENV.fetch('OPENC3_OPERATOR_MAX_START_PER_CYCLE', nil)
+      end
+
+      after(:each) do
+        if @saved_max.nil?
+          ENV.delete('OPENC3_OPERATOR_MAX_START_PER_CYCLE')
+        else
+          ENV['OPENC3_OPERATOR_MAX_START_PER_CYCLE'] = @saved_max
+        end
+      end
+
+      def build_processes(started)
+        processes = {}
+        5.times do |i|
+          name = "DEFAULT__TYPE__NAME#{i}"
+          process = double(name)
+          allow(process).to receive(:start) { started << name }
+          processes[name] = process
+        end
+        processes
+      end
+
+      it "starts at most OPENC3_OPERATOR_MAX_START_PER_CYCLE processes per cycle" do
+        ENV['OPENC3_OPERATOR_MAX_START_PER_CYCLE'] = '2'
+        op = MicroserviceOperator.new
+        started = []
+        op.instance_variable_set(:@new_processes, build_processes(started))
+
+        # First cycle starts only the first 2; the rest stay queued for later cycles
+        capture_io { op.start_new }
+        expect(started).to eq(%w(DEFAULT__TYPE__NAME0 DEFAULT__TYPE__NAME1))
+        expect(op.instance_variable_get(:@new_processes).keys).to eq(%w(DEFAULT__TYPE__NAME2 DEFAULT__TYPE__NAME3 DEFAULT__TYPE__NAME4))
+
+        # Subsequent cycles drain the queue 2 at a time until empty
+        capture_io { op.start_new }
+        expect(started).to eq(%w(DEFAULT__TYPE__NAME0 DEFAULT__TYPE__NAME1 DEFAULT__TYPE__NAME2 DEFAULT__TYPE__NAME3))
+        capture_io { op.start_new }
+        expect(started.length).to eq(5)
+        expect(op.instance_variable_get(:@new_processes)).to be_empty
+      end
+
+      it "starts every process in one cycle when the limit is 0 (unlimited)" do
+        ENV['OPENC3_OPERATOR_MAX_START_PER_CYCLE'] = '0'
+        op = MicroserviceOperator.new
+        started = []
+        op.instance_variable_set(:@new_processes, build_processes(started))
+
+        capture_io { op.start_new }
+        expect(started.length).to eq(5)
+        expect(op.instance_variable_get(:@new_processes)).to be_empty
+      end
+    end
+
+    describe "respawn_dead" do
+      it "skips processes still queued by the per-cycle start limit" do
+        op = MicroserviceOperator.new
+        queued = double("queued_process")
+        # A queued (not yet started) process must not be treated as dead and respawned
+        expect(queued).to_not receive(:alive?)
+        expect(queued).to_not receive(:start)
+        op.instance_variable_set(:@processes, { "DEFAULT__TYPE__QUEUED" => queued })
+        op.instance_variable_set(:@new_processes, { "DEFAULT__TYPE__QUEUED" => queued })
+        capture_io { op.respawn_dead }
+      end
+    end
+
+    describe "respawn_changed" do
+      before(:each) do
+        @saved_max = ENV.fetch('OPENC3_OPERATOR_MAX_START_PER_CYCLE', nil)
+      end
+
+      after(:each) do
+        if @saved_max.nil?
+          ENV.delete('OPENC3_OPERATOR_MAX_START_PER_CYCLE')
+        else
+          ENV['OPENC3_OPERATOR_MAX_START_PER_CYCLE'] = @saved_max
+        end
+      end
+
+      def build_changed(started)
+        processes = {}
+        5.times do |i|
+          name = "DEFAULT__TYPE__NAME#{i}"
+          # as_null_object so the shutdown_processes calls (soft_stop, hard_stop,
+          # output_increment, extract_output) are harmless no-ops
+          process = double(name).as_null_object
+          allow(process).to receive(:alive?).and_return(false)
+          allow(process).to receive(:start) { started << name }
+          processes[name] = process
+        end
+        processes
+      end
+
+      it "cycles at most OPENC3_OPERATOR_MAX_START_PER_CYCLE changed processes per cycle" do
+        ENV['OPENC3_OPERATOR_MAX_START_PER_CYCLE'] = '2'
+        op = MicroserviceOperator.new
+        started = []
+        op.instance_variable_set(:@changed_processes, build_changed(started))
+
+        # First cycle restarts only the first 2; the rest keep running, queued for later
+        capture_io { op.respawn_changed }
+        expect(started).to eq(%w(DEFAULT__TYPE__NAME0 DEFAULT__TYPE__NAME1))
+        expect(op.instance_variable_get(:@changed_processes).keys).to eq(%w(DEFAULT__TYPE__NAME2 DEFAULT__TYPE__NAME3 DEFAULT__TYPE__NAME4))
+
+        # Subsequent cycles drain the queue 2 at a time until empty
+        capture_io { op.respawn_changed }
+        expect(started.length).to eq(4)
+        capture_io { op.respawn_changed }
+        expect(started.length).to eq(5)
+        expect(op.instance_variable_get(:@changed_processes)).to be_empty
+      end
+
+      it "cycles all changed processes in one cycle when the limit is 0 (unlimited)" do
+        ENV['OPENC3_OPERATOR_MAX_START_PER_CYCLE'] = '0'
+        op = MicroserviceOperator.new
+        started = []
+        op.instance_variable_set(:@changed_processes, build_changed(started))
+
+        capture_io { op.respawn_changed }
+        expect(started.length).to eq(5)
+        expect(op.instance_variable_get(:@changed_processes)).to be_empty
+      end
+    end
+
     describe "update" do
       # SPEC_DIR: C:/.../openc3/openc3/spec
       before(:all) do

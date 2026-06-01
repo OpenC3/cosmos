@@ -14,6 +14,8 @@ import unittest
 from unittest.mock import *
 
 from openc3.microservices.microservice import Microservice
+from openc3.models.microservice_model import MicroserviceModel
+from openc3.utilities.bucket import Bucket
 from test.test_helper import *
 
 
@@ -46,3 +48,56 @@ class TestMicroservice(unittest.TestCase):
             mock_logger_info.assert_any_call(
                 "Microservice DEFAULT__TYPE__NAME run method returned cleanly and will now shutdown."
             )
+
+    def test_retries_transient_bucket_failures_on_startup(self):
+        os.environ["OPENC3_MICROSERVICE_NAME"] = "DEFAULT__TYPE__NAME"
+        config = {
+            "topics": [],
+            "plugin": None,
+            "secrets": [],
+            "cmd": [],
+            "target_names": [],
+            "work_dir": None,
+        }
+        self.list_calls = 0
+
+        def list_objects(*args, **kwargs):
+            self.list_calls += 1
+            if self.list_calls < 3:
+                raise RuntimeError("connection timed out")
+            return []  # Succeed on the third attempt with no files
+
+        client = Mock()
+        client.list_objects.side_effect = list_objects
+        with (
+            patch.object(MicroserviceModel, "get", return_value=config),
+            patch.object(Bucket, "get_client", return_value=client),
+            patch("openc3.microservices.microservice.atexit.register"),
+            patch("openc3.microservices.microservice.time.sleep"),
+        ):
+            Microservice("DEFAULT__TYPE__NAME", is_plugin=True)
+        self.assertEqual(self.list_calls, 3)
+
+    def test_raises_if_bucket_unreachable_past_startup_timeout(self):
+        os.environ["OPENC3_MICROSERVICE_NAME"] = "DEFAULT__TYPE__NAME"
+        os.environ["OPENC3_MICROSERVICE_STARTUP_BUCKET_TIMEOUT"] = "0"
+        config = {
+            "topics": [],
+            "plugin": None,
+            "secrets": [],
+            "cmd": [],
+            "target_names": [],
+            "work_dir": None,
+        }
+        client = Mock()
+        client.list_objects.side_effect = RuntimeError("connection refused")
+        try:
+            with (
+                patch.object(MicroserviceModel, "get", return_value=config),
+                patch.object(Bucket, "get_client", return_value=client),
+                patch("openc3.microservices.microservice.atexit.register"),
+                self.assertRaisesRegex(RuntimeError, "connection refused"),
+            ):
+                Microservice("DEFAULT__TYPE__NAME", is_plugin=True)
+        finally:
+            del os.environ["OPENC3_MICROSERVICE_STARTUP_BUCKET_TIMEOUT"]

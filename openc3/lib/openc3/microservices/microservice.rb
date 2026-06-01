@@ -155,11 +155,26 @@ module OpenC3
 
         prefix = "#{@scope}/microservices/#{@name}/"
         file_count = 0
-        client.list_objects(bucket: bucket, prefix: prefix).each do |object|
-          response_target = OpenC3.sanitize_path(File.join(@temp_dir, object.key.split(prefix)[-1]))
-          FileUtils.mkdir_p(File.dirname(response_target))
-          client.get_object(bucket: bucket, key: object.key, path: response_target)
-          file_count += 1
+        # Tolerate transient object store failures during startup. On a busy or
+        # underpowered cluster the bucket store (e.g. MinIO) can be briefly
+        # unreachable while many microservices start at once. Rather than crash
+        # and CrashLoopBackOff (which can outlast deploy timeouts), retry for a
+        # bounded time before giving up.
+        startup_timeout = (ENV['OPENC3_MICROSERVICE_STARTUP_BUCKET_TIMEOUT'] || 60).to_f
+        startup_deadline = Time.now + startup_timeout
+        begin
+          file_count = 0
+          client.list_objects(bucket: bucket, prefix: prefix).each do |object|
+            response_target = OpenC3.sanitize_path(File.join(@temp_dir, object.key.split(prefix)[-1]))
+            FileUtils.mkdir_p(File.dirname(response_target))
+            client.get_object(bucket: bucket, key: object.key, path: response_target)
+            file_count += 1
+          end
+        rescue => error
+          raise if Time.now >= startup_deadline
+          @logger.warn("Microservice #{@name} startup: bucket access failed (#{error.class}: #{error.message}); retrying for up to #{startup_timeout.to_i}s")
+          sleep(5)
+          retry
         end
 
         # Adjust @work_dir to microservice files downloaded if files and a relative path

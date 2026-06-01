@@ -1879,23 +1879,30 @@ export default {
       this.startOrGoButton = GO
       this.editor.setReadOnly(true)
     },
-    scriptStart(id) {
+    async scriptStart(id) {
       this.$emit('script-id', id)
       this.scriptId = id
-      this.cable
-        .createSubscription(
-          'RunningScriptChannel',
-          window.openc3Scope,
-          {
-            received: (data) => this.received(data),
-          },
-          {
-            id: this.scriptId,
-          },
-        )
-        .then((subscription) => {
-          this.subscription = subscription
-        })
+      // Ensure only one subscription is ever active. scriptStart can be reached
+      // again while a subscription already exists -- most notably "Connect to
+      // Running Script", which updates the route (beforeRouteUpdate) on the
+      // already-mounted component. A second subscription on the same connection
+      // streams the same key and would deliver (and the frontend would process)
+      // every event twice. Tear the old one down first.
+      if (this.subscription) {
+        await this.subscription.unsubscribe()
+        this.subscription = null
+      }
+      this.receivedEvents.length = 0 // Drop any events not yet processed
+      this.subscription = await this.cable.createSubscription(
+        'RunningScriptChannel',
+        window.openc3Scope,
+        {
+          received: (data) => this.received(data),
+        },
+        {
+          id: this.scriptId,
+        },
+      )
     },
     async scriptComplete() {
       // Make sure we process no more events
@@ -1985,9 +1992,14 @@ export default {
     },
     go() {
       // Ensure we're on the correct filename when we hit go
-      // They may have changed it using the drop down
-      this.filenameSelect = this.currentFilename
-      this.fileNameChanged(this.currentFilename)
+      // They may have changed it using the drop down.
+      // currentFilename can briefly be null when connected to a running
+      // script (the file is fetched asynchronously), so guard against it
+      // to ensure the go request is always sent.
+      if (this.currentFilename) {
+        this.filenameSelect = this.currentFilename
+        this.fileNameChanged(this.currentFilename)
+      }
       Api.post(`/script-api/running-script/${this.scriptId}/go`)
     },
     pauseOrRetry() {

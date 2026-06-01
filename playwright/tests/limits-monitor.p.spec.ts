@@ -168,6 +168,11 @@ test('saves, opens, and resets the configuration', async ({ page, utils }) => {
 })
 
 test('temporarily hides items', async ({ page, utils }) => {
+  // A hidden item only comes back when the demo next drives it out of limits (a
+  // new LIMITS_CHANGE event) -- there is no periodic out-of-limits refresh -- so
+  // both TEMP1s reappearing can take a while. Allow extra time; the default 60s
+  // test timeout otherwise cuts the reappearance poll short.
+  test.slow()
   // Since we're checking count() which is instant we need to poll
   await expect
     .poll(
@@ -207,7 +212,7 @@ test('temporarily hides items', async ({ page, utils }) => {
     .poll(
       () => page.locator('[data-test=limits-table]').getByText('TEMP1').count(),
       {
-        timeout: 60000,
+        timeout: 120000,
       },
     )
     .toBe(2)

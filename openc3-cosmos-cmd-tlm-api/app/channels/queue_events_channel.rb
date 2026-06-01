@@ -15,6 +15,8 @@ class QueueEventsChannel < ApplicationCable::Channel
   @@broadcasters = {}
 
   def subscribed
+    # Defensive: if the auth before_subscribe callback rejected us, skip work.
+    return if subscription_rejected?
     subscription_key = "queue_events_#{uuid}"
     stream_from subscription_key
     @@broadcasters[subscription_key] = QueueEventsApi.new(subscription_key, params['history_count'], scope: scope)

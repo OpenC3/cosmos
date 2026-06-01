@@ -140,5 +140,44 @@ module OpenC3
         end
       end
     end
+
+    describe "#subscribe" do
+      let(:api) do
+        api = WebSocketApi.new(
+          url: "ws://test.com/cable",
+          authentication: double("auth", token: "test_token")
+        )
+        api.instance_variable_set(:@identifier, { "channel" => "TestChannel" })
+        api
+      end
+
+      let(:mock_stream) { double("stream") }
+
+      before do
+        api.instance_variable_set(:@stream, mock_stream)
+      end
+
+      # ActionCable derives `params` (which the server uses for
+      # authenticate_subscription!) from the channel identifier JSON, NOT from
+      # the `data` field. Putting the token in `data` silently broke every CLI
+      # subscription — see commit 8cabbb341.
+      it "puts the token inside the identifier so server params[:token] resolves" do
+        written = nil
+        expect(mock_stream).to receive(:write) { |msg| written = msg }
+        api.subscribe
+        outer = JSON.parse(written)
+        expect(outer["command"]).to eq("subscribe")
+        expect(outer).not_to have_key("data")
+        identifier = JSON.parse(outer["identifier"])
+        expect(identifier["channel"]).to eq("TestChannel")
+        expect(identifier["token"]).to eq("test_token")
+      end
+
+      it "does not send a second subscribe once already subscribed" do
+        expect(mock_stream).to receive(:write).once
+        api.subscribe
+        api.subscribe
+      end
+    end
   end
 end

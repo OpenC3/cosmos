@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import contextlib
 import json
 import os
 import shutil
@@ -20,18 +21,18 @@ from datetime import datetime, timezone
 
 working_dir = os.getcwd()
 
-from openc3.environment import OPENC3_CONFIG_BUCKET
-from openc3.models.script_status_model import ScriptStatusModel
-from openc3.script import get_overrides
-from openc3.utilities.bucket import Bucket
-from openc3.utilities.extract import convert_to_value
-from openc3.utilities.logger import Logger
-from openc3.utilities.running_script import (
+from openc3.environment import OPENC3_CONFIG_BUCKET  # noqa: E402
+from openc3.models.script_status_model import ScriptStatusModel  # noqa: E402
+from openc3.script import get_overrides  # noqa: E402
+from openc3.utilities.bucket import Bucket  # noqa: E402
+from openc3.utilities.extract import convert_to_value  # noqa: E402
+from openc3.utilities.logger import Logger  # noqa: E402
+from openc3.utilities.running_script import (  # noqa: E402
     RunningScript,
     running_script_anycable_publish,
 )
-from openc3.utilities.store import EphemeralStore, Store
-from openc3.utilities.store_queued import StoreQueued
+from openc3.utilities.store import EphemeralStore, Store  # noqa: E402
+from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued  # noqa: E402
 
 
 def run_script_log(script_id, message, color="BLACK", message_log=True):
@@ -182,10 +183,16 @@ try:
                                         if isinstance(answer, str):
                                             answer = json.loads(answer)
                                         running_script.user_input = answer
-                                        run_script_log(script_id, f"Bucket file: {running_script.user_input}")
+                                        run_script_log(
+                                            script_id,
+                                            f"Bucket file: {running_script.user_input}",
+                                        )
                                     elif "open_file" in parsed_cmd["method"]:
                                         running_script.user_input = parsed_cmd["answer"]
-                                        run_script_log(script_id, f"File(s): {running_script.user_input}")
+                                        run_script_log(
+                                            script_id,
+                                            f"File(s): {running_script.user_input}",
+                                        )
                                     else:
                                         running_script.user_input = str(parsed_cmd["answer"])
                                         if parsed_cmd["method"] == "ask":
@@ -225,7 +232,8 @@ try:
                             running_script.debug(parsed_cmd["args"])  # debug() logs the output of the command
                         case "executewhilepaused":
                             run_script_log(
-                                script_id, f"INFO: executewhilepaused: {parsed_cmd['args']}"
+                                script_id,
+                                f"INFO: executewhilepaused: {parsed_cmd['args']}",
                             )  # Log what we were passed
                             running_script.execute_while_paused(*parsed_cmd["args"])
                         case _:
@@ -235,7 +243,11 @@ try:
                                 "RED",
                             )
                 else:
-                    run_script_log(script_id, f"ERROR: Script command not handled: {msg['data']}", "RED")
+                    run_script_log(
+                        script_id,
+                        f"ERROR: Script command not handled: {msg['data']}",
+                        "RED",
+                    )
 except Exception:
     tb = traceback.format_exc()
     run_script_log(script_id, tb, "RED")
@@ -275,6 +287,15 @@ finally:
                 "scope": scope,
             },
         )
+
+        # Flush the queued replay-stream writes before the process exits. The
+        # complete (and any crash) events above are published after the
+        # StoreQueued.shutdown above, so without this their replay-stream writes
+        # could be lost and a late-subscribing client would never see the script
+        # finish.
+        # best-effort; the live broadcast already went out
+        with contextlib.suppress(Exception):
+            EphemeralStoreQueued.instance().shutdown()
     finally:
         if running_script:
             running_script.stop_message_log()
