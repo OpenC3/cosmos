@@ -937,6 +937,22 @@ module OpenC3
 
         expect(model.migrate_to_uv!(scope: "DEFAULT")).to be true
       end
+
+      it "returns false and cleans up temp dir when an exception is raised" do
+        model = PluginModel.new(name: "TEST__0", needs_dependencies: true, scope: "DEFAULT")
+        model.create
+
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST__0/.uv_managed').and_return(false)
+
+        expect(GemModel).to receive(:get).with("TEST").and_return("/gems/cache/test.gem")
+
+        # Gem::Package.new raises inside the begin/rescue block
+        expect(Gem::Package).to receive(:new).and_raise(RuntimeError.new("corrupt gem"))
+        allow(Logger).to receive(:warn)
+
+        expect(model.migrate_to_uv!(scope: "DEFAULT")).to be false
+      end
     end
 
     describe "destroy, restore" do

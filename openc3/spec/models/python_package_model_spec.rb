@@ -320,6 +320,47 @@ module OpenC3
       end
     end
 
+    describe ".put" do
+      before(:each) do
+        @temp_dir = Dir.mktmpdir
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('PYTHONUSERBASE').and_return(@temp_dir)
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('UV_CACHE_DIR', PythonPackageModel::DEFAULT_UV_CACHE_DIR).and_return(@temp_dir)
+      end
+
+      after(:each) do
+        FileUtils.remove_entry_secure(@temp_dir)
+      end
+
+      it "copies .whl files to the UV uploads directory" do
+        whl_file = File.join(@temp_dir, "my_lib-1.0.0-py3-none-any.whl")
+        File.write(whl_file, "fake wheel content")
+        allow(PythonPackageModel).to receive(:install).and_return("process_name")
+
+        PythonPackageModel.put(whl_file, scope: "DEFAULT")
+
+        uploads_path = File.join(@temp_dir, PythonPackageModel::UPLOADS_DIR_NAME, "my_lib-1.0.0-py3-none-any.whl")
+        expect(File.exist?(uploads_path)).to be true
+      end
+
+      it "does not copy non-whl files to the uploads directory" do
+        tar_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
+        File.write(tar_file, "fake tarball content")
+        allow(PythonPackageModel).to receive(:install).and_return("process_name")
+
+        PythonPackageModel.put(tar_file, scope: "DEFAULT")
+
+        uploads_dir = File.join(@temp_dir, PythonPackageModel::UPLOADS_DIR_NAME)
+        expect(File.directory?(uploads_dir)).to be false
+      end
+
+      it "raises when the package file does not exist" do
+        allow(OpenC3::Logger).to receive(:error)
+        expect { PythonPackageModel.put("/nonexistent/file.whl", scope: "DEFAULT") }.to raise_error(/does not exist/)
+      end
+    end
+
     describe ".trees" do
       it "calls uv pip list for each plugin venv and returns output keyed by plugin name" do
         allow(File).to receive(:directory?).with(PythonPackageModel::PLUGIN_VENVS_DIR).and_return(true)
