@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-packetviewer",
-  "version": "7.1.2-beta0",
+  "version": "7.2.0",
   "private": true,
   "type": "module",
   "scripts": {
