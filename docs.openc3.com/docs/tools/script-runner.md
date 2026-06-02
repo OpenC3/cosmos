@@ -17,9 +17,11 @@ Script Runner is both an editor of COSMOS scripts as well as executes scripts. S
 
 {/* Image sized to match up with bullets */}
 
-<img src={require('@site/static/img/script_runner/file_menu.png').default}
-alt="File Menu"
-style={{"float": 'left', "margin-right": 50 + 'px', "height": 250 + 'px'}} />
+<img
+  src={require("@site/static/img/script_runner/file_menu.png").default}
+  alt="File Menu"
+  style={{ float: "left", "margin-right": 50 + "px", height: 250 + "px" }}
+/>
 
 - Clears the editor and filename
 - Creates a new test suite in Ruby or Python
@@ -29,8 +31,8 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 250 + 'px'}} />
 - Rename the current file
 - Downloads the current file to the browser
 - Deletes the current file (Permanently!)
-  <br/>
-  <br/>
+  <br />
+  <br />
 
 #### File Open
 
@@ -46,9 +48,11 @@ When saving a file for the first time, or using File Save As, the File Save As D
 
 {/* Image sized to match up with bullets */}
 
-<img src={require('@site/static/img/script_runner/script_menu.png').default}
-alt="Script Menu"
-style={{"float": 'left', "margin-right": 50 + 'px', "height": 330 + 'px'}} />
+<img
+  src={require("@site/static/img/script_runner/script_menu.png").default}
+  alt="Script Menu"
+  style={{ float: "left", "margin-right": 50 + "px", height: 330 + "px" }}
+/>
 
 - Display started and finished scripts
 - Show environment variables
@@ -126,7 +130,7 @@ When plugins are installed with Python dependencies, COSMOS creates an isolated 
 
 ### Automatic Venv Resolution
 
-Scripts saved under a target folder (e.g. `INST/procedures/my_script.py`) automatically use that target's plugin venv. No manual activation is needed — COSMOS sets `VIRTUAL_ENV`, `PATH`, and `PYTHONUSERBASE` on the spawned process so that `import` statements resolve against the plugin's installed packages.
+Scripts saved under a target folder (e.g. `INST2/procedures/my_script.py`) automatically use that target's plugin venv. No manual activation is needed — COSMOS sets `VIRTUAL_ENV`, `PATH`, and `PYTHONUSERBASE` on the spawned process so that `import` statements resolve against the plugin's installed packages.
 
 ### Temp Scripts and the Target Selector
 
@@ -146,7 +150,7 @@ To generate a new Suite use the File -> New Suite and then choose either Ruby or
 
 ### Group
 
-The Group class contains the methods used to run the test or operations. Any methods starting with 'script_', 'op_', or 'test_' which are implemented inside a Group class are automatically included as scripts to run. For example, in the above image, you'll notice the 'script_power_on' is in the Script drop down menu. Here's another simple example:
+The Group class contains the methods used to run the test or operations. Any methods starting with 'script*', 'op*', or 'test\_' which are implemented inside a Group class are automatically included as scripts to run. For example, in the above image, you'll notice the 'script_power_on' is in the Script drop down menu. Here's another simple example:
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
