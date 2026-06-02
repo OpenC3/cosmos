@@ -51,7 +51,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 WORKDIR /openc3/
 
 RUN mkdir /gems && chown openc3:openc3 /gems \
-    && mkdir /gems/plugin_venvs && chown openc3:openc3 /gems/plugin_venvs \
     && mkdir /plugins && chown openc3:openc3 /plugins \
     && chmod -R 777 /gems/ \
     && chmod -R 777 /plugins/ \
