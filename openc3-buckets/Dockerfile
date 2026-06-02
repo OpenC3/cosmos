@@ -37,7 +37,7 @@ RUN apk update && \
     adduser -u "${USER_ID}" -G "${IMAGE_GROUP}" -s /bin/ash -S "${IMAGE_USER}" && \
     mkdir /data && \
     chown -R "${USER_ID}":"${IMAGE_GROUP}" /data && \
-    chmod -R 775 /data
+    chmod -R 777 /data
 
 # Switch to user
 USER ${USER_ID}:${GROUP_ID}
