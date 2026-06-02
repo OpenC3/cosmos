@@ -20,7 +20,8 @@ RUN apk update && \
     # Modify the valkey user and group to be 1001
     # The default alpine redis container uses 999
     # See https://github.com/docker-library/redis/blob/master/7.2/alpine/Dockerfile
-    apk add shadow bash && \
+    apk add --no-cache shadow bash && \
+    rm -rf /var/cache/apk/* && \
     usermod -u 1001 valkey && \
     groupmod -g 1001 valkey && \
     mkdir /config
@@ -32,7 +33,7 @@ COPY --chmod=0755 ./docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN mkdir -p /data && \
     chown valkey:valkey /data && \
-    chmod -R 777 /data
+    chmod -R 775 /data
 
 EXPOSE 6380
 USER valkey
