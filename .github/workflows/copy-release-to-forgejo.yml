@@ -1,0 +1,29 @@
+# Mirrors GitHub releases to Forgejo.
+# Copy this file to .github/workflows/ in the repo and update
+# `forgejo_repo` if the Forgejo repo path isn't openc3/<repo-name>
+
+name: Copy Release to Forgejo
+
+on:
+  # Leaving this commented out because it isn't working (idk why, thx gh)
+  # AND because our release process currently has us modify the release in
+  # github after it is created/published (e.g. uploading SBOM assets). We
+  # only want this workflow to run once the release has been finalized.
+  #
+  # release:
+  #   types: [published]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'The Git tag of the release to mirror (e.g., v1.2.3)'
+        required: true
+        type: string
+
+jobs:
+  copy-release:
+    uses: OpenC3/.github/.github/workflows/copy-release-to-forgejo-reusable.yml@main
+    with:
+      # forgejo_repo: openc3/cosmos  # Uncomment and update if needed (defaults to openc3/<repo-name>)
+      tag_name: ${{ inputs.tag_name }}
+    secrets:
+      FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
