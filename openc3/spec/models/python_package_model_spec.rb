@@ -392,7 +392,7 @@ module OpenC3
         allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
         allow(PythonPackageModel).to receive(:get_setting).and_raise("no redis")
 
-        expect(pm).to receive(:spawn) do |cmd, type, detail, expires, **kw|
+        expect(pm).to receive(:spawn) do |_cmd, _type, _detail, _expires, **kw|
           expect(kw[:env]).to eq({ 'PIPINSTALL_VENV' => '/gems/plugin_venvs/demo/.venv' })
           process_double
         end
@@ -409,7 +409,7 @@ module OpenC3
         allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
         allow(PythonPackageModel).to receive(:get_setting).and_raise("no redis")
 
-        expect(pm).to receive(:spawn) do |cmd, type, detail, expires, **kw|
+        expect(pm).to receive(:spawn) do |_cmd, _type, _detail, _expires, **kw|
           expect(kw[:env]).to eq({})
           process_double
         end
@@ -426,7 +426,7 @@ module OpenC3
         allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
         allow(PythonPackageModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return("https://custom.pypi.example.com")
 
-        expect(pm).to receive(:spawn) do |cmd, type, detail, expires, **kw|
+        expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **_kw|
           expect(cmd).to include("-i")
           expect(cmd).to include("https://custom.pypi.example.com/simple")
           process_double
@@ -446,7 +446,7 @@ module OpenC3
         allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
         allow(PythonPackageModel).to receive(:get_setting).and_raise("no redis")
 
-        expect(pm).to receive(:spawn) do |cmd, type, detail, expires, **kw|
+        expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **_kw|
           expect(cmd).to include("https://env.pypi.example.com/simple")
           process_double
         end
@@ -463,7 +463,7 @@ module OpenC3
         allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
         allow(PythonPackageModel).to receive(:get_setting).and_raise("no redis")
 
-        expect(pm).to receive(:spawn) do |cmd, type, detail, expires, **kw|
+        expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **_kw|
           expect(cmd).to include("https://pypi.org/simple")
           process_double
         end
@@ -482,7 +482,7 @@ module OpenC3
         pm = double("process_manager")
         allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
 
-        expect(pm).to receive(:spawn) do |cmd, type, detail, expires, **kw|
+        expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **kw|
           expect(kw[:env]).to eq({ 'PIPINSTALL_VENV' => '/gems/plugin_venvs/demo/.venv' })
           expect(cmd).to include("my-package")
           process_double
@@ -496,7 +496,7 @@ module OpenC3
         pm = double("process_manager")
         allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
 
-        expect(pm).to receive(:spawn) do |cmd, type, detail, expires, **kw|
+        expect(pm).to receive(:spawn) do |_cmd, _type, _detail, _expires, **kw|
           expect(kw[:env]).to eq({})
           process_double
         end
