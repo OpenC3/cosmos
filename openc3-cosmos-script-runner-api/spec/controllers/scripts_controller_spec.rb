@@ -219,9 +219,9 @@ RSpec.describe ScriptsController, type: :controller do
       expect(response).to have_http_status(:not_found)
     end
 
-    it "passes pluginVenv parameter through to Script.run" do
+    it "passes pythonVenv parameter through to Script.run" do
       expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.py", nil, false, nil, "Anonymous", "anonymous", 1, nil, "/gems/plugin_venvs/demo/.venv").and_return(1)
-      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.py", pluginVenv: "/gems/plugin_venvs/demo/.venv"}
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.py", pythonVenv: "/gems/plugin_venvs/demo/.venv"}
       expect(response).to have_http_status(:ok)
     end
   end

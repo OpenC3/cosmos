@@ -202,9 +202,9 @@ class Script < OpenC3::TargetFile
     username = nil,
     line_no = nil,
     end_line_no = nil,
-    plugin_venv = nil
+    python_venv = nil
   )
-    RunningScript.spawn(scope, name, suite_runner, disconnect, environment, user_full_name, username, line_no, end_line_no, plugin_venv)
+    RunningScript.spawn(scope, name, suite_runner, disconnect, environment, user_full_name, username, line_no, end_line_no, python_venv)
   end
 
   def self.instrumented(filename, text)

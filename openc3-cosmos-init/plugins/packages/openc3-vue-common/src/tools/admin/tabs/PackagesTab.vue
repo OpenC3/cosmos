@@ -153,10 +153,10 @@
         <v-card-text>
           <v-select
             v-model="selectedPlugin"
-            :items="pluginVenvOptions"
-            label="Install into plugin venv"
+            :items="pythonVenvOptions"
+            label="Install into python venv"
             density="comfortable"
-            data-test="plugin-venv-select"
+            data-test="python-venv-select"
           />
         </v-card-text>
         <v-card-actions>
@@ -208,7 +208,7 @@ export default {
     }
   },
   computed: {
-    pluginVenvOptions() {
+    pythonVenvOptions() {
       return Object.keys(this.python).filter(
         (k) => k !== 'cached' && k !== 'shared',
       )

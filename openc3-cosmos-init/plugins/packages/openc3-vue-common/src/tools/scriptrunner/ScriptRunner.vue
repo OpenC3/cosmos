@@ -198,25 +198,25 @@
 
             <v-spacer />
             <v-tooltip
-              v-if="showPluginVenv && startOrGoButton === 'Start'"
+              v-if="showPythonVenv && startOrGoButton === 'Start'"
               :open-delay="600"
               location="top"
             >
               <template #activator="{ props: tooltipProps }">
                 <div v-bind="tooltipProps">
                   <v-select
-                    v-model="pluginVenv"
-                    :items="pluginVenvs"
+                    v-model="pythonVenv"
+                    :items="pythonVenvs"
                     item-title="name"
                     item-value="name"
-                    label="Plugin Venv"
+                    label="Python Venv"
                     density="compact"
                     variant="outlined"
                     hide-details
                     clearable
                     style="max-width: 200px; min-width: 160px"
                     class="mr-2"
-                    data-test="plugin-venv-select"
+                    data-test="python-venv-select"
                   >
                     <template #item="{ item, props: itemProps }">
                       <v-list-item
@@ -967,8 +967,8 @@ export default {
       displayCriticalCmd: false,
       editorBoxSize: 50,
       lockingEnabled: true,
-      pluginVenv: null,
-      pluginVenvs: [],
+      pythonVenv: 'system',
+      pythonVenvs: [],
     }
   },
   computed: {
@@ -1010,8 +1010,8 @@ export default {
     environmentModified: function () {
       return this.scriptEnvironment.env.length > 0
     },
-    showPluginVenv: function () {
-      if (this.pluginVenvs.length === 0) return false
+    showPythonVenv: function () {
+      if (this.pythonVenvs.length === 0) return false
       const name = this.tempFilename || this.filename
       return (
         name === NEW_FILENAME ||
@@ -1019,9 +1019,9 @@ export default {
       )
     },
     selectedVenvPath: function () {
-      if (!this.pluginVenv) return 'Select plugin Python virtual environment'
-      const entry = this.pluginVenvs.find((e) => e.name === this.pluginVenv)
-      return entry ? entry.venv : this.pluginVenv
+      if (!this.pythonVenv) return 'Select Python virtual environment'
+      const entry = this.pythonVenvs.find((e) => e.name === this.pythonVenv)
+      return entry ? entry.venv : this.pythonVenv
     },
     isLocked: function () {
       if (!this.lockingEnabled) {
@@ -1361,10 +1361,13 @@ export default {
 
     Api.get('/script-api/scripts/plugin_python_venvs')
       .then((response) => {
-        this.pluginVenvs = response.data
+        this.pythonVenvs = [
+          { name: 'system', venv: '/openc3/python/.venv' },
+          ...response.data,
+        ]
       })
       .catch(() => {
-        // Plugin venvs will remain empty
+        // Python venvs will remain empty
       })
 
     // Make NEW_FILENAME available to the template
@@ -2037,8 +2040,8 @@ export default {
       if (end_line_no !== null) {
         data['end_line_no'] = end_line_no
       }
-      if (this.pluginVenv) {
-        data['pluginVenv'] = this.pluginVenv
+      if (this.pythonVenv) {
+        data['pythonVenv'] = this.pythonVenv
       }
       Api.post(url, { data })
         .then((response) => {
@@ -2805,10 +2808,10 @@ class TestSuite(Suite):
       }
       this.filename = newFilename
       // Saved scripts resolve their venv from the file path, so clear
-      // any manually selected plugin venv. Keep it for temp scripts
+      // any manually selected python venv. Keep it for temp scripts
       // so the selection persists across runs.
       if (!newFilename.startsWith(TEMP_FOLDER)) {
-        this.pluginVenv = null
+        this.pythonVenv = null
       }
       if (!this.inline) {
         // Update the URL with the filename

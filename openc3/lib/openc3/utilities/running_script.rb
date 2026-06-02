@@ -432,7 +432,7 @@ class RunningScript
     self.class.message_log
   end
 
-  def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, user_full_name = nil, username = nil, line_no = nil, end_line_no = nil, plugin_venv = nil)
+  def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, user_full_name = nil, username = nil, line_no = nil, end_line_no = nil, python_venv = nil)
     extension = File.extname(name).to_s.downcase
     script_engine = nil
     if extension == '.py'
@@ -552,31 +552,33 @@ class RunningScript
     # Resolve the per-plugin Python venv for this script. For saved scripts
     # we look up which plugin owns the target and check whether that plugin
     # has an isolated UV venv. For temp scripts the frontend can pass a
-    # plugin_venv name directly, skipping the target lookup entirely.
-    plugin_venv_dir = nil
+    # python_venv name directly, skipping the target lookup entirely.
+    python_venv_dir = nil
     begin
       target_name = name.split('/')[0].to_s.upcase
-      if target_name == '__TEMP__' && plugin_venv
-        # Temp script with explicit plugin venv selection
-        candidate = "/gems/plugin_venvs/#{plugin_venv}/.venv"
-        plugin_venv_dir = candidate if File.directory?(candidate)
+      if target_name == '__TEMP__' && python_venv
+        # Temp script with explicit python venv selection
+        candidate = "/gems/plugin_venvs/#{python_venv}/.venv"
+        python_venv_dir = candidate if File.directory?(candidate)
       else
         target_info = OpenC3::TargetModel.get(name: target_name, scope: scope)
         if target_info && target_info['plugin']
           sanitized_name = target_info['plugin'].tr('^a-zA-Z0-9_-', '_')
           candidate = "/gems/plugin_venvs/#{sanitized_name}/.venv"
-          plugin_venv_dir = candidate if File.directory?(candidate)
+          python_venv_dir = candidate if File.directory?(candidate)
         end
       end
     rescue => e
       OpenC3::Logger.debug("Could not resolve plugin venv for script '#{name}': #{e.message}")
     end
 
-    if plugin_venv_dir
-      process.environment['VIRTUAL_ENV'] = plugin_venv_dir
-      process.environment['PATH'] = "#{plugin_venv_dir}/bin:#{ENV.fetch('PATH', '')}"
-      process.environment['PYTHONUSERBASE'] = plugin_venv_dir
+    if python_venv_dir
+      process.environment['VIRTUAL_ENV'] = python_venv_dir
+      process.environment['PATH'] = "#{python_venv_dir}/bin:#{ENV.fetch('PATH', '')}"
+      process.environment['PYTHONUSERBASE'] = python_venv_dir
     else
+      system_venv = File.dirname(ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python').chomp('/bin')
+      process.environment['VIRTUAL_ENV'] = system_venv
       process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE']
     end
     # Preserve PYTHONPATH to ensure Python can find both UV venv and user packages
