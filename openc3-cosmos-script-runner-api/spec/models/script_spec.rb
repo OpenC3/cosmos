@@ -205,6 +205,14 @@ RSpec.describe Script, type: :model do
 
       Script.run("DEFAULT", "script.rb", nil, false, nil, "User Name", "username")
     end
+
+    it "passes plugin_venv through to RunningScript.spawn" do
+      expect(RunningScript).to receive(:spawn).with(
+        "DEFAULT", "script.py", nil, false, nil, "User Name", "username", nil, nil, "/gems/plugin_venvs/demo/.venv"
+      )
+
+      Script.run("DEFAULT", "script.py", nil, false, nil, "User Name", "username", nil, nil, "/gems/plugin_venvs/demo/.venv")
+    end
   end
 
   describe "self.detect_language" do

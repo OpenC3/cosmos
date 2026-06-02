@@ -359,6 +359,150 @@ module OpenC3
         allow(OpenC3::Logger).to receive(:error)
         expect { PythonPackageModel.put("/nonexistent/file.whl", scope: "DEFAULT") }.to raise_error(/does not exist/)
       end
+
+      it "forwards plugin parameter to install" do
+        whl_file = File.join(@temp_dir, "my_lib-1.0.0-py3-none-any.whl")
+        File.write(whl_file, "fake wheel content")
+        expect(PythonPackageModel).to receive(:install).with(anything, scope: "DEFAULT", plugin: "demo").and_return("process_name")
+
+        PythonPackageModel.put(whl_file, scope: "DEFAULT", plugin: "demo")
+      end
+    end
+
+    describe ".install" do
+      before(:each) do
+        @temp_dir = Dir.mktmpdir
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('PYTHONUSERBASE').and_return(@temp_dir)
+        allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
+        allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
+        allow(OpenC3::Logger).to receive(:info)
+      end
+
+      after(:each) do
+        FileUtils.remove_entry_secure(@temp_dir)
+      end
+
+      it "sets PIPINSTALL_VENV when plugin is provided" do
+        pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
+        File.write(pkg_file, "fake")
+
+        process_double = double("process", name: "process_123")
+        pm = double("process_manager")
+        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
+        allow(PythonPackageModel).to receive(:get_setting).and_raise("no redis")
+
+        expect(pm).to receive(:spawn) do |cmd, type, detail, expires, **kw|
+          expect(kw[:env]).to eq({ 'PIPINSTALL_VENV' => '/gems/plugin_venvs/demo/.venv' })
+          process_double
+        end
+
+        PythonPackageModel.install(pkg_file, scope: "DEFAULT", plugin: "demo")
+      end
+
+      it "passes empty env hash when plugin is nil" do
+        pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
+        File.write(pkg_file, "fake")
+
+        process_double = double("process", name: "process_123")
+        pm = double("process_manager")
+        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
+        allow(PythonPackageModel).to receive(:get_setting).and_raise("no redis")
+
+        expect(pm).to receive(:spawn) do |cmd, type, detail, expires, **kw|
+          expect(kw[:env]).to eq({})
+          process_double
+        end
+
+        PythonPackageModel.install(pkg_file, scope: "DEFAULT")
+      end
+
+      it "resolves pypi_url from get_setting" do
+        pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
+        File.write(pkg_file, "fake")
+
+        process_double = double("process", name: "process_123")
+        pm = double("process_manager")
+        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
+        allow(PythonPackageModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return("https://custom.pypi.example.com")
+
+        expect(pm).to receive(:spawn) do |cmd, type, detail, expires, **kw|
+          expect(cmd).to include("-i")
+          expect(cmd).to include("https://custom.pypi.example.com/simple")
+          process_double
+        end
+
+        PythonPackageModel.install(pkg_file, scope: "DEFAULT")
+      end
+
+      it "falls back to ENV PYPI_URL when get_setting raises" do
+        pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
+        File.write(pkg_file, "fake")
+
+        allow(ENV).to receive(:[]).with('PYPI_URL').and_return("https://env.pypi.example.com")
+
+        process_double = double("process", name: "process_123")
+        pm = double("process_manager")
+        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
+        allow(PythonPackageModel).to receive(:get_setting).and_raise("no redis")
+
+        expect(pm).to receive(:spawn) do |cmd, type, detail, expires, **kw|
+          expect(cmd).to include("https://env.pypi.example.com/simple")
+          process_double
+        end
+
+        PythonPackageModel.install(pkg_file, scope: "DEFAULT")
+      end
+
+      it "falls back to pypi.org/simple when get_setting raises and ENV is nil" do
+        pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
+        File.write(pkg_file, "fake")
+
+        process_double = double("process", name: "process_123")
+        pm = double("process_manager")
+        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
+        allow(PythonPackageModel).to receive(:get_setting).and_raise("no redis")
+
+        expect(pm).to receive(:spawn) do |cmd, type, detail, expires, **kw|
+          expect(cmd).to include("https://pypi.org/simple")
+          process_double
+        end
+
+        PythonPackageModel.install(pkg_file, scope: "DEFAULT")
+      end
+    end
+
+    describe ".destroy" do
+      before(:each) do
+        allow(OpenC3::Logger).to receive(:info)
+      end
+
+      it "sets PIPINSTALL_VENV when plugin is provided" do
+        process_double = double("process", name: "process_123")
+        pm = double("process_manager")
+        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
+
+        expect(pm).to receive(:spawn) do |cmd, type, detail, expires, **kw|
+          expect(kw[:env]).to eq({ 'PIPINSTALL_VENV' => '/gems/plugin_venvs/demo/.venv' })
+          expect(cmd).to include("my-package")
+          process_double
+        end
+
+        PythonPackageModel.destroy("my-package-1.0.0", scope: "DEFAULT", plugin: "demo")
+      end
+
+      it "passes empty env hash when plugin is nil" do
+        process_double = double("process", name: "process_123")
+        pm = double("process_manager")
+        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
+
+        expect(pm).to receive(:spawn) do |cmd, type, detail, expires, **kw|
+          expect(kw[:env]).to eq({})
+          process_double
+        end
+
+        PythonPackageModel.destroy("my-package-1.0.0", scope: "DEFAULT")
+      end
     end
 
     describe ".trees" do

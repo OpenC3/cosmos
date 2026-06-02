@@ -150,7 +150,7 @@ To generate a new Suite use the File -> New Suite and then choose either Ruby or
 
 ### Group
 
-The Group class contains the methods used to run the test or operations. Any methods starting with 'script*', 'op*', or 'test\_' which are implemented inside a Group class are automatically included as scripts to run. For example, in the above image, you'll notice the 'script_power_on' is in the Script drop down menu. Here's another simple example:
+The Group class contains the methods used to run the test or operations. Any methods starting with `script_`, `op_`, or `test_` which are implemented inside a Group class are automatically included as scripts to run. For example, in the above image, you'll notice the 'script_power_on' is in the Script drop down menu. Here's another simple example:
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
