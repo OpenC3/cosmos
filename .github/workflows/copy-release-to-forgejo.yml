@@ -4,6 +4,10 @@
 
 name: Copy Release to Forgejo
 
+permissions:
+  contents: read
+  packages: read
+
 on:
   # Leaving this commented out because it isn't working (idk why, thx gh)
   # AND because our release process currently has us modify the release in
