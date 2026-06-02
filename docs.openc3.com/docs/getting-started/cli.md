@@ -31,6 +31,7 @@ Usage:
   cli xtce_converter                # Convert to and from the XTCE format. Run with --help for more info.
   cli cstol_converter               # Converts CSTOL files (.prc) to COSMOS. Run with --help for more info.
   cli setpassword                   # Set the initial password from OPENC3_API_PASSWORD env var
+  cli migratetouv PLUGIN_NAME SCOPE # Migrate plugin to per-plugin UV virtual environment
 ```
 
 :::note[seccomp profile]
@@ -370,6 +371,22 @@ Password set successfully.
 :::note OPENC3_API_PASSWORD
 The `OPENC3_API_PASSWORD` environment variable must be set (typically in your `.env` file). The password is read from this variable, not from a command line argument, to avoid exposing it in shell history.
 :::
+
+## Migrate to UV
+
+Migrates an installed plugin from the shared Python virtual environment to a per-plugin UV virtual environment. This creates an isolated Python environment for the plugin with its own dependencies, preventing version conflicts between plugins.
+
+The `PLUGIN_NAME` argument is the full installed plugin name (including the timestamp suffix), not a `.gem` file path. Use `cli list` to find the installed plugin name. The `SCOPE` argument is optional and defaults to `DEFAULT`.
+
+```bash
+% openc3.sh cli list
+openc3-cosmos-demo-7.2.0.gem__20260101120000
+openc3-cosmos-my-plugin-1.0.0.gem__20260501150000
+% openc3.sh cli migratetouv openc3-cosmos-my-plugin-1.0.0.gem__20260501150000
+Successfully migrated plugin 'openc3-cosmos-my-plugin-1.0.0.gem__20260501150000' to per-plugin UV venv
+```
+
+If the plugin has no Python dependencies (`pyproject.toml` or `requirements.txt`), the command reports success without creating a venv. If the plugin is already migrated, the command is a no-op.
 
 ## CSTOL Converter
 
