@@ -34,7 +34,7 @@ RUN microdnf update -y && \
     chmod +x /usr/bin/docker-entrypoint.sh && \
     mkdir -p /data && \
     chown 1001:1001 /data && \
-    chmod -R 775 /data
+    chmod -R 777 /data
 
 USER 1001
 EXPOSE 9000
