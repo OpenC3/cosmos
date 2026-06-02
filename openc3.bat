@@ -157,13 +157,24 @@ GOTO :EOF
     exit /b 1
   )
   CALL scripts\windows\openc3_setup || exit /b
-  if "%OPENC3_ENTERPRISE%" == "1" (
-    docker compose -f compose.yaml -f compose-build.yaml build openc3-enterprise-gem || exit /b
-  ) else (
+  if not "%OPENC3_ENTERPRISE%" == "1" GOTO :build_core
+  REM Enterprise: check if core base images need to be built first
+  CALL :check_core_images
+  if !ERRORLEVEL! neq 0 (
+    @echo Building core base images before enterprise build...
     docker compose -f compose.yaml -f compose-build.yaml build openc3-ruby || exit /b
     docker compose -f compose.yaml -f compose-build.yaml build openc3-base || exit /b
     docker compose -f compose.yaml -f compose-build.yaml build openc3-node || exit /b
+  ) else (
+    @echo Core base images found locally, skipping core build
   )
+  docker compose -f compose.yaml -f compose-build.yaml build openc3-enterprise-gem || exit /b
+  GOTO :build_all
+:build_core
+  docker compose -f compose.yaml -f compose-build.yaml build openc3-ruby || exit /b
+  docker compose -f compose.yaml -f compose-build.yaml build openc3-base || exit /b
+  docker compose -f compose.yaml -f compose-build.yaml build openc3-node || exit /b
+:build_all
   docker compose -f compose.yaml -f compose-build.yaml build || exit /b
   @echo off
 GOTO :EOF
@@ -208,6 +219,26 @@ GOTO :EOF
   CALL scripts\windows\openc3_util %args% || exit /b
   @echo off
 GOTO :EOF
+
+:check_core_images
+  REM Check if core base images (openc3-ruby, openc3-base, openc3-node) exist locally.
+  REM Read image naming variables from env file if not already set.
+  REM Returns exit code 0 if all images exist, 1 if any are missing.
+  if not defined OPENC3_REGISTRY FOR /F "tokens=1,* delims==" %%a in ('findstr /B /C:"OPENC3_REGISTRY=" "%~dp0.env" 2^>nul') do set "OPENC3_REGISTRY=%%b"
+  if not defined OPENC3_NAMESPACE FOR /F "tokens=1,* delims==" %%a in ('findstr /B /C:"OPENC3_NAMESPACE=" "%~dp0.env" 2^>nul') do set "OPENC3_NAMESPACE=%%b"
+  if not defined OPENC3_TAG FOR /F "tokens=1,* delims==" %%a in ('findstr /B /C:"OPENC3_TAG=" "%~dp0.env" 2^>nul') do set "OPENC3_TAG=%%b"
+  if not defined OPENC3_REGISTRY set "OPENC3_REGISTRY=docker.io"
+  if not defined OPENC3_NAMESPACE set "OPENC3_NAMESPACE=openc3inc"
+  if not defined OPENC3_TAG set "OPENC3_TAG=latest"
+  set _CORE_MISSING=0
+  for %%I in (openc3-ruby openc3-base openc3-node) do (
+    docker image inspect "!OPENC3_REGISTRY!/!OPENC3_NAMESPACE!/%%I:!OPENC3_TAG!" >nul 2>&1
+    if !ERRORLEVEL! neq 0 (
+      @echo Core image not found: %%I:!OPENC3_TAG!
+      set _CORE_MISSING=1
+    )
+  )
+  exit /b !_CORE_MISSING!
 
 :usage
   if "%OPENC3_DEVEL%" == "1" (

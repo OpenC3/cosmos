@@ -232,6 +232,39 @@ check_root() {
   fi
 }
 
+# Check if a Docker image exists locally
+image_exists() {
+  docker image inspect "$1" &> /dev/null
+}
+
+# Check if core base images (openc3-ruby, openc3-base, openc3-node) exist locally.
+# Sources .env to resolve the image registry/namespace/tag, then inspects each image.
+# Usage: check_core_images [suffix]
+#   suffix: optional image name suffix (e.g., "-ubi")
+# Returns 0 if all core images exist, 1 if any are missing.
+check_core_images() {
+  local suffix="${1:-}"
+  local env_file="$(dirname -- "$0")/${ENV_FILE:-.env}"
+  local registry="${OPENC3_REGISTRY}"
+  local namespace="${OPENC3_NAMESPACE}"
+  local tag="${OPENC3_TAG}"
+  # Source env file if variables aren't already set
+  if [[ -z "$registry" || -z "$namespace" || -z "$tag" ]] && [[ -f "$env_file" ]]; then
+    eval "$(grep -E '^OPENC3_(REGISTRY|NAMESPACE|TAG)=' "$env_file")"
+    registry="${OPENC3_REGISTRY:-docker.io}"
+    namespace="${OPENC3_NAMESPACE:-openc3inc}"
+    tag="${OPENC3_TAG:-latest}"
+  fi
+  local missing=0
+  for img in openc3-ruby openc3-base openc3-node; do
+    if ! image_exists "${registry}/${namespace}/${img}${suffix}:${tag}"; then
+      echo "Core image not found: ${img}${suffix}:${tag}"
+      missing=1
+    fi
+  done
+  return $missing
+}
+
 case $1 in
   cli )
     if [[ "$2" == "--wrapper-help" ]] || [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -491,8 +524,10 @@ case $1 in
       if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
         echo "This command:"
         echo "  1. Runs setup to download certificates"
-        echo "  2. Builds openc3-enterprise-gem image"
-        echo "  3. Builds all remaining service containers"
+        echo "  2. Checks if core base images exist (openc3-ruby, openc3-base, openc3-node)"
+        echo "     and builds them automatically if missing"
+        echo "  3. Builds openc3-enterprise-gem image"
+        echo "  4. Builds all remaining service containers"
       else
         echo "This command:"
         echo "  1. Runs setup to download certificates"
@@ -522,6 +557,15 @@ case $1 in
     # Collect any additional build flags from arguments (skip first arg which is "build")
     BUILD_FLAGS="${@:2}"
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
+      # Check if core base images need to be built before building enterprise
+      if ! check_core_images; then
+        echo "Building core base images before enterprise build..."
+        ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-ruby
+        ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-base
+        ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-node
+      else
+        echo "Core base images found locally, skipping core build"
+      fi
       ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-enterprise-gem
     else
       ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-ruby
@@ -563,11 +607,21 @@ case $1 in
       echo "  PYPI_URL                 PyPI mirror URL (for air-gapped)"
       echo "  NPM_URL                  NPM registry URL (for air-gapped)"
       echo ""
-      echo "This command:"
-      echo "  1. Sources environment file for configuration"
-      echo "  2. Copies CA certificates if available"
-      echo "  3. Runs openc3_setup.sh"
-      echo "  4. Builds UBI-based containers"
+      if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
+        echo "This command:"
+        echo "  1. Sources environment file for configuration"
+        echo "  2. Copies CA certificates if available"
+        echo "  3. Runs openc3_setup.sh"
+        echo "  4. Checks if core UBI base images exist (openc3-ruby-ubi, openc3-base-ubi,"
+        echo "     openc3-node-ubi) and builds them automatically if missing"
+        echo "  5. Builds UBI-based containers"
+      else
+        echo "This command:"
+        echo "  1. Sources environment file for configuration"
+        echo "  2. Copies CA certificates if available"
+        echo "  3. Runs openc3_setup.sh"
+        echo "  4. Builds UBI-based containers"
+      fi
       echo ""
       echo "Examples:"
       echo "  $0 build-ubi                              # Build all images"
@@ -589,6 +643,15 @@ case $1 in
       cp /etc/ssl/certs/ca-bundle.crt "$(dirname -- "$0")/cacert.pem"
     fi
     "$(find_script openc3_setup.sh)"
+    if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
+      # Check if core UBI base images need to be built before building enterprise
+      if ! check_core_images "-ubi"; then
+        echo "Building core UBI base images before enterprise build..."
+        "$(find_script openc3_build_ubi.sh)" openc3-ruby-ubi openc3-base-ubi openc3-node-ubi
+      else
+        echo "Core UBI base images found locally, skipping core build"
+      fi
+    fi
     # Pass through any additional arguments (image names) to openc3_build_ubi.sh
     "$(find_script openc3_build_ubi.sh)" "${@:2}"
     set +a
