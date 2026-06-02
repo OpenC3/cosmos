@@ -605,12 +605,18 @@ class LoggedStreamingThread < StreamingThread
       selects = [OpenC3::QuestDBClient::TIMESTAMP_SELECT]
       column_mapping = {} # Maps result column name to [item_key, reduced_type, value_type]
 
+      # CONVERTED requests need the table's column types so we can fall back to the raw
+      # column when an item has no converted (__C) column (e.g. it only has a format string)
+      # or a non-numeric one (e.g. a states column stored as VARCHAR).
+      need_converted = items_to_query.any? { |_, info| info[:value_types].include?(:CONVERTED) }
+      existing_columns = need_converted ? OpenC3::QuestDBClient.table_columns(table_name, db_shard: db_shard) : nil
+
       items_to_query.each do |item_name, info|
         safe_item_name = OpenC3::QuestDBClient.sanitize_column_name(item_name)
 
         info[:value_types].each do |value_type|
           next unless value_type == :RAW || value_type == :CONVERTED
-          agg_selects, agg_mapping = OpenC3::QuestDBClient.build_aggregation_selects(safe_item_name, value_type, item_name: item_name)
+          agg_selects, agg_mapping = OpenC3::QuestDBClient.build_aggregation_selects(safe_item_name, value_type, item_name: item_name, existing_columns: existing_columns)
           selects.concat(agg_selects)
           column_mapping.merge!(agg_mapping)
         end
@@ -843,7 +849,10 @@ class LoggedStreamingThread < StreamingThread
       pkt_type = (first_object.cmd_or_tlm == :CMD) ? :CMD : :TLM
       packet_def = OpenC3::QuestDBClient.fetch_packet_def(first_object.target_name, first_object.packet_name, type: pkt_type, scope: @scope)
 
-      selects, has_items = OpenC3::QuestDBClient.build_packet_reduced_selects(packet_def, value_type)
+      # CONVERTED requests need the table's column types to fall back to raw columns for
+      # items that have no converted (__C) column or a non-numeric one.
+      existing_columns = (value_type == :CONVERTED) ? OpenC3::QuestDBClient.table_columns(table_name, db_shard: db_shard) : nil
+      selects, has_items = OpenC3::QuestDBClient.build_packet_reduced_selects(packet_def, value_type, existing_columns: existing_columns)
       unless has_items
         OpenC3::Logger.warn("No numeric items found for reduced packet query on #{table_name}")
         next

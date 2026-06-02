@@ -511,9 +511,14 @@ module OpenC3
     # @param value_type [Symbol] :RAW or :CONVERTED
     # @param item_name [String, nil] Original (unsanitized) item name for mapping values.
     #   Defaults to safe_item_name if not provided.
+    # @param existing_columns [Hash{String=>String}, nil] Map of column name to QuestDB
+    #   column type for the table. When provided and a converted (__C) column is absent or
+    #   non-numeric (e.g. a states column stored as VARCHAR), CONVERTED aggregation falls
+    #   back to the raw column (mirrors the non-reduced read path). When nil, no fallback
+    #   check is performed.
     # @return [Array<String>, Hash] Two-element array: [select_fragments, column_mapping]
     #   column_mapping maps result column alias to [item_name, reduced_type, value_type]
-    def self.build_aggregation_selects(safe_item_name, value_type, item_name: nil)
+    def self.build_aggregation_selects(safe_item_name, value_type, item_name: nil, existing_columns: nil)
       item_name ||= safe_item_name
       selects = []
       mapping = {}
@@ -526,7 +531,17 @@ module OpenC3
           mapping[alias_name] = [item_name, reduced_type, :RAW]
         end
       when :CONVERTED
-        col = "#{safe_item_name}__C"
+        # The converted (__C) column only exists, and is only numerically aggregatable, when
+        # the item has a numeric conversion. When it is absent (e.g. POSPROGRESS, which only
+        # has a raw and __F column) or non-numeric (e.g. a states column stored as VARCHAR),
+        # aggregate the raw column instead, matching the CONVERTED fallback in
+        # decode_packet_row/JsonPacket#read.
+        converted_col = "#{safe_item_name}__C"
+        col = if existing_columns.nil? || numeric_column_type?(existing_columns[converted_col])
+          converted_col
+        else
+          safe_item_name
+        end
         { 'CN' => :MIN, 'CX' => :MAX, 'CA' => :AVG, 'CS' => :STDDEV }.each do |suffix, reduced_type|
           alias_name = "#{safe_item_name}__#{suffix}"
           selects << "#{reduced_type.to_s.downcase}(\"#{col}\") as \"#{alias_name}\""
@@ -544,9 +559,11 @@ module OpenC3
     #
     # @param packet_def [Hash, nil] Packet definition from TargetModel.packet
     # @param value_type [Symbol] :RAW or :CONVERTED
+    # @param existing_columns [Set<String>, nil] Column names that actually exist in the
+    #   table, used for CONVERTED-to-raw fallback (see build_aggregation_selects).
     # @return [Array<String>, Boolean] Two-element array: [select_fragments, has_numeric_items]
     #   select_fragments includes TIMESTAMP_SELECT as the first element.
-    def self.build_packet_reduced_selects(packet_def, value_type)
+    def self.build_packet_reduced_selects(packet_def, value_type, existing_columns: nil)
       selects = [TIMESTAMP_SELECT]
       has_items = false
       return [selects, false] unless packet_def && packet_def['items']
@@ -558,7 +575,7 @@ module OpenC3
         next unless value_type == :RAW || value_type == :CONVERTED
 
         safe_name = sanitize_column_name(item['name'])
-        agg_selects, _mapping = build_aggregation_selects(safe_name, value_type)
+        agg_selects, _mapping = build_aggregation_selects(safe_name, value_type, existing_columns: existing_columns)
         selects.concat(agg_selects)
         has_items = true
       end
@@ -613,6 +630,36 @@ module OpenC3
       result && result.ntuples > 0
     rescue RuntimeError
       false
+    end
+
+    # QuestDB column types that can be aggregated with min/max/avg/stddev.
+    # Used by reduced queries to decide whether a converted (__C) column is
+    # numeric or must fall back to the raw column (e.g. states stored as VARCHAR).
+    NUMERIC_COLUMN_TYPES = Set.new(['BYTE', 'SHORT', 'INT', 'LONG', 'FLOAT', 'DOUBLE']).freeze
+
+    # Return true if the given QuestDB column type can be numerically aggregated.
+    #
+    # @param column_type [String, nil] QuestDB column type (e.g. 'DOUBLE', 'VARCHAR')
+    # @return [Boolean]
+    def self.numeric_column_type?(column_type)
+      !column_type.nil? && NUMERIC_COLUMN_TYPES.include?(column_type.to_s.upcase)
+    end
+
+    # Return a hash mapping column name to QuestDB column type for a table.
+    # Used by reduced queries to fall back to raw columns when a converted
+    # (__C) column was never created (e.g. items with no read_conversion) or
+    # is non-numeric (e.g. states stored as VARCHAR).
+    #
+    # @param table_name [String] Sanitized table name
+    # @return [Hash{String=>String}, nil] { column_name => column_type }, or nil if
+    #   the table does not exist or the schema cannot be queried
+    def self.table_columns(table_name, db_shard: 0)
+      result = query_with_retry("SHOW COLUMNS FROM \"#{table_name}\"", max_retries: 1, label: "show columns", db_shard: db_shard)
+      return nil unless result
+      # SHOW COLUMNS returns rows of [column, type, ...]
+      result.values.each_with_object({}) { |row, hash| hash[row[0]] = row[1] }
+    rescue StandardError
+      nil
     end
 
     # Execute a paginated TSDB query, yielding each non-empty PG::Result page.

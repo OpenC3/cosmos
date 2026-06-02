@@ -45,7 +45,13 @@ class StreamingChannel < ApplicationCable::Channel
     subscription_key = "streaming_#{uuid}"
     if validate_data(data)
       begin
-        @@broadcasters[subscription_key].add(data)
+        # Nil-guard the broadcaster: it only exists between `subscribed` (which
+        # skips creation when the auth callback rejected us) and `unsubscribed`.
+        # A perform that races a rejected/torn-down subscription would otherwise
+        # raise NoMethodError here, get rescued below, and reject_subscription —
+        # killing every panel on the connection. A no-op is the correct response;
+        # the client re-subscribes and replays its adds.
+        @@broadcasters[subscription_key]&.add(data)
       rescue OpenC3::AuthError, OpenC3::ForbiddenError
         transmit({ "error" => "unauthorized" })
         reject() # Sets the rejected state on the connection
@@ -65,7 +71,10 @@ class StreamingChannel < ApplicationCable::Channel
     subscription_key = "streaming_#{uuid}"
     if validate_data(data)
       begin
-        @@broadcasters[subscription_key].remove(data)
+        # Nil-guard the broadcaster (see `add`): a `remove` that races a
+        # rejected/torn-down subscription must be a harmless no-op, not a
+        # NoMethodError that reject_subscription()s every panel on the connection.
+        @@broadcasters[subscription_key]&.remove(data)
       rescue OpenC3::AuthError, OpenC3::ForbiddenError
         transmit({ "error" => "unauthorized" })
         reject() # Sets the rejected state on the connection
