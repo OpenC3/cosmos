@@ -1,7 +1,7 @@
 SCREEN AUTO AUTO 1.0
 
 VERTICAL
-  TITLE "INST Rocket Body Ring"
+  TITLE "INST2 Rocket Body Ring"
 
   CANVAS 600 660
     # Dark background to match the Enterprise themes
