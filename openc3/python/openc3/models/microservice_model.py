@@ -71,6 +71,7 @@ class MicroserviceModel(Model):
         shard=0,
         db_shard=0,
         enabled: bool = True,
+        bridge_name: str = None,
         scope: str = OPENC3_SCOPE,
     ):
         parts = name.split("__")
@@ -118,6 +119,7 @@ class MicroserviceModel(Model):
         self.enabled = enabled
         if self.enabled is None:
             self.enabled = True
+        self.bridge_name = bridge_name
         self.bucket = Bucket.get_client()
 
     def as_json(self):
@@ -143,4 +145,5 @@ class MicroserviceModel(Model):
             "shard": self.shard,
             "db_shard": self.db_shard,
             "enabled": self.enabled,
+            "bridge_name": self.bridge_name,
         }

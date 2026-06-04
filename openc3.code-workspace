@@ -15,6 +15,9 @@
     {
       "path": "../cosmos-enterprise-plugins",
     },
+    {
+      "path": "../port-tunnel",
+    },
   ],
   "settings": {
     "rubyLsp.bundleGemfile": "openc3/Gemfile",
