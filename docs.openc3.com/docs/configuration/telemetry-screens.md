@@ -1741,7 +1741,7 @@ Canvas Widgets are used to draw custom displays into telemetry screens. The canv
 ### CANVAS
 **Layout widget for the other canvas widgets**
 
-All canvas widgets must be enclosed within a CANVAS widget.
+All canvas widgets must be enclosed within a CANVAS widget. The canvas background defaults to white. Use SETTING BACKCOLOR to set a different background color.
 
 :::warning
 The canvas coordinate frame places (0,0) in the upper-left corner of the canvas.
@@ -1751,6 +1751,14 @@ The canvas coordinate frame places (0,0) in the upper-left corner of the canvas.
 |-----------|-------------|----------|
 | Width | Width of the canvas | True |
 | Height | Height of the canvas | True |
+
+Example Usage:
+```cosmos
+CANVAS 100 50
+  SETTING BACKCOLOR 17 21 28
+  CANVASLABEL 5 30 "Dark canvas" 18 white
+END
+```
 
 ### CANVASLABEL
 **Draws text onto the canvas**
