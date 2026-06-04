@@ -43,7 +43,6 @@ module OpenC3
     attr_accessor :shard
     attr_accessor :db_shard
     attr_accessor :enabled
-    attr_accessor :bridge_name
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -108,7 +107,6 @@ module OpenC3
       shard: 0,
       db_shard: 0,
       enabled: true,
-      bridge_name: nil,
       scope:
     )
       parts = name.split("__")
@@ -139,7 +137,6 @@ module OpenC3
       @db_shard = db_shard.to_i # to_i to handle nil
       @enabled = enabled
       @enabled = true if @enabled.nil?
-      @bridge_name = bridge_name
       @bucket = Bucket.getClient()
     end
 
@@ -166,7 +163,6 @@ module OpenC3
         'shard' => @shard,
         'db_shard' => @db_shard,
         'enabled' => @enabled,
-        'bridge_name' => @bridge_name,
       }
     end
 
@@ -250,9 +246,6 @@ module OpenC3
       when 'STOPPED'
         parser.verify_num_parameters(0, 0, "#{keyword}")
         @enabled = false
-      when 'BRIDGE'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Bridge Name>")
-        @bridge_name = parameters[0]
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Microservice: #{keyword} #{parameters.join(" ")}")
       end
