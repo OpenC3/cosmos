@@ -1579,7 +1579,10 @@ Canvas Widgets:
   collection:
     CANVAS:
       summary: Layout widget for the other canvas widgets
-      description: All canvas widgets must be enclosed within a CANVAS widget.
+      description:
+        All canvas widgets must be enclosed within a CANVAS widget.
+        The canvas background defaults to white. Use SETTING BACKCOLOR to set a
+        different background color.
       warning: The canvas coordinate frame places (0,0) in the upper-left corner of the canvas.
       parameters:
         - name: Width
@@ -1590,6 +1593,11 @@ Canvas Widgets:
           required: true
           description: Height of the canvas
           values: .+
+      example: |
+        CANVAS 100 50
+          SETTING BACKCOLOR 17 21 28
+          CANVASLABEL 5 30 "Dark canvas" 18 white
+        END
     CANVASLABEL:
       summary: Draws text onto the canvas
       parameters:

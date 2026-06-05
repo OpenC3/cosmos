@@ -69,7 +69,7 @@ class HttpAccessor(Accessor):
                 query_name = item.key
             queries = self.packet.extra.get("HTTP_QUERIES")
             if queries:
-                return queries[query_name]
+                return queries.get(query_name)
             else:
                 return None
 
@@ -82,7 +82,7 @@ class HttpAccessor(Accessor):
                 header_name = item.key
             headers = self.packet.extra.get("HTTP_HEADERS")
             if headers:
-                return headers[header_name]
+                return headers.get(header_name)
             else:
                 return None
 

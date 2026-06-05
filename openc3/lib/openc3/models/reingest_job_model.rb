@@ -1,4 +1,4 @@
-# encoding: ascii-8bit
+# encoding: utf-8
 
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
