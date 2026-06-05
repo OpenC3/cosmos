@@ -557,7 +557,8 @@ class RunningScript
     begin
       target_name = name.split('/')[0].to_s.upcase
       if target_name == '__TEMP__' && python_venv
-        candidate = "/gems/plugin_venvs/#{python_venv}/.venv"
+        sanitized_venv = python_venv.tr('^a-zA-Z0-9_-', '_')
+        candidate = "/gems/plugin_venvs/#{sanitized_venv}/.venv"
         python_venv_dir = candidate if File.directory?(candidate)
       else
         target_info = OpenC3::TargetModel.get(name: target_name, scope: scope)
