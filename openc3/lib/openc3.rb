@@ -19,7 +19,12 @@ require 'resolv-replace'
 # Set default encodings
 saved_verbose = $VERBOSE; $VERBOSE = nil
 Encoding.default_external = Encoding::ASCII_8BIT
-Encoding.default_internal = Encoding::ASCII_8BIT
+# NOTE: Do NOT set Encoding.default_internal = ASCII_8BIT. Doing so makes every
+# read that specifies an encoding (e.g. File.read(path, encoding: 'UTF-8'))
+# transcode into ASCII-8BIT, which raises Encoding::UndefinedConversionError on
+# any non-ASCII byte. On Ruby 3.4 this breaks bootsnap's compile cache (it reads
+# source as UTF-8 to work around Ruby bug #22023) for any file containing
+# non-ASCII characters, including stdlib files like 'matrix'. Leave it nil.
 $VERBOSE = saved_verbose
 
 # Add OpenC3 bin folder to PATH

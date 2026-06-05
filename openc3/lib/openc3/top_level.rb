@@ -108,7 +108,7 @@ module OpenC3
     # This method is taken directly from the Rails source:
     #   https://api.rubyonrails.org/v5.2/classes/ActiveStorage/Filename.html#method-i-sanitized
     # NOTE: I removed the '/' character because we have to allow this in order to traverse the path
-    sanitized = path.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "�").strip.tr("\u{202E}%$|:;\t\r\n\\", "-").gsub('..', '-')
+    sanitized = path.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "\u{FFFD}").strip.tr("\u{202E}%$|:;\t\r\n\\", "-").gsub('..', '-')
     if sanitized != path
       raise StorageError, "Invalid path: #{path}"
     end
