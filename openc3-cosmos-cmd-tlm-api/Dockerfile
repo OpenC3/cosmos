@@ -13,7 +13,6 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./ ./
 USER root
 
 ENV SKIP_DEV_GEMS=1
-ARG OPENC3_PATH
 RUN bundle config set --local without 'development test' && \
     bundle install --quiet && \
     rm -rf /usr/lib/ruby/gems/*/cache/* /var/cache/apk/* /tmp/* /var/tmp/*
