@@ -182,6 +182,12 @@ EOF
   fi
   cat >&2 << EOF
 CLEANUP:
+  destroy [OPTIONS]     Remove $COSMOS_NAME Docker images (keeps other images)
+                        Only removes images for the current installation
+                        (Core or Enterprise). Does not affect the other.
+                        Options:
+                          force  - Skip confirmation prompt
+
   cleanup [OPTIONS]     Remove Docker volumes and data
                         WARNING: This deletes all $COSMOS_NAME data!
                         Options:
@@ -509,6 +515,74 @@ case $1 in
       ls | grep -xv "README.md" | xargs rm -r
       cd ../..
     fi
+    ;;
+  destroy )
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
+      echo "Usage: $0 destroy [force]"
+      echo ""
+      echo "Remove all $COSMOS_NAME Docker images."
+      echo ""
+      echo "This removes only images belonging to the current $COSMOS_NAME installation."
+      echo "If you are running Enterprise, only Enterprise images are removed."
+      echo "If you are running Core, only Core images are removed."
+      echo "This allows you to switch between Core and Enterprise without rebuilding."
+      echo ""
+      echo "After removing images, dangling images are pruned automatically."
+      echo ""
+      echo "Arguments:"
+      echo "  force    Skip confirmation prompt"
+      echo ""
+      echo "Examples:"
+      echo "  $0 destroy              # Remove images (with confirmation)"
+      echo "  $0 destroy force        # Remove images (no confirmation)"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
+    # Build the list of compose files to query
+    COMPOSE_FILES="-f $(dirname -- "$0")/compose.yaml"
+    if [[ "$OPENC3_DEVEL" -eq 1 ]] && [[ -f "$(dirname -- "$0")/compose-build.yaml" ]]; then
+      COMPOSE_FILES="$COMPOSE_FILES -f $(dirname -- "$0")/compose-build.yaml"
+    fi
+    # Get the list of images defined in the compose configuration
+    IMAGES=$(${DOCKER_COMPOSE_COMMAND} $COMPOSE_FILES config --images 2>/dev/null | sort -u)
+    if [[ -z "$IMAGES" ]]; then
+      echo "No $COSMOS_NAME images found in compose configuration."
+      exit 0
+    fi
+    # Filter to only images that actually exist locally
+    EXISTING_IMAGES=""
+    for img in $IMAGES; do
+      if docker image inspect "$img" &>/dev/null; then
+        EXISTING_IMAGES="$EXISTING_IMAGES $img"
+      fi
+    done
+    EXISTING_IMAGES=$(echo "$EXISTING_IMAGES" | xargs)
+    if [[ -z "$EXISTING_IMAGES" ]]; then
+      echo "No $COSMOS_NAME images found locally. Nothing to remove."
+      exit 0
+    fi
+    echo "The following $COSMOS_NAME images will be removed:"
+    echo ""
+    for img in $EXISTING_IMAGES; do
+      echo "  $img"
+    done
+    echo ""
+    if [[ "$2" == "force" ]]; then
+      docker rmi $EXISTING_IMAGES
+    else
+      echo "Are you sure you want to remove these $COSMOS_NAME images? (1-Yes / 2-No)"
+      select yn in "Yes" "No"; do
+        case $yn in
+          Yes ) docker rmi $EXISTING_IMAGES; break;;
+          No ) exit;;
+        esac
+      done
+    fi
+    echo ""
+    echo "Pruning dangling images..."
+    docker image prune -f
     ;;
   build )
     if [[ "$OPENC3_DEVEL" -eq 0 ]]; then

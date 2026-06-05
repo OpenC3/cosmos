@@ -540,6 +540,7 @@ _openc3() {
                 'cliroot:run a cli command as root user'
                 'start:build and run'
                 'stop:stop the containers'
+                'destroy:remove Docker images for this installation'
                 'cleanup:REMOVE volumes / data'
                 'build:build the containers'
                 'run:run the containers'
@@ -553,6 +554,10 @@ _openc3() {
             ;;
         args)
             case $line[1] in
+                destroy)
+                    _values 'destroy options' \
+                        'force[skip confirmation prompt]'
+                    ;;
                 cleanup)
                     _values 'cleanup options' \
                         'local[also cleanup local plugin files]' \
