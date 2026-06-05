@@ -557,7 +557,6 @@ class RunningScript
     begin
       target_name = name.split('/')[0].to_s.upcase
       if target_name == '__TEMP__' && python_venv
-        # Temp script with explicit python venv selection
         candidate = "/gems/plugin_venvs/#{python_venv}/.venv"
         python_venv_dir = candidate if File.directory?(candidate)
       else
@@ -576,13 +575,22 @@ class RunningScript
       process.environment['VIRTUAL_ENV'] = python_venv_dir
       process.environment['PATH'] = "#{python_venv_dir}/bin:#{ENV.fetch('PATH', '')}"
       process.environment['PYTHONUSERBASE'] = python_venv_dir
+      # Add plugin venv site-packages to PYTHONPATH so the base venv's Python
+      # binary can find plugin-specific packages. PYTHONPATH is always respected
+      # by CPython regardless of venv activation state.
+      site_packages = Dir.glob("#{python_venv_dir}/lib/python*/site-packages").first
+      existing_pythonpath = ENV.fetch('PYTHONPATH', '')
+      if site_packages
+        process.environment['PYTHONPATH'] = existing_pythonpath.empty? ? site_packages : "#{site_packages}:#{existing_pythonpath}"
+      else
+        process.environment['PYTHONPATH'] = existing_pythonpath.empty? ? nil : existing_pythonpath
+      end
     else
       system_venv = File.dirname(ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python').chomp('/bin')
       process.environment['VIRTUAL_ENV'] = system_venv
       process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE']
+      process.environment['PYTHONPATH'] = ENV['PYTHONPATH']
     end
-    # Preserve PYTHONPATH to ensure Python can find both UV venv and user packages
-    process.environment['PYTHONPATH'] = ENV['PYTHONPATH']
 
     # Spawned process should not be controlled by same Bundler constraints as spawning process
     ENV.each do |key, _value|

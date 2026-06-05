@@ -181,6 +181,12 @@ EOF
 EOF
   fi
   cat >&2 << EOF
+STATUS:
+  list                  List $COSMOS_NAME Docker images for this installation
+                        Only shows images belonging to the current installation.
+
+  status                Show container status for this $COSMOS_NAME installation
+
 CLEANUP:
   destroy [OPTIONS]     Remove $COSMOS_NAME Docker images (keeps other images)
                         Only removes images for the current installation
@@ -506,6 +512,7 @@ case $1 in
         case $yn in
           Yes ) ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" down -t 30 -v; break;;
           No ) exit;;
+          * ) echo "Please select 1 for Yes or 2 for No.";;
         esac
       done
     fi
@@ -515,6 +522,60 @@ case $1 in
       ls | grep -xv "README.md" | xargs rm -r
       cd ../..
     fi
+    ;;
+  list )
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
+      echo "Usage: $0 list"
+      echo ""
+      echo "List $COSMOS_NAME Docker images for this installation."
+      echo ""
+      echo "Only shows images belonging to the current installation"
+      echo "(Core or Enterprise). Does not show images from other installations."
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
+    # Build the list of compose files to query
+    COMPOSE_FILES="-f $(dirname -- "$0")/compose.yaml"
+    if [[ "$OPENC3_DEVEL" -eq 1 ]] && [[ -f "$(dirname -- "$0")/compose-build.yaml" ]]; then
+      COMPOSE_FILES="$COMPOSE_FILES -f $(dirname -- "$0")/compose-build.yaml"
+    fi
+    # Get the list of image repositories defined in the compose configuration
+    # Strip the docker.io/ prefix that compose adds (docker CLI doesn't recognize it)
+    # and strip the :tag suffix so we match all tags for each repository
+    REPOS=$(${DOCKER_COMPOSE_COMMAND} $COMPOSE_FILES config --images 2>/dev/null | sed 's|^docker\.io/||; s|:.*||' | sort -u)
+    if [[ -z "$REPOS" ]]; then
+      echo "No $COSMOS_NAME images found in compose configuration."
+      exit 0
+    fi
+    # Build filter args for each repository that has at least one local image
+    FILTER_ARGS=""
+    for repo in $REPOS; do
+      if docker images -q "$repo" 2>/dev/null | grep -q .; then
+        FILTER_ARGS="$FILTER_ARGS --filter reference=$repo"
+      fi
+    done
+    if [[ -z "$FILTER_ARGS" ]]; then
+      echo "No $COSMOS_NAME images found locally."
+      exit 0
+    fi
+    docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" $FILTER_ARGS
+    ;;
+  status )
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
+      echo "Usage: $0 status"
+      echo ""
+      echo "Show container status for this $COSMOS_NAME installation."
+      echo ""
+      echo "Displays the current state of all containers defined in the"
+      echo "compose configuration (running, stopped, etc.)."
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
+    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" ps
     ;;
   destroy )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -546,7 +607,8 @@ case $1 in
       COMPOSE_FILES="$COMPOSE_FILES -f $(dirname -- "$0")/compose-build.yaml"
     fi
     # Get the list of images defined in the compose configuration
-    IMAGES=$(${DOCKER_COMPOSE_COMMAND} $COMPOSE_FILES config --images 2>/dev/null | sort -u)
+    # Strip the docker.io/ prefix that compose adds, since docker CLI doesn't recognize it
+    IMAGES=$(${DOCKER_COMPOSE_COMMAND} $COMPOSE_FILES config --images 2>/dev/null | sed 's|^docker\.io/||' | sort -u)
     if [[ -z "$IMAGES" ]]; then
       echo "No $COSMOS_NAME images found in compose configuration."
       exit 0
@@ -577,6 +639,7 @@ case $1 in
         case $yn in
           Yes ) docker rmi $EXISTING_IMAGES; break;;
           No ) exit;;
+          * ) echo "Please select 1 for Yes or 2 for No.";;
         esac
       done
     fi

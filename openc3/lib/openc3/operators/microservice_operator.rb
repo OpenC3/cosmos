@@ -64,7 +64,17 @@ module OpenC3
           env['VIRTUAL_ENV'] = plugin_venv_dir
           env['PATH'] = "#{plugin_venv_dir}/bin:#{ENV.fetch('PATH', '')}"
           env['PYTHONUSERBASE'] = plugin_venv_dir
-          env['PYTHONPATH'] = ENV.fetch('PYTHONPATH', nil)
+          # Add the plugin venv's site-packages to PYTHONPATH so the base venv's
+          # Python binary can find plugin-specific packages. We keep the base binary
+          # because it has openc3 core installed; PYTHONPATH is always respected by
+          # CPython regardless of venv activation state.
+          site_packages = Dir.glob("#{plugin_venv_dir}/lib/python*/site-packages").first
+          existing_pythonpath = ENV.fetch('PYTHONPATH', '')
+          if site_packages
+            env['PYTHONPATH'] = existing_pythonpath.empty? ? site_packages : "#{site_packages}:#{existing_pythonpath}"
+          else
+            env['PYTHONPATH'] = existing_pythonpath.empty? ? nil : existing_pythonpath
+          end
         else
           env['PYTHONUSERBASE'] = '/gems/python_packages'
           env['PYTHONPATH'] = ENV.fetch('PYTHONPATH', nil)

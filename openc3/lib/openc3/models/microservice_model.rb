@@ -140,6 +140,27 @@ module OpenC3
       @bucket = Bucket.getClient()
     end
 
+    # Resolve the Python environment variables that will be used at runtime.
+    # This mirrors the logic in MicroserviceOperator#convert_microservice_to_process_definition.
+    def runtime_python_env
+      python_bin = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
+      result = { 'OPENC3_PYTHON_BIN' => python_bin }
+      if @needs_dependencies && @plugin
+        sanitized_name = @plugin.tr('^a-zA-Z0-9_-', '_')
+        candidate = "/gems/plugin_venvs/#{sanitized_name}/.venv"
+        if File.directory?(candidate)
+          result['VIRTUAL_ENV'] = candidate
+          result['PYTHONUSERBASE'] = candidate
+          site_packages = Dir.glob("#{candidate}/lib/python*/site-packages").first
+          result['PYTHONPATH'] = site_packages
+        else
+          result['VIRTUAL_ENV'] = nil
+          result['PYTHONUSERBASE'] = '/gems/python_packages'
+        end
+      end
+      result
+    end
+
     def as_json(*a)
       {
         'name' => @name,

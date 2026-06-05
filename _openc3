@@ -540,6 +540,8 @@ _openc3() {
                 'cliroot:run a cli command as root user'
                 'start:build and run'
                 'stop:stop the containers'
+                'list:list Docker images for this installation'
+                'status:show container status'
                 'destroy:remove Docker images for this installation'
                 'cleanup:REMOVE volumes / data'
                 'build:build the containers'
@@ -623,7 +625,7 @@ _openc3() {
                     words=("${save_words[@]}")
                     CURRENT=$save_current
                     ;;
-                start|stop|build|run|start-ubi|build-ubi|run-ubi)
+                start|stop|list|status|build|run|start-ubi|build-ubi|run-ubi)
                     # These commands don't take arguments
                     ;;
             esac

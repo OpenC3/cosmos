@@ -79,6 +79,12 @@ if "%1" == "start" (
 if "%1" == "stop" (
   GOTO stop
 )
+if "%1" == "list" (
+  GOTO list
+)
+if "%1" == "status" (
+  GOTO status
+)
 if "%1" == "cleanup" (
   GOTO cleanup
 )
@@ -123,6 +129,40 @@ GOTO :EOF
   )
   timeout /t 5 /nobreak
   docker compose -f compose.yaml down -t 30
+  @echo off
+GOTO :EOF
+
+:list
+  REM Build the list of compose files to query
+  set "COMPOSE_FILES=-f %~dp0compose.yaml"
+  if "%OPENC3_DEVEL%" == "1" (
+    if exist "%~dp0compose-build.yaml" (
+      set "COMPOSE_FILES=!COMPOSE_FILES! -f %~dp0compose-build.yaml"
+    )
+  )
+  REM Get image repositories from compose config
+  REM Strip docker.io/ prefix and :tag suffix so we match all tags per repository
+  set "FILTER_ARGS="
+  for /f "delims=" %%i in ('docker compose !COMPOSE_FILES! config --images 2^>nul') do (
+    set "IMG=%%i"
+    set "IMG=!IMG:docker.io/=!"
+    REM Strip :tag suffix by splitting on colon
+    for /f "tokens=1 delims=:" %%r in ("!IMG!") do set "REPO=%%r"
+    REM Check if any local images exist for this repository
+    for /f %%q in ('docker images -q "!REPO!" 2^>nul') do (
+      set "FILTER_ARGS=!FILTER_ARGS! --filter reference=!REPO!"
+    )
+  )
+  if "!FILTER_ARGS!" == "" (
+    @echo No %COSMOS_NAME% images found locally.
+    GOTO :EOF
+  )
+  docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" !FILTER_ARGS!
+  @echo off
+GOTO :EOF
+
+:status
+  docker compose -f %~dp0compose.yaml ps
   @echo off
 GOTO :EOF
 
@@ -314,6 +354,12 @@ GOTO :EOF
     @echo                         Downloads and installs latest release. 1>&2
     @echo. 1>&2
   )
+  @echo STATUS: 1>&2
+  @echo   list                  List %COSMOS_NAME% Docker images for this installation 1>&2
+  @echo                         Only shows images belonging to the current installation. 1>&2
+  @echo. 1>&2
+  @echo   status                Show container status for this %COSMOS_NAME% installation 1>&2
+  @echo. 1>&2
   @echo CLEANUP: 1>&2
   @echo   cleanup [OPTIONS]     Remove Docker volumes and data 1>&2
   @echo                         WARNING: This deletes all %COSMOS_NAME% data! 1>&2
