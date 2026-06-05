@@ -475,7 +475,7 @@ test('links array item to TlmGrapher', async ({ page, utils }) => {
     await page.getByText('Graph', { exact: true }).click()
     const graphPage = await graphPagePromise
     await expect(graphPage).toHaveURL(
-      /\/tools\/tlmgrapher\/INST\/HEALTH_STATUS\/ARY\[0\]/,
+      new RegExp(`/tools/tlmgrapher/INST/HEALTH_STATUS/ARY${encodeURIComponent('[0]')}`),
     )
     await graphPage.close()
   })
