@@ -1,5 +1,5 @@
 /*
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -15,10 +15,17 @@ import { OpenC3Api } from '@openc3/js-common/services'
 
 export default {
   data: {
-    configKey: '',
     // Applications can set to avoid persisting default config
     // Useful when loading and setting existing config
     dontSaveDefaultConfig: false,
+  },
+  created: function () {
+    if (!this.configKey) {
+      alert('Components using the Config mixin must provide a configKey')
+      throw new Error(
+        'Components using the Config mixin must provide a configKey',
+      )
+    }
   },
   methods: {
     loadDefaultConfig: function () {
