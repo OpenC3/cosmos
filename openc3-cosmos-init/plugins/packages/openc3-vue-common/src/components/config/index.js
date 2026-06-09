@@ -11,8 +11,6 @@
 # if purchased from OpenC3, Inc.
 */
 
-import Config from './Config'
-import OpenConfigDialog from './OpenConfigDialog.vue'
-import SaveConfigDialog from './SaveConfigDialog.vue'
-
-export { Config, OpenConfigDialog, SaveConfigDialog }
+export { default as Config, CONFIG_POSTFIX } from './Config'
+export { default as OpenConfigDialog } from './OpenConfigDialog.vue'
+export { default as SaveConfigDialog } from './SaveConfigDialog.vue'
