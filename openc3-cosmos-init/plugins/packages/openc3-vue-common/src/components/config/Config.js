@@ -43,7 +43,7 @@ export default {
       }
     },
     saveDefaultConfig: function (config) {
-      if (this.dontSaveDefaultConfig === true) {
+      if (this.dontSaveDefaultConfig) {
         return
       }
       localStorage.setItem(this.storageKey, JSON.stringify(config))
