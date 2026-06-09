@@ -44,15 +44,19 @@ module OpenC3
 
     def self.execute(result_string, suite_class, group_class = nil, script = nil)
       @@suite_results = SuiteResults.new
-      @@suites.each do |suite|
-        if suite.class == suite_class
-          @@suite_results.start(result_string, suite_class, group_class, script, @@settings)
-          loop do
-            yield(suite)
-            break if not @@settings['Loop'] or (ScriptStatus.instance.fail_count > 0 and @@settings['Break Loop On Error'])
-          end
-          break
-        end
+      # Surface invalid suite / group / option combinations rather than
+      # silently running nothing or failing with an opaque nil error. An
+      # invalid script method raises later in Group#run_method.
+      raise "Script #{script} requires a Group" if script and not group_class
+      suite = @@suites.find { |s| s.class == suite_class }
+      raise "Suite #{suite_class} not found" unless suite
+      if group_class and not suite.scripts.key?(group_class)
+        raise "Group #{group_class} not found in Suite #{suite_class}"
+      end
+      @@suite_results.start(result_string, suite_class, group_class, script, @@settings)
+      loop do
+        yield(suite)
+        break if not @@settings['Loop'] or (ScriptStatus.instance.fail_count > 0 and @@settings['Break Loop On Error'])
       end
     end
 

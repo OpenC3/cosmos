@@ -32,21 +32,28 @@ class SuiteRunner:
     @classmethod
     def execute(cls, result_string, suite_class, group_class=None, script=None):
         SuiteRunner.suite_results = SuiteResults()
-        for suite in SuiteRunner.suites:
-            if suite.__class__ == suite_class:
-                SuiteRunner.suite_results.start(
-                    result_string,
-                    suite_class,
-                    group_class,
-                    script,
-                    SuiteRunner.settings,
-                )
-                while True:
-                    yield (suite)
-                    if not SuiteRunner.settings["Loop"] or (
-                        ScriptStatus.instance().fail_count > 0 and SuiteRunner.settings["Break Loop On Error"]
-                    ):
-                        break
+        # Surface invalid suite / group / option combinations rather than
+        # silently running nothing or failing with an opaque error. An
+        # invalid script method raises later in Group.run_method.
+        if script and not group_class:
+            raise RuntimeError(f"Script {script} requires a Group")
+        suite = next((s for s in SuiteRunner.suites if s.__class__ == suite_class), None)
+        if not suite:
+            raise RuntimeError(f"Suite {suite_class} not found")
+        if group_class and group_class not in suite.scripts():
+            raise RuntimeError(f"Group {group_class} not found in Suite {suite_class}")
+        SuiteRunner.suite_results.start(
+            result_string,
+            suite_class,
+            group_class,
+            script,
+            SuiteRunner.settings,
+        )
+        while True:
+            yield (suite)
+            if not SuiteRunner.settings["Loop"] or (
+                ScriptStatus.instance().fail_count > 0 and SuiteRunner.settings["Break Loop On Error"]
+            ):
                 break
 
     @classmethod

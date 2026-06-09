@@ -15,6 +15,22 @@ require 'spec_helper'
 require 'openc3/script/suite'
 require 'openc3/script/suite_runner'
 
+# Fixtures for exercising SuiteRunner option validation. OptionsGroup is part
+# of OptionsSuite; OtherGroup is intentionally left out of any suite plan.
+class SuiteRunnerOptionsGroup < OpenC3::Group
+  def test_valid_script
+  end
+end
+class SuiteRunnerOptionsSuite < OpenC3::Suite
+  def initialize
+    add_group('SuiteRunnerOptionsGroup')
+  end
+end
+class SuiteRunnerOtherGroup < OpenC3::Group
+  def test_other
+  end
+end
+
 module OpenC3
   describe SuiteRunner do
     describe "self.build_suites" do
@@ -73,6 +89,29 @@ module OpenC3
         expect(suites.keys).to include "OrderedSuite"
         # Scripts should be in the order they were added, not alphabetical
         expect(suites["OrderedSuite"][:groups]["OrderedGroup"][:scripts]).to eql %w(test_m_middle test_z_last test_a_first)
+      end
+    end
+
+    # These validate the suite_runner option combinations that flow through
+    # RunningScript#run into SuiteRunner.start / setup / teardown (all of
+    # which funnel through SuiteRunner.execute).
+    describe "self.start option validation" do
+      before(:each) do
+        SuiteRunner.build_suites
+      end
+
+      it "raises when a script is given without a group" do
+        expect { SuiteRunner.start(SuiteRunnerOptionsSuite, nil, 'test_valid_script') }
+          .to raise_error(/Script test_valid_script requires a Group/)
+      end
+
+      it "raises for an unknown suite" do
+        expect { SuiteRunner.start(String) }.to raise_error(/Suite String not found/)
+      end
+
+      it "raises for a group not in the suite" do
+        expect { SuiteRunner.start(SuiteRunnerOptionsSuite, SuiteRunnerOtherGroup) }
+          .to raise_error(/Group SuiteRunnerOtherGroup not found in Suite SuiteRunnerOptionsSuite/)
       end
     end
   end

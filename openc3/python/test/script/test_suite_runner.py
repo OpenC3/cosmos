@@ -58,6 +58,23 @@ class MissingTeardownSuite(Suite):
         self.add_group_teardown(NoSetupTeardownGroup)
 
 
+# Fixtures for SuiteRunner option validation. OptionsGroup is part of
+# OptionsSuite; OtherGroup is intentionally left out of any suite plan.
+class SuiteRunnerOptionsGroup(Group):
+    def test_valid_script(self):
+        pass
+
+
+class SuiteRunnerOptionsSuite(Suite):
+    def __init__(self):
+        self.add_group(SuiteRunnerOptionsGroup)
+
+
+class SuiteRunnerOtherGroup(Group):
+    def test_other(self):
+        pass
+
+
 class TestSuiteRunner(unittest.TestCase):
     def test_build_suites_creates_a_list_of_suites(self):
         mod = types.ModuleType("test_mod")
@@ -97,6 +114,30 @@ class TestSuiteRunner(unittest.TestCase):
         mod.MissingTeardownSuite = MissingTeardownSuite
         with self.assertRaises(AttributeError, msg="teardown"):
             SuiteRunner.build_suites(from_module=mod)
+
+    # These validate the suite_runner option combinations that flow through
+    # RunningScript.run into SuiteRunner.start / setup / teardown (all of
+    # which funnel through SuiteRunner.execute).
+    def _build_options_suite(self):
+        mod = types.ModuleType("test_mod")
+        mod.SuiteRunnerOptionsGroup = SuiteRunnerOptionsGroup
+        mod.SuiteRunnerOptionsSuite = SuiteRunnerOptionsSuite
+        SuiteRunner.build_suites(from_module=mod)
+
+    def test_start_raises_when_script_given_without_group(self):
+        self._build_options_suite()
+        with self.assertRaisesRegex(RuntimeError, "Script test_valid_script requires a Group"):
+            SuiteRunner.start(SuiteRunnerOptionsSuite, None, "test_valid_script")
+
+    def test_start_raises_for_unknown_suite(self):
+        self._build_options_suite()
+        with self.assertRaisesRegex(RuntimeError, "Suite .* not found"):
+            SuiteRunner.start(str)
+
+    def test_start_raises_for_group_not_in_suite(self):
+        self._build_options_suite()
+        with self.assertRaisesRegex(RuntimeError, "Group .* not found in Suite"):
+            SuiteRunner.start(SuiteRunnerOptionsSuite, SuiteRunnerOtherGroup)
 
 
 if __name__ == "__main__":
