@@ -94,7 +94,7 @@ export default {
     },
     deleteLocalStorageKeys: function (keys) {
       for (const key of keys) {
-        delete localStorage[key]
+        localStorage.removeItem(key)
       }
     },
   },

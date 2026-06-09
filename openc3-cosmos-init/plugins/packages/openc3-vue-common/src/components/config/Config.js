@@ -35,8 +35,9 @@ export default {
   },
   methods: {
     loadDefaultConfig: function () {
-      if (localStorage[this.storageKey]) {
-        return JSON.parse(localStorage[this.storageKey])
+      const config = localStorage.getItem(this.storageKey)
+      if (config) {
+        return JSON.parse(config)
       } else {
         return {}
       }
@@ -45,7 +46,7 @@ export default {
       if (this.dontSaveDefaultConfig === true) {
         return
       }
-      localStorage[this.storageKey] = JSON.stringify(config)
+      localStorage.setItem(this.storageKey, JSON.stringify(config))
     },
     openConfigBase: function (name, routed = false, callback = null) {
       new OpenC3Api()
