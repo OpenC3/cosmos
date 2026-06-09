@@ -75,6 +75,10 @@ export default {
   },
   methods: {
     loadLastConfigs: function () {
+      // if there is a localStorage value that is missing a configKey, delete it
+      if (localStorage.getItem(CONFIG_POSTFIX)) {
+        localStorage.removeItem(CONFIG_POSTFIX)
+      }
       this.lastConfigs = Object.keys(localStorage)
         .filter((key) => {
           return key.endsWith(CONFIG_POSTFIX)
