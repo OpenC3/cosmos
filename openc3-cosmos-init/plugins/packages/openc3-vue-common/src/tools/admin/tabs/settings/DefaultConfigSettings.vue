@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -51,6 +51,8 @@
 </template>
 
 <script>
+import { CONFIG_POSTFIX } from '@/components'
+
 export default {
   data() {
     return {
@@ -75,7 +77,7 @@ export default {
     loadLastConfigs: function () {
       this.lastConfigs = Object.keys(localStorage)
         .filter((key) => {
-          return key.endsWith('__default')
+          return key.endsWith(CONFIG_POSTFIX)
         })
         .map((key) => {
           const name = key.split('__')[0].replaceAll('_', ' ')

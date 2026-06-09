@@ -13,7 +13,12 @@
 
 import { AceEditorModes, AceEditorUtils } from './ace'
 import { ScreenCompleter } from './autocomplete'
-import { Config, OpenConfigDialog, SaveConfigDialog } from './config'
+import {
+  Config,
+  CONFIG_POSTFIX,
+  OpenConfigDialog,
+  SaveConfigDialog,
+} from './config'
 import CommandEditor from './CommandEditor.vue'
 import CommandParameterEditor from './CommandParameterEditor.vue'
 import CriticalCmdDialog from './CriticalCmdDialog.vue'
@@ -45,6 +50,7 @@ export {
   AceEditorUtils,
   ScreenCompleter,
   Config,
+  CONFIG_POSTFIX,
   OpenConfigDialog,
   SaveConfigDialog,
   CommandEditor,

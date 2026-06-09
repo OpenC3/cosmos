@@ -13,6 +13,7 @@
 
 import { OpenC3Api } from '@openc3/js-common/services'
 
+export const CONFIG_POSTFIX = '__default'
 export default {
   data: {
     // Applications can set to avoid persisting default config
@@ -27,10 +28,15 @@ export default {
       )
     }
   },
+  computed: {
+    storageKey() {
+      return `${this.configKey}${CONFIG_POSTFIX}`
+    },
+  },
   methods: {
     loadDefaultConfig: function () {
-      if (localStorage[`${this.configKey}__default`]) {
-        return JSON.parse(localStorage[`${this.configKey}__default`])
+      if (localStorage[this.storageKey]) {
+        return JSON.parse(localStorage[this.storageKey])
       } else {
         return {}
       }
@@ -39,7 +45,7 @@ export default {
       if (this.dontSaveDefaultConfig === true) {
         return
       }
-      localStorage[`${this.configKey}__default`] = JSON.stringify(config)
+      localStorage[this.storageKey] = JSON.stringify(config)
     },
     openConfigBase: function (name, routed = false, callback = null) {
       new OpenC3Api()
@@ -95,7 +101,7 @@ export default {
         })
     },
     resetConfigBase: function () {
-      localStorage.removeItem(`${this.configKey}__default`)
+      localStorage.removeItem(this.storageKey)
 
       const query = { ...this.$route.query }
       delete query.config
