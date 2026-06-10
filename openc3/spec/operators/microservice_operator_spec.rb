@@ -261,5 +261,49 @@ module OpenC3
       #   end
       # end
     end
+
+    describe "redis error resilience" do
+      before(:each) do
+        @redis = mock_redis()
+        ENV['OPERATOR_CYCLE_TIME'] = '0.05'
+      end
+
+      after(:each) do
+        MicroserviceOperator.instance&.stop
+        # run() parks in a second loop waiting for @shutdown_complete, which is
+        # only set by shutdown() via at_exit (stubbed to a no-op in this spec).
+        # Force-kill the thread so teardown doesn't block on that park loop.
+        @thread&.kill
+        @thread&.join
+      rescue Redis::BaseError
+        # Before the fix the loop dies on the Redis error and join re-raises it
+        # here; swallow so the example's own assertion is the reported failure.
+      end
+
+      # A transient network blip (the same kind that makes targets reconnect)
+      # makes one hgetall raise. The operator must absorb it and keep cycling
+      # instead of letting the exception unwind run() and exit the process,
+      # which in the container manifests as a full operator restart.
+      it "survives a transient Redis error during update and keeps cycling" do
+        raised = false
+        allow(@redis).to receive(:hgetall).and_wrap_original do |original, key, *args|
+          if key.to_s.include?('openc3_microservices') && !raised
+            raised = true
+            raise Redis::CannotConnectError.new("Error connecting to Redis on localhost:6379")
+          end
+          original.call(key, *args)
+        end
+
+        capture_io do
+          @thread = Thread.new { MicroserviceOperator.run }
+          sleep 0.5 # Several cycles; the error fires on the first update
+        end
+
+        # The error must actually have been triggered...
+        expect(raised).to be true
+        # ...and the operator loop must have survived it and still be running.
+        expect(@thread.alive?).to be true
+      end
+    end
   end
 end

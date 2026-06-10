@@ -123,8 +123,46 @@ module OpenC3
       @redis_pool = StoreConnectionPool.new(size: pool_size) { build_redis() }
     end
 
+    # cap/base for the equal-jitter reconnect backoff (seconds)
+    REDIS_BACKOFF_CAP = 5.0
+    REDIS_BACKOFF_BASE = 0.625
+
     def build_redis
-      return Redis.new(url: @redis_url, username: @redis_username, password: @redis_key)
+      # reconnect_attempts retries the connection a few times with equal-jitter
+      # backoff so a transient network blip is handled inside the client instead
+      # of immediately surfacing a connection error to callers. The jitter
+      # de-syncs many clients retrying the same blip to avoid a thundering herd
+      # on recovery.
+      #
+      # This mirrors the Python store's Retry(EqualJitterBackoff(cap: 5, base:
+      # 0.625), 3): per-retry backoff tops out at 5s on the final (3rd) retry
+      # (~0.6-1.25s, ~1.25-2.5s, ~2.5-5s). redis-rb takes a fixed Array of delays
+      # (no per-failure backoff callable), so we sample the jittered delays once
+      # per connection here.
+      # Connection, read, and write timeouts are left as the default: 1s
+      return Redis.new(
+        url: @redis_url,
+        username: @redis_username,
+        password: @redis_key,
+        reconnect_attempts: reconnect_backoff_delays()
+      )
+    end
+
+    # Equal-jitter backoff delays for 3 retries, matching Python's
+    # EqualJitterBackoff. Each retry's delay is randomized within the upper half
+    # of an exponentially-growing ceiling.
+    def reconnect_backoff_delays
+      (1..3).map do |failures|
+        # ceiling = exponential growth (base doubles each retry), clamped to cap.
+        # For base=0.625, cap=5: failures 1,2,3 -> 1.25, 2.5, 5.0 seconds.
+        # temp = half the ceiling: the guaranteed minimum wait for this retry.
+        temp = [REDIS_BACKOFF_CAP, REDIS_BACKOFF_BASE * (2 ** failures)].min / 2.0
+        # Final delay = fixed half (temp) + random half (rand*temp, in [0, temp)),
+        # i.e. a value uniformly in [temp, 2*temp) = [ceiling/2, ceiling).
+        # The fixed half keeps a sane floor; the random half de-syncs clients so
+        # they don't all reconnect in lockstep (thundering herd) after a blip.
+        temp + rand * temp
+      end
     end
 
     ###########################################################################
