@@ -8045,7 +8045,7 @@ script_delete("INST/procedures/checks.rb")
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Runs a script in Script Runner. The script will run in the background and can be opened in Script Runner by selecting Script->Execution Status and then connecting to it.
+Kicks off running a script in Script Runner. The script will run in the background, while the caller continues to run, and can be opened in Script Runner by selecting "Execution Status" from the "Script" menu at the top, and then connecting to it from the "Running Scripts" tab.
 
 Note: In Enterprise, initialize_offline_access must have been called at least once for the user who calls this method.
 
