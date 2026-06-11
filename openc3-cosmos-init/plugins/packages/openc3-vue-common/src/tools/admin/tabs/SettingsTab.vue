@@ -40,11 +40,14 @@
     <pypi-settings />
     <v-divider />
     <context-tag-settings />
+    <v-divider />
+    <ai-chat-settings />
   </div>
 </template>
 
 <script>
 import SuppressedSettings from './settings/SuppressedSettings.vue'
+import AiChatSettings from './settings/AiChatSettings.vue'
 import DefaultConfigSettings from './settings/DefaultConfigSettings.vue'
 import EditorSettings from './settings/EditorSettings.vue'
 import AstroSettings from './settings/AstroSettings.vue'
@@ -62,6 +65,7 @@ import ContextTagSettings from './settings/ContextTagSettings.vue'
 export default {
   components: {
     SuppressedSettings,
+    AiChatSettings,
     DefaultConfigSettings,
     EditorSettings,
     AstroSettings,
