@@ -47,11 +47,11 @@ module OpenC3
       # Surface invalid suite / group / option combinations rather than
       # silently running nothing or failing with an opaque nil error. An
       # invalid script method raises later in Group#run_method.
-      raise "Script #{script} requires a Group" if script and not group_class
+      raise ArgumentError, "Script #{script} requires a Group" if script and not group_class
       suite = @@suites.find { |s| s.class == suite_class }
-      raise "Suite #{suite_class} not found" unless suite
+      raise ArgumentError, "Suite #{suite_class} not found" unless suite
       if group_class and not suite.scripts.key?(group_class)
-        raise "Group #{group_class} not found in Suite #{suite_class}"
+        raise ArgumentError, "Group #{group_class} not found in Suite #{suite_class}"
       end
       @@suite_results.start(result_string, suite_class, group_class, script, @@settings)
       loop do

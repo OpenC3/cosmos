@@ -36,12 +36,12 @@ class SuiteRunner:
         # silently running nothing or failing with an opaque error. An
         # invalid script method raises later in Group.run_method.
         if script and not group_class:
-            raise RuntimeError(f"Script {script} requires a Group")
+            raise ValueError(f"Script {script} requires a Group")
         suite = next((s for s in SuiteRunner.suites if s.__class__ == suite_class), None)
         if not suite:
-            raise RuntimeError(f"Suite {suite_class} not found")
+            raise ValueError(f"Suite {suite_class} not found")
         if group_class and group_class not in suite.scripts():
-            raise RuntimeError(f"Group {group_class} not found in Suite {suite_class}")
+            raise ValueError(f"Group {group_class} not found in Suite {suite_class}")
         SuiteRunner.suite_results.start(
             result_string,
             suite_class,
