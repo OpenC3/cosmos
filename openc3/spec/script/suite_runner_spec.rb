@@ -19,6 +19,7 @@ require 'openc3/script/suite_runner'
 # of OptionsSuite; OtherGroup is intentionally left out of any suite plan.
 class SuiteRunnerOptionsGroup < OpenC3::Group
   def test_valid_script
+    # Mock for testing, no implementation needed
   end
 end
 class SuiteRunnerOptionsSuite < OpenC3::Suite
@@ -28,6 +29,7 @@ class SuiteRunnerOptionsSuite < OpenC3::Suite
 end
 class SuiteRunnerOtherGroup < OpenC3::Group
   def test_other
+    # Mock for testing, no implementation needed
   end
 end
 

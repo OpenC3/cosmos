@@ -62,6 +62,7 @@ class MissingTeardownSuite(Suite):
 # OptionsSuite; OtherGroup is intentionally left out of any suite plan.
 class SuiteRunnerOptionsGroup(Group):
     def test_valid_script(self):
+        # Mock for testing, no implementation needed
         pass
 
 
@@ -72,6 +73,7 @@ class SuiteRunnerOptionsSuite(Suite):
 
 class SuiteRunnerOtherGroup(Group):
     def test_other(self):
+        # Mock for testing, no implementation needed
         pass
 
 
@@ -126,17 +128,17 @@ class TestSuiteRunner(unittest.TestCase):
 
     def test_start_raises_when_script_given_without_group(self):
         self._build_options_suite()
-        with self.assertRaisesRegex(RuntimeError, "Script test_valid_script requires a Group"):
+        with self.assertRaisesRegex(ValueError, "Script test_valid_script requires a Group"):
             SuiteRunner.start(SuiteRunnerOptionsSuite, None, "test_valid_script")
 
     def test_start_raises_for_unknown_suite(self):
         self._build_options_suite()
-        with self.assertRaisesRegex(RuntimeError, "Suite .* not found"):
+        with self.assertRaisesRegex(ValueError, "Suite .* not found"):
             SuiteRunner.start(str)
 
     def test_start_raises_for_group_not_in_suite(self):
         self._build_options_suite()
-        with self.assertRaisesRegex(RuntimeError, "Group .* not found in Suite"):
+        with self.assertRaisesRegex(ValueError, "Group .* not found in Suite"):
             SuiteRunner.start(SuiteRunnerOptionsSuite, SuiteRunnerOtherGroup)
 
 
