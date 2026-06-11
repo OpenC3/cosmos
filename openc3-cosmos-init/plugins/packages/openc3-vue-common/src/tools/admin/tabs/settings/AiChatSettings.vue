@@ -26,7 +26,7 @@
     <v-card-text class="pb-0">
       <v-switch
         v-model="aiChatEnabled"
-        label="Enable the in-app AI Chatbot (Enterprise). When disabled, the AI
+        label="Enable the in-app AI Chatbot. When disabled, the AI
         chat button and drawer are hidden for all users."
         color="primary"
         data-test="ai-chat-enabled"
@@ -34,8 +34,8 @@
     </v-card-text>
     <v-card-actions>
       <v-btn
-        color="primary"
-        variant="flat"
+        color="success"
+        variant="text"
         data-test="save-ai-chat"
         @click="save"
       >

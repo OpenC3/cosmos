@@ -10049,7 +10049,7 @@ setting = get_settings('version', 'rubygems_url') # => ["5.11.4-beta0", "https:/
 
 Sets the given setting value.
 
-:::note[Admin Passwork Required]
+:::note[Admin Password Required]
 This API is only accessible externally (not within Script Runner) and requires the admin password.
 :::
 
