@@ -11,6 +11,13 @@ COSMOS Enterprise provides a comprehensive role-based access control (RBAC) syst
 
 Roles in COSMOS Enterprise control what actions users can perform within the system. Roles are assigned to users per scope, allowing fine-grained control over access to different missions or projects.
 
+Roles involve two systems working together:
+
+1. **Keycloak** assigns roles to users. A user's roles are carried in their JWT token as Keycloak realm roles named `{SCOPE}__{ROLE_NAME}` (e.g. `DEFAULT__operator`).
+2. **COSMOS** defines what each role is allowed to do. The five built-in roles (admin, operator, viewer, approver, runner) have permission sets built into COSMOS itself, so they only need to exist as realm roles in Keycloak. Custom roles additionally require a role definition in COSMOS (created through the Admin Tool or the [REST API](#role-management-rest-api)) that lists the role's permissions.
+
+This means creating a custom role is a two-part process: define the role and its permissions in COSMOS, **and** create a matching `{SCOPE}__{ROLE_NAME}` realm role in Keycloak and assign it to users. Creating a role in COSMOS does not create the Keycloak realm role (or vice versa) — if either half is missing, the role grants no permissions.
+
 ### Role Naming Convention
 
 Roles are assigned using the format: `{SCOPE}__{ROLE_NAME}`
@@ -162,9 +169,16 @@ When command authority is enabled for a scope, an additional layer of authorizat
 
 In addition to the built-in roles, you can create custom roles with specific permission combinations.
 
+Creating a custom role requires two steps:
+
+1. **Define the role in COSMOS** with its permission set, using the Admin Tool or the [REST API](#role-management-rest-api).
+2. **Create and assign the role in Keycloak** as a realm role named `{SCOPE}__{ROLE_NAME}` (e.g. `DEFAULT__inst_commander`), using the Keycloak admin console (see [Viewing / Assigning Roles to Users](#viewing--assigning-roles-to-users)) or the [Keycloak Admin REST API](#assigning-roles-via-the-keycloak-admin-rest-api).
+
+Both steps are required. The Keycloak realm role puts the role name in the user's token, and the COSMOS role definition maps that name to permissions. A custom role assigned in Keycloak without a COSMOS definition grants no permissions, and a COSMOS role definition with no Keycloak realm role is never assigned to anyone.
+
 ### Creating Custom Roles
 
-Custom roles are managed through the Admin Tool:
+Custom roles are managed through the Admin Tool or programmatically via the [REST API](#role-management-rest-api):
 
 1. Navigate to the Admin Tool
 2. Go to the Roles tab
@@ -186,6 +200,118 @@ Example: A custom role could allow `cmd` permission only for the `INST1` target.
 
 ![Edit Role](/img/guides/roles-permissions/edit_role.png)
 
+## Role Management REST API
+
+In addition to the Admin Tool, COSMOS Enterprise provides REST endpoints for role CRUD (create, read, update, delete) operations. These are useful for automation and integration workflows, such as provisioning roles as part of a deployment pipeline.
+
+:::warning[Keycloak realm role required]
+These endpoints only manage the COSMOS side of a role (its permission definition). They do not create or delete the corresponding Keycloak realm role. For users to actually receive a custom role, you must also create a `{SCOPE}__{ROLE_NAME}` realm role in Keycloak and assign it to users — see [Assigning Roles via the Keycloak Admin REST API](#assigning-roles-via-the-keycloak-admin-rest-api) below.
+:::
+
+All endpoints require an `Authorization` header containing a Keycloak access token and a `scope` query parameter. See [Testing with Curl](/docs/guides/curl) for details on obtaining and refreshing tokens.
+
+### Endpoints
+
+| Method      | Endpoint                  | Required Permission              | Description                                                |
+| ----------- | ------------------------- | -------------------------------- | ---------------------------------------------------------- |
+| GET         | `/openc3-api/roles`       | `admin`                          | List all role names                                        |
+| GET         | `/openc3-api/roles/:name` | `system`                         | Get a role's definition (use `all` to return every role)   |
+| POST        | `/openc3-api/roles`       | `superadmin` (`ALLSCOPES__admin`) | Create a role                                              |
+| PUT / PATCH | `/openc3-api/roles/:name` | `superadmin` (`ALLSCOPES__admin`) | Update a role (replaces the entire permissions list)       |
+| DELETE      | `/openc3-api/roles/:name` | `superadmin` (`ALLSCOPES__admin`) | Delete a role                                              |
+
+### Role Definition Format
+
+The POST and PUT endpoints accept a request body with a `json` field containing the role definition as a JSON-encoded string:
+
+```json
+{
+  "name": "inst_commander",
+  "permissions": [
+    { "permission": "tlm" },
+    { "permission": "cmd", "target_name": "INST" }
+  ]
+}
+```
+
+Each entry in `permissions` requires a `permission` name (see [Permission Definitions](#permission-definitions)) and optionally accepts `target_name`, `packet_name`, `interface_name`, or `router_name` to restrict the permission to a specific resource. Omitting the resource fields grants the permission for all resources.
+
+**Note:** Creating a role with an empty `permissions` list automatically seeds it with the Viewer permissions (`system`, `tlm`, `cmd_info`, `script_view`, `notebook_view`).
+
+### Examples
+
+First obtain an access token from Keycloak as described in [Testing with Curl](/docs/guides/curl#curl-example-with-openc3-cosmos-enterprise) (the user must have `ALLSCOPES__admin` for create / update / delete):
+
+```bash
+ACCESS_TOKEN=$(curl -s -H "Content-Type: application/x-www-form-urlencoded" \
+  -d 'username=admin&password=admin&client_id=api&grant_type=password' \
+  -X POST http://localhost:2900/auth/realms/openc3/protocol/openid-connect/token | jq -r .access_token)
+```
+
+List all roles:
+
+```bash
+curl -H "Authorization: $ACCESS_TOKEN" "http://localhost:2900/openc3-api/roles?scope=DEFAULT"
+# => ["admin","approver","inst_commander","operator","runner","viewer"]
+```
+
+Create a role:
+
+```bash
+curl -H "Authorization: $ACCESS_TOKEN" -H "Content-Type: application/json" \
+  -d '{"json": "{\"name\":\"inst_commander\",\"permissions\":[{\"permission\":\"tlm\"},{\"permission\":\"cmd\",\"target_name\":\"INST\"}]}"}' \
+  -X POST "http://localhost:2900/openc3-api/roles?scope=DEFAULT"
+```
+
+Get a role's definition:
+
+```bash
+curl -H "Authorization: $ACCESS_TOKEN" "http://localhost:2900/openc3-api/roles/inst_commander?scope=DEFAULT"
+# => {"name":"inst_commander","permissions":[{"permission":"tlm"},{"permission":"cmd","target_name":"INST"}],"updated_at":1768424881396924134}
+```
+
+Update a role (the permissions list is fully replaced, so read the current definition first if you want to add to it):
+
+```bash
+curl -H "Authorization: $ACCESS_TOKEN" -H "Content-Type: application/json" \
+  -d '{"json": "{\"name\":\"inst_commander\",\"permissions\":[{\"permission\":\"tlm\"},{\"permission\":\"cmd\",\"target_name\":\"INST\"},{\"permission\":\"script_run\"}]}"}' \
+  -X PUT "http://localhost:2900/openc3-api/roles/inst_commander?scope=DEFAULT"
+```
+
+Delete a role:
+
+```bash
+curl -H "Authorization: $ACCESS_TOKEN" \
+  -X DELETE "http://localhost:2900/openc3-api/roles/inst_commander?scope=DEFAULT"
+```
+
+### Assigning Roles via the Keycloak Admin REST API
+
+The COSMOS role defines the permission set, but users receive roles through Keycloak. To complete the automation workflow, create a matching Keycloak realm role named `{SCOPE}__{ROLE_NAME}` and assign it to users using the Keycloak Admin REST API:
+
+```bash
+# Get a Keycloak admin token (master realm)
+KC_TOKEN=$(curl -s -H "Content-Type: application/x-www-form-urlencoded" \
+  -d 'username=<keycloak-admin>&password=<password>&client_id=admin-cli&grant_type=password' \
+  -X POST http://localhost:2900/auth/realms/master/protocol/openid-connect/token | jq -r .access_token)
+
+# Create the realm role in the openc3 realm
+curl -H "Authorization: Bearer $KC_TOKEN" -H "Content-Type: application/json" \
+  -d '{"name": "DEFAULT__inst_commander"}' \
+  -X POST http://localhost:2900/auth/admin/realms/openc3/roles
+
+# Look up the user and role, then assign the role to the user
+USER_ID=$(curl -s -H "Authorization: Bearer $KC_TOKEN" \
+  "http://localhost:2900/auth/admin/realms/openc3/users?username=operator" | jq -r '.[0].id')
+ROLE=$(curl -s -H "Authorization: Bearer $KC_TOKEN" \
+  http://localhost:2900/auth/admin/realms/openc3/roles/DEFAULT__inst_commander)
+curl -H "Authorization: Bearer $KC_TOKEN" -H "Content-Type: application/json" \
+  -d "[$ROLE]" \
+  -X POST "http://localhost:2900/auth/admin/realms/openc3/users/$USER_ID/role-mappings/realm"
+```
+
+For full details on the available endpoints, authentication options, and payloads, see the [Keycloak Admin REST API documentation](https://www.keycloak.org/docs-api/latest/rest-api/index.html) and the [Keycloak Server Administration Guide](https://www.keycloak.org/docs/latest/server_admin/index.html#assigning-permissions-using-roles-and-groups).
+
 ## Authorization Flow
 
 When a user attempts an action, COSMOS Enterprise performs the following checks:
@@ -199,17 +325,20 @@ When a user attempts an action, COSMOS Enterprise performs the following checks:
 
 ## Default Users
 
-COSMOS Enterprise Keycloak realm includes default test users for each role:
+COSMOS Enterprise Keycloak realm includes default test users:
 
-| Username | Password | Default Role        | Email               |
-| -------- | -------- | ------------------- | ------------------- |
-| operator | operator | DEFAULT\_\_operator | operator@openc3.com |
-| runner   | runner   | DEFAULT\_\_runner   | runner@openc3.com   |
-| viewer   | viewer   | DEFAULT\_\_viewer   | viewer@openc3.com   |
-| admin    | admin    | ALLSCOPES\_\_admin  | admin@openc3.com    |
-| approver | approver | DEFAULT\_\_approver | approver@openc3.com |
+| Username | Password | Roles                                                                | Email               |
+| -------- | -------- | -------------------------------------------------------------------- | ------------------- |
+| admin    | admin    | ALLSCOPES\_\_admin, ALLSCOPES\_\_operator, ALLSCOPES\_\_approver      | admin@openc3.com    |
+| operator | operator | ALLSCOPES\_\_operator                                                 | operator@openc3.com |
+| approver | approver | ALLSCOPES\_\_approver                                                 | approver@openc3.com |
+| viewer   | viewer   | ALLSCOPES\_\_viewer (via default role)                                | viewer@openc3.com   |
 
-**Note:** These are default development/testing accounts. In production deployments, you should configure proper authentication and remove or change these default credentials.
+The realm's default role (`default-roles-openc3`) includes `ALLSCOPES__viewer`, so every user — including newly created ones — receives viewer access across all scopes by default.
+
+:::warning[Default credentials]
+These are default development/testing accounts. In production deployments, you should configure proper authentication and remove or change these default credentials.
+:::
 
 ## Best Practices
 
