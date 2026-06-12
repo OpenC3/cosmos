@@ -43,7 +43,7 @@ jobs:
         with:
           tag: ${{ github.sha }}
       - name: Manual Trivy Setup
-        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
         with:
           cache: true
           version: v0.69.3
