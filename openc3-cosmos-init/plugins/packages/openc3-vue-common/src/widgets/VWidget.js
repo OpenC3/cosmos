@@ -163,7 +163,8 @@ export default {
         '/' +
         encodeURIComponent(this.parameters[2])
       if (this.arrayIndex !== null) {
-        url += `[${this.arrayIndex}]`
+        // square brackets must be encoded, unencoded they break the keycloak redirect_uri
+        url += encodeURIComponent(`[${this.arrayIndex}]`)
       }
       return url + '/'
     },

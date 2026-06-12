@@ -1755,7 +1755,10 @@ export default {
             if (refreshed) {
               OpenC3Auth.setTokens()
             }
-            this.subscription.perform('add', {
+            // this.subscription may have been torn down (stopGraph nulls it on
+            // unsubscribe/re-subscribe) while the async token refresh above was
+            // pending, so re-check rather than crash on null.perform.
+            this.subscription?.perform('add', {
               scope: window.openc3Scope,
               token: localStorage.openc3Token,
               items: items,

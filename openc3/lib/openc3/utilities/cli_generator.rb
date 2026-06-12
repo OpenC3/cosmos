@@ -1,4 +1,4 @@
-# encoding: ascii-8bit
+# encoding: utf-8
 
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
@@ -478,6 +478,10 @@ RUBY
           VARIABLE #{target_name.downcase}_target_name #{target_name}
 
           TARGET #{target_name} <%= #{target_name.downcase}_target_name %>
+            # Decom tlm and cmd data in the time-series database is kept forever by default.
+            # Uncomment to enforce a 30 day retention time. See https://docs.openc3.com/docs/configuration/plugins
+            # CMD_DECOM_RETAIN_TIME 30d
+            # TLM_DECOM_RETAIN_TIME 30d
           #{interface_line}
             MAP_TARGET <%= #{target_name.downcase}_target_name %>
         DOC

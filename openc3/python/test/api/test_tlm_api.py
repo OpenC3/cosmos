@@ -211,7 +211,17 @@ class TestTlmApi(unittest.TestCase):
         self.dm_thread.start()
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
         TelemetryTopic.write_packet(packet, scope="DEFAULT")
-        time.sleep(0.001)
+        # Wait until the microservice run loop has actually started and decommed
+        # the packet just written (count increments) before returning. A fixed
+        # 0.001s sleep was racy: callers immediately call inject_tlm, which writes
+        # to the DECOMINTERFACE topic and waits up to 5s for an ack -- if the run
+        # loop had not started reading yet on a loaded CI runner the ack could be
+        # delayed past that timeout. It also makes RECEIVED_COUNT deterministic:
+        # a late decom of this packet could otherwise overwrite the count after
+        # an inject_tlm had already bumped it.
+        start = time.time()
+        while self.dm.count < 1 and (time.time() - start) < 5:
+            time.sleep(0.001)
 
     def test_inject_tlm_complains_about_non_existant_targets(self):
         with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):

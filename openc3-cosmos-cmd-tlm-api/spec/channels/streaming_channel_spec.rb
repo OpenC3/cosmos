@@ -71,4 +71,26 @@ RSpec.describe StreamingChannel, :type => :channel do
       expect(subscription).to be_confirmed
     end
   end
+
+  context "with a missing broadcaster" do
+    # The broadcaster only exists between subscribed and unsubscribed. A perform
+    # that races a rejected/torn-down subscription (broadcaster == nil) must be a
+    # harmless no-op, not a NoMethodError that reject_subscription()s every panel
+    # on the connection. (String keys here mirror the JSON-parsed data a real
+    # client sends, so validate_data passes and we actually exercise the guard.)
+    before do
+      subscribe()
+      StreamingChannel.class_variable_get(:@@broadcasters)['streaming_12345'] = nil
+    end
+
+    it "does not reject a remove" do
+      subscription.remove({ 'scope' => 'DEFAULT', 'items' => ['TLM__TGT__PKT__ITEM__CONVERTED'] })
+      expect(subscription).not_to be_rejected
+    end
+
+    it "does not reject an add" do
+      subscription.add({ 'scope' => 'DEFAULT', 'items' => ['TLM__TGT__PKT__ITEM__CONVERTED'] })
+      expect(subscription).not_to be_rejected
+    end
+  end
 end

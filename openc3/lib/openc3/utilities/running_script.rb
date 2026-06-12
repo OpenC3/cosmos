@@ -45,6 +45,21 @@ if not defined? RAILS_ROOT
 end
 
 SCRIPT_API = 'script-api'
+# Per-script frontend channel events are mirrored into a short-lived Redis
+# stream so RunningScriptChannel can serve both the backlog (events published
+# before a client subscribed -- the anycable broadcast is pub/sub with no
+# history) and the live feed from a single ordered source. MAXLEN bounds
+# memory; the TTL is refreshed on every write so the stream lives while the
+# script runs and is auto-removed by Redis shortly after the last event -- no
+# explicit cleanup is needed for completion, crash, or an orphaned/killed
+# process.
+RUNNING_SCRIPT_CHANNEL_PREFIX = 'running-script-channel:'
+RUNNING_SCRIPT_REPLAY_MAXLEN = 1000
+RUNNING_SCRIPT_REPLAY_TTL = 86400 # seconds
+# Flush the replay queue quickly so live output/state stays near real-time while
+# remaining non-blocking. Applied via set_update_interval in RunningScript's
+# initialize so it only affects this (running script) process.
+RUNNING_SCRIPT_REPLAY_FLUSH_INTERVAL = 0.1 # seconds
 
 def running_script_publish(channel_name, data)
   stream_name = [SCRIPT_API, channel_name].compact.join(":")
@@ -52,9 +67,27 @@ def running_script_publish(channel_name, data)
 end
 
 def running_script_anycable_publish(channel_name, data)
-  stream_name = [SCRIPT_API, channel_name].compact.join(":")
-  stream_data = {"stream" => stream_name, "data" => JSON.generate(data, allow_nan: true)}
-  OpenC3::Store.publish("__anycable__", JSON.generate(stream_data, allow_nan: true))
+  json = JSON.generate(data, allow_nan: true)
+  if channel_name.start_with?(RUNNING_SCRIPT_CHANNEL_PREFIX)
+    # Per-script events are delivered to the frontend by RunningScriptChannel
+    # tailing this replay stream (backlog + live from a single ordered source),
+    # so they are NOT broadcast over anycable pub/sub -- doing both would deliver
+    # every message twice. Queued (EphemeralStoreQueued) so the script never
+    # blocks on Redis; best-effort so a replay failure can never affect script
+    # execution. Topic (read by the channel) uses the EphemeralStore.
+    begin
+      replay_key = "#{channel_name}:replay"
+      OpenC3::EphemeralStoreQueued.instance.write_topic(replay_key, { 'data' => json }, '*', RUNNING_SCRIPT_REPLAY_MAXLEN, '~')
+      OpenC3::EphemeralStoreQueued.instance.expire(replay_key, RUNNING_SCRIPT_REPLAY_TTL)
+    rescue StandardError => e
+      OpenC3::Logger.warn("running_script replay write failed: #{e.message}") rescue nil
+    end
+  else
+    # Other channels (all-scripts, etc.) are still delivered live over pub/sub.
+    stream_name = [SCRIPT_API, channel_name].compact.join(":")
+    stream_data = {"stream" => stream_name, "data" => json}
+    OpenC3::Store.publish("__anycable__", JSON.generate(stream_data, allow_nan: true))
+  end
 end
 
 module OpenC3
@@ -536,6 +569,11 @@ class RunningScript
 
   def initialize(script_status)
     @@instance = self
+    # Flush the replay queue (used by running_script_anycable_publish) quickly so
+    # live output/state stays near real-time. Set explicitly here so the interval
+    # is applied even if the queue instance was already created. Only affects
+    # this running-script process.
+    OpenC3::EphemeralStoreQueued.instance.set_update_interval(RUNNING_SCRIPT_REPLAY_FLUSH_INTERVAL)
     @script_status = script_status
     @script_status.pid = Process.pid
     @user_input = ''

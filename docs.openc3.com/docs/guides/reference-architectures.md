@@ -9,7 +9,7 @@ COSMOS is the best way to command and control hardware with embedded software. T
 
 ## Core Single Server Architecture
 
-COSMOS Core (Open Source) deployed on a single server is most suitable for evaluation, test or development. COSMOS can be deployed on a individual computer with Windows or Mac OS via [Docker Desktop](https://docs.docker.com/desktop/). It can deployed on Linux directly using Docker on Ubuntu or Podman on RedHat.
+COSMOS Core (Open Source) deployed on a single server is most suitable for evaluation, test or development. COSMOS can be deployed on a individual computer with Windows or Mac OS via [Docker Desktop](https://docs.docker.com/desktop/). It can be deployed on Linux directly using Docker on Ubuntu or Podman on RedHat.
 
 If you deploy COSMOS Core you have to configure COSMOS yourself and build all your hardware plugins from scratch. You must rely on the COSMOS documentation and github issues instead of having direct email support from the OpenC3 team. Core configures a single user with a shared password having admin privileges. The Core license is the [OpenC3 Builder License](https://github.com/OpenC3/cosmos/blob/main/LICENSE.md) which means your users must have access to the COSMOS source code and any extensions you build into COSMOS itself.
 
@@ -29,7 +29,7 @@ Most Suitible for:
 
 ### Enterprise Single Server Architecture
 
-COSMOS Enterprise deployed on a single server is most suitable for formal test, production or operations. COSMOS Enterprise can be deployed on a individual computer with Windows or Mac OS via [Docker Desktop](https://docs.docker.com/desktop/). It can deployed on Linux directly using Docker on Ubuntu or Podman on RedHat.
+COSMOS Enterprise deployed on a single server is most suitable for formal test, production or operations. COSMOS Enterprise can be deployed on a individual computer with Windows or Mac OS via [Docker Desktop](https://docs.docker.com/desktop/). It can be deployed on Linux directly using Docker on Ubuntu or Podman on RedHat.
 
 Enterprise comes with a number of plugins that help you jump start your development: CCSDS TC/TM/CFDP, SCPI, SNMP, Gems, Protocol Buffers, gRPC, etc. Enterprise comes with email support from the OpenC3 team. Enterprise includes users, RBAC (role based access control) and SSO (single sign-on) through Keycloak. The Enterprise license is Commercial which means you can build proprietary COSMOS extensions and not be required to give your users access to the source code.
 

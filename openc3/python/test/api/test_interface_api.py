@@ -71,12 +71,33 @@ class TestInterfaceApi(unittest.TestCase):
         self.im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
         self.im_thread = threading.Thread(target=self.im.run)
         self.im_thread.start()
-        time.sleep(0.001)  # Allow the thread to run
+        # Wait for the command handler thread to subscribe to the interface
+        # command topic before returning. The handler captures its stream read
+        # offset lazily on its first read, so a command written by a test before
+        # that happens would be skipped (xread only returns newer messages),
+        # causing flaky failures under load.
+        self._wait_for_handler_ready()
 
     def tearDown(self):
         self.im.shutdown()
         self.im.graceful_kill()
         self.im_thread.join()
+
+    def _wait_for_handler_ready(self, timeout=2.0):
+        topic = "{DEFAULT__CMD}INTERFACE__INST_INT"
+        store = EphemeralStore.instance()
+        end_time = time.time() + timeout
+        while time.time() < end_time:
+            if any(topic in offsets for offsets in store.topic_offsets.values()):
+                return
+            time.sleep(0.001)
+
+    def _wait_for(self, condition, timeout=1.0):
+        end_time = time.time() + timeout
+        while time.time() < end_time:
+            if condition():
+                return
+            time.sleep(0.001)
 
     def test_returns_interface_hash(self):
         interface = get_interface("INST_INT")
@@ -237,19 +258,19 @@ class TestInterfaceApi(unittest.TestCase):
     def test_sends_an_interface_cmd(self):
         TestInterfaceApi.interface_cmd_data = {}
         interface_cmd("INST_INT", "cmd1")
-        time.sleep(0.05)
+        self._wait_for(lambda: "cmd1" in TestInterfaceApi.interface_cmd_data)
         self.assertEqual(list(TestInterfaceApi.interface_cmd_data.keys()), ["cmd1"])
         self.assertEqual(TestInterfaceApi.interface_cmd_data["cmd1"], ())
 
         TestInterfaceApi.interface_cmd_data = {}
         interface_cmd("INST_INT", "cmd2", "param1")
-        time.sleep(0.05)
+        self._wait_for(lambda: "cmd2" in TestInterfaceApi.interface_cmd_data)
         self.assertEqual(list(TestInterfaceApi.interface_cmd_data.keys()), ["cmd2"])
         self.assertEqual(TestInterfaceApi.interface_cmd_data["cmd2"], ("param1",))
 
         TestInterfaceApi.interface_cmd_data = {}
         interface_cmd("INST_INT", "cmd3", "param1", "param2")
-        time.sleep(0.05)
+        self._wait_for(lambda: "cmd3" in TestInterfaceApi.interface_cmd_data)
         self.assertEqual(list(TestInterfaceApi.interface_cmd_data.keys()), ["cmd3"])
         self.assertEqual(
             TestInterfaceApi.interface_cmd_data["cmd3"],
@@ -262,19 +283,19 @@ class TestInterfaceApi(unittest.TestCase):
     def test_sends_a_protocol_cmd(self):
         TestInterfaceApi.protocol_cmd_data = {}
         interface_protocol_cmd("INST_INT", "cmd1")
-        time.sleep(0.05)
+        self._wait_for(lambda: "cmd1" in TestInterfaceApi.protocol_cmd_data)
         self.assertEqual(list(TestInterfaceApi.protocol_cmd_data.keys()), ["cmd1"])
         self.assertEqual(TestInterfaceApi.protocol_cmd_data["cmd1"], ())
 
         TestInterfaceApi.protocol_cmd_data = {}
         interface_protocol_cmd("INST_INT", "cmd2", "param1")
-        time.sleep(0.05)
+        self._wait_for(lambda: "cmd2" in TestInterfaceApi.protocol_cmd_data)
         self.assertEqual(list(TestInterfaceApi.protocol_cmd_data.keys()), ["cmd2"])
         self.assertEqual(TestInterfaceApi.protocol_cmd_data["cmd2"], ("param1",))
 
         TestInterfaceApi.protocol_cmd_data = {}
         interface_protocol_cmd("INST_INT", "cmd3", "param1", "param2")
-        time.sleep(0.05)
+        self._wait_for(lambda: "cmd3" in TestInterfaceApi.protocol_cmd_data)
         self.assertEqual(list(TestInterfaceApi.protocol_cmd_data.keys()), ["cmd3"])
         self.assertEqual(
             TestInterfaceApi.protocol_cmd_data["cmd3"],

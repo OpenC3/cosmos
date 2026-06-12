@@ -111,23 +111,21 @@ test('gets details with right click', async ({ page, utils }) => {
       button: 'right',
     })
   await page.getByText('Details', { exact: true }).click()
-  await expect(page.locator('.v-overlay--active')).toBeVisible()
-  await expect(page.locator('.v-overlay--active')).toContainText(
-    'INST HEALTH_STATUS TEMP1',
-  )
+  // Scope to the dialog overlay specifically: a lingering Vuetify tooltip is
+  // also a `.v-overlay--active`, which made the bare selector match 2 elements
+  // and fail strict mode. The details popup is a `.v-dialog`.
+  const detailsDialog = page.locator('.v-overlay--active.v-dialog')
+  await expect(detailsDialog).toBeVisible()
+  await expect(detailsDialog).toContainText('INST HEALTH_STATUS TEMP1')
   // Check that a few of the details are there ... that proves the API request
-  await expect(page.locator('.v-overlay--active')).toContainText('UINT')
-  await expect(page.locator('.v-overlay--active')).toContainText(
-    'PolynomialConversion',
-  )
-  await expect(page.locator('.v-overlay--active')).toContainText('CELSIUS')
-  await expect(page.locator('.v-overlay--active')).toContainText(
-    'ExampleLimitsResponse',
-  )
+  await expect(detailsDialog).toContainText('UINT')
+  await expect(detailsDialog).toContainText('PolynomialConversion')
+  await expect(detailsDialog).toContainText('CELSIUS')
+  await expect(detailsDialog).toContainText('ExampleLimitsResponse')
 
   // Get out of the details dialog
   await page.locator('[data-test="notifications"]').click({ force: true })
-  await expect(page.locator('.v-overlay--active')).not.toBeVisible()
+  await expect(detailsDialog).not.toBeVisible()
 
   // Scroll to the top to allow better right click
   await page.mouse.wheel(0, 0)
@@ -139,15 +137,13 @@ test('gets details with right click', async ({ page, utils }) => {
       button: 'right',
     })
   await page.getByText('Details', { exact: true }).click()
-  await expect(page.locator('.v-overlay--active')).toBeVisible()
-  await expect(page.locator('.v-overlay--active')).toContainText(
+  await expect(detailsDialog).toBeVisible()
+  await expect(detailsDialog).toContainText(
     'INST HEALTH_STATUS PACKET_TIMESECONDS',
   )
   // Check that a few of the details are there ... that proves the API request
-  await expect(page.locator('.v-overlay--active')).toContainText('DERIVED')
-  await expect(page.locator('.v-overlay--active')).toContainText(
-    'PacketTimeSecondsConversion',
-  )
+  await expect(detailsDialog).toContainText('DERIVED')
+  await expect(detailsDialog).toContainText('PacketTimeSecondsConversion')
 })
 
 test('stops posting to the api after closing', async ({ page, utils }) => {
