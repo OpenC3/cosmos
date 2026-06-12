@@ -25,31 +25,66 @@ require 'openc3/tools/test_runner/test'
 OpenC3.require_file 'openc3/utilities/store'
 
 class Script < OpenC3::TargetFile
+  # Script lifecycle states and the transitions allowed from each state
+  LIFECYCLE_STATES = %w(development review approved)
+  LIFECYCLE_TRANSITIONS = {
+    'development' => %w(review approved),
+    'review' => %w(development approved),
+    'approved' => %w(review development),
+  }
+
   def self.all(scope, target = nil)
     super(scope, nil, target: target) # No path matchers
   end
 
+  # Split off the '*' that indicates a file is modified on the server
+  def self.strip_modified(name)
+    name.split('*')[0]
+  end
+  private_class_method :strip_modified
+
   def self.lock(scope, name, username)
-    name = name.split('*')[0] # Split '*' that indicates modified
-    OpenC3::Store.hset("#{scope}__script-locks", name, username)
+    OpenC3::Store.hset("#{scope}__script-locks", strip_modified(name), username)
   end
 
   def self.unlock(scope, name)
-    name = name.split('*')[0] # Split '*' that indicates modified
-    OpenC3::Store.hdel("#{scope}__script-locks", name)
+    OpenC3::Store.hdel("#{scope}__script-locks", strip_modified(name))
   end
 
   def self.locked?(scope, name)
-    name = name.split('*')[0] # Split '*' that indicates modified
-    locked_by = OpenC3::Store.hget("#{scope}__script-locks", name)
+    locked_by = OpenC3::Store.hget("#{scope}__script-locks", strip_modified(name))
     locked_by ||= false
     locked_by
   end
 
   def self.get_breakpoints(scope, name)
-    breakpoints = OpenC3::Store.hget("#{scope}__script-breakpoints", name.split('*')[0]) # Split '*' that indicates modified
+    breakpoints = OpenC3::Store.hget("#{scope}__script-breakpoints", strip_modified(name))
     return JSON.parse(breakpoints, allow_nan: true, create_additions: true) if breakpoints
     []
+  end
+
+  def self.lifecycle(scope, name)
+    data = OpenC3::Store.hget("#{scope}__script-lifecycle", strip_modified(name))
+    if data
+      JSON.parse(data, allow_nan: true, create_additions: true)
+    else
+      { 'state' => 'development', 'history' => [] }
+    end
+  end
+
+  def self.set_lifecycle(scope, name, state, username, comment)
+    name = strip_modified(name)
+    data = lifecycle(scope, name)
+    data['history'] << {
+      'from' => data['state'],
+      'to' => state,
+      'user' => username,
+      'time' => Time.now.utc.iso8601,
+      'comment' => comment,
+    }
+    data['state'] = state
+    OpenC3::Store.hset("#{scope}__script-lifecycle", name, data.as_json().to_json(allow_nan: true))
+    data
   end
 
   def self.process_suite(name, contents, new_process: true, username: nil, scope:)
@@ -182,14 +217,16 @@ class Script < OpenC3::TargetFile
   def self.delete_temp(scope)
     files = super(scope)
     files.each do |name|
-      # Remove any breakpoints associated with the temp files
+      # Remove any breakpoints and lifecycle data associated with the temp files
       OpenC3::Store.hdel("#{scope}__script-breakpoints", "#{TEMP_FOLDER}/#{File.basename(name)}")
+      OpenC3::Store.hdel("#{scope}__script-lifecycle", "#{TEMP_FOLDER}/#{File.basename(name)}")
     end
   end
 
   def self.destroy(scope, name)
     super(scope, name)
     OpenC3::Store.hdel("#{scope}__script-breakpoints", name)
+    OpenC3::Store.hdel("#{scope}__script-lifecycle", name)
   end
 
   def self.run(
