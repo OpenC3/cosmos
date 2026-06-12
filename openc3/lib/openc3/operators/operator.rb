@@ -381,11 +381,21 @@ module OpenC3
       # Monitor processes and respawn if died
       Logger.info("#{self.class} Monitoring processes every #{@cycle_time} sec...")
       loop do
-        update()
-        remove_old()
-        respawn_changed()
-        start_new()
-        respawn_dead()
+        # A single cycle must never be able to take down the operator process.
+        # update() in particular hits Redis every cycle and a transient network
+        # error (the kind that also makes targets reconnect) would otherwise
+        # unwind run() and exit the process, which in the container looks like a
+        # full operator restart. Catch, log, and keep cycling so the next cycle
+        # can recover once Redis is reachable again.
+        begin
+          update()
+          remove_old()
+          respawn_changed()
+          start_new()
+          respawn_dead()
+        rescue => e
+          Logger.error("#{self.class} cycle error, continuing: #{e.class} #{e.message}\n#{e.backtrace.join("\n")}")
+        end
         break if @shutdown
 
         sleep(@cycle_time)

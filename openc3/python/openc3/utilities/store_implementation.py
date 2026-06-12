@@ -13,7 +13,9 @@ import threading
 from contextlib import contextmanager
 
 import valkey
-from valkey.exceptions import TimeoutError
+from valkey.backoff import EqualJitterBackoff
+from valkey.exceptions import BusyLoadingError, ConnectionError, TimeoutError
+from valkey.retry import Retry
 
 from openc3.environment import *
 from openc3.utilities.connection_pool import ConnectionPool
@@ -165,11 +167,20 @@ class Store(metaclass=StoreMeta):
         # NOTE: We can't use decode_response because it tries to decode the binary
         # packet buffer which does not work. Thus strings come back as bytes like
         # b"target_name" and we decode them using b"target_name".decode()
+        #
+        # retry retries a command a few times with equal-jitter backoff so a
+        # transient network blip is handled inside the client instead of
+        # immediately surfacing a connection error to callers. The jitter
+        # de-syncs many clients retrying the same blip to avoid a thundering
+        # herd on recovery. With cap=5, base=0.625 the per-retry backoff tops
+        # out at 5s on the final (3rd) retry: ~0.6-1.25s, ~1.25-2.5s, ~2.5-5s.
         return valkey.Valkey(
             host=self.redis_host,
             port=self.redis_port,
             username=OPENC3_REDIS_USERNAME,
             password=OPENC3_REDIS_PASSWORD,
+            retry=Retry(EqualJitterBackoff(cap=5, base=0.625), 3),
+            retry_on_error=[BusyLoadingError, ConnectionError, TimeoutError],
         )
 
     ###########################################################################
