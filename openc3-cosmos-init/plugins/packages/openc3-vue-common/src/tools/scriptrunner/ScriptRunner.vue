@@ -954,6 +954,9 @@ export default {
       displayCriticalCmd: false,
       editorBoxSize: 50,
       lockingEnabled: true,
+      // Enterprise-only Version History; enabled when the backend has
+      // OPENC3_SCRIPT_VERSIONS_DIR set (reported by /openc3-api/info).
+      scriptVersionsEnabled: false,
     }
   },
   computed: {
@@ -1261,7 +1264,7 @@ export default {
             // Enterprise-only Version History entry. ScriptVersionController
             // lives in the openc3-enterprise gem; omit the divider + item
             // entirely so Core builds don't render a dead menu option.
-            ...(this.isEnterprise
+            ...(this.scriptVersionsEnabled
               ? [
                   { divider: true },
                   {
@@ -1327,13 +1330,16 @@ export default {
     // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
     this.api.ensure_offline_access()
-    // Detect Enterprise so we can show the Version History menu item.
+    // Detect Enterprise and whether the Version History backend is enabled
+    // (OPENC3_SCRIPT_VERSIONS_DIR set) so we can show the menu item.
     Api.get('/openc3-api/info')
       .then((response) => {
         this.isEnterprise = !!response.data?.enterprise
+        this.scriptVersionsEnabled = !!response.data?.script_versions
       })
       .catch(() => {
         this.isEnterprise = false
+        this.scriptVersionsEnabled = false
       })
     this.api
       .get_setting('time_zone')

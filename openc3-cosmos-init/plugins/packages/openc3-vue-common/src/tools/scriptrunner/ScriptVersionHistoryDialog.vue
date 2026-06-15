@@ -112,42 +112,69 @@
                 :active="selectedVersionId === v.version_id"
                 @click="selectVersion(v.version_id)"
               >
-                <template #prepend>
-                  <v-tooltip :open-delay="600" location="top">
-                    <template #activator="{ props: tt }">
-                      <v-icon
-                        v-bind="tt"
-                        :color="
-                          v.version_id === compareVersionId
-                            ? 'primary'
-                            : undefined
-                        "
-                        style="cursor: pointer"
-                        data-test="version-compare"
-                        @click.stop="setCompare(v.version_id)"
-                      >
-                        {{
-                          v.version_id === compareVersionId
-                            ? 'mdi-bookmark'
-                            : 'mdi-bookmark-outline'
-                        }}
-                      </v-icon>
-                    </template>
-                    <span>Diff to this version</span>
-                  </v-tooltip>
-                </template>
+                <v-tooltip activator="parent" location="top" :open-delay="500">
+                  <span style="white-space: pre-line">{{
+                    fullLabel(v, idx)
+                  }}</span>
+                </v-tooltip>
                 <v-list-item-title class="text-body-2">
                   <span>Version {{ versions.length - idx }}</span>
-                  <span v-if="idx === 0" class="ml-2">
-                    <v-chip size="x-small" color="primary" variant="tonal">
-                      Current
-                    </v-chip>
-                  </span>
+                  <span v-if="v.plugin" class="ml-1">— {{ v.plugin }}</span>
                 </v-list-item-title>
                 <v-list-item-subtitle>
                   {{ formatTimestamp(v.last_modified) }}
+                  <span v-if="v.username"> — {{ v.username }}</span>
+                  <v-tooltip
+                    v-if="v.source === 'plugin-upgrade'"
+                    :open-delay="600"
+                    location="top"
+                  >
+                    <template #activator="{ props: tt }">
+                      <v-chip
+                        v-bind="tt"
+                        size="x-small"
+                        color="info"
+                        variant="tonal"
+                        class="ml-2"
+                        data-test="version-plugin-upgrade"
+                      >
+                        Plugin upgrade
+                      </v-chip>
+                    </template>
+                    <span>{{
+                      v.plugin
+                        ? `Installed by plugin upgrade: ${v.plugin}`
+                        : 'Installed by plugin upgrade'
+                    }}</span>
+                  </v-tooltip>
                 </v-list-item-subtitle>
                 <template #append>
+                  <v-tooltip
+                    v-if="idx !== versions.length - 1"
+                    :open-delay="600"
+                    location="top"
+                  >
+                    <template #activator="{ props: tt }">
+                      <v-btn
+                        v-bind="tt"
+                        icon="mdi-file-compare"
+                        size="small"
+                        variant="text"
+                        density="comfortable"
+                        class="mr-1"
+                        :color="
+                          viewMode === 'diff' &&
+                          selectedVersionId === v.version_id
+                            ? 'primary'
+                            : undefined
+                        "
+                        aria-label="Diff with previous version"
+                        data-test="version-diff"
+                        @click.stop="diffVersion(v.version_id)"
+                      />
+                    </template>
+                    <span>Diff with previous version</span>
+                  </v-tooltip>
                   <v-btn
                     v-if="idx !== 0"
                     size="small"
@@ -161,9 +188,6 @@
                   </v-btn>
                 </template>
               </v-list-item>
-              <v-list-item>
-                <span>Restoring a version creates a new version.</span>
-              </v-list-item>
             </v-list>
           </v-col>
           <v-col
@@ -174,20 +198,45 @@
               v-if="!selectedVersionId"
               class="pa-6 text-center text-medium-emphasis"
             >
-              Select a version on the left to diff against the current version.
+              Select a version on the left to view it. Use the diff button to
+              compare a version with the previous one.
             </div>
             <div v-else-if="diffLoading" class="pa-6 text-center">
               <v-progress-circular indeterminate color="primary" />
             </div>
             <div v-else class="diff-frame">
               <div class="diff-header d-flex align-stretch">
-                <div class="diff-header-half diff-header-left">
-                  <span class="diff-header-label">Left</span>
-                  <span class="diff-header-value">{{ leftLabel }}</span>
-                </div>
-                <div class="diff-header-half diff-header-right">
-                  <span class="diff-header-label">Right</span>
-                  <span class="diff-header-value">{{ rightLabel }}</span>
+                <template v-if="viewMode === 'diff'">
+                  <div class="diff-header-half diff-header-left">
+                    <span class="diff-header-label">Left</span>
+                    <v-select
+                      :model-value="diffBaseVersionId"
+                      :items="versionOptions"
+                      density="compact"
+                      variant="solo-filled"
+                      flat
+                      hide-details
+                      data-test="version-diff-left"
+                      @update:model-value="onSelectLeft"
+                    />
+                  </div>
+                  <div class="diff-header-half diff-header-right">
+                    <span class="diff-header-label">Right</span>
+                    <v-select
+                      :model-value="selectedVersionId"
+                      :items="versionOptions"
+                      density="compact"
+                      variant="solo-filled"
+                      flat
+                      hide-details
+                      data-test="version-diff-right"
+                      @update:model-value="onSelectRight"
+                    />
+                  </div>
+                </template>
+                <div v-else class="diff-header-half" style="flex-basis: 100%">
+                  <span class="diff-header-label">Viewing</span>
+                  <span class="diff-header-value">{{ selectedLabel }}</span>
                 </div>
                 <v-btn
                   icon="mdi-close"
@@ -195,7 +244,7 @@
                   variant="text"
                   density="compact"
                   class="ml-2 align-self-center"
-                  aria-label="Close diff"
+                  aria-label="Close"
                   data-test="version-diff-close"
                   @click="closeDiff"
                 />
@@ -248,8 +297,8 @@ export default {
       loadError: null,
       versions: [],
       selectedVersionId: null,
-      selectedVersionTimestamp: null,
-      compareVersionId: null,
+      diffBaseVersionId: null,
+      viewMode: 'view',
       diffLoading: false,
       differ: null,
       restoringVersionId: null,
@@ -265,32 +314,14 @@ export default {
       if (ext === 'js') return 'javascript'
       return 'plaintext'
     },
-    versionLabel() {
-      // version_id → "Version N" using the list ordering (newest first).
-      return (versionId) => {
-        const idx = this.versions.findIndex((x) => x.version_id === versionId)
-        if (idx < 0) return versionId
-        return `Version ${this.versions.length - idx}`
-      }
+    selectedLabel() {
+      return this.labelFor(this.selectedVersionId)
     },
-    leftLabel() {
-      if (!this.selectedVersionId) return ''
-      const ts = this.formatTimestamp(this.selectedVersionTimestamp)
-      return `${this.versionLabel(this.selectedVersionId)} (${ts})`
-    },
-    rightLabel() {
-      if (!this.compareVersionId) return 'Current'
-      const v = this.versions.find(
-        (x) => x.version_id === this.compareVersionId,
-      )
-      const ts = v ? this.formatTimestamp(v.last_modified) : ''
-      const label = this.versionLabel(this.compareVersionId)
-      // The newest version is what the editor shows as "Current".
-      const suffix =
-        this.compareVersionId === this.versions[0]?.version_id
-          ? ' — Current'
-          : ''
-      return `${label}${suffix} (${ts})`
+    versionOptions() {
+      return this.versions.map((v) => ({
+        title: this.labelFor(v.version_id),
+        value: v.version_id,
+      }))
     },
   },
   watch: {
@@ -300,6 +331,8 @@ export default {
       } else {
         this.teardownDiffer()
         this.selectedVersionId = null
+        this.diffBaseVersionId = null
+        this.viewMode = 'view'
       }
     },
   },
@@ -319,6 +352,18 @@ export default {
       const formatted = new Date(ts).toLocaleString()
       return formatted === 'Invalid Date' ? String(ts) : formatted
     },
+    // Full multi-line label for the hover tooltip — the list row can truncate
+    // (e.g. a long plugin name), so show everything here.
+    fullLabel(v, idx) {
+      let label = `Version ${this.versions.length - idx}`
+      if (v.plugin) label += ` — ${v.plugin}`
+      label += `\n${this.formatTimestamp(v.last_modified)}`
+      if (v.username) label += ` — ${v.username}`
+      if (v.source === 'plugin-upgrade') {
+        label += '\n(Installed by plugin upgrade)'
+      }
+      return label
+    },
     async loadVersions() {
       this.loading = true
       this.loadError = null
@@ -327,9 +372,6 @@ export default {
           `/script-api/scripts/${this.filename}/versions`,
         )
         this.versions = response.data?.versions || []
-        // Default the diff target (right side) to the newest version, which
-        // is what the editor is currently displaying.
-        this.compareVersionId = this.versions[0]?.version_id || null
       } catch ({ response }) {
         this.loadError =
           response?.data?.message || response?.statusText || 'unknown'
@@ -337,37 +379,54 @@ export default {
         this.loading = false
       }
     },
+    labelFor(versionId) {
+      if (!versionId) return ''
+      const idx = this.versions.findIndex((x) => x.version_id === versionId)
+      if (idx < 0) return versionId
+      const v = this.versions[idx]
+      const ts = this.formatTimestamp(v.last_modified)
+      const user = v.username ? ` — ${v.username}` : ''
+      return `Version ${this.versions.length - idx} (${ts})${user}`
+    },
     closeDiff() {
       this.selectedVersionId = null
-      this.selectedVersionTimestamp = null
+      this.diffBaseVersionId = null
+      this.viewMode = 'view'
       this.teardownDiffer()
     },
     async selectVersion(versionId) {
-      // Re-clicking the active row closes the diff.
-      if (versionId === this.selectedVersionId) {
+      // Re-clicking the row being viewed closes the pane.
+      if (versionId === this.selectedVersionId && this.viewMode === 'view') {
         this.closeDiff()
         return
       }
-      // Selecting the same version as the diff target = no meaningful diff.
-      if (versionId === this.compareVersionId) {
-        this.closeDiff()
-        return
-      }
-      const idx = this.versions.findIndex((x) => x.version_id === versionId)
+      this.viewMode = 'view'
       this.selectedVersionId = versionId
-      this.selectedVersionTimestamp = this.versions[idx]?.last_modified
+      this.diffBaseVersionId = null
+      await this.renderView()
+    },
+    async diffVersion(versionId) {
+      // Diff this version against the previous (next-older) version.
+      const idx = this.versions.findIndex((x) => x.version_id === versionId)
+      const base = this.versions[idx + 1]
+      if (!base) return
+      // Re-clicking the active diff button closes the pane.
+      if (versionId === this.selectedVersionId && this.viewMode === 'diff') {
+        this.closeDiff()
+        return
+      }
+      this.viewMode = 'diff'
+      this.selectedVersionId = versionId
+      this.diffBaseVersionId = base.version_id
       await this.renderDiff()
     },
-    async setCompare(versionId) {
-      this.compareVersionId = versionId
-      // Reset the left side if the user just made the diff trivial.
-      if (this.selectedVersionId === versionId) {
-        this.closeDiff()
-        return
-      }
-      if (this.selectedVersionId) {
-        await this.renderDiff()
-      }
+    async onSelectLeft(versionId) {
+      this.diffBaseVersionId = versionId
+      await this.renderDiff()
+    },
+    async onSelectRight(versionId) {
+      this.selectedVersionId = versionId
+      await this.renderDiff()
     },
     async fetchVersionBody(versionId) {
       // Latest version body lives in the parent editor — avoid a round-trip
@@ -384,14 +443,56 @@ export default {
         ? response.data
         : String(response.data ?? '')
     },
+    async renderView() {
+      if (!this.selectedVersionId) return
+      this.diffLoading = true
+      this.teardownDiffer()
+      try {
+        const body = await this.fetchVersionBody(this.selectedVersionId)
+        await this.$nextTick()
+        this.diffLoading = false
+        await this.$nextTick()
+        if (this.$refs.differContainer) {
+          const language = this.monacoLanguage
+          const stamp = Date.now()
+          const ext = (this.filename || '').split('.').pop() || 'txt'
+          // markRaw is critical — see renderDiff for the full rationale.
+          const model = markRaw(
+            monaco.editor.createModel(
+              body,
+              language,
+              monaco.Uri.parse(
+                `inmemory://script-version/${stamp}-view.${ext}`,
+              ),
+            ),
+          )
+          const editor = markRaw(
+            monaco.editor.create(this.$refs.differContainer, {
+              readOnly: true,
+              automaticLayout: true,
+              theme: 'vs-dark',
+              scrollBeyondLastLine: false,
+              model,
+            }),
+          )
+          this.differ = editor
+        }
+      } catch ({ response }) {
+        this.diffLoading = false
+        this.$notify.caution({
+          title: 'Failed to load version',
+          body: response?.data?.message || response?.statusText || 'unknown',
+        })
+      }
+    },
     async renderDiff() {
-      if (!this.selectedVersionId || !this.compareVersionId) return
+      if (!this.selectedVersionId || !this.diffBaseVersionId) return
       this.diffLoading = true
       this.teardownDiffer()
       try {
         const [leftBody, rightBody] = await Promise.all([
+          this.fetchVersionBody(this.diffBaseVersionId),
           this.fetchVersionBody(this.selectedVersionId),
-          this.fetchVersionBody(this.compareVersionId),
         ])
         await this.$nextTick()
         this.diffLoading = false
@@ -452,11 +553,17 @@ export default {
     },
     teardownDiffer() {
       if (this.differ) {
-        // Capture model before dispose; getModel() returns null after.
+        // Capture model before dispose; getModel() returns null after. A diff
+        // editor returns {original, modified}; a plain editor returns the model
+        // directly — dispose whichever shape we got.
         const model = this.differ.getModel()
         this.differ.dispose()
-        model?.original?.dispose()
-        model?.modified?.dispose()
+        if (model?.original || model?.modified) {
+          model.original?.dispose()
+          model.modified?.dispose()
+        } else {
+          model?.dispose?.()
+        }
         this.differ = null
       }
     },

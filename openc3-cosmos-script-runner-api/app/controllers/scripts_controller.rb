@@ -17,6 +17,7 @@
 
 require 'json'
 require 'openc3/utilities/script'
+require 'openc3/models/target_model'
 
 class ScriptsController < ApplicationController
   # This REGEX is also found in running_script.rb
@@ -61,7 +62,8 @@ class ScriptsController < ApplicationController
       # plugin-installed scripts have a baseline commit before any user edit.
       # Constant only loaded by the openc3-enterprise gem.
       if defined?(::ScriptVersionStore)
-        ::ScriptVersionStore.seed_initial_if_empty(scope: scope, name: name, body: file)
+        plugin = OpenC3::TargetModel.plugin_version_label(name.split('/')[0], scope: scope)
+        ::ScriptVersionStore.seed_initial_if_empty(scope: scope, name: name, body: file, plugin: plugin)
       end
       locked = Script.locked?(scope, name)
       unless locked

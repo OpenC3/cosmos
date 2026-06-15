@@ -30,6 +30,7 @@ require 'openc3/topics/config_topic'
 require 'openc3/system'
 require 'openc3/utilities/local_mode'
 require 'openc3/utilities/bucket'
+require 'openc3/utilities/target_file'
 require 'openc3/utilities/zip'
 require 'fileutils'
 require 'ostruct'
@@ -122,6 +123,22 @@ module OpenC3
       targets.sort.to_h
     end
 
+    # "name version" of the plugin that installed this target (e.g.
+    # "openc3-cosmos-demo 7.2.0"), derived from the plugin instance name
+    # ("openc3-cosmos-demo-7.2.0.gem__0"), or nil if unavailable. Used to
+    # annotate the Version History baseline with the file's origin.
+    def self.plugin_version_label(target_name, scope:)
+      model = get(name: target_name, scope: scope)
+      plugin = model && model['plugin']
+      return nil unless plugin
+      gem = plugin.split('__')[0].sub(/\.gem\z/, '')
+      parts = gem.split('-')
+      return nil if parts.length < 2
+      "#{parts[0..-2].join('-')} #{parts[-1]}"
+    rescue
+      nil
+    end
+
     # Given target's modified file list
     def self.modified_files(target_name, scope:)
       modified = []
@@ -144,7 +161,19 @@ module OpenC3
       modified.sort
     end
 
-    def self.delete_modified(target_name, scope:)
+    # files: optional list of specific modified files to delete, each a name
+    # relative to scope ("TARGET/sub/path", matching modified_files output).
+    # When given, only those files are removed (used by plugin upgrade to drop
+    # some modified files while keeping others); when nil, every modified file
+    # for the target is removed (the original behavior).
+    def self.delete_modified(target_name, scope:, files: nil)
+      if files && !files.empty?
+        files.each do |name|
+          # TargetFile.destroy handles both local mode and the bucket.
+          OpenC3::TargetFile.destroy(scope, name)
+        end
+        return
+      end
       if ENV['OPENC3_LOCAL_MODE']
         OpenC3::LocalMode.delete_modified(target_name, scope: scope)
       end
@@ -563,11 +592,23 @@ module OpenC3
       return nil
     end
 
-    def deploy(gem_path, variables, validate_only: false)
+    # upgrade_context (plugin upgrades only) drives two modes, both keyed by
+    # the deployed file name "TARGET/sub/path" (matches modified_files output):
+    #   { diff_collector: [] } — dry run (with validate_only): append the names
+    #     of modified files whose live content differs from the rendered plugin
+    #     content. Read-only; used to warn before an upgrade.
+    #   { username:, plugin: "name version", version_files: [<name>...] } — for
+    #     each listed file with a modified copy: record the modified copy in
+    #     Version History, drop the shadow so the plugin content becomes current,
+    #     then commit the incoming content as a plugin-upgrade version.
+    # nil (the default and Core builds without ScriptVersionStore) = no-op.
+    def deploy(gem_path, variables, validate_only: false, upgrade_context: nil)
       variables["target_name"] = @name
       start_path = "/targets/#{@folder_name}/"
       temp_dir = Dir.mktmpdir
       found = false
+      diff_collector = upgrade_context && upgrade_context[:diff_collector]
+      versioning = !validate_only && upgrade_context && upgrade_context[:version_files] && script_version_store_available?
       begin
         target_path = gem_path + start_path + "**/*"
         Dir.glob(target_path) do |filename|
@@ -603,6 +644,16 @@ module OpenC3
           File.open(local_path, 'wb') { |file| file.write(data) }
           found = true
           @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: data) unless validate_only
+
+          # Plugin upgrade: either collect this file into the diff (dry run) or
+          # take it from the plugin while preserving the modified copy in
+          # Version History. Both skip files with no modified copy.
+          name = "#{@name}/#{target_folder_path}"
+          if diff_collector
+            collect_modified_diff(name, data, diff_collector)
+          elsif versioning && upgrade_context[:version_files].include?(name)
+            apply_upgrade_version(name, data, upgrade_context)
+          end
         end
         raise "No target files found at #{target_path}" unless found
 
@@ -623,6 +674,56 @@ module OpenC3
       ensure
         FileUtils.remove_entry_secure(temp_dir, true)
       end
+    end
+
+    # Version History is an Enterprise feature. The plugin deploy runs in the
+    # cmd-tlm-api process, which (unlike script-runner-api) doesn't otherwise
+    # require the store, so lazily load it on demand. Returns false in Core
+    # builds where the Enterprise gem isn't present.
+    def script_version_store_available?
+      return true if defined?(::ScriptVersionStore)
+      require 'openc3-enterprise/utilities/script_version_store'
+      defined?(::ScriptVersionStore) ? true : false
+    rescue LoadError
+      false
+    end
+
+    # See deploy/upgrade_context. Reads the modified shadow directly (not
+    # TargetFile.body, which would fall back to the just-overwritten pristine
+    # copy), commits it, removes it, then commits the incoming plugin content.
+    # Best-effort: a versioning failure must not abort the plugin upgrade.
+    def apply_upgrade_version(name, new_data, ctx)
+      modified_key = "#{@scope}/targets_modified/#{name}"
+      resp = @bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: modified_key)
+      return unless resp && resp.body
+      old_body = resp.body.read
+      # Nothing actually changed — the modification already matches the plugin.
+      # Leave the (identical) shadow in place and create no version churn.
+      return if old_body.b == new_data.b
+      old_body = old_body.force_encoding('UTF-8') unless File.extname(name) == '.bin'
+      # Preserve the pre-upgrade (user-modified) content as a version.
+      # Idempotent: a no-op when it already matches the latest version.
+      ::ScriptVersionStore.commit(scope: @scope, name: name, text: old_body)
+      # Drop the modified shadow so the plugin file (already written to
+      # targets/) becomes the live content.
+      OpenC3::TargetFile.destroy(@scope, name)
+      # Commit the incoming plugin content as a plugin-upgrade version,
+      # attributed to the installing user.
+      ::ScriptVersionStore.commit(scope: @scope, name: name, text: new_data,
+        username: ctx[:username], source: 'plugin-upgrade', plugin: ctx[:plugin])
+    rescue => e
+      Logger.warn("Version History upgrade capture failed for #{@scope}/#{name}: #{e.message}")
+    end
+
+    # Dry-run companion to apply_upgrade_version: append name to collector when
+    # a modified copy exists and differs (by bytes) from the rendered plugin
+    # content. Read-only.
+    def collect_modified_diff(name, new_data, collector)
+      resp = @bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: "#{@scope}/targets_modified/#{name}")
+      return unless resp && resp.body
+      collector << name if resp.body.read.b != new_data.b
+    rescue => e
+      Logger.warn("Modified diff check failed for #{@scope}/#{name}: #{e.message}")
     end
 
     def undeploy

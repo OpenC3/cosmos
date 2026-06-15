@@ -514,8 +514,9 @@ test.describe(() => {
     await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
     await page.locator('data-test=edit-submit').click()
     await expect(page.locator('.v-dialog:has-text("Modified")')).toBeVisible()
-    // Check the delete box
-    await page.locator('text=DELETE MODIFIED').click()
+    // The modified file is a script, so it gets a per-file choice that
+    // defaults to "Install file from plugin" (recoverable via Version
+    // History). Just confirm to take the plugin's version.
     await page.locator('data-test=modified-plugin-submit').click()
     await expect(page.locator('[data-test=plugin-alert]')).toContainText(
       'Started installing',
