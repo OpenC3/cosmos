@@ -60,8 +60,9 @@ class ScriptsController < ApplicationController
     if file
       # Enterprise-only: seed Version History with the deployed body so
       # plugin-installed scripts have a baseline commit before any user edit.
-      # Constant only loaded by the openc3-enterprise gem.
-      if defined?(::ScriptVersionStore)
+      # Constant only loaded by the openc3-enterprise gem. Skip __TEMP__
+      # scratch scripts — they are throwaway and need no history.
+      if defined?(::ScriptVersionStore) && !name.start_with?("#{OpenC3::TargetFile::TEMP_FOLDER}/")
         plugin = OpenC3::TargetModel.plugin_version_label(name.split('/')[0], scope: scope)
         ::ScriptVersionStore.seed_initial_if_empty(scope: scope, name: name, body: file, plugin: plugin)
       end
@@ -99,8 +100,9 @@ class ScriptsController < ApplicationController
     Script.create(args)
     results = {}
     # Enterprise-only: capture a git commit alongside the bucket write so
-    # the new version_id can travel back to the editor.
-    if defined?(::ScriptVersionStore)
+    # the new version_id can travel back to the editor. Skip __TEMP__ scratch
+    # scripts — they are throwaway and would only add history noise.
+    if defined?(::ScriptVersionStore) && !name.start_with?("#{OpenC3::TargetFile::TEMP_FOLDER}/")
       sha = ::ScriptVersionStore.commit(scope: scope, name: name, text: params[:text], username: username())
       results['version_id'] = sha if sha
     end
