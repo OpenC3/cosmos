@@ -159,6 +159,126 @@ module OpenC3
         dels = TargetModel.delete_modified('TEST', scope: "DEFAULT")
         expect(dels).to match_array([] )# return empty array when none modified
       end
+
+      it "deletes only the given files via TargetFile when a files list is passed" do
+        expect(OpenC3::TargetFile).to receive(:destroy).with("DEFAULT", "TEST/screens/a.txt")
+        expect(OpenC3::TargetFile).to receive(:destroy).with("DEFAULT", "TEST/lib/b.rb")
+        TargetModel.delete_modified('TEST', scope: "DEFAULT", files: ["TEST/screens/a.txt", "TEST/lib/b.rb"])
+      end
+
+      it "falls back to deleting all modified files when the files list is empty" do
+        # Empty list takes the original (delete-all) path, not the per-file path
+        expect(OpenC3::TargetFile).to_not receive(:destroy)
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        TargetModel.delete_modified('TEST', scope: "DEFAULT", files: [])
+      end
+    end
+
+    describe "self.plugin_version_label" do
+      it "returns the plugin name and version derived from the plugin instance name" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT",
+          plugin: "openc3-cosmos-demo-7.2.0.gem__0")
+        model.create
+        expect(TargetModel.plugin_version_label("TEST", scope: "DEFAULT")).to eql("openc3-cosmos-demo 7.2.0")
+      end
+
+      it "returns nil when the target does not exist" do
+        expect(TargetModel.plugin_version_label("NOPE", scope: "DEFAULT")).to be_nil
+      end
+
+      it "returns nil when the target has no plugin" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        expect(TargetModel.plugin_version_label("TEST", scope: "DEFAULT")).to be_nil
+      end
+
+      it "returns nil when the plugin name has no version segment" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT",
+          plugin: "singleword__0")
+        model.create
+        expect(TargetModel.plugin_version_label("TEST", scope: "DEFAULT")).to be_nil
+      end
+    end
+
+    describe "plugin upgrade Version History helpers" do
+      let(:model) { TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT") }
+      let(:bucket) { double("bucket") }
+      before(:each) { model.instance_variable_set(:@bucket, bucket) }
+
+      def shadow_response(body)
+        double("resp", body: double("io", read: body))
+      end
+
+      describe "#collect_modified_diff" do
+        it "appends the name when the modified copy differs from the plugin content" do
+          allow(bucket).to receive(:get_object).and_return(shadow_response("user version"))
+          collector = []
+          model.send(:collect_modified_diff, "TEST/screen.txt", "plugin version", collector)
+          expect(collector).to eql(["TEST/screen.txt"])
+        end
+
+        it "does not append when the modified copy matches the plugin content" do
+          allow(bucket).to receive(:get_object).and_return(shadow_response("same"))
+          collector = []
+          model.send(:collect_modified_diff, "TEST/screen.txt", "same", collector)
+          expect(collector).to be_empty
+        end
+
+        it "does not append when there is no modified copy" do
+          allow(bucket).to receive(:get_object).and_return(nil)
+          collector = []
+          model.send(:collect_modified_diff, "TEST/screen.txt", "anything", collector)
+          expect(collector).to be_empty
+        end
+
+        it "logs and swallows bucket errors" do
+          allow(bucket).to receive(:get_object).and_raise("boom")
+          expect(Logger).to receive(:warn).with(/Modified diff check failed/)
+          collector = []
+          expect { model.send(:collect_modified_diff, "TEST/screen.txt", "x", collector) }.to_not raise_error
+          expect(collector).to be_empty
+        end
+      end
+
+      describe "#apply_upgrade_version" do
+        let(:store) { double("ScriptVersionStore") }
+        before(:each) { stub_const("ScriptVersionStore", store) }
+
+        it "versions the modified copy, drops the shadow, then versions the plugin content" do
+          allow(bucket).to receive(:get_object).and_return(shadow_response("modified"))
+          ctx = { username: "upgrader", plugin: "test-plugin 1.0.0", version_files: ["TEST/screen.txt"] }
+          # Order: commit the pre-upgrade modified body, remove the shadow, then
+          # commit the incoming plugin content attributed to the upgrade.
+          expect(store).to receive(:commit).with(scope: "DEFAULT", name: "TEST/screen.txt", text: "modified").ordered
+          expect(OpenC3::TargetFile).to receive(:destroy).with("DEFAULT", "TEST/screen.txt").ordered
+          expect(store).to receive(:commit).with(scope: "DEFAULT", name: "TEST/screen.txt", text: "plugin",
+            username: "upgrader", source: 'plugin-upgrade', plugin: "test-plugin 1.0.0").ordered
+          model.send(:apply_upgrade_version, "TEST/screen.txt", "plugin", ctx)
+        end
+
+        it "does nothing when the modified copy already matches the plugin content" do
+          allow(bucket).to receive(:get_object).and_return(shadow_response("identical"))
+          expect(store).to_not receive(:commit)
+          expect(OpenC3::TargetFile).to_not receive(:destroy)
+          model.send(:apply_upgrade_version, "TEST/screen.txt", "identical", { username: "u", plugin: "p 1", version_files: [] })
+        end
+
+        it "does nothing when there is no modified copy" do
+          allow(bucket).to receive(:get_object).and_return(nil)
+          expect(store).to_not receive(:commit)
+          model.send(:apply_upgrade_version, "TEST/screen.txt", "plugin", { username: "u", plugin: "p 1", version_files: [] })
+        end
+
+        it "logs and swallows errors so the upgrade is not aborted" do
+          allow(bucket).to receive(:get_object).and_return(shadow_response("modified"))
+          allow(store).to receive(:commit).and_raise("git boom")
+          expect(Logger).to receive(:warn).with(/Version History upgrade capture failed/)
+          expect {
+            model.send(:apply_upgrade_version, "TEST/screen.txt", "plugin", { username: "u", plugin: "p 1", version_files: [] })
+          }.to_not raise_error
+        end
+      end
     end
 
     describe "self.download" do

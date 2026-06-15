@@ -188,7 +188,9 @@ module OpenC3
     # what this plugin would deploy — used to warn before an upgrade which user
     # modifications it would supersede. Implies validate_only (no side effects).
     def self.install_phase2(plugin_hash, scope:, gem_file_path: nil, validate_only: false, diff_only: false)
-      validate_only = true if diff_only
+      # diff_only implies a dry run; derive a local flag instead of mutating
+      # the validate_only parameter.
+      dry_run = validate_only || diff_only
       # Register plugin to aid in uninstall if install fails
       plugin_hash.delete("existing_plugin_txt_lines")
       # Version History upgrade hints (threaded from the admin install through
@@ -198,7 +200,7 @@ module OpenC3
       upgrade_username = plugin_hash.delete("username")
       upgrade_version_files = plugin_hash.delete("version_history_files")
       plugin_model = PluginModel.new(**(plugin_hash.transform_keys(&:to_sym)), scope: scope)
-      plugin_model.create unless validate_only
+      plugin_model.create unless dry_run
 
       temp_dir = Dir.mktmpdir
       begin
@@ -215,11 +217,11 @@ module OpenC3
         # Attempt to remove all older versions of this same plugin before install to prevent version conflicts
         # Especially on downgrades
         # Leave the same version if it already exists
-        # Skipped for validate_only/diff_only: a dry run must not mutate gems.
-        OpenC3::GemModel.destroy_all_other_versions(File.basename(gem_file_path)) unless validate_only
+        # Skipped for dry_run/diff_only: a dry run must not mutate gems.
+        OpenC3::GemModel.destroy_all_other_versions(File.basename(gem_file_path)) unless dry_run
 
         # Actually install the gem now (slow)
-        OpenC3::GemModel.install(gem_file_path, scope: scope) unless validate_only
+        OpenC3::GemModel.install(gem_file_path, scope: scope) unless dry_run
 
         # Extract gem contents
         gem_path = File.join(temp_dir, "gem")
@@ -261,7 +263,7 @@ module OpenC3
                               version_files: upgrade_version_files }
         end
         plugin_model.img_path = File.join('gems', package_name, img_path) if img_path # convert this filesystem path to volumes mount path
-        plugin_model.update() unless validate_only
+        plugin_model.update() unless dry_run
 
         needs_dependencies = pkg.spec.runtime_dependencies.length > 0
         needs_dependencies = true if Dir.exist?(File.join(gem_path, 'lib'))
@@ -270,10 +272,10 @@ module OpenC3
         pyproject_path = File.join(gem_path, 'pyproject.toml')
         requirements_path = File.join(gem_path, 'requirements.txt')
 
-        # Skipped for validate_only/diff_only: the pip install is a no-op there
+        # Skipped for dry_run/diff_only: the pip install is a no-op there
         # anyway, and resolving pypi_url makes an authorized API call that a dry
         # run has no business making.
-        if (File.exist?(pyproject_path) || File.exist?(requirements_path)) && !validate_only
+        if (File.exist?(pyproject_path) || File.exist?(requirements_path)) && !dry_run
           begin
             pypi_url = get_setting('pypi_url', scope: scope)
             if pypi_url
@@ -291,7 +293,7 @@ module OpenC3
               pypi_url ||= 'https://pypi.org/simple'
             end
           end
-          unless validate_only
+          unless dry_run
             if File.exist?(pyproject_path)
               Logger.info "Installing python packages from pyproject.toml with pypi_url=#{pypi_url}"
               if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
@@ -329,7 +331,7 @@ module OpenC3
         end
         if needs_dependencies
           plugin_model.needs_dependencies = true
-          plugin_model.update unless validate_only
+          plugin_model.update unless dry_run
         end
 
         # Temporarily add all lib folders from the gem to the end of the load path
@@ -368,11 +370,11 @@ module OpenC3
               when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET', 'SCRIPT_ENGINE'
                 begin
                   if current_model
-                    current_model.create unless validate_only
+                    current_model.create unless dry_run
                     if current_model.is_a?(OpenC3::TargetModel)
-                      current_model.deploy(gem_path, erb_variables, validate_only: validate_only, upgrade_context: upgrade_context)
+                      current_model.deploy(gem_path, erb_variables, validate_only: dry_run, upgrade_context: upgrade_context)
                     else
-                      current_model.deploy(gem_path, erb_variables, validate_only: validate_only)
+                      current_model.deploy(gem_path, erb_variables, validate_only: dry_run)
                     end
                   end
                 # If something goes wrong in create, or more likely in deploy,
@@ -392,11 +394,11 @@ module OpenC3
               end
             end
             if current_model
-              current_model.create unless validate_only
+              current_model.create unless dry_run
               if current_model.is_a?(OpenC3::TargetModel)
-                current_model.deploy(gem_path, erb_variables, validate_only: validate_only, upgrade_context: upgrade_context)
+                current_model.deploy(gem_path, erb_variables, validate_only: dry_run, upgrade_context: upgrade_context)
               else
-                current_model.deploy(gem_path, erb_variables, validate_only: validate_only)
+                current_model.deploy(gem_path, erb_variables, validate_only: dry_run)
               end
               current_model = nil
             end
@@ -408,7 +410,7 @@ module OpenC3
         end
       rescue => e
         # Install failed - need to cleanup
-        plugin_model.destroy unless validate_only
+        plugin_model.destroy unless dry_run
         raise e
       ensure
         FileUtils.remove_entry_secure(temp_dir, true)

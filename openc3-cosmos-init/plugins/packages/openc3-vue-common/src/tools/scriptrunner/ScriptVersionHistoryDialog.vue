@@ -67,7 +67,11 @@
             captures the current bucket state as the divergence.
           </span>
         </v-tooltip>
+        <label for="version-history-import-file" style="display: none">
+          Import git bundle file
+        </label>
         <input
+          id="version-history-import-file"
           ref="importFileInput"
           type="file"
           accept=".bundle,application/octet-stream"
@@ -272,10 +276,7 @@ import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker&inlin
 // Wire workers on both self and window — Monaco checks self in some code
 // paths and window in others. Defining once at module load is fine; Monaco
 // only reads MonacoEnvironment when it needs a worker.
-if (
-  typeof globalThis.self !== 'undefined' &&
-  !globalThis.self.MonacoEnvironment
-) {
+if (globalThis.self !== undefined && !globalThis.self.MonacoEnvironment) {
   globalThis.self.MonacoEnvironment = {
     getWorker(_workerId, _label) {
       return new EditorWorker()

@@ -290,6 +290,105 @@ module OpenC3
         expect(plugin_model['needs_dependencies']).to eql false
       end
 
+      it "threads version_history_files and username into the TargetModel upgrade_context" do
+        s3 = instance_double("Aws::S3::Client").as_null_object
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+
+        expect(GemModel).to receive(:get).and_return("my_plugin.gem")
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            file.puts "TOOL <%= folder %> <%= name %>"
+            file.puts "  #{URL}"
+            file.puts "TARGET <%= folder %> <%= name %>"
+          end
+        end
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        spec = double("spec")
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:name).and_return("test-plugin")
+        allow(spec).to receive(:version).and_return("1.0.0")
+        allow(spec).to receive(:runtime_dependencies).and_return([])
+        allow(spec).to receive(:metadata).and_return({})
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
+
+        variables = { "folder" => { "value" => "THE_FOLDER" }, "name" => { "value" => "THE_NAME" } }
+        erb_variables = { "folder" => "THE_FOLDER", "name" => "THE_NAME", "scope" => 'DEFAULT' }
+        expect(GemModel).to receive(:install).and_return(nil)
+        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, erb_variables, validate_only: false).and_return(nil)
+        # The upgrade hints (username + version_history_files) are stripped from
+        # the plugin_hash and rebuilt into the TargetModel upgrade_context with
+        # the resolved "name version" plugin label.
+        expect_any_instance_of(TargetModel).to receive(:deploy).with(
+          anything, erb_variables, validate_only: false,
+          upgrade_context: { username: "upgrader",
+                             plugin: "test-plugin 1.0.0",
+                             version_files: ["THE_NAME/screen.txt"] }
+        ).and_return(nil)
+        PluginModel.install_phase2({"name" => "name", "variables" => variables,
+          "username" => "upgrader", "version_history_files" => ["THE_NAME/screen.txt"],
+          "plugin_txt_lines" => ["TOOL THE_FOLDER THE_NAME", "  #{URL}", "TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT")
+      end
+
+      it "passes a diff_collector upgrade_context and makes no side effects when diff_only" do
+        s3 = instance_double("Aws::S3::Client").as_null_object
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+
+        expect(GemModel).to receive(:get).and_return("my_plugin.gem")
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            file.puts "TARGET <%= folder %> <%= name %>"
+          end
+        end
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        spec = double("spec")
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:name).and_return("test-plugin")
+        allow(spec).to receive(:version).and_return("1.0.0")
+        allow(spec).to receive(:runtime_dependencies).and_return([])
+        allow(spec).to receive(:metadata).and_return({})
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
+
+        variables = { "folder" => { "value" => "THE_FOLDER" }, "name" => { "value" => "THE_NAME" } }
+        erb_variables = { "folder" => "THE_FOLDER", "name" => "THE_NAME", "scope" => 'DEFAULT' }
+        # Dry run: no gem install and the deploy is validate_only with a
+        # diff_collector array for the target to append modified files into.
+        expect(GemModel).to_not receive(:install)
+        expect(GemModel).to_not receive(:destroy_all_other_versions)
+        expect_any_instance_of(TargetModel).to receive(:deploy).with(
+          anything, erb_variables, validate_only: true,
+          upgrade_context: { diff_collector: [] }
+        ).and_return(nil)
+        result = PluginModel.install_phase2({"name" => "name", "variables" => variables,
+          "plugin_txt_lines" => ["TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT", diff_only: true)
+        # Returns the (deduped) collected diff list rather than the plugin json.
+        expect(result).to eql([])
+      end
+    end
+
+    describe "self.modified_diff" do
+      it "delegates to install_phase2 with diff_only and returns the file list" do
+        expect(PluginModel).to receive(:install_phase2).with(
+          hash_including("name" => "name"), scope: "DEFAULT", diff_only: true
+        ).and_return(["TGT/screen.txt"])
+        expect(PluginModel.modified_diff({"name" => "name"}, scope: "DEFAULT")).to eql(["TGT/screen.txt"])
+      end
+
+      it "returns an empty array and logs when install_phase2 raises" do
+        expect(PluginModel).to receive(:install_phase2).and_raise("boom")
+        expect(Logger).to receive(:warn).with(/modified_diff failed: boom/)
+        expect(PluginModel.modified_diff({"name" => "name"}, scope: "DEFAULT")).to eql([])
+      end
+    end
+
+    describe "self.install_phase2 errors" do
       it "raises on non-lowercase screen file names" do
         s3 = instance_double("Aws::S3::Client").as_null_object
         allow(Aws::S3::Client).to receive(:new).and_return(s3)

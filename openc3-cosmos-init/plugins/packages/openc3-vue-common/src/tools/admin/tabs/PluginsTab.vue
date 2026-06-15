@@ -416,7 +416,8 @@ export default {
         const byTarget = {}
         for (const fullName of deleteFiles) {
           const targetName = fullName.split('/')[0]
-          ;(byTarget[targetName] ||= []).push(fullName)
+          byTarget[targetName] ||= []
+          byTarget[targetName].push(fullName)
         }
         for (const [targetName, files] of Object.entries(byTarget)) {
           await Api.post(`/openc3-api/targets/${targetName}/delete_modified`, {
