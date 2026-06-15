@@ -188,8 +188,7 @@ const allowedStates = computed(() => {
       break
     case 'approved':
       if (props.isAdmin) {
-        states.push('review')
-        states.push('development')
+        states.push('review', 'development')
       }
       break
   }

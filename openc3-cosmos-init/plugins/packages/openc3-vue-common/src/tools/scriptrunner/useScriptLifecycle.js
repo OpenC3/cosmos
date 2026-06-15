@@ -63,7 +63,8 @@ export function useScriptLifecycle() {
         lifecycleEnabled.value = response
       }
     } catch (error) {
-      // Keep default (false)
+      // If the setting can't be read, default to the feature being disabled
+      lifecycleEnabled.value = false
     }
   }
 

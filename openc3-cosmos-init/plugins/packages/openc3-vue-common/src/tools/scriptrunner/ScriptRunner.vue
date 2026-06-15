@@ -263,9 +263,7 @@
                 color="primary"
                 text="Start"
                 data-test="start-button"
-                :disabled="
-                  startOrGoDisabled || !executeUser || runBlocked
-                "
+                :disabled="startOrGoDisabled || !executeUser || runBlocked"
                 :hidden="suiteRunner"
                 @click="startHandler"
               />
@@ -1307,12 +1305,7 @@ export default {
       if (!this.suiteRunner) {
         this.startOrGoDisabled = val
       }
-      if (
-        this.readOnlyUser == false &&
-        val == false &&
-        !this.inline &&
-        !this.scriptApproved
-      ) {
+      if (!this.readOnlyUser && !val && !this.inline && !this.scriptApproved) {
         this.editor.setReadOnly(val)
       } else {
         this.editor.setReadOnly(true)
@@ -1387,7 +1380,7 @@ export default {
       // Keep default (true)
     }
     await this.loadLifecycleSetting()
-    
+
     if (this.filename !== NEW_FILENAME) {
       this.fetchLifecycle(this.filename)
     }
@@ -1445,7 +1438,7 @@ export default {
         execute: this.executeUser,
       })
     }
-    if (this.readOnlyUser == true) {
+    if (this.readOnlyUser) {
       this.alertType = 'info'
       let text = `User ${user['preferred_username']} is read only`
       if (this.executeUser) {
@@ -2001,7 +1994,7 @@ export default {
       // We may have changed the contents (if there were sub-scripts)
       // so don't let the undo manager think this is a change
       this.editor.session.getUndoManager().reset()
-      if (this.readOnlyUser == false && !this.inline && !this.scriptApproved) {
+      if (!this.readOnlyUser && !this.inline && !this.scriptApproved) {
         this.editor.setReadOnly(false)
       }
 

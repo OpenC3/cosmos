@@ -111,8 +111,8 @@ class ScriptsController < ApplicationController
       render json: { status: 'error', message: "Cannot move script from #{current} to #{state}" }, status: :bad_request
       return
     end
-    if state == 'approved' or current == 'approved'
-      return unless authorization('admin')
+    if (state == 'approved' or current == 'approved') and !authorization('admin')
+      return
     end
     result = Script.set_lifecycle(scope, name, state, username(), comment)
     OpenC3::Logger.info("Script lifecycle changed from #{current} to #{state}: #{name} (#{comment})", scope: scope, user: username())
@@ -157,10 +157,10 @@ class ScriptsController < ApplicationController
     # Extract the target that this script lives under
     target_name = name.split('/')[0]
     return unless authorization('script_run', target_name: target_name)
-    if lifecycle_enabled?() and Script.lifecycle(scope, name)['state'] != 'approved'
-      # Users with only the script_run (runner) permission may only run
-      # approved scripts. Users who can edit may run any lifecycle state.
-      return unless authorization('script_edit')
+    # Users with only the script_run (runner) permission may only run
+    # approved scripts. Users who can edit may run any lifecycle state.
+    if lifecycle_enabled?() and Script.lifecycle(scope, name)['state'] != 'approved' and !authorization('script_edit')
+      return
     end
     # TODO 7.0: Should suiteRunner be snake case?
     suite_runner = params[:suiteRunner] ? params[:suiteRunner].as_json() : nil
