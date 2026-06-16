@@ -19,7 +19,7 @@ import RegexAnnotator from './regexAnnotator.js'
 
 export default class SleepAnnotator extends RegexAnnotator {
   constructor(editor) {
-    const prefix = '(^|[{\\s\.])' // Allowable characters before the keyword: start of line, {, space, period
+    const prefix = '(^|[{\\s\\.])' // Allowable characters before the keyword: start of line, {, space, period
     const keyword = 'sleep' // The keyword this annotation looks for
     const suffix = '[\\(\\s]' // Allowable characters after the keyword: ( or a space
     super(editor, {
