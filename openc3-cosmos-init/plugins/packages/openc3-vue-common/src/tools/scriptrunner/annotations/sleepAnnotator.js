@@ -8,10 +8,10 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -19,7 +19,7 @@ import RegexAnnotator from './regexAnnotator.js'
 
 export default class SleepAnnotator extends RegexAnnotator {
   constructor(editor) {
-    const prefix = '(^|[{\\s])' // Allowable characters before the keyword: start of line or { or a space
+    const prefix = '(^|[{\\s\.])' // Allowable characters before the keyword: start of line, {, space, period
     const keyword = 'sleep' // The keyword this annotation looks for
     const suffix = '[\\(\\s]' // Allowable characters after the keyword: ( or a space
     super(editor, {
