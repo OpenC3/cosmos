@@ -490,6 +490,7 @@ def check_versitygw(client, versitygw_version)
 
   return nil unless download_versitygw_binaries(new_version)
   update_key_value(File.join(ROOT_DIR, 'openc3-buckets/Dockerfile'), 'OPENC3_VERSITYGW_VERSION', new_version)
+  update_key_value(File.join(ROOT_DIR, 'openc3-buckets/Dockerfile-ubi'), 'OPENC3_VERSITYGW_VERSION', new_version)
   update_key_value(File.join(ROOT_DIR, 'scripts/release/build_multi_arch.sh'), 'OPENC3_VERSITYGW_VERSION', new_version)
   update_key_value(File.join(ROOT_DIR, 'scripts/linux/openc3_build_ubi.sh'), 'OPENC3_VERSITYGW_VERSION', new_version)
   new_version
