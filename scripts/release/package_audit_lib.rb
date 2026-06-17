@@ -477,12 +477,60 @@ def check_versitygw(client, versitygw_version)
   releases = JSON.parse(resp)
   versions = releases.map { |r| r['tag_name'] }
   candidates = validate_versions(versions, versitygw_version, 'versitygw')
-  new_version = prompt_for_upgrade('versitygw', versitygw_version, candidates)
-  return nil unless new_version
+  new_version = prompt_for_upgrade('versitygw (will download binaries)', versitygw_version, candidates)
+
+  # Self-heal: even when up to date, (re)download if the configured version's
+  # tarballs are missing from openc3-buckets (e.g. the version string was bumped
+  # without the matching binaries being fetched).
+  if new_version.nil?
+    return nil if versitygw_binaries_present?(versitygw_version)
+    puts "versitygw #{versitygw_version} binaries missing from openc3-buckets; downloading."
+    new_version = versitygw_version
+  end
+
+  return nil unless download_versitygw_binaries(new_version)
   update_key_value(File.join(ROOT_DIR, 'openc3-buckets/Dockerfile'), 'OPENC3_VERSITYGW_VERSION', new_version)
   update_key_value(File.join(ROOT_DIR, 'scripts/release/build_multi_arch.sh'), 'OPENC3_VERSITYGW_VERSION', new_version)
   update_key_value(File.join(ROOT_DIR, 'scripts/linux/openc3_build_ubi.sh'), 'OPENC3_VERSITYGW_VERSION', new_version)
   new_version
+end
+
+# True if both Linux release tarballs for `version` already exist in openc3-buckets.
+def versitygw_binaries_present?(version)
+  %w[arm64 x86_64].all? do |arch|
+    File.exist?(File.join(ROOT_DIR, 'openc3-buckets', "versitygw_#{version}_Linux_#{arch}.tar.gz"))
+  end
+end
+
+# Download both Linux versitygw release tarballs (arm64 + x86_64) into
+# openc3-buckets/ and remove any other-version versitygw Linux tarballs left
+# behind. Returns true on success. On any download failure the partial new files
+# are removed and the existing tarballs are left untouched so the build still has
+# a working version.
+def download_versitygw_binaries(version)
+  buckets_dir = File.join(ROOT_DIR, 'openc3-buckets')
+  arches = %w[arm64 x86_64]
+  new_paths = arches.map { |arch| File.join(buckets_dir, "versitygw_#{version}_Linux_#{arch}.tar.gz") }
+  arches.zip(new_paths).each do |arch, path|
+    url = "https://github.com/versity/versitygw/releases/download/#{version}/versitygw_#{version}_Linux_#{arch}.tar.gz"
+    puts "  Downloading #{url}"
+    unless system("curl -fSL #{url} -o #{path}")
+      puts "ERROR: failed to download #{url}"
+      new_paths.each { |p| FileUtils.rm_f(p) }
+      return false
+    end
+  end
+  if new_paths.any? { |p| File.size(p) < 1_000_000 }
+    puts "ERROR: downloaded versitygw tarball looks invalid (too small) - check the release URL"
+    new_paths.each { |p| FileUtils.rm_f(p) }
+    return false
+  end
+  # Remove tarballs for any other version so only the current pair remains.
+  Dir.glob(File.join(buckets_dir, 'versitygw_*_Linux_*.tar.gz')).each do |p|
+    FileUtils.rm_f(p) unless new_paths.include?(p)
+  end
+  puts "  Updated versitygw binaries to #{version}"
+  true
 end
 
 def check_tsdb(client, tsdb_version)
@@ -715,7 +763,7 @@ def check_anycable(client, container_name)
   new_version
 end
 
-def check_tool_base(path, base_pkgs)
+def check_tool_base(path, base_pkgs, force: false)
   Dir.chdir(path) do
     # List the remote tags and sort reverse order (latest on top)
     # Pipe to sed to get the second line because the output looks like:
@@ -772,17 +820,20 @@ def check_tool_base(path, base_pkgs)
       # Ensure we're only matching package names followed by numbers
       # This prevents vue- from matching vue-router-
       existing = Dir["public/js/#{alt_package}-[0-9]*"][0]
-      if !existing
-        puts "ERROR: Could not find existing package #{alt_package} in #{Dir.pwd}/public/js"
-        next
-      end
       if !latest
         puts "ERROR: Could not find latest version for #{package} in #{Dir.pwd}/package.json"
         next
       end
+      if !existing && !force
+        puts "ERROR: Could not find existing package #{alt_package} in #{Dir.pwd}/public/js (use FORCE=1 to download it fresh)"
+        next
+      end
       existing_version = existing.to_s[/(\d+\.\d+\.\d+)/, 1]
-      if !existing.include?(latest) && prompt_update?("Update #{package} (#{alt_package}) from #{existing} to #{latest}?", existing_version, latest)
-        puts "Existing #{package}: #{existing}, doesn't match latest: #{latest}. Upgrading..."
+      version_matches = existing && existing.include?(latest)
+      from_label = existing || 'none'
+      prompt = version_matches ? "Re-download #{package} (#{alt_package}) #{latest}?" : "Update #{package} (#{alt_package}) from #{from_label} to #{latest}?"
+      if (force || !version_matches) && prompt_update?(prompt, existing_version || latest, latest)
+        puts "Updating #{package} to #{latest} (existing: #{from_label})..."
         # Handle nuances in individual packages
         # Search here to get the URLs: https://cdnjs.com/
         case package
@@ -790,8 +841,12 @@ def check_tool_base(path, base_pkgs)
           outfile = "public/js/#{package}.global-#{latest}.js"
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.js --output #{outfile}`
           validate_outfile(outfile, package, latest)
-          old_base_filename = existing.sub('vue.global.prod', 'vue.global').sub('.min.js', '.js')
-          FileUtils.rm old_base_filename
+          # Remove the old non-prod base file only when the version changed; on a
+          # forced same-version re-download the new file has the same name.
+          if existing && !version_matches
+            old_base_filename = existing.sub('vue.global.prod', 'vue.global').sub('.min.js', '.js')
+            FileUtils.rm_f old_base_filename
+          end
           outfile = "public/js/#{package}.global.prod-#{latest}.min.js"
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.prod.js --output #{outfile}`
           validate_outfile(outfile, package, latest)
@@ -803,7 +858,8 @@ def check_tool_base(path, base_pkgs)
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/lib/es5/system/#{package}.min.js.map --output #{outfile}`
           validate_outfile(outfile, package, latest)
         when 'vuetify'
-          FileUtils.rm(Dir["public/css/vuetify-*"][0]) # Delete the existing vuetify css
+          old_css = Dir["public/css/vuetify-*"][0] # Delete the existing vuetify css (if a different version)
+          FileUtils.rm_f(old_css) if old_css && !old_css.include?(latest)
           outfile = "public/css/#{package}-labs-#{latest}.min.css"
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}-labs.min.css --output #{outfile}`
           validate_outfile(outfile, package, latest)
@@ -821,12 +877,27 @@ def check_tool_base(path, base_pkgs)
           outfile = "public/js/#{package}-#{latest}.min.js"
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/lib/keycloak.min.js --output #{outfile}`
           validate_outfile(outfile, package, latest)
+        when 'pinia'
+          # pinia ships browser globals as pinia.iife.prod.js (minified prod build)
+          outfile = "public/js/#{package}-#{latest}.min.js"
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.iife.prod.js --output #{outfile}`
+          validate_outfile(outfile, package, latest)
+        when 'systemjs'
+          # systemjs browser build lives at dist/system.min.js (not systemjs.min.js)
+          outfile = "public/js/#{package}-#{latest}.min.js"
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/system.min.js --output #{outfile}`
+          validate_outfile(outfile, package, latest)
+        when 'vue-router'
+          # vue-router ships the minified prod IIFE global at dist/vue-router.global.prod.js
+          outfile = "public/js/#{package}-#{latest}.min.js"
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.prod.js --output #{outfile}`
+          validate_outfile(outfile, package, latest)
         else
           outfile = "public/js/#{package}-#{latest}.min.js"
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.min.js --output #{outfile}`
           validate_outfile(outfile, package, latest)
         end
-        FileUtils.rm existing
+        FileUtils.rm_f existing if existing && !version_matches
         # Now update the public/index.html with references to <package>-<version>.min.js
         html = File.read("public/index.html")
         html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")
@@ -1056,15 +1127,28 @@ def update_outdated_pnpm(dir, client = nil)
       latest = info['latest']
       next if current.nil? || latest.nil? || current == latest
 
-      if min_age > 0 && client
-        age = npm_published_age_minutes(client, name, latest)
-        if age && age < min_age
-          puts "  Skipping #{name} #{current} -> #{latest} (published #{format_age(age)} ago, below minimumReleaseAge of #{min_age} min)."
-          next
+      # Offer each upgrade tier in turn (newest major, then newest minor within
+      # the current major, then newest patch) instead of only jumping to latest.
+      candidates = client ? npm_upgrade_candidates(client, name, current) : []
+      candidates = [latest] if candidates.empty?
+
+      chosen = nil
+      candidates.each do |candidate|
+        next if candidate == current
+        if min_age > 0 && client
+          age = npm_published_age_minutes(client, name, candidate)
+          if age && age < min_age
+            puts "  Skipping #{name} #{current} -> #{candidate} (published #{format_age(age)} ago, below minimumReleaseAge of #{min_age} min)."
+            next
+          end
+        end
+        if prompt_update?("[#{label}] Update pnpm #{name} from #{current} to #{candidate}?", current, candidate)
+          chosen = candidate
+          break
         end
       end
-
-      next unless prompt_update?("[#{label}] Update pnpm #{name} from #{current} to #{latest}?", current, latest)
+      next unless chosen
+      latest = chosen
 
       # Try to rewrite the version pin in any workspace package.json that has
       # this package as a direct dep. If none changed, it's either transitive
@@ -1114,6 +1198,31 @@ def pnpm_min_release_age_minutes
   Integer(value, 10)
 rescue ArgumentError
   0
+end
+
+# Upgrade targets above `current` for npm package `name`, highest tier first:
+# the newest major (major > current major), the newest minor within the current
+# major (minor > current minor), and the newest patch within the current minor.
+# Stable releases only (anything with a "-" prerelease tag is ignored). Returns
+# [] on any fetch/parse error so callers fall back to `latest`.
+def npm_upgrade_candidates(client, name, current)
+  resp = client.get("https://registry.npmjs.org/#{name}")
+  return [] unless resp.status == 200
+  versions = JSON.parse(resp.body)['versions']&.keys || []
+  cur = Gem::Version.new(current)
+  cmaj, cmin, = current.split('.').map(&:to_i)
+  parsed = versions.filter_map do |v|
+    next unless v =~ /^\d+\.\d+\.\d+$/
+    gv = Gem::Version.new(v)
+    next unless gv > cur
+    [v, gv, v.split('.').map(&:to_i)]
+  end
+  major = parsed.select { |_, _, (maj, _, _)| maj > cmaj }.max_by { |_, gv, _| gv }
+  minor = parsed.select { |_, _, (maj, mn, _)| maj == cmaj && mn > cmin }.max_by { |_, gv, _| gv }
+  patch = parsed.select { |_, _, (maj, mn, _)| maj == cmaj && mn == cmin }.max_by { |_, gv, _| gv }
+  [major, minor, patch].compact.map(&:first).uniq
+rescue StandardError
+  []
 end
 
 # Minutes since `version` of `name` was published to npm, or nil if unknown.
