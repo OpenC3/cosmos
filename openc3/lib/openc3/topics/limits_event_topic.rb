@@ -173,6 +173,28 @@ module OpenC3
       end
     end
 
+    # Removes a limits set from the limits_sets hash and from the
+    # current_limits_settings of every item. Note that the items themselves
+    # (in the TargetModel packet definitions) are cleaned up in the
+    # delete_limits_set API. Running microservices will continue to hold the
+    # set in memory until they restart and resync from current_limits_settings.
+    def self.delete_set(set_name, scope:)
+      set_name = set_name.to_s
+      limits_settings = Store.hgetall("#{scope}__current_limits_settings")
+      # Collect all changed items and write them back in a single hmset to
+      # avoid a Redis round trip per item (this hash can be large)
+      updates = {}
+      limits_settings.each do |item, settings|
+        settings = JSON.parse(settings, allow_nan: true, create_additions: true)
+        if settings.key?(set_name)
+          settings.delete(set_name)
+          updates[item] = JSON.generate(settings, allow_nan: true)
+        end
+      end
+      Store.hmset("#{scope}__current_limits_settings", *updates.flatten) unless updates.empty?
+      Store.hdel("#{scope}__limits_sets", set_name)
+    end
+
     # Update the local System based on overall state
     def self.sync_system(scope:)
       all_limits_settings = Store.hgetall("#{scope}__current_limits_settings")

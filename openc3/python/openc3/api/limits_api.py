@@ -37,6 +37,7 @@ WHITELIST.extend(
         "get_limits_sets",
         "set_limits_set",
         "get_limits_set",
+        "delete_limits_set",
         "get_limits_events",
     ]
 )
@@ -367,6 +368,41 @@ def set_limits_set(limits_set, scope=OPENC3_SCOPE):
         },
         scope=scope,
     )
+
+
+# Deletes a limits set and removes it from all telemetry items. The DEFAULT
+# limits set and the currently active limits set cannot be deleted. Use
+# set_limits_set to change the active set before deleting it.
+#
+# @param limits_set [String] The name of the limits set to delete
+def delete_limits_set(limits_set, scope=OPENC3_SCOPE):
+    authorize(permission="tlm_set", scope=scope)
+    limits_set = str(limits_set)
+    if limits_set == "DEFAULT":
+        raise RuntimeError("Cannot delete the DEFAULT limits set")
+    if limits_set == LimitsEventTopic.current_set(scope=scope):
+        raise RuntimeError(
+            f"Cannot delete the current limits set '{limits_set}'. Use set_limits_set to change the current set first."
+        )
+    if limits_set not in LimitsEventTopic.sets(scope=scope):
+        raise RuntimeError(f"Limits set '{limits_set}' does not exist")
+
+    # Remove the limits set from every telemetry item definition
+    for target_name in TargetModel.names(scope=scope):
+        for packet in TargetModel.packets(target_name, type="TLM", scope=scope):
+            modified = False
+            for item in packet["items"]:
+                if item["limits"] and limits_set in item["limits"]:
+                    del item["limits"][limits_set]
+                    modified = True
+            if modified:
+                TargetModel.set_packet(target_name, packet["packet_name"], packet, scope=scope)
+
+    # Remove the limits set from Redis (limits_sets and current_limits_settings)
+    LimitsEventTopic.delete_set(limits_set, scope=scope)
+
+    message = f"Deleting Limits Set: {limits_set}"
+    Logger.info(message, scope=scope)
 
 
 # Returns the active limits set that applies to all telemetry

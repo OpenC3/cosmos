@@ -35,6 +35,7 @@ module OpenC3
                        'get_limits_sets',
                        'set_limits_set',
                        'get_limits_set',
+                       'delete_limits_set',
                        'get_limits_events',
                      ])
 
@@ -290,6 +291,43 @@ module OpenC3
       Logger.info(message, scope: scope)
       LimitsEventTopic.write({ type: :LIMITS_SET, set: limits_set.to_s,
         time_nsec: Time.now.to_nsec_from_epoch, message: message }, scope: scope)
+    end
+
+    # Deletes a limits set and removes it from all telemetry items. The DEFAULT
+    # limits set and the currently active limits set cannot be deleted. Use
+    # set_limits_set to change the active set before deleting it.
+    #
+    # @param limits_set [String] The name of the limits set to delete
+    def delete_limits_set(limits_set, manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'tlm_set', manual: manual, scope: scope, token: token)
+      limits_set = limits_set.to_s
+      raise "Cannot delete the DEFAULT limits set" if limits_set == 'DEFAULT'
+      if limits_set == LimitsEventTopic.current_set(scope: scope)
+        raise "Cannot delete the current limits set '#{limits_set}'. Use set_limits_set to change the current set first."
+      end
+      unless LimitsEventTopic.sets(scope: scope).key?(limits_set)
+        raise "Limits set '#{limits_set}' does not exist"
+      end
+
+      # Remove the limits set from every telemetry item definition
+      TargetModel.names(scope: scope).each do |target_name|
+        TargetModel.packets(target_name, type: :TLM, scope: scope).each do |packet|
+          modified = false
+          packet['items'].each do |item|
+            if item['limits'] && item['limits'].key?(limits_set)
+              item['limits'].delete(limits_set)
+              modified = true
+            end
+          end
+          TargetModel.set_packet(target_name, packet['packet_name'], packet, scope: scope) if modified
+        end
+      end
+
+      # Remove the limits set from Redis (limits_sets and current_limits_settings)
+      LimitsEventTopic.delete_set(limits_set, scope: scope)
+
+      message = "Deleting Limits Set: #{limits_set}"
+      Logger.info(message, scope: scope)
     end
 
     # Returns the active limits set that applies to all telemetry

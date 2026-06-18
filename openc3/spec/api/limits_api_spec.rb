@@ -194,6 +194,40 @@ module OpenC3
       end
     end
 
+    describe "delete_limits_set" do
+      it "complains about deleting the DEFAULT limits set" do
+        expect { @api.delete_limits_set("DEFAULT") }.to raise_error(RuntimeError, "Cannot delete the DEFAULT limits set")
+      end
+
+      it "complains about deleting the current limits set" do
+        @api.set_limits_set("TVAC")
+        expect { @api.delete_limits_set("TVAC") }.to raise_error(RuntimeError, /Cannot delete the current limits set 'TVAC'/)
+      end
+
+      it "complains about non-existent limits sets" do
+        expect { @api.delete_limits_set("NOPE") }.to raise_error(RuntimeError, "Limits set 'NOPE' does not exist")
+      end
+
+      it "deletes a limits set and removes it from all items" do
+        expect(@api.get_limits_sets).to eql ['DEFAULT', 'TVAC']
+        expect(@api.get_limits("INST", "HEALTH_STATUS", "TEMP1").keys).to include('TVAC')
+
+        @api.delete_limits_set("TVAC")
+
+        expect(@api.get_limits_sets).to eql ['DEFAULT']
+        expect(@api.get_limits("INST", "HEALTH_STATUS", "TEMP1").keys).to_not include('TVAC')
+        expect(@api.get_limits("INST", "HEALTH_STATUS", "TEMP1").keys).to include('DEFAULT')
+      end
+
+      it "deletes a limits set created with set_limits" do
+        @api.set_limits("INST", "HEALTH_STATUS", "TEMP1", 0.0, 10.0, 20.0, 30.0) # creates CUSTOM
+        expect(@api.get_limits_sets).to include('CUSTOM')
+        @api.delete_limits_set("CUSTOM")
+        expect(@api.get_limits_sets).to_not include('CUSTOM')
+        expect(@api.get_limits("INST", "HEALTH_STATUS", "TEMP1").keys).to_not include('CUSTOM')
+      end
+    end
+
     describe "get_limits_events" do
       it "returns empty array with no events" do
         events = @api.get_limits_events()

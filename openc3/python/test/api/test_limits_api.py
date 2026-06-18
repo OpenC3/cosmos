@@ -259,6 +259,36 @@ class TestLimitsApi(unittest.TestCase):
         set_limits_set("DEFAULT")
         self.assertEqual(get_limits_set(), "DEFAULT")
 
+    def test_delete_limits_set_complains_about_default(self):
+        with self.assertRaisesRegex(RuntimeError, "Cannot delete the DEFAULT limits set"):
+            delete_limits_set("DEFAULT")
+
+    def test_delete_limits_set_complains_about_current_set(self):
+        set_limits_set("TVAC")
+        with self.assertRaisesRegex(RuntimeError, "Cannot delete the current limits set 'TVAC'"):
+            delete_limits_set("TVAC")
+
+    def test_delete_limits_set_complains_about_non_existent_set(self):
+        with self.assertRaisesRegex(RuntimeError, "Limits set 'NOPE' does not exist"):
+            delete_limits_set("NOPE")
+
+    def test_delete_limits_set_removes_set_from_all_items(self):
+        self.assertEqual(get_limits_sets(), ["DEFAULT", "TVAC"])
+        self.assertIn("TVAC", get_limits("INST", "HEALTH_STATUS", "TEMP1").keys())
+
+        delete_limits_set("TVAC")
+
+        self.assertEqual(get_limits_sets(), ["DEFAULT"])
+        self.assertNotIn("TVAC", get_limits("INST", "HEALTH_STATUS", "TEMP1").keys())
+        self.assertIn("DEFAULT", get_limits("INST", "HEALTH_STATUS", "TEMP1").keys())
+
+    def test_delete_limits_set_created_with_set_limits(self):
+        set_limits("INST", "HEALTH_STATUS", "TEMP1", 0.0, 10.0, 20.0, 30.0)  # creates CUSTOM
+        self.assertIn("CUSTOM", get_limits_sets())
+        delete_limits_set("CUSTOM")
+        self.assertNotIn("CUSTOM", get_limits_sets())
+        self.assertNotIn("CUSTOM", get_limits("INST", "HEALTH_STATUS", "TEMP1").keys())
+
     def test_get_limits_events_returns_an_offset_and_limits_event_hash(self):
         # Load the events topic with two events ... only the last should be returned
         event = {

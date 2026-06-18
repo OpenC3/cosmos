@@ -194,6 +194,29 @@ class LimitsEventTopic(Topic):
                 if re.match(rf"^{target_name}__", item):
                     Store.hdel(f"{scope}__current_limits_settings", item)
 
+    # Removes a limits set from the limits_sets hash and from the
+    # current_limits_settings of every item. Note that the items themselves
+    # (in the TargetModel packet definitions) are cleaned up in the
+    # delete_limits_set API. Running microservices will continue to hold the
+    # set in memory until they restart and resync from current_limits_settings.
+    @classmethod
+    def delete_set(cls, set_name, scope):
+        set_name = str(set_name)
+        limits_settings = Store.hgetall(f"{scope}__current_limits_settings")
+        # decode the binary string keys to strings
+        limits_settings = {k.decode(): v for (k, v) in limits_settings.items()}
+        # Collect all changed items and write them back in a single hset to
+        # avoid a Redis round trip per item (this hash can be large)
+        updates = {}
+        for item, settings in limits_settings.items():
+            settings = json.loads(settings)
+            if set_name in settings:
+                del settings[set_name]
+                updates[item] = json.dumps(settings)
+        if updates:
+            Store.hset(f"{scope}__current_limits_settings", mapping=updates)
+        Store.hdel(f"{scope}__limits_sets", set_name)
+
     # Update the local System based on overall state
     @classmethod
     def sync_system(cls, scope):

@@ -364,6 +364,10 @@ export default class OpenC3Api {
     return this.exec('set_limits_set', [limits_set])
   }
 
+  delete_limits_set(limits_set) {
+    return this.exec('delete_limits_set', [limits_set])
+  }
+
   // ***********************************************
   // End CmdTlmServer APIs
   // ***********************************************
