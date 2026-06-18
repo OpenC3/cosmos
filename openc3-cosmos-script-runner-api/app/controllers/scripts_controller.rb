@@ -67,7 +67,10 @@ class ScriptsController < ApplicationController
         breakpoints: breakpoints,
         locked: locked
       }
-      if ((File.extname(name) == '.py') and (file =~ PYTHON_SUITE_REGEX)) or ((File.extname(name) != '.py') and (file =~ SUITE_REGEX))
+      # Suite analysis executes the file (run_suite_analysis requires it), so it is
+      # gated at the script_run tier rather than this read-only script_view endpoint.
+      # Viewers without script_run still get the file contents, just no suite chrome.
+      if (((File.extname(name) == '.py') and (file =~ PYTHON_SUITE_REGEX)) or ((File.extname(name) != '.py') and (file =~ SUITE_REGEX))) and authorized?('script_run', target_name: name.split('/')[0])
         results_suites, results_error, success = Script.process_suite(name, file, username: username(), scope: scope)
         results['suites'] = results_suites
         results['error'] = results_error
@@ -90,7 +93,10 @@ class ScriptsController < ApplicationController
     args[:name] = name
     Script.create(args)
     results = {}
-    if ((File.extname(name) == '.py') and (params[:text] =~ PYTHON_SUITE_REGEX)) or ((File.extname(name) != '.py') and (params[:text] =~ SUITE_REGEX))
+    # Suite analysis executes the file, so it is gated at the script_run tier rather
+    # than this script_edit endpoint. The file is still saved above; only the suite
+    # chrome is omitted when the editor lacks script_run.
+    if (((File.extname(name) == '.py') and (params[:text] =~ PYTHON_SUITE_REGEX)) or ((File.extname(name) != '.py') and (params[:text] =~ SUITE_REGEX))) and authorized?('script_run', target_name: name.split('/')[0])
       results_suites, results_error, success = Script.process_suite(name, params[:text], username: username(), scope: scope)
       results['suites'] = results_suites
       results['error'] = results_error

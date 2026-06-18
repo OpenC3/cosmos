@@ -418,7 +418,6 @@ class StorageController < ApplicationController
     params.require(:bucket)
     bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
     path = sanitize_path(params[:object_id])
-    key_split = path.split('/')
 
     # Check scope-based RBAC for config and logs buckets
     if bucket_requires_rbac?(params[:bucket])
@@ -429,8 +428,10 @@ class StorageController < ApplicationController
       end
     end
 
-    # Anywhere other than config/SCOPE/targets_modified or config/SCOPE/tmp requires admin
-    if !(params[:bucket] == 'OPENC3_CONFIG_BUCKET' && (key_split[1] == 'targets_modified' || key_split[1] == 'tmp'))
+    # Non-admins may only write the user-writable overlay (config/SCOPE/targets_modified
+    # or config/SCOPE/tmp), and never the cmd_tlm overlay, which PacketConfig ERB-renders
+    # and whose GENERIC_*_CONVERSION blocks it evaluates as code. Everything else is admin.
+    unless non_admin_config_overlay_write?(params[:bucket], path)
       return unless authorization('admin')
     end
 
@@ -600,6 +601,30 @@ class StorageController < ApplicationController
   end
 
   private
+
+  # True if the given config-bucket key is an overlay path a non-admin is allowed
+  # to write. Non-admins may write config/SCOPE/targets_modified/... and
+  # config/SCOPE/tmp/..., but NOT the cmd_tlm overlay
+  # (config/SCOPE/targets_modified/TARGET/cmd_tlm/...), which is loaded and
+  # executed as code by PacketConfig (ERB rendering + GENERIC_*_CONVERSION eval).
+  #
+  # The key must be canonical: a positional segment check (parts[1], parts[3])
+  # can otherwise be bypassed by a key the object store normalizes differently,
+  # so empty '//' segments, '.'/'..' segments, and leading/trailing slashes are
+  # rejected here (forcing the admin path). sanitize_path already rejects '..'.
+  def non_admin_config_overlay_write?(bucket_param, path)
+    return false unless bucket_param == 'OPENC3_CONFIG_BUCKET'
+    return false if path.nil? || path.empty?
+    return false if path.start_with?('/') || path.end_with?('/')
+    parts = path.split('/')
+    return false if parts.any? { |p| p.empty? || p == '.' || p == '..' }
+    # parts: SCOPE / <area> / TARGET / <subdir> / ...
+    area = parts[1]
+    return false unless area == 'targets_modified' || area == 'tmp'
+    # cmd_tlm overlay (parts[3]) is code-execution territory; require admin.
+    return false if area == 'targets_modified' && parts[3] == 'cmd_tlm'
+    true
+  end
 
   def sanitize_path(path)
     return '' if path.nil?

@@ -88,10 +88,15 @@ module OpenC3
       files
     end
 
-    def self.body(scope, name)
+    # @param original [Boolean] When true, read only the read-only plugin-installed
+    #   targets/ tree and ignore the user-writable targets_modified/ overlay. Use this
+    #   for any path that executes the file as code (e.g. ERB rendering or
+    #   GENERIC_*_CONVERSION evaluation) so a non-admin overlay write cannot inject code.
+    def self.body(scope, name, original: false)
       name = name.split('*')[0] # Split '*' that indicates modified
-      # First try opening a potentially modified version by looking for the modified target
-      if ENV['OPENC3_LOCAL_MODE']
+      # First try opening a potentially modified version by looking for the modified target.
+      # Skipped entirely when original is requested so the overlay is never treated as code.
+      if !original and ENV['OPENC3_LOCAL_MODE']
         local_file = OpenC3::LocalMode.open_local_file(name, scope: scope)
         if local_file
           if File.extname(name) == ".bin"
@@ -103,7 +108,8 @@ module OpenC3
       end
 
       bucket = Bucket.getClient()
-      resp = bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: "#{scope}/targets_modified/#{name}")
+      resp = nil
+      resp = bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: "#{scope}/targets_modified/#{name}") unless original
       unless resp
         # Now try the original
         resp = bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: "#{scope}/targets/#{name}")

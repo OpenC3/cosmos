@@ -317,7 +317,9 @@ RSpec.describe Table, :type => :model do
       add_table('DEFAULT/targets/INST/tables/config/ConfigTableNew_def.txt')
       # Add a config which does
       add_table('DEFAULT/targets/INST/tables/config/ConfigTable_def.txt')
-      @s3_miss = 2 # Cause S3 to miss the original and modified versions of the ConfigTable_def.txt
+      # Definitions are read from the read-only targets/ tree only (one get_object),
+      # so a single miss forces the binary-name search.
+      @s3_miss = 1 # Cause S3 to miss the original ConfigTable_def.txt
       @get_object.body = OpenStruct.new
       @get_object.body.read = 'definition'
       allow(OpenC3::TableManagerCore).to receive(:build_json_hash).and_return({'tables' => []})
@@ -341,11 +343,25 @@ RSpec.describe Table, :type => :model do
   end
 
   describe "get_definitions" do
+    it "reads the definition only from the read-only targets/ tree, never the targets_modified overlay" do
+      keys = []
+      allow(@s3).to receive(:get_object) do |args|
+        keys << args[:key]
+        @get_object
+      end
+      @get_object.body = OpenStruct.new
+      @get_object.body.read = 'definition'
+      Table.get_definitions('DEFAULT', 'INST/tables/config/table_def.txt')
+      expect(keys).to_not be_empty
+      expect(keys.any? { |k| k.include?('targets_modified') }).to be false
+      expect(keys).to all(include('/targets/'))
+    end
+
     it "looks up a definition file based on a binary filename" do
       add_table('DEFAULT/targets/INST/tables/config/table_data.txt')
       add_table('DEFAULT/targets/INST/tables/config/table_binary.txt')
       add_table('DEFAULT/targets/INST/tables/config/table_data_2.txt')
-      @s3_miss = 2 # Cause S3 to miss the original and modified versions
+      @s3_miss = 1 # Definitions read from targets/ only; one miss forces the search
       @get_object.body = OpenStruct.new
       @get_object.body.read = 'definition'
       root_definition, definition_filename = Table.get_definitions('DEFAULT', 'INST/tables/config/table_data.txt', 'INST/tables/bin/table_data.bin')
@@ -365,7 +381,7 @@ RSpec.describe Table, :type => :model do
       add_table('DEFAULT/targets/INST/tables/config/table_data_def.txt')
       add_table('DEFAULT/targets/INST/tables/config/table_binary_def.txt')
       add_table('DEFAULT/targets/INST/tables/config/table_data_2_def.txt')
-      @s3_miss = 2 # Cause S3 to miss the original and modified versions
+      @s3_miss = 1 # Definitions read from targets/ only; one miss forces the search
       @get_object.body = OpenStruct.new
       @get_object.body.read = 'definition'
       root_definition, definition_filename = Table.get_definitions('DEFAULT', 'INST/tables/config/table_data.txt', 'INST/tables/bin/table_data.tbl')

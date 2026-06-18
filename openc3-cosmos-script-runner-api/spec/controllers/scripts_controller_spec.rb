@@ -226,6 +226,30 @@ RSpec.describe ScriptsController, type: :controller do
       expect(json["success"]).to eq(true)
     end
 
+    it "does not run suite analysis for a script_view user lacking script_run" do
+      script_content = "class TestSuite < OpenC3::Suite\n  def test_method\n    puts 'test'\n  end\nend"
+      breakpoints = []
+
+      # Grant script_view (the endpoint tier) but deny script_run so suite analysis,
+      # which executes the file, never runs for a read-only viewer.
+      allow(controller).to receive(:authorize) do |args|
+        raise OpenC3::ForbiddenError.new("script_run required") if args[:permission] == 'script_run'
+        'authorized_user'
+      end
+      expect(Script).to receive(:body).with("DEFAULT", "INST/procedures/test.rb").and_return(script_content)
+      expect(Script).to receive(:locked?).with("DEFAULT", "INST/procedures/test.rb").and_return(false)
+      expect(Script).to receive(:lock).with("DEFAULT", "INST/procedures/test.rb", "anonymous")
+      expect(Script).to receive(:get_breakpoints).with("DEFAULT", "INST/procedures/test.rb").and_return(breakpoints)
+      expect(Script).to_not receive(:process_suite)
+
+      get :body, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
+
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      expect(json["contents"]).to eq(script_content)
+      expect(json).to_not have_key("suites")
+    end
+
     it "returns not found when script does not exist" do
       expect(Script).to receive(:body).with("DEFAULT", "INST/procedures/nonexistent.rb").and_return(nil)
       get :body, params: {scope: "DEFAULT", name: "INST/procedures/nonexistent.rb"}
