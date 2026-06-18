@@ -108,8 +108,7 @@ module OpenC3
       end
 
       bucket = Bucket.getClient()
-      resp = nil
-      resp = bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: "#{scope}/targets_modified/#{name}") unless original
+      resp = original ? nil : bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: "#{scope}/targets_modified/#{name}")
       unless resp
         # Now try the original
         resp = bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: "#{scope}/targets/#{name}")

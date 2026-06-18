@@ -431,9 +431,7 @@ class StorageController < ApplicationController
     # Non-admins may only write the user-writable overlay (config/SCOPE/targets_modified
     # or config/SCOPE/tmp), and never the cmd_tlm overlay, which PacketConfig ERB-renders
     # and whose GENERIC_*_CONVERSION blocks it evaluates as code. Everything else is admin.
-    unless non_admin_config_overlay_write?(params[:bucket], path)
-      return unless authorization('admin')
-    end
+    return if !non_admin_config_overlay_write?(params[:bucket], path) && !authorization('admin')
 
     bucket = OpenC3::Bucket.getClient()
     result = bucket.presigned_request(bucket: bucket_name,
@@ -644,7 +642,6 @@ class StorageController < ApplicationController
     params.require(:bucket)
     bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
     path = sanitize_path(params[:object_id])
-    key_split = path.split('/')
 
     # Check scope-based RBAC for config and logs buckets
     if bucket_requires_rbac?(params[:bucket])
@@ -655,9 +652,10 @@ class StorageController < ApplicationController
       end
     end
 
-    # Anywhere other than config/SCOPE/targets_modified or config/SCOPE/tmp requires admin
+    # Non-admins may only touch the user-writable config overlay (targets_modified or
+    # tmp), never the cmd_tlm overlay which is evaluated as code. Everything else is admin.
     authorized = true
-    if !(params[:bucket] == 'OPENC3_CONFIG_BUCKET' && (key_split[1] == 'targets_modified' || key_split[1] == 'tmp'))
+    unless non_admin_config_overlay_write?(params[:bucket], path)
       authorized = false unless authorization('admin')
     end
 
@@ -692,8 +690,10 @@ class StorageController < ApplicationController
     bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
 
     path = sanitize_path(params[:object_id])
+    # Evaluate the overlay check on the canonical (un-slashed) path before appending
+    # the trailing slash, since the helper rejects trailing slashes.
+    overlay_write = non_admin_config_overlay_write?(params[:bucket], path)
     path = "#{path}/" unless path.end_with?('/')
-    key_split = path.split('/')
 
     # Check scope-based RBAC
     if bucket_requires_rbac?(params[:bucket]) && !authorize_bucket_path(params[:bucket], path, permission: 'system_set')
@@ -702,8 +702,9 @@ class StorageController < ApplicationController
       return false
     end
 
-    # Require admin for most bucket directories
-    unless (params[:bucket] == 'OPENC3_CONFIG_BUCKET' && (key_split[1] == 'targets_modified' || key_split[1] == 'tmp'))
+    # Non-admins may only touch the user-writable config overlay (targets_modified or
+    # tmp), never the cmd_tlm overlay which is evaluated as code. Everything else is admin.
+    unless overlay_write
       return false unless authorization('admin')
     end
 

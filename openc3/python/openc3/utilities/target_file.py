@@ -30,9 +30,7 @@ class TargetFile:
                 return local_file.read()
 
         bucket = Bucket.get_client()
-        resp = None
-        if not original:
-            resp = bucket.get_object(bucket=OPENC3_CONFIG_BUCKET, key=f"{scope}/targets_modified/{name}")
+        resp = None if original else bucket.get_object(bucket=OPENC3_CONFIG_BUCKET, key=f"{scope}/targets_modified/{name}")
         if not resp:
             # Now try the original
             resp = bucket.get_object(bucket=OPENC3_CONFIG_BUCKET, key=f"{scope}/targets/{name}")
