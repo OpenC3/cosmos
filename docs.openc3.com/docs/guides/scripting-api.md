@@ -8077,11 +8077,11 @@ script_run("<Script Name>", disconnect: false, environment: nil, suite_runner: n
 #### script_run suite_runner parameter
 | Key | Value |
 |-----|-------|
-| method | Required; valid values are "start", "setup", and "teardown". If `script` is provided, this value is ignored and `start` is always used. |
+| method | Valid values are "start", "setup", and "teardown". Defaults to "start" if not provided. If `script` is provided, this value is ignored and `start` is always used. |
 | suite | Required; the name of the suite to run. Must be a valid suite within the given file. |
 | group | The name of the group to run. Must be a valid group within the given suite. If `script` is provided, this is required. |
 | script | The name of the specific script to run. Must be a valid method name within the given group. |
-| options | Array of strings of suite runner options to enable. Valid options are: "manual", "pauseOnError", "continueAfterError", "abortAfterError", "loop", and "breakLoopOnError". |
+| options | Array of strings of suite runner options to enable. Valid options are: "manual", "pauseOnError", "continueAfterError", "abortAfterError", "loop", and "breakLoopOnError". Defaults to ["continueAfterError"] if not provided. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">

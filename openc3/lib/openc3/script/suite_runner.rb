@@ -26,6 +26,11 @@ module OpenC3
   end
 
   class SuiteRunner
+    # Default suite_runner options shared by all callers (e.g. openc3cli) so
+    # the values stay consistent in one place.
+    DEFAULT_METHOD = 'start'
+    DEFAULT_OPTIONS = ['continueAfterError'].freeze
+
     @@suites = []
     @@settings = {}
     @@suite_results = nil
@@ -42,12 +47,37 @@ module OpenC3
       @@suite_results
     end
 
+    # Validate the suite_runner option combinations that don't require the
+    # built suites. Shared by all callers (the running script via execute and
+    # openc3cli when constructing options) so the contract lives in one place.
+    # Suite/Group existence is checked in execute since it needs @@suites.
+    def self.validate_options(group: nil, script: nil)
+      raise ArgumentError, "Script #{script} requires a Group" if script and not group
+    end
+
+    # Build the canonical, validated suite_runner hash from raw values,
+    # applying defaults. Shared by openc3cli (constructing from CLI flags) and
+    # the running script (normalizing a received hash before dispatch) so the
+    # hash shape, defaults, and validation live in one place.
+    def self.build_options(suite:, group: nil, script: nil, method: nil, options: nil)
+      validate_options(group: group, script: script)
+      suite_runner = { 'suite' => suite }
+      if group
+        suite_runner['group'] = group
+        suite_runner['script'] = script if script
+      end
+      # A script always runs via start, matching the GUI
+      suite_runner['method'] = script ? DEFAULT_METHOD : (method || DEFAULT_METHOD)
+      suite_runner['options'] = options || DEFAULT_OPTIONS.dup
+      suite_runner
+    end
+
     def self.execute(result_string, suite_class, group_class = nil, script = nil)
       @@suite_results = SuiteResults.new
       # Surface invalid suite / group / option combinations rather than
       # silently running nothing or failing with an opaque nil error. An
       # invalid script method raises later in Group#run_method.
-      raise ArgumentError, "Script #{script} requires a Group" if script and not group_class
+      validate_options(group: group_class, script: script)
       suite = @@suites.find { |s| s.class == suite_class }
       raise ArgumentError, "Suite #{suite_class} not found" unless suite
       if group_class and not suite.scripts.key?(group_class)

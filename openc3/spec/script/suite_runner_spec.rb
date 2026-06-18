@@ -116,5 +116,45 @@ module OpenC3
           .to raise_error(/Group SuiteRunnerOtherGroup not found in Suite SuiteRunnerOptionsSuite/)
       end
     end
+
+    describe "self.build_options" do
+      it "applies default method and options when omitted" do
+        expect(SuiteRunner.build_options(suite: 'MySuite', group: 'MyGroup')).to eq(
+          'suite' => 'MySuite', 'group' => 'MyGroup',
+          'method' => 'start', 'options' => ['continueAfterError']
+        )
+      end
+
+      it "uses the provided method and options" do
+        expect(SuiteRunner.build_options(suite: 'MySuite', group: 'MyGroup', method: 'teardown', options: ['manual'])).to eq(
+          'suite' => 'MySuite', 'group' => 'MyGroup',
+          'method' => 'teardown', 'options' => ['manual']
+        )
+      end
+
+      it "nests script under group and forces method to start" do
+        expect(SuiteRunner.build_options(suite: 'MySuite', group: 'MyGroup', script: 'test_foo', method: 'teardown')).to eq(
+          'suite' => 'MySuite', 'group' => 'MyGroup', 'script' => 'test_foo',
+          'method' => 'start', 'options' => ['continueAfterError']
+        )
+      end
+
+      it "omits group and script when no group is given" do
+        expect(SuiteRunner.build_options(suite: 'MySuite')).to eq(
+          'suite' => 'MySuite', 'method' => 'start', 'options' => ['continueAfterError']
+        )
+      end
+
+      it "raises when a script is given without a group" do
+        expect { SuiteRunner.build_options(suite: 'MySuite', script: 'test_foo') }
+          .to raise_error(/Script test_foo requires a Group/)
+      end
+
+      it "returns a mutable copy of the default options" do
+        result = SuiteRunner.build_options(suite: 'MySuite')
+        expect(result['options']).to_not be_frozen
+        expect(result['options']).to_not equal(SuiteRunner::DEFAULT_OPTIONS)
+      end
+    end
   end
 end
