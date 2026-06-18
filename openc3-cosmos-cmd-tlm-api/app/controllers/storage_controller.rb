@@ -654,10 +654,7 @@ class StorageController < ApplicationController
 
     # Non-admins may only touch the user-writable config overlay (targets_modified or
     # tmp), never the cmd_tlm overlay which is evaluated as code. Everything else is admin.
-    authorized = true
-    unless non_admin_config_overlay_write?(params[:bucket], path)
-      authorized = false unless authorization('admin')
-    end
+    authorized = non_admin_config_overlay_write?(params[:bucket], path) || authorization('admin')
 
     if authorized
       if ENV.fetch('OPENC3_LOCAL_MODE', false)
@@ -704,9 +701,7 @@ class StorageController < ApplicationController
 
     # Non-admins may only touch the user-writable config overlay (targets_modified or
     # tmp), never the cmd_tlm overlay which is evaluated as code. Everything else is admin.
-    unless overlay_write
-      return false unless authorization('admin')
-    end
+    return false unless overlay_write || authorization('admin')
 
     # List all objects under the prefix (same pattern as TargetModel#undeploy)
     bucket = OpenC3::Bucket.getClient()
