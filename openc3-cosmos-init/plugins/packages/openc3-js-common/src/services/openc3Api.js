@@ -364,6 +364,16 @@ export default class OpenC3Api {
     return this.exec('set_limits_set', [limits_set])
   }
 
+  set_state_color(target_name, packet_name, item_name, state_name, color) {
+    return this.exec('set_state_color', [
+      target_name,
+      packet_name,
+      item_name,
+      state_name,
+      color,
+    ])
+  }
+
   // ***********************************************
   // End CmdTlmServer APIs
   // ***********************************************
