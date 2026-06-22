@@ -80,6 +80,18 @@ If you go to localhost:2900 you should see COSMOS up and running!
 
 So now that you have COSMOS up and running how do you develop an individual COSMOS application?
 
+<div style={{ textAlign: 'center' }}>
+  <iframe
+    width="560"
+    height="315"
+    src="https://www.youtube.com/embed/8xilz5cSxyA"
+    title="YouTube video player"
+    frameBorder="0"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    allowFullScreen
+  ></iframe>
+</div>
+
 1.  Bootstrap the frontend with pnpm
 
 ```bash
