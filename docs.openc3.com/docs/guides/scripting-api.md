@@ -8045,7 +8045,7 @@ script_delete("INST/procedures/checks.rb")
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Runs a script in Script Runner. The script will run in the background and can be opened in Script Runner by selecting Script->Execution Status and then connecting to it.
+Kicks off running a script in Script Runner. The script will run in the background, while the caller continues to run, and can be opened in Script Runner by selecting "Execution Status" from the "Script" menu at the top, and then connecting to it from the "Running Scripts" tab.
 
 Note: In Enterprise, initialize_offline_access must have been called at least once for the user who calls this method.
 
@@ -8069,10 +8069,19 @@ script_run("<Script Name>", disconnect: false, environment: nil, suite_runner: n
 
 | Parameter    | Description                                                                                                         |
 | ------------ | ------------------------------------------------------------------------------------------------------------------- |
-| Script Name  | Full path name of the script starting with the target                                                               |
-| disconnect   | Whether to run the script in Disconnect mode                                                                        |
+| Script Name  | Full path name of the script starting with the target. If this is the path to a test suite file, the `suite_runner` parameter must also be provided. |
+| disconnect   | Boolean indicating whether to run the script in Disconnect |
 | environment  | Hash / dict of key / value items to set as script environment variables. Note: Do not use `PATH` as it is reserved. |
-| suite_runner | Hash / dict of suite runner options                                                                                 |
+| suite_runner | Hash / dict of suite runner configuration values. Valid keys are described [below](#script_run-suite_runner-parameter). |
+
+#### script_run suite_runner parameter
+| Key | Value |
+|-----|-------|
+| method | Valid values are "start", "setup", and "teardown". Defaults to "start" if not provided. If `script` is provided, this value is ignored and `start` is always used. |
+| suite | Required; the name of the suite to run. Must be a valid suite within the given file. |
+| group | The name of the group to run. Must be a valid group within the given suite. If `script` is provided, this is required. |
+| script | The name of the specific script to run. Must be a valid method name within the given group. |
+| options | Array of strings of suite runner options to enable. Valid options are: "manual", "pauseOnError", "continueAfterError", "abortAfterError", "loop", and "breakLoopOnError". Defaults to ["continueAfterError"] if not provided. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -8080,7 +8089,7 @@ script_run("<Script Name>", disconnect: false, environment: nil, suite_runner: n
 ```python
 id = script_run("INST2/procedures/checks.py", environment={ 'USER': 'JASON'})
 print(id)
-id = script_run("INST2/procedures/my_script_suite.py", suite_runner={ 'suite': 'MySuite', 'group': 'ExampleGroup', 'script': 'script_2' })
+id = script_run("INST2/procedures/my_script_suite.py", suite_runner={ 'suite': 'MySuite', 'group': 'ExampleGroup', 'script': 'script_2', 'method': 'start' })
 print(id)
 ```
 
