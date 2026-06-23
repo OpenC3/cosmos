@@ -193,7 +193,9 @@ class Limits:
             raise RuntimeError(f"State {state_name} does not exist for {target_name} {packet_name} {item_name}")
         color = str(color).upper()
         if color not in PacketItem.VALID_STATE_COLORS:
-            raise RuntimeError(f"Invalid state color {color}. Must be one of {' '.join(PacketItem.VALID_STATE_COLORS)}.")
+            raise RuntimeError(
+                f"Invalid state color {color}. Must be one of {' '.join(PacketItem.VALID_STATE_COLORS)}."
+            )
         if item.state_colors is None:
             item.state_colors = {}
         item.state_colors[state_name] = color
