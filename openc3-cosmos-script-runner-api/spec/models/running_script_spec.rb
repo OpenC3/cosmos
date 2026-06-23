@@ -140,6 +140,43 @@ RSpec.describe RunningScript, type: :model do
     end
   end
 
+  describe "#run with suite_runner" do
+    before do
+      # Avoid hitting the bucket when RunningScript#initialize fetches the body
+      allow(::Script).to receive(:body).and_return("puts 'test'")
+    end
+
+    it "uses the default method and options when the suite_runner omits them" do
+      script_status.suite_runner = { "suite" => "MySuite", "group" => "MyGroup" }
+      running_script = RunningScript.new(script_status)
+      # run_text instruments and executes the generated call; mock it so we
+      # can assert the dispatch string without actually running anything.
+      expect(running_script).to receive(:run_text).with(
+        "OpenC3::SuiteRunner.start(MySuite, MyGroup)", initial_filename: "SCRIPTRUNNER"
+      )
+
+      running_script.run
+
+      # DEFAULT_OPTIONS (['continueAfterError']) were applied
+      expect(OpenC3::SuiteRunner.settings["Continue After Error"]).to be true
+    end
+
+    it "uses the provided method and options when given" do
+      script_status.suite_runner = {
+        "suite" => "MySuite", "group" => "MyGroup", "method" => "teardown", "options" => ["manual"]
+      }
+      running_script = RunningScript.new(script_status)
+      expect(running_script).to receive(:run_text).with(
+        "OpenC3::SuiteRunner.teardown(MySuite, MyGroup)", initial_filename: "SCRIPTRUNNER"
+      )
+
+      running_script.run
+
+      expect(OpenC3::SuiteRunner.settings["Manual"]).to be true
+      expect(OpenC3::SuiteRunner.settings["Continue After Error"]).to be false
+    end
+  end
+
   describe "self.instrument_script" do
     it "adds instrumentation code to Ruby scripts" do
       simple_script = "puts 'Hello'"
