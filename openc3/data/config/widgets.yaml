@@ -1582,7 +1582,7 @@ Canvas Widgets:
       description:
         All canvas widgets must be enclosed within a CANVAS widget.
         The canvas background defaults to white. Use SETTING BACKCOLOR to set a
-        different background color (BACKCOLOR since COSMOS 7.2.1).
+        different background color.
       warning: The canvas coordinate frame places (0,0) in the upper-left corner of the canvas.
       parameters:
         - name: Width
@@ -1593,6 +1593,25 @@ Canvas Widgets:
           required: true
           description: Height of the canvas
           values: .+
+      settings:
+        BACKCOLOR:
+          summary: Sets the background color of the canvas
+          since: 7.2.1
+          parameters:
+            - name: Color name or Red value
+              required: true
+              description: Common name for the color, e.g. 'black', 'red', etc.
+                Alternatively if two more parameters are passed this is the
+                Red value of the RGB value
+              values: .+
+            - name: Green value
+              required: false
+              description: Green value of the RGB value
+              values: .+
+            - name: Blue value
+              required: false
+              description: Blue value of the RGB value
+              values: .+
       example: |
         CANVAS 100 50
           SETTING BACKCOLOR 17 21 28
