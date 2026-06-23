@@ -28,7 +28,7 @@ valkey_version = get_docker_version("openc3-redis/Dockerfile")
 versitygw_version = get_docker_version("openc3-buckets/Dockerfile", arg: 'OPENC3_VERSITYGW_VERSION')
 tsdb_version = get_docker_version("openc3-tsdb/Dockerfile", arg: 'OPENC3_TSDB_VERSION')
 alpine_version = ENV.fetch('ALPINE_VERSION', '3.23')
-alpine_build = ENV.fetch('ALPINE_BUILD', '4')
+alpine_build = ENV.fetch('ALPINE_BUILD', '5')
 
 # Manual list - MAKE SURE UP TO DATE especially base images
 containers = [
