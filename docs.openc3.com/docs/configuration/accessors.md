@@ -301,7 +301,7 @@ TELEMETRY JSON JSONTLM BIG_ENDIAN "JSON Accessor Telemetry"
 
 The Template Accessor is commonly used with string based command / response protocols such as the [Command Response Protocol](protocols#command-response-protocol).
 
-For a full example see [openc3-cosmos-scpi-power-supply](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-scpi-power-supply) in the COSMOS Enterprise Plugins.
+For a full example, please see [openc3-cosmos-scpi-power-supply](https://repos.openc3.com/OpenC3/openc3-cosmos-scpi-power-supply).
 
 #### Commands
 
@@ -394,13 +394,13 @@ TELEMETRY XML XMLTLM BIG_ENDIAN "XML Accessor Telemetry"
 
 The GemsAsciiAccessor inherits from [TemplateAccessor](accessors#template-accessor) to escape the following characters in outgoing commands: "&" => "&a", "|" => "&b", "," => "&c", and ";" => "&d" and reverse them in telemetry. See the [GEMS Spec](https://www.omg.org/spec/GEMS/1.3/PDF) for more information.
 
-For a full example, please see the [openc3-cosmos-gems-interface](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-gems-interface) in the COSMOS Enterprise Plugins.
+For a full example, please see [openc3-cosmos-gems-interface](https://repos.openc3.com/OpenC3/openc3-cosmos-gems-interface).
 
 ### Prometheus (Enterprise)
 
 The PrometheusAccessor is used to read from a Prometheus endpoint and can automatically parse the results into a packet. The PrometheusAccessor is currently only implemented in Ruby.
 
-For a full example, please see the [openc3-cosmos-prometheus-metrics](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-prometheus-metrics) in the COSMOS Enterprise Plugins.
+For a full example, please see [openc3-cosmos-prometheus-metrics](https://repos.openc3.com/OpenC3/openc3-cosmos-prometheus-metrics).
 
 ### Protocol Buffer (Enterprise)
 
@@ -647,4 +647,4 @@ TELEMETRY PROTO LIST_PHOTOS_RESPONSE BIG_ENDIAN "List of Photos"
 </TabItem>
 </Tabs>
 
-For a full example, please see the [openc3-cosmos-proto-target](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-proto-target) in the COSMOS Enterprise Plugins.
+For a full example, please see [openc3-cosmos-proto-target](https://repos.openc3.com/OpenC3/openc3-cosmos-proto-target).
