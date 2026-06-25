@@ -1427,7 +1427,7 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
             if end_line_no is None:
                 # Goto line
                 RunningScript.instance.script_engine.run_text(
-                    instrumented_script, filename=procedure_name, line_no=line_no, bind_variables=True
+                    instrumented_script, filename=procedure_name, line_no=line_no
                 )
             else:
                 # Execute selection
@@ -1436,7 +1436,6 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
                     filename=procedure_name,
                     line_no=line_no,
                     end_line_no=end_line_no,
-                    bind_variables=True,
                 )
         else:
             RunningScript.instance.script_engine.run_text(instrumented_script, filename=procedure_name)
