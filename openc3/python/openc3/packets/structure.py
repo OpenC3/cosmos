@@ -546,20 +546,25 @@ class Structure:
         if item.variable_bit_size:
             # Bit size is determined by length field
             length_value = self.read(item.variable_bit_size["length_item_name"], "CONVERTED")
-            if (item.data_type == "INT" or item.data_type == "UINT") and item.original_array_size is None:
-                match length_value:
-                    case 0:
-                        return 6
-                    case 1:
-                        return 14
-                    case 2:
-                        return 30
-                    case _:
-                        return 62
+            if length_value is not None:
+                if (item.data_type == "INT" or item.data_type == "UINT") and item.original_array_size is None:
+                    match length_value:
+                        case 0:
+                            return 6
+                        case 1:
+                            return 14
+                        case 2:
+                            return 30
+                        case _:
+                            return 62
+                else:
+                    return (length_value * item.variable_bit_size["length_bits_per_count"]) + item.variable_bit_size[
+                        "length_value_bit_offset"
+                    ]
             else:
-                return (length_value * item.variable_bit_size["length_bits_per_count"]) + item.variable_bit_size[
-                    "length_value_bit_offset"
-                ]
+                raise RuntimeError(
+                    f"Length value {item.variable_bit_size['length_item_name']} for item {item.name} is None"
+                )
         elif item.original_bit_size <= 0:
             # Bit size is full packet length - bits before item + negative bits saved at end
             return (len(self._buffer) * 8) - item.bit_offset + item.original_bit_size
