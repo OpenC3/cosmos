@@ -780,10 +780,11 @@ class InterfaceMicroservice(Microservice):
                 # handle_fatal_exception(error)
             # Try to do clean disconnect because we're going down
             self.disconnect(False)
-        if self.interface_or_router == "INTERFACE":
-            InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
-        else:
-            RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+        if not self.cancel_thread:
+            if self.interface_or_router == "INTERFACE":
+                InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+            else:
+                RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         self.logger.info(f"{self.interface.name}: Stopped packet reading")
 
     def handle_packet(self, packet):

@@ -706,10 +706,12 @@ module OpenC3
         # Try to do clean disconnect because we're going down
         disconnect(false)
       end
-      if @interface_or_router == 'INTERFACE'
-        InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
-      else
-        RouterStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
+      unless @cancel_thread
+        if @interface_or_router == 'INTERFACE'
+          InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
+        else
+          RouterStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
+        end
       end
       @logger.info "#{@interface.name}: Stopped packet reading"
     end

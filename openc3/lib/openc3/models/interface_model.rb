@@ -455,15 +455,19 @@ module OpenC3
         model.destroy
         ConfigTopic.write({ kind: 'deleted', type: type.downcase, name: @name, plugin: @plugin }, scope: @scope)
       end
-
-      if type == 'INTERFACE'
-        status_model = InterfaceStatusModel.get_model(name: @name, scope: @scope)
-      else
-        status_model = RouterStatusModel.get_model(name: @name, scope: @scope)
-      end
-      status_model.destroy if status_model
     rescue Exception => error
       Logger.error("Error undeploying interface/router model #{@name} in scope #{@scope} due to #{error}")
+    ensure
+      begin
+        if type == 'INTERFACE'
+          status_model = InterfaceStatusModel.get_model(name: @name, scope: @scope)
+        else
+          status_model = RouterStatusModel.get_model(name: @name, scope: @scope)
+        end
+        status_model.destroy if status_model
+      rescue Exception => error
+        Logger.error("Error destroying #{type.downcase} status model #{@name} in scope #{@scope} due to #{error}")
+      end
     end
 
     def unmap_target(target_name, cmd_only: false, tlm_only: false)
