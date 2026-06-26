@@ -65,5 +65,14 @@ RSpec.describe CompletedScriptController, :type => :controller do
         expect(response.content_type).to include('application/json')
       end
     end
+
+    context "with a search parameter" do
+      it "forwards search to the model" do
+        expect(OpenC3::ScriptStatusModel).to receive(:all).with(hash_including(search: "collect")).and_return([])
+        expect(OpenC3::ScriptStatusModel).to receive(:count).with(hash_including(search: "collect")).and_return(0)
+        get :index, params: { "scope" => "DEFAULT", "search" => "collect" }
+        expect(response.status).to eq(200)
+      end
+    end
   end
 end

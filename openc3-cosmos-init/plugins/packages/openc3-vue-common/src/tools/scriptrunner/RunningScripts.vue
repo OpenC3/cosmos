@@ -55,7 +55,6 @@
             :items="runningScripts"
             :items-length="runningTotal"
             :loading="runningLoading"
-            :search="runningSearch"
             density="compact"
             data-test="running-scripts"
             :items-per-page="runningItemsPerPage"
@@ -117,7 +116,6 @@
             :items="completedScripts"
             :items-length="completedTotal"
             :loading="completedLoading"
-            :search="completedSearch"
             density="compact"
             data-test="completed-scripts"
             :items-per-page="completedItemsPerPage"
@@ -210,6 +208,7 @@
 
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount, inject } from 'vue'
+import { debounce } from 'lodash'
 import { useRouter } from 'vue-router'
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { OutputDialog } from '@/components'
@@ -309,6 +308,23 @@ watch(activeTab, (newTab) => {
   }
 })
 
+// Debounce search so we refetch from the server after the user stops typing.
+// Reset to the first page since the filtered result set changes.
+watch(
+  runningSearch,
+  debounce(() => {
+    runningPage.value = 1
+    getRunningScripts()
+  }, 300),
+)
+watch(
+  completedSearch,
+  debounce(() => {
+    completedPage.value = 1
+    getCompletedScripts()
+  }, 300),
+)
+
 onMounted(async () => {
   try {
     const response = await api.get_setting('time_zone')
@@ -359,9 +375,10 @@ function formatDuration(durationMs) {
 async function getRunningScripts() {
   runningLoading.value = true
   const offset = (runningPage.value - 1) * runningItemsPerPage.value
+  const search = encodeURIComponent(runningSearch.value || '')
   try {
     const response = await Api.get(
-      `/script-api/running-script?scope=DEFAULT&offset=${offset}&limit=${runningItemsPerPage.value}`,
+      `/script-api/running-script?scope=DEFAULT&offset=${offset}&limit=${runningItemsPerPage.value}&search=${search}`,
     )
     const scripts = response.data.items || []
     const currentTime = new Date()
@@ -411,9 +428,10 @@ function updateRunningItemsPerPage(itemsPerPage) {
 async function getCompletedScripts() {
   completedLoading.value = true
   const offset = (completedPage.value - 1) * completedItemsPerPage.value
+  const search = encodeURIComponent(completedSearch.value || '')
   try {
     const response = await Api.get(
-      `/script-api/completed-scripts?scope=DEFAULT&offset=${offset}&limit=${completedItemsPerPage.value}`,
+      `/script-api/completed-scripts?scope=DEFAULT&offset=${offset}&limit=${completedItemsPerPage.value}&search=${search}`,
     )
     const scripts = response.data.items || []
 
