@@ -55,6 +55,7 @@
             :items="runningScripts"
             :items-length="runningTotal"
             :loading="runningLoading"
+            disable-sort
             density="compact"
             data-test="running-scripts"
             :items-per-page="runningItemsPerPage"
@@ -125,6 +126,7 @@
             :items="completedScripts"
             :items-length="completedTotal"
             :loading="completedLoading"
+            disable-sort
             density="compact"
             data-test="completed-scripts"
             :items-per-page="completedItemsPerPage"
@@ -352,23 +354,24 @@ const {
 )
 
 // Columns shared by both tables; each table adds its own action columns.
+// Sorting is disabled table-wide (disable-sort) since the API doesn't support it.
 const coreHeaders = [
   { title: 'Id', key: 'name' },
   { title: 'User', key: 'user_full_name' },
   { title: 'Filename', key: 'filename' },
   { title: 'Start Time', key: 'start_time' },
-  { title: 'Duration', key: 'duration', sortable: false },
+  { title: 'Duration', key: 'duration' },
   { title: 'State', key: 'state' },
 ]
 const runningHeaders = [
-  { title: 'Connect', key: 'connect', sortable: false, filterable: false },
+  { title: 'Connect', key: 'connect', filterable: false },
   ...coreHeaders,
-  { title: 'Stop', key: 'stop', sortable: false, filterable: false },
+  { title: 'Stop', key: 'stop', filterable: false },
 ]
 const completedHeaders = [
   ...coreHeaders,
-  { title: 'Log', key: 'log', sortable: false, filterable: false },
-  { title: 'Report', key: 'report', sortable: false, filterable: false },
+  { title: 'Log', key: 'log', filterable: false },
+  { title: 'Report', key: 'report', filterable: false },
 ]
 
 const showDialog = ref(false)
