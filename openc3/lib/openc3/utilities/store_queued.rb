@@ -105,7 +105,7 @@ module OpenC3
       # Drain the queue before shutdown
       begin
         process_queue()
-      rescue => e
+      rescue
         # Best effort - Redis may already be unavailable during shutdown
       end
     end
