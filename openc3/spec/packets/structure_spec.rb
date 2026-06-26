@@ -924,6 +924,20 @@ module OpenC3
         expect(s.defined_length_bits).to eql 64
         expect(s.defined_length).to eql 8
       end
+
+      it "raises if the length item reads nil for a variable_bit_size item" do
+        # When short_buffer_allowed is true and the length item falls outside the
+        # buffer, reading it returns nil. calculate_total_bit_size must not silently
+        # use the nil value - it should raise a descriptive error.
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("LENGTH", 32, :UINT)
+        item = s.append_item("DATA", 8, :UINT, 0)
+        item.variable_bit_size = {'length_item_name' => 'LENGTH', 'length_bits_per_count' => 8, 'length_value_bit_offset' => 0}
+        s.set_item(item)
+        s.short_buffer_allowed = true
+        # Buffer is too short to contain the 32 bit LENGTH item, so LENGTH reads nil
+        expect { s.buffer = "\x00\x01" }.to raise_error(/Length value LENGTH for item DATA is nil/)
+      end
     end
 
     describe "short_buffer_allowed" do
