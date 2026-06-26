@@ -50,7 +50,7 @@
             </v-row>
           </v-card-title>
 
-          <v-data-table-server
+          <v-data-table
             :headers="runningHeaders"
             :items="runningScripts"
             :items-length="runningTotal"
@@ -86,7 +86,7 @@
                 <v-icon end> mdi-close-circle-outline </v-icon>
               </v-btn>
             </template>
-          </v-data-table-server>
+          </v-data-table>
         </v-window-item>
 
         <!-- Completed Scripts Tab -->
@@ -112,7 +112,7 @@
             </v-row>
           </v-card-title>
 
-          <v-data-table-server
+          <v-data-table
             :headers="completedHeaders"
             :items="completedScripts"
             :items-length="completedTotal"
@@ -191,7 +191,7 @@
                 </v-menu>
               </div>
             </template>
-          </v-data-table-server>
+          </v-data-table>
         </v-window-item>
       </v-window>
     </v-card>
