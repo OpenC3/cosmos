@@ -257,60 +257,118 @@ const activeTab = ref('completed')
 const downloadScript = ref(null)
 const refreshTimer = ref(null)
 
-// Running scripts pagination data
-const runningSearch = ref('')
-const runningScripts = ref([])
-const runningTotal = ref(0)
-const runningLoading = ref(false)
-const runningPage = ref(1)
-const runningItemsPerPage = ref(10)
-const runningHeaders = [
-  {
-    title: 'Connect',
-    key: 'connect',
-    sortable: false,
-    filterable: false,
-  },
-  { title: 'Id', key: 'name' },
-  { title: 'User', key: 'user_full_name' },
-  { title: 'Filename', key: 'filename' },
-  { title: 'Start Time', key: 'start_time' },
-  { title: 'Duration', key: 'duration', sortable: false },
-  { title: 'State', key: 'state' },
-  {
-    title: 'Stop',
-    key: 'stop',
-    sortable: false,
-    filterable: false,
-  },
-]
+// Running and completed scripts share identical pagination/search/fetch
+// behavior, differing only by endpoint and error message, so both are backed
+// by the same factory.
+function useScriptTable(endpoint, errorTitle) {
+  const search = ref('')
+  const scripts = ref([])
+  const total = ref(0)
+  const loading = ref(false)
+  const page = ref(1)
+  const itemsPerPage = ref(10)
 
-// Completed scripts pagination data
-const completedSearch = ref('')
-const completedScripts = ref([])
-const completedTotal = ref(0)
-const completedLoading = ref(false)
-const completedPage = ref(1)
-const completedItemsPerPage = ref(10)
-const completedHeaders = [
+  async function fetchScripts() {
+    loading.value = true
+    const offset = (page.value - 1) * itemsPerPage.value
+    const searchParam = encodeURIComponent(search.value || '')
+    try {
+      const { data } = await Api.get(
+        `${endpoint}?scope=DEFAULT&offset=${offset}&limit=${itemsPerPage.value}&search=${searchParam}`,
+      )
+      scripts.value = data.items || []
+      total.value = data.total || scripts.value.length
+    } catch (error) {
+      notify.caution({ title: errorTitle, body: error.message })
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function setPage(newPage) {
+    page.value = newPage
+    fetchScripts()
+  }
+
+  function setItemsPerPage(newItemsPerPage) {
+    itemsPerPage.value = newItemsPerPage
+    page.value = 1
+    fetchScripts()
+  }
+
+  // Debounce search so we refetch from the server after the user stops typing.
+  // Reset to the first page since the filtered result set changes.
+  watch(
+    search,
+    debounce(() => {
+      page.value = 1
+      fetchScripts()
+    }, 300),
+  )
+
+  // Return refs (not reactive) so they can be destructured into named bindings
+  // without losing reactivity.
+  return {
+    search,
+    scripts,
+    total,
+    loading,
+    page,
+    itemsPerPage,
+    fetchScripts,
+    setPage,
+    setItemsPerPage,
+  }
+}
+
+const {
+  search: runningSearch,
+  scripts: runningScripts,
+  total: runningTotal,
+  loading: runningLoading,
+  page: runningPage,
+  itemsPerPage: runningItemsPerPage,
+  fetchScripts: getRunningScripts,
+  setPage: updateRunningPage,
+  setItemsPerPage: updateRunningItemsPerPage,
+} = useScriptTable(
+  '/script-api/running-script',
+  'Error Loading Running Scripts',
+)
+
+const {
+  search: completedSearch,
+  scripts: completedScripts,
+  total: completedTotal,
+  loading: completedLoading,
+  page: completedPage,
+  itemsPerPage: completedItemsPerPage,
+  fetchScripts: getCompletedScripts,
+  setPage: updateCompletedPage,
+  setItemsPerPage: updateCompletedItemsPerPage,
+} = useScriptTable(
+  '/script-api/completed-scripts',
+  'Error Loading Completed Scripts',
+)
+
+// Columns shared by both tables; each table adds its own action columns.
+const coreHeaders = [
   { title: 'Id', key: 'name' },
   { title: 'User', key: 'user_full_name' },
   { title: 'Filename', key: 'filename' },
   { title: 'Start Time', key: 'start_time' },
   { title: 'Duration', key: 'duration', sortable: false },
   { title: 'State', key: 'state' },
-  {
-    title: 'Log',
-    key: 'log',
-    sortable: false,
-    filterable: false,
-  },
-  {
-    title: 'Report',
-    key: 'report',
-    sortable: false,
-    filterable: false,
-  },
+]
+const runningHeaders = [
+  { title: 'Connect', key: 'connect', sortable: false, filterable: false },
+  ...coreHeaders,
+  { title: 'Stop', key: 'stop', sortable: false, filterable: false },
+]
+const completedHeaders = [
+  ...coreHeaders,
+  { title: 'Log', key: 'log', sortable: false, filterable: false },
+  { title: 'Report', key: 'report', sortable: false, filterable: false },
 ]
 
 const showDialog = ref(false)
@@ -325,23 +383,6 @@ watch(activeTab, (newTab) => {
     getCompletedScripts()
   }
 })
-
-// Debounce search so we refetch from the server after the user stops typing.
-// Reset to the first page since the filtered result set changes.
-watch(
-  runningSearch,
-  debounce(() => {
-    runningPage.value = 1
-    getRunningScripts()
-  }, 300),
-)
-watch(
-  completedSearch,
-  debounce(() => {
-    completedPage.value = 1
-    getCompletedScripts()
-  }, 300),
-)
 
 onMounted(async () => {
   try {
@@ -412,70 +453,6 @@ function formatDurationMs(durationMs) {
     const seconds = Math.round((durationMs % 60000) / 1000)
     return `${hours}h ${minutes}m ${seconds}s`
   }
-}
-
-async function getRunningScripts() {
-  runningLoading.value = true
-  const offset = (runningPage.value - 1) * runningItemsPerPage.value
-  const search = encodeURIComponent(runningSearch.value || '')
-  try {
-    const response = await Api.get(
-      `/script-api/running-script?scope=DEFAULT&offset=${offset}&limit=${runningItemsPerPage.value}&search=${search}`,
-    )
-    const scripts = response.data.items || []
-    runningScripts.value = scripts
-    runningTotal.value = response.data.total || scripts.length
-    runningLoading.value = false
-  } catch (error) {
-    runningLoading.value = false
-    notify.caution({
-      title: 'Error Loading Running Scripts',
-      body: error.message,
-    })
-  }
-}
-
-function updateRunningPage(page) {
-  runningPage.value = page
-  getRunningScripts()
-}
-
-function updateRunningItemsPerPage(itemsPerPage) {
-  runningItemsPerPage.value = itemsPerPage
-  runningPage.value = 1
-  getRunningScripts()
-}
-
-async function getCompletedScripts() {
-  completedLoading.value = true
-  const offset = (completedPage.value - 1) * completedItemsPerPage.value
-  const search = encodeURIComponent(completedSearch.value || '')
-  try {
-    const response = await Api.get(
-      `/script-api/completed-scripts?scope=DEFAULT&offset=${offset}&limit=${completedItemsPerPage.value}&search=${search}`,
-    )
-    const scripts = response.data.items || []
-    completedScripts.value = scripts
-    completedTotal.value = response.data.total || scripts.length
-    completedLoading.value = false
-  } catch (error) {
-    completedLoading.value = false
-    notify.caution({
-      title: 'Error Loading Completed Scripts',
-      body: error.message,
-    })
-  }
-}
-
-function updateCompletedPage(page) {
-  completedPage.value = page
-  getCompletedScripts()
-}
-
-function updateCompletedItemsPerPage(itemsPerPage) {
-  completedItemsPerPage.value = itemsPerPage
-  completedPage.value = 1
-  getCompletedScripts()
 }
 
 function showScript(script) {
