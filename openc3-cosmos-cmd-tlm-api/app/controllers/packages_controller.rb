@@ -36,7 +36,7 @@ class PackagesController < ApplicationController
         if File.extname(package_file_path) == '.gem'
           process_name = OpenC3::GemModel.put(package_file_path, gem_install: true, scope: params[:scope])
         else
-          process_name = OpenC3::PythonPackageModel.put(package_file_path, package_install: true, scope: params[:scope])
+          process_name = OpenC3::PythonPackageModel.put(package_file_path, package_install: true, scope: params[:scope], plugin: params[:plugin])
         end
         OpenC3::Logger.info("Package created: #{params[:package]}", scope: params[:scope], user: username())
         render json: process_name
@@ -60,7 +60,7 @@ class PackagesController < ApplicationController
         if params[:id] =~ /\.gem/
           OpenC3::GemModel.destroy(params[:id])
         else
-          OpenC3::PythonPackageModel.destroy(params[:id], scope: params[:scope])
+          OpenC3::PythonPackageModel.destroy(params[:id], scope: params[:scope], plugin: params[:plugin])
         end
         OpenC3::Logger.info("Package destroyed: #{params[:id]}", scope: params[:scope], user: username())
         head :ok
@@ -72,6 +72,14 @@ class PackagesController < ApplicationController
       OpenC3::Logger.error("Error destroying package: Package name as params[:id] is required", scope: params[:scope], user: username())
       render json: { status: 'error', message: "Package name as params[:id] is required" }, status: :bad_request
     end
+  end
+
+  # Return per-plugin Python dependency lists (package name + version) for each
+  # plugin venv. Used by the Admin Packages tab to show installed dependencies
+  # in a collapsible tree view per plugin.
+  def trees
+    return unless authorization('system')
+    render json: OpenC3::PythonPackageModel.trees
   end
 
   def download

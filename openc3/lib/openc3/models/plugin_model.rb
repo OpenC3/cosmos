@@ -266,29 +266,47 @@ module OpenC3
             end
           end
           unless validate_only
-            if File.exist?(pyproject_path)
-              Logger.info "Installing python packages from pyproject.toml with pypi_url=#{pypi_url}"
-              if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
-                pip_args = "-i #{pypi_url} #{gem_path}"
-              else
-                pip_args = "-i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} #{gem_path}"
-              end
+            # Determine pypi args for trusted host support
+            if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
+              pypi_args = "-i #{pypi_url}"
             else
-              Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
-              if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
-                pip_args = "-i #{pypi_url} -r #{requirements_path}"
-              else
-                pip_args = "-i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} -r #{requirements_path}"
+              pypi_args = "-i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host}"
+            end
+
+            # Install Python dependencies into an isolated per-plugin venv when UV
+            # is available. Each plugin gets its own venv at /gems/plugin_venvs/<name>/.venv
+            # so that plugins with conflicting Python dependency versions don't interfere.
+            # If UV is unavailable or the install fails, fall back to the shared pipinstall
+            # which installs into PYTHONUSERBASE (the legacy shared environment).
+            uv_installed = ENV['OPENC3_USE_UV'] != 'false' && system('which uv > /dev/null 2>&1')
+            if uv_installed
+              plugin_venv_name = plugin_model.name.tr('^a-zA-Z0-9_-', '_')
+              Logger.info "Installing python packages into per-plugin venv '#{plugin_venv_name}' with pypi_url=#{pypi_url}"
+              output = `/openc3/bin/uvinstall #{plugin_venv_name} #{gem_path} #{pypi_args}`
+              puts output
+              unless $?.success?
+                Logger.warn "UV per-plugin install failed, falling back to shared pipinstall"
+                uv_installed = false
               end
             end
-            # Capture output and check exit code so failures surface as a warning
-            # rather than silently succeeding. pipinstall is non-fatal: the plugin
-            # continues to install even if Python packages fail so that non-Python
-            # functionality still works.
-            output = `/openc3/bin/pipinstall #{pip_args}`
-            puts output
-            unless $?.success?
-              Logger.warn "Python package installation failed. Plugin Python microservices may not function correctly."
+
+            unless uv_installed
+              if File.exist?(pyproject_path)
+                Logger.info "Installing python packages from pyproject.toml with pypi_url=#{pypi_url}"
+                pip_args = "#{pypi_args} #{gem_path}"
+              else
+                Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
+                pip_args = "#{pypi_args} -r #{requirements_path}"
+              end
+              # Capture output and check exit code so failures surface as a warning
+              # rather than silently succeeding. pipinstall is non-fatal: the plugin
+              # continues to install even if Python packages fail so that non-Python
+              # functionality still works.
+              output = `/openc3/bin/pipinstall #{pip_args}`
+              puts output
+              unless $?.success?
+                Logger.warn "Python package installation failed. Plugin Python microservices may not function correctly."
+              end
             end
           end
           needs_dependencies = true
@@ -481,6 +499,19 @@ module OpenC3
           errors << e
         end
       end
+      # Remove the per-plugin UV virtual environment directory that was created
+      # during install_phase2. This cleans up the .venv, pyproject.toml, uv.lock,
+      # and .uv_managed marker so disk space is reclaimed on plugin uninstall.
+      begin
+        plugin_venv_name = @name.tr('^a-zA-Z0-9_-', '_')
+        plugin_venv_path = File.join('/gems', 'plugin_venvs', plugin_venv_name)
+        if File.directory?(plugin_venv_path)
+          Logger.info("Removing per-plugin Python venv: #{plugin_venv_path}")
+          FileUtils.rm_rf(plugin_venv_path)
+        end
+      rescue Exception => e
+        errors << e
+      end
       # Raise all the errors at once
       if errors.length > 0
         message = ''
@@ -525,6 +556,89 @@ module OpenC3
         end
       end
       return result.sort
+    end
+
+    # Check if this plugin needs migration to a per-plugin UV virtual environment.
+    # Returns true if the plugin has Python dependencies but no .uv_managed marker exists.
+    def needs_uv_migration?
+      return false unless @needs_dependencies
+
+      plugin_venv_name = @name.tr('^a-zA-Z0-9_-', '_')
+      marker_path = File.join('/gems', 'plugin_venvs', plugin_venv_name, '.uv_managed')
+      !File.exist?(marker_path)
+    end
+
+    # Migrate this plugin from the shared Python venv to a per-plugin UV virtual environment.
+    # Non-fatal: logs a warning on failure, plugin continues using the shared venv.
+    # Returns true on success, false on failure.
+    def migrate_to_uv!(scope:)
+      plugin_venv_name = @name.tr('^a-zA-Z0-9_-', '_')
+      marker_path = File.join('/gems', 'plugin_venvs', plugin_venv_name, '.uv_managed')
+      if File.exist?(marker_path)
+        Logger.info("Plugin '#{@name}' is already migrated to a per-plugin UV venv")
+        return true
+      end
+
+      gem_name = @name.split("__")[0]
+      gem_file_path = OpenC3::GemModel.get(gem_name)
+
+      temp_dir = Dir.mktmpdir
+      begin
+        # Extract gem contents (same pattern as install_phase2)
+        gem_path = File.join(temp_dir, "gem")
+        FileUtils.mkdir_p(gem_path)
+        pkg = Gem::Package.new(gem_file_path)
+        pkg.extract_files(gem_path)
+
+        # Check for Python dependency files
+        pyproject_path = File.join(gem_path, 'pyproject.toml')
+        requirements_path = File.join(gem_path, 'requirements.txt')
+
+        unless File.exist?(pyproject_path) || File.exist?(requirements_path)
+          Logger.info("Plugin #{@name} has no Python dependencies to migrate")
+          return true
+        end
+
+        # Resolve pypi_url (same pattern as install_phase2 lines 249-266)
+        pypi_url = nil
+        begin
+          pypi_url = self.class.get_setting('pypi_url', scope: scope)
+          pypi_url += '/simple' if pypi_url
+        rescue => e
+          Logger.error("Failed to retrieve pypi_url: #{e.formatted}")
+        ensure
+          if pypi_url.nil?
+            pypi_url = ENV.fetch('PYPI_URL', nil)
+            pypi_url += '/simple' if pypi_url
+            pypi_url ||= 'https://pypi.org/simple'
+          end
+        end
+
+        # Build pypi_args (same pattern as install_phase2 lines 268-273)
+        if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
+          pypi_args = "-i #{pypi_url}"
+        else
+          pypi_args = "-i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host}"
+        end
+
+        # Run uvinstall for this plugin
+        plugin_venv_name = @name.tr('^a-zA-Z0-9_-', '_')
+        Logger.info("Migrating plugin '#{@name}' to per-plugin UV venv '#{plugin_venv_name}'")
+        output = `/openc3/bin/uvinstall #{plugin_venv_name} #{gem_path} #{pypi_args}`
+        puts output
+        if $?.success?
+          Logger.info("Successfully migrated plugin '#{@name}' to per-plugin UV venv")
+          return true
+        else
+          Logger.warn("UV migration failed for plugin '#{@name}'. Plugin will continue using shared venv.")
+          return false
+        end
+      rescue => e
+        Logger.warn("UV migration failed for plugin '#{@name}': #{e.message}. Plugin will continue using shared venv.")
+        return false
+      ensure
+        FileUtils.remove_entry_secure(temp_dir, true)
+      end
     end
 
     # Remove the backing gem for an unloaded plugin so it disappears from

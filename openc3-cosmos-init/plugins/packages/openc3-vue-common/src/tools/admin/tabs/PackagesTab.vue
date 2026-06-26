@@ -98,20 +98,47 @@
         <v-divider />
       </div>
       <v-row class="px-4"><v-col class="text-h6">Python Packages</v-col></v-row>
-      <div v-for="(pkg, index) in python" :key="index">
-        <v-list-item>
-          <v-list-item-title>{{ pkg }}</v-list-item-title>
+      <div v-for="pluginName in orderedPluginNames" :key="pluginName">
+        <v-list-subheader
+          class="font-weight-bold plugin-header"
+          @click="togglePlugin(pluginName)"
+        >
+          <v-icon size="small" class="mr-1">
+            {{
+              expandedPlugins[pluginName]
+                ? 'mdi-chevron-down'
+                : 'mdi-chevron-right'
+            }}
+          </v-icon>
+          {{ formatPluginName(pluginName) }}
+          ({{ python[pluginName].length }}) [{{ venvPath(pluginName) }}]
+        </v-list-subheader>
+        <div v-if="expandedPlugins[pluginName]">
+          <div
+            v-for="(pkg, index) in formattedPackages(
+              pluginName,
+              python[pluginName],
+            )"
+            :key="`${pluginName}-${index}`"
+          >
+            <v-list-item class="pl-8">
+              <v-list-item-title>{{ pkg }}</v-list-item-title>
 
-          <template #append>
-            <v-btn
-              icon="mdi-delete"
-              variant="text"
-              aria-label="Delete Python Package"
-              @click="deletePackage(pkg)"
-            />
-          </template>
-        </v-list-item>
-        <v-divider />
+              <template
+                v-if="pluginName !== 'cached' && pluginName !== 'shared'"
+                #append
+              >
+                <v-btn
+                  icon="mdi-delete"
+                  variant="text"
+                  aria-label="Delete Python Package"
+                  @click="deletePythonPackage(pkg, pluginName)"
+                />
+              </template>
+            </v-list-item>
+            <v-divider />
+          </div>
+        </div>
       </div>
     </v-list>
     <download-dialog v-model="showDownloadDialog" />
@@ -120,6 +147,32 @@
       title="Process Output"
       :text="processOutput"
     />
+    <v-dialog v-model="showPluginSelect" max-width="500" persistent>
+      <v-card>
+        <v-card-title>Select Plugin Environment</v-card-title>
+        <v-card-text>
+          <v-select
+            v-model="selectedPlugin"
+            :items="pythonVenvOptions"
+            label="Install into python venv"
+            density="comfortable"
+            data-test="python-venv-select"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="cancelPluginSelect">Cancel</v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            :disabled="!selectedPlugin"
+            @click="confirmPluginInstall"
+          >
+            OK
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -144,10 +197,31 @@ export default {
       loadingPackage: false,
       progress: 0,
       gems: [],
-      python: [],
+      python: {},
+      pythonTrees: {},
+      expandedPlugins: {},
       processes: {},
       timeZone: 'local',
+      showPluginSelect: false,
+      selectedPlugin: null,
+      pendingFiles: null,
     }
+  },
+  computed: {
+    pythonVenvOptions() {
+      return Object.keys(this.python).filter(
+        (k) => k !== 'cached' && k !== 'shared',
+      )
+    },
+    orderedPluginNames() {
+      const names = Object.keys(this.python)
+      const reserved = new Set(['cached', 'shared'])
+      // Cached first, then plugin venvs sorted, then shared last
+      const cached = names.filter((k) => k === 'cached')
+      const plugins = names.filter((k) => !reserved.has(k)).sort()
+      const shared = names.filter((k) => k === 'shared')
+      return [...cached, ...plugins, ...shared]
+    },
   },
   created() {
     new OpenC3Api()
@@ -175,6 +249,9 @@ export default {
         this.gems = response.data.ruby
         this.python = response.data.python
       })
+      Api.get('/openc3-api/packages/trees').then((response) => {
+        this.pythonTrees = response.data
+      })
     },
     updateProcesses: function () {
       Api.get('/openc3-api/process_status/package_?substr=true').then(
@@ -197,39 +274,125 @@ export default {
     fileChange(event) {
       const files = event.target.files
       if (files.length > 0) {
-        this.loadingPackage = true
-        let self = this
-        const promises = [...files].map((file) => {
-          const formData = new FormData()
-          formData.append('package', file, file.name)
-          return Api.post('/openc3-api/packages', {
-            data: formData,
-            headers: { 'Content-Type': 'multipart/form-data' },
-            onUploadProgress: function (progressEvent) {
-              let percentCompleted = Math.round(
-                (progressEvent.loaded * 100) / progressEvent.total,
-              )
-              self.progress = percentCompleted
-            },
-          })
-        })
-        Promise.all(promises)
-          .then((responses) => {
-            this.$notify.normal({
-              body: `Uploaded ${responses.length} package${
-                responses.length > 1 ? 's' : ''
-              }`,
-            })
-            this.loadingPackage = false
-            this.files = []
-            setTimeout(() => {
-              this.updateProcesses()
-            }, 2500)
-          })
-          .catch((error) => {
-            this.loadingPackage = false
-          })
+        const hasWheel = [...files].some((f) => !f.name.endsWith('.gem'))
+        const pluginNames = Object.keys(this.python).filter(
+          (k) => k !== 'shared',
+        )
+        if (hasWheel && pluginNames.length > 0) {
+          this.pendingFiles = files
+          this.selectedPlugin = null
+          this.showPluginSelect = true
+        } else {
+          this.uploadFiles(files)
+        }
       }
+    },
+    uploadFiles(files, plugin = null) {
+      this.loadingPackage = true
+      let self = this
+      const promises = [...files].map((file) => {
+        const formData = new FormData()
+        formData.append('package', file, file.name)
+        if (plugin && !file.name.endsWith('.gem')) {
+          formData.append('plugin', plugin)
+        }
+        return Api.post('/openc3-api/packages', {
+          data: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: function (progressEvent) {
+            let percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total,
+            )
+            self.progress = percentCompleted
+          },
+        })
+      })
+      Promise.all(promises)
+        .then((responses) => {
+          this.$notify.normal({
+            body: `Uploaded ${responses.length} package${
+              responses.length > 1 ? 's' : ''
+            }`,
+          })
+          this.loadingPackage = false
+          this.files = []
+          setTimeout(() => {
+            this.updateProcesses()
+          }, 2500)
+        })
+        .catch((error) => {
+          this.loadingPackage = false
+        })
+    },
+    confirmPluginInstall() {
+      const files = this.pendingFiles
+      const plugin = this.selectedPlugin
+      this.showPluginSelect = false
+      this.pendingFiles = null
+      this.uploadFiles(files, plugin)
+    },
+    cancelPluginSelect() {
+      this.showPluginSelect = false
+      this.pendingFiles = null
+      this.selectedPlugin = null
+      this.$refs.fileInput.value = ''
+    },
+    togglePlugin(pluginName) {
+      this.expandedPlugins[pluginName] = !this.expandedPlugins[pluginName]
+    },
+    formattedPackages(pluginName, packages) {
+      if (this.pythonTrees[pluginName]) {
+        return this.parseTreeOutput(this.pythonTrees[pluginName])
+      }
+      return packages.map((pkg) => this.formatPackageName(pkg))
+    },
+    formatPackageName(pkg) {
+      // Transform dist-info format "numpy-2.4.4" to pip format "numpy==2.4.4"
+      const match = pkg.match(/^(.+?)-(\d.*)$/)
+      if (match) {
+        return `${match[1]}==${match[2]}`
+      }
+      return pkg
+    },
+    parseTreeOutput(treeText) {
+      // Parse "uv pip list" output, skip header lines, return name==version strings
+      const lines = treeText.split('\n')
+      const packages = []
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (
+          !trimmed ||
+          trimmed.startsWith('Package') ||
+          trimmed.startsWith('---')
+        ) {
+          continue
+        }
+        const parts = trimmed.split(/\s+/)
+        if (parts.length >= 2) {
+          packages.push(`${parts[0]}==${parts[1]}`)
+        }
+      }
+      return packages
+    },
+    formatPluginName(name) {
+      if (name === 'cached') {
+        return 'Cached'
+      }
+      if (name === 'shared') {
+        return 'Shared'
+      }
+      // Strip the sanitized version/counter suffix for readability
+      // e.g. "openc3-cosmos-demo-7_1_1_pre_beta0_gem__0" -> "openc3-cosmos-demo"
+      return name.replace(/-\d[\d_a-z]*_gem__\d+$/, '').replace(/__\d+$/, '')
+    },
+    venvPath(pluginName) {
+      if (pluginName === 'cached') {
+        return '/gems/uv'
+      }
+      if (pluginName === 'shared') {
+        return '/gems/python_packages'
+      }
+      return `/gems/plugin_venvs/${pluginName}/.venv`
     },
     deletePackage(pkg) {
       this.$dialog
@@ -256,16 +419,44 @@ export default {
           })
         })
     },
+    deletePythonPackage(formattedPkg, pluginName) {
+      // Convert display format "name==version" to dist-info format "name-version"
+      const rawPkg = formattedPkg.replace('==', '-')
+      this.$dialog
+        .confirm(`Are you sure you want to remove: ${formattedPkg}`, {
+          okText: 'Delete',
+          cancelText: 'Cancel',
+        })
+        .then((dialog) => {
+          return Api.delete(
+            `/openc3-api/packages/${rawPkg}?plugin=${pluginName}`,
+          )
+        })
+        .then((response) => {
+          this.$notify.normal({
+            body: `Removed package ${formattedPkg}`,
+          })
+          setTimeout(() => {
+            this.updateProcesses()
+          }, 2500)
+        })
+        .catch((error) => {
+          this.$notify.serious({
+            body: `Failed to remove package ${formattedPkg}`,
+          })
+        })
+    },
   },
 }
 </script>
 
 <style scoped>
-.v-subheader {
-  font-size: 1rem;
-}
 .list {
   background-color: var(--color-background-surface-default) !important;
   overflow-x: hidden;
+}
+.plugin-header {
+  cursor: pointer;
+  user-select: none;
 }
 </style>

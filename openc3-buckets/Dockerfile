@@ -12,8 +12,9 @@ ARG TARGETARCH
 # Copy and extract versitygw binary from local tar.gz files
 COPY versitygw_${OPENC3_VERSITYGW_VERSION}*.tar.gz /tmp/
 RUN ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "arm64" || echo "x86_64") && \
-    tar xzf /tmp/versitygw_${OPENC3_VERSITYGW_VERSION}_Linux_${ARCH}.tar.gz -C /tmp versitygw_${OPENC3_VERSITYGW_VERSION}_Linux_${ARCH}/versitygw && \
-    mv /tmp/versitygw_${OPENC3_VERSITYGW_VERSION}_Linux_${ARCH}/versitygw /usr/local/bin/ && \
+    VERSITYGW_DIR="versitygw_${OPENC3_VERSITYGW_VERSION}_Linux_${ARCH}" && \
+    tar xzf "/tmp/${VERSITYGW_DIR}.tar.gz" -C /tmp "${VERSITYGW_DIR}/versitygw" && \
+    mv "/tmp/${VERSITYGW_DIR}/versitygw" /usr/local/bin/ && \
     chmod +x /usr/local/bin/versitygw && \
     rm -rf /tmp/versitygw_*
 
@@ -32,10 +33,10 @@ RUN apk update && \
     apk upgrade && \
     rm -rf /var/cache/apk/* && \
     chmod +x /usr/bin/docker-entrypoint.sh && \
-    addgroup -g ${GROUP_ID} -S ${IMAGE_GROUP} && \
-    adduser -u ${USER_ID} -G ${IMAGE_GROUP} -s /bin/ash -S ${IMAGE_USER} && \
+    addgroup -g "${GROUP_ID}" -S "${IMAGE_GROUP}" && \
+    adduser -u "${USER_ID}" -G "${IMAGE_GROUP}" -s /bin/ash -S "${IMAGE_USER}" && \
     mkdir /data && \
-    chown -R ${USER_ID}:${IMAGE_GROUP} /data && \
+    chown -R "${USER_ID}":"${IMAGE_GROUP}" /data && \
     chmod -R 777 /data
 
 # Switch to user

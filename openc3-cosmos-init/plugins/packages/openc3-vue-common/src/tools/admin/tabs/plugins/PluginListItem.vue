@@ -77,6 +77,12 @@
             @click="viewMicroservices"
           />
           <v-list-item
+            title="Migrate to UV"
+            prepend-icon="mdi-swap-horizontal"
+            data-test="migrate-to-uv"
+            @click="migrateToUv"
+          />
+          <v-list-item
             title="Delete"
             prepend-icon="mdi-delete"
             data-test="delete-plugin"
@@ -116,7 +122,7 @@ export default {
       default: () => ({}),
     },
   },
-  emits: ['edit', 'delete', 'upgrade'],
+  emits: ['edit', 'delete', 'upgrade', 'migrate-to-uv'],
   data() {
     return {
       showCard: false,
@@ -200,6 +206,9 @@ export default {
         path: '/tools/admin/microservices',
         query: { services: servicesParam },
       })
+    },
+    migrateToUv: function () {
+      this.$emit('migrate-to-uv')
     },
     deletePrompt: function () {
       this.showCard = false

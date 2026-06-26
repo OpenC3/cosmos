@@ -1,0 +1,103 @@
+#!/bin/sh
+# Per-plugin UV virtual environment installer
+# Usage: uvinstall <plugin_venv_name> <gem_path> [extra uv args...]
+#
+# Creates an isolated venv at /gems/plugin_venvs/<plugin_venv_name>/.venv
+# and installs Python dependencies from the plugin's gem_path.
+#
+# Two installation paths:
+#   1. If gem_path contains uv.lock: uses `uv sync --frozen` (reproducible)
+#   2. Otherwise: falls back to `uv pip install` for requirements.txt / pyproject.toml
+
+set -e
+
+PLUGIN_VENV_NAME="$1"
+GEM_PATH="$2"
+shift 2
+UV_ARGS="$@"
+
+if [ -z "$PLUGIN_VENV_NAME" ] || [ -z "$GEM_PATH" ]; then
+    echo "Usage: uvinstall <plugin_venv_name> <gem_path> [extra uv args...]"
+    exit 1
+fi
+
+VENV_BASE="/gems/plugin_venvs/${PLUGIN_VENV_NAME}"
+VENV_DIR="${VENV_BASE}/.venv"
+
+echo "Creating per-plugin venv for '${PLUGIN_VENV_NAME}' at ${VENV_DIR}"
+mkdir -p "${VENV_BASE}"
+
+# Path 1: uv.lock present - use `uv sync --frozen` for reproducible installs
+if [ -f "${GEM_PATH}/uv.lock" ] && [ -f "${GEM_PATH}/pyproject.toml" ]; then
+    echo "Found uv.lock - using uv sync --frozen for reproducible install"
+
+    # Copy pyproject.toml and uv.lock into the venv base directory
+    cp "${GEM_PATH}/pyproject.toml" "${VENV_BASE}/pyproject.toml"
+    cp "${GEM_PATH}/uv.lock" "${VENV_BASE}/uv.lock"
+
+    # Create venv and sync dependencies
+    cd "${VENV_BASE}"
+    uv venv "${VENV_DIR}" --allow-existing
+    uv sync --frozen --no-dev --no-install-project ${UV_ARGS}
+    RESULT=$?
+
+    if [ $RESULT -eq 0 ]; then
+        echo "uv sync --frozen succeeded"
+        touch "${VENV_BASE}/.uv_managed"
+        exit 0
+    fi
+
+    echo "Warning: uv sync --frozen failed (exit code ${RESULT}), falling back to uv pip install"
+fi
+
+# Path 2: Fallback - use uv pip install for requirements.txt or pyproject.toml
+uv venv "${VENV_DIR}" --allow-existing
+
+if [ -f "${GEM_PATH}/requirements.txt" ]; then
+    echo "Installing from requirements.txt via uv pip install"
+    uv pip install --python "${VENV_DIR}" ${UV_ARGS} -r "${GEM_PATH}/requirements.txt"
+    RESULT=$?
+elif [ -f "${GEM_PATH}/pyproject.toml" ]; then
+    echo "Installing from pyproject.toml via uv pip install"
+    uv pip install --python "${VENV_DIR}" ${UV_ARGS} "${GEM_PATH}"
+    RESULT=$?
+
+    # If the build failed (e.g. Poetry package-mode = false), try installing
+    # declared dependencies only without building the package itself.
+    if [ $RESULT -ne 0 ]; then
+        echo "Warning: Failed to build Python package, attempting to install declared dependencies from pyproject.toml"
+        TMPFILE=$(mktemp)
+        uv pip compile ${UV_ARGS} "${GEM_PATH}/pyproject.toml" > "$TMPFILE"
+        if [ $? -eq 0 ] && [ -s "$TMPFILE" ]; then
+            uv pip install --python "${VENV_DIR}" ${UV_ARGS} -r "$TMPFILE"
+            RESULT=$?
+        fi
+        rm -f "$TMPFILE"
+    fi
+else
+    echo "ERROR: No requirements.txt, pyproject.toml, or uv.lock found in ${GEM_PATH}"
+    exit 1
+fi
+
+if [ $RESULT -eq 0 ]; then
+    echo "Python packages installed successfully"
+    touch "${VENV_BASE}/.uv_managed"
+    exit 0
+fi
+
+# Last resort: try --no-index
+echo "Warning: Install failed - retrying with --no-index"
+if [ -f "${GEM_PATH}/requirements.txt" ]; then
+    uv pip install --python "${VENV_DIR}" --no-index ${UV_ARGS} -r "${GEM_PATH}/requirements.txt"
+elif [ -f "${GEM_PATH}/pyproject.toml" ]; then
+    uv pip install --python "${VENV_DIR}" --no-index ${UV_ARGS} "${GEM_PATH}"
+fi
+
+if [ $? -eq 0 ]; then
+    echo "Python packages installed successfully (with --no-index)"
+    touch "${VENV_BASE}/.uv_managed"
+    exit 0
+fi
+
+echo "ERROR: uvinstall failed for plugin ${PLUGIN_VENV_NAME}"
+exit 1

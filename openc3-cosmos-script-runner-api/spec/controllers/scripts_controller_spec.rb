@@ -136,18 +136,94 @@ RSpec.describe ScriptsController, type: :controller do
     end
   end
 
+  describe "plugin_python_venvs" do
+    it "returns list of plugin venvs with .uv_managed and .venv" do
+      allow(File).to receive(:directory?).with('/gems/plugin_venvs').and_return(true)
+      allow(Dir).to receive(:glob).with('/gems/plugin_venvs/*/').and_return(
+        ['/gems/plugin_venvs/demo/', '/gems/plugin_venvs/other/']
+      )
+      # demo has both .uv_managed and .venv
+      allow(File).to receive(:exist?).with('/gems/plugin_venvs/demo/.uv_managed').and_return(true)
+      allow(File).to receive(:directory?).with('/gems/plugin_venvs/demo/.venv').and_return(true)
+      # other has both .uv_managed and .venv
+      allow(File).to receive(:exist?).with('/gems/plugin_venvs/other/.uv_managed').and_return(true)
+      allow(File).to receive(:directory?).with('/gems/plugin_venvs/other/.venv').and_return(true)
+
+      get :plugin_python_venvs, params: {scope: "DEFAULT"}
+
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      expect(json.length).to eq(2)
+      expect(json[0]["name"]).to eq("demo")
+      expect(json[0]["venv"]).to eq("/gems/plugin_venvs/demo/.venv")
+      expect(json[1]["name"]).to eq("other")
+      expect(json[1]["venv"]).to eq("/gems/plugin_venvs/other/.venv")
+    end
+
+    it "returns empty array when plugin_venvs directory does not exist" do
+      allow(File).to receive(:directory?).with('/gems/plugin_venvs').and_return(false)
+
+      get :plugin_python_venvs, params: {scope: "DEFAULT"}
+
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      expect(json).to eq([])
+    end
+
+    it "skips plugin directories missing .uv_managed marker" do
+      allow(File).to receive(:directory?).with('/gems/plugin_venvs').and_return(true)
+      allow(Dir).to receive(:glob).with('/gems/plugin_venvs/*/').and_return(
+        ['/gems/plugin_venvs/no_marker/']
+      )
+      allow(File).to receive(:exist?).with('/gems/plugin_venvs/no_marker/.uv_managed').and_return(false)
+
+      get :plugin_python_venvs, params: {scope: "DEFAULT"}
+
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      expect(json).to eq([])
+    end
+
+    it "skips plugin directories missing .venv subdirectory" do
+      allow(File).to receive(:directory?).with('/gems/plugin_venvs').and_return(true)
+      allow(Dir).to receive(:glob).with('/gems/plugin_venvs/*/').and_return(
+        ['/gems/plugin_venvs/no_venv/']
+      )
+      allow(File).to receive(:exist?).with('/gems/plugin_venvs/no_venv/.uv_managed').and_return(true)
+      allow(File).to receive(:directory?).with('/gems/plugin_venvs/no_venv/.venv').and_return(false)
+
+      get :plugin_python_venvs, params: {scope: "DEFAULT"}
+
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      expect(json).to eq([])
+    end
+
+    it "returns 401 when unauthorized" do
+      get :plugin_python_venvs
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
   describe "run" do
     it "returns an ok response" do
-      expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.rb", nil, false, nil, "Anonymous", "anonymous", 1, nil).and_return(1)
+      expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.rb", nil, false, nil, "Anonymous", "anonymous", 1, nil, nil).and_return(1)
       post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
       expect(response).to have_http_status(:ok)
     end
 
     it "returns a not found response with the script name when the script does not exist" do
-      expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.rb", nil, false, nil, "Anonymous", "anonymous", 1, nil).and_return(nil)
+      expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.rb", nil, false, nil, "Anonymous", "anonymous", 1, nil, nil).and_return(nil)
       post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
       expect(response).to have_http_status(:not_found)
       expect(response.body).to include("INST/procedures/test.rb")
+    end
+
+    it "passes pythonVenv parameter through to Script.run" do
+      expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.py", nil, false, nil, "Anonymous", "anonymous", 1, nil, "/gems/plugin_venvs/demo/.venv").and_return(1)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.py", pythonVenv: "/gems/plugin_venvs/demo/.venv"}
+      expect(response).to have_http_status(:ok)
     end
   end
 

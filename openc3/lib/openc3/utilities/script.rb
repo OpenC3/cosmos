@@ -201,13 +201,14 @@ class Script < OpenC3::TargetFile
     user_full_name = nil,
     username = nil,
     line_no = nil,
-    end_line_no = nil
+    end_line_no = nil,
+    python_venv = nil
   )
     # Verify the script exists before spawning a run. Without this check a run
     # is started and the missing file only surfaces as a runtime error inside
     # the spawned process. Returning nil lets the caller return a 404.
     return nil unless Script.body(scope, name)
-    RunningScript.spawn(scope, name, suite_runner, disconnect, environment, user_full_name, username, line_no, end_line_no)
+    RunningScript.spawn(scope, name, suite_runner, disconnect, environment, user_full_name, username, line_no, end_line_no, python_venv)
   end
 
   def self.instrumented(filename, text)

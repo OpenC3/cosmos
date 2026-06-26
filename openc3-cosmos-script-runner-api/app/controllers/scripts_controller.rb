@@ -42,6 +42,21 @@ class ScriptsController < ApplicationController
     render json: Script.all(scope, target)
   end
 
+  def plugin_python_venvs
+    return unless authorization('script_view')
+    venvs_dir = '/gems/plugin_venvs'
+    result = []
+    if File.directory?(venvs_dir)
+      Dir.glob("#{venvs_dir}/*/").each do |plugin_dir|
+        name = File.basename(plugin_dir)
+        next unless File.exist?(File.join(plugin_dir, '.uv_managed'))
+        next unless File.directory?(File.join(plugin_dir, '.venv'))
+        result << { name: name, venv: File.join(plugin_dir, '.venv') }
+      end
+    end
+    render json: result
+  end
+
   def delete_temp
     return unless authorization('script_edit')
     scope = sanitize_params([:scope])
@@ -116,7 +131,8 @@ class ScriptsController < ApplicationController
     suite_runner = params[:suiteRunner] ? params[:suiteRunner].as_json() : nil
     disconnect = params[:disconnect] == 'disconnect'
     environment = params[:environment]
-    running_script_id = Script.run(scope, name, suite_runner, disconnect, environment, user_full_name(), username(), line_no, end_line_no)
+    python_venv = params[:pythonVenv]
+    running_script_id = Script.run(scope, name, suite_runner, disconnect, environment, user_full_name(), username(), line_no, end_line_no, python_venv)
     if running_script_id
       OpenC3::Logger.info("Script started: #{name}", scope: scope, user: username())
       render plain: running_script_id.to_s
