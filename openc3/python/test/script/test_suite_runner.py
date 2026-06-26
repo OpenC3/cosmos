@@ -58,6 +58,25 @@ class MissingTeardownSuite(Suite):
         self.add_group_teardown(NoSetupTeardownGroup)
 
 
+# Fixtures for SuiteRunner option validation. OptionsGroup is part of
+# OptionsSuite; OtherGroup is intentionally left out of any suite plan.
+class SuiteRunnerOptionsGroup(Group):
+    def test_valid_script(self):
+        # Mock for testing, no implementation needed
+        pass
+
+
+class SuiteRunnerOptionsSuite(Suite):
+    def __init__(self):
+        self.add_group(SuiteRunnerOptionsGroup)
+
+
+class SuiteRunnerOtherGroup(Group):
+    def test_other(self):
+        # Mock for testing, no implementation needed
+        pass
+
+
 class TestSuiteRunner(unittest.TestCase):
     def test_build_suites_creates_a_list_of_suites(self):
         mod = types.ModuleType("test_mod")
@@ -97,6 +116,68 @@ class TestSuiteRunner(unittest.TestCase):
         mod.MissingTeardownSuite = MissingTeardownSuite
         with self.assertRaises(AttributeError, msg="teardown"):
             SuiteRunner.build_suites(from_module=mod)
+
+    # These validate the suite_runner option combinations that flow through
+    # RunningScript.run into SuiteRunner.start / setup / teardown (all of
+    # which funnel through SuiteRunner.execute).
+    def _build_options_suite(self):
+        mod = types.ModuleType("test_mod")
+        mod.SuiteRunnerOptionsGroup = SuiteRunnerOptionsGroup
+        mod.SuiteRunnerOptionsSuite = SuiteRunnerOptionsSuite
+        SuiteRunner.build_suites(from_module=mod)
+
+    def test_start_raises_when_script_given_without_group(self):
+        self._build_options_suite()
+        with self.assertRaisesRegex(ValueError, "Script test_valid_script requires a Group"):
+            SuiteRunner.start(SuiteRunnerOptionsSuite, None, "test_valid_script")
+
+    def test_start_raises_for_unknown_suite(self):
+        self._build_options_suite()
+        with self.assertRaisesRegex(ValueError, "Suite .* not found"):
+            SuiteRunner.start(str)
+
+    def test_start_raises_for_group_not_in_suite(self):
+        self._build_options_suite()
+        with self.assertRaisesRegex(ValueError, "Group .* not found in Suite"):
+            SuiteRunner.start(SuiteRunnerOptionsSuite, SuiteRunnerOtherGroup)
+
+    def test_build_options_applies_defaults_when_omitted(self):
+        self.assertEqual(
+            SuiteRunner.build_options(suite="MySuite", group="MyGroup"),
+            {"suite": "MySuite", "group": "MyGroup", "method": "start", "options": ["continueAfterError"]},
+        )
+
+    def test_build_options_uses_provided_method_and_options(self):
+        self.assertEqual(
+            SuiteRunner.build_options(suite="MySuite", group="MyGroup", method="teardown", options=["manual"]),
+            {"suite": "MySuite", "group": "MyGroup", "method": "teardown", "options": ["manual"]},
+        )
+
+    def test_build_options_nests_script_and_forces_start(self):
+        self.assertEqual(
+            SuiteRunner.build_options(suite="MySuite", group="MyGroup", script="test_foo", method="teardown"),
+            {
+                "suite": "MySuite",
+                "group": "MyGroup",
+                "script": "test_foo",
+                "method": "start",
+                "options": ["continueAfterError"],
+            },
+        )
+
+    def test_build_options_omits_group_and_script_without_group(self):
+        self.assertEqual(
+            SuiteRunner.build_options(suite="MySuite"),
+            {"suite": "MySuite", "method": "start", "options": ["continueAfterError"]},
+        )
+
+    def test_build_options_raises_when_script_given_without_group(self):
+        with self.assertRaisesRegex(ValueError, "Script test_foo requires a Group"):
+            SuiteRunner.build_options(suite="MySuite", script="test_foo")
+
+    def test_build_options_returns_copy_of_default_options(self):
+        result = SuiteRunner.build_options(suite="MySuite")
+        self.assertIsNot(result["options"], SuiteRunner.DEFAULT_OPTIONS)
 
 
 if __name__ == "__main__":

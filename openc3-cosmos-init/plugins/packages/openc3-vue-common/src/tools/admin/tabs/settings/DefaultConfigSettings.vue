@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -51,6 +51,8 @@
 </template>
 
 <script>
+import { CONFIG_POSTFIX } from '@/components'
+
 export default {
   data() {
     return {
@@ -73,9 +75,13 @@ export default {
   },
   methods: {
     loadLastConfigs: function () {
+      // if there is a localStorage value that is missing a configKey, delete it
+      if (localStorage.getItem(CONFIG_POSTFIX)) {
+        localStorage.removeItem(CONFIG_POSTFIX)
+      }
       this.lastConfigs = Object.keys(localStorage)
         .filter((key) => {
-          return key.endsWith('__default')
+          return key.endsWith(CONFIG_POSTFIX)
         })
         .map((key) => {
           const name = key.split('__')[0].replaceAll('_', ' ')
@@ -92,7 +98,7 @@ export default {
     },
     deleteLocalStorageKeys: function (keys) {
       for (const key of keys) {
-        delete localStorage[key]
+        localStorage.removeItem(key)
       }
     },
   },

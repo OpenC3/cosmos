@@ -20,9 +20,7 @@ from openc3.script import open_bucket_dialog
 class TestOpenBucketDialog(unittest.TestCase):
     def test_returns_user_input(self):
         with patch("builtins.input", return_value="config/foo.txt"), redirect_stdout(io.StringIO()):
-            self.assertEqual(
-                open_bucket_dialog("Title"), "config/foo.txt"
-            )
+            self.assertEqual(open_bucket_dialog("Title"), "config/foo.txt")
 
     def test_accepts_default_path_and_filter_kwargs(self):
         buf = io.StringIO()

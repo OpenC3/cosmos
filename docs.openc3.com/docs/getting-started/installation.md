@@ -58,7 +58,7 @@ We recommend using the COSMOS [project template](architecture#projects) to get s
 
 ```bash
 git clone https://github.com/OpenC3/cosmos-project.git
-git clone https://github.com/OpenC3/cosmos-enterprise-project.git
+git clone https://repos.openc3.com/OpenC3/cosmos-enterprise-project.git
 ```
 
 Once the project is cloned you can checkout a specific COSMOS version by using the git tag (NOTE the 'v' prefix):

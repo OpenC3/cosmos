@@ -159,7 +159,7 @@ script complete
 %
 ```
 
-You can also run Test Runner suites by passing the `--suite SUITE`, `--group GROUP`, and `--script SCRIPT` options as shown below. Pass the `--method` option to run `--method setup` or `--method teardown`. The default is `--method start`. In addition you can pass an `--options` argument to control the flags set in the Test Runner GUI and a `--format` option to output results as `text` (default) or `ctrf` for CI/CD integration. See the CLI help for more information.
+You can also run Test Runner suites by passing the `--suite SUITE`, `--group GROUP`, and `--script SCRIPT` options as shown below. Pass the `--method` option to run `--method setup` or `--method teardown`. The default is `--method start`. In addition you can pass an `--options` argument to control the flags set in the Test Runner GUI (the default is `continueAfterError`) and a `--format` option to output results as `text` (default) or `ctrf` for CI/CD integration. See the CLI help for more information.
 
 **Text Format (default):**
 

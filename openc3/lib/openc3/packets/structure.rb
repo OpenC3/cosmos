@@ -604,19 +604,23 @@ module OpenC3
       if item.variable_bit_size
         # Bit size is determined by length field
         length_value = self.read(item.variable_bit_size['length_item_name'], :CONVERTED)
-        if (item.data_type == :INT or item.data_type == :UINT) and not item.original_array_size
-          case length_value
-          when 0
-            return 6
-          when 1
-            return 14
-          when 2
-            return 30
+        if length_value
+          if (item.data_type == :INT or item.data_type == :UINT) and not item.original_array_size
+            case length_value
+            when 0
+              return 6
+            when 1
+              return 14
+            when 2
+              return 30
+            else
+              return 62
+            end
           else
-            return 62
+            return (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
           end
         else
-          return (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
+          raise "Length value #{item.variable_bit_size['length_item_name']} for item #{item.name} is nil"
         end
       elsif item.original_bit_size <= 0
         # Bit size is full packet length - bits before item + negative bits saved at end

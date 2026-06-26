@@ -643,7 +643,7 @@ INTERFACE SNMP_INT snmp_interface.rb 192.168.1.249 161
 </TabItem>
 </Tabs>
 
-For a full example, please see the [openc3-cosmos-apc-switched-pdu](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-apc-switched-pdu) in the COSMOS Enterprise Plugins.
+For a full example, please see [openc3-cosmos-apc-switched-pdu](https://repos.openc3.com/OpenC3/openc3-cosmos-apc-switched-pdu).
 
 ### SNMP Trap Interface (Enterprise)
 
@@ -670,7 +670,7 @@ INTERFACE SNMP_INT snmp_trap_interface.rb 162
 </TabItem>
 </Tabs>
 
-For a full example, please see the [openc3-cosmos-apc-switched-pdu](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-apc-switched-pdu) in the COSMOS Enterprise Plugins.
+For a full example, please see [openc3-cosmos-apc-switched-pdu](https://repos.openc3.com/OpenC3/openc3-cosmos-apc-switched-pdu).
 
 ### gRPC Interface (Enterprise)
 
@@ -698,7 +698,7 @@ COMMAND PROTO GET_USER BIG_ENDIAN 'Get a User'
   META GRPC_METHOD /example.photoservice.ExamplePhotoService/GetUser
 ```
 
-For a full example, please see the [openc3-cosmos-proto-target](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-proto-target) in the COSMOS Enterprise Plugins.
+For a full example, please see [openc3-cosmos-proto-target](https://repos.openc3.com/OpenC3/openc3-cosmos-proto-target).
 
 ## Custom Interfaces
 

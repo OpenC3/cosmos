@@ -1,5 +1,5 @@
 /*
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -13,26 +13,40 @@
 
 import { OpenC3Api } from '@openc3/js-common/services'
 
+export const CONFIG_POSTFIX = '__default'
 export default {
   data: {
-    configKey: '',
     // Applications can set to avoid persisting default config
     // Useful when loading and setting existing config
     dontSaveDefaultConfig: false,
   },
+  created: function () {
+    if (!this.configKey) {
+      alert('Components using the Config mixin must provide a configKey')
+      throw new Error(
+        'Components using the Config mixin must provide a configKey',
+      )
+    }
+  },
+  computed: {
+    storageKey() {
+      return `${this.configKey}${CONFIG_POSTFIX}`
+    },
+  },
   methods: {
     loadDefaultConfig: function () {
-      if (localStorage[`${this.configKey}__default`]) {
-        return JSON.parse(localStorage[`${this.configKey}__default`])
+      const config = localStorage.getItem(this.storageKey)
+      if (config) {
+        return JSON.parse(config)
       } else {
         return {}
       }
     },
     saveDefaultConfig: function (config) {
-      if (this.dontSaveDefaultConfig === true) {
+      if (this.dontSaveDefaultConfig) {
         return
       }
-      localStorage[`${this.configKey}__default`] = JSON.stringify(config)
+      localStorage.setItem(this.storageKey, JSON.stringify(config))
     },
     openConfigBase: function (name, routed = false, callback = null) {
       new OpenC3Api()
@@ -88,7 +102,7 @@ export default {
         })
     },
     resetConfigBase: function () {
-      localStorage.removeItem(`${this.configKey}__default`)
+      localStorage.removeItem(this.storageKey)
 
       const query = { ...this.$route.query }
       delete query.config

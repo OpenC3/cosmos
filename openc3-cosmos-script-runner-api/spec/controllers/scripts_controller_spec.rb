@@ -213,10 +213,11 @@ RSpec.describe ScriptsController, type: :controller do
       expect(response).to have_http_status(:ok)
     end
 
-    it "returns an error response" do
-      expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.rb", nil, false, nil, "Anonymous", "anonymous", 1, nil, nil)
+    it "returns a not found response with the script name when the script does not exist" do
+      expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.rb", nil, false, nil, "Anonymous", "anonymous", 1, nil, nil).and_return(nil)
       post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
       expect(response).to have_http_status(:not_found)
+      expect(response.body).to include("INST/procedures/test.rb")
     end
 
     it "passes pythonVenv parameter through to Script.run" do
