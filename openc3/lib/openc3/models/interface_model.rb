@@ -466,7 +466,7 @@ module OpenC3
         end
         status_model.destroy if status_model
       rescue Exception => error
-        Logger.error("Error destroying #{type.downcase} status model #{@name} in scope #{@scope} due to #{error}")
+        Logger.error("Error destroying #{type&.downcase || 'unknown'} status model #{@name} in scope #{@scope} due to #{error}")
       end
     end
 
