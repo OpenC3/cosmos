@@ -772,8 +772,8 @@ importers:
         specifier: 4.4.4
         version: 4.4.4(vue@3.5.35)
       vuetify:
-        specifier: 4.0.7
-        version: 4.0.7(vue@3.5.35)
+        specifier: 3.12.2
+        version: 3.12.2(vue@3.5.35)
     devDependencies:
       '@babel/plugin-transform-modules-systemjs':
         specifier: 7.29.7
@@ -860,8 +860,8 @@ importers:
         specifier: 3.5.35
         version: 3.5.35
       vuetify:
-        specifier: 4.0.7
-        version: 4.0.7(vue@3.5.35)
+        specifier: 3.12.2
+        version: 3.12.2(vue@3.5.35)
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 6.0.7
@@ -2405,6 +2405,21 @@ packages:
       typescript:
         optional: true
 
+  vuetify@3.12.2:
+    resolution: {integrity: sha512-cVQa4+5iQpDs00ToMUnWRHlMdv1d5tEH2wcZIthqSCmBipQAG4rQKE55zFwZFYlPyiDhUVY1RcAFtXCuHNcCww==}
+    peerDependencies:
+      typescript: '>=4.7'
+      vite-plugin-vuetify: '>=2.1.0'
+      vue: ^3.5.0
+      webpack-plugin-vuetify: '>=3.1.0'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+      vite-plugin-vuetify:
+        optional: true
+      webpack-plugin-vuetify:
+        optional: true
+
   vuetify@4.0.7:
     resolution: {integrity: sha512-SV+YJkBmudY3s9qfZO2ZGUsrD0TDQU8pMBH1ERga9AEyjGvioZuXXh93V9wHxXJphvqRC2NW10Nt2lW9IZQcPw==}
     peerDependencies:
@@ -3796,6 +3811,10 @@ snapshots:
       '@vue/runtime-dom': 3.5.35
       '@vue/server-renderer': 3.5.35(vue@3.5.35)
       '@vue/shared': 3.5.35
+
+  vuetify@3.12.2(vue@3.5.35):
+    dependencies:
+      vue: 3.5.35
 
   vuetify@4.0.7(vue@3.5.35):
     dependencies:
