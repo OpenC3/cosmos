@@ -921,7 +921,12 @@ class InterfaceMicroservice(Microservice):
         # If the interface is set to auto_reconnect then delay so the thread
         # can come back around and allow the interface a chance to reconnect.
         # Skip reconnect if stop() has been called to avoid re-creating the status model
-        if allow_reconnect and self.interface.auto_reconnect and self.interface.state != "DISCONNECTED" and not self.cancel_thread:
+        if (
+            allow_reconnect
+            and self.interface.auto_reconnect
+            and self.interface.state != "DISCONNECTED"
+            and not self.cancel_thread
+        ):
             self.attempting()
             if self.cancel_thread is not None:
                 self.interface_thread_sleeper.sleep(self.interface.reconnect_delay)
