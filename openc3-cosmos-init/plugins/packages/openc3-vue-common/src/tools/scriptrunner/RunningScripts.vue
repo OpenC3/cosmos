@@ -79,6 +79,15 @@
                 <v-icon v-show="connectInNewTab" end> mdi-open-in-new </v-icon>
               </v-btn>
             </template>
+            <template #item.user_full_name="{ item }">
+              {{ formatUserDisplay(item) }}
+            </template>
+            <template #item.start_time="{ item }">
+              {{ formatStartTime(item) }}
+            </template>
+            <template #item.duration="{ item }">
+              {{ formatDuration(item) }}
+            </template>
             <template #item.stop="{ item }">
               <v-btn color="primary" @click="deleteScript(item)">
                 <span>Stop</span>
@@ -133,6 +142,15 @@
               >
                 {{ item.name }}
               </v-btn>
+            </template>
+            <template #item.user_full_name="{ item }">
+              {{ formatUserDisplay(item) }}
+            </template>
+            <template #item.start_time="{ item }">
+              {{ formatStartTime(item) }}
+            </template>
+            <template #item.duration="{ item }">
+              {{ formatDuration(item) }}
             </template>
             <template #item.log="{ item }">
               <v-btn
@@ -254,10 +272,10 @@ const runningHeaders = [
     filterable: false,
   },
   { title: 'Id', key: 'name' },
-  { title: 'User', key: 'user_display' },
+  { title: 'User', key: 'user_full_name' },
   { title: 'Filename', key: 'filename' },
-  { title: 'Start Time', key: 'start_time_formatted' },
-  { title: 'Duration', key: 'duration' },
+  { title: 'Start Time', key: 'start_time' },
+  { title: 'Duration', key: 'duration', sortable: false },
   { title: 'State', key: 'state' },
   {
     title: 'Stop',
@@ -276,10 +294,10 @@ const completedPage = ref(1)
 const completedItemsPerPage = ref(10)
 const completedHeaders = [
   { title: 'Id', key: 'name' },
-  { title: 'User', key: 'user_display' },
+  { title: 'User', key: 'user_full_name' },
   { title: 'Filename', key: 'filename' },
-  { title: 'Start Time', key: 'start_time_formatted' },
-  { title: 'Duration', key: 'duration' },
+  { title: 'Start Time', key: 'start_time' },
+  { title: 'Duration', key: 'duration', sortable: false },
   { title: 'State', key: 'state' },
   {
     title: 'Log',
@@ -353,7 +371,31 @@ onBeforeUnmount(() => {
   }
 })
 
-function formatDuration(durationMs) {
+// Display-only formatters used by the data table item slots. Keeping these out
+// of the fetch keeps the API response unmodified and lets start time react to
+// the time zone setting (which loads asynchronously after the first fetch).
+function formatUserDisplay(item) {
+  return `${item.user_full_name} (${item.username})`
+}
+
+function formatStartTime(item) {
+  if (!item.start_time) {
+    return 'N/A'
+  }
+  return formatDateTimeHMS(new Date(item.start_time), timeZone.value)
+}
+
+function formatDuration(item) {
+  if (!item.start_time) {
+    return 'N/A'
+  }
+  const startTime = new Date(item.start_time)
+  // Running scripts have no end_time, so measure against the current time
+  const endTime = item.end_time ? new Date(item.end_time) : new Date()
+  return formatDurationMs(endTime - startTime)
+}
+
+function formatDurationMs(durationMs) {
   if (durationMs < 0) {
     return 'N/A'
   } else if (durationMs < 1000) {
@@ -381,27 +423,6 @@ async function getRunningScripts() {
       `/script-api/running-script?scope=DEFAULT&offset=${offset}&limit=${runningItemsPerPage.value}&search=${search}`,
     )
     const scripts = response.data.items || []
-    const currentTime = new Date()
-
-    // Calculate duration for each running script and format user info
-    scripts.forEach((script) => {
-      // Format user display as "full_name (username)"
-      script.user_display = `${script.user_full_name} (${script.username})`
-
-      // Calculate duration
-      if (script.start_time) {
-        const startTime = new Date(script.start_time)
-        const durationMs = currentTime - startTime
-        script.start_time_formatted = formatDateTimeHMS(
-          startTime,
-          timeZone.value,
-        )
-        script.duration = formatDuration(durationMs)
-      } else {
-        script.duration = 'N/A'
-      }
-    })
-
     runningScripts.value = scripts
     runningTotal.value = response.data.total || scripts.length
     runningLoading.value = false
@@ -434,27 +455,6 @@ async function getCompletedScripts() {
       `/script-api/completed-scripts?scope=DEFAULT&offset=${offset}&limit=${completedItemsPerPage.value}&search=${search}`,
     )
     const scripts = response.data.items || []
-
-    // Calculate duration and format user info for each completed script
-    scripts.forEach((script) => {
-      // Format user display as "full_name (username)"
-      script.user_display = `${script.user_full_name} (${script.username})`
-
-      // Calculate duration
-      if (script.start_time && script.end_time) {
-        const startTime = new Date(script.start_time)
-        const endTime = new Date(script.end_time)
-        const durationMs = endTime - startTime
-        script.start_time_formatted = formatDateTimeHMS(
-          startTime,
-          timeZone.value,
-        )
-        script.duration = formatDuration(durationMs)
-      } else {
-        script.duration = 'N/A'
-      }
-    })
-
     completedScripts.value = scripts
     completedTotal.value = response.data.total || scripts.length
     completedLoading.value = false
