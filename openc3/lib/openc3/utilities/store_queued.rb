@@ -103,7 +103,11 @@ module OpenC3
       OpenC3.kill_thread(self, @update_thread) if @update_thread
       @update_thread = nil
       # Drain the queue before shutdown
-      process_queue()
+      begin
+        process_queue()
+      rescue => e
+        # Best effort - Redis may already be unavailable during shutdown
+      end
     end
 
     MessageStruct = Struct.new(:message, :args, :kwargs, :block)

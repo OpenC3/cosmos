@@ -39,9 +39,35 @@ detect_compose_cmd() {
   export DOCKER_COMPOSE_COMMAND="$CONTAINER_COMPOSE_CMD"
 }
 
+# Check if already authenticated to a container registry by looking for
+# credentials in the Docker/Podman config files.
+is_registry_authenticated() {
+  local registry="$1"
+
+  # Docker stores docker.io credentials under its canonical URL
+  local search_registry="$registry"
+  if [[ "$registry" == "docker.io" ]]; then
+    search_registry="index.docker.io"
+  fi
+
+  # Check Docker config
+  local config_file="${DOCKER_CONFIG:-$HOME/.docker}/config.json"
+  if [[ -f "$config_file" ]] && grep -q "$search_registry" "$config_file" 2>/dev/null; then
+    return 0
+  fi
+
+  # Check Podman config locations
+  for podman_config in "${XDG_RUNTIME_DIR}/containers/auth.json" "$HOME/.config/containers/auth.json"; do
+    if [[ -f "$podman_config" ]] && grep -q "$search_registry" "$podman_config" 2>/dev/null; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 # Login to configured registries to avoid 403 errors when pulling images.
-# If already authenticated the login will succeed silently, otherwise the user
-# will be prompted for credentials.
+# Checks if already authenticated before attempting login to avoid unnecessary prompts.
 registry_login() {
   local env_file="$(dirname -- "$0")/${ENV_FILE:-.env}"
   if [[ -f "$env_file" ]]; then
@@ -51,11 +77,19 @@ registry_login() {
   fi
 
   if [[ -n "$OPENC3_REGISTRY" ]]; then
-    $CONTAINER_CMD login "$OPENC3_REGISTRY"
+    if is_registry_authenticated "$OPENC3_REGISTRY"; then
+      echo "Already authenticated with registry: $OPENC3_REGISTRY"
+    else
+      $CONTAINER_CMD login "$OPENC3_REGISTRY"
+    fi
   fi
 
   if [[ "$OPENC3_ENTERPRISE" -eq 1 ]] && [[ -n "$OPENC3_ENTERPRISE_REGISTRY" ]]; then
-    $CONTAINER_CMD login "$OPENC3_ENTERPRISE_REGISTRY"
+    if is_registry_authenticated "$OPENC3_ENTERPRISE_REGISTRY"; then
+      echo "Already authenticated with registry: $OPENC3_ENTERPRISE_REGISTRY"
+    else
+      $CONTAINER_CMD login "$OPENC3_ENTERPRISE_REGISTRY"
+    fi
   fi
 }
 
