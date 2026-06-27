@@ -583,6 +583,24 @@ class TestInterfaceMicroservice(unittest.TestCase):
         result = InterfaceStatusModel.get(name="INST_INT", scope="DEFAULT")
         self.assertIsNone(result)
 
+    def test_handle_packet_does_not_write_status_after_cancel_thread_set(self):
+        """A packet already buffered can be returned from read() after stop()
+        sets cancel_thread and destroys the status model. handle_packet() must
+        not re-create the status model in that window (orphaned model bug)."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        im.interface.connect()
+        packet = im.interface.read()
+        self.assertIsNotNone(packet)
+
+        # Simulate stop() having run: cancel_thread set, status model destroyed
+        im.cancel_thread = True
+        with patch.object(InterfaceStatusModel, "set") as mock_set:
+            im.handle_packet(packet)
+            mock_set.assert_not_called()
+
+        im.shutdown()
+        time.sleep(0.1)  # Allow threads to exit
+
     def test_supports_optimize_throughput_option_for_backward_compatibility(self):
         # Update the model to use OPTIMIZE_THROUGHPUT option (legacy name)
         model = InterfaceModel(

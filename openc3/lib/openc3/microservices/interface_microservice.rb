@@ -717,7 +717,8 @@ module OpenC3
     end
 
     def handle_packet(packet)
-      InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
+      # Skip status update if stop() has been called to avoid re-creating the status model
+      InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope) unless @cancel_thread
       packet.received_time = Time.now.sys unless packet.received_time
 
       if packet.stored

@@ -788,7 +788,9 @@ class InterfaceMicroservice(Microservice):
         self.logger.info(f"{self.interface.name}: Stopped packet reading")
 
     def handle_packet(self, packet):
-        InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+        # Skip status update if stop() has been called to avoid re-creating the status model
+        if not self.cancel_thread:
+            InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         if packet.received_time is None:
             packet.received_time = datetime.now(timezone.utc)
 
@@ -928,7 +930,7 @@ class InterfaceMicroservice(Microservice):
             and not self.cancel_thread
         ):
             self.attempting()
-            if self.cancel_thread is not None:
+            if not self.cancel_thread:
                 self.interface_thread_sleeper.sleep(self.interface.reconnect_delay)
         else:
             self.interface.state = "DISCONNECTED"

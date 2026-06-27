@@ -444,9 +444,11 @@ module OpenC3
       microservice
     end
 
-    # Looks up the deployed MicroserviceModel and destroy the microservice model
-    # should should trigger the operator to kill the microservice that in turn
-    # will destroy the InterfaceStatusModel when a stop is called.
+    # Destroys the deployed MicroserviceModel which triggers the operator to kill
+    # the microservice. Also directly destroys the Interface/RouterStatusModel in
+    # an ensure block. The microservice stop() no longer recreates the status
+    # model once cancel_thread is set, so undeploy must clean it up itself to
+    # avoid leaving an orphaned status model behind.
     def undeploy
       type = self.class._get_type
       name = "#{@scope}__#{type}__#{@name}"
