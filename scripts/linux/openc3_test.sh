@@ -12,10 +12,12 @@ if [[ -z "$DOCKER_COMPOSE_COMMAND" ]]; then
     echo "Neither docker nor podman found!" >&2
     exit 1
   fi
+  # Never fall back to podman-compose; COSMOS only supports docker-compose as
+  # the standalone compose tool, even when the runtime is podman.
   if $_RUNTIME compose version &> /dev/null; then
     export DOCKER_COMPOSE_COMMAND="$_RUNTIME compose"
-  elif command -v "${_RUNTIME}-compose" &> /dev/null; then
-    export DOCKER_COMPOSE_COMMAND="${_RUNTIME}-compose"
+  elif command -v "docker-compose" &> /dev/null; then
+    export DOCKER_COMPOSE_COMMAND="docker-compose"
   else
     echo "No compose command found!" >&2
     exit 1

@@ -43,11 +43,12 @@ if not defined CONTAINER_CMD (
   exit /b 1
 )
 
-REM Detect compose command
+REM Detect compose command. Never fall back to podman-compose; COSMOS only
+REM supports docker-compose as the standalone compose tool, even under podman.
 set CONTAINER_COMPOSE_CMD=
 %CONTAINER_CMD% compose version >nul 2>&1 && set CONTAINER_COMPOSE_CMD=%CONTAINER_CMD% compose
 if not defined CONTAINER_COMPOSE_CMD (
-  where %CONTAINER_CMD%-compose >nul 2>&1 && set CONTAINER_COMPOSE_CMD=%CONTAINER_CMD%-compose
+  where docker-compose >nul 2>&1 && set CONTAINER_COMPOSE_CMD=docker-compose
 )
 if not defined CONTAINER_COMPOSE_CMD (
   echo No compose command found! 1>&2

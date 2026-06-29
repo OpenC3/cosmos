@@ -21,7 +21,9 @@ detect_container_runtime() {
   fi
 }
 
-# Detect the compose command. Tries "<runtime> compose" first, then "<runtime>-compose".
+# Detect the compose command. Tries "<runtime> compose" first, then "docker-compose".
+# Never falls back to "podman-compose" since COSMOS only supports docker-compose as the
+# standalone compose tool, even when the container runtime is podman.
 # Result is cached. Exports DOCKER_COMPOSE_COMMAND for backward compatibility with sub-scripts.
 detect_compose_cmd() {
   if [[ -n "$CONTAINER_COMPOSE_CMD" ]]; then
@@ -30,10 +32,10 @@ detect_compose_cmd() {
   detect_container_runtime
   if $CONTAINER_CMD compose version &> /dev/null; then
     CONTAINER_COMPOSE_CMD="$CONTAINER_CMD compose"
-  elif command -v "${CONTAINER_CMD}-compose" &> /dev/null; then
-    CONTAINER_COMPOSE_CMD="${CONTAINER_CMD}-compose"
+  elif command -v "docker-compose" &> /dev/null; then
+    CONTAINER_COMPOSE_CMD="docker-compose"
   else
-    echo "No compose command found! Install '$CONTAINER_CMD compose' or '${CONTAINER_CMD}-compose'." >&2
+    echo "No compose command found! Install '$CONTAINER_CMD compose' or 'docker-compose'." >&2
     exit 1
   fi
   export DOCKER_COMPOSE_COMMAND="$CONTAINER_COMPOSE_CMD"
