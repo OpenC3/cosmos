@@ -111,7 +111,13 @@ module OpenC3
         end
       end
       result.map do |r|
-        r.nil? ? nil : JSON.parse(r, allow_nan: true, create_additions: true)
+        # NOTE: create_additions is intentionally omitted here. ScriptStatusModel
+        # records are written via JSON.generate of as_json (plain hashes/arrays/
+        # primitives) and never contain a "json_class" marker, so create_additions
+        # has nothing to reconstruct. Enabling it disables the parser's fast path
+        # and makes this parse ~3x slower - costly since this runs over every
+        # record when listing/searching.
+        r.nil? ? nil : JSON.parse(r, allow_nan: true)
       end
     end
 
