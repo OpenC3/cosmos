@@ -17,7 +17,10 @@ from openc3.utilities.extract import *
 
 
 def _script_response_error(response, message, scope=OPENC3_SCOPE):
-    if response:
+    # NOTE: check identity not truthiness - requests.Response is falsy for any
+    # non-2xx status (Response.__bool__ returns self.ok), which would otherwise
+    # report an error response (e.g. 404) as "No Response" and discard the body.
+    if response is not None:
         raise RuntimeError(f"{message} ({response.status_code}): {response.text}")
     else:
         raise RuntimeError(f"{message}: No Response")

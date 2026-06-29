@@ -527,23 +527,29 @@ class RunningScript:
 
     def run(self):
         if self.script_status.suite_runner is not None:
-            if "options" in self.script_status.suite_runner:
-                self.parse_options(self.script_status.suite_runner["options"])
-            else:
-                self.parse_options({})  # Set default options
-            if "script" in self.script_status.suite_runner:
+            # Normalize the received dict through the shared helper so options/
+            # method defaults and validation match what openc3cli and the GUI build.
+            sr = SuiteRunner.build_options(
+                suite=self.script_status.suite_runner.get("suite"),
+                group=self.script_status.suite_runner.get("group"),
+                script=self.script_status.suite_runner.get("script"),
+                method=self.script_status.suite_runner.get("method"),
+                options=self.script_status.suite_runner.get("options"),
+            )
+            self.parse_options(sr["options"])
+            if "script" in sr:
                 self.run_text(
-                    f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.start({self.script_status.suite_runner['suite']}, {self.script_status.suite_runner['group']}, '{self.script_status.suite_runner['script']}')",
+                    f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.start({sr['suite']}, {sr['group']}, '{sr['script']}')",
                     initial_filename="SCRIPTRUNNER",
                 )
-            elif "group" in self.script_status.suite_runner:
+            elif "group" in sr:
                 self.run_text(
-                    f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{self.script_status.suite_runner['method']}({self.script_status.suite_runner['suite']}, {self.script_status.suite_runner['group']})",
+                    f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{sr['method']}({sr['suite']}, {sr['group']})",
                     initial_filename="SCRIPTRUNNER",
                 )
             else:
                 self.run_text(
-                    f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{self.script_status.suite_runner['method']}({self.script_status.suite_runner['suite']})",
+                    f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{sr['method']}({sr['suite']})",
                     initial_filename="SCRIPTRUNNER",
                 )
         else:
@@ -1421,7 +1427,7 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
             if end_line_no is None:
                 # Goto line
                 RunningScript.instance.script_engine.run_text(
-                    instrumented_script, filename=procedure_name, line_no=line_no
+                    instrumented_script, filename=procedure_name, line_no=line_no, bind_variables=True
                 )
             else:
                 # Execute selection
@@ -1430,6 +1436,7 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
                     filename=procedure_name,
                     line_no=line_no,
                     end_line_no=end_line_no,
+                    bind_variables=True,
                 )
         else:
             RunningScript.instance.script_engine.run_text(instrumented_script, filename=procedure_name)

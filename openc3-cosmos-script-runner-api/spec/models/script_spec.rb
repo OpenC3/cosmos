@@ -199,11 +199,19 @@ RSpec.describe Script, type: :model do
 
   describe "self.run" do
     it "spawns a running script" do
+      allow(Script).to receive(:body).with("DEFAULT", "script.rb").and_return("puts 'Hello'")
       expect(RunningScript).to receive(:spawn).with(
         "DEFAULT", "script.rb", nil, false, nil, "User Name", "username", nil, nil
-      )
+      ).and_return(12345)
 
-      Script.run("DEFAULT", "script.rb", nil, false, nil, "User Name", "username")
+      expect(Script.run("DEFAULT", "script.rb", nil, false, nil, "User Name", "username")).to be 12345
+    end
+
+    it "returns nil and does not spawn if the script does not exist" do
+      allow(Script).to receive(:body).with("DEFAULT", "missing.rb").and_return(nil)
+      expect(RunningScript).not_to receive(:spawn)
+
+      expect(Script.run("DEFAULT", "missing.rb", nil, false, nil, "User Name", "username")).to be_nil
     end
   end
 

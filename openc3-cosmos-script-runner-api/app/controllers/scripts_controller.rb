@@ -124,7 +124,7 @@ class ScriptsController < ApplicationController
       OpenC3::Logger.info("Script started: #{name}", scope: scope, user: username())
       render plain: running_script_id.to_s
     else
-      head :not_found
+      render plain: "Script not found: #{name}", status: :not_found
     end
   end
 
