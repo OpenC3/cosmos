@@ -3761,7 +3761,9 @@ APIs for subscribing to specific packets of data. This provides an interface to 
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Allows the user to listen for one or more telemetry packets of data to arrive. A unique id is returned which is used to retrieve the data.
+Gets the current Redis stream offsets (IDs) for the given packets. These offsets are used to collect packet data from this point in time by passing them to `get_packets`.
+
+This method is called `subscribe_packets` for historical reasons; no actual subscription is created, thus there is no need to unsubscribe.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
