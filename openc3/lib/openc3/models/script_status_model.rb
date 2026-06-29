@@ -86,6 +86,23 @@ module OpenC3
       end
     end
 
+    # Return a single page of items along with the total count of matching items.
+    # When searching, this fetches, parses, and filters the full list only once
+    # (instead of doing that work separately for the page and the count).
+    # Returns [page_items, total]
+    def self.page(scope:, offset: 0, limit: 10, type: "running", search: nil)
+      primary_key = (type == "running") ? RUNNING_PRIMARY_KEY : COMPLETED_PRIMARY_KEY
+      if search and !search.to_s.empty?
+        items = self.filter_by_search(self.fetch_all(primary_key, scope), search)
+        return [items[offset.to_i, limit.to_i] || [], items.length]
+      else
+        total = self.store.zcount("#{primary_key}__#{scope}__LIST", 0, Float::INFINITY)
+        keys = self.store.zrevrange("#{primary_key}__#{scope}__LIST", offset.to_i, offset.to_i + limit.to_i - 1)
+        page_items = keys.empty? ? [] : self.fetch(primary_key, scope, keys)
+        return [page_items, total]
+      end
+    end
+
     # Fetch and parse the hash values for the given keys, preserving their order
     def self.fetch(primary_key, scope, keys)
       result = self.store.redis_pool.pipelined do

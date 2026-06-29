@@ -21,8 +21,7 @@ class CompletedScriptController < ApplicationController
     limit = params[:limit] || 10
     offset = params[:offset] || 0
     search = params[:search]
-    items = OpenC3::ScriptStatusModel.all(scope: params[:scope], offset: offset, limit: limit, type: 'completed', search: search)
-    total = OpenC3::ScriptStatusModel.count(scope: params[:scope], type: 'completed', search: search)
+    items, total = OpenC3::ScriptStatusModel.page(scope: params[:scope], offset: offset, limit: limit, type: 'completed', search: search)
     render json: { items: items, total: total }
   end
 end
