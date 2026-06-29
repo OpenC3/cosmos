@@ -20,16 +20,16 @@
     "@vue-flow/minimap": "1.5.4",
     "@vue-flow/node-resizer": "1.5.1",
     "@vue-flow/node-toolbar": "1.1.1",
-    "axios": "1.18.0",
+    "axios": "1.18.1",
     "date-fns": "4.4.0",
     "single-spa-vue": "3.0.1",
     "sprintf-js": "1.1.3"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "6.0.7",
-    "prettier": "3.8.4",
+    "prettier": "3.8.5",
     "sass": "1.101.0",
-    "vite": "7.3.5",
-    "vue": "3.5.38"
+    "vite": "7.3.6",
+    "vue": "3.5.39"
   }
 }
