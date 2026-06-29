@@ -34,7 +34,7 @@ Targets and interfaces have a **many-to-many** relationship. A single interface 
 - [MAP_CMD_TARGET](plugins.md#map_cmd_target) - map a target for commands only
 - [MAP_TLM_TARGET](plugins.md#map_tlm_target) - map a target for telemetry only
 
-Each MAP keyword accepts an optional second parameter, `ENABLED` or `DISABLED`, which sets the initial state of the mapping (the default is `ENABLED`). Mapping a target as `DISABLED` keeps the association in place but stops commands from being sent and telemetry from being received over that interface until the mapping is enabled. This is useful when a target should be mapped to multiple interfaces but only active on one of them at a time.
+Each MAP keyword accepts an optional second parameter, `ENABLED` or `DISABLED`, which sets the initial state of the target (the default is `ENABLED`). Mapping a target as `DISABLED` keeps the association in place but stops commands from being sent and telemetry from being received over that interface until the mapping is enabled. This is useful when a target should be mapped to multiple interfaces but only active on one of them at a time.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
