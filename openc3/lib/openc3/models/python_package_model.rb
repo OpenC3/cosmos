@@ -13,6 +13,7 @@
 
 require 'fileutils'
 require 'openc3/utilities/process_manager'
+require 'openc3/utilities/pypi_url'
 require 'openc3/api/api'
 require 'pathname'
 
@@ -83,9 +84,10 @@ module OpenC3
           if pypi_url
             pypi_url += '/simple'
           end
-          pypi_url ||= 'https://pypi.org/simple'
+          pypi_url ||= PypiUrl::DEFAULT
         end
       end
+      pypi_url = PypiUrl.validate(pypi_url)
       Logger.info "Installing python package: #{name_or_path}"
       if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
         pip_args = ["-i", pypi_url, package_file_path]

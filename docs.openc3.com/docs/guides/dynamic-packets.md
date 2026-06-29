@@ -7,7 +7,7 @@ sidebar_custom_props:
 
 COSMOS has the ability to dynamically build packets rather than have them statically defined by our [COMMAND](/docs/configuration/command) and [TELEMETRY](/docs/configuration/telemetry) configuration files. This is useful when your telemetry items are dynamic like when generating [prometheus](https://prometheus.io/) metrics.
 
-The best way to illustrate this capability is with an example. If you're an Enterprise customer, please see the [prometheus-metrics](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-prometheus-metrics) plugin.
+The best way to illustrate this capability is with an example. If you're an Enterprise customer, please see the [openc3-cosmos-prometheus-metrics](https://repos.openc3.com/OpenC3/openc3-cosmos-prometheus-metrics) plugin.
 
 :::info[Microservice Restart]
 This capability is meant for use during plugin installation rather than while running because various microservices will restart when defining dynamic packets.

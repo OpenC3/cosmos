@@ -78,7 +78,7 @@ If you go to localhost:2900 you should see COSMOS up and running!
 
 ## Running a Frontend Application
 
-So now that you have COSMOS up and running how do you develop an individual COSMOS application?
+So now that you have COSMOS up and running how do you develop an individual COSMOS application? Refer to [Custom Widgets](/docs/guides/custom-widgets) and [Custom Tools](/docs/guides/custom-tools) for documentation on how to create your own widgets or tools to extend COSMOS. Below will detail developing an existing COSMOS tool.
 
 1.  Bootstrap the frontend with pnpm
 
