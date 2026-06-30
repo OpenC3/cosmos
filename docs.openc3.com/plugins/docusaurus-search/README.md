@@ -1,6 +1,6 @@
 # docusaurus-search
 
-A local Docusaurus plugin that provides client-side full-text search using [MiniSearch](https://github.com/lucatonber/minisearch). It replaces external search services (Algolia, etc.) with a fully self-contained, offline-capable search experience.
+A local Docusaurus plugin that provides client-side full-text search using [MiniSearch](https://github.com/lucaong/minisearch). It replaces external search services (Algolia, etc.) with a fully self-contained, offline-capable search experience.
 
 ## How It Works
 

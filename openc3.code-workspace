@@ -18,6 +18,9 @@
     {
       "path": "../port-tunnel",
     },
+    {
+      "path": "../openc3-cosmos-cfdp",
+    },
   ],
   "settings": {
     "rubyLsp.bundleGemfile": "openc3/Gemfile",

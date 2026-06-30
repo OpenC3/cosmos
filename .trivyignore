@@ -1,2 +1,7 @@
 # Setuptools does not use the affected functionality
 GHSA-58pv-8j8x-9vj2
+
+# pnpm: we do not declare pacquet/@pnpm/pacquet in configDependencies, and we
+# run pnpm 10.34.4 (>= patched 10.34.2). Not vulnerable.
+CVE-2026-55697
+GHSA-gj8w-mvpf-x27x

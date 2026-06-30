@@ -153,6 +153,29 @@ module OpenC3
       return [limits_set, limits.persistence_setting, limits.enabled, limits_for_set[0], limits_for_set[1], limits_for_set[2], limits_for_set[3], limits_for_set[4], limits_for_set[5]]
     end
 
+    # Set the color for a telemetry item state
+    #
+    # @param target_name [String] Target Name
+    # @param packet_name [String] Packet Name
+    # @param item_name [String] Item Name
+    # @param state_name [String] State Name (e.g. 'CONNECTED')
+    # @param color [String or Symbol] New color: GREEN, YELLOW, or RED
+    # @return [Symbol] The color that was set
+    def set_state_color(target_name, packet_name, item_name, state_name, color)
+      packet = _get_packet(target_name, packet_name)
+      item = packet.get_item(item_name)
+      raise "Item #{target_name} #{packet_name} #{item_name} does not have any states" unless item.states
+      state_name = state_name.to_s.upcase
+      raise "State #{state_name} does not exist for #{target_name} #{packet_name} #{item_name}" unless item.states.key?(state_name)
+      color = color.to_s.upcase.intern
+      raise "Invalid state color #{color}. Must be one of #{PacketItem::STATE_COLORS.join(' ')}." unless PacketItem::STATE_COLORS.include?(color)
+      item.state_colors ||= {}
+      item.state_colors[state_name] = color
+      item.limits.enabled = true
+      packet.update_limits_items_cache(item)
+      return color
+    end
+
     protected
 
     def _get_packet(target_name, packet_name)

@@ -680,30 +680,18 @@ def cli_script_list(args, options)
 end
 
 def parse_suite_runner_options(options)
-  suite_runner = nil
   # suite must be given to enable Suite Runner execution
-  if options[:suite]
-    suite_runner = {}
-    suite_runner['suite'] = options[:suite]
-    if options[:group]
-      suite_runner['group'] = options[:group]
-      # script requires group to be set
-      if options[:script]
-        suite_runner['script'] = options[:script]
-      end
-    end
-    if options[:method]
-      suite_runner['method'] = options[:method]
-    else
-      suite_runner['method'] = 'start'
-    end
-    if options[:options]
-      suite_runner['options'] = options[:options].split(',')
-    else
-      suite_runner['options'] = ["continueAfterError"]
-    end
-  end
-  return suite_runner
+  return nil unless options[:suite]
+  require 'openc3/script/suite_runner'
+  # Build the canonical hash via the shared helper so the CLI applies the same
+  # shape, defaults, and validation (e.g. script requires group) as execution.
+  return OpenC3::SuiteRunner.build_options(
+    suite: options[:suite],
+    group: options[:group],
+    script: options[:script],
+    method: options[:method],
+    options: options[:options]&.split(','),
+  )
 end
 
 def cli_script_run(args, options)

@@ -302,12 +302,12 @@ INTERFACE GEMS_INT tcpip_client_interface.rb openc3-operator 8080 8080 10.0 nil 
   PROTOCOL READ_WRITE GemsProtocol
 ```
 
-Source code for [gems_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-gems-interface/lib/gems_protocol.rb)
+Source code for [gems_protocol.rb](https://repos.openc3.com/OpenC3/openc3-cosmos-gems-interface/src/branch/main/lib/gems_protocol.rb)
 
 </TabItem>
 </Tabs>
 
-For a full example, please see the [openc3-cosmos-gems-interface](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-gems-interface) in the COSMOS Enterprise Plugins.
+For a full example, please see [openc3-cosmos-gems-interface](https://repos.openc3.com/OpenC3/openc3-cosmos-gems-interface).
 
 ### CCSDS CLTU Protocol (Enterprise)
 
@@ -327,7 +327,7 @@ INTERFACE INTERFACE_NAME <params>
   PROTOCOL WRITE openc3/interfaces/protocols/ccsds_cltu_protocol.py
 ```
 
-Source code for [cltu_protocol.py](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols-python/openc3_ccsds_protocols/ccsds_cltu_protocol.py)
+Source code for [cltu_protocol.py](https://repos.openc3.com/OpenC3/openc3-cosmos-ccsds-protocols/src/branch/main/lib/ccsds_cltu_protocol.py)
 
 </TabItem>
 <TabItem value="ruby" label="Ruby">
@@ -337,12 +337,12 @@ INTERFACE INTERFACE_NAME <params>
   PROTOCOL WRITE CcsdsCltuProtocol
 ```
 
-Source code for [cltu_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_cltu_protocol.rb)
+Source code for [cltu_protocol.rb](https://repos.openc3.com/OpenC3/openc3-cosmos-ccsds-protocols/src/branch/main/lib/ccsds_cltu_protocol.rb)
 
 </TabItem>
 </Tabs>
 
-For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
+For a full example, please see [openc3-cosmos-ccsds-protocols](https://repos.openc3.com/OpenC3/openc3-cosmos-ccsds-protocols).
 
 ### CCSDS TCTF Protocol (Enterprise)
 
@@ -364,7 +364,7 @@ INTERFACE INTERFACE_NAME <params>
   PROTOCOL WRITE openc3/interfaces/protocols/ccsds_tctf_protocol.py True False 1 0xA 0x1
 ```
 
-Source code for [ccsds_tctf_protocol.py](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols-python/openc3_ccsds_protocols/ccsds_tctf_protocol.py)
+Source code for [ccsds_tctf_protocol.py](https://repos.openc3.com/OpenC3/openc3-cosmos-ccsds-protocols/src/branch/main/lib/ccsds_tctf_protocol.py)
 
 </TabItem>
 <TabItem value="ruby" label="Ruby">
@@ -374,12 +374,12 @@ INTERFACE INTERFACE_NAME <params>
   PROTOCOL WRITE CcsdsTctfProtocol true false 1 0xA 0x1
 ```
 
-Source code for [ccsds_tctf_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_tctf_protocol.rb)
+Source code for [ccsds_tctf_protocol.rb](https://repos.openc3.com/OpenC3/openc3-cosmos-ccsds-protocols/src/branch/main/lib/ccsds_tctf_protocol.rb)
 
 </TabItem>
 </Tabs>
 
-For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
+For a full example, please see [openc3-cosmos-ccsds-protocols](https://repos.openc3.com/OpenC3/openc3-cosmos-ccsds-protocols).
 
 ### CCSDS TMTF Protocol (Enterprise)
 
@@ -402,7 +402,7 @@ INTERFACE INTERFACE_NAME <params>
   PROTOCOL READ openc3/interfaces/protocols/ccsds_tmtf_protocol.py True 0 0x1ACFFC1D True
 ```
 
-Source code for [ccsds_tmtf_protocol.py](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols-python/openc3_ccsds_protocols/ccsds_tmtf_protocol.py)
+Source code for [ccsds_tmtf_protocol.py](https://repos.openc3.com/OpenC3/openc3-cosmos-ccsds-protocols/src/branch/main/lib/ccsds_tmtf_protocol.py)
 
 </TabItem>
 <TabItem value="ruby" label="Ruby">
@@ -412,12 +412,12 @@ INTERFACE INTERFACE_NAME <params>
   PROTOCOL READ CcsdsTmtfProtocol true 0 0x1ACFFC1D true
 ```
 
-Source code for [ccsds_tmtf_protocol.rb](https://github.com/OpenC3/cosmos-enterprise-plugins/blob/main/openc3-cosmos-ccsds-protocols/lib/ccsds_tmtf_protocol.rb)
+Source code for [ccsds_tmtf_protocol.rb](https://repos.openc3.com/OpenC3/openc3-cosmos-ccsds-protocols/src/branch/main/lib/ccsds_tmtf_protocol.rb)
 
 </TabItem>
 </Tabs>
 
-For a full example, please see the [openc3-cosmos-ccsds-protocols](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-ccsds-protocols) in the COSMOS Enterprise Plugins.
+For a full example, please see [openc3-cosmos-ccsds-protocols](https://repos.openc3.com/OpenC3/openc3-cosmos-ccsds-protocols).
 
 ### Preidentified Protocol
 
@@ -515,7 +515,7 @@ TELEMETRY SCPI_PS STATUS BIG_ENDIAN "Status"
     FORMAT_STRING %0.3f
 ```
 
-For a full example, please see the [openc3-cosmos-scpi-power-supply](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-scpi-power-supply) in the COSMOS Enterprise Plugins.
+For a full example, please see [openc3-cosmos-scpi-power-supply](https://repos.openc3.com/OpenC3/openc3-cosmos-scpi-power-supply).
 
 ### CRC Protocol
 

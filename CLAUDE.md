@@ -165,9 +165,14 @@ pnpm lint                     # ESLint, run from the openc3-cosmos-init/plugins/
 
 ### API Tests (Rails)
 
+The Rails APIs depend on the local `openc3` gem, which must be built first (see
+Ruby Tests above). Set `OPENC3_DEVEL` to the path of the local `openc3` gem so
+Bundler resolves it from source instead of trying to fetch it from RubyGems.
+
 ```bash
-cd openc3-cosmos-cmd-tlm-api && bundle exec rspec
-cd openc3-cosmos-script-runner-api && bundle exec rspec
+export OPENC3_DEVEL=../openc3
+cd openc3-cosmos-cmd-tlm-api && bundle install && bundle exec rspec
+cd openc3-cosmos-script-runner-api && bundle install && bundle exec rspec
 ```
 
 ### Playwright E2E Tests

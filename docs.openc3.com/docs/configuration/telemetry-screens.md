@@ -1759,6 +1759,15 @@ CANVAS 100 50
   CANVASLABEL 5 30 "Dark canvas" 18 white
 END
 ```
+The following settings apply to CANVAS. They are applied using the SETTING keyword.
+#### BACKCOLOR
+<span class="badge badge--secondary since-right">Since 7.2.1</span>**Sets the background color of the canvas**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Color name or Red value | Common name for the color, e.g. 'black', 'red', etc. Alternatively if two more parameters are passed this is the Red value of the RGB value | True |
+| Green value | Green value of the RGB value | False |
+| Blue value | Blue value of the RGB value | False |
 
 ### CANVASLABEL
 **Draws text onto the canvas**

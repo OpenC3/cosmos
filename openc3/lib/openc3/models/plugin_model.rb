@@ -31,9 +31,11 @@ require 'openc3/models/tool_model'
 require 'openc3/models/widget_model'
 require 'openc3/models/microservice_model'
 require 'openc3/api/api'
+require 'openc3/utilities/pypi_url'
 require 'tmpdir'
 require 'tempfile'
 require 'fileutils'
+require 'open3'
 
 module OpenC3
   class EmptyGemFileError < StandardError; end
@@ -290,32 +292,31 @@ module OpenC3
               if pypi_url
                 pypi_url += '/simple'
               end
-              pypi_url ||= 'https://pypi.org/simple'
+              pypi_url ||= PypiUrl::DEFAULT
             end
           end
+          pypi_url = PypiUrl.validate(pypi_url)
           unless dry_run
+            # Build the pip arguments as an argv array and run pipinstall without a
+            # shell. pypi_url comes from a user-writable setting, so interpolating it
+            # into a shell command line allowed OS command injection. An argv array
+            # passes each argument verbatim with no shell metacharacter interpretation.
+            pip_args = ["-i", pypi_url]
+            pip_args += ["--trusted-host", URI.parse(pypi_url).host] unless ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
             if File.exist?(pyproject_path)
               Logger.info "Installing python packages from pyproject.toml with pypi_url=#{pypi_url}"
-              if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
-                pip_args = "-i #{pypi_url} #{gem_path}"
-              else
-                pip_args = "-i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} #{gem_path}"
-              end
+              pip_args << gem_path
             else
               Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
-              if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
-                pip_args = "-i #{pypi_url} -r #{requirements_path}"
-              else
-                pip_args = "-i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host} -r #{requirements_path}"
-              end
+              pip_args += ["-r", requirements_path]
             end
             # Capture output and check exit code so failures surface as a warning
             # rather than silently succeeding. pipinstall is non-fatal: the plugin
             # continues to install even if Python packages fail so that non-Python
             # functionality still works.
-            output = `/openc3/bin/pipinstall #{pip_args}`
+            output, status = Open3.capture2e("/openc3/bin/pipinstall", *pip_args)
             puts output
-            unless $?.success?
+            unless status.success?
               Logger.warn "Python package installation failed. Plugin Python microservices may not function correctly."
             end
           end

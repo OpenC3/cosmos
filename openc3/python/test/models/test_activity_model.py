@@ -58,8 +58,9 @@ class TestActivityModel(unittest.TestCase):
         model = self._make()
         now = int(time.time())
         with self.assertRaises(ActivityInputError):
-            model.validate_input(start=now + 60, stop=now + 60 + ActivityModel.MAX_DURATION + 1,
-                                 kind="command", data={})
+            model.validate_input(
+                start=now + 60, stop=now + 60 + ActivityModel.MAX_DURATION + 1, kind="command", data={}
+            )
 
     def test_validate_rejects_unknown_kind(self):
         model = self._make()
@@ -163,9 +164,7 @@ class TestActivityModel(unittest.TestCase):
         new_stop = new_start + 600
         a.update(start=new_start, stop=new_stop, kind="script", data={"script": "foo.rb"})
         # Original score is gone
-        self.assertIsNone(
-            ActivityModel.score(name=TIMELINE, score=old_start, uuid=a.uuid, scope=SCOPE)
-        )
+        self.assertIsNone(ActivityModel.score(name=TIMELINE, score=old_start, uuid=a.uuid, scope=SCOPE))
         loaded = ActivityModel.score(name=TIMELINE, score=new_start, uuid=a.uuid, scope=SCOPE)
         self.assertEqual(loaded.kind, "script")
         # An "updated" event should have been recorded
@@ -202,9 +201,7 @@ class TestActivityModel(unittest.TestCase):
         a2 = self._make(offset_minutes=20, duration_minutes=10)
         a2.create()
         # Destroy only the first
-        result = ActivityModel.range_destroy(
-            name=TIMELINE, scope=SCOPE, min=a1.start, max=a1.start
-        )
+        result = ActivityModel.range_destroy(name=TIMELINE, scope=SCOPE, min=a1.start, max=a1.start)
         self.assertEqual(result, 1)
         self.assertEqual(ActivityModel.count(name=TIMELINE, scope=SCOPE), 1)
 
