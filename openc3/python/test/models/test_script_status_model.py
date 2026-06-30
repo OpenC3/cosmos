@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 
 from openc3.models.script_status_model import ScriptStatusModel
 from openc3.utilities.time import to_nsec_from_epoch
-from test.test_helper import *
+from test.test_helper import mock_redis
 
 
 class TestScriptStatusModel(unittest.TestCase):
