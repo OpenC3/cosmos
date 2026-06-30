@@ -21,8 +21,7 @@ RSpec.describe CompletedScriptController, :type => :controller do
   describe "GET index" do
     before(:each) do
       # Simply stub out ScriptStatusModel to return an empty JSON structure
-      allow(OpenC3::ScriptStatusModel).to receive(:all).and_return([])
-      allow(OpenC3::ScriptStatusModel).to receive(:count).and_return(0)
+      allow(OpenC3::ScriptStatusModel).to receive(:page).and_return([[], 0])
     end
 
     context "without scope" do
@@ -63,6 +62,14 @@ RSpec.describe CompletedScriptController, :type => :controller do
       it 'responds with valid content type' do
         expect(response.status).to eq(200)
         expect(response.content_type).to include('application/json')
+      end
+    end
+
+    context "with a search parameter" do
+      it "forwards search to the model" do
+        expect(OpenC3::ScriptStatusModel).to receive(:page).with(hash_including(search: "collect")).and_return([[], 0])
+        get :index, params: { "scope" => "DEFAULT", "search" => "collect" }
+        expect(response.status).to eq(200)
       end
     end
   end

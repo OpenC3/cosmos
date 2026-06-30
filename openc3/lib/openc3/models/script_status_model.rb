@@ -61,49 +61,79 @@ module OpenC3
       end
     end
 
-    def self.all(scope:, offset: 0, limit: 10, type: "running")
-      if type == "running"
-        keys = self.store.zrevrange("#{RUNNING_PRIMARY_KEY}__#{scope}__LIST", offset.to_i, offset.to_i + limit.to_i - 1)
-        return [] if keys.empty?
-        result = []
-        result = self.store.redis_pool.pipelined do
-          keys.each do |key|
-            self.store.hget("#{RUNNING_PRIMARY_KEY}__#{scope}", key)
-          end
-        end
-        result = result.map do |r|
-          if r.nil?
-            nil
-          else
-            JSON.parse(r, allow_nan: true, create_additions: true)
-          end
-        end
-        return result
+    # Fields that a search term is matched against (case-insensitive substring)
+    SEARCH_FIELDS = ['name', 'filename', 'username', 'user_full_name', 'state']
+
+    def self.all(scope:, offset: 0, limit: 10, type: "running", search: nil)
+      primary_key = (type == "running") ? RUNNING_PRIMARY_KEY : COMPLETED_PRIMARY_KEY
+      if search and !search.to_s.empty?
+        # Filtering happens in Ruby so we must fetch the full list, filter, then paginate
+        items = self.filter_by_search(self.fetch_all(primary_key, scope), search)
+        return items[offset.to_i, limit.to_i] || []
       else
-        keys = self.store.zrevrange("#{COMPLETED_PRIMARY_KEY}__#{scope}__LIST", offset.to_i, offset.to_i + limit.to_i - 1)
+        keys = self.store.zrevrange("#{primary_key}__#{scope}__LIST", offset.to_i, offset.to_i + limit.to_i - 1)
         return [] if keys.empty?
-        result = []
-        result = self.store.redis_pool.pipelined do
-          keys.each do |key|
-            self.store.hget("#{COMPLETED_PRIMARY_KEY}__#{scope}", key)
-          end
-        end
-        result = result.map do |r|
-          if r.nil?
-            nil
-          else
-            JSON.parse(r, allow_nan: true, create_additions: true)
-          end
-        end
-        return result
+        return self.fetch(primary_key, scope, keys)
       end
     end
 
-    def self.count(scope:, type: "running")
-      if type == "running"
-        return self.store.zcount("#{RUNNING_PRIMARY_KEY}__#{scope}__LIST", 0, Float::INFINITY)
+    def self.count(scope:, type: "running", search: nil)
+      primary_key = (type == "running") ? RUNNING_PRIMARY_KEY : COMPLETED_PRIMARY_KEY
+      if search and !search.to_s.empty?
+        return self.filter_by_search(self.fetch_all(primary_key, scope), search).length
       else
-        return self.store.zcount("#{COMPLETED_PRIMARY_KEY}__#{scope}__LIST", 0, Float::INFINITY)
+        return self.store.zcount("#{primary_key}__#{scope}__LIST", 0, Float::INFINITY)
+      end
+    end
+
+    # Return a single page of items along with the total count of matching items.
+    # When searching, this fetches, parses, and filters the full list only once
+    # (instead of doing that work separately for the page and the count).
+    # Returns [page_items, total]
+    def self.page(scope:, offset: 0, limit: 10, type: "running", search: nil)
+      primary_key = (type == "running") ? RUNNING_PRIMARY_KEY : COMPLETED_PRIMARY_KEY
+      if search and !search.to_s.empty?
+        items = self.filter_by_search(self.fetch_all(primary_key, scope), search)
+        return [items[offset.to_i, limit.to_i] || [], items.length]
+      else
+        total = self.store.zcount("#{primary_key}__#{scope}__LIST", 0, Float::INFINITY)
+        keys = self.store.zrevrange("#{primary_key}__#{scope}__LIST", offset.to_i, offset.to_i + limit.to_i - 1)
+        page_items = keys.empty? ? [] : self.fetch(primary_key, scope, keys)
+        return [page_items, total]
+      end
+    end
+
+    # Fetch and parse the hash values for the given keys, preserving their order
+    def self.fetch(primary_key, scope, keys)
+      result = self.store.redis_pool.pipelined do
+        keys.each do |key|
+          self.store.hget("#{primary_key}__#{scope}", key)
+        end
+      end
+      result.map do |r|
+        # NOTE: create_additions is intentionally omitted here. ScriptStatusModel
+        # records are written via JSON.generate of as_json (plain hashes/arrays/
+        # primitives) and never contain a "json_class" marker, so create_additions
+        # has nothing to reconstruct. Enabling it disables the parser's fast path
+        # and makes this parse ~3x slower - costly since this runs over every
+        # record when listing/searching.
+        r.nil? ? nil : JSON.parse(r, allow_nan: true)
+      end
+    end
+
+    # Fetch and parse every item for the type, in list order (most recent first)
+    def self.fetch_all(primary_key, scope)
+      keys = self.store.zrevrange("#{primary_key}__#{scope}__LIST", 0, -1)
+      return [] if keys.empty?
+      self.fetch(primary_key, scope, keys).compact
+    end
+
+    # Select items where any SEARCH_FIELDS value contains the search term (case-insensitive)
+    def self.filter_by_search(items, search)
+      search = search.to_s.downcase
+      items.select do |item|
+        next false if item.nil?
+        SEARCH_FIELDS.any? { |field| item[field].to_s.downcase.include?(search) }
       end
     end
 

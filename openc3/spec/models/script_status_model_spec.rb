@@ -285,6 +285,33 @@ module OpenC3
         all = ScriptStatusModel.all(scope: 'DEFAULT', type: 'running')
         expect(all).to eq([])
       end
+
+      it "filters by search term across fields (case-insensitive)" do
+        generate_script_status(name: '1', filename: 'collect.rb', username: 'alice').create()
+        generate_script_status(name: '2', filename: 'abort.rb', username: 'bob').create()
+        # Match on filename
+        all = ScriptStatusModel.all(scope: 'DEFAULT', type: 'running', search: 'COLLECT')
+        expect(all.length).to eq(1)
+        expect(all[0]['filename']).to eq('collect.rb')
+        # Match on username
+        all = ScriptStatusModel.all(scope: 'DEFAULT', type: 'running', search: 'bob')
+        expect(all.length).to eq(1)
+        expect(all[0]['username']).to eq('bob')
+      end
+
+      it "paginates the filtered results when searching" do
+        5.times { |i| generate_script_status(name: i.to_s, filename: 'collect.rb').create() }
+        generate_script_status(name: '5', filename: 'other.rb').create()
+        all = ScriptStatusModel.all(scope: 'DEFAULT', offset: 0, limit: 2, type: 'running', search: 'collect')
+        expect(all.length).to eq(2)
+        expect(all.all? { |item| item['filename'] == 'collect.rb' }).to be true
+      end
+
+      it "returns empty array when search matches nothing" do
+        generate_script_status(name: '1', filename: 'collect.rb').create()
+        all = ScriptStatusModel.all(scope: 'DEFAULT', type: 'running', search: 'nomatch')
+        expect(all).to eq([])
+      end
     end
 
     describe "self.count" do
@@ -309,6 +336,46 @@ module OpenC3
       it "returns 0 when no scripts" do
         count = ScriptStatusModel.count(scope: 'DEFAULT', type: 'running')
         expect(count).to eq(0)
+      end
+
+      it "counts only matching scripts when searching" do
+        generate_script_status(name: '1', filename: 'collect.rb').create()
+        generate_script_status(name: '2', filename: 'collect.rb').create()
+        generate_script_status(name: '3', filename: 'abort.rb').create()
+        count = ScriptStatusModel.count(scope: 'DEFAULT', type: 'running', search: 'collect')
+        expect(count).to eq(2)
+      end
+    end
+
+    describe "self.page" do
+      it "returns a page of items and the total without searching" do
+        5.times { |i| generate_script_status(name: i.to_s).create() }
+        items, total = ScriptStatusModel.page(scope: 'DEFAULT', offset: 1, limit: 2, type: 'running')
+        expect(items.length).to eq(2)
+        expect(total).to eq(5)
+      end
+
+      it "returns the page and total of matching items when searching" do
+        5.times { |i| generate_script_status(name: i.to_s, filename: 'collect.rb').create() }
+        generate_script_status(name: '5', filename: 'other.rb').create()
+        items, total = ScriptStatusModel.page(scope: 'DEFAULT', offset: 0, limit: 2, type: 'running', search: 'collect')
+        # Page is limited but total reflects all matches
+        expect(items.length).to eq(2)
+        expect(items.all? { |item| item['filename'] == 'collect.rb' }).to be true
+        expect(total).to eq(5)
+      end
+
+      it "returns empty page and zero total when search matches nothing" do
+        generate_script_status(name: '1', filename: 'collect.rb').create()
+        items, total = ScriptStatusModel.page(scope: 'DEFAULT', type: 'running', search: 'nomatch')
+        expect(items).to eq([])
+        expect(total).to eq(0)
+      end
+
+      it "returns empty page and zero total when no scripts" do
+        items, total = ScriptStatusModel.page(scope: 'DEFAULT', type: 'running')
+        expect(items).to eq([])
+        expect(total).to eq(0)
       end
     end
 
