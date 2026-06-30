@@ -26,8 +26,8 @@ module OpenC3
     @@override_cache = {}
 
     VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED]
-    def self.build_json_from_packet(packet)
-      packet.decom
+    def self.build_json_from_packet(packet, include_limits_states: true)
+      packet.decom(include_limits_states: include_limits_states)
     end
 
     # Get a Store instance routed to the correct db_shard for a target

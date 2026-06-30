@@ -94,3 +94,21 @@ class TestTelemetryDecomTopic(unittest.TestCase):
     def test_skips_cvt_when_stored(self):
         TelemetryDecomTopic.write_packet(self._make_packet(stored=True), scope="DEFAULT")
         self.set_json_mock.assert_not_called()
+
+    def test_passes_include_limits_states_to_build_json_from_packet(self):
+        with patch(
+            "openc3.topics.telemetry_decom_topic.CvtModel.build_json_from_packet",
+            return_value={"TEMP1": 1.0},
+        ) as mock_build:
+            packet = self._make_packet()
+            TelemetryDecomTopic.write_packet(packet, include_limits_states=False, scope="DEFAULT")
+            mock_build.assert_called_once_with(packet, include_limits_states=False)
+
+    def test_defaults_include_limits_states_to_true(self):
+        with patch(
+            "openc3.topics.telemetry_decom_topic.CvtModel.build_json_from_packet",
+            return_value={"TEMP1": 1.0},
+        ) as mock_build:
+            packet = self._make_packet()
+            TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
+            mock_build.assert_called_once_with(packet, include_limits_states=True)

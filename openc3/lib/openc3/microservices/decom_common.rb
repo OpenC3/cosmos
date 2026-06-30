@@ -35,13 +35,19 @@ module OpenC3
     #   (microservice name, or "REINGEST:<job_id>").
     # @param check_limits [Boolean] When false, skips the Packet#check_limits call.
     #   Reingest passes false so historical data does not re-fire limits events.
+    # @param stored_limits_mode [String] Controls limits handling for stored packets.
+    #   'NORMAL' (default) processes limits normally.
+    #   'LOG' still evaluates limits (callback handles suppressing reactions).
+    #   'DISABLE' skips limits evaluation entirely for stored packets and omits
+    #   limits states from the decommutated output.
     # @param metric [Metric, nil] Optional; when set, records decom_duration_seconds.
     # @param error_callback [Proc, nil] Called as error_callback.call(exception) when
     #   Packet#process or Packet#check_limits raises. The microservice uses this to
     #   bump its decom_error_total metric.
     # @return [Integer] Number of (sub)packets published.
     def decom_and_publish(packet, scope:, target_names:, logger:, name:,
-                          check_limits: true, metric: nil, error_callback: nil)
+                          check_limits: true, stored_limits_mode: 'NORMAL',
+                          metric: nil, error_callback: nil)
       start = Process.clock_gettime(Process::CLOCK_MONOTONIC) if metric
       published = 0
 
@@ -62,9 +68,14 @@ module OpenC3
           logger.error e.message
         end
 
-        packet_or_subpacket.check_limits(System.limits_set) if check_limits
+        disable_stored_limits = packet_or_subpacket.stored && stored_limits_mode == 'DISABLE'
+        if check_limits && !disable_stored_limits
+          packet_or_subpacket.check_limits(System.limits_set)
+        end
 
-        TelemetryDecomTopic.write_packet(packet_or_subpacket, scope: scope)
+        TelemetryDecomTopic.write_packet(packet_or_subpacket,
+                                         include_limits_states: !disable_stored_limits,
+                                         scope: scope)
         published += 1
       end
 

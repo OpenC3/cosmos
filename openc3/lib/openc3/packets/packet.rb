@@ -1285,7 +1285,7 @@ module OpenC3
       config
     end
 
-    def decom
+    def decom(include_limits_states: true)
       # Read all the RAW at once because this could be optimized by the accessor
       json_hash = read_items(@sorted_items)
 
@@ -1301,7 +1301,9 @@ module OpenC3
           if item.format_string or item.units
             json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw)
           end
-          limits_state = item.limits.state
+          if include_limits_states
+            limits_state = item.limits.state
+          end
           if limits_state
             json_hash["#{item.name}__L"] = limits_state
           end
