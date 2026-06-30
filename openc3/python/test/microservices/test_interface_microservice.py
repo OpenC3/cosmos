@@ -557,6 +557,50 @@ class TestInterfaceMicroservice(unittest.TestCase):
         result = handler.process_cmd(topic, msg_id, full_msg_hash, None)
         self.assertIsNone(result)
 
+    def test_run_does_not_write_status_after_cancel_thread_set(self):
+        """When stop() sets cancel_thread, disconnect() and run() must not
+        write to the status model, avoiding re-creation after stop() deletes it."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+        self.assertEqual(all_interfaces["INST_INT"]["state"], "ATTEMPTING")
+
+        for _stdout in capture_io():
+            thread = threading.Thread(target=im.run)
+            thread.start()
+            time.sleep(0.1)
+            all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+            self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
+
+            im.shutdown()
+            thread.join(timeout=5)
+
+        # After shutdown the status model should be gone because:
+        # 1. stop() destroyed it
+        # 2. disconnect() skips status writes when cancel_thread is set
+        # 3. run() skips its final status write when cancel_thread is set
+        # Note: We check the direct (non-queued) store since queued writes
+        # from handle_packet before stop() may still be in the queue.
+        result = InterfaceStatusModel.get(name="INST_INT", scope="DEFAULT")
+        self.assertIsNone(result)
+
+    def test_handle_packet_does_not_write_status_after_cancel_thread_set(self):
+        """A packet already buffered can be returned from read() after stop()
+        sets cancel_thread and destroys the status model. handle_packet() must
+        not re-create the status model in that window (orphaned model bug)."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        im.interface.connect()
+        packet = im.interface.read()
+        self.assertIsNotNone(packet)
+
+        # Simulate stop() having run: cancel_thread set, status model destroyed
+        im.cancel_thread = True
+        with patch.object(InterfaceStatusModel, "set") as mock_set:
+            im.handle_packet(packet)
+            mock_set.assert_not_called()
+
+        im.shutdown()
+        time.sleep(0.1)  # Allow threads to exit
+
     def test_supports_optimize_throughput_option_for_backward_compatibility(self):
         # Update the model to use OPTIMIZE_THROUGHPUT option (legacy name)
         model = InterfaceModel(

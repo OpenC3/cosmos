@@ -20,7 +20,7 @@ module OpenC3
     private
 
     # Define all the modification methods such that we can disconnect them
-    %i(enable_limits disable_limits set_limits enable_limits_group disable_limits_group set_limits_set).each do |method_name|
+    %i(enable_limits disable_limits set_limits set_state_color enable_limits_group disable_limits_group set_limits_set).each do |method_name|
       define_method(method_name) do |*args, **kw_args, &block|
         kw_args[:scope] = $openc3_scope unless kw_args[:scope]
         if $disconnect

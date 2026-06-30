@@ -44,6 +44,9 @@ module OpenC3
       tf.puts '    LIMITS DEFAULT 1 ENABLED 1 2 4 5'
       tf.puts '    LIMITS TVAC 1 ENABLED 6 7 12 13 9 10'
       tf.puts '  APPEND_ITEM item5 8 UINT "Item5"'
+      tf.puts '  APPEND_ITEM state1 8 UINT "State1"'
+      tf.puts '    STATE CONNECTED 1 GREEN'
+      tf.puts '    STATE UNAVAILABLE 0 YELLOW'
       tf.puts 'TELEMETRY tgt1 pkt2 LITTLE_ENDIAN "TGT1 PKT2 Description"'
       tf.puts '  APPEND_ID_ITEM item1 8 UINT 2 "Item1"'
       tf.puts '    LIMITS DEFAULT 1 ENABLED 1 2 4 5'
@@ -210,6 +213,34 @@ module OpenC3
 
       it "handles green limits" do
         expect(@limits.set("TGT1", "PKT1", "ITEM1", 1, 2, 5, 6, 3, 4, nil)).to eql [:DEFAULT, 1, true, 1.0, 2.0, 5.0, 6.0, 3.0, 4.0]
+      end
+    end
+
+    describe "set_state_color" do
+      it "changes the color of a state" do
+        item = @tlm.packet("TGT1", "PKT1").get_item("STATE1")
+        expect(item.state_colors["CONNECTED"]).to eql(:GREEN)
+        expect(@limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "RED")).to eql(:RED)
+        expect(item.state_colors["CONNECTED"]).to eql(:RED)
+        expect(item.limits.enabled).to be true
+      end
+
+      it "accepts lowercase state names and colors" do
+        @limits.set_state_color("TGT1", "PKT1", "STATE1", "connected", "yellow")
+        item = @tlm.packet("TGT1", "PKT1").get_item("STATE1")
+        expect(item.state_colors["CONNECTED"]).to eql(:YELLOW)
+      end
+
+      it "complains about items without states" do
+        expect { @limits.set_state_color("TGT1", "PKT1", "ITEM5", "CONNECTED", "RED") }.to raise_error(RuntimeError, /does not have any states/)
+      end
+
+      it "complains about non-existent states" do
+        expect { @limits.set_state_color("TGT1", "PKT1", "STATE1", "BLAH", "RED") }.to raise_error(RuntimeError, /State BLAH does not exist/)
+      end
+
+      it "complains about invalid colors" do
+        expect { @limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "PURPLE") }.to raise_error(RuntimeError, /Invalid state color PURPLE/)
       end
     end
   end

@@ -780,14 +780,17 @@ class InterfaceMicroservice(Microservice):
                 # handle_fatal_exception(error)
             # Try to do clean disconnect because we're going down
             self.disconnect(False)
-        if self.interface_or_router == "INTERFACE":
-            InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
-        else:
-            RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+        if not self.cancel_thread:
+            if self.interface_or_router == "INTERFACE":
+                InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+            else:
+                RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         self.logger.info(f"{self.interface.name}: Stopped packet reading")
 
     def handle_packet(self, packet):
-        InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+        # Skip status update if stop() has been called to avoid re-creating the status model
+        if not self.cancel_thread:
+            InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         if packet.received_time is None:
             packet.received_time = datetime.now(timezone.utc)
 
@@ -919,16 +922,23 @@ class InterfaceMicroservice(Microservice):
 
         # If the interface is set to auto_reconnect then delay so the thread
         # can come back around and allow the interface a chance to reconnect.
-        if allow_reconnect and self.interface.auto_reconnect and self.interface.state != "DISCONNECTED":
+        # Skip reconnect if stop() has been called to avoid re-creating the status model
+        if (
+            allow_reconnect
+            and self.interface.auto_reconnect
+            and self.interface.state != "DISCONNECTED"
+            and not self.cancel_thread
+        ):
             self.attempting()
-            if self.cancel_thread is not None:
+            if not self.cancel_thread:
                 self.interface_thread_sleeper.sleep(self.interface.reconnect_delay)
         else:
             self.interface.state = "DISCONNECTED"
-            if self.interface_or_router == "INTERFACE":
-                InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
-            else:
-                RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+            if not self.cancel_thread:
+                if self.interface_or_router == "INTERFACE":
+                    InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+                else:
+                    RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
 
     # Disconnect from the interface and stop the thread
     def stop(self):

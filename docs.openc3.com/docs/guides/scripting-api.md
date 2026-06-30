@@ -3761,7 +3761,9 @@ APIs for subscribing to specific packets of data. This provides an interface to 
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Allows the user to listen for one or more telemetry packets of data to arrive. A unique id is returned which is used to retrieve the data.
+Gets the current Redis stream offsets (IDs) for the given packets. These offsets are used to collect packet data from this point in time by passing them to `get_packets`.
+
+This method is called `subscribe_packets` for historical reasons; no actual subscription is created, thus there is no need to unsubscribe.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -3847,6 +3849,7 @@ packets.sort(key=lambda p: int(p['time']))
 id, packets = get_packets(id)
 packets.sort_by! { |p| p['time'].to_i }
 ```
+
 :::
 
 Returns a two element array containing the updated id and an array of packet hashes/dictionaries. Each packet hash/dictionary contains the following keys:
@@ -5096,6 +5099,56 @@ set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0,
 
 ```ruby
 set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0, 'TVAC', 1, true)
+```
+
+</TabItem>
+</Tabs>
+
+### set_state_color
+
+<span class="badge badge--secondary since-heading">Since 7.3.0</span>
+
+The set_state_color method changes the color associated with a telemetry item's state in realtime. Items with states (e.g. CONNECTED, UNAVAILABLE) use a state color (GREEN, YELLOW, or RED) to determine their limits state rather than numeric red/yellow/green limits. Note: In most cases it would be better to update your config files rather than changing state colors in realtime.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+set_state_color(<Target Name>, <Packet Name>, <Item Name>, <State Name>, <Color>)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+set_state_color(<Target Name>, <Packet Name>, <Item Name>, <State Name>, <Color>)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description                                                    |
+| ----------- | -------------------------------------------------------------- |
+| Target Name | Name of the target of the telemetry item.                      |
+| Packet Name | Name of the telemetry packet of the telemetry item.            |
+| Item Name   | Name of the telemetry item.                                    |
+| State Name  | Name of the state to change, e.g. 'CONNECTED'.                 |
+| Color       | New color for the state. Must be one of GREEN, YELLOW, or RED. |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+set_state_color('INST', 'HEALTH_STATUS', 'GROUND1STATUS', 'CONNECTED', 'RED')
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+set_state_color('INST', 'HEALTH_STATUS', 'GROUND1STATUS', 'CONNECTED', 'RED')
 ```
 
 </TabItem>
