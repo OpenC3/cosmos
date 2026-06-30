@@ -19,9 +19,9 @@ import RegexAnnotator from './regexAnnotator.js'
 
 export default class SleepAnnotator extends RegexAnnotator {
   constructor(editor) {
-    const prefix = '(^|[{\\s\\.])' // Allowable characters before the keyword: start of line, {, space, period
+    const prefix = '(^|[{\\s]|time\\.)' // Allowable before the keyword: start of line, {, space, or "time." (Python time.sleep)
     const keyword = 'sleep' // The keyword this annotation looks for
-    const suffix = '[\\(\\s]' // Allowable characters after the keyword: ( or a space
+    const suffix = '[(\\s]' // Allowable characters after the keyword: ( or a space
     super(editor, {
       pattern: new RegExp(`${prefix}${keyword}${suffix}`),
       text: 'Use `wait` instead of `sleep` in OpenC3 scripts', // because we override wait to make it work better, but not sleep
