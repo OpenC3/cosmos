@@ -59,6 +59,47 @@ class TestTargetModel(unittest.TestCase):
         self.assertIn("TEST", all_targs.keys())
         self.assertIn("SPEC", all_targs.keys())
 
+    def test_stored_limits_mode_defaults_to_normal(self):
+        model = TargetModel(folder_name="TEST", name="TEST", scope="DEFAULT")
+        self.assertEqual(model.stored_limits_mode, "NORMAL")
+
+    def test_stored_limits_mode_accepts_valid_modes(self):
+        for mode in ("NORMAL", "LOG", "DISABLE"):
+            model = TargetModel(folder_name="TEST", name="TEST", stored_limits_mode=mode, scope="DEFAULT")
+            self.assertEqual(model.stored_limits_mode, mode)
+
+    def test_stored_limits_mode_uppercases_input(self):
+        model = TargetModel(folder_name="TEST", name="TEST", stored_limits_mode="log", scope="DEFAULT")
+        self.assertEqual(model.stored_limits_mode, "LOG")
+        model = TargetModel(folder_name="TEST", name="TEST", stored_limits_mode="disable", scope="DEFAULT")
+        self.assertEqual(model.stored_limits_mode, "DISABLE")
+
+    def test_stored_limits_mode_falls_back_to_normal_for_invalid(self):
+        model = TargetModel(folder_name="TEST", name="TEST", stored_limits_mode="INVALID", scope="DEFAULT")
+        self.assertEqual(model.stored_limits_mode, "NORMAL")
+        model = TargetModel(folder_name="TEST", name="TEST", stored_limits_mode="", scope="DEFAULT")
+        self.assertEqual(model.stored_limits_mode, "NORMAL")
+
+    def test_stored_limits_mode_handles_none(self):
+        model = TargetModel(folder_name="TEST", name="TEST", stored_limits_mode=None, scope="DEFAULT")
+        self.assertEqual(model.stored_limits_mode, "NORMAL")
+
+    def test_stored_limits_mode_round_trips_through_redis(self):
+        # Simulate what Ruby's as_json stores in Redis (Python TargetModel doesn't
+        # override as_json, so we manually store the full JSON as Ruby would)
+        import json
+
+        json_data = {
+            "name": "TEST",
+            "folder_name": "TEST",
+            "updated_at": None,
+            "plugin": None,
+            "stored_limits_mode": "DISABLE",
+        }
+        Store.hset("DEFAULT__openc3_targets", "TEST", json.dumps(json_data))
+        retrieved = TargetModel.get_model(name="TEST", scope="DEFAULT")
+        self.assertEqual(retrieved.stored_limits_mode, "DISABLE")
+
 
 class TestTargetModelPackets(unittest.TestCase):
     def setUp(self):
