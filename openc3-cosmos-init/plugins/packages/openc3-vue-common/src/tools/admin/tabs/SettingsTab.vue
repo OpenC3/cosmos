@@ -19,6 +19,8 @@
     <v-divider />
     <editor-settings />
     <v-divider />
+    <script-lifecycle-settings />
+    <v-divider />
     <astro-settings />
     <v-divider />
     <theme-settings />
@@ -47,6 +49,7 @@
 import SuppressedSettings from './settings/SuppressedSettings.vue'
 import DefaultConfigSettings from './settings/DefaultConfigSettings.vue'
 import EditorSettings from './settings/EditorSettings.vue'
+import ScriptLifecycleSettings from './settings/ScriptLifecycleSettings.vue'
 import AstroSettings from './settings/AstroSettings.vue'
 import ThemeSettings from './settings/ThemeSettings.vue'
 import ClassificationBannerSettings from './settings/ClassificationBannerSettings.vue'
@@ -64,6 +67,7 @@ export default {
     SuppressedSettings,
     DefaultConfigSettings,
     EditorSettings,
+    ScriptLifecycleSettings,
     AstroSettings,
     ThemeSettings,
     ClassificationBannerSettings,

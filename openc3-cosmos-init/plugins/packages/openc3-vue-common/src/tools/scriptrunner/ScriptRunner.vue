@@ -187,6 +187,16 @@
               readonly
               hide-details
             />
+            <v-chip
+              v-bind="props"
+              class="ml-4 align-self-center"
+              :color="lifecycleColor"
+              variant="flat"
+              data-test="lifecycle-chip"
+              @click="showLifecycle = true"
+            >
+              {{ lifecycleLabel }}
+            </v-chip>
             <v-progress-circular
               v-if="state === 'Connecting...'"
               :size="40"
@@ -253,7 +263,7 @@
                 color="primary"
                 text="Start"
                 data-test="start-button"
-                :disabled="startOrGoDisabled || !executeUser"
+                :disabled="startOrGoDisabled || !executeUser || runBlocked"
                 :hidden="suiteRunner"
                 @click="startHandler"
               />
@@ -469,7 +479,7 @@
                 color="primary"
                 text="Start"
                 data-test="start-button"
-                :disabled="startOrGoDisabled || !executeUser"
+                :disabled="startOrGoDisabled || !executeUser || runBlocked"
                 :hidden="suiteRunner"
                 @click="startHandler"
               />
@@ -610,6 +620,17 @@
     :text="suiteError"
     :width="1000"
   />
+  <script-lifecycle-dialog
+    v-if="showLifecycle"
+    v-model="showLifecycle"
+    :filename="filename"
+    :state="lifecycleState"
+    :history="lifecycleHistory"
+    :is-admin="isAdmin"
+    :can-edit="!readOnlyUser"
+    :time-zone="timeZone"
+    @updated="lifecycleUpdated"
+  />
   <critical-cmd-dialog
     v-model="displayCriticalCmd"
     :uuid="criticalCmdUuid"
@@ -710,6 +731,7 @@ import OverridesDialog from '@/tools/scriptrunner/Dialogs/OverridesDialog.vue'
 import PromptDialog from '@/tools/scriptrunner/Dialogs/PromptDialog.vue'
 import ResultsDialog from '@/tools/scriptrunner/Dialogs/ResultsDialog.vue'
 import ScriptEnvironmentDialog from '@/tools/scriptrunner/Dialogs/ScriptEnvironmentDialog.vue'
+import ScriptLifecycleDialog from '@/tools/scriptrunner/Dialogs/ScriptLifecycleDialog.vue'
 import CommandEditor from '@/components/CommandEditor.vue'
 import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
 import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
@@ -720,6 +742,7 @@ import {
 } from '@/tools/scriptrunner/autocomplete'
 import { SleepAnnotator } from '@/tools/scriptrunner/annotations'
 import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
+import { useScriptLifecycle } from '@/tools/scriptrunner/useScriptLifecycle'
 
 // Matches target_file.rb TEMP_FOLDER
 const TEMP_FOLDER = '__TEMP__'
@@ -746,6 +769,7 @@ export default {
     PromptDialog,
     ResultsDialog,
     ScriptEnvironmentDialog,
+    ScriptLifecycleDialog,
     SimpleTextDialog,
     SuiteRunner,
     RunningScripts,
@@ -781,7 +805,7 @@ export default {
   setup() {
     const containerHeight = useContainerHeight()
 
-    return { containerHeight }
+    return { containerHeight, ...useScriptLifecycle() }
   },
   data() {
     return {
@@ -935,6 +959,7 @@ export default {
       displayCriticalCmd: false,
       editorBoxSize: 50,
       lockingEnabled: true,
+      isAdmin: false,
     }
   },
   computed: {
@@ -981,6 +1006,16 @@ export default {
         return false
       }
       return !!this.lockedBy
+    },
+    // Users with only the script_run (runner) permission may only run
+    // approved scripts when the lifecycle feature is enabled
+    runBlocked: function () {
+      return (
+        this.lifecycleEnabled &&
+        this.readOnlyUser &&
+        this.executeUser &&
+        this.lifecycleState !== 'approved'
+      )
     },
     // Returns the currently shown filename
     fullFilename: function () {
@@ -1049,7 +1084,11 @@ export default {
             {
               label: 'Save File',
               icon: 'mdi-content-save',
-              disabled: this.scriptId || this.readOnlyUser,
+              disabled:
+                this.scriptId || this.readOnlyUser || this.scriptApproved,
+              tooltip: this.scriptApproved
+                ? 'Script is approved and cannot be modified. Move it back to review to edit.'
+                : null,
               command: () => {
                 this.saveFile()
               },
@@ -1079,7 +1118,11 @@ export default {
             {
               label: 'Delete File',
               icon: 'mdi-delete',
-              disabled: this.scriptId || this.readOnlyUser,
+              disabled:
+                this.scriptId || this.readOnlyUser || this.scriptApproved,
+              tooltip: this.scriptApproved
+                ? 'Script is approved and cannot be deleted. Move it back to review to delete.'
+                : null,
               command: () => {
                 this.delete()
               },
@@ -1137,6 +1180,18 @@ export default {
                 this.showScripts = true
               },
             },
+            ...(this.lifecycleEnabled
+              ? [
+                  {
+                    label: 'Script Lifecycle',
+                    icon: 'mdi-list-status',
+                    disabled: this.filename === NEW_FILENAME,
+                    command: () => {
+                      this.showLifecycle = true
+                    },
+                  },
+                ]
+              : []),
             {
               divider: true,
             },
@@ -1250,10 +1305,25 @@ export default {
       if (!this.suiteRunner) {
         this.startOrGoDisabled = val
       }
-      if (this.readOnlyUser == false && val == false && !this.inline) {
+      if (!this.readOnlyUser && !val && !this.inline && !this.scriptApproved) {
         this.editor.setReadOnly(val)
       } else {
         this.editor.setReadOnly(true)
+      }
+    },
+    scriptApproved: function (val) {
+      if (!this.editor) {
+        return
+      }
+      if (val) {
+        this.editor.setReadOnly(true)
+      } else if (
+        !this.readOnlyUser &&
+        !this.isLocked &&
+        !this.inline &&
+        !this.scriptId
+      ) {
+        this.editor.setReadOnly(false)
       }
     },
     fullFilename: function (filename) {
@@ -1309,6 +1379,11 @@ export default {
     } catch (error) {
       // Keep default (true)
     }
+    await this.loadLifecycleSetting()
+
+    if (this.filename !== NEW_FILENAME) {
+      this.fetchLifecycle(this.filename)
+    }
 
     this.updateOverridesCount()
 
@@ -1326,6 +1401,9 @@ export default {
       if (role == 'admin' || role == 'operator') {
         this.readOnlyUser = false
         this.executeUser = true
+        if (role == 'admin') {
+          this.isAdmin = true
+        }
       } else if (role == 'runner') {
         this.executeUser = true
       } else {
@@ -1360,7 +1438,7 @@ export default {
         execute: this.executeUser,
       })
     }
-    if (this.readOnlyUser == true) {
+    if (this.readOnlyUser) {
       this.alertType = 'info'
       let text = `User ${user['preferred_username']} is read only`
       if (this.executeUser) {
@@ -1916,7 +1994,7 @@ export default {
       // We may have changed the contents (if there were sub-scripts)
       // so don't let the undo manager think this is a change
       this.editor.session.getUndoManager().reset()
-      if (this.readOnlyUser == false && !this.inline) {
+      if (!this.readOnlyUser && !this.inline && !this.scriptApproved) {
         this.editor.setReadOnly(false)
       }
 
@@ -2539,6 +2617,7 @@ export default {
       this.filename = NEW_FILENAME
       this.currentFilename = null
       this.tempFilename = null
+      this.resetLifecycle()
       this.files = {} // Clear the cached file list
       this.editor.session.setValue('')
       this.saveAllowed = true
@@ -2793,6 +2872,7 @@ class TestSuite(Suite):
       }
       // Disable suite buttons if we didn't successfully parse the suite
       this.disableSuiteButtons = file.success == false
+      this.fetchLifecycle(this.filename)
       this.doResize()
     },
     clearTemp() {
@@ -2843,6 +2923,14 @@ class TestSuite(Suite):
     // or automatically by 'Start' (to ensure a consistent backend file) or autoSave
     async saveFile(type = 'menu') {
       if (this.readOnlyUser) {
+        return
+      }
+      if (this.scriptApproved) {
+        if (type === 'menu') {
+          this.setError(
+            'Script is approved and cannot be modified. Move it back to review to edit.',
+          )
+        }
         return
       }
       if (this.saveAllowed) {
@@ -2927,6 +3015,10 @@ class TestSuite(Suite):
             if (response.status == 422) {
               this.alertType = 'error'
               this.alertText = response.data.suites
+            } else if (response.status == 403 && response.data?.message) {
+              // e.g. attempting to save over an approved script
+              this.alertType = 'error'
+              this.alertText = response.data.message
             } else {
               this.alertType = 'error'
               this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
@@ -2943,11 +3035,17 @@ class TestSuite(Suite):
     async saveAsFilename(filename) {
       this.filename = filename.split('*')[0]
       this.currentFilename = null
+      // The lifecycle state belongs to the file, not the editor contents,
+      // so clear it before saving under the new name. The server still
+      // rejects overwriting a different approved script.
+      this.resetLifecycle()
       if (this.tempFilename) {
         Api.post(`/script-api/scripts/${this.tempFilename}/delete`)
         this.tempFilename = null
       }
       await this.saveFile('menu')
+      // Pick up the actual lifecycle state of the file we saved over
+      this.fetchLifecycle(this.filename)
     },
     delete() {
       let filename = this.filename

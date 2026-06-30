@@ -11,5 +11,11 @@
 # if purchased from OpenC3, Inc.
 */
 
-export { useContainerHeight } from './useContainerHeight'
-export { useTimeFilters } from './useTimeFilters'
+import TimeFilters from '@/util/timeFilters'
+
+// Composition API access to the TimeFilters mixin methods.
+// Call methods on the returned object (don't destructure) since
+// they reference each other through `this`.
+export function useTimeFilters() {
+  return TimeFilters.methods
+}

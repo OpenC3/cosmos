@@ -17,6 +17,7 @@
 
 require 'json'
 require 'openc3/utilities/script'
+require 'openc3/models/setting_model'
 
 class ScriptsController < ApplicationController
   # This REGEX is also found in running_script.rb
@@ -28,6 +29,7 @@ class ScriptsController < ApplicationController
   # # class MySuite < Suite # <-- doesn't match commented out
   SUITE_REGEX = /^\s*class\s+\w+\s+<\s+(Cosmos::|OpenC3::)?(Suite|TestSuite)/
   PYTHON_SUITE_REGEX = /^\s*class\s+\w+\s*\(\s*(Suite|TestSuite)\s*\)/
+  MAX_LIFECYCLE_COMMENT_LENGTH = 1000
 
   def ping
     render plain: 'OK'
@@ -81,10 +83,53 @@ class ScriptsController < ApplicationController
     end
   end
 
+  def lifecycle
+    return unless authorization('script_view')
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
+    return unless scope
+    render json: Script.lifecycle(scope, name)
+  end
+
+  def set_lifecycle
+    # All transitions require at least script_edit, transitions involving
+    # 'approved' additionally require admin (checked below once the current state is known)
+    return unless authorization('script_edit')
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
+    return unless scope
+    state = params[:state]
+    comment = params[:comment].to_s.strip
+    unless Script::LIFECYCLE_STATES.include?(state)
+      render json: { status: 'error', message: "Invalid lifecycle state: #{state}" }, status: :bad_request
+      return
+    end
+    if comment.length > MAX_LIFECYCLE_COMMENT_LENGTH
+      render json: { status: 'error', message: "Comment must be #{MAX_LIFECYCLE_COMMENT_LENGTH} characters or less" }, status: :bad_request
+      return
+    end
+    current = Script.lifecycle(scope, name)['state']
+    unless Script::LIFECYCLE_TRANSITIONS[current].include?(state)
+      render json: { status: 'error', message: "Cannot move script from #{current} to #{state}" }, status: :bad_request
+      return
+    end
+    if (state == 'approved' or current == 'approved') and !authorization('admin')
+      return
+    end
+    result = Script.set_lifecycle(scope, name, state, username(), comment)
+    OpenC3::Logger.info("Script lifecycle changed from #{current} to #{state}: #{name} (#{comment})", scope: scope, user: username())
+    render json: result
+  rescue => e
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
   def create
     return unless authorization('script_edit')
     scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
+    if lifecycle_enabled?() and Script.lifecycle(scope, name)['state'] == 'approved'
+      render json: { status: 'error', message: 'Script is approved and cannot be modified. Move it back to review to edit.' }, status: :forbidden
+      return
+    end
     args = params.permit(:text, breakpoints: [])
     args[:scope] = scope
     args[:name] = name
@@ -112,6 +157,11 @@ class ScriptsController < ApplicationController
     # Extract the target that this script lives under
     target_name = name.split('/')[0]
     return unless authorization('script_run', target_name: target_name)
+    # Users with only the script_run (runner) permission may only run
+    # approved scripts. Users who can edit may run any lifecycle state.
+    if lifecycle_enabled?() and Script.lifecycle(scope, name)['state'] != 'approved' and !authorization('script_edit')
+      return
+    end
     # TODO 7.0: Should suiteRunner be snake case?
     suite_runner = params[:suiteRunner] ? params[:suiteRunner].as_json() : nil
     disconnect = params[:disconnect] == 'disconnect'
@@ -146,6 +196,10 @@ class ScriptsController < ApplicationController
     return unless authorization('script_edit')
     scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
+    if lifecycle_enabled?() and Script.lifecycle(scope, name)['state'] == 'approved'
+      render json: { status: 'error', message: 'Script is approved and cannot be deleted. Move it back to review to delete.' }, status: :forbidden
+      return
+    end
     Script.destroy(scope, name)
     OpenC3::Logger.info("Script destroyed: #{name}", scope: scope, user: username())
     head :ok
@@ -204,5 +258,14 @@ class ScriptsController < ApplicationController
     scope = scope[0]
     OpenC3::Store.del("#{scope}__script-breakpoints")
     head :ok
+  end
+
+  private
+
+  # Whether the Script Lifecycle feature flag is enabled (Admin / Settings)
+  def lifecycle_enabled?
+    setting = OpenC3::SettingModel.get(name: 'script_runner_lifecycle')
+    return false unless setting
+    setting['data'] == true or setting['data'] == 'true'
   end
 end
