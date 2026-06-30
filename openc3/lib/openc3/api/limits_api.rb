@@ -17,6 +17,7 @@
 
 require 'openc3/api/target_api'
 require 'openc3/models/cvt_model'
+require 'openc3/packets/packet_item'
 
 module OpenC3
   module Api
@@ -29,6 +30,7 @@ module OpenC3
                        'disable_limits',
                        'get_limits',
                        'set_limits',
+                       'set_state_color',
                        'get_limits_groups',
                        'enable_limits_group',
                        'disable_limits_group',
@@ -247,6 +249,50 @@ module OpenC3
       event = { type: :LIMITS_SETTINGS, target_name: target_name, packet_name: packet_name,
                 item_name: item_name, red_low: red_low, yellow_low: yellow_low, yellow_high: yellow_high, red_high: red_high,
                 green_low: green_low, green_high: green_high, limits_set: limits_set, persistence: persistence, enabled: enabled,
+                time_nsec: Time.now.to_nsec_from_epoch, message: message }
+      LimitsEventTopic.write(event, scope: scope)
+    end
+
+    # Change the color associated with a telemetry item state in realtime.
+    # Items with states use the state color (GREEN, YELLOW, RED) to determine
+    # their limits state rather than numeric red/yellow/green limits.
+    #
+    # @param target_name [String] Target name
+    # @param packet_name [String] Packet name
+    # @param item_name [String] Item name
+    # @param state_name [String] Name of the state to change (e.g. 'CONNECTED')
+    # @param color [String] New color for the state. Must be GREEN, YELLOW, or RED.
+    def set_state_color(target_name, packet_name, item_name, state_name, color,
+                        manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
+      state_name = state_name.to_s.upcase
+      color = color.to_s.upcase
+      unless PacketItem::STATE_COLORS.include?(color.intern)
+        raise "Invalid state color #{color}. Must be one of #{PacketItem::STATE_COLORS.join(' ')}."
+      end
+      packet = TargetModel.packet(target_name, packet_name, scope: scope)
+      found_item = nil
+      packet['items'].each do |item|
+        if item['name'] == item_name
+          unless item['states'] && item['states'][state_name]
+            raise "State '#{state_name}' does not exist for item '#{target_name} #{packet_name} #{item_name}'"
+          end
+          item['states'][state_name]['color'] = color
+          # Defining a state color implies limits are enabled for the item
+          item['limits'] ||= {}
+          item['limits']['enabled'] = true
+          found_item = item
+          break
+        end
+      end
+      raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist" unless found_item
+      message = "Setting '#{target_name} #{packet_name} #{item_name}' state #{state_name} color to #{color}"
+      Logger.info(message, scope: scope)
+
+      TargetModel.set_packet(target_name, packet_name, packet, scope: scope)
+
+      event = { type: :LIMITS_STATE_COLOR, target_name: target_name, packet_name: packet_name,
+                item_name: item_name, state_name: state_name, color: color,
                 time_nsec: Time.now.to_nsec_from_epoch, message: message }
       LimitsEventTopic.write(event, scope: scope)
     end
