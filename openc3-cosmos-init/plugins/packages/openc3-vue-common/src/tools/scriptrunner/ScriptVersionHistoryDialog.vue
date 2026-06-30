@@ -23,62 +23,6 @@
       <v-card-title class="d-flex align-center flex-shrink-0">
         <span>Version History — {{ filename }}</span>
         <v-spacer />
-        <v-tooltip :open-delay="600" location="bottom">
-          <template #activator="{ props: tt }">
-            <v-btn
-              v-bind="tt"
-              variant="outlined"
-              size="small"
-              prepend-icon="mdi-export"
-              class="mr-2"
-              :loading="exporting"
-              :disabled="exporting || importing"
-              data-test="version-history-export"
-              @click="exportHistory"
-            >
-              Export
-            </v-btn>
-          </template>
-          <span>
-            Download git bundle of this scope's script history. Apply locally
-            with `git clone &lt;file&gt;.bundle` or `git fetch
-            &lt;file&gt;.bundle '*:*'`.
-          </span>
-        </v-tooltip>
-        <v-tooltip :open-delay="600" location="bottom">
-          <template #activator="{ props: tt }">
-            <v-btn
-              v-bind="tt"
-              variant="outlined"
-              size="small"
-              prepend-icon="mdi-import"
-              class="mr-2"
-              :loading="importing"
-              :disabled="exporting || importing"
-              data-test="version-history-import"
-              @click="pickImportFile"
-            >
-              Import
-            </v-btn>
-          </template>
-          <span>
-            Import a git bundle into this scope. If bundle HEAD matches the live
-            scripts the history applies cleanly; otherwise a final commit
-            captures the current bucket state as the divergence.
-          </span>
-        </v-tooltip>
-        <label for="version-history-import-file" style="display: none">
-          Import git bundle file
-        </label>
-        <input
-          id="version-history-import-file"
-          ref="importFileInput"
-          type="file"
-          accept=".bundle,application/octet-stream"
-          style="display: none"
-          data-test="version-history-import-file"
-          @change="onImportFileSelected"
-        />
         <v-btn
           icon="mdi-close"
           variant="text"
@@ -114,6 +58,7 @@
                 v-for="(v, idx) in versions"
                 :key="v.version_id"
                 :active="selectedVersionId === v.version_id"
+                :data-test="`version-${versions.length - idx}`"
                 @click="selectVersion(v.version_id)"
               >
                 <v-tooltip activator="parent" location="top" :open-delay="500">
@@ -121,7 +66,7 @@
                     fullLabel(v, idx)
                   }}</span>
                 </v-tooltip>
-                <v-list-item-title class="text-body-2">
+                <v-list-item-title class="text-body-2" data-test="version-view">
                   <span>Version {{ versions.length - idx }}</span>
                   <span v-if="v.plugin" class="ml-1">— {{ v.plugin }}</span>
                 </v-list-item-title>
@@ -303,8 +248,6 @@ export default {
       diffLoading: false,
       differ: null,
       restoringVersionId: null,
-      exporting: false,
-      importing: false,
     }
   },
   computed: {
@@ -566,82 +509,6 @@ export default {
           model?.dispose?.()
         }
         this.differ = null
-      }
-    },
-    pickImportFile() {
-      // Reset value so re-selecting the same file still fires @change.
-      if (this.$refs.importFileInput) {
-        this.$refs.importFileInput.value = ''
-        this.$refs.importFileInput.click()
-      }
-    },
-    async onImportFileSelected(event) {
-      const file = event.target.files && event.target.files[0]
-      if (!file) return
-      this.importing = true
-      try {
-        const form = new FormData()
-        form.append('bundle', file)
-        const response = await Api.post('/script-api/scripts/history-import', {
-          data: form,
-          headers: { Accept: 'application/json' },
-        })
-        const data = response.data || {}
-        this.$notify.normal({
-          title: data.reconciled
-            ? 'History Imported (Reconciled)'
-            : 'History Imported',
-          body: data.message || 'Imported.',
-        })
-        await this.loadVersions()
-        this.$emit('restored', data.reconcile_sha || null)
-      } catch ({ response }) {
-        this.$notify.caution({
-          title: 'Import Failed',
-          body: response?.data?.message || response?.statusText || 'unknown',
-        })
-      } finally {
-        this.importing = false
-      }
-    },
-    async exportHistory() {
-      this.exporting = true
-      try {
-        const response = await Api.get(
-          `/script-api/scripts/${this.filename}/history-export`,
-          {
-            responseType: 'blob',
-            headers: { Accept: 'application/octet-stream' },
-          },
-        )
-        // Suggested filename comes from server's Content-Disposition; pull
-        // it back out so the download lands as `<scope>-script-history.bundle`
-        // rather than the route segment.
-        let suggested = 'script-history.bundle'
-        const cd = response.headers?.['content-disposition']
-        if (cd) {
-          const match = /filename="?([^";]+)"?/.exec(cd)
-          if (match) suggested = match[1]
-        }
-        const url = URL.createObjectURL(response.data)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = suggested
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        URL.revokeObjectURL(url)
-        this.$notify.normal({
-          title: 'History Exported',
-          body: `Saved ${suggested}. Apply with: git clone ${suggested} local-repo`,
-        })
-      } catch ({ response }) {
-        this.$notify.caution({
-          title: 'Export Failed',
-          body: response?.data?.message || response?.statusText || 'unknown',
-        })
-      } finally {
-        this.exporting = false
       }
     },
     async doRestore(versionId) {

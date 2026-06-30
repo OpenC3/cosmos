@@ -129,6 +129,7 @@
       :targets="targets"
       :show-default-tools="showDefaultTools"
       :default-plugins="defaultPlugins"
+      :script-versions-enabled="scriptVersionsEnabled"
       @edit="editPlugin"
       @upgrade="upgradePlugin"
       @delete="deletePrompt"
@@ -216,6 +217,9 @@ export default {
       showPluginDialog: false,
       showModifiedPluginDialog: false,
       showDefaultTools: false,
+      // Enterprise Version History backend availability (OPENC3_SCRIPT_VERSIONS_DIR
+      // set, reported by /openc3-api/info). Gates per-plugin Export/Import History.
+      scriptVersionsEnabled: false,
       timeZone: 'local',
       // When updating update local_mode.rb, local_mode.py, plugins.p.spec.ts
       defaultPlugins: [
@@ -273,6 +277,17 @@ export default {
   mounted() {
     this.update()
     this.updateProcesses()
+
+    // Detect whether the Enterprise Version History backend is enabled
+    // (OPENC3_SCRIPT_VERSIONS_DIR set) so per-plugin Export/Import History
+    // actions can be shown.
+    Api.get('/openc3-api/info')
+      .then((response) => {
+        this.scriptVersionsEnabled = !!response.data?.script_versions
+      })
+      .catch(() => {
+        this.scriptVersionsEnabled = false
+      })
 
     // Handle going "back" from the plugin store
     // (idk why v-bottom-sheet's close-on-back prop isn't working)

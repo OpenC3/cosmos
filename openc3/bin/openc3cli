@@ -452,6 +452,10 @@ def unload_plugin(plugin_name, scope:)
       # Remove the backing gem now that no PluginModel references it,
       # so it disappears from the admin Packages tab.
       OpenC3::PluginModel.cleanup_gem(plugin_name, scope: scope)
+      # Drop this plugin's Version History repo. Uninstall-only: the upgrade
+      # path (update_plugin) reuses the repo and never reaches here, so history
+      # survives version bumps. No-op in Core / when versioning is disabled.
+      OpenC3::TargetModel.destroy_script_versions(plugin_name, scope: scope)
       OpenC3::Logger.info("PluginModel destroyed: #{plugin_name}", scope: scope)
     rescue => e
       abort("Error uninstalling plugin: #{scope}: #{plugin_name}: #{e.formatted}")

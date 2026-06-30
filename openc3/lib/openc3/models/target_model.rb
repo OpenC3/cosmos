@@ -123,20 +123,61 @@ module OpenC3
       targets.sort.to_h
     end
 
+    # Splits a plugin instance name ("openc3-cosmos-demo-7.2.0.gem__0") into
+    # [base_name, version] (["openc3-cosmos-demo", "7.2.0"]), or nil when the
+    # name doesn't carry a version segment. Drops the "__N" install-instance
+    # suffix and the ".gem" extension first.
+    def self.plugin_name_version(plugin_instance)
+      return nil if plugin_instance.nil? || plugin_instance.empty?
+      gem = plugin_instance.split('__')[0].sub(/\.gem\z/, '')
+      parts = gem.split('-')
+      return nil if parts.length < 2
+      [parts[0..-2].join('-'), parts[-1]]
+    end
+
     # "name version" of the plugin that installed this target (e.g.
     # "openc3-cosmos-demo 7.2.0"), derived from the plugin instance name
     # ("openc3-cosmos-demo-7.2.0.gem__0"), or nil if unavailable. Used to
     # annotate the Version History baseline with the file's origin.
     def self.plugin_version_label(target_name, scope:)
       model = get(name: target_name, scope: scope)
-      plugin = model && model['plugin']
-      return nil unless plugin
-      gem = plugin.split('__')[0].sub(/\.gem\z/, '')
-      parts = gem.split('-')
-      return nil if parts.length < 2
-      "#{parts[0..-2].join('-')} #{parts[-1]}"
+      name, version = plugin_name_version(model && model['plugin'])
+      return nil unless name
+      "#{name} #{version}"
     rescue
       nil
+    end
+
+    # Version-stripped plugin base name that owns this target, e.g.
+    # "openc3-cosmos-demo" from instance "openc3-cosmos-demo-7.2.0.gem__0".
+    # Used as the per-plugin Version History repo key: stable across upgrades
+    # (only the version segment changes), so history survives version bumps.
+    # Returns nil when the target has no owning plugin (e.g. a hand-created
+    # target); callers fall back to a no-plugin bucket.
+    def self.plugin_base_name(target_name, scope:)
+      model = get(name: target_name, scope: scope)
+      name, _version = plugin_name_version(model && model['plugin'])
+      name
+    rescue
+      nil
+    end
+
+    # Uninstall-only: remove a plugin's entire Version History repo. Called
+    # from the CLI uninstall path with the plugin instance name; upgrade reuses
+    # the repo and must never call this. No-op in Core builds (or whenever
+    # OPENC3_SCRIPT_VERSIONS_DIR is unset) since ScriptVersionStore is absent or
+    # disabled. Best-effort: a failure here must not abort the uninstall.
+    def self.destroy_script_versions(plugin_instance_name, scope:)
+      name, _version = plugin_name_version(plugin_instance_name)
+      return unless name
+      begin
+        require 'openc3-enterprise/utilities/script_version_store'
+      rescue LoadError
+        return
+      end
+      ::ScriptVersionStore.destroy_repo(scope: scope, plugin: name)
+    rescue => e
+      Logger.warn("destroy_script_versions failed for #{scope}/#{plugin_instance_name}: #{e.message}")
     end
 
     # Given target's modified file list

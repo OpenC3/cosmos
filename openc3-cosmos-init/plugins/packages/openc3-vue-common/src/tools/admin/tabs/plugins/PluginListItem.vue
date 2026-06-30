@@ -71,6 +71,22 @@
             @click="upgrade"
           />
           <v-list-item
+            v-if="scriptVersionsEnabled"
+            title="Export History"
+            prepend-icon="mdi-export"
+            :disabled="exporting || importing"
+            data-test="export-plugin-history"
+            @click="exportHistory"
+          />
+          <v-list-item
+            v-if="scriptVersionsEnabled"
+            title="Import History"
+            prepend-icon="mdi-import"
+            :disabled="exporting || importing"
+            data-test="import-plugin-history"
+            @click="pickImportFile"
+          />
+          <v-list-item
             :title="`View Microservices (${microserviceCount})`"
             prepend-icon="mdi-tab"
             data-test="view-microservices"
@@ -91,6 +107,15 @@
     v-model="showCard"
     v-bind="plugin"
     @trigger-uninstall="deletePrompt"
+  />
+  <input
+    v-if="scriptVersionsEnabled"
+    ref="importFileInput"
+    type="file"
+    accept=".bundle,application/octet-stream"
+    style="display: none"
+    :data-test="`import-plugin-history-file-${name}`"
+    @change="onImportFileSelected"
   />
 </template>
 
@@ -115,14 +140,26 @@ export default {
       type: Object,
       default: () => ({}),
     },
+    // Enterprise Version History backend availability (/openc3-api/info
+    // script_versions). Gates the Export/Import History actions.
+    scriptVersionsEnabled: Boolean,
   },
   emits: ['edit', 'delete', 'upgrade'],
   data() {
     return {
       showCard: false,
+      exporting: false,
+      importing: false,
     }
   },
   computed: {
+    // Version-stripped plugin base name (e.g. "openc3-cosmos-demo" from
+    // "openc3-cosmos-demo-7.2.0.gem__0") — the per-plugin Version History repo
+    // key the script-api routes expect. Matches PluginList.shownPlugins and
+    // the server-side TargetModel.plugin_base_name.
+    pluginBaseName: function () {
+      return this.name.split('__')[0].split('-').slice(0, -1).join('-')
+    },
     displayTitle: function () {
       if (this.title) {
         return this.title
@@ -187,6 +224,83 @@ export default {
         link.setAttribute('download', response.data.filename)
         link.click()
       })
+    },
+    async exportHistory() {
+      this.exporting = true
+      try {
+        const response = await Api.get(
+          `/script-api/scripts/plugin/${this.pluginBaseName}/history-export`,
+          {
+            responseType: 'blob',
+            headers: { Accept: 'application/octet-stream' },
+          },
+        )
+        // Suggested filename comes from the server's Content-Disposition; pull
+        // it back out so the download lands as `<scope>-<plugin>-history.bundle`
+        // rather than the route segment.
+        let suggested = `${this.pluginBaseName}-history.bundle`
+        const cd = response.headers?.['content-disposition']
+        if (cd) {
+          const match = /filename="?([^";]+)"?/.exec(cd)
+          if (match) suggested = match[1]
+        }
+        const url = URL.createObjectURL(response.data)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = suggested
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+        this.$notify.normal({
+          title: 'History Exported',
+          body: `Saved ${suggested}. Apply with: git clone ${suggested} local-repo`,
+        })
+      } catch ({ response }) {
+        this.$notify.caution({
+          title: 'Export Failed',
+          body: response?.data?.message || response?.statusText || 'unknown',
+        })
+      } finally {
+        this.exporting = false
+      }
+    },
+    pickImportFile() {
+      // Reset value so re-selecting the same file still fires @change.
+      if (this.$refs.importFileInput) {
+        this.$refs.importFileInput.value = ''
+        this.$refs.importFileInput.click()
+      }
+    },
+    async onImportFileSelected(event) {
+      const file = event.target.files && event.target.files[0]
+      if (!file) return
+      this.importing = true
+      try {
+        const form = new FormData()
+        form.append('bundle', file)
+        const response = await Api.post(
+          `/script-api/scripts/plugin/${this.pluginBaseName}/history-import`,
+          {
+            data: form,
+            headers: { Accept: 'application/json' },
+          },
+        )
+        const data = response.data || {}
+        this.$notify.normal({
+          title: data.reconciled
+            ? 'History Imported (Reconciled)'
+            : 'History Imported',
+          body: data.message || 'Imported.',
+        })
+      } catch ({ response }) {
+        this.$notify.caution({
+          title: 'Import Failed',
+          body: response?.data?.message || response?.statusText || 'unknown',
+        })
+      } finally {
+        this.importing = false
+      }
     },
     edit: function () {
       this.$emit('edit')

@@ -201,6 +201,78 @@ module OpenC3
       end
     end
 
+    describe "self.plugin_name_version" do
+      it "splits a plugin instance name into base name and version" do
+        expect(TargetModel.plugin_name_version("openc3-cosmos-demo-7.2.0.gem__0")).to eql(["openc3-cosmos-demo", "7.2.0"])
+      end
+
+      it "drops the .gem extension when no instance suffix is present" do
+        expect(TargetModel.plugin_name_version("openc3-cosmos-demo-7.2.0.gem")).to eql(["openc3-cosmos-demo", "7.2.0"])
+      end
+
+      it "returns nil for nil, empty, or version-less names" do
+        expect(TargetModel.plugin_name_version(nil)).to be_nil
+        expect(TargetModel.plugin_name_version("")).to be_nil
+        expect(TargetModel.plugin_name_version("singleword__0")).to be_nil
+      end
+    end
+
+    describe "self.plugin_base_name" do
+      it "returns the version-stripped base name for the target's plugin" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT",
+          plugin: "openc3-cosmos-demo-7.2.0.gem__0")
+        model.create
+        expect(TargetModel.plugin_base_name("TEST", scope: "DEFAULT")).to eql("openc3-cosmos-demo")
+      end
+
+      it "is stable across version upgrades (only the version segment changes)" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT",
+          plugin: "openc3-cosmos-demo-7.3.0.gem__0")
+        model.create
+        expect(TargetModel.plugin_base_name("TEST", scope: "DEFAULT")).to eql("openc3-cosmos-demo")
+      end
+
+      it "returns nil when the target does not exist" do
+        expect(TargetModel.plugin_base_name("NOPE", scope: "DEFAULT")).to be_nil
+      end
+
+      it "returns nil when the target has no plugin" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        expect(TargetModel.plugin_base_name("TEST", scope: "DEFAULT")).to be_nil
+      end
+    end
+
+    describe "self.destroy_script_versions" do
+      it "calls ScriptVersionStore.destroy_repo with the base name when the store is present" do
+        store = Class.new do
+          def self.calls; @calls ||= []; end
+          def self.destroy_repo(scope:, plugin:); calls << [scope, plugin]; end
+        end
+        stub_const("ScriptVersionStore", store)
+        # Skip the enterprise require; the constant is already defined.
+        allow(TargetModel).to receive(:require).with("openc3-enterprise/utilities/script_version_store").and_return(true)
+        TargetModel.destroy_script_versions("openc3-cosmos-demo-7.2.0.gem__0", scope: "DEFAULT")
+        expect(store.calls).to eql([["DEFAULT", "openc3-cosmos-demo"]])
+      end
+
+      it "is a no-op for a version-less plugin name" do
+        store = Class.new do
+          def self.called; @called ||= false; end
+          def self.destroy_repo(scope:, plugin:); @called = true; end
+        end
+        stub_const("ScriptVersionStore", store)
+        TargetModel.destroy_script_versions("singleword__0", scope: "DEFAULT")
+        expect(store.called).to be false
+      end
+
+      it "is a no-op when the enterprise store gem is absent" do
+        hide_const("ScriptVersionStore") if defined?(ScriptVersionStore)
+        allow(TargetModel).to receive(:require).with("openc3-enterprise/utilities/script_version_store").and_raise(LoadError)
+        expect { TargetModel.destroy_script_versions("openc3-cosmos-demo-7.2.0.gem__0", scope: "DEFAULT") }.not_to raise_error
+      end
+    end
+
     describe "plugin upgrade Version History helpers" do
       let(:model) { TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT") }
       let(:bucket) { double("bucket") }
