@@ -48,7 +48,7 @@ Then start claude and run the following to authenticate:
 `/mcp`
 
 ## Disabling the MCP Server
-
+<span class="badge badge--secondary since-right">Since 7.3.0</span>
 To disable the MCP Server entirely, set the following environment variable in the `.env` file at the root of your COSMOS Enterprise project and restart COSMOS:
 
 ```
