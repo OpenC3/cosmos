@@ -174,9 +174,12 @@ The following keywords must follow a INTERFACE keyword.
 ### MAP_TARGET
 **Maps a target name to an interface**
 
+See [Mapping Targets to Interfaces](/docs/configuration/interfaces#mapping-targets-to-interfaces) for more information.
+
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Target Name | Target name to map to this interface | True |
+| Enabled State | Initial enabled state of the target on this interface. Defaults to ENABLED.<br/><br/>Valid Values: <span class="values">ENABLED, DISABLED</span> | False |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -196,9 +199,12 @@ INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0
 ### MAP_CMD_TARGET
 <span class="badge badge--secondary since-right">Since 5.2.0</span>**Maps a target name to an interface for commands only**
 
+See [Mapping Targets to Interfaces](/docs/configuration/interfaces#mapping-targets-to-interfaces) for more information.
+
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Target Name | Command target name to map to this interface | True |
+| Enabled State | Initial enabled state of the command target on this interface. Defaults to ENABLED.<br/><br/>Valid Values: <span class="values">ENABLED, DISABLED</span> | False |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -218,9 +224,12 @@ INTERFACE CMD_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 
 ### MAP_TLM_TARGET
 <span class="badge badge--secondary since-right">Since 5.2.0</span>**Maps a target name to an interface for telemetry only**
 
+See [Mapping Targets to Interfaces](/docs/configuration/interfaces#mapping-targets-to-interfaces) for more information.
+
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Target Name | Telemetry target name to map to this interface | True |
+| Enabled State | Initial enabled state of the telemetry target on this interface. Defaults to ENABLED.<br/><br/>Valid Values: <span class="values">ENABLED, DISABLED</span> | False |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
