@@ -40,6 +40,34 @@ module OpenC3
         expect(out[0][3]).to eql "YELLOW_LOW"
       end
 
+      it "skips current_limits update when LIMITS_CHANGE event has stored: true" do
+        event = { type: :LIMITS_CHANGE, target_name: "TGT", packet_name: "PKT",
+            item_name: "ITEM", old_limits_state: :GREEN, new_limits_state: :RED_HIGH,
+            time_nsec: 123456789, message: "stored change", stored: true }
+        LimitsEventTopic.write(event, scope: "DEFAULT")
+
+        # Event is still written to the stream
+        events = LimitsEventTopic.read(scope: "DEFAULT")
+        expect(events.length).to eql 1
+        expect(events[0][1]['type']).to eql "LIMITS_CHANGE"
+        expect(events[0][1]['stored']).to eql true
+
+        # But current_limits hash is NOT updated
+        out = LimitsEventTopic.out_of_limits(scope: "DEFAULT")
+        expect(out.length).to eql 0
+      end
+
+      it "updates current_limits when LIMITS_CHANGE event does not have stored flag" do
+        event = { type: :LIMITS_CHANGE, target_name: "TGT", packet_name: "PKT",
+            item_name: "ITEM", old_limits_state: :GREEN, new_limits_state: :RED_HIGH,
+            time_nsec: 123456789, message: "realtime change" }
+        LimitsEventTopic.write(event, scope: "DEFAULT")
+
+        out = LimitsEventTopic.out_of_limits(scope: "DEFAULT")
+        expect(out.length).to eql 1
+        expect(out[0][3]).to eql "RED_HIGH"
+      end
+
       it "writes and reads LIMITS_SETTINGS events" do
         event = { type: :LIMITS_SETTINGS, limits_set: :DEFAULT, target_name: "TGT1", packet_name: "PKT1",
             item_name: "ITEM1", red_low: -50.0, yellow_low: -40.0, yellow_high: 40.0, red_high: 50.0,

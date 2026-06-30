@@ -271,6 +271,102 @@ module OpenC3
         lrt = @dm.instance_variable_get("@limits_response_thread")
         expect(lrt.instance_variable_get("@metric").data['limits_response_error_total']['value']).to eql(1)
       end
+
+      it "defaults stored_limits_mode to NORMAL" do
+        expect(@dm.instance_variable_get("@stored_limits_mode")).to eql('NORMAL')
+      end
+    end
+
+    describe "stored_limits_mode" do
+      before(:each) do
+        # Shut down the default microservice from the outer before(:each)
+        @dm.shutdown()
+        @dm_thread.join()
+      end
+
+      after(:each) do
+        @dm.shutdown()
+        @dm_thread.join()
+      end
+
+      def start_decom_with_mode(mode)
+        # Update the target model with the desired stored_limits_mode
+        target = TargetModel.get_model(name: 'INST', scope: 'DEFAULT')
+        target.stored_limits_mode = mode
+        target.create(update: true)
+        @dm = DecomMicroservice.new("DEFAULT__DECOM__INST_INT")
+        @dm_thread = Thread.new { @dm.run }
+        sleep 0.001
+      end
+
+      it "loads stored_limits_mode from TargetModel" do
+        start_decom_with_mode('DISABLE')
+        expect(@dm.instance_variable_get("@stored_limits_mode")).to eql('DISABLE')
+      end
+
+      it "in LOG mode, logs limits changes for stored packets but skips reactions" do
+        start_decom_with_mode('LOG')
+
+        class TrackingLimitsResponse < LimitsResponse
+          @@called = false
+          def self.called?; @@called; end
+          def self.reset!; @@called = false; end
+          def call(packet, item, old_limits_state)
+            @@called = true
+          end
+        end
+
+        TrackingLimitsResponse.reset!
+        packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+        temp1 = packet.get_item("TEMP1")
+        temp1.limits.response = TrackingLimitsResponse.new
+        packet.received_time = Time.now.sys
+        packet.stored = true
+
+        capture_io do |stdout|
+          TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
+          sleep 0.01
+          # Limits changes are still logged
+          expect(stdout.string).to include("INST HEALTH_STATUS TEMP1")
+          expect(stdout.string).to include("RED_LOW")
+        end
+
+        # Limits response should NOT be called
+        expect(TrackingLimitsResponse.called?).to be false
+
+        # Events should be published to the stream with stored flag
+        events = LimitsEventTopic.read(0, scope: "DEFAULT")
+        stored_events = events.select { |_id, e| e['stored'] == true }
+        expect(stored_events.length).to be > 0
+
+        # current_limits should NOT be updated (stored flag prevents it)
+        out = LimitsEventTopic.out_of_limits(scope: "DEFAULT")
+        expect(out.length).to eql 0
+      end
+
+      it "in DISABLE mode, skips limits checking entirely for stored packets" do
+        start_decom_with_mode('DISABLE')
+
+        packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+        packet.received_time = Time.now.sys
+        packet.stored = true
+
+        capture_io do |stdout|
+          TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
+          sleep 0.01
+          # No limits change messages should be logged for stored packets
+          expect(stdout.string).not_to include("RED_LOW")
+          expect(stdout.string).not_to include("YELLOW")
+        end
+
+        # No limits events should be generated
+        events = LimitsEventTopic.read(0, scope: "DEFAULT")
+        expect(events.length).to eql 0
+
+        # current_limits should NOT be updated
+        out = LimitsEventTopic.out_of_limits(scope: "DEFAULT")
+        expect(out.length).to eql 0
+      end
     end
   end
 end
