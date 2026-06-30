@@ -168,11 +168,7 @@ class Table < OpenC3::TargetFile
   # Private helper methods
 
   def self.get_definitions(scope, definition_filename, binary_filename = nil)
-    # Definitions are ERB-rendered and their GENERIC_*_CONVERSION blocks are
-    # evaluated as code by TableConfig, so they must come from the read-only
-    # plugin-installed targets/ tree only. Reading the user-writable
-    # targets_modified/ overlay here would be arbitrary code execution.
-    definition = body(scope, definition_filename, original: true)
+    definition = body(scope, definition_filename)
     # We might not find the definition, especially if the binary isn't named
     # like the convention. If not, and they pass us a binary filename,
     # then look through all the definitions and try to find a match.
@@ -197,7 +193,7 @@ class Table < OpenC3::TargetFile
         end
       end
       if found
-        definition = body(scope, definition_filename, original: true)
+        definition = body(scope, definition_filename)
       else
         return [nil, definition_filename, nil]
       end
@@ -212,7 +208,7 @@ class Table < OpenC3::TargetFile
       definition.split("\n").each do |line|
         if line.strip =~ /^TABLEFILE (.*)/
           filename = File.join(base_dir, $1.remove_quotes)
-          file = body(scope, filename, original: true)
+          file = body(scope, filename)
           raise NotFound, "Could not find file #{filename}" unless file
           File.write(File.join(temp_dir, File.basename(filename)), file)
         end
