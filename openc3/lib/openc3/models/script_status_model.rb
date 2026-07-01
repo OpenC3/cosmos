@@ -175,7 +175,7 @@ module OpenC3
 
     # Update the Redis hash at primary_key and set the field "name"
     # to the JSON generated via calling as_json
-    def create(update: false, force: false, queued: false, isoformat: true)
+    def create(update: false, force: false, queued: false)
       @updated_at = Time.now.utc.to_nsec_from_epoch
 
       if queued
@@ -198,9 +198,9 @@ module OpenC3
 
         # Move to completed
         @primary_key = "#{COMPLETED_PRIMARY_KEY}__#{@scope}"
-        create(update: false, force: force, queued: queued, isoformat: true)
+        create(update: false, force: force, queued: queued)
       else
-        create(update: true, force: force, queued: queued, isoformat: true)
+        create(update: true, force: force, queued: queued)
       end
     end
 
