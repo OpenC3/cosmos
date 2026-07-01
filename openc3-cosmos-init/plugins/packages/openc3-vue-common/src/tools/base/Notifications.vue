@@ -46,15 +46,30 @@
               <div v-bind="props">
                 <v-btn
                   class="ml-1"
+                  icon="mdi-check-all"
+                  variant="text"
+                  data-test="ack-all-notifications"
+                  aria-label="Acknowledge All Alerts"
+                  @click="ackAllAlerts"
+                />
+              </div>
+            </template>
+            <span> Acknowledge All Alerts </span>
+          </v-tooltip>
+          <v-tooltip :open-delay="600" location="top">
+            <template #activator="{ props }">
+              <div v-bind="props">
+                <v-btn
+                  class="ml-1"
                   icon="mdi-notification-clear-all "
                   variant="text"
                   data-test="clear-notifications"
-                  aria-label="Dismiss All Notifications"
+                  aria-label="Clear Read Notifications"
                   @click="clearNotifications"
                 />
               </div>
             </template>
-            <span> Dismiss All Notifications </span>
+            <span> Clear Read Notifications </span>
           </v-tooltip>
           <v-btn
             icon="astro:settings"
@@ -71,7 +86,7 @@
         <v-list
           v-else
           lines="two"
-          width="420"
+          width="520"
           max-height="80vh"
           class="overflow-y-auto"
           data-test="notification-list"
@@ -107,6 +122,19 @@
               <v-list-item-subtitle>
                 {{ formatShortDateTime(notification.time) }}
               </v-list-item-subtitle>
+              <template
+                v-if="notification.type === 'alert' && !notification.read"
+                #append
+              >
+                <v-btn
+                  size="small"
+                  variant="tonal"
+                  data-test="ack-notification"
+                  @click.stop="ackNotification(notification)"
+                >
+                  Ack
+                </v-btn>
+              </template>
             </v-list-item>
           </template>
         </v-list>
@@ -138,6 +166,18 @@
             <v-icon end> mdi-open-in-new </v-icon>
           </v-btn>
           <v-btn
+            v-if="
+              selectedNotification.type === 'alert' &&
+              !selectedNotification.read
+            "
+            color="primary"
+            variant="text"
+            data-test="ack-notification-dialog"
+            @click="ackNotification(selectedNotification)"
+          >
+            Acknowledge
+          </v-btn>
+          <v-btn
             color="primary"
             variant="text"
             @click="notificationDialog = false"
@@ -153,7 +193,22 @@
       <v-card>
         <v-card-title> Notification settings </v-card-title>
         <v-card-text>
-          <v-switch v-model="showToast" label="Show toasts" color="primary" />
+          <v-switch
+            v-model="showToast"
+            label="Show alerts"
+            color="primary"
+            hide-details
+            data-test="show-alerts"
+          />
+          <v-switch
+            v-model="showRedLimitToast"
+            label="Show red limit alerts"
+            color="primary"
+            class="ml-6"
+            messages="Alerts must be acknowledged to dismiss them"
+            :disabled="!showToast"
+            data-test="show-red-limit-alerts"
+          />
         </v-card-text>
         <v-divider />
         <v-card-actions>
@@ -206,11 +261,11 @@ export default {
       numScripts: 0,
       notifications: [],
       showNotificationPane: false,
-      toastNotification: {},
       notificationDialog: false,
       selectedNotification: {},
       settingsDialog: false,
       showToast: true,
+      showRedLimitToast: false,
     }
   },
   computed: {
@@ -275,10 +330,24 @@ export default {
     },
     showToast: function (val) {
       localStorage.notoast = !val
+      if (!val) {
+        // Disabling toasts removes any that are currently displayed
+        this.$notify?.dismissAll()
+      }
+    },
+    showRedLimitToast: function (val) {
+      localStorage.showRedLimitToast = val
+      if (!val) {
+        this.dismissLimitToasts('RED')
+      }
     },
   },
   created: function () {
-    this.showToast = localStorage.notoast === 'false'
+    // Toasts default on (opt-out), limit toasts default off (opt-in)
+    this.showToast = localStorage.notoast !== 'true'
+    this.showRedLimitToast = localStorage.showRedLimitToast === 'true'
+    // Acknowledging an alert from its toast also acks it in the menu
+    window.addEventListener('openc3-ack-alert', this.onAckAlert)
     this.subscribe()
     // TODO How does this get updated after initialization
     this.alerts = this.store.notifyHistory
@@ -288,6 +357,7 @@ export default {
     })
   },
   unmounted: function () {
+    window.removeEventListener('openc3-ack-alert', this.onAckAlert)
     if (this.subscription) {
       this.subscription.unsubscribe()
     }
@@ -301,9 +371,59 @@ export default {
     getStatus: function (level) {
       return UnknownToAstroStatus[level]
     },
+    // Alerts stay unread until explicitly acknowledged, so track acked alert
+    // msg_ids separately from the lastReadNotification high-water mark.
+    ackedAlertSet: function () {
+      try {
+        return new Set(JSON.parse(localStorage.ackedAlerts || '[]'))
+      } catch {
+        return new Set()
+      }
+    },
+    persistAckedAlert: function (msgId) {
+      const acked = this.ackedAlertSet()
+      acked.add(msgId)
+      let ids = Array.from(acked)
+      if (ids.length > NOTIFICATION_HISTORY_MAX_LENGTH) {
+        ids = ids.slice(ids.length - NOTIFICATION_HISTORY_MAX_LENGTH)
+      }
+      localStorage.ackedAlerts = JSON.stringify(ids)
+    },
+    ackNotification: function (notification) {
+      notification.read = true
+      this.persistAckedAlert(notification.msg_id)
+      // Also dismiss the matching toast if it's still showing
+      this.$notify?.dismiss((toast) => toast.msg_id === notification.msg_id)
+      this.notificationDialog = false
+    },
+    // Handles an alert acknowledged from its toast (fired in the Toast app
+    // instance) so the menu marks the same alert read.
+    onAckAlert: function (event) {
+      const msgId = event.detail?.msg_id
+      if (!msgId) {
+        return
+      }
+      const notification = this.notifications.find((n) => n.msg_id === msgId)
+      if (notification) {
+        notification.read = true
+      }
+      this.persistAckedAlert(msgId)
+    },
+    ackAllAlerts: function () {
+      this.notifications.forEach((notification) => {
+        if (notification.type === 'alert' && !notification.read) {
+          notification.read = true
+          this.persistAckedAlert(notification.msg_id)
+        }
+      })
+      this.$notify?.dismiss((toast) => toast.type === 'alert')
+    },
     markAllAsRead: function () {
       this.notifications.forEach((notification) => {
-        notification.read = true
+        // Alerts require an explicit acknowledgement to become read
+        if (notification.type !== 'alert') {
+          notification.read = true
+        }
         if (
           !localStorage.lastReadNotification ||
           localStorage.lastReadNotification < notification.msg_id
@@ -313,10 +433,13 @@ export default {
       })
     },
     clearNotifications: function () {
+      // Non-alert notifications become read on view, so mark them read now
+      // (markAllAsRead leaves alerts alone), then remove all read
+      // notifications, leaving only un-acknowledged alerts.
       this.markAllAsRead()
-      this.notifications = []
-      localStorage.notificationStreamOffset = localStorage.lastReadNotification
-      this.showNotificationPane = false
+      this.notifications = this.notifications.filter(
+        (notification) => !notification.read,
+      )
     },
     toggleNotificationPane: function () {
       this.showNotificationPane = !this.showNotificationPane
@@ -324,13 +447,16 @@ export default {
     toggleSettingsDialog: function () {
       this.settingsDialog = !this.settingsDialog
     },
-    openDialog: function (notification, clearToast = false) {
-      notification.read = true
-      if (
-        !localStorage.lastReadNotification ||
-        localStorage.lastReadNotification < notification.msg_id
-      ) {
-        localStorage.lastReadNotification = notification.msg_id
+    openDialog: function (notification) {
+      // Alerts stay unread until acknowledged from the dialog
+      if (notification.type !== 'alert') {
+        notification.read = true
+        if (
+          !localStorage.lastReadNotification ||
+          localStorage.lastReadNotification < notification.msg_id
+        ) {
+          localStorage.lastReadNotification = notification.msg_id
+        }
       }
       this.selectedNotification = notification
       this.notificationDialog = true
@@ -364,6 +490,25 @@ export default {
           this.scriptSubscription = subscription
         })
     },
+    dismissLimitToasts: function (prefix) {
+      this.$notify?.dismiss(
+        (notification) =>
+          notification.limits_state &&
+          notification.limits_state.startsWith(prefix),
+      )
+    },
+    shouldToast: function (notification) {
+      if (!this.showToast) {
+        return false // Master toggle gates all toasts
+      }
+      // Red limit alerts carry a RED limits_state (set by the decom
+      // microservice) and are gated by their own opt-in toggle.
+      const state = notification.limits_state
+      if (state && state.startsWith('RED')) {
+        return this.showRedLimitToast
+      }
+      return true
+    },
     receiveMessage: function (parsed) {
       this.cable.recordPing()
 
@@ -385,35 +530,39 @@ export default {
         })
       }
 
-      let foundToast = false
+      const alertToasts = []
+      const acked = this.ackedAlertSet()
       parsed.forEach((notification) => {
-        notification.read =
-          notification.msg_id <= localStorage.lastReadNotification
+        // Alerts are read only once acknowledged; others use the read marker
+        if (notification.type === 'alert') {
+          notification.read = acked.has(notification.msg_id)
+        } else {
+          notification.read =
+            notification.msg_id <= localStorage.lastReadNotification
+        }
         notification.level = notification.level || 'INFO'
-        if (
-          !notification.read && // Don't toast read notifications
-          ['FATAL', 'ERROR', 'WARN'].includes(notification.level) // Toast for these statuses
-        ) {
-          foundToast = true
-          this.toastNotification = notification
+        if (notification.read) {
+          return // Don't toast read notifications
+        }
+        // Only alerts toast (red limits gated by their toggle). Everything
+        // else, including yellow limits, only appears in the menu.
+        if (notification.type === 'alert' && this.shouldToast(notification)) {
+          // Alerts require acknowledgement regardless of level. Each one is
+          // toasted individually so the user must dismiss (ack) all of them.
+          alertToasts.push(notification)
         }
       })
 
-      if (this.showToast && foundToast) {
-        let duration = 5000
-        if (['FATAL', 'ERROR'].includes(this.toastNotification.level)) {
-          duration = null
-        }
-
-        // Notify takes a minute to be ready on app load
-        if (this.$notify) {
-          this.$notify[this.toastNotification.level]({
-            ...this.toastNotification,
-            type: 'notification',
-            duration: duration,
+      // Notify takes a minute to be ready on app load
+      if (this.$notify) {
+        alertToasts.forEach((notification) => {
+          this.$notify[notification.level]({
+            ...notification,
+            type: 'alert',
+            duration: null, // Persist until the user acknowledges the alert
             saveToHistory: false,
           })
-        }
+        })
       }
 
       if (
