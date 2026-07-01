@@ -175,15 +175,15 @@ TARGET:
       description:
         Sets the limits handling policy for packets where the stored flag is true
         (e.g., packets from file interfaces or historical data replay).
-        NORMAL processes limits normally including logging and reactions.
+        PROCESS processes limits normally including logging and reactions.
         LOG evaluates limits and logs state changes but does not trigger limits reactions
         or update the current limits state used by the API.
         DISABLE skips limits processing entirely for stored packets.
-      since: 6.3.0
+      since: 7.3.0
       parameters:
         - name: Mode
           required: true
-          description: "NORMAL (default), LOG, or DISABLE"
-          values: ^(NORMAL|LOG|DISABLE)$
+          description: "PROCESS (default), LOG, or DISABLE"
+          values: ^(PROCESS|LOG|DISABLE)$
       example: |
         STORED_LIMITS_MODE DISABLE

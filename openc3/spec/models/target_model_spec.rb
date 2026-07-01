@@ -641,18 +641,18 @@ module OpenC3
         tf.unlink
       end
 
-      it "parses STORED_LIMITS_MODE NORMAL" do
+      it "parses STORED_LIMITS_MODE PROCESS" do
         model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
         model.create
         parser = ConfigParser.new
         tf = Tempfile.new
-        tf.puts "STORED_LIMITS_MODE NORMAL"
+        tf.puts "STORED_LIMITS_MODE PROCESS"
         tf.close
         parser.parse_file(tf.path) do |keyword, params|
           model.handle_config(parser, keyword, params)
         end
-        expect(model.stored_limits_mode).to eql 'NORMAL'
-        expect(model.as_json()['stored_limits_mode']).to eql 'NORMAL'
+        expect(model.stored_limits_mode).to eql 'PROCESS'
+        expect(model.as_json()['stored_limits_mode']).to eql 'PROCESS'
         tf.unlink
       end
 
@@ -711,14 +711,14 @@ module OpenC3
           parser.parse_file(tf.path) do |keyword, params|
             model.handle_config(parser, keyword, params)
           end
-        end.to raise_error(ConfigParser::Error, /STORED_LIMITS_MODE must be NORMAL, LOG, or DISABLE but is INVALID/)
+        end.to raise_error(ConfigParser::Error, /STORED_LIMITS_MODE must be PROCESS, LOG, or DISABLE but is INVALID/)
         tf.unlink
       end
 
-      it "defaults STORED_LIMITS_MODE to NORMAL" do
+      it "defaults STORED_LIMITS_MODE to PROCESS" do
         model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
-        expect(model.stored_limits_mode).to eql 'NORMAL'
-        expect(model.as_json()['stored_limits_mode']).to eql 'NORMAL'
+        expect(model.stored_limits_mode).to eql 'PROCESS'
+        expect(model.as_json()['stored_limits_mode']).to eql 'PROCESS'
       end
 
     end

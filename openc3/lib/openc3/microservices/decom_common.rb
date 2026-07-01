@@ -36,7 +36,7 @@ module OpenC3
     # @param check_limits [Boolean] When false, skips the Packet#check_limits call.
     #   Reingest passes false so historical data does not re-fire limits events.
     # @param stored_limits_mode [String] Controls limits handling for stored packets.
-    #   'NORMAL' (default) processes limits normally.
+    #   'PROCESS' (default) processes limits normally.
     #   'LOG' still evaluates limits (callback handles suppressing reactions).
     #   'DISABLE' skips limits evaluation entirely for stored packets and omits
     #   limits states from the decommutated output.
@@ -46,7 +46,7 @@ module OpenC3
     #   bump its decom_error_total metric.
     # @return [Integer] Number of (sub)packets published.
     def decom_and_publish(packet, scope:, target_names:, logger:, name:,
-                          check_limits: true, stored_limits_mode: 'NORMAL',
+                          check_limits: true, stored_limits_mode: 'PROCESS',
                           metric: nil, error_callback: nil)
       start = Process.clock_gettime(Process::CLOCK_MONOTONIC) if metric
       published = 0

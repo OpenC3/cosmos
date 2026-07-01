@@ -272,8 +272,8 @@ module OpenC3
         expect(lrt.instance_variable_get("@metric").data['limits_response_error_total']['value']).to eql(1)
       end
 
-      it "defaults stored_limits_mode to NORMAL" do
-        expect(@dm.instance_variable_get("@stored_limits_mode")).to eql('NORMAL')
+      it "defaults stored_limits_mode to PROCESS" do
+        expect(@dm.instance_variable_get("@stored_limits_mode")).to eql('PROCESS')
       end
     end
 

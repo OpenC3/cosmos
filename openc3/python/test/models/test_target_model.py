@@ -59,12 +59,12 @@ class TestTargetModel(unittest.TestCase):
         self.assertIn("TEST", all_targs.keys())
         self.assertIn("SPEC", all_targs.keys())
 
-    def test_stored_limits_mode_defaults_to_normal(self):
+    def test_stored_limits_mode_defaults_to_process(self):
         model = TargetModel(folder_name="TEST", name="TEST", scope="DEFAULT")
-        self.assertEqual(model.stored_limits_mode, "NORMAL")
+        self.assertEqual(model.stored_limits_mode, "PROCESS")
 
     def test_stored_limits_mode_accepts_valid_modes(self):
-        for mode in ("NORMAL", "LOG", "DISABLE"):
+        for mode in ("PROCESS", "LOG", "DISABLE"):
             model = TargetModel(folder_name="TEST", name="TEST", stored_limits_mode=mode, scope="DEFAULT")
             self.assertEqual(model.stored_limits_mode, mode)
 
@@ -74,15 +74,15 @@ class TestTargetModel(unittest.TestCase):
         model = TargetModel(folder_name="TEST", name="TEST", stored_limits_mode="disable", scope="DEFAULT")
         self.assertEqual(model.stored_limits_mode, "DISABLE")
 
-    def test_stored_limits_mode_falls_back_to_normal_for_invalid(self):
+    def test_stored_limits_mode_falls_back_to_process_for_invalid(self):
         model = TargetModel(folder_name="TEST", name="TEST", stored_limits_mode="INVALID", scope="DEFAULT")
-        self.assertEqual(model.stored_limits_mode, "NORMAL")
+        self.assertEqual(model.stored_limits_mode, "PROCESS")
         model = TargetModel(folder_name="TEST", name="TEST", stored_limits_mode="", scope="DEFAULT")
-        self.assertEqual(model.stored_limits_mode, "NORMAL")
+        self.assertEqual(model.stored_limits_mode, "PROCESS")
 
     def test_stored_limits_mode_handles_none(self):
         model = TargetModel(folder_name="TEST", name="TEST", stored_limits_mode=None, scope="DEFAULT")
-        self.assertEqual(model.stored_limits_mode, "NORMAL")
+        self.assertEqual(model.stored_limits_mode, "PROCESS")
 
     def test_stored_limits_mode_round_trips_through_redis(self):
         # Simulate what Ruby's as_json stores in Redis (Python TargetModel doesn't

@@ -135,7 +135,7 @@ module OpenC3
       end
 
       context 'with stored_limits_mode' do
-        it 'checks limits normally for stored packets when mode is NORMAL' do
+        it 'checks limits normally for stored packets when mode is PROCESS' do
           packet = build_packet
           packet.stored = true
           allow(TelemetryDecomTopic).to receive(:write_packet)
@@ -150,7 +150,7 @@ module OpenC3
             logger: Logger.new,
             name: 'TEST',
             check_limits: true,
-            stored_limits_mode: 'NORMAL',
+            stored_limits_mode: 'PROCESS',
           )
         end
 
@@ -245,7 +245,7 @@ module OpenC3
           )
         end
 
-        it 'passes include_limits_states: true to write_packet when mode is NORMAL' do
+        it 'passes include_limits_states: true to write_packet when mode is PROCESS' do
           packet = build_packet
           packet.stored = true
           expect(TelemetryDecomTopic).to receive(:write_packet)
@@ -258,7 +258,7 @@ module OpenC3
             logger: Logger.new,
             name: 'TEST',
             check_limits: true,
-            stored_limits_mode: 'NORMAL',
+            stored_limits_mode: 'PROCESS',
           )
         end
       end

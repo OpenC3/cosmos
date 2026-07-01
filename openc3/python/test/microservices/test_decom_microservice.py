@@ -380,8 +380,8 @@ class TestDecomMicroservice(unittest.TestCase):
             1,
         )
 
-    def test_defaults_stored_limits_mode_to_normal(self):
-        self.assertEqual(self.dm.stored_limits_mode, "NORMAL")
+    def test_defaults_stored_limits_mode_to_process(self):
+        self.assertEqual(self.dm.stored_limits_mode, "PROCESS")
 
 
 class TestDecomMicroserviceStoredLimitsMode(unittest.TestCase):

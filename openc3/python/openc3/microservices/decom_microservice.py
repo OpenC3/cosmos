@@ -117,7 +117,7 @@ class DecomMicroservice(Microservice):
         System.telemetry.set_limits_change_callback(self.limits_change_callback)
         LimitsEventTopic.sync_system(scope=self.scope)
         target_model = TargetModel.get_model(name=self.target_names[0], scope=self.scope)
-        self.stored_limits_mode = target_model.stored_limits_mode if target_model else 'NORMAL'
+        self.stored_limits_mode = target_model.stored_limits_mode if target_model else 'PROCESS'
         self.error_count = 0
         self.metric.set(name="decom_total", value=self.count, type="counter")
         self.metric.set(name="decom_error_total", value=self.error_count, type="counter")

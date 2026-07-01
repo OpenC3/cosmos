@@ -101,7 +101,7 @@ module OpenC3
       System.telemetry.limits_change_callback = method(:limits_change_callback)
       LimitsEventTopic.sync_system(scope: @scope)
       target_model = TargetModel.get_model(name: @target_names[0], scope: @scope)
-      @stored_limits_mode = target_model ? (target_model.stored_limits_mode || 'NORMAL') : 'NORMAL'
+      @stored_limits_mode = target_model ? (target_model.stored_limits_mode || 'PROCESS') : 'PROCESS'
       @error_count = 0
       @metric.set(name: 'decom_total', value: @count, type: 'counter')
       @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')

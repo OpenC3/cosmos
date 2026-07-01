@@ -385,7 +385,7 @@ module OpenC3
       ignored_parameters: [],
       ignored_items: [],
       limits_groups: [],
-      stored_limits_mode: 'NORMAL',
+      stored_limits_mode: 'PROCESS',
       cmd_tlm_files: [],
       id: nil,
       updated_at: nil,
@@ -415,7 +415,7 @@ module OpenC3
       @ignored_items = ignored_items
       @limits_groups = limits_groups
       @stored_limits_mode = stored_limits_mode.to_s.upcase
-      @stored_limits_mode = 'NORMAL' unless %w(NORMAL LOG DISABLE).include?(@stored_limits_mode)
+      @stored_limits_mode = 'PROCESS' unless %w(PROCESS LOG DISABLE).include?(@stored_limits_mode)
       @cmd_tlm_files = cmd_tlm_files
       @id = id
       @cmd_buffer_depth = cmd_buffer_depth
@@ -563,10 +563,10 @@ module OpenC3
         @db_shard = Integer(parameters[0])
 
       when 'STORED_LIMITS_MODE'
-        parser.verify_num_parameters(1, 1, "#{keyword} <NORMAL, LOG, or DISABLE>")
+        parser.verify_num_parameters(1, 1, "#{keyword} <PROCESS, LOG, or DISABLE>")
         mode = parameters[0].to_s.upcase
-        unless %w(NORMAL LOG DISABLE).include?(mode)
-          raise ConfigParser::Error.new(parser, "STORED_LIMITS_MODE must be one of NORMAL, LOG, or DISABLE")
+        unless %w(PROCESS LOG DISABLE).include?(mode)
+          raise ConfigParser::Error.new(parser, "STORED_LIMITS_MODE must be one of PROCESS, LOG, or DISABLE")
         end
         @stored_limits_mode = mode
 
