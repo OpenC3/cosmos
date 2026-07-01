@@ -13,6 +13,7 @@ import unittest
 from unittest.mock import *
 
 from openc3.accessors.binary_accessor import BinaryAccessor
+from openc3.packets.packet import Packet
 from test.test_helper import *
 
 
@@ -1112,3 +1113,21 @@ class TestBinaryAccessorReadItemUndersizedBuffer(unittest.TestCase):
         buffer = bytearray(b"\x00\x01\x02\x03")  # 4 bytes = 32 bits
         item = StructureItem("TEST", 16, 32, "UINT", "BIG_ENDIAN")
         self.assertIsNone(BinaryAccessor.class_read_item(item, buffer))
+
+    def test_raises_a_clear_error_when_the_length_item_is_none_in_an_undersized_packet(self):
+        packet = Packet()
+        packet.append_item("item1_length", 32, "UINT")
+        item1 = packet.append_item("item1", 8, "UINT", 0)
+        item1.variable_bit_size = {
+            "length_item_name": "item1_length",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
+        # Buffer is too short to contain the length item, so reading it returns None.
+        # Setting the buffer logs and swallows the error (matching Ruby); the
+        # descriptive error surfaces at read time rather than a TypeError on None.
+        packet.short_buffer_allowed = True
+        packet.buffer = b"\x00\x00"
+        self.assertIsNone(packet.read("item1_length"))
+        with self.assertRaisesRegex(RuntimeError, "Length value item1_length for item ITEM1 is None"):
+            packet.read("item1")

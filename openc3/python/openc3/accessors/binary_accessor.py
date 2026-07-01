@@ -100,6 +100,10 @@ class BinaryAccessor(Accessor):
 
     def handle_read_variable_bit_size(self, item, _buffer):
         length_value = self.packet.read(item.variable_bit_size["length_item_name"], "CONVERTED")
+        # length_value can be None when reading an undersized packet where the length
+        # item falls outside the buffer bounds
+        if length_value is None:
+            raise RuntimeError(f"Length value {item.variable_bit_size['length_item_name']} for item {item.name} is None")
         if item.array_size is not None:
             item.array_size = (length_value * item.variable_bit_size["length_bits_per_count"]) + item.variable_bit_size[
                 "length_value_bit_offset"

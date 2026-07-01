@@ -287,7 +287,10 @@ class Packet(Structure):
             # Catch and re-raise the TypeError thrown by internal_buffer_equals
             except TypeError as error:
                 raise error
-            except ValueError:
+            # RuntimeError is raised when a variable_bit_size length item falls
+            # outside an undersized buffer. Swallow it here (matching Ruby) so the
+            # error surfaces at read time rather than on buffer assignment.
+            except (ValueError, RuntimeError):
                 Logger.error(
                     f"{self.target_name} {self.packet_name} buffer ({type(buffer)}) received with actual packet length of {len(buffer)} but defined length of {self.defined_length}"
                 )
