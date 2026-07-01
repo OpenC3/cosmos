@@ -370,9 +370,10 @@ def set_limits_set(limits_set, scope=OPENC3_SCOPE):
     )
 
 
-# Deletes a limits set and removes it from all telemetry items. The DEFAULT
-# limits set and the currently active limits set cannot be deleted. Use
-# set_limits_set to change the active set before deleting it.
+# Deletes a limits set. The DEFAULT limits set and the currently active
+# limits set cannot be deleted. Use set_limits_set to change the active set
+# before deleting it. Note that the limits set is not removed from the
+# TargetModel packet definitions; that is cleaned up on the next plugin install.
 #
 # @param limits_set [String] The name of the limits set to delete
 def delete_limits_set(limits_set, scope=OPENC3_SCOPE):
@@ -386,17 +387,6 @@ def delete_limits_set(limits_set, scope=OPENC3_SCOPE):
         )
     if limits_set not in LimitsEventTopic.sets(scope=scope):
         raise RuntimeError(f"Limits set '{limits_set}' does not exist")
-
-    # Remove the limits set from every telemetry item definition
-    for target_name in TargetModel.names(scope=scope):
-        for packet in TargetModel.packets(target_name, type="TLM", scope=scope):
-            modified = False
-            for item in packet["items"]:
-                if item["limits"] and limits_set in item["limits"]:
-                    del item["limits"][limits_set]
-                    modified = True
-            if modified:
-                TargetModel.set_packet(target_name, packet["packet_name"], packet, scope=scope)
 
     # Remove the limits set from Redis (limits_sets and current_limits_settings)
     LimitsEventTopic.delete_set(limits_set, scope=scope)

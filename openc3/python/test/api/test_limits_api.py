@@ -272,22 +272,28 @@ class TestLimitsApi(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Limits set 'NOPE' does not exist"):
             delete_limits_set("NOPE")
 
-    def test_delete_limits_set_removes_set_from_all_items(self):
+    def test_delete_limits_set_removes_set_from_the_list_of_sets(self):
         self.assertEqual(get_limits_sets(), ["DEFAULT", "TVAC"])
-        self.assertIn("TVAC", get_limits("INST", "HEALTH_STATUS", "TEMP1").keys())
 
         delete_limits_set("TVAC")
 
         self.assertEqual(get_limits_sets(), ["DEFAULT"])
-        self.assertNotIn("TVAC", get_limits("INST", "HEALTH_STATUS", "TEMP1").keys())
-        self.assertIn("DEFAULT", get_limits("INST", "HEALTH_STATUS", "TEMP1").keys())
 
-    def test_delete_limits_set_created_with_set_limits(self):
+    def test_delete_limits_set_cleans_current_settings_but_leaves_target_model(self):
         set_limits("INST", "HEALTH_STATUS", "TEMP1", 0.0, 10.0, 20.0, 30.0)  # creates CUSTOM
         self.assertIn("CUSTOM", get_limits_sets())
+        settings = Store.hget("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1")
+        self.assertIn("CUSTOM", settings.decode())
+
         delete_limits_set("CUSTOM")
+
         self.assertNotIn("CUSTOM", get_limits_sets())
-        self.assertNotIn("CUSTOM", get_limits("INST", "HEALTH_STATUS", "TEMP1").keys())
+        # current_limits_settings is cleaned up
+        settings = Store.hget("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1")
+        self.assertNotIn("CUSTOM", settings.decode())
+        # The TargetModel packet definition is intentionally left alone
+        # (cleaned up on the next plugin install)
+        self.assertIn("CUSTOM", get_limits("INST", "HEALTH_STATUS", "TEMP1").keys())
 
     def test_get_limits_events_returns_an_offset_and_limits_event_hash(self):
         # Load the events topic with two events ... only the last should be returned

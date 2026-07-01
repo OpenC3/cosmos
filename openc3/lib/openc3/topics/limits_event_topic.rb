@@ -174,10 +174,10 @@ module OpenC3
     end
 
     # Removes a limits set from the limits_sets hash and from the
-    # current_limits_settings of every item. Note that the items themselves
-    # (in the TargetModel packet definitions) are cleaned up in the
-    # delete_limits_set API. Running microservices will continue to hold the
-    # set in memory until they restart and resync from current_limits_settings.
+    # current_limits_settings of every item. Note that the set is not removed
+    # from the TargetModel packet definitions; that is cleaned up on the next
+    # plugin install. Running microservices will continue to hold the set in
+    # memory until they restart and resync from current_limits_settings.
     def self.delete_set(set_name, scope:)
       set_name = set_name.to_s
       limits_settings = Store.hgetall("#{scope}__current_limits_settings")
