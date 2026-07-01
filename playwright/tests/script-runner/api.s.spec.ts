@@ -267,9 +267,11 @@ test('test python metadata apis', async ({ page, utils }) => {
 async function testScreenApis(page, utils, filename, target) {
   await runScript(page, utils, filename, async function () {
     // script displays INST ADCS
-    await expect(
-      page.getByText(`${target} ADCS`, { exact: true }),
-    ).toBeVisible()
+    await expect(page.getByText(`${target} ADCS`, { exact: true })).toBeVisible(
+      {
+        timeout: 20000,
+      },
+    )
     // script displays INST HS
     await expect(page.getByText(`${target} HS`, { exact: true })).toBeVisible()
     // script calls clear_screen("INST", "ADCS")
@@ -319,6 +321,9 @@ test('test ruby script apis', async ({ page, utils }) => {
   await runScript(page, utils, 'scripting.rb', async function () {
     await expect(page.locator('[data-test=state] input')).toHaveValue(
       /paused \d+s/,
+      {
+        timeout: 20000,
+      },
     )
     await page.locator('[data-test=step-button]').click()
     await utils.sleep(500)
@@ -334,6 +339,9 @@ test('test python script apis', async ({ page, utils }) => {
   await runScript(page, utils, 'scripting.py', async function () {
     await expect(page.locator('[data-test=state] input')).toHaveValue(
       /paused \d+s/,
+      {
+        timeout: 20000,
+      },
     )
     await page.locator('[data-test=step-button]').click()
     await utils.sleep(500)

@@ -349,6 +349,8 @@ module OpenC3
             cycle_tlm_item(packet, 'temp1', -15.0, 15.0, 5.0)
             cycle_tlm_item(packet, 'temp2', -50.0, 25.0, -1.0)
             cycle_tlm_item(packet, 'temp3', 0.0, 50.0, 2.0)
+            cycle_tlm_item(packet, 'temp4', 0.0, 20.0, -0.1)
+            cycle_tlm_item(packet, 'bracket[0]', 0, 100, 10)
           else
             cycle_tlm_item(packet, 'temp1', -95.0, 95.0, 5.0)
             if @bad_temp2
@@ -367,9 +369,9 @@ module OpenC3
               @bad_temp2 = true
             end
             cycle_tlm_item(packet, 'temp3', -30.0, 80.0, 2.0)
+            cycle_tlm_item(packet, 'temp4', 0.0, 20.0, -0.1)
+            cycle_tlm_item(packet, 'bracket[0]', 0, 255, 10)
           end
-          cycle_tlm_item(packet, 'temp4', 0.0, 20.0, -0.1)
-          cycle_tlm_item(packet, 'bracket[0]', 0, 255, 10)
 
           packet.timesec = time.tv_sec - @time_offset
           packet.timeus  = time.tv_usec

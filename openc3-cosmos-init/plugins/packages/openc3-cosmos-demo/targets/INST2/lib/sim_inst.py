@@ -360,6 +360,8 @@ class SimInst(SimulatedTarget):
                         self.cycle_tlm_item(packet, "temp1", -15.0, 15.0, 5.0)
                         self.cycle_tlm_item(packet, "temp2", -50.0, 25.0, -1.0)
                         self.cycle_tlm_item(packet, "temp3", 0.0, 50.0, 2.0)
+                        self.cycle_tlm_item(packet, "temp4", 0.0, 20.0, -0.1)
+                        self.cycle_tlm_item(packet, "bracket[0]", 0, 100, 10)
                     else:
                         self.cycle_tlm_item(packet, "temp1", -95.0, 95.0, 5.0)
                         if self.bad_temp2:
@@ -378,8 +380,8 @@ class SimInst(SimulatedTarget):
                             packet.write("temp2", float("inf"))
                             self.bad_temp2 = True
                         self.cycle_tlm_item(packet, "temp3", -30.0, 80.0, 2.0)
-                    self.cycle_tlm_item(packet, "temp4", 0.0, 20.0, -0.1)
-                    self.cycle_tlm_item(packet, "bracket[0]", 0, 255, 10)
+                        self.cycle_tlm_item(packet, "temp4", 0.0, 20.0, -0.1)
+                        self.cycle_tlm_item(packet, "bracket[0]", 0, 255, 10)
 
                     packet.write("timesec", int(time - self.time_offset))
                     packet.write("timeus", int((time % 1) * 1000000))
