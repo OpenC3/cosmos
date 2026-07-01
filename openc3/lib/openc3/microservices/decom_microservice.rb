@@ -256,11 +256,11 @@ module OpenC3
       event = { type: :LIMITS_CHANGE, target_name: packet.target_name, packet_name: packet.packet_name,
                 item_name: item.name, old_limits_state: old_limits_state.to_s, new_limits_state: item.limits.state.to_s,
                 time_nsec: packet_time.to_nsec_from_epoch, message: message.to_s }
-      stored_log_mode = packet.stored && @stored_limits_mode == 'LOG'
-      event[:stored] = true if stored_log_mode
+      suppress_stored = packet.stored && @stored_limits_mode != 'PROCESS'
+      event[:stored] = true if suppress_stored
       LimitsEventTopic.write(event, scope: @scope)
 
-      if item.limits.response && !stored_log_mode
+      if item.limits.response && !suppress_stored
         copied_packet = packet.deep_copy
         copied_item = packet.items[item.name]
         @limits_response_queue << [copied_packet, copied_item, old_limits_state]

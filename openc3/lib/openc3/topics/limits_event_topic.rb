@@ -40,9 +40,10 @@ module OpenC3
       when :LIMITS_CHANGE
         # The current_limits hash keeps only the current limits state of items
         # It is used by the API to determine the overall limits state.
-        # When the event originates from a stored packet in LOG mode, skip updating
-        # current_limits so that historical data does not affect the real-time
-        # overall limits state or the out_of_limits API response.
+        # When the event originates from a stored packet in a non-PROCESS mode
+        # (LOG or DISABLE), skip updating current_limits so that historical
+        # data does not affect the real-time overall limits state or the
+        # out_of_limits API response.
         unless event[:stored]
           field = "#{event[:target_name]}__#{event[:packet_name]}__#{event[:item_name]}"
           Store.hset("#{scope}__current_limits", field, event[:new_limits_state])

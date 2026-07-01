@@ -353,13 +353,13 @@ class DecomMicroservice(Microservice):
             "time_nsec": to_nsec_from_epoch(packet_time),
             "message": str(message),
         }
-        stored_log_mode = packet.stored and self.stored_limits_mode == 'LOG'
-        if stored_log_mode:
+        suppress_stored = packet.stored and self.stored_limits_mode != 'PROCESS'
+        if suppress_stored:
             event["stored"] = True
         LimitsEventTopic.write(event, scope=self.scope)
 
         if item.limits.response is not None:
-            if not stored_log_mode:
+            if not suppress_stored:
                 copied_packet = packet.deep_copy()
                 copied_item = packet.items[item.name]
                 self.limits_response_queue.put([copied_packet, copied_item, old_limits_state])
