@@ -311,7 +311,7 @@ module OpenC3
           @@called = false
           def self.called?; @@called; end
           def self.reset!; @@called = false; end
-          def call(packet, item, old_limits_state)
+          def call(_packet, _item, _old_limits_state)
             @@called = true
           end
         end

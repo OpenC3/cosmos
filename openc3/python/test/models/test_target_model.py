@@ -115,13 +115,17 @@ class TestTargetModelPackets(unittest.TestCase):
         TargetModel.set_packet("INST", "ADCS", pkts[1], type="TLM", scope="DEFAULT")
         with self.assertRaisesRegex(RuntimeError, "Unknown type OTHER for INST ADCS"):
             TargetModel.set_packet("INST", "ADCS", pkts[0], type="OTHER", scope="DEFAULT")
+        raised = False
         for stdout in capture_io():
-            with self.assertRaises(TypeError):
+            try:
                 TargetModel.set_packet("INST", "HEALTH_STATUS", set("data"), type="TLM", scope="DEFAULT")
+            except TypeError:
+                raised = True
             self.assertIn(
                 "Invalid text present in INST HEALTH_STATUS tlm packet",
                 stdout.getvalue(),
             )
+        self.assertTrue(raised, "Expected TypeError was not raised")
 
     def test_calls_limits_groups(self):
         lgs = TargetModel.limits_groups(scope="DEFAULT")

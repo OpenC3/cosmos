@@ -117,7 +117,7 @@ class DecomMicroservice(Microservice):
         System.telemetry.set_limits_change_callback(self.limits_change_callback)
         LimitsEventTopic.sync_system(scope=self.scope)
         target_model = TargetModel.get_model(name=self.target_names[0], scope=self.scope)
-        self.stored_limits_mode = target_model.stored_limits_mode if target_model else 'PROCESS'
+        self.stored_limits_mode = target_model.stored_limits_mode if target_model else "PROCESS"
         self.error_count = 0
         self.metric.set(name="decom_total", value=self.count, type="counter")
         self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
@@ -224,7 +224,7 @@ class DecomMicroservice(Microservice):
             # Process all the limits and call the limits_change_callback (as necessary)
             # This must be before the full decom so that limits states are available
             #############################################################################
-            disable_stored_limits = packet_or_subpacket.stored and self.stored_limits_mode == 'DISABLE'
+            disable_stored_limits = packet_or_subpacket.stored and self.stored_limits_mode == "DISABLE"
             if not disable_stored_limits:
                 packet_or_subpacket.check_limits(System.limits_set())
 
@@ -353,16 +353,15 @@ class DecomMicroservice(Microservice):
             "time_nsec": to_nsec_from_epoch(packet_time),
             "message": str(message),
         }
-        suppress_stored = packet.stored and self.stored_limits_mode != 'PROCESS'
+        suppress_stored = packet.stored and self.stored_limits_mode != "PROCESS"
         if suppress_stored:
             event["stored"] = True
         LimitsEventTopic.write(event, scope=self.scope)
 
-        if item.limits.response is not None:
-            if not suppress_stored:
-                copied_packet = packet.deep_copy()
-                copied_item = packet.items[item.name]
-                self.limits_response_queue.put([copied_packet, copied_item, old_limits_state])
+        if item.limits.response is not None and not suppress_stored:
+            copied_packet = packet.deep_copy()
+            copied_item = packet.items[item.name]
+            self.limits_response_queue.put([copied_packet, copied_item, old_limits_state])
 
 
 if os.path.basename(__file__) == os.path.basename(sys.argv[0]):
