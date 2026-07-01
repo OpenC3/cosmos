@@ -711,7 +711,7 @@ module OpenC3
           parser.parse_file(tf.path) do |keyword, params|
             model.handle_config(parser, keyword, params)
           end
-        end.to raise_error(ConfigParser::Error, /STORED_LIMITS_MODE must be PROCESS, LOG, or DISABLE but is INVALID/)
+        end.to raise_error(ConfigParser::Error, /STORED_LIMITS_MODE must be one of PROCESS, LOG, or DISABLE/)
         tf.unlink
       end
 
