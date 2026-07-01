@@ -20,7 +20,7 @@ require 'openc3/utilities/open_telemetry'
 
 module OpenC3
   class TelemetryDecomTopic < Topic
-    def self.write_packet(packet, id: nil, scope:)
+    def self.write_packet(packet, id: nil, include_limits_states: true, scope:)
       OpenC3.in_span("write_packet") do
         # Need to build a JSON hash of the decommutated data
         # Support "downward typing"
@@ -29,7 +29,7 @@ module OpenC3
         # If nothing - item does not exist - nil
         # __ as separators ITEM1, ITEM1__C, ITEM1__F
 
-        json_hash = CvtModel.build_json_from_packet(packet)
+        json_hash = CvtModel.build_json_from_packet(packet, include_limits_states: include_limits_states)
         # Convert to JSON-safe types once and reuse for both topic write and CVT set
         json_safe_hash = json_hash.as_json
         json_data = JSON.generate(json_safe_hash, allow_nan: true)

@@ -1862,6 +1862,39 @@ class PacketDecom(unittest.TestCase):
 
         self.assertEqual(vals.get("TEST3__L"), "RED")
 
+    def test_decom_omits_limits_states_when_include_limits_states_is_false(self):
+        p = Packet("tgt", "pkt")
+        i1 = p.append_item("test1", 8, "UINT")
+        i1.limits.state = "GREEN"
+        i2 = p.append_item("test2", 16, "UINT")
+        i2.read_conversion = GenericConversion("value * 2")
+        i2.limits.state = "RED_HIGH"
+
+        p.buffer = b"\x01\x00\x03"
+
+        # Default: limits states included
+        vals = p.decom()
+        self.assertEqual(vals["TEST1__L"], "GREEN")
+        self.assertEqual(vals["TEST2__L"], "RED_HIGH")
+
+        # With include_limits_states=False, __L keys are omitted
+        vals = p.decom(include_limits_states=False)
+        self.assertNotIn("TEST1__L", vals)
+        self.assertNotIn("TEST2__L", vals)
+        # Other value types are still present
+        self.assertEqual(vals["TEST1"], 1)
+        self.assertEqual(vals["TEST2"], 3)
+        self.assertEqual(vals["TEST2__C"], 6)
+
+    def test_decom_includes_limits_states_by_default(self):
+        p = Packet("tgt", "pkt")
+        i1 = p.append_item("test1", 8, "UINT")
+        i1.limits.state = "YELLOW_LOW"
+
+        p.buffer = b"\x05"
+        vals = p.decom()
+        self.assertEqual(vals["TEST1__L"], "YELLOW_LOW")
+
 
 class PacketObfuscation(unittest.TestCase):
     def test_does_nothing_if_no_buffer_exists(self):

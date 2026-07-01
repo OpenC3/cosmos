@@ -77,6 +77,20 @@ module OpenC3
         expect(CvtModel).not_to receive(:set_json)
         TelemetryDecomTopic.write_packet(packet, scope: 'DEFAULT')
       end
+
+      it "passes include_limits_states to CvtModel.build_json_from_packet" do
+        expect(CvtModel).to receive(:build_json_from_packet)
+          .with(packet, include_limits_states: false)
+          .and_return({ 'TEMP1' => 1.0 })
+        TelemetryDecomTopic.write_packet(packet, include_limits_states: false, scope: 'DEFAULT')
+      end
+
+      it "defaults include_limits_states to true" do
+        expect(CvtModel).to receive(:build_json_from_packet)
+          .with(packet, include_limits_states: true)
+          .and_return({ 'TEMP1' => 1.0 })
+        TelemetryDecomTopic.write_packet(packet, scope: 'DEFAULT')
+      end
     end
   end
 end

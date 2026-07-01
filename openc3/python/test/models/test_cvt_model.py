@@ -98,6 +98,18 @@ class TestCvtModel(unittest.TestCase):
             b"\x00\x01\x02\x03\x04",
         )
 
+    def test_build_json_from_packet_passes_include_limits_states(self):
+        packet = Packet("TGT", "PKT", "BIG_ENDIAN", "packet", b"\x01\x02")
+        item = packet.append_item("val", 16, "UINT")
+        item.limits.state = "RED_HIGH"
+
+        json_hash = CvtModel.build_json_from_packet(packet)
+        self.assertEqual(json_hash["VAL__L"], "RED_HIGH")
+
+        json_hash = CvtModel.build_json_from_packet(packet, include_limits_states=False)
+        self.assertNotIn("VAL__L", json_hash)
+        self.assertEqual(json_hash["VAL"], 0x0102)
+
     def test_deletes_a_target_packet_from_the_cvt(self):
         self.update_temp1()
         self.assertIn(b"HEALTH_STATUS", Store.hkeys("DEFAULT__tlm__INST"))
