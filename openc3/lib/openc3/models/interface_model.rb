@@ -49,6 +49,7 @@ module OpenC3
     attr_accessor :prefix
     attr_accessor :shard
     attr_accessor :db_shard
+    attr_accessor :bridge_name
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -124,6 +125,7 @@ module OpenC3
       prefix: nil,
       shard: 0,
       db_shard: 0,
+      bridge_name: nil,
       scope:
     )
       if self.class._get_type == 'INTERFACE'
@@ -180,6 +182,7 @@ module OpenC3
       @prefix = prefix
       @shard = shard.to_i # to_i to handle nil
       @db_shard = db_shard.to_i # to_i to handle nil
+      @bridge_name = bridge_name
       @secrets = secrets
     end
 
@@ -250,6 +253,7 @@ module OpenC3
         'prefix' => @prefix,
         'shard' => @shard,
         'db_shard' => @db_shard,
+        'bridge_name' => @bridge_name,
         'updated_at' => @updated_at
       }
     end
@@ -406,6 +410,11 @@ module OpenC3
       when 'DB_SHARD'
         parser.verify_num_parameters(1, 1, "#{keyword} <Shard Number Starting from 0>")
         @db_shard = Integer(parameters[0])
+
+      when 'BRIDGE'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Bridge Name>")
+        @bridge_name = parameters[0]
+
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Interface/Router: #{keyword} #{parameters.join(" ")}")
 
@@ -418,22 +427,51 @@ module OpenC3
     def deploy(gem_path, variables, validate_only: false)
       type = self.class._get_type
       microservice_name = "#{@scope}__#{type}__#{@name}"
-      microservice = MicroserviceModel.new(
-        name: microservice_name,
-        work_dir: @work_dir,
-        cmd: @cmd,
-        env: @env,
-        ports: @ports,
-        container: @container,
-        target_names: @target_names,
-        plugin: @plugin,
-        needs_dependencies: @needs_dependencies,
-        secrets: @secrets,
-        prefix: @prefix,
-        shard: @shard,
-        db_shard: @db_shard,
-        scope: @scope
-      )
+      if @bridge_name
+        bridge_microservice_name = "#{@scope}__BRIDGE_#{type}__#{@name}"
+        bridge_microservice = MicroserviceModel.new(
+          name: bridge_microservice_name,
+          cmd: ["python", "-c", "import openc3.microservices.bridge_microservice; BridgeMicroservice.run('#{bridge_microservice_name}')",
+          env: @env,
+          plugin: @plugin,
+          bridge_name: @bridge_name,
+          scope: @scope
+        )
+
+        microservice = MicroserviceModel.new(
+          name: microservice_name,
+          work_dir: @work_dir,
+          cmd: @cmd,
+          env: @env,
+          ports: @ports,
+          container: @container,
+          target_names: @target_names,
+          plugin: @plugin,
+          needs_dependencies: @needs_dependencies,
+          secrets: @secrets,
+          prefix: @prefix,
+          shard: @shard,
+          db_shard: @db_shard,
+          scope: @scope
+        )
+      else
+        microservice = MicroserviceModel.new(
+          name: microservice_name,
+          work_dir: @work_dir,
+          cmd: @cmd,
+          env: @env,
+          ports: @ports,
+          container: @container,
+          target_names: @target_names,
+          plugin: @plugin,
+          needs_dependencies: @needs_dependencies,
+          secrets: @secrets,
+          prefix: @prefix,
+          shard: @shard,
+          db_shard: @db_shard,
+          scope: @scope
+        )
+      end
       unless validate_only
         @target_names.each { |target_name| ensure_target_exists(target_name) }
         microservice.create

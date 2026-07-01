@@ -178,6 +178,12 @@ module OpenC3
       # Get all the microservice configuration
       @microservices = MicroserviceModel.all
 
+      # Filter to no bridge_name
+      @microservices = @microservices.select do |microservice_name, microservice_config|
+        bridge_name = microservice_config['bridge_name']
+        bridge_name.nil?
+      end
+
       # Filter to just this shard
       @microservices = @microservices.select do |microservice_name, microservice_config|
         microservice_shard = microservice_config['shard'] || 0
