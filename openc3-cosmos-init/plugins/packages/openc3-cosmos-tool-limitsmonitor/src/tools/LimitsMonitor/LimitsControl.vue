@@ -509,6 +509,11 @@ export default {
         if (message.type != 'LIMITS_CHANGE') {
           continue
         }
+        // Skip events from stored packets where limits are suppressed
+        // (STORED_LIMITS_MODE LOG or DISABLE) so they don't affect the UI state
+        if (message.suppress_stored) {
+          continue
+        }
 
         let itemName = `${message.target_name}__${message.packet_name}__${message.item_name}`
         const index = this.itemList.findIndex((arrayItem) =>
