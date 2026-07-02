@@ -63,6 +63,24 @@ class ApplicationController < ActionController::API
     return true
   end
 
+  # Soft authorization check that returns a boolean and never renders a response.
+  # Used to decide whether to run code paths (e.g. suite analysis, which executes
+  # the file) without failing the surrounding read-only request when the user
+  # lacks the higher permission.
+  # @return [Boolean] true if authorize succeeds
+  def authorized?(permission, target_name: nil)
+    authorize(
+      permission: permission,
+      target_name: target_name,
+      manual: request.headers['HTTP_MANUAL'],
+      scope: params[:scope],
+      token: request.headers['HTTP_AUTHORIZATION'],
+    )
+    true
+  rescue OpenC3::AuthError, OpenC3::ForbiddenError
+    false
+  end
+
   def sanitize_params(param_list, require_params: true, allow_forward_slash: false, allow_parent_dir: false)
     if require_params
       result = params.require(param_list)

@@ -161,7 +161,11 @@ module OpenC3
       process_target_name = process_target_name.upcase
       parser = ConfigParser.new("https://docs.openc3.com/docs")
       parser.instance_variable_set(:@target_name, process_target_name)
-      parser.parse_file(filename) do |keyword, params|
+      # run_erb is false: ERB is only rendered once, at plugin install time
+      # (TargetModel#deploy), before files are written to the targets bucket. The
+      # targets_modified overlay (e.g. dynamically created packets) is never ERB
+      # rendered, so it is treated as data here rather than executed as code.
+      parser.parse_file(filename, false, true, false) do |keyword, params|
         if @building_generic_conversion
           case keyword
           # Complete a generic conversion
