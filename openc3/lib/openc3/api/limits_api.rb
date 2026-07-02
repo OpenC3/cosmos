@@ -37,6 +37,7 @@ module OpenC3
                        'get_limits_sets',
                        'set_limits_set',
                        'get_limits_set',
+                       'delete_limits_set',
                        'get_limits_events',
                      ])
 
@@ -336,6 +337,31 @@ module OpenC3
       Logger.info(message, scope: scope)
       LimitsEventTopic.write({ type: :LIMITS_SET, set: limits_set.to_s,
         time_nsec: Time.now.to_nsec_from_epoch, message: message }, scope: scope)
+    end
+
+    # Deletes a limits set. The DEFAULT limits set and the currently active
+    # limits set cannot be deleted. Use set_limits_set to change the active set
+    # before deleting it. Note that the limits set is not removed from the
+    # TargetModel packet definitions; that is cleaned up on the next plugin
+    # install.
+    #
+    # @param limits_set [String] The name of the limits set to delete
+    def delete_limits_set(limits_set, manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'tlm_set', manual: manual, scope: scope, token: token)
+      limits_set = limits_set.to_s
+      raise "Cannot delete the DEFAULT limits set" if limits_set == 'DEFAULT'
+      if limits_set == LimitsEventTopic.current_set(scope: scope)
+        raise "Cannot delete the current limits set '#{limits_set}'. Use set_limits_set to change the current set first."
+      end
+      unless LimitsEventTopic.sets(scope: scope).key?(limits_set)
+        raise "Limits set '#{limits_set}' does not exist"
+      end
+
+      # Remove the limits set from Redis (limits_sets and current_limits_settings)
+      LimitsEventTopic.delete_set(limits_set, scope: scope)
+
+      message = "Deleting Limits Set: #{limits_set}"
+      Logger.info(message, scope: scope)
     end
 
     # Returns the active limits set that applies to all telemetry

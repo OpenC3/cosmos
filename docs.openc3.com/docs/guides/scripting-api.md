@@ -4945,6 +4945,52 @@ set_limits_set("DEFAULT")
 </TabItem>
 </Tabs>
 
+### delete_limits_set
+
+<span class="badge badge--secondary since-heading">Since 7.3.0</span>
+
+Deletes a limits set and removes it from all telemetry items. The DEFAULT limits set and the currently active limits set cannot be deleted. Use [set_limits_set](#set_limits_set) to change the active set before deleting it. Use [get_limits_sets](#get_limits_sets) to get the available limit set names.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+delete_limits_set("<Limits Set Name>")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+delete_limits_set("<Limits Set Name>")
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter       | Description                       |
+| --------------- | --------------------------------- |
+| Limits Set Name | Name of the limits set to delete. |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+delete_limits_set("TVAC")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+delete_limits_set("TVAC")
+```
+
+</TabItem>
+</Tabs>
+
 ### get_limits_set
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
