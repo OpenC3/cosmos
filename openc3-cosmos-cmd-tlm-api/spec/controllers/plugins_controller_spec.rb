@@ -87,6 +87,30 @@ RSpec.describe PluginsController, type: :controller do
     end
   end
 
+  describe "POST modified_diff" do
+    it "returns the list of modified files that differ from the plugin" do
+      allow(OpenC3::PluginModel).to receive(:modified_diff)
+        .with({"name" => "x"}, scope: "DEFAULT").and_return(["INST/screen.txt"])
+
+      post :modified_diff, params: {scope: "DEFAULT", plugin_hash: '{"name":"x"}'}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      expect(json["files"]).to eq(["INST/screen.txt"])
+    end
+
+    it "returns bad_request on invalid plugin_hash JSON" do
+      post :modified_diff, params: {scope: "DEFAULT", plugin_hash: "not json"}
+      expect(response).to have_http_status(:bad_request)
+      json = JSON.parse(response.body)
+      expect(json["status"]).to eq("error")
+    end
+
+    it "returns nothing without authorization" do
+      post :modified_diff, params: {plugin_hash: "{}"}
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
   describe "POST create" do
     before(:each) do
       @file = Tempfile.new(["test-plugin", ".gem"])

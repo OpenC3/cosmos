@@ -26,6 +26,7 @@
         :targets="pluginTargets(plugin.name)"
         :is-modified="isModified(plugin.name)"
         :microservices="microservices"
+        :script-versions-enabled="scriptVersionsEnabled"
         @edit="() => editPlugin(plugin.name)"
         @upgrade="() => upgradePlugin(plugin.name)"
         @delete="() => deletePrompt(plugin.name)"
@@ -58,6 +59,10 @@ export default {
     defaultPlugins: {
       type: Array,
       required: true,
+    },
+    scriptVersionsEnabled: {
+      type: Boolean,
+      default: false,
     },
   },
   emits: ['edit', 'delete', 'upgrade'],

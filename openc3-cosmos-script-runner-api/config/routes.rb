@@ -21,6 +21,20 @@ Rails.application.routes.draw do
     get "/ping" => "scripts#ping"
     get  "/scripts" => "scripts#index"
     delete "/scripts/temp_files" => "scripts#delete_temp"
+    # Enterprise-only Version History export/import. Per-plugin (one git repo
+    # per installed plugin), so both are keyed by plugin base name, not file
+    # name. Literal "/scripts/plugin/..." prefix declared before the *name
+    # catchalls so they don't match scripts#create / scripts#body.
+    # ScriptVersionController lives in the openc3-enterprise gem; in Core builds
+    # requests here 500 with uninitialized constant (matches the notebooks/chat
+    # pattern).
+    post "/scripts/plugin/:plugin/history-import" => "script_version#import_history"
+    get  "/scripts/plugin/:plugin/history-export" => "script_version#export_history"
+    # Specific GET routes must precede the catchall body route below — Rails
+    # matches in declaration order and *name is greedy, so /foo.rb/versions
+    # would otherwise match #body with name="foo.rb/versions". Enterprise-only.
+    get  "/scripts/*name/versions" => "script_version#versions", format: false, defaults: { format: 'html' }
+    get  "/scripts/*name/version" => "script_version#version_body", format: false, defaults: { format: 'html' }
     get  "/scripts/*name" => "scripts#body", format: false, defaults: { format: 'html' }
     post "/scripts/*name/run(/:disconnect)" => "scripts#run", format: false, defaults: { format: 'html' }
     post "/scripts/*name/delete" => "scripts#destroy", format: false, defaults: { format: 'html' }
@@ -29,6 +43,8 @@ Rails.application.routes.draw do
     post "/scripts/*name/syntax" => "scripts#syntax"
     post "/scripts/*name/mnemonics" => "scripts#mnemonics"
     post "/scripts/*name/instrumented" => "scripts#instrumented"
+    # Enterprise-only restore.
+    post "/scripts/*name/restore" => "script_version#restore", format: false, defaults: { format: 'html' }
     # Must be last so /run, /delete, etc will match first
     post "/scripts/*name" => "scripts#create", format: false, defaults: { format: 'html' }
 

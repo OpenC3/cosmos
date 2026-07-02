@@ -48,8 +48,12 @@ class TargetsController < ModelController
     return unless authorization('system')
     scope, id = sanitize_params([:scope, :id], require_params: true)
     return unless scope
+    # Optional: delete only specific modified files (e.g. plugin upgrade
+    # removing non-script modifications while keeping versioned scripts).
+    files = params[:files]
+    files = nil unless files.is_a?(Array)
     begin
-      @model_class.delete_modified(id, scope: scope)
+      @model_class.delete_modified(id, scope: scope, files: files)
       head :ok
     rescue Exception => e
       log_error(e)

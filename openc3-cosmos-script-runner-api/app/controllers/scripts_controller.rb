@@ -17,6 +17,7 @@
 
 require 'json'
 require 'openc3/utilities/script'
+require 'openc3/models/target_model'
 
 class ScriptsController < ApplicationController
   # This REGEX is also found in running_script.rb
@@ -57,6 +58,14 @@ class ScriptsController < ApplicationController
 
     file = Script.body(scope, name)
     if file
+      # Enterprise-only: seed Version History with the deployed body so
+      # plugin-installed scripts have a baseline commit before any user edit.
+      # Constant only loaded by the openc3-enterprise gem. Skip __TEMP__
+      # scratch scripts — they are throwaway and need no history.
+      if defined?(::ScriptVersionStore) && !name.start_with?("#{OpenC3::TargetFile::TEMP_FOLDER}/")
+        plugin = OpenC3::TargetModel.plugin_version_label(name.split('/')[0], scope: scope)
+        ::ScriptVersionStore.seed_initial_if_empty(scope: scope, name: name, body: file, plugin: plugin)
+      end
       locked = Script.locked?(scope, name)
       unless locked
         Script.lock(scope, name, username())
@@ -90,6 +99,13 @@ class ScriptsController < ApplicationController
     args[:name] = name
     Script.create(args)
     results = {}
+    # Enterprise-only: capture a git commit alongside the bucket write so
+    # the new version_id can travel back to the editor. Skip __TEMP__ scratch
+    # scripts — they are throwaway and would only add history noise.
+    if defined?(::ScriptVersionStore) && !name.start_with?("#{OpenC3::TargetFile::TEMP_FOLDER}/")
+      sha = ::ScriptVersionStore.commit(scope: scope, name: name, text: params[:text], username: username())
+      results['version_id'] = sha if sha
+    end
     if ((File.extname(name) == '.py') and (params[:text] =~ PYTHON_SUITE_REGEX)) or ((File.extname(name) != '.py') and (params[:text] =~ SUITE_REGEX))
       results_suites, results_error, success = Script.process_suite(name, params[:text], username: username(), scope: scope)
       results['suites'] = results_suites
@@ -147,6 +163,10 @@ class ScriptsController < ApplicationController
     scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
     Script.destroy(scope, name)
+    # Enterprise-only: record the deletion in git history.
+    if defined?(::ScriptVersionStore)
+      ::ScriptVersionStore.delete(scope: scope, name: name, username: username())
+    end
     OpenC3::Logger.info("Script destroyed: #{name}", scope: scope, user: username())
     head :ok
   rescue => e

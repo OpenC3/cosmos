@@ -226,7 +226,7 @@ ensure
   exit(result)
 end
 
-def update_plugin(plugin_file_path, plugin_name, variables: nil, plugin_txt_lines: nil, scope:, existing_plugin_name:, force: false)
+def update_plugin(plugin_file_path, plugin_name, variables: nil, plugin_txt_lines: nil, scope:, existing_plugin_name:, force: false, username: nil, version_history_files: nil)
   new_gem = File.basename(plugin_file_path)
   old_gem = existing_plugin_name.split("__")[0]
   puts "Updating existing plugin: #{existing_plugin_name} with #{File.basename(plugin_file_path)}"
@@ -247,6 +247,10 @@ def update_plugin(plugin_file_path, plugin_name, variables: nil, plugin_txt_line
       plugin_model.destroy
 
       plugin_hash = OpenC3::PluginModel.install_phase1(plugin_file_path, existing_variables: variables, existing_plugin_txt_lines: plugin_txt_lines, process_existing: true, scope: scope)
+      # Carry Version History upgrade hints into the regenerated hash so
+      # install_phase2 can version modified files taken from the plugin.
+      plugin_hash['username'] = username if username
+      plugin_hash['version_history_files'] = version_history_files if version_history_files
       puts "Updating plugin: #{plugin_file_path}\n#{plugin_hash}"
       plugin_hash = OpenC3::PluginModel.install_phase2(plugin_hash, scope: scope)
       OpenC3::LocalMode.update_local_plugin(plugin_file_path, plugin_hash, old_plugin_name: plugin_name, scope: scope)
@@ -410,7 +414,8 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil, force: false, v
       if existing_plugin_hash
         # Upgrade or Edit
         update_plugin(plugin_file_path, plugin_hash['name'], variables: plugin_hash['variables'], scope: scope,
-          plugin_txt_lines: plugin_hash['plugin_txt_lines'], existing_plugin_name: existing_plugin_hash['name'], force: force)
+          plugin_txt_lines: plugin_hash['plugin_txt_lines'], existing_plugin_name: existing_plugin_hash['name'], force: force,
+          username: plugin_hash['username'], version_history_files: plugin_hash['version_history_files'])
       else
         # New Install
         puts "Loading new plugin: #{plugin_file_path}\n#{plugin_hash}"
@@ -447,6 +452,10 @@ def unload_plugin(plugin_name, scope:)
       # Remove the backing gem now that no PluginModel references it,
       # so it disappears from the admin Packages tab.
       OpenC3::PluginModel.cleanup_gem(plugin_name, scope: scope)
+      # Drop this plugin's Version History repo. Uninstall-only: the upgrade
+      # path (update_plugin) reuses the repo and never reaches here, so history
+      # survives version bumps. No-op in Core / when versioning is disabled.
+      OpenC3::TargetModel.destroy_script_versions(plugin_name, scope: scope)
       OpenC3::Logger.info("PluginModel destroyed: #{plugin_name}", scope: scope)
     rescue => e
       abort("Error uninstalling plugin: #{scope}: #{plugin_name}: #{e.formatted}")
