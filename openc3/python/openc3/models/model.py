@@ -9,8 +9,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime, timezone
 import json
+from datetime import datetime, timezone
 
 from openc3.utilities.store import EphemeralStore, Store
 from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued
