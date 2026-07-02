@@ -77,8 +77,8 @@ module OpenC3
       @db_shard = db_shard.to_i
     end
 
-    def create(update: false, force: false, queued: false, isoformat: false, expire_seconds: nil)
-      _db_sharded_create(@db_shard, update: update, force: force, queued: queued, isoformat: isoformat, expire_seconds: expire_seconds)
+    def create(update: false, force: false, queued: false, expire_seconds: nil)
+      _db_sharded_create(@db_shard, update: update, force: force, queued: queued, expire_seconds: expire_seconds)
     end
 
     def destroy

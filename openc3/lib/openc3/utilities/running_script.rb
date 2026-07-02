@@ -516,7 +516,7 @@ class RunningScript
       updated_at: nil, # Set by create/update - ISO format
       scope: scope # Scope of the script
     )
-    script_status.create(isoformat: true)
+    script_status.create()
 
     # Set proper secrets for running script
     process.environment['SECRET_KEY_BASE'] = nil
