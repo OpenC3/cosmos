@@ -484,7 +484,7 @@ open_bucket_dialog("<Title>", "<Message>", default_path: <default_path>, filter:
 
 ```python
 file = open_bucket_dialog("Select a File", "Choose a file from a bucket")
-print(file.filename) # The name of the selected file
+print(file.filename()) # The name of the selected file, note filename is a method
 print(file.read())
 file.close()
 
@@ -496,7 +496,7 @@ file = open_bucket_dialog(
     default_path="config/DEFAULT/targets/INST2/procedures/",
     filter=".py",
 )
-print(file.filename)
+print(file.filename())
 file.close()
 ```
 
