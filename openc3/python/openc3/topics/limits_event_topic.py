@@ -87,6 +87,23 @@ class LimitsEventTopic(Topic):
                     json.dumps(limits_settings),
                 )
 
+            case "LIMITS_STATE_COLOR":
+                # Persist the state color so it survives a decom microservice restart (applied by sync_system)
+                field = f"{event['target_name']}__{event['packet_name']}__{event['item_name']}"
+                limits_settings = Store.hget(f"{scope}__current_limits_settings", field)
+                if limits_settings:
+                    limits_settings = json.loads(limits_settings)
+                else:
+                    limits_settings = {}
+                if limits_settings.get("state_colors") is None:
+                    limits_settings["state_colors"] = {}
+                limits_settings["state_colors"][event["state_name"]] = event["color"]
+                Store.hset(
+                    f"{scope}__current_limits_settings",
+                    field,
+                    json.dumps(limits_settings),
+                )
+
             case "LIMITS_SET":
                 sets = cls.sets(scope=scope)
                 if sets.get(event["set"]) is None:
@@ -236,6 +253,10 @@ class LimitsEventTopic(Topic):
                     for limits_set, settings in limits_settings.items():
                         if not isinstance(settings, dict):
                             continue
+                        if limits_set == "state_colors":
+                            for state_name, color in settings.items():
+                                System.limits.set_state_color(target_name, packet_name, item_name, state_name, color)
+                            continue
                         System.limits.set(
                             target_name,
                             packet_name,
@@ -303,6 +324,18 @@ class LimitsEventTopic(Topic):
                             System.limits.enable(target_name, packet_name, item_name)
                         else:
                             System.limits.disable(target_name, packet_name, item_name)
+
+            case "LIMITS_STATE_COLOR":
+                target_name = event["target_name"]
+                packet_name = event["packet_name"]
+                item_name = event["item_name"]
+                target = telemetry.get(target_name)
+                if target:
+                    packet = target.get(packet_name)
+                    if packet:
+                        System.limits.set_state_color(
+                            target_name, packet_name, item_name, event["state_name"], event["color"]
+                        )
 
             case "LIMITS_SET":
                 pass  # Ignore, System.limits_set() always queries Redis

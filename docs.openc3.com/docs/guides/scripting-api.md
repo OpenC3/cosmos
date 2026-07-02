@@ -3761,7 +3761,9 @@ APIs for subscribing to specific packets of data. This provides an interface to 
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Allows the user to listen for one or more telemetry packets of data to arrive. A unique id is returned which is used to retrieve the data.
+Gets the current Redis stream offsets (IDs) for the given packets. These offsets are used to collect packet data from this point in time by passing them to `get_packets`.
+
+This method is called `subscribe_packets` for historical reasons; no actual subscription is created, thus there is no need to unsubscribe.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -5143,6 +5145,56 @@ set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0,
 
 ```ruby
 set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0, 'TVAC', 1, true)
+```
+
+</TabItem>
+</Tabs>
+
+### set_state_color
+
+<span class="badge badge--secondary since-heading">Since 7.3.0</span>
+
+The set_state_color method changes the color associated with a telemetry item's state in realtime. Items with states (e.g. CONNECTED, UNAVAILABLE) use a state color (GREEN, YELLOW, or RED) to determine their limits state rather than numeric red/yellow/green limits. Note: In most cases it would be better to update your config files rather than changing state colors in realtime.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+set_state_color(<Target Name>, <Packet Name>, <Item Name>, <State Name>, <Color>)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+set_state_color(<Target Name>, <Packet Name>, <Item Name>, <State Name>, <Color>)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description                                                    |
+| ----------- | -------------------------------------------------------------- |
+| Target Name | Name of the target of the telemetry item.                      |
+| Packet Name | Name of the telemetry packet of the telemetry item.            |
+| Item Name   | Name of the telemetry item.                                    |
+| State Name  | Name of the state to change, e.g. 'CONNECTED'.                 |
+| Color       | New color for the state. Must be one of GREEN, YELLOW, or RED. |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+set_state_color('INST', 'HEALTH_STATUS', 'GROUND1STATUS', 'CONNECTED', 'RED')
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+set_state_color('INST', 'HEALTH_STATUS', 'GROUND1STATUS', 'CONNECTED', 'RED')
 ```
 
 </TabItem>
@@ -8092,7 +8144,7 @@ script_delete("INST/procedures/checks.rb")
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Runs a script in Script Runner. The script will run in the background and can be opened in Script Runner by selecting Script->Execution Status and then connecting to it.
+Kicks off running a script in Script Runner. The script will run in the background, while the caller continues to run, and can be opened in Script Runner by selecting "Execution Status" from the "Script" menu at the top, and then connecting to it from the "Running Scripts" tab.
 
 Note: In Enterprise, initialize_offline_access must have been called at least once for the user who calls this method.
 
@@ -8116,10 +8168,19 @@ script_run("<Script Name>", disconnect: false, environment: nil, suite_runner: n
 
 | Parameter    | Description                                                                                                         |
 | ------------ | ------------------------------------------------------------------------------------------------------------------- |
-| Script Name  | Full path name of the script starting with the target                                                               |
-| disconnect   | Whether to run the script in Disconnect mode                                                                        |
+| Script Name  | Full path name of the script starting with the target. If this is the path to a test suite file, the `suite_runner` parameter must also be provided. |
+| disconnect   | Boolean indicating whether to run the script in Disconnect |
 | environment  | Hash / dict of key / value items to set as script environment variables. Note: Do not use `PATH` as it is reserved. |
-| suite_runner | Hash / dict of suite runner options                                                                                 |
+| suite_runner | Hash / dict of suite runner configuration values. Valid keys are described [below](#script_run-suite_runner-parameter). |
+
+#### script_run suite_runner parameter
+| Key | Value |
+|-----|-------|
+| method | Valid values are "start", "setup", and "teardown". Defaults to "start" if not provided. If `script` is provided, this value is ignored and `start` is always used. |
+| suite | Required; the name of the suite to run. Must be a valid suite within the given file. |
+| group | The name of the group to run. Must be a valid group within the given suite. If `script` is provided, this is required. |
+| script | The name of the specific script to run. Must be a valid method name within the given group. |
+| options | Array of strings of suite runner options to enable. Valid options are: "manual", "pauseOnError", "continueAfterError", "abortAfterError", "loop", and "breakLoopOnError". Defaults to ["continueAfterError"] if not provided. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -8127,7 +8188,7 @@ script_run("<Script Name>", disconnect: false, environment: nil, suite_runner: n
 ```python
 id = script_run("INST2/procedures/checks.py", environment={ 'USER': 'JASON'})
 print(id)
-id = script_run("INST2/procedures/my_script_suite.py", suite_runner={ 'suite': 'MySuite', 'group': 'ExampleGroup', 'script': 'script_2' })
+id = script_run("INST2/procedures/my_script_suite.py", suite_runner={ 'suite': 'MySuite', 'group': 'ExampleGroup', 'script': 'script_2', 'method': 'start' })
 print(id)
 ```
 

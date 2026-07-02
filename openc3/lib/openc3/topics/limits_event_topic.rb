@@ -79,6 +79,19 @@ module OpenC3
         limits_settings['enabled'] = event[:enabled]
         Store.hset("#{scope}__current_limits_settings", field, JSON.generate(limits_settings, allow_nan: true))
 
+      when :LIMITS_STATE_COLOR
+        # Persist the state color so it survives a decom microservice restart (applied by sync_system)
+        field = "#{event[:target_name]}__#{event[:packet_name]}__#{event[:item_name]}"
+        limits_settings = Store.hget("#{scope}__current_limits_settings", field)
+        if limits_settings
+          limits_settings = JSON.parse(limits_settings, allow_nan: true, create_additions: true)
+        else
+          limits_settings = {}
+        end
+        limits_settings['state_colors'] ||= {}
+        limits_settings['state_colors'][event[:state_name].to_s] = event[:color].to_s
+        Store.hset("#{scope}__current_limits_settings", field, JSON.generate(limits_settings, allow_nan: true))
+
       when :LIMITS_SET
         sets = sets(scope: scope)
         raise "Set '#{event[:set]}' does not exist!" unless sets.key?(event[:set])
@@ -210,6 +223,12 @@ module OpenC3
             persistence = limits_settings['persistence_setting']
             limits_settings.each do |limits_set, settings|
               next unless Hash === settings
+              if limits_set == 'state_colors'
+                settings.each do |state_name, color|
+                  System.limits.set_state_color(target_name, packet_name, item_name, state_name, color)
+                end
+                next
+              end
               System.limits.set(target_name, packet_name, item_name, settings['red_low'], settings['yellow_low'], settings['yellow_high'], settings['red_high'], settings['green_low'], settings['green_high'], limits_set.to_s.intern, persistence, enabled)
             end
             if not enabled.nil?
@@ -261,6 +280,18 @@ module OpenC3
             else
               System.limits.disable(target_name, packet_name, item_name)
             end
+          end
+        end
+
+      when 'LIMITS_STATE_COLOR'
+        target_name = event['target_name']
+        packet_name = event['packet_name']
+        item_name = event['item_name']
+        target = telemetry[target_name]
+        if target
+          packet = target[packet_name]
+          if packet
+            System.limits.set_state_color(target_name, packet_name, item_name, event['state_name'], event['color'])
           end
         end
 

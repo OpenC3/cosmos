@@ -16,6 +16,7 @@ from openc3.api.tlm_api import _tlm_process_args
 from openc3.environment import OPENC3_SCOPE
 from openc3.models.cvt_model import CvtModel
 from openc3.models.target_model import TargetModel
+from openc3.packets.packet_item import PacketItem
 from openc3.topics.limits_event_topic import LimitsEventTopic
 from openc3.utilities.authorization import authorize
 from openc3.utilities.logger import Logger
@@ -31,6 +32,7 @@ WHITELIST.extend(
         "disable_limits",
         "get_limits",
         "set_limits",
+        "set_state_color",
         "get_limits_groups",
         "enable_limits_group",
         "disable_limits_group",
@@ -314,6 +316,61 @@ def set_limits(
         "limits_set": limits_set,
         "persistence": persistence,
         "enabled": enabled,
+        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+        "message": message,
+    }
+    LimitsEventTopic.write(event, scope=scope)
+
+
+# Change the color associated with a telemetry item state in realtime.
+# Items with states use the state color (GREEN, YELLOW, RED) to determine
+# their limits state rather than numeric red/yellow/green limits.
+#
+# @param target_name [str] Target name
+# @param packet_name [str] Packet name
+# @param item_name [str] Item name
+# @param state_name [str] Name of the state to change (e.g. 'CONNECTED')
+# @param color [str] New color for the state. Must be GREEN, YELLOW, or RED.
+def set_state_color(target_name, packet_name, item_name, state_name, color, scope=OPENC3_SCOPE):
+    authorize(
+        permission="tlm_set",
+        target_name=target_name,
+        packet_name=packet_name,
+        scope=scope,
+    )
+    state_name = str(state_name).upper()
+    color = str(color).upper()
+    if color not in PacketItem.VALID_STATE_COLORS:
+        raise RuntimeError(f"Invalid state color {color}. Must be one of {' '.join(PacketItem.VALID_STATE_COLORS)}.")
+    packet = TargetModel.packet(target_name, packet_name, scope=scope)
+    found_item = None
+    for item in packet["items"]:
+        if item["name"] == item_name:
+            if not (item.get("states") and item["states"].get(state_name)):
+                raise RuntimeError(
+                    f"State '{state_name}' does not exist for item '{target_name} {packet_name} {item_name}'"
+                )
+            item["states"][state_name]["color"] = color
+            # Defining a state color implies limits are enabled for the item
+            if not item.get("limits"):
+                item["limits"] = {}
+            item["limits"]["enabled"] = True
+            found_item = item
+            break
+    if found_item is None:
+        raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist")
+    message = f"Setting '{target_name} {packet_name} {item_name}' state {state_name} color to {color}"
+    Logger.info(message, scope=scope)
+
+    TargetModel.set_packet(target_name, packet_name, packet, scope=scope)
+
+    event = {
+        "type": "LIMITS_STATE_COLOR",
+        "target_name": target_name,
+        "packet_name": packet_name,
+        "item_name": item_name,
+        "state_name": state_name,
+        "color": color,
         "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
         "message": message,
     }

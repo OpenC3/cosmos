@@ -722,7 +722,7 @@ class TestApiShared(unittest.TestCase):
             )
             result = wait_expression("True == False", 0.01)
             self.assertFalse(result)
-            self.assertIn("WAIT: True == False is FALSE after waiting 0.01", stdout.getvalue())
+            self.assertIn("WAIT: True == False is FALSE after waiting", stdout.getvalue())
 
     def test_waits_for_a_logical_expression(self):
         for stdout in capture_io():

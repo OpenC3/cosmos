@@ -201,6 +201,49 @@ class TestLimitsApi(unittest.TestCase):
             },
         )
 
+    def test_set_state_color_complains_about_non_existant_targets(self):
+        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+            set_state_color("BLAH", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", "RED")
+
+    def test_set_state_color_complains_about_non_existant_packets(self):
+        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+            set_state_color("INST", "BLAH", "GROUND1STATUS", "CONNECTED", "RED")
+
+    def test_set_state_color_complains_about_non_existant_items(self):
+        with self.assertRaisesRegex(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist"):
+            set_state_color("INST", "HEALTH_STATUS", "BLAH", "CONNECTED", "RED")
+
+    def test_set_state_color_complains_about_non_existant_states(self):
+        with self.assertRaisesRegex(RuntimeError, "State 'BLAH' does not exist"):
+            set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "BLAH", "RED")
+
+    def test_set_state_color_complains_about_invalid_colors(self):
+        with self.assertRaisesRegex(RuntimeError, "Invalid state color PURPLE"):
+            set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", "PURPLE")
+
+    def test_set_state_color_changes_the_color_of_a_state(self):
+        item = get_item("INST", "HEALTH_STATUS", "GROUND1STATUS")
+        self.assertEqual(item["states"]["CONNECTED"]["color"], "GREEN")
+        set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", "RED")
+        item = get_item("INST", "HEALTH_STATUS", "GROUND1STATUS")
+        self.assertEqual(item["states"]["CONNECTED"]["color"], "RED")
+        self.assertTrue(item["limits"]["enabled"])
+
+    def test_set_state_color_accepts_lowercase_names_and_colors(self):
+        set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "connected", "yellow")
+        item = get_item("INST", "HEALTH_STATUS", "GROUND1STATUS")
+        self.assertEqual(item["states"]["CONNECTED"]["color"], "YELLOW")
+
+    def test_set_state_color_writes_a_limits_state_color_event(self):
+        set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "UNAVAILABLE", "RED")
+        event = get_limits_events()[-1][1]
+        self.assertEqual(event["type"], "LIMITS_STATE_COLOR")
+        self.assertEqual(event["target_name"], "INST")
+        self.assertEqual(event["packet_name"], "HEALTH_STATUS")
+        self.assertEqual(event["item_name"], "GROUND1STATUS")
+        self.assertEqual(event["state_name"], "UNAVAILABLE")
+        self.assertEqual(event["color"], "RED")
+
     def test_get_limits_groups_returns_all_the_limits_groups(self):
         self.assertEqual(
             get_limits_groups(),
