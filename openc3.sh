@@ -41,36 +41,10 @@ detect_compose_cmd() {
   export DOCKER_COMPOSE_COMMAND="$CONTAINER_COMPOSE_CMD"
 }
 
-# Check if already authenticated to a container registry by looking for
-# credentials in the Docker/Podman config files.
-is_registry_authenticated() {
-  local registry="$1"
-
-  # Docker stores docker.io credentials under its canonical URL
-  local search_registry="$registry"
-  if [[ "$registry" == "docker.io" ]]; then
-    search_registry="index.docker.io"
-  fi
-
-  # Check Docker config
-  local config_file="${DOCKER_CONFIG:-$HOME/.docker}/config.json"
-  if [[ -f "$config_file" ]] && grep -q "$search_registry" "$config_file" 2>/dev/null; then
-    return 0
-  fi
-
-  # Check Podman config locations
-  for podman_config in "${XDG_RUNTIME_DIR}/containers/auth.json" "$HOME/.config/containers/auth.json"; do
-    if [[ -f "$podman_config" ]] && grep -q "$search_registry" "$podman_config" 2>/dev/null; then
-      return 0
-    fi
-  done
-
-  return 1
-}
-
-# Login to configured registries to avoid 403 errors when pulling images.
-# Checks if already authenticated before attempting login to avoid unnecessary prompts.
-registry_login() {
+# Print a hint suggesting registry login when an image pull is denied.
+# We intentionally do NOT login automatically: forcing a login would require
+# credentials for public registries (e.g. docker.io) and break air-gapped builds.
+suggest_registry_login() {
   local env_file="$(dirname -- "$0")/${ENV_FILE:-.env}"
   if [[ -f "$env_file" ]]; then
     set -a
@@ -78,21 +52,32 @@ registry_login() {
     set +a
   fi
 
+  echo "" >&2
+  echo "A container image pull was denied (403 / authentication required)." >&2
+  echo "If the image lives in a private registry, login and retry the command:" >&2
   if [[ -n "$OPENC3_REGISTRY" ]]; then
-    if is_registry_authenticated "$OPENC3_REGISTRY"; then
-      echo "Already authenticated with registry: $OPENC3_REGISTRY"
-    else
-      $CONTAINER_CMD login "$OPENC3_REGISTRY"
-    fi
+    echo "  $CONTAINER_CMD login $OPENC3_REGISTRY" >&2
   fi
-
   if [[ "$OPENC3_ENTERPRISE" -eq 1 ]] && [[ -n "$OPENC3_ENTERPRISE_REGISTRY" ]]; then
-    if is_registry_authenticated "$OPENC3_ENTERPRISE_REGISTRY"; then
-      echo "Already authenticated with registry: $OPENC3_ENTERPRISE_REGISTRY"
-    else
-      $CONTAINER_CMD login "$OPENC3_ENTERPRISE_REGISTRY"
-    fi
+    echo "  $CONTAINER_CMD login $OPENC3_ENTERPRISE_REGISTRY" >&2
   fi
+  if [[ -z "$OPENC3_REGISTRY" ]]; then
+    echo "  $CONTAINER_CMD login <registry>" >&2
+  fi
+}
+
+# Run a container/compose command, streaming its output live. If the command
+# fails with a registry authentication error (e.g. 403), suggest logging in.
+run_with_registry_check() {
+  local tmp status
+  tmp="$(mktemp)"
+  "$@" 2>&1 | tee "$tmp"
+  status=${PIPESTATUS[0]}
+  if [[ $status -ne 0 ]] && grep -qiE '403 Forbidden|pull access denied|requested access to the resource is denied|authentication required|unauthorized' "$tmp"; then
+    suggest_registry_login
+  fi
+  rm -f "$tmp"
+  return $status
 }
 
 # Helper function to find script - checks PATH first, then falls back to script location
@@ -594,20 +579,19 @@ case $1 in
     # Change to cosmos directory since openc3_setup.sh uses relative paths
     cd "$(dirname -- "$0")"
     "$(find_script openc3_setup.sh)"
-    registry_login
     # Handle restrictive umasks - Built files need to be world readable
     umask 0022
     chmod -R +r "$(dirname -- "$0")"
     # Collect any additional build flags from arguments (skip first arg which is "build")
     BUILD_FLAGS="${@:2}"
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-enterprise-gem
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-enterprise-gem
     else
-      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-ruby
-      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-base
-      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-node
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-ruby
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-base
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-node
     fi
-    ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS
+    run_with_registry_check ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS
     ;;
   build-ubi )
     if [[ "$OPENC3_DEVEL" -eq 0 ]]; then
@@ -700,8 +684,7 @@ case $1 in
       exit 0
     fi
     check_root
-    registry_login
-    ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" up -d
+    run_with_registry_check ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" up -d
     ;;
   run-ubi )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -735,7 +718,6 @@ case $1 in
       exit 0
     fi
     check_root
-    registry_login
     # QuestDB RHEL images have a native arm64 variant; run tsdb natively on ARM
     # to avoid the x86-64-v3 QEMU emulation failure. All other services run as amd64.
     if [[ "$(uname -m)" == "arm64" ]]; then
@@ -743,7 +725,7 @@ case $1 in
     else
       OPENC3_TSDB_PLATFORM=linux/amd64
     fi
-    DOCKER_DEFAULT_PLATFORM=linux/amd64 OPENC3_IMAGE_SUFFIX=-ubi OPENC3_TSDB_PLATFORM=$OPENC3_TSDB_PLATFORM ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" up -d
+    run_with_registry_check env DOCKER_DEFAULT_PLATFORM=linux/amd64 OPENC3_IMAGE_SUFFIX=-ubi OPENC3_TSDB_PLATFORM=$OPENC3_TSDB_PLATFORM ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" up -d
     ;;
   test )
     # Check for help at any position
