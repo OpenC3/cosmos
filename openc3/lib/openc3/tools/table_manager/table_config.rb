@@ -85,7 +85,10 @@ module OpenC3
         ConfigParser.new(
           'https://openc3.com/docs/tools/#table-manager-configuration-openc3--39',
         )
-      parser.parse_file(filename) do |keyword, params|
+      # run_erb is false: ERB is only rendered once, at plugin install time
+      # (TargetModel#deploy). Table definitions are read already-rendered from the
+      # bucket here, so they are treated as data, not re-executed as code.
+      parser.parse_file(filename, false, true, false) do |keyword, params|
         if @building_generic_conversion
           case keyword
           # Complete a generic conversion

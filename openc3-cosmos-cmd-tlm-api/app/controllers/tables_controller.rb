@@ -110,6 +110,7 @@ class TablesController < ApplicationController
     return unless authorization('system')
     scope, binary, definition = sanitize_params([:scope, :binary, :definition], require_params: false, allow_forward_slash: true)
     return unless scope
+    return unless authorize_overlay_write(binary)
     begin
       Table.save(scope, binary, definition, params[:tables])
       head :ok
@@ -123,6 +124,7 @@ class TablesController < ApplicationController
     return unless authorization('system')
     scope, name, new_name = sanitize_params([:scope, :name, :new_name], require_params: true, allow_forward_slash: true)
     return unless scope
+    return unless authorize_overlay_write(new_name)
     begin
       Table.save_as(scope, name, new_name)
       head :ok
@@ -136,6 +138,9 @@ class TablesController < ApplicationController
     return unless authorization('system')
     scope, definition = sanitize_params([:scope, :definition], require_params: false, allow_forward_slash: true)
     return unless scope
+    # generate writes a binary derived from the definition path under the same
+    # TARGET/<area> prefix, so gating on the definition covers the write target.
+    return unless authorize_overlay_write(definition)
     begin
       filename = Table.generate(scope, definition)
       render json: { filename: filename }
@@ -166,6 +171,7 @@ class TablesController < ApplicationController
     return unless authorization('system')
     scope, name = sanitize_params([:scope, :name], require_params: true, allow_forward_slash: true)
     return unless scope
+    return unless authorize_overlay_write(name)
     # destroy returns no indication of success or failure so just assume it worked
     Table.destroy(scope, name)
     OpenC3::Logger.info(
@@ -174,5 +180,38 @@ class TablesController < ApplicationController
       user: username()
     )
     head :ok
+  end
+
+  private
+
+  # Single choke point gating every Table writer (save, save_as, generate,
+  # destroy) that funnels through TargetFile.create/destroy into the
+  # targets_modified overlay. The cmd_tlm overlay
+  # (targets_modified/<TARGET>/cmd_tlm/...) is loaded and executed as code by
+  # PacketConfig (ERB rendering + GENERIC_*_CONVERSION eval), so writing it
+  # requires admin even though general Table Manager operations only require
+  # 'system' (which under Enterprise RBAC every role down to Viewer holds).
+  # This mirrors storage_controller#non_admin_config_overlay_write?, which gates
+  # the other writer (the presigned S3 upload). `name` is the overlay-relative
+  # path written under targets_modified/ (e.g. "<TARGET>/cmd_tlm/..."). Returns
+  # true if allowed; otherwise renders the 401/403 and returns false.
+  def authorize_overlay_write(name)
+    return true unless cmd_tlm_overlay?(name)
+    return false unless authorization('admin')
+    true
+  end
+
+  # True if the overlay-relative name targets the cmd_tlm subtree (code-execution
+  # territory). The name must be canonical: a positional segment check (parts[1])
+  # can otherwise be bypassed by a name the object store normalizes differently,
+  # so empty '//', '.'/'..' segments, and leading/trailing slashes fail closed to
+  # the admin path. sanitize_params already neutralizes '..', backslashes, etc.
+  def cmd_tlm_overlay?(name)
+    return true if name.nil? || name.empty?
+    return true if name.start_with?('/') || name.end_with?('/')
+    parts = name.split('/')
+    return true if parts.any? { |p| p.empty? || p == '.' || p == '..' }
+    # parts: <TARGET> / <area> / ...
+    parts[1] == 'cmd_tlm'
   end
 end
