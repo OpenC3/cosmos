@@ -230,7 +230,7 @@ if (globalThis.self !== undefined && !globalThis.self.MonacoEnvironment) {
 }
 
 export default {
-  name: 'ScriptVersionHistoryDialog',
+  name: 'VersionHistoryDialog',
   props: {
     modelValue: { type: Boolean, default: false },
     filename: { type: String, required: true },

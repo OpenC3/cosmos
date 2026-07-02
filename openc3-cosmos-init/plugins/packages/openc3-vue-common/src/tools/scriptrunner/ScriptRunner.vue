@@ -618,7 +618,7 @@
     :persistent="true"
     @status="promptDialogCallback"
   />
-  <script-version-history-dialog
+  <version-history-dialog
     v-if="showVersionHistory"
     v-model="showVersionHistory"
     :filename="filename"
@@ -732,8 +732,8 @@ import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
 // opens version history. Core builds never reach this code path because
 // the menu item is gated on the /openc3-api/info enterprise flag.
 import { defineAsyncComponent } from 'vue'
-const ScriptVersionHistoryDialog = defineAsyncComponent(
-  () => import('@/tools/scriptrunner/ScriptVersionHistoryDialog.vue'),
+const VersionHistoryDialog = defineAsyncComponent(
+  () => import('@/tools/scriptrunner/VersionHistoryDialog.vue'),
 )
 
 // Matches target_file.rb TEMP_FOLDER
@@ -767,7 +767,7 @@ export default {
     ScriptLogMessages,
     CriticalCmdDialog,
     CommandEditor,
-    ScriptVersionHistoryDialog,
+    VersionHistoryDialog,
   },
   mixins: [AceEditorModes, ClassificationBanners],
   beforeRouteUpdate: function (to, from, next) {
