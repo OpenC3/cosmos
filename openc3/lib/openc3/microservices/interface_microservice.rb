@@ -281,6 +281,7 @@ module OpenC3
             command.extra ||= {}
             command.extra['cmd_string'] = msg_hash['cmd_string']
             command.extra['username'] = msg_hash['username']
+            command.extra['interface_name'] = @interface.name
             # Add approver info if this was a critical command that was approved
             if critical_model
               command.extra['approver'] = critical_model.approver
