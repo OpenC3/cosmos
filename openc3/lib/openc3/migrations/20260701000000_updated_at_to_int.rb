@@ -39,7 +39,7 @@ module OpenC3
             begin
               data['updated_at'] = Time.parse(updated_at).to_nsec_from_epoch
             rescue ArgumentError
-              # Leave unparseable values untouched
+              # Leave unparsable values untouched
               next
             end
             Store.hset(primary_key, name, JSON.generate(data, allow_nan: true))
