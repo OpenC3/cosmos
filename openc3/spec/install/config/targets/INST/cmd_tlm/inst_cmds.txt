@@ -48,9 +48,11 @@ COMMAND INST SETPARAMS BIG_ENDIAN "Sets numbered parameters"
   PARAMETER    CCSDSSEQCNT    18  14  UINT  0 16383   0 "CCSDS primary header sequence count"
   PARAMETER    CCSDSLENGTH    32  16  UINT  0 65535   0 "CCSDS primary header packet length"
   ID_PARAMETER PKTID          48  16  UINT  0 65535   4 "Packet id"
-  <% (1..5).each do |i| %>
-    APPEND_PARAMETER VALUE<%= i %> 16 UINT 0 5 1 "Value <%= i %> setting"
-  <% end %>
+    APPEND_PARAMETER VALUE1 16 UINT 0 5 1 "Value 1 setting"
+    APPEND_PARAMETER VALUE2 16 UINT 0 5 1 "Value 2 setting"
+    APPEND_PARAMETER VALUE3 16 UINT 0 5 1 "Value 3 setting"
+    APPEND_PARAMETER VALUE4 16 UINT 0 5 1 "Value 4 setting"
+    APPEND_PARAMETER VALUE5 16 UINT 0 5 1 "Value 5 setting"
   SELECT_PARAMETER VALUE5
     POLY_WRITE_CONVERSION 0 2
   DISABLE_MESSAGES

@@ -53,6 +53,22 @@ module OpenC3
         tf.unlink
       end
 
+      it "does not render ERB at runtime (ERB only runs at plugin install)" do
+        # ERB is rendered once, at plugin install (TargetModel#deploy). At runtime
+        # config is parsed as data, never executed, so an ERB tag is treated literally
+        # rather than evaluated. This prevents the targets_modified overlay from
+        # injecting code via ERB.
+        tf = Tempfile.new('unittest')
+        tf.puts('TELEMETRY TGT PKT BIG_ENDIAN "Packet"')
+        tf.puts('  APPEND_ITEM ITEM 16 UINT "<%= 6 * 7 %>"')
+        tf.close
+        @pc.process_file(tf.path, 'TGT')
+        item = @pc.telemetry['TGT']['PKT'].get_item('ITEM')
+        expect(item.description).to eql '<%= 6 * 7 %>'
+        expect(item.description).to_not eql '42'
+        tf.unlink
+      end
+
       it "creates UNKNOWN cmd/tlm packets" do
         # Only one target called "UNKNOWN"
         expect(@pc.commands.keys).to eql ["UNKNOWN"]
