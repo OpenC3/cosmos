@@ -318,6 +318,7 @@ class InterfaceCmdHandlerThread:
             command.extra = command.extra or {}
             command.extra["cmd_string"] = msg_hash.get(b"cmd_string", b"").decode()
             command.extra["username"] = msg_hash.get(b"username", b"").decode()
+            command.extra["interface_name"] = self.interface.name
             # Add approver info if this was a critical command that was approved
             if critical_model is not None:
                 command.extra["approver"] = critical_model.approver
