@@ -322,6 +322,14 @@ export default {
       } finally {
         this.loading = false
       }
+      // Default the pane to the most recent version's diff against the previous
+      // one (versions are newest-first, so index 0 is the latest). When there
+      // is only one version there's nothing to diff against, so just view it.
+      if (this.versions.length > 1) {
+        await this.diffVersion(this.versions[0].version_id)
+      } else if (this.versions.length) {
+        await this.selectVersion(this.versions[0].version_id)
+      }
     },
     labelFor(versionId) {
       if (!versionId) return ''

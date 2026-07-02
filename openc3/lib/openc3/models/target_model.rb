@@ -165,17 +165,17 @@ module OpenC3
     # Uninstall-only: remove a plugin's entire Version History repo. Called
     # from the CLI uninstall path with the plugin instance name; upgrade reuses
     # the repo and must never call this. No-op in Core builds (or whenever
-    # OPENC3_SCRIPT_VERSIONS_DIR is unset) since ScriptVersionStore is absent or
+    # OPENC3_VERSION_HISTORY_DIR is unset) since VersionStore is absent or
     # disabled. Best-effort: a failure here must not abort the uninstall.
     def self.destroy_script_versions(plugin_instance_name, scope:)
       name, _version = plugin_name_version(plugin_instance_name)
       return unless name
       begin
-        require 'openc3-enterprise/utilities/script_version_store'
+        require 'openc3-enterprise/utilities/version_store'
       rescue LoadError
         return
       end
-      ::ScriptVersionStore.destroy_repo(scope: scope, plugin: name)
+      ::VersionStore.destroy_repo(scope: scope, plugin: name)
     rescue => e
       Logger.warn("destroy_script_versions failed for #{scope}/#{plugin_instance_name}: #{e.message}")
     end
@@ -642,14 +642,14 @@ module OpenC3
     #     each listed file with a modified copy: record the modified copy in
     #     Version History, drop the shadow so the plugin content becomes current,
     #     then commit the incoming content as a plugin-upgrade version.
-    # nil (the default and Core builds without ScriptVersionStore) = no-op.
+    # nil (the default and Core builds without VersionStore) = no-op.
     def deploy(gem_path, variables, validate_only: false, upgrade_context: nil)
       variables["target_name"] = @name
       start_path = "/targets/#{@folder_name}/"
       temp_dir = Dir.mktmpdir
       found = false
       diff_collector = upgrade_context && upgrade_context[:diff_collector]
-      versioning = !validate_only && upgrade_context && upgrade_context[:version_files] && script_version_store_available?
+      versioning = !validate_only && upgrade_context && upgrade_context[:version_files] && version_store_available?
       begin
         target_path = gem_path + start_path + "**/*"
         Dir.glob(target_path) do |filename|
@@ -721,10 +721,10 @@ module OpenC3
     # cmd-tlm-api process, which (unlike script-runner-api) doesn't otherwise
     # require the store, so lazily load it on demand. Returns false in Core
     # builds where the Enterprise gem isn't present.
-    def script_version_store_available?
-      return true if defined?(::ScriptVersionStore)
-      require 'openc3-enterprise/utilities/script_version_store'
-      defined?(::ScriptVersionStore) ? true : false
+    def version_store_available?
+      return true if defined?(::VersionStore)
+      require 'openc3-enterprise/utilities/version_store'
+      defined?(::VersionStore) ? true : false
     rescue LoadError
       false
     end
@@ -744,13 +744,13 @@ module OpenC3
       old_body = old_body.force_encoding('UTF-8') unless File.extname(name) == '.bin'
       # Preserve the pre-upgrade (user-modified) content as a version.
       # Idempotent: a no-op when it already matches the latest version.
-      ::ScriptVersionStore.commit(scope: @scope, name: name, text: old_body)
+      ::VersionStore.commit(scope: @scope, name: name, text: old_body)
       # Drop the modified shadow so the plugin file (already written to
       # targets/) becomes the live content.
       OpenC3::TargetFile.destroy(@scope, name)
       # Commit the incoming plugin content as a plugin-upgrade version,
       # attributed to the installing user.
-      ::ScriptVersionStore.commit(scope: @scope, name: name, text: new_data,
+      ::VersionStore.commit(scope: @scope, name: name, text: new_data,
         username: ctx[:username], source: 'plugin-upgrade', plugin: ctx[:plugin])
     rescue => e
       Logger.warn("Version History upgrade capture failed for #{@scope}/#{name}: #{e.message}")

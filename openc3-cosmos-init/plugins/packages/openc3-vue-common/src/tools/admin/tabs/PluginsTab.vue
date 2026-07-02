@@ -217,7 +217,7 @@ export default {
       showPluginDialog: false,
       showModifiedPluginDialog: false,
       showDefaultTools: false,
-      // Enterprise Version History backend availability (OPENC3_SCRIPT_VERSIONS_DIR
+      // Enterprise Version History backend availability (OPENC3_VERSION_HISTORY_DIR
       // set, reported by /openc3-api/info). Gates per-plugin Export/Import History.
       scriptVersionsEnabled: false,
       timeZone: 'local',
@@ -279,7 +279,7 @@ export default {
     this.updateProcesses()
 
     // Detect whether the Enterprise Version History backend is enabled
-    // (OPENC3_SCRIPT_VERSIONS_DIR set) so per-plugin Export/Import History
+    // (OPENC3_VERSION_HISTORY_DIR set) so per-plugin Export/Import History
     // actions can be shown.
     Api.get('/openc3-api/info')
       .then((response) => {

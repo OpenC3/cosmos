@@ -955,7 +955,7 @@ export default {
       editorBoxSize: 50,
       lockingEnabled: true,
       // Enterprise-only Version History; enabled when the backend has
-      // OPENC3_SCRIPT_VERSIONS_DIR set (reported by /openc3-api/info).
+      // OPENC3_VERSION_HISTORY_DIR set (reported by /openc3-api/info).
       scriptVersionsEnabled: false,
     }
   },
@@ -1331,7 +1331,7 @@ export default {
     this.api = new OpenC3Api()
     this.api.ensure_offline_access()
     // Detect Enterprise and whether the Version History backend is enabled
-    // (OPENC3_SCRIPT_VERSIONS_DIR set) so we can show the menu item.
+    // (OPENC3_VERSION_HISTORY_DIR set) so we can show the menu item.
     Api.get('/openc3-api/info')
       .then((response) => {
         this.isEnterprise = !!response.data?.enterprise
@@ -1470,7 +1470,11 @@ export default {
     })
 
     this.editor.container.addEventListener('resize', this.doResize)
-    this.editor.container.addEventListener('keydown', this.keydown)
+    // Listen on window (not editor.container) so Ctrl-S saves regardless of
+    // where focus is — attaching to the editor only caught the key while the
+    // cursor was in the editor, which made saving feel inconsistent after
+    // using a menu, button, or dialog. Removed in beforeUnmount.
+    window.addEventListener('keydown', this.keydown)
 
     this.cable = new Cable('/script-api/cable')
 
@@ -1518,6 +1522,7 @@ export default {
     if (this.scriptId && !this.inline) {
       sessionStorage.setItem('script_runner__script_id', this.scriptId)
     }
+    window.removeEventListener('keydown', this.keydown)
     this.editor.destroy()
     this.editor.container.remove()
   },
@@ -1859,7 +1864,7 @@ export default {
       // NOTE: metaKey == Command on Mac
       if (
         (event.metaKey || event.ctrlKey) &&
-        event.keyCode === 'S'.charCodeAt(0)
+        event.key?.toLowerCase() === 's'
       ) {
         if (event.shiftKey) {
           event.preventDefault()

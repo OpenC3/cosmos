@@ -244,14 +244,14 @@ module OpenC3
     end
 
     describe "self.destroy_script_versions" do
-      it "calls ScriptVersionStore.destroy_repo with the base name when the store is present" do
+      it "calls VersionStore.destroy_repo with the base name when the store is present" do
         store = Class.new do
           def self.calls; @calls ||= []; end
           def self.destroy_repo(scope:, plugin:); calls << [scope, plugin]; end
         end
-        stub_const("ScriptVersionStore", store)
+        stub_const("VersionStore", store)
         # Skip the enterprise require; the constant is already defined.
-        allow(TargetModel).to receive(:require).with("openc3-enterprise/utilities/script_version_store").and_return(true)
+        allow(TargetModel).to receive(:require).with("openc3-enterprise/utilities/version_store").and_return(true)
         TargetModel.destroy_script_versions("openc3-cosmos-demo-7.2.0.gem__0", scope: "DEFAULT")
         expect(store.calls).to eql([["DEFAULT", "openc3-cosmos-demo"]])
       end
@@ -261,14 +261,14 @@ module OpenC3
           def self.called; @called ||= false; end
           def self.destroy_repo(scope:, plugin:); @called = true; end
         end
-        stub_const("ScriptVersionStore", store)
+        stub_const("VersionStore", store)
         TargetModel.destroy_script_versions("singleword__0", scope: "DEFAULT")
         expect(store.called).to be false
       end
 
       it "is a no-op when the enterprise store gem is absent" do
-        hide_const("ScriptVersionStore") if defined?(ScriptVersionStore)
-        allow(TargetModel).to receive(:require).with("openc3-enterprise/utilities/script_version_store").and_raise(LoadError)
+        hide_const("VersionStore") if defined?(VersionStore)
+        allow(TargetModel).to receive(:require).with("openc3-enterprise/utilities/version_store").and_raise(LoadError)
         expect { TargetModel.destroy_script_versions("openc3-cosmos-demo-7.2.0.gem__0", scope: "DEFAULT") }.not_to raise_error
       end
     end
@@ -314,8 +314,8 @@ module OpenC3
       end
 
       describe "#apply_upgrade_version" do
-        let(:store) { double("ScriptVersionStore") }
-        before(:each) { stub_const("ScriptVersionStore", store) }
+        let(:store) { double("VersionStore") }
+        before(:each) { stub_const("VersionStore", store) }
 
         it "versions the modified copy, drops the shadow, then versions the plugin content" do
           allow(bucket).to receive(:get_object).and_return(shadow_response("modified"))

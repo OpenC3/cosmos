@@ -62,9 +62,9 @@ class ScriptsController < ApplicationController
       # plugin-installed scripts have a baseline commit before any user edit.
       # Constant only loaded by the openc3-enterprise gem. Skip __TEMP__
       # scratch scripts — they are throwaway and need no history.
-      if defined?(::ScriptVersionStore) && !name.start_with?("#{OpenC3::TargetFile::TEMP_FOLDER}/")
+      if defined?(::VersionStore) && !name.start_with?("#{OpenC3::TargetFile::TEMP_FOLDER}/")
         plugin = OpenC3::TargetModel.plugin_version_label(name.split('/')[0], scope: scope)
-        ::ScriptVersionStore.seed_initial_if_empty(scope: scope, name: name, body: file, plugin: plugin)
+        ::VersionStore.seed_initial_if_empty(scope: scope, name: name, body: file, plugin: plugin)
       end
       locked = Script.locked?(scope, name)
       unless locked
@@ -103,8 +103,8 @@ class ScriptsController < ApplicationController
     # Enterprise-only: capture a git commit alongside the bucket write so
     # the new version_id can travel back to the editor. Skip __TEMP__ scratch
     # scripts — they are throwaway and would only add history noise.
-    if defined?(::ScriptVersionStore) && !name.start_with?("#{OpenC3::TargetFile::TEMP_FOLDER}/")
-      sha = ::ScriptVersionStore.commit(scope: scope, name: name, text: params[:text], username: username())
+    if defined?(::VersionStore) && !name.start_with?("#{OpenC3::TargetFile::TEMP_FOLDER}/")
+      sha = ::VersionStore.commit(scope: scope, name: name, text: params[:text], username: username())
       results['version_id'] = sha if sha
     end
     # The file is still saved above; only the suite chrome is omitted when the editor lacks script_run.
@@ -166,8 +166,8 @@ class ScriptsController < ApplicationController
     return unless scope
     Script.destroy(scope, name)
     # Enterprise-only: record the deletion in git history.
-    if defined?(::ScriptVersionStore)
-      ::ScriptVersionStore.delete(scope: scope, name: name, username: username())
+    if defined?(::VersionStore)
+      ::VersionStore.delete(scope: scope, name: name, username: username())
     end
     OpenC3::Logger.info("Script destroyed: #{name}", scope: scope, user: username())
     head :ok
