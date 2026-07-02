@@ -108,6 +108,10 @@ module OpenC3
 
     def handle_read_variable_bit_size(item, _buffer)
       length_value = @packet.read(item.variable_bit_size['length_item_name'], :CONVERTED)
+      # length_value can be nil when reading an undersized packet where the length
+      # item falls outside the buffer bounds
+      raise "Length value #{item.variable_bit_size['length_item_name']} for item #{item.name} is nil" if length_value.nil?
+
       if item.array_size
         item.array_size = (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
       else
