@@ -336,7 +336,7 @@ module OpenC3
 
         # Events should be published to the stream with stored flag
         events = LimitsEventTopic.read(0, scope: "DEFAULT")
-        stored_events = events.select { |_id, e| e['stored'] == true }
+        stored_events = events.select { |_id, e| e['suppress_stored'] == true }
         expect(stored_events.length).to be > 0
 
         # current_limits should NOT be updated (stored flag prevents it)

@@ -355,7 +355,7 @@ class DecomMicroservice(Microservice):
         }
         suppress_stored = packet.stored and self.stored_limits_mode != "PROCESS"
         if suppress_stored:
-            event["stored"] = True
+            event["suppress_stored"] = True
         LimitsEventTopic.write(event, scope=self.scope)
 
         if item.limits.response is not None and not suppress_stored:

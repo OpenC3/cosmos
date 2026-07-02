@@ -44,7 +44,7 @@ module OpenC3
         # (LOG or DISABLE), skip updating current_limits so that historical
         # data does not affect the real-time overall limits state or the
         # out_of_limits API response.
-        unless event[:stored]
+        unless event[:suppress_stored]
           field = "#{event[:target_name]}__#{event[:packet_name]}__#{event[:item_name]}"
           Store.hset("#{scope}__current_limits", field, event[:new_limits_state])
         end

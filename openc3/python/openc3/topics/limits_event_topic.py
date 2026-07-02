@@ -44,7 +44,7 @@ class LimitsEventTopic(Topic):
                 # (LOG or DISABLE), skip updating current_limits so that historical
                 # data does not affect the real-time overall limits state or the
                 # out_of_limits API response.
-                if not event.get("stored"):
+                if not event.get("suppress_stored"):
                     field = f"{event['target_name']}__{event['packet_name']}__{event['item_name']}"
                     Store.hset(f"{scope}__current_limits", field, event["new_limits_state"])
 

@@ -257,7 +257,7 @@ module OpenC3
                 item_name: item.name, old_limits_state: old_limits_state.to_s, new_limits_state: item.limits.state.to_s,
                 time_nsec: packet_time.to_nsec_from_epoch, message: message.to_s }
       suppress_stored = packet.stored && @stored_limits_mode != 'PROCESS'
-      event[:stored] = true if suppress_stored
+      event[:suppress_stored] = true if suppress_stored
       LimitsEventTopic.write(event, scope: @scope)
 
       if item.limits.response && !suppress_stored
