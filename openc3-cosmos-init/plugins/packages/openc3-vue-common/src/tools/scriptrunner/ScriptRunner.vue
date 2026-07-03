@@ -1897,6 +1897,11 @@ export default {
         this.subscription = null
       }
       this.receivedEvents.length = 0 // Drop any events not yet processed
+      // Reset prompt tracking so the first prompt re-published on this fresh
+      // subscription is always processed and displayed. Without this, attaching
+      // to a running script (which reuses the component) could carry over a
+      // stale activePromptId and skip showing the dialog (see handleScript).
+      this.activePromptId = ''
       this.subscription = await this.cable.createSubscription(
         'RunningScriptChannel',
         window.openc3Scope,
@@ -2296,6 +2301,13 @@ export default {
         this.ask.show = false
         this.file.show = false
         this.bucket.show = false
+        return
+      }
+      // The running script re-publishes the active prompt about once a second
+      // while it waits for an answer. Ignore these repeats so we don't reset the
+      // dialog state and re-fetch the hazardous command description on every
+      // tick, which makes the dialog visibly bounce (issue #3472).
+      if (data.prompt_id && data.prompt_id === this.activePromptId) {
         return
       }
       this.activePromptId = data.prompt_id
