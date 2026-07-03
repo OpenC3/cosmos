@@ -588,6 +588,8 @@
     :subtitle="prompt.subtitle"
     :message="prompt.message"
     :details="prompt.details"
+    :description="prompt.description"
+    :hazardous="prompt.hazardous"
     :buttons="prompt.buttons"
     :layout="prompt.layout"
     :multiple="prompt.multiple"
@@ -876,6 +878,8 @@ export default {
         subtitle: '',
         message: '',
         details: '',
+        description: '',
+        hazardous: '',
         buttons: null,
         layout: 'horizontal',
         callback: () => {},
@@ -2300,6 +2304,8 @@ export default {
       this.prompt.title = 'Prompt'
       this.prompt.subtitle = ''
       this.prompt.details = ''
+      this.prompt.description = ''
+      this.prompt.hazardous = ''
       this.prompt.buttons = []
       this.prompt.multiple = null
       switch (data.method) {
@@ -2345,11 +2351,18 @@ export default {
           break
         case 'prompt_for_hazardous':
           this.prompt.title = 'Hazardous Command'
-          this.prompt.message = `Warning: Command ${data.args[0]} ${data.args[1]} is Hazardous. `
+          this.prompt.message = `Warning: Command ${data.args[0]} ${data.args[1]} is Hazardous. Send?`
           if (data.args[2]) {
-            this.prompt.message += data.args[2] + ' '
+            this.prompt.hazardous = data.args[2]
           }
-          this.prompt.message += 'Send?'
+          // The HazardousError only carries the hazardous description, so fetch
+          // the general command description to match Command Sender (issue #3472)
+          this.api
+            .get_cmd(data.args[0], data.args[1])
+            .then((command) => {
+              this.prompt.description = command.description || ''
+            })
+            .catch(() => {}) // Ignore - just don't show the description
           this.prompt.buttons = [{ text: 'Send', value: 'Send' }]
           this.prompt.callback = this.promptDialogCallback
           this.prompt.show = true
