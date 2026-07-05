@@ -1,0 +1,67 @@
+[package]
+name = "openc3-app"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.91"
+description = "OpenC3 COSMOS native launcher and manager (installer, container orchestration, GUI/CLI)"
+license = "AGPL-3.0-only"
+repository = "https://github.com/OpenC3/cosmos"
+
+[[bin]]
+name = "openc3"
+path = "src/main.rs"
+
+[features]
+# The GUI is on by default per the requirements. Build with
+# `--no-default-features` for a smaller headless-only binary.
+default = ["gui"]
+gui = ["dep:iced"]
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+base64 = "0.22"
+flate2 = "1"
+tar = "0.4"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+# Use iced's software renderer (tiny-skia) rather than the GPU wgpu backend:
+# adequate for a control panel, needs no GPU drivers at runtime (better for VMs
+# and the cross-built Linux/Windows binaries), and avoids pulling wgpu/metal
+# (and their future-incompat `block` dependency).
+iced = { version = "0.13", default-features = false, features = ["tiny-skia", "tokio"], optional = true }
+# Iroh peer-to-peer bridge between the app and host microservices.
+iroh = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "io-util", "sync", "time", "macros"] }
+iroh-tickets = "1.0.0"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
+
+[target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies]
+tray-icon = "0.24.1"
+
+# Native installer configuration (cargo-packager). The host OS determines which
+# formats are produced: dmg/app on macOS, deb/rpm/appimage on Linux, nsis/wix on
+# Windows. See package.sh.
+[package.metadata.packager]
+product-name = "OpenC3 COSMOS"
+identifier = "com.openc3.cosmos"
+description = "OpenC3 COSMOS native launcher and manager"
+long-description = "Installs and manages a complete OpenC3 COSMOS environment: a Docker engine, an isolated Python runtime, and the COSMOS containers. Runs as a GUI by default or fully headless from the command line."
+authors = ["OpenC3, Inc."]
+homepage = "https://openc3.com"
+license-file = "../LICENSE.md"
+category = "Utility"
+
+[package.metadata.packager.macos]
+minimum-system-version = "11.0"
+
+[package.metadata.packager.nsis]
+installer-mode = "both"

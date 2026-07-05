@@ -88,6 +88,7 @@ class InterfaceModel(Model):
         prefix=None,
         shard=0,
         db_shard=0,
+        bridge_name=None,
         scope: str = OPENC3_SCOPE,
     ):
         type = self.__class__._get_type()
@@ -153,20 +154,30 @@ class InterfaceModel(Model):
         self.db_shard = db_shard
         if self.db_shard is None:
             self.db_shard = 0
+        self.bridge_name = bridge_name
         self.secrets = [] if secrets is None else secrets
 
     # Called by InterfaceMicroservice to instantiate the Interface defined
     # by the model configuration. Must be called after get_model which
     # calls from_json to instantiate the class and populate the attributes.
     def build(self):
-        klass = get_class_from_module(
-            filename_to_module(self.config_params[0]),
-            filename_to_class_name(self.config_params[0]),
-        )
-        if len(self.config_params) > 1:
-            interface_or_router = klass(*self.config_params[1:])
+        if self.bridge_name:
+            # A bridged interface runs the real interface on the host; here in
+            # COSMOS we build a BridgeInterface tunnel to the named bridge. The
+            # connection options/secret_options belong to the host interface and
+            # are omitted, but protocols and target mapping stay in COSMOS.
+            from openc3.interfaces.bridge_interface import BridgeInterface
+
+            interface_or_router = BridgeInterface(self.bridge_name)
         else:
-            interface_or_router = klass()
+            klass = get_class_from_module(
+                filename_to_module(self.config_params[0]),
+                filename_to_class_name(self.config_params[0]),
+            )
+            if len(self.config_params) > 1:
+                interface_or_router = klass(*self.config_params[1:])
+            else:
+                interface_or_router = klass()
         interface_or_router.secrets.setup(self.secrets)
         interface_or_router.target_names = self.target_names[:]
         interface_or_router.cmd_target_names = self.cmd_target_names[:]
@@ -177,12 +188,14 @@ class InterfaceModel(Model):
         interface_or_router.auto_reconnect = self.auto_reconnect
         interface_or_router.reconnect_delay = self.reconnect_delay
         interface_or_router.disable_disconnect = self.disable_disconnect
-        for option in self.options:
-            interface_or_router.set_option(option[0], option[1:])
-        for option in self.secret_options:
-            secret_name = option[1]
-            secret_value = interface_or_router.secrets.get(secret_name, scope=self.scope)
-            interface_or_router.set_option(option[0], [secret_value])
+        # Connection options belong to the host interface for a bridged interface.
+        if not self.bridge_name:
+            for option in self.options:
+                interface_or_router.set_option(option[0], option[1:])
+            for option in self.secret_options:
+                secret_name = option[1]
+                secret_value = interface_or_router.secrets.get(secret_name, scope=self.scope)
+                interface_or_router.set_option(option[0], [secret_value])
         for protocol in self.protocols:
             klass = get_class_from_module(
                 filename_to_module(protocol[1]),
@@ -222,6 +235,7 @@ class InterfaceModel(Model):
             "prefix": self.prefix,
             "shard": self.shard,
             "db_shard": self.db_shard,
+            "bridge_name": self.bridge_name,
             "updated_at": self.updated_at,
         }
 

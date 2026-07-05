@@ -1,0 +1,7 @@
+/target
+/dist
+/python
+/cosmos
+/bin
+/tmp
+Cargo.lock.bak

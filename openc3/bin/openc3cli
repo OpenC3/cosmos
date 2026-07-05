@@ -20,6 +20,7 @@
 
 require 'openc3'
 require 'openc3/bridge/bridge'
+require 'openc3/models/bridge_model'
 require 'openc3/models/gem_model'
 require 'openc3/models/migration_model'
 require 'openc3/models/plugin_model'
@@ -1208,6 +1209,37 @@ if not ARGV[0].nil? # argument(s) given
     params = ARGV[2..-1]
     params = [] unless params
     run_bridge(filename, params)
+
+  when 'bridgeenroll'
+    if ARGV[1].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli bridgeenroll BRIDGE_NAME APP_PUBLIC_KEY [SCOPE]"
+      puts ""
+      puts "Authorize an openc3-app control identity for a bridge (Iroh hub) and"
+      puts "print that bridge's current connection ticket. Used by openc3-app to"
+      puts "auto-enroll over the local Docker control plane: the bridge then only"
+      puts "accepts api/* control connections from the given app identity."
+      puts ""
+      puts "Arguments:"
+      puts "  BRIDGE_NAME       Name of the bridge (hub)"
+      puts "  APP_PUBLIC_KEY    openc3-app's Iroh public key (EndpointId, hex)"
+      puts "  SCOPE             Scope (optional, default: OPENC3_SCOPE or DEFAULT)"
+      puts ""
+      puts "On success the bridge ticket is printed alone on stdout."
+      exit 0
+    end
+    bridge_name = ARGV[1]
+    app_public_key = ARGV[2]
+    abort("APP_PUBLIC_KEY is required (see --help)") if app_public_key.nil? || app_public_key.empty?
+    scope = ARGV[3] || ENV['OPENC3_SCOPE'] || 'DEFAULT'
+    model = OpenC3::BridgeModel.get_model(name: bridge_name, scope: scope)
+    abort("Bridge '#{bridge_name}' not found in scope #{scope}. Is its bridge_microservice running?") unless model
+    if model.ticket.nil? || model.ticket.empty?
+      abort("Bridge '#{bridge_name}' has no ticket yet. Is its bridge_microservice running?")
+    end
+    model.app_public_key = app_public_key
+    model.update
+    # Print ONLY the ticket so openc3-app can capture it from stdout.
+    puts model.ticket
 
   when 'bridgegem'
     if ARGV[1].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'

@@ -401,6 +401,17 @@ wheels = [
 ]
 
 [[package]]
+name = "iroh"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/da/21/dcb59db78944ac0efbed54bf6d13df30f0db1203db8ebbc5bc4e4a646273/iroh-1.0.0-py3-none-macosx_11_0_arm64.whl", hash = "sha256:25e2951db7976b39fc765ce4bc07461a6aabe3dc2dbab0dd17bb7585a3b7007d", size = 6484192, upload-time = "2026-06-15T18:55:11.05Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/63/a918abdbfaea3750dc4fa527f757d3c3db6d19940874bdbba37f6a7954a3/iroh-1.0.0-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:a1f3a08da63eb805857f2bbff022214bb8c168aace73d121d839d80f8f9d04dd", size = 7629977, upload-time = "2026-06-15T18:55:13.383Z" },
+    { url = "https://files.pythonhosted.org/packages/8d/55/3d4da17fc953ab88674e681d4997fb6a2e6362af4b985269fc7c2aed41c6/iroh-1.0.0-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:d444e82b04970641d6474a2d0aed1dd6b9ddd0c113396c7705f5de18c8aaf787", size = 7889559, upload-time = "2026-06-15T18:55:15.424Z" },
+    { url = "https://files.pythonhosted.org/packages/f4/02/a3b0317aac86ddf270e437ea7d0f5c53f1b5eec84524a61eaf2df63925ca/iroh-1.0.0-py3-none-win_amd64.whl", hash = "sha256:7abe58d75b14a0818230171b4397f680440fbadefd1dfb5430adf051b18c1864", size = 6615549, upload-time = "2026-06-15T18:55:17.616Z" },
+]
+
+[[package]]
 name = "jmespath"
 version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -765,6 +776,7 @@ dependencies = [
     { name = "boto3" },
     { name = "cbor2" },
     { name = "deprecated" },
+    { name = "iroh" },
     { name = "jsonpath-ng" },
     { name = "lxml" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -795,6 +807,7 @@ requires-dist = [
     { name = "boto3", specifier = ">=1.36.13,<2.0.0" },
     { name = "cbor2", specifier = ">=5.6.5,<7.0.0" },
     { name = "deprecated", specifier = ">=1.2.15,<2.0.0" },
+    { name = "iroh", specifier = ">=1.0.0,<2.0.0" },
     { name = "jsonpath-ng", specifier = ">=1.7.0,<2.0.0" },
     { name = "lxml", specifier = ">=6.0.0,<7.0.0" },
     { name = "numpy", specifier = ">=2.0,<3.0" },

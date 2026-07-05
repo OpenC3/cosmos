@@ -17,6 +17,7 @@
 
 require "openc3/version"
 require "openc3/models/model"
+require "openc3/models/bridge_model"
 require "openc3/models/plugin_model"
 require "openc3/models/microservice_model"
 require "openc3/models/setting_model"
@@ -178,6 +179,24 @@ module OpenC3
        "command_authority" => @command_authority,
        "critical_commanding" => @critical_commanding,
        "shard" => @shard}
+    end
+
+    # Every scope gets a DEFAULT bridge_microservice: the Iroh hub that lets
+    # openc3-app run COSMOS interfaces on the host. It idles (no data streams,
+    # no enrolled app) until an interface is bridged / openc3-app enrolls.
+    #
+    # It is a top-level microservice (spawned directly by the operator), NOT a
+    # child of SCOPEMULTI: that runs its Ruby children in-process, and the bridge
+    # is Python.
+    def deploy_bridge_microservice(gem_path, variables)
+      microservice = BridgeModel.build_microservice(
+        bridge_name: "DEFAULT",
+        scope: @scope,
+        shard: @shard
+      )
+      microservice.create
+      microservice.deploy(gem_path, variables)
+      Logger.info "Configured microservice #{microservice.name}"
     end
 
     def deploy_openc3_log_messages_microservice(gem_path, variables, parent)
@@ -357,6 +376,9 @@ module OpenC3
         deploy_critical_cmd_microservice(gem_path, variables, @parent)
       end
 
+      # DEFAULT bridge_microservice (Iroh hub for host interfaces)
+      deploy_bridge_microservice(gem_path, variables)
+
       # Multi Microservice to parent other scope microservices
       deploy_scopemulti_microservice(gem_path, variables)
     end
@@ -377,6 +399,8 @@ module OpenC3
       model = MicroserviceModel.get_model(name: "#{@scope}__PACKETLOG__UNKNOWN", scope: @scope)
       model.destroy if model
       model = MicroserviceModel.get_model(name: "#{@scope}__PERIODIC__#{@scope}", scope: @scope)
+      model.destroy if model
+      model = MicroserviceModel.get_model(name: "#{@scope}__BRIDGE__DEFAULT", scope: @scope)
       model.destroy if model
       if ENTERPRISE
         model = MicroserviceModel.get_model(name: "#{@scope}__TRIGGER_GROUP__DEFAULT", scope: @scope)

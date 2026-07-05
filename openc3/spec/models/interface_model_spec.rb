@@ -17,6 +17,8 @@
 
 require 'spec_helper'
 require 'openc3/models/interface_model'
+require 'openc3/models/host_microservice_model'
+require 'openc3/models/interface_status_model'
 
 module OpenC3
   describe InterfaceModel do
@@ -267,6 +269,83 @@ module OpenC3
         expect(config[0][1]['type']).to eql 'interface'
         expect(config[0][1]['name']).to eql 'TEST_INT'
         expect(config[0][1]['plugin']).to eql 'PLUG'
+      end
+    end
+
+    describe "bridged deploy, undeploy" do
+      before(:each) do
+        mock_redis()
+        local_s3()
+        TargetModel.new(name: "INST", scope: "DEFAULT").create
+      end
+
+      after(:each) do
+        local_s3_unset()
+      end
+
+      it "deploys a COSMOS bridge_interface tunnel, a shared relay, and a host microservice" do
+        model = InterfaceModel.new(
+          name: "SERIAL_INT", scope: "DEFAULT", plugin: "PLUG",
+          config_params: ["serial_interface.py", "/dev/ttyUSB0", "/dev/ttyUSB0", "115200"],
+          target_names: ["INST"],
+          protocols: [["READ_WRITE", "burst_protocol.py"]],
+          options: [["FLOW_CONTROL", "NONE"]],
+          bridge_name: "mybridge"
+        )
+        model.create
+        model.deploy(Dir.pwd, {})
+
+        # COSMOS side runs the Python interface_microservice (which builds a
+        # BridgeInterface tunnel), keeping this interface's protocols/targets.
+        cosmos = MicroserviceModel.get_model(name: "DEFAULT__INTERFACE__SERIAL_INT", scope: "DEFAULT")
+        expect(cosmos).to_not be_nil
+        expect(cosmos.cmd[0]).to include("python")
+        expect(cosmos.cmd[1]).to eql "interface_microservice.py"
+        expect(cosmos.target_names).to eql ["INST"]
+
+        # Shared relay per bridge_name, advertising this interface's stream.
+        relay = MicroserviceModel.get_model(name: "DEFAULT__BRIDGE__MYBRIDGE", scope: "DEFAULT")
+        expect(relay).to_not be_nil
+        expect(relay.cmd[1]).to eql "bridge_microservice.py"
+        expect(relay.options).to include(["BRIDGE_NAME", "mybridge"])
+        expect(relay.options).to include(["STREAM", "SERIAL_INT"])
+
+        # Host spawn spec for openc3-app: the real interface + connection options.
+        host = HostMicroserviceModel.get_model(name: "SERIAL_INT", scope: "DEFAULT")
+        expect(host).to_not be_nil
+        expect(host.bridge_name).to eql "mybridge"
+        expect(host.stream).to eql "SERIAL_INT"
+        expect(host.config_params[0]).to eql "serial_interface.py"
+        expect(host.config_params).to include("115200")
+        expect(host.options).to include(["FLOW_CONTROL", "NONE"])
+      end
+
+      it "shares one relay across interfaces and cleans up on undeploy" do
+        a = InterfaceModel.new(name: "IFACE1", scope: "DEFAULT", plugin: "PLUG",
+                               config_params: ["serial_interface.py"], bridge_name: "shared")
+        a.create
+        a.deploy(Dir.pwd, {})
+        b = InterfaceModel.new(name: "IFACE2", scope: "DEFAULT", plugin: "PLUG",
+                               config_params: ["serial_interface.py"], bridge_name: "shared")
+        b.create
+        b.deploy(Dir.pwd, {})
+
+        relay = MicroserviceModel.get_model(name: "DEFAULT__BRIDGE__SHARED", scope: "DEFAULT")
+        expect(relay.options).to include(["STREAM", "IFACE1"])
+        expect(relay.options).to include(["STREAM", "IFACE2"])
+
+        # Removing one interface leaves the relay (still serving the other).
+        a.undeploy
+        relay = MicroserviceModel.get_model(name: "DEFAULT__BRIDGE__SHARED", scope: "DEFAULT")
+        expect(relay).to_not be_nil
+        expect(relay.options).to_not include(["STREAM", "IFACE1"])
+        expect(relay.options).to include(["STREAM", "IFACE2"])
+        expect(HostMicroserviceModel.get_model(name: "IFACE1", scope: "DEFAULT")).to be_nil
+
+        # Removing the last interface destroys the now-empty relay.
+        b.undeploy
+        expect(MicroserviceModel.get_model(name: "DEFAULT__BRIDGE__SHARED", scope: "DEFAULT")).to be_nil
+        expect(HostMicroserviceModel.get_model(name: "IFACE2", scope: "DEFAULT")).to be_nil
       end
     end
 

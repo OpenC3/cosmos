@@ -46,6 +46,7 @@ dependencies = [
     "watchdog (>=6.0.0,<7.0.0)",
     "websockets (>=16.0,<17.0)",
     "pyserial>=3.5",
+    "iroh (>=1.0.0,<2.0.0)",
 ]
 
 [project.urls]
