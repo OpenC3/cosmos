@@ -32,6 +32,29 @@ if "%OPENC3_ENTERPRISE%" == "1" (
   set COSMOS_NAME=COSMOS Core
 )
 
+REM Detect container runtime (docker or podman)
+set CONTAINER_CMD=
+where docker >nul 2>&1 && set CONTAINER_CMD=docker
+if not defined CONTAINER_CMD (
+  where podman >nul 2>&1 && set CONTAINER_CMD=podman
+)
+if not defined CONTAINER_CMD (
+  echo Neither docker nor podman found! 1>&2
+  exit /b 1
+)
+
+REM Detect compose command. Never fall back to podman-compose; COSMOS only
+REM supports docker-compose as the standalone compose tool, even under podman.
+set CONTAINER_COMPOSE_CMD=
+%CONTAINER_CMD% compose version >nul 2>&1 && set CONTAINER_COMPOSE_CMD=%CONTAINER_CMD% compose
+if not defined CONTAINER_COMPOSE_CMD (
+  where docker-compose >nul 2>&1 && set CONTAINER_COMPOSE_CMD=docker-compose
+)
+if not defined CONTAINER_COMPOSE_CMD (
+  echo No compose command found! 1>&2
+  exit /b 1
+)
+
 if "%1" == "" (
   GOTO usage
 )
@@ -54,9 +77,9 @@ if "%1" == "cli" (
   REM Note: The service name is always openc3-cosmos-cmd-tlm-api; compose.yaml pulls the correct image
   REM (enterprise or non-enterprise) based on environment variables.
   if "%OPENC3_ENTERPRISE%" == "1" (
-    docker compose -f %~dp0compose.yaml run -it --rm -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_USER=!OPENC3_API_USER! -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+    !CONTAINER_COMPOSE_CMD! -f %~dp0compose.yaml run -it --rm -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_USER=!OPENC3_API_USER! -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
   ) else (
-    docker compose -f %~dp0compose.yaml run -it --rm -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+    !CONTAINER_COMPOSE_CMD! -f %~dp0compose.yaml run -it --rm -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
   )
   GOTO :EOF
 )
@@ -67,9 +90,9 @@ if "%1" == "cliroot" (
   REM Note: The service name is always openc3-cosmos-cmd-tlm-api; compose.yaml pulls the correct image
   REM (enterprise or non-enterprise) based on environment variables.
   if "%OPENC3_ENTERPRISE%" == "1" (
-    docker compose -f %~dp0compose.yaml run -it --rm --user=root -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_USER=!OPENC3_API_USER! -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+    !CONTAINER_COMPOSE_CMD! -f %~dp0compose.yaml run -it --rm --user=root -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_USER=!OPENC3_API_USER! -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
   ) else (
-    docker compose -f %~dp0compose.yaml run -it --rm --user=root -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+    !CONTAINER_COMPOSE_CMD! -f %~dp0compose.yaml run -it --rm --user=root -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
   )
   GOTO :EOF
 )
@@ -113,22 +136,22 @@ GOTO usage
 :startup
   if "%OPENC3_DEVEL%" == "1" (
     CALL openc3 build || exit /b
-    docker compose -f compose.yaml up -d
+    !CONTAINER_COMPOSE_CMD! -f compose.yaml up -d
   ) else (
-    docker compose -f compose.yaml up -d
+    !CONTAINER_COMPOSE_CMD! -f compose.yaml up -d
   )
   @echo off
 GOTO :EOF
 
 :stop
-  docker compose stop openc3-operator
-  docker compose stop openc3-cosmos-script-runner-api
-  docker compose stop openc3-cosmos-cmd-tlm-api
+  !CONTAINER_COMPOSE_CMD! stop openc3-operator
+  !CONTAINER_COMPOSE_CMD! stop openc3-cosmos-script-runner-api
+  !CONTAINER_COMPOSE_CMD! stop openc3-cosmos-cmd-tlm-api
   if "%OPENC3_ENTERPRISE%" == "1" (
-    docker compose stop openc3-metrics
+    !CONTAINER_COMPOSE_CMD! stop openc3-metrics
   )
   timeout /t 5 /nobreak
-  docker compose -f compose.yaml down -t 30
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml down -t 30
   @echo off
 GOTO :EOF
 
@@ -181,7 +204,7 @@ GOTO :EOF
 goto :try_cleanup
 
 :cleanup_y
-  docker compose -f compose.yaml down -t 30 -v
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml down -t 30 -v
 
   if "%2" == "local" (
     FOR /d %%a IN (%~dp0plugins\DEFAULT\*) DO RD /S /Q "%%a"
@@ -197,34 +220,36 @@ GOTO :EOF
     exit /b 1
   )
   CALL scripts\windows\openc3_setup || exit /b
+  CALL :registry_login
   if not "%OPENC3_ENTERPRISE%" == "1" GOTO :build_core
   REM Enterprise: build core images first when OPENC3_TAG=latest, then enterprise
   CALL :build_core_images
-  docker compose -f compose.yaml -f compose-build.yaml build openc3-enterprise-gem || exit /b
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-enterprise-gem || exit /b
   GOTO :build_all
 :build_core
-  docker compose -f compose.yaml -f compose-build.yaml build openc3-ruby || exit /b
-  docker compose -f compose.yaml -f compose-build.yaml build openc3-base || exit /b
-  docker compose -f compose.yaml -f compose-build.yaml build openc3-node || exit /b
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-ruby || exit /b
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-base || exit /b
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-node || exit /b
 :build_all
-  docker compose -f compose.yaml -f compose-build.yaml build || exit /b
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build || exit /b
   @echo off
 GOTO :EOF
 
 :run
-  docker compose -f compose.yaml up -d
+  CALL :registry_login
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml up -d
   @echo off
 GOTO :EOF
 
 :dev
-  docker compose -f compose.yaml -f compose-dev.yaml up -d
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-dev.yaml up -d
   @echo off
 GOTO :EOF
 
 :test
   REM Building COSMOS
   CALL scripts\windows\openc3_setup || exit /b
-  docker compose -f compose.yaml -f compose-build.yaml build
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build
   set args=%*
   call set args=%%args:*%1=%%
   REM Running tests
@@ -265,9 +290,21 @@ GOTO :EOF
   set "CORE_DIR=%~dp0..\cosmos"
   if exist "!CORE_DIR!\compose-build.yaml" (
     @echo Building core images from !CORE_DIR! ...
-    docker compose --project-directory "!CORE_DIR!" -f "!CORE_DIR!\compose.yaml" -f "!CORE_DIR!\compose-build.yaml" build || exit /b
+    !CONTAINER_COMPOSE_CMD! --project-directory "!CORE_DIR!" -f "!CORE_DIR!\compose.yaml" -f "!CORE_DIR!\compose-build.yaml" build || exit /b
   ) else (
     @echo Warning: Core repo not found at !CORE_DIR! — using existing latest tagged images
+  )
+  exit /b 0
+
+:registry_login
+  FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# %~dp0.env') do SET %%i
+  if defined OPENC3_REGISTRY (
+    !CONTAINER_CMD! login !OPENC3_REGISTRY!
+  )
+  if "!OPENC3_ENTERPRISE!" == "1" (
+    if defined OPENC3_ENTERPRISE_REGISTRY (
+      !CONTAINER_CMD! login !OPENC3_ENTERPRISE_REGISTRY!
+    )
   )
   exit /b 0
 

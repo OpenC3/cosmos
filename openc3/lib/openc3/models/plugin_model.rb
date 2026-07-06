@@ -31,9 +31,11 @@ require 'openc3/models/tool_model'
 require 'openc3/models/widget_model'
 require 'openc3/models/microservice_model'
 require 'openc3/api/api'
+require 'openc3/utilities/pypi_url'
 require 'tmpdir'
 require 'tempfile'
 require 'fileutils'
+require 'open3'
 
 module OpenC3
   class EmptyGemFileError < StandardError; end
@@ -262,16 +264,17 @@ module OpenC3
               if pypi_url
                 pypi_url += '/simple'
               end
-              pypi_url ||= 'https://pypi.org/simple'
+              pypi_url ||= PypiUrl::DEFAULT
             end
           end
+          pypi_url = PypiUrl.validate(pypi_url)
           unless validate_only
-            # Determine pypi args for trusted host support
-            if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
-              pypi_args = "-i #{pypi_url}"
-            else
-              pypi_args = "-i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host}"
-            end
+            # Build the install arguments as argv arrays and run without a shell.
+            # pypi_url comes from a user-writable setting, so interpolating it
+            # into a shell command line allowed OS command injection. An argv array
+            # passes each argument verbatim with no shell metacharacter interpretation.
+            pypi_args = ["-i", pypi_url]
+            pypi_args += ["--trusted-host", URI.parse(pypi_url).host] unless ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
 
             # Install Python dependencies into an isolated per-plugin venv when UV
             # is available. Each plugin gets its own venv at /gems/plugin_venvs/<name>/.venv
@@ -282,29 +285,31 @@ module OpenC3
             if uv_installed
               plugin_venv_name = plugin_model.name.tr('^a-zA-Z0-9_-', '_')
               Logger.info "Installing python packages into per-plugin venv '#{plugin_venv_name}' with pypi_url=#{pypi_url}"
-              output = `/openc3/bin/uvinstall #{plugin_venv_name} #{gem_path} #{pypi_args}`
+              uv_args = [plugin_venv_name, gem_path] + pypi_args
+              output, status = Open3.capture2e("/openc3/bin/uvinstall", *uv_args)
               puts output
-              unless $?.success?
+              unless status.success?
                 Logger.warn "UV per-plugin install failed, falling back to shared pipinstall"
                 uv_installed = false
               end
             end
 
             unless uv_installed
+              pip_args = pypi_args.dup
               if File.exist?(pyproject_path)
                 Logger.info "Installing python packages from pyproject.toml with pypi_url=#{pypi_url}"
-                pip_args = "#{pypi_args} #{gem_path}"
+                pip_args << gem_path
               else
                 Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
-                pip_args = "#{pypi_args} -r #{requirements_path}"
+                pip_args += ["-r", requirements_path]
               end
               # Capture output and check exit code so failures surface as a warning
               # rather than silently succeeding. pipinstall is non-fatal: the plugin
               # continues to install even if Python packages fail so that non-Python
               # functionality still works.
-              output = `/openc3/bin/pipinstall #{pip_args}`
+              output, status = Open3.capture2e("/openc3/bin/pipinstall", *pip_args)
               puts output
-              unless $?.success?
+              unless status.success?
                 Logger.warn "Python package installation failed. Plugin Python microservices may not function correctly."
               end
             end
@@ -614,19 +619,17 @@ module OpenC3
           end
         end
 
-        # Build pypi_args (same pattern as install_phase2 lines 268-273)
-        if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
-          pypi_args = "-i #{pypi_url}"
-        else
-          pypi_args = "-i #{pypi_url} --trusted-host #{URI.parse(pypi_url).host}"
-        end
+        # Build pypi_args as an argv array (same pattern as install_phase2)
+        pypi_args = ["-i", pypi_url]
+        pypi_args += ["--trusted-host", URI.parse(pypi_url).host] unless ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
 
         # Run uvinstall for this plugin
         plugin_venv_name = @name.tr('^a-zA-Z0-9_-', '_')
         Logger.info("Migrating plugin '#{@name}' to per-plugin UV venv '#{plugin_venv_name}'")
-        output = `/openc3/bin/uvinstall #{plugin_venv_name} #{gem_path} #{pypi_args}`
+        uv_args = [plugin_venv_name, gem_path] + pypi_args
+        output, status = Open3.capture2e("/openc3/bin/uvinstall", *uv_args)
         puts output
-        if $?.success?
+        if status.success?
           Logger.info("Successfully migrated plugin '#{@name}' to per-plugin UV venv")
           return true
         else

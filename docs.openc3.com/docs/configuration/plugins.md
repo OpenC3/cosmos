@@ -183,9 +183,12 @@ The following keywords must follow a INTERFACE keyword.
 ### MAP_TARGET
 **Maps a target name to an interface**
 
+See [Mapping Targets to Interfaces](/docs/configuration/interfaces#mapping-targets-to-interfaces) for more information.
+
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Target Name | Target name to map to this interface | True |
+| Enabled State | Initial enabled state of the target on this interface. Defaults to ENABLED.<br/><br/>Valid Values: <span class="values">ENABLED, DISABLED</span> | False |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -205,9 +208,12 @@ INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0
 ### MAP_CMD_TARGET
 <span class="badge badge--secondary since-right">Since 5.2.0</span>**Maps a target name to an interface for commands only**
 
+See [Mapping Targets to Interfaces](/docs/configuration/interfaces#mapping-targets-to-interfaces) for more information.
+
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Target Name | Command target name to map to this interface | True |
+| Enabled State | Initial enabled state of the command target on this interface. Defaults to ENABLED.<br/><br/>Valid Values: <span class="values">ENABLED, DISABLED</span> | False |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -227,9 +233,12 @@ INTERFACE CMD_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 
 ### MAP_TLM_TARGET
 <span class="badge badge--secondary since-right">Since 5.2.0</span>**Maps a target name to an interface for telemetry only**
 
+See [Mapping Targets to Interfaces](/docs/configuration/interfaces#mapping-targets-to-interfaces) for more information.
+
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Target Name | Telemetry target name to map to this interface | True |
+| Enabled State | Initial enabled state of the telemetry target on this interface. Defaults to ENABLED.<br/><br/>Valid Values: <span class="values">ENABLED, DISABLED</span> | False |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -624,6 +633,20 @@ DB Shard. Only used if running multiple database shards typically in Kubernetes
 Example Usage:
 ```cosmos
 DB_SHARD 0
+```
+
+### STORED_LIMITS_MODE
+<span class="badge badge--secondary since-right">Since 7.3.0</span>**Controls how limits are evaluated for stored (non-real-time) telemetry packets**
+
+Sets the limits handling policy for packets where the stored flag is true (e.g., packets from file interfaces or historical data replay). PROCESS processes limits normally including logging and reactions. LOG evaluates limits and logs state changes but does not trigger limits reactions or update the current limits state used by the API. DISABLE skips limits processing entirely for stored packets.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Mode | PROCESS (default), LOG, or DISABLE | True |
+
+Example Usage:
+```cosmos
+STORED_LIMITS_MODE DISABLE
 ```
 
 ## MICROSERVICE

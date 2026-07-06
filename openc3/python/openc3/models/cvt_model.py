@@ -29,8 +29,8 @@ class CvtModel(Model):
     VALUE_TYPES = {"RAW", "CONVERTED", "FORMATTED"}
 
     @classmethod
-    def build_json_from_packet(cls, packet):
-        return packet.decom()
+    def build_json_from_packet(cls, packet, include_limits_states=True):
+        return packet.decom(include_limits_states=include_limits_states)
 
     @classmethod
     def _store_for_target(cls, target_name, scope):

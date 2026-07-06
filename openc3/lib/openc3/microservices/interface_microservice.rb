@@ -281,6 +281,7 @@ module OpenC3
             command.extra ||= {}
             command.extra['cmd_string'] = msg_hash['cmd_string']
             command.extra['username'] = msg_hash['username']
+            command.extra['interface_name'] = @interface.name
             # Add approver info if this was a critical command that was approved
             if critical_model
               command.extra['approver'] = critical_model.approver
@@ -706,16 +707,19 @@ module OpenC3
         # Try to do clean disconnect because we're going down
         disconnect(false)
       end
-      if @interface_or_router == 'INTERFACE'
-        InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
-      else
-        RouterStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
+      unless @cancel_thread
+        if @interface_or_router == 'INTERFACE'
+          InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
+        else
+          RouterStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
+        end
       end
       @logger.info "#{@interface.name}: Stopped packet reading"
     end
 
     def handle_packet(packet)
-      InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
+      # Skip status update if stop() has been called to avoid re-creating the status model
+      InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope) unless @cancel_thread
       packet.received_time = Time.now.sys unless packet.received_time
 
       if packet.stored
@@ -853,7 +857,8 @@ module OpenC3
 
       # If the interface is set to auto_reconnect then delay so the thread
       # can come back around and allow the interface a chance to reconnect.
-      if allow_reconnect and @interface.auto_reconnect and @interface.state != 'DISCONNECTED'
+      # Skip reconnect if stop() has been called to avoid re-creating the status model
+      if allow_reconnect and @interface.auto_reconnect and @interface.state != 'DISCONNECTED' and !@cancel_thread
         attempting()
         if !@cancel_thread
           # @logger.debug "reconnect delay: #{@interface.reconnect_delay}"
@@ -861,10 +866,12 @@ module OpenC3
         end
       else
         @interface.state = 'DISCONNECTED'
-        if @interface_or_router == 'INTERFACE'
-          InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
-        else
-          RouterStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
+        unless @cancel_thread
+          if @interface_or_router == 'INTERFACE'
+            InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
+          else
+            RouterStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
+          end
         end
       end
     end

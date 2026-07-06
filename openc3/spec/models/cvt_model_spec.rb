@@ -70,6 +70,19 @@ module OpenC3
         expect(CvtModel.get_item("TGT", "PKT", "ARY", type: :WITH_UNITS, scope: "DEFAULT")).to eql '["0x2 V", "0x4 V"]'
         expect(CvtModel.get_item("TGT", "PKT", "BLOCK", type: :RAW, scope: "DEFAULT")).to eql "\x00\x01\x02\x03\x04"
       end
+
+      it "passes include_limits_states through to packet.decom" do
+        packet = Packet.new("TGT", "PKT", :BIG_ENDIAN, 'packet', "\x01\x02")
+        item = packet.append_item("val", 16, :UINT)
+        item.limits.state = :RED_HIGH
+
+        json_hash = CvtModel.build_json_from_packet(packet)
+        expect(json_hash['VAL__L']).to eql :RED_HIGH
+
+        json_hash = CvtModel.build_json_from_packet(packet, include_limits_states: false)
+        expect(json_hash.key?('VAL__L')).to be false
+        expect(json_hash['VAL']).to eql 0x0102
+      end
     end
 
     describe "self.del" do

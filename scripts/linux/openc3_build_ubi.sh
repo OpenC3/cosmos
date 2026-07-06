@@ -129,7 +129,16 @@ check_registry_login() {
     return 0
   fi
 
-  echo "Logging into registry: $OPENC3_UBI_REGISTRY"
+  # First check if we're already authenticated by inspecting a known image from the registry.
+  # This avoids overwriting valid stored credentials with potentially stale environment variables.
+  local test_image="${OPENC3_UBI_REGISTRY}/${OPENC3_UBI_IMAGE}:${OPENC3_UBI_TAG}"
+  echo "Checking registry authentication: $OPENC3_UBI_REGISTRY"
+  if DOCKER_CLI_EXPERIMENTAL=enabled docker manifest inspect "$test_image" > /dev/null 2>&1; then
+    echo "Already authenticated with registry: $OPENC3_UBI_REGISTRY"
+    return 0
+  fi
+
+  echo "Not currently authenticated with registry: $OPENC3_UBI_REGISTRY"
 
   # Attempt login with credentials if provided, otherwise prompt
   if [[ -n "$OPENC3_UBI_USERNAME" ]] && [[ -n "$OPENC3_UBI_PASSWORD" ]]; then
@@ -398,7 +407,7 @@ if should_build "openc3-traefik-ubi"; then
     --network host \
     --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik \
     --build-arg TRAEFIK_CONFIG=$TRAEFIK_CONFIG \
-    --build-arg OPENC3_TRAEFIK_RELEASE=v3.7.1 \
+    --build-arg OPENC3_TRAEFIK_RELEASE=v3.7.5 \
     "${BUILD_FLAGS[@]}" \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik-ubi:${OPENC3_TAG}" \
