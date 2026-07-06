@@ -376,6 +376,8 @@ The `OPENC3_API_PASSWORD` environment variable must be set (typically in your `.
 
 Migrates an installed plugin from the shared Python virtual environment to a per-plugin UV virtual environment. This creates an isolated Python environment for the plugin with its own dependencies, preventing version conflicts between plugins.
 
+Plugins installed on COSMOS 7.3+ automatically get per-plugin virtual environments. This command is only needed for plugins that were installed on an earlier version and are still using the shared Python environment. Running it on a plugin that is already migrated is a safe no-op.
+
 The `PLUGIN_NAME` argument is the full installed plugin name (including the timestamp suffix), not a `.gem` file path. Use `cli list` to find the installed plugin name. The `SCOPE` argument is optional and defaults to `DEFAULT`.
 
 ```bash
@@ -387,6 +389,8 @@ Successfully migrated plugin 'openc3-cosmos-my-plugin-1.0.0.gem__20260501150000'
 ```
 
 If the plugin has no Python dependencies (`pyproject.toml` or `requirements.txt`), the command reports success without creating a venv. If the plugin is already migrated, the command is a no-op.
+
+This command performs the same operation as the **Migrate to UV** button in the [Admin Plugins tab](/docs/tools/admin#plugins).
 
 ## CSTOL Converter
 

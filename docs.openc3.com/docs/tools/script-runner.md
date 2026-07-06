@@ -134,7 +134,7 @@ Scripts saved under a target folder (e.g. `INST2/procedures/my_script.py`) autom
 
 ### Temp Scripts and the Target Selector
 
-Temporary (unsaved) scripts are not associated with any target, so they cannot automatically resolve a plugin venv. To run a temp script with a specific plugin's Python dependencies, use the **Target** dropdown in the Script Runner toolbar. This dropdown appears next to the Start button when working with Python scripts and only lists targets whose plugins have a Python virtual environment installed. Select the target whose plugin dependencies you want to use, and the script will run inside that plugin's venv.
+Temporary (unsaved) scripts are not associated with any target, so they cannot automatically resolve a plugin venv. By default they run under the system Python environment, which has access to the core `openc3` library but not plugin-specific packages. To run a temp script with a specific plugin's Python dependencies, use the **Target** dropdown in the Script Runner toolbar. This dropdown appears next to the Start button when working with Python scripts and only lists targets whose plugins have a Python virtual environment installed. Select the target whose plugin dependencies you want to use, and the script will run inside that plugin's venv.
 
 When you open a saved script, the target selector resets automatically because the venv is determined from the file path.
 

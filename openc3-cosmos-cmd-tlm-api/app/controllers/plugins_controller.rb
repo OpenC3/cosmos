@@ -74,6 +74,12 @@ class PluginsController < ModelController
     return unless authorization('system')
     if params[:id].downcase == 'all'
       plugins = @model_class.all(scope: params[:scope])
+      # Enrich with per-plugin UV migration status (derived from filesystem, not stored in Redis).
+      # Must run before the store data merge below, which adds keys that PluginModel.new doesn't accept.
+      plugins.each do |plugin_name, plugin|
+        model = @model_class.new(**(plugin.transform_keys(&:to_sym)), scope: params[:scope])
+        plugin['needs_uv_migration'] = model.needs_uv_migration?
+      end
       OpenC3::PluginStoreModel.ensure_exists()
       store_plugins = OpenC3::PluginStoreModel.all()
       store_plugins = JSON.parse(store_plugins)

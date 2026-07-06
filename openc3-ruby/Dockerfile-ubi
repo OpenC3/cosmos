@@ -107,7 +107,6 @@ RUN tar -xzf rbspy-x86_64-unknown-linux-gnu-0.39.0.tar.gz && \
 
 # htop - https://github.com/htop-dev/htop
 COPY htop-3.4.1.tar.gz /opt/htop-3.4.1.tar.gz
-WORKDIR /opt
 RUN tar -xzf htop-3.4.1.tar.gz
 WORKDIR /opt/htop-3.4.1
 RUN ./autogen.sh && \

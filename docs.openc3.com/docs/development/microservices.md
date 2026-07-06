@@ -143,7 +143,7 @@ When a Python plugin microservice starts, the COSMOS operator automatically conf
 This means plugin-specific dependencies (declared in `pyproject.toml` or `requirements.txt`) are installed in the per-plugin venv, while the core `openc3` library and system dependencies remain available from the base COSMOS Python environment. No manual configuration is needed — the operator handles this automatically when starting the microservice.
 
 :::note
-The `add_to_search_path` pattern for importing from a plugin's own `lib/` directory is still needed, as described in the section below. The per-plugin virtual environment handles third-party package isolation, not plugin-internal imports.
+The `add_to_search_path` pattern for importing from a plugin's `lib/` directory is still needed, as described in the section below. The per-plugin virtual environment handles third-party package isolation (e.g. `numpy`, `requests`), not plugin-internal `lib/` imports.
 :::
 
 ## Importing Plugin Helpers from `lib/`
@@ -166,6 +166,12 @@ from openc3.top_level import add_to_search_path
 for path in glob.glob("/gems/gems/**/lib"):
     add_to_search_path(path, True)
 ```
+
+This adds all installed plugins' `lib/` directories to the Python path,
+matching how Ruby gems automatically include every gem's `lib/` in
+`$LOAD_PATH`. If you only need your own plugin's helpers, you can narrow the
+glob to your specific gem (e.g.
+`/gems/gems/openc3-cosmos-my-plugin-*/lib`).
 
 This must run **before** any `from foo import bar` statements that pull from a
 plugin `lib/` folder, otherwise the import raises `ModuleNotFoundError`. If you

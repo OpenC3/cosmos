@@ -8,9 +8,10 @@ FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_IMAGE}:${OPENC3_TAG}
 WORKDIR /src/
 
 RUN ["chown", "-R", "openc3:openc3", "/src/"]
-COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./ ./
 
 USER root
+
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./ ./
 
 ENV SKIP_DEV_GEMS=1
 RUN bundle config set --local without 'development test' && \

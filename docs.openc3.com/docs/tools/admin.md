@@ -17,7 +17,7 @@ The Plugins tab is where you install new plugins into the COSMOS system. Plugins
 
 The plugin gem name is listed along with all the targets it contains. You can Download, Edit, Upgrade, or Delete (uninstall) the plugin using the buttons to the right. If a plugin's target has been modified, the target name turns into a link which when clicked will download the changed files. New plugins are installed by clicking the top field.
 
-Plugins that were installed before the UV per-plugin virtual environment feature was added show a **Migrate to UV** button. Clicking this button creates an isolated UV virtual environment for the plugin and reinstalls its Python dependencies, giving it the same dependency isolation as newly installed plugins.
+Plugins that were installed before the UV per-plugin virtual environment feature was added (pre-7.3) can be migrated using the **Migrate to UV** button in the plugin menu. Clicking this button creates an isolated UV virtual environment for the plugin and reinstalls its Python dependencies, giving it the same dependency isolation as newly installed plugins. If the plugin is already migrated, this is a safe no-op. This performs the same operation as the [`cli migratetouv`](/docs/getting-started/cli#migrate-to-uv) command.
 
 ### Targets
 

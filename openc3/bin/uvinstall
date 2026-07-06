@@ -9,8 +9,6 @@
 #   1. If gem_path contains uv.lock: uses `uv sync --frozen` (reproducible)
 #   2. Otherwise: falls back to `uv pip install` for requirements.txt / pyproject.toml
 
-set -e
-
 PLUGIN_VENV_NAME="$1"
 GEM_PATH="$2"
 shift 2

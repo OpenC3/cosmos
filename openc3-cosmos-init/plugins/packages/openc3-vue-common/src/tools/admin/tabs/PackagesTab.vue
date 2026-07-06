@@ -411,12 +411,13 @@ export default {
             this.updateProcesses()
           }, 2500)
         })
-        // Error will probably never happen because we spawn the package removal
-        // and then wait for the response which happens in the background
         .catch((error) => {
-          this.$notify.serious({
-            body: `Failed to remove package ${pkg}`,
-          })
+          // Dialog cancel also triggers catch, only notify on actual errors
+          if (error) {
+            this.$notify.serious({
+              body: `Failed to remove package ${pkg}`,
+            })
+          }
         })
     },
     deletePythonPackage(formattedPkg, pluginName) {
@@ -441,9 +442,12 @@ export default {
           }, 2500)
         })
         .catch((error) => {
-          this.$notify.serious({
-            body: `Failed to remove package ${formattedPkg}`,
-          })
+          // Dialog cancel also triggers catch, only notify on actual errors
+          if (error) {
+            this.$notify.serious({
+              body: `Failed to remove package ${formattedPkg}`,
+            })
+          }
         })
     },
   },
