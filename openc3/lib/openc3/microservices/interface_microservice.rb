@@ -287,6 +287,8 @@ module OpenC3
             command.extra['cmd_string'] = msg_hash['cmd_string']
             command.extra['username'] = msg_hash['username']
             command.extra['interface_name'] = @interface.name
+            # Original author of a queued command (set when released from a queue)
+            command.extra['queue_username'] = msg_hash['queue_username'] if msg_hash['queue_username']
             # Add approver info if this was a critical command that was approved
             if critical_model
               command.extra['approver'] = critical_model.approver
