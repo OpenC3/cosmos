@@ -77,7 +77,7 @@
             @click="viewMicroservices"
           />
           <v-list-item
-            v-if="needs_uv_migration"
+            v-if="needsUvMigration"
             title="Migrate to UV"
             prepend-icon="mdi-swap-horizontal"
             data-test="migrate-to-uv"
@@ -118,7 +118,7 @@ export default {
       },
     },
     isModified: Boolean,
-    needs_uv_migration: Boolean,
+    needsUvMigration: Boolean,
     microservices: {
       type: Object,
       default: () => ({}),

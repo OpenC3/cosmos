@@ -544,12 +544,10 @@ module OpenC3
           allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
           allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
 
-          # system('which uv') returns true; uvinstall succeeds (set $? via `true`)
+          # system('which uv') returns true; uvinstall succeeds
           allow(PluginModel).to receive(:system).with('which uv > /dev/null 2>&1').and_return(true)
-          allow(PluginModel).to receive(:`) { |_cmd|
-            `true` # Sets $? to success
-            "ok"
-          }
+          success_status = double("status", success?: true)
+          expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "-i", anything).and_return(["ok", success_status])
 
           plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
           expect(plugin_model['needs_dependencies']).to eql true
@@ -574,17 +572,10 @@ module OpenC3
           allow(PluginModel).to receive(:system).with('which uv > /dev/null 2>&1').and_return(true)
 
           # uvinstall fails, then pipinstall succeeds
-          call_count = 0
-          allow(PluginModel).to receive(:`) { |_cmd|
-            call_count += 1
-            if call_count == 1
-              `false` # Sets $? to failure for uvinstall
-              "uv failed"
-            else
-              `true` # Sets $? to success for pipinstall
-              "pip ok"
-            end
-          }
+          failure_status = double("status", success?: false)
+          success_status = double("status", success?: true)
+          expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "-i", anything).and_return(["uv failed", failure_status])
+          expect(Open3).to receive(:capture2e).with("/openc3/bin/pipinstall", "-i", anything, anything).and_return(["pip ok", success_status])
 
           plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
           expect(plugin_model['needs_dependencies']).to eql true
@@ -610,10 +601,8 @@ module OpenC3
           expect(PluginModel).not_to receive(:system)
 
           # Should go straight to pipinstall
-          allow(PluginModel).to receive(:`) { |_cmd|
-            `true`
-            "pip ok"
-          }
+          success_status = double("status", success?: true)
+          expect(Open3).to receive(:capture2e).with("/openc3/bin/pipinstall", "-i", anything, "-r", anything).and_return(["pip ok", success_status])
 
           plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
           expect(plugin_model['needs_dependencies']).to eql true
@@ -639,10 +628,8 @@ module OpenC3
           allow(PluginModel).to receive(:system).with('which uv > /dev/null 2>&1').and_return(false)
 
           # Should fall back to pipinstall
-          allow(PluginModel).to receive(:`) { |_cmd|
-            `true`
-            "pip ok"
-          }
+          success_status = double("status", success?: true)
+          expect(Open3).to receive(:capture2e).with("/openc3/bin/pipinstall", "-i", anything, anything).and_return(["pip ok", success_status])
 
           plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
           expect(plugin_model['needs_dependencies']).to eql true
@@ -883,11 +870,9 @@ module OpenC3
         allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
         allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
 
-        # uvinstall succeeds - use `true` to set $? to success
-        allow(model).to receive(:`) { |_cmd|
-          `true`
-          "ok"
-        }
+        # uvinstall succeeds
+        success_status = double("status", success?: true)
+        expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "-i", anything).and_return(["ok", success_status])
 
         expect(model.migrate_to_uv!(scope: "DEFAULT")).to be true
       end
@@ -912,11 +897,9 @@ module OpenC3
         allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
         allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
 
-        # uvinstall fails - use `false` to set $? to failure
-        allow(model).to receive(:`) { |_cmd|
-          `false`
-          "fail"
-        }
+        # uvinstall fails
+        failure_status = double("status", success?: false)
+        expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "-i", anything).and_return(["fail", failure_status])
 
         expect(model.migrate_to_uv!(scope: "DEFAULT")).to be false
       end

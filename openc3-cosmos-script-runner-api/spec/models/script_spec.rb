@@ -215,6 +215,7 @@ RSpec.describe Script, type: :model do
     end
 
     it "passes python_venv through to RunningScript.spawn" do
+      allow(Script).to receive(:body).with("DEFAULT", "script.py").and_return("print('hello')")
       expect(RunningScript).to receive(:spawn).with(
         "DEFAULT", "script.py", nil, false, nil, "User Name", "username", nil, nil, "/gems/plugin_venvs/demo/.venv"
       )
