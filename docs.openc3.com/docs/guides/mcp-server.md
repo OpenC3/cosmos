@@ -46,3 +46,14 @@ At the command line run:
 Then start claude and run the following to authenticate:
 
 `/mcp`
+
+## Disabling the MCP Server
+<span class="badge badge--secondary since-right">Since 7.3.0</span>
+To disable the MCP Server entirely, set the following environment variable in the `.env` file at the root of your COSMOS Enterprise project and restart COSMOS:
+
+```
+OPENC3_MCP_DISABLED=true
+```
+
+This prevents the MCP Server process from starting, so nothing listens at `/mcp`. Note that the Built-In AI Interface uses the MCP Server for all of its COSMOS interactions, so disabling the MCP Server also prevents the AI Interface from reading telemetry, sending commands, or running scripts. Remove the variable and restart COSMOS to re-enable.
+
