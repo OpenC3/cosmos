@@ -17,9 +17,10 @@ RSpec.describe UsersController, type: :controller do
       expect(response).to have_http_status(:ok)
     end
 
-    it "Logout" do
-      allow(OpenC3::AuthModel).to receive(:logout)
-      put :logout, params: {user: "user"}
+    it "Logout terminates only the caller's own session token" do
+      request.headers['HTTP_AUTHORIZATION'] = 'ses_mytoken'
+      expect(OpenC3::AuthModel).to receive(:terminate).with('ses_mytoken')
+      put :logout, params: {user: "user", scope: "DEFAULT"}
       expect(response).to have_http_status(:ok)
     end
   end

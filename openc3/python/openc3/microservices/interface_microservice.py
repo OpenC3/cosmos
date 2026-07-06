@@ -308,6 +308,11 @@ class InterfaceCmdHandlerThread:
                 )
                 command.received_count = orig_command.received_count
                 command.received_time = datetime.now(timezone.utc)
+            except ValueError as e:
+                # Command parameter out of range is a user error, not a bug,
+                # so only log the message and not the full stack trace
+                self.logger.error(f"{self.interface.name}: {str(e)}")
+                return str(e)
             except Exception as e:
                 self.logger.error(f"{self.interface.name}: {msg_hash}")
                 self.logger.error(f"{self.interface.name}: {traceback.format_exc()}")
@@ -318,6 +323,7 @@ class InterfaceCmdHandlerThread:
             command.extra = command.extra or {}
             command.extra["cmd_string"] = msg_hash.get(b"cmd_string", b"").decode()
             command.extra["username"] = msg_hash.get(b"username", b"").decode()
+            command.extra["interface_name"] = self.interface.name
             # Add approver info if this was a critical command that was approved
             if critical_model is not None:
                 command.extra["approver"] = critical_model.approver
@@ -780,14 +786,17 @@ class InterfaceMicroservice(Microservice):
                 # handle_fatal_exception(error)
             # Try to do clean disconnect because we're going down
             self.disconnect(False)
-        if self.interface_or_router == "INTERFACE":
-            InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
-        else:
-            RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+        if not self.cancel_thread:
+            if self.interface_or_router == "INTERFACE":
+                InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+            else:
+                RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         self.logger.info(f"{self.interface.name}: Stopped packet reading")
 
     def handle_packet(self, packet):
-        InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+        # Skip status update if stop() has been called to avoid re-creating the status model
+        if not self.cancel_thread:
+            InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         if packet.received_time is None:
             packet.received_time = datetime.now(timezone.utc)
 
@@ -919,16 +928,23 @@ class InterfaceMicroservice(Microservice):
 
         # If the interface is set to auto_reconnect then delay so the thread
         # can come back around and allow the interface a chance to reconnect.
-        if allow_reconnect and self.interface.auto_reconnect and self.interface.state != "DISCONNECTED":
+        # Skip reconnect if stop() has been called to avoid re-creating the status model
+        if (
+            allow_reconnect
+            and self.interface.auto_reconnect
+            and self.interface.state != "DISCONNECTED"
+            and not self.cancel_thread
+        ):
             self.attempting()
-            if self.cancel_thread is not None:
+            if not self.cancel_thread:
                 self.interface_thread_sleeper.sleep(self.interface.reconnect_delay)
         else:
             self.interface.state = "DISCONNECTED"
-            if self.interface_or_router == "INTERFACE":
-                InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
-            else:
-                RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+            if not self.cancel_thread:
+                if self.interface_or_router == "INTERFACE":
+                    InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+                else:
+                    RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
 
     # Disconnect from the interface and stop the thread
     def stop(self):

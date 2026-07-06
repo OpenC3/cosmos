@@ -102,7 +102,10 @@ module OpenC3
     def process_file(filename)
       Logger.instance.info "Processing target definition in file '#{filename}'"
       parser = ConfigParser.new("https://docs.openc3.com/docs/configuration/target")
-      parser.parse_file(filename) do |keyword, parameters|
+      # run_erb is false: ERB is only rendered once, at plugin install time
+      # (TargetModel#deploy). At runtime target files are read already-rendered
+      # from the bucket, so they are treated as data, not re-executed as code.
+      parser.parse_file(filename, false, true, false) do |keyword, parameters|
         case keyword
         when 'LANGUAGE'
           usage = "#{keyword} <ruby | python>"

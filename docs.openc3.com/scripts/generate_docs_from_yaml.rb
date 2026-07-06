@@ -83,15 +83,20 @@ class CosmosMetaTag
     modifiers = {}
     meta.each do |keyword, data|
       page << "\n#{'#' * @level} #{keyword}\n"
+      # Handle deprecated keyword with a note box
       if data['deprecated']
         page << ":::note[Deprecated]\n"
         page << "#{data['deprecated']}\n"
         page << ":::\n\n"
       end
+
+      # The since badge is displayed on the right side of the summary line if it exists
       since_badge = data['since'] ? "<span class=\"badge badge--secondary since-right\">Since #{data['since']}</span>" : ""
       page << "#{since_badge}**#{data['summary']}**\n\n"
 
       page << "#{data['description']}\n\n" if data['description']
+
+      # Handle warning keyword with a note box
       if data['warning']
         page << ":::warning\n"
         page << "#{data['warning']}\n"

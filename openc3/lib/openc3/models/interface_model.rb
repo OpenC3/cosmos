@@ -444,9 +444,11 @@ module OpenC3
       microservice
     end
 
-    # Looks up the deployed MicroserviceModel and destroy the microservice model
-    # should should trigger the operator to kill the microservice that in turn
-    # will destroy the InterfaceStatusModel when a stop is called.
+    # Destroys the deployed MicroserviceModel which triggers the operator to kill
+    # the microservice. Also directly destroys the Interface/RouterStatusModel in
+    # an ensure block. The microservice stop() no longer recreates the status
+    # model once cancel_thread is set, so undeploy must clean it up itself to
+    # avoid leaving an orphaned status model behind.
     def undeploy
       type = self.class._get_type
       name = "#{@scope}__#{type}__#{@name}"
@@ -455,15 +457,19 @@ module OpenC3
         model.destroy
         ConfigTopic.write({ kind: 'deleted', type: type.downcase, name: @name, plugin: @plugin }, scope: @scope)
       end
-
-      if type == 'INTERFACE'
-        status_model = InterfaceStatusModel.get_model(name: @name, scope: @scope)
-      else
-        status_model = RouterStatusModel.get_model(name: @name, scope: @scope)
-      end
-      status_model.destroy if status_model
     rescue Exception => error
       Logger.error("Error undeploying interface/router model #{@name} in scope #{@scope} due to #{error}")
+    ensure
+      begin
+        if type == 'INTERFACE'
+          status_model = InterfaceStatusModel.get_model(name: @name, scope: @scope)
+        else
+          status_model = RouterStatusModel.get_model(name: @name, scope: @scope)
+        end
+        status_model.destroy if status_model
+      rescue Exception => error
+        Logger.error("Error destroying #{type&.downcase || 'unknown'} status model #{@name} in scope #{@scope} due to #{error}")
+      end
     end
 
     def unmap_target(target_name, cmd_only: false, tlm_only: false)

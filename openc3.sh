@@ -2,18 +2,98 @@
 
 set +e
 
-if ! command -v docker &> /dev/null
-then
-  if command -v podman &> /dev/null
-  then
-    function docker() {
-      podman $@
-    }
+# Cached container runtime detection
+CONTAINER_CMD=""
+CONTAINER_COMPOSE_CMD=""
+
+# Detect the container runtime (docker or podman). Result is cached.
+detect_container_runtime() {
+  if [[ -n "$CONTAINER_CMD" ]]; then
+    return 0
+  fi
+  if command -v docker &> /dev/null; then
+    CONTAINER_CMD="docker"
+  elif command -v podman &> /dev/null; then
+    CONTAINER_CMD="podman"
   else
-    echo "Neither docker nor podman found!!!"
+    echo "Neither docker nor podman found!" >&2
     exit 1
   fi
-fi
+}
+
+# Detect the compose command. Tries "<runtime> compose" first, then "docker-compose".
+# Never falls back to "podman-compose" since COSMOS only supports docker-compose as the
+# standalone compose tool, even when the container runtime is podman.
+# Result is cached. Exports DOCKER_COMPOSE_COMMAND for backward compatibility with sub-scripts.
+detect_compose_cmd() {
+  if [[ -n "$CONTAINER_COMPOSE_CMD" ]]; then
+    return 0
+  fi
+  detect_container_runtime
+  if $CONTAINER_CMD compose version &> /dev/null; then
+    CONTAINER_COMPOSE_CMD="$CONTAINER_CMD compose"
+  elif command -v "docker-compose" &> /dev/null; then
+    CONTAINER_COMPOSE_CMD="docker-compose"
+  else
+    echo "No compose command found! Install '$CONTAINER_CMD compose' or 'docker-compose'." >&2
+    exit 1
+  fi
+  export DOCKER_COMPOSE_COMMAND="$CONTAINER_COMPOSE_CMD"
+}
+
+# Check if already authenticated to a container registry by looking for
+# credentials in the Docker/Podman config files.
+is_registry_authenticated() {
+  local registry="$1"
+
+  # Docker stores docker.io credentials under its canonical URL
+  local search_registry="$registry"
+  if [[ "$registry" == "docker.io" ]]; then
+    search_registry="index.docker.io"
+  fi
+
+  # Check Docker config
+  local config_file="${DOCKER_CONFIG:-$HOME/.docker}/config.json"
+  if [[ -f "$config_file" ]] && grep -q "$search_registry" "$config_file" 2>/dev/null; then
+    return 0
+  fi
+
+  # Check Podman config locations
+  for podman_config in "${XDG_RUNTIME_DIR}/containers/auth.json" "$HOME/.config/containers/auth.json"; do
+    if [[ -f "$podman_config" ]] && grep -q "$search_registry" "$podman_config" 2>/dev/null; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+# Login to configured registries to avoid 403 errors when pulling images.
+# Checks if already authenticated before attempting login to avoid unnecessary prompts.
+registry_login() {
+  local env_file="$(dirname -- "$0")/${ENV_FILE:-.env}"
+  if [[ -f "$env_file" ]]; then
+    set -a
+    . "$env_file"
+    set +a
+  fi
+
+  if [[ -n "$OPENC3_REGISTRY" ]]; then
+    if is_registry_authenticated "$OPENC3_REGISTRY"; then
+      echo "Already authenticated with registry: $OPENC3_REGISTRY"
+    else
+      $CONTAINER_CMD login "$OPENC3_REGISTRY"
+    fi
+  fi
+
+  if [[ "$OPENC3_ENTERPRISE" -eq 1 ]] && [[ -n "$OPENC3_ENTERPRISE_REGISTRY" ]]; then
+    if is_registry_authenticated "$OPENC3_ENTERPRISE_REGISTRY"; then
+      echo "Already authenticated with registry: $OPENC3_ENTERPRISE_REGISTRY"
+    else
+      $CONTAINER_CMD login "$OPENC3_ENTERPRISE_REGISTRY"
+    fi
+  fi
+}
 
 # Helper function to find script - checks PATH first, then falls back to script location
 find_script() {
@@ -25,13 +105,11 @@ find_script() {
   fi
 }
 
-export DOCKER_COMPOSE_COMMAND="docker compose"
-${DOCKER_COMPOSE_COMMAND} version &> /dev/null
-if [[ "$?" -ne 0 ]]; then
-  export DOCKER_COMPOSE_COMMAND="docker-compose"
-fi
+# Initialize container runtime and compose detection
+detect_container_runtime
+detect_compose_cmd
 
-docker info | grep -e "rootless$" -e "rootless: true"
+$CONTAINER_CMD info | grep -e "rootless$" -e "rootless: true"
 if [[ "$?" -ne 0 ]]; then
   export OPENC3_ROOTFUL=1
   export OPENC3_USER_ID=`id -u`
@@ -279,9 +357,9 @@ case $1 in
     # Shift off the first argument (script name) to get CLI args
     shift
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     else
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     fi
     set +a
     ;;
@@ -330,9 +408,9 @@ case $1 in
     # Shift off the first argument (script name) to get CLI args
     shift
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     else
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     fi
     set +a
     ;;
@@ -426,14 +504,14 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-operator
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-cosmos-script-runner-api
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-cosmos-cmd-tlm-api
+    ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" stop openc3-operator
+    ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" stop openc3-cosmos-script-runner-api
+    ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" stop openc3-cosmos-cmd-tlm-api
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-metrics
+      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" stop openc3-metrics
     fi
     sleep 5
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" down -t 30
+    ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" down -t 30
     ;;
   cleanup )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -460,12 +538,12 @@ case $1 in
     # They can specify 'cleanup force' or 'cleanup local force'
     if [[ "$2" == "force" ]] || [[ "$3" == "force" ]]
     then
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" down -t 30 -v
+      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" down -t 30 -v
     else
       echo "Are you sure? Cleanup removes ALL docker volumes and all $COSMOS_NAME data! (1-Yes / 2-No)"
       select yn in "Yes" "No"; do
         case $yn in
-          Yes ) ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" down -t 30 -v; break;;
+          Yes ) ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" down -t 30 -v; break;;
           No ) exit;;
         esac
       done
@@ -516,19 +594,20 @@ case $1 in
     # Change to cosmos directory since openc3_setup.sh uses relative paths
     cd "$(dirname -- "$0")"
     "$(find_script openc3_setup.sh)"
+    registry_login
     # Handle restrictive umasks - Built files need to be world readable
     umask 0022
     chmod -R +r "$(dirname -- "$0")"
     # Collect any additional build flags from arguments (skip first arg which is "build")
     BUILD_FLAGS="${@:2}"
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-enterprise-gem
+      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-enterprise-gem
     else
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-ruby
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-base
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-node
+      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-ruby
+      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-base
+      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-node
     fi
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS
+    ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS
     ;;
   build-ubi )
     if [[ "$OPENC3_DEVEL" -eq 0 ]]; then
@@ -621,7 +700,8 @@ case $1 in
       exit 0
     fi
     check_root
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
+    registry_login
+    ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" up -d
     ;;
   run-ubi )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -655,6 +735,7 @@ case $1 in
       exit 0
     fi
     check_root
+    registry_login
     # QuestDB RHEL images have a native arm64 variant; run tsdb natively on ARM
     # to avoid the x86-64-v3 QEMU emulation failure. All other services run as amd64.
     if [[ "$(uname -m)" == "arm64" ]]; then
@@ -662,7 +743,7 @@ case $1 in
     else
       OPENC3_TSDB_PLATFORM=linux/amd64
     fi
-    DOCKER_DEFAULT_PLATFORM=linux/amd64 OPENC3_IMAGE_SUFFIX=-ubi OPENC3_TSDB_PLATFORM=$OPENC3_TSDB_PLATFORM ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
+    DOCKER_DEFAULT_PLATFORM=linux/amd64 OPENC3_IMAGE_SUFFIX=-ubi OPENC3_TSDB_PLATFORM=$OPENC3_TSDB_PLATFORM ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" up -d
     ;;
   test )
     # Check for help at any position
@@ -696,7 +777,7 @@ case $1 in
     # Change to cosmos directory since openc3_setup.sh uses relative paths
     cd "$(dirname -- "$0")"
     "$(find_script openc3_setup.sh)"
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build
+    ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build
     "$(find_script openc3_test.sh)" "${@:2}"
     ;;
   upgrade )

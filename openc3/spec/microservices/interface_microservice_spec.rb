@@ -192,6 +192,27 @@ module OpenC3
       end
     end
 
+    describe "handle_packet" do
+      it "does not write the status model after cancel_thread is set" do
+        # A packet already buffered can be returned from read() after stop()
+        # sets @cancel_thread and destroys the status model. handle_packet must
+        # not re-create the status model in that window (orphaned model bug).
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        interface = im.instance_variable_get(:@interface)
+        interface.connect
+        packet = interface.read
+        expect(packet).to_not be_nil
+
+        # Simulate stop() having run: @cancel_thread set, status model destroyed
+        im.instance_variable_set(:@cancel_thread, true)
+        expect(InterfaceStatusModel).to_not receive(:set)
+        im.send(:handle_packet, packet)
+
+        im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+    end
+
     describe "run" do
       it "handles exceptions in connect" do
         $connect_raise = true

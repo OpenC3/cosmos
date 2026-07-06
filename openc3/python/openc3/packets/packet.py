@@ -287,7 +287,10 @@ class Packet(Structure):
             # Catch and re-raise the TypeError thrown by internal_buffer_equals
             except TypeError as error:
                 raise error
-            except ValueError:
+            # RuntimeError is raised when a variable_bit_size length item falls
+            # outside an undersized buffer. Swallow it here (matching Ruby) so the
+            # error surfaces at read time rather than on buffer assignment.
+            except (ValueError, RuntimeError):
                 Logger.error(
                     f"{self.target_name} {self.packet_name} buffer ({type(buffer)}) received with actual packet length of {len(buffer)} but defined length of {self.defined_length}"
                 )
@@ -1195,7 +1198,7 @@ class Packet(Structure):
 
         return config
 
-    def decom(self):
+    def decom(self, include_limits_states=True):
         # Read all the RAW at once because this could be optimized by the accessor
         json_hash = self.read_items(self.sorted_items)
 
@@ -1206,9 +1209,10 @@ class Packet(Structure):
                 json_hash[f"{item.name}__C"] = self.read_item(item, "CONVERTED", self.buffer, given_raw)
             if item.format_string or item.units:
                 json_hash[f"{item.name}__F"] = self.read_item(item, "FORMATTED", self.buffer, given_raw)
-            limits_state = item.limits.state
-            if limits_state:
-                json_hash[f"{item.name}__L"] = limits_state
+            if include_limits_states:
+                limits_state = item.limits.state
+                if limits_state:
+                    json_hash[f"{item.name}__L"] = limits_state
 
         return json_hash
 
