@@ -76,7 +76,7 @@ class PluginsController < ModelController
       plugins = @model_class.all(scope: params[:scope])
       # Enrich with per-plugin UV migration status (derived from filesystem, not stored in Redis).
       # Must run before the store data merge below, which adds keys that PluginModel.new doesn't accept.
-      plugins.each do |plugin_name, plugin|
+      plugins.each do |_plugin_name, plugin|
         model = @model_class.new(**(plugin.transform_keys(&:to_sym)), scope: params[:scope])
         plugin['needs_uv_migration'] = model.needs_uv_migration?
       end

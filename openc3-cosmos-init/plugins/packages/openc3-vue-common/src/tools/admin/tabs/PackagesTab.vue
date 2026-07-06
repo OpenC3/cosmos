@@ -394,18 +394,16 @@ export default {
       }
       return `/gems/plugin_venvs/${pluginName}/.venv`
     },
-    deletePackage(pkg) {
+    confirmAndDeletePackage(displayName, deleteUrl) {
       this.$dialog
-        .confirm(`Are you sure you want to remove: ${pkg}`, {
+        .confirm(`Are you sure you want to remove: ${displayName}`, {
           okText: 'Delete',
           cancelText: 'Cancel',
         })
-        .then((dialog) => {
-          return Api.delete(`/openc3-api/packages/${pkg}`)
-        })
-        .then((response) => {
+        .then(() => Api.delete(deleteUrl))
+        .then(() => {
           this.$notify.normal({
-            body: `Removed package ${pkg}`,
+            body: `Removed package ${displayName}`,
           })
           setTimeout(() => {
             this.updateProcesses()
@@ -415,40 +413,21 @@ export default {
           // Dialog cancel also triggers catch, only notify on actual errors
           if (error) {
             this.$notify.serious({
-              body: `Failed to remove package ${pkg}`,
+              body: `Failed to remove package ${displayName}`,
             })
           }
         })
     },
+    deletePackage(pkg) {
+      this.confirmAndDeletePackage(pkg, `/openc3-api/packages/${pkg}`)
+    },
     deletePythonPackage(formattedPkg, pluginName) {
       // Convert display format "name==version" to dist-info format "name-version"
       const rawPkg = formattedPkg.replace('==', '-')
-      this.$dialog
-        .confirm(`Are you sure you want to remove: ${formattedPkg}`, {
-          okText: 'Delete',
-          cancelText: 'Cancel',
-        })
-        .then((dialog) => {
-          return Api.delete(
-            `/openc3-api/packages/${rawPkg}?plugin=${pluginName}`,
-          )
-        })
-        .then((response) => {
-          this.$notify.normal({
-            body: `Removed package ${formattedPkg}`,
-          })
-          setTimeout(() => {
-            this.updateProcesses()
-          }, 2500)
-        })
-        .catch((error) => {
-          // Dialog cancel also triggers catch, only notify on actual errors
-          if (error) {
-            this.$notify.serious({
-              body: `Failed to remove package ${formattedPkg}`,
-            })
-          }
-        })
+      this.confirmAndDeletePackage(
+        formattedPkg,
+        `/openc3-api/packages/${rawPkg}?plugin=${pluginName}`,
+      )
     },
   },
 }

@@ -250,31 +250,9 @@ module OpenC3
         requirements_path = File.join(gem_path, 'requirements.txt')
 
         if File.exist?(pyproject_path) || File.exist?(requirements_path)
-          begin
-            pypi_url = get_setting('pypi_url', scope: scope)
-            if pypi_url
-              pypi_url += '/simple'
-            end
-          rescue => e
-            Logger.error("Failed to retrieve pypi_url: #{e.formatted}")
-          ensure
-            if pypi_url.nil?
-              # If Redis isn't running try the ENV, then simply pypi.org/simple
-              pypi_url = ENV['PYPI_URL']
-              if pypi_url
-                pypi_url += '/simple'
-              end
-              pypi_url ||= PypiUrl::DEFAULT
-            end
-          end
-          pypi_url = PypiUrl.validate(pypi_url)
+          pypi_url = resolve_pypi_url(scope: scope)
           unless validate_only
-            # Build the install arguments as argv arrays and run without a shell.
-            # pypi_url comes from a user-writable setting, so interpolating it
-            # into a shell command line allowed OS command injection. An argv array
-            # passes each argument verbatim with no shell metacharacter interpretation.
-            pypi_args = ["-i", pypi_url]
-            pypi_args += ["--trusted-host", URI.parse(pypi_url).host] unless ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
+            pypi_args = build_pypi_args(pypi_url)
 
             # Install Python dependencies into an isolated per-plugin venv when UV
             # is available. Each plugin gets its own venv at /gems/plugin_venvs/<name>/.venv
@@ -563,6 +541,32 @@ module OpenC3
       return result.sort
     end
 
+    # Resolve the PyPI URL from settings, environment, or default.
+    # Used by both install_phase2 and migrate_to_uv! to avoid duplication.
+    def self.resolve_pypi_url(scope:)
+      pypi_url = nil
+      begin
+        pypi_url = get_setting('pypi_url', scope: scope)
+        pypi_url += '/simple' if pypi_url
+      rescue => e
+        Logger.error("Failed to retrieve pypi_url: #{e.formatted}")
+      ensure
+        if pypi_url.nil?
+          pypi_url = ENV['PYPI_URL']
+          pypi_url += '/simple' if pypi_url
+          pypi_url ||= PypiUrl::DEFAULT
+        end
+      end
+      PypiUrl.validate(pypi_url)
+    end
+
+    # Build the argv array for pypi index and trusted-host arguments.
+    def self.build_pypi_args(pypi_url)
+      args = ["-i", pypi_url]
+      args += ["--trusted-host", URI.parse(pypi_url).host] unless ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
+      args
+    end
+
     # Check if this plugin needs migration to a per-plugin UV virtual environment.
     # Returns true if the plugin has Python dependencies but no .uv_managed marker exists.
     def needs_uv_migration?
@@ -604,24 +608,8 @@ module OpenC3
           return true
         end
 
-        # Resolve pypi_url (same pattern as install_phase2 lines 249-266)
-        pypi_url = nil
-        begin
-          pypi_url = self.class.get_setting('pypi_url', scope: scope)
-          pypi_url += '/simple' if pypi_url
-        rescue => e
-          Logger.error("Failed to retrieve pypi_url: #{e.formatted}")
-        ensure
-          if pypi_url.nil?
-            pypi_url = ENV.fetch('PYPI_URL', nil)
-            pypi_url += '/simple' if pypi_url
-            pypi_url ||= 'https://pypi.org/simple'
-          end
-        end
-
-        # Build pypi_args as an argv array (same pattern as install_phase2)
-        pypi_args = ["-i", pypi_url]
-        pypi_args += ["--trusted-host", URI.parse(pypi_url).host] unless ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
+        pypi_url = self.class.resolve_pypi_url(scope: scope)
+        pypi_args = self.class.build_pypi_args(pypi_url)
 
         # Run uvinstall for this plugin
         plugin_venv_name = @name.tr('^a-zA-Z0-9_-', '_')
