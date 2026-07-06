@@ -513,7 +513,7 @@ class RunningScript
       errors: nil, # array of errors that occurred during the script run
       pid: nil, # pid of the script process - set by the script itself when it starts
       script_engine: script_engine, # script engine filename
-      updated_at: nil, # Set by create/update - ISO format
+      updated_at: nil, # Set by create/update
       scope: scope # Scope of the script
     )
     script_status.create()
