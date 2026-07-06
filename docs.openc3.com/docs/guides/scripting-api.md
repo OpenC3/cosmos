@@ -49,16 +49,16 @@ See the [Migrating From COSMOS 6 to COSMOS 7](../getting-started/upgrading#migra
 
 The following API methods have been removed from COSMOS v7. Since WITH_UNITS were removed in COSMOS 7 those APIs are deprecated and simply return the formatted result.
 
-| Method                   | API        | Status                                                                    |
-| ------------------------ | ---------- | ------------------------------------------------------------------------- |
-| tlm_with_units           | tlm_api    | Deprecated, use [tlm_formatted](#tlm-tlm_raw-tlm_formatted)               |
-| check_with_units         | api_shared | Deprecated, use [check_formatted](#check-check_raw-check_formatted)       |
-| tlm_variable             | tlm_api    | Removed, use [tlm](#tlm-tlm_raw-tlm_formatted) and pass type              |
-| check_tolerance_raw      | api_shared | Removed, use [check_tolerance](#check_tolerance) and pass type            |
-| wait_raw                 | api_shared | Removed, use [wait](#wait) and pass type                                  |
-| wait_check_raw           | api_shared | Removed, use [wait_check](#wait_check) and pass type                      |
-| wait_tolerance_raw       | api_shared | Removed, use [wait_tolerance](#wait_tolerance) and pass type              |
-| wait_check_tolerance_raw | api_shared | Removed, use [wait_check_tolerancet](#wait_check_tolerance) and pass type |
+| Method                   | API        | Status                                                                   |
+| ------------------------ | ---------- | ------------------------------------------------------------------------ |
+| tlm_with_units           | tlm_api    | Deprecated, use [tlm_formatted](#tlm-tlm_raw-tlm_formatted)              |
+| check_with_units         | api_shared | Deprecated, use [check_formatted](#check-check_raw-check_formatted)      |
+| tlm_variable             | tlm_api    | Removed, use [tlm](#tlm-tlm_raw-tlm_formatted) and pass type             |
+| check_tolerance_raw      | api_shared | Removed, use [check_tolerance](#check_tolerance) and pass type           |
+| wait_raw                 | api_shared | Removed, use [wait](#wait) and pass type                                 |
+| wait_check_raw           | api_shared | Removed, use [wait_check](#wait_check) and pass type                     |
+| wait_tolerance_raw       | api_shared | Removed, use [wait_tolerance](#wait_tolerance) and pass type             |
+| wait_check_tolerance_raw | api_shared | Removed, use [wait_check_tolerance](#wait_check_tolerance) and pass type |
 
 The following API methods now return `COSMOS__CANCEL` instead of `Cancel` when the Cancel button is pushed in Script Runner: `ask`, `ask_string`, `message_box`, `vertical_message_box`, `combo_box`, `check_box`, `prompt`, `prompt_for_hazardous`, `prompt_for_critical_cmd`, `metadata_input`, `open_file_dialog`, `open_files_dialog`, `open_bucket_dialog`. Unless you are _explicitly_ checking the return value for the word 'Cancel' there are no changes required.
 
@@ -484,7 +484,7 @@ open_bucket_dialog("<Title>", "<Message>", default_path: <default_path>, filter:
 
 ```python
 file = open_bucket_dialog("Select a File", "Choose a file from a bucket")
-print(file.filename) # The name of the selected file
+print(file.filename()) # The name of the selected file, note filename is a method
 print(file.read())
 file.close()
 
@@ -496,7 +496,7 @@ file = open_bucket_dialog(
     default_path="config/DEFAULT/targets/INST2/procedures/",
     filter=".py",
 )
-print(file.filename)
+print(file.filename())
 file.close()
 ```
 
@@ -8120,20 +8120,21 @@ script_run("<Script Name>", disconnect: false, environment: nil, suite_runner: n
 </TabItem>
 </Tabs>
 
-| Parameter    | Description                                                                                                         |
-| ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| Parameter    | Description                                                                                                                                          |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Script Name  | Full path name of the script starting with the target. If this is the path to a test suite file, the `suite_runner` parameter must also be provided. |
-| disconnect   | Boolean indicating whether to run the script in Disconnect |
-| environment  | Hash / dict of key / value items to set as script environment variables. Note: Do not use `PATH` as it is reserved. |
-| suite_runner | Hash / dict of suite runner configuration values. Valid keys are described [below](#script_run-suite_runner-parameter). |
+| disconnect   | Boolean indicating whether to run the script in Disconnect                                                                                           |
+| environment  | Hash / dict of key / value items to set as script environment variables. Note: Do not use `PATH` as it is reserved.                                  |
+| suite_runner | Hash / dict of suite runner configuration values. Valid keys are described [below](#script_run-suite_runner-parameter).                              |
 
 #### script_run suite_runner parameter
-| Key | Value |
-|-----|-------|
-| method | Valid values are "start", "setup", and "teardown". Defaults to "start" if not provided. If `script` is provided, this value is ignored and `start` is always used. |
-| suite | Required; the name of the suite to run. Must be a valid suite within the given file. |
-| group | The name of the group to run. Must be a valid group within the given suite. If `script` is provided, this is required. |
-| script | The name of the specific script to run. Must be a valid method name within the given group. |
+
+| Key     | Value                                                                                                                                                                                                                         |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| method  | Valid values are "start", "setup", and "teardown". Defaults to "start" if not provided. If `script` is provided, this value is ignored and `start` is always used.                                                            |
+| suite   | Required; the name of the suite to run. Must be a valid suite within the given file.                                                                                                                                          |
+| group   | The name of the group to run. Must be a valid group within the given suite. If `script` is provided, this is required.                                                                                                        |
+| script  | The name of the specific script to run. Must be a valid method name within the given group.                                                                                                                                   |
 | options | Array of strings of suite runner options to enable. Valid options are: "manual", "pauseOnError", "continueAfterError", "abortAfterError", "loop", and "breakLoopOnError". Defaults to ["continueAfterError"] if not provided. |
 
 <Tabs groupId="script-language">
