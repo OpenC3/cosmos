@@ -56,6 +56,11 @@ RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc && \
     cp /root/.gemrc /etc/gemrc
 ENV GEMRC=/etc/gemrc
 
+# Pin bundler's global config to a fixed path so it stays effective in
+# downstream images that change HOME. The mirror entry itself is configured in
+# the apt step below (once bundler is installed).
+ENV BUNDLE_USER_CONFIG=/etc/bundle/config
+
 COPY anycable* /usr/bin/
 RUN /usr/bin/anycable_install.sh
 
@@ -101,6 +106,13 @@ RUN apt-get update && \
     gem cleanup && \
     bundle config build.nokogiri --use-system-libraries && \
     bundle config git.allow_insecure true && \
+    # Route bundler through the same RUBYGEMS_URL mirror that .gemrc uses for the
+    # gem command, so a custom mirror supplies gems while the Gemfile 'source'
+    # (and thus Gemfile.lock's remote) stays the constant https://rubygems.org.
+    if [ "${RUBYGEMS_URL}" != "https://rubygems.org" ]; then \
+      bundle config set --global mirror.https://rubygems.org "${RUBYGEMS_URL}"; \
+    fi && \
+    chmod -R a+rX /etc/bundle && \
     python3 -m pip install --break-system-packages "uv==${UV_VERSION}" && \
     rm -rf /var/lib/apt/lists/*
 
