@@ -779,3 +779,62 @@ test('sends manually entered state values', async ({ page, utils }) => {
   // Close the dropdown by pressing Escape
   await page.keyboard.press('Escape')
 })
+
+test('uploads data into a BLOCK parameter via right-click', async ({
+  page,
+  utils,
+}) => {
+  await page.locator('[data-test="clear-history"]').click()
+  // INST MEMLOAD has a single BLOCK parameter named DATA
+  await utils.selectTargetPacketItem('INST', 'MEMLOAD')
+  await expect(page.locator('main')).toContainText('Parameters')
+
+  const dataRow = page.locator('tr:has(td:text-is("DATA"))')
+
+  // Set up the file chooser before right-clicking so the picker is captured
+  const fileChooserPromise = page.waitForEvent('filechooser')
+
+  // Right-click on the DATA row to open the context menu
+  await dataRow.click({ button: 'right' })
+  // The new Upload Data entry should be present for BLOCK parameters
+  const uploadItem = page.locator('[data-test=cmd-param-upload-data]')
+  await expect(uploadItem).toBeVisible()
+  await uploadItem.click()
+
+  // Provide a small payload via the file chooser
+  const fileChooser = await fileChooserPromise
+  await fileChooser.setFiles({
+    name: 'upload.bin',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from([0xde, 0xad, 0xbe, 0xef]),
+  })
+
+  // The BLOCK text field should now show the hex representation
+  await expect(
+    dataRow.locator('[data-test=cmd-param-value] input').first(),
+  ).toHaveValue('0xDEADBEEF')
+
+  // Non-BLOCK parameters should not see Upload Data
+  await utils.selectTargetPacketItem('INST', 'COLLECT')
+  await page.locator('tr:has(td:text-is("DURATION"))').click({ button: 'right' })
+  await expect(
+    page.locator('[data-test=cmd-param-upload-data]'),
+  ).not.toBeVisible()
+  await page.keyboard.press('Escape')
+})
+
+test('opens the Send Raw File dialog and lists interfaces', async ({
+  page,
+}) => {
+  // Open File > Send Raw File from the top bar
+  await page.locator('[data-test=command-sender-file]').click()
+  await page.locator('[data-test=command-sender-file-send-raw-file]').click()
+
+  // Dialog should be visible and show the interface picker
+  await expect(page.getByText('Send Raw')).toBeVisible()
+  await expect(page.locator('[data-test=send-raw-file]')).toBeVisible()
+
+  // Cancel and confirm status is updated
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  await expect(page.locator('main')).toContainText('Raw command not sent')
+})
