@@ -41,11 +41,11 @@
                 density="compact"
                 data-test="settings-hide-legend"
               />
-              <v-text-field
+              <v-number-input
                 v-else
-                v-model.number="item.value"
+                v-model="item.value"
+                control-variant="stacked"
                 hide-details="auto"
-                type="number"
                 :rules="[rules.required, rules.min]"
                 :label="item.title"
               />
