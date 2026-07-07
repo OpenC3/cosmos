@@ -450,7 +450,7 @@ module OpenC3
 
     # NOTE: When adding new keywords to this method, make sure to update script/commands.rb
     def _cmd_implementation(method_name, *args, range_check:, hazardous_check:, raw:, timeout: nil, log_message: nil, manual: false, validate: true, queue: nil,
-                            scope: $openc3_scope, token: $openc3_token, **kwargs)
+                            queue_username: nil, scope: $openc3_scope, token: $openc3_token, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
       unless [nil, true, false].include?(log_message)
         raise "Invalid log_message parameter: #{log_message}. Must be true or false."
@@ -535,6 +535,10 @@ module OpenC3
         'log_message' => log_message.to_s,
         'obfuscated_items' => packet['obfuscated_items'].to_s
       }
+      # Record the original queuing user (author) separately from 'username' (the
+      # user or process that actually executed the command). Command History shows
+      # 'username' as "Executed By" and queue_username as "Queued By".
+      command['queue_username'] = queue_username if queue_username
       # Users have to explicitly opt into a default queue by setting the OPENC3_DEFAULT_QUEUE
       # At which point ALL commands will go to that queue unless they specifically opt out with queue: false
       if ENV['OPENC3_DEFAULT_QUEUE'] && queue.nil?
