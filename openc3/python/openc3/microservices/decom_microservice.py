@@ -338,17 +338,9 @@ class DecomMicroservice(Microservice):
                     if old_limits_state:
                         self.logger.info(message, other=time)
                 case "YELLOW" | "YELLOW_LOW" | "YELLOW_HIGH":
-                    self.logger.warn(
-                        message,
-                        other={**time, "limits_state": item.limits.state},
-                        type=self.logger.NOTIFICATION,
-                    )
+                    self.logger.warn(message, other=time, type=self.logger.NOTIFICATION)
                 case "RED" | "RED_LOW" | "RED_HIGH":
-                    self.logger.error(
-                        message,
-                        other={**time, "limits_state": item.limits.state},
-                        type=self.logger.ALERT,
-                    )
+                    self.logger.error(message, other=time, type=self.logger.ALERT)
 
         # The openc3_limits_events topic can be listened to for all limits events, it is a continuous stream
         event = {

@@ -23,7 +23,9 @@ test.use({
 async function runLog(page, ruby) {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=New File').click()
-  await page.waitForTimeout(1000)
+  // Wait for the Ace editor to mount before filling so its async init doesn't
+  // clobber the text.
+  await expect(page.locator('.ace_content')).toBeVisible()
   await page.locator('textarea').fill(ruby)
   await page.locator('[data-test=start-button]').click()
 }
@@ -47,8 +49,12 @@ async function setQuiet(browser, baseURL, state) {
   )
   await setSetting(page, 'show-alerts', true)
 
-  // Give the two commands time to be sent before tearing down the context.
-  await page.waitForTimeout(3000)
+  // Wait for the command script to finish so the QUIET cmds are actually sent
+  // before tearing down the context.
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    /stopped|completed/,
+    { timeout: 20000 },
+  )
   await context.close()
 }
 
@@ -105,17 +111,17 @@ test('plain notifications only appear in the menu, not as a toast', async ({
     `OpenC3::Logger.warn("${notifyText}", type: OpenC3::Logger::NOTIFICATION)`,
   )
 
-  // No toast for a plain notification.
-  await page.waitForTimeout(3000)
-  await expect(
-    page.locator('[data-test=toast]', { hasText: notifyText }),
-  ).toHaveCount(0)
-
-  // It does show up in the notifications menu.
+  // It shows up in the notifications menu, which proves the client processed
+  // the message (same code path that would have toasted it).
   await page.locator('[data-test=notifications]').click()
   await expect(page.locator('[data-test=notification-list]')).toContainText(
     notifyText,
   )
+
+  // A plain notification never toasts.
+  await expect(
+    page.locator('[data-test=toast]', { hasText: notifyText }),
+  ).toHaveCount(0)
 })
 
 test('limit alerts toast whenever alerts are enabled (no separate toggle)', async ({
@@ -146,16 +152,14 @@ test('yellow limit changes never toast, only show in the menu', async ({
     `type: OpenC3::Logger::NOTIFICATION, other: { limits_state: 'YELLOW_LOW' })`
   const yellowToast = page.locator('[data-test=toast]', { hasText: yellowText })
 
-  // Yellow limit changes are notifications, never toasts.
+  // Yellow limit changes are notifications, never toasts. They appear in the
+  // menu, which proves the client processed the message.
   await runLog(page, emitYellow)
-  await page.waitForTimeout(3000)
-  await expect(yellowToast).toHaveCount(0)
-
-  // They do appear in the notifications menu.
   await page.locator('[data-test=notifications]').click()
   await expect(page.locator('[data-test=notification-list]')).toContainText(
     yellowText,
   )
+  await expect(yellowToast).toHaveCount(0)
 })
 
 // A menu row (v-list-item) for the alert carrying the given text.
@@ -317,8 +321,25 @@ test('acked alerts stay acked across a reload (no re-toast)', async ({
   await expect(toast).toBeHidden()
 
   await page.reload()
-  await page.waitForTimeout(6000)
+
+  // Emit a fresh sentinel alert after the reload. Once its toast appears we
+  // know the stream reconnected and replayed history, so the acked alert has
+  // had its chance to (wrongly) re-toast.
+  const sentinelText = 'Playwright reload acked sentinel'
+  await runLog(
+    page,
+    `OpenC3::Logger.error("${sentinelText}", type: OpenC3::Logger::ALERT)`,
+  )
+  const sentinel = page.locator('[data-test=toast]', { hasText: sentinelText })
+  await expect(sentinel).toBeVisible({ timeout: 20000 })
+
+  // The acked alert must not have re-toasted.
   await expect(toast).toHaveCount(0)
+
+  // Ack the sentinel so it doesn't leak into later shared-context tests.
+  await sentinel.getByRole('button', { name: 'Acknowledge' }).click()
+  await expect(sentinel).toBeHidden()
+
   await page.locator('[data-test=notifications]').click()
   await expect(
     menuRow(page, alertText).locator('[data-test=ack-notification]'),
@@ -356,7 +377,11 @@ test('turning off Show alerts dismisses existing toasts and suppresses new ones'
     page,
     `OpenC3::Logger.error("${secondText}", type: OpenC3::Logger::ALERT)`,
   )
-  await page.waitForTimeout(3000)
+  // The new alert still logs to the menu (proves the client processed it)...
+  await page.locator('[data-test=notifications]').click()
+  await expect(menuRow(page, secondText)).toBeVisible()
+  await page.keyboard.press('Escape')
+  // ...but does not toast while the master toggle is off.
   await expect(
     page.locator('[data-test=toast]', { hasText: secondText }),
   ).toHaveCount(0)
@@ -365,7 +390,7 @@ test('turning off Show alerts dismisses existing toasts and suppresses new ones'
   await setSetting(page, 'show-alerts', true)
 })
 
-test.only('the alert popup position setting moves the toaster top or bottom', async ({
+test('the alert popup position setting moves the toaster top or bottom', async ({
   page,
   utils,
 }) => {

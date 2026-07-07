@@ -87,7 +87,7 @@ class Notify {
     if (saveToHistory) {
       this.getStore().notifyAddHistory({ title, body, message, level })
     }
-    // Forward any extra fields (e.g. limits_state) so toasts can be filtered
+    // Forward any extra fields (e.g. msg_id, @timestamp) the toast needs
     this[method]({ title, body, message, level, duration, type, ...rest })
   }
 

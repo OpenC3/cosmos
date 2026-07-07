@@ -206,6 +206,21 @@ function offsetBefore(msgId) {
   return `${Number(ms) - 1}-18446744073709551615`
 }
 
+// Compare two Redis stream ids ("<ms>-<seq>") numerically, returning <0, 0, or
+// >0 like a sort comparator. Lexical string comparison is wrong because the
+// sequence part isn't zero-padded (e.g. "…-5" would sort after "…-40"). A
+// nullish id sorts before any real id.
+function compareMsgIds(a, b) {
+  if (a === b) return 0
+  if (a === undefined || a === null) return -1
+  if (b === undefined || b === null) return 1
+  const [aMs, aSeq] = String(a).split('-')
+  const [bMs, bSeq] = String(b).split('-')
+  const ms = Number(aMs) - Number(bMs)
+  if (ms !== 0) return ms
+  return Number(aSeq || 0) - Number(bSeq || 0)
+}
+
 export default {
   props: {
     size: {
@@ -391,11 +406,13 @@ export default {
       if (unackedAlerts.length) {
         const oldest = unackedAlerts.reduce(
           (min, notification) =>
-            notification.msg_id < min ? notification.msg_id : min,
+            compareMsgIds(notification.msg_id, min) < 0
+              ? notification.msg_id
+              : min,
           unackedAlerts[0].msg_id,
         )
         const cap = offsetBefore(oldest)
-        if (!offset || cap < offset) {
+        if (!offset || compareMsgIds(cap, offset) < 0) {
           offset = cap
         }
       }
@@ -410,7 +427,7 @@ export default {
     advanceReadMarker: function (msgId) {
       if (
         !localStorage.lastReadNotification ||
-        localStorage.lastReadNotification < msgId
+        compareMsgIds(localStorage.lastReadNotification, msgId) < 0
       ) {
         localStorage.lastReadNotification = msgId
       }
@@ -491,7 +508,10 @@ export default {
           notification.read = acked.has(notification.msg_id)
         } else {
           notification.read =
-            notification.msg_id <= localStorage.lastReadNotification
+            compareMsgIds(
+              notification.msg_id,
+              localStorage.lastReadNotification,
+            ) <= 0
         }
         notification.level = notification.level || 'INFO'
         if (notification.read) {

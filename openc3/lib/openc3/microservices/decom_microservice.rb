@@ -246,9 +246,9 @@ module OpenC3
           # Only print INFO messages if we're changing ... not on initialization
           @logger.info(message, other: time) if old_limits_state
         when :YELLOW, :YELLOW_LOW, :YELLOW_HIGH
-          @logger.warn(message, other: time.merge(limits_state: item.limits.state.to_s), type: Logger::NOTIFICATION)
+          @logger.warn(message, other: time, type: Logger::NOTIFICATION)
         when :RED, :RED_LOW, :RED_HIGH
-          @logger.error(message, other: time.merge(limits_state: item.limits.state.to_s), type: Logger::ALERT)
+          @logger.error(message, other: time, type: Logger::ALERT)
         end
       end
 
