@@ -116,6 +116,8 @@ class DecomMicroservice(Microservice):
         self.limits_response_thread = None
         System.telemetry.set_limits_change_callback(self.limits_change_callback)
         LimitsEventTopic.sync_system(scope=self.scope)
+        target_model = TargetModel.get_model(name=self.target_names[0], scope=self.scope)
+        self.stored_limits_mode = target_model.stored_limits_mode if target_model else "PROCESS"
         self.error_count = 0
         self.metric.set(name="decom_total", value=self.count, type="counter")
         self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
@@ -222,10 +224,16 @@ class DecomMicroservice(Microservice):
             # Process all the limits and call the limits_change_callback (as necessary)
             # This must be before the full decom so that limits states are available
             #############################################################################
-            packet_or_subpacket.check_limits(System.limits_set())
+            disable_stored_limits = packet_or_subpacket.stored and self.stored_limits_mode == "DISABLE"
+            if not disable_stored_limits:
+                packet_or_subpacket.check_limits(System.limits_set())
 
             # This is what actually decommutates the packet and updates the CVT
-            TelemetryDecomTopic.write_packet(packet_or_subpacket, scope=self.scope)
+            TelemetryDecomTopic.write_packet(
+                packet_or_subpacket,
+                include_limits_states=not disable_stored_limits,
+                scope=self.scope,
+            )
         diff = time.time() - start  # seconds as a float
         self.metric.set(name="decom_duration_seconds", value=diff, type="gauge", unit="seconds")
 
@@ -353,9 +361,12 @@ class DecomMicroservice(Microservice):
             "time_nsec": to_nsec_from_epoch(packet_time),
             "message": str(message),
         }
+        suppress_stored = packet.stored and self.stored_limits_mode != "PROCESS"
+        if suppress_stored:
+            event["suppress_stored"] = True
         LimitsEventTopic.write(event, scope=self.scope)
 
-        if item.limits.response is not None:
+        if item.limits.response is not None and not suppress_stored:
             copied_packet = packet.deep_copy()
             copied_item = packet.items[item.name]
             self.limits_response_queue.put([copied_packet, copied_item, old_limits_state])

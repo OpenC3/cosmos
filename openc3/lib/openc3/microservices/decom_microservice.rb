@@ -100,6 +100,8 @@ module OpenC3
       @limits_response_thread = nil
       System.telemetry.limits_change_callback = method(:limits_change_callback)
       LimitsEventTopic.sync_system(scope: @scope)
+      target_model = TargetModel.get_model(name: @target_names[0], scope: @scope)
+      @stored_limits_mode = target_model ? (target_model.stored_limits_mode || 'PROCESS') : 'PROCESS'
       @error_count = 0
       @metric.set(name: 'decom_total', value: @count, type: 'counter')
       @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')
@@ -184,6 +186,7 @@ module OpenC3
           logger: @logger,
           name: @name,
           check_limits: true,
+          stored_limits_mode: @stored_limits_mode,
           metric: @metric,
           error_callback: ->(e) {
             @error_count += 1
@@ -253,9 +256,11 @@ module OpenC3
       event = { type: :LIMITS_CHANGE, target_name: packet.target_name, packet_name: packet.packet_name,
                 item_name: item.name, old_limits_state: old_limits_state.to_s, new_limits_state: item.limits.state.to_s,
                 time_nsec: packet_time.to_nsec_from_epoch, message: message.to_s }
+      suppress_stored = packet.stored && @stored_limits_mode != 'PROCESS'
+      event[:suppress_stored] = true if suppress_stored
       LimitsEventTopic.write(event, scope: @scope)
 
-      if item.limits.response
+      if item.limits.response && !suppress_stored
         copied_packet = packet.deep_copy
         copied_item = packet.items[item.name]
         @limits_response_queue << [copied_packet, copied_item, old_limits_state]

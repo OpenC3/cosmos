@@ -308,6 +308,11 @@ class InterfaceCmdHandlerThread:
                 )
                 command.received_count = orig_command.received_count
                 command.received_time = datetime.now(timezone.utc)
+            except ValueError as e:
+                # Command parameter out of range is a user error, not a bug,
+                # so only log the message and not the full stack trace
+                self.logger.error(f"{self.interface.name}: {str(e)}")
+                return str(e)
             except Exception as e:
                 self.logger.error(f"{self.interface.name}: {msg_hash}")
                 self.logger.error(f"{self.interface.name}: {traceback.format_exc()}")
@@ -318,6 +323,7 @@ class InterfaceCmdHandlerThread:
             command.extra = command.extra or {}
             command.extra["cmd_string"] = msg_hash.get(b"cmd_string", b"").decode()
             command.extra["username"] = msg_hash.get(b"username", b"").decode()
+            command.extra["interface_name"] = self.interface.name
             # Add approver info if this was a critical command that was approved
             if critical_model is not None:
                 command.extra["approver"] = critical_model.approver

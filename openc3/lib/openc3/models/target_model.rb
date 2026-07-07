@@ -63,6 +63,7 @@ module OpenC3
     attr_accessor :ignored_parameters
     attr_accessor :ignored_items
     attr_accessor :limits_groups
+    attr_accessor :stored_limits_mode
     attr_accessor :cmd_tlm_files
     attr_accessor :id
     attr_accessor :cmd_buffer_depth
@@ -384,6 +385,7 @@ module OpenC3
       ignored_parameters: [],
       ignored_items: [],
       limits_groups: [],
+      stored_limits_mode: 'PROCESS',
       cmd_tlm_files: [],
       id: nil,
       updated_at: nil,
@@ -412,6 +414,8 @@ module OpenC3
       @ignored_parameters = ignored_parameters
       @ignored_items = ignored_items
       @limits_groups = limits_groups
+      @stored_limits_mode = stored_limits_mode.to_s.upcase
+      @stored_limits_mode = 'PROCESS' unless %w(PROCESS LOG DISABLE).include?(@stored_limits_mode)
       @cmd_tlm_files = cmd_tlm_files
       @id = id
       @cmd_buffer_depth = cmd_buffer_depth
@@ -442,6 +446,7 @@ module OpenC3
         'ignored_parameters' => @ignored_parameters,
         'ignored_items' => @ignored_items,
         'limits_groups' => @limits_groups,
+        'stored_limits_mode' => @stored_limits_mode,
         'cmd_tlm_files' => @cmd_tlm_files,
         'id' => @id,
         'updated_at' => @updated_at,
@@ -556,6 +561,14 @@ module OpenC3
       when 'DB_SHARD'
         parser.verify_num_parameters(1, 1, "#{keyword} <Shard Number Starting from 0>")
         @db_shard = Integer(parameters[0])
+
+      when 'STORED_LIMITS_MODE'
+        parser.verify_num_parameters(1, 1, "#{keyword} <PROCESS, LOG, or DISABLE>")
+        mode = parameters[0].to_s.upcase
+        unless %w(PROCESS LOG DISABLE).include?(mode)
+          raise ConfigParser::Error.new(parser, "STORED_LIMITS_MODE must be one of PROCESS, LOG, or DISABLE")
+        end
+        @stored_limits_mode = mode
 
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Target: #{keyword} #{parameters.join(" ")}")
