@@ -103,9 +103,9 @@ module OpenC3
       packet.CcsdsSeqFlags = 'NOGROUP'
       packet.CcsdsLength = packet.buffer.length - 7
       packet.value1 = 0
-      packet.value2 = 1
+      packet.value2 = 0
       packet.value3 = 2
-      packet.value4 = 1
+      packet.value4 = 0
       packet.value5 = 0
       packet.write('P_2.2,2', BinaryAccessor::MIN_INT64)
       packet.write('P-3+3=3', BinaryAccessor::MAX_INT64)
@@ -146,7 +146,7 @@ module OpenC3
 
       @bad_temp2 = false
       @last_temp2 = 0
-      @quiet = false
+      @quiet = true
       @time_offset = 0
       @ip_address = 0
       @variable_arrays_updated = false

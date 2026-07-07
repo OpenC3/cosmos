@@ -53,8 +53,11 @@ class Notify {
     const app = createApp(Toast)
     app.use(vuetify)
 
+    // vue-sonner renders position:fixed inline (no Teleport), so it must mount
+    // on document.body. Mounting inside the toolbar puts it under an ancestor
+    // that establishes a containing block, which breaks fixed positioning.
     const el = document.createElement('div')
-    document.querySelector('#openc3-app-toolbar > div').appendChild(el)
+    document.body.appendChild(el)
     this.$root = app.mount(el)
     this.mounted = true
   }

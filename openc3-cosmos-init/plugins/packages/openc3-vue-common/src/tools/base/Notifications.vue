@@ -99,14 +99,19 @@
               </v-list-subheader>
             </template>
 
-            <v-list-item
-              v-else
-              :key="`notification-${index}`"
-              class="pl-2"
-              @click="openDialog(notification)"
-            >
+            <v-list-item v-else :key="`notification-${index}`" class="pl-2">
               <template #prepend>
+                <!-- astro rux-status has no 'fatal' shape, so draw an octagon
+                     in the fatal color instead. Wrapped in a span so it isn't a
+                     direct-child .v-icon: Vuetify adds a 32px prepend spacer
+                     after a direct-child icon, which rux-status doesn't get. -->
+                <span v-if="notification.level === 'FATAL'" class="px-2">
+                  <v-icon class="fatal-status" :color="AstroStatusColors.fatal">
+                    mdi-alert-octagon
+                  </v-icon>
+                </span>
                 <rux-status
+                  v-else
                   class="px-2"
                   :status="getStatus(notification.level)"
                 />
@@ -130,6 +135,7 @@
                   size="small"
                   variant="tonal"
                   data-test="ack-notification"
+                  class="ml-2"
                   @click.stop="ackNotification(notification)"
                 >
                   Ack
@@ -141,53 +147,6 @@
       </v-card>
     </v-menu>
 
-    <!-- Dialog for viewing full notification -->
-    <v-dialog v-model="notificationDialog" width="600">
-      <v-card>
-        <v-card-title>
-          {{ selectedNotification.message }}
-          <v-spacer />
-          <astro-status-indicator
-            :status="selectedNotification.level || 'INFO'"
-          />
-        </v-card-title>
-        <v-card-subtitle>
-          {{ formatShortDateTime(selectedNotification.time) }}
-        </v-card-subtitle>
-        <v-divider />
-        <v-card-actions>
-          <v-btn
-            v-if="selectedNotification.url"
-            color="primary"
-            variant="text"
-            @click="navigate(selectedNotification.url)"
-          >
-            Open
-            <v-icon end> mdi-open-in-new </v-icon>
-          </v-btn>
-          <v-btn
-            v-if="
-              selectedNotification.type === 'alert' &&
-              !selectedNotification.read
-            "
-            color="primary"
-            variant="text"
-            data-test="ack-notification-dialog"
-            @click="ackNotification(selectedNotification)"
-          >
-            Acknowledge
-          </v-btn>
-          <v-btn
-            color="primary"
-            variant="text"
-            @click="notificationDialog = false"
-          >
-            Close
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
     <!-- Dialog for changing notification settings -->
     <v-dialog v-model="settingsDialog" width="600">
       <v-card>
@@ -195,20 +154,23 @@
         <v-card-text>
           <v-switch
             v-model="showToast"
-            label="Show alerts"
+            label="Show alert popups"
             color="primary"
+            messages="Alerts must be acknowledged to dismiss them"
             hide-details
             data-test="show-alerts"
           />
-          <v-switch
-            v-model="showRedLimitToast"
-            label="Show red limit alerts"
-            color="primary"
-            class="ml-6"
-            messages="Alerts must be acknowledged to dismiss them"
+          <v-radio-group
+            v-model="toastPosition"
+            label="Alert popup position"
+            inline
+            hide-details
             :disabled="!showToast"
-            data-test="show-red-limit-alerts"
-          />
+            data-test="toast-position"
+          >
+            <v-radio label="Top" value="top" />
+            <v-radio label="Bottom" value="bottom" />
+          </v-radio-group>
         </v-card-text>
         <v-divider />
         <v-card-actions>
@@ -224,11 +186,7 @@
 <script>
 import { formatDistanceToNow } from 'date-fns'
 import { Api, Cable } from '@openc3/js-common/services'
-import {
-  AstroStatusColors,
-  AstroStatusIndicator,
-  UnknownToAstroStatus,
-} from '@/icons'
+import { AstroStatusColors, UnknownToAstroStatus } from '@/icons'
 import { AstroStatus } from '@/util'
 
 const NOTIFICATION_HISTORY_MAX_LENGTH = 1000
@@ -249,9 +207,6 @@ function offsetBefore(msgId) {
 }
 
 export default {
-  components: {
-    AstroStatusIndicator,
-  },
   props: {
     size: {
       type: [String, Number],
@@ -269,11 +224,9 @@ export default {
       numScripts: 0,
       notifications: [],
       showNotificationPane: false,
-      notificationDialog: false,
-      selectedNotification: {},
       settingsDialog: false,
       showToast: true,
-      showRedLimitToast: false,
+      toastPosition: 'top',
     }
   },
   computed: {
@@ -325,12 +278,7 @@ export default {
   watch: {
     showNotificationPane: function (val) {
       if (!val) {
-        if (this.selectedNotification.message) {
-          this.notificationDialog = false
-          this.selectedNotification = {}
-        } else {
-          this.markAllAsRead()
-        }
+        this.markAllAsRead()
       }
     },
     showToast: function (val) {
@@ -340,17 +288,19 @@ export default {
         this.$notify?.dismissAll()
       }
     },
-    showRedLimitToast: function (val) {
-      localStorage.showRedLimitToast = val
-      if (!val) {
-        this.dismissLimitToasts('RED')
-      }
+    toastPosition: function (val) {
+      localStorage.toastPosition = val
+      // Toast renderer lives in a separate app instance; tell it to reposition
+      window.dispatchEvent(
+        new CustomEvent('openc3-toast-position', { detail: { position: val } }),
+      )
     },
   },
   created: function () {
-    // Toasts default on (opt-out), limit toasts default off (opt-in)
+    // Toasts default on (opt-out), position defaults to top
     this.showToast = localStorage.notoast !== 'true'
-    this.showRedLimitToast = localStorage.showRedLimitToast === 'true'
+    this.toastPosition =
+      localStorage.toastPosition === 'bottom' ? 'bottom' : 'top'
     // Acknowledging an alert from its toast also acks it in the menu
     window.addEventListener('openc3-ack-alert', this.onAckAlert)
     this.subscribe()
@@ -403,7 +353,6 @@ export default {
       this.persistStreamOffset()
       // Also dismiss the matching toast if it's still showing
       this.$notify?.dismiss((toast) => toast.msg_id === notification.msg_id)
-      this.notificationDialog = false
     },
     // Handles an alert acknowledged from its toast (fired in the Toast app
     // instance) so the menu marks the same alert read.
@@ -487,18 +436,6 @@ export default {
     toggleSettingsDialog: function () {
       this.settingsDialog = !this.settingsDialog
     },
-    openDialog: function (notification) {
-      // Alerts stay unread until acknowledged from the dialog
-      if (notification.type !== 'alert') {
-        notification.read = true
-        this.advanceReadMarker(notification.msg_id)
-      }
-      this.selectedNotification = notification
-      this.notificationDialog = true
-    },
-    navigate: function (url) {
-      window.open(url, '_blank')
-    },
     subscribe: function () {
       this.cable
         .createSubscription(
@@ -524,25 +461,6 @@ export default {
         .then((subscription) => {
           this.scriptSubscription = subscription
         })
-    },
-    dismissLimitToasts: function (prefix) {
-      this.$notify?.dismiss(
-        (notification) =>
-          notification.limits_state &&
-          notification.limits_state.startsWith(prefix),
-      )
-    },
-    shouldToast: function (notification) {
-      if (!this.showToast) {
-        return false // Master toggle gates all toasts
-      }
-      // Red limit alerts carry a RED limits_state (set by the decom
-      // microservice) and are gated by their own opt-in toggle.
-      const state = notification.limits_state
-      if (state && state.startsWith('RED')) {
-        return this.showRedLimitToast
-      }
-      return true
     },
     receiveMessage: function (parsed) {
       this.cable.recordPing()
@@ -579,9 +497,9 @@ export default {
         if (notification.read) {
           return // Don't toast read notifications
         }
-        // Only alerts toast (red limits gated by their toggle). Everything
-        // else, including yellow limits, only appears in the menu.
-        if (notification.type === 'alert' && this.shouldToast(notification)) {
+        // Only alerts toast (gated by the master toggle). Everything else,
+        // including limits notifications, only appears in the menu.
+        if (notification.type === 'alert' && this.showToast) {
           // Alerts require acknowledgement regardless of level. Each one is
           // toasted individually so the user must dismiss (ack) all of them.
           alertToasts.push(notification)
@@ -591,14 +509,13 @@ export default {
       // Notify takes a minute to be ready on app load
       if (this.$notify) {
         alertToasts.forEach((notification) => {
-          // Fall back to INFO if the level isn't a Notify method so one bad
-          // level can't throw and abort toasting the rest of the batch.
-          const level =
-            typeof this.$notify[notification.level] === 'function'
-              ? notification.level
-              : 'INFO'
-          this.$notify[level]({
+          // Go straight through open() so the original log level (FATAL, ERROR,
+          // WARN, INFO, DEBUG) reaches the toast. The severity-named methods
+          // (this.$notify.critical, etc.) collapse levels (FATAL->critical,
+          // DEBUG->normal), which would give the wrong icon and color.
+          this.$notify.open({
             ...notification,
+            method: 'toast',
             type: 'alert',
             duration: null, // Persist until the user acknowledges the alert
             saveToHistory: false,
@@ -646,5 +563,12 @@ export default {
 .overlay {
   height: 100vh;
   width: 100vw;
+}
+/* v-list-item provides icon-size defaults to prepend icons, overriding the
+   size prop, so pin the fatal octagon to rux-status's 12px footprint. */
+.fatal-status.v-icon {
+  font-size: 12px;
+  width: 12px;
+  height: 12px;
 }
 </style>

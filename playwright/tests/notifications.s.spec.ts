@@ -46,11 +46,6 @@ async function setQuiet(browser, baseURL, state) {
     `cmd("INST QUIET with STATE ${state}")\ncmd("INST2 QUIET with STATE ${state}")`,
   )
   await setSetting(page, 'show-alerts', true)
-  if (state === 'TRUE') {
-    await setSetting(page, 'show-red-limit-alerts', true)
-  } else {
-    await setSetting(page, 'show-red-limit-alerts', false)
-  }
 
   // Give the two commands time to be sent before tearing down the context.
   await page.waitForTimeout(3000)
@@ -83,6 +78,23 @@ async function setSetting(page, dataTest, enable) {
   await page.keyboard.press('Escape')
 }
 
+// Open Notification settings and choose the alert popup position ('top' or
+// 'bottom') via its radio group, then close the dialog.
+async function setToastPosition(page, position) {
+  await page.locator('[data-test=notifications]').click()
+  await page.locator('[data-test=notification-settings]').click()
+  const label = position === 'bottom' ? 'Bottom' : 'Top'
+  // Click the radio's selection control (the circle), not the label text, so
+  // the value actually toggles.
+  const radio = page.locator('[data-test=toast-position] .v-radio', {
+    hasText: label,
+  })
+  await radio.locator('.v-selection-control__input').click()
+  await expect(radio.locator('input')).toBeChecked()
+  await page.locator('button:has-text("Close")').click()
+  await page.keyboard.press('Escape')
+}
+
 test('plain notifications only appear in the menu, not as a toast', async ({
   page,
   utils,
@@ -106,25 +118,18 @@ test('plain notifications only appear in the menu, not as a toast', async ({
   )
 })
 
-test('red limit alerts are gated by the red limit toggle', async ({
+test('limit alerts toast whenever alerts are enabled (no separate toggle)', async ({
   page,
   utils,
 }) => {
-  // Fresh defaults: master "Show alerts" on, "Show red limit alerts" off.
+  // The red-limit-specific toggle was removed; any ALERT toasts when the master
+  // "Show alerts" toggle is on, regardless of its limits_state.
   const redText = 'Playwright RED limit test'
   const emitRed =
     `OpenC3::Logger.error("${redText}", ` +
     `type: OpenC3::Logger::ALERT, other: { limits_state: 'RED_LOW' })`
   const redToast = page.locator('[data-test=toast]', { hasText: redText })
 
-  // With the red limit toggle off, a red limit alert must NOT toast.
-  await setSetting(page, 'show-red-limit-alerts', false)
-  await runLog(page, emitRed)
-  await page.waitForTimeout(3000)
-  await expect(redToast).toHaveCount(0)
-
-  // Enable red limit alerts, then the same alert appears as a must-ack toast.
-  await setSetting(page, 'show-red-limit-alerts', true)
   await runLog(page, emitRed)
   await expect(redToast).toBeVisible({ timeout: 20000 })
   await redToast.getByRole('button', { name: 'Acknowledge' }).click()
@@ -151,33 +156,6 @@ test('yellow limit changes never toast, only show in the menu', async ({
   await expect(page.locator('[data-test=notification-list]')).toContainText(
     yellowText,
   )
-})
-
-test('disabling a limit toggle dismisses its existing toasts', async ({
-  page,
-  utils,
-}) => {
-  const redText = 'Playwright RED dismiss-on-disable test'
-  const emitRed =
-    `OpenC3::Logger.error("${redText}", ` +
-    `type: OpenC3::Logger::ALERT, other: { limits_state: 'RED_HIGH' })`
-  const redToast = page.locator('[data-test=toast]', { hasText: redText })
-
-  // Enable red limit alerts and raise one.
-  await setSetting(page, 'show-red-limit-alerts', true)
-  await runLog(page, emitRed)
-  await expect(redToast).toBeVisible({ timeout: 20000 })
-
-  // Turning the red limit toggle back off clears the displayed alert.
-  await setSetting(page, 'show-red-limit-alerts', false)
-  await expect(redToast).toBeHidden()
-
-  // Dismissing the toast via the toggle must NOT acknowledge the alert - it
-  // remains un-acked in the menu (its Ack button is still shown).
-  await page.locator('[data-test=notifications]').click()
-  await expect(
-    menuRow(page, redText).locator('[data-test=ack-notification]'),
-  ).toBeVisible()
 })
 
 // A menu row (v-list-item) for the alert carrying the given text.
@@ -213,34 +191,6 @@ test('acking a toast marks the same alert read in the menu (event round trip)', 
   await expect(toast).toBeHidden()
 
   await page.locator('[data-test=notifications]').click()
-  await expect(
-    menuRow(page, alertText).locator('[data-test=ack-notification]'),
-  ).toHaveCount(0)
-})
-
-test('acknowledging an alert from its dialog marks it read and clears its toast', async ({
-  page,
-  utils,
-}) => {
-  const alertText = 'Playwright dialog ack test'
-  await runLog(
-    page,
-    `OpenC3::Logger.error("${alertText}", type: OpenC3::Logger::ALERT)`,
-  )
-  const toast = page.locator('[data-test=toast]', { hasText: alertText })
-  await expect(toast).toBeVisible({ timeout: 20000 })
-
-  // Open the menu, then open the alert's dialog by clicking its title.
-  await page.locator('[data-test=notifications]').click()
-  await menuRow(page, alertText).getByText(alertText).click()
-  const dialogAck = page.locator('[data-test=ack-notification-dialog]')
-  await expect(dialogAck).toBeVisible()
-
-  // Acknowledging from the dialog closes it, marks the alert read, and clears
-  // the toast.
-  await dialogAck.click()
-  await expect(dialogAck).toHaveCount(0)
-  await expect(toast).toBeHidden()
   await expect(
     menuRow(page, alertText).locator('[data-test=ack-notification]'),
   ).toHaveCount(0)
@@ -391,6 +341,14 @@ test('turning off Show alerts dismisses existing toasts and suppresses new ones'
   await setSetting(page, 'show-alerts', false)
   await expect(firstToast).toBeHidden()
 
+  // Dismissing the toast via the toggle must NOT acknowledge the alert - it
+  // remains un-acked in the menu (its Ack button is still shown).
+  await page.locator('[data-test=notifications]').click()
+  await expect(
+    menuRow(page, firstText).locator('[data-test=ack-notification]'),
+  ).toBeVisible()
+  await page.keyboard.press('Escape')
+
   // With the master toggle off, a new alert does not toast (still logged to
   // the menu).
   const secondText = 'Playwright master toggle new'
@@ -402,4 +360,43 @@ test('turning off Show alerts dismisses existing toasts and suppresses new ones'
   await expect(
     page.locator('[data-test=toast]', { hasText: secondText }),
   ).toHaveCount(0)
+
+  // Re-enable alerts so later shared-context tests start from defaults.
+  await setSetting(page, 'show-alerts', true)
+})
+
+test.only('the alert popup position setting moves the toaster top or bottom', async ({
+  page,
+  utils,
+}) => {
+  const toaster = page.locator('[data-sonner-toaster]')
+
+  // Emit an alert so the toaster is present in the DOM.
+  const alertText = 'Playwright position test top'
+  await runLog(
+    page,
+    `OpenC3::Logger.error("${alertText}", type: OpenC3::Logger::ALERT)`,
+  )
+  const toast = page.locator('[data-test=toast]', { hasText: alertText })
+  await expect(toast).toBeVisible({ timeout: 20000 })
+
+  // Default position is top.
+  await expect(toaster).toHaveAttribute('data-y-position', 'top')
+
+  // Switching to Bottom repositions the toaster.
+  await setToastPosition(page, 'bottom')
+
+  const alertText2 = 'Playwright position test bottom'
+  await runLog(
+    page,
+    `OpenC3::Logger.error("${alertText2}", type: OpenC3::Logger::ALERT)`,
+  )
+  const toast2 = page.locator('[data-test=toast]', { hasText: alertText2 })
+  await expect(toast2).toBeVisible({ timeout: 20000 })
+  await expect(toaster).toHaveAttribute('data-y-position', 'bottom')
+  await toast2.getByRole('button', { name: 'Acknowledge' }).click()
+  await expect(toast2).toBeHidden()
+
+  // And back to Top.
+  await setToastPosition(page, 'top')
 })

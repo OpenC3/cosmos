@@ -11,6 +11,34 @@
 import { test as setup, expect } from '@playwright/test'
 import { STORAGE_STATE, ADMIN_STORAGE_STATE } from './../playwright.config'
 
+// Take the demo sim targets out of QUIET mode. The notifications spec puts them
+// in QUIET while it runs and restores them afterward, but if that spec crashes
+// its afterAll may not run, leaving the sim quiet for every other test. Send
+// these at suite start so we always begin from a known (non-quiet) baseline.
+async function resetQuiet(page) {
+  for (const target of ['INST', 'INST2']) {
+    const status = await page.evaluate(async (target) => {
+      const response = await fetch('/openc3-api/api', {
+        method: 'POST',
+        headers: {
+          Authorization: localStorage.openc3Token,
+          'Content-Type': 'application/json-rpc',
+          manual: 'true',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'cmd',
+          params: `${target} QUIET with STATE FALSE`,
+          id: 1,
+          keyword_params: { scope: 'DEFAULT' },
+        }),
+      })
+      return response.status
+    }, target)
+    expect(status).toBe(200)
+  }
+}
+
 setup('global setup', async ({ page }) => {
   await page.goto('/tools/cmdtlmserver')
   if (process.env.ENTERPRISE === '1') {
@@ -71,4 +99,7 @@ setup('global setup', async ({ page }) => {
       await page.locator('button:has-text("Dismiss")').click()
     }
   }
+
+  // Ensure the sim starts out of QUIET mode regardless of edition.
+  await resetQuiet(page)
 })

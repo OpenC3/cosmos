@@ -106,9 +106,9 @@ class SimInst(SimulatedTarget):
         packet.write("CcsdsSeqFlags", "NOGROUP")
         packet.write("CcsdsLength", len(packet.buffer) - 7)
         packet.write("value1", 0)
-        packet.write("value2", 1)
+        packet.write("value2", 0)
         packet.write("value3", 2)
-        packet.write("value4", 1)
+        packet.write("value4", 0)
         packet.write("value5", 0)
         packet.write("P_2.2,2", BinaryAccessor.MIN_INT64)
         packet.write("P-3+3=3", BinaryAccessor.MAX_INT64)
@@ -142,7 +142,7 @@ class SimInst(SimulatedTarget):
 
         self.bad_temp2 = False
         self.last_temp2 = 0
-        self.quiet = False
+        self.quiet = True
         self.time_offset = 0
         self.ip_address = 0
         self.variable_arrays_updated = False

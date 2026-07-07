@@ -862,6 +862,9 @@ importers:
       vuetify:
         specifier: 3.12.8
         version: 3.12.8(vue@3.5.39)
+      vuetify-sonner:
+        specifier: ^0.4.2
+        version: 0.4.2(vue@3.5.39)(vuetify@3.12.8(vue@3.5.39))
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 6.0.7
@@ -2380,6 +2383,9 @@ packages:
       yaml:
         optional: true
 
+  vue-component-type-helpers@3.3.6:
+    resolution: {integrity: sha512-FkljacAwJ9BUoSUdpFe3VDy0sGigNlTH9+2zcXUWmZOjN8swiCkl3t48wOJun0OsUd2cEIda1l04tsxMiKIIrQ==}
+
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
     engines: {node: '>=12'}
@@ -2402,6 +2408,20 @@ packages:
     peerDependencies:
       vue: ^3.2.0
 
+  vue-sonner@2.0.9:
+    resolution: {integrity: sha512-i6BokNlNDL93fpzNxN/LZSn6D6MzlO+i3qXt6iVZne3x1k7R46d5HlFB4P8tYydhgqOrRbIZEsnRd3kG7qGXyw==}
+    peerDependencies:
+      '@nuxt/kit': ^4.0.3
+      '@nuxt/schema': ^4.0.3
+      nuxt: ^4.0.3
+    peerDependenciesMeta:
+      '@nuxt/kit':
+        optional: true
+      '@nuxt/schema':
+        optional: true
+      nuxt:
+        optional: true
+
   vue@3.5.39:
     resolution: {integrity: sha512-xmZCYabFGcirU8r0fTuvl/LICc1OU620rnqepaJDL/a141ZigkG7AyaxQLdqJ02ZRYzWe6YPaDHeQx7MfknQfA==}
     peerDependencies:
@@ -2409,6 +2429,12 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
+
+  vuetify-sonner@0.4.2:
+    resolution: {integrity: sha512-14VGhi1IQGVJ2sUvy2qIMZaiapMtr0zzKKrzSUVPLaPU6VDh0heFVDD1HRBG5JgHjQl8qZjsPWiqd64ZZysx8A==}
+    peerDependencies:
+      vue: ^3.3.0
+      vuetify: ^3.3.0
 
   vuetify@3.12.8:
     resolution: {integrity: sha512-gvmOWeLd6CG7LVh2Qonft5YrIb7MpbKZglRjg0ItEloSbu6hfUII2RZmRSVxGKYdiXTf7J1hI3BRSHr8J9LkxA==}
@@ -3790,6 +3816,8 @@ snapshots:
       lightningcss: 1.32.0
       sass: 1.101.0
 
+  vue-component-type-helpers@3.3.6: {}
+
   vue-demi@0.14.10(vue@3.5.39):
     dependencies:
       vue: 3.5.39
@@ -3811,6 +3839,8 @@ snapshots:
       '@vue/devtools-api': 6.6.4
       vue: 3.5.39
 
+  vue-sonner@2.0.9: {}
+
   vue@3.5.39:
     dependencies:
       '@vue/compiler-dom': 3.5.39
@@ -3818,6 +3848,17 @@ snapshots:
       '@vue/runtime-dom': 3.5.39
       '@vue/server-renderer': 3.5.39(vue@3.5.39)
       '@vue/shared': 3.5.39
+
+  vuetify-sonner@0.4.2(vue@3.5.39)(vuetify@3.12.8(vue@3.5.39)):
+    dependencies:
+      vue: 3.5.39
+      vue-component-type-helpers: 3.3.6
+      vue-sonner: 2.0.9
+      vuetify: 3.12.8(vue@3.5.39)
+    transitivePeerDependencies:
+      - '@nuxt/kit'
+      - '@nuxt/schema'
+      - nuxt
 
   vuetify@3.12.8(vue@3.5.39):
     dependencies:
