@@ -127,13 +127,17 @@ test('direct URLs', async ({ page, utils }) => {
   await page.goto('/tools/bucketexplorer/blah')
   await expect(page.locator('.v-app-bar')).toContainText('Bucket Explorer')
   await expect(
-    page.getByText('Unknown bucket / volume OPENC3_BLAH_BUCKET'),
+    page.getByText('Unknown bucket / volume OPENC3_BLAH_BUCKET', {
+      exact: true,
+    }),
   ).toBeVisible()
   // Prepending %2F makes it a volume
   await page.goto('/tools/bucketexplorer/%2FBAD')
   await expect(page.locator('.v-app-bar')).toContainText('Bucket Explorer')
   await expect(
-    page.getByText('Unknown bucket / volume OPENC3_BAD_VOLUME'),
+    page.getByText('Unknown bucket / volume OPENC3_BAD_VOLUME', {
+      exact: true,
+    }),
   ).toBeVisible()
 })
 
@@ -226,7 +230,11 @@ async function uploadAs(page: any, filename: string) {
 
 test('delete multiple selected files', async ({ page, utils }) => {
   const id = Math.ceil(Math.random() * 1_000_000)
-  const files = [`multi_${id}_a.json`, `multi_${id}_b.json`, `multi_${id}_c.json`]
+  const files = [
+    `multi_${id}_a.json`,
+    `multi_${id}_b.json`,
+    `multi_${id}_c.json`,
+  ]
 
   await page.goto(
     '/tools/bucketexplorer/config%2FDEFAULT%2Ftargets_modified%2F__TEMP__%2F',

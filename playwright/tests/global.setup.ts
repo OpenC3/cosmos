@@ -102,4 +102,19 @@ setup('global setup', async ({ page }) => {
 
   // Ensure the sim starts out of QUIET mode regardless of edition.
   await resetQuiet(page)
+
+  // Disable alert popups so they don't interfere with other tests
+  await page.locator('[data-test=notifications]').click()
+  await page.locator('[data-test=notification-settings]').click()
+  const input = page.locator(`[data-test='show-alerts'] input`)
+  if ((await input.isChecked()) !== false) {
+    // Click the toggle control itself, not the full-width switch row.
+    await page
+      .locator(`[data-test='show-alerts'] .v-selection-control__input`)
+      .click()
+  }
+  await expect(input).toBeChecked({ checked: false })
+  await page.locator('button:has-text("Close")').click()
+  // Close the notifications menu so its overlay stops intercepting clicks.
+  await page.keyboard.press('Escape')
 })

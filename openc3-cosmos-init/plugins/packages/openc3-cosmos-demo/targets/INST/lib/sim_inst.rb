@@ -410,6 +410,14 @@ module OpenC3
           packet.ccsdsseqcnt += 1
           packet.ip_address = @ip_address
 
+          if @quiet
+            packet.value2 = 0
+            packet.value4 = 0
+          else
+            packet.value2 = 1
+            packet.value4 = 1
+          end
+
         when 'IMAGE'
           packet.timesec = time.tv_sec - @time_offset
           packet.timeus = time.tv_usec

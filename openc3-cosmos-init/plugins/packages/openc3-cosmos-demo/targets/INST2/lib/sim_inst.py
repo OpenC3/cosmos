@@ -414,6 +414,13 @@ class SimInst(SimulatedTarget):
                     packet.write("ccsdsseqcnt", packet.read("ccsdsseqcnt") + 1)
                     packet.write("ip_address", self.ip_address)
 
+                    if self.quiet:
+                        packet.write("value2", 0)
+                        packet.write("value4", 0)
+                    else:
+                        packet.write("value2", 1)
+                        packet.write("value4", 1)
+
                 case "IMAGE":
                     packet.write("timesec", int(time - self.time_offset))
                     packet.write("timeus", int((time % 1) * 1000000))
