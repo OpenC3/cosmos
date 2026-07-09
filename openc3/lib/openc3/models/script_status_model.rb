@@ -66,8 +66,8 @@ module OpenC3
 
     def self.all(scope:, offset: 0, limit: 10, type: "running")
       primary_key = (type == "running") ? RUNNING_PRIMARY_KEY : COMPLETED_PRIMARY_KEY
-        keys = self.store.zrevrange("#{primary_key}__#{scope}__LIST", offset.to_i, offset.to_i + limit.to_i - 1)
-        return [] if keys.empty?
+      keys = self.store.zrevrange("#{primary_key}__#{scope}__LIST", offset.to_i, offset.to_i + limit.to_i - 1)
+      return [] if keys.empty?
 
       result = self.store.redis_pool.pipelined do
         keys.each do |key|
@@ -79,14 +79,14 @@ module OpenC3
           nil
         else
           JSON.parse(r, allow_nan: true, create_additions: true)
-      end
+        end
       end
       return result
     end
 
     def self.count(scope:, type: "running")
       primary_key = (type == "running") ? RUNNING_PRIMARY_KEY : COMPLETED_PRIMARY_KEY
-        return self.store.zcount("#{primary_key}__#{scope}__LIST", 0, Float::INFINITY)
+      return self.store.zcount("#{primary_key}__#{scope}__LIST", 0, Float::INFINITY)
     end
 
     # Return a single page of items along with the total count of matching items.
@@ -128,6 +128,7 @@ module OpenC3
     def self.fetch_all(primary_key, scope)
       keys = self.store.zrevrange("#{primary_key}__#{scope}__LIST", 0, -1)
       return [] if keys.empty?
+
       self.fetch(primary_key, scope, keys).compact
     end
 
@@ -136,6 +137,7 @@ module OpenC3
       search = search.to_s.downcase
       items.select do |item|
         next false if item.nil?
+
         SEARCH_FIELDS.any? { |field| item[field].to_s.downcase.include?(search) }
       end
     end
