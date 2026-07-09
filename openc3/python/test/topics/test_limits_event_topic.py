@@ -45,6 +45,47 @@ class TestLimitsEventTopic(unittest.TestCase):
         self.assertEqual(out[0][2], "ITEM")
         self.assertEqual(out[0][3], "YELLOW_LOW")
 
+    def test_skips_current_limits_update_when_event_has_suppress_stored_true(self):
+        event = {
+            "type": "LIMITS_CHANGE",
+            "target_name": "TGT",
+            "packet_name": "PKT",
+            "item_name": "ITEM",
+            "old_limits_state": "GREEN",
+            "new_limits_state": "RED_HIGH",
+            "time_nsec": 123456789,
+            "message": "stored change",
+            "suppress_stored": True,
+        }
+        LimitsEventTopic.write(event, scope="DEFAULT")
+
+        # Event is still written to the stream
+        events = LimitsEventTopic.read(scope="DEFAULT")
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0][1]["type"], "LIMITS_CHANGE")
+        self.assertTrue(events[0][1]["suppress_stored"])
+
+        # But current_limits hash is NOT updated
+        out = LimitsEventTopic.out_of_limits(scope="DEFAULT")
+        self.assertEqual(len(out), 0)
+
+    def test_updates_current_limits_when_event_has_no_suppress_stored_flag(self):
+        event = {
+            "type": "LIMITS_CHANGE",
+            "target_name": "TGT",
+            "packet_name": "PKT",
+            "item_name": "ITEM",
+            "old_limits_state": "GREEN",
+            "new_limits_state": "RED_HIGH",
+            "time_nsec": 123456789,
+            "message": "realtime change",
+        }
+        LimitsEventTopic.write(event, scope="DEFAULT")
+
+        out = LimitsEventTopic.out_of_limits(scope="DEFAULT")
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0][3], "RED_HIGH")
+
     def test_writes_and_reads_limits_settings_events(self):
         event = {
             "type": "LIMITS_SETTINGS",

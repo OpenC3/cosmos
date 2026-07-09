@@ -42,11 +42,17 @@
     <pypi-settings />
     <v-divider />
     <context-tag-settings />
+    <template v-if="isEnterprise">
+      <v-divider />
+      <ai-chat-settings />
+    </template>
   </div>
 </template>
 
 <script>
+import { Api } from '@openc3/js-common/services'
 import SuppressedSettings from './settings/SuppressedSettings.vue'
+import AiChatSettings from './settings/AiChatSettings.vue'
 import DefaultConfigSettings from './settings/DefaultConfigSettings.vue'
 import EditorSettings from './settings/EditorSettings.vue'
 import ScriptLifecycleSettings from './settings/ScriptLifecycleSettings.vue'
@@ -65,6 +71,7 @@ import ContextTagSettings from './settings/ContextTagSettings.vue'
 export default {
   components: {
     SuppressedSettings,
+    AiChatSettings,
     DefaultConfigSettings,
     EditorSettings,
     ScriptLifecycleSettings,
@@ -79,6 +86,16 @@ export default {
     RubyGemsSettings,
     PypiSettings,
     ContextTagSettings,
+  },
+  data() {
+    return {
+      isEnterprise: false,
+    }
+  },
+  created() {
+    Api.get('/openc3-api/info').then(({ data }) => {
+      this.isEnterprise = data.enterprise
+    })
   },
 }
 </script>

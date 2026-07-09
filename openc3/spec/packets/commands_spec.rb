@@ -401,29 +401,29 @@ module OpenC3
 
           if range_checking
             it "complains about out of range item values" do
-              expect { @cmd.build_cmd("tgt1", "pkt1", { "item2" => 255 }, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT1 ITEM2' = 255 not in valid range of 0 to 200")
+              expect { @cmd.build_cmd("tgt1", "pkt1", { "item2" => 255 }, range_checking, raw) }.to raise_error(RangeError, "Command parameter 'TGT1 PKT1 ITEM2' = 255 not in valid range of 0 to 200")
             end
 
             it "complains about out of range item states" do
               items = { "ITEM2" => 3, "ITEM3" => 0.0, "ITEM4" => "WORLD" }
               if raw
-                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM2' = 3 not one of 0, 1, 2")
+                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RangeError, "Command parameter 'TGT1 PKT2 ITEM2' = 3 not one of 0, 1, 2")
               else
-                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM2' = 3 not one of BAD1, BAD2, GOOD")
+                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RangeError, "Command parameter 'TGT1 PKT2 ITEM2' = 3 not one of BAD1, BAD2, GOOD")
               end
 
               items = { "ITEM2" => 0, "ITEM3" => 2.0, "ITEM4" => "WORLD" }
               if raw
-                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM3' = 2.0 not one of 0.0, 0.25, 0.5, 0.75, 1.0")
+                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RangeError, "Command parameter 'TGT1 PKT2 ITEM3' = 2.0 not one of 0.0, 0.25, 0.5, 0.75, 1.0")
               else
-                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM3' = 2.0 not one of S1, S2, S3, S4, S5")
+                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RangeError, "Command parameter 'TGT1 PKT2 ITEM3' = 2.0 not one of S1, S2, S3, S4, S5")
               end
 
               items = { "ITEM2" => 0, "ITEM3" => 0.0, "ITEM4" => "TESTY" }
               if raw
-                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM4' = TESTY not one of HELLO, WORLD, JASON")
+                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RangeError, "Command parameter 'TGT1 PKT2 ITEM4' = TESTY not one of HELLO, WORLD, JASON")
               else
-                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM4' = TESTY not one of HI, WO, JA")
+                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RangeError, "Command parameter 'TGT1 PKT2 ITEM4' = TESTY not one of HI, WO, JA")
               end
             end
           else

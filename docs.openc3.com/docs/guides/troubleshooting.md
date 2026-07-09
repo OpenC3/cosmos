@@ -39,7 +39,7 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
 
 1. You've enabled certificates and you're getting networking errors
 
-   Make sure you've read both the [SSL-TLS](/docs/configuration/ssl-tls) docs and the [COSMOS Enterprise Project](https://github.com/OpenC3/cosmos-enterprise-project?tab=readme-ov-file#opening-to-the-network) instructions.
+   Make sure you've read both the [SSL-TLS](/docs/configuration/ssl-tls) docs and the [COSMOS Enterprise Project](https://repos.openc3.com/OpenC3/cosmos-enterprise-project/src/branch/main/NetworkConfiguration.md) instructions.
 
 1. You're getting 404 errors, missing icons, missing tools or functionality
 
@@ -69,7 +69,7 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
 
 1. When exposing COSMOS to the network through http, Chrome [DevTools](https://developer.chrome.com/docs/devtools/open) shows "Web crypto API is not available".
 
-   Make sure to follow all the instructions in the [COSMOS Enterprise Project README](https://github.com/OpenC3/cosmos-enterprise-project/blob/main/README.md). In this case you need to do the following:
+   Make sure to follow all the instructions in the [COSMOS Enterprise Project README](https://repos.openc3.com/OpenC3/cosmos-enterprise-project/src/branch/main/README.md). In this case you need to do the following:
    - In Chrome go to: chrome://flags/#unsafely-treat-insecure-origin-as-secure
    - For Edge to to: edge://flags/#unsafely-treat-insecure-origin-as-secure
    - Add your http://&lt;Your IP Address&gt;:2900

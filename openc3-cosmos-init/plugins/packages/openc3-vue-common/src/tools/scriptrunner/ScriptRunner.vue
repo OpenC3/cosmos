@@ -598,6 +598,8 @@
     :subtitle="prompt.subtitle"
     :message="prompt.message"
     :details="prompt.details"
+    :description="prompt.description"
+    :hazardous="prompt.hazardous"
     :buttons="prompt.buttons"
     :layout="prompt.layout"
     :multiple="prompt.multiple"
@@ -900,6 +902,8 @@ export default {
         subtitle: '',
         message: '',
         details: '',
+        description: '',
+        hazardous: '',
         buttons: null,
         layout: 'horizontal',
         callback: () => {},
@@ -1971,6 +1975,11 @@ export default {
         this.subscription = null
       }
       this.receivedEvents.length = 0 // Drop any events not yet processed
+      // Reset prompt tracking so the first prompt re-published on this fresh
+      // subscription is always processed and displayed. Without this, attaching
+      // to a running script (which reuses the component) could carry over a
+      // stale activePromptId and skip showing the dialog (see handleScript).
+      this.activePromptId = ''
       this.subscription = await this.cable.createSubscription(
         'RunningScriptChannel',
         window.openc3Scope,
@@ -2372,12 +2381,21 @@ export default {
         this.bucket.show = false
         return
       }
+      // The running script re-publishes the active prompt about once a second
+      // while it waits for an answer. Ignore these repeats so we don't reset the
+      // dialog state and re-fetch the hazardous command description on every
+      // tick, which makes the dialog visibly bounce (issue #3472).
+      if (data.prompt_id && data.prompt_id === this.activePromptId) {
+        return
+      }
       this.activePromptId = data.prompt_id
       this.prompt.method = data.method // Set it here since all prompts use this
       this.prompt.layout = 'horizontal' // Reset the layout since most are horizontal
       this.prompt.title = 'Prompt'
       this.prompt.subtitle = ''
       this.prompt.details = ''
+      this.prompt.description = ''
+      this.prompt.hazardous = ''
       this.prompt.buttons = []
       this.prompt.multiple = null
       switch (data.method) {
@@ -2423,11 +2441,18 @@ export default {
           break
         case 'prompt_for_hazardous':
           this.prompt.title = 'Hazardous Command'
-          this.prompt.message = `Warning: Command ${data.args[0]} ${data.args[1]} is Hazardous. `
+          this.prompt.message = `Warning: Command ${data.args[0]} ${data.args[1]} is Hazardous. Send?`
           if (data.args[2]) {
-            this.prompt.message += data.args[2] + ' '
+            this.prompt.hazardous = data.args[2]
           }
-          this.prompt.message += 'Send?'
+          // The HazardousError only carries the hazardous description, so fetch
+          // the general command description to match Command Sender (issue #3472)
+          this.api
+            .get_cmd(data.args[0], data.args[1])
+            .then((command) => {
+              this.prompt.description = command.description || ''
+            })
+            .catch(() => {}) // Ignore - just don't show the description
           this.prompt.buttons = [{ text: 'Send', value: 'Send' }]
           this.prompt.callback = this.promptDialogCallback
           this.prompt.show = true

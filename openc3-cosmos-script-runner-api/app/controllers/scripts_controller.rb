@@ -69,7 +69,8 @@ class ScriptsController < ApplicationController
         breakpoints: breakpoints,
         locked: locked
       }
-      if ((File.extname(name) == '.py') and (file =~ PYTHON_SUITE_REGEX)) or ((File.extname(name) != '.py') and (file =~ SUITE_REGEX))
+      # Viewers without script_run still get the file contents, just no suite chrome.
+      if suite_with_run_permission?(name, file)
         results_suites, results_error, success = Script.process_suite(name, file, username: username(), scope: scope)
         results['suites'] = results_suites
         results['error'] = results_error
@@ -135,7 +136,9 @@ class ScriptsController < ApplicationController
     args[:name] = name
     Script.create(args)
     results = {}
-    if ((File.extname(name) == '.py') and (params[:text] =~ PYTHON_SUITE_REGEX)) or ((File.extname(name) != '.py') and (params[:text] =~ SUITE_REGEX))
+    # The file is still saved above; only the suite chrome is omitted when the editor
+    # lacks script_run.
+    if suite_with_run_permission?(name, params[:text])
       results_suites, results_error, success = Script.process_suite(name, params[:text], username: username(), scope: scope)
       results['suites'] = results_suites
       results['error'] = results_error
@@ -171,7 +174,7 @@ class ScriptsController < ApplicationController
       OpenC3::Logger.info("Script started: #{name}", scope: scope, user: username())
       render plain: running_script_id.to_s
     else
-      head :not_found
+      render plain: "Script not found: #{name}", status: :not_found
     end
   end
 
@@ -262,10 +265,23 @@ class ScriptsController < ApplicationController
 
   private
 
+  # Suite analysis executes the file, so it is gated at the script_run tier rather
+  # than the read-only script_view / script_edit endpoints that call this. Returns
+  # true only when the text defines a suite AND the user has script_run permission.
+  def suite_with_run_permission?(name, text)
+    is_suite = if File.extname(name) == '.py'
+      text =~ PYTHON_SUITE_REGEX
+    else
+      text =~ SUITE_REGEX
+    end
+    is_suite && authorized?('script_run', target_name: name.split('/')[0])
+  end
+  
   # Whether the Script Lifecycle feature flag is enabled (Admin / Settings)
   def lifecycle_enabled?
     setting = OpenC3::SettingModel.get(name: 'script_runner_lifecycle')
     return false unless setting
     setting['data'] == true or setting['data'] == 'true'
   end
+
 end

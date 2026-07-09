@@ -17,6 +17,7 @@
 
 require 'openc3/api/target_api'
 require 'openc3/models/cvt_model'
+require 'openc3/packets/packet_item'
 
 module OpenC3
   module Api
@@ -29,12 +30,14 @@ module OpenC3
                        'disable_limits',
                        'get_limits',
                        'set_limits',
+                       'set_state_color',
                        'get_limits_groups',
                        'enable_limits_group',
                        'disable_limits_group',
                        'get_limits_sets',
                        'set_limits_set',
                        'get_limits_set',
+                       'delete_limits_set',
                        'get_limits_events',
                      ])
 
@@ -251,6 +254,50 @@ module OpenC3
       LimitsEventTopic.write(event, scope: scope)
     end
 
+    # Change the color associated with a telemetry item state in realtime.
+    # Items with states use the state color (GREEN, YELLOW, RED) to determine
+    # their limits state rather than numeric red/yellow/green limits.
+    #
+    # @param target_name [String] Target name
+    # @param packet_name [String] Packet name
+    # @param item_name [String] Item name
+    # @param state_name [String] Name of the state to change (e.g. 'CONNECTED')
+    # @param color [String] New color for the state. Must be GREEN, YELLOW, or RED.
+    def set_state_color(target_name, packet_name, item_name, state_name, color,
+                        manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
+      state_name = state_name.to_s.upcase
+      color = color.to_s.upcase
+      unless PacketItem::STATE_COLORS.include?(color.intern)
+        raise "Invalid state color #{color}. Must be one of #{PacketItem::STATE_COLORS.join(' ')}."
+      end
+      packet = TargetModel.packet(target_name, packet_name, scope: scope)
+      found_item = nil
+      packet['items'].each do |item|
+        if item['name'] == item_name
+          unless item['states'] && item['states'][state_name]
+            raise "State '#{state_name}' does not exist for item '#{target_name} #{packet_name} #{item_name}'"
+          end
+          item['states'][state_name]['color'] = color
+          # Defining a state color implies limits are enabled for the item
+          item['limits'] ||= {}
+          item['limits']['enabled'] = true
+          found_item = item
+          break
+        end
+      end
+      raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist" unless found_item
+      message = "Setting '#{target_name} #{packet_name} #{item_name}' state #{state_name} color to #{color}"
+      Logger.info(message, scope: scope)
+
+      TargetModel.set_packet(target_name, packet_name, packet, scope: scope)
+
+      event = { type: :LIMITS_STATE_COLOR, target_name: target_name, packet_name: packet_name,
+                item_name: item_name, state_name: state_name, color: color,
+                time_nsec: Time.now.to_nsec_from_epoch, message: message }
+      LimitsEventTopic.write(event, scope: scope)
+    end
+
     # Returns all limits_groups and their members
     # @since 5.0.0 Returns hash with values
     # @return [Hash{String => Array<Array<String, String, String>>]
@@ -290,6 +337,31 @@ module OpenC3
       Logger.info(message, scope: scope)
       LimitsEventTopic.write({ type: :LIMITS_SET, set: limits_set.to_s,
         time_nsec: Time.now.to_nsec_from_epoch, message: message }, scope: scope)
+    end
+
+    # Deletes a limits set. The DEFAULT limits set and the currently active
+    # limits set cannot be deleted. Use set_limits_set to change the active set
+    # before deleting it. Note that the limits set is not removed from the
+    # TargetModel packet definitions; that is cleaned up on the next plugin
+    # install.
+    #
+    # @param limits_set [String] The name of the limits set to delete
+    def delete_limits_set(limits_set, manual: false, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'tlm_set', manual: manual, scope: scope, token: token)
+      limits_set = limits_set.to_s
+      raise "Cannot delete the DEFAULT limits set" if limits_set == 'DEFAULT'
+      if limits_set == LimitsEventTopic.current_set(scope: scope)
+        raise "Cannot delete the current limits set '#{limits_set}'. Use set_limits_set to change the current set first."
+      end
+      unless LimitsEventTopic.sets(scope: scope).key?(limits_set)
+        raise "Limits set '#{limits_set}' does not exist"
+      end
+
+      # Remove the limits set from Redis (limits_sets and current_limits_settings)
+      LimitsEventTopic.delete_set(limits_set, scope: scope)
+
+      message = "Deleting Limits Set: #{limits_set}"
+      Logger.info(message, scope: scope)
     end
 
     # Returns the active limits set that applies to all telemetry

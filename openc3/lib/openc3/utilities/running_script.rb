@@ -513,10 +513,10 @@ class RunningScript
       errors: nil, # array of errors that occurred during the script run
       pid: nil, # pid of the script process - set by the script itself when it starts
       script_engine: script_engine, # script engine filename
-      updated_at: nil, # Set by create/update - ISO format
+      updated_at: nil, # Set by create/update
       scope: scope # Scope of the script
     )
-    script_status.create(isoformat: true)
+    script_status.create()
 
     # Set proper secrets for running script
     process.environment['SECRET_KEY_BASE'] = nil
@@ -827,17 +827,22 @@ class RunningScript
 
   def run
     if @script_status.suite_runner
-      if @script_status.suite_runner['options']
-        parse_options(@script_status.suite_runner['options'])
+      # Normalize the received hash through the shared helper so options/method
+      # defaults and validation match what openc3cli and the GUI construct.
+      sr = OpenC3::SuiteRunner.build_options(
+        suite: @script_status.suite_runner['suite'],
+        group: @script_status.suite_runner['group'],
+        script: @script_status.suite_runner['script'],
+        method: @script_status.suite_runner['method'],
+        options: @script_status.suite_runner['options'],
+      )
+      parse_options(sr['options'])
+      if sr['script']
+        run_text("OpenC3::SuiteRunner.start(#{sr['suite']}, #{sr['group']}, '#{sr['script']}')", initial_filename: "SCRIPTRUNNER")
+      elsif sr['group']
+        run_text("OpenC3::SuiteRunner.#{sr['method']}(#{sr['suite']}, #{sr['group']})", initial_filename: "SCRIPTRUNNER")
       else
-        parse_options({}) # Set default options
-      end
-      if @script_status.suite_runner['script']
-        run_text("OpenC3::SuiteRunner.start(#{@script_status.suite_runner['suite']}, #{@script_status.suite_runner['group']}, '#{@script_status.suite_runner['script']}')", initial_filename: "SCRIPTRUNNER")
-      elsif script_status.suite_runner['group']
-        run_text("OpenC3::SuiteRunner.#{@script_status.suite_runner['method']}(#{@script_status.suite_runner['suite']}, #{@script_status.suite_runner['group']})", initial_filename: "SCRIPTRUNNER")
-      else
-        run_text("OpenC3::SuiteRunner.#{@script_status.suite_runner['method']}(#{@script_status.suite_runner['suite']})", initial_filename: "SCRIPTRUNNER")
+        run_text("OpenC3::SuiteRunner.#{sr['method']}(#{sr['suite']})", initial_filename: "SCRIPTRUNNER")
       end
     else
       if not @script_engine and (@script_status.start_line_no != 1 or !@script_status.end_line_no.nil?)

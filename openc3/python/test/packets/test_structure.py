@@ -867,6 +867,24 @@ class TestStructureSetItemVariableBitSize(unittest.TestCase):
         self.assertEqual(s.defined_length_bits, 64)
         self.assertEqual(s.defined_length, 8)
 
+    def test_raises_if_length_item_reads_none_for_array(self):
+        # When short_buffer_allowed is True and the length item falls outside the
+        # buffer, reading it returns None. calculate_total_bit_size must not silently
+        # use the None value - it should raise a descriptive error.
+        s = Structure("BIG_ENDIAN")
+        s.append_item("LENGTH", 32, "UINT")
+        item = s.append_item("DATA", 8, "UINT", 0)
+        item.variable_bit_size = {
+            "length_item_name": "LENGTH",
+            "length_bits_per_count": 8,
+            "length_value_bit_offset": 0,
+        }
+        s.set_item(item)
+        s.short_buffer_allowed = True
+        # Buffer is too short to contain the 32 bit LENGTH item, so LENGTH reads None
+        with self.assertRaisesRegex(RuntimeError, "Length value LENGTH for item DATA is None"):
+            s.buffer = b"\x00\x01"
+
 
 class TestStructureDeleteItemError(unittest.TestCase):
     def test_complains_if_item_doesnt_exist(self):

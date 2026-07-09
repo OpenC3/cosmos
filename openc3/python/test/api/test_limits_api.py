@@ -201,6 +201,49 @@ class TestLimitsApi(unittest.TestCase):
             },
         )
 
+    def test_set_state_color_complains_about_non_existant_targets(self):
+        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+            set_state_color("BLAH", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", "RED")
+
+    def test_set_state_color_complains_about_non_existant_packets(self):
+        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+            set_state_color("INST", "BLAH", "GROUND1STATUS", "CONNECTED", "RED")
+
+    def test_set_state_color_complains_about_non_existant_items(self):
+        with self.assertRaisesRegex(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist"):
+            set_state_color("INST", "HEALTH_STATUS", "BLAH", "CONNECTED", "RED")
+
+    def test_set_state_color_complains_about_non_existant_states(self):
+        with self.assertRaisesRegex(RuntimeError, "State 'BLAH' does not exist"):
+            set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "BLAH", "RED")
+
+    def test_set_state_color_complains_about_invalid_colors(self):
+        with self.assertRaisesRegex(RuntimeError, "Invalid state color PURPLE"):
+            set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", "PURPLE")
+
+    def test_set_state_color_changes_the_color_of_a_state(self):
+        item = get_item("INST", "HEALTH_STATUS", "GROUND1STATUS")
+        self.assertEqual(item["states"]["CONNECTED"]["color"], "GREEN")
+        set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", "RED")
+        item = get_item("INST", "HEALTH_STATUS", "GROUND1STATUS")
+        self.assertEqual(item["states"]["CONNECTED"]["color"], "RED")
+        self.assertTrue(item["limits"]["enabled"])
+
+    def test_set_state_color_accepts_lowercase_names_and_colors(self):
+        set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "connected", "yellow")
+        item = get_item("INST", "HEALTH_STATUS", "GROUND1STATUS")
+        self.assertEqual(item["states"]["CONNECTED"]["color"], "YELLOW")
+
+    def test_set_state_color_writes_a_limits_state_color_event(self):
+        set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "UNAVAILABLE", "RED")
+        event = get_limits_events()[-1][1]
+        self.assertEqual(event["type"], "LIMITS_STATE_COLOR")
+        self.assertEqual(event["target_name"], "INST")
+        self.assertEqual(event["packet_name"], "HEALTH_STATUS")
+        self.assertEqual(event["item_name"], "GROUND1STATUS")
+        self.assertEqual(event["state_name"], "UNAVAILABLE")
+        self.assertEqual(event["color"], "RED")
+
     def test_get_limits_groups_returns_all_the_limits_groups(self):
         self.assertEqual(
             get_limits_groups(),
@@ -258,6 +301,42 @@ class TestLimitsApi(unittest.TestCase):
         self.assertEqual(get_limits_set(), "TVAC")
         set_limits_set("DEFAULT")
         self.assertEqual(get_limits_set(), "DEFAULT")
+
+    def test_delete_limits_set_complains_about_default(self):
+        with self.assertRaisesRegex(RuntimeError, "Cannot delete the DEFAULT limits set"):
+            delete_limits_set("DEFAULT")
+
+    def test_delete_limits_set_complains_about_current_set(self):
+        set_limits_set("TVAC")
+        with self.assertRaisesRegex(RuntimeError, "Cannot delete the current limits set 'TVAC'"):
+            delete_limits_set("TVAC")
+
+    def test_delete_limits_set_complains_about_non_existent_set(self):
+        with self.assertRaisesRegex(RuntimeError, "Limits set 'NOPE' does not exist"):
+            delete_limits_set("NOPE")
+
+    def test_delete_limits_set_removes_set_from_the_list_of_sets(self):
+        self.assertEqual(get_limits_sets(), ["DEFAULT", "TVAC"])
+
+        delete_limits_set("TVAC")
+
+        self.assertEqual(get_limits_sets(), ["DEFAULT"])
+
+    def test_delete_limits_set_cleans_current_settings_but_leaves_target_model(self):
+        set_limits("INST", "HEALTH_STATUS", "TEMP1", 0.0, 10.0, 20.0, 30.0)  # creates CUSTOM
+        self.assertIn("CUSTOM", get_limits_sets())
+        settings = Store.hget("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1")
+        self.assertIn("CUSTOM", settings.decode())
+
+        delete_limits_set("CUSTOM")
+
+        self.assertNotIn("CUSTOM", get_limits_sets())
+        # current_limits_settings is cleaned up
+        settings = Store.hget("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1")
+        self.assertNotIn("CUSTOM", settings.decode())
+        # The TargetModel packet definition is intentionally left alone
+        # (cleaned up on the next plugin install)
+        self.assertIn("CUSTOM", get_limits("INST", "HEALTH_STATUS", "TEMP1").keys())
 
     def test_get_limits_events_returns_an_offset_and_limits_event_hash(self):
         # Load the events topic with two events ... only the last should be returned
