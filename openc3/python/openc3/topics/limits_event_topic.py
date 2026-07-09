@@ -39,9 +39,14 @@ class LimitsEventTopic(Topic):
         match event["type"]:
             case "LIMITS_CHANGE":
                 # The current_limits hash keeps only the current limits state of items
-                # It is used by the API to determine the overall limits state
-                field = f"{event['target_name']}__{event['packet_name']}__{event['item_name']}"
-                Store.hset(f"{scope}__current_limits", field, event["new_limits_state"])
+                # It is used by the API to determine the overall limits state.
+                # When the event originates from a stored packet in a non-PROCESS mode
+                # (LOG or DISABLE), skip updating current_limits so that historical
+                # data does not affect the real-time overall limits state or the
+                # out_of_limits API response.
+                if not event.get("suppress_stored"):
+                    field = f"{event['target_name']}__{event['packet_name']}__{event['item_name']}"
+                    Store.hset(f"{scope}__current_limits", field, event["new_limits_state"])
 
             case "LIMITS_SETTINGS":
                 # Limits updated in limits_api.rb to avoid circular reference to TargetModel
@@ -210,6 +215,29 @@ class LimitsEventTopic(Topic):
             else:
                 if re.match(rf"^{target_name}__", item):
                     Store.hdel(f"{scope}__current_limits_settings", item)
+
+    # Removes a limits set from the limits_sets hash and from the
+    # current_limits_settings of every item. Note that the set is not removed
+    # from the TargetModel packet definitions; that is cleaned up on the next
+    # plugin install. Running microservices will continue to hold the set in
+    # memory until they restart and resync from current_limits_settings.
+    @classmethod
+    def delete_set(cls, set_name, scope):
+        set_name = str(set_name)
+        limits_settings = Store.hgetall(f"{scope}__current_limits_settings")
+        # decode the binary string keys to strings
+        limits_settings = {k.decode(): v for (k, v) in limits_settings.items()}
+        # Collect all changed items and write them back in a single hset to
+        # avoid a Redis round trip per item (this hash can be large)
+        updates = {}
+        for item, settings in limits_settings.items():
+            settings = json.loads(settings)
+            if set_name in settings:
+                del settings[set_name]
+                updates[item] = json.dumps(settings)
+        if updates:
+            Store.hset(f"{scope}__current_limits_settings", mapping=updates)
+        Store.hdel(f"{scope}__limits_sets", set_name)
 
     # Update the local System based on overall state
     @classmethod

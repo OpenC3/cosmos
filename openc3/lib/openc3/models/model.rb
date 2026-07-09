@@ -134,7 +134,7 @@ module OpenC3
 
     # Update the Redis hash at primary_key and set the field "name"
     # to the JSON generated via calling as_json
-    def create(update: false, force: false, queued: false, isoformat: false)
+    def create(update: false, force: false, queued: false)
       unless force
         existing = self.class.store.hget(@primary_key, @name)
         if existing
@@ -143,11 +143,7 @@ module OpenC3
           raise "#{@primary_key}:#{@name} doesn't exist at update" if update
         end
       end
-      if isoformat
-        @updated_at = Time.now.utc.iso8601
-      else
-        @updated_at = Time.now.utc.to_nsec_from_epoch
-      end
+      @updated_at = Time.now.utc.to_nsec_from_epoch
 
       if queued
         write_store = self.class.store_queued

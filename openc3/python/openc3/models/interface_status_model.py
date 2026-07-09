@@ -116,7 +116,7 @@ class InterfaceStatusModel(DbShardedModel, Model):
         self.txcnt = txcnt
         self.rxcnt = rxcnt
 
-    def create(self, update=False, force=False, queued=False, isoformat=False):
+    def create(self, update=False, force=False, queued=False):
         self._db_sharded_create(
             self.__class__._db_shard_for_name(self.name, self.scope, use_cache=True),
             update=update,

@@ -786,6 +786,7 @@ module OpenC3
         tf.puts "TARGET_MICROSERVICE CLEANUP"
         tf.puts "TLM_LOG_CYCLE_TIME 5"
         tf.puts "TLM_LOG_CYCLE_SIZE 6"
+        tf.puts "STORED_LIMITS_MODE DISABLE"
         tf.close
         parser.parse_file(tf.path) do |keyword, params|
           model.handle_config(parser, keyword, params)
@@ -798,6 +799,7 @@ module OpenC3
         expect(json['cmd_decom_retain_time']).to eql '30d'
         expect(json['tlm_decom_retain_time']).to eql '60d'
         expect(json['shard']).to eql 9
+        expect(json['stored_limits_mode']).to eql 'DISABLE'
         tf.unlink
       end
 
@@ -829,6 +831,86 @@ module OpenC3
           end
         end.to raise_error(ConfigParser::Error, /TLM_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y/)
         tf.unlink
+      end
+
+      it "parses STORED_LIMITS_MODE PROCESS" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts "STORED_LIMITS_MODE PROCESS"
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+        end
+        expect(model.stored_limits_mode).to eql 'PROCESS'
+        expect(model.as_json()['stored_limits_mode']).to eql 'PROCESS'
+        tf.unlink
+      end
+
+      it "parses STORED_LIMITS_MODE LOG" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts "STORED_LIMITS_MODE LOG"
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+        end
+        expect(model.stored_limits_mode).to eql 'LOG'
+        expect(model.as_json()['stored_limits_mode']).to eql 'LOG'
+        tf.unlink
+      end
+
+      it "parses STORED_LIMITS_MODE DISABLE" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts "STORED_LIMITS_MODE DISABLE"
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+        end
+        expect(model.stored_limits_mode).to eql 'DISABLE'
+        expect(model.as_json()['stored_limits_mode']).to eql 'DISABLE'
+        tf.unlink
+      end
+
+      it "parses STORED_LIMITS_MODE case-insensitively" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts "STORED_LIMITS_MODE log"
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+        end
+        expect(model.stored_limits_mode).to eql 'LOG'
+        tf.unlink
+      end
+
+      it "rejects STORED_LIMITS_MODE with invalid value" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts "STORED_LIMITS_MODE INVALID"
+        tf.close
+        expect do
+          parser.parse_file(tf.path) do |keyword, params|
+            model.handle_config(parser, keyword, params)
+          end
+        end.to raise_error(ConfigParser::Error, /STORED_LIMITS_MODE must be one of PROCESS, LOG, or DISABLE/)
+        tf.unlink
+      end
+
+      it "defaults STORED_LIMITS_MODE to PROCESS" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        expect(model.stored_limits_mode).to eql 'PROCESS'
+        expect(model.as_json()['stored_limits_mode']).to eql 'PROCESS'
       end
 
     end

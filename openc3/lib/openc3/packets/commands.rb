@@ -325,10 +325,10 @@ module OpenC3
               unless item.states.values.include?(value)
                 if command.raw
                   # Raw commands report missing value maps
-                  raise "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{value.to_s.upcase} not one of #{item.states.values.join(', ')}"
+                  raise RangeError, "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{value.to_s.upcase} not one of #{item.states.values.join(', ')}"
                 else
                   # Normal commands report missing state maps
-                  raise "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{value.to_s.upcase} not one of #{item.states.keys.join(', ')}"
+                  raise RangeError, "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{value.to_s.upcase} not one of #{item.states.keys.join(', ')}"
                 end
               end
             end
@@ -340,7 +340,7 @@ module OpenC3
             # Perform Range Check on command parameter
             if not range.include?(range_check_value)
               range_check_value = "'#{range_check_value}'" if String === range_check_value
-              raise "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{range_check_value} not in valid range of #{range.first} to #{range.last}"
+              raise RangeError, "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{range_check_value} not in valid range of #{range.first} to #{range.last}"
             end
           end
         end
