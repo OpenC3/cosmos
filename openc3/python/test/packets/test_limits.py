@@ -41,6 +41,9 @@ class TestLimits(unittest.TestCase):
         tf.write("    LIMITS DEFAULT 1 ENABLED 1 2 4 5\n")
         tf.write("    LIMITS TVAC 1 ENABLED 6 7 12 13 9 10\n")
         tf.write('  APPEND_ITEM item5 8 UINT "Item5"\n')
+        tf.write('  APPEND_ITEM state1 8 UINT "State1"\n')
+        tf.write("    STATE CONNECTED 1 GREEN\n")
+        tf.write("    STATE UNAVAILABLE 0 YELLOW\n")
         tf.write('TELEMETRY tgt1 pkt2 LITTLE_ENDIAN "TGT1 PKT2 Description"\n')
         tf.write('  APPEND_ID_ITEM item1 8 UINT 2 "Item1"\n')
         tf.write("    LIMITS DEFAULT 1 ENABLED 1 2 4 5\n")
@@ -198,3 +201,27 @@ class TestLimits(unittest.TestCase):
             self.limits.set("TGT1", "PKT1", "ITEM1", 1, 2, 5, 6, 3, 4, None),
             ["DEFAULT", 1, True, 1.0, 2.0, 5.0, 6.0, 3.0, 4.0],
         )
+
+    def test_set_state_color_changes_the_color_of_a_state(self):
+        item = self.tlm.packet("TGT1", "PKT1").get_item("STATE1")
+        self.assertEqual(item.state_colors["CONNECTED"], "GREEN")
+        self.assertEqual(self.limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "RED"), "RED")
+        self.assertEqual(item.state_colors["CONNECTED"], "RED")
+        self.assertTrue(item.limits.enabled)
+
+    def test_set_state_color_accepts_lowercase_names_and_colors(self):
+        self.limits.set_state_color("TGT1", "PKT1", "STATE1", "connected", "yellow")
+        item = self.tlm.packet("TGT1", "PKT1").get_item("STATE1")
+        self.assertEqual(item.state_colors["CONNECTED"], "YELLOW")
+
+    def test_set_state_color_complains_about_items_without_states(self):
+        with self.assertRaisesRegex(RuntimeError, "does not have any states"):
+            self.limits.set_state_color("TGT1", "PKT1", "ITEM5", "CONNECTED", "RED")
+
+    def test_set_state_color_complains_about_non_existent_states(self):
+        with self.assertRaisesRegex(RuntimeError, "State BLAH does not exist"):
+            self.limits.set_state_color("TGT1", "PKT1", "STATE1", "BLAH", "RED")
+
+    def test_set_state_color_complains_about_invalid_colors(self):
+        with self.assertRaisesRegex(RuntimeError, "Invalid state color PURPLE"):
+            self.limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "PURPLE")

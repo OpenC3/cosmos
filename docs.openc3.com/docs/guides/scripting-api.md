@@ -49,16 +49,16 @@ See the [Migrating From COSMOS 6 to COSMOS 7](../getting-started/upgrading#migra
 
 The following API methods have been removed from COSMOS v7. Since WITH_UNITS were removed in COSMOS 7 those APIs are deprecated and simply return the formatted result.
 
-| Method                   | API        | Status                                                                    |
-| ------------------------ | ---------- | ------------------------------------------------------------------------- |
-| tlm_with_units           | tlm_api    | Deprecated, use [tlm_formatted](#tlm-tlm_raw-tlm_formatted)               |
-| check_with_units         | api_shared | Deprecated, use [check_formatted](#check-check_raw-check_formatted)       |
-| tlm_variable             | tlm_api    | Removed, use [tlm](#tlm-tlm_raw-tlm_formatted) and pass type              |
-| check_tolerance_raw      | api_shared | Removed, use [check_tolerance](#check_tolerance) and pass type            |
-| wait_raw                 | api_shared | Removed, use [wait](#wait) and pass type                                  |
-| wait_check_raw           | api_shared | Removed, use [wait_check](#wait_check) and pass type                      |
-| wait_tolerance_raw       | api_shared | Removed, use [wait_tolerance](#wait_tolerance) and pass type              |
-| wait_check_tolerance_raw | api_shared | Removed, use [wait_check_tolerancet](#wait_check_tolerance) and pass type |
+| Method                   | API        | Status                                                                   |
+| ------------------------ | ---------- | ------------------------------------------------------------------------ |
+| tlm_with_units           | tlm_api    | Deprecated, use [tlm_formatted](#tlm-tlm_raw-tlm_formatted)              |
+| check_with_units         | api_shared | Deprecated, use [check_formatted](#check-check_raw-check_formatted)      |
+| tlm_variable             | tlm_api    | Removed, use [tlm](#tlm-tlm_raw-tlm_formatted) and pass type             |
+| check_tolerance_raw      | api_shared | Removed, use [check_tolerance](#check_tolerance) and pass type           |
+| wait_raw                 | api_shared | Removed, use [wait](#wait) and pass type                                 |
+| wait_check_raw           | api_shared | Removed, use [wait_check](#wait_check) and pass type                     |
+| wait_tolerance_raw       | api_shared | Removed, use [wait_tolerance](#wait_tolerance) and pass type             |
+| wait_check_tolerance_raw | api_shared | Removed, use [wait_check_tolerance](#wait_check_tolerance) and pass type |
 
 The following API methods now return `COSMOS__CANCEL` instead of `Cancel` when the Cancel button is pushed in Script Runner: `ask`, `ask_string`, `message_box`, `vertical_message_box`, `combo_box`, `check_box`, `prompt`, `prompt_for_hazardous`, `prompt_for_critical_cmd`, `metadata_input`, `open_file_dialog`, `open_files_dialog`, `open_bucket_dialog`. Unless you are _explicitly_ checking the return value for the word 'Cancel' there are no changes required.
 
@@ -484,7 +484,7 @@ open_bucket_dialog("<Title>", "<Message>", default_path: <default_path>, filter:
 
 ```python
 file = open_bucket_dialog("Select a File", "Choose a file from a bucket")
-print(file.filename) # The name of the selected file
+print(file.filename()) # The name of the selected file, note filename is a method
 print(file.read())
 file.close()
 
@@ -496,7 +496,7 @@ file = open_bucket_dialog(
     default_path="config/DEFAULT/targets/INST2/procedures/",
     filter=".py",
 )
-print(file.filename)
+print(file.filename())
 file.close()
 ```
 
@@ -3761,7 +3761,9 @@ APIs for subscribing to specific packets of data. This provides an interface to 
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Allows the user to listen for one or more telemetry packets of data to arrive. A unique id is returned which is used to retrieve the data.
+Gets the current Redis stream offsets (IDs) for the given packets. These offsets are used to collect packet data from this point in time by passing them to `get_packets`.
+
+This method is called `subscribe_packets` for historical reasons; no actual subscription is created, thus there is no need to unsubscribe.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -3847,6 +3849,7 @@ packets.sort(key=lambda p: int(p['time']))
 id, packets = get_packets(id)
 packets.sort_by! { |p| p['time'].to_i }
 ```
+
 :::
 
 Returns a two element array containing the updated id and an array of packet hashes/dictionaries. Each packet hash/dictionary contains the following keys:
@@ -4942,6 +4945,52 @@ set_limits_set("DEFAULT")
 </TabItem>
 </Tabs>
 
+### delete_limits_set
+
+<span class="badge badge--secondary since-heading">Since 7.3.0</span>
+
+Deletes a limits set and removes it from all telemetry items. The DEFAULT limits set and the currently active limits set cannot be deleted. Use [set_limits_set](#set_limits_set) to change the active set before deleting it. Use [get_limits_sets](#get_limits_sets) to get the available limit set names.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+delete_limits_set("<Limits Set Name>")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+delete_limits_set("<Limits Set Name>")
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter       | Description                       |
+| --------------- | --------------------------------- |
+| Limits Set Name | Name of the limits set to delete. |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+delete_limits_set("TVAC")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+delete_limits_set("TVAC")
+```
+
+</TabItem>
+</Tabs>
+
 ### get_limits_set
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
@@ -5096,6 +5145,56 @@ set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0,
 
 ```ruby
 set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0, 'TVAC', 1, true)
+```
+
+</TabItem>
+</Tabs>
+
+### set_state_color
+
+<span class="badge badge--secondary since-heading">Since 7.3.0</span>
+
+The set_state_color method changes the color associated with a telemetry item's state in realtime. Items with states (e.g. CONNECTED, UNAVAILABLE) use a state color (GREEN, YELLOW, or RED) to determine their limits state rather than numeric red/yellow/green limits. Note: In most cases it would be better to update your config files rather than changing state colors in realtime.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+set_state_color(<Target Name>, <Packet Name>, <Item Name>, <State Name>, <Color>)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+set_state_color(<Target Name>, <Packet Name>, <Item Name>, <State Name>, <Color>)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description                                                    |
+| ----------- | -------------------------------------------------------------- |
+| Target Name | Name of the target of the telemetry item.                      |
+| Packet Name | Name of the telemetry packet of the telemetry item.            |
+| Item Name   | Name of the telemetry item.                                    |
+| State Name  | Name of the state to change, e.g. 'CONNECTED'.                 |
+| Color       | New color for the state. Must be one of GREEN, YELLOW, or RED. |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+set_state_color('INST', 'HEALTH_STATUS', 'GROUND1STATUS', 'CONNECTED', 'RED')
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+set_state_color('INST', 'HEALTH_STATUS', 'GROUND1STATUS', 'CONNECTED', 'RED')
 ```
 
 </TabItem>
@@ -8067,20 +8166,21 @@ script_run("<Script Name>", disconnect: false, environment: nil, suite_runner: n
 </TabItem>
 </Tabs>
 
-| Parameter    | Description                                                                                                         |
-| ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| Parameter    | Description                                                                                                                                          |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Script Name  | Full path name of the script starting with the target. If this is the path to a test suite file, the `suite_runner` parameter must also be provided. |
-| disconnect   | Boolean indicating whether to run the script in Disconnect |
-| environment  | Hash / dict of key / value items to set as script environment variables. Note: Do not use `PATH` as it is reserved. |
-| suite_runner | Hash / dict of suite runner configuration values. Valid keys are described [below](#script_run-suite_runner-parameter). |
+| disconnect   | Boolean indicating whether to run the script in Disconnect                                                                                           |
+| environment  | Hash / dict of key / value items to set as script environment variables. Note: Do not use `PATH` as it is reserved.                                  |
+| suite_runner | Hash / dict of suite runner configuration values. Valid keys are described [below](#script_run-suite_runner-parameter).                              |
 
 #### script_run suite_runner parameter
-| Key | Value |
-|-----|-------|
-| method | Valid values are "start", "setup", and "teardown". Defaults to "start" if not provided. If `script` is provided, this value is ignored and `start` is always used. |
-| suite | Required; the name of the suite to run. Must be a valid suite within the given file. |
-| group | The name of the group to run. Must be a valid group within the given suite. If `script` is provided, this is required. |
-| script | The name of the specific script to run. Must be a valid method name within the given group. |
+
+| Key     | Value                                                                                                                                                                                                                         |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| method  | Valid values are "start", "setup", and "teardown". Defaults to "start" if not provided. If `script` is provided, this value is ignored and `start` is always used.                                                            |
+| suite   | Required; the name of the suite to run. Must be a valid suite within the given file.                                                                                                                                          |
+| group   | The name of the group to run. Must be a valid group within the given suite. If `script` is provided, this is required.                                                                                                        |
+| script  | The name of the specific script to run. Must be a valid method name within the given group.                                                                                                                                   |
 | options | Array of strings of suite runner options to enable. Valid options are: "manual", "pauseOnError", "continueAfterError", "abortAfterError", "loop", and "breakLoopOnError". Defaults to ["continueAfterError"] if not provided. |
 
 <Tabs groupId="script-language">
@@ -10058,7 +10158,7 @@ setting = get_settings('version', 'rubygems_url') # => ["5.11.4-beta0", "https:/
 
 Sets the given setting value.
 
-:::note[Admin Passwork Required]
+:::note[Admin Password Required]
 This API is only accessible externally (not within Script Runner) and requires the admin password.
 :::
 

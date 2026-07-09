@@ -51,7 +51,7 @@ module OpenC3
             get_limits_events()
 
             # These methods are simply logged in disconnect mode and don't go through
-            setters = %i(enable_limits disable_limits set_limits enable_limits_group disable_limits_group set_limits_set)
+            setters = %i(enable_limits disable_limits set_limits enable_limits_group disable_limits_group set_limits_set delete_limits_set)
             setters.each do |method_name|
               if state == 'connected'
                 expect(@proxy).to receive(method_name)

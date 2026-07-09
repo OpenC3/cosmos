@@ -16,6 +16,7 @@ from openc3.api.tlm_api import _tlm_process_args
 from openc3.environment import OPENC3_SCOPE
 from openc3.models.cvt_model import CvtModel
 from openc3.models.target_model import TargetModel
+from openc3.packets.packet_item import PacketItem
 from openc3.topics.limits_event_topic import LimitsEventTopic
 from openc3.utilities.authorization import authorize
 from openc3.utilities.logger import Logger
@@ -31,12 +32,14 @@ WHITELIST.extend(
         "disable_limits",
         "get_limits",
         "set_limits",
+        "set_state_color",
         "get_limits_groups",
         "enable_limits_group",
         "disable_limits_group",
         "get_limits_sets",
         "set_limits_set",
         "get_limits_set",
+        "delete_limits_set",
         "get_limits_events",
     ]
 )
@@ -319,6 +322,61 @@ def set_limits(
     LimitsEventTopic.write(event, scope=scope)
 
 
+# Change the color associated with a telemetry item state in realtime.
+# Items with states use the state color (GREEN, YELLOW, RED) to determine
+# their limits state rather than numeric red/yellow/green limits.
+#
+# @param target_name [str] Target name
+# @param packet_name [str] Packet name
+# @param item_name [str] Item name
+# @param state_name [str] Name of the state to change (e.g. 'CONNECTED')
+# @param color [str] New color for the state. Must be GREEN, YELLOW, or RED.
+def set_state_color(target_name, packet_name, item_name, state_name, color, scope=OPENC3_SCOPE):
+    authorize(
+        permission="tlm_set",
+        target_name=target_name,
+        packet_name=packet_name,
+        scope=scope,
+    )
+    state_name = str(state_name).upper()
+    color = str(color).upper()
+    if color not in PacketItem.VALID_STATE_COLORS:
+        raise RuntimeError(f"Invalid state color {color}. Must be one of {' '.join(PacketItem.VALID_STATE_COLORS)}.")
+    packet = TargetModel.packet(target_name, packet_name, scope=scope)
+    found_item = None
+    for item in packet["items"]:
+        if item["name"] == item_name:
+            if not (item.get("states") and item["states"].get(state_name)):
+                raise RuntimeError(
+                    f"State '{state_name}' does not exist for item '{target_name} {packet_name} {item_name}'"
+                )
+            item["states"][state_name]["color"] = color
+            # Defining a state color implies limits are enabled for the item
+            if not item.get("limits"):
+                item["limits"] = {}
+            item["limits"]["enabled"] = True
+            found_item = item
+            break
+    if found_item is None:
+        raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist")
+    message = f"Setting '{target_name} {packet_name} {item_name}' state {state_name} color to {color}"
+    Logger.info(message, scope=scope)
+
+    TargetModel.set_packet(target_name, packet_name, packet, scope=scope)
+
+    event = {
+        "type": "LIMITS_STATE_COLOR",
+        "target_name": target_name,
+        "packet_name": packet_name,
+        "item_name": item_name,
+        "state_name": state_name,
+        "color": color,
+        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+        "message": message,
+    }
+    LimitsEventTopic.write(event, scope=scope)
+
+
 # Returns all limits_groups and their members
 # @since 5.0.0 Returns hash with values
 # @return [Hash{String => Array<Array<String, String, String>>]
@@ -367,6 +425,31 @@ def set_limits_set(limits_set, scope=OPENC3_SCOPE):
         },
         scope=scope,
     )
+
+
+# Deletes a limits set. The DEFAULT limits set and the currently active
+# limits set cannot be deleted. Use set_limits_set to change the active set
+# before deleting it. Note that the limits set is not removed from the
+# TargetModel packet definitions; that is cleaned up on the next plugin install.
+#
+# @param limits_set [String] The name of the limits set to delete
+def delete_limits_set(limits_set, scope=OPENC3_SCOPE):
+    authorize(permission="tlm_set", scope=scope)
+    limits_set = str(limits_set)
+    if limits_set == "DEFAULT":
+        raise RuntimeError("Cannot delete the DEFAULT limits set")
+    if limits_set == LimitsEventTopic.current_set(scope=scope):
+        raise RuntimeError(
+            f"Cannot delete the current limits set '{limits_set}'. Use set_limits_set to change the current set first."
+        )
+    if limits_set not in LimitsEventTopic.sets(scope=scope):
+        raise RuntimeError(f"Limits set '{limits_set}' does not exist")
+
+    # Remove the limits set from Redis (limits_sets and current_limits_settings)
+    LimitsEventTopic.delete_set(limits_set, scope=scope)
+
+    message = f"Deleting Limits Set: {limits_set}"
+    Logger.info(message, scope=scope)
 
 
 # Returns the active limits set that applies to all telemetry

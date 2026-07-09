@@ -46,7 +46,7 @@ openc3inc/openc3-ruby                       latest   aa158bbb9539   8 days ago  
 If you're building in a offline environment or want to use a private Rubygems, NPM or APK server (e.g. Nexus), you can update the following environment variables: RUBYGEMS_URL, NPM_URL, APK_URL, and more in the [.env](https://github.com/openc3/cosmos/blob/main/.env) file. Example values:
 
     ALPINE_VERSION=3.23<br/>
-    ALPINE_BUILD=4<br/>
+    ALPINE_BUILD=5<br/>
     RUBYGEMS_URL=https://rubygems.org<br/>
     NPM_URL=https://registry.npmjs.org<br/>
     APK_URL=http://dl-cdn.alpinelinux.org<br/>
@@ -78,7 +78,7 @@ If you go to localhost:2900 you should see COSMOS up and running!
 
 ## Running a Frontend Application
 
-So now that you have COSMOS up and running how do you develop an individual COSMOS application?
+So now that you have COSMOS up and running how do you develop an individual COSMOS application? Refer to [Custom Widgets](/docs/guides/custom-widgets) and [Custom Tools](/docs/guides/custom-tools) for documentation on how to create your own widgets or tools to extend COSMOS. Below will detail developing an existing COSMOS tool.
 
 1.  Bootstrap the frontend with pnpm
 

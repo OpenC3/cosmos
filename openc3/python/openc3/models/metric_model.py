@@ -71,7 +71,7 @@ class MetricModel(DbShardedModel, EphemeralModel):
         self.values = values
         self.db_shard = db_shard if db_shard is not None else 0
 
-    def create(self, update=False, force=False, queued=False, isoformat=False, expire_seconds=None):
+    def create(self, update=False, force=False, queued=False, expire_seconds=None):
         self._db_sharded_create(self.db_shard, update=update, force=force, queued=queued, expire_seconds=expire_seconds)
 
     def as_json(self):

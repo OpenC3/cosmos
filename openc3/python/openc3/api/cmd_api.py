@@ -609,6 +609,7 @@ def _cmd_implementation(
         scope=scope,
         manual=manual,
     )
+    queue_username = kwargs.get("queue_username")
     if not user:
         user = {}
         user["username"] = os.environ.get("OPENC3_MICROSERVICE_NAME")
@@ -688,6 +689,11 @@ def _cmd_implementation(
         "log_message": str(log_message),
         "obfuscated_items": json.dumps(packet.get("obfuscated_items", [])),
     }
+    # Record the original queuing user (author) separately from 'username' (the
+    # user or process that actually executed the command). Command History shows
+    # 'username' as "Executed By" and queue_username as "Queued By".
+    if queue_username:
+        command["queue_username"] = queue_username
 
     # Users have to explicitly opt into a default queue by setting the OPENC3_DEFAULT_QUEUE
     # At which point ALL commands will go to that queue unless they specifically opt out with queue=False

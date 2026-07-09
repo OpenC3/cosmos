@@ -1799,6 +1799,42 @@ module OpenC3
 
         expect(vals['TEST3__L']).to eql :RED
       end
+
+      it "omits limits states when include_limits_states is false" do
+        p = Packet.new("tgt", "pkt")
+        i1 = p.append_item("test1", 8, :UINT)
+        i1.limits.state = :GREEN
+        i2 = p.append_item("test2", 16, :UINT)
+        i2.read_conversion = GenericConversion.new("value * 2")
+        i2.limits.state = :RED_HIGH
+
+        buffer = "\x01\x00\x03"
+        p.buffer = buffer
+
+        # Default: limits states included
+        vals = p.decom
+        expect(vals['TEST1__L']).to eql :GREEN
+        expect(vals['TEST2__L']).to eql :RED_HIGH
+
+        # With include_limits_states: false, __L keys are omitted
+        vals = p.decom(include_limits_states: false)
+        expect(vals.key?('TEST1__L')).to be false
+        expect(vals.key?('TEST2__L')).to be false
+        # Other value types are still present
+        expect(vals['TEST1']).to eql 1
+        expect(vals['TEST2']).to eql 3
+        expect(vals['TEST2__C']).to eql 6
+      end
+
+      it "includes limits states by default" do
+        p = Packet.new("tgt", "pkt")
+        i1 = p.append_item("test1", 8, :UINT)
+        i1.limits.state = :YELLOW_LOW
+
+        p.buffer = "\x05"
+        vals = p.decom
+        expect(vals['TEST1__L']).to eql :YELLOW_LOW
+      end
     end
 
     describe "obfuscate" do

@@ -313,12 +313,12 @@ class Commands:
                         if value not in item.states.values():
                             if command.raw:
                                 # Raw commands report missing value maps
-                                raise RuntimeError(
+                                raise ValueError(
                                     f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {value} not one of {', '.join(map(str, item.states.values()))}"
                                 )
                             else:
                                 # Normal commands report missing state maps
-                                raise RuntimeError(
+                                raise ValueError(
                                     f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {value} not one of {', '.join(item.states.keys())}"
                                 )
 
@@ -336,7 +336,7 @@ class Commands:
                 ):
                     if isinstance(range_check_value, str):
                         range_check_value = f"'{range_check_value}'"
-                    raise RuntimeError(
+                    raise ValueError(
                         f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {range_check_value} not in valid range of {minimum} to {maximum}"
                     )
 

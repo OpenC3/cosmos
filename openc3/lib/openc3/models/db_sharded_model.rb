@@ -79,7 +79,7 @@ module OpenC3
     end
 
     # DB_Shard-aware create: writes to the store instance for the given db_shard.
-    def _db_sharded_create(db_shard, update: false, force: false, queued: false, isoformat: false, expire_seconds: nil)
+    def _db_sharded_create(db_shard, update: false, force: false, queued: false, expire_seconds: nil)
       db_shard_store = self.class.store.instance(db_shard: db_shard)
       unless force
         existing = db_shard_store.hget(@primary_key, @name)
@@ -89,7 +89,7 @@ module OpenC3
           raise RuntimeError.new("#{@primary_key}:#{@name} doesn't exist at update") if update
         end
       end
-      @updated_at = isoformat ? Time.now.utc.iso8601 : Time.now.utc.to_nsec_from_epoch
+      @updated_at = Time.now.utc.to_nsec_from_epoch
 
       if queued
         store = self.class.store_queued.instance(db_shard: db_shard)

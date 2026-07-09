@@ -377,7 +377,7 @@ class TestCommands(unittest.TestCase):
     def test_build_cmd_complains_about_out_of_range_item_values(self):
         for raw in [True, False]:
             with self.assertRaisesRegex(
-                RuntimeError,
+                ValueError,
                 "Command parameter 'TGT1 PKT1 ITEM2' = 255 not in valid range of 0 to 200",
             ):
                 self.cmd.build_cmd("tgt1", "pkt1", {"item2": 255}, True, raw)
@@ -387,13 +387,13 @@ class TestCommands(unittest.TestCase):
             items = {"ITEM2": 3, "ITEM3": 0.0, "ITEM4": "WORLD"}
             if raw:
                 with self.assertRaisesRegex(
-                    RuntimeError,
+                    ValueError,
                     "Command parameter 'TGT1 PKT2 ITEM2' = 3 not one of 0, 1, 2",
                 ):
                     self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
             else:
                 with self.assertRaisesRegex(
-                    RuntimeError,
+                    ValueError,
                     "Command parameter 'TGT1 PKT2 ITEM2' = 3 not one of BAD1, BAD2, GOOD",
                 ):
                     self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
@@ -401,13 +401,13 @@ class TestCommands(unittest.TestCase):
             items = {"ITEM2": 0, "ITEM3": 2.0, "ITEM4": "WORLD"}
             if raw:
                 with self.assertRaisesRegex(
-                    RuntimeError,
+                    ValueError,
                     "Command parameter 'TGT1 PKT2 ITEM3' = 2.0 not one of 0.0, 0.25, 0.5, 0.75, 1.0",
                 ):
                     self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
             else:
                 with self.assertRaisesRegex(
-                    RuntimeError,
+                    ValueError,
                     "Command parameter 'TGT1 PKT2 ITEM3' = 2.0 not one of S1, S2, S3, S4, S5",
                 ):
                     self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
@@ -415,13 +415,13 @@ class TestCommands(unittest.TestCase):
             items = {"ITEM2": 0, "ITEM3": 0.0, "ITEM4": "TESTY"}
             if raw:
                 with self.assertRaisesRegex(
-                    RuntimeError,
+                    ValueError,
                     "Command parameter 'TGT1 PKT2 ITEM4' = TESTY not one of HELLO, WORLD, JASON",
                 ):
                     self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)
             else:
                 with self.assertRaisesRegex(
-                    RuntimeError,
+                    ValueError,
                     "Command parameter 'TGT1 PKT2 ITEM4' = TESTY not one of HI, WO, JA",
                 ):
                     self.cmd.build_cmd("tgt1", "pkt2", items, True, raw)

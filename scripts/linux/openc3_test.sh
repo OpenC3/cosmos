@@ -2,10 +2,26 @@
 
 set +e
 
-export DOCKER_COMPOSE_COMMAND="docker compose"
-${DOCKER_COMPOSE_COMMAND} version
-if [[ "$?" -ne 0 ]]; then
-  export DOCKER_COMPOSE_COMMAND="docker-compose"
+# Use DOCKER_COMPOSE_COMMAND from parent (openc3.sh) if available, otherwise detect
+if [[ -z "$DOCKER_COMPOSE_COMMAND" ]]; then
+  if command -v docker &> /dev/null; then
+    _RUNTIME="docker"
+  elif command -v podman &> /dev/null; then
+    _RUNTIME="podman"
+  else
+    echo "Neither docker nor podman found!" >&2
+    exit 1
+  fi
+  # Never fall back to podman-compose; COSMOS only supports docker-compose as
+  # the standalone compose tool, even when the runtime is podman.
+  if $_RUNTIME compose version &> /dev/null; then
+    export DOCKER_COMPOSE_COMMAND="$_RUNTIME compose"
+  elif command -v "docker-compose" &> /dev/null; then
+    export DOCKER_COMPOSE_COMMAND="docker-compose"
+  else
+    echo "No compose command found!" >&2
+    exit 1
+  fi
 fi
 
 set -e

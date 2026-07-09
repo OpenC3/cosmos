@@ -278,6 +278,18 @@ module OpenC3
         expect(@packet.read("item1")).to eql [17]
         expect(item1.array_size).to eq(8)
       end
+
+      it "raises a clear error when the length item is nil in an undersized packet" do
+        @packet.append_item("item1_length", 32, :UINT)
+        item1 = @packet.append_item("item1", 8, :UINT, 0)
+        item1.variable_bit_size = {'length_item_name' => 'item1_length', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        # Buffer is too short to contain the length item, so reading it returns nil.
+        # This must raise a descriptive error rather than a NoMethodError on nil.
+        @packet.short_buffer_allowed = true
+        @packet.buffer = "\x00\x00"
+        expect(@packet.read("item1_length")).to be_nil
+        expect { @packet.read("item1") }.to raise_error(/Length value item1_length for item ITEM1 is nil/)
+      end
     end
 
     describe "read only" do

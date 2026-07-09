@@ -379,3 +379,122 @@ class TestDecomMicroservice(unittest.TestCase):
             self.dm.limits_response_thread.metric.data["limits_response_error_total"]["value"],
             1,
         )
+
+    def test_defaults_stored_limits_mode_to_process(self):
+        self.assertEqual(self.dm.stored_limits_mode, "PROCESS")
+
+
+class TestDecomMicroserviceStoredLimitsMode(unittest.TestCase):
+    """Tests for the STORED_LIMITS_MODE target setting."""
+
+    def _start_decom_with_mode(self, mode):
+        redis = mock_redis(self)
+        setup_system()
+
+        orig_xread = redis.xread
+
+        def xread_side_effect(*args, **kwargs):
+            if "block" in kwargs:
+                kwargs.pop("block")
+            result = None
+            with contextlib.suppress(Exception):
+                result = orig_xread(*args, **kwargs)
+            if result and len(result) == 0:
+                time.sleep(0.01)
+            return result
+
+        redis.xread = Mock()
+        redis.xread.side_effect = xread_side_effect
+
+        # Create the target model. Python TargetModel doesn't override as_json, so
+        # stored_limits_mode isn't persisted by create(). We manually update the
+        # Redis hash to include it, mirroring what Ruby's as_json would store.
+        model = TargetModel(name="INST", stored_limits_mode=mode, scope="DEFAULT")
+        model.create()
+        existing = json.loads(Store.hget("DEFAULT__openc3_targets", "INST"))
+        existing["stored_limits_mode"] = mode
+        Store.hset("DEFAULT__openc3_targets", "INST", json.dumps(existing))
+
+        model = TargetModel(name="SYSTEM", scope="DEFAULT")
+        model.create()
+        model = MicroserviceModel(
+            "DEFAULT__DECOM__INST_INT",
+            scope="DEFAULT",
+            topics=["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"],
+            target_names=["INST"],
+        )
+        model.create()
+
+        with patch("openc3.microservices.microservice.System"):
+            self.dm = DecomMicroservice("DEFAULT__DECOM__INST_INT")
+        self.dm_thread = threading.Thread(target=self.dm.run)
+        self.dm_thread.start()
+        time.sleep(0.01)
+
+    def tearDown(self):
+        if hasattr(self, "dm"):
+            self.dm.shutdown()
+            self.dm_thread.join()
+
+    def test_loads_stored_limits_mode_from_target_model(self):
+        self._start_decom_with_mode("DISABLE")
+        self.assertEqual(self.dm.stored_limits_mode, "DISABLE")
+
+    @patch("openc3.system.system.System.limits_set")
+    def test_log_mode_logs_but_skips_reactions_for_stored_packets(self, limits_set):
+        limits_set.return_value = "DEFAULT"
+        self._start_decom_with_mode("LOG")
+
+        class TrackingLimitsResponse(LimitsResponse):
+            called = False
+
+            def call(self, packet, item, old_limits_state):
+                TrackingLimitsResponse.called = True
+
+        TrackingLimitsResponse.called = False
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+        temp1 = packet.get_item("TEMP1")
+        temp1.limits.response = TrackingLimitsResponse()
+        packet.received_time = datetime.now(timezone.utc)
+        packet.stored = True
+
+        for stdout in capture_io():
+            TelemetryTopic.write_packet(packet, scope="DEFAULT")
+            for _ in range(10):
+                time.sleep(0.01)
+                if "RED_LOW" in stdout.getvalue():
+                    break
+            # Limits changes are still logged
+            self.assertIn("INST HEALTH_STATUS TEMP1", stdout.getvalue())
+            self.assertIn("RED_LOW", stdout.getvalue())
+
+        # Limits response should NOT be called
+        self.assertFalse(TrackingLimitsResponse.called)
+
+        # Events are published but current_limits is NOT updated
+        out = LimitsEventTopic.out_of_limits(scope="DEFAULT")
+        self.assertEqual(len(out), 0)
+
+    @patch("openc3.system.system.System.limits_set")
+    def test_disable_mode_skips_limits_for_stored_packets(self, limits_set):
+        limits_set.return_value = "DEFAULT"
+        self._start_decom_with_mode("DISABLE")
+
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+        packet.received_time = datetime.now(timezone.utc)
+        packet.stored = True
+
+        for stdout in capture_io():
+            TelemetryTopic.write_packet(packet, scope="DEFAULT")
+            time.sleep(0.1)
+            # No limits change messages should be logged
+            self.assertNotIn("RED_LOW", stdout.getvalue())
+            self.assertNotIn("YELLOW", stdout.getvalue())
+
+        # No limits events
+        events = LimitsEventTopic.read(0, scope="DEFAULT")
+        self.assertEqual(len(events), 0)
+
+        # current_limits not updated
+        out = LimitsEventTopic.out_of_limits(scope="DEFAULT")
+        self.assertEqual(len(out), 0)
