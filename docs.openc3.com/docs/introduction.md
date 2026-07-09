@@ -14,6 +14,21 @@ COSMOS is a suite of applications that can be used to control a set of embedded 
 
 COSMOS is a cloud native, containerized, microservice oriented command and control system. See the [Architecture](/docs/getting-started/architecture) page for a detailed breakdown of both the Core and Enterprise architectures.
 
+Watch this video for a demo and walkthrough of COSMOS:
+
+<div style={{textAlign: 'center'}}>
+  <iframe
+    width="960"
+    height="540"
+    src="https://www.youtube.com/embed/-5SGDS-MnuE"
+    title="COSMOS Demo and Walkthrough"
+    frameBorder="0"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    allowFullScreen
+    style={{maxWidth: '100%', aspectRatio: '16 / 9', height: 'auto'}}
+  ></iframe>
+</div>
+
 ## Helpful Hints
 
 Throughout this guide there are a number of small-but-handy pieces of
