@@ -64,26 +64,29 @@ module OpenC3
     # Fields that a search term is matched against (case-insensitive substring)
     SEARCH_FIELDS = ['name', 'filename', 'username', 'user_full_name', 'state']
 
-    def self.all(scope:, offset: 0, limit: 10, type: "running", search: nil)
+    def self.all(scope:, offset: 0, limit: 10, type: "running")
       primary_key = (type == "running") ? RUNNING_PRIMARY_KEY : COMPLETED_PRIMARY_KEY
-      if search and !search.to_s.empty?
-        # Filtering happens in Ruby so we must fetch the full list, filter, then paginate
-        items = self.filter_by_search(self.fetch_all(primary_key, scope), search)
-        return items[offset.to_i, limit.to_i] || []
-      else
         keys = self.store.zrevrange("#{primary_key}__#{scope}__LIST", offset.to_i, offset.to_i + limit.to_i - 1)
         return [] if keys.empty?
-        return self.fetch(primary_key, scope, keys)
+
+      result = self.store.redis_pool.pipelined do
+        keys.each do |key|
+          self.store.hget("#{primary_key}__#{scope}", key)
+        end
       end
+      result = result.map do |r|
+        if r.nil?
+          nil
+        else
+          JSON.parse(r, allow_nan: true, create_additions: true)
+      end
+      end
+      return result
     end
 
-    def self.count(scope:, type: "running", search: nil)
+    def self.count(scope:, type: "running")
       primary_key = (type == "running") ? RUNNING_PRIMARY_KEY : COMPLETED_PRIMARY_KEY
-      if search and !search.to_s.empty?
-        return self.filter_by_search(self.fetch_all(primary_key, scope), search).length
-      else
         return self.store.zcount("#{primary_key}__#{scope}__LIST", 0, Float::INFINITY)
-      end
     end
 
     # Return a single page of items along with the total count of matching items.
