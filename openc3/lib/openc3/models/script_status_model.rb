@@ -61,9 +61,6 @@ module OpenC3
       end
     end
 
-    # Fields that a search term is matched against (case-insensitive substring)
-    SEARCH_FIELDS = ['name', 'filename', 'username', 'user_full_name', 'state']
-
     def self.all(scope:, offset: 0, limit: 10, type: "running")
       primary_key = (type == "running") ? RUNNING_PRIMARY_KEY : COMPLETED_PRIMARY_KEY
       keys = self.store.zrevrange("#{primary_key}__#{scope}__LIST", offset.to_i, offset.to_i + limit.to_i - 1)
@@ -88,6 +85,9 @@ module OpenC3
       primary_key = (type == "running") ? RUNNING_PRIMARY_KEY : COMPLETED_PRIMARY_KEY
       return self.store.zcount("#{primary_key}__#{scope}__LIST", 0, Float::INFINITY)
     end
+
+    # Fields that a search term is matched against (case-insensitive substring)
+    SEARCH_FIELDS = ['name', 'filename', 'username', 'user_full_name', 'state']
 
     # Return a single page of items along with the total count of matching items.
     # When searching, this fetches, parses, and filters the full list only once
