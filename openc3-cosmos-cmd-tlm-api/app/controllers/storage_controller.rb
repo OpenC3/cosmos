@@ -304,6 +304,13 @@ class StorageController < ApplicationController
       storage_type, storage_name = validate_storage_source
       object_id = sanitize_path(params[:object_id])
 
+      # Guard against a missing / literal 'null' object_id (e.g. frontend sending
+      # an undefined log or report filename). Return 404 instead of a 500.
+      if object_id.empty? || object_id == 'null'
+        render json: { status: 'error', message: "Invalid object_id: #{params[:object_id]}" }, status: :not_found
+        return
+      end
+
       # Check scope-based RBAC for bucket downloads
       if storage_type == :bucket && params[:bucket] && bucket_requires_rbac?(params[:bucket])
         unless authorize_bucket_path(params[:bucket], object_id)
@@ -321,6 +328,13 @@ class StorageController < ApplicationController
         FileUtils.mkdir_p(File.dirname(temp_path))
         OpenC3::Bucket.getClient().get_object(bucket: storage_name, key: object_id, path: temp_path)
         temp_path
+      end
+
+      # get_object returns nil for a missing key (never writes temp_path), and a
+      # volume file may not exist. Return 404 rather than letting File.read 500.
+      unless File.exist?(filename)
+        render json: { status: 'error', message: "File not found: #{params[:object_id]}" }, status: :not_found
+        return
       end
 
       file = File.read(filename, mode: 'rb')

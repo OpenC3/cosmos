@@ -159,13 +159,14 @@
                 color="primary"
                 density="comfortable"
                 icon="mdi-eye"
+                :disabled="!item.log"
                 @click="viewScriptLog(item, 'log')"
               />
               <v-btn
                 color="primary"
                 density="comfortable"
                 icon="mdi-file-download-outline"
-                :disabled="downloadScript"
+                :disabled="downloadScript || !item.log"
                 :loading="downloadScript && downloadScript.name === item.name"
                 @click="downloadScriptLog(item, 'log')"
               />
@@ -513,6 +514,13 @@ async function viewScriptLog(script, type) {
     dialogName.value = 'Log'
     logUrl = script.log
   }
+  if (!logUrl) {
+    notify.caution({
+      title: `No ${dialogName.value.toLowerCase()} available`,
+      body: `Script ${script.name} has no ${dialogName.value.toLowerCase()} file yet.`,
+    })
+    return
+  }
   const response = await Api.get(
     `/openc3-api/storage/download_file/${encodeURIComponent(
       logUrl,
@@ -533,6 +541,13 @@ async function downloadScriptLog(script, type, format = 'text') {
   } else {
     dialogName.value = 'Log'
     logUrl = script.log
+  }
+  if (!logUrl) {
+    notify.caution({
+      title: `No ${dialogName.value.toLowerCase()} available`,
+      body: `Script ${script.name} has no ${dialogName.value.toLowerCase()} file yet.`,
+    })
+    return
   }
   downloadScript.value = script
 
