@@ -54,6 +54,25 @@ RSpec.describe RunningScriptController, type: :controller do
       expect(json["items"].size).to eq(0)
     end
 
+    it "filters the list by the search parameter" do
+      OpenC3::ScriptStatusModel.new(
+        name: "2",
+        state: "running",
+        scope: "DEFAULT",
+        filename: "INST/procedures/collect.rb",
+        start_time: Time.now.utc.iso8601,
+        username: "other_user",
+        user_full_name: "Other User"
+      ).create
+
+      get :index, params: {"scope" => "DEFAULT", "search" => "collect"}
+      expect(response.status).to eq(200)
+      json = JSON.parse(response.body)
+      expect(json["items"].size).to eq(1)
+      expect(json["items"][0]["filename"]).to eq("INST/procedures/collect.rb")
+      expect(json["total"]).to eq(1)
+    end
+
     it "handles forbidden errors when authorization is enabled" do
       get :index
       expect(response.status).to eq(401)
