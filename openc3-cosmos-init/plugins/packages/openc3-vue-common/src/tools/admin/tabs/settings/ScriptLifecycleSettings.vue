@@ -31,10 +31,9 @@
       <v-switch
         v-model="lifecycleEnabled"
         label="Script Lifecycle - When enabled, scripts are tracked through
-        In Development, In Review, and Approved states. Operators can move
-        scripts between development and review, but only admins can approve
-        scripts or move approved scripts back to review. Approved scripts
-        cannot be modified or deleted, and users with only the runner
+        In Development, In Review, and Approved states. Users with the script_edit permission
+        can move scripts to In Review, and users with the script_approver permission may approve scripts.
+        Approved scripts cannot be modified or deleted, and users with only the runner
         permission can only run approved scripts."
         color="primary"
         data-test="script-lifecycle-enabled"
