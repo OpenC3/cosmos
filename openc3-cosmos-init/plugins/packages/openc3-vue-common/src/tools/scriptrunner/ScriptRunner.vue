@@ -1038,6 +1038,7 @@ export default {
     runBlocked: function () {
       return (
         this.lifecycleEnabled &&
+        this.scriptVersionsEnabled &&
         this.readOnlyUser &&
         this.executeUser &&
         this.lifecycleState !== 'approved'

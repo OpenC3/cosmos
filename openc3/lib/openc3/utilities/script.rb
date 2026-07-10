@@ -77,11 +77,13 @@ class Script < OpenC3::TargetFile
     ::VersionStore.lifecycle(scope: scope, name: strip_modified(name))
   end
 
-  def self.set_lifecycle(scope, name, state, username, comment)
+  # current: the caller-known current state; pass it to avoid a redundant git
+  # read when the controller has already fetched it for transition validation.
+  def self.set_lifecycle(scope, name, state, username, comment, current: nil)
     raise "Cannot set lifecycle on temporary files" if temp_file?(name)
     raise "Script lifecycle requires the version history store" unless lifecycle_enabled?
     name = strip_modified(name)
-    current = lifecycle(scope, name)['state']
+    current ||= lifecycle(scope, name)['state']
     ::VersionStore.set_lifecycle(scope: scope, name: name, from: current, to: state,
                                  username: username, comment: comment)
   end

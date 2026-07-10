@@ -129,7 +129,7 @@ class ScriptsController < ApplicationController
     if (state == 'approved' or current == 'approved') and !authorization('script_approver')
       return
     end
-    result = Script.set_lifecycle(scope, name, state, username(), comment)
+    result = Script.set_lifecycle(scope, name, state, username(), comment, current: current)
     OpenC3::Logger.info("Script lifecycle changed from #{current} to #{state}: #{name} (#{comment})", scope: scope, user: username())
     render json: result
   rescue => e
@@ -141,7 +141,7 @@ class ScriptsController < ApplicationController
     return unless authorization('script_edit')
     scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
-    if lifecycle_enabled?() and Script.lifecycle(scope, name)['state'] == 'approved'
+    if lifecycle_enabled?() and lifecycle_state(scope, name) == 'approved'
       render json: { status: 'error', message: 'Script is approved and cannot be modified. Move it back to review to edit.' }, status: :forbidden
       return
     end
@@ -182,7 +182,7 @@ class ScriptsController < ApplicationController
     return unless authorization('script_run', target_name: target_name)
     # Users with only the script_run (runner) permission may only run
     # approved scripts. Users who can edit may run any lifecycle state.
-    if lifecycle_enabled?() and Script.lifecycle(scope, name)['state'] != 'approved' and !authorization('script_edit')
+    if lifecycle_enabled?() and (state = lifecycle_state(scope, name)) and state != 'approved' and !authorization('script_edit')
       return
     end
     # TODO 7.0: Should suiteRunner be snake case?
@@ -219,7 +219,7 @@ class ScriptsController < ApplicationController
     return unless authorization('script_edit')
     scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
-    if lifecycle_enabled?() and Script.lifecycle(scope, name)['state'] == 'approved'
+    if lifecycle_enabled?() and lifecycle_state(scope, name) == 'approved'
       render json: { status: 'error', message: 'Script is approved and cannot be deleted. Move it back to review to delete.' }, status: :forbidden
       return
     end
@@ -309,6 +309,18 @@ class ScriptsController < ApplicationController
     setting = OpenC3::SettingModel.get(name: 'script_runner_lifecycle')
     return false unless setting
     setting['data'] == true or setting['data'] == 'true'
+  end
+
+  # Current lifecycle state for the create/run/destroy gates. The lookup hits
+  # git (VersionStore); a transient backend error must not 500 the hottest
+  # paths (especially run), so we log and fail OPEN by returning nil. Every
+  # gate treats nil as "no restriction" (nil != 'approved', nil is falsey), so
+  # an outage never blocks work — approval enforcement resumes once git heals.
+  def lifecycle_state(scope, name)
+    Script.lifecycle(scope, name)['state']
+  rescue => e
+    log_error(e)
+    nil
   end
 
 end
