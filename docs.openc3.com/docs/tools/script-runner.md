@@ -96,6 +96,10 @@ Right clicking a script brings up several options:
 
 ## Script Lifecycle
 
+:::info[Coming Soon!]
+The Script Lifecycle feature is not available quite yet.
+:::
+
 The Script Lifecycle feature tracks scripts through three states: **In Development**, **In Review**, and **Approved**. It is disabled by default and can be enabled in the Admin Console under Settings → Script Lifecycle Settings.
 
 When enabled, a colored chip next to the Script State field shows the current lifecycle state of the open script (blue for In Development, orange for In Review, green for Approved). Clicking the chip, or selecting Script → Script Lifecycle, opens the lifecycle dialog. New scripts always begin **In Development**.
@@ -106,17 +110,17 @@ The dialog displays the current state, lets you move the script to another state
 
 ### Lifecycle Transitions
 
-| From           | To (and back)         | Required Role     |
-| -------------- | --------------------- | ----------------- |
-| In Development | In Review             | Operator or Admin |
-| In Review      | Approved              | Admin             |
-| In Development | Approved              | Admin             |
+| From           | To (and back)         | Required Permission |
+| -------------- | --------------------- | ------------------- |
+| In Development | In Review             | script_edit         |
+| In Review      | Approved              | script_approver     |
+| In Development | Approved              | script_approver     |
 
-Operators (or any user with the script_edit permission) can move scripts between In Development and In Review. Only admins can approve a script or move an approved script back to In Review or In Development. Role-based restrictions require COSMOS Enterprise; in COSMOS Core the user can perform all transitions.
+Users with the script_edit permission (e.g. Operators) can move scripts between In Development and In Review. Only users with the script_approver permission can approve a script or move an approved script back to In Review or In Development. Role-based restrictions require COSMOS Enterprise. Ensure that a new role that has the `script_approver` permission is created, and assigned to your users of choice.
 
 ### Approved Scripts
 
-Once a script is Approved it cannot be modified or deleted. The editor becomes read-only and the Save and Delete menu items are disabled. This is also enforced by the server, so the script cannot be changed through the API. To edit an approved script, an admin must first move it back to In Review or In Development.
+Once a script is Approved it cannot be modified or deleted. The editor becomes read-only and the Save and Delete menu items are disabled. This is also enforced by the server, so the script cannot be changed through the API. To edit an approved script, a user with the script_approver permission must first move it back to In Review or In Development.
 
 In addition, users with only the runner role (or the script_run permission) can only run Approved scripts. This ensures operators in a production environment only execute scripts that have completed the review process. Users who can edit scripts can run scripts in any lifecycle state.
 

@@ -14,8 +14,58 @@
 require "rails_helper"
 require "openc3/utilities/aws_bucket"
 require 'openc3/utilities/script'
+require 'time'
+
+# In-memory stand-in for the Enterprise git-backed VersionStore. The script
+# lifecycle is Enterprise-only (tracked as git commits/tags); this lets the
+# Core controller specs exercise the full lifecycle path without a git store.
+class FakeVersionStore
+  class << self
+    def reset!
+      @store = {}
+    end
+
+    def enabled?
+      true
+    end
+
+    def lifecycle(scope:, name:)
+      @store ||= {}
+      @store["#{scope}/#{name}"] || { 'state' => 'development', 'history' => [] }
+    end
+
+    def set_lifecycle(scope:, name:, from:, to:, username:, comment:)
+      data = lifecycle(scope: scope, name: name)
+      history = data['history'] + [{
+        'from' => from, 'to' => to, 'user' => username,
+        'time' => Time.now.utc.iso8601, 'comment' => comment,
+      }]
+      @store["#{scope}/#{name}"] = { 'state' => to, 'history' => history }
+    end
+
+    # Content-versioning methods the create/destroy actions call; no-ops here
+    # since these controller specs only exercise the lifecycle behavior.
+    def commit(**_kwargs)
+      nil
+    end
+
+    def delete(**_kwargs)
+      nil
+    end
+
+    def seed_initial_if_empty(**_kwargs)
+      false
+    end
+  end
+end
 
 RSpec.describe ScriptsController, type: :controller do
+  # Install the fake version store so lifecycle transitions work in specs.
+  def enable_lifecycle_store
+    stub_const("VersionStore", FakeVersionStore)
+    FakeVersionStore.reset!
+  end
+
   before(:each) do
     ENV.delete("OPENC3_LOCAL_MODE")
     mock_redis
@@ -138,6 +188,7 @@ RSpec.describe ScriptsController, type: :controller do
     context "with the script lifecycle feature enabled" do
       before(:each) do
         OpenC3::SettingModel.set({name: 'script_runner_lifecycle', data: true}, scope: 'DEFAULT')
+        enable_lifecycle_store
       end
 
       # Approved scripts cannot be saved (overwritten)
@@ -194,6 +245,7 @@ RSpec.describe ScriptsController, type: :controller do
     context "with the script lifecycle feature enabled" do
       before(:each) do
         OpenC3::SettingModel.set({name: 'script_runner_lifecycle', data: true}, scope: 'DEFAULT')
+        enable_lifecycle_store
         allow(OpenC3::Logger).to receive(:info)
       end
 
@@ -385,6 +437,7 @@ RSpec.describe ScriptsController, type: :controller do
   describe "set_lifecycle" do
     before(:each) do
       allow(OpenC3::Logger).to receive(:info)
+      enable_lifecycle_store
     end
 
     it "moves a script from development to review and records the history" do
@@ -511,6 +564,7 @@ RSpec.describe ScriptsController, type: :controller do
 
     it "rejects destroying an approved script when the lifecycle feature is enabled" do
       OpenC3::SettingModel.set({name: 'script_runner_lifecycle', data: true}, scope: 'DEFAULT')
+      enable_lifecycle_store
       Script.set_lifecycle("DEFAULT", "INST/procedures/test.rb", "review", "anonymous", "")
       Script.set_lifecycle("DEFAULT", "INST/procedures/test.rb", "approved", "anonymous", "")
       expect(Script).not_to receive(:destroy)

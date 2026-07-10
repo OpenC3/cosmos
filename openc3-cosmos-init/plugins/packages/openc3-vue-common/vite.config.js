@@ -2,9 +2,13 @@ import { resolve } from 'path'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   build: {
-    sourcemap: true,
+    // Sourcemaps roughly tripled the dist/ footprint after the Monaco swap
+    // (the dialog chunk's map alone is ~14 MB). Keep them in dev / the
+    // dev-server build for debugging; drop them from the production build
+    // that gets baked into the openc3-cosmos-init image.
+    sourcemap: mode !== 'production',
     cssCodeSplit: false,
     lib: {
       entry: {
@@ -53,4 +57,4 @@ export default defineConfig({
     },
     dedupe: ['single-spa', 'vue', 'vuetify', 'vue-router', 'pinia'],
   },
-})
+}))

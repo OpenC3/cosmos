@@ -74,7 +74,12 @@ export function useScriptLifecycle() {
   }
 
   function fetchLifecycle(filename) {
-    if (!lifecycleEnabled.value || !filename) {
+    // Temp files (__TEMP__) are auto-saved unsaved scripts and have no lifecycle
+    if (
+      !lifecycleEnabled.value ||
+      !filename ||
+      filename.startsWith('__TEMP__/')
+    ) {
       resetLifecycle()
       return
     }

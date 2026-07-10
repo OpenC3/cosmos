@@ -19,8 +19,6 @@
     <v-divider />
     <editor-settings />
     <v-divider />
-    <script-lifecycle-settings />
-    <v-divider />
     <astro-settings />
     <v-divider />
     <theme-settings />
@@ -43,6 +41,8 @@
     <v-divider />
     <context-tag-settings />
     <template v-if="isEnterprise">
+      <v-divider />
+      <script-lifecycle-settings />
       <v-divider />
       <ai-chat-settings />
     </template>

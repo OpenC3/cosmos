@@ -65,10 +65,10 @@
         <div v-else class="mt-4">
           You do not have permission to change this script's lifecycle.
           <template v-if="state === 'review'">
-            Only admins can approve scripts.
+            Only script approvers can approve scripts.
           </template>
           <template v-else-if="state === 'approved'">
-            Only admins can move approved scripts back to review.
+            Only script approvers can move approved scripts back to review.
           </template>
         </div>
         <v-data-table
@@ -135,7 +135,7 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
-  isAdmin: {
+  canApprove: {
     type: Boolean,
     default: false,
   },
@@ -166,7 +166,8 @@ const historyHeaders = [
 ]
 
 // Transitions available to this user from the current state.
-// dev <-> review requires edit permission, review <-> approved requires admin.
+// dev <-> review requires edit permission, review <-> approved requires the
+// script_approver permission (props.canApprove).
 const allowedStates = computed(() => {
   let states = []
   switch (props.state) {
@@ -174,7 +175,7 @@ const allowedStates = computed(() => {
       if (props.canEdit) {
         states.push('review')
       }
-      if (props.isAdmin) {
+      if (props.canApprove) {
         states.push('approved')
       }
       break
@@ -182,12 +183,12 @@ const allowedStates = computed(() => {
       if (props.canEdit) {
         states.push('development')
       }
-      if (props.isAdmin) {
+      if (props.canApprove) {
         states.push('approved')
       }
       break
     case 'approved':
-      if (props.isAdmin) {
+      if (props.canApprove) {
         states.push('review', 'development')
       }
       break

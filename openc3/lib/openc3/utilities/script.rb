@@ -63,28 +63,27 @@ class Script < OpenC3::TargetFile
     []
   end
 
+  def self.temp_file?(name)
+    strip_modified(name).start_with?("#{TEMP_FOLDER}/")
+  end
+
+  def self.lifecycle_enabled?
+    defined?(::VersionStore) && ::VersionStore.enabled?
+  end
+
   def self.lifecycle(scope, name)
-    data = OpenC3::Store.hget("#{scope}__script-lifecycle", strip_modified(name))
-    if data
-      JSON.parse(data, allow_nan: true, create_additions: true)
-    else
-      { 'state' => 'development', 'history' => [] }
-    end
+    return { 'state' => 'development', 'history' => [] } if temp_file?(name)
+    return { 'state' => 'development', 'history' => [] } unless lifecycle_enabled?
+    ::VersionStore.lifecycle(scope: scope, name: strip_modified(name))
   end
 
   def self.set_lifecycle(scope, name, state, username, comment)
+    raise "Cannot set lifecycle on temporary files" if temp_file?(name)
+    raise "Script lifecycle requires the version history store" unless lifecycle_enabled?
     name = strip_modified(name)
-    data = lifecycle(scope, name)
-    data['history'] << {
-      'from' => data['state'],
-      'to' => state,
-      'user' => username,
-      'time' => Time.now.utc.iso8601,
-      'comment' => comment,
-    }
-    data['state'] = state
-    OpenC3::Store.hset("#{scope}__script-lifecycle", name, data.as_json().to_json(allow_nan: true))
-    data
+    current = lifecycle(scope, name)['state']
+    ::VersionStore.set_lifecycle(scope: scope, name: name, from: current, to: state,
+                                 username: username, comment: comment)
   end
 
   def self.process_suite(name, contents, new_process: true, username: nil, scope:)
@@ -217,16 +216,13 @@ class Script < OpenC3::TargetFile
   def self.delete_temp(scope)
     files = super(scope)
     files.each do |name|
-      # Remove any breakpoints and lifecycle data associated with the temp files
       OpenC3::Store.hdel("#{scope}__script-breakpoints", "#{TEMP_FOLDER}/#{File.basename(name)}")
-      OpenC3::Store.hdel("#{scope}__script-lifecycle", "#{TEMP_FOLDER}/#{File.basename(name)}")
     end
   end
 
   def self.destroy(scope, name)
     super(scope, name)
     OpenC3::Store.hdel("#{scope}__script-breakpoints", name)
-    OpenC3::Store.hdel("#{scope}__script-lifecycle", name)
   end
 
   def self.run(

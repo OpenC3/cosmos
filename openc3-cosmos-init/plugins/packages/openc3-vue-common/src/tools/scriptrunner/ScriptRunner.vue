@@ -188,7 +188,7 @@
               hide-details
             />
             <v-chip
-              v-bind="props"
+              v-if="lifecycleVisible"
               class="ml-4 align-self-center"
               :color="lifecycleColor"
               variant="flat"
@@ -628,7 +628,7 @@
     :filename="filename"
     :state="lifecycleState"
     :history="lifecycleHistory"
-    :is-admin="isAdmin"
+    :can-approve="canApprove"
     :can-edit="!readOnlyUser"
     :time-zone="timeZone"
     @updated="lifecycleUpdated"
@@ -640,6 +640,13 @@
     :cmd-user="criticalCmdUser"
     :persistent="true"
     @status="promptDialogCallback"
+  />
+  <version-history-dialog
+    v-if="showVersionHistory"
+    v-model="showVersionHistory"
+    :filename="filename"
+    :current-body="editor ? editor.getValue() : ''"
+    @restored="onVersionRestored"
   />
   <!-- Command Editor Dialog -->
   <v-dialog
@@ -745,6 +752,14 @@ import {
 import { SleepAnnotator } from '@/tools/scriptrunner/annotations'
 import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
 import { useScriptLifecycle } from '@/tools/scriptrunner/useScriptLifecycle'
+// Lazy-load the Enterprise-only Version History dialog so Monaco (~3 MB
+// minified) lives in its own chunk that only downloads when the user
+// opens version history. Core builds never reach this code path because
+// the menu item is gated on the /openc3-api/info enterprise flag.
+import { defineAsyncComponent } from 'vue'
+const VersionHistoryDialog = defineAsyncComponent(
+  () => import('@/tools/scriptrunner/VersionHistoryDialog.vue'),
+)
 
 // Matches target_file.rb TEMP_FOLDER
 const TEMP_FOLDER = '__TEMP__'
@@ -778,6 +793,7 @@ export default {
     ScriptLogMessages,
     CriticalCmdDialog,
     CommandEditor,
+    VersionHistoryDialog,
   },
   mixins: [AceEditorModes, ClassificationBanners],
   beforeRouteUpdate: function (to, from, next) {
@@ -853,6 +869,9 @@ export default {
       breakpoints: {},
       enableStackTraces: false,
       filename: NEW_FILENAME,
+      showVersionHistory: false,
+      // Enterprise-only feature; populated from /openc3-api/info on mount.
+      isEnterprise: false,
       readOnlyUser: false,
       executeUser: true,
       saveAllowed: true,
@@ -963,7 +982,10 @@ export default {
       displayCriticalCmd: false,
       editorBoxSize: 50,
       lockingEnabled: true,
-      isAdmin: false,
+      canApprove: false,
+      // Enterprise-only Version History; enabled when the backend has
+      // OPENC3_VERSION_HISTORY_DIR set (reported by /openc3-api/info).
+      scriptVersionsEnabled: false,
     }
   },
   computed: {
@@ -1033,6 +1055,21 @@ export default {
     // This makes sure that string doesn't show up in the dialog
     filenameOrBlank: function () {
       return this.filename === NEW_FILENAME ? '' : this.filename
+    },
+    // Temp files are auto-saved unsaved scripts under the __TEMP__ folder.
+    // They aren't real saved scripts, so they get no lifecycle.
+    isTempFile: function () {
+      return this.filename.startsWith(`${TEMP_FOLDER}/`)
+    },
+    // Lifecycle only applies to real, saved (non-temp, non-untitled) scripts.
+    // It is git-backed, so it also requires the version store (Enterprise).
+    lifecycleVisible: function () {
+      return (
+        this.lifecycleEnabled &&
+        this.scriptVersionsEnabled &&
+        this.filename !== NEW_FILENAME &&
+        !this.isTempFile
+      )
     },
     menus: function () {
       return [
@@ -1184,12 +1221,11 @@ export default {
                 this.showScripts = true
               },
             },
-            ...(this.lifecycleEnabled
+            ...(this.lifecycleVisible
               ? [
                   {
                     label: 'Script Lifecycle',
                     icon: 'mdi-list-status',
-                    disabled: this.filename === NEW_FILENAME,
                     command: () => {
                       this.showLifecycle = true
                     },
@@ -1298,6 +1334,25 @@ export default {
                 this.deleteAllBreakpoints()
               },
             },
+            // Enterprise-only Version History entry. ScriptVersionController
+            // lives in the openc3-enterprise gem; omit the divider + item
+            // entirely so Core builds don't render a dead menu option.
+            ...(this.scriptVersionsEnabled
+              ? [
+                  { divider: true },
+                  {
+                    label: 'Version History',
+                    icon: 'mdi-history',
+                    disabled:
+                      this.scriptId ||
+                      !this.filename ||
+                      this.filename === NEW_FILENAME,
+                    command: () => {
+                      this.showVersionHistory = true
+                    },
+                  },
+                ]
+              : []),
           ],
         },
       ]
@@ -1363,6 +1418,17 @@ export default {
     // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
     this.api.ensure_offline_access()
+    // Detect Enterprise and whether the Version History backend is enabled
+    // (OPENC3_VERSION_HISTORY_DIR set) so we can show the menu item.
+    Api.get('/openc3-api/info')
+      .then((response) => {
+        this.isEnterprise = !!response.data?.enterprise
+        this.scriptVersionsEnabled = !!response.data?.script_versions
+      })
+      .catch(() => {
+        this.isEnterprise = false
+        this.scriptVersionsEnabled = false
+      })
     this.api
       .get_setting('time_zone')
       .then((response) => {
@@ -1405,9 +1471,6 @@ export default {
       if (role == 'admin' || role == 'operator') {
         this.readOnlyUser = false
         this.executeUser = true
-        if (role == 'admin') {
-          this.isAdmin = true
-        }
       } else if (role == 'runner') {
         this.executeUser = true
       } else {
@@ -1429,6 +1492,13 @@ export default {
               )
             ) {
               this.executeUser = true
+            }
+            if (
+              response.data.permissions.some(
+                (i) => i.permission == 'script_approver',
+              )
+            ) {
+              this.canApprove = true
             }
           }
         })
@@ -1500,7 +1570,11 @@ export default {
     })
 
     this.editor.container.addEventListener('resize', this.doResize)
-    this.editor.container.addEventListener('keydown', this.keydown)
+    // Listen on window (not editor.container) so Ctrl-S saves regardless of
+    // where focus is — attaching to the editor only caught the key while the
+    // cursor was in the editor, which made saving feel inconsistent after
+    // using a menu, button, or dialog. Removed in beforeUnmount.
+    window.addEventListener('keydown', this.keydown)
 
     this.cable = new Cable('/script-api/cable')
 
@@ -1548,6 +1622,7 @@ export default {
     if (this.scriptId && !this.inline) {
       sessionStorage.setItem('script_runner__script_id', this.scriptId)
     }
+    window.removeEventListener('keydown', this.keydown)
     this.editor.destroy()
     this.editor.container.remove()
   },
@@ -1889,7 +1964,7 @@ export default {
       // NOTE: metaKey == Command on Mac
       if (
         (event.metaKey || event.ctrlKey) &&
-        event.keyCode === 'S'.charCodeAt(0)
+        event.key?.toLowerCase() === 's'
       ) {
         if (event.shiftKey) {
           event.preventDefault()
@@ -3217,6 +3292,9 @@ class TestSuite(Suite):
       ) {
         Api.post(`/script-api/scripts/${this.filename}/unlock`)
       }
+    },
+    onVersionRestored: function () {
+      this.reloadFile()
     },
     backToNewScript: async function () {
       // Disconnect from the current script

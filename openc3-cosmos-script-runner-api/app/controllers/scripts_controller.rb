@@ -18,6 +18,7 @@
 require 'json'
 require 'openc3/utilities/script'
 require 'openc3/models/setting_model'
+require 'openc3/models/target_model'
 
 class ScriptsController < ApplicationController
   # This REGEX is also found in running_script.rb
@@ -59,6 +60,14 @@ class ScriptsController < ApplicationController
 
     file = Script.body(scope, name)
     if file
+      # Enterprise-only: seed Version History with the deployed body so
+      # plugin-installed scripts have a baseline commit before any user edit.
+      # Constant only loaded by the openc3-enterprise gem. Skip __TEMP__
+      # scratch scripts — they are throwaway and need no history.
+      if defined?(::VersionStore) && !name.start_with?("#{OpenC3::TargetFile::TEMP_FOLDER}/")
+        plugin = OpenC3::TargetModel.plugin_version_label(name.split('/')[0], scope: scope)
+        ::VersionStore.seed_initial_if_empty(scope: scope, name: name, body: file, plugin: plugin)
+      end
       locked = Script.locked?(scope, name)
       unless locked
         Script.lock(scope, name, username())
@@ -92,11 +101,16 @@ class ScriptsController < ApplicationController
   end
 
   def set_lifecycle
-    # All transitions require at least script_edit, transitions involving
-    # 'approved' additionally require admin (checked below once the current state is known)
+    # All transitions require at least script_edit; transitions involving
+    # 'approved' additionally require the script_approver permission (checked
+    # below once the current state is known).
     return unless authorization('script_edit')
     scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
+    if Script.temp_file?(name)
+      render json: { status: 'error', message: 'Cannot set lifecycle on temporary files' }, status: :bad_request
+      return
+    end
     state = params[:state]
     comment = params[:comment].to_s.strip
     unless Script::LIFECYCLE_STATES.include?(state)
@@ -112,7 +126,7 @@ class ScriptsController < ApplicationController
       render json: { status: 'error', message: "Cannot move script from #{current} to #{state}" }, status: :bad_request
       return
     end
-    if (state == 'approved' or current == 'approved') and !authorization('admin')
+    if (state == 'approved' or current == 'approved') and !authorization('script_approver')
       return
     end
     result = Script.set_lifecycle(scope, name, state, username(), comment)
@@ -136,8 +150,14 @@ class ScriptsController < ApplicationController
     args[:name] = name
     Script.create(args)
     results = {}
-    # The file is still saved above; only the suite chrome is omitted when the editor
-    # lacks script_run.
+    # Enterprise-only: capture a git commit alongside the bucket write so
+    # the new version_id can travel back to the editor. Skip __TEMP__ scratch
+    # scripts — they are throwaway and would only add history noise.
+    if defined?(::VersionStore) && !name.start_with?("#{OpenC3::TargetFile::TEMP_FOLDER}/")
+      sha = ::VersionStore.commit(scope: scope, name: name, text: params[:text], username: username())
+      results['version_id'] = sha if sha
+    end
+    # The file is still saved above; only the suite chrome is omitted when the editor lacks script_run.
     if suite_with_run_permission?(name, params[:text])
       results_suites, results_error, success = Script.process_suite(name, params[:text], username: username(), scope: scope)
       results['suites'] = results_suites
@@ -204,6 +224,10 @@ class ScriptsController < ApplicationController
       return
     end
     Script.destroy(scope, name)
+    # Enterprise-only: record the deletion in git history.
+    if defined?(::VersionStore)
+      ::VersionStore.delete(scope: scope, name: name, username: username())
+    end
     OpenC3::Logger.info("Script destroyed: #{name}", scope: scope, user: username())
     head :ok
   rescue => e
@@ -277,8 +301,11 @@ class ScriptsController < ApplicationController
     is_suite && authorized?('script_run', target_name: name.split('/')[0])
   end
   
-  # Whether the Script Lifecycle feature flag is enabled (Admin / Settings)
+  # Whether the Script Lifecycle feature is active: the Admin/Settings flag is
+  # on AND the git-backed version store is available (Enterprise). Both are
+  # required since the lifecycle is tracked as git commits/tags.
   def lifecycle_enabled?
+    return false unless Script.lifecycle_enabled?
     setting = OpenC3::SettingModel.get(name: 'script_runner_lifecycle')
     return false unless setting
     setting['data'] == true or setting['data'] == 'true'

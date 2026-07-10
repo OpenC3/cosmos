@@ -37,4 +37,27 @@ RSpec.describe TargetsController, :type => :controller do
       expect(ret['message']).to eql('Invalid scope: ../DEFAULT')
     end
   end
+
+  describe "delete_modified" do
+    it "forwards a files list to the model" do
+      expect(OpenC3::TargetModel).to receive(:delete_modified)
+        .with("INST", scope: "DEFAULT", files: ["INST/screens/a.txt"])
+      post :delete_modified, params: { scope: "DEFAULT", id: "INST", files: ["INST/screens/a.txt"] }
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "passes files: nil when no files param is given" do
+      expect(OpenC3::TargetModel).to receive(:delete_modified)
+        .with("INST", scope: "DEFAULT", files: nil)
+      post :delete_modified, params: { scope: "DEFAULT", id: "INST" }
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "passes files: nil when files is not an array" do
+      expect(OpenC3::TargetModel).to receive(:delete_modified)
+        .with("INST", scope: "DEFAULT", files: nil)
+      post :delete_modified, params: { scope: "DEFAULT", id: "INST", files: "oops" }
+      expect(response).to have_http_status(:ok)
+    end
+  end
 end
