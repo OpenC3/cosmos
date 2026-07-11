@@ -159,13 +159,14 @@
                 color="primary"
                 density="comfortable"
                 icon="mdi-eye"
+                :disabled="!item.log"
                 @click="viewScriptLog(item, 'log')"
               />
               <v-btn
                 color="primary"
                 density="comfortable"
                 icon="mdi-file-download-outline"
-                :disabled="downloadScript"
+                :disabled="downloadScript || !item.log"
                 :loading="downloadScript && downloadScript.name === item.name"
                 @click="downloadScriptLog(item, 'log')"
               />
@@ -513,16 +514,30 @@ async function viewScriptLog(script, type) {
     dialogName.value = 'Log'
     logUrl = script.log
   }
-  const response = await Api.get(
-    `/openc3-api/storage/download_file/${encodeURIComponent(
-      logUrl,
-    )}?bucket=OPENC3_LOGS_BUCKET`,
-  )
-  const filenameParts = logUrl.split('/')
-  dialogFilename.value = filenameParts[filenameParts.length - 1]
-  // Decode Base64 string
-  dialogContent.value = window.atob(response.data.contents)
-  showDialog.value = true
+  if (!logUrl) {
+    notify.caution({
+      title: `No ${dialogName.value.toLowerCase()} available`,
+      body: `Script ${script.name} has no ${dialogName.value.toLowerCase()} file yet.`,
+    })
+    return
+  }
+  try {
+    const response = await Api.get(
+      `/openc3-api/storage/download_file/${encodeURIComponent(
+        logUrl,
+      )}?bucket=OPENC3_LOGS_BUCKET`,
+    )
+    const filenameParts = logUrl.split('/')
+    dialogFilename.value = filenameParts[filenameParts.length - 1]
+    // Decode Base64 string
+    dialogContent.value = window.atob(response.data.contents)
+    showDialog.value = true
+  } catch {
+    notify.caution({
+      title: `Unable to open ${dialogName.value.toLowerCase()} ${logUrl}`,
+      body: `You may be able to download this ${dialogName.value.toLowerCase()} manually from the 'logs' bucket at ${logUrl}`,
+    })
+  }
 }
 
 async function downloadScriptLog(script, type, format = 'text') {
@@ -533,6 +548,13 @@ async function downloadScriptLog(script, type, format = 'text') {
   } else {
     dialogName.value = 'Log'
     logUrl = script.log
+  }
+  if (!logUrl) {
+    notify.caution({
+      title: `No ${dialogName.value.toLowerCase()} available`,
+      body: `Script ${script.name} has no ${dialogName.value.toLowerCase()} file yet.`,
+    })
+    return
   }
   downloadScript.value = script
 
