@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -27,6 +27,7 @@ const request = async function (
     noAuth = false,
     noScope = false,
     onUploadProgress = false,
+    responseType,
   } = {},
 ) {
   if (!noAuth) {
@@ -56,6 +57,7 @@ const request = async function (
     params,
     headers,
     onUploadProgress,
+    responseType,
   })
 }
 
@@ -77,6 +79,7 @@ export default {
       noScope,
       noAuth,
       onUploadProgress,
+      responseType,
     } = {},
   ) {
     return request('get', path, {
@@ -85,6 +88,7 @@ export default {
       noScope,
       noAuth,
       onUploadProgress,
+      responseType,
     })
   },
 
@@ -118,6 +122,7 @@ export default {
       noScope,
       noAuth,
       onUploadProgress,
+      responseType,
     } = {},
   ) {
     return request('post', path, {
@@ -127,6 +132,7 @@ export default {
       noScope,
       noAuth,
       onUploadProgress,
+      responseType,
     })
   },
 
