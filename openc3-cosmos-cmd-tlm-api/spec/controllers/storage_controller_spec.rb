@@ -173,6 +173,7 @@ RSpec.describe StorageController, type: :controller do
       allow(FileUtils).to receive(:mkdir_p)
       allow(FileUtils).to receive(:rm_rf)
       allow(File).to receive(:read).and_return("file content")
+      allow(File).to receive(:exist?).and_return(true)
       allow(Base64).to receive(:encode64).and_return("encoded_content")
 
       get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "file.txt", scope: "DEFAULT"}
@@ -184,6 +185,7 @@ RSpec.describe StorageController, type: :controller do
 
     it "downloads a file from a volume" do
       allow(File).to receive(:read).and_return("file content")
+      allow(File).to receive(:exist?).and_return(true)
       allow(Base64).to receive(:encode64).and_return("encoded_content")
 
       get :download_file, params: {volume: "OPENC3_DATA_VOLUME", object_id: "file.txt", scope: "DEFAULT"}
@@ -296,6 +298,7 @@ RSpec.describe StorageController, type: :controller do
         allow(Dir).to receive(:mktmpdir).and_return("/tmp/dir")
         allow(FileUtils).to receive(:mkdir_p)
         allow(FileUtils).to receive(:rm_rf)
+        allow(File).to receive(:exist?).and_return(true)
       end
 
       it "converts ruby test reports to CTRF format" do
@@ -1151,6 +1154,7 @@ RSpec.describe StorageController, type: :controller do
         allow(FileUtils).to receive(:mkdir_p)
         allow(FileUtils).to receive(:rm_rf)
         allow(File).to receive(:read).and_return("file content")
+        allow(File).to receive(:exist?).and_return(true)
 
         # Mock authorize to allow INST target with tlm permission
         allow(controller).to receive(:authorize) do |args|
@@ -1175,6 +1179,7 @@ RSpec.describe StorageController, type: :controller do
         allow(FileUtils).to receive(:mkdir_p)
         allow(FileUtils).to receive(:rm_rf)
         allow(File).to receive(:read).and_return("file content")
+        allow(File).to receive(:exist?).and_return(true)
 
         get :download_file, params: {bucket: "OPENC3_TOOLS_BUCKET", object_id: "tool/file.txt", scope: "DEFAULT"}
         expect(response).to have_http_status(:ok)

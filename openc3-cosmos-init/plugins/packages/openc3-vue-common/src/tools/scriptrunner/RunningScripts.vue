@@ -521,16 +521,23 @@ async function viewScriptLog(script, type) {
     })
     return
   }
-  const response = await Api.get(
-    `/openc3-api/storage/download_file/${encodeURIComponent(
-      logUrl,
-    )}?bucket=OPENC3_LOGS_BUCKET`,
-  )
-  const filenameParts = logUrl.split('/')
-  dialogFilename.value = filenameParts[filenameParts.length - 1]
-  // Decode Base64 string
-  dialogContent.value = window.atob(response.data.contents)
-  showDialog.value = true
+  try {
+    const response = await Api.get(
+      `/openc3-api/storage/download_file/${encodeURIComponent(
+        logUrl,
+      )}?bucket=OPENC3_LOGS_BUCKET`,
+    )
+    const filenameParts = logUrl.split('/')
+    dialogFilename.value = filenameParts[filenameParts.length - 1]
+    // Decode Base64 string
+    dialogContent.value = window.atob(response.data.contents)
+    showDialog.value = true
+  } catch {
+    notify.caution({
+      title: `Unable to open ${dialogName.value.toLowerCase()} ${logUrl}`,
+      body: `You may be able to download this ${dialogName.value.toLowerCase()} manually from the 'logs' bucket at ${logUrl}`,
+    })
+  }
 }
 
 async function downloadScriptLog(script, type, format = 'text') {
