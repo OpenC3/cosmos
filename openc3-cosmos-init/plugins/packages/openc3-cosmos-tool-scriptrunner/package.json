@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-scriptrunner",
-  "version": "7.2.1",
+  "version": "7.2.2-beta0",
   "private": true,
   "type": "module",
   "scripts": {
