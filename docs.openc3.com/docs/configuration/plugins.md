@@ -627,7 +627,7 @@ DB_SHARD 0
 ```
 
 ### STORED_LIMITS_MODE
-<span class="badge badge--secondary since-right">Since _Coming Soon_</span>**Controls how limits are evaluated for stored (non-real-time) telemetry packets**
+<span class="badge badge--secondary since-right">Since 7.2.1</span>**Controls how limits are evaluated for stored (non-real-time) telemetry packets**
 
 Sets the limits handling policy for packets where the stored flag is true (e.g., packets from file interfaces or historical data replay). PROCESS processes limits normally including logging and reactions. LOG evaluates limits and logs state changes but does not trigger limits reactions or update the current limits state used by the API. DISABLE skips limits processing entirely for stored packets.
 
