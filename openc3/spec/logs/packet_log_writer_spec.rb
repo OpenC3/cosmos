@@ -58,6 +58,36 @@ module OpenC3
         end
       end
 
+      it "logs an out of order error for live packets with decreasing time" do
+        capture_io do |stdout|
+          now = Time.now.to_nsec_from_epoch
+          plw = PacketLogWriter.new(@log_dir, 'test')
+          # Live packet at the current time then a live packet one second in the past
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now, false, "\x01\x02", nil, '0-0')
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now - 1_000_000_000, false, "\x03\x04", nil, '0-0')
+          expect(stdout.string).to match("out of order time detected")
+          threads = plw.shutdown
+          threads.each { |t| t.join }
+        end
+      end
+
+      it "does not log an out of order error for stored packets in the past" do
+        capture_io do |stdout|
+          now = Time.now.to_nsec_from_epoch
+          plw = PacketLogWriter.new(@log_dir, 'test')
+          # Live packet at the current time establishes the previous time
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now, false, "\x01\x02", nil, '0-0')
+          # Stored (historical) packet way in the past must not trigger the check
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', 1_000_000_000, true, "\x03\x04", nil, '0-0')
+          # A subsequent live packet at the current time must also not trigger the check
+          # because the stored packet did not update the previous time
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now + 1_000_000_000, false, "\x05\x06", nil, '0-0')
+          expect(stdout.string).to_not match("out of order time detected")
+          threads = plw.shutdown
+          threads.each { |t| t.join }
+        end
+      end
+
       it "writes binary data to a binary file" do
         first_time = Time.now.to_nsec_from_epoch
         last_time = first_time += 1_000_000_000

@@ -96,8 +96,9 @@ module OpenC3
       @mutex.lock if take_mutex
       begin
         if entry_type == :RAW_PACKET or entry_type == :JSON_PACKET
-          # Only care about the timestamps on the real packets being in order
-          process_out_of_order = true
+          # Only care about the timestamps on the real (non-stored) packets being in order.
+          # Stored (historical) packets are intentionally out of order and should bypass the check.
+          process_out_of_order = !stored
         else
           # Metadata timestamps don't matter
           process_out_of_order = false
