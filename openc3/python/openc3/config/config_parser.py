@@ -286,7 +286,9 @@ class ConfigParser:
             return json.loads(value)
         except Exception:
             if warn:
-                Logger.warn(f"{value} is not valid JSON. Falling back to Python literal parsing. Please use valid JSON.")
+                Logger.warn(
+                    f"{value} is not valid JSON. Falling back to Python literal parsing. Please use valid JSON."
+                )
             return literal_eval(value)
 
     # Converts a string representing a defined constant into its value. The
