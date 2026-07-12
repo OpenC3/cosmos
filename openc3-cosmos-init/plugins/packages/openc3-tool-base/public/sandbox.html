@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      This document runs screen BUTTON widget JavaScript in isolation. It is
+      loaded into an <iframe sandbox="allow-scripts"> (no allow-same-origin), so
+      the browser assigns it a UNIQUE OPAQUE ORIGIN: it cannot read the parent's
+      localStorage (the session token), cookies, or DOM.
+
+      The CSP below intentionally allows 'unsafe-inline' and 'unsafe-eval' - but
+      ONLY inside this jail, where it is harmless:
+        - default-src 'none' (with no connect-src/img-src overrides) blocks ALL
+          network access, so author script cannot exfiltrate anything, and
+        - the opaque origin means there is no token/cookie/DOM to steal.
+      All privileged work (api.*, screen.*, runScript, alert, named-widget
+      writes) is proxied to the parent window over postMessage; the parent holds
+      the token and performs the real operations. See buttonScriptSandbox.js.
+
+      Traefik serves this path WITHOUT the app's Content-Security-Policy header
+      (see the sandbox router in traefik*.yaml) so this <meta> policy governs.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; base-uri 'none'; frame-ancestors 'self';"
+    />
+    <title>OpenC3 Button Sandbox</title>
+  </head>
+  <body>
+    <script>
+      ;(function () {
+        'use strict'
+        var pending = new Map()
+        var msgId = 0
+        var parentOrigin = '*'
+        var started = false
+
+        // Send a privileged operation to the parent and resolve when it replies.
+        function callBridge(payload) {
+          return new Promise(function (resolve, reject) {
+            var id = ++msgId
+            pending.set(id, { resolve: resolve, reject: reject })
+            payload.id = id
+            window.parent.postMessage(payload, parentOrigin)
+          })
+        }
+
+        // Run the whole BUTTON action string. Uses DIRECT eval inside this
+        // function so that (1) the injected api/screen/runScript/alert locals
+        // shadow the real globals (window.screen is otherwise read-only), and
+        // (2) `var` declarations persist across ';;' segments - matching the
+        // legacy ButtonWidget behavior exactly.
+        /* eslint-disable no-eval, no-unused-vars */
+        async function run(
+          api,
+          screen,
+          runScript,
+          alert,
+          screenValues,
+          screenTimeZone,
+          __code,
+        ) {
+          var __segments = String(__code).split(';;')
+          for (var __idx = 0; __idx < __segments.length; __idx++) {
+            try {
+              var __result = eval(__segments[__idx].trim())
+              if (__result instanceof Promise) {
+                await __result
+              }
+            } catch (__error) {
+              // eslint-disable-next-line no-console
+              console.error(__error)
+            }
+          }
+        }
+        /* eslint-enable no-eval, no-unused-vars */
+
+        function execute(message) {
+          var snapshot = message.snapshot || {}
+          var screenValues = message.screenValues || {}
+          var screenTimeZone = message.screenTimeZone || 'local'
+
+          // Proxy every api.<method>(...) call across the bridge.
+          var api = new Proxy(
+            {},
+            {
+              get: function (_target, method) {
+                if (typeof method !== 'string') return undefined
+                return function () {
+                  return callBridge({
+                    type: 'call',
+                    target: 'api',
+                    method: method,
+                    args: Array.prototype.slice.call(arguments),
+                  })
+                }
+              },
+            },
+          )
+
+          var screen = {
+            getNamedWidget: function (widgetName) {
+              var snap = snapshot[widgetName] || {}
+              return {
+                text: function () {
+                  return snap.text
+                },
+                selected: function () {
+                  return snap.selected
+                },
+                checked: function () {
+                  return snap.checked
+                },
+                date: function () {
+                  return snap.date
+                },
+                time: function () {
+                  return snap.time
+                },
+                get value() {
+                  return snap.value
+                },
+                set value(newValue) {
+                  callBridge({
+                    type: 'call',
+                    target: 'namedWidget',
+                    name: widgetName,
+                    op: 'setValue',
+                    value: newValue,
+                  })
+                },
+              }
+            },
+            open: function () {
+              return callBridge({
+                type: 'call',
+                target: 'screen',
+                method: 'open',
+                args: Array.prototype.slice.call(arguments),
+              })
+            },
+            close: function () {
+              return callBridge({
+                type: 'call',
+                target: 'screen',
+                method: 'close',
+                args: Array.prototype.slice.call(arguments),
+              })
+            },
+            closeAll: function () {
+              return callBridge({
+                type: 'call',
+                target: 'screen',
+                method: 'closeAll',
+                args: Array.prototype.slice.call(arguments),
+              })
+            },
+          }
+
+          var runScript = function () {
+            return callBridge({
+              type: 'call',
+              target: 'runScript',
+              args: Array.prototype.slice.call(arguments),
+            })
+          }
+          var alertFn = function () {
+            return callBridge({
+              type: 'call',
+              target: 'alert',
+              args: Array.prototype.slice.call(arguments),
+            })
+          }
+
+          run(
+            api,
+            screen,
+            runScript,
+            alertFn,
+            screenValues,
+            screenTimeZone,
+            message.code,
+          ).finally(function () {
+            window.parent.postMessage({ type: 'done' }, parentOrigin)
+          })
+        }
+
+        window.addEventListener('message', function (event) {
+          // Only trust the embedding parent window.
+          if (event.source !== window.parent) return
+          var message = event.data
+          if (!message || typeof message !== 'object') return
+          if (message.type === 'init') {
+            if (started) return // run a given sandbox document only once
+            started = true
+            parentOrigin = event.origin
+            execute(message)
+          } else if (message.type === 'result') {
+            var entry = pending.get(message.id)
+            if (!entry) return
+            pending.delete(message.id)
+            if (message.ok) {
+              entry.resolve(message.value)
+            } else {
+              var error = new Error(
+                (message.error && message.error.message) || 'Bridge error',
+              )
+              if (message.error && message.error.name) {
+                error.name = message.error.name
+              }
+              entry.reject(error)
+            }
+          }
+        })
+
+        // Tell the parent we are ready for the init message. We don't know the
+        // parent origin yet, so use '*'; this message carries no data.
+        window.parent.postMessage({ type: 'ready' }, '*')
+      })()
+    </script>
+  </body>
+</html>
