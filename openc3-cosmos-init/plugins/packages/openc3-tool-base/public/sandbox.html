@@ -4,21 +4,20 @@
     <meta charset="UTF-8" />
     <!--
       This document runs screen BUTTON widget JavaScript in isolation. It is
-      loaded into an <iframe sandbox="allow-scripts"> (no allow-same-origin), so
-      the browser assigns it a UNIQUE OPAQUE ORIGIN: it cannot read the parent's
-      localStorage (the session token), cookies, or DOM.
+      loaded into a sandboxed iframe (sandbox allow-scripts, without
+      allow-same-origin), so the browser assigns it a UNIQUE OPAQUE ORIGIN: it
+      cannot read the parent's localStorage session token, cookies, or DOM.
 
-      The CSP below intentionally allows 'unsafe-inline' and 'unsafe-eval' - but
-      ONLY inside this jail, where it is harmless:
-        - default-src 'none' (with no connect-src/img-src overrides) blocks ALL
-          network access, so author script cannot exfiltrate anything, and
-        - the opaque origin means there is no token/cookie/DOM to steal.
-      All privileged work (api.*, screen.*, runScript, alert, named-widget
-      writes) is proxied to the parent window over postMessage; the parent holds
-      the token and performs the real operations. See buttonScriptSandbox.js.
+      The CSP below intentionally allows unsafe-inline and unsafe-eval, but ONLY
+      inside this jail, where it is harmless: default-src none (with no
+      connect-src or img-src) blocks ALL network access so author script cannot
+      exfiltrate anything, and the opaque origin means there is no token, cookie
+      or DOM to steal. All privileged work is proxied to the parent window over
+      postMessage; the parent holds the token and performs the real operations.
+      See buttonScriptSandbox.js.
 
-      Traefik serves this path WITHOUT the app's Content-Security-Policy header
-      (see the sandbox router in traefik*.yaml) so this <meta> policy governs.
+      Traefik serves this path without the app Content-Security-Policy header
+      (see the sandbox router in the traefik configs) so this policy governs.
     -->
     <meta
       http-equiv="Content-Security-Policy"
@@ -45,6 +44,23 @@
           })
         }
 
+        // Proxy runScript / alert calls across the bridge. Defined at this scope
+        // (not inside execute) so they don't capture any per-run state.
+        function runScript() {
+          return callBridge({
+            type: 'call',
+            target: 'runScript',
+            args: Array.prototype.slice.call(arguments),
+          })
+        }
+        function alertFn() {
+          return callBridge({
+            type: 'call',
+            target: 'alert',
+            args: Array.prototype.slice.call(arguments),
+          })
+        }
+
         // Run the whole BUTTON action string. Uses DIRECT eval inside this
         // function so that (1) the injected api/screen/runScript/alert locals
         // shadow the real globals (window.screen is otherwise read-only), and
@@ -61,9 +77,9 @@
           __code,
         ) {
           var __segments = String(__code).split(';;')
-          for (var __idx = 0; __idx < __segments.length; __idx++) {
+          for (const __segment of __segments) {
             try {
-              var __result = eval(__segments[__idx].trim())
+              var __result = eval(__segment.trim())
               if (__result instanceof Promise) {
                 await __result
               }
@@ -155,21 +171,6 @@
                 args: Array.prototype.slice.call(arguments),
               })
             },
-          }
-
-          var runScript = function () {
-            return callBridge({
-              type: 'call',
-              target: 'runScript',
-              args: Array.prototype.slice.call(arguments),
-            })
-          }
-          var alertFn = function () {
-            return callBridge({
-              type: 'call',
-              target: 'alert',
-              args: Array.prototype.slice.call(arguments),
-            })
           }
 
           run(

@@ -30,7 +30,7 @@ const DEFAULT_TIMEOUT = 120000
 // Property/method names that must never be dispatched (prototype-pollution / escape guards)
 const FORBIDDEN_KEYS = new Set(['constructor', '__proto__', 'prototype'])
 // The only screen methods reachable from the sandbox
-const SCREEN_METHODS = ['open', 'close', 'closeAll']
+const SCREEN_METHODS = new Set(['open', 'close', 'closeAll'])
 // Hazardous command retry mapping (parent-side, argument-based - no string munging)
 const HAZARDOUS_RETRY = {
   cmd: 'cmd_no_hazardous_check',
@@ -176,7 +176,7 @@ export function runButtonScript(options) {
             result = await callApi(method, args)
             break
           case 'screen':
-            if (!SCREEN_METHODS.includes(method)) {
+            if (!SCREEN_METHODS.has(method)) {
               throw new Error(`Unknown screen method: ${method}`)
             }
             result = screen[method](...args)
