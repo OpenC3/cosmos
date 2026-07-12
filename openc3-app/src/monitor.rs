@@ -6,6 +6,7 @@ use crate::docker;
 use crate::process;
 use anyhow::Result;
 use serde::Deserialize;
+use std::time::Duration;
 
 /// A published port mapping as reported by compose ps.
 #[allow(dead_code)]
@@ -96,6 +97,47 @@ impl ContainerStatus {
     /// True when the container is in the running state.
     pub fn is_running(&self) -> bool {
         self.run_state() == RunState::Running
+    }
+
+    /// Best-effort uptime parsed from the compose `Status` string (e.g. "Up 5
+    /// minutes", "Up 45 seconds", "Up About a minute"). `None` when not running.
+    /// Coarse by design — it's only used against a warm-up threshold.
+    pub fn uptime(&self) -> Option<Duration> {
+        if !self.is_running() {
+            return None;
+        }
+        let status = self.status.to_lowercase();
+        // Strip the "up " prefix and any trailing "(healthy)" annotation.
+        let phrase = match status.strip_prefix("up ") {
+            Some(rest) => rest.split('(').next().unwrap_or("").trim(),
+            // Running but an unrecognized status: treat as long-up (don't stall).
+            None => return Some(Duration::from_secs(u64::MAX / 2)),
+        };
+        if phrase.contains("less than a second") {
+            return Some(Duration::ZERO);
+        }
+        // Leading count ("2 minutes"); "about a minute"/"an hour" imply 1 unit.
+        let n: u64 = phrase
+            .split_whitespace()
+            .next()
+            .and_then(|t| t.parse().ok())
+            .unwrap_or(1);
+        let secs = if phrase.contains("second") {
+            n
+        } else if phrase.contains("minute") {
+            n * 60
+        } else if phrase.contains("hour") {
+            n * 3600
+        } else if phrase.contains("day") {
+            n * 86_400
+        } else if phrase.contains("week") {
+            n * 604_800
+        } else if phrase.contains("month") {
+            n * 2_592_000
+        } else {
+            u64::MAX / 2 // running but unparseable unit: treat as long-up
+        };
+        Some(Duration::from_secs(secs))
     }
 
     /// A human display string preferring the descriptive `Status` field.

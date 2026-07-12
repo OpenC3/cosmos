@@ -1,6 +1,6 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG OPENC3_REDIS_IMAGE=valkey/valkey
-ARG OPENC3_REDIS_VERSION=9.1.0-alpine
+ARG OPENC3_REDIS_VERSION=9.1.0
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/${OPENC3_REDIS_IMAGE}:${OPENC3_REDIS_VERSION}
 
@@ -15,12 +15,14 @@ ENV REQUESTS_CA_BUNDLE=/devel/cacert.pem
 ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 
 USER root
-RUN apk update && \
-    apk upgrade && \
+RUN apt-get update && \
+    apt-get -y upgrade && \
+    # bash for the entrypoint; passwd provides usermod/groupmod
+    apt-get install -y --no-install-recommends bash passwd && \
+    rm -rf /var/lib/apt/lists/* && \
     # Modify the valkey user and group to be 1001
-    # The default alpine redis container uses 999
-    # See https://github.com/docker-library/redis/blob/master/7.2/alpine/Dockerfile
-    apk add shadow bash && \
+    # The default valkey container uses 999
+    # See https://github.com/valkey-io/valkey-container
     usermod -u 1001 valkey && \
     groupmod -g 1001 valkey && \
     mkdir /config

@@ -51,6 +51,9 @@ mod imp {
             .with_menu(Box::new(menu))
             .with_tooltip("OpenC3 COSMOS")
             .with_icon(icon())
+            // On macOS the icon is a black+alpha template so the OS tints it to
+            // match the menu bar (light/dark). Other platforms use it as-is.
+            .with_icon_as_template(cfg!(target_os = "macos"))
             .build()
         {
             // Keep the icon (and its menu/items) alive for the process lifetime.
@@ -74,14 +77,71 @@ mod imp {
         action
     }
 
-    /// A small solid OpenC3-blue 32x32 icon (no asset file needed).
+    /// "COS" over "MOS" on a transparent background, rendered from a tiny
+    /// built-in 5x7 bitmap font (no asset file / font crate needed). On macOS
+    /// the letters are black so the template icon tints correctly for the menu
+    /// bar; elsewhere they're white (visible on the typically-dark tray).
     fn icon() -> Icon {
-        let (w, h) = (32u32, 32u32);
-        let mut rgba = Vec::with_capacity((w * h * 4) as usize);
-        for _ in 0..(w * h) {
-            rgba.extend_from_slice(&[0x1E, 0x88, 0xE5, 0xFF]);
+        const W: usize = 64;
+        const H: usize = 64;
+        const SCALE: usize = 3; // pixels per font cell
+        const CELL_W: usize = 5;
+        const CELL_H: usize = 7;
+        const CHAR_W: usize = CELL_W * SCALE; // 15
+        const CHAR_H: usize = CELL_H * SCALE; // 21
+        const CHAR_SP: usize = 3; // gap between characters
+        const LINE_GAP: usize = 6; // gap between the two lines
+
+        // Transparent background (all-zero RGBA); opaque letters.
+        let fg: [u8; 4] = if cfg!(target_os = "macos") {
+            [0x00, 0x00, 0x00, 0xFF] // black: macOS template tints it per menu bar
+        } else {
+            [0xFF, 0xFF, 0xFF, 0xFF] // white: visible on Windows' dark tray
+        };
+
+        let mut rgba = vec![0u8; W * H * 4]; // zeroed = fully transparent
+
+        let line_w = 3 * CHAR_W + 2 * CHAR_SP;
+        let x0 = (W - line_w) / 2;
+        let y0 = (H - (2 * CHAR_H + LINE_GAP)) / 2;
+
+        let mut draw = |text: &str, oy: usize| {
+            for (i, ch) in text.chars().enumerate() {
+                let ox = x0 + i * (CHAR_W + CHAR_SP);
+                for (ry, row) in glyph(ch).iter().enumerate() {
+                    for (cx, cell) in row.bytes().enumerate() {
+                        if cell != b'#' {
+                            continue;
+                        }
+                        for dy in 0..SCALE {
+                            for dx in 0..SCALE {
+                                let x = ox + cx * SCALE + dx;
+                                let y = oy + ry * SCALE + dy;
+                                if x < W && y < H {
+                                    let idx = (y * W + x) * 4;
+                                    rgba[idx..idx + 4].copy_from_slice(&fg);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        draw("COS", y0);
+        draw("MOS", y0 + CHAR_H + LINE_GAP);
+
+        Icon::from_rgba(rgba, W as u32, H as u32).expect("valid tray icon")
+    }
+
+    /// 5x7 bitmap glyphs for the letters used in "COS" / "MOS".
+    fn glyph(c: char) -> [&'static str; 7] {
+        match c {
+            'C' => [".###.", "#...#", "#....", "#....", "#....", "#...#", ".###."],
+            'O' => [".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
+            'S' => [".####", "#....", "#....", ".###.", "....#", "....#", "####."],
+            'M' => ["#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#"],
+            _ => ["", "", "", "", "", "", ""],
         }
-        Icon::from_rgba(rgba, w, h).expect("valid tray icon")
     }
 }
 

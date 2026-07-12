@@ -411,7 +411,7 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    docker run -it --rm --privileged --pid=host ${OPENC3_DEPENDENCY_REGISTRY}/alpine:${ALPINE_VERSION}.${ALPINE_BUILD} nsenter -t 1 -m -u -n -i sh
+    docker run -it --rm --privileged --pid=host ${OPENC3_DEPENDENCY_REGISTRY}/debian:${DEBIAN_RELEASE:-trixie}-slim nsenter -t 1 -m -u -n -i sh
     ;;
   * )
     usage $0

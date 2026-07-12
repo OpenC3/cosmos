@@ -87,6 +87,11 @@ PUMP_CHUNK_BYTES = 65536
 # How long a lone data-path peer waits for its partner before giving up.
 PAIR_TIMEOUT = 300
 
+# How long a request/response handler waits for the client to finish reading and
+# close before tearing the connection down (avoids a close race that truncates
+# the response with "connection lost" over real networking).
+CLOSE_DRAIN_TIMEOUT = 10
+
 
 class BridgeMicroservice(Microservice):
     """The Iroh hub: rendezvous for the data path plus control APIs.
@@ -113,6 +118,12 @@ class BridgeMicroservice(Microservice):
         # api/authorize each cycle; held in memory only (matches the ephemeral,
         # never-persisted host keys).
         self._authorized_hosts = set()
+        # Cache of extracted plugin-gem files so we only unzip+hash a gem when it
+        # is new or its file has changed. gem_path -> (mtime, size, files) where
+        # files is {relative_path: (content_bytes, sha256_hex)}. Survives across
+        # connections (the hub process is long-lived), so only a genuine gem
+        # change (or a hub restart) does the expensive work.
+        self._gem_file_cache = {}
 
     def _streams(self):
         streams = []
@@ -275,7 +286,7 @@ class BridgeMicroservice(Microservice):
         with contextlib.suppress(Exception):
             await send.write_all(json.dumps(response).encode())
             await send.finish()
-        await self._close(conn)
+        await self._drain_close(conn)
 
     def _authorized_interface(self, conn, name):
         """True if `conn`'s remote identity matches the COSMOS bridge_interface
@@ -367,7 +378,7 @@ class BridgeMicroservice(Microservice):
         await send.write_all(payload)
         with contextlib.suppress(Exception):
             await send.finish()
-        await self._close(conn)
+        await self._drain_close(conn)
 
     def _host_microservices_payload(self):
         """Build the JSON spawn list for this bridge, resolving secret_options
@@ -415,7 +426,7 @@ class BridgeMicroservice(Microservice):
         with contextlib.suppress(Exception):
             await send.write_all(b'{"ok":true}')
             await send.finish()
-        await self._close(conn)
+        await self._drain_close(conn)
 
     async def _serve_files(self, conn):
         """Ship the scope's plugin lib/ files to openc3-app as a hash-delta.
@@ -438,55 +449,104 @@ class BridgeMicroservice(Microservice):
         have = {}
         with contextlib.suppress(ValueError, TypeError):
             have = json.loads(request or b"{}").get("have") or {}
-        current = self._collect_plugin_files()
-        files = []
-        for path, content in current.items():
-            digest = hashlib.sha256(content).hexdigest()
-            if have.get(path) != digest:
-                files.append({"path": path, "sha256": digest, "content": base64.b64encode(content).decode()})
-        deletions = [path for path in have if path not in current]
-        payload = json.dumps({"files": files, "deletions": deletions}).encode()
+        # Reading/untarring the plugin gems and hashing+encoding their files is
+        # slow and fully synchronous. Running it on the event loop would stall the
+        # data-path _pump tasks for the duration, so a client that polls this API
+        # (openc3-app, every operator cycle) causes periodic latency bursts in the
+        # bridged stream. The plugin list is a fast Redis read done on the loop;
+        # the heavy disk/CPU work runs in a thread so byte pumping keeps going.
+        gems = self._plugin_gem_names()
+        loop = asyncio.get_event_loop()
+        payload = await loop.run_in_executor(None, self._build_files_payload, gems, have)
         with contextlib.suppress(Exception):
             await send.write_all(payload)
             await send.finish()
-        await self._close(conn)
+        await self._drain_close(conn)
 
-    def _collect_plugin_files(self):
-        """Return {relative_path: bytes} of the files host interfaces may need
-        from this scope's plugin gems: everything under ``lib/`` plus any
-        ``requirements.txt`` / ``pyproject.toml`` (used to provision the host
-        venv). Read from the .gem files cached on the /gems volume.
+    def _plugin_gem_names(self):
+        """The set of plugin gem filenames installed in this scope (Redis read)."""
+        plugins = Model.all(f"{self.scope}__openc3_plugins")
+        return {str(name).split("__")[0] for name in plugins}
 
-        Paths are prefixed by the gem's stem (``<gem>/lib/...``) so files from
-        different plugins don't collide and openc3-app can put each lib dir on
-        PYTHONPATH / install each gem's Python requirements.
+    def _build_files_payload(self, gems, have):
+        """Build the api/files hash-delta JSON (changed/new files + deletions) for
+        `gems` vs the client's `have` manifest. Pure disk/CPU work (no Redis) so it
+        runs in a thread off the event loop — see `_serve_files`."""
+        current = self._collect_plugin_files(gems)
+        files = []
+        for path, (content, digest) in current.items():
+            if have.get(path) != digest:
+                files.append({"path": path, "sha256": digest, "content": base64.b64encode(content).decode()})
+        deletions = [path for path in have if path not in current]
+        return json.dumps({"files": files, "deletions": deletions}).encode()
+
+    def _collect_plugin_files(self, gems):
+        """Return {relative_path: (content_bytes, sha256_hex)} of the files host
+        interfaces may need from the given plugin `gems`: everything under
+        ``lib/`` plus any ``requirements.txt`` / ``pyproject.toml`` (used to
+        provision the host venv). Read from the .gem files cached on the /gems
+        volume.
+
+        A gem is only opened/unzipped/hashed when it is new or its file has
+        changed (by mtime + size); otherwise the cached result is reused, so
+        repeated syncs of unchanged plugins do no work. Paths are prefixed by the
+        gem's stem (``<gem>/lib/...``) so files from different plugins don't
+        collide and openc3-app can put each lib dir on PYTHONPATH / install each
+        gem's Python requirements.
         """
         files = {}
-        plugins = Model.all(f"{self.scope}__openc3_plugins")
-        gems = {str(name).split("__")[0] for name in plugins}
+        seen_paths = set()
         for gem in gems:
             gem_path = self._find_gem(gem)
             if not gem_path:
                 self.logger.warn(f"Plugin gem {gem} not found under {GEM_HOME}; skipping file sync")
                 continue
-            stem = gem[:-4] if gem.endswith(".gem") else gem
+            seen_paths.add(gem_path)
             try:
-                # A .gem is an (uncompressed) tar containing data.tar.gz.
-                with tarfile.open(gem_path, "r") as outer:
-                    data_member = outer.extractfile("data.tar.gz")
-                    if data_member is None:
-                        continue
-                    with tarfile.open(fileobj=io.BytesIO(data_member.read()), mode="r:gz") as data:
-                        for member in data.getmembers():
-                            if not member.isfile():
-                                continue
-                            if member.name.startswith("lib/") or member.name in ("requirements.txt", "pyproject.toml"):
-                                extracted = data.extractfile(member)
-                                if extracted is not None:
-                                    files[f"{stem}/{member.name}"] = extracted.read()
-            except Exception as error:
-                self.logger.warn(f"Failed reading files from {gem}: {type(error).__name__}: {error}")
+                stat = os.stat(gem_path)
+                stamp = (stat.st_mtime_ns, stat.st_size)
+            except OSError as error:
+                self.logger.warn(f"Failed to stat {gem}: {type(error).__name__}: {error}")
+                continue
+            cached = self._gem_file_cache.get(gem_path)
+            if cached is not None and cached[0] == stamp[0] and cached[1] == stamp[1]:
+                files.update(cached[2])  # unchanged: reuse (no unzip, no hash)
+                continue
+            gem_files = self._extract_gem_files(gem, gem_path)
+            if gem_files is None:
+                continue  # read failed; leave any prior cache entry in place
+            self._gem_file_cache[gem_path] = (stamp[0], stamp[1], gem_files)
+            files.update(gem_files)
+        # Drop cache entries for gems no longer installed so it can't grow forever.
+        for stale in [path for path in self._gem_file_cache if path not in seen_paths]:
+            del self._gem_file_cache[stale]
         return files
+
+    def _extract_gem_files(self, gem, gem_path):
+        """Unzip a single plugin gem and hash its host-relevant files. Returns
+        {relative_path: (content_bytes, sha256_hex)}, or None if the gem couldn't
+        be read (so the caller keeps any previously cached copy)."""
+        stem = gem[:-4] if gem.endswith(".gem") else gem
+        gem_files = {}
+        try:
+            # A .gem is an (uncompressed) tar containing data.tar.gz.
+            with tarfile.open(gem_path, "r") as outer:
+                data_member = outer.extractfile("data.tar.gz")
+                if data_member is None:
+                    return gem_files
+                with tarfile.open(fileobj=io.BytesIO(data_member.read()), mode="r:gz") as data:
+                    for member in data.getmembers():
+                        if not member.isfile():
+                            continue
+                        if member.name.startswith("lib/") or member.name in ("requirements.txt", "pyproject.toml"):
+                            extracted = data.extractfile(member)
+                            if extracted is not None:
+                                content = extracted.read()
+                                gem_files[f"{stem}/{member.name}"] = (content, hashlib.sha256(content).hexdigest())
+        except Exception as error:
+            self.logger.warn(f"Failed reading files from {gem}: {type(error).__name__}: {error}")
+            return None
+        return gem_files
 
     def _find_gem(self, gem):
         for sub in ("cosmoscache", "cache"):
@@ -539,6 +599,15 @@ class BridgeMicroservice(Microservice):
             result = conn.close()
             if asyncio.iscoroutine(result):
                 await result
+
+    async def _drain_close(self, conn):
+        """Close a request/response connection only after the client has finished
+        reading the response and closed its side. Closing immediately after
+        ``send.finish()`` can send CONNECTION_CLOSE before the response is
+        delivered, which the client sees as "connection lost"."""
+        with contextlib.suppress(Exception):
+            await asyncio.wait_for(conn.closed(), timeout=CLOSE_DRAIN_TIMEOUT)
+        await self._close(conn)
 
     def _secret_name(self):
         """Secrets-store key holding this bridge's private key."""

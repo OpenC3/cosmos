@@ -64,9 +64,8 @@ struct Shared {
     /// A status refresh (which runs the blocking `docker ps`/`stats`) is in
     /// flight on a background thread.
     refreshing: bool,
-    /// Latest status snapshot and summary, consumed by the UI on the next tick.
+    /// Latest status snapshot, consumed by the UI on the next tick.
     statuses: Option<Vec<ContainerStatus>>,
-    status_summary: Option<String>,
     /// Whether COSMOS is up and serving its web UI (index.html).
     cosmos_ready: Option<bool>,
     /// An environment re-check (which runs the blocking `docker info`) is in
@@ -101,9 +100,11 @@ struct State {
     cosmos_ready: bool,
     /// False until the first status snapshot has been received.
     status_loaded: bool,
+    /// Whether the Container Status section is collapsed (starts collapsed,
+    /// showing just a summary; click the header to expand the full table).
+    status_collapsed: bool,
     /// Animation frame for the loading spinner.
     spinner: usize,
-    summary: String,
     log: Vec<String>,
     busy: bool,
     /// When set, the UI shows the logs panel for this service.
@@ -132,13 +133,21 @@ type OperatorHandles = (
 fn start_operator(ctx: &Context) -> OperatorHandles {
     let mut operator =
         MicroserviceOperator::new(ctx.paths.python.clone(), ctx.paths.microservices.clone());
-    match crate::enroll::connect_bridge(ctx) {
-        Ok((ticket, client)) => {
-            operator.set_bridge_ticket(ticket);
-            operator.set_bridge_client(client);
-        }
-        Err(reason) => operator.set_unpaired_reason(reason),
-    }
+    // Auto-enroll runs in the operator loop once COSMOS has been up a while
+    // (retried, bounded, re-armed on restart). Give it a connector + a cheap
+    // COSMOS-up check, both capturing the context.
+    let connect_ctx = ctx.clone();
+    let ready_ctx = ctx.clone();
+    operator.set_bridge_connector(
+        Box::new(move || crate::enroll::connect_bridge(&connect_ctx)),
+        // COSMOS "uptime" = how long the whole stack has been up = the uptime of
+        // its most-recently-started running container.
+        Box::new(move || {
+            crate::monitor::snapshot(&ready_ctx)
+                .ok()
+                .and_then(|s| s.iter().filter_map(|c| c.uptime()).min())
+        }),
+    );
     let status = operator.status_handle();
     let bridge_status = operator.bridge_status_handle();
     let shutdown = operator.shutdown_handle();
@@ -164,6 +173,8 @@ enum Message {
     CancelCleanup,
     BridgeTokenChanged(String),
     SubmitBridgeToken,
+    /// Expand/collapse the Container Status section.
+    ToggleStatus,
     ViewLogs(String),
     RefreshLogs,
     CloseLogs,
@@ -208,8 +219,8 @@ impl State {
             microservices: Vec::new(),
             cosmos_ready: false,
             status_loaded: false,
+            status_collapsed: true,
             spinner: 0,
-            summary: "Starting up...".to_string(),
             log: vec!["OpenC3 COSMOS control panel ready.".to_string()],
             busy: false,
             viewing_logs: None,
@@ -279,11 +290,9 @@ impl State {
             if let Ok(mut s) = shared.lock() {
                 match result {
                     Ok(statuses) => {
-                        s.status_summary = Some(monitor::summarize(&statuses));
                         s.statuses = Some(statuses);
                     }
-                    Err(e) => {
-                        s.status_summary = Some(format!("status unavailable: {e}"));
+                    Err(_e) => {
                         s.statuses = Some(Vec::new());
                     }
                 }
@@ -310,9 +319,6 @@ impl State {
             if let Some(statuses) = s.statuses.take() {
                 self.statuses = statuses;
                 self.status_loaded = true;
-            }
-            if let Some(summary) = s.status_summary.take() {
-                self.summary = summary;
             }
             if let Some(env) = s.env.take() {
                 self.env = env;
@@ -460,6 +466,10 @@ impl State {
                         commands::cleanup(&ctx, false, true)
                     });
                 }
+                Task::none()
+            }
+            Message::ToggleStatus => {
+                self.status_collapsed = !self.status_collapsed;
                 Task::none()
             }
             Message::BridgeTokenChanged(value) => {
@@ -799,18 +809,6 @@ impl State {
             })
             .collect();
 
-        // Top summary reflects only the visible containers (e.g. "8/8 healthy"
-        // once the hidden init container has completed).
-        let summary_text = if !self.status_loaded {
-            self.summary.clone()
-        } else if visible.is_empty() {
-            "No COSMOS containers are running.".to_string()
-        } else {
-            let healthy = visible.iter().filter(|c| c.is_healthy()).count();
-            format!("{}/{} containers healthy", healthy, visible.len())
-        };
-        let summary = text(summary_text).size(16);
-
         let action = |label: &str, msg: Message| {
             let b = button(text(label.to_string())).padding(8);
             if self.busy {
@@ -957,12 +955,32 @@ impl State {
             .into()
         };
 
-        let status_section = column![
-            text("Container Status").size(18),
-            horizontal_rule(2),
-            status_body,
-        ]
-        .spacing(8);
+        // Collapsible header: shows a summary while collapsed, toggles the full
+        // table. Starts collapsed.
+        let status_summary = if !self.status_loaded {
+            "loading…".to_string()
+        } else {
+            format!("{running} of {total} running")
+        };
+        let arrow = if self.status_collapsed {
+            "\u{25B6}" // ▶
+        } else {
+            "\u{25BC}" // ▼
+        };
+        let header_label = if self.status_collapsed {
+            format!("{arrow}  Container Status  ({status_summary})")
+        } else {
+            format!("{arrow}  Container Status")
+        };
+        let status_header = button(text(header_label).size(18))
+            .on_press(Message::ToggleStatus)
+            .style(button::text)
+            .padding(0);
+        let status_section = if self.status_collapsed {
+            column![status_header, horizontal_rule(2)].spacing(8)
+        } else {
+            column![status_header, horizontal_rule(2), status_body].spacing(8)
+        };
 
         // Bridge microservices (host process supervisor) status table.
         let green = Color::from_rgb8(0x4C, 0xAF, 0x50);
@@ -1079,7 +1097,6 @@ impl State {
 
         let content = column![
             title,
-            summary,
             Space::with_height(8),
             open_button,
             Space::with_height(4),

@@ -119,8 +119,9 @@ fn write_current(root: &Path, bridge: &str, ticket: &str) -> Result<()> {
 
 /// Resolve the hub ticket to connect with: an explicit `OPENC3_BRIDGE_TICKET`
 /// (override), else a previously paired bridge (`current.json`), else auto-enroll
-/// with the bridge named by `OPENC3_BRIDGE_NAME`. On failure returns a short
-/// human reason (shown in the GUI) explaining why it isn't paired.
+/// over the local Docker control plane. The bridge defaults to `DEFAULT` (every
+/// scope has a DEFAULT bridge); `OPENC3_BRIDGE_NAME` overrides it. On failure
+/// returns a short human reason (shown in the GUI) explaining why it isn't paired.
 fn resolve_ticket(ctx: &Context, app_public_key_hex: &str) -> Result<String, String> {
     if let Ok(ticket) = std::env::var("OPENC3_BRIDGE_TICKET") {
         if !ticket.is_empty() {
@@ -130,19 +131,21 @@ fn resolve_ticket(ctx: &Context, app_public_key_hex: &str) -> Result<String, Str
     if let Some(current) = read_current(&ctx.paths.root) {
         return Ok(current.ticket);
     }
-    match std::env::var("OPENC3_BRIDGE_NAME") {
-        Ok(name) if !name.is_empty() => {
-            let ticket = auto_enroll(ctx, &name, app_public_key_hex).map_err(|e| {
-                // Full detail to the log; a short reason for the GUI.
-                eprintln!("WARN  [bridge] auto-enroll with '{name}' failed: {e:#}");
-                "auto-enroll failed (is COSMOS running?)".to_string()
-            })?;
-            let _ = write_current(&ctx.paths.root, &name, &ticket);
-            println!("INFO  [bridge] auto-enrolled with '{name}'");
-            Ok(ticket)
-        }
-        _ => Err("no bridge configured — pair with a token".to_string()),
-    }
+    // Auto-enroll on first launch with the scope's DEFAULT bridge (co-located
+    // COSMOS via local Docker). A remote/unmanaged COSMOS instead pairs with a
+    // manual token, which lands in current.json and is picked up above.
+    let name = std::env::var("OPENC3_BRIDGE_NAME")
+        .ok()
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| "DEFAULT".to_string());
+    let ticket = auto_enroll(ctx, &name, app_public_key_hex).map_err(|e| {
+        // Full detail to the log; a short reason for the GUI.
+        eprintln!("WARN  [bridge] auto-enroll with '{name}' failed: {e:#}");
+        "auto-enroll failed (is COSMOS running?)".to_string()
+    })?;
+    let _ = write_current(&ctx.paths.root, &name, &ticket);
+    println!("INFO  [bridge] auto-enrolled with '{name}'");
+    Ok(ticket)
 }
 
 /// Register openc3-app's public key with COSMOS and read back the hub ticket by

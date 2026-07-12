@@ -39,11 +39,30 @@ import asyncio
 import contextlib
 import json
 import os
+import sys
 import traceback
 
 from openc3.top_level import get_class_from_module
 from openc3.utilities.logger import Logger
 from openc3.utilities.string import filename_to_class_name, filename_to_module
+
+
+def add_lib_dirs_to_path():
+    """Put the synced plugin ``lib`` directories on ``sys.path``.
+
+    openc3-app mirrors the scope's plugin files to the host and passes the
+    ``lib`` directories in ``PYTHONPATH`` so host interfaces can import custom
+    interface/protocol code (e.g. a plugin's ``lib/my_interface.py``). We fold
+    those directories into ``sys.path`` explicitly rather than relying on the
+    interpreter picking up the inherited ``PYTHONPATH`` — that inheritance is
+    not dependable when the process is launched by the GUI app, so
+    ``importlib.import_module`` in :func:`build_interface` would otherwise raise
+    ``ModuleNotFoundError``.
+    """
+    pythonpath = os.environ.get("PYTHONPATH", "")
+    for entry in pythonpath.split(os.pathsep):
+        if entry and entry not in sys.path:
+            sys.path.insert(0, entry)
 
 
 # Host interfaces dial the hub on host/<name> (distinct from the COSMOS
@@ -81,6 +100,9 @@ class HostInterfaceMicroservice:
     def build_interface(self):
         """Instantiate the real interface and apply its (already secret-resolved)
         connection options. No protocols/targets are applied on the host."""
+        # Ensure the synced plugin lib dirs are importable before we resolve the
+        # interface class from its module.
+        add_lib_dirs_to_path()
         klass = get_class_from_module(
             filename_to_module(self.config_params[0]),
             filename_to_class_name(self.config_params[0]),

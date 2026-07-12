@@ -9,7 +9,9 @@ WORKDIR /openc3/
 
 USER ${USER_ID}:${GROUP_ID}
 
-COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} . .
+# --chmod=777 sets the mode as the files are copied so we don't need a later
+# recursive chmod (which would duplicate the whole tree into its own layer).
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 . .
 
 USER root
 
@@ -24,37 +26,30 @@ RUN mkdir -p lib/openc3/ext \
     && mkdir -p gems \
     && mv ./*.gem gems/. \
     && gem cleanup \
-    && rm -rf /usr/lib/ruby/gems/*/cache/* /var/cache/apk/* /tmp/* /var/tmp/*
+    && rm -rf /usr/local/lib/ruby/gems/*/cache/* /var/lib/apt/lists/* /var/cache/apt/* /tmp/* /var/tmp/* \
+    # Make root-created build output (compiled C extensions, moved gems)
+    # writable like the rest of the tree. Scoped so it doesn't copy the whole
+    # source tree into this layer.
+    && chmod -R 777 /openc3/lib /openc3/gems
 
 WORKDIR /openc3/python
 
-# Install openc3 Python package and dependencies using UV
-# Copy dependency files first for better layer caching
-COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock python/.python-version ./
+# Install the openc3 Python package and dependencies using UV in a single sync.
+# The build cache mount avoids re-downloading wheels; doing deps + project +
+# smoke test in one layer avoids redundant venv layers. --chmod on the COPY and
+# the trailing chmod keep the venv writable for arbitrary-UID deployments.
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 python/ .
 
-# Install dependencies only (cached when deps don't change)
-# Use build cache mount to avoid re-downloading wheels
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-install-project
-
-# Copy application code (excluding .venv from source)
-COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
-
-# Install the application itself with dependencies already present
-# Use build cache mount to avoid re-downloading wheels
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
-
-# Smoke test: verify the package imports correctly
-RUN uv run python -Ic 'import openc3; print("openc3 imported successfully")'
+    uv sync --frozen --no-dev \
+    && uv run python -Ic 'import openc3; print("openc3 imported successfully")' \
+    && chmod -R 777 /openc3/python/.venv
 
 WORKDIR /openc3/
 
 RUN mkdir /gems && chown openc3:openc3 /gems \
     && mkdir /plugins && chown openc3:openc3 /plugins \
-    && chmod -R 777 /gems/ \
-    && chmod -R 777 /plugins/ \
-    && chmod -R 777 /openc3/
+    && chmod 777 /gems /plugins /openc3
 
 ENV HOME=/openc3
 ENV XDG_CACHE_HOME=/tmp/.cache

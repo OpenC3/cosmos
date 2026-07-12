@@ -95,14 +95,14 @@ ENV UV_PYTHON_DOWNLOADS=never
 ENV OPENC3_PYTHON_BIN=/openc3/python/.venv/bin/python
 
 # rbspy - https://github.com/rbspy/rbspy
-COPY rbspy-x86_64-unknown-linux-gnu-0.39.0.tar.gz /opt/rbspy-x86_64-unknown-linux-gnu-0.39.0.tar.gz
+COPY rbspy-x86_64-unknown-linux-gnu-0.49.0.tar.gz /opt/rbspy-x86_64-unknown-linux-gnu-0.49.0.tar.gz
 RUN cd /opt && \
-    tar -xzf rbspy-x86_64-unknown-linux-gnu-0.39.0.tar.gz && \
+    tar -xzf rbspy-x86_64-unknown-linux-gnu-0.49.0.tar.gz && \
     cp rbspy-x86_64-unknown-linux-gnu /usr/local/bin/rbspy && \
     chmod +x /usr/local/bin/rbspy && \
     cd /opt && \
     rm rbspy-x86_64-unknown-linux-gnu && \
-    rm rbspy-x86_64-unknown-linux-gnu-0.39.0.tar.gz
+    rm rbspy-x86_64-unknown-linux-gnu-0.49.0.tar.gz
 
 # htop - https://github.com/htop-dev/htop
 COPY htop-3.4.1.tar.gz /opt/htop-3.4.1.tar.gz

@@ -21,9 +21,6 @@
     {
       "path": "../openc3-cosmos-dualsense",
     },
-    {
-      "path": "../openc3-cosmos-bridge-dualsense",
-    },
   ],
   "settings": {
     "rubyLsp.bundleGemfile": "openc3/Gemfile",

@@ -6,9 +6,9 @@ FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby:${OPENC3_TAG}
 
 USER root
 
-RUN apk update && \
-    apk add npm && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends nodejs npm && \
     npm install --global --ignore-scripts pnpm@latest-10 && \
-    rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 USER ${USER_ID}:${GROUP_ID}

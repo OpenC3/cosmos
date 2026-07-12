@@ -60,9 +60,9 @@ docker buildx build \
   --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
-  --build-arg ALPINE_VERSION=${ALPINE_VERSION} \
-  --build-arg ALPINE_BUILD=${ALPINE_BUILD} \
-  --build-arg APK_URL=${APK_URL} \
+  --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+  --build-arg RUBY_VERSION=${RUBY_VERSION} \
+  --build-arg APT_URL=${APT_URL} \
   --build-arg RUBYGEMS_URL=${RUBYGEMS_URL} \
   --build-arg PYPI_URL=$PYPI_URL \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
@@ -78,9 +78,9 @@ docker buildx build \
   --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
-  --build-arg ALPINE_VERSION=${ALPINE_VERSION} \
-  --build-arg ALPINE_BUILD=${ALPINE_BUILD} \
-  --build-arg APK_URL=${APK_URL} \
+  --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+  --build-arg RUBY_VERSION=${RUBY_VERSION} \
+  --build-arg APT_URL=${APT_URL} \
   --build-arg RUBYGEMS_URL=${RUBYGEMS_URL} \
   --build-arg PYPI_URL=$PYPI_URL \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
@@ -168,7 +168,7 @@ if [[ "${1:-default}" == "ubi" ]]; then
     --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:latest .
   fi
 else
-  # Standard build uses Valkey alpine image
+  # Standard build uses Valkey Debian image
   # OPENC3_REDIS_IMAGE and OPENC3_REDIS_VERSION default in the Dockerfile
   docker buildx build \
     --platform ${OPENC3_PLATFORMS} \
@@ -218,6 +218,8 @@ docker buildx build \
   --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
+  --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+  --build-arg APT_URL=${APT_URL} \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --build-arg OPENC3_VERSITYGW_VERSION=${OPENC3_VERSITYGW_VERSION} \
   --build-arg OPENC3_UBI_REGISTRY=${OPENC3_UBI_REGISTRY} \
@@ -232,6 +234,8 @@ docker buildx build \
   --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
+  --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+  --build-arg APT_URL=${APT_URL} \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --build-arg OPENC3_VERSITYGW_VERSION=${OPENC3_VERSITYGW_VERSION} \
   --build-arg OPENC3_UBI_REGISTRY=${OPENC3_UBI_REGISTRY} \

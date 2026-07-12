@@ -390,83 +390,63 @@ def build_report(containers)
   report
 end
 
-def check_alpine(client)
-  current_version = ENV.fetch('ALPINE_VERSION')
-  current_build = ENV.fetch('ALPINE_BUILD')
-  major, minor = current_version.split('.').map(&:to_i)
+def check_debian(client)
+  release = ENV.fetch('DEBIAN_RELEASE')
+  ruby_version = ENV.fetch('RUBY_VERSION')
 
-  resp = client.get('http://dl-cdn.alpinelinux.org/alpine/').body
-  # Anchor-based parse so we don't false-positive on substrings (file dates, sizes, etc.).
-  available_minors = resp.scan(/href="v(\d+\.\d+)\/"/).flatten
-  unless available_minors.include?(current_version)
-    puts "ERROR: Could not find Alpine build: #{current_version}"
-    return
+  # Verify the pinned base image tags actually exist on Docker Hub
+  ruby_tag = "#{ruby_version}-slim-#{release}"
+  unless docker_tag_exists?(client, 'library/ruby', ruby_tag)
+    puts "ERROR: Could not find ruby image tag: #{ruby_tag}"
+  end
+  debian_tag = "#{release}-slim"
+  unless docker_tag_exists?(client, 'library/debian', debian_tag)
+    puts "ERROR: Could not find debian image tag: #{debian_tag}"
   end
 
-  # A directory under /alpine/ can exist before any release is cut. Only treat
-  # a candidate as a real upgrade once an alpine-virt ISO has been published.
-  alpine_release_published = lambda do |ver|
-    listing = client.get("http://dl-cdn.alpinelinux.org/alpine/v#{ver}/releases/armv7/").body
-    listing.match?(/alpine-virt-#{Regexp.escape(ver)}\.\d+-armv7\.iso/)
-  rescue StandardError
-    false
+  # Check for a newer Ruby minor/major line built on the same Debian release.
+  # Ruby uses rolling "X.Y-slim-<release>" tags, so there is no patch to bump.
+  major, minor = ruby_version.split('.').map(&:to_i)
+  new_ruby = nil
+  [[major, minor + 1], [major + 1, 0]].each do |mj, mn|
+    candidate = "#{mj}.#{mn}"
+    if docker_tag_exists?(client, 'library/ruby', "#{candidate}-slim-#{release}")
+      new_ruby = candidate
+      break
+    end
   end
+  puts "NOTE: Ruby has a newer version available: #{new_ruby} (current #{ruby_version})" if new_ruby
 
-  new_major_candidate = available_minors.find { |v| v.start_with?("#{major + 1}.") }
-  new_major = new_major_candidate if new_major_candidate && alpine_release_published.call(new_major_candidate)
-  puts "NOTE: Alpine has a new major version: #{new_major}. Read release notes at https://wiki.alpinelinux.org/wiki/Release_Notes_for_Alpine_#{new_major}.0" if new_major
+  # Debian stable releases roll on a multi-year cadence and require manual review
+  # of the release notes (codenames don't sort by version), so just remind.
+  puts "NOTE: Building on Debian '#{release}'. Verify it is still the current stable release: https://www.debian.org/releases/"
 
-  next_minor = "#{major}.#{minor + 1}"
-  new_minor = next_minor if available_minors.include?(next_minor) && alpine_release_published.call(next_minor)
-  puts "NOTE: Alpine has a new minor version: #{new_minor}. Read release notes at https://alpinelinux.org/posts/Alpine-#{new_minor}.0-released.html" if new_minor
-
-  arm_resp = client.get("http://dl-cdn.alpinelinux.org/alpine/v#{current_version}/releases/armv7").body
-  next_build = current_build.to_i + 1
-  new_patch_build = arm_resp.include?("alpine-virt-#{current_version}.#{next_build}-armv7.iso") ? next_build.to_s : nil
-  puts "NOTE: Alpine has a new patch version: #{current_version}.#{new_patch_build}" if new_patch_build
-
-  unless arm_resp.include?("alpine-virt-#{current_version}.#{current_build}-armv7.iso")
-    puts "ERROR: Could not find Alpine build: #{current_version}.#{current_build}"
-  end
-
-  # Verify the roadmap.md documents the current Alpine version
+  # Verify the roadmap.md documents the current Debian release
   roadmap_path = File.join(ROOT_DIR, 'docs.openc3.com/docs/development/roadmap.md')
   if File.exist?(roadmap_path)
     roadmap = File.read(roadmap_path)
-    unless roadmap.include?("Alpine-#{current_version}")
-      puts "WARN: roadmap.md Alpine version does not match ALPINE_VERSION=#{current_version}. Update the Alpine version in docs.openc3.com/docs/development/roadmap.md"
+    unless roadmap.downcase.include?("debian #{release}") || roadmap.downcase.include?("debian-#{release}")
+      puts "WARN: roadmap.md does not mention Debian #{release}. Update the base OS version in docs.openc3.com/docs/development/roadmap.md"
     end
   else
     puts "WARN: Could not find roadmap.md at #{roadmap_path}"
   end
 
-  # Prompt for upgrades; prefer highest (major > minor > patch build)
-  target_version = new_major || new_minor || current_version
-  target_build = (new_major || new_minor) ? '0' : (new_patch_build || current_build)
-  return if target_version == current_version && target_build == current_build
-
-  if prompt_update?(
-    "Update Alpine from #{current_version}.#{current_build} to #{target_version}.#{target_build}?",
-    "#{current_version}.#{current_build}",
-    "#{target_version}.#{target_build}"
-  )
-    update_alpine_files(target_version, target_build)
+  return unless new_ruby
+  if prompt_update?("Update Ruby from #{ruby_version} to #{new_ruby}?", ruby_version, new_ruby)
+    update_debian_files('RUBY_VERSION', new_ruby)
   end
 end
 
-def update_alpine_files(new_version, new_build)
-  env_path = File.join(ROOT_DIR, '.env')
-  update_key_value(env_path, 'ALPINE_VERSION', new_version)
-  update_key_value(env_path, 'ALPINE_BUILD', new_build)
-  # Dockerfiles that pin Alpine as a default ARG
+# Update a build variable (RUBY_VERSION or DEBIAN_RELEASE) in the .env and any
+# Dockerfile that pins it as a default ARG, then reload the in-process ENV.
+def update_debian_files(key, new_value)
+  update_key_value(File.join(ROOT_DIR, '.env'), key, new_value)
   Dir.glob(File.join(ROOT_DIR, '**', 'Dockerfile*')).each do |path|
-    next unless File.read(path).match?(/^ARG\s+ALPINE_(VERSION|BUILD)=/)
-    update_key_value(path, 'ALPINE_VERSION', new_version)
-    update_key_value(path, 'ALPINE_BUILD', new_build)
+    next unless File.read(path).match?(/^ARG\s+#{Regexp.escape(key)}=/)
+    update_key_value(path, key, new_value)
   end
-  # Reload the in-process ENV so subsequent checks see the new value
-  ENV['ALPINE_VERSION'] = new_version
-  ENV['ALPINE_BUILD'] = new_build
+  ENV[key] = new_value
   puts "  NOTE: also update docs.openc3.com/docs/development/roadmap.md and openc3-ruby/Dockerfile-ubi if needed"
 end
 

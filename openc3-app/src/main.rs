@@ -78,16 +78,18 @@ fn run(cli: Cli) -> Result<()> {
             // openc3-app is a client of the COSMOS bridge_microservice hub. It
             // uses its own persistent identity and enrolls (auto over local
             // Docker, or via a configured ticket) to obtain the hub ticket.
-            match enroll::connect_bridge(&ctx) {
-                Ok((ticket, client)) => {
-                    op.set_bridge_ticket(ticket);
-                    op.set_bridge_client(client);
-                }
-                Err(reason) => {
-                    eprintln!("WARN  [bridge] not paired with COSMOS: {reason}; no host microservices will run");
-                    op.set_unpaired_reason(reason);
-                }
-            }
+            // Auto-enroll happens in the operator loop once COSMOS has been up a
+            // while (bounded retries, re-armed on restart).
+            let connect_ctx = ctx.clone();
+            let ready_ctx = ctx.clone();
+            op.set_bridge_connector(
+                Box::new(move || enroll::connect_bridge(&connect_ctx)),
+                Box::new(move || {
+                    monitor::snapshot(&ready_ctx)
+                        .ok()
+                        .and_then(|s| s.iter().filter_map(|c| c.uptime()).min())
+                }),
+            );
             op.run();
             Ok(())
         }

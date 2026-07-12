@@ -138,6 +138,18 @@ fn build_env(name: &str, config: &MicroserviceConfig) -> BTreeMap<String, String
     env
 }
 
+/// When `OPENC3_DEVEL` points at the local openc3 gem (as in the Rails APIs'
+/// `export OPENC3_DEVEL=../openc3`), the local openc3 Python source directory
+/// (`$OPENC3_DEVEL/python`) to install into host venvs instead of the published
+/// `openc3` package. Returns `None` when the variable is unset/empty or doesn't
+/// point at the openc3 Python package (e.g. the `OPENC3_DEVEL=1` boolean form
+/// used by `openc3.sh`), so normal installs are unaffected.
+fn openc3_devel_source() -> Option<PathBuf> {
+    let devel = std::env::var("OPENC3_DEVEL").ok().filter(|v| !v.is_empty())?;
+    let path = Path::new(&devel).join("python");
+    path.join("pyproject.toml").is_file().then_some(path)
+}
+
 /// Path to a venv's Python interpreter.
 fn venv_interpreter(venv_dir: &Path) -> PathBuf {
     if cfg!(windows) {
@@ -166,13 +178,22 @@ fn locate_uv(python_dir: &Path) -> Option<PathBuf> {
 fn ensure_venv(python_dir: &Path, venv_dir: &Path, config: &MicroserviceConfig) {
     let interpreter = venv_interpreter(venv_dir);
     let fingerprint_file = venv_dir.join(".openc3_pip_fingerprint");
+    // In OPENC3_DEVEL mode, install openc3 editable from the local checkout so
+    // host microservices run the working-tree source, not the published package.
+    let devel_openc3 = openc3_devel_source();
+    // The devel source is part of what's installed, so fold it into the
+    // fingerprint: toggling OPENC3_DEVEL (or changing its path) rebuilds the venv.
+    let fingerprint = match &devel_openc3 {
+        Some(src) => format!("{}|openc3-devel:{}", config.pip_fingerprint, src.display()),
+        None => config.pip_fingerprint.clone(),
+    };
     // Skip when the venv is present AND its installed inputs match the current
     // fingerprint. When they differ (e.g. a plugin upgrade changed requirements),
     // rebuild the venv from scratch so removed dependencies are pruned. Callers
     // ensure the process is stopped first, so deleting the venv is safe.
     if interpreter.exists() {
         let current = std::fs::read_to_string(&fingerprint_file).unwrap_or_default();
-        if current == config.pip_fingerprint {
+        if current == fingerprint {
             return;
         }
         log_info(
@@ -181,8 +202,28 @@ fn ensure_venv(python_dir: &Path, venv_dir: &Path, config: &MicroserviceConfig) 
         );
         let _ = std::fs::remove_dir_all(venv_dir);
     }
+    if let Some(src) = &devel_openc3 {
+        log_info(
+            "MicroserviceOperator",
+            &format!("OPENC3_DEVEL: installing openc3 (editable) from {}", src.display()),
+        );
+    }
     let cache = python_dir.join("cache");
     let runtimes = python_dir.join("runtimes");
+    // Add the configured packages to an install command, substituting an
+    // editable install of the local openc3 source when in OPENC3_DEVEL mode.
+    let add_packages = |install: &mut Command| {
+        for p in &config.python_packages {
+            match (p.as_str(), &devel_openc3) {
+                ("openc3", Some(src)) => {
+                    install.arg("-e").arg(src);
+                }
+                _ => {
+                    install.arg(p);
+                }
+            }
+        }
+    };
     // Extra pip targets from plugin files: `-r <requirements>` and project dirs.
     let extra_targets = |install: &mut Command| {
         for req in &config.pip_requirements {
@@ -211,9 +252,7 @@ fn ensure_venv(python_dir: &Path, venv_dir: &Path, config: &MicroserviceConfig) 
         if has_installs(&config.python_packages) {
             let mut install = Command::new(&uv);
             install.args(["pip", "install", "--python"]).arg(&interpreter);
-            for p in &config.python_packages {
-                install.arg(p);
-            }
+            add_packages(&mut install);
             extra_targets(&mut install);
             install.env("UV_CACHE_DIR", &cache);
             let _ = process::run(&mut install);
@@ -225,15 +264,13 @@ fn ensure_venv(python_dir: &Path, venv_dir: &Path, config: &MicroserviceConfig) 
         if has_installs(&config.python_packages) {
             let mut install = Command::new(&interpreter);
             install.arg("-m").arg("pip").arg("install");
-            for p in &config.python_packages {
-                install.arg(p);
-            }
+            add_packages(&mut install);
             extra_targets(&mut install);
             let _ = process::run(&mut install);
         }
     }
     // Record the inputs we installed so we can skip/refresh next time.
-    let _ = std::fs::write(&fingerprint_file, &config.pip_fingerprint);
+    let _ = std::fs::write(&fingerprint_file, &fingerprint);
 }
 
 /// The default Python version for provisioned venvs.
@@ -537,7 +574,44 @@ pub struct MicroserviceOperator {
     bridge_status: Arc<Mutex<BridgeConnectionStatus>>,
     /// Short reason openc3-app isn't paired (no bridge client), shown in the GUI.
     unpaired_reason: Option<String>,
+    /// Called to (re)establish the bridge connection while unpaired.
+    bridge_connector: Option<BridgeConnector>,
+    /// How long the COSMOS containers have been up (None if down). Uses real
+    /// container uptime, so an already-running COSMOS satisfies the warm-up
+    /// immediately, and a restart (uptime drops) re-arms enrollment.
+    cosmos_uptime: Option<CosmosUptime>,
+    /// Earliest instant to run the next COSMOS check / enroll attempt.
+    next_bridge_check: Instant,
+    /// Enroll attempts made during the current COSMOS up-session (bounded).
+    enroll_attempts: u32,
+    /// Earliest instant to run the next plugin-file sync. Syncing hits the hub's
+    /// (synchronous, event-loop-blocking) gem scan, so it's throttled well below
+    /// the operator cycle rather than run every cycle.
+    next_file_sync: Instant,
+    /// Result of the most recent successful file sync, re-applied to configs each
+    /// cycle so a throttled sync still provides PYTHONPATH / pip inputs.
+    last_sync: Option<crate::hostfiles::SyncResult>,
 }
+
+/// Establishes (or re-establishes) the bridge connection; returns the hub ticket
+/// and client, or a short human reason for the GUI. Retried while unpaired.
+type BridgeConnector = Box<dyn Fn() -> Result<(String, BridgeClient), String> + Send>;
+/// Returns how long the COSMOS containers have been up (None if not running).
+type CosmosUptime = Box<dyn Fn() -> Option<Duration> + Send>;
+
+/// COSMOS must be up this long before we attempt auto-enroll (lets the bridge
+/// microservice finish starting and publish its ticket).
+const BRIDGE_WARMUP: Duration = Duration::from_secs(30);
+/// Throttle for the COSMOS check + spacing between enroll attempts.
+const BRIDGE_CHECK_INTERVAL: Duration = Duration::from_secs(15);
+/// Max enroll attempts per COSMOS up-session before giving up (until it
+/// restarts) — so we don't cycle forever.
+const BRIDGE_MAX_ATTEMPTS: u32 = 3;
+/// How often to re-sync the scope's plugin files from the hub. Plugin code only
+/// changes on install/upgrade, so this is intentionally slow: each sync triggers
+/// a full gem scan on the hub, and syncing every cycle caused periodic latency
+/// bursts in the bridged data stream.
+const FILE_SYNC_INTERVAL: Duration = Duration::from_secs(60);
 
 impl MicroserviceOperator {
     pub fn new(python_dir: PathBuf, microservices_dir: PathBuf) -> Self {
@@ -574,14 +648,15 @@ impl MicroserviceOperator {
             host_keys: BTreeMap::new(),
             bridge_status: Arc::new(Mutex::new(BridgeConnectionStatus::default())),
             unpaired_reason: None,
+            bridge_connector: None,
+            cosmos_uptime: None,
+            next_bridge_check: Instant::now(),
+            enroll_attempts: 0,
+            next_file_sync: Instant::now(),
+            last_sync: None,
         }
     }
 
-    /// Record why openc3-app isn't paired (from a failed connect attempt), so the
-    /// GUI can show a short reason instead of a bare "not paired".
-    pub fn set_unpaired_reason(&mut self, reason: String) {
-        self.unpaired_reason = Some(reason);
-    }
 
     /// A shared handle to the latest bridge connection status (read by the GUI).
     #[allow(dead_code)] // used by the GUI, not the headless binary
@@ -636,17 +711,86 @@ impl MicroserviceOperator {
         }
     }
 
-    /// Set the Iroh bridge ticket to hand to each microservice (via the
-    /// `OPENC3_BRIDGE_TICKET` environment variable).
-    pub fn set_bridge_ticket(&mut self, ticket: String) {
-        self.bridge_ticket = Some(ticket);
+    /// Provide the connector used to (re)establish the bridge connection and a
+    /// cheap check for whether the COSMOS containers are up. The operator only
+    /// attempts auto-enroll once COSMOS has been up for [`BRIDGE_WARMUP`], makes
+    /// a bounded number of attempts (so it doesn't cycle forever), and re-arms
+    /// each time COSMOS restarts.
+    pub fn set_bridge_connector(&mut self, connector: BridgeConnector, cosmos_uptime: CosmosUptime) {
+        self.bridge_connector = Some(connector);
+        self.cosmos_uptime = Some(cosmos_uptime);
+        self.next_bridge_check = Instant::now();
+        self.enroll_attempts = 0;
     }
 
-    /// Set the client to the COSMOS bridge_microservice hub. Also wires the log
-    /// forwarder so host microservice stdout is relayed up to COSMOS.
-    pub fn set_bridge_client(&mut self, client: BridgeClient) {
+    /// Apply a freshly-established connection: hand its ticket to host
+    /// microservices (OPENC3_BRIDGE_TICKET) and wire the log forwarder.
+    fn apply_connection(&mut self, ticket: String, client: BridgeClient) {
+        self.bridge_ticket = Some(ticket);
         self.log_tx = Some(client.log_sender());
         self.bridge_client = Some(client);
+        self.unpaired_reason = None;
+    }
+
+    /// While unpaired, gate auto-enroll on COSMOS being up for a warm-up period,
+    /// with bounded attempts per up-session (re-armed on restart). Called once
+    /// per operator cycle; throttled to [`BRIDGE_CHECK_INTERVAL`].
+    fn maybe_connect(&mut self) {
+        if self.bridge_client.is_some()
+            || self.bridge_connector.is_none()
+            || self.cosmos_uptime.is_none()
+        {
+            return;
+        }
+        let now = Instant::now();
+        if now < self.next_bridge_check {
+            return;
+        }
+        self.next_bridge_check = now + BRIDGE_CHECK_INTERVAL;
+
+        let uptime = match &self.cosmos_uptime {
+            Some(check) => check(),
+            None => return,
+        };
+        match uptime {
+            None => {
+                // COSMOS down: reset so attempts re-arm when it starts.
+                self.enroll_attempts = 0;
+                self.unpaired_reason = Some("waiting for COSMOS to start".to_string());
+                return;
+            }
+            // Freshly (re)started: wait for the warm-up. Resetting attempts here
+            // is what re-arms enrollment each time COSMOS restarts.
+            Some(up) if up < BRIDGE_WARMUP => {
+                self.enroll_attempts = 0;
+                self.unpaired_reason = Some("COSMOS starting — auto-enroll shortly".to_string());
+                return;
+            }
+            Some(_) => {}
+        }
+        if self.enroll_attempts >= BRIDGE_MAX_ATTEMPTS {
+            // Gave up for this up-session; wait for a COSMOS restart to re-arm.
+            return;
+        }
+        self.enroll_attempts += 1;
+        let result = match &self.bridge_connector {
+            Some(connector) => connector(),
+            None => return,
+        };
+        match result {
+            Ok((ticket, client)) => {
+                self.apply_connection(ticket, client);
+                log_info("bridge", "Paired with COSMOS");
+            }
+            Err(reason) => {
+                let gave_up = self.enroll_attempts >= BRIDGE_MAX_ATTEMPTS;
+                self.unpaired_reason = Some(if gave_up {
+                    format!("auto-enroll failed after {BRIDGE_MAX_ATTEMPTS} tries — pair with a token ({reason})")
+                } else {
+                    reason
+                });
+            }
+        }
     }
 
     /// Pass a host microservice's stream/interface name so it dials the hub on
@@ -698,6 +842,7 @@ impl MicroserviceOperator {
     /// Fetch the desired microservices (this shard only), diff against the
     /// previous set, and queue the resulting new/changed/removed work.
     fn update(&mut self) {
+        self.maybe_connect();
         self.previous_microservices = self.microservices.clone();
         let mut all = self.fetch();
         all.retain(|_name, config| config.shard == self.shard);
@@ -745,6 +890,35 @@ impl MicroserviceOperator {
         }
     }
 
+    /// Re-sync the scope's plugin files from the hub into `<root>/host_files`,
+    /// caching the result in `self.last_sync`. Throttled to [`FILE_SYNC_INTERVAL`]
+    /// (but always runs once, right after pairing, when nothing is cached yet)
+    /// because each sync makes the hub scan every plugin gem — doing that every
+    /// operator cycle stalled the hub's event loop and made the bridged data
+    /// stream bursty. On failure the previous cache is kept and a retry happens
+    /// next cycle rather than after the full interval.
+    fn maybe_sync_files(&mut self) {
+        let due = self.last_sync.is_none() || Instant::now() >= self.next_file_sync;
+        if !due {
+            return;
+        }
+        let Some(client) = &self.bridge_client else {
+            return;
+        };
+        let host_files_dir = self
+            .microservices_dir
+            .parent()
+            .unwrap_or(&self.microservices_dir)
+            .join("host_files");
+        match crate::hostfiles::sync(client, &host_files_dir) {
+            Ok(sync) => {
+                self.last_sync = Some(sync);
+                self.next_file_sync = Instant::now() + FILE_SYNC_INTERVAL;
+            }
+            Err(error) => log_error("bridge", &format!("Failed to sync plugin files: {error}")),
+        }
+    }
+
     /// Fetch the desired host microservices from the bridge hub. On a transient
     /// poll failure the previous set is kept so running processes aren't torn
     /// down; with no bridge configured the set is empty.
@@ -772,36 +946,25 @@ impl MicroserviceOperator {
         let mut configs = host_specs_to_configs(specs);
 
         // Sync the scope's plugin files (lib/, requirements, pyproject) so host
-        // interfaces can use plugin code. Set each host runner's PYTHONPATH and
-        // its venv's pip inputs from the synced files.
-        if let Some(client) = &self.bridge_client {
-            let host_files_dir = self
-                .microservices_dir
-                .parent()
-                .unwrap_or(&self.microservices_dir)
-                .join("host_files");
-            match crate::hostfiles::sync(client, &host_files_dir) {
-                Ok(sync) => {
-                    let pythonpath = std::env::join_paths(&sync.lib_dirs)
-                        .ok()
-                        .map(|p| p.to_string_lossy().into_owned());
-                    let requirements: Vec<String> = sync
-                        .requirements
-                        .iter()
-                        .map(|p| p.to_string_lossy().into_owned())
-                        .collect();
-                    let projects: Vec<String> =
-                        sync.projects.iter().map(|p| p.to_string_lossy().into_owned()).collect();
-                    for config in configs.values_mut() {
-                        if let Some(pp) = &pythonpath {
-                            config.env.insert("PYTHONPATH".to_string(), pp.clone());
-                        }
-                        config.pip_requirements = requirements.clone();
-                        config.pip_projects = projects.clone();
-                        config.pip_fingerprint = sync.pip_fingerprint.clone();
-                    }
+        // interfaces can use plugin code, then set each host runner's PYTHONPATH
+        // and its venv's pip inputs from the (possibly cached) sync result. The
+        // sync itself is throttled — see maybe_sync_files.
+        self.maybe_sync_files();
+        if let Some(sync) = &self.last_sync {
+            let pythonpath = std::env::join_paths(&sync.lib_dirs)
+                .ok()
+                .map(|p| p.to_string_lossy().into_owned());
+            let requirements: Vec<String> =
+                sync.requirements.iter().map(|p| p.to_string_lossy().into_owned()).collect();
+            let projects: Vec<String> =
+                sync.projects.iter().map(|p| p.to_string_lossy().into_owned()).collect();
+            for config in configs.values_mut() {
+                if let Some(pp) = &pythonpath {
+                    config.env.insert("PYTHONPATH".to_string(), pp.clone());
                 }
-                Err(error) => log_error("bridge", &format!("Failed to sync plugin files: {error}")),
+                config.pip_requirements = requirements.clone();
+                config.pip_projects = projects.clone();
+                config.pip_fingerprint = sync.pip_fingerprint.clone();
             }
         }
 
