@@ -132,10 +132,15 @@
         </v-toolbar>
         <v-card-text class="mt-6">
           Warning: Command {{ hazardousCommand }} is Hazardous. Send?
-          <br />
-          <span class="openc3-yellow">
-            Description: {{ commandDescription }}
-          </span>
+          <div class="mt-1">Description: {{ commandDescription }}</div>
+          <div
+            v-if="hazardousDescription"
+            class="openc3-yellow font-weight-bold mt-2"
+            data-test="hazardous-description"
+          >
+            <v-icon class="mr-1">mdi-alert</v-icon>
+            Hazardous: {{ hazardousDescription }}
+          </div>
         </v-card-text>
         <v-card-actions class="px-2">
           <v-spacer />
@@ -228,6 +233,7 @@ export default {
       targetName: '',
       commandName: '',
       commandDescription: '',
+      hazardousDescription: '',
       paramList: '',
       queueName: null,
       validateParameter: null,
@@ -447,6 +453,7 @@ export default {
     onCommandLoaded(command) {
       if (command) {
         this.commandDescription = command.description
+        this.hazardousDescription = command.hazardous_description || ''
         if (command.screen) {
           this.loadScreen(command.screen[0], command.screen[1]).then(
             (response) => {
@@ -474,6 +481,7 @@ export default {
         }
       } else {
         this.commandDescription = ''
+        this.hazardousDescription = ''
         this.screenTarget = null
         this.screenName = null
         this.screenDefinition = null

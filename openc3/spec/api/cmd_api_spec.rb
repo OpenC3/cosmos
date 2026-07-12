@@ -138,6 +138,15 @@ module OpenC3
           expect { @api.send(method, "INST", "COLLECT", "TYPE", "DURATION") }.to raise_error(/Invalid number of arguments/)
         end
 
+        it "records the original queuing user (author) via queue_username" do
+          command = @api.send(method, "INST", "ABORT", queue_username: 'original_author')
+          # queue_username (author, shown as "Queued By") is recorded separately
+          # from username (executor, shown as "Executed By")
+          expect(command['queue_username']).to eql 'original_author'
+          # username is the executing user/process, not the author
+          expect(command['username']).to_not eql 'original_author'
+        end
+
         it "warns about required parameters" do
           expect { @api.send(method, "INST COLLECT with DURATION 5") }.to raise_error(/Required/)
         end

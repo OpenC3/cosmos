@@ -55,7 +55,7 @@
             :items="runningScripts"
             :items-length="runningTotal"
             :loading="runningLoading"
-            :search="runningSearch"
+            disable-sort
             density="compact"
             data-test="running-scripts"
             :items-per-page="runningItemsPerPage"
@@ -79,6 +79,15 @@
                 <span>Connect</span>
                 <v-icon v-show="connectInNewTab" end> mdi-open-in-new </v-icon>
               </v-btn>
+            </template>
+            <template #item.user_full_name="{ item }">
+              {{ formatUserDisplay(item) }}
+            </template>
+            <template #item.start_time="{ item }">
+              {{ formatStartTime(item) }}
+            </template>
+            <template #item.duration="{ item }">
+              {{ formatDuration(item) }}
             </template>
             <template #item.stop="{ item }">
               <v-btn color="primary" @click="deleteScript(item)">
@@ -117,7 +126,7 @@
             :items="completedScripts"
             :items-length="completedTotal"
             :loading="completedLoading"
-            :search="completedSearch"
+            disable-sort
             density="compact"
             data-test="completed-scripts"
             :items-per-page="completedItemsPerPage"
@@ -136,18 +145,28 @@
                 {{ item.name }}
               </v-btn>
             </template>
+            <template #item.user_full_name="{ item }">
+              {{ formatUserDisplay(item) }}
+            </template>
+            <template #item.start_time="{ item }">
+              {{ formatStartTime(item) }}
+            </template>
+            <template #item.duration="{ item }">
+              {{ formatDuration(item) }}
+            </template>
             <template #item.log="{ item }">
               <v-btn
                 color="primary"
                 density="comfortable"
                 icon="mdi-eye"
+                :disabled="!item.log"
                 @click="viewScriptLog(item, 'log')"
               />
               <v-btn
                 color="primary"
                 density="comfortable"
                 icon="mdi-file-download-outline"
-                :disabled="downloadScript"
+                :disabled="downloadScript || !item.log"
                 :loading="downloadScript && downloadScript.name === item.name"
                 @click="downloadScriptLog(item, 'log')"
               />
@@ -210,6 +229,7 @@
 
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount, inject } from 'vue'
+import { debounce } from 'lodash'
 import { useRouter } from 'vue-router'
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { OutputDialog } from '@/components'
@@ -240,60 +260,119 @@ const activeTab = ref('completed')
 const downloadScript = ref(null)
 const refreshTimer = ref(null)
 
-// Running scripts pagination data
-const runningSearch = ref('')
-const runningScripts = ref([])
-const runningTotal = ref(0)
-const runningLoading = ref(false)
-const runningPage = ref(1)
-const runningItemsPerPage = ref(10)
-const runningHeaders = [
-  {
-    title: 'Connect',
-    key: 'connect',
-    sortable: false,
-    filterable: false,
-  },
-  { title: 'Id', key: 'name' },
-  { title: 'User', key: 'user_display' },
-  { title: 'Filename', key: 'filename' },
-  { title: 'Start Time', key: 'start_time_formatted' },
-  { title: 'Duration', key: 'duration' },
-  { title: 'State', key: 'state' },
-  {
-    title: 'Stop',
-    key: 'stop',
-    sortable: false,
-    filterable: false,
-  },
-]
+// Running and completed scripts share identical pagination/search/fetch
+// behavior, differing only by endpoint and error message, so both are backed
+// by the same factory.
+function useScriptTable(endpoint, errorTitle) {
+  const search = ref('')
+  const scripts = ref([])
+  const total = ref(0)
+  const loading = ref(false)
+  const page = ref(1)
+  const itemsPerPage = ref(10)
 
-// Completed scripts pagination data
-const completedSearch = ref('')
-const completedScripts = ref([])
-const completedTotal = ref(0)
-const completedLoading = ref(false)
-const completedPage = ref(1)
-const completedItemsPerPage = ref(10)
-const completedHeaders = [
+  async function fetchScripts() {
+    loading.value = true
+    const offset = (page.value - 1) * itemsPerPage.value
+    const searchParam = encodeURIComponent(search.value || '')
+    try {
+      const { data } = await Api.get(
+        `${endpoint}?scope=DEFAULT&offset=${offset}&limit=${itemsPerPage.value}&search=${searchParam}`,
+      )
+      scripts.value = data.items || []
+      total.value = data.total || scripts.value.length
+    } catch (error) {
+      notify.caution({ title: errorTitle, body: error.message })
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function setPage(newPage) {
+    page.value = newPage
+    fetchScripts()
+  }
+
+  function setItemsPerPage(newItemsPerPage) {
+    itemsPerPage.value = newItemsPerPage
+    page.value = 1
+    fetchScripts()
+  }
+
+  // Debounce search so we refetch from the server after the user stops typing.
+  // Reset to the first page since the filtered result set changes.
+  watch(
+    search,
+    debounce(() => {
+      page.value = 1
+      fetchScripts()
+    }, 300),
+  )
+
+  // Return refs (not reactive) so they can be destructured into named bindings
+  // without losing reactivity.
+  return {
+    search,
+    scripts,
+    total,
+    loading,
+    page,
+    itemsPerPage,
+    fetchScripts,
+    setPage,
+    setItemsPerPage,
+  }
+}
+
+const {
+  search: runningSearch,
+  scripts: runningScripts,
+  total: runningTotal,
+  loading: runningLoading,
+  page: runningPage,
+  itemsPerPage: runningItemsPerPage,
+  fetchScripts: getRunningScripts,
+  setPage: updateRunningPage,
+  setItemsPerPage: updateRunningItemsPerPage,
+} = useScriptTable(
+  '/script-api/running-script',
+  'Error Loading Running Scripts',
+)
+
+const {
+  search: completedSearch,
+  scripts: completedScripts,
+  total: completedTotal,
+  loading: completedLoading,
+  page: completedPage,
+  itemsPerPage: completedItemsPerPage,
+  fetchScripts: getCompletedScripts,
+  setPage: updateCompletedPage,
+  setItemsPerPage: updateCompletedItemsPerPage,
+} = useScriptTable(
+  '/script-api/completed-scripts',
+  'Error Loading Completed Scripts',
+)
+
+// Columns shared by both tables; each table adds its own action columns.
+// Sorting is disabled table-wide (disable-sort) since the API doesn't support it.
+const coreHeaders = [
   { title: 'Id', key: 'name' },
-  { title: 'User', key: 'user_display' },
+  { title: 'User', key: 'user_full_name' },
   { title: 'Filename', key: 'filename' },
-  { title: 'Start Time', key: 'start_time_formatted' },
+  { title: 'Start Time', key: 'start_time' },
   { title: 'Duration', key: 'duration' },
   { title: 'State', key: 'state' },
-  {
-    title: 'Log',
-    key: 'log',
-    sortable: false,
-    filterable: false,
-  },
-  {
-    title: 'Report',
-    key: 'report',
-    sortable: false,
-    filterable: false,
-  },
+]
+const runningHeaders = [
+  { title: 'Connect', key: 'connect', filterable: false },
+  ...coreHeaders,
+  { title: 'Stop', key: 'stop', filterable: false },
+]
+const completedHeaders = [
+  ...coreHeaders,
+  { title: 'Log', key: 'log', filterable: false },
+  { title: 'Report', key: 'report', filterable: false },
 ]
 
 const showDialog = ref(false)
@@ -337,7 +416,31 @@ onBeforeUnmount(() => {
   }
 })
 
-function formatDuration(durationMs) {
+// Display-only formatters used by the data table item slots. Keeping these out
+// of the fetch keeps the API response unmodified and lets start time react to
+// the time zone setting (which loads asynchronously after the first fetch).
+function formatUserDisplay(item) {
+  return `${item.user_full_name} (${item.username})`
+}
+
+function formatStartTime(item) {
+  if (!item.start_time) {
+    return 'N/A'
+  }
+  return formatDateTimeHMS(new Date(item.start_time), timeZone.value)
+}
+
+function formatDuration(item) {
+  if (!item.start_time) {
+    return 'N/A'
+  }
+  const startTime = new Date(item.start_time)
+  // Running scripts have no end_time, so measure against the current time
+  const endTime = item.end_time ? new Date(item.end_time) : new Date()
+  return formatDurationMs(endTime - startTime)
+}
+
+function formatDurationMs(durationMs) {
   if (durationMs < 0) {
     return 'N/A'
   } else if (durationMs < 1000) {
@@ -354,110 +457,6 @@ function formatDuration(durationMs) {
     const seconds = Math.round((durationMs % 60000) / 1000)
     return `${hours}h ${minutes}m ${seconds}s`
   }
-}
-
-async function getRunningScripts() {
-  runningLoading.value = true
-  const offset = (runningPage.value - 1) * runningItemsPerPage.value
-  try {
-    const response = await Api.get(
-      `/script-api/running-script?scope=DEFAULT&offset=${offset}&limit=${runningItemsPerPage.value}`,
-    )
-    const scripts = response.data.items || []
-    const currentTime = new Date()
-
-    // Calculate duration for each running script and format user info
-    scripts.forEach((script) => {
-      // Format user display as "full_name (username)"
-      script.user_display = `${script.user_full_name} (${script.username})`
-
-      // Calculate duration
-      if (script.start_time) {
-        const startTime = new Date(script.start_time)
-        const durationMs = currentTime - startTime
-        script.start_time_formatted = formatDateTimeHMS(
-          startTime,
-          timeZone.value,
-        )
-        script.duration = formatDuration(durationMs)
-      } else {
-        script.duration = 'N/A'
-      }
-    })
-
-    runningScripts.value = scripts
-    runningTotal.value = response.data.total || scripts.length
-    runningLoading.value = false
-  } catch (error) {
-    runningLoading.value = false
-    notify.caution({
-      title: 'Error Loading Running Scripts',
-      body: error.message,
-    })
-  }
-}
-
-function updateRunningPage(page) {
-  runningPage.value = page
-  getRunningScripts()
-}
-
-function updateRunningItemsPerPage(itemsPerPage) {
-  runningItemsPerPage.value = itemsPerPage
-  runningPage.value = 1
-  getRunningScripts()
-}
-
-async function getCompletedScripts() {
-  completedLoading.value = true
-  const offset = (completedPage.value - 1) * completedItemsPerPage.value
-  try {
-    const response = await Api.get(
-      `/script-api/completed-scripts?scope=DEFAULT&offset=${offset}&limit=${completedItemsPerPage.value}`,
-    )
-    const scripts = response.data.items || []
-
-    // Calculate duration and format user info for each completed script
-    scripts.forEach((script) => {
-      // Format user display as "full_name (username)"
-      script.user_display = `${script.user_full_name} (${script.username})`
-
-      // Calculate duration
-      if (script.start_time && script.end_time) {
-        const startTime = new Date(script.start_time)
-        const endTime = new Date(script.end_time)
-        const durationMs = endTime - startTime
-        script.start_time_formatted = formatDateTimeHMS(
-          startTime,
-          timeZone.value,
-        )
-        script.duration = formatDuration(durationMs)
-      } else {
-        script.duration = 'N/A'
-      }
-    })
-
-    completedScripts.value = scripts
-    completedTotal.value = response.data.total || scripts.length
-    completedLoading.value = false
-  } catch (error) {
-    completedLoading.value = false
-    notify.caution({
-      title: 'Error Loading Completed Scripts',
-      body: error.message,
-    })
-  }
-}
-
-function updateCompletedPage(page) {
-  completedPage.value = page
-  getCompletedScripts()
-}
-
-function updateCompletedItemsPerPage(itemsPerPage) {
-  completedItemsPerPage.value = itemsPerPage
-  completedPage.value = 1
-  getCompletedScripts()
 }
 
 function showScript(script) {
@@ -515,16 +514,30 @@ async function viewScriptLog(script, type) {
     dialogName.value = 'Log'
     logUrl = script.log
   }
-  const response = await Api.get(
-    `/openc3-api/storage/download_file/${encodeURIComponent(
-      logUrl,
-    )}?bucket=OPENC3_LOGS_BUCKET`,
-  )
-  const filenameParts = logUrl.split('/')
-  dialogFilename.value = filenameParts[filenameParts.length - 1]
-  // Decode Base64 string
-  dialogContent.value = window.atob(response.data.contents)
-  showDialog.value = true
+  if (!logUrl) {
+    notify.caution({
+      title: `No ${dialogName.value.toLowerCase()} available`,
+      body: `Script ${script.name} has no ${dialogName.value.toLowerCase()} file yet.`,
+    })
+    return
+  }
+  try {
+    const response = await Api.get(
+      `/openc3-api/storage/download_file/${encodeURIComponent(
+        logUrl,
+      )}?bucket=OPENC3_LOGS_BUCKET`,
+    )
+    const filenameParts = logUrl.split('/')
+    dialogFilename.value = filenameParts[filenameParts.length - 1]
+    // Decode Base64 string
+    dialogContent.value = window.atob(response.data.contents)
+    showDialog.value = true
+  } catch {
+    notify.caution({
+      title: `Unable to open ${dialogName.value.toLowerCase()} ${logUrl}`,
+      body: `You may be able to download this ${dialogName.value.toLowerCase()} manually from the 'logs' bucket at ${logUrl}`,
+    })
+  }
 }
 
 async function downloadScriptLog(script, type, format = 'text') {
@@ -535,6 +548,13 @@ async function downloadScriptLog(script, type, format = 'text') {
   } else {
     dialogName.value = 'Log'
     logUrl = script.log
+  }
+  if (!logUrl) {
+    notify.caution({
+      title: `No ${dialogName.value.toLowerCase()} available`,
+      body: `Script ${script.name} has no ${dialogName.value.toLowerCase()} file yet.`,
+    })
+    return
   }
   downloadScript.value = script
 

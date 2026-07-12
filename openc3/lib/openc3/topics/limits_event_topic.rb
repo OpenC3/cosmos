@@ -39,9 +39,15 @@ module OpenC3
       case event[:type]
       when :LIMITS_CHANGE
         # The current_limits hash keeps only the current limits state of items
-        # It is used by the API to determine the overall limits state
-        field = "#{event[:target_name]}__#{event[:packet_name]}__#{event[:item_name]}"
-        Store.hset("#{scope}__current_limits", field, event[:new_limits_state])
+        # It is used by the API to determine the overall limits state.
+        # When the event originates from a stored packet in a non-PROCESS mode
+        # (LOG or DISABLE), skip updating current_limits so that historical
+        # data does not affect the real-time overall limits state or the
+        # out_of_limits API response.
+        unless event[:suppress_stored]
+          field = "#{event[:target_name]}__#{event[:packet_name]}__#{event[:item_name]}"
+          Store.hset("#{scope}__current_limits", field, event[:new_limits_state])
+        end
 
       when :LIMITS_SETTINGS
         # Limits updated in limits_api.rb to avoid circular reference to TargetModel
@@ -184,6 +190,28 @@ module OpenC3
           end
         end
       end
+    end
+
+    # Removes a limits set from the limits_sets hash and from the
+    # current_limits_settings of every item. Note that the set is not removed
+    # from the TargetModel packet definitions; that is cleaned up on the next
+    # plugin install. Running microservices will continue to hold the set in
+    # memory until they restart and resync from current_limits_settings.
+    def self.delete_set(set_name, scope:)
+      set_name = set_name.to_s
+      limits_settings = Store.hgetall("#{scope}__current_limits_settings")
+      # Collect all changed items and write them back in a single hmset to
+      # avoid a Redis round trip per item (this hash can be large)
+      updates = {}
+      limits_settings.each do |item, settings|
+        settings = JSON.parse(settings, allow_nan: true, create_additions: true)
+        if settings.key?(set_name)
+          settings.delete(set_name)
+          updates[item] = JSON.generate(settings, allow_nan: true)
+        end
+      end
+      Store.hmset("#{scope}__current_limits_settings", *updates.flatten) unless updates.empty?
+      Store.hdel("#{scope}__limits_sets", set_name)
     end
 
     # Update the local System based on overall state

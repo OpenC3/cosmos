@@ -139,16 +139,23 @@ class Script < OpenC3::TargetFile
       process.io.stdout = stdout
       process.io.stderr = stderr
       process.start
-      process.wait
+      begin
+        process.poll_for_exit(10) # wait for max 10s
+      rescue ChildProcess::TimeoutError
+        process.stop
+        stderr_results = "Suite analysis timed out - possible infinite loop in script\n"
+        success = false
+      end
       stdout.rewind
       stdout_results = stdout.read
       stdout.close
       stdout.unlink
       stderr.rewind
-      stderr_results = stderr.read
+      stderr_results ||= ""
+      stderr_results += stderr.read
       stderr.close
       stderr.unlink
-      success = process.exit_code == 0
+      success = process.exit_code == 0 if success
     else
       require temp.path
       stdout_results = OpenC3::SuiteRunner.build_suites.as_json().to_json(allow_nan: true)

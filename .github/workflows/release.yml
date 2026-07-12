@@ -46,11 +46,11 @@ jobs:
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           token: ${{ secrets.QA_PAT }}
       - name: Set up Ruby 3.4
-        uses: ruby/setup-ruby@89f90524b88a01fe6e0b732220432cc6142926af # v1.313.0
+        uses: ruby/setup-ruby@d45b1a4e94b71acab930e56e79c6aa188764e7f9 # v1.316.0
         with:
           ruby-version: 3.4
           bundler-cache: false # runs 'bundle install' and caches installed gems automatically
@@ -59,7 +59,7 @@ jobs:
         with:
           node-version: 24
       - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
       - name: Install dependencies
@@ -98,7 +98,7 @@ jobs:
         working-directory: scripts/release
         env:
           OPENC3_RELEASE_VERSION: ${{ github.event.inputs.version }}
-      - uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # v7.1.0
+      - uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
         with:
           commit_message: "[Github Action] Update version to ${{ github.event.inputs.version }}"
           tagging_message: "v${{ github.event.inputs.version }}"
@@ -198,7 +198,7 @@ jobs:
         working-directory: scripts/release
         env:
           OPENC3_RELEASE_VERSION: ${{ github.event.inputs.next_version }}
-      - uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # v7.1.0
+      - uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
         with:
           commit_message: "[Github Action] Update version to ${{ github.event.inputs.next_version }}"
           push_options: --force

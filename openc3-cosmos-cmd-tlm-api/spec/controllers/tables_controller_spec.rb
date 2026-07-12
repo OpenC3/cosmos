@@ -561,4 +561,86 @@ RSpec.describe TablesController, type: :controller do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+
+  # The cmd_tlm overlay (targets_modified/<TARGET>/cmd_tlm/...) is ERB-rendered
+  # and eval'd as code by PacketConfig, so every Table writer must require admin
+  # to write it, not just the presigned-upload path in storage_controller.
+  describe "cmd_tlm overlay gate" do
+    describe "cmd_tlm_overlay?" do
+      let(:m) { :cmd_tlm_overlay? }
+
+      it "flags cmd_tlm overlay names (admin required)" do
+        expect(controller.send(m, "INST/cmd_tlm/tlm.txt")).to be true
+        expect(controller.send(m, "INST/cmd_tlm/config/extra.txt")).to be true
+      end
+
+      it "allows non-cmd_tlm overlay names" do
+        expect(controller.send(m, "INST/tables/bin/table.bin")).to be false
+        expect(controller.send(m, "INST/tables/config/table_def.txt")).to be false
+        expect(controller.send(m, "INST/screens/x.txt")).to be false
+      end
+
+      it "fails closed on non-canonical names so the positional check cannot be bypassed" do
+        expect(controller.send(m, "INST//cmd_tlm/x.txt")).to be true
+        expect(controller.send(m, "INST/./cmd_tlm/x.txt")).to be true
+        expect(controller.send(m, "INST/../cmd_tlm/x.txt")).to be true
+        expect(controller.send(m, "/INST/tables/x.bin")).to be true
+        expect(controller.send(m, "INST/tables/")).to be true
+        expect(controller.send(m, "")).to be true
+        expect(controller.send(m, nil)).to be true
+      end
+    end
+
+    context "when the caller is non-admin (system but not admin)" do
+      before do
+        allow(controller).to receive(:authorization).with('system').and_return(true)
+        allow(controller).to receive(:authorization).with('admin').and_return(false)
+      end
+
+      it "blocks save into the cmd_tlm overlay" do
+        allow(Table).to receive(:save)
+        post :save, params: {scope: "DEFAULT", name: "INST/cmd_tlm/tlm.txt", binary: "INST/cmd_tlm/tlm.txt", definition: "INST/tables/config/table_def.txt", tables: '{"tables": []}'}
+        expect(Table).not_to have_received(:save)
+      end
+
+      it "blocks save_as into the cmd_tlm overlay" do
+        allow(Table).to receive(:save_as)
+        post :save_as, params: {scope: "DEFAULT", name: "INST/tables/bin/table.bin", new_name: "INST/cmd_tlm/poc.txt"}
+        expect(Table).not_to have_received(:save_as)
+      end
+
+      it "blocks generate into the cmd_tlm overlay" do
+        allow(Table).to receive(:generate)
+        post :generate, params: {scope: "DEFAULT", definition: "INST/cmd_tlm/config/poc_def.txt"}
+        expect(Table).not_to have_received(:generate)
+      end
+
+      it "blocks destroy of the cmd_tlm overlay" do
+        allow(Table).to receive(:destroy)
+        delete :destroy, params: {scope: "DEFAULT", name: "INST/cmd_tlm/tlm.txt"}
+        expect(Table).not_to have_received(:destroy)
+      end
+
+      it "still allows non-cmd_tlm table writes" do
+        allow(Table).to receive(:save_as)
+        post :save_as, params: {scope: "DEFAULT", name: "INST/tables/bin/table.bin", new_name: "INST/tables/bin/copy.bin"}
+        expect(response).to have_http_status(:ok)
+        expect(Table).to have_received(:save_as)
+      end
+    end
+
+    context "when the caller is admin" do
+      before do
+        allow(controller).to receive(:authorization).with('system').and_return(true)
+        allow(controller).to receive(:authorization).with('admin').and_return(true)
+      end
+
+      it "allows save_as into the cmd_tlm overlay" do
+        allow(Table).to receive(:save_as)
+        post :save_as, params: {scope: "DEFAULT", name: "INST/tables/bin/table.bin", new_name: "INST/cmd_tlm/tlm.txt"}
+        expect(response).to have_http_status(:ok)
+        expect(Table).to have_received(:save_as).with("DEFAULT", "INST/tables/bin/table.bin", "INST/cmd_tlm/tlm.txt")
+      end
+    end
+  end
 end

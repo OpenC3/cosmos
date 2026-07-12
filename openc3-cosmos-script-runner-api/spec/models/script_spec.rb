@@ -342,7 +342,7 @@ RSpec.describe Script, type: :model do
       allow(process_double).to receive(:environment).and_return(process_env)
       allow(process_double).to receive(:io).and_return(io_double)
       allow(process_double).to receive(:start)
-      allow(process_double).to receive(:wait)
+      allow(process_double).to receive(:poll_for_exit).with(10)
       allow(process_double).to receive(:exit_code).and_return(exit_code)
 
       allow(ChildProcess).to receive(:build).and_return(process_double)

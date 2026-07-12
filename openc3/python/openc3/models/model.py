@@ -9,12 +9,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import datetime
 import json
-import time
+from datetime import datetime, timezone
 
 from openc3.utilities.store import EphemeralStore, Store
 from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued
+from openc3.utilities.time import to_nsec_from_epoch
 
 
 class Model:
@@ -101,12 +101,12 @@ class Model:
         """Store the primary key and keyword arguments"""
         self.primary_key: str = primary_key
         self.name: str | None = kw_args.get("name")
-        self.updated_at: float | None = kw_args.get("updated_at")
+        self.updated_at: int | None = kw_args.get("updated_at")
         self.plugin: str | None = kw_args.get("plugin")
         self.scope: str | None = kw_args.get("scope")
         self.destroyed: bool = False
 
-    def create(self, update=False, force=False, queued=False, isoformat=False):
+    def create(self, update=False, force=False, queued=False):
         """Update the Redis hash at primary_key and set the field "name"
         to the JSON generated via calling as_json
         """
@@ -116,10 +116,7 @@ class Model:
                 raise RuntimeError(f"{self.primary_key}:{self.name} already exists at create")
             if not existing and update:
                 raise RuntimeError(f"{self.primary_key}:{self.name} doesn't exist at update")
-        if isoformat:
-            self.updated_at = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-        else:
-            self.updated_at = time.time() * 1_000_000_000
+        self.updated_at = to_nsec_from_epoch(datetime.now(timezone.utc))
 
         write_store = self.store_queued() if queued else self.store()
         write_store.hset(self.primary_key, self.name, json.dumps(self.as_json()))
