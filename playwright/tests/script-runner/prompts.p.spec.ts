@@ -332,12 +332,7 @@ async function openFile(page, utils, filename) {
   await expect(
     page.locator('.v-dialog').getByText('INST2', { exact: true }),
   ).toBeVisible()
-  let parts = filename.split('.')
-  await page.locator('[data-test=file-open-save-search] input').fill(parts[0])
-  await utils.sleep(100)
-  await page
-    .locator('[data-test=file-open-save-search] input')
-    .fill(`.${parts[1]}`)
+  await page.locator('[data-test=file-open-save-search] input').fill(filename)
   await page.locator(`text=${filename}`).click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()

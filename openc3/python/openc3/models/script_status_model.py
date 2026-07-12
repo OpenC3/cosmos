@@ -85,9 +85,9 @@ class ScriptStatusModel(Model):
     @classmethod
     def count(cls, scope, type="running"):
         if type == "running":
-            return cls.store().zcount(f"{cls.RUNNING_PRIMARY_KEY}__#{scope}__LIST", 0, "+inf")
+            return cls.store().zcount(f"{cls.RUNNING_PRIMARY_KEY}__{scope}__LIST", 0, "+inf")
         else:
-            return cls.store().zcount(f"{cls.COMPLETED_PRIMARY_KEY}__#{scope}__LIST", 0, "+inf")
+            return cls.store().zcount(f"{cls.COMPLETED_PRIMARY_KEY}__{scope}__LIST", 0, "+inf")
 
     def __init__(
         self,
