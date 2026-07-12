@@ -37,6 +37,8 @@ class TestAccessor(unittest.TestCase):
         self.assertEqual(Accessor.convert_to_type("[1, 2, 3]", item), [1, 2, 3])
         self.assertEqual(Accessor.convert_to_type('["a", "b", "c"]', item), ["a", "b", "c"])
         self.assertEqual(Accessor.convert_to_type([1, 2, 3], item), [1, 2, 3])
+        # json.loads can't parse this (single quotes, mixed types) but literal_eval can
+        self.assertEqual(Accessor.convert_to_type("[2.2, '3', 4]", item), [2.2, "3", 4])
 
     def test_converts_object_values_from_strings(self):
         item = Mock()

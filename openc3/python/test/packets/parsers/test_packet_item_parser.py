@@ -194,6 +194,11 @@ class TestPacketItemParserTlm(unittest.TestCase):
         # to match the Ruby parser which uses JSON.parse (see issue #3447)
         tf.write('  APPEND_PARAMETER ITEM10 0 ARRAY "[true, false, true]"\n')
         tf.write('  APPEND_PARAMETER ITEM11 0 OBJECT {"enabled":true,"value":null}\n')
+        # Legacy Python-style values (single quotes, mixed types) that predate
+        # the JSON switch must still parse via the literal_eval fallback so we
+        # don't break existing plugin configs
+        tf.write("  APPEND_PARAMETER ITEM12 0 ARRAY \"['a', 'b']\"\n")
+        tf.write("  APPEND_PARAMETER ITEM13 0 ARRAY \"[2.2, '3', 4]\"\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
         packet = self.pc.commands["TGT1"]["PKT1"]
@@ -210,6 +215,8 @@ class TestPacketItemParserTlm(unittest.TestCase):
                 "ITEM9",
                 "ITEM10",
                 "ITEM11",
+                "ITEM12",
+                "ITEM13",
             }.issubset(set(packet.items.keys()))
         )
         self.assertEqual(packet.items["ITEM1"].default, True)
@@ -223,6 +230,8 @@ class TestPacketItemParserTlm(unittest.TestCase):
         self.assertEqual(packet.items["ITEM9"].id_value, 456)
         self.assertEqual(packet.items["ITEM10"].default, [True, False, True])
         self.assertEqual(packet.items["ITEM11"].default, {"enabled": True, "value": None})
+        self.assertEqual(packet.items["ITEM12"].default, ["a", "b"])
+        self.assertEqual(packet.items["ITEM13"].default, [2.2, "3", 4])
         tf.close()
 
     def test_complains_about_invalid_bool_values(self):

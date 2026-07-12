@@ -9,14 +9,17 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import os
 import re
 import sys
 import traceback
+from ast import literal_eval
 from collections.abc import Generator
 from typing import Any
 
 from openc3.utilities.extract import remove_quotes
+from openc3.utilities.logger import Logger
 
 
 class ConfigParser:
@@ -266,6 +269,25 @@ class ConfigParser:
                 case "" | "NONE" | "NULL" | "NIL":
                     return None
         return value
+
+    # Parses a config string into a Python value. Prefers JSON to match the
+    # Ruby parser's JSON.parse (lowercase true/false, null). Falls back to
+    # literal_eval for legacy Python-style config values (single quoted strings,
+    # mixed-type arrays) that predate the JSON switch so we don't break existing
+    # plugins. Raises if neither can parse it.
+    #
+    # self.param value [String]
+    # self.param warn [Boolean] Whether to log a warning when falling back to
+    #   literal_eval. Pass False for ANY items where a raw non-JSON value is valid.
+    # self.return [Object] The parsed value
+    @classmethod
+    def parse_value(cls, value: str, warn: bool = True) -> Any:
+        try:
+            return json.loads(value)
+        except Exception:
+            if warn:
+                Logger.warn(f"{value} is not valid JSON. Falling back to Python literal parsing. Please use valid JSON.")
+            return literal_eval(value)
 
     # Converts a string representing a defined constant into its value. The
     # defined constants are the minimum and maximum values for all the
