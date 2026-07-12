@@ -87,9 +87,19 @@ http:
     contentSecurityPolicy:
       headers:
         contentSecurityPolicy: >-
-          default-src 'self' blob: data: https: http://localhost:* http://host.docker.internal:* http://*.local:*; script-src 'unsafe-inline' 'unsafe-eval' https: blob: http://localhost:* http://host.docker.internal:* http://*.local:*; connect-src blob: https: wss: http://localhost:* http://host.docker.internal:* http://*.local:* ws://localhost:* ws://host.docker.internal:* ws://*.local:*; style-src 'unsafe-inline' https: http://localhost:* http://host.docker.internal:* http://*.local:*; object-src 'none';
+          default-src 'self' blob: data: https: http://localhost:* http://host.docker.internal:* http://*.local:*; script-src 'self' https: blob: http://localhost:* http://host.docker.internal:* http://*.local:*; connect-src blob: https: wss: http://localhost:* http://host.docker.internal:* http://*.local:* ws://localhost:* ws://host.docker.internal:* ws://*.local:*; style-src 'unsafe-inline' https: http://localhost:* http://host.docker.internal:* http://*.local:*; object-src 'none'; base-uri 'self'; frame-ancestors 'self';
   routers:
     # Note: Priorities control router check order with highest priority evaluated first
+    # Serve the BUTTON widget sandbox document WITHOUT the app Content-Security-Policy
+    # header so its own <meta> policy governs (it must allow 'unsafe-eval' while the
+    # main app forbids it, and it blocks all network access). See sandbox.html.
+    sandbox-router:
+      rule: Path(`/sandbox.html`)
+      middlewares:
+        - "addToolsBase"
+        - "changeTools"
+      service: service-bucket
+      priority: 20
     # Route to the openc3 cmd/tlm api websockets
     api-cable-router:
       rule: PathPrefix(`/openc3-api/cable`)
