@@ -146,6 +146,58 @@ test('gets details with right click', async ({ page, utils }) => {
   await expect(detailsDialog).toContainText('PacketTimeSecondsConversion')
 })
 
+// Regression for openc3#154: newlines embedded in a string telemetry value
+// must be visible in the single-line Packet Viewer cell (escaped as \n) and
+// not silently truncate everything after the first newline.
+test('displays embedded newlines in string telemetry values', async ({
+  page,
+  utils,
+}) => {
+  // 1) Override INST HEALTH_STATUS ASCIICMD with a multi-line string. We do
+  //    this via Script Runner because the cmd-tlm API does not expose
+  //    override_tlm directly over HTTP.
+  await page.goto('/tools/scriptrunner')
+  await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
+  await page.locator('[data-test=script-runner-file]').click()
+  await page.locator('text=New File').click()
+  await expect(page.locator('textarea')).toHaveText('')
+  await page
+    .locator('textarea')
+    .fill(
+      String.raw`override_tlm("INST HEALTH_STATUS ASCIICMD = \"line1\nline2\nline3\"")`,
+    )
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    { timeout: 30000 },
+  )
+
+  // 2) Verify the Packet Viewer renders the embedded newlines as a literal
+  //    `\n` sequence rather than chopping at the first newline.
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
+  await expect(page.locator('.v-app-bar')).toContainText('Packet Viewer')
+  await expect
+    .poll(
+      async () =>
+        await page.inputValue('tr:has(td div:text-is("ASCIICMD")) input'),
+      { timeout: 10000 },
+    )
+    .toBe(String.raw`line1\nline2\nline3`)
+
+  // 3) Clear the override so we don't leak state into other tests.
+  await page.goto('/tools/scriptrunner')
+  await page.locator('[data-test=script-runner-file]').click()
+  await page.locator('text=New File').click()
+  await page
+    .locator('textarea')
+    .fill(`normalize_tlm("INST HEALTH_STATUS ASCIICMD")`)
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    { timeout: 30000 },
+  )
+})
+
 test('stops posting to the api after closing', async ({ page, utils }) => {
   await page.goto('/tools/packetviewer/INST/ADCS/')
   let requestCount = 0
