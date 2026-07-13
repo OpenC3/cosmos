@@ -20,7 +20,7 @@ test.use({
   toolName: 'Telemetry Viewer',
 })
 
-test.beforeEach(async ({ page, utils }) => {
+test.beforeEach(({ page, utils }) => {
   // Throw exceptions on any pageerror events
   page.on('pageerror', (exception) => {
     throw exception

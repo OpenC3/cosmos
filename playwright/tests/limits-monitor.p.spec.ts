@@ -38,7 +38,7 @@ test('changes the limits set', async ({ page, utils }) => {
   await expect
     .poll(
       async () =>
-        page.locator('[data-test=limits-set]').locator('input').inputValue(),
+        await page.locator('[data-test=limits-set]').locator('input').inputValue(),
       {
         timeout: 15000,
       },
@@ -62,7 +62,7 @@ test('changes the limits set', async ({ page, utils }) => {
   await expect
     .poll(
       async () =>
-        page.locator('[data-test=limits-set]').locator('input').inputValue(),
+        await page.locator('[data-test=limits-set]').locator('input').inputValue(),
       {
         timeout: 15000,
       },
