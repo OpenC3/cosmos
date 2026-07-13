@@ -174,13 +174,46 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    # Values are interpolated from .env by compose; only the vars this
+    # container actually reads at runtime are passed in (was env_file: .env).
     environment:
-      RAILS_ENV: "production"
-      GEM_HOME: "/gems"
-      PYTHONUSERBASE: "/gems/python_packages"
-      ANYCABLE_REDIS_URL: "redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}"
-    env_file:
-      - .env
+      - RAILS_ENV=production
+      - GEM_HOME=/gems
+      - PYTHONUSERBASE=/gems/python_packages
+      - ANYCABLE_REDIS_URL=redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - WEB_CONCURRENCY=8 # Set to number of cores on your machine
+      # Redis
+      - OPENC3_REDIS_HOSTNAME=${OPENC3_REDIS_HOSTNAME}
+      - OPENC3_REDIS_PORT=${OPENC3_REDIS_PORT}
+      - OPENC3_REDIS_USERNAME=${OPENC3_REDIS_USERNAME}
+      - OPENC3_REDIS_PASSWORD=${OPENC3_REDIS_PASSWORD}
+      - OPENC3_REDIS_EPHEMERAL_HOSTNAME=${OPENC3_REDIS_EPHEMERAL_HOSTNAME}
+      - OPENC3_REDIS_EPHEMERAL_PORT=${OPENC3_REDIS_EPHEMERAL_PORT}
+      # Buckets / storage
+      - OPENC3_BUCKET_URL=${OPENC3_BUCKET_URL}
+      - OPENC3_BUCKET_USERNAME=${OPENC3_BUCKET_USERNAME}
+      - OPENC3_BUCKET_PASSWORD=${OPENC3_BUCKET_PASSWORD}
+      - OPENC3_CONFIG_BUCKET=${OPENC3_CONFIG_BUCKET}
+      - OPENC3_LOGS_BUCKET=${OPENC3_LOGS_BUCKET}
+      - OPENC3_TOOLS_BUCKET=${OPENC3_TOOLS_BUCKET}
+      - OPENC3_CLOUD=${OPENC3_CLOUD}
+      - OPENC3_AWS_ARN_PREFIX=${OPENC3_AWS_ARN_PREFIX}
+      - AWS_REGION=${AWS_REGION}
+      # TSDB
+      - OPENC3_TSDB_HOSTNAME=${OPENC3_TSDB_HOSTNAME}
+      - OPENC3_TSDB_INGEST_PORT=${OPENC3_TSDB_INGEST_PORT}
+      - OPENC3_TSDB_QUERY_PORT=${OPENC3_TSDB_QUERY_PORT}
+      - OPENC3_TSDB_USERNAME=${OPENC3_TSDB_USERNAME}
+      - OPENC3_TSDB_PASSWORD=${OPENC3_TSDB_PASSWORD}
+      # Misc
+      - OPENC3_LOCAL_MODE=${OPENC3_LOCAL_MODE}
+      - OPENC3_SERVICE_PASSWORD=${OPENC3_SERVICE_PASSWORD}
+      # Optional: bare pass-through (only forwarded if set in host env or .env)
+      - OPENC3_DEFAULT_QUEUE
+      - OPENC3_AUTH_RATE_LIMIT_TO
+      - OPENC3_AUTH_RATE_LIMIT_WITHIN
+      - OPENC3_LOG_STDERR
     extra_hosts:
       - host.docker.internal:host-gateway
 
@@ -203,13 +236,48 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    # Values are interpolated from .env by compose; only the vars this
+    # container actually reads at runtime are passed in (was env_file: .env).
     environment:
-      RAILS_ENV: "production"
-      GEM_HOME: "/gems"
-      PYTHONUSERBASE: "/gems/python_packages"
-      ANYCABLE_REDIS_URL: "redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}"
-    env_file:
-      - .env
+      - RAILS_ENV=production
+      - GEM_HOME=/gems
+      - PYTHONUSERBASE=/gems/python_packages
+      - ANYCABLE_REDIS_URL=redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - WEB_CONCURRENCY=2 # Can be increased if you run many scripts concurrently
+      # Redis
+      - OPENC3_REDIS_HOSTNAME=${OPENC3_REDIS_HOSTNAME}
+      - OPENC3_REDIS_PORT=${OPENC3_REDIS_PORT}
+      - OPENC3_REDIS_USERNAME=${OPENC3_REDIS_USERNAME}
+      - OPENC3_REDIS_PASSWORD=${OPENC3_REDIS_PASSWORD}
+      - OPENC3_REDIS_EPHEMERAL_HOSTNAME=${OPENC3_REDIS_EPHEMERAL_HOSTNAME}
+      - OPENC3_REDIS_EPHEMERAL_PORT=${OPENC3_REDIS_EPHEMERAL_PORT}
+      # Script Runner reduced-privilege credentials
+      - OPENC3_SR_REDIS_USERNAME=${OPENC3_SR_REDIS_USERNAME}
+      - OPENC3_SR_REDIS_PASSWORD=${OPENC3_SR_REDIS_PASSWORD}
+      - OPENC3_SR_BUCKET_USERNAME=${OPENC3_SR_BUCKET_USERNAME}
+      - OPENC3_SR_BUCKET_PASSWORD=${OPENC3_SR_BUCKET_PASSWORD}
+      # Buckets / storage
+      - OPENC3_BUCKET_URL=${OPENC3_BUCKET_URL}
+      - OPENC3_BUCKET_USERNAME=${OPENC3_BUCKET_USERNAME}
+      - OPENC3_BUCKET_PASSWORD=${OPENC3_BUCKET_PASSWORD}
+      - OPENC3_CONFIG_BUCKET=${OPENC3_CONFIG_BUCKET}
+      - OPENC3_LOGS_BUCKET=${OPENC3_LOGS_BUCKET}
+      - OPENC3_TOOLS_BUCKET=${OPENC3_TOOLS_BUCKET}
+      - OPENC3_CLOUD=${OPENC3_CLOUD}
+      - OPENC3_AWS_ARN_PREFIX=${OPENC3_AWS_ARN_PREFIX}
+      - AWS_REGION=${AWS_REGION}
+      # TSDB
+      - OPENC3_TSDB_HOSTNAME=${OPENC3_TSDB_HOSTNAME}
+      - OPENC3_TSDB_INGEST_PORT=${OPENC3_TSDB_INGEST_PORT}
+      - OPENC3_TSDB_QUERY_PORT=${OPENC3_TSDB_QUERY_PORT}
+      - OPENC3_TSDB_USERNAME=${OPENC3_TSDB_USERNAME}
+      - OPENC3_TSDB_PASSWORD=${OPENC3_TSDB_PASSWORD}
+      # Misc
+      - OPENC3_LOCAL_MODE=${OPENC3_LOCAL_MODE}
+      - OPENC3_SERVICE_PASSWORD=${OPENC3_SERVICE_PASSWORD}
+      # Optional: bare pass-through (only forwarded if set in host env or .env)
+      - OPENC3_LOG_STDERR
 
   openc3-operator:
     read_only: true
@@ -238,14 +306,42 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    # Values are interpolated from .env by compose; only the vars this
+    # container actually reads at runtime are passed in (was env_file: .env).
     environment:
       # CI is set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
       # List syntax passes through host CI only if set, omits it otherwise
       - CI
       - GEM_HOME=/gems
       - PYTHONUSERBASE=/gems/python_packages
-    env_file:
-      - .env
+      # Redis
+      - OPENC3_REDIS_HOSTNAME=${OPENC3_REDIS_HOSTNAME}
+      - OPENC3_REDIS_PORT=${OPENC3_REDIS_PORT}
+      - OPENC3_REDIS_USERNAME=${OPENC3_REDIS_USERNAME}
+      - OPENC3_REDIS_PASSWORD=${OPENC3_REDIS_PASSWORD}
+      - OPENC3_REDIS_EPHEMERAL_HOSTNAME=${OPENC3_REDIS_EPHEMERAL_HOSTNAME}
+      - OPENC3_REDIS_EPHEMERAL_PORT=${OPENC3_REDIS_EPHEMERAL_PORT}
+      # Buckets / storage
+      - OPENC3_BUCKET_URL=${OPENC3_BUCKET_URL}
+      - OPENC3_BUCKET_USERNAME=${OPENC3_BUCKET_USERNAME}
+      - OPENC3_BUCKET_PASSWORD=${OPENC3_BUCKET_PASSWORD}
+      - OPENC3_CONFIG_BUCKET=${OPENC3_CONFIG_BUCKET}
+      - OPENC3_LOGS_BUCKET=${OPENC3_LOGS_BUCKET}
+      - OPENC3_TOOLS_BUCKET=${OPENC3_TOOLS_BUCKET}
+      - OPENC3_CLOUD=${OPENC3_CLOUD}
+      - OPENC3_AWS_ARN_PREFIX=${OPENC3_AWS_ARN_PREFIX}
+      - AWS_REGION=${AWS_REGION}
+      # TSDB
+      - OPENC3_TSDB_HOSTNAME=${OPENC3_TSDB_HOSTNAME}
+      - OPENC3_TSDB_INGEST_PORT=${OPENC3_TSDB_INGEST_PORT}
+      - OPENC3_TSDB_QUERY_PORT=${OPENC3_TSDB_QUERY_PORT}
+      - OPENC3_TSDB_USERNAME=${OPENC3_TSDB_USERNAME}
+      - OPENC3_TSDB_PASSWORD=${OPENC3_TSDB_PASSWORD}
+      # Misc
+      - OPENC3_LOCAL_MODE=${OPENC3_LOCAL_MODE}
+      - OPENC3_SERVICE_PASSWORD=${OPENC3_SERVICE_PASSWORD}
+      # Optional: bare pass-through (only forwarded if set in host env or .env)
+      - OPENC3_LOG_STDERR
     extra_hosts:
       - host.docker.internal:host-gateway
 
@@ -312,14 +408,65 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    # Values are interpolated from .env by compose; only the vars this
+    # container actually reads at runtime are passed in (was env_file: .env).
     environment:
       # CI is set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
       # List syntax passes through host CI only if set, omits it otherwise
       - CI
       - GEM_HOME=/gems
       - PYTHONUSERBASE=/gems/python_packages
-    env_file:
-      - .env
+      # Redis
+      - OPENC3_REDIS_HOSTNAME=${OPENC3_REDIS_HOSTNAME}
+      - OPENC3_REDIS_PORT=${OPENC3_REDIS_PORT}
+      - OPENC3_REDIS_USERNAME=${OPENC3_REDIS_USERNAME}
+      - OPENC3_REDIS_PASSWORD=${OPENC3_REDIS_PASSWORD}
+      - OPENC3_REDIS_EPHEMERAL_HOSTNAME=${OPENC3_REDIS_EPHEMERAL_HOSTNAME}
+      - OPENC3_REDIS_EPHEMERAL_PORT=${OPENC3_REDIS_EPHEMERAL_PORT}
+      # Buckets / storage
+      - OPENC3_BUCKET_URL=${OPENC3_BUCKET_URL}
+      - OPENC3_BUCKET_USERNAME=${OPENC3_BUCKET_USERNAME}
+      - OPENC3_BUCKET_PASSWORD=${OPENC3_BUCKET_PASSWORD}
+      - OPENC3_CONFIG_BUCKET=${OPENC3_CONFIG_BUCKET}
+      - OPENC3_LOGS_BUCKET=${OPENC3_LOGS_BUCKET}
+      - OPENC3_TOOLS_BUCKET=${OPENC3_TOOLS_BUCKET}
+      - OPENC3_CLOUD=${OPENC3_CLOUD}
+      - OPENC3_AWS_ARN_PREFIX=${OPENC3_AWS_ARN_PREFIX}
+      - AWS_REGION=${AWS_REGION}
+      # TSDB
+      - OPENC3_TSDB_HOSTNAME=${OPENC3_TSDB_HOSTNAME}
+      - OPENC3_TSDB_INGEST_PORT=${OPENC3_TSDB_INGEST_PORT}
+      - OPENC3_TSDB_QUERY_PORT=${OPENC3_TSDB_QUERY_PORT}
+      - OPENC3_TSDB_USERNAME=${OPENC3_TSDB_USERNAME}
+      - OPENC3_TSDB_PASSWORD=${OPENC3_TSDB_PASSWORD}
+      # Misc
+      - OPENC3_LOCAL_MODE=${OPENC3_LOCAL_MODE}
+      - OPENC3_SERVICE_PASSWORD=${OPENC3_SERVICE_PASSWORD}
+      # Install-time flags consumed by init.sh / openc3cli.
+      # Bare pass-through: only forwarded if set in host env or .env.
+      - OPENC3_DEMO
+      - OPENC3_FORCE_INSTALL
+      - OPENC3_NO_MIGRATE
+      - OPENC3_NO_BUCKET_POLICY
+      - OPENC3_DEFAULT_QUEUE
+      - OPENC3_INIT_WAIT_TIMEOUT
+      - OPENC3_ISTIO_ENABLED
+      - OPENC3_LOG_STDERR
+      # Per-tool install opt-outs
+      - OPENC3_NO_CMDTLMSERVER
+      - OPENC3_NO_LIMITSMONITOR
+      - OPENC3_NO_CMDSENDER
+      - OPENC3_NO_SCRIPTRUNNER
+      - OPENC3_NO_PACKETVIEWER
+      - OPENC3_NO_TLMVIEWER
+      - OPENC3_NO_TLMGRAPHER
+      - OPENC3_NO_DATAEXTRACTOR
+      - OPENC3_NO_DATAVIEWER
+      - OPENC3_NO_HANDBOOKS
+      - OPENC3_NO_TABLEMANAGER
+      - OPENC3_NO_TOOLADMIN
+      - OPENC3_NO_BUCKETEXPLORER
+      - OPENC3_NO_DOCS
 
 volumes:
   openc3-tsdb-v: {}
