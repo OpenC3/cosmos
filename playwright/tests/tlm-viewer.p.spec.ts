@@ -386,7 +386,7 @@ test('plays back to a screen', async ({ page, utils }) => {
     .toBe(previousTime - 10)
 
   // Change step value to 2 and verify step forward increments by 2s
-  await page.getByRole('spinbutton', { name: 'Step (Speed)' }).fill('2')
+  await page.locator('[data-test="playback-speed"] input').fill('2')
   previousTime = parseTime(await packetTimeInput.inputValue())
   await page.locator('[data-test="playback-step-forward"]').click()
   await expect
@@ -394,7 +394,7 @@ test('plays back to a screen', async ({ page, utils }) => {
     .toBe(previousTime + 2)
 
   // Change skip value to 15 and verify skip forward increments by 15s
-  await page.getByRole('spinbutton', { name: 'Skip' }).fill('15')
+  await page.locator('[data-test="skip"] input').fill('15')
   previousTime = parseTime(await packetTimeInput.inputValue())
   await page.locator('[data-test="playback-skip-forward"]').click()
   await expect

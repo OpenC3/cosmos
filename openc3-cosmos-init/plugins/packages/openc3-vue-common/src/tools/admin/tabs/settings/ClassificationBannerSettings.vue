@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -126,11 +126,11 @@
           />
         </v-col>
         <v-col>
-          <v-text-field
+          <v-number-input
             v-model="topHeight"
+            control-variant="stacked"
             label="Top height"
             :disabled="!displayTopBanner"
-            type="number"
             suffix="px"
             data-test="classification-banner-top-height"
           />
@@ -144,11 +144,11 @@
           />
         </v-col>
         <v-col>
-          <v-text-field
+          <v-number-input
             v-model="bottomHeight"
+            control-variant="stacked"
             label="Bottom height"
             :disabled="!displayBottomBanner"
-            type="number"
             suffix="px"
             data-test="classification-banner-bottom-height"
           />

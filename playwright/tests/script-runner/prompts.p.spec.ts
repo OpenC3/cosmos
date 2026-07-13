@@ -26,6 +26,14 @@ test('prompts for hazardous commands', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).toContainText('Hazardous Command', {
     timeout: 20000,
   })
+  // The hazardous prompt displays both the command description and the
+  // hazardous description (see issue #3472)
+  await expect(page.locator('.v-dialog')).toContainText(
+    'Description: Clears counters on the INST instrument',
+  )
+  await expect(page.locator('.v-dialog')).toContainText(
+    'Hazardous: Clearing counters may lose valuable information.',
+  )
   await page.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.locator('[data-test=state] input')).toHaveValue(
     /paused \d+s/,
@@ -324,12 +332,7 @@ async function openFile(page, utils, filename) {
   await expect(
     page.locator('.v-dialog').getByText('INST2', { exact: true }),
   ).toBeVisible()
-  let parts = filename.split('.')
-  await page.locator('[data-test=file-open-save-search] input').fill(parts[0])
-  await utils.sleep(100)
-  await page
-    .locator('[data-test=file-open-save-search] input')
-    .fill(`.${parts[1]}`)
+  await page.locator('[data-test=file-open-save-search] input').fill(filename)
   await page.locator(`text=${filename}`).click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()

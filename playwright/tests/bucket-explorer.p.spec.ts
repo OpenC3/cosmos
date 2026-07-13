@@ -25,7 +25,7 @@ test('navigate config bucket', async ({ page, utils }) => {
     page.getByRole('cell', { name: 'No data available' }),
   ).toBeVisible()
 
-  await page.getByText('config').click()
+  await page.getByText('config', { exact: true }).click()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/config%2F/)
   await page.getByRole('cell', { name: 'DEFAULT' }).click()
   await expect(page.locator('[data-test="file-path"]')).toContainText(
@@ -138,7 +138,7 @@ test('direct URLs', async ({ page, utils }) => {
 })
 
 test('view file', async ({ page, utils }) => {
-  await page.getByText('config').click()
+  await page.getByText('config', { exact: true }).click()
   await page.getByRole('cell', { name: 'DEFAULT' }).click()
   await page.getByRole('cell', { name: 'targets', exact: true }).click()
   await page.getByRole('cell', { name: 'INST', exact: true }).click()
@@ -174,7 +174,7 @@ test('upload and delete', async ({ page, utils }) => {
   )
 
   await page.goto('/tools/bucketexplorer')
-  await page.getByText('config').click()
+  await page.getByText('config', { exact: true }).click()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/config%2F/)
   await expect(page.locator('[data-test="file-path"]')).toHaveText('/')
   await page.getByRole('cell', { name: 'DEFAULT' }).click()
@@ -344,7 +344,7 @@ test('auto refreshes to update files', async ({ page, utils, context }) => {
   // Open another tab and navigate to the __TEMP__ dir
   const pageTwo = await context.newPage()
   pageTwo.goto('/tools/bucketexplorer')
-  await pageTwo.getByText('config').click()
+  await pageTwo.getByText('config', { exact: true }).click()
   await pageTwo.getByRole('cell', { name: 'DEFAULT' }).click()
   await pageTwo.getByRole('cell', { name: 'targets_modified' }).click()
   await pageTwo.getByRole('cell', { name: '__TEMP__' }).click()

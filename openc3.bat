@@ -220,24 +220,21 @@ GOTO :EOF
     exit /b 1
   )
   CALL scripts\windows\openc3_setup || exit /b
-  CALL :registry_login
-  if not "%OPENC3_ENTERPRISE%" == "1" GOTO :build_core
-  REM Enterprise: build core images first when OPENC3_TAG=latest, then enterprise
-  CALL :build_core_images
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-enterprise-gem || exit /b
-  GOTO :build_all
-:build_core
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-ruby || exit /b
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-base || exit /b
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-node || exit /b
-:build_all
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build || exit /b
+  if "%OPENC3_ENTERPRISE%" == "1" (
+    REM Enterprise: build core images first when OPENC3_TAG=latest, then enterprise
+    CALL :build_core_images
+    !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-enterprise-gem || GOTO :pull_failed
+  ) else (
+    !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-ruby || GOTO :pull_failed
+    !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-base || GOTO :pull_failed
+    !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-node || GOTO :pull_failed
+  )
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build || GOTO :pull_failed
   @echo off
 GOTO :EOF
 
 :run
-  CALL :registry_login
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml up -d
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml up -d || GOTO :pull_failed
   @echo off
 GOTO :EOF
 
@@ -296,15 +293,28 @@ GOTO :EOF
   )
   exit /b 0
 
-:registry_login
+REM Reached when a compose build/run fails. We do NOT login automatically:
+REM forcing a login would require credentials for public registries (e.g.
+REM docker.io) and break air-gapped builds. Instead suggest logging in.
+:pull_failed
+  CALL :suggest_registry_login
+  exit /b 1
+
+:suggest_registry_login
   FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# %~dp0.env') do SET %%i
+  @echo. 1>&2
+  @echo The command failed. If this was a registry authentication error (403), 1>&2
+  @echo login to the registry and retry the command: 1>&2
   if defined OPENC3_REGISTRY (
-    !CONTAINER_CMD! login !OPENC3_REGISTRY!
+    @echo   !CONTAINER_CMD! login !OPENC3_REGISTRY! 1>&2
   )
   if "!OPENC3_ENTERPRISE!" == "1" (
     if defined OPENC3_ENTERPRISE_REGISTRY (
-      !CONTAINER_CMD! login !OPENC3_ENTERPRISE_REGISTRY!
+      @echo   !CONTAINER_CMD! login !OPENC3_ENTERPRISE_REGISTRY! 1>&2
     )
+  )
+  if not defined OPENC3_REGISTRY (
+    @echo   !CONTAINER_CMD! login ^<registry^> 1>&2
   )
   exit /b 0
 

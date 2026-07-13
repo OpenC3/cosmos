@@ -118,8 +118,8 @@ module OpenC3
       @rxcnt = rxcnt
     end
 
-    def create(update: false, force: false, queued: false, isoformat: false)
-      _db_sharded_create(self.class._db_shard_for_name(@name, scope: @scope, use_cache: true), update: update, force: force, queued: queued, isoformat: isoformat)
+    def create(update: false, force: false, queued: false)
+      _db_sharded_create(self.class._db_shard_for_name(@name, scope: @scope, use_cache: true), update: update, force: force, queued: queued)
     end
 
     def destroy

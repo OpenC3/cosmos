@@ -251,6 +251,46 @@ module OpenC3
       end
     end
 
+    describe "delete_limits_set" do
+      it "complains about deleting the DEFAULT limits set" do
+        expect { @api.delete_limits_set("DEFAULT") }.to raise_error(RuntimeError, "Cannot delete the DEFAULT limits set")
+      end
+
+      it "complains about deleting the current limits set" do
+        @api.set_limits_set("TVAC")
+        expect { @api.delete_limits_set("TVAC") }.to raise_error(RuntimeError, /Cannot delete the current limits set 'TVAC'/)
+      end
+
+      it "complains about non-existent limits sets" do
+        expect { @api.delete_limits_set("NOPE") }.to raise_error(RuntimeError, "Limits set 'NOPE' does not exist")
+      end
+
+      it "deletes a limits set from the list of sets" do
+        expect(@api.get_limits_sets).to eql ['DEFAULT', 'TVAC']
+
+        @api.delete_limits_set("TVAC")
+
+        expect(@api.get_limits_sets).to eql ['DEFAULT']
+      end
+
+      it "removes the set from current_limits_settings but leaves the TargetModel definition" do
+        @api.set_limits("INST", "HEALTH_STATUS", "TEMP1", 0.0, 10.0, 20.0, 30.0) # creates CUSTOM
+        expect(@api.get_limits_sets).to include('CUSTOM')
+        settings = Store.hget("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1")
+        expect(settings).to include('CUSTOM')
+
+        @api.delete_limits_set("CUSTOM")
+
+        expect(@api.get_limits_sets).to_not include('CUSTOM')
+        # current_limits_settings is cleaned up
+        settings = Store.hget("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1")
+        expect(settings).to_not include('CUSTOM')
+        # The TargetModel packet definition is intentionally left alone
+        # (cleaned up on the next plugin install)
+        expect(@api.get_limits("INST", "HEALTH_STATUS", "TEMP1").keys).to include('CUSTOM')
+      end
+    end
+
     describe "get_limits_events" do
       it "returns empty array with no events" do
         events = @api.get_limits_events()
