@@ -67,6 +67,7 @@ def print_usage
   puts "  cli load /PATH/FILENAME.gem SCOPE plugin_hash.json    # Loads a COSMOS plugin gem file"
   puts "    OPTIONS: --variables lets you pass a path to a JSON file containing your plugin's variables"
   puts "  cli list <SCOPE>                  # Lists installed plugins, SCOPE is DEFAULT if not given"
+  puts "  cli unload PLUGIN_NAME [SCOPE]    # Unload an installed COSMOS plugin"
   puts "  cli generate TYPE OPTIONS         # Generate various COSMOS entities"
   puts "    OPTIONS: --ruby or --python is required to specify the language in the generated code unless OPENC3_LANGUAGE is set"
   puts "  cli bridge CONFIG_FILENAME        # Run COSMOS host bridge"

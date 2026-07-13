@@ -21,6 +21,7 @@ Usage:
   cli load /PATH/FILENAME.gem SCOPE plugin_hash.json    # Loads a COSMOS plugin gem file
     OPTIONS: --variables lets you pass a path to a JSON file containing your plugin\'s variables
   cli list <SCOPE>                  # Lists installed plugins, SCOPE is DEFAULT if not given
+  cli unload PLUGIN_NAME [SCOPE]    # Unload an installed COSMOS plugin
   cli generate TYPE OPTIONS         # Generate various COSMOS entities
     OPTIONS: --ruby or --python is required to specify the language in the generated code unless OPENC3_LANGUAGE is set
   cli bridge CONFIG_FILENAME        # Run COSMOS host bridge
@@ -321,6 +322,20 @@ openc3-cosmos-tool-tablemanager-6.2.2.pre.beta0.20250325143116.gem__202503251602
 openc3-cosmos-tool-tlmgrapher-6.2.2.pre.beta0.20250325143105.gem__20250325160218
 openc3-cosmos-tool-tlmviewer-6.2.2.pre.beta0.20250325143108.gem__20250325160216
 openc3-enterprise-tool-base-6.2.2.pre.beta0.20250325155704.gem__20250325160153
+```
+
+## Unload
+
+Unload removes an installed plugin from COSMOS without using the GUI. This is the counterpart to `cli load`.
+
+```bash
+% openc3.sh cli unload openc3-cosmos-cfdp-1.0.0.gem__20250325160956
+```
+
+You can find the full plugin name (including the timestamp suffix) by running `cli list`. You can optionally pass the scope to unload from (defaults to `DEFAULT`).
+
+```bash
+% openc3.sh cli unload openc3-cosmos-cfdp-1.0.0.gem__20250325160956 SCOPE_NAME
 ```
 
 ## Generate
