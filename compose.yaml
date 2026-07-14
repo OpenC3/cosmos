@@ -252,6 +252,7 @@ services:
       - RAILS_ENV=production
       - GEM_HOME=/gems
       - PYTHONUSERBASE=/gems/python_packages
+      - OPENC3_USE_UV=true
       - ANYCABLE_REDIS_URL=redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}
       - SECRET_KEY_BASE=${SECRET_KEY_BASE}
       - WEB_CONCURRENCY=2 # Can be increased if you run many scripts concurrently
@@ -324,6 +325,7 @@ services:
       - CI
       - GEM_HOME=/gems
       - PYTHONUSERBASE=/gems/python_packages
+      - OPENC3_USE_UV=true
       # Redis
       - OPENC3_REDIS_HOSTNAME=${OPENC3_REDIS_HOSTNAME}
       - OPENC3_REDIS_PORT=${OPENC3_REDIS_PORT}
@@ -426,6 +428,7 @@ services:
       - CI
       - GEM_HOME=/gems
       - PYTHONUSERBASE=/gems/python_packages
+      - OPENC3_USE_UV=true
       # Redis
       - OPENC3_REDIS_HOSTNAME=${OPENC3_REDIS_HOSTNAME}
       - OPENC3_REDIS_PORT=${OPENC3_REDIS_PORT}

@@ -47,10 +47,38 @@ module OpenC3
       env = microservice_config["env"].dup
       if microservice_config["needs_dependencies"]
         env['GEM_HOME'] = '/gems'
-        env['PYTHONUSERBASE'] = '/gems/python_packages'
-        # Ensure PYTHONPATH includes both the UV venv (for base openc3 module) and user packages
-        # This is critical for UV-based Python installations where openc3 is installed as editable
-        env['PYTHONPATH'] = "#{ENV['PYTHONPATH']}"
+
+        # Resolve the Python virtual environment for this microservice.
+        # If the microservice belongs to a plugin that has a per-plugin UV venv
+        # (created by uvinstall during plugin install), use that isolated venv.
+        # Otherwise fall back to the shared PYTHONUSERBASE for legacy plugins.
+        plugin_name = microservice_config["plugin"]
+        plugin_venv_dir = nil
+        if plugin_name
+          sanitized_name = plugin_name.tr('^a-zA-Z0-9_-', '_')
+          candidate = "/gems/plugin_venvs/#{sanitized_name}/.venv"
+          plugin_venv_dir = candidate if File.directory?(candidate)
+        end
+
+        if plugin_venv_dir
+          env['VIRTUAL_ENV'] = plugin_venv_dir
+          env['PATH'] = "#{plugin_venv_dir}/bin:#{ENV.fetch('PATH', '')}"
+          env['PYTHONUSERBASE'] = plugin_venv_dir
+          # Add the plugin venv's site-packages to PYTHONPATH so the base venv's
+          # Python binary can find plugin-specific packages. We keep the base binary
+          # because it has openc3 core installed; PYTHONPATH is always respected by
+          # CPython regardless of venv activation state.
+          site_packages = Dir.glob("#{plugin_venv_dir}/lib/python*/site-packages").first
+          existing_pythonpath = ENV.fetch('PYTHONPATH', '')
+          if site_packages
+            env['PYTHONPATH'] = existing_pythonpath.empty? ? site_packages : "#{site_packages}:#{existing_pythonpath}"
+          else
+            env['PYTHONPATH'] = existing_pythonpath.empty? ? nil : existing_pythonpath
+          end
+        else
+          env['PYTHONUSERBASE'] = '/gems/python_packages'
+          env['PYTHONPATH'] = ENV.fetch('PYTHONPATH', nil)
+        end
       else
         env['GEM_HOME'] = nil
         env['PYTHONUSERBASE'] = nil

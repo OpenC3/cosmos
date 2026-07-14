@@ -129,6 +129,23 @@ OpenC3::BackgroundMicroservice.run if __FILE__ == $0
 </TabItem>
 </Tabs>
 
+## Python Runtime Environment
+
+When a Python plugin microservice starts, the COSMOS operator automatically configures its environment to use the plugin's isolated UV virtual environment. The following environment variables are set:
+
+| Variable | Value | Purpose |
+| --- | --- | --- |
+| `VIRTUAL_ENV` | `/gems/plugin_venvs/<plugin>/.venv` | Points to the plugin's isolated virtual environment |
+| `PATH` | Prepended with the venv's `bin/` directory | Ensures the venv's Python binary is used |
+| `PYTHONUSERBASE` | Same as `VIRTUAL_ENV` | Directs user-level installs to the venv |
+| `PYTHONPATH` | `/openc3/python/.venv/lib/python3.X/site-packages` | Makes the core `openc3` package and system dependencies available |
+
+This means plugin-specific dependencies (declared in `pyproject.toml` or `requirements.txt`) are installed in the per-plugin venv, while the core `openc3` library and system dependencies remain available from the base COSMOS Python environment. No manual configuration is needed — the operator handles this automatically when starting the microservice.
+
+:::note
+The `add_to_search_path` pattern for importing from a plugin's `lib/` directory is still needed, as described in the section below. The per-plugin virtual environment handles third-party package isolation (e.g. `numpy`, `requests`), not plugin-internal `lib/` imports.
+:::
+
 ## Importing Plugin Helpers from `lib/`
 
 A plugin may have a top-level `lib/` directory holding shared helper files that
@@ -149,6 +166,12 @@ from openc3.top_level import add_to_search_path
 for path in glob.glob("/gems/gems/**/lib"):
     add_to_search_path(path, True)
 ```
+
+This adds all installed plugins' `lib/` directories to the Python path,
+matching how Ruby gems automatically include every gem's `lib/` in
+`$LOAD_PATH`. If you only need your own plugin's helpers, you can narrow the
+glob to your specific gem (e.g.
+`/gems/gems/openc3-cosmos-my-plugin-*/lib`).
 
 This must run **before** any `from foo import bar` statements that pull from a
 plugin `lib/` folder, otherwise the import raises `ModuleNotFoundError`. If you
