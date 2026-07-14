@@ -313,6 +313,41 @@ export default {
     toQualifiedWidgetName(widgetName) {
       return `${this.screenId}:${widgetName}`
     },
+    // Capture a point-in-time snapshot of every named widget on this screen so a
+    // sandboxed BUTTON script can read them synchronously (the sandbox bridge is
+    // async, so getNamedWidget('X').text() cannot be a live cross-frame call).
+    // Only the read accessors that exist on each widget are captured.
+    namedWidgetsSnapshot() {
+      const snapshot = {}
+      const prefix = `${this.screenId}:`
+      const namedWidgets = this.store.namedWidgets
+      for (const key in namedWidgets) {
+        if (!key.startsWith(prefix)) continue
+        const widget = namedWidgets[key]
+        if (!widget) continue
+        const entry = {}
+        if (typeof widget.text === 'function') entry.text = widget.text()
+        if (typeof widget.selected === 'function')
+          entry.selected = widget.selected()
+        if (typeof widget.checked === 'function')
+          entry.checked = widget.checked()
+        if (typeof widget.date === 'function') entry.date = widget.date()
+        if (typeof widget.time === 'function') entry.time = widget.time()
+        snapshot[key.slice(prefix.length)] = entry
+      }
+      return snapshot
+    },
+    // Write a value back to a named widget on behalf of a sandboxed BUTTON script
+    // (e.g. screen.getNamedWidget('CHECK').value = true). The store returns the
+    // live component instance so the assignment is reactive.
+    setNamedWidgetValue(widgetName, value) {
+      const widget = this.store.namedWidget(
+        this.toQualifiedWidgetName(widgetName),
+      )
+      if (widget) {
+        widget.value = value
+      }
+    },
     // Parse a screen-definition item name into its semantic parts.
     //   ITEM        → plain item
     //   ITEM[0]     → array element (single brackets = array index)
