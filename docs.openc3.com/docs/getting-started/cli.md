@@ -57,6 +57,8 @@ If you are having issues getting "argument completion" working for `openc3.sh` t
 
 ## Rake
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 You can execute rake tasks using `openc3.sh cli rake`. The most typical usage is to generate a plugin and then build it. For example:
 
 ```bash
@@ -64,6 +66,8 @@ You can execute rake tasks using `openc3.sh cli rake`. The most typical usage is
 ```
 
 ## IRB
+
+<span class="badge badge--secondary since-heading">Since 5.5.0</span>
 
 IRB stands for Interactive Ruby and is a way to start a Ruby interpreter that you can play around with. When using it from the CLI, it includes the COSMOS Ruby path so you can `require 'cosmos'` and try out various methods. For example:
 
@@ -81,17 +85,23 @@ irb(main):002:0> Cosmos::Api::WHITELIST
 
 ## Script
 
+<span class="badge badge--secondary since-heading">Since 5.19.0</span>
+
 The script methods allow you to list the available scripts, spawn a script, and run a script while monitoring its output. Note that you must set the OPENC3_API_PASSWORD in COSMOS Core and both the OPENC3_API_USER and OPENC3_API_PASSWORD in COSMOS Enterprise.
 
 :::note[Offline Access Token (since 6.3.0)]
 You must visit the frontend Script Runner page as the OPENC3_API_USER or run "openc3.sh cli script init" in order to obtain an offline access token before the other script cli methods will work.
 :::
 
-### Init (Enterprise Only since 6.3.0)
+### Init (Enterprise Only)
+
+<span class="badge badge--secondary since-heading">Since 6.3.0</span>
 
 Obtain an offline access token without visiting the frontend GUI. This is required when running in a headless CI/CD environment before accessing any of the other commands.
 
 ### List
+
+<span class="badge badge--secondary since-heading">Since 5.19.0</span>
 
 List all the available scripts which includes all the files in every target directory. You can filter this list using bash to only include procedures, Ruby files, Python files, etc.
 
@@ -106,6 +116,8 @@ EXAMPLE/cmd_tlm/example_tlm.txt
 
 ### Spawn
 
+<span class="badge badge--secondary since-heading">Since 5.19.0</span>
+
 The ID of the spawned script is returned. You can connect to it in Script Runner by visiting `http://localhost:2900/tools/scriptrunner/1` where the final value is the ID. For available options see `Run`.
 
 ```bash
@@ -114,6 +126,8 @@ The ID of the spawned script is returned. You can connect to it in Script Runner
 ```
 
 ### Run
+
+<span class="badge badge--secondary since-heading">Since 5.19.0</span>
 
 Run spawns the script and then captures the output and prints it to the shell. Note that this will not work with user input prompts so the script must be written to prevent user input. You can also pass variables to the script as shown in the CLI help.
 
@@ -237,7 +251,9 @@ You can output test results in [CTRF (Common Test Report Format)](https://ctrf.i
 }
 ```
 
-### Running (since 6.5.0)
+### Running
+
+<span class="badge badge--secondary since-heading">Since 6.5.0</span>
 
 List all the running scripts. Add the --verbose option to print the raw output.
 
@@ -248,7 +264,9 @@ ID    User                 Filename                       Start Time            
 4     The Operator         INST/procedures/checks.rb      2025-06-06T22:40:21Z   error
 ```
 
-### Status (since 6.5.0)
+### Status
+
+<span class="badge badge--secondary since-heading">Since 6.5.0</span>
 
 List status for a specific script based on the script ID. Add the --verbose option to print the raw output.
 
@@ -258,7 +276,9 @@ ID    User                 Filename                       Start Time            
 5     The Operator         INST/procedures/collect.rb     2025-06-06T22:40:48Z   paused
 ```
 
-### Stop (since 6.5.0)
+### Stop
+
+<span class="badge badge--secondary since-heading">Since 6.5.0</span>
 
 Stop a script based on the script ID.
 
@@ -267,6 +287,8 @@ Stop a script based on the script ID.
 ```
 
 ## Validate
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Validate is used to validate built COSMOS plugins. It walks through the installation process without actually installing the plugin.
 
@@ -279,6 +301,8 @@ Successfully validated openc3-cosmos-cfdp-1.0.0.gem
 You can optionally pass it the scope to install the plugin in (for Enterprise) and the path to a JSON file containing your plugin variables. If using COSMOS Core, use `DEFAULT` for the scope. If you pass a variables file, any variables not defined in the file will take the default value (as defined in your `plugin.txt` file).
 
 ## Load
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Load can load a plugin into COSMOS without using the GUI. This is useful for scripts or CI/CD pipelines.
 
@@ -294,6 +318,8 @@ You can optionally pass it the scope to install the plugin in (for Enterprise) a
 There is also a `--variables` option, which allows you to pass the path to a JSON file containing your plugin variables. This is the same as the optional variables file mentioned above for `cli validate`.
 
 ## List
+
+<span class="badge badge--secondary since-heading">Since 5.16.0</span>
 
 List displays all the installed plugins.
 
@@ -325,14 +351,20 @@ openc3-enterprise-tool-base-6.2.2.pre.beta0.20250325155704.gem__20250325160153
 
 ## Generate
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 Generate is used to scaffold new COSMOS plugins, targets, conversions, and more! See the [Generators](/docs/getting-started/generators) page for more information.
 
 ## Bridge
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 A COSMOS Bridge is a small application that is run on the local computer to connect to hardware not available to Docker containers. A good example is connecting to a serial port on a non-linux system. See the
-[Bridge Guide](/docs/guides/bridges) for more information.
+[Bridge Guide](/docs/guides/bridges) for more information. Note that the `bridgegem` subcommand was added in 5.5.0.
 
 ## Pkginstall and pkguninstall
+
+<span class="badge badge--secondary since-heading">Since 5.12.0</span>
 
 Allows you to install or remove Ruby gems or Python wheels into COSMOS. These are dependencies that are not packaged with the COSMOS plugin itself.
 
@@ -341,6 +373,8 @@ Allows you to install or remove Ruby gems or Python wheels into COSMOS. These ar
 ```
 
 ## XTCE Converter
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Converts from the XTCE format to the COSMOS format and also exports XTCE files given a COSMOS plugin.
 
@@ -358,6 +392,8 @@ Usage: xtce_converter [options] --import input_xtce_filename --output output_dir
 
 ## Set Password
 
+<span class="badge badge--secondary since-heading">Since 7.0.1</span>
+
 Sets the initial COSMOS password from the `OPENC3_API_PASSWORD` environment variable. This allows you to skip the password creation screen in the web interface, which is useful for automated or scripted deployments.
 
 The password must be at least 8 characters. This command will fail if a password has already been set — use the web interface to change an existing password.
@@ -372,6 +408,8 @@ The `OPENC3_API_PASSWORD` environment variable must be set (typically in your `.
 :::
 
 ## CSTOL Converter
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Converts from the Colorado System Test and Operations Language (CSTOL) to a COSMOS Script Runner Ruby script. It currently does not support conversion to Python. Simply run it in the same directory as CSTOL files (\*.prc) and it will convert them all.
 

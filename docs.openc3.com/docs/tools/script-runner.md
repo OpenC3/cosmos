@@ -17,9 +17,11 @@ Script Runner is both an editor of COSMOS scripts as well as executes scripts. S
 
 {/* Image sized to match up with bullets */}
 
-<img src={require('@site/static/img/script_runner/file_menu.png').default}
-alt="File Menu"
-style={{"float": 'left', "margin-right": 50 + 'px', "height": 250 + 'px'}} />
+<img
+  src={require("@site/static/img/script_runner/file_menu.png").default}
+  alt="File Menu"
+  style={{ float: "left", "margin-right": 50 + "px", height: 250 + "px" }}
+/>
 
 - Clears the editor and filename
 - Creates a new test suite in Ruby or Python
@@ -29,8 +31,8 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 250 + 'px'}} />
 - Rename the current file
 - Downloads the current file to the browser
 - Deletes the current file (Permanently!)
-  <br/>
-  <br/>
+  <br />
+  <br />
 
 #### File Open
 
@@ -46,9 +48,11 @@ When saving a file for the first time, or using File Save As, the File Save As D
 
 {/* Image sized to match up with bullets */}
 
-<img src={require('@site/static/img/script_runner/script_menu.png').default}
-alt="Script Menu"
-style={{"float": 'left', "margin-right": 50 + 'px', "height": 330 + 'px'}} />
+<img
+  src={require("@site/static/img/script_runner/script_menu.png").default}
+  alt="Script Menu"
+  style={{ float: "left", "margin-right": 50 + "px", height: 330 + "px" }}
+/>
 
 - Display started and finished scripts
 - Show environment variables
@@ -96,9 +100,7 @@ Right clicking a script brings up several options:
 
 ## Script Lifecycle
 
-:::info[Coming Soon!]
-The Script Lifecycle feature is not available quite yet.
-:::
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
 
 The Script Lifecycle feature tracks scripts through three states: **In Development**, **In Review**, and **Approved**. It is disabled by default and can be enabled in the Admin Console under Settings → Script Lifecycle Settings.
 
@@ -110,11 +112,11 @@ The dialog displays the current state, lets you move the script to another state
 
 ### Lifecycle Transitions
 
-| From           | To (and back)         | Required Permission |
-| -------------- | --------------------- | ------------------- |
-| In Development | In Review             | script_edit         |
-| In Review      | Approved              | script_approver     |
-| In Development | Approved              | script_approver     |
+| From           | To (and back) | Required Permission |
+| -------------- | ------------- | ------------------- |
+| In Development | In Review     | script_edit         |
+| In Review      | Approved      | script_approver     |
+| In Development | Approved      | script_approver     |
 
 Users with the script_edit permission (e.g. Operators) can move scripts between In Development and In Review. Only users with the script_approver permission can approve a script or move an approved script back to In Review or In Development. Role-based restrictions require COSMOS Enterprise. Ensure that a new role that has the `script_approver` permission is created, and assigned to your users of choice.
 
@@ -160,7 +162,10 @@ To generate a new Suite use the File -> New Suite and then choose either Ruby or
 
 ### Group
 
+{/* prettier-ignore */}
+<div>
 The Group class contains the methods used to run the test or operations. Any methods starting with 'script_', 'op_', or 'test_' which are implemented inside a Group class are automatically included as scripts to run. For example, in the above image, you'll notice the 'script_power_on' is in the Script drop down menu. Here's another simple example:
+</div>
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
