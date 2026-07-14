@@ -159,14 +159,22 @@ module OpenC3
     # @param packet_name [String] Packet Name
     # @param item_name [String] Item Name
     # @param state_name [String] State Name (e.g. 'CONNECTED')
-    # @param color [String or Symbol] New color: GREEN, YELLOW, or RED
-    # @return [Symbol] The color that was set
+    # @param color [String or Symbol, nil] New color: GREEN, YELLOW, or RED.
+    #   Pass nil to clear (remove) the state color.
+    # @return [Symbol, nil] The color that was set, or nil if the color was cleared
     def set_state_color(target_name, packet_name, item_name, state_name, color)
       packet = _get_packet(target_name, packet_name)
       item = packet.get_item(item_name)
       raise "Item #{target_name} #{packet_name} #{item_name} does not have any states" unless item.states
       state_name = state_name.to_s.upcase
       raise "State #{state_name} does not exist for #{target_name} #{packet_name} #{item_name}" unless item.states.key?(state_name)
+      if color.nil?
+        # Clear the state color while keeping state_colors as a Hash so limits
+        # checking (which indexes state_colors by value) continues to work.
+        item.state_colors.delete(state_name) if item.state_colors
+        packet.update_limits_items_cache(item)
+        return nil
+      end
       color = color.to_s.upcase.intern
       raise "Invalid state color #{color}. Must be one of #{PacketItem::STATE_COLORS.join(' ')}." unless PacketItem::STATE_COLORS.include?(color)
       item.state_colors ||= {}

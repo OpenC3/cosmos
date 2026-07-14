@@ -262,14 +262,17 @@ module OpenC3
     # @param packet_name [String] Packet name
     # @param item_name [String] Item name
     # @param state_name [String] Name of the state to change (e.g. 'CONNECTED')
-    # @param color [String] New color for the state. Must be GREEN, YELLOW, or RED.
+    # @param color [String, nil] New color for the state. Must be GREEN, YELLOW,
+    #   or RED. Pass nil to clear (remove) the state color.
     def set_state_color(target_name, packet_name, item_name, state_name, color,
                         manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       state_name = state_name.to_s.upcase
-      color = color.to_s.upcase
-      unless PacketItem::STATE_COLORS.include?(color.intern)
-        raise "Invalid state color #{color}. Must be one of #{PacketItem::STATE_COLORS.join(' ')}."
+      unless color.nil?
+        color = color.to_s.upcase
+        unless PacketItem::STATE_COLORS.include?(color.intern)
+          raise "Invalid state color #{color}. Must be one of #{PacketItem::STATE_COLORS.join(' ')}."
+        end
       end
       packet = TargetModel.packet(target_name, packet_name, scope: scope)
       found_item = nil
@@ -278,16 +281,25 @@ module OpenC3
           unless item['states'] && item['states'][state_name]
             raise "State '#{state_name}' does not exist for item '#{target_name} #{packet_name} #{item_name}'"
           end
-          item['states'][state_name]['color'] = color
-          # Defining a state color implies limits are enabled for the item
-          item['limits'] ||= {}
-          item['limits']['enabled'] = true
+          if color.nil?
+            # Clear the state color
+            item['states'][state_name].delete('color')
+          else
+            item['states'][state_name]['color'] = color
+            # Defining a state color implies limits are enabled for the item
+            item['limits'] ||= {}
+            item['limits']['enabled'] = true
+          end
           found_item = item
           break
         end
       end
       raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist" unless found_item
-      message = "Setting '#{target_name} #{packet_name} #{item_name}' state #{state_name} color to #{color}"
+      if color.nil?
+        message = "Clearing '#{target_name} #{packet_name} #{item_name}' state #{state_name} color"
+      else
+        message = "Setting '#{target_name} #{packet_name} #{item_name}' state #{state_name} color to #{color}"
+      end
       Logger.info(message, scope: scope)
 
       TargetModel.set_packet(target_name, packet_name, packet, scope: scope)

@@ -242,6 +242,27 @@ module OpenC3
       it "complains about invalid colors" do
         expect { @limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "PURPLE") }.to raise_error(RuntimeError, /Invalid state color PURPLE/)
       end
+
+      it "clears the color of a state when passed nil" do
+        item = @tlm.packet("TGT1", "PKT1").get_item("STATE1")
+        @limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "RED")
+        expect(item.state_colors["CONNECTED"]).to eql(:RED)
+        expect(@limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", nil)).to be_nil
+        expect(item.state_colors["CONNECTED"]).to be_nil
+        # state_colors remains a Hash so limits checking still works
+        expect(item.state_colors).to be_a(Hash)
+      end
+
+      it "clears the color of a state accepting lowercase state names when passed nil" do
+        item = @tlm.packet("TGT1", "PKT1").get_item("STATE1")
+        @limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "RED")
+        @limits.set_state_color("TGT1", "PKT1", "STATE1", "connected", nil)
+        expect(item.state_colors["CONNECTED"]).to be_nil
+      end
+
+      it "complains about non-existent states when clearing" do
+        expect { @limits.set_state_color("TGT1", "PKT1", "STATE1", "BLAH", nil) }.to raise_error(RuntimeError, /State BLAH does not exist/)
+      end
     end
   end
 end

@@ -5154,7 +5154,7 @@ set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0,
 
 <span class="badge badge--secondary since-heading">Since 7.2.1</span>
 
-The set_state_color method changes the color associated with a telemetry item's state in realtime. Items with states (e.g. CONNECTED, UNAVAILABLE) use a state color (GREEN, YELLOW, or RED) to determine their limits state rather than numeric red/yellow/green limits. Note: In most cases it would be better to update your config files rather than changing state colors in realtime.
+The set_state_color method changes the color associated with a telemetry item's state in realtime. Items with states (e.g. CONNECTED, UNAVAILABLE) use a state color (GREEN, YELLOW, or RED) to determine their limits state rather than numeric red/yellow/green limits. Pass `None` (Python) or `nil` (Ruby) as the color to clear (remove) the state color. Note: In most cases it would be better to update your config files rather than changing state colors in realtime.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -5180,13 +5180,14 @@ set_state_color(<Target Name>, <Packet Name>, <Item Name>, <State Name>, <Color>
 | Packet Name | Name of the telemetry packet of the telemetry item.            |
 | Item Name   | Name of the telemetry item.                                    |
 | State Name  | Name of the state to change, e.g. 'CONNECTED'.                 |
-| Color       | New color for the state. Must be one of GREEN, YELLOW, or RED. |
+| Color       | New color for the state. Must be one of GREEN, YELLOW, or RED. Pass None/nil to clear the state color. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
 set_state_color('INST', 'HEALTH_STATUS', 'GROUND1STATUS', 'CONNECTED', 'RED')
+set_state_color('INST', 'HEALTH_STATUS', 'GROUND1STATUS', 'CONNECTED', None)  # Clear the state color
 ```
 
 </TabItem>
@@ -5195,6 +5196,7 @@ set_state_color('INST', 'HEALTH_STATUS', 'GROUND1STATUS', 'CONNECTED', 'RED')
 
 ```ruby
 set_state_color('INST', 'HEALTH_STATUS', 'GROUND1STATUS', 'CONNECTED', 'RED')
+set_state_color('INST', 'HEALTH_STATUS', 'GROUND1STATUS', 'CONNECTED', nil)  # Clear the state color
 ```
 
 </TabItem>

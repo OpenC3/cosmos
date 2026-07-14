@@ -190,6 +190,31 @@ module OpenC3
           expect(item.state_colors['CONNECTED']).to eql(:RED)
         end
       end
+
+      it "clears the color of a state when passed nil" do
+        @api.set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", "RED")
+        item = @api.get_item("INST", "HEALTH_STATUS", "GROUND1STATUS")
+        expect(item['states']['CONNECTED']['color']).to eql("RED")
+        @api.set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", nil)
+        item = @api.get_item("INST", "HEALTH_STATUS", "GROUND1STATUS")
+        expect(item['states']['CONNECTED']).to_not have_key('color')
+      end
+
+      it "does not validate the color when clearing" do
+        expect { @api.set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", nil) }.to_not raise_error
+      end
+
+      it "complains about non-existent states when clearing" do
+        expect { @api.set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "BLAH", nil) }.to raise_error(RuntimeError, /State 'BLAH' does not exist/)
+      end
+
+      it "writes a LIMITS_STATE_COLOR event with nil color when clearing" do
+        @api.set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "UNAVAILABLE", nil)
+        event = @api.get_limits_events.last[1]
+        expect(event['type']).to eql("LIMITS_STATE_COLOR")
+        expect(event['state_name']).to eql("UNAVAILABLE")
+        expect(event['color']).to be_nil
+      end
     end
 
     describe "get_limits_groups" do

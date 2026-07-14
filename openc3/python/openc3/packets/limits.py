@@ -181,8 +181,9 @@ class Limits:
     # @param packet_name [str] Packet Name
     # @param item_name [str] Item Name
     # @param state_name [str] State Name (e.g. 'CONNECTED')
-    # @param color [str] New color: GREEN, YELLOW, or RED
-    # @return [str] The color that was set
+    # @param color [str, None] New color: GREEN, YELLOW, or RED.
+    #   Pass None to clear (remove) the state color.
+    # @return [str, None] The color that was set, or None if the color was cleared
     def set_state_color(self, target_name, packet_name, item_name, state_name, color):
         packet = self._get_packet(target_name, packet_name)
         item = packet.get_item(item_name)
@@ -191,6 +192,13 @@ class Limits:
         state_name = str(state_name).upper()
         if state_name not in item.states:
             raise RuntimeError(f"State {state_name} does not exist for {target_name} {packet_name} {item_name}")
+        if color is None:
+            # Clear the state color while keeping state_colors as a dict so limits
+            # checking (which indexes state_colors by value) continues to work.
+            if item.state_colors is not None:
+                item.state_colors.pop(state_name, None)
+            packet.update_limits_items_cache(item)
+            return None
         color = str(color).upper()
         if color not in PacketItem.VALID_STATE_COLORS:
             raise RuntimeError(

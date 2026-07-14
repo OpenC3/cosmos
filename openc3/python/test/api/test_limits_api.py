@@ -244,6 +244,29 @@ class TestLimitsApi(unittest.TestCase):
         self.assertEqual(event["state_name"], "UNAVAILABLE")
         self.assertEqual(event["color"], "RED")
 
+    def test_set_state_color_clears_the_color_of_a_state_when_passed_none(self):
+        set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", "RED")
+        item = get_item("INST", "HEALTH_STATUS", "GROUND1STATUS")
+        self.assertEqual(item["states"]["CONNECTED"]["color"], "RED")
+        set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", None)
+        item = get_item("INST", "HEALTH_STATUS", "GROUND1STATUS")
+        self.assertNotIn("color", item["states"]["CONNECTED"])
+
+    def test_set_state_color_does_not_validate_the_color_when_clearing(self):
+        # Should not raise
+        set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", None)
+
+    def test_set_state_color_complains_about_non_existant_states_when_clearing(self):
+        with self.assertRaisesRegex(RuntimeError, "State 'BLAH' does not exist"):
+            set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "BLAH", None)
+
+    def test_set_state_color_writes_a_limits_state_color_event_with_none_when_clearing(self):
+        set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "UNAVAILABLE", None)
+        event = get_limits_events()[-1][1]
+        self.assertEqual(event["type"], "LIMITS_STATE_COLOR")
+        self.assertEqual(event["state_name"], "UNAVAILABLE")
+        self.assertIsNone(event["color"])
+
     def test_get_limits_groups_returns_all_the_limits_groups(self):
         self.assertEqual(
             get_limits_groups(),

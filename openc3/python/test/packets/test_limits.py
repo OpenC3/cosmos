@@ -225,3 +225,22 @@ class TestLimits(unittest.TestCase):
     def test_set_state_color_complains_about_invalid_colors(self):
         with self.assertRaisesRegex(RuntimeError, "Invalid state color PURPLE"):
             self.limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "PURPLE")
+
+    def test_set_state_color_clears_the_color_of_a_state_when_passed_none(self):
+        item = self.tlm.packet("TGT1", "PKT1").get_item("STATE1")
+        self.limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "RED")
+        self.assertEqual(item.state_colors["CONNECTED"], "RED")
+        self.assertIsNone(self.limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", None))
+        self.assertNotIn("CONNECTED", item.state_colors)
+        # state_colors remains a dict so limits checking still works
+        self.assertIsInstance(item.state_colors, dict)
+
+    def test_set_state_color_clears_the_color_accepting_lowercase_names_when_passed_none(self):
+        item = self.tlm.packet("TGT1", "PKT1").get_item("STATE1")
+        self.limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "RED")
+        self.limits.set_state_color("TGT1", "PKT1", "STATE1", "connected", None)
+        self.assertNotIn("CONNECTED", item.state_colors)
+
+    def test_set_state_color_complains_about_non_existent_states_when_clearing(self):
+        with self.assertRaisesRegex(RuntimeError, "State BLAH does not exist"):
+            self.limits.set_state_color("TGT1", "PKT1", "STATE1", "BLAH", None)

@@ -339,9 +339,10 @@ def set_state_color(target_name, packet_name, item_name, state_name, color, scop
         scope=scope,
     )
     state_name = str(state_name).upper()
-    color = str(color).upper()
-    if color not in PacketItem.VALID_STATE_COLORS:
-        raise RuntimeError(f"Invalid state color {color}. Must be one of {' '.join(PacketItem.VALID_STATE_COLORS)}.")
+    if color is not None:
+        color = str(color).upper()
+        if color not in PacketItem.VALID_STATE_COLORS:
+            raise RuntimeError(f"Invalid state color {color}. Must be one of {' '.join(PacketItem.VALID_STATE_COLORS)}.")
     packet = TargetModel.packet(target_name, packet_name, scope=scope)
     found_item = None
     for item in packet["items"]:
@@ -350,16 +351,23 @@ def set_state_color(target_name, packet_name, item_name, state_name, color, scop
                 raise RuntimeError(
                     f"State '{state_name}' does not exist for item '{target_name} {packet_name} {item_name}'"
                 )
-            item["states"][state_name]["color"] = color
-            # Defining a state color implies limits are enabled for the item
-            if not item.get("limits"):
-                item["limits"] = {}
-            item["limits"]["enabled"] = True
+            if color is None:
+                # Clear the state color
+                item["states"][state_name].pop("color", None)
+            else:
+                item["states"][state_name]["color"] = color
+                # Defining a state color implies limits are enabled for the item
+                if not item.get("limits"):
+                    item["limits"] = {}
+                item["limits"]["enabled"] = True
             found_item = item
             break
     if found_item is None:
         raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist")
-    message = f"Setting '{target_name} {packet_name} {item_name}' state {state_name} color to {color}"
+    if color is None:
+        message = f"Clearing '{target_name} {packet_name} {item_name}' state {state_name} color"
+    else:
+        message = f"Setting '{target_name} {packet_name} {item_name}' state {state_name} color to {color}"
     Logger.info(message, scope=scope)
 
     TargetModel.set_packet(target_name, packet_name, packet, scope=scope)
