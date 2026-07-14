@@ -1586,6 +1586,18 @@ Scripts can be launched from a BUTTON using the `runScript()` method. `runScript
 the name of the script, whether to open the script in the foreground of Script Runner (default = true), and a hash of
 environment variables. For example: `runScript('INST/procedures/script.rb', false, {'VAR': 'VALUE'})`
 
+For security, button code does NOT run in the main application. It runs in an isolated,
+sandboxed browser context that has no access to your login session, browser storage, or
+the page, and no network access of its own. The `api`, `screen`, `runScript` and `alert`
+objects still work exactly as before (the real work is performed by the application on the
+button code's behalf). A few consequences of this isolation:
+
+- `alert()` no longer pauses code execution while the alert is displayed.
+- `screen.getNamedWidget("WIDGET_NAME").text()` (and `selected()` / `checked()`) return the
+  widget's value as it was when the button was clicked; a `.value =` assignment made earlier
+  in the same button click is not guaranteed to be visible to a later read in that same click.
+- The `self` variable (the internal widget component) is no longer available to button code.
+
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
