@@ -201,7 +201,7 @@ RSpec.describe Script, type: :model do
     it "spawns a running script" do
       allow(Script).to receive(:body).with("DEFAULT", "script.rb").and_return("puts 'Hello'")
       expect(RunningScript).to receive(:spawn).with(
-        "DEFAULT", "script.rb", nil, false, nil, "User Name", "username", nil, nil
+        "DEFAULT", "script.rb", nil, false, nil, "User Name", "username", nil, nil, nil
       ).and_return(12345)
 
       expect(Script.run("DEFAULT", "script.rb", nil, false, nil, "User Name", "username")).to be 12345
@@ -212,6 +212,15 @@ RSpec.describe Script, type: :model do
       expect(RunningScript).not_to receive(:spawn)
 
       expect(Script.run("DEFAULT", "missing.rb", nil, false, nil, "User Name", "username")).to be_nil
+    end
+
+    it "passes python_venv through to RunningScript.spawn" do
+      allow(Script).to receive(:body).with("DEFAULT", "script.py").and_return("print('hello')")
+      expect(RunningScript).to receive(:spawn).with(
+        "DEFAULT", "script.py", nil, false, nil, "User Name", "username", nil, nil, "/gems/plugin_venvs/demo/.venv"
+      )
+
+      Script.run("DEFAULT", "script.py", nil, false, nil, "User Name", "username", nil, nil, "/gems/plugin_venvs/demo/.venv")
     end
   end
 

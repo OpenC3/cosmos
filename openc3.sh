@@ -244,7 +244,19 @@ EOF
 EOF
   fi
   cat >&2 << EOF
+STATUS:
+  list                  List $COSMOS_NAME Docker images for this installation
+                        Only shows images belonging to the current installation.
+
+  status                Show container status for this $COSMOS_NAME installation
+
 CLEANUP:
+  destroy [OPTIONS]     Remove $COSMOS_NAME Docker images (keeps other images)
+                        Only removes images for the current installation
+                        (Core or Enterprise). Does not affect the other.
+                        Options:
+                          force  - Skip confirmation prompt
+
   cleanup [OPTIONS]     Remove Docker volumes and data
                         WARNING: This deletes all $COSMOS_NAME data!
                         Options:
@@ -292,6 +304,39 @@ fi
 check_root() {
   if [[ "$(id -u)" -eq 0 ]]; then
     echo "WARNING: $COSMOS_NAME should not be run as the root user, as permissions for Local Mode will be affected. Do not use sudo when running $COSMOS_NAME. See more: https://docs.openc3.com/docs/guides/local-mode"
+  fi
+}
+
+# Resolve OPENC3_TAG, reading from the env file if not already set.
+resolve_openc3_tag() {
+  if [[ -n "$OPENC3_TAG" ]]; then
+    return
+  fi
+  local env_file="$(dirname -- "$0")/${ENV_FILE:-.env}"
+  if [[ -f "$env_file" ]]; then
+    OPENC3_TAG=$(grep -E '^OPENC3_TAG=' "$env_file" 2>/dev/null | head -1 | cut -d= -f2)
+  fi
+  OPENC3_TAG="${OPENC3_TAG:-latest}"
+}
+
+# Build all core images from the sibling cosmos repo when OPENC3_TAG is "latest".
+# This ensures enterprise developers get up-to-date core images without building
+# the core repo separately.  When the core repo is not found, we fall back to
+# whatever images are already tagged locally (e.g. pulled from a registry).
+# Usage: build_core_images [BUILD_FLAGS...]
+build_core_images() {
+  resolve_openc3_tag
+  if [[ "$OPENC3_TAG" != "latest" ]]; then
+    return
+  fi
+  local core_dir="$(dirname -- "$0")/../cosmos"
+  if [[ -f "$core_dir/compose-build.yaml" ]]; then
+    echo "Building core images from $core_dir ..."
+    ${DOCKER_COMPOSE_COMMAND} --project-directory "$core_dir" \
+      -f "$core_dir/compose.yaml" -f "$core_dir/compose-build.yaml" \
+      build "$@"
+  else
+    echo "Warning: Core repo not found at $core_dir — using existing latest tagged images"
   fi
 }
 
@@ -530,6 +575,7 @@ case $1 in
         case $yn in
           Yes ) ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" down -t 30 -v; break;;
           No ) exit;;
+          * ) echo "Please select 1 for Yes or 2 for No.";;
         esac
       done
     fi
@@ -539,6 +585,130 @@ case $1 in
       ls | grep -xv "README.md" | xargs rm -r
       cd ../..
     fi
+    ;;
+  list )
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
+      echo "Usage: $0 list"
+      echo ""
+      echo "List $COSMOS_NAME Docker images for this installation."
+      echo ""
+      echo "Only shows images belonging to the current installation"
+      echo "(Core or Enterprise). Does not show images from other installations."
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
+    # Build the list of compose files to query
+    COMPOSE_FILES="-f $(dirname -- "$0")/compose.yaml"
+    if [[ "$OPENC3_DEVEL" -eq 1 ]] && [[ -f "$(dirname -- "$0")/compose-build.yaml" ]]; then
+      COMPOSE_FILES="$COMPOSE_FILES -f $(dirname -- "$0")/compose-build.yaml"
+    fi
+    # Get the list of image repositories defined in the compose configuration
+    # Strip the docker.io/ prefix that compose adds (docker CLI doesn't recognize it)
+    # and strip the :tag suffix so we match all tags for each repository
+    REPOS=$(${DOCKER_COMPOSE_COMMAND} $COMPOSE_FILES config --images 2>/dev/null | sed 's|^docker\.io/||; s|:.*||' | sort -u)
+    if [[ -z "$REPOS" ]]; then
+      echo "No $COSMOS_NAME images found in compose configuration."
+      exit 0
+    fi
+    # Build filter args for each repository that has at least one local image
+    FILTER_ARGS=""
+    for repo in $REPOS; do
+      if docker images -q "$repo" 2>/dev/null | grep -q .; then
+        FILTER_ARGS="$FILTER_ARGS --filter reference=$repo"
+      fi
+    done
+    if [[ -z "$FILTER_ARGS" ]]; then
+      echo "No $COSMOS_NAME images found locally."
+      exit 0
+    fi
+    docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" $FILTER_ARGS
+    ;;
+  status )
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
+      echo "Usage: $0 status"
+      echo ""
+      echo "Show container status for this $COSMOS_NAME installation."
+      echo ""
+      echo "Displays the current state of all containers defined in the"
+      echo "compose configuration (running, stopped, etc.)."
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
+    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" ps
+    ;;
+  destroy )
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
+      echo "Usage: $0 destroy [force]"
+      echo ""
+      echo "Remove all $COSMOS_NAME Docker images."
+      echo ""
+      echo "This removes only images belonging to the current $COSMOS_NAME installation."
+      echo "If you are running Enterprise, only Enterprise images are removed."
+      echo "If you are running Core, only Core images are removed."
+      echo "This allows you to switch between Core and Enterprise without rebuilding."
+      echo ""
+      echo "After removing images, dangling images are pruned automatically."
+      echo ""
+      echo "Arguments:"
+      echo "  force    Skip confirmation prompt"
+      echo ""
+      echo "Examples:"
+      echo "  $0 destroy              # Remove images (with confirmation)"
+      echo "  $0 destroy force        # Remove images (no confirmation)"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
+    # Build the list of compose files to query
+    COMPOSE_FILES="-f $(dirname -- "$0")/compose.yaml"
+    if [[ "$OPENC3_DEVEL" -eq 1 ]] && [[ -f "$(dirname -- "$0")/compose-build.yaml" ]]; then
+      COMPOSE_FILES="$COMPOSE_FILES -f $(dirname -- "$0")/compose-build.yaml"
+    fi
+    # Get the list of images defined in the compose configuration
+    # Strip the docker.io/ prefix that compose adds, since docker CLI doesn't recognize it
+    IMAGES=$(${DOCKER_COMPOSE_COMMAND} $COMPOSE_FILES config --images 2>/dev/null | sed 's|^docker\.io/||' | sort -u)
+    if [[ -z "$IMAGES" ]]; then
+      echo "No $COSMOS_NAME images found in compose configuration."
+      exit 0
+    fi
+    # Filter to only images that actually exist locally
+    EXISTING_IMAGES=""
+    for img in $IMAGES; do
+      if docker image inspect "$img" &>/dev/null; then
+        EXISTING_IMAGES="$EXISTING_IMAGES $img"
+      fi
+    done
+    EXISTING_IMAGES=$(echo "$EXISTING_IMAGES" | xargs)
+    if [[ -z "$EXISTING_IMAGES" ]]; then
+      echo "No $COSMOS_NAME images found locally. Nothing to remove."
+      exit 0
+    fi
+    echo "The following $COSMOS_NAME images will be removed:"
+    echo ""
+    for img in $EXISTING_IMAGES; do
+      echo "  $img"
+    done
+    echo ""
+    if [[ "$2" == "force" ]]; then
+      docker rmi $EXISTING_IMAGES
+    else
+      echo "Are you sure you want to remove these $COSMOS_NAME images? (1-Yes / 2-No)"
+      select yn in "Yes" "No"; do
+        case $yn in
+          Yes ) docker rmi $EXISTING_IMAGES; break;;
+          No ) exit;;
+          * ) echo "Please select 1 for Yes or 2 for No.";;
+        esac
+      done
+    fi
+    echo ""
+    echo "Pruning dangling images..."
+    docker image prune -f
     ;;
   build )
     if [[ "$OPENC3_DEVEL" -eq 0 ]]; then
@@ -554,8 +724,9 @@ case $1 in
       if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
         echo "This command:"
         echo "  1. Runs setup to download certificates"
-        echo "  2. Builds openc3-enterprise-gem image"
-        echo "  3. Builds all remaining service containers"
+        echo "  2. Builds core images from ../cosmos when OPENC3_TAG=latest"
+        echo "  3. Builds openc3-enterprise-gem image"
+        echo "  4. Builds all remaining enterprise service containers"
       else
         echo "This command:"
         echo "  1. Runs setup to download certificates"
@@ -585,6 +756,7 @@ case $1 in
     # Collect any additional build flags from arguments (skip first arg which is "build")
     BUILD_FLAGS="${@:2}"
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
+      build_core_images $BUILD_FLAGS
       run_with_registry_check ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-enterprise-gem
     else
       run_with_registry_check ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-ruby

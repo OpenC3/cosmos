@@ -17,9 +17,11 @@ Script Runner is both an editor of COSMOS scripts as well as executes scripts. S
 
 {/* Image sized to match up with bullets */}
 
-<img src={require('@site/static/img/script_runner/file_menu.png').default}
-alt="File Menu"
-style={{"float": 'left', "margin-right": 50 + 'px', "height": 250 + 'px'}} />
+<img
+  src={require("@site/static/img/script_runner/file_menu.png").default}
+  alt="File Menu"
+  style={{ float: "left", "margin-right": 50 + "px", height: 250 + "px" }}
+/>
 
 - Clears the editor and filename
 - Creates a new test suite in Ruby or Python
@@ -29,8 +31,8 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 250 + 'px'}} />
 - Rename the current file
 - Downloads the current file to the browser
 - Deletes the current file (Permanently!)
-  <br/>
-  <br/>
+  <br />
+  <br />
 
 #### File Open
 
@@ -46,9 +48,11 @@ When saving a file for the first time, or using File Save As, the File Save As D
 
 {/* Image sized to match up with bullets */}
 
-<img src={require('@site/static/img/script_runner/script_menu.png').default}
-alt="Script Menu"
-style={{"float": 'left', "margin-right": 50 + 'px', "height": 330 + 'px'}} />
+<img
+  src={require("@site/static/img/script_runner/script_menu.png").default}
+  alt="Script Menu"
+  style={{ float: "left", "margin-right": 50 + "px", height: 330 + "px" }}
+/>
 
 - Display started and finished scripts
 - Show environment variables
@@ -120,6 +124,22 @@ puts ENV['MYVAR'] # prints "foo"
 </TabItem>
 </Tabs>
 
+## Python Virtual Environments
+
+When plugins are installed with Python dependencies, COSMOS creates an isolated virtual environment (venv) for each plugin using [UV](https://docs.astral.sh/uv/). Scripts automatically run inside their plugin's venv based on the target folder they belong to.
+
+### Automatic Venv Resolution
+
+Scripts saved under a target folder (e.g. `INST2/procedures/my_script.py`) automatically use that target's plugin venv. No manual activation is needed — COSMOS sets `VIRTUAL_ENV`, `PATH`, and `PYTHONUSERBASE` on the spawned process so that `import` statements resolve against the plugin's installed packages.
+
+### Temp Scripts and the Target Selector
+
+Temporary (unsaved) scripts are not associated with any target, so they cannot automatically resolve a plugin venv. By default they run under the system Python environment, which has access to the core `openc3` library but not plugin-specific packages. To run a temp script with a specific plugin's Python dependencies, use the **Target** dropdown in the Script Runner toolbar. This dropdown appears next to the Start button when working with Python scripts and only lists targets whose plugins have a Python virtual environment installed. Select the target whose plugin dependencies you want to use, and the script will run inside that plugin's venv.
+
+When you open a saved script, the target selector resets automatically because the venv is determined from the file path.
+
+For information on managing per-plugin Python packages, see the [Admin Packages documentation](/docs/tools/admin#packages).
+
 ## Running Script Suites
 
 If a script is structured as a Suite it automatically causes Script Runner to parse the file to populate the Suite, Group, and Script drop down menus.
@@ -130,7 +150,7 @@ To generate a new Suite use the File -> New Suite and then choose either Ruby or
 
 ### Group
 
-The Group class contains the methods used to run the test or operations. Any methods starting with 'script_', 'op_', or 'test_' which are implemented inside a Group class are automatically included as scripts to run. For example, in the above image, you'll notice the 'script_power_on' is in the Script drop down menu. Here's another simple example:
+The Group class contains the methods used to run the test or operations. Any methods starting with `script_`, `op_`, or `test_` which are implemented inside a Group class are automatically included as scripts to run. For example, in the above image, you'll notice the 'script_power_on' is in the Script drop down menu. Here's another simple example:
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
