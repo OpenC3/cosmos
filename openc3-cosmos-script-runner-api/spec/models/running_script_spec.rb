@@ -155,7 +155,7 @@ RSpec.describe RunningScript, type: :model do
         target_info = {'plugin' => 'my-demo-plugin__0'}
         allow(OpenC3::TargetModel).to receive(:get).with(name: "INST", scope: "DEFAULT").and_return(target_info)
 
-        sanitized_name = "my-demo-plugin__0"
+        sanitized_name = "DEFAULT__my-demo-plugin__0"
         venv_dir = "/gems/plugin_venvs/#{sanitized_name}/.venv"
         allow(File).to receive(:directory?).and_call_original
         allow(File).to receive(:directory?).with(venv_dir).and_return(true)
@@ -172,7 +172,7 @@ RSpec.describe RunningScript, type: :model do
         target_info = {'plugin' => 'my-plugin__0'}
         allow(OpenC3::TargetModel).to receive(:get).with(name: "INST", scope: "DEFAULT").and_return(target_info)
 
-        venv_dir = "/gems/plugin_venvs/my-plugin__0/.venv"
+        venv_dir = "/gems/plugin_venvs/DEFAULT__my-plugin__0/.venv"
         allow(File).to receive(:directory?).and_call_original
         allow(File).to receive(:directory?).with(venv_dir).and_return(false)
 
