@@ -133,9 +133,59 @@ For raw packets, each packet is represented as a JSON object with a time field h
 ]
 ```
 
-## Ruby Example
+## Examples
 
-Below is a simple Ruby example for using the streaming API to retrieve telemetry data:
+Below is a simple example for using the streaming API to retrieve telemetry data:
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+import os
+from datetime import datetime, timedelta, timezone
+from openc3.script.web_socket_api import StreamingWebSocketApi
+from openc3.utilities.time import to_nsec_from_epoch
+
+os.environ["OPENC3_SCOPE"] = "DEFAULT"
+os.environ["OPENC3_API_HOSTNAME"] = "127.0.0.1"
+os.environ["OPENC3_API_PORT"] = "2900"
+os.environ["OPENC3_API_PASSWORD"] = "password"
+# The following are needed for Enterprise (change user/pass as necessary)
+# os.environ["OPENC3_API_USER"] = "operator"
+# os.environ["OPENC3_API_PASSWORD"] = "operator"
+# os.environ["OPENC3_KEYCLOAK_REALM"] = "openc3"
+# os.environ["OPENC3_KEYCLOAK_URL"] = "http://127.0.0.1:2900/auth"
+
+now = datetime.now(timezone.utc)
+# Open a file to write CSV data
+with open("telemetry_data.csv", "w") as csv:
+    # Connect to the streaming API
+    with StreamingWebSocketApi() as api:
+        # Add items to stream - request data from yesterday to 1 minute ago
+        api.add(
+            items=[
+                "DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED",
+                "DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED",
+            ],
+            start_time=to_nsec_from_epoch(now - timedelta(days=1)),  # 24 hours ago
+            end_time=to_nsec_from_epoch(now - timedelta(seconds=60)),  # 1 minute ago
+        )
+
+        # Write CSV header
+        csv.write("Time,TEMP1,TEMP2\n")
+
+        # Read all data from the stream
+        data = api.read()
+
+        # Process each data point
+        for item in data:
+            temp1 = item["DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED"]
+            temp2 = item["DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED"]
+            csv.write(f"{item['__time'] / 1_000_000_000.0},{temp1},{temp2}\n")
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
 
 ```ruby
 require 'openc3'
@@ -177,6 +227,115 @@ OpenC3::StreamingWebSocketApi.new() do |api|
 end
 csv.close()
 ```
+
+</TabItem>
+</Tabs>
+
+## Wildcards and Globs
+
+The streaming API can expand a single request key into many concrete keys, so you don't have to enumerate every target, packet, or item yourself. Packet keys support the `COSMOS_ALL` wildcard; item keys support shell-style globs. Expansion happens server-side when the `add` (or `remove`) request is processed, and keys you are not authorized for are silently skipped.
+
+### COSMOS_ALL packet wildcard
+
+<span class="badge badge--secondary since-right">Since 7.0.0</span>
+
+Use `COSMOS_ALL` in a **packet** key (the `packets` array) in place of the target name, the packet name, or both:
+
+| Key form                                          | Expands to                      |
+| ------------------------------------------------- | ------------------------------- |
+| `MODE__CMDORTLM__COSMOS_ALL[__VALUETYPE]`         | Every packet of every target    |
+| `MODE__CMDORTLM__TARGET__COSMOS_ALL[__VALUETYPE]` | Every packet of a single target |
+
+When the **target** is `COSMOS_ALL`, the value type takes the packet-name position, e.g. `DECOM__TLM__COSMOS_ALL__CONVERTED` means "all telemetry packets of all targets, converted values". Omit the trailing value type to receive all value types as stored.
+
+Examples:
+
+- `DECOM__CMD__COSMOS_ALL__CONVERTED` — every command packet of every target (decommutated, converted)
+- `DECOM__TLM__COSMOS_ALL` — every telemetry packet of every target (all value types)
+- `RAW__TLM__INST__COSMOS_ALL` — every raw telemetry packet of the `INST` target
+- `DECOM__TLM__INST__COSMOS_ALL__CONVERTED` — every telemetry packet of `INST`, converted
+
+Notes:
+
+- The `UNKNOWN` target is skipped except in `RAW` mode.
+- `COSMOS_ALL` is only expanded in **packet** keys, not item keys.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+from openc3.script.web_socket_api import StreamingWebSocketApi
+
+# Stream every command sent by any target, in realtime
+with StreamingWebSocketApi() as api:
+    api.add(packets=["DECOM__CMD__COSMOS_ALL__CONVERTED"])
+    while True:
+        for cmd in api.read():
+            print(cmd)
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+require 'openc3'
+require 'openc3/script/web_socket_api'
+
+# Stream every command sent by any target, in realtime
+OpenC3::StreamingWebSocketApi.new do |api|
+  api.add(packets: ['DECOM__CMD__COSMOS_ALL__CONVERTED'])
+  while true
+    api.read.each { |cmd| puts cmd }
+  end
+end
+```
+
+</TabItem>
+</Tabs>
+
+### Item globs
+
+<span class="badge badge--secondary since-right">Since 7.1.0</span>
+
+**Item** keys (the `items` array) may use shell-style glob patterns (`*`, `?`, `[...]`) in the packet-name and item-name positions. Matching is case-insensitive.
+
+Examples:
+
+- `DECOM__TLM__INST__HEALTH_STATUS__TEMP*__CONVERTED` — all items in `HEALTH_STATUS` whose name starts with `TEMP`
+- `DECOM__TLM__INST__*__RECEIVED_COUNT__CONVERTED` — the `RECEIVED_COUNT` item from every `INST` packet that has one
+- `DECOM__TLM__INST__LATEST__TEMP*__CONVERTED` — `LATEST` resolves each matching item to the packet that most recently updated it
+
+Array subscripts are treated literally: `ARY[0]` matches the element `ARY[0]`, while a range like `ARY[1-3]` is still interpreted as a glob character class.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```python
+from openc3.script.web_socket_api import StreamingWebSocketApi
+
+with StreamingWebSocketApi() as api:
+    api.add(items=["DECOM__TLM__INST__HEALTH_STATUS__TEMP*__CONVERTED"])
+    for _ in range(5):
+        print(api.read())
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```ruby
+require 'openc3'
+require 'openc3/script/web_socket_api'
+
+OpenC3::StreamingWebSocketApi.new do |api|
+  api.add(items: ['DECOM__TLM__INST__HEALTH_STATUS__TEMP*__CONVERTED'])
+  5.times do
+    puts api.read
+  end
+end
+```
+
+</TabItem>
+</Tabs>
 
 ## StreamingApi Architecture
 

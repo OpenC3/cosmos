@@ -22,7 +22,10 @@ module OpenC3
 
     # Create the WebsocketApi object. If a block is given will automatically connect/disconnect
     def initialize(url:, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope, &block)
-      @scope = scope
+      # $openc3_scope is only set inside the Script Runner / microservice
+      # environment. Fall back to OPENC3_SCOPE (mirrors the Python client) so a
+      # bare `ruby script.rb` doesn't send a nil scope that the server rejects.
+      @scope = scope || ENV['OPENC3_SCOPE'] || 'DEFAULT'
       @authentication = authentication.nil? ? generate_auth() : authentication
       @url = url
       @write_timeout = write_timeout
@@ -100,6 +103,32 @@ module OpenC3
         json_hash['identifier'] = JSON.generate(@identifier, allow_nan: true)
         @stream.write(JSON.generate(json_hash, allow_nan: true))
         @subscribed = true
+        wait_for_subscribed()
+      end
+    end
+
+    # Block until the server confirms the subscription. ActionCable / anycable-go
+    # process 'subscribe' and 'message' commands as independent RPCs, so an action
+    # (add/remove) written immediately after subscribe can reach
+    # StreamingChannel#add before the subscription's broadcaster exists, where it
+    # is silently dropped (a no-op) and no data ever streams. Waiting for
+    # confirm_subscription guarantees the broadcaster is ready before any action
+    # is written.
+    def wait_for_subscribed
+      while true
+        message = @stream.read
+        raise "WebSocket closed before subscription was confirmed" if message.nil? || message.empty?
+
+        json_hash = JSON.parse(message, allow_nan: true, create_additions: true)
+        case json_hash['type']
+        when 'confirm_subscription'
+          return
+        when 'reject_subscription'
+          raise "Subscription Rejected"
+        when 'disconnect'
+          raise "Unauthorized" if json_hash['reason'] == 'unauthorized'
+        end
+        # Ignore welcome / ping and keep waiting for confirmation
       end
     end
 
@@ -116,6 +145,13 @@ module OpenC3
 
     # Send an ActionCable command
     def write_action(data_hash)
+      # Subscribe first so the token is present in @identifier before we
+      # serialize it below. ActionCable matches a 'message' command to its
+      # subscription by the exact identifier string; if subscribe() injected the
+      # token only afterward, the message identifier (no token) would not match
+      # the subscription identifier (with token) and the server would silently
+      # ignore the action.
+      subscribe()
       json_hash = {}
       json_hash['command'] = 'message'
       json_hash['identifier'] = JSON.generate(@identifier, allow_nan: true)
@@ -354,7 +390,8 @@ module OpenC3
     #   PACKET - Packet name
     #   VALUETYPE - RAW, CONVERTED, FORMATTED, or PURE (pure means all types as stored in log)
     #
-    def add(items: nil, packets: nil, start_time: nil, end_time: nil, scope: $openc3_scope)
+    def add(items: nil, packets: nil, start_time: nil, end_time: nil, scope: nil)
+      scope ||= @scope
       data_hash = {}
       data_hash['action'] = 'add'
       if start_time
@@ -395,7 +432,8 @@ module OpenC3
     #   PACKET - Packet name
     #   VALUETYPE - RAW, CONVERTED, FORMATTED, or PURE (pure means all types as stored in log)
     #
-    def remove(items: nil, packets: nil, scope: $openc3_scope)
+    def remove(items: nil, packets: nil, scope: nil)
+      scope ||= @scope
       data_hash = {}
       data_hash['action'] = 'remove'
       data_hash['items'] = items if items
@@ -407,7 +445,7 @@ module OpenC3
 
     # Convenience method to read all data until end marker is received.
     # Warning: DATA IS STORED IN RAM.  Do not use this with large queries
-    def self.read_all(items: nil, packets: nil, start_time: nil, end_time:, scope: $openc3_scope, timeout: nil)
+    def self.read_all(items: nil, packets: nil, start_time: nil, end_time:, scope: nil, timeout: nil)
       read_all_start_time = Time.now
       data = []
       self.new do |api|
