@@ -133,12 +133,10 @@ export default {
       if (response === null || response === undefined) {
         return
       }
-      switch (kwparams?.setting) {
-        case SCRIPT_LIFECYCLE_SETTING:
-          this.lifecycleEnabled = response
-          break
-        default:
-          this.scriptLockingEnabled = response
+      if (kwparams?.setting === SCRIPT_LIFECYCLE_SETTING) {
+        this.lifecycleEnabled = response
+      } else {
+        this.scriptLockingEnabled = response
       }
     },
   },
