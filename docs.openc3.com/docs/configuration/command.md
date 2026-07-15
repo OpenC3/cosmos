@@ -22,7 +22,7 @@ When defining command parameters you can choose from the following data types: I
 
 ### Naming Convention
 
-Command Packets and Parameters can be named however you want with very few exceptions. The following is not allowed in Command or Parameter names: `__` (double underscore), `[[` or `]]` (double brackets), whitespace, and ending a name with underscore. While not much else is _explicitly_ restricted we've found the following guidelines to be helpful.
+Command Packets and Parameters can be named however you want with very few exceptions. The following is not allowed in Command or Parameter names: `__` (double underscore), `[[` or `]]` (double brackets), whitespace, and ending a name with underscore. Parameter names are also limited to a maximum of 127 characters because they are used as column headers when command data is stored in the time series database (QuestDB). While not much else is _explicitly_ restricted we've found the following guidelines to be helpful.
 
 - Use underscores
 

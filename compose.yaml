@@ -207,6 +207,7 @@ services:
       RAILS_ENV: "production"
       GEM_HOME: "/gems"
       PYTHONUSERBASE: "/gems/python_packages"
+      OPENC3_USE_UV: "true"
       ANYCABLE_REDIS_URL: "redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}"
     env_file:
       - .env
@@ -244,6 +245,7 @@ services:
       - CI
       - GEM_HOME=/gems
       - PYTHONUSERBASE=/gems/python_packages
+      - OPENC3_USE_UV=true
     env_file:
       - .env
     extra_hosts:
@@ -318,6 +320,7 @@ services:
       - CI
       - GEM_HOME=/gems
       - PYTHONUSERBASE=/gems/python_packages
+      - OPENC3_USE_UV=true
     env_file:
       - .env
 

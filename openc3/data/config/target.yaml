@@ -179,7 +179,7 @@ TARGET:
         LOG evaluates limits and logs state changes but does not trigger limits reactions
         or update the current limits state used by the API.
         DISABLE skips limits processing entirely for stored packets.
-      since: 7.3.0
+      since: 7.2.1
       parameters:
         - name: Mode
           required: true

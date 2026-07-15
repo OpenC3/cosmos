@@ -4945,6 +4945,52 @@ set_limits_set("DEFAULT")
 </TabItem>
 </Tabs>
 
+### delete_limits_set
+
+<span class="badge badge--secondary since-heading">Since 7.2.1</span>
+
+Deletes a limits set and removes it from all telemetry items. The DEFAULT limits set and the currently active limits set cannot be deleted. Use [set_limits_set](#set_limits_set) to change the active set before deleting it. Use [get_limits_sets](#get_limits_sets) to get the available limit set names.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+delete_limits_set("<Limits Set Name>")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+delete_limits_set("<Limits Set Name>")
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter       | Description                       |
+| --------------- | --------------------------------- |
+| Limits Set Name | Name of the limits set to delete. |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+delete_limits_set("TVAC")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+delete_limits_set("TVAC")
+```
+
+</TabItem>
+</Tabs>
+
 ### get_limits_set
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
@@ -5106,7 +5152,7 @@ set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0,
 
 ### set_state_color
 
-<span class="badge badge--secondary since-heading">Since 7.3.0</span>
+<span class="badge badge--secondary since-heading">Since 7.2.1</span>
 
 The set_state_color method changes the color associated with a telemetry item's state in realtime. Items with states (e.g. CONNECTED, UNAVAILABLE) use a state color (GREEN, YELLOW, or RED) to determine their limits state rather than numeric red/yellow/green limits. Note: In most cases it would be better to update your config files rather than changing state colors in realtime.
 

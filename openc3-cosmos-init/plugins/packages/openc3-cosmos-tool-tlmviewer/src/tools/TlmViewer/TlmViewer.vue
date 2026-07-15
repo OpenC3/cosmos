@@ -170,29 +170,29 @@
                 ></v-btn>
               </template>
             </v-tooltip>
-            <v-text-field
+            <v-number-input
               v-model="playbackStep"
+              control-variant="stacked"
               class="mr-4 ml-4"
               density="compact"
               hide-details
               variant="outlined"
               label="Step (Speed)"
               suffix="secs"
-              type="number"
-              step="1"
+              :step="1"
               data-test="playback-speed"
               style="max-width: 120px"
             />
-            <v-text-field
+            <v-number-input
               v-model="playbackSkip"
+              control-variant="stacked"
               class="mr-4"
               density="compact"
               hide-details
               variant="outlined"
               label="Skip"
               suffix="secs"
-              type="number"
-              step="1"
+              :step="1"
               data-test="skip"
               style="max-width: 120px"
             />
@@ -500,10 +500,10 @@ export default {
       })
 
     if (localStorage[`${this.configKey}__step`]) {
-      this.playbackStep = localStorage[`${this.configKey}__step`]
+      this.playbackStep = Number(localStorage[`${this.configKey}__step`])
     }
     if (localStorage[`${this.configKey}__skip`]) {
-      this.playbackSkip = localStorage[`${this.configKey}__skip`]
+      this.playbackSkip = Number(localStorage[`${this.configKey}__skip`])
     }
     if (localStorage[`${this.configKey}__date`]) {
       this.playbackDate = localStorage[`${this.configKey}__date`]

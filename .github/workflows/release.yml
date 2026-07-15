@@ -50,7 +50,7 @@ jobs:
         with:
           token: ${{ secrets.QA_PAT }}
       - name: Set up Ruby 3.4
-        uses: ruby/setup-ruby@0dafeac902942906541bc140009cdbf32665b601 # v1.315.0
+        uses: ruby/setup-ruby@d45b1a4e94b71acab930e56e79c6aa188764e7f9 # v1.316.0
         with:
           ruby-version: 3.4
           bundler-cache: false # runs 'bundle install' and caches installed gems automatically
@@ -98,7 +98,7 @@ jobs:
         working-directory: scripts/release
         env:
           OPENC3_RELEASE_VERSION: ${{ github.event.inputs.version }}
-      - uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # v7.1.0
+      - uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
         with:
           commit_message: "[Github Action] Update version to ${{ github.event.inputs.version }}"
           tagging_message: "v${{ github.event.inputs.version }}"
@@ -198,7 +198,7 @@ jobs:
         working-directory: scripts/release
         env:
           OPENC3_RELEASE_VERSION: ${{ github.event.inputs.next_version }}
-      - uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # v7.1.0
+      - uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
         with:
           commit_message: "[Github Action] Update version to ${{ github.event.inputs.next_version }}"
           push_options: --force

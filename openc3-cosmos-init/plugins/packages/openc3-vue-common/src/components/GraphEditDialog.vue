@@ -144,19 +144,19 @@
             </v-card-text>
             <v-row dense>
               <v-col class="px-2">
-                <v-text-field
+                <v-number-input
                   v-model="graph.graphMinY"
+                  control-variant="stacked"
                   hide-details
                   label="Min Y Axis (Optional)"
-                  type="number"
                 />
               </v-col>
               <v-col class="px-2">
-                <v-text-field
+                <v-number-input
                   v-model="graph.graphMaxY"
+                  control-variant="stacked"
                   hide-details
                   label="Max Y Axis (Optional)"
-                  type="number"
                 />
               </v-col>
             </v-row>

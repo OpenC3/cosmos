@@ -102,6 +102,12 @@ if "%1" == "start" (
 if "%1" == "stop" (
   GOTO stop
 )
+if "%1" == "list" (
+  GOTO list
+)
+if "%1" == "status" (
+  GOTO status
+)
 if "%1" == "cleanup" (
   GOTO cleanup
 )
@@ -149,6 +155,40 @@ GOTO :EOF
   @echo off
 GOTO :EOF
 
+:list
+  REM Build the list of compose files to query
+  set "COMPOSE_FILES=-f %~dp0compose.yaml"
+  if "%OPENC3_DEVEL%" == "1" (
+    if exist "%~dp0compose-build.yaml" (
+      set "COMPOSE_FILES=!COMPOSE_FILES! -f %~dp0compose-build.yaml"
+    )
+  )
+  REM Get image repositories from compose config
+  REM Strip docker.io/ prefix and :tag suffix so we match all tags per repository
+  set "FILTER_ARGS="
+  for /f "delims=" %%i in ('docker compose !COMPOSE_FILES! config --images 2^>nul') do (
+    set "IMG=%%i"
+    set "IMG=!IMG:docker.io/=!"
+    REM Strip :tag suffix by splitting on colon
+    for /f "tokens=1 delims=:" %%r in ("!IMG!") do set "REPO=%%r"
+    REM Check if any local images exist for this repository
+    for /f %%q in ('docker images -q "!REPO!" 2^>nul') do (
+      set "FILTER_ARGS=!FILTER_ARGS! --filter reference=!REPO!"
+    )
+  )
+  if "!FILTER_ARGS!" == "" (
+    @echo No %COSMOS_NAME% images found locally.
+    GOTO :EOF
+  )
+  docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" !FILTER_ARGS!
+  @echo off
+GOTO :EOF
+
+:status
+  docker compose -f %~dp0compose.yaml ps
+  @echo off
+GOTO :EOF
+
 :cleanup
   if "%2" == "force" (
     goto :cleanup_y
@@ -180,21 +220,21 @@ GOTO :EOF
     exit /b 1
   )
   CALL scripts\windows\openc3_setup || exit /b
-  CALL :registry_login
   if "%OPENC3_ENTERPRISE%" == "1" (
-    !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-enterprise-gem || exit /b
+    REM Enterprise: build core images first when OPENC3_TAG=latest, then enterprise
+    CALL :build_core_images
+    !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-enterprise-gem || GOTO :pull_failed
   ) else (
-    !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-ruby || exit /b
-    !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-base || exit /b
-    !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-node || exit /b
+    !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-ruby || GOTO :pull_failed
+    !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-base || GOTO :pull_failed
+    !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-node || GOTO :pull_failed
   )
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build || exit /b
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build || GOTO :pull_failed
   @echo off
 GOTO :EOF
 
 :run
-  CALL :registry_login
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml up -d
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml up -d || GOTO :pull_failed
   @echo off
 GOTO :EOF
 
@@ -234,15 +274,47 @@ GOTO :EOF
   @echo off
 GOTO :EOF
 
-:registry_login
+:resolve_openc3_tag
+  REM Resolve OPENC3_TAG from the env file if not already set.
+  if not defined OPENC3_TAG FOR /F "tokens=1,* delims==" %%a in ('findstr /B /C:"OPENC3_TAG=" "%~dp0.env" 2^>nul') do set "OPENC3_TAG=%%b"
+  if not defined OPENC3_TAG set "OPENC3_TAG=latest"
+  exit /b 0
+
+:build_core_images
+  REM Build all core images from the sibling cosmos repo when OPENC3_TAG=latest.
+  CALL :resolve_openc3_tag
+  if not "!OPENC3_TAG!" == "latest" exit /b 0
+  set "CORE_DIR=%~dp0..\cosmos"
+  if exist "!CORE_DIR!\compose-build.yaml" (
+    @echo Building core images from !CORE_DIR! ...
+    !CONTAINER_COMPOSE_CMD! --project-directory "!CORE_DIR!" -f "!CORE_DIR!\compose.yaml" -f "!CORE_DIR!\compose-build.yaml" build || exit /b
+  ) else (
+    @echo Warning: Core repo not found at !CORE_DIR! — using existing latest tagged images
+  )
+  exit /b 0
+
+REM Reached when a compose build/run fails. We do NOT login automatically:
+REM forcing a login would require credentials for public registries (e.g.
+REM docker.io) and break air-gapped builds. Instead suggest logging in.
+:pull_failed
+  CALL :suggest_registry_login
+  exit /b 1
+
+:suggest_registry_login
   FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# %~dp0.env') do SET %%i
+  @echo. 1>&2
+  @echo The command failed. If this was a registry authentication error (403), 1>&2
+  @echo login to the registry and retry the command: 1>&2
   if defined OPENC3_REGISTRY (
-    !CONTAINER_CMD! login !OPENC3_REGISTRY!
+    @echo   !CONTAINER_CMD! login !OPENC3_REGISTRY! 1>&2
   )
   if "!OPENC3_ENTERPRISE!" == "1" (
     if defined OPENC3_ENTERPRISE_REGISTRY (
-      !CONTAINER_CMD! login !OPENC3_ENTERPRISE_REGISTRY!
+      @echo   !CONTAINER_CMD! login !OPENC3_ENTERPRISE_REGISTRY! 1>&2
     )
+  )
+  if not defined OPENC3_REGISTRY (
+    @echo   !CONTAINER_CMD! login ^<registry^> 1>&2
   )
   exit /b 0
 
@@ -329,6 +401,12 @@ GOTO :EOF
     @echo                         Downloads and installs latest release. 1>&2
     @echo. 1>&2
   )
+  @echo STATUS: 1>&2
+  @echo   list                  List %COSMOS_NAME% Docker images for this installation 1>&2
+  @echo                         Only shows images belonging to the current installation. 1>&2
+  @echo. 1>&2
+  @echo   status                Show container status for this %COSMOS_NAME% installation 1>&2
+  @echo. 1>&2
   @echo CLEANUP: 1>&2
   @echo   cleanup [OPTIONS]     Remove Docker volumes and data 1>&2
   @echo                         WARNING: This deletes all %COSMOS_NAME% data! 1>&2

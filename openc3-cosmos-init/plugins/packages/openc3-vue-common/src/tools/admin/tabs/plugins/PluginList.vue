@@ -28,6 +28,7 @@
         :microservices="microservices"
         @edit="() => editPlugin(plugin.name)"
         @upgrade="() => upgradePlugin(plugin.name)"
+        @migrate-to-uv="() => migrateToUv(plugin.name)"
         @delete="() => deletePrompt(plugin.name)"
       />
     </template>
@@ -60,7 +61,7 @@ export default {
       required: true,
     },
   },
-  emits: ['edit', 'delete', 'upgrade'],
+  emits: ['edit', 'delete', 'upgrade', 'migrate-to-uv'],
   data() {
     return {
       showPluginDetails: false,
@@ -121,6 +122,9 @@ export default {
     },
     upgradePlugin(plugin) {
       this.$emit('upgrade', plugin)
+    },
+    migrateToUv: function (plugin) {
+      this.$emit('migrate-to-uv', plugin)
     },
     deletePrompt: function (plugin) {
       this.$emit('delete', plugin)

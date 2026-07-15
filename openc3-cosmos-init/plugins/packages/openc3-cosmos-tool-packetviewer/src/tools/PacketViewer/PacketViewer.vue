@@ -143,24 +143,24 @@
           <v-card-text>
             <div class="pa-3">
               <v-row>
-                <v-text-field
+                <v-number-input
                   v-model="optionsRefreshInterval"
-                  min="1"
-                  max="3600"
-                  step="1"
-                  type="number"
+                  control-variant="stacked"
+                  :min="1"
+                  :max="3600"
+                  :step="1"
                   label="Refresh Interval (s)"
                   :rules="[rules.required, rules.min]"
                   data-test="refresh-interval"
                 />
               </v-row>
               <v-row>
-                <v-text-field
+                <v-number-input
                   v-model="optionsStaleLimit"
-                  min="1"
-                  max="10000"
-                  step="1"
-                  type="number"
+                  control-variant="stacked"
+                  :min="1"
+                  :max="10000"
+                  :step="1"
                   label="Time at which to mark data Stale (s)"
                   :rules="[rules.required, rules.min]"
                   min-width="280px"

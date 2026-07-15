@@ -17,7 +17,13 @@
 
 <template>
   <div>
-    <v-btn class="ma-1" color="primary" :style="computedStyle" @click="onClick">
+    <v-btn
+      class="ma-1"
+      color="primary"
+      :style="computedStyle"
+      :loading="running"
+      @click="onClick"
+    >
       {{ buttonText }}
     </v-btn>
     <v-dialog v-model="displaySendHazardous" max-width="300">
@@ -53,6 +59,7 @@
 <script>
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { CriticalCmdDialog } from '@/components'
+import { runButtonScript } from '@/util'
 import Widget from './Widget'
 
 export default {
@@ -63,104 +70,92 @@ export default {
   data() {
     return {
       api: null,
+      running: false,
       displaySendHazardous: false,
-      lastCmd: '',
+      hazardousResolve: null,
       criticalCmdUuid: null,
       criticalCmdString: null,
       criticalCmdUser: null,
       displayCriticalCmd: false,
+      abortController: null,
     }
   },
   computed: {
     buttonText() {
       return this.parameters[0]
     },
-    eval() {
-      return this.parameters[1]
-    },
   },
   created() {
     this.api = new OpenC3Api()
   },
+  beforeUnmount() {
+    // Tear down any in-flight sandbox run if the screen closes mid-execution
+    this.abortController?.abort()
+  },
   methods: {
+    // The button's action (parameters[1]) is author-supplied JavaScript. It is
+    // NOT eval'd here in the main window (that was a stored, cross-user XSS -
+    // author JS could read localStorage.openc3Token). Instead it runs in an
+    // opaque-origin sandbox iframe with no token/DOM/network access, and calls
+    // back to these token-bearing objects over a postMessage bridge.
     async onClick() {
-      const lines = this.eval.split(';;')
-      // Create local references to variables so users don't need to use 'this'
-      const self = this
-      const screen = this.screen
-      const screenValues = this.screenValues
-      const screenTimeZone = this.screenTimeZone
-      const api = this.api
-      const runScript = this.runScript
-      if (
-        self ||
-        screen ||
-        screenValues ||
-        screenTimeZone ||
-        api ||
-        runScript
-      ) {
-        // Add a noop to preserve the variables in the if statement
-        // from being removed by compiler optimizations
-        this.$nextTick(() => {})
-      }
-      for (let i = 0; i < lines.length; i++) {
-        try {
-          const result = eval(lines[i].trim())
-          if (result instanceof Promise) {
-            await result
-          }
-        } catch (error) {
-          // This text is in top_level.rb HazardousError.to_s
-          if (error.message.includes('CriticalCmdError')) {
-            this.criticalCmdUuid = error.object.data.instance_variables['@uuid']
-            this.criticalCmdString =
-              error.object.data.instance_variables['@cmd_string']
-            this.criticalCmdUser =
-              error.object.data.instance_variables['@username']
-            this.displayCriticalCmd = true
-          } else if (error.message.includes('is Hazardous')) {
-            this.lastCmd = error.message.split('\n').pop()
-            this.displaySendHazardous = true
-            while (this.displaySendHazardous) {
-              await new Promise((resolve) => setTimeout(resolve, 500))
-            }
-          } else {
-            // eslint-disable-next-line no-console
-            console.error(error)
-          }
+      if (this.running) return
+      this.running = true
+      this.abortController = new AbortController()
+      try {
+        await runButtonScript({
+          code: this.parameters[1],
+          api: this.api,
+          screen: this.screen,
+          runScript: this.runScript,
+          setNamedWidgetValue: (name, value) =>
+            this.setNamedWidgetValue(name, value),
+          snapshot: this.namedWidgetsSnapshot(),
+          screenValues: this.screenValues,
+          screenTimeZone: this.screenTimeZone,
+          onHazardous: this.onHazardous,
+          onCritical: this.onCritical,
+          signal: this.abortController.signal,
+        })
+      } catch (error) {
+        if (error?.name !== 'AbortError') {
+          // eslint-disable-next-line no-console
+          console.error(error)
         }
+      } finally {
+        this.running = false
+        this.abortController = null
+        this.displaySendHazardous = false
+        this.hazardousResolve = null
       }
     },
-    async sendHazardousCmd() {
-      // TODO: This only handles basic cmd() calls in buttons, do we need to handle other? cmd_raw()?
-      this.lastCmd = this.lastCmd.replace(
-        'cmd(',
-        'this.api.cmd_no_hazardous_check(',
-      )
-
-      try {
-        const result = eval(this.lastCmd)
-
-        if (result instanceof Promise) {
-          await result
-        }
-      } catch (error) {
-        // This text is in top_level.rb HazardousError.to_s
-        if (error.message.includes('CriticalCmdError')) {
-          this.criticalCmdUuid = error.object.data.instance_variables['@uuid']
-          this.criticalCmdString =
-            error.object.data.instance_variables['@cmd_string']
-          this.criticalCmdUser =
-            error.object.data.instance_variables['@username']
-          this.displayCriticalCmd = true
-        }
-      }
-
+    // Called by the bridge when a command throws a hazardous error. Shows the
+    // confirmation dialog and resolves true (Send) or false (Cancel).
+    onHazardous() {
+      return new Promise((resolve) => {
+        this.hazardousResolve = resolve
+        this.displaySendHazardous = true
+      })
+    },
+    // Called by the bridge when a command throws a CriticalCmdError.
+    onCritical(error) {
+      this.criticalCmdUuid = error.object.data.instance_variables['@uuid']
+      this.criticalCmdString =
+        error.object.data.instance_variables['@cmd_string']
+      this.criticalCmdUser = error.object.data.instance_variables['@username']
+      this.displayCriticalCmd = true
+    },
+    sendHazardousCmd() {
       this.displaySendHazardous = false
+      const resolve = this.hazardousResolve
+      this.hazardousResolve = null
+      resolve?.(true)
     },
     cancelHazardousCmd() {
       this.displaySendHazardous = false
+      const resolve = this.hazardousResolve
+      this.hazardousResolve = null
+      resolve?.(false)
     },
     runScript(scriptName, openScript = true, env = {}) {
       let envArray = []

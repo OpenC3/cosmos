@@ -24,13 +24,7 @@ async function openFile(page, utils, filename) {
   await expect(page.locator('.v-dialog')).toBeVisible()
   await expect(page.getByRole('progressbar')).not.toBeVisible()
   await expect(page.getByText('TEMPLATED')).not.toBeVisible()
-  let parts = filename.split('.')
-  await page.locator('[data-test=file-open-save-search] input').type(parts[0])
-  await utils.sleep(100)
-  await page
-    .locator('[data-test=file-open-save-search] input')
-    .type(`.${parts[1]}`)
-  await utils.sleep(100)
+  await page.locator('[data-test=file-open-save-search] input').fill(filename)
   await page.locator(`text=${filename} >> nth=0`).click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
 }

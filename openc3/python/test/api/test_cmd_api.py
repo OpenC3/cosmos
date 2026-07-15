@@ -228,6 +228,25 @@ class TestCmdApi(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "Invalid number of arguments"):
                 func("INST", "COLLECT", "TYPE", "DURATION")
 
+    def test_cmd_records_the_original_queuing_user(self):
+        for name in [
+            "cmd",
+            "cmd_no_range_check",
+            "cmd_no_hazardous_check",
+            "cmd_no_checks",
+            "cmd_raw",
+            "cmd_raw_no_range_check",
+            "cmd_raw_no_hazardous_check",
+            "cmd_raw_no_checks",
+        ]:
+            func = globals()[name]
+            command = func("INST", "ABORT", queue_username="original_author")
+            # queue_username (author, shown as "Queued By") is recorded separately
+            # from username (executor, shown as "Executed By")
+            self.assertEqual(command["queue_username"], "original_author")
+            # username is the executing user/process, not the author
+            self.assertNotEqual(command["username"], "original_author")
+
     def test_cmd_warns_about_required_parameters(self):
         for name in [
             "cmd",
