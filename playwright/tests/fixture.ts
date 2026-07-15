@@ -38,9 +38,9 @@ import { expect, test as base } from '@playwright/test'
 import { Utilities } from '../utilities'
 
 // Copyright (c) 2021 Anish Karandikar
-const fs = require('fs')
-const path = require('path')
-const crypto = require('crypto')
+import fs from 'fs'
+import path from 'path'
+import crypto from 'crypto'
 const istanbulTempDir = process.env.ISTANBUL_TEMP_DIR
   ? path.resolve(process.env.ISTANBUL_TEMP_DIR)
   : path.join(process.cwd(), '.nyc_output')

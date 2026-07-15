@@ -12,7 +12,6 @@
 # All Rights Reserved
 */
 
-// @ts-check
 import { test, expect } from './fixture'
 
 test('waits for the services to deploy and connect', async ({
