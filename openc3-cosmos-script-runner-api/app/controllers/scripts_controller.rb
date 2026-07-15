@@ -97,6 +97,10 @@ class ScriptsController < ApplicationController
     return unless authorization('script_view')
     scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
+    unless lifecycle_enabled?()
+      render json: { status: 'error', message: 'Script lifecycle is not enabled' }, status: :bad_request
+      return
+    end
     render json: Script.lifecycle(scope, name)
   end
 
@@ -107,6 +111,10 @@ class ScriptsController < ApplicationController
     return unless authorization('script_edit')
     scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
+    unless lifecycle_enabled?()
+      render json: { status: 'error', message: 'Script lifecycle is not enabled' }, status: :bad_request
+      return
+    end
     if Script.temp_file?(name)
       render json: { status: 'error', message: 'Cannot set lifecycle on temporary files' }, status: :bad_request
       return
@@ -130,6 +138,13 @@ class ScriptsController < ApplicationController
       return
     end
     result = Script.set_lifecycle(scope, name, state, username(), comment, current: current)
+    # The Enterprise store logs-and-swallows backend failures, returning nil.
+    # Render an error instead of `json: nil`, which the ScriptLifecycleDialog
+    # would try to read as `response.data.state` and crash on.
+    if result.nil?
+      render json: { status: 'error', message: 'Failed to change lifecycle' }, status: :internal_server_error
+      return
+    end
     OpenC3::Logger.info("Script lifecycle changed from #{current} to #{state}: #{name} (#{comment})", scope: scope, user: username())
     render json: result
   rescue => e

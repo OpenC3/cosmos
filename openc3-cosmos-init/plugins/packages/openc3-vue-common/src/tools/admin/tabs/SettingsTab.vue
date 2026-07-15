@@ -42,8 +42,6 @@
     <context-tag-settings />
     <template v-if="isEnterprise">
       <v-divider />
-      <script-lifecycle-settings />
-      <v-divider />
       <ai-chat-settings />
     </template>
   </div>
@@ -55,7 +53,6 @@ import SuppressedSettings from './settings/SuppressedSettings.vue'
 import AiChatSettings from './settings/AiChatSettings.vue'
 import DefaultConfigSettings from './settings/DefaultConfigSettings.vue'
 import EditorSettings from './settings/EditorSettings.vue'
-import ScriptLifecycleSettings from './settings/ScriptLifecycleSettings.vue'
 import AstroSettings from './settings/AstroSettings.vue'
 import ThemeSettings from './settings/ThemeSettings.vue'
 import ClassificationBannerSettings from './settings/ClassificationBannerSettings.vue'
@@ -74,7 +71,6 @@ export default {
     AiChatSettings,
     DefaultConfigSettings,
     EditorSettings,
-    ScriptLifecycleSettings,
     AstroSettings,
     ThemeSettings,
     ClassificationBannerSettings,

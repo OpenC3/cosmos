@@ -437,6 +437,7 @@ RSpec.describe ScriptsController, type: :controller do
   describe "set_lifecycle" do
     before(:each) do
       allow(OpenC3::Logger).to receive(:info)
+      OpenC3::SettingModel.set({name: 'script_runner_lifecycle', data: true}, scope: 'DEFAULT')
       enable_lifecycle_store
     end
 
@@ -525,6 +526,71 @@ RSpec.describe ScriptsController, type: :controller do
       json = JSON.parse(response.body)
       expect(json["status"]).to eq("error")
       expect(json["message"]).to eq("Lifecycle failed")
+    end
+
+    it "denies moving to approved without the script_approver permission" do
+      # Get the script into review first (script_edit is enough for that).
+      Script.set_lifecycle("DEFAULT", "INST/procedures/test.rb", "review", "anonymous", "")
+
+      # Grant every permission except script_approver.
+      allow(controller).to receive(:authorize) do |args|
+        raise OpenC3::ForbiddenError.new("script_approver required") if args[:permission] == 'script_approver'
+        'authorized_user'
+      end
+
+      post :set_lifecycle, params: {scope: "DEFAULT", name: "INST/procedures/test.rb", state: "approved", comment: "looks good"}
+
+      expect(response).to have_http_status(:forbidden)
+      # The transition was rejected: state stays in review.
+      expect(FakeVersionStore.lifecycle(scope: "DEFAULT", name: "INST/procedures/test.rb")["state"]).to eq("review")
+    end
+
+    it "denies moving an approved script back without the script_approver permission" do
+      Script.set_lifecycle("DEFAULT", "INST/procedures/test.rb", "review", "anonymous", "")
+      Script.set_lifecycle("DEFAULT", "INST/procedures/test.rb", "approved", "anonymous", "")
+
+      allow(controller).to receive(:authorize) do |args|
+        raise OpenC3::ForbiddenError.new("script_approver required") if args[:permission] == 'script_approver'
+        'authorized_user'
+      end
+
+      post :set_lifecycle, params: {scope: "DEFAULT", name: "INST/procedures/test.rb", state: "review", comment: "rework"}
+
+      expect(response).to have_http_status(:forbidden)
+      expect(FakeVersionStore.lifecycle(scope: "DEFAULT", name: "INST/procedures/test.rb")["state"]).to eq("approved")
+    end
+
+    it "renders an error when the store returns nil" do
+      # The Enterprise store swallows backend failures and returns nil; the
+      # controller must not render `json: nil` (crashes the dialog).
+      expect(Script).to receive(:set_lifecycle).and_return(nil)
+
+      post :set_lifecycle, params: {scope: "DEFAULT", name: "INST/procedures/test.rb", state: "review", comment: ""}
+
+      expect(response).to have_http_status(500)
+      json = JSON.parse(response.body)
+      expect(json["status"]).to eq("error")
+      expect(json["message"]).to match(/Failed to change lifecycle/)
+    end
+
+    it "returns an error when the lifecycle feature is disabled" do
+      # A request that reaches here with the feature off is a manual API call
+      # (the UI hides lifecycle), so it is rejected rather than writing commits.
+      OpenC3::SettingModel.set({name: 'script_runner_lifecycle', data: false}, scope: 'DEFAULT')
+
+      post :set_lifecycle, params: {scope: "DEFAULT", name: "INST/procedures/test.rb", state: "review", comment: ""}
+
+      expect(response).to have_http_status(:bad_request)
+      expect(JSON.parse(response.body)["message"]).to match(/not enabled/)
+    end
+
+    it "returns an error from GET lifecycle when the feature is disabled" do
+      OpenC3::SettingModel.set({name: 'script_runner_lifecycle', data: false}, scope: 'DEFAULT')
+
+      get :lifecycle, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
+
+      expect(response).to have_http_status(:bad_request)
+      expect(JSON.parse(response.body)["message"]).to match(/not enabled/)
     end
 
     it "handles authorization failure" do

@@ -1472,6 +1472,7 @@ export default {
       if (role == 'admin' || role == 'operator') {
         this.readOnlyUser = false
         this.executeUser = true
+        this.canApprove = true
       } else if (role == 'runner') {
         this.executeUser = true
       } else {

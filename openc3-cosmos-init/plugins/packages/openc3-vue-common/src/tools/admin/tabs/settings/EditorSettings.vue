@@ -48,6 +48,29 @@
         color="primary"
         data-test="script-locking-enabled"
       />
+      <template v-if="isEnterprise">
+        <v-alert
+          v-if="!gitHistoryEnabled"
+          type="info"
+          density="compact"
+          class="mb-2"
+        >
+          The Script Lifecycle requires the Version History git store, which is
+          not configured on this server (set OPENC3_VERSION_HISTORY_DIR).
+          Enabling this setting has no effect until it is available.
+        </v-alert>
+        <v-switch
+          v-model="lifecycleEnabled"
+          :disabled="!gitHistoryEnabled"
+          label="Script Lifecycle - When enabled, scripts are tracked through
+          In Development, In Review, and Approved states. Users with the script_edit permission
+          can move scripts to In Review, and users with the script_approver permission may approve scripts.
+          Approved scripts cannot be modified or deleted, and users with only the runner
+          permission can only run approved scripts."
+          color="primary"
+          data-test="script-lifecycle-enabled"
+        />
+      </template>
     </v-card-text>
     <v-card-actions>
       <v-btn
@@ -63,10 +86,12 @@
 </template>
 
 <script>
+import { Api } from '@openc3/js-common/services'
 import { AceEditorUtils } from '@/components/ace'
 import Settings from './settings.js'
 
 const SCRIPT_LOCKING_SETTING = 'script_runner_locking'
+const SCRIPT_LIFECYCLE_SETTING = 'script_runner_lifecycle'
 
 export default {
   mixins: [Settings],
@@ -74,6 +99,12 @@ export default {
     return {
       vimMode: AceEditorUtils.isVimModeEnabled(),
       scriptLockingEnabled: true,
+      // Script Lifecycle is Enterprise-only and inert without the git-backed
+      // version store, so gate the control on both (info.enterprise and
+      // info.script_versions, the latter reflecting OPENC3_VERSION_HISTORY_DIR).
+      lifecycleEnabled: false,
+      isEnterprise: false,
+      gitHistoryEnabled: false,
       defaultLanguage: AceEditorUtils.getDefaultScriptingLanguage(),
       languageOptions: [
         { text: 'Ruby', value: 'ruby' },
@@ -83,16 +114,31 @@ export default {
   },
   created() {
     this.loadSetting(SCRIPT_LOCKING_SETTING)
+    this.loadSetting(SCRIPT_LIFECYCLE_SETTING)
+    Api.get('/openc3-api/info').then(({ data }) => {
+      this.isEnterprise = data.enterprise === true
+      this.gitHistoryEnabled = data.script_versions === true
+    })
   },
   methods: {
     save: function () {
       AceEditorUtils.setVimMode(this.vimMode)
       AceEditorUtils.setDefaultScriptingLanguage(this.defaultLanguage)
       this.saveSetting(SCRIPT_LOCKING_SETTING, this.scriptLockingEnabled)
+      if (this.isEnterprise) {
+        this.saveSetting(SCRIPT_LIFECYCLE_SETTING, this.lifecycleEnabled)
+      }
     },
-    parseSetting: function (response) {
-      if (response !== null && response !== undefined) {
-        this.scriptLockingEnabled = response
+    parseSetting: function (response, kwparams) {
+      if (response === null || response === undefined) {
+        return
+      }
+      switch (kwparams?.setting) {
+        case SCRIPT_LIFECYCLE_SETTING:
+          this.lifecycleEnabled = response
+          break
+        default:
+          this.scriptLockingEnabled = response
       }
     },
   },
