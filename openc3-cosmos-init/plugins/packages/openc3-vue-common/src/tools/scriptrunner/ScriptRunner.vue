@@ -213,7 +213,6 @@
                     density="compact"
                     variant="outlined"
                     hide-details
-                    clearable
                     style="max-width: 200px; min-width: 160px"
                     class="mr-2"
                     data-test="python-venv-select"
