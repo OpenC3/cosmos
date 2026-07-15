@@ -261,7 +261,7 @@ module OpenC3
             # which installs into PYTHONUSERBASE (the legacy shared environment).
             uv_installed = ENV['OPENC3_USE_UV'] != 'false' && system('which uv > /dev/null 2>&1')
             if uv_installed
-              plugin_venv_name = plugin_model.name.tr('^a-zA-Z0-9_-', '_')
+              plugin_venv_name = "#{scope}__#{plugin_model.name}".tr('^a-zA-Z0-9_-', '_')
               Logger.info "Installing python packages into per-plugin venv '#{plugin_venv_name}' with pypi_url=#{pypi_url}"
               uv_args = [plugin_venv_name, gem_path] + pypi_args
               output, status = Open3.capture2e("/openc3/bin/uvinstall", *uv_args)
@@ -486,7 +486,7 @@ module OpenC3
       # during install_phase2. This cleans up the .venv, pyproject.toml, uv.lock,
       # and .uv_managed marker so disk space is reclaimed on plugin uninstall.
       begin
-        plugin_venv_name = @name.tr('^a-zA-Z0-9_-', '_')
+        plugin_venv_name = "#{@scope}__#{@name}".tr('^a-zA-Z0-9_-', '_')
         plugin_venv_path = File.join('/gems', 'plugin_venvs', plugin_venv_name)
         if File.directory?(plugin_venv_path)
           Logger.info("Removing per-plugin Python venv: #{plugin_venv_path}")
@@ -572,7 +572,7 @@ module OpenC3
     def needs_uv_migration?
       return false unless @needs_dependencies
 
-      plugin_venv_name = @name.tr('^a-zA-Z0-9_-', '_')
+      plugin_venv_name = "#{@scope}__#{@name}".tr('^a-zA-Z0-9_-', '_')
       marker_path = File.join('/gems', 'plugin_venvs', plugin_venv_name, '.uv_managed')
       !File.exist?(marker_path)
     end
@@ -581,7 +581,7 @@ module OpenC3
     # Non-fatal: logs a warning on failure, plugin continues using the shared venv.
     # Returns true on success, false on failure.
     def migrate_to_uv!(scope:)
-      plugin_venv_name = @name.tr('^a-zA-Z0-9_-', '_')
+      plugin_venv_name = "#{@scope}__#{@name}".tr('^a-zA-Z0-9_-', '_')
       marker_path = File.join('/gems', 'plugin_venvs', plugin_venv_name, '.uv_managed')
       if File.exist?(marker_path)
         Logger.info("Plugin '#{@name}' is already migrated to a per-plugin UV venv")
@@ -612,7 +612,7 @@ module OpenC3
         pypi_args = self.class.build_pypi_args(pypi_url)
 
         # Run uvinstall for this plugin
-        plugin_venv_name = @name.tr('^a-zA-Z0-9_-', '_')
+        plugin_venv_name = "#{@scope}__#{@name}".tr('^a-zA-Z0-9_-', '_')
         Logger.info("Migrating plugin '#{@name}' to per-plugin UV venv '#{plugin_venv_name}'")
         uv_args = [plugin_venv_name, gem_path] + pypi_args
         output, status = Open3.capture2e("/openc3/bin/uvinstall", *uv_args)
