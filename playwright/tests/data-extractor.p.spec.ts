@@ -32,7 +32,14 @@ test('loads and saves the configuration', async ({ page, utils }) => {
     .locator('[data-test=name-input-save-config-dialog] input')
     .fill(config)
   await page.locator('button:has-text("Ok")').click()
-  await page.getByRole('button', { name: 'Dismiss' }).click({ timeout: 20000 })
+  await expect(page.getByText(`Saved configuration${config}`)).toBeVisible()
+  // Saving the config shows a toast banner that auto-hides after ~5s, so its
+  // Dismiss button can disappear (or be briefly covered by a transitioning
+  // toast) before the click lands. Tolerate it already being gone.
+  await page
+    .getByRole('button', { name: 'Dismiss' })
+    .click({ timeout: 5000 })
+    .catch(() => {})
 
   await expect(page.locator('tbody > tr')).toHaveCount(2)
   await page.locator('[data-test=delete-all]').click()
@@ -44,7 +51,12 @@ test('loads and saves the configuration', async ({ page, utils }) => {
   await page.locator('text=Open Configuration').click()
   await page.locator(`td:has-text("${config}")`).click()
   await page.locator('button:has-text("Ok")').click()
-  await page.getByRole('button', { name: 'Dismiss' }).click({ timeout: 20000 })
+  // Opening the config shows a toast banner that auto-hides after ~5s; tolerate
+  // its Dismiss button already being gone before the click lands.
+  await page
+    .getByRole('button', { name: 'Dismiss' })
+    .click({ timeout: 5000 })
+    .catch(() => {})
   await expect(page.locator('tbody > tr')).toHaveCount(2)
 
   // Delete this test configuration

@@ -11,10 +11,8 @@
 import { test as setup, expect } from '@playwright/test'
 import { STORAGE_STATE, ADMIN_STORAGE_STATE } from './../playwright.config'
 
-// Take the demo sim targets out of QUIET mode. The notifications spec puts them
-// in QUIET while it runs and restores them afterward, but if that spec crashes
-// its afterAll may not run, leaving the sim quiet for every other test. Send
-// these at suite start so we always begin from a known (non-quiet) baseline.
+// Take the demo sim targets out of QUIET mode. QUIET is sim-microservice global
+// state (not per-browser), so it only needs to be set once at suite start.
 async function resetQuiet(page) {
   for (const target of ['INST', 'INST2']) {
     const status = await page.evaluate(async (target) => {
@@ -102,19 +100,4 @@ setup('global setup', async ({ page }) => {
 
   // Ensure the sim starts out of QUIET mode regardless of edition.
   await resetQuiet(page)
-
-  // Disable alert popups so they don't interfere with other tests
-  await page.locator('[data-test=notifications]').click()
-  await page.locator('[data-test=notification-settings]').click()
-  const input = page.locator(`[data-test='show-alerts'] input`)
-  if ((await input.isChecked()) !== false) {
-    // Click the toggle control itself, not the full-width switch row.
-    await page
-      .locator(`[data-test='show-alerts'] .v-selection-control__input`)
-      .click()
-  }
-  await expect(input).toBeChecked({ checked: false })
-  await page.locator('button:has-text("Close")').click()
-  // Close the notifications menu so its overlay stops intercepting clicks.
-  await page.keyboard.press('Escape')
 })

@@ -280,7 +280,10 @@ test('delete multiple selected files', async ({ page, utils }) => {
 })
 
 test('navigate logs and tools bucket', async ({ page, utils }) => {
-  test.setTimeout(3 * 60 * 1000) // 3 minutes
+  // raw_logs only appears once the raw packet log file is cut to the bucket,
+  // which happens on INST's TLM_LOG_CYCLE_TIME (60s in CI, 300s locally), so
+  // allow enough time for that cycle plus the reload retries below.
+  test.setTimeout(7 * 60 * 1000)
   // Keep clicking alternatively on tools and then logs to force a refresh
   // This allows the DEFAULT folder to appear in time
   await expect(async () => {
@@ -302,12 +305,18 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
     await expect(page.locator('tbody > tr').first()).toHaveText(/\w+_logs/)
     await expect(page.locator('tbody > tr').last()).toHaveText(/\w+_logs/)
   }
-  // Reload and ensure we get to the same place
-  await page.reload()
-  await expect(page.locator('[data-test="file-path"]')).toHaveText(
-    '/ DEFAULT /',
-  )
-  await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)
+  // Reload (also verifies we return to the same place) until the raw_logs
+  // folder has been cut to the bucket - on a fresh instance it isn't there
+  // until the first TLM_LOG_CYCLE_TIME elapses, and the listing only refreshes
+  // on reload.
+  await expect(async () => {
+    await page.reload()
+    await expect(page.locator('[data-test="file-path"]')).toHaveText(
+      '/ DEFAULT /',
+    )
+    await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)
+    await expect(page.getByRole('cell', { name: 'raw_logs' })).toBeVisible()
+  }).toPass({ timeout: 6 * 60 * 1000 })
   // Ensure the log files have the correct dates
   let date = new Date().toISOString().split('T')[0].replace(/-/g, '')
   await page.getByRole('cell', { name: 'raw_logs' }).click()

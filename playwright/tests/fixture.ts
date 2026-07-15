@@ -51,16 +51,40 @@ function generateUUID() {
 
 // Extend the page fixture to goto the OpenC3 tool and wait for potential
 // redirect to authentication login (Enterprise only).
-// Login and click the hamburger nav icon to close the navigation drawer
+// Login and click the hamburger nav icon to close the navigation drawer.
 export const test = base.extend<{
   context: any
   utils: Utilities
   toolPath: string
   toolName: string
+  disableToasts: boolean
 }>({
   toolPath: '/tools/cmdtlmserver',
   toolName: 'CmdTlmServer',
-  utils: async ({ context, baseURL, toolPath, toolName, page }, use) => {
+  // By default every test disables alert toast popups so they can't intercept
+  // clicks. Toasts are gated by per-browser localStorage (reset each test), so
+  // this must live in the fixture. The notifications spec opts out.
+  disableToasts: true,
+  utils: async (
+    { context, baseURL, toolPath, toolName, page, disableToasts },
+    use,
+  ) => {
+    // Disable alert toast popups before the first navigation so the
+    // Notifications component reads it on load (localStorage.notoast === 'true'
+    // means "don't toast"). Runs on every page in the context, so it survives
+    // reloads too.
+    if (disableToasts) {
+      await context.addInitScript(() => {
+        // Runs in every frame, including sandboxed iframes (e.g. the screen
+        // ButtonWidget command sandbox) whose opaque origin has no localStorage
+        // access - guard so we don't throw a SecurityError there.
+        try {
+          window.localStorage.setItem('notoast', 'true')
+        } catch {
+          // Sandboxed/cross-origin frame: nothing to disable here.
+        }
+      })
+    }
     await page.goto(`${baseURL}${toolPath}`, { waitUntil: 'domcontentloaded' })
     let utils = new Utilities(page)
     if (process.env.ENTERPRISE === '1') {

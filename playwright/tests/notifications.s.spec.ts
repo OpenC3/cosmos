@@ -17,6 +17,9 @@ import { STORAGE_STATE } from './../playwright.config'
 test.use({
   toolPath: '/tools/scriptrunner',
   toolName: 'Script Runner',
+  // This spec toggles the alert popups itself (and needs them on to assert on
+  // toasts), so opt out of the fixture default that disables them.
+  disableToasts: false,
 })
 
 // Emit a single log message from a running script.
@@ -47,7 +50,12 @@ async function setQuiet(browser, baseURL, state) {
     page,
     `cmd("INST QUIET with STATE ${state}")\ncmd("INST2 QUIET with STATE ${state}")`,
   )
-  await setSetting(page, 'show-alerts', true)
+  // // Setting QUIET means show alerts and QUIET false means hide alerts
+  // if (state === 'FALSE') {
+  //   await setSetting(page, 'show-alerts', true)
+  // } else {
+  //   await setSetting(page, 'show-alerts', false)
+  // }
 
   // Wait for the command script to finish so the QUIET cmds are actually sent
   // before tearing down the context.
