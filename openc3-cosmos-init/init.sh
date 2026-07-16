@@ -1,6 +1,14 @@
 #!/bin/sh
 # set -x
 
+# Seed the UV wheel cache from the Docker image into the runtime volume
+# so plugins can reuse system wheels without re-downloading (critical for airgapped environments)
+if [ -d "/openc3/uv_cache" ]; then
+    echo "Seeding UV cache from /openc3/uv_cache into /gems/uv ..."
+    cp -rn /openc3/uv_cache/. /gems/uv/ 2>/dev/null || cp -r /openc3/uv_cache/. /gems/uv/
+    echo "UV cache seeded"
+fi
+
 date
 if [ -d "/gems/gems" ]; then
     # Run gem pristine on all gems

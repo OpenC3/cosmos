@@ -152,6 +152,22 @@ puts ENV['MYVAR'] # prints "foo"
 </TabItem>
 </Tabs>
 
+## Python Virtual Environments
+
+When plugins are installed with Python dependencies, COSMOS creates an isolated virtual environment (venv) for each plugin using [UV](https://docs.astral.sh/uv/). Scripts automatically run inside their plugin's venv based on the target folder they belong to.
+
+### Automatic Venv Resolution
+
+Scripts saved under a target folder (e.g. `INST2/procedures/my_script.py`) automatically use that target's plugin venv. No manual activation is needed — COSMOS sets `VIRTUAL_ENV`, `PATH`, and `PYTHONUSERBASE` on the spawned process so that `import` statements resolve against the plugin's installed packages.
+
+### Temp Scripts and the Target Selector
+
+Temporary (unsaved) scripts are not associated with any target, so they cannot automatically resolve a plugin venv. By default they run under the system Python environment, which has access to the core `openc3` library but not plugin-specific packages. To run a temp script with a specific plugin's Python dependencies, use the **Target** dropdown in the Script Runner toolbar. This dropdown appears next to the Start button when working with Python scripts and only lists targets whose plugins have a Python virtual environment installed. Select the target whose plugin dependencies you want to use, and the script will run inside that plugin's venv.
+
+When you open a saved script, the target selector resets automatically because the venv is determined from the file path.
+
+For information on managing per-plugin Python packages, see the [Admin Packages documentation](/docs/tools/admin#packages).
+
 ## Running Script Suites
 
 If a script is structured as a Suite it automatically causes Script Runner to parse the file to populate the Suite, Group, and Script drop down menus.

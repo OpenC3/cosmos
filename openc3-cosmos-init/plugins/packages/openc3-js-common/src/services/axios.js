@@ -52,6 +52,17 @@ axiosInstance.interceptors.response.use(
       ) {
         return Promise.reject(error)
       }
+      // HazardousError (409) and CriticalCmdError (428) are command control
+      // signals that the UI handles with an operator confirmation dialog (e.g.
+      // screen BUTTON widgets and Command Sender), not network errors. Don't
+      // show the error banner for them - let the caller handle the rejection.
+      const errorClass = error.response?.data?.error?.data?.class
+      if (
+        errorClass === 'HazardousError' ||
+        errorClass === 'CriticalCmdError'
+      ) {
+        return Promise.reject(error)
+      }
       let body = `HTTP ${error.response.status} - `
       if (error.response?.statusText) {
         body += `${error.response.statusText} `

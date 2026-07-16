@@ -51,6 +51,7 @@ module OpenC3
     ERB_EXTENSIONS = %w(.txt .rb .py .json .yaml .yml)
     ITEM_MAP_CACHE_TIMEOUT = 10.0
     PACKET_CACHE_TIMEOUT = 10.0
+    MAX_COLUMN_HEADER_LENGTH = 127 # QuestDB column header limit for item/param names
     @@item_map_cache = {}
     @@packet_cache = {}
     @@packet_cache_mutex = Mutex.new
@@ -714,6 +715,7 @@ module OpenC3
         target_folder = File.join(temp_dir, @name)
         # Build a System for just this target
         system = System.new([@name], temp_dir)
+        check_column_header_lengths(system)
         if variables["xtce_output"]
           puts "Converting target #{@name} to .xtce files in #{variables["xtce_output"]}/#{@name}"
           puts "    Using mnemonic '#{variables['time_association_name']}' as the packet time item."
@@ -778,6 +780,24 @@ module OpenC3
       collector << name if resp.body.read.b != new_data.b
     rescue => e
       Logger.warn("Modified diff check failed for #{@scope}/#{name}: #{e.message}")
+    end
+    
+    def check_column_header_lengths(system)
+      too_long = []
+      [system.packet_config.telemetry, system.packet_config.commands].each do |packets_by_target|
+        packets_by_target.each do |target_name, packets|
+          packets.each do |packet_name, packet|
+            packet.sorted_items.each do |item|
+              if item.name.length > MAX_COLUMN_HEADER_LENGTH
+                too_long << "#{target_name} #{packet_name} #{item.name} (#{item.name.length})"
+              end
+            end
+          end
+        end
+      end
+      unless too_long.empty?
+        raise "Item / parameter names must be #{MAX_COLUMN_HEADER_LENGTH} characters or less (QuestDB column header limit). The following are too long:\n  #{too_long.join("\n  ")}"
+      end
     end
 
     def undeploy

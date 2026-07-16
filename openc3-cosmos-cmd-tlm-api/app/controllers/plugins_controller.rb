@@ -74,6 +74,12 @@ class PluginsController < ModelController
     return unless authorization('system')
     if params[:id].downcase == 'all'
       plugins = @model_class.all(scope: params[:scope])
+      # Enrich with per-plugin UV migration status (derived from filesystem, not stored in Redis).
+      # Must run before the store data merge below, which adds keys that PluginModel.new doesn't accept.
+      plugins.each do |_plugin_name, plugin|
+        model = @model_class.new(**(plugin.transform_keys(&:to_sym)), scope: params[:scope])
+        plugin['needs_uv_migration'] = model.needs_uv_migration?
+      end
       OpenC3::PluginStoreModel.ensure_exists()
       store_plugins = OpenC3::PluginStoreModel.all()
       store_plugins = JSON.parse(store_plugins)
@@ -252,6 +258,24 @@ class PluginsController < ModelController
       id, scope = sanitize_params([:id, :scope])
       return unless id and scope
       result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "unload", id, scope], "plugin_uninstall", id, Time.now + 1.hour, scope: scope)
+      render json: result.name
+    rescue Exception => error
+      logger.error(error.formatted)
+      render json: { status: 'error', message: error.message }, status: :internal_server_error
+    end
+  end
+
+  # Migrate a legacy plugin from the shared Python venv to a per-plugin UV
+  # virtual environment. Spawns `openc3cli migratetouv` as a background process.
+  def migrate_to_uv
+    return unless authorization('admin')
+    begin
+      id, scope = sanitize_params([:id, :scope])
+      return unless id and scope
+      result = OpenC3::ProcessManager.instance.spawn(
+        ["ruby", "/openc3/bin/openc3cli", "migratetouv", id, scope],
+        "plugin_migrate_to_uv", id, Time.now + 1.hour, scope: scope
+      )
       render json: result.name
     rescue Exception => error
       logger.error(error.formatted)

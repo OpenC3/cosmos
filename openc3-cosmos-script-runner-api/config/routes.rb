@@ -20,6 +20,7 @@ Rails.application.routes.draw do
   scope "script-api" do
     get "/ping" => "scripts#ping"
     get  "/scripts" => "scripts#index"
+    get  "/scripts/plugin_python_venvs" => "scripts#plugin_python_venvs"
     delete "/scripts/temp_files" => "scripts#delete_temp"
     # Must come before /scripts/*name so /lifecycle matches first
     get  "/scripts/*name/lifecycle" => "scripts#lifecycle", format: false, defaults: { format: 'html' }

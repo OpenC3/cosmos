@@ -21,6 +21,7 @@ Usage:
   cli load /PATH/FILENAME.gem SCOPE plugin_hash.json    # Loads a COSMOS plugin gem file
     OPTIONS: --variables lets you pass a path to a JSON file containing your plugin\'s variables
   cli list <SCOPE>                  # Lists installed plugins, SCOPE is DEFAULT if not given
+  cli unload PLUGIN_NAME [SCOPE]    # Unload an installed COSMOS plugin
   cli generate TYPE OPTIONS         # Generate various COSMOS entities
     OPTIONS: --ruby or --python is required to specify the language in the generated code unless OPENC3_LANGUAGE is set
   cli bridge CONFIG_FILENAME        # Run COSMOS host bridge
@@ -31,6 +32,7 @@ Usage:
   cli xtce_converter                # Convert to and from the XTCE format. Run with --help for more info.
   cli cstol_converter               # Converts CSTOL files (.prc) to COSMOS. Run with --help for more info.
   cli setpassword                   # Set the initial password from OPENC3_API_PASSWORD env var
+  cli migratetouv PLUGIN_NAME SCOPE # Migrate plugin to per-plugin UV virtual environment
 ```
 
 :::note[seccomp profile]
@@ -349,6 +351,20 @@ openc3-cosmos-tool-tlmviewer-6.2.2.pre.beta0.20250325143108.gem__20250325160216
 openc3-enterprise-tool-base-6.2.2.pre.beta0.20250325155704.gem__20250325160153
 ```
 
+## Unload
+
+Unload removes an installed plugin from COSMOS without using the GUI. This is the counterpart to `cli load`.
+
+```bash
+% openc3.sh cli unload openc3-cosmos-cfdp-1.0.0.gem__20250325160956
+```
+
+You can find the full plugin name (including the timestamp suffix) by running `cli list`. You can optionally pass the scope to unload from (defaults to `DEFAULT`).
+
+```bash
+% openc3.sh cli unload openc3-cosmos-cfdp-1.0.0.gem__20250325160956 SCOPE_NAME
+```
+
 ## Generate
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
@@ -406,6 +422,26 @@ Password set successfully.
 :::note OPENC3_API_PASSWORD
 The `OPENC3_API_PASSWORD` environment variable must be set (typically in your `.env` file). The password is read from this variable, not from a command line argument, to avoid exposing it in shell history.
 :::
+
+## Migrate to UV
+
+Migrates an installed plugin from the shared Python virtual environment to a per-plugin UV virtual environment. This creates an isolated Python environment for the plugin with its own dependencies, preventing version conflicts between plugins.
+
+Plugins installed on COSMOS 7.3+ automatically get per-plugin virtual environments. This command is only needed for plugins that were installed on an earlier version and are still using the shared Python environment. Running it on a plugin that is already migrated is a safe no-op.
+
+The `PLUGIN_NAME` argument is the full installed plugin name (including the timestamp suffix), not a `.gem` file path. Use `cli list` to find the installed plugin name. The `SCOPE` argument is optional and defaults to `DEFAULT`.
+
+```bash
+% openc3.sh cli list
+openc3-cosmos-demo-7.2.0.gem__20260101120000
+openc3-cosmos-my-plugin-1.0.0.gem__20260501150000
+% openc3.sh cli migratetouv openc3-cosmos-my-plugin-1.0.0.gem__20260501150000
+Successfully migrated plugin 'openc3-cosmos-my-plugin-1.0.0.gem__20260501150000' to per-plugin UV venv
+```
+
+If the plugin has no Python dependencies (`pyproject.toml` or `requirements.txt`), the command reports success without creating a venv. If the plugin is already migrated, the command is a no-op.
+
+This command performs the same operation as the **Migrate to UV** button in the [Admin Plugins tab](/docs/tools/admin#plugins).
 
 ## CSTOL Converter
 

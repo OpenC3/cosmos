@@ -368,4 +368,32 @@ RSpec.describe PluginsController, type: :controller do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+
+  describe "POST migrate_to_uv" do
+    it "spawns a migratetouv process and returns its name" do
+      process = double("process", name: "process_1")
+      expect(OpenC3::ProcessManager.instance).to receive(:spawn).with(
+        ["ruby", "/openc3/bin/openc3cli", "migratetouv", "TEST_PLUGIN", "DEFAULT"],
+        "plugin_migrate_to_uv", "TEST_PLUGIN", anything, scope: "DEFAULT"
+      ).and_return(process)
+
+      post :migrate_to_uv, params: {id: "TEST_PLUGIN", scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("process_1")
+    end
+
+    it "returns error when spawn raises" do
+      expect(OpenC3::ProcessManager.instance).to receive(:spawn).and_raise(RuntimeError.new("Spawn failed"))
+
+      post :migrate_to_uv, params: {id: "TEST_PLUGIN", scope: "DEFAULT"}
+      expect(response).to have_http_status(:internal_server_error)
+      json = JSON.parse(response.body)
+      expect(json["status"]).to eq("error")
+    end
+
+    it "returns nothing without authorization" do
+      post :migrate_to_uv, params: {id: "TEST_PLUGIN"}
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
 end

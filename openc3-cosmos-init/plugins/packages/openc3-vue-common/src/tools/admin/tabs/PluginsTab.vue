@@ -132,6 +132,7 @@
       :script-versions-enabled="scriptVersionsEnabled"
       @edit="editPlugin"
       @upgrade="upgradePlugin"
+      @migrate-to-uv="migrateToUv"
       @delete="deletePrompt"
     />
     <plugin-dialog
@@ -517,6 +518,29 @@ export default {
         }, 5000)
       })
       this.update()
+    },
+    migrateToUv: function (plugin) {
+      this.$dialog
+        .confirm(
+          `Migrate plugin ${plugin} to a per-plugin UV virtual environment?`,
+          {
+            okText: 'Migrate',
+            cancelText: 'Cancel',
+          },
+        )
+        .then(() => {
+          Api.post(`/openc3-api/plugins/${plugin}/migrate_to_uv`).then(
+            (response) => {
+              this.alert = `Started migrating plugin ${plugin} to UV ...`
+              this.alertType = 'success'
+              this.showAlert = true
+              setTimeout(() => {
+                this.showAlert = false
+                this.updateProcesses()
+              }, 5000)
+            },
+          )
+        })
     },
     upgradePlugin(plugin) {
       this.resetControlState()

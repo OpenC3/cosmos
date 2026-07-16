@@ -1,7 +1,8 @@
 #!/bin/sh
-uv venv "$PYTHONUSERBASE" --allow-existing
+VENV="${PIPINSTALL_VENV:-$PYTHONUSERBASE}"
+uv venv "$VENV" --allow-existing
 echo "uv pip install $@"
-uv pip install --python "$PYTHONUSERBASE" "$@"
+uv pip install --python "$VENV" "$@"
 if [ $? -eq 0 ]; then
     echo "Command succeeded"
     exit 0
@@ -27,7 +28,7 @@ if [ -d "$LAST_ARG" ] && [ -f "$LAST_ARG/pyproject.toml" ]; then
     TMPFILE=$(mktemp)
     uv pip compile ${OPTS} "${LAST_ARG}/pyproject.toml" > "$TMPFILE"
     if [ $? -eq 0 ] && [ -s "$TMPFILE" ]; then
-        uv pip install --python "$PYTHONUSERBASE" ${OPTS} -r "$TMPFILE"
+        uv pip install --python "$VENV" ${OPTS} -r "$TMPFILE"
         if [ $? -eq 0 ]; then
             echo "Dependencies installed successfully"
             rm -f "$TMPFILE"
@@ -38,7 +39,7 @@ if [ -d "$LAST_ARG" ] && [ -f "$LAST_ARG/pyproject.toml" ]; then
 fi
 
 echo "Warning: Install failed - retrying with --no-index"
-uv pip install --python "$PYTHONUSERBASE" --no-index "$@"
+uv pip install --python "$VENV" --no-index "$@"
 if [ $? -ne 0 ]; then
     echo "ERROR: uv pip install failed"
     exit 1

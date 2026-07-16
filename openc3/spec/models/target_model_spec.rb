@@ -21,6 +21,7 @@
 require 'spec_helper'
 require 'fileutils'
 require 'openc3/models/target_model'
+require 'openc3/packets/packet'
 require 'openc3/models/microservice_model'
 require 'openc3/utilities/aws_bucket'
 require 'openc3/utilities/s3_autoload'
@@ -1078,6 +1079,27 @@ module OpenC3
         # Verify specific topic patterns
         expect(decom_topics.first).to match(/#{@scope}__DECOM__\{#{@target}\}__/)
         expect(decomcmd_topics.first).to match(/#{@scope}__DECOMCMD__\{#{@target}\}__/)
+      end
+    end
+
+    describe "check_column_header_lengths" do
+      def build_system(packet)
+        packet_config = double("PacketConfig", telemetry: { "INST" => { "PKT" => packet } }, commands: {})
+        double("System", packet_config: packet_config)
+      end
+
+      it "raises if an item name exceeds the QuestDB column header limit" do
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: 'PLUGIN')
+        packet = Packet.new("INST", "PKT")
+        packet.define_item("A" * 128, 0, 8, :UINT)
+        expect { model.check_column_header_lengths(build_system(packet)) }.to raise_error(/127 characters or less/)
+      end
+
+      it "does not raise for names within the limit" do
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: 'PLUGIN')
+        packet = Packet.new("INST", "PKT")
+        packet.define_item("A" * 127, 0, 8, :UINT)
+        expect { model.check_column_header_lengths(build_system(packet)) }.to_not raise_error
       end
     end
 
