@@ -21,6 +21,8 @@ Rails.application.routes.draw do
     get "/ping" => "scripts#ping"
     get  "/scripts" => "scripts#index"
     delete "/scripts/temp_files" => "scripts#delete_temp"
+    # Must come before /scripts/*name so /lifecycle matches first
+    get  "/scripts/*name/lifecycle" => "scripts#lifecycle", format: false, defaults: { format: 'html' }
     # Enterprise-only Version History export/import. Per-plugin (one git repo
     # per installed plugin), so both are keyed by plugin base name, not file
     # name. Literal "/scripts/plugin/..." prefix declared before the *name
@@ -43,6 +45,7 @@ Rails.application.routes.draw do
     post "/scripts/*name/syntax" => "scripts#syntax"
     post "/scripts/*name/mnemonics" => "scripts#mnemonics"
     post "/scripts/*name/instrumented" => "scripts#instrumented"
+    post "/scripts/*name/lifecycle" => "scripts#set_lifecycle", format: false, defaults: { format: 'html' }
     # Enterprise-only restore.
     post "/scripts/*name/restore" => "script_version#restore", format: false, defaults: { format: 'html' }
     # Must be last so /run, /delete, etc will match first

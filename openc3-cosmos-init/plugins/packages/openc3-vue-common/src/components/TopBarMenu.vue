@@ -77,39 +77,52 @@
             </v-list-item-action>
           </v-list-item>
         </v-radio-group>
-        <v-list-item
+        <v-tooltip
           v-else
           :key="j + '-list'"
-          :disabled="option.disabled"
-          :data-test="formatDT(`${title} ${menu.label} ${option.label}`)"
-          @click="
-            () => {
-              option.command(option)
-              if (!option.checkbox) closeMenu()
-            }
-          "
+          :disabled="!option.tooltip"
+          :text="option.tooltip"
+          location="right"
         >
-          <template v-if="option.icon" #prepend>
-            <v-icon :icon="option.icon" :disabled="option.disabled"></v-icon>
+          <template #activator="{ props }">
+            <div v-bind="props">
+              <v-list-item
+                :disabled="option.disabled"
+                :data-test="formatDT(`${title} ${menu.label} ${option.label}`)"
+                @click="
+                  () => {
+                    option.command(option)
+                    if (!option.checkbox) closeMenu()
+                  }
+                "
+              >
+                <template v-if="option.icon" #prepend>
+                  <v-icon
+                    :icon="option.icon"
+                    :disabled="option.disabled"
+                  ></v-icon>
+                </template>
+                <v-list-item-action v-if="option.checkbox" class="list-action">
+                  <v-checkbox
+                    v-model="option.checked"
+                    :label="option.label"
+                    color="secondary"
+                    density="compact"
+                    hide-details
+                  />
+                </v-list-item-action>
+                <v-list-item-title
+                  v-if="!option.radio && !option.checkbox"
+                  :style="
+                    'cursor: pointer;' + (option.disabled ? 'opacity: 0.2' : '')
+                  "
+                >
+                  {{ option.label }}
+                </v-list-item-title>
+              </v-list-item>
+            </div>
           </template>
-          <v-list-item-action v-if="option.checkbox" class="list-action">
-            <v-checkbox
-              v-model="option.checked"
-              :label="option.label"
-              color="secondary"
-              density="compact"
-              hide-details
-            />
-          </v-list-item-action>
-          <v-list-item-title
-            v-if="!option.radio && !option.checkbox"
-            :style="
-              'cursor: pointer;' + (option.disabled ? 'opacity: 0.2' : '')
-            "
-          >
-            {{ option.label }}
-          </v-list-item-title>
-        </v-list-item>
+        </v-tooltip>
       </template>
     </v-list>
   </v-menu>

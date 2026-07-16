@@ -17,9 +17,11 @@ Script Runner is both an editor of COSMOS scripts as well as executes scripts. S
 
 {/* Image sized to match up with bullets */}
 
-<img src={require('@site/static/img/script_runner/file_menu.png').default}
-alt="File Menu"
-style={{"float": 'left', "margin-right": 50 + 'px', "height": 250 + 'px'}} />
+<img
+  src={require("@site/static/img/script_runner/file_menu.png").default}
+  alt="File Menu"
+  style={{ float: "left", "margin-right": 50 + "px", height: 250 + "px" }}
+/>
 
 - Clears the editor and filename
 - Creates a new test suite in Ruby or Python
@@ -29,8 +31,8 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 250 + 'px'}} />
 - Rename the current file
 - Downloads the current file to the browser
 - Deletes the current file (Permanently!)
-  <br/>
-  <br/>
+  <br />
+  <br />
 
 #### File Open
 
@@ -46,9 +48,11 @@ When saving a file for the first time, or using File Save As, the File Save As D
 
 {/* Image sized to match up with bullets */}
 
-<img src={require('@site/static/img/script_runner/script_menu.png').default}
-alt="Script Menu"
-style={{"float": 'left', "margin-right": 50 + 'px', "height": 330 + 'px'}} />
+<img
+  src={require("@site/static/img/script_runner/script_menu.png").default}
+  alt="Script Menu"
+  style={{ float: "left", "margin-right": 50 + "px", height: 330 + "px" }}
+/>
 
 - Display started and finished scripts
 - Show environment variables
@@ -94,6 +98,34 @@ Right clicking a script brings up several options:
 
 'Clear all breakpoints' allows you to quickly clear breakpoints set by clicking on the editor line number.
 
+## Script Lifecycle
+
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+
+The Script Lifecycle feature tracks scripts through three states: **In Development**, **In Review**, and **Approved**. It is disabled by default and can be enabled in the Admin Console under Settings → Script Lifecycle Settings.
+
+When enabled, a colored chip next to the Script State field shows the current lifecycle state of the open script (blue for In Development, orange for In Review, green for Approved). Clicking the chip, or selecting Script → Script Lifecycle, opens the lifecycle dialog. New scripts always begin **In Development**.
+
+The dialog displays the current state, lets you move the script to another state with an optional comment (up to 1000 characters), and shows the complete audit history of every transition: who made the change, when it happened, the states involved, and the comment. Timestamps are displayed in the time zone configured in the Admin Console Settings.
+
+![script-lifecycle](/img/script_runner/script_lifecycle.png)
+
+### Lifecycle Transitions
+
+| From           | To (and back) | Required Permission |
+| -------------- | ------------- | ------------------- |
+| In Development | In Review     | script_edit         |
+| In Review      | Approved      | script_approver     |
+| In Development | Approved      | script_approver     |
+
+Users with the script_edit permission (e.g. Operators) can move scripts between In Development and In Review. Only users with the script_approver permission can approve a script or move an approved script back to In Review or In Development. Role-based restrictions require COSMOS Enterprise. Ensure that a new role that has the `script_approver` permission is created, and assigned to your users of choice.
+
+### Approved Scripts
+
+Once a script is Approved it cannot be modified or deleted. The editor becomes read-only and the Save and Delete menu items are disabled. This is also enforced by the server, so the script cannot be changed through the API. To edit an approved script, a user with the script_approver permission must first move it back to In Review or In Development.
+
+In addition, users with only the runner role (or the script_run permission) can only run Approved scripts. This ensures operators in a production environment only execute scripts that have completed the review process. Users who can edit scripts can run scripts in any lifecycle state.
+
 ## Script Environment Variables
 
 Environment variables are used for storing information about the runtime environment of a running script. If your script depends on environment variables, you can access the "Script Environment Variables" dialog by clicking on the "(x)" icon next to the "Start" button.
@@ -130,7 +162,10 @@ To generate a new Suite use the File -> New Suite and then choose either Ruby or
 
 ### Group
 
+{/* prettier-ignore */}
+<div>
 The Group class contains the methods used to run the test or operations. Any methods starting with 'script_', 'op_', or 'test_' which are implemented inside a Group class are automatically included as scripts to run. For example, in the above image, you'll notice the 'script_power_on' is in the Script drop down menu. Here's another simple example:
+</div>
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
