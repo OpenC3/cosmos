@@ -45,6 +45,106 @@ module OpenC3
       end
     end
 
+    describe "convert_microservice_to_process_definition" do
+      before(:each) do
+        mock_redis()
+        @operator = MicroserviceOperator.new
+      end
+
+      it "sets per-plugin venv env vars when plugin venv directory exists" do
+        config = {
+          "env" => {},
+          "needs_dependencies" => true,
+          "plugin" => "my-plugin__0"
+        }
+        sanitized_name = "my-plugin__0"
+        venv_dir = "/gems/plugin_venvs/#{sanitized_name}/.venv"
+        allow(File).to receive(:directory?).with(venv_dir).and_return(true)
+
+        _cmd, _work_dir, env, _scope, _container = @operator.convert_microservice_to_process_definition("DEFAULT__TYPE__NAME", config)
+
+        expect(env['VIRTUAL_ENV']).to eq(venv_dir)
+        expect(env['PATH']).to start_with("#{venv_dir}/bin:")
+        expect(env['PYTHONUSERBASE']).to eq(venv_dir)
+        expect(env['GEM_HOME']).to eq('/gems')
+      end
+
+      it "falls back to shared python_packages when no plugin venv exists" do
+        config = {
+          "env" => {},
+          "needs_dependencies" => true,
+          "plugin" => "my-plugin__0"
+        }
+        venv_dir = "/gems/plugin_venvs/my-plugin__0/.venv"
+        allow(File).to receive(:directory?).with(venv_dir).and_return(false)
+
+        _cmd, _work_dir, env, _scope, _container = @operator.convert_microservice_to_process_definition("DEFAULT__TYPE__NAME", config)
+
+        expect(env['VIRTUAL_ENV']).to be_nil
+        expect(env['PYTHONUSERBASE']).to eq('/gems/python_packages')
+        expect(env['GEM_HOME']).to eq('/gems')
+      end
+
+      it "sets GEM_HOME, PYTHONUSERBASE, and PYTHONPATH to nil when needs_dependencies is false" do
+        config = {
+          "env" => {},
+          "needs_dependencies" => false,
+          "plugin" => "my-plugin__0"
+        }
+
+        _cmd, _work_dir, env, _scope, _container = @operator.convert_microservice_to_process_definition("DEFAULT__TYPE__NAME", config)
+
+        expect(env['GEM_HOME']).to be_nil
+        expect(env['PYTHONUSERBASE']).to be_nil
+        expect(env['PYTHONPATH']).to be_nil
+      end
+
+      it "sanitizes plugin name for venv directory lookup" do
+        config = {
+          "env" => {},
+          "needs_dependencies" => true,
+          "plugin" => "my.plugin@1.0"
+        }
+        # tr('^a-zA-Z0-9_-', '_') converts dots and @ to underscores
+        sanitized_name = "my_plugin_1_0"
+        venv_dir = "/gems/plugin_venvs/#{sanitized_name}/.venv"
+        allow(File).to receive(:directory?).with(venv_dir).and_return(true)
+
+        _cmd, _work_dir, env, _scope, _container = @operator.convert_microservice_to_process_definition("DEFAULT__TYPE__NAME", config)
+
+        expect(env['VIRTUAL_ENV']).to eq(venv_dir)
+        expect(env['PYTHONUSERBASE']).to eq(venv_dir)
+      end
+
+      it "falls back to shared when plugin name is nil" do
+        config = {
+          "env" => {},
+          "needs_dependencies" => true,
+          "plugin" => nil
+        }
+
+        _cmd, _work_dir, env, _scope, _container = @operator.convert_microservice_to_process_definition("DEFAULT__TYPE__NAME", config)
+
+        expect(env['VIRTUAL_ENV']).to be_nil
+        expect(env['PYTHONUSERBASE']).to eq('/gems/python_packages')
+      end
+
+      it "preserves PYTHONPATH from parent environment" do
+        config = {
+          "env" => {},
+          "needs_dependencies" => true,
+          "plugin" => "test-plugin"
+        }
+        allow(File).to receive(:directory?).and_return(false)
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('PYTHONPATH', nil).and_return('/some/python/path')
+
+        _cmd, _work_dir, env, _scope, _container = @operator.convert_microservice_to_process_definition("DEFAULT__TYPE__NAME", config)
+
+        expect(env['PYTHONPATH']).to eq('/some/python/path')
+      end
+    end
+
     describe "start_new" do
       before(:each) do
         @saved_max = ENV.fetch('OPENC3_OPERATOR_MAX_START_PER_CYCLE', nil)

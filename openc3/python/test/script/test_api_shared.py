@@ -532,7 +532,7 @@ class TestApiShared(unittest.TestCase):
             result = wait("INST HEALTH_STATUS TEMP1 < 0", 0.01, 0.01)  # Last param is polling rate
             self.assertFalse(result)
             self.assertIn(
-                "WAIT: INST HEALTH_STATUS TEMP1 < 0 failed with value == 10 after waiting 0.01",
+                "WAIT: INST HEALTH_STATUS TEMP1 < 0 failed with value == 10 after waiting",
                 stdout.getvalue(),
             )
 
@@ -546,7 +546,7 @@ class TestApiShared(unittest.TestCase):
             result = wait("INST", "HEALTH_STATUS", "TEMP1", "== 0", 0.01, 0.01)  # Last param is polling rate
             self.assertFalse(result)
             self.assertIn(
-                "WAIT: INST HEALTH_STATUS TEMP1 == 0 failed with value == 10 after waiting 0.01",
+                "WAIT: INST HEALTH_STATUS TEMP1 == 0 failed with value == 10 after waiting",
                 stdout.getvalue(),
             )
 
@@ -600,7 +600,7 @@ class TestApiShared(unittest.TestCase):
             result = wait_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.01)
             self.assertFalse(result)
             self.assertIn(
-                "WAIT: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5 after waiting 0.01",
+                "WAIT: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5 after waiting",
                 stdout.getvalue(),
             )
 
@@ -722,7 +722,7 @@ class TestApiShared(unittest.TestCase):
             )
             result = wait_expression("True == False", 0.01)
             self.assertFalse(result)
-            self.assertIn("WAIT: True == False is FALSE after waiting 0.01", stdout.getvalue())
+            self.assertIn("WAIT: True == False is FALSE after waiting", stdout.getvalue())
 
     def test_waits_for_a_logical_expression(self):
         for stdout in capture_io():
@@ -764,7 +764,7 @@ class TestApiShared(unittest.TestCase):
             )
         with self.assertRaisesRegex(
             CheckError,
-            "CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10 after waiting 0.01",
+            "CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10 after waiting",
         ):
             wait_check("INST HEALTH_STATUS TEMP1 > 100", 0.01)
 

@@ -15,10 +15,12 @@ ARG APT_URL=http://deb.debian.org
 ARG PYTHON_VERSION=3.13
 ARG RUBYGEMS_URL
 ARG PYPI_URL=https://pypi.org
+ARG UV_VERSION=0.11.17
 
 ENV APT_URL=${APT_URL}
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
 ENV PYPI_URL=${PYPI_URL}
+ENV UV_VERSION=${UV_VERSION}
 
 # The official ruby image redirects gem installs to /usr/local/bundle via
 # GEM_HOME. Reset it to Ruby's compiled-in default dir so that at runtime (where
@@ -95,7 +97,7 @@ RUN apt-get update && \
     gem cleanup && \
     bundle config build.nokogiri --use-system-libraries && \
     bundle config git.allow_insecure true && \
-    python3 -m pip install --break-system-packages uv && \
+    python3 -m pip install --break-system-packages uv==${UV_VERSION} && \
     rm -rf /var/lib/apt/lists/*
 
 # Configure UV for production container usage

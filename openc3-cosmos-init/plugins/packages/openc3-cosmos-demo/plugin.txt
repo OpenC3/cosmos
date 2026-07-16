@@ -6,6 +6,10 @@ VARIABLE inst_target_name INST
   VARIABLE_DESCRIPTION "Name for the primary INST target (leave blank to exclude)"
 VARIABLE inst2_target_name INST2
   VARIABLE_DESCRIPTION "Name for the secondary INST2 target (leave blank to exclude)"
+VARIABLE inst2_stored false
+  VARIABLE_DESCRIPTION "Mark INST2 telemetry as stored (demonstrates STORED_LIMITS_MODE)"
+  VARIABLE_STATE "No" false
+  VARIABLE_STATE "Yes" true
 VARIABLE example_target_name EXAMPLE
   VARIABLE_DESCRIPTION "Name for the EXAMPLE target (leave blank to exclude)"
 VARIABLE templated_target_name TEMPLATED
@@ -89,6 +93,7 @@ VARIABLE inst2_throughput_port 7780
   TARGET INST2 <%= inst2_target_name %>
     LOG_RETAIN_TIME <%= log_retain_time %>
     TLM_LOG_CYCLE_TIME 600
+    STORED_LIMITS_MODE DISABLE
 <% end %>
 
 <% if include_example %>
@@ -125,7 +130,7 @@ VARIABLE inst2_throughput_port 7780
     INTERFACE <%= inst2_int_name %> openc3/interfaces/tcpip_client_interface.py <%= throughput_server_host %> <%= inst2_throughput_port %> <%= inst2_throughput_port %> 10.0 None LENGTH 32 16 7 1 BIG_ENDIAN 0 None None True
       MAP_TARGET <%= inst2_target_name %>
   <% else %>
-    INTERFACE <%= inst2_int_name %> openc3/interfaces/simulated_target_interface.py sim_inst.py
+    INTERFACE <%= inst2_int_name %> sim_inst_interface.py sim_inst.py <%= inst2_stored %>
       MAP_TARGET <%= inst2_target_name %>
   <% end %>
 <% end %>

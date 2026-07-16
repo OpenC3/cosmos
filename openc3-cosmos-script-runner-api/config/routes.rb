@@ -20,6 +20,7 @@ Rails.application.routes.draw do
   scope "script-api" do
     get "/ping" => "scripts#ping"
     get  "/scripts" => "scripts#index"
+    get  "/scripts/plugin_python_venvs" => "scripts#plugin_python_venvs"
     delete "/scripts/temp_files" => "scripts#delete_temp"
     get  "/scripts/*name" => "scripts#body", format: false, defaults: { format: 'html' }
     post "/scripts/*name/run(/:disconnect)" => "scripts#run", format: false, defaults: { format: 'html' }

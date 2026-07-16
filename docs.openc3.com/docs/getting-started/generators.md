@@ -56,7 +56,28 @@ This creates the following files:
 | plugin.txt                | COSMOS specific file for Plugin creation. Learn more [here](../configuration/plugins).                                                                                                                                                                                                                                                                                                                                                                                                    |
 | Rakefile                  | Ruby Rakefile configured to support building the plugin by running "openc3.sh cli rake build VERSION=X.X.X" where X.X.X is the plugin version number                                                                                                                                                                                                                                                                                                                                      |
 | README.md                 | Markdown file used to document the plugin                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| requirements.txt          | Python dependencies file (only for Python plugins)                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| requirements.txt          | Python dependencies file (only for Python plugins). You can replace this with a `pyproject.toml` (recommended) and optionally a `uv.lock` for reproducible installs. See note below.                                                                                                                                                                                                                                                                                                      |
+
+:::note[Python Dependency Management]
+Python plugins can declare dependencies using either `pyproject.toml` (recommended) or `requirements.txt`. When a plugin is installed, COSMOS creates an isolated UV virtual environment for it, so each plugin's dependencies are fully isolated from other plugins.
+
+If you use `pyproject.toml`, you can include a `uv.lock` file alongside it to enable reproducible installs via `uv sync --frozen`. This ensures the exact same package versions are installed every time.
+
+**Managing dependencies during development:**
+
+```bash
+# Generate or regenerate the lockfile after editing pyproject.toml
+uv lock
+
+# Upgrade a single package to its latest compatible version
+uv lock --upgrade-package urllib3
+
+# Upgrade all packages to their latest compatible versions
+uv lock --upgrade
+```
+
+Always commit `uv.lock` alongside `pyproject.toml` so that production installs are reproducible.
+:::
 
 While this structure is required, it is not very useful by itself. The plugin generator just creates the framework for other generators to use.
 

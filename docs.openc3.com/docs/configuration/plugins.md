@@ -58,7 +58,16 @@ COSMOS uploads the plugin gem file to an internal gem server and extracts the ge
 
 ### Phase 2: Deploy
 
-Once variables are set, COSMOS registers the plugin model in Redis, installs the Ruby gem, and if the plugin contains a `pyproject.toml` or `requirements.txt`, installs Python dependencies as well. It then parses `plugin.txt` again with [ERB](/docs/configuration/format#erb) variable substitution applied and deploys each component declared in the file: targets, interfaces, routers, microservices, tools, widgets, and script engines.
+Once variables are set, COSMOS registers the plugin model in Redis and installs the Ruby gem. If the plugin contains Python dependencies (`pyproject.toml` or `requirements.txt`), COSMOS creates an isolated [UV](https://docs.astral.sh/uv/) virtual environment for the plugin at `/gems/plugin_venvs/<plugin>/.venv` and installs the dependencies into it. This gives each plugin full dependency isolation — different plugins can require different versions of the same package without conflicts.
+
+COSMOS supports two formats for declaring Python dependencies:
+
+- **`pyproject.toml`** (recommended) — When paired with a `uv.lock` file, enables reproducible installs via `uv sync --frozen`. COSMOS uses `uv sync` for `pyproject.toml`-based plugins.
+- **`requirements.txt`** — COSMOS uses `uv pip install -r requirements.txt` for requirements-based plugins.
+
+System Python packages (those shipped in the COSMOS Docker image) are pre-seeded into the UV download cache, so plugins that depend on those packages reuse them without re-downloading. If the UV install fails for any reason, COSMOS falls back to a shared pip install and logs a warning.
+
+After installing dependencies, COSMOS parses `plugin.txt` again with [ERB](/docs/configuration/format#erb) variable substitution applied and deploys each component declared in the file: targets, interfaces, routers, microservices, tools, widgets, and script engines.
 
 ### Target Deployment
 
@@ -174,9 +183,12 @@ The following keywords must follow a INTERFACE keyword.
 ### MAP_TARGET
 **Maps a target name to an interface**
 
+See [Mapping Targets to Interfaces](/docs/configuration/interfaces#mapping-targets-to-interfaces) for more information.
+
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Target Name | Target name to map to this interface | True |
+| Enabled State | Initial enabled state of the target on this interface. Defaults to ENABLED.<br/><br/>Valid Values: <span class="values">ENABLED, DISABLED</span> | False |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -196,9 +208,12 @@ INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0
 ### MAP_CMD_TARGET
 <span class="badge badge--secondary since-right">Since 5.2.0</span>**Maps a target name to an interface for commands only**
 
+See [Mapping Targets to Interfaces](/docs/configuration/interfaces#mapping-targets-to-interfaces) for more information.
+
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Target Name | Command target name to map to this interface | True |
+| Enabled State | Initial enabled state of the command target on this interface. Defaults to ENABLED.<br/><br/>Valid Values: <span class="values">ENABLED, DISABLED</span> | False |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -218,9 +233,12 @@ INTERFACE CMD_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 
 ### MAP_TLM_TARGET
 <span class="badge badge--secondary since-right">Since 5.2.0</span>**Maps a target name to an interface for telemetry only**
 
+See [Mapping Targets to Interfaces](/docs/configuration/interfaces#mapping-targets-to-interfaces) for more information.
+
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Target Name | Telemetry target name to map to this interface | True |
+| Enabled State | Initial enabled state of the telemetry target on this interface. Defaults to ENABLED.<br/><br/>Valid Values: <span class="values">ENABLED, DISABLED</span> | False |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -615,6 +633,20 @@ DB Shard. Only used if running multiple database shards typically in Kubernetes
 Example Usage:
 ```cosmos
 DB_SHARD 0
+```
+
+### STORED_LIMITS_MODE
+<span class="badge badge--secondary since-right">Since 7.2.1</span>**Controls how limits are evaluated for stored (non-real-time) telemetry packets**
+
+Sets the limits handling policy for packets where the stored flag is true (e.g., packets from file interfaces or historical data replay). PROCESS processes limits normally including logging and reactions. LOG evaluates limits and logs state changes but does not trigger limits reactions or update the current limits state used by the API. DISABLE skips limits processing entirely for stored packets.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Mode | PROCESS (default), LOG, or DISABLE | True |
+
+Example Usage:
+```cosmos
+STORED_LIMITS_MODE DISABLE
 ```
 
 ## MICROSERVICE

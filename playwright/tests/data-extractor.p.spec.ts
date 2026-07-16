@@ -12,7 +12,6 @@
 # All Rights Reserved
 */
 
-// @ts-check
 import { test, expect } from './fixture'
 import { format, add, sub } from 'date-fns'
 
@@ -210,13 +209,13 @@ test('edit all items', async ({ page, utils }) => {
     .fill(format(start, 'HH:mm:ss'))
   await utils.addTargetPacketItem('INST', 'ADCS')
   await expect(page.getByText('1-20 of 36')).toBeVisible()
-  expect(page.locator('tr:has-text("CONVERTED")')).toHaveCount(20)
+  await expect(page.locator('tr:has-text("CONVERTED")')).toHaveCount(20)
   await page.locator('[data-test=editAll]').click()
   await page.getByRole('combobox').filter({ hasText: 'Value Type' }).click()
   await page.locator('text=RAW').click()
   await page.locator('button:has-text("Ok")').click()
   await expect(page.locator('tr:has-text("CONVERTED")')).not.toBeVisible()
-  expect(page.locator('tr:has-text("RAW")')).toHaveCount(20)
+  await expect(page.locator('tr:has-text("RAW")')).toHaveCount(20)
 })
 
 test('processes commands', async ({ page, utils }) => {

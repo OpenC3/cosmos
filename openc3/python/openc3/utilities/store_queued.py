@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import atexit
+import contextlib
 import queue
 import threading
 import time
@@ -103,7 +104,9 @@ class StoreQueued(metaclass=StoreMeta):
             kill_thread(self, self.update_thread)
         self.update_thread = None
         # Drain the queue before shutdown
-        self.process_queue()
+        # Best effort - Redis may already be unavailable during shutdown
+        with contextlib.suppress(Exception):
+            self.process_queue()
 
     # Record the message for pipelining by the thread
     def __getattr__(self, func):

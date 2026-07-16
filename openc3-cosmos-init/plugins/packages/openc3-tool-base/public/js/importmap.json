@@ -1,0 +1,10 @@
+{
+  "imports": {
+    "single-spa": "/js/single-spa-6.0.3.min.js",
+    "vue": "/js/vue.runtime.global.prod-3.5.39.min.js",
+    "vuetify": "/js/vuetify-labs-3.12.8.min.js",
+    "vue-router": "/js/vue-router-4.4.4.min.js",
+    "vuex": "/js/vuex-4.1.0.min.js",
+    "pinia": "/js/pinia-3.0.4.min.js"
+  }
+}

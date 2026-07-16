@@ -197,7 +197,39 @@
             <div v-else style="width: 40px; height: 40px" class="mx-2"></div>
 
             <v-spacer />
-            <div v-if="startOrGoButton === 'Start'">
+            <v-tooltip
+              v-if="showPythonVenv && startOrGoButton === 'Start'"
+              :open-delay="600"
+              location="top"
+            >
+              <template #activator="{ props: tooltipProps }">
+                <div v-bind="tooltipProps">
+                  <v-select
+                    v-model="pythonVenv"
+                    :items="pythonVenvs"
+                    item-title="name"
+                    item-value="name"
+                    label="Python Venv"
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                    clearable
+                    style="max-width: 200px; min-width: 160px"
+                    class="mr-2"
+                    data-test="python-venv-select"
+                  >
+                    <template #item="{ item, props: itemProps }">
+                      <v-list-item
+                        v-bind="itemProps"
+                        :subtitle="item.raw.venv"
+                      />
+                    </template>
+                  </v-select>
+                </div>
+              </template>
+              <span>{{ selectedVenvPath }}</span>
+            </v-tooltip>
+            <div v-if="startOrGoButton === 'Start'" class="d-flex align-center">
               <v-tooltip
                 v-if="overridesCount > 0"
                 :open-delay="600"
@@ -588,6 +620,8 @@
     :subtitle="prompt.subtitle"
     :message="prompt.message"
     :details="prompt.details"
+    :description="prompt.description"
+    :hazardous="prompt.hazardous"
     :buttons="prompt.buttons"
     :layout="prompt.layout"
     :multiple="prompt.multiple"
@@ -876,6 +910,8 @@ export default {
         subtitle: '',
         message: '',
         details: '',
+        description: '',
+        hazardous: '',
         buttons: null,
         layout: 'horizontal',
         callback: () => {},
@@ -935,6 +971,8 @@ export default {
       displayCriticalCmd: false,
       editorBoxSize: 50,
       lockingEnabled: true,
+      pythonVenv: 'system',
+      pythonVenvs: [],
     }
   },
   computed: {
@@ -975,6 +1013,19 @@ export default {
     },
     environmentModified: function () {
       return this.scriptEnvironment.env.length > 0
+    },
+    showPythonVenv: function () {
+      if (this.pythonVenvs.length === 0) return false
+      const name = this.tempFilename || this.filename
+      return (
+        name === NEW_FILENAME ||
+        (name.startsWith(TEMP_FOLDER) && name.endsWith('.py'))
+      )
+    },
+    selectedVenvPath: function () {
+      if (!this.pythonVenv) return 'Select Python virtual environment'
+      const entry = this.pythonVenvs.find((e) => e.name === this.pythonVenv)
+      return entry ? entry.venv : this.pythonVenv
     },
     isLocked: function () {
       if (!this.lockingEnabled) {
@@ -1311,6 +1362,17 @@ export default {
     }
 
     this.updateOverridesCount()
+
+    Api.get('/script-api/scripts/plugin_python_venvs')
+      .then((response) => {
+        this.pythonVenvs = [
+          { name: 'system', venv: '/openc3/python/.venv' },
+          ...response.data,
+        ]
+      })
+      .catch(() => {
+        // Python venvs will remain empty
+      })
 
     // Make NEW_FILENAME available to the template
     this.NEW_FILENAME = NEW_FILENAME
@@ -1893,6 +1955,11 @@ export default {
         this.subscription = null
       }
       this.receivedEvents.length = 0 // Drop any events not yet processed
+      // Reset prompt tracking so the first prompt re-published on this fresh
+      // subscription is always processed and displayed. Without this, attaching
+      // to a running script (which reuses the component) could carry over a
+      // stale activePromptId and skip showing the dialog (see handleScript).
+      this.activePromptId = ''
       this.subscription = await this.cable.createSubscription(
         'RunningScriptChannel',
         window.openc3Scope,
@@ -1981,6 +2048,9 @@ export default {
       }
       if (end_line_no !== null) {
         data['end_line_no'] = end_line_no
+      }
+      if (this.pythonVenv) {
+        data['pythonVenv'] = this.pythonVenv
       }
       Api.post(url, { data })
         .then((response) => {
@@ -2294,12 +2364,21 @@ export default {
         this.bucket.show = false
         return
       }
+      // The running script re-publishes the active prompt about once a second
+      // while it waits for an answer. Ignore these repeats so we don't reset the
+      // dialog state and re-fetch the hazardous command description on every
+      // tick, which makes the dialog visibly bounce (issue #3472).
+      if (data.prompt_id && data.prompt_id === this.activePromptId) {
+        return
+      }
       this.activePromptId = data.prompt_id
       this.prompt.method = data.method // Set it here since all prompts use this
       this.prompt.layout = 'horizontal' // Reset the layout since most are horizontal
       this.prompt.title = 'Prompt'
       this.prompt.subtitle = ''
       this.prompt.details = ''
+      this.prompt.description = ''
+      this.prompt.hazardous = ''
       this.prompt.buttons = []
       this.prompt.multiple = null
       switch (data.method) {
@@ -2345,11 +2424,18 @@ export default {
           break
         case 'prompt_for_hazardous':
           this.prompt.title = 'Hazardous Command'
-          this.prompt.message = `Warning: Command ${data.args[0]} ${data.args[1]} is Hazardous. `
+          this.prompt.message = `Warning: Command ${data.args[0]} ${data.args[1]} is Hazardous. Send?`
           if (data.args[2]) {
-            this.prompt.message += data.args[2] + ' '
+            this.prompt.hazardous = data.args[2]
           }
-          this.prompt.message += 'Send?'
+          // The HazardousError only carries the hazardous description, so fetch
+          // the general command description to match Command Sender (issue #3472)
+          this.api
+            .get_cmd(data.args[0], data.args[1])
+            .then((command) => {
+              this.prompt.description = command.description || ''
+            })
+            .catch(() => {}) // Ignore - just don't show the description
           this.prompt.buttons = [{ text: 'Send', value: 'Send' }]
           this.prompt.callback = this.promptDialogCallback
           this.prompt.show = true
@@ -2746,6 +2832,12 @@ class TestSuite(Suite):
         }
       }
       this.filename = newFilename
+      // Saved scripts resolve their venv from the file path, so clear
+      // any manually selected python venv. Keep it for temp scripts
+      // so the selection persists across runs.
+      if (!newFilename.startsWith(TEMP_FOLDER)) {
+        this.pythonVenv = null
+      }
       if (!this.inline) {
         // Update the URL with the filename
         this.$router

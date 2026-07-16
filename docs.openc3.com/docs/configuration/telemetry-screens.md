@@ -1464,7 +1464,7 @@ RANGEBAR INST HEALTH_STATUS TEMP1 -100 100
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Icon name | The Astro UX icon to display. Valid choices are from the 'Astro' section [here](https://github.com/RocketCommunicationsInc/astro/blob/main/packages/web-components/src/stories/icons.json) (e.g. `thermal`). | True |
+| Icon name | The astro UX icon to display. Valid choices are 'astro' icons taken from https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.json. | True |
 | Icon label | Text to apply to the icon label | False |
 | Icon sublabel | Text to apply to the icon sublabel | False |
 
@@ -1585,6 +1585,18 @@ at which point we send the command with the telemetry value we received.
 Scripts can be launched from a BUTTON using the `runScript()` method. `runScript()` takes three parameters,
 the name of the script, whether to open the script in the foreground of Script Runner (default = true), and a hash of
 environment variables. For example: `runScript('INST/procedures/script.rb', false, {'VAR': 'VALUE'})`
+
+For security, button code does NOT run in the main application. It runs in an isolated,
+sandboxed browser context that has no access to your login session, browser storage, or
+the page, and no network access of its own. The `api`, `screen`, `runScript` and `alert`
+objects still work exactly as before (the real work is performed by the application on the
+button code's behalf). A few consequences of this isolation:
+
+- `alert()` no longer pauses code execution while the alert is displayed.
+- `screen.getNamedWidget("WIDGET_NAME").text()` (and `selected()` / `checked()`) return the
+  widget's value as it was when the button was clicked; a `.value =` assignment made earlier
+  in the same button click is not guaranteed to be visible to a later read in that same click.
+- The `self` variable (the internal widget component) is no longer available to button code.
 
 
 | Parameter | Description | Required |
@@ -1759,6 +1771,15 @@ CANVAS 100 50
   CANVASLABEL 5 30 "Dark canvas" 18 white
 END
 ```
+The following settings apply to CANVAS. They are applied using the SETTING keyword.
+#### BACKCOLOR
+<span class="badge badge--secondary since-right">Since 7.2.1</span>**Sets the background color of the canvas**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Color name or Red value | Common name for the color, e.g. 'black', 'red', etc. Alternatively if two more parameters are passed this is the Red value of the RGB value | True |
+| Green value | Green value of the RGB value | False |
+| Blue value | Blue value of the RGB value | False |
 
 ### CANVASLABEL
 **Draws text onto the canvas**

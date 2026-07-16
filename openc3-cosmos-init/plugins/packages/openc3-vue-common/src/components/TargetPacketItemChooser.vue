@@ -180,10 +180,16 @@
       <v-col :cols="colSize" style="max-width: 140px"> </v-col>
     </v-row>
     <v-row no-gutters class="pt-3 px-3 align-center">
-      <v-col :cols="colSize" :class="{ 'openc3-yellow': isHazardous }">
-        <v-icon v-if="isHazardous" class="mr-1">mdi-alert</v-icon>
-        Description: {{ description }}
-        <template v-if="isHazardous"> (HAZARDOUS) </template>
+      <v-col :cols="colSize">
+        <div>Description: {{ description }}</div>
+        <div
+          v-if="hazardousDescription"
+          class="openc3-yellow font-weight-bold mt-2"
+          data-test="hazardous-description"
+        >
+          <v-icon class="mr-1">mdi-alert</v-icon>
+          Hazardous: {{ hazardousDescription }}
+        </div>
       </v-col>
     </v-row>
   </div>
@@ -305,6 +311,7 @@ export default {
       selectedReducedType: 'AVG',
       description: '',
       hazardous: false,
+      hazardousDescription: '',
       internalDisabled: false,
       packetsDisabled: false,
       itemsDisabled: false,
@@ -718,6 +725,7 @@ export default {
         this.selectedPacketName = 'LATEST'
         this.description = 'Latest values from all packets'
         this.hazardous = false
+        this.hazardousDescription = ''
       } else {
         this.itemsDisabled = false
         const packet = this.packetNames.find((packet) => {
@@ -730,6 +738,7 @@ export default {
             (packet) => {
               this.description = packet.description
               this.hazardous = packet.hazardous
+              this.hazardousDescription = packet.hazardous_description || ''
             },
           )
         }

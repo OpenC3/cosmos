@@ -8,7 +8,6 @@
 # See LICENSE.md for more details.
 */
 
-// @ts-check
 import { test } from '@playwright/test'
 
 test('configure keycloak', async ({ page }) => {

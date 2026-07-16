@@ -19,6 +19,8 @@ require 'spec_helper'
 require 'openc3/models/interface_model'
 require 'openc3/models/host_microservice_model'
 require 'openc3/models/interface_status_model'
+require 'openc3/models/router_model'
+require 'openc3/models/router_status_model'
 
 module OpenC3
   describe InterfaceModel do
@@ -269,6 +271,67 @@ module OpenC3
         expect(config[0][1]['type']).to eql 'interface'
         expect(config[0][1]['name']).to eql 'TEST_INT'
         expect(config[0][1]['plugin']).to eql 'PLUG'
+      end
+
+      it "destroys the InterfaceStatusModel when no MicroserviceModel exists" do
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT", plugin: "PLUG")
+        model.create
+        # Create a status model entry (simulating a running interface that wrote status)
+        InterfaceStatusModel.set({ name: 'TEST_INT', state: 'CONNECTED' }, scope: 'DEFAULT')
+        expect(InterfaceStatusModel.get(name: 'TEST_INT', scope: 'DEFAULT')).to_not be_nil
+
+        # No MicroserviceModel exists (already destroyed by PluginModel.undeploy Phase A)
+        expect(MicroserviceModel).to receive(:get_model).and_return(nil)
+
+        model.undeploy
+
+        # The status model should still be cleaned up
+        expect(InterfaceStatusModel.get(name: 'TEST_INT', scope: 'DEFAULT')).to be_nil
+      end
+
+      it "destroys the InterfaceStatusModel even when MicroserviceModel.destroy raises" do
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT", plugin: "PLUG")
+        model.create
+        # Create a status model entry
+        InterfaceStatusModel.set({ name: 'TEST_INT', state: 'CONNECTED' }, scope: 'DEFAULT')
+        expect(InterfaceStatusModel.get(name: 'TEST_INT', scope: 'DEFAULT')).to_not be_nil
+
+        # MicroserviceModel.destroy raises an exception
+        umodel = double(MicroserviceModel)
+        expect(umodel).to receive(:destroy).and_raise(RuntimeError.new("destroy failed"))
+        expect(MicroserviceModel).to receive(:get_model).and_return(umodel)
+
+        model.undeploy
+
+        # The status model should still be cleaned up despite the exception
+        expect(InterfaceStatusModel.get(name: 'TEST_INT', scope: 'DEFAULT')).to be_nil
+      end
+
+      it "destroys the RouterStatusModel even when MicroserviceModel.destroy raises" do
+        model = RouterModel.new(name: "TEST_ROUTER", scope: "DEFAULT", plugin: "PLUG")
+        model.create
+        # Create a router status model entry
+        RouterStatusModel.set({ name: 'TEST_ROUTER', state: 'CONNECTED' }, scope: 'DEFAULT')
+        expect(RouterStatusModel.get(name: 'TEST_ROUTER', scope: 'DEFAULT')).to_not be_nil
+
+        # MicroserviceModel.destroy raises an exception
+        umodel = double(MicroserviceModel)
+        expect(umodel).to receive(:destroy).and_raise(RuntimeError.new("destroy failed"))
+        expect(MicroserviceModel).to receive(:get_model).and_return(umodel)
+
+        model.undeploy
+
+        # The router status model should still be cleaned up despite the exception
+        expect(RouterStatusModel.get(name: 'TEST_ROUTER', scope: 'DEFAULT')).to be_nil
+      end
+
+      it "does not raise when status model does not exist during undeploy" do
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT", plugin: "PLUG")
+        model.create
+        expect(MicroserviceModel).to receive(:get_model).and_return(nil)
+
+        # No status model exists -- undeploy should not raise
+        expect { model.undeploy }.to_not raise_error
       end
     end
 

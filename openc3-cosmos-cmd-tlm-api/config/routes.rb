@@ -43,6 +43,7 @@ Rails.application.routes.draw do
     post '/targets/:id/download', to: 'targets#download', id: /[^\/]+/
     post '/targets/:id/delete_modified', to: 'targets#delete_modified', id: /[^\/]+/
 
+    get '/packages/trees', to: 'packages#trees' # Per-plugin Python dependency lists for Admin UI
     resources :packages, only: [:index, :create]
     delete '/packages/:id', to: 'packages#destroy', id: /[^\/]+/
     post '/packages/:id/download', to: 'packages#download', id: /[^\/]+/
@@ -96,6 +97,7 @@ Rails.application.routes.draw do
     resources :permissions, only: [:index]
 
     post '/plugins/install/:id', to: 'plugins#install', id: /[^\/]+/
+    post '/plugins/:id/migrate_to_uv', to: 'plugins#migrate_to_uv', id: /[^\/]+/ # Migrate legacy plugin to per-plugin UV venv
     resources :plugins, only: [:index, :create]
     get '/plugins/:id', to: 'plugins#show', id: /[^\/]+/
     match '/plugins/:id', to: 'plugins#update', id: /[^\/]+/, via: [:patch, :put]

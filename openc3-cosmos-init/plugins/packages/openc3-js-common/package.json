@@ -1,7 +1,7 @@
 {
   "name": "@openc3/js-common",
   "description": "Common library for COSMOS tool development",
-  "version": "7.2.1-beta0",
+  "version": "7.2.2-beta0",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://openc3.com",
   "repository": {
@@ -43,19 +43,19 @@
   "dependencies": {
     "@anycable/web": "1.1.1",
     "@astrouxds/astro-web-components": "7.27.0",
-    "axios": "1.16.1",
+    "axios": "1.18.1",
     "binary-search": "1.3.6",
-    "date-fns": "4.3.0",
+    "date-fns": "4.4.0",
     "date-fns-tz": "3.2.0",
     "lodash": "4.18.1",
     "lossless-json": "4.3.0",
-    "sass": "1.100.0",
+    "sass": "1.101.0",
     "sortablejs": "1.15.7",
     "sprintf-js": "1.1.3",
     "uplot": "1.6.32"
   },
   "devDependencies": {
-    "prettier": "3.8.3",
-    "vite": "7.3.3"
+    "prettier": "3.8.5",
+    "vite": "7.3.6"
   }
 }

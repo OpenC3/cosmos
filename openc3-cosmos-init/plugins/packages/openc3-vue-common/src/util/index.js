@@ -20,3 +20,4 @@ export {
   peekCachedSetting,
   resetSettingsCache,
 } from './settingsCache'
+export { runButtonScript } from './buttonScriptSandbox'

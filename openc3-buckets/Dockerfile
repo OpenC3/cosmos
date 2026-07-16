@@ -1,7 +1,7 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG DEBIAN_RELEASE=trixie
 # Make sure to update build_multi_arch.sh with the same version when updating versitygw version
-ARG OPENC3_VERSITYGW_VERSION=v1.4.1
+ARG OPENC3_VERSITYGW_VERSION=v1.6.0
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/debian:${DEBIAN_RELEASE}-slim
 
@@ -19,8 +19,9 @@ RUN for f in /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources; do \
 # Copy and extract versitygw binary from local tar.gz files
 COPY versitygw_${OPENC3_VERSITYGW_VERSION}*.tar.gz /tmp/
 RUN ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "arm64" || echo "x86_64") && \
-    tar xzf /tmp/versitygw_${OPENC3_VERSITYGW_VERSION}_Linux_${ARCH}.tar.gz -C /tmp versitygw_${OPENC3_VERSITYGW_VERSION}_Linux_${ARCH}/versitygw && \
-    mv /tmp/versitygw_${OPENC3_VERSITYGW_VERSION}_Linux_${ARCH}/versitygw /usr/local/bin/ && \
+    VERSITYGW_DIR="versitygw_${OPENC3_VERSITYGW_VERSION}_Linux_${ARCH}" && \
+    tar xzf "/tmp/${VERSITYGW_DIR}.tar.gz" -C /tmp "${VERSITYGW_DIR}/versitygw" && \
+    mv "/tmp/${VERSITYGW_DIR}/versitygw" /usr/local/bin/ && \
     chmod +x /usr/local/bin/versitygw && \
     rm -rf /tmp/versitygw_*
 
@@ -44,7 +45,7 @@ RUN apt-get update && \
     groupadd -g ${GROUP_ID} ${IMAGE_GROUP} && \
     useradd -u ${USER_ID} -g ${IMAGE_GROUP} -s /bin/bash ${IMAGE_USER} && \
     mkdir /data && \
-    chown -R ${USER_ID}:${IMAGE_GROUP} /data && \
+    chown -R "${USER_ID}":"${IMAGE_GROUP}" /data && \
     chmod -R 777 /data
 
 # Switch to user

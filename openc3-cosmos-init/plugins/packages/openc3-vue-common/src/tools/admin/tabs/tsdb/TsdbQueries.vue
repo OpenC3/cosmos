@@ -48,10 +48,10 @@
       >
         Execute
       </v-btn>
-      <v-text-field
+      <v-number-input
         v-model="db_shard"
-        type="number"
-        min="0"
+        control-variant="stacked"
+        :min="0"
         label="DB Shard"
         hide-details
         density="compact"
@@ -79,7 +79,7 @@ export default {
   data() {
     return {
       sqlText: '',
-      db_shard: '0',
+      db_shard: 0,
       columns: [],
       rows: [],
       errorMessage: null,

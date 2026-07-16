@@ -15,7 +15,7 @@
     />
     <link rel="stylesheet" href="/css/roboto.css" />
     <link rel="stylesheet" href="/css/materialdesignicons-7.4.47.min.css" />
-    <link rel="stylesheet" href="/css/vuetify-labs-3.12.2.min.css" />
+    <link rel="stylesheet" href="/css/vuetify-labs-3.12.8.min.css" />
     <link rel="stylesheet" href="/css/astro-web-components-7.24.0.css" />
 
     <!-- https://realfavicongenerator.net/ generated favicons -->
@@ -40,23 +40,18 @@
       Update by downloading latest release from https://github.com/vuetifyjs/vuetify/releases (for example)
       and putting the vuetify-vX.Y.Z.min.js in ../public/js (delete the old one)
     -->
-    <script type="systemjs-importmap">
-      {
-        "imports": {
-          "single-spa": "/js/single-spa-6.0.3.min.js",
-          "vue": "/js/vue.global.prod-3.5.35.min.js",
-          "vuetify": "/js/vuetify-labs-3.12.2.min.js",
-          "vue-router": "/js/vue-router-4.4.4.min.js",
-          "vuex": "/js/vuex-4.1.0.min.js",
-          "pinia": "/js/pinia-3.0.4.min.js"
-        }
-      }
-    </script>
+    <!-- Shared-dependency import map. Externalized (rather than inline) so the
+      Content-Security-Policy script-src does not need 'unsafe-inline'. -->
+    <script type="systemjs-importmap" src="/js/importmap.json"></script>
     <script type="systemjs-importmap" src="/openc3-api/map.json"></script>
     <!-- See note above for how to update these -->
     <link rel="preload" href="/js/single-spa-6.0.3.min.js" as="script" />
-    <link rel="preload" href="/js/vue.global.prod-3.5.35.min.js" as="script" />
-    <link rel="preload" href="/js/vuetify-labs-3.12.2.min.js" as="script" />
+    <link
+      rel="preload"
+      href="/js/vue.runtime.global.prod-3.5.39.min.js"
+      as="script"
+    />
+    <link rel="preload" href="/js/vuetify-labs-3.12.8.min.js" as="script" />
     <link rel="preload" href="/js/vue-router-4.4.4.min.js" as="script" />
     <link rel="preload" href="/js/pinia-3.0.4.min.js" as="script" />
     <link rel="preload" href="/js/vuex-4.1.0.min.js" as="script" />
@@ -80,26 +75,6 @@
       show-when-local-storage="devtools"
     ></import-map-overrides-full>
     <script src="/js/fixImoStyle.js"></script>
-    <script>
-      ;(function () {
-        Object.getPrototypeOf(System).firstGlobalProp = true
-        Promise.all([System.import('single-spa'), System.import('vue')])
-          .then(function (modules) {
-            System.set(System.resolve('vue'), window.Vue)
-            return Promise.all([
-              System.import('vue-router'),
-              System.import('vuex'),
-              System.import('pinia'),
-              System.import('vuetify'),
-            ])
-          })
-          .then(function (modules) {
-            System.set(System.resolve('vue-router'), window.VueRouter)
-            System.set(System.resolve('vuex'), window.Vuex)
-            System.set(System.resolve('pinia'), window.Pinia)
-            System.import('@openc3/tool-base')
-          })
-      })()
-    </script>
+    <script src="/js/bootstrap.js"></script>
   </body>
 </html>

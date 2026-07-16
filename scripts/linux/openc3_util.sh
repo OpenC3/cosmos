@@ -2,16 +2,14 @@
 
 set -e
 
-if ! command -v docker &> /dev/null
-then
-  if command -v podman &> /dev/null
-  then
+if ! command -v docker &> /dev/null; then
+  if command -v podman &> /dev/null; then
     function docker() {
-      podman $@
+      podman "$@"
       return $?
     }
   else
-    echo "Neither docker nor podman found!!!"
+    echo "Neither docker nor podman found!" >&2
     exit 1
   fi
 fi

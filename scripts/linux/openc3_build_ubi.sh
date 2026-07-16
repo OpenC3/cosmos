@@ -122,36 +122,38 @@ else
   TSDB_PLATFORM_FLAG="--platform linux/amd64"
 fi
 
-# Function to check and perform registry login
-check_registry_login() {
-  if [[ -z "$OPENC3_UBI_REGISTRY" ]]; then
-    echo "Warning: OPENC3_UBI_REGISTRY not set, skipping registry login check"
-    return 0
+# Print a hint suggesting registry login when an image pull is denied.
+# We intentionally do NOT login automatically: forcing a login would require
+# credentials for the UBI base registry and break air-gapped builds where the
+# base images are already mirrored locally.
+suggest_registry_login() {
+  echo "" >&2
+  echo "A container image pull was denied (403 / authentication required)." >&2
+  echo "If the base image lives in a private registry, login and retry the build:" >&2
+  if [[ -n "$OPENC3_UBI_REGISTRY" ]]; then
+    echo "  docker login $OPENC3_UBI_REGISTRY" >&2
   fi
-
-  echo "Logging into registry: $OPENC3_UBI_REGISTRY"
-
-  # Attempt login with credentials if provided, otherwise prompt
-  if [[ -n "$OPENC3_UBI_USERNAME" ]] && [[ -n "$OPENC3_UBI_PASSWORD" ]]; then
-    echo "Using provided credentials for login..."
-    if echo "$OPENC3_UBI_PASSWORD" | docker login "$OPENC3_UBI_REGISTRY" --username "$OPENC3_UBI_USERNAME" --password-stdin; then
-      echo "Successfully authenticated with registry: $OPENC3_UBI_REGISTRY"
-    else
-      echo "Failed to login with provided credentials!"
-      exit 1
-    fi
-  else
-    echo "No credentials provided (OPENC3_UBI_USERNAME/OPENC3_UBI_PASSWORD)"
-    echo "Attempting interactive login..."
-    if ! docker login "$OPENC3_UBI_REGISTRY"; then
-      echo "Failed to login to registry!"
-      exit 1
-    fi
+  if [[ -n "$OPENC3_REGISTRY" ]]; then
+    echo "  docker login $OPENC3_REGISTRY" >&2
+  fi
+  if [[ -z "$OPENC3_UBI_REGISTRY" ]] && [[ -z "$OPENC3_REGISTRY" ]]; then
+    echo "  docker login <registry>" >&2
   fi
 }
 
-# Perform registry login check
-check_registry_login
+# Run "docker build", streaming output live. If the build fails with a registry
+# authentication error (e.g. 403), suggest logging in before propagating failure.
+build_image() {
+  local tmp status
+  tmp="$(mktemp)"
+  docker build "$@" 2>&1 | tee "$tmp"
+  status=${PIPESTATUS[0]}
+  if [[ $status -ne 0 ]] && grep -qiE '403 Forbidden|pull access denied|requested access to the resource is denied|authentication required|unauthorized' "$tmp"; then
+    suggest_registry_login
+  fi
+  rm -f "$tmp"
+  return $status
+}
 
 # Handle restrictive umasks - Built files need to be world readable
 umask 0022
@@ -196,7 +198,7 @@ if should_build "openc3-ruby-ubi"; then
   echo "Building openc3-ruby-ubi..."
   START_TIME=$SECONDS
   cd openc3-ruby
-  docker build \
+  build_image \
     -f Dockerfile-ubi \
     --network host \
     --build-arg OPENC3_UBI_REGISTRY=$OPENC3_UBI_REGISTRY \
@@ -221,7 +223,7 @@ if should_build "openc3-base-ubi"; then
   cd openc3
   # Clean up any .bundle directory to avoid corrupted config files
   rm -rf .bundle
-  docker build \
+  build_image \
     --network host \
     --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
@@ -242,7 +244,7 @@ if should_build "openc3-node-ubi"; then
   echo "Building openc3-node-ubi..."
   START_TIME=$SECONDS
   cd openc3-node
-  docker build \
+  build_image \
     -f Dockerfile-ubi \
     --network host \
     --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
@@ -263,7 +265,7 @@ if should_build "openc3-buckets-ubi"; then
   echo "Building openc3-buckets-ubi..."
   START_TIME=$SECONDS
   cd openc3-buckets
-  docker build \
+  build_image \
     -f Dockerfile-ubi \
     --network host \
     --build-arg OPENC3_UBI_REGISTRY=${OPENC3_UBI_REGISTRY} \
@@ -283,7 +285,7 @@ if should_build "openc3-redis-ubi"; then
   echo "Building openc3-redis-ubi..."
   START_TIME=$SECONDS
   cd openc3-redis
-  docker build \
+  build_image \
     -f Dockerfile-ubi \
     --network host \
     --build-arg OPENC3_UBI_REGISTRY=${OPENC3_UBI_REGISTRY} \
@@ -303,7 +305,7 @@ if should_build "openc3-tsdb-ubi"; then
   echo "Building openc3-tsdb-ubi..."
   START_TIME=$SECONDS
   cd openc3-tsdb
-  docker build \
+  build_image \
     -f Dockerfile-ubi \
     --network host \
     --build-arg OPENC3_DEPENDENCY_REGISTRY="${OPENC3_DEPENDENCY_REGISTRY}" \
@@ -324,7 +326,7 @@ if should_build "openc3-cosmos-cmd-tlm-api-ubi"; then
   cd openc3-cosmos-cmd-tlm-api
   # Clean up any .bundle directory to avoid corrupted config files
   rm -rf .bundle
-  docker build \
+  build_image \
     --network host \
     --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
@@ -348,7 +350,7 @@ if should_build "openc3-cosmos-script-runner-api-ubi"; then
   cd openc3-cosmos-script-runner-api
   # Clean up any .bundle directory to avoid corrupted config files
   rm -rf .bundle
-  docker build \
+  build_image \
     --network host \
     --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
@@ -369,7 +371,7 @@ if should_build "openc3-operator-ubi"; then
   echo "Building openc3-operator-ubi..."
   START_TIME=$SECONDS
   cd openc3-operator
-  docker build \
+  build_image \
     --network host \
     --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
@@ -394,11 +396,11 @@ if should_build "openc3-traefik-ubi"; then
   # NOTE: Ensure OPENC3_TRAEFIK_RELEASE is on IronBank:
   # https://ironbank.dso.mil/repomap/details;registry1Path=opensource%252Ftraefik%252Ftraefik
   cd openc3-traefik
-  docker build \
+  build_image \
     --network host \
     --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik \
     --build-arg TRAEFIK_CONFIG=$TRAEFIK_CONFIG \
-    --build-arg OPENC3_TRAEFIK_RELEASE=v3.7.1 \
+    --build-arg OPENC3_TRAEFIK_RELEASE=v3.7.5 \
     "${BUILD_FLAGS[@]}" \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik-ubi:${OPENC3_TAG}" \
@@ -413,7 +415,7 @@ if should_build "openc3-cosmos-init-ubi"; then
   echo "Building openc3-cosmos-init-ubi..."
   START_TIME=$SECONDS
   cd openc3-cosmos-init
-  docker build \
+  build_image \
     --network host \
     --build-context docs=../docs.openc3.com \
     --build-arg NPM_URL=$NPM_URL \

@@ -173,6 +173,7 @@ RSpec.describe StorageController, type: :controller do
       allow(FileUtils).to receive(:mkdir_p)
       allow(FileUtils).to receive(:rm_rf)
       allow(File).to receive(:read).and_return("file content")
+      allow(File).to receive(:exist?).and_return(true)
       allow(Base64).to receive(:encode64).and_return("encoded_content")
 
       get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "file.txt", scope: "DEFAULT"}
@@ -184,6 +185,7 @@ RSpec.describe StorageController, type: :controller do
 
     it "downloads a file from a volume" do
       allow(File).to receive(:read).and_return("file content")
+      allow(File).to receive(:exist?).and_return(true)
       allow(Base64).to receive(:encode64).and_return("encoded_content")
 
       get :download_file, params: {volume: "OPENC3_DATA_VOLUME", object_id: "file.txt", scope: "DEFAULT"}
@@ -296,6 +298,7 @@ RSpec.describe StorageController, type: :controller do
         allow(Dir).to receive(:mktmpdir).and_return("/tmp/dir")
         allow(FileUtils).to receive(:mkdir_p)
         allow(FileUtils).to receive(:rm_rf)
+        allow(File).to receive(:exist?).and_return(true)
       end
 
       it "converts ruby test reports to CTRF format" do
@@ -523,6 +526,40 @@ RSpec.describe StorageController, type: :controller do
       get :get_upload_presigned_request, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "file.txt", scope: "DEFAULT"}
       expect(response).to have_http_status(:internal_server_error)
       expect(JSON.parse(response.body)["message"]).to eq("General error")
+    end
+
+    context "with a non-admin user (system_set but not admin)" do
+      before(:each) do
+        # Grant every permission except admin to simulate a non-admin operator
+        allow(controller).to receive(:authorize) do |args|
+          raise OpenC3::AuthError.new("admin required") if args[:permission] == 'admin'
+          'authorized_user'
+        end
+        bucket_client = instance_double(OpenC3::Bucket)
+        allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+        allow(bucket_client).to receive(:presigned_request).and_return({url: "https://bucket/x"})
+      end
+
+      it "allows a non-cmd_tlm targets_modified overlay upload" do
+        get :get_upload_presigned_request, params: {
+          bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST/screens/poc.txt", scope: "DEFAULT"
+        }
+        expect(response).to have_http_status(:created)
+      end
+
+      it "rejects a cmd_tlm overlay upload (requires admin)" do
+        get :get_upload_presigned_request, params: {
+          bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST/cmd_tlm/tlm.txt", scope: "DEFAULT"
+        }
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it "rejects a non-canonical overlay key that hides cmd_tlm (requires admin)" do
+        get :get_upload_presigned_request, params: {
+          bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST//cmd_tlm/tlm.txt", scope: "DEFAULT"
+        }
+        expect(response).to have_http_status(:unauthorized)
+      end
     end
   end
 
@@ -911,6 +948,36 @@ RSpec.describe StorageController, type: :controller do
       end
     end
 
+    describe "non_admin_config_overlay_write?" do
+      let(:m) { :non_admin_config_overlay_write? }
+
+      it "allows non-cmd_tlm targets_modified and tmp overlay writes" do
+        expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets_modified/INST/screens/poc.txt')).to be true
+        expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets_modified/INST/procedures/x.rb')).to be true
+        expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/tmp/foo.txt')).to be true
+      end
+
+      it "requires admin (returns false) for the cmd_tlm overlay" do
+        expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets_modified/INST/cmd_tlm/tlm.txt')).to be false
+      end
+
+      it "requires admin for non-overlay and non-config paths" do
+        expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets/INST/screens/x.txt')).to be false
+        expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/target_archives/INST/x.zip')).to be false
+        expect(controller.send(m, 'OPENC3_LOGS_BUCKET', 'DEFAULT/targets_modified/INST/screens/x.txt')).to be false
+        expect(controller.send(m, 'OPENC3_TOOLS_BUCKET', 'DEFAULT/targets_modified/INST/screens/x.txt')).to be false
+      end
+
+      it "rejects non-canonical keys so the positional check cannot be bypassed" do
+        # Empty '//' segments, '.'/'..' segments, leading/trailing slashes all force admin
+        expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets_modified/INST//cmd_tlm/x.txt')).to be false
+        expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets_modified/INST/./cmd_tlm/x.txt')).to be false
+        expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', '/DEFAULT/targets_modified/INST/screens/x.txt')).to be false
+        expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets_modified/INST/screens/')).to be false
+        expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', '')).to be false
+      end
+    end
+
     describe "target_list_depth" do
       it "returns 2 for config bucket target directories" do
         expect(controller.send(:target_list_depth, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets')).to eq(2)
@@ -1087,6 +1154,7 @@ RSpec.describe StorageController, type: :controller do
         allow(FileUtils).to receive(:mkdir_p)
         allow(FileUtils).to receive(:rm_rf)
         allow(File).to receive(:read).and_return("file content")
+        allow(File).to receive(:exist?).and_return(true)
 
         # Mock authorize to allow INST target with tlm permission
         allow(controller).to receive(:authorize) do |args|
@@ -1111,6 +1179,7 @@ RSpec.describe StorageController, type: :controller do
         allow(FileUtils).to receive(:mkdir_p)
         allow(FileUtils).to receive(:rm_rf)
         allow(File).to receive(:read).and_return("file content")
+        allow(File).to receive(:exist?).and_return(true)
 
         get :download_file, params: {bucket: "OPENC3_TOOLS_BUCKET", object_id: "tool/file.txt", scope: "DEFAULT"}
         expect(response).to have_http_status(:ok)

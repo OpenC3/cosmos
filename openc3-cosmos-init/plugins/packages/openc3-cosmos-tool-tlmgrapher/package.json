@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-tlmgrapher",
-  "version": "7.2.1-beta0",
+  "version": "7.2.2-beta0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,9 +13,9 @@
     "@astrouxds/astro-web-components": "7.27.0",
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
-    "axios": "1.16.1",
+    "axios": "1.18.1",
     "binary-search": "1.3.6",
-    "date-fns": "4.3.0",
+    "date-fns": "4.4.0",
     "lodash": "4.18.1",
     "muuri": "0.9.5",
     "single-spa-vue": "3.0.1",
@@ -23,9 +23,9 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "6.0.7",
-    "prettier": "3.8.3",
-    "sass": "1.100.0",
-    "vite": "7.3.3",
-    "vue": "3.5.35"
+    "prettier": "3.8.5",
+    "sass": "1.101.0",
+    "vite": "7.3.6",
+    "vue": "3.5.39"
   }
 }

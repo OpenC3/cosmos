@@ -74,7 +74,9 @@ check_build_files(
 )
 
 base_pkgs = %w(import-map-overrides pinia single-spa systemjs vue vue-router vuetify)
-check_tool_base('openc3-cosmos-init/plugins/packages/openc3-tool-base', base_pkgs)
+# FORCE=1 re-downloads the tool-base js/css even when it already matches
+# package.json (and downloads fresh when the existing file was deleted).
+check_tool_base('openc3-cosmos-init/plugins/packages/openc3-tool-base', base_pkgs, force: ENV['FORCE'] == '1')
 puts "\n*** If you update a container version re-run to ensure there aren't additional updates! ***\n\n"
 
 # Per-language outdated dependency prompts. Each helper enumerates outdated

@@ -6,9 +6,12 @@ ARG OPENC3_IMAGE=openc3-base
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_IMAGE}:${OPENC3_TAG}
 
 WORKDIR /src/
-COPY Gemfile ./
+
+RUN ["chown", "-R", "openc3:openc3", "/src/"]
 
 USER root
+
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./ ./
 
 ENV SKIP_DEV_GEMS=1
 RUN bundle config set --local without 'development test' && \

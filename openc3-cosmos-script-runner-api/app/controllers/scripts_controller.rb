@@ -42,6 +42,21 @@ class ScriptsController < ApplicationController
     render json: Script.all(scope, target)
   end
 
+  def plugin_python_venvs
+    return unless authorization('script_view')
+    venvs_dir = '/gems/plugin_venvs'
+    result = []
+    if File.directory?(venvs_dir)
+      Dir.glob("#{venvs_dir}/*/").each do |plugin_dir|
+        name = File.basename(plugin_dir)
+        next unless File.exist?(File.join(plugin_dir, '.uv_managed'))
+        next unless File.directory?(File.join(plugin_dir, '.venv'))
+        result << { name: name, venv: File.join(plugin_dir, '.venv') }
+      end
+    end
+    render json: result
+  end
+
   def delete_temp
     return unless authorization('script_edit')
     scope = sanitize_params([:scope])
@@ -67,7 +82,8 @@ class ScriptsController < ApplicationController
         breakpoints: breakpoints,
         locked: locked
       }
-      if ((File.extname(name) == '.py') and (file =~ PYTHON_SUITE_REGEX)) or ((File.extname(name) != '.py') and (file =~ SUITE_REGEX))
+      # Viewers without script_run still get the file contents, just no suite chrome.
+      if suite_with_run_permission?(name, file)
         results_suites, results_error, success = Script.process_suite(name, file, username: username(), scope: scope)
         results['suites'] = results_suites
         results['error'] = results_error
@@ -90,7 +106,9 @@ class ScriptsController < ApplicationController
     args[:name] = name
     Script.create(args)
     results = {}
-    if ((File.extname(name) == '.py') and (params[:text] =~ PYTHON_SUITE_REGEX)) or ((File.extname(name) != '.py') and (params[:text] =~ SUITE_REGEX))
+    # The file is still saved above; only the suite chrome is omitted when the editor
+    # lacks script_run.
+    if suite_with_run_permission?(name, params[:text])
       results_suites, results_error, success = Script.process_suite(name, params[:text], username: username(), scope: scope)
       results['suites'] = results_suites
       results['error'] = results_error
@@ -116,7 +134,8 @@ class ScriptsController < ApplicationController
     suite_runner = params[:suiteRunner] ? params[:suiteRunner].as_json() : nil
     disconnect = params[:disconnect] == 'disconnect'
     environment = params[:environment]
-    running_script_id = Script.run(scope, name, suite_runner, disconnect, environment, user_full_name(), username(), line_no, end_line_no)
+    python_venv = params[:pythonVenv]
+    running_script_id = Script.run(scope, name, suite_runner, disconnect, environment, user_full_name(), username(), line_no, end_line_no, python_venv)
     if running_script_id
       OpenC3::Logger.info("Script started: #{name}", scope: scope, user: username())
       render plain: running_script_id.to_s
@@ -204,5 +223,19 @@ class ScriptsController < ApplicationController
     scope = scope[0]
     OpenC3::Store.del("#{scope}__script-breakpoints")
     head :ok
+  end
+
+  private
+
+  # Suite analysis executes the file, so it is gated at the script_run tier rather
+  # than the read-only script_view / script_edit endpoints that call this. Returns
+  # true only when the text defines a suite AND the user has script_run permission.
+  def suite_with_run_permission?(name, text)
+    is_suite = if File.extname(name) == '.py'
+      text =~ PYTHON_SUITE_REGEX
+    else
+      text =~ SUITE_REGEX
+    end
+    is_suite && authorized?('script_run', target_name: name.split('/')[0])
   end
 end
