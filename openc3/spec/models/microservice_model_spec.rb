@@ -288,5 +288,46 @@ module OpenC3
         expect(config[0][1]['plugin']).to eql 'PLUGIN'
       end
     end
+
+    describe "runtime_python_env" do
+      it "sets per-plugin venv env vars when plugin venv directory exists" do
+        model = MicroserviceModel.new(
+          folder_name: "TEST", name: "DEFAULT__TYPE__NAME",
+          scope: "DEFAULT", plugin: "my-plugin__0", needs_dependencies: true
+        )
+        venv_dir = "/gems/plugin_venvs/DEFAULT__my-plugin__0/.venv"
+        allow(File).to receive(:directory?).with(venv_dir).and_return(true)
+        allow(Dir).to receive(:glob).with("#{venv_dir}/lib/python*/site-packages").and_return(["#{venv_dir}/lib/python3.12/site-packages"])
+
+        env = model.runtime_python_env
+        expect(env['VIRTUAL_ENV']).to eq(venv_dir)
+        expect(env['PYTHONUSERBASE']).to eq(venv_dir)
+        expect(env['PYTHONPATH']).to eq("#{venv_dir}/lib/python3.12/site-packages")
+      end
+
+      it "falls back to shared python_packages when no plugin venv exists" do
+        model = MicroserviceModel.new(
+          folder_name: "TEST", name: "DEFAULT__TYPE__NAME",
+          scope: "DEFAULT", plugin: "my-plugin__0", needs_dependencies: true
+        )
+        venv_dir = "/gems/plugin_venvs/DEFAULT__my-plugin__0/.venv"
+        allow(File).to receive(:directory?).with(venv_dir).and_return(false)
+
+        env = model.runtime_python_env
+        expect(env['VIRTUAL_ENV']).to be_nil
+        expect(env['PYTHONUSERBASE']).to eq('/gems/python_packages')
+      end
+
+      it "does not set venv vars when needs_dependencies is false" do
+        model = MicroserviceModel.new(
+          folder_name: "TEST", name: "DEFAULT__TYPE__NAME",
+          scope: "DEFAULT", plugin: "my-plugin__0", needs_dependencies: false
+        )
+
+        env = model.runtime_python_env
+        expect(env['VIRTUAL_ENV']).to be_nil
+        expect(env['PYTHONUSERBASE']).to be_nil
+      end
+    end
   end
 end

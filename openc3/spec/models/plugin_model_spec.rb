@@ -771,7 +771,7 @@ module OpenC3
 
       it "removes per-plugin Python venv directory when it exists" do
         plugin = PluginModel.new(name: "PLUG", scope: "DEFAULT")
-        venv_path = '/gems/plugin_venvs/PLUG'
+        venv_path = '/gems/plugin_venvs/DEFAULT__PLUG'
         expect(File).to receive(:directory?).with(venv_path).and_return(true)
         expect(FileUtils).to receive(:rm_rf).with(venv_path)
         plugin.undeploy
@@ -779,7 +779,7 @@ module OpenC3
 
       it "does not error when per-plugin Python venv directory does not exist" do
         plugin = PluginModel.new(name: "PLUG", scope: "DEFAULT")
-        venv_path = '/gems/plugin_venvs/PLUG'
+        venv_path = '/gems/plugin_venvs/DEFAULT__PLUG'
         expect(File).to receive(:directory?).with(venv_path).and_return(false)
         expect(FileUtils).not_to receive(:rm_rf).with(venv_path)
         expect { plugin.undeploy }.not_to raise_error
@@ -787,7 +787,7 @@ module OpenC3
 
       it "sanitizes plugin name for venv directory path" do
         plugin = PluginModel.new(name: "my.plugin@1.0__0", scope: "DEFAULT")
-        sanitized_path = '/gems/plugin_venvs/my_plugin_1_0__0'
+        sanitized_path = '/gems/plugin_venvs/DEFAULT__my_plugin_1_0__0'
         expect(File).to receive(:directory?).with(sanitized_path).and_return(true)
         expect(FileUtils).to receive(:rm_rf).with(sanitized_path)
         plugin.undeploy
@@ -921,19 +921,19 @@ module OpenC3
 
       it "returns true when needs_dependencies is true and .uv_managed marker is absent" do
         model = PluginModel.new(name: "TEST", needs_dependencies: true, scope: "DEFAULT")
-        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST/.uv_managed').and_return(false)
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__TEST/.uv_managed').and_return(false)
         expect(model.needs_uv_migration?).to be true
       end
 
       it "returns false when .uv_managed marker exists" do
         model = PluginModel.new(name: "TEST", needs_dependencies: true, scope: "DEFAULT")
-        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST/.uv_managed').and_return(true)
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__TEST/.uv_managed').and_return(true)
         expect(model.needs_uv_migration?).to be false
       end
 
       it "sanitizes plugin name for marker path" do
         model = PluginModel.new(name: "my.plugin@1.0", needs_dependencies: true, scope: "DEFAULT")
-        allow(File).to receive(:exist?).with('/gems/plugin_venvs/my_plugin_1_0/.uv_managed').and_return(false)
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__my_plugin_1_0/.uv_managed').and_return(false)
         expect(model.needs_uv_migration?).to be true
       end
     end
@@ -941,7 +941,7 @@ module OpenC3
     describe "migrate_to_uv!" do
       it "returns true immediately when already migrated (marker exists)" do
         model = PluginModel.new(name: "TEST__0", needs_dependencies: true, scope: "DEFAULT")
-        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST__0/.uv_managed').and_return(true)
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__TEST__0/.uv_managed').and_return(true)
         expect(model.migrate_to_uv!(scope: "DEFAULT")).to be true
       end
 
@@ -951,7 +951,7 @@ module OpenC3
 
         # Marker doesn't exist
         allow(File).to receive(:exist?).and_call_original
-        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST__0/.uv_managed').and_return(false)
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__TEST__0/.uv_managed').and_return(false)
 
         # GemModel.get returns a path
         expect(GemModel).to receive(:get).with("TEST").and_return("/gems/cache/test.gem")
@@ -981,7 +981,7 @@ module OpenC3
         model.create
 
         allow(File).to receive(:exist?).and_call_original
-        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST__0/.uv_managed').and_return(false)
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__TEST__0/.uv_managed').and_return(false)
 
         expect(GemModel).to receive(:get).with("TEST").and_return("/gems/cache/test.gem")
 
@@ -1008,7 +1008,7 @@ module OpenC3
         model.create
 
         allow(File).to receive(:exist?).and_call_original
-        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST__0/.uv_managed').and_return(false)
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__TEST__0/.uv_managed').and_return(false)
 
         expect(GemModel).to receive(:get).with("TEST").and_return("/gems/cache/test.gem")
 
@@ -1025,7 +1025,7 @@ module OpenC3
         model.create
 
         allow(File).to receive(:exist?).and_call_original
-        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST__0/.uv_managed').and_return(false)
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__TEST__0/.uv_managed').and_return(false)
 
         expect(GemModel).to receive(:get).with("TEST").and_return("/gems/cache/test.gem")
 

@@ -223,7 +223,6 @@
                     density="compact"
                     variant="outlined"
                     hide-details
-                    clearable
                     style="max-width: 200px; min-width: 160px"
                     class="mr-2"
                     data-test="python-venv-select"
@@ -2788,6 +2787,7 @@ export default {
       this.suiteRunner = false
       this.startOrGoDisabled = false
       this.envDisabled = false
+      this.pythonVenv = 'system'
       if (!this.inline) {
         this.$router
           .replace({
@@ -2993,6 +2993,7 @@ class TestSuite(Suite):
       // so the selection persists across runs.
       if (!newFilename.startsWith(TEMP_FOLDER)) {
         this.pythonVenv = null
+        this.tempFilename = null
       }
       if (!this.inline) {
         // Update the URL with the filename
