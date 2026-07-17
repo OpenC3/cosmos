@@ -31,6 +31,15 @@
 # You can also add brand-new services, volumes, ports, or bind mounts. Only
 # the keys you specify are changed; everything else is inherited from
 # compose.yaml.
+#
+# DO NOT PUT SECRETS HERE
+# ---------------------------------------------------------------------------
+# This file is tracked by git. Never hardcode passwords / keys
+# (OPENC3_*_PASSWORD, SECRET_KEY_BASE, etc.) in this file. To override a
+# secret, put it in a .env.local file next to .env (it is gitignored and is
+# loaded after .env, so its values win). compose.yaml already reads the
+# secrets via ${VAR} interpolation, so setting the value in .env.local is all
+# that is needed - no entry in this file is required. See .env for details.
 # ---------------------------------------------------------------------------
 
 # services:

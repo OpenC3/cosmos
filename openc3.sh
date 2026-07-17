@@ -94,12 +94,28 @@ find_script() {
 detect_container_runtime
 detect_compose_cmd
 
-# Compose file arguments used by every compose command below. A user-provided
-# compose.override.yaml (if present) is merged last so local customizations
-# layer on top of compose.yaml without editing it. See:
+# Compose file / env-file arguments used by every compose command below.
+#
+# Env files: .env ships the upstream defaults (tracked). .env.local (if
+# present) is loaded last so its values override .env. .env.local is
+# gitignored, so it is the place to put SECRET overrides (passwords, keys)
+# that must NOT be checked in. Do NOT put secrets in compose.override.yaml -
+# it is tracked. Compose interpolation precedence is:
+#   shell env  >  last --env-file  >  earlier --env-file
+# so a value in .env.local wins over the same value in .env. Once we pass
+# --env-file explicitly, Compose stops auto-loading .env from the cwd, which
+# is why .env must be listed explicitly here.
+#
+# Compose files: a user-provided compose.override.yaml (if present) is merged
+# last so local (non-secret) customizations layer on top of compose.yaml
+# without editing it. See:
 # https://github.com/OpenC3/cosmos/issues/3024
 # https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/
-COMPOSE_FILE_ARGS=(-f "$(dirname -- "$0")/compose.yaml")
+COMPOSE_FILE_ARGS=(--env-file "$(dirname -- "$0")/${ENV_FILE:-.env}")
+if [[ -f "$(dirname -- "$0")/.env.local" ]]; then
+  COMPOSE_FILE_ARGS+=(--env-file "$(dirname -- "$0")/.env.local")
+fi
+COMPOSE_FILE_ARGS+=(-f "$(dirname -- "$0")/compose.yaml")
 if [[ -f "$(dirname -- "$0")/compose.override.yaml" ]]; then
   COMPOSE_FILE_ARGS+=(-f "$(dirname -- "$0")/compose.override.yaml")
 fi
