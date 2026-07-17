@@ -59,7 +59,7 @@ module OpenC3
       def packets(target_name)
         upcase_target_name = target_name.to_s.upcase
         target_packets = @config.telemetry[upcase_target_name]
-        raise "Telemetry target '#{upcase_target_name}' does not exist" unless target_packets
+        raise "Telemetry target '#{upcase_target_name}' does not exist (packets lookup)" unless target_packets
 
         target_packets
       end
@@ -177,7 +177,7 @@ module OpenC3
       if LATEST_PACKET_NAME.casecmp(packet_name).zero?
         target_upcase = target_name.to_s.upcase
         target_latest_data = @config.latest_data[target_upcase]
-        raise "Telemetry Target '#{target_upcase}' does not exist" unless target_latest_data
+        raise "Telemetry target '#{target_upcase}' does not exist (item_names lookup)" unless target_latest_data
 
         item_names = target_latest_data.keys
       else
@@ -208,7 +208,7 @@ module OpenC3
       target_upcase = target_name.to_s.upcase
       item_upcase = item_name.to_s.upcase
       target_latest_data = @config.latest_data[target_upcase]
-      raise "Telemetry target '#{target_upcase}' does not exist" unless target_latest_data
+      raise "Telemetry target '#{target_upcase}' does not exist (latest_packets lookup)" unless target_latest_data
 
       packets = @config.latest_data[target_upcase][item_upcase]
       raise "Telemetry item '#{target_upcase} #{LATEST_PACKET_NAME} #{item_upcase}' does not exist" unless packets

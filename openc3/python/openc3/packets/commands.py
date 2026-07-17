@@ -54,7 +54,7 @@ class Commands:
     def packets(self, target_name):
         target_packets = self.config.commands.get(target_name.upper(), None)
         if target_packets is None:
-            raise RuntimeError(f"Command target '{target_name.upper()}' does not exist")
+            raise RuntimeError(f"Command target '{target_name.upper()}' does not exist (packets lookup)")
         return target_packets
 
     # @param target_name [String] The target name
@@ -65,7 +65,9 @@ class Commands:
         target_packets = self.packets(target_name)
         packet = target_packets.get(packet_name.upper(), None)
         if packet is None:
-            raise RuntimeError(f"Command packet '{target_name.upper()} {packet_name.upper()}' does not exist")
+            raise RuntimeError(
+                f"Command packet '{target_name.upper()} {packet_name.upper()}' does not exist (packet lookup)"
+            )
         return packet
 
     # @param target_name (see #packet)
@@ -184,10 +186,10 @@ class Commands:
         # Inline packet lookup to avoid redundant .upper() calls through method chain
         target_packets = self.config.commands.get(target_upcase)
         if target_packets is None:
-            raise RuntimeError(f"Command target '{target_upcase}' does not exist")
+            raise RuntimeError(f"Command target '{target_upcase}' does not exist (build_cmd)")
         pkt = target_packets.get(packet_upcase)
         if pkt is None:
-            raise RuntimeError(f"Command packet '{target_upcase} {packet_upcase}' does not exist")
+            raise RuntimeError(f"Command packet '{target_upcase} {packet_upcase}' does not exist (build_cmd)")
 
         # Use deep_copy to avoid shared item modifications affecting the template
         # This is critical for variable_bit_size items where handle_write_variable_bit_size

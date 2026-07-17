@@ -94,7 +94,7 @@ class TargetModel(Model):
             f"{scope}__openc3{type.lower()}__{target_name}", packet_name
         )
         if not json_data:
-            raise RuntimeError(f"Packet '{target_name} {packet_name}' does not exist")
+            raise RuntimeError(f"Packet definition '{target_name} {packet_name}' does not exist")
         packet = json.loads(json_data)
 
         # Store in cache
@@ -109,7 +109,7 @@ class TargetModel(Model):
         if type not in cls.VALID_TYPES:
             raise RuntimeError(f"Unknown type {type} for {target_name}")
         if not cls.get(name=target_name, scope=scope):
-            raise RuntimeError(f"Target '{target_name}' does not exist")
+            raise RuntimeError(f"Target '{target_name}' does not exist for scope: {scope} (TargetModel)")
 
         result = []
         packets = cls._store_for_target(target_name, scope).hgetall(f"{scope}__openc3{type.lower()}__{target_name}")
@@ -166,7 +166,9 @@ class TargetModel(Model):
                 found = item
                 break
         if not found:
-            raise RuntimeError(f"Item '{packet['target_name']} {packet['packet_name']} {item_name}' does not exist")
+            raise RuntimeError(
+                f"Item '{packet['target_name']} {packet['packet_name']} {item_name}' does not exist (TargetModel)"
+            )
         return found
 
     # @return [Array<Hash>] Item hash array or raises an exception

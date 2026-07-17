@@ -424,7 +424,7 @@ module OpenC3
       end
 
       it "raises for a non-existent target" do
-        expect { TargetModel.packets("BLAH", scope: "DEFAULT") }.to raise_error("Target 'BLAH' does not exist for scope: DEFAULT")
+        expect { TargetModel.packets("BLAH", scope: "DEFAULT") }.to raise_error("Target 'BLAH' does not exist for scope: DEFAULT (TargetModel)")
       end
 
       it "returns all telemetry packets" do
@@ -503,11 +503,11 @@ module OpenC3
       end
 
       it "raises for a non-existent target" do
-        expect { TargetModel.packet("BLAH", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT") }.to raise_error("Packet 'BLAH HEALTH_STATUS' does not exist")
+        expect { TargetModel.packet("BLAH", "HEALTH_STATUS", type: :TLM, scope: "DEFAULT") }.to raise_error("Packet definition 'BLAH HEALTH_STATUS' does not exist")
       end
 
       it "raises for a non-existent packet" do
-        expect { TargetModel.packet("INST", "BLAH", type: :TLM, scope: "DEFAULT") }.to raise_error("Packet 'INST BLAH' does not exist")
+        expect { TargetModel.packet("INST", "BLAH", type: :TLM, scope: "DEFAULT") }.to raise_error("Packet definition 'INST BLAH' does not exist")
       end
 
       it "returns packet hash if the telemetry exists" do
@@ -618,15 +618,15 @@ module OpenC3
       end
 
       it "raises for a non-existent target" do
-        expect { TargetModel.packet_item("BLAH", "HEALTH_STATUS", "CCSDSVER", scope: "DEFAULT") }.to raise_error("Packet 'BLAH HEALTH_STATUS' does not exist")
+        expect { TargetModel.packet_item("BLAH", "HEALTH_STATUS", "CCSDSVER", scope: "DEFAULT") }.to raise_error("Packet definition 'BLAH HEALTH_STATUS' does not exist")
       end
 
       it "raises for a non-existent packet" do
-        expect { TargetModel.packet_item("INST", "BLAH", "CCSDSVER", scope: "DEFAULT") }.to raise_error("Packet 'INST BLAH' does not exist")
+        expect { TargetModel.packet_item("INST", "BLAH", "CCSDSVER", scope: "DEFAULT") }.to raise_error("Packet definition 'INST BLAH' does not exist")
       end
 
       it "raises for a non-existent item" do
-        expect { TargetModel.packet_item("INST", "HEALTH_STATUS", "BLAH", scope: "DEFAULT") }.to raise_error("Item 'INST HEALTH_STATUS BLAH' does not exist")
+        expect { TargetModel.packet_item("INST", "HEALTH_STATUS", "BLAH", scope: "DEFAULT") }.to raise_error("Item 'INST HEALTH_STATUS BLAH' does not exist (TargetModel)")
       end
 
       it "returns item hash if the telemetry item exists" do
@@ -655,11 +655,11 @@ module OpenC3
       end
 
       it "raises for a non-existent target" do
-        expect { TargetModel.packet_items("BLAH", "HEALTH_STATUS", ["CCSDSVER"], scope: "DEFAULT") }.to raise_error("Packet 'BLAH HEALTH_STATUS' does not exist")
+        expect { TargetModel.packet_items("BLAH", "HEALTH_STATUS", ["CCSDSVER"], scope: "DEFAULT") }.to raise_error("Packet definition 'BLAH HEALTH_STATUS' does not exist")
       end
 
       it "raises for a non-existent packet" do
-        expect { TargetModel.packet_items("INST", "BLAH", ["CCSDSVER"], scope: "DEFAULT") }.to raise_error("Packet 'INST BLAH' does not exist")
+        expect { TargetModel.packet_items("INST", "BLAH", ["CCSDSVER"], scope: "DEFAULT") }.to raise_error("Packet definition 'INST BLAH' does not exist")
       end
 
       it "raises for non-existent items" do

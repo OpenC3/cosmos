@@ -169,7 +169,7 @@ module OpenC3
 
     describe 'list_files' do
       it "returns BucketNotFound if the bucket doesn't exist" do
-        expect { client.list_files(bucket: "NOPE", path: "") }.to raise_error(Bucket::NotFound, "Bucket 'NOPE' does not exist.")
+        expect { client.list_files(bucket: "NOPE", path: "") }.to raise_error(Bucket::NotFound, "Bucket 'NOPE' does not exist (list_files)")
       end
 
       it "lists the root" do

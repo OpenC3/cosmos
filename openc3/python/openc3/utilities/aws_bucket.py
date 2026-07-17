@@ -160,7 +160,7 @@ class AwsBucket(Bucket):
             # Array  of objects with key and size methods
             return result
         except ClientError as exc:
-            raise Bucket.NotFoundError(f"Bucket '{bucket}' does not exist.") from exc
+            raise Bucket.NotFoundError(f"Bucket '{bucket}' does not exist (list_objects)") from exc
 
     # Lists the files under a specified path
     def list_files(self, bucket, path, only_directories=False, metadata=False):
@@ -206,7 +206,7 @@ class AwsBucket(Bucket):
                 kw_args["ContinuationToken"] = resp["NextContinuationToken"]
             return result
         except ClientError as exc:
-            raise Bucket.NotFoundError(f"Bucket '{bucket}' does not exist.") from exc
+            raise Bucket.NotFoundError(f"Bucket '{bucket}' does not exist (list_files)") from exc
 
     # get metadata for a specific object
     def head_object(self, bucket, key):

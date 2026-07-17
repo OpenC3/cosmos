@@ -109,7 +109,7 @@ module OpenC3
       configure()
 
       success = buffer.gsub!("#{@left_char}#{item.key}#{@right_char}", value.to_s)
-      raise "Key #{item.key} not found in template" unless success
+      raise "Key '#{item.key}' not found in template (write_item)" unless success
       return value
     end
 
@@ -118,7 +118,7 @@ module OpenC3
       items.each_with_index do |item, index|
         next if item.data_type == :DERIVED
         success = buffer.gsub!("#{@left_char}#{item.key}#{@right_char}", values[index].to_s)
-        raise "Key #{item.key} not found in template" unless success
+        raise "Key '#{item.key}' not found in template (write_items)" unless success
       end
       return values
     end

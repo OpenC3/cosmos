@@ -53,14 +53,14 @@ module OpenC3
       it "complains if the seconds item doesn't exist" do
         utsc = UnixTimeSecondsConversion.new('TIME')
         packet = Packet.new("TGT", "PKT")
-        expect { utsc.call(nil, packet, packet.buffer) }.to raise_error("Packet item 'TGT PKT TIME' does not exist")
+        expect { utsc.call(nil, packet, packet.buffer) }.to raise_error("Item 'TGT PKT TIME' does not exist (Packet)")
       end
 
       it "complains if the microseconds item doesn't exist" do
         utsc = UnixTimeSecondsConversion.new('TIME', 'TIME_US')
         packet = Packet.new("TGT", "PKT")
         packet.append_item("TIME", 32, :UINT)
-        expect { utsc.call(nil, packet, packet.buffer) }.to raise_error("Packet item 'TGT PKT TIME_US' does not exist")
+        expect { utsc.call(nil, packet, packet.buffer) }.to raise_error("Item 'TGT PKT TIME_US' does not exist (Packet)")
       end
     end
 
