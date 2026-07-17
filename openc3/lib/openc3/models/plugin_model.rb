@@ -185,11 +185,24 @@ module OpenC3
     # Called by the PluginsController to create the plugin
     # Because this uses ERB it must be run in a separate process from the API to
     # prevent corruption and single require problems in the current process
-    def self.install_phase2(plugin_hash, scope:, gem_file_path: nil, validate_only: false)
+    # diff_only: dry run that renders the plugin's target files and returns the
+    # list of modified files ("TARGET/path") whose live content differs from
+    # what this plugin would deploy — used to warn before an upgrade which user
+    # modifications it would supersede. Implies validate_only (no side effects).
+    def self.install_phase2(plugin_hash, scope:, gem_file_path: nil, validate_only: false, diff_only: false)
+      # diff_only implies a dry run; derive a local flag instead of mutating
+      # the validate_only parameter.
+      dry_run = validate_only || diff_only
       # Register plugin to aid in uninstall if install fails
       plugin_hash.delete("existing_plugin_txt_lines")
+      # Version History upgrade hints (threaded from the admin install through
+      # update_plugin). Extracted before the splat below because PluginModel
+      # has no such attributes. version_history_files lists modified files the
+      # user chose to take from the plugin; username attributes the upgrade.
+      upgrade_username = plugin_hash.delete("username")
+      upgrade_version_files = plugin_hash.delete("version_history_files")
       plugin_model = PluginModel.new(**(plugin_hash.transform_keys(&:to_sym)), scope: scope)
-      plugin_model.create unless validate_only
+      plugin_model.create unless dry_run
 
       temp_dir = Dir.mktmpdir
       begin
@@ -206,10 +219,11 @@ module OpenC3
         # Attempt to remove all older versions of this same plugin before install to prevent version conflicts
         # Especially on downgrades
         # Leave the same version if it already exists
-        OpenC3::GemModel.destroy_all_other_versions(File.basename(gem_file_path))
+        # Skipped for dry_run/diff_only: a dry run must not mutate gems.
+        OpenC3::GemModel.destroy_all_other_versions(File.basename(gem_file_path)) unless dry_run
 
         # Actually install the gem now (slow)
-        OpenC3::GemModel.install(gem_file_path, scope: scope) unless validate_only
+        OpenC3::GemModel.install(gem_file_path, scope: scope) unless dry_run
 
         # Extract gem contents
         gem_path = File.join(temp_dir, "gem")
@@ -239,8 +253,19 @@ module OpenC3
         img_path = pkg.spec.metadata['openc3_store_image'] || 'public/store_img.png'
         img_path = nil unless File.exist?(File.join(gem_path, img_path))
         package_name = "#{pkg.spec.name}-#{pkg.spec.version}"
+        # Build the upgrade context once the gem version is known; TargetModel
+        # deploys use it either to collect a modified-file diff (diff_only) or
+        # to version modified files taken from the plugin.
+        upgrade_context = nil
+        if diff_only
+          upgrade_context = { diff_collector: [] }
+        elsif upgrade_version_files && !upgrade_version_files.empty?
+          upgrade_context = { username: upgrade_username,
+                              plugin: "#{pkg.spec.name} #{pkg.spec.version}",
+                              version_files: upgrade_version_files }
+        end
         plugin_model.img_path = File.join('gems', package_name, img_path) if img_path # convert this filesystem path to volumes mount path
-        plugin_model.update() unless validate_only
+        plugin_model.update() unless dry_run
 
         needs_dependencies = pkg.spec.runtime_dependencies.length > 0
         needs_dependencies = true if Dir.exist?(File.join(gem_path, 'lib'))
@@ -304,7 +329,7 @@ module OpenC3
         end
         if needs_dependencies
           plugin_model.needs_dependencies = true
-          plugin_model.update unless validate_only
+          plugin_model.update unless dry_run
         end
 
         # Temporarily add all lib folders from the gem to the end of the load path
@@ -343,8 +368,12 @@ module OpenC3
               when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET', 'SCRIPT_ENGINE'
                 begin
                   if current_model
-                    current_model.create unless validate_only
-                    current_model.deploy(gem_path, erb_variables, validate_only: validate_only)
+                    current_model.create unless dry_run
+                    if current_model.is_a?(OpenC3::TargetModel)
+                      current_model.deploy(gem_path, erb_variables, validate_only: dry_run, upgrade_context: upgrade_context)
+                    else
+                      current_model.deploy(gem_path, erb_variables, validate_only: dry_run)
+                    end
                   end
                 # If something goes wrong in create, or more likely in deploy,
                 # we want to clear the current_model and try to instantiate the next
@@ -363,8 +392,12 @@ module OpenC3
               end
             end
             if current_model
-              current_model.create unless validate_only
-              current_model.deploy(gem_path, erb_variables, validate_only: validate_only)
+              current_model.create unless dry_run
+              if current_model.is_a?(OpenC3::TargetModel)
+                current_model.deploy(gem_path, erb_variables, validate_only: dry_run, upgrade_context: upgrade_context)
+              else
+                current_model.deploy(gem_path, erb_variables, validate_only: dry_run)
+              end
               current_model = nil
             end
           end
@@ -375,13 +408,24 @@ module OpenC3
         end
       rescue => e
         # Install failed - need to cleanup
-        plugin_model.destroy unless validate_only
+        plugin_model.destroy unless dry_run
         raise e
       ensure
         FileUtils.remove_entry_secure(temp_dir, true)
         tf.unlink if tf
       end
+      return upgrade_context[:diff_collector].uniq if diff_only
       return plugin_model.as_json()
+    end
+
+    # Dry run: which modified files would this plugin's install supersede?
+    # Returns a list of "TARGET/path" names whose live (modified) content
+    # differs from the rendered plugin content. Read-only; no side effects.
+    def self.modified_diff(plugin_hash, scope:)
+      install_phase2(plugin_hash, scope: scope, diff_only: true)
+    rescue => e
+      Logger.warn("PluginModel.modified_diff failed: #{e.message}")
+      []
     end
 
     def initialize(

@@ -17,6 +17,8 @@
 
 require 'json'
 require 'openc3/utilities/script'
+require 'openc3/models/setting_model'
+require 'openc3/models/target_model'
 
 class ScriptsController < ApplicationController
   # This REGEX is also found in running_script.rb
@@ -28,6 +30,7 @@ class ScriptsController < ApplicationController
   # # class MySuite < Suite # <-- doesn't match commented out
   SUITE_REGEX = /^\s*class\s+\w+\s+<\s+(Cosmos::|OpenC3::)?(Suite|TestSuite)/
   PYTHON_SUITE_REGEX = /^\s*class\s+\w+\s*\(\s*(Suite|TestSuite)\s*\)/
+  MAX_LIFECYCLE_COMMENT_LENGTH = 1000
 
   def ping
     render plain: 'OK'
@@ -72,6 +75,14 @@ class ScriptsController < ApplicationController
 
     file = Script.body(scope, name)
     if file
+      # Enterprise-only: seed Version History with the deployed body so
+      # plugin-installed scripts have a baseline commit before any user edit.
+      # Constant only loaded by the openc3-enterprise gem. Skip __TEMP__
+      # scratch scripts — they are throwaway and need no history.
+      if defined?(::VersionStore) && !name.start_with?("#{OpenC3::TargetFile::TEMP_FOLDER}/")
+        plugin = OpenC3::TargetModel.plugin_version_label(name.split('/')[0], scope: scope)
+        ::VersionStore.seed_initial_if_empty(scope: scope, name: name, body: file, plugin: plugin)
+      end
       locked = Script.locked?(scope, name)
       unless locked
         Script.lock(scope, name, username())
@@ -97,17 +108,86 @@ class ScriptsController < ApplicationController
     end
   end
 
+  def lifecycle
+    return unless authorization('script_view')
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
+    return unless scope
+    unless lifecycle_enabled?()
+      render json: { status: 'error', message: 'Script lifecycle is not enabled' }, status: :bad_request
+      return
+    end
+    render json: Script.lifecycle(scope, name)
+  end
+
+  def set_lifecycle
+    # All transitions require at least script_edit; transitions involving
+    # 'approved' additionally require the script_approver permission (checked
+    # below once the current state is known).
+    return unless authorization('script_edit')
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
+    return unless scope
+    unless lifecycle_enabled?()
+      render json: { status: 'error', message: 'Script lifecycle is not enabled' }, status: :bad_request
+      return
+    end
+    if Script.temp_file?(name)
+      render json: { status: 'error', message: 'Cannot set lifecycle on temporary files' }, status: :bad_request
+      return
+    end
+    state = params[:state]
+    comment = params[:comment].to_s.strip
+    unless Script::LIFECYCLE_STATES.include?(state)
+      render json: { status: 'error', message: "Invalid lifecycle state: #{state}" }, status: :bad_request
+      return
+    end
+    if comment.length > MAX_LIFECYCLE_COMMENT_LENGTH
+      render json: { status: 'error', message: "Comment must be #{MAX_LIFECYCLE_COMMENT_LENGTH} characters or less" }, status: :bad_request
+      return
+    end
+    current = Script.lifecycle(scope, name)['state']
+    unless Script::LIFECYCLE_TRANSITIONS[current].include?(state)
+      render json: { status: 'error', message: "Cannot move script from #{current} to #{state}" }, status: :bad_request
+      return
+    end
+    if (state == 'approved' or current == 'approved') and !authorization('script_approver')
+      return
+    end
+    result = Script.set_lifecycle(scope, name, state, username(), comment, current: current)
+    # The Enterprise store logs-and-swallows backend failures, returning nil.
+    # Render an error instead of `json: nil`, which the ScriptLifecycleDialog
+    # would try to read as `response.data.state` and crash on.
+    if result.nil?
+      render json: { status: 'error', message: 'Failed to change lifecycle' }, status: :internal_server_error
+      return
+    end
+    OpenC3::Logger.info("Script lifecycle changed from #{current} to #{state}: #{name} (#{comment})", scope: scope, user: username())
+    render json: result
+  rescue => e
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
   def create
     return unless authorization('script_edit')
     scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
+    if lifecycle_enabled?() and lifecycle_state(scope, name) == 'approved'
+      render json: { status: 'error', message: 'Script is approved and cannot be modified. Move it back to review to edit.' }, status: :forbidden
+      return
+    end
     args = params.permit(:text, breakpoints: [])
     args[:scope] = scope
     args[:name] = name
     Script.create(args)
     results = {}
-    # The file is still saved above; only the suite chrome is omitted when the editor
-    # lacks script_run.
+    # Enterprise-only: capture a git commit alongside the bucket write so
+    # the new version_id can travel back to the editor. Skip __TEMP__ scratch
+    # scripts — they are throwaway and would only add history noise.
+    if defined?(::VersionStore) && !name.start_with?("#{OpenC3::TargetFile::TEMP_FOLDER}/")
+      sha = ::VersionStore.commit(scope: scope, name: name, text: params[:text], username: username())
+      results['version_id'] = sha if sha
+    end
+    # The file is still saved above; only the suite chrome is omitted when the editor lacks script_run.
     if suite_with_run_permission?(name, params[:text])
       results_suites, results_error, success = Script.process_suite(name, params[:text], username: username(), scope: scope)
       results['suites'] = results_suites
@@ -130,6 +210,11 @@ class ScriptsController < ApplicationController
     # Extract the target that this script lives under
     target_name = name.split('/')[0]
     return unless authorization('script_run', target_name: target_name)
+    # Users with only the script_run (runner) permission may only run
+    # approved scripts. Users who can edit may run any lifecycle state.
+    if lifecycle_enabled?() and (state = lifecycle_state(scope, name)) and state != 'approved' and !authorization('script_edit')
+      return
+    end
     # TODO 7.0: Should suiteRunner be snake case?
     suite_runner = params[:suiteRunner] ? params[:suiteRunner].as_json() : nil
     disconnect = params[:disconnect] == 'disconnect'
@@ -165,7 +250,15 @@ class ScriptsController < ApplicationController
     return unless authorization('script_edit')
     scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
+    if lifecycle_enabled?() and lifecycle_state(scope, name) == 'approved'
+      render json: { status: 'error', message: 'Script is approved and cannot be deleted. Move it back to review to delete.' }, status: :forbidden
+      return
+    end
     Script.destroy(scope, name)
+    # Enterprise-only: record the deletion in git history.
+    if defined?(::VersionStore)
+      ::VersionStore.delete(scope: scope, name: name, username: username())
+    end
     OpenC3::Logger.info("Script destroyed: #{name}", scope: scope, user: username())
     head :ok
   rescue => e
@@ -238,4 +331,27 @@ class ScriptsController < ApplicationController
     end
     is_suite && authorized?('script_run', target_name: name.split('/')[0])
   end
+  
+  # Whether the Script Lifecycle feature is active: the Admin/Settings flag is
+  # on AND the git-backed version store is available (Enterprise). Both are
+  # required since the lifecycle is tracked as git commits/tags.
+  def lifecycle_enabled?
+    return false unless Script.lifecycle_enabled?
+    setting = OpenC3::SettingModel.get(name: 'script_runner_lifecycle')
+    return false unless setting
+    setting['data'] == true or setting['data'] == 'true'
+  end
+
+  # Current lifecycle state for the create/run/destroy gates. The lookup hits
+  # git (VersionStore); a transient backend error must not 500 the hottest
+  # paths (especially run), so we log and fail OPEN by returning nil. Every
+  # gate treats nil as "no restriction" (nil != 'approved', nil is falsey), so
+  # an outage never blocks work — approval enforcement resumes once git heals.
+  def lifecycle_state(scope, name)
+    Script.lifecycle(scope, name)['state']
+  rescue => e
+    log_error(e)
+    nil
+  end
+
 end

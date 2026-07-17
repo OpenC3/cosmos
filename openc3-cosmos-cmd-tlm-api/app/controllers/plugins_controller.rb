@@ -191,6 +191,26 @@ class PluginsController < ModelController
     create(true)
   end
 
+  # Dry run before an upgrade: returns which modified files differ from the
+  # incoming plugin's rendered content so the UI can warn the user that those
+  # modifications will be superseded (a new Version History entry is created).
+  def modified_diff
+    return unless authorization('admin')
+    begin
+      scope = sanitize_params([:scope])
+      return unless scope
+      scope = scope[0]
+      plugin_hash = JSON.parse(params[:plugin_hash])
+      files = OpenC3::PluginModel.modified_diff(plugin_hash, scope: scope)
+      render json: { files: files }
+    rescue JSON::ParserError => error
+      render json: { status: 'error', message: error.message }, status: :bad_request
+    rescue Exception => error
+      logger.error(error.formatted)
+      render json: { status: 'error', message: error.message }, status: :internal_server_error
+    end
+  end
+
   def install
     return unless authorization('admin')
     begin
@@ -200,8 +220,22 @@ class PluginsController < ModelController
       temp_dir = Dir.mktmpdir
       plugin_hash_filename = Dir::Tmpname.create(['plugin-instance-', '.json']) {}
       plugin_hash_file_path = File.join(temp_dir, File.basename(plugin_hash_filename))
+      # Stamp the installing user server-side (never trust a client-supplied
+      # username) so Version History can attribute plugin-upgrade versions of
+      # modified files. Falls back to writing the body verbatim if it isn't
+      # the expected JSON object.
+      plugin_hash_body = params[:plugin_hash]
+      begin
+        parsed = JSON.parse(params[:plugin_hash])
+        if parsed.is_a?(Hash)
+          parsed['username'] = username()
+          plugin_hash_body = JSON.generate(parsed)
+        end
+      rescue JSON::ParserError
+        # leave plugin_hash_body as the original string
+      end
       File.open(plugin_hash_file_path, 'wb') do |file|
-        file.write(params[:plugin_hash])
+        file.write(plugin_hash_body)
       end
 
       gem_name = sanitize_params([:id])
