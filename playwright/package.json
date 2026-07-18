@@ -13,7 +13,8 @@
     "coverage": "nyc report --reporter=html",
     "cobertura": "nyc report --reporter=cobertura",
     "clean": "rm -rf .nyc_output || rmdir /s /q .nyc_output; rm -rf coverage || rmdir /s /q coverage; rm -rf test-results || rmdir /s /q test-results",
-    "format": "prettier -w ./"
+    "format": "prettier -w ./",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@playwright/test": "1.61.1",
@@ -23,7 +24,11 @@
     "prettier": "^3.9.3"
   },
   "devDependencies": {
-    "@types/node": "^25.9.4"
+    "@types/node": "^25.9.4",
+    "eslint": "^10.7.0",
+    "globals": "^17.7.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.64.0"
   },
   "nyc": {
     "excludeAfterRemap": false,

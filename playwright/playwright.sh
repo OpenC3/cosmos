@@ -147,7 +147,7 @@ case $1 in
             echo "  -h, --help    Show this help message"
             exit 0
         fi
-        sed -i 's#http://localhost:2900#https://aws.openc3.com#' playwright.config.ts
+        sed -i.bak 's#http://localhost:2900#https://aws.openc3.com#' playwright.config.ts && rm -f playwright.config.ts.bak
         KEYCLOAK_URL=https://aws.openc3.com/auth/admin/master/console REDIRECT_URL=https://aws.openc3.com/* pnpm test:keycloak
         pnpm test:enterprise
         ;;

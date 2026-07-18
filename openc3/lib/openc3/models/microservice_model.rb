@@ -146,7 +146,7 @@ module OpenC3
       python_bin = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
       result = { 'OPENC3_PYTHON_BIN' => python_bin }
       if @needs_dependencies && @plugin
-        sanitized_name = @plugin.tr('^a-zA-Z0-9_-', '_')
+        sanitized_name = "#{@scope}__#{@plugin}".tr('^a-zA-Z0-9_-', '_')
         candidate = "/gems/plugin_venvs/#{sanitized_name}/.venv"
         if File.directory?(candidate)
           result['VIRTUAL_ENV'] = candidate

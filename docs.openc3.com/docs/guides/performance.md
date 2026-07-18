@@ -5,7 +5,7 @@ sidebar_custom_props:
   myEmoji: 📊
 ---
 
-The COSMOS architecture was created with scalability in mind. Our goal is to support an unlimited number of connections and use cloud technologies to scale. Only [COSMOS Enterprise](https://openc3.com/enterprise) supports Kubernetes and the various cloud platforms which allow this level of scalability. While true scalability is only achieved in COSMOS Enterprise, both Core and Enterprise have various levels of observability and configuration settings which can affect performance.
+The COSMOS architecture was created with scalability in mind. Our goal is to support an unlimited number of connections and use cloud technologies to scale. Only [COSMOS Enterprise](https://openc3.com/cosmos-enterprise) supports Kubernetes and the various cloud platforms which allow this level of scalability. While true scalability is only achieved in COSMOS Enterprise, both Core and Enterprise have various levels of observability and configuration settings which can affect performance.
 
 # COSMOS Hardware Requirements
 
@@ -91,4 +91,4 @@ The operator container hosts a microservice for each installed target plus scope
 
 While it is easy to run COSMOS on any Docker platform, increasing the number and complexity of the targets requires choosing the correct hardware. Sizing can be approximated but the best solution is to install representative targets and use `docker stats` and `htop` to judge the CPU and memory pressure on the given hardware.
 
-[COSMOS Enterprise](https://openc3.com/enterprise) on Kubernetes helps to eliminate the hardware sizing issue by scaling the cluster to meet the needs of the system.
+[COSMOS Enterprise](https://openc3.com/cosmos-enterprise) on Kubernetes helps to eliminate the hardware sizing issue by scaling the cluster to meet the needs of the system.

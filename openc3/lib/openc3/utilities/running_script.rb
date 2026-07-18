@@ -564,7 +564,7 @@ class RunningScript
       else
         target_info = OpenC3::TargetModel.get(name: target_name, scope: scope)
         if target_info && target_info['plugin']
-          sanitized_name = target_info['plugin'].tr('^a-zA-Z0-9_-', '_')
+          sanitized_name = "#{scope}__#{target_info['plugin']}".tr('^a-zA-Z0-9_-', '_')
           candidate = "/gems/plugin_venvs/#{sanitized_name}/.venv"
           python_venv_dir = candidate if File.directory?(candidate)
         end

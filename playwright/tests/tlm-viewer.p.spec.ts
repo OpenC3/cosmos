@@ -12,7 +12,6 @@
 # All Rights Reserved
 */
 
-// @ts-check
 import { test, expect } from './fixture'
 import { format, sub } from 'date-fns'
 
@@ -21,7 +20,7 @@ test.use({
   toolName: 'Telemetry Viewer',
 })
 
-test.beforeEach(async ({ page, utils }) => {
+test.beforeEach(({ page, utils }) => {
   // Throw exceptions on any pageerror events
   page.on('pageerror', (exception) => {
     throw exception
