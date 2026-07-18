@@ -62,6 +62,24 @@ class Notify {
     this.mounted = true
   }
 
+  /**
+   * Show a notification. Normally called via the level convenience methods
+   * (critical, serious, caution, normal, standby, off) rather than directly.
+   *
+   * @param {object} notification
+   * @param {string} notification.method - Notify method to dispatch to (e.g. 'toast')
+   * @param {string} [notification.title] - Prominent first line of the toast
+   * @param {string} [notification.body] - Secondary line
+   * @param {string} [notification.message] - Alternate secondary line / console text
+   * @param {string} notification.level - Severity: critical, serious, caution, normal, standby, off
+   * @param {number} [notification.duration] - Auto-hide ms; null/0 makes an alert persist until acknowledged
+   * @param {string} [notification.type='alert'] - Notification category
+   * @param {boolean} [notification.logToConsole=false] - Also console.log the notification
+   * @param {boolean} [notification.saveToHistory=true] - Add to the notifications menu history
+   * @param {string} [notification.msg_id] - Alert id; required for must-ack alert acknowledgement
+   * @param {string} [notification['@timestamp']] - ISO8601 timestamp shown on the toast
+   * @param {number} [notification.time] - Nanosecond timestamp (used if @timestamp absent)
+   */
   open({
     method,
     title,
@@ -72,6 +90,8 @@ class Notify {
     type = 'alert',
     logToConsole = false,
     saveToHistory = true,
+    // Extra fields (msg_id, @timestamp, time) forwarded to the toast; see the
+    // @param docs above and Toast.vue for how each is consumed.
     ...rest
   }) {
     this.mount()
@@ -105,6 +125,10 @@ class Notify {
     )
   }
 
+  // The level convenience methods below all take the same `options` object as
+  // open() (minus `method`/`level`, which they set). See open()'s @param docs
+  // for the accepted fields (title, body, message, duration, type,
+  // logToConsole, saveToHistory, msg_id, @timestamp, time).
   critical(options) {
     this.open({ ...options, method: 'toast', level: 'critical' })
   }
