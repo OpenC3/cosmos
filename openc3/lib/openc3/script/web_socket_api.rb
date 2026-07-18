@@ -25,7 +25,7 @@ module OpenC3
       # $openc3_scope is only set inside the Script Runner / microservice
       # environment. Fall back to OPENC3_SCOPE (mirrors the Python client) so a
       # bare `ruby script.rb` doesn't send a nil scope that the server rejects.
-      @scope = scope || ENV['OPENC3_SCOPE'] || 'DEFAULT'
+      @scope = scope || ENV.fetch('OPENC3_SCOPE', 'DEFAULT')
       @authentication = authentication.nil? ? generate_auth() : authentication
       @url = url
       @write_timeout = write_timeout
@@ -127,8 +127,10 @@ module OpenC3
           raise "Subscription Rejected"
         when 'disconnect'
           raise "Unauthorized" if json_hash['reason'] == 'unauthorized'
+        else
+          # Ignore welcome / ping and keep waiting for confirmation
+          next
         end
-        # Ignore welcome / ping and keep waiting for confirmation
       end
     end
 
