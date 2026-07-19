@@ -140,11 +140,11 @@ fn resolve_ticket(ctx: &Context, app_public_key_hex: &str) -> Result<String, Str
         .unwrap_or_else(|| "DEFAULT".to_string());
     let ticket = auto_enroll(ctx, &name, app_public_key_hex).map_err(|e| {
         // Full detail to the log; a short reason for the GUI.
-        eprintln!("WARN  [bridge] auto-enroll with '{name}' failed: {e:#}");
+        crate::logging::warn("bridge", &format!("auto-enroll with '{name}' failed: {e:#}"));
         "auto-enroll failed (is COSMOS running?)".to_string()
     })?;
     let _ = write_current(&ctx.paths.root, &name, &ticket);
-    println!("INFO  [bridge] auto-enrolled with '{name}'");
+    crate::logging::info("bridge", &format!("auto-enrolled with '{name}'"));
     Ok(ticket)
 }
 
@@ -189,7 +189,7 @@ pub fn enroll_with_token(ctx: &Context, token: &str) -> Result<String> {
     let secret = load_or_create_secret(&ctx.paths.root)?;
     bridge::enroll(secret, &parsed.ticket, &parsed.code).context("redeeming enrollment token")?;
     write_current(&ctx.paths.root, &parsed.bridge, &parsed.ticket)?;
-    println!("INFO  [bridge] enrolled with '{}' via token", parsed.bridge);
+    crate::logging::info("bridge", &format!("enrolled with '{}' via token", parsed.bridge));
     Ok(parsed.bridge)
 }
 
@@ -202,14 +202,17 @@ pub fn enroll_with_token(ctx: &Context, token: &str) -> Result<String> {
 /// isn't paired with COSMOS.
 pub fn connect_bridge(ctx: &Context) -> Result<(String, BridgeClient), String> {
     let secret = load_or_create_secret(&ctx.paths.root).map_err(|e| {
-        eprintln!("WARN  [bridge] could not load control identity: {e:#}");
+        crate::logging::warn("bridge", &format!("could not load control identity: {e:#}"));
         "identity error".to_string()
     })?;
     let ticket = resolve_ticket(ctx, &public_key_hex(&secret))?;
     BridgeClient::connect(secret, &ticket)
         .map(|client| (ticket, client))
         .map_err(|e| {
-            eprintln!("WARN  [bridge] failed to connect to bridge_microservice: {e:#}");
+            crate::logging::warn(
+                "bridge",
+                &format!("failed to connect to bridge_microservice: {e:#}"),
+            );
             "invalid bridge ticket".to_string()
         })
 }

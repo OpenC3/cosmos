@@ -16,10 +16,10 @@ set -euo pipefail
 # in transitive deps like `ring` (pulled in by iroh); the MSVC cross-toolchain
 # can't build ring cleanly.
 ALL_TARGETS=(
-  x86_64-unknown-linux-gnu
-  aarch64-unknown-linux-gnu
-  x86_64-pc-windows-gnu
-  x86_64-apple-darwin
+#  x86_64-unknown-linux-gnu
+#  aarch64-unknown-linux-gnu
+#  x86_64-pc-windows-gnu
+#  x86_64-apple-darwin
   aarch64-apple-darwin
 )
 
@@ -90,6 +90,13 @@ build_one() {
   rm -f "$dest"
 
   if [[ "$target" == *-apple-darwin ]]; then
+    # zig/LLD emits a duplicate LC_LOAD_DYLIB for libobjc (multiple crates link
+    # -lobjc and LLD, unlike Apple's ld64, does not de-duplicate). macOS 26
+    # (Tahoe) hard-aborts at launch on duplicate linked dylibs, so strip the
+    # redundant load command (and fix up dylib ordinals) BEFORE signing.
+    echo "De-duplicating dylib load commands for $target..."
+    python3 /work/docker/dedupe_load_commands.py "$src"
+
     # macOS arm64 binaries linked by LLD/zig carry a "linker-signed" ad-hoc
     # signature that AMFI rejects at exec time, so they MUST be re-signed with a
     # plain ad-hoc signature. x86_64 binaries are emitted without a signature

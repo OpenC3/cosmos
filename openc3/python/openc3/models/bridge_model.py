@@ -66,6 +66,7 @@ class BridgeModel(Model):
         ticket: str = None,
         app_public_key: str = None,
         enroll_code: str = None,
+        port: int = None,
         updated_at: int = None,
         plugin: str = None,
     ):
@@ -88,6 +89,10 @@ class BridgeModel(Model):
         # Pending one-time manual-enrollment code (set when a manual enrollment
         # token is generated; cleared once redeemed over the api/enroll ALPN).
         self.enroll_code = enroll_code
+        # Fixed UDP port this bridge's hub binds inside the container. Assigned
+        # once from the published range (see compose.yaml) and reused across
+        # restarts so the host can always reach the hub at 127.0.0.1:<port>.
+        self.port = port
 
     def as_json(self):
         return {
@@ -99,4 +104,5 @@ class BridgeModel(Model):
             "ticket": self.ticket,
             "app_public_key": self.app_public_key,
             "enroll_code": self.enroll_code,
+            "port": self.port,
         }

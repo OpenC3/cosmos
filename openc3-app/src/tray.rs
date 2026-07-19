@@ -44,7 +44,7 @@ mod imp {
         let show = MenuItem::with_id(SHOW_ID, "Show OpenC3 COSMOS", true, None);
         let quit = MenuItem::with_id(QUIT_ID, "Quit", true, None);
         if menu.append(&show).is_err() || menu.append(&quit).is_err() {
-            eprintln!("WARN  [tray] failed to build tray menu");
+            crate::logging::warn("tray", "failed to build tray menu");
             return;
         }
         match TrayIconBuilder::new()
@@ -58,7 +58,7 @@ mod imp {
         {
             // Keep the icon (and its menu/items) alive for the process lifetime.
             Ok(tray) => std::mem::forget(tray),
-            Err(e) => eprintln!("WARN  [tray] failed to create tray icon: {e}"),
+            Err(e) => crate::logging::warn("tray", &format!("failed to create tray icon: {e}")),
         }
         std::mem::forget(show);
         std::mem::forget(quit);

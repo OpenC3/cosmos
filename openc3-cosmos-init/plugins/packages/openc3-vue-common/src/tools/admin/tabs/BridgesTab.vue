@@ -16,8 +16,19 @@
     <v-alert v-model="showAlert" closable :type="alertType">{{
       alert
     }}</v-alert>
-    <div class="text-caption text-medium-emphasis mt-2 mb-2 ml-4">
-      {{ bridges.length }} bridge{{ bridges.length === 1 ? '' : 's' }}
+    <div class="d-flex align-center mt-2 mb-2 mx-4">
+      <div class="text-caption text-medium-emphasis">
+        {{ bridges.length }} bridge{{ bridges.length === 1 ? '' : 's' }}
+      </div>
+      <v-spacer />
+      <v-btn
+        color="primary"
+        prepend-icon="mdi-plus"
+        data-test="create-bridge"
+        @click="showCreate = true"
+      >
+        Create Bridge
+      </v-btn>
     </div>
     <v-list class="list" data-test="bridgeList">
       <div v-for="bridge in bridges" :key="bridge.name">
@@ -48,6 +59,18 @@
                   variant="text"
                   :disabled="!bridge.ticket"
                   @click="generateToken(bridge.name)"
+                />
+              </template>
+            </v-tooltip>
+            <v-tooltip text="Delete Bridge" location="top">
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  aria-label="Delete Bridge"
+                  icon="mdi-delete"
+                  variant="text"
+                  data-test="delete-bridge"
+                  @click="deleteBridge(bridge.name)"
                 />
               </template>
             </v-tooltip>
@@ -92,6 +115,40 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <v-dialog v-model="showCreate" width="500">
+      <v-card>
+        <v-toolbar height="24">
+          <v-spacer />
+          <span> Create Bridge </span>
+          <v-spacer />
+        </v-toolbar>
+        <v-card-text class="mt-4">
+          <v-text-field
+            v-model="newBridgeName"
+            label="Bridge Name"
+            variant="outlined"
+            hint="Letters, numbers, and underscores (e.g. LAB1)"
+            persistent-hint
+            autofocus
+            data-test="new-bridge-name"
+            @keyup.enter="createBridge"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showCreate = false"> Cancel </v-btn>
+          <v-btn
+            variant="text"
+            :disabled="!newBridgeName"
+            data-test="create-bridge-submit"
+            @click="createBridge"
+          >
+            Create
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -106,6 +163,8 @@ export default {
       token: '',
       tokenBridge: '',
       showToken: false,
+      showCreate: false,
+      newBridgeName: '',
       alert: '',
       alertType: 'success',
       showAlert: false,
@@ -131,6 +190,62 @@ export default {
         bridges.sort((a, b) => a.name.localeCompare(b.name))
         this.bridges = bridges
       })
+    },
+    showTempAlert: function (message, type = 'success', ms = 3000) {
+      this.alert = message
+      this.alertType = type
+      this.showAlert = true
+      setTimeout(() => {
+        this.showAlert = false
+      }, ms)
+    },
+    createBridge: function () {
+      const name = this.newBridgeName.trim().toUpperCase()
+      if (!name) return
+      Api.post('/openc3-api/bridges', { data: { name } })
+        .then(() => {
+          this.showCreate = false
+          this.newBridgeName = ''
+          this.showTempAlert(
+            `Bridge ${name} created. It will appear once its hub starts.`,
+          )
+          this.update()
+        })
+        .catch((error) => {
+          const message = error.response?.data?.message || error
+          this.showTempAlert(
+            `Failed to create bridge: ${message}`,
+            'error',
+            5000,
+          )
+        })
+    },
+    deleteBridge: function (name) {
+      this.$dialog
+        .confirm(
+          `Are you sure you want to delete bridge ${name}? This stops its hub and removes its identity.`,
+          {
+            okText: 'Delete',
+            cancelText: 'Cancel',
+          },
+        )
+        .then(() => {
+          return Api.delete(`/openc3-api/bridges/${name}`)
+        })
+        .then(() => {
+          this.showTempAlert(`Bridge ${name} deleted`)
+          this.update()
+        })
+        .catch((error) => {
+          // Canceling the confirm dialog forces catch and sets error to true.
+          if (error === true) return
+          const message = error.response?.data?.message || error
+          this.showTempAlert(
+            `Failed to delete bridge ${name}: ${message}`,
+            'error',
+            5000,
+          )
+        })
     },
     generateToken: function (name) {
       Api.post(`/openc3-api/bridges/${name}/token`)

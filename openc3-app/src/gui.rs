@@ -16,10 +16,25 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use iced::widget::{
-    button, column, container, horizontal_rule, progress_bar, row, scrollable, text, text_editor,
-    text_input, Space,
+    button, column, container, horizontal_rule, mouse_area, pick_list, progress_bar, row,
+    scrollable, stack, text, text_editor, text_input, Space,
 };
 use iced::{window, Center, Color, Element, Font, Length, Size, Subscription, Task, Theme};
+
+/// Embedded icon font (a single gear glyph at U+E900), loaded at startup. Using
+/// an embedded font is the cross-platform way to get the gear: the bundled UI
+/// font has no gear glyph (U+2699 renders as tofu) and the tiny-skia software
+/// renderer doesn't reliably paint the svg/canvas layers, but text renders and
+/// positions correctly everywhere. See build note in assets/README.
+const ICON_FONT_BYTES: &[u8] = include_bytes!("../assets/openc3-icons.ttf");
+/// Font family name baked into the icon TTF; how iced references it.
+const ICON_FONT: Font = Font::with_name("openc3-icons");
+/// The gear glyph's codepoint in [`ICON_FONT`] (Private Use Area).
+const GEAR_GLYPH: &str = "\u{E900}";
+/// The close (X) glyph's codepoint in [`ICON_FONT`] (Private Use Area).
+const CLOSE_GLYPH: &str = "\u{E901}";
+/// Light grey that reads on the dark UI, used for the gear icon.
+const GEAR_COLOR: Color = Color::from_rgb(0.81, 0.81, 0.81);
 
 /// How long the splash screen is displayed before advancing.
 const SPLASH_DURATION: Duration = Duration::from_secs(3);
@@ -34,6 +49,72 @@ enum Page {
     Splash,
     Install,
     Main,
+}
+
+/// Minimum severity shown in the log table (like LogMessages.vue's level select).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LogLevelFilter {
+    Debug,
+    Info,
+    Warn,
+    Error,
+    Fatal,
+}
+
+impl LogLevelFilter {
+    const ALL: [LogLevelFilter; 5] = [
+        LogLevelFilter::Debug,
+        LogLevelFilter::Info,
+        LogLevelFilter::Warn,
+        LogLevelFilter::Error,
+        LogLevelFilter::Fatal,
+    ];
+
+    /// Severity rank; a record shows when its level rank >= the filter's rank.
+    fn rank(self) -> u8 {
+        match self {
+            LogLevelFilter::Debug => 0,
+            LogLevelFilter::Info => 1,
+            LogLevelFilter::Warn => 2,
+            LogLevelFilter::Error => 3,
+            LogLevelFilter::Fatal => 4,
+        }
+    }
+}
+
+impl std::fmt::Display for LogLevelFilter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            LogLevelFilter::Debug => "DEBUG",
+            LogLevelFilter::Info => "INFO",
+            LogLevelFilter::Warn => "WARN",
+            LogLevelFilter::Error => "ERROR",
+            LogLevelFilter::Fatal => "FATAL",
+        };
+        f.write_str(s)
+    }
+}
+
+/// Severity rank of a record's level string (unknown levels sort as INFO).
+fn level_rank(level: &str) -> u8 {
+    match level {
+        "DEBUG" => 0,
+        "WARN" => 2,
+        "ERROR" => 3,
+        "FATAL" => 4,
+        _ => 1, // INFO and anything unrecognized
+    }
+}
+
+/// Display color for a log level, roughly matching the Astro status colors used
+/// by the COSMOS LogMessages component.
+fn level_color(level: &str) -> Color {
+    match level {
+        "DEBUG" => Color::from_rgb8(0x9E, 0x9E, 0x9E),
+        "WARN" => Color::from_rgb8(0xFF, 0xB3, 0x00),
+        "ERROR" | "FATAL" => Color::from_rgb8(0xF4, 0x43, 0x36),
+        _ => Color::from_rgb8(0x4C, 0xAF, 0x50), // INFO / normal
+    }
 }
 
 /// Result of the startup environment check.
@@ -57,7 +138,6 @@ impl EnvCheck {
 /// Data produced by background worker threads, polled by the UI on each tick.
 #[derive(Default)]
 struct Shared {
-    log: Vec<String>,
     busy: bool,
     /// Freshly fetched container logs, consumed by the UI on the next tick.
     fetched_logs: Option<String>,
@@ -105,7 +185,15 @@ struct State {
     status_collapsed: bool,
     /// Animation frame for the loading spinner.
     spinner: usize,
-    log: Vec<String>,
+    /// Snapshot of captured log records (from [`crate::logging`]) for the log
+    /// table, refreshed each tick unless paused.
+    log_records: Vec<crate::logging::LogRecord>,
+    /// Minimum level shown in the log table.
+    log_level: LogLevelFilter,
+    /// Case-insensitive substring filter over the log message/source.
+    log_search: String,
+    /// When true, the table stops refreshing so rows can be read/scrolled.
+    log_paused: bool,
     busy: bool,
     /// When set, the UI shows the logs panel for this service.
     viewing_logs: Option<String>,
@@ -117,6 +205,8 @@ struct State {
     cleanup_input: String,
     /// Enrollment token the user is entering to pair with a remote COSMOS bridge.
     bridge_token_input: String,
+    /// Whether the Settings dialog (cleanup + bridge pairing) is showing.
+    settings_open: bool,
 }
 
 /// Start the host microservice operator on a background thread, wiring the
@@ -167,6 +257,12 @@ enum Message {
     Start,
     Stop,
     OpenBrowser,
+    ShowSettings,
+    CloseSettings,
+    LogLevelChanged(LogLevelFilter),
+    LogSearchChanged(String),
+    ToggleLogPause,
+    ClearLog,
     ShowCleanup,
     CleanupInputChanged(String),
     ConfirmCleanup,
@@ -202,6 +298,8 @@ impl State {
         let (operator_status, bridge_status_handle, operator_shutdown, operator_thread) =
             start_operator(&ctx);
 
+        crate::logging::info("openc3-app", "OpenC3 COSMOS control panel ready.");
+
         Self {
             ctx,
             main_window,
@@ -221,13 +319,17 @@ impl State {
             status_loaded: false,
             status_collapsed: true,
             spinner: 0,
-            log: vec!["OpenC3 COSMOS control panel ready.".to_string()],
+            log_records: Vec::new(),
+            log_level: LogLevelFilter::Info,
+            log_search: String::new(),
+            log_paused: false,
             busy: false,
             viewing_logs: None,
             logs_content: text_editor::Content::new(),
             cleanup_confirm: false,
             cleanup_input: String::new(),
             bridge_token_input: String::new(),
+            settings_open: false,
         }
     }
 
@@ -303,16 +405,12 @@ impl State {
     }
 
     fn drain_shared(&mut self) {
+        // Refresh the log table from the captured-log sink unless paused.
+        if !self.log_paused {
+            self.log_records = crate::logging::snapshot();
+        }
         if let Ok(mut s) = self.shared.lock() {
             self.busy = s.busy;
-            if !s.log.is_empty() {
-                self.log.append(&mut s.log);
-                // Keep the log from growing without bound.
-                let len = self.log.len();
-                if len > 200 {
-                    self.log.drain(0..len - 200);
-                }
-            }
             if let Some(content) = s.fetched_logs.take() {
                 self.logs_content = text_editor::Content::with_text(&content);
             }
@@ -435,15 +533,45 @@ impl State {
             Message::OpenBrowser => {
                 let url = cosmos_url(&self.ctx);
                 if let Err(e) = commands::open_browser(&url) {
-                    if let Ok(mut s) = self.shared.lock() {
-                        s.log.push(format!("Failed to open browser: {e}"));
-                    }
+                    crate::logging::error("openc3-app", &format!("Failed to open browser: {e}"));
                 }
+                Task::none()
+            }
+            Message::ShowSettings => {
+                self.settings_open = true;
+                Task::none()
+            }
+            Message::CloseSettings => {
+                self.settings_open = false;
+                Task::none()
+            }
+            Message::LogLevelChanged(level) => {
+                self.log_level = level;
+                Task::none()
+            }
+            Message::LogSearchChanged(value) => {
+                self.log_search = value;
+                Task::none()
+            }
+            Message::ToggleLogPause => {
+                self.log_paused = !self.log_paused;
+                // Resuming: refresh immediately so the view isn't stale.
+                if !self.log_paused {
+                    self.log_records = crate::logging::snapshot();
+                }
+                Task::none()
+            }
+            Message::ClearLog => {
+                crate::logging::clear();
+                self.log_records.clear();
                 Task::none()
             }
             Message::ShowCleanup => {
                 self.cleanup_input.clear();
                 self.cleanup_confirm = true;
+                // The cleanup confirmation takes over the whole page; close the
+                // settings dialog behind it so cancelling returns to the main page.
+                self.settings_open = false;
                 Task::none()
             }
             Message::CleanupInputChanged(value) => {
@@ -484,7 +612,11 @@ impl State {
                 match crate::enroll::enroll_with_token(&self.ctx, &token) {
                     Ok(bridge) => {
                         self.bridge_token_input.clear();
-                        self.log.push(format!("Paired with bridge '{bridge}'. Reconnecting..."));
+                        self.settings_open = false;
+                        crate::logging::info(
+                            "bridge",
+                            &format!("Paired with bridge '{bridge}'. Reconnecting..."),
+                        );
                         // Restart the operator so it picks up the new pairing.
                         self.operator_shutdown.store(true, Ordering::Relaxed);
                         if let Some(handle) = self.operator_thread.take() {
@@ -497,7 +629,7 @@ impl State {
                         self.operator_thread = thread;
                     }
                     Err(e) => {
-                        self.log.push(format!("Enrollment failed: {e:#}"));
+                        crate::logging::error("bridge", &format!("Enrollment failed: {e:#}"));
                     }
                 }
                 Task::none()
@@ -600,30 +732,28 @@ impl State {
         {
             let mut s = self.shared.lock().unwrap();
             if s.busy {
-                s.log.push("A task is already running; please wait.".to_string());
+                crate::logging::warn("openc3-app", "A task is already running; please wait.");
                 return;
             }
             s.busy = true;
-            s.log.push(format!("{label}..."));
         }
+        crate::logging::info("openc3-app", &format!("{label}..."));
         let shared = self.shared.clone();
         std::thread::spawn(move || {
-            // Mirror install progress / NEXT STEPS messages into the activity log
-            // so GUI users see them (not just the terminal).
-            let sink = shared.clone();
+            // Mirror install progress / NEXT STEPS messages into the log (stdout
+            // + the in-app table) so GUI users see them, not just the terminal.
             install::set_notifier(Box::new(move |m| {
-                if let Ok(mut s) = sink.lock() {
-                    s.log.push(m);
-                }
+                crate::logging::info("openc3-app", &m);
             }));
             let result = f();
             install::clear_notifier();
-            let mut s = shared.lock().unwrap();
             match result {
-                Ok(()) => s.log.push(format!("{label}: done.")),
-                Err(e) => s.log.push(format!("{label}: ERROR: {e}")),
+                Ok(()) => crate::logging::info("openc3-app", &format!("{label}: done.")),
+                Err(e) => crate::logging::error("openc3-app", &format!("{label}: ERROR: {e}")),
             }
-            s.busy = false;
+            if let Ok(mut s) = shared.lock() {
+                s.busy = false;
+            }
         });
     }
 
@@ -768,9 +898,16 @@ impl State {
             text(" ").size(13)
         };
 
+        // Show the most recent log lines (from the captured-log sink) so install
+        // progress is visible on this page too.
         let mut log_col = column![].spacing(2);
-        for line in self.log.iter().rev().take(8).rev() {
-            log_col = log_col.push(text(line).size(12).font(Font::MONOSPACE));
+        let start = self.log_records.len().saturating_sub(8);
+        for rec in &self.log_records[start..] {
+            log_col = log_col.push(
+                text(format!("{} {}", rec.level, rec.message))
+                    .size(12)
+                    .font(Font::MONOSPACE),
+            );
         }
 
         let content = column![
@@ -796,7 +933,23 @@ impl State {
 
     /// Page 3: the main control panel with live container status.
     fn view_main(&self) -> Element<'_, Message> {
-        let title = text("OpenC3 COSMOS").size(28);
+        // Header: title on the left, a settings gear on the right. The gear opens
+        // the Settings dialog (bridge pairing + cleanup).
+        let gear = button(
+            text(GEAR_GLYPH)
+                .font(ICON_FONT)
+                .size(22)
+                .color(GEAR_COLOR),
+        )
+        .padding(6)
+        .style(button::text)
+        .on_press(Message::ShowSettings);
+        let title = row![
+            text("OpenC3 COSMOS").size(28),
+            Space::with_width(Length::Fill),
+            gear,
+        ]
+        .align_y(Center);
 
         // Hide the one-shot init container once it has completed successfully
         // (still show it while running or if it failed).
@@ -825,7 +978,7 @@ impl State {
         } else {
             action("Start", Message::Start)
         };
-        let buttons = row![primary, action("Cleanup", Message::ShowCleanup)].spacing(10);
+        let buttons = row![primary].spacing(10);
 
         // Prominent, full-width button to open the COSMOS web UI; enabled only
         // once COSMOS is up and serving index.html.
@@ -1036,21 +1189,6 @@ impl State {
                 );
             }
         }
-        // Manual pairing: redeem an enrollment token from a remote COSMOS's
-        // Admin → Bridges page. Co-located COSMOS enrolls automatically.
-        let pair_row = row![
-            text_input(
-                "Enrollment token (to pair with a remote COSMOS bridge)",
-                &self.bridge_token_input,
-            )
-            .on_input(Message::BridgeTokenChanged)
-            .on_submit(Message::SubmitBridgeToken)
-            .width(Length::Fill),
-            button(text("Pair")).on_press(Message::SubmitBridgeToken),
-        ]
-        .spacing(8)
-        .align_y(Center);
-
         // COSMOS connection indicator: paired (has keys + ticket) and connected
         // (last hub poll succeeded).
         let (cosmos_color, cosmos_glyph) = if self.bridge_status.connected {
@@ -1080,19 +1218,13 @@ impl State {
             horizontal_rule(2),
             cosmos_row,
             scrollable(ms_table).height(Length::FillPortion(1)),
-            pair_row,
         ]
         .spacing(8);
 
-        let mut log_col = column![text("Activity").size(18)].spacing(2);
-        for line in self.log.iter().rev().take(12).rev() {
-            log_col = log_col.push(text(line).size(13));
-        }
-
-        let busy_note = if self.busy {
-            text("Working… (detailed output in the terminal)").size(13)
+        let busy_note: Element<'_, Message> = if self.busy {
+            text("Working… (detailed output in the terminal)").size(13).into()
         } else {
-            text("Idle").size(13)
+            Space::with_height(0).into()
         };
 
         let content = column![
@@ -1107,15 +1239,218 @@ impl State {
             Space::with_height(8),
             ms_section,
             Space::with_height(8),
-            scrollable(log_col).height(Length::FillPortion(1)),
+            self.view_log_messages(),
         ]
         .spacing(6)
         .padding(20);
 
-        container(content)
+        let base = container(content).width(Length::Fill).height(Length::Fill);
+
+        // Overlay the Settings dialog on top of the main page when open.
+        if self.settings_open {
+            stack![base, self.view_settings_modal()].into()
+        } else {
+            base.into()
+        }
+    }
+
+    /// Scrolling log messages table (replaces the old Activity panel). Shows
+    /// everything openc3-app logs to stdout, newest first, filterable by level
+    /// and search, with pause/clear. Modeled on COSMOS' LogMessages.vue.
+    fn view_log_messages(&self) -> Element<'_, Message> {
+        let header_color = Color::from_rgb8(0x9E, 0x9E, 0x9E);
+
+        let pause_label = if self.log_paused { "Resume" } else { "Pause" };
+        let controls = row![
+            text("Log Messages").size(18),
+            Space::with_width(Length::Fill),
+            pick_list(
+                LogLevelFilter::ALL,
+                Some(self.log_level),
+                Message::LogLevelChanged
+            )
+            .text_size(13),
+            text_input("Search", &self.log_search)
+                .on_input(Message::LogSearchChanged)
+                .size(13)
+                .width(200),
+            button(text(pause_label).size(13)).padding(6).on_press(Message::ToggleLogPause),
+            button(text("Clear").size(13)).padding(6).on_press(Message::ClearLog),
+        ]
+        .spacing(8)
+        .align_y(Center);
+
+        let col = |label, width| {
+            text(label).size(12).font(Font::MONOSPACE).width(width).color(header_color)
+        };
+        let header = row![
+            col("Time", Length::Fixed(100.0)),
+            col("Level", Length::Fixed(70.0)),
+            col("Source", Length::Fixed(200.0)),
+            col("Message", Length::Fill),
+        ]
+        .spacing(10);
+
+        // Filter to level >= the selected minimum and matching the search, then
+        // show newest first (capped so a huge backlog doesn't stall rendering).
+        let min_rank = self.log_level.rank();
+        let needle = self.log_search.to_lowercase();
+        let mut table = column![].spacing(2);
+        let mut shown = 0usize;
+        for rec in self.log_records.iter().rev() {
+            if level_rank(&rec.level) < min_rank {
+                continue;
+            }
+            if !needle.is_empty()
+                && !rec.message.to_lowercase().contains(&needle)
+                && !rec.source.to_lowercase().contains(&needle)
+            {
+                continue;
+            }
+            // "2026-07-19T20:37:33.129001Z" -> "20:37:33.129"
+            let time = rec.timestamp.get(11..23).unwrap_or(rec.timestamp.as_str());
+            table = table.push(
+                row![
+                    text(time.to_string()).size(12).font(Font::MONOSPACE).width(100),
+                    text(rec.level.clone())
+                        .size(12)
+                        .font(Font::MONOSPACE)
+                        .width(70)
+                        .color(level_color(&rec.level)),
+                    text(rec.source.clone())
+                        .size(12)
+                        .font(Font::MONOSPACE)
+                        .width(200)
+                        .wrapping(text::Wrapping::WordOrGlyph),
+                    text(rec.message.clone())
+                        .size(12)
+                        .font(Font::MONOSPACE)
+                        .width(Length::Fill)
+                        .wrapping(text::Wrapping::WordOrGlyph),
+                ]
+                .spacing(10),
+            );
+            shown += 1;
+            if shown >= 300 {
+                break;
+            }
+        }
+        if shown == 0 {
+            table = table.push(text("No log messages.").size(13));
+        }
+
+        column![
+            controls,
+            horizontal_rule(2),
+            header,
+            horizontal_rule(1),
+            scrollable(table).height(Length::FillPortion(2)),
+        ]
+        .spacing(6)
+        .into()
+    }
+
+    /// Modal Settings dialog: bridge pairing and the destructive cleanup action.
+    /// Rendered as a centered card over a dimmed backdrop; clicking the backdrop
+    /// or the ✕ closes it.
+    fn view_settings_modal(&self) -> Element<'_, Message> {
+        let grey = Color::from_rgb8(0x9E, 0x9E, 0x9E);
+
+        let header = row![
+            text("Settings").size(24),
+            Space::with_width(Length::Fill),
+            button(
+                text(CLOSE_GLYPH)
+                    .font(ICON_FONT)
+                    .size(16)
+                    .color(GEAR_COLOR),
+            )
+            .padding(4)
+            .style(button::text)
+            .on_press(Message::CloseSettings),
+        ]
+        .align_y(Center);
+
+        // Bridge pairing: redeem an enrollment token from a remote COSMOS's
+        // Admin → Bridges page. Co-located COSMOS enrolls automatically.
+        let pair_section = column![
+            text("Bridge Pairing").size(16),
+            text(
+                "Paste an enrollment token from a remote COSMOS (Admin → Bridges) to \
+                 pair with its bridge. A co-located COSMOS pairs automatically."
+            )
+            .size(13)
+            .color(grey),
+            row![
+                text_input("Enrollment token", &self.bridge_token_input)
+                    .on_input(Message::BridgeTokenChanged)
+                    .on_submit(Message::SubmitBridgeToken)
+                    .width(Length::Fill),
+                button(text("Pair")).padding(8).on_press(Message::SubmitBridgeToken),
+            ]
+            .spacing(8)
+            .align_y(Center),
+        ]
+        .spacing(6);
+
+        // Destructive cleanup: opens the typed-confirmation page.
+        let cleanup_section = column![
+            text("Cleanup").size(16),
+            text(
+                "Remove all COSMOS Docker volumes and data (targets, logs, databases). \
+                 This cannot be undone."
+            )
+            .size(13)
+            .color(grey),
+            button(text("Cleanup..."))
+                .padding(8)
+                .style(button::danger)
+                .on_press(Message::ShowCleanup),
+        ]
+        .spacing(6);
+
+        let card = container(
+            column![
+                header,
+                horizontal_rule(2),
+                pair_section,
+                cleanup_section,
+            ]
+            .spacing(18),
+        )
+        .width(540)
+        .padding(24)
+        .style(|theme: &Theme| {
+            let palette = theme.extended_palette();
+            container::Style {
+                background: Some(palette.background.weak.color.into()),
+                border: iced::border::rounded(8),
+                ..container::Style::default()
+            }
+        });
+
+        // Dimmed backdrop filling the window; clicking it closes the dialog.
+        let backdrop = mouse_area(
+            container(Space::new(Length::Fill, Length::Fill))
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .style(|_theme: &Theme| container::Style {
+                    background: Some(iced::Background::Color(Color::from_rgba(0.0, 0.0, 0.0, 0.6))),
+                    ..container::Style::default()
+                }),
+        )
+        .on_press(Message::CloseSettings);
+
+        // The centered card sits above the backdrop. Wrapping it in a mouse_area
+        // that swallows presses keeps clicks inside the card (its padding/labels)
+        // from falling through to the backdrop and closing the dialog.
+        let centered = container(mouse_area(card).on_press(Message::Ignore))
             .width(Length::Fill)
             .height(Length::Fill)
-            .into()
+            .center_x(Length::Fill)
+            .center_y(Length::Fill);
+
+        stack![backdrop, centered].into()
     }
 
     /// Destructive cleanup confirmation. Requires typing "cleanup" to enable
@@ -1298,6 +1633,7 @@ pub fn launch(root_override: Option<PathBuf>, enterprise: bool) -> anyhow::Resul
     iced::daemon(State::title, State::update, State::view)
         .subscription(State::subscription)
         .theme(|_state, _window| Theme::Dark)
+        .font(ICON_FONT_BYTES)
         .run_with(move || {
             let ctx = Context::new(root_override.clone(), enterprise)
                 .expect("failed to build application context");

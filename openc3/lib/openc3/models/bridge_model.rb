@@ -36,6 +36,7 @@ module OpenC3
     attr_accessor :ticket
     attr_accessor :app_public_key
     attr_accessor :enroll_code
+    attr_accessor :port
 
     # The bridge stack (bridge_microservice.py) is Python and runs from the core
     # library regardless of the interfaces bridged through it.
@@ -84,6 +85,7 @@ module OpenC3
       ticket: nil,
       app_public_key: nil,
       enroll_code: nil,
+      port: nil,
       updated_at: nil,
       plugin: nil
     )
@@ -92,6 +94,7 @@ module OpenC3
       @ticket = ticket
       @app_public_key = app_public_key
       @enroll_code = enroll_code
+      @port = port
     end
 
     def as_json(*_a)
@@ -103,7 +106,8 @@ module OpenC3
         'public_key' => @public_key,
         'ticket' => @ticket,
         'app_public_key' => @app_public_key,
-        'enroll_code' => @enroll_code
+        'enroll_code' => @enroll_code,
+        'port' => @port
       }
     end
 

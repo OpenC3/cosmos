@@ -51,6 +51,7 @@ from openc3.models.bridge_interface_model import BridgeInterfaceModel
 from openc3.models.bridge_model import BridgeModel
 from openc3.models.host_microservice_model import HostMicroserviceModel
 from openc3.models.model import Model
+from openc3.models.scope_model import ScopeModel
 from openc3.utilities.store_queued import EphemeralStoreQueued
 
 
@@ -80,6 +81,14 @@ API_ENROLL = b"api/enroll"
 # once the opener writes, so on the data path the hub (server) opens+primes and
 # the clients accept+strip this byte. All subsequent bytes are raw device data.
 PRIME = b"\x00"
+
+# Fixed UDP port range for bridge hubs. Each hub binds one port in this range and
+# advertises 127.0.0.1:<port> in its ticket so the host reaches it locally (no
+# relay). The SAME range MUST be published from the operator container in
+# compose.yaml (127.0.0.1:BASE-LAST:BASE-LAST/udp). One port per bridge, assigned
+# from the pool and reused across restarts; the pool size caps concurrent bridges.
+BRIDGE_PORT_BASE = int(os.environ.get("OPENC3_BRIDGE_PORT_BASE") or 7799)
+BRIDGE_PORT_COUNT = int(os.environ.get("OPENC3_BRIDGE_PORT_COUNT") or 16)
 
 # Size of each raw read when pumping bytes.
 PUMP_CHUNK_BYTES = 65536
@@ -166,20 +175,45 @@ class BridgeMicroservice(Microservice):
 
         model, private_key = self._ensure_keys(iroh)
         secret_key = bytes.fromhex(private_key)
+        port = self._ensure_port(model)
         # Advertise a stream/<name> ALPN for each configured stream (the data
         # path) plus the control API ALPNs (always available for openc3-app).
         alpns = [f"{STREAM_ALPN_PREFIX}{s}".encode() for s in self.streams]
         alpns += [f"{HOST_ALPN_PREFIX}{s}".encode() for s in self.streams]
         alpns += [API_HOST_MICROSERVICES, API_LOG, API_AUTHORIZE, API_ENROLL, API_FILES]
+        # Local-only bridging: bind a fixed UDP port (published to the host from
+        # the operator container) with the relay disabled. Everything lives on one
+        # machine, so peers reach the hub directly — no n0 relay is used or needed.
         endpoint = await iroh.Endpoint.bind(
-            iroh.EndpointOptions(preset=iroh.preset_n0(), alpns=alpns, secret_key=secret_key)
+            iroh.EndpointOptions(
+                preset=iroh.preset_n0_disable_relay(),
+                bind_addr=f"0.0.0.0:{port}",
+                alpns=alpns,
+                secret_key=secret_key,
+            )
         )
+        # Advertise a host-reachable address in the ticket. Docker publishes
+        # 127.0.0.1:<port>/udp on the host straight through to this container port,
+        # so the host (openc3-app and host interfaces) dials 127.0.0.1:<port>; the
+        # bind's own 172.x direct address keeps in-container peers working too.
+        local_addr = f"127.0.0.1:{port}"
+        await endpoint.add_external_addr(local_addr)
+        # add_external_addr is eventually-consistent: the address takes a moment to
+        # appear in addr(). Wait for it before minting the ticket, otherwise the
+        # ticket can ship without the host-reachable address and the host can't
+        # dial the hub at all.
+        for _ in range(50):
+            if local_addr in endpoint.addr().direct_addresses():
+                break
+            await asyncio.sleep(0.1)
+        else:
+            self.logger.warn(f"Bridge '{self.bridge_name}': {local_addr} not in addr() yet; ticket may omit it")
         # Refresh and store this bridge's current ticket so peers can find it by
         # bridge name (the identity is stable via the persisted keypair).
         ticket = str(iroh.EndpointTicket.from_addr(endpoint.addr()))
         model.ticket = ticket
         model.create(force=True)
-        self.logger.info(f"Bridge '{self.bridge_name}' hub listening; ticket: {ticket}")
+        self.logger.info(f"Bridge '{self.bridge_name}' hub listening on port {port}; ticket: {ticket}")
 
         watcher = asyncio.create_task(self._shutdown_watcher(endpoint))
         try:
@@ -634,6 +668,36 @@ class BridgeMicroservice(Microservice):
             model.create(force=True)
             self.logger.info(f"Generated Iroh keypair for bridge '{self.bridge_name}'")
         return model, private_key
+
+    def _ensure_port(self, model):
+        """Return this bridge's fixed UDP port, assigning one from the published
+        range if it doesn't have one yet. The port is persisted on the model and
+        reused across restarts so the host can always reach the hub at
+        127.0.0.1:<port>. Ports must be unique across every bridge sharing this
+        operator container, so the lowest port not claimed by any other bridge
+        (in any scope) is chosen and persisted immediately."""
+        if getattr(model, "port", None):
+            return int(model.port)
+
+        used = set()
+        for scope in ScopeModel.names():
+            for name in BridgeModel.names(scope):
+                if scope == self.scope and name == self.bridge_name:
+                    continue
+                other = BridgeModel.get_model(name, scope=scope)
+                if other and getattr(other, "port", None):
+                    used.add(int(other.port))
+
+        for candidate in range(BRIDGE_PORT_BASE, BRIDGE_PORT_BASE + BRIDGE_PORT_COUNT):
+            if candidate not in used:
+                model.port = candidate
+                model.create(force=True)
+                return candidate
+
+        raise RuntimeError(
+            f"No free bridge port in {BRIDGE_PORT_BASE}-{BRIDGE_PORT_BASE + BRIDGE_PORT_COUNT - 1}; "
+            "increase OPENC3_BRIDGE_PORT_COUNT and the published range in compose.yaml"
+        )
 
 
 if __name__ == "__main__":

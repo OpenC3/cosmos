@@ -463,9 +463,12 @@ impl OperatorProcess {
     fn output_increment(&self) {
         if let Ok(mut buf) = self.stdout_buf.lock() {
             for line in buf.take_pending() {
-                println!("[{}] {}", self.instance_name, line);
+                // Host microservices log COSMOS JSON per line via their own
+                // Logger; echo verbatim (keeping our stdout uniformly JSON) and
+                // capture for the in-app log table.
+                crate::logging::capture_line(&line, &self.instance_name, false);
                 // Forward host microservice stdout up to COSMOS so its Logger
-                // records (JSON per line) are logged in the main system too.
+                // records are logged in the main system too.
                 if let Some(tx) = &self.log_tx {
                     let _ = tx.send(line);
                 }
@@ -473,7 +476,7 @@ impl OperatorProcess {
         }
         if let Ok(mut buf) = self.stderr_buf.lock() {
             for line in buf.take_pending() {
-                eprintln!("[{}] {}", self.instance_name, line);
+                crate::logging::capture_line(&line, &self.instance_name, true);
             }
         }
     }
@@ -1328,11 +1331,11 @@ fn host_specs_to_configs(specs: Vec<HostSpec>) -> ConfigMap {
 }
 
 fn log_info(scope: &str, msg: &str) {
-    println!("INFO  [{scope}] {msg}");
+    crate::logging::info(scope, msg);
 }
 
 fn log_error(scope: &str, msg: &str) {
-    eprintln!("ERROR [{scope}] {msg}");
+    crate::logging::error(scope, msg);
 }
 
 #[cfg(test)]

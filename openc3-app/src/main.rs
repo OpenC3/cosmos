@@ -16,6 +16,7 @@ mod env_file;
 mod hostfiles;
 mod future;
 mod install;
+mod logging;
 mod monitor;
 mod operator;
 mod process;
