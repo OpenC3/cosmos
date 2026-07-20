@@ -32,6 +32,16 @@ on:
   push:
     tags:
       - "openc3-app-v*"
+    # TEMPORARY: workflow_dispatch only works once this file is on the default
+    # branch, so until it's merged to main, build on pushes to the dev branch
+    # instead (dry-run — the release job is tag-gated, so nothing is published).
+    # Path filters are ignored for tag pushes, so the release tag still triggers.
+    # Remove this `branches`/`paths` block once the workflow is on main.
+    branches:
+      - super_bridge
+    paths:
+      - "openc3-app/**"
+      - ".github/workflows/openc3-app-release.yml"
 
 permissions:
   contents: read
