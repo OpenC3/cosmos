@@ -94,7 +94,11 @@ And so is this
       # of the file and process the last line
       if next_token.type == :EOF
         if !line.empty?
-          yield line, instrumentable, inside_begin, orig_line_no
+          # orig_line_no is normally set below (after this EOF check) but a final
+          # line that never reaches that assignment (e.g. a trailing bareword call
+          # with no parentheses and no newline at end of file) would yield nil.
+          # Fall back to the current token's start line so the line number is valid.
+          yield line, instrumentable, inside_begin, orig_line_no || token.location.start_line
         end
         break
       end
