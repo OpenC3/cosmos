@@ -13,8 +13,9 @@
 
 use anyhow::{bail, Context as _, Result};
 use iroh::endpoint::presets;
-use iroh::{Endpoint, EndpointAddr, SecretKey};
+use iroh::{Endpoint, EndpointAddr, RelayMode, RelayUrl, SecretKey};
 use iroh_tickets::endpoint::EndpointTicket;
+use std::str::FromStr;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use tokio::runtime::Runtime;
@@ -53,6 +54,27 @@ pub struct FilesDelta {
     pub deletions: Vec<String>,
 }
 
+/// Relay to use, from `OPENC3_BRIDGE_RELAY`. No relay by default (co-located
+/// pairing is direct); set the variable to a relay URL to reach a REMOTE hub.
+/// Must match the relay the hub advertises in its ticket.
+fn relay_mode_from_env() -> RelayMode {
+    let url = std::env::var("OPENC3_BRIDGE_RELAY").unwrap_or_default();
+    let url = url.trim();
+    if url.is_empty() {
+        return RelayMode::Disabled;
+    }
+    match RelayUrl::from_str(url) {
+        Ok(relay) => RelayMode::custom([relay]),
+        Err(e) => {
+            crate::logging::warn(
+                "bridge",
+                &format!("ignoring invalid OPENC3_BRIDGE_RELAY '{url}': {e}"),
+            );
+            RelayMode::Disabled
+        }
+    }
+}
+
 /// Mint a fresh Iroh identity for a host microservice. Returns
 /// `(secret_key_hex, public_key_hex)`. openc3-app hands the secret to the child
 /// and never persists it; the public key is authorized with the hub.
@@ -82,6 +104,7 @@ pub fn enroll(secret_key: SecretKey, bridge_ticket: &str, code: &str) -> Result<
     runtime.block_on(async move {
         let endpoint = Endpoint::builder(presets::N0)
             .secret_key(secret_key)
+            .relay_mode(relay_mode_from_env())
             .bind()
             .await?;
         let conn = endpoint
@@ -153,8 +176,13 @@ impl BridgeClient {
             .context("building tokio runtime for the bridge client")?;
         let ticket: EndpointTicket = bridge_ticket.parse().context("parsing bridge ticket")?;
         let addr = ticket.endpoint_addr().clone();
-        let endpoint = runtime
-            .block_on(async { Endpoint::builder(presets::N0).secret_key(secret_key).bind().await })?;
+        let endpoint = runtime.block_on(async {
+            Endpoint::builder(presets::N0)
+                .secret_key(secret_key)
+                .relay_mode(relay_mode_from_env())
+                .bind()
+                .await
+        })?;
 
         let (log_tx, log_rx) = mpsc::unbounded_channel::<String>();
         runtime.spawn(log_forwarder(endpoint.clone(), addr.clone(), log_rx));

@@ -120,7 +120,7 @@ MACOS_SDK=/path/to/MacOSX.sdk ./build.sh x86_64-apple-darwin aarch64-apple-darwi
 ### Native installers
 
 Native installers are built for the **host OS and architecture** (a `.dmg` needs
-macOS, an `.msi`/`.exe` needs Windows, `.deb`/`.rpm`/AppImage need Linux), using
+macOS, an `.msi`/`.exe` needs Windows, `.deb`/AppImage need Linux), using
 [`cargo-packager`](https://github.com/crabnebula-dev/cargo-packager). Output
 lands in `dist/installers/`.
 
@@ -137,13 +137,29 @@ powershell -ExecutionPolicy Bypass -File .\package.ps1
 | Host | Produces |
 | --- | --- |
 | macOS | `OpenC3 COSMOS.app` + `OpenC3 COSMOS_<ver>_<arch>.dmg` |
-| Linux | `.deb`, `.rpm`, `.AppImage` |
+| Linux | `.deb`, `.AppImage` |
 | Windows | `.msi` (WiX) and/or `.exe` (NSIS) |
 
 The architecture matches the build host (e.g. `aarch64` on Apple Silicon). To
 produce Linux installers from a non-Linux host, run `./package.sh` inside a
 Linux container. Installer metadata (product name, identifier, etc.) lives under
 `[package.metadata.packager]` in `Cargo.toml`.
+
+### Linux GUI prerequisite (libxkbcommon)
+
+The GUI (winit) loads **libxkbcommon** at runtime via `dlopen` for keyboard
+handling on X11/Wayland. The `.deb` declares it as a dependency and the AppImage
+bundles it, so installed packages work out of the box. The **raw `./dist`
+binary**, however, has no packaging layer — on a minimal image that doesn't
+already ship libxkbcommon (e.g. some cloud GUI AMIs) the GUI won't start until
+you install it:
+
+```bash
+sudo apt install libxkbcommon0 libxkbcommon-x11-0
+```
+
+This only affects the GUI; CLI/headless use (`--headless`, `openc3 run`, etc.)
+never needs it.
 
 ### Local development build
 

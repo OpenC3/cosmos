@@ -181,33 +181,51 @@ class BridgeMicroservice(Microservice):
         alpns = [f"{STREAM_ALPN_PREFIX}{s}".encode() for s in self.streams]
         alpns += [f"{HOST_ALPN_PREFIX}{s}".encode() for s in self.streams]
         alpns += [API_HOST_MICROSERVICES, API_LOG, API_AUTHORIZE, API_ENROLL, API_FILES]
-        # Local-only bridging: bind a fixed UDP port (published to the host from
-        # the operator container) with the relay disabled. Everything lives on one
-        # machine, so peers reach the hub directly — no n0 relay is used or needed.
-        endpoint = await iroh.Endpoint.bind(
-            iroh.EndpointOptions(
+        # Bind a fixed UDP port (published to the host from the operator
+        # container). By default there is NO relay: co-located peers reach the hub
+        # directly via 127.0.0.1. To allow REMOTE peers (across the internet/NAT),
+        # set OPENC3_BRIDGE_RELAY to a relay URL (n0's public relay or a
+        # self-hosted one); the hub then advertises that relay in its ticket.
+        relay = os.environ.get("OPENC3_BRIDGE_RELAY")
+        if relay:
+            options = dict(
+                preset=iroh.preset_n0(),
+                relay_mode=iroh.RelayMode.custom_from_urls([relay]),
+                bind_addr=f"0.0.0.0:{port}",
+                alpns=alpns,
+                secret_key=secret_key,
+            )
+        else:
+            options = dict(
                 preset=iroh.preset_n0_disable_relay(),
                 bind_addr=f"0.0.0.0:{port}",
                 alpns=alpns,
                 secret_key=secret_key,
             )
-        )
-        # Advertise a host-reachable address in the ticket. Docker publishes
+        endpoint = await iroh.Endpoint.bind(iroh.EndpointOptions(**options))
+        # Advertise a host-reachable local address: Docker publishes
         # 127.0.0.1:<port>/udp on the host straight through to this container port,
-        # so the host (openc3-app and host interfaces) dials 127.0.0.1:<port>; the
-        # bind's own 172.x direct address keeps in-container peers working too.
+        # so a co-located host dials 127.0.0.1:<port> directly (the bind's own
+        # 172.x address keeps in-container peers working).
         local_addr = f"127.0.0.1:{port}"
         await endpoint.add_external_addr(local_addr)
-        # add_external_addr is eventually-consistent: the address takes a moment to
-        # appear in addr(). Wait for it before minting the ticket, otherwise the
-        # ticket can ship without the host-reachable address and the host can't
-        # dial the hub at all.
+        # With a relay, wait until online so the ticket carries the relay URL and
+        # discovered public address that remote peers need (bounded so the hub
+        # still starts if the relay is unreachable).
+        if relay:
+            try:
+                await asyncio.wait_for(endpoint.online(), timeout=15)
+            except Exception:
+                self.logger.warn(
+                    f"Bridge '{self.bridge_name}': not online within timeout; ticket may lack a "
+                    "relay/public address (remote pairing needs one)"
+                )
+        # add_external_addr is eventually-consistent; make sure the local address
+        # is present before minting the ticket.
         for _ in range(50):
             if local_addr in endpoint.addr().direct_addresses():
                 break
             await asyncio.sleep(0.1)
-        else:
-            self.logger.warn(f"Bridge '{self.bridge_name}': {local_addr} not in addr() yet; ticket may omit it")
         # Refresh and store this bridge's current ticket so peers can find it by
         # bridge name (the identity is stable via the persisted keypair).
         ticket = str(iroh.EndpointTicket.from_addr(endpoint.addr()))

@@ -204,7 +204,14 @@ struct State {
     cleanup_confirm: bool,
     cleanup_input: String,
     /// Enrollment token the user is entering to pair with a remote COSMOS bridge.
-    bridge_token_input: String,
+    /// A multi-line editor so the long token wraps instead of overflowing.
+    bridge_token_content: text_editor::Content,
+    /// True while a manual pairing is running on a background thread (keeps the
+    /// UI responsive and guards against re-submitting).
+    bridge_pairing: Arc<AtomicBool>,
+    /// Handles for an operator started by a background pairing task, handed back
+    /// to the UI thread (swapped in on the next tick) so pairing never blocks.
+    next_operator: Arc<Mutex<Option<OperatorHandles>>>,
     /// Whether the Settings dialog (cleanup + bridge pairing) is showing.
     settings_open: bool,
 }
@@ -267,7 +274,7 @@ enum Message {
     CleanupInputChanged(String),
     ConfirmCleanup,
     CancelCleanup,
-    BridgeTokenChanged(String),
+    BridgeTokenAction(text_editor::Action),
     SubmitBridgeToken,
     /// Expand/collapse the Container Status section.
     ToggleStatus,
@@ -328,7 +335,9 @@ impl State {
             logs_content: text_editor::Content::new(),
             cleanup_confirm: false,
             cleanup_input: String::new(),
-            bridge_token_input: String::new(),
+            bridge_token_content: text_editor::Content::new(),
+            bridge_pairing: Arc::new(AtomicBool::new(false)),
+            next_operator: Arc::new(Mutex::new(None)),
             settings_open: false,
         }
     }
@@ -408,6 +417,15 @@ impl State {
         // Refresh the log table from the captured-log sink unless paused.
         if !self.log_paused {
             self.log_records = crate::logging::snapshot();
+        }
+        // Swap in operator handles produced by a background pairing task.
+        if let Some((status, bridge_status, shutdown, thread)) =
+            self.next_operator.lock().ok().and_then(|mut slot| slot.take())
+        {
+            self.operator_status = status;
+            self.bridge_status_handle = bridge_status;
+            self.operator_shutdown = shutdown;
+            self.operator_thread = thread;
         }
         if let Ok(mut s) = self.shared.lock() {
             self.busy = s.busy;
@@ -600,38 +618,58 @@ impl State {
                 self.status_collapsed = !self.status_collapsed;
                 Task::none()
             }
-            Message::BridgeTokenChanged(value) => {
-                self.bridge_token_input = value;
+            Message::BridgeTokenAction(action) => {
+                self.bridge_token_content.perform(action);
                 Task::none()
             }
             Message::SubmitBridgeToken => {
-                let token = self.bridge_token_input.trim().to_string();
-                if token.is_empty() {
+                let token = self.bridge_token_content.text().trim().to_string();
+                if token.is_empty() || self.bridge_pairing.load(Ordering::Relaxed) {
                     return Task::none();
                 }
-                match crate::enroll::enroll_with_token(&self.ctx, &token) {
-                    Ok(bridge) => {
-                        self.bridge_token_input.clear();
-                        self.settings_open = false;
-                        crate::logging::info(
-                            "bridge",
-                            &format!("Paired with bridge '{bridge}'. Reconnecting..."),
-                        );
-                        // Restart the operator so it picks up the new pairing.
-                        self.operator_shutdown.store(true, Ordering::Relaxed);
-                        if let Some(handle) = self.operator_thread.take() {
-                            let _ = handle.join();
+                // Pairing redeems the token over the network (Iroh) and restarts
+                // the operator — both blocking — so run it on a background thread
+                // to keep the UI responsive. Status is logged (and shown in the
+                // log table); the new operator handles are handed back via
+                // `next_operator` and swapped in on the next tick.
+                self.bridge_token_content = text_editor::Content::new();
+                self.settings_open = false;
+                self.bridge_pairing.store(true, Ordering::Relaxed);
+                crate::logging::info("bridge", "Pairing with COSMOS…");
+                let ctx = self.ctx.clone();
+                // Clone/take the current operator handles so the background task
+                // can restart it on success or hand them back unchanged on error.
+                let status = self.operator_status.clone();
+                let bridge_status = self.bridge_status_handle.clone();
+                let shutdown = self.operator_shutdown.clone();
+                let old_thread = self.operator_thread.take();
+                let pairing = self.bridge_pairing.clone();
+                let next_operator = self.next_operator.clone();
+                std::thread::spawn(move || {
+                    let handles = match crate::enroll::enroll_with_token(&ctx, &token) {
+                        Ok(bridge) => {
+                            crate::logging::info(
+                                "bridge",
+                                &format!("Paired with bridge '{bridge}'. Reconnecting…"),
+                            );
+                            // Restart the operator so it picks up the new pairing.
+                            shutdown.store(true, Ordering::Relaxed);
+                            if let Some(handle) = old_thread {
+                                let _ = handle.join();
+                            }
+                            start_operator(&ctx)
                         }
-                        let (status, bridge_status, shutdown, thread) = start_operator(&self.ctx);
-                        self.operator_status = status;
-                        self.bridge_status_handle = bridge_status;
-                        self.operator_shutdown = shutdown;
-                        self.operator_thread = thread;
+                        Err(e) => {
+                            crate::logging::error("bridge", &format!("Enrollment failed: {e:#}"));
+                            // Old operator untouched; hand its handles back as-is.
+                            (status, bridge_status, shutdown, old_thread)
+                        }
+                    };
+                    if let Ok(mut slot) = next_operator.lock() {
+                        *slot = Some(handles);
                     }
-                    Err(e) => {
-                        crate::logging::error("bridge", &format!("Enrollment failed: {e:#}"));
-                    }
-                }
+                    pairing.store(false, Ordering::Relaxed);
+                });
                 Task::none()
             }
             Message::ViewLogs(service) => {
@@ -1002,7 +1040,7 @@ impl State {
         })
         .on_press_maybe(self.cosmos_ready.then_some(Message::OpenBrowser));
 
-        // Color-coded container status table (Container | Status | Ports).
+        // Color-coded container status table (Container | Status | CPU | Mem).
         let header_color = Color::from_rgb8(0x9E, 0x9E, 0x9E);
         let mut table = column![row![
             text("Container")
@@ -1024,11 +1062,6 @@ impl State {
                 .size(13)
                 .font(Font::MONOSPACE)
                 .width(110)
-                .color(header_color),
-            text("Ports")
-                .size(13)
-                .font(Font::MONOSPACE)
-                .width(80)
                 .color(header_color),
             text("Actions")
                 .size(13)
@@ -1066,10 +1099,6 @@ impl State {
                         .size(13)
                         .font(Font::MONOSPACE)
                         .width(110),
-                    text(c.ports_summary())
-                        .size(13)
-                        .font(Font::MONOSPACE)
-                        .width(80),
                     logs_button,
                 ]
                 .spacing(10)
@@ -1381,14 +1410,25 @@ impl State {
             )
             .size(13)
             .color(grey),
+            // Multi-line editor so the long token wraps inside the box instead
+            // of overflowing the dialog.
+            text_editor(&self.bridge_token_content)
+                .placeholder("Enrollment token")
+                .on_action(Message::BridgeTokenAction)
+                .font(Font::MONOSPACE)
+                // The token is one long space-less string; break on glyphs so it
+                // wraps inside the box instead of overflowing.
+                .wrapping(text::Wrapping::WordOrGlyph)
+                .height(90),
             row![
-                text_input("Enrollment token", &self.bridge_token_input)
-                    .on_input(Message::BridgeTokenChanged)
-                    .on_submit(Message::SubmitBridgeToken)
-                    .width(Length::Fill),
-                button(text("Pair")).padding(8).on_press(Message::SubmitBridgeToken),
+                Space::with_width(Length::Fill),
+                {
+                    let pairing = self.bridge_pairing.load(Ordering::Relaxed);
+                    button(text(if pairing { "Pairing…" } else { "Pair" }))
+                        .padding(8)
+                        .on_press_maybe((!pairing).then_some(Message::SubmitBridgeToken))
+                },
             ]
-            .spacing(8)
             .align_y(Center),
         ]
         .spacing(6);

@@ -133,12 +133,16 @@ class HostInterfaceMicroservice:
         import iroh
 
         # Bind with the openc3-app-provided identity so the hub can verify us.
-        options = iroh.EndpointOptions(preset=iroh.preset_n0())
+        # No relay by default (co-located); set OPENC3_BRIDGE_RELAY to the same
+        # relay the hub uses to reach it remotely.
+        relay = os.environ.get("OPENC3_BRIDGE_RELAY")
+        if relay:
+            opts = {"preset": iroh.preset_n0(), "relay_mode": iroh.RelayMode.custom_from_urls([relay])}
+        else:
+            opts = {"preset": iroh.preset_n0_disable_relay()}
         if self.secret_key:
-            options = iroh.EndpointOptions(
-                preset=iroh.preset_n0(), secret_key=bytes.fromhex(self.secret_key)
-            )
-        endpoint = await iroh.Endpoint.bind(options)
+            opts["secret_key"] = bytes.fromhex(self.secret_key)
+        endpoint = await iroh.Endpoint.bind(iroh.EndpointOptions(**opts))
         addr = iroh.EndpointTicket.from_string(self.ticket).endpoint_addr()
         alpn = f"{HOST_ALPN_PREFIX}{self.channel}".encode()
         while not self.shutdown:

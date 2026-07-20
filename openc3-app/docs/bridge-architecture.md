@@ -78,6 +78,41 @@ QUIC only surfaces a bi-directional stream to the peer's `accept_bi()` once the
 `open_bi()`s and writes a single `\x00` primer byte; both clients `accept_bi()`
 and strip that byte. Everything after it is raw device data.
 
+### Connectivity: local vs. remote (the relay)
+
+How a peer actually reaches the hub depends on what addresses the ticket carries:
+
+- **Local (default).** The hub binds a fixed UDP port
+  (`OPENC3_BRIDGE_PORT_BASE`, default 7799, one per bridge) that the operator
+  container publishes on the host's loopback (see `compose.yaml`), and advertises
+  `127.0.0.1:<port>` in its ticket (plus its `172.x` container address for
+  in-COSMOS peers). A **co-located** openc3-app dials `127.0.0.1:<port>` directly.
+  No relay, no exposed ports, works offline.
+- **Remote (opt-in).** A `127.0.0.1`/`172.x` ticket is useless to an openc3-app
+  on another machine. To pair across the internet/NAT, set **`OPENC3_BRIDGE_RELAY`**
+  to a relay URL. The hub then enables that relay, waits to come online, and
+  advertises the relay URL (and its discovered public address) in the ticket, so
+  a remote peer reaches it via the relay — **no inbound ports on the COSMOS host
+  required** (both sides connect *outbound* to the relay).
+
+`OPENC3_BRIDGE_RELAY` must be set on **both** ends and match:
+
+- COSMOS side (the hub + any host interfaces): set it in the environment of the
+  operator container, e.g. uncomment the line in `.env`. This affects
+  `bridge_microservice` and `host_interface_microservice`.
+- openc3-app side (the host running the launcher): set it in openc3-app's own
+  environment before launching.
+
+The value is a relay URL — an [n0 public relay][n0-relays] (e.g.
+`https://use1-1.relay.n0.iroh.link.`, or a nearer region) or a **self-hosted**
+Iroh relay. A relay co-located on the COSMOS host still needs its own inbound
+ports open (TCP 443 + UDP 3478); only a relay that lives elsewhere (n0's, or a
+separate host) keeps the COSMOS host free of inbound ports. When set, the relay
+is used for reachability/NAT hole-punching but co-located peers still connect
+directly over `127.0.0.1`, so local pairing stays direct and offline-capable.
+
+[n0-relays]: https://www.iroh.computer/docs/concepts/relay
+
 ---
 
 ## 3. Persistent state (COSMOS models & secrets)
@@ -134,6 +169,13 @@ token `{bridge, ticket, code}`. The user pastes it into openc3-app, which
 redeems the one-time `code` over the `api/enroll` ALPN using its own identity.
 On success the hub records that identity as `app_public_key` and clears the code
 (one-time). See `enroll.rs::enroll_with_token` and `bridge.rs::enroll`.
+
+Remote enrollment only works if the token's ticket is reachable from the
+enrolling host — i.e. the bridge must be running with `OPENC3_BRIDGE_RELAY` set
+(and the same relay set for openc3-app), otherwise the ticket only carries
+`127.0.0.1`/`172.x` addresses and the redeem times out. See
+[§2 Connectivity](#connectivity-local-vs-remote-the-relay). Generate the token
+*after* enabling the relay so it embeds the relay URL.
 
 `resolve_ticket` precedence: `OPENC3_BRIDGE_TICKET` env override → existing
 `current.json` → auto-enroll.

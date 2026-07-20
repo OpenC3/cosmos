@@ -69,3 +69,17 @@ minimum-system-version = "11.0"
 
 [package.metadata.packager.nsis]
 installer-mode = "both"
+
+# winit (the GUI's windowing) loads libxkbcommon at runtime via dlopen for
+# keyboard handling on Linux (X11 and Wayland). Because it's dlopen'd it never
+# appears in the binary's dynamic deps, so cargo-packager can't auto-detect it —
+# declare it explicitly so installs pull it in. Minimal images (e.g. some cloud
+# GUI AMIs) don't ship it by default.
+[package.metadata.packager.deb]
+depends = ["libxkbcommon0", "libxkbcommon-x11-0"]
+
+# Bundle the same libs into the AppImage so it's self-contained. They're located
+# on the build machine via `find -L /usr/lib* -name <lib>`, so libxkbcommon must
+# be installed where the AppImage is packaged.
+[package.metadata.packager.appimage]
+libs = ["libxkbcommon.so.0", "libxkbcommon-x11.so.0"]
