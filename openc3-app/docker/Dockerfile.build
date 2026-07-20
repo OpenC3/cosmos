@@ -42,10 +42,10 @@ RUN cargo install --locked cargo-zigbuild apple-codesign
 
 # All supported Rust target triples (Windows uses the GNU ABI).
 RUN rustup target add \
-#        x86_64-unknown-linux-gnu \
-#        aarch64-unknown-linux-gnu \
-#        x86_64-pc-windows-gnu \
-#        x86_64-apple-darwin \
+        x86_64-unknown-linux-gnu \
+        aarch64-unknown-linux-gnu \
+        x86_64-pc-windows-gnu \
+        x86_64-apple-darwin \
         aarch64-apple-darwin
 
 # Keep cargo's registry/build caches on mountable volumes for fast rebuilds.
