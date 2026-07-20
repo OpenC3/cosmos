@@ -100,6 +100,10 @@ test('displays INST COMMANDING', async ({ page, utils }) => {
 
     await page.getByRole('combobox').filter({ hasText: 'NORMAL' }).click()
     await page.getByRole('option', { name: 'NORMAL' }).click()
+    // Wait for the select menu to fully close before clicking the buttons
+    // beneath it, otherwise the closing overlay swallows the next click and the
+    // command is never sent (so the hazardous dialog below never appears).
+    await expect(page.getByRole('option', { name: 'NORMAL' })).toHaveCount(0)
     await page.getByRole('button', { name: 'Start Collect' }).click()
     // Send clear command which is hazardous
     await page.getByRole('button', { name: 'Send' }).click()
@@ -474,7 +478,9 @@ test('links array item to TlmGrapher', async ({ page, utils }) => {
     await page.getByText('Graph', { exact: true }).click()
     const graphPage = await graphPagePromise
     await expect(graphPage).toHaveURL(
-      new RegExp(`/tools/tlmgrapher/INST/HEALTH_STATUS/ARY${encodeURIComponent('[0]')}`),
+      new RegExp(
+        `/tools/tlmgrapher/INST/HEALTH_STATUS/ARY${encodeURIComponent('[0]')}`,
+      ),
     )
     await graphPage.close()
   })

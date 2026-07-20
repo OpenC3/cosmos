@@ -28,7 +28,7 @@ You can read the whole license here:
 ```
 # OpenC3 Evaluation and Educational License
 #
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 #
 # This work is licensed for evaluation and educational purposes only.
 # It may NOT be used for formal development, integration and test, operations

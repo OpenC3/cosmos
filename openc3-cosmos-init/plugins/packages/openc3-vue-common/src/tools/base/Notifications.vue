@@ -46,15 +46,30 @@
               <div v-bind="props">
                 <v-btn
                   class="ml-1"
+                  icon="mdi-check-all"
+                  variant="text"
+                  data-test="ack-all-notifications"
+                  aria-label="Acknowledge All Alerts"
+                  @click="ackAllAlerts"
+                />
+              </div>
+            </template>
+            <span> Acknowledge All Alerts </span>
+          </v-tooltip>
+          <v-tooltip :open-delay="600" location="top">
+            <template #activator="{ props }">
+              <div v-bind="props">
+                <v-btn
+                  class="ml-1"
                   icon="mdi-notification-clear-all "
                   variant="text"
                   data-test="clear-notifications"
-                  aria-label="Dismiss All Notifications"
+                  aria-label="Clear Read Notifications"
                   @click="clearNotifications"
                 />
               </div>
             </template>
-            <span> Dismiss All Notifications </span>
+            <span> Clear Read Notifications </span>
           </v-tooltip>
           <v-btn
             icon="astro:settings"
@@ -71,7 +86,7 @@
         <v-list
           v-else
           lines="two"
-          width="420"
+          width="520"
           max-height="80vh"
           class="overflow-y-auto"
           data-test="notification-list"
@@ -84,14 +99,19 @@
               </v-list-subheader>
             </template>
 
-            <v-list-item
-              v-else
-              :key="`notification-${index}`"
-              class="pl-2"
-              @click="openDialog(notification)"
-            >
+            <v-list-item v-else :key="`notification-${index}`" class="pl-2">
               <template #prepend>
+                <!-- astro rux-status has no 'fatal' shape, so draw an octagon
+                     in the fatal color instead. Wrapped in a span so it isn't a
+                     direct-child .v-icon: Vuetify adds a 32px prepend spacer
+                     after a direct-child icon, which rux-status doesn't get. -->
+                <span v-if="notification.level === 'FATAL'" class="px-2">
+                  <v-icon class="fatal-status" :color="AstroStatusColors.fatal">
+                    mdi-alert-octagon
+                  </v-icon>
+                </span>
                 <rux-status
+                  v-else
                   class="px-2"
                   :status="getStatus(notification.level)"
                 />
@@ -107,53 +127,50 @@
               <v-list-item-subtitle>
                 {{ formatShortDateTime(notification.time) }}
               </v-list-item-subtitle>
+              <template
+                v-if="notification.type === 'alert' && !notification.read"
+                #append
+              >
+                <v-btn
+                  size="small"
+                  variant="tonal"
+                  data-test="ack-notification"
+                  class="ml-2"
+                  @click.stop="ackNotification(notification)"
+                >
+                  Ack
+                </v-btn>
+              </template>
             </v-list-item>
           </template>
         </v-list>
       </v-card>
     </v-menu>
 
-    <!-- Dialog for viewing full notification -->
-    <v-dialog v-model="notificationDialog" width="600">
-      <v-card>
-        <v-card-title>
-          {{ selectedNotification.message }}
-          <v-spacer />
-          <astro-status-indicator
-            :status="selectedNotification.level || 'INFO'"
-          />
-        </v-card-title>
-        <v-card-subtitle>
-          {{ formatShortDateTime(selectedNotification.time) }}
-        </v-card-subtitle>
-        <v-divider />
-        <v-card-actions>
-          <v-btn
-            v-if="selectedNotification.url"
-            color="primary"
-            variant="text"
-            @click="navigate(selectedNotification.url)"
-          >
-            Open
-            <v-icon end> mdi-open-in-new </v-icon>
-          </v-btn>
-          <v-btn
-            color="primary"
-            variant="text"
-            @click="notificationDialog = false"
-          >
-            Close
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
     <!-- Dialog for changing notification settings -->
     <v-dialog v-model="settingsDialog" width="600">
       <v-card>
         <v-card-title> Notification settings </v-card-title>
         <v-card-text>
-          <v-switch v-model="showToast" label="Show toasts" color="primary" />
+          <v-switch
+            v-model="showToast"
+            label="Show alert popups"
+            color="primary"
+            messages="Alerts must be acknowledged to dismiss them"
+            hide-details
+            data-test="show-alerts"
+          />
+          <v-radio-group
+            v-model="toastPosition"
+            label="Alert popup position"
+            inline
+            hide-details
+            :disabled="!showToast"
+            data-test="toast-position"
+          >
+            <v-radio label="Top" value="top" />
+            <v-radio label="Bottom" value="bottom" />
+          </v-radio-group>
         </v-card-text>
         <v-divider />
         <v-card-actions>
@@ -169,21 +186,42 @@
 <script>
 import { formatDistanceToNow } from 'date-fns'
 import { Api, Cable } from '@openc3/js-common/services'
-import {
-  AstroStatusColors,
-  AstroStatusIndicator,
-  UnknownToAstroStatus,
-} from '@/icons'
-import { useStore } from '@/plugins/store'
+import { AstroStatusColors, UnknownToAstroStatus } from '@/icons'
 import { AstroStatus } from '@/util'
 
 const NOTIFICATION_HISTORY_MAX_LENGTH = 1000
 const { highestLevel, orderByLevel, groupByLevel } = AstroStatus
 
+// Redis stream ids are "<ms>-<seq>". The MessagesChannel start_offset is
+// exclusive (XREAD returns ids strictly greater), so to guarantee a given
+// message is replayed on reconnect we must subscribe from the id immediately
+// before it.
+function offsetBefore(msgId) {
+  const [ms, seq] = String(msgId).split('-')
+  const seqNum = Number(seq || 0)
+  if (seqNum > 0) {
+    return `${ms}-${seqNum - 1}`
+  }
+  // seq is 0: step back to the previous millisecond with the max sequence.
+  return `${Number(ms) - 1}-18446744073709551615`
+}
+
+// Compare two Redis stream ids ("<ms>-<seq>") numerically, returning <0, 0, or
+// >0 like a sort comparator. Lexical string comparison is wrong because the
+// sequence part isn't zero-padded (e.g. "…-5" would sort after "…-40"). A
+// nullish id sorts before any real id.
+function compareMsgIds(a, b) {
+  if (a === b) return 0
+  if (a === undefined || a === null) return -1
+  if (b === undefined || b === null) return 1
+  const [aMs, aSeq] = String(a).split('-')
+  const [bMs, bSeq] = String(b).split('-')
+  const ms = Number(aMs) - Number(bMs)
+  if (ms !== 0) return ms
+  return Number(aSeq || 0) - Number(bSeq || 0)
+}
+
 export default {
-  components: {
-    AstroStatusIndicator,
-  },
   props: {
     size: {
       type: [String, Number],
@@ -191,14 +229,9 @@ export default {
     },
   },
   emits: ['ephemeral'],
-  setup() {
-    const store = useStore()
-    return { store }
-  },
   data: function () {
     return {
       AstroStatusColors,
-      alerts: [],
       cable: new Cable(),
       scriptCable: new Cable('/script-api/cable'),
       subscription: null,
@@ -206,11 +239,9 @@ export default {
       numScripts: 0,
       notifications: [],
       showNotificationPane: false,
-      toastNotification: {},
-      notificationDialog: false,
-      selectedNotification: {},
       settingsDialog: false,
       showToast: true,
+      toastPosition: 'top',
     }
   },
   computed: {
@@ -243,9 +274,6 @@ export default {
         .filter((notification) => !notification.read)
         .sort((a, b) => b.time - a.time)
     },
-    unreadCount: function () {
-      return this.unreadNotifications.length
-    },
     notificationList: function () {
       const groups = groupByLevel(this.unreadNotifications)
       let result = orderByLevel(Object.keys(groups), (k) => k).flatMap(
@@ -265,29 +293,39 @@ export default {
   watch: {
     showNotificationPane: function (val) {
       if (!val) {
-        if (this.selectedNotification.message) {
-          this.notificationDialog = false
-          this.selectedNotification = {}
-        } else {
-          this.markAllAsRead()
-        }
+        this.markAllAsRead()
       }
     },
     showToast: function (val) {
       localStorage.notoast = !val
+      if (!val) {
+        // Disabling toasts removes any that are currently displayed
+        this.$notify?.dismissAll()
+      }
+    },
+    toastPosition: function (val) {
+      localStorage.toastPosition = val
+      // Toast renderer lives in a separate app instance; tell it to reposition
+      window.dispatchEvent(
+        new CustomEvent('openc3-toast-position', { detail: { position: val } }),
+      )
     },
   },
   created: function () {
-    this.showToast = localStorage.notoast === 'false'
+    // Toasts default on (opt-out), position defaults to top
+    this.showToast = localStorage.notoast !== 'true'
+    this.toastPosition =
+      localStorage.toastPosition === 'bottom' ? 'bottom' : 'top'
+    // Acknowledging an alert from its toast also acks it in the menu
+    window.addEventListener('openc3-ack-alert', this.onAckAlert)
     this.subscribe()
-    // TODO How does this get updated after initialization
-    this.alerts = this.store.notifyHistory
     // Get the initial number of running scripts
     Api.get('/script-api/running-script').then((response) => {
       this.numScripts = response.data.total
     })
   },
   unmounted: function () {
+    window.removeEventListener('openc3-ack-alert', this.onAckAlert)
     if (this.subscription) {
       this.subscription.unsubscribe()
     }
@@ -301,42 +339,119 @@ export default {
     getStatus: function (level) {
       return UnknownToAstroStatus[level]
     },
-    markAllAsRead: function () {
+    // Alerts stay unread until explicitly acknowledged, so track acked alert
+    // msg_ids separately from the lastReadNotification high-water mark.
+    ackedAlertSet: function () {
+      try {
+        return new Set(JSON.parse(localStorage.ackedAlerts || '[]'))
+      } catch {
+        return new Set()
+      }
+    },
+    persistAckedAlert: function (msgId) {
+      const acked = this.ackedAlertSet()
+      acked.add(msgId)
+      let ids = Array.from(acked)
+      if (ids.length > NOTIFICATION_HISTORY_MAX_LENGTH) {
+        ids = ids.slice(ids.length - NOTIFICATION_HISTORY_MAX_LENGTH)
+      }
+      localStorage.ackedAlerts = JSON.stringify(ids)
+    },
+    // Mark a single alert acknowledged (read + persisted). Callers persist the
+    // stream offset and dismiss toasts once after their batch of acks.
+    acknowledgeAlert: function (notification) {
+      notification.read = true
+      this.persistAckedAlert(notification.msg_id)
+    },
+    ackNotification: function (notification) {
+      this.acknowledgeAlert(notification)
+      this.persistStreamOffset()
+      // Also dismiss the matching toast if it's still showing
+      this.$notify?.dismiss((toast) => toast.msg_id === notification.msg_id)
+    },
+    // Handles an alert acknowledged from its toast (fired in the Toast app
+    // instance) so the menu marks the same alert read.
+    onAckAlert: function (event) {
+      const msgId = event.detail?.msg_id
+      if (!msgId) {
+        return
+      }
+      const notification = this.notifications.find((n) => n.msg_id === msgId)
+      // The alert may not be in this instance's list; still record the ack.
+      if (notification) {
+        this.acknowledgeAlert(notification)
+      } else {
+        this.persistAckedAlert(msgId)
+      }
+      this.persistStreamOffset()
+    },
+    ackAllAlerts: function () {
       this.notifications.forEach((notification) => {
-        notification.read = true
-        if (
-          !localStorage.lastReadNotification ||
-          localStorage.lastReadNotification < notification.msg_id
-        ) {
-          localStorage.lastReadNotification = notification.msg_id
+        if (notification.type === 'alert' && !notification.read) {
+          this.acknowledgeAlert(notification)
         }
       })
+      this.persistStreamOffset()
+      this.$notify?.dismiss((toast) => toast.type === 'alert')
+    },
+    // The reconnect stream offset must sit just below the oldest
+    // un-acknowledged alert so that alert is replayed (and re-toasted) after a
+    // reload instead of being silently skipped. When nothing is un-acked it
+    // tracks the read high-water mark so already-seen messages aren't refetched.
+    persistStreamOffset: function () {
+      let offset = localStorage.lastReadNotification
+      const unackedAlerts = this.notifications.filter(
+        (notification) => notification.type === 'alert' && !notification.read,
+      )
+      if (unackedAlerts.length) {
+        const oldest = unackedAlerts.reduce(
+          (min, notification) =>
+            compareMsgIds(notification.msg_id, min) < 0
+              ? notification.msg_id
+              : min,
+          unackedAlerts[0].msg_id,
+        )
+        const cap = offsetBefore(oldest)
+        if (!offset || compareMsgIds(cap, offset) < 0) {
+          offset = cap
+        }
+      }
+      if (offset) {
+        localStorage.notificationStreamOffset = offset
+      } else {
+        localStorage.removeItem('notificationStreamOffset')
+      }
+    },
+    // Advance the non-alert read high-water mark. Alert read state is tracked
+    // separately (ackedAlerts), so this only governs non-alert notifications.
+    advanceReadMarker: function (msgId) {
+      if (
+        !localStorage.lastReadNotification ||
+        compareMsgIds(localStorage.lastReadNotification, msgId) < 0
+      ) {
+        localStorage.lastReadNotification = msgId
+      }
+    },
+    markAllAsRead: function () {
+      this.notifications.forEach((notification) => {
+        if (notification.type !== 'alert') {
+          notification.read = true
+        }
+        this.advanceReadMarker(notification.msg_id)
+      })
+      this.persistStreamOffset()
     },
     clearNotifications: function () {
+      // Non-alert notifications become read on view, so mark them read now
+      // (markAllAsRead leaves alerts alone), then remove all read
+      // notifications, leaving only un-acknowledged alerts.
       this.markAllAsRead()
-      this.notifications = []
-      localStorage.notificationStreamOffset = localStorage.lastReadNotification
-      this.showNotificationPane = false
-    },
-    toggleNotificationPane: function () {
-      this.showNotificationPane = !this.showNotificationPane
+      this.notifications = this.notifications.filter(
+        (notification) => !notification.read,
+      )
     },
     toggleSettingsDialog: function () {
       this.settingsDialog = !this.settingsDialog
-    },
-    openDialog: function (notification, clearToast = false) {
-      notification.read = true
-      if (
-        !localStorage.lastReadNotification ||
-        localStorage.lastReadNotification < notification.msg_id
-      ) {
-        localStorage.lastReadNotification = notification.msg_id
-      }
-      this.selectedNotification = notification
-      this.notificationDialog = true
-    },
-    navigate: function (url) {
-      window.open(url, '_blank')
     },
     subscribe: function () {
       this.cable
@@ -385,35 +500,47 @@ export default {
         })
       }
 
-      let foundToast = false
+      const alertToasts = []
+      const acked = this.ackedAlertSet()
       parsed.forEach((notification) => {
-        notification.read =
-          notification.msg_id <= localStorage.lastReadNotification
+        // Alerts are read only once acknowledged; others use the read marker
+        if (notification.type === 'alert') {
+          notification.read = acked.has(notification.msg_id)
+        } else {
+          notification.read =
+            compareMsgIds(
+              notification.msg_id,
+              localStorage.lastReadNotification,
+            ) <= 0
+        }
         notification.level = notification.level || 'INFO'
-        if (
-          !notification.read && // Don't toast read notifications
-          ['FATAL', 'ERROR', 'WARN'].includes(notification.level) // Toast for these statuses
-        ) {
-          foundToast = true
-          this.toastNotification = notification
+        if (notification.read) {
+          return // Don't toast read notifications
+        }
+        // Only alerts toast (gated by the master toggle). Everything else,
+        // including limits notifications, only appears in the menu.
+        if (notification.type === 'alert' && this.showToast) {
+          // Alerts require acknowledgement regardless of level. Each one is
+          // toasted individually so the user must dismiss (ack) all of them.
+          alertToasts.push(notification)
         }
       })
 
-      if (this.showToast && foundToast) {
-        let duration = 5000
-        if (['FATAL', 'ERROR'].includes(this.toastNotification.level)) {
-          duration = null
-        }
-
-        // Notify takes a minute to be ready on app load
-        if (this.$notify) {
-          this.$notify[this.toastNotification.level]({
-            ...this.toastNotification,
-            type: 'notification',
-            duration: duration,
+      // Notify takes a minute to be ready on app load
+      if (this.$notify) {
+        alertToasts.forEach((notification) => {
+          // Go straight through open() so the original log level (FATAL, ERROR,
+          // WARN, INFO, DEBUG) reaches the toast. The severity-named methods
+          // (this.$notify.critical, etc.) collapse levels (FATAL->critical,
+          // DEBUG->normal), which would give the wrong icon and color.
+          this.$notify.open({
+            ...notification,
+            method: 'toast',
+            type: 'alert',
+            duration: null, // Persist until the user acknowledges the alert
             saveToHistory: false,
           })
-        }
+        })
       }
 
       if (
@@ -428,6 +555,10 @@ export default {
         )
       }
       this.notifications = this.notifications.concat(parsed)
+      // A newly received un-acked alert must lower the persisted reconnect
+      // offset immediately, so it survives a reload even if the user never
+      // opens the notifications menu.
+      this.persistStreamOffset()
     },
     receiveScript: function (data) {
       this.cable.recordPing()
@@ -452,5 +583,12 @@ export default {
 .overlay {
   height: 100vh;
   width: 100vw;
+}
+/* v-list-item provides icon-size defaults to prepend icons, overriding the
+   size prop, so pin the fatal octagon to rux-status's 12px footprint. */
+.fatal-status.v-icon {
+  font-size: 12px;
+  width: 12px;
+  height: 12px;
 }
 </style>

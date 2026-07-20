@@ -106,9 +106,9 @@ class SimInst(SimulatedTarget):
         packet.write("CcsdsSeqFlags", "NOGROUP")
         packet.write("CcsdsLength", len(packet.buffer) - 7)
         packet.write("value1", 0)
-        packet.write("value2", 1)
+        packet.write("value2", 0)
         packet.write("value3", 2)
-        packet.write("value4", 1)
+        packet.write("value4", 0)
         packet.write("value5", 0)
         packet.write("P_2.2,2", BinaryAccessor.MIN_INT64)
         packet.write("P-3+3=3", BinaryAccessor.MAX_INT64)
@@ -142,7 +142,7 @@ class SimInst(SimulatedTarget):
 
         self.bad_temp2 = False
         self.last_temp2 = 0
-        self.quiet = False
+        self.quiet = True
         self.time_offset = 0
         self.ip_address = 0
         self.variable_arrays_updated = False
@@ -360,6 +360,8 @@ class SimInst(SimulatedTarget):
                         self.cycle_tlm_item(packet, "temp1", -15.0, 15.0, 5.0)
                         self.cycle_tlm_item(packet, "temp2", -50.0, 25.0, -1.0)
                         self.cycle_tlm_item(packet, "temp3", 0.0, 50.0, 2.0)
+                        self.cycle_tlm_item(packet, "temp4", 0.0, 20.0, -0.1)
+                        self.cycle_tlm_item(packet, "bracket[0]", 0, 100, 10)
                     else:
                         self.cycle_tlm_item(packet, "temp1", -95.0, 95.0, 5.0)
                         if self.bad_temp2:
@@ -378,8 +380,8 @@ class SimInst(SimulatedTarget):
                             packet.write("temp2", float("inf"))
                             self.bad_temp2 = True
                         self.cycle_tlm_item(packet, "temp3", -30.0, 80.0, 2.0)
-                    self.cycle_tlm_item(packet, "temp4", 0.0, 20.0, -0.1)
-                    self.cycle_tlm_item(packet, "bracket[0]", 0, 255, 10)
+                        self.cycle_tlm_item(packet, "temp4", 0.0, 20.0, -0.1)
+                        self.cycle_tlm_item(packet, "bracket[0]", 0, 255, 10)
 
                     packet.write("timesec", int(time - self.time_offset))
                     packet.write("timeus", int((time % 1) * 1000000))
@@ -411,6 +413,13 @@ class SimInst(SimulatedTarget):
                     packet.write("timeus", int((time % 1) * 1000000))
                     packet.write("ccsdsseqcnt", packet.read("ccsdsseqcnt") + 1)
                     packet.write("ip_address", self.ip_address)
+
+                    if self.quiet:
+                        packet.write("value2", 0)
+                        packet.write("value4", 0)
+                    else:
+                        packet.write("value2", 1)
+                        packet.write("value4", 1)
 
                 case "IMAGE":
                     packet.write("timesec", int(time - self.time_offset))

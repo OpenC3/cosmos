@@ -492,6 +492,13 @@ export default {
     createParamList() {
       let paramList = {}
       for (const row of this.$refs.commandEditor.getRows()) {
+        // A null val marks a required parameter the user hasn't set (see
+        // CommandEditor). Omit it entirely so the backend reports it as "not
+        // given" rather than receiving an empty value and reporting that it is
+        // "not one of" the valid states.
+        if (row.val === null) {
+          continue
+        }
         paramList[row.parameter_name] = this.convertToValue(row)
       }
       return paramList
