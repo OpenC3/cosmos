@@ -22,7 +22,7 @@ When defining command parameters you can choose from the following data types: I
 
 ### Naming Convention
 
-Command Packets and Parameters can be named however you want with very few exceptions. The following is not allowed in Command or Parameter names: `__` (double underscore), `[[` or `]]` (double brackets), whitespace, and ending a name with underscore. Parameter names are also limited to a maximum of 127 characters because they are used as column headers when command data is stored in the time series database (QuestDB). While not much else is _explicitly_ restricted we've found the following guidelines to be helpful.
+Command Packets and Parameters can be named however you want with very few exceptions. The following is not allowed in Command or Parameter names: `__` (double underscore), `[[` or `]]` (double brackets), whitespace, and ending a name with underscore. Parameter names are also limited to a maximum of 127 characters because they are used as column headers when command data is stored in the time series database (QuestDB). Note that all target, packet, parameter, and state names are automatically converted to uppercase (COSMOS is not case sensitive), so mixed case cannot be used to visually separate words. Use underscores or dashes instead, e.g. `LOW_POWER_MODE` rather than `LowPowerMode` which becomes the harder to read `LOWPOWERMODE`. While not much else is _explicitly_ restricted we've found the following guidelines to be helpful.
 
 - Use underscores
 
