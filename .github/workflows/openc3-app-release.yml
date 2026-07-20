@@ -68,12 +68,16 @@ jobs:
         env:
           TARGET: ${{ github.event.inputs.target || 'all' }}
         run: |
+          # macOS x86_64 is cross-compiled on an Apple-Silicon runner: the free
+          # Intel runner (macos-13) was retired Dec 2025, and Intel on Actions
+          # ends entirely in 2027. Each job builds an explicit --target so the
+          # build arch is independent of the runner arch.
           all='[
-            {"runner":"ubuntu-latest","name":"linux-x86_64","packager_args":"-f deb -f appimage"},
-            {"runner":"ubuntu-24.04-arm","name":"linux-arm64","packager_args":"-f deb -f appimage"},
-            {"runner":"macos-13","name":"macos-x86_64","packager_args":"-f dmg"},
-            {"runner":"macos-14","name":"macos-arm64","packager_args":"-f dmg"},
-            {"runner":"windows-latest","name":"windows-x86_64","packager_args":"-f nsis -f wix"}
+            {"runner":"ubuntu-latest","name":"linux-x86_64","rust_target":"x86_64-unknown-linux-gnu","packager_args":"-f deb -f appimage"},
+            {"runner":"ubuntu-24.04-arm","name":"linux-arm64","rust_target":"aarch64-unknown-linux-gnu","packager_args":"-f deb -f appimage"},
+            {"runner":"macos-14","name":"macos-x86_64","rust_target":"x86_64-apple-darwin","packager_args":"-f dmg"},
+            {"runner":"macos-14","name":"macos-arm64","rust_target":"aarch64-apple-darwin","packager_args":"-f dmg"},
+            {"runner":"windows-latest","name":"windows-x86_64","rust_target":"x86_64-pc-windows-msvc","packager_args":"-f nsis -f wix"}
           ]'
           if [ "$TARGET" = "all" ]; then
             matrix=$(echo "$all" | jq -c '{include: .}')
@@ -104,7 +108,9 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Install/refresh the Rust toolchain
-        run: rustup update --no-self-update stable && rustup default stable
+        run: |
+          rustup update --no-self-update stable && rustup default stable
+          rustup target add ${{ matrix.rust_target }}
 
       # Caches the cargo registry, build target, and installed binaries (so
       # cargo-packager isn't rebuilt every run). Keyed per-runner automatically.
@@ -117,7 +123,7 @@ jobs:
         run: cargo install cargo-packager --locked
 
       - name: Build the release binary
-        run: cargo build --release
+        run: cargo build --release --target ${{ matrix.rust_target }}
 
       - name: Package installers
         env:
@@ -140,7 +146,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: cargo packager --release ${{ matrix.packager_args }} --out-dir dist/installers
+        run: cargo packager --release --target ${{ matrix.rust_target }} ${{ matrix.packager_args }} --out-dir dist/installers
 
       - name: Upload installers
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

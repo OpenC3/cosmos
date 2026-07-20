@@ -29,3 +29,28 @@ uv run --with fonttools python tools/gen_icons.py
 ```
 
 Commit the regenerated `assets/openc3-icons.ttf`.
+
+## logo.png, icon.png + icons/
+
+- `logo.png` — the raw 1024×1024 OpenC3 mark on a transparent background (the
+  source art).
+- `icon.png` — the composed 1024×1024 **app tile** (the white mark on a rounded
+  brand-blue tile). This is the master the installer icons are derived from.
+- `icons/` — the per-platform installer icons referenced by
+  `[package.metadata.packager].icons` in Cargo.toml:
+  - `32x32.png`, `128x128.png`, `128x128@2x.png`, `256x256.png`, `512x512.png` —
+    Linux (.deb / AppImage; AppImage needs a square PNG)
+  - `icon.icns` — macOS (.app / .dmg)
+  - `icon.ico` — Windows (.exe / .msi)
+
+`tools/gen_app_icons.py` composes `logo.png` into the tile and regenerates the
+whole set (needs `pillow`; `.icns` needs macOS `iconutil`). The tile color is
+auto-sampled from the mark; tweak `MARGIN`/`RADIUS`/`MARK_FRACTION` in the script
+to adjust the look.
+
+```bash
+cd openc3-app
+uv run --with pillow python tools/gen_app_icons.py
+```
+
+Commit the regenerated `assets/icon.png` and `assets/icons/*`.

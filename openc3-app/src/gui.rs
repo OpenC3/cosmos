@@ -15,11 +15,15 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
+use iced::widget::image::Handle as ImageHandle;
 use iced::widget::{
     button, column, container, horizontal_rule, mouse_area, pick_list, progress_bar, row,
-    scrollable, stack, text, text_editor, text_input, Space,
+    scrollable, stack, text, text_editor, text_input, Image, Space,
 };
 use iced::{window, Center, Color, Element, Font, Length, Size, Subscription, Task, Theme};
+
+/// The app-tile logo shown on the splash screen (embedded PNG).
+const SPLASH_LOGO: &[u8] = include_bytes!("../assets/icons/512x512.png");
 
 /// Embedded icon font (a single gear glyph at U+E900), loaded at startup. Using
 /// an embedded font is the cross-platform way to get the gear: the bundled UI
@@ -834,7 +838,9 @@ impl State {
         const BAR_FILL_SECS: f32 = 1.0;
         let fraction = (self.splash_start.elapsed().as_secs_f32() / BAR_FILL_SECS).clamp(0.0, 1.0);
         let content = column![
-            text("OpenC3 COSMOS").size(48).font(Font::MONOSPACE),
+            Image::new(ImageHandle::from_bytes(SPLASH_LOGO.to_vec()))
+                .width(200)
+                .height(200),
             Space::with_height(20),
             progress_bar(0.0..=1.0, fraction).width(320).height(12),
         ]

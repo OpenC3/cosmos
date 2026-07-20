@@ -35,7 +35,7 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 # adequate for a control panel, needs no GPU drivers at runtime (better for VMs
 # and the cross-built Linux/Windows binaries), and avoids pulling wgpu/metal
 # (and their future-incompat `block` dependency).
-iced = { version = "0.13", default-features = false, features = ["tiny-skia", "tokio"], optional = true }
+iced = { version = "0.13", default-features = false, features = ["tiny-skia", "tokio", "image"], optional = true }
 # Iroh peer-to-peer bridge between the app and host microservices.
 iroh = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "io-util", "sync", "time", "macros"] }
@@ -63,6 +63,16 @@ authors = ["OpenC3, Inc."]
 homepage = "https://openc3.com"
 license-file = "../LICENSE.md"
 category = "Utility"
+# App/installer icons, generated from assets/icon.png by tools/gen_app_icons.py.
+# AppImage requires a square PNG; macOS uses the .icns and Windows the .ico.
+icons = [
+    "assets/icons/32x32.png",
+    "assets/icons/128x128.png",
+    "assets/icons/128x128@2x.png",
+    "assets/icons/512x512.png",
+    "assets/icons/icon.icns",
+    "assets/icons/icon.ico",
+]
 
 [package.metadata.packager.macos]
 minimum-system-version = "11.0"
