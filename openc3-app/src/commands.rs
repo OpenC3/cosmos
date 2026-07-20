@@ -18,7 +18,7 @@ pub fn build(ctx: &Context, flags: &[String]) -> Result<()> {
     for f in flags {
         cmd.arg(f);
     }
-    process::run(&mut cmd)
+    docker::run(cmd)
 }
 
 /// `run` — start the containers detached.
@@ -189,7 +189,7 @@ pub fn cli(ctx: &Context, args: &[String], as_root: bool) -> Result<()> {
     for a in args {
         cmd.arg(a);
     }
-    process::run(&mut cmd)
+    docker::run(cmd)
 }
 
 /// `test` — build then run a test suite (development installs only).
@@ -200,7 +200,7 @@ pub fn test(ctx: &Context, args: &[String]) -> Result<()> {
     install::setup_cosmos(ctx)?;
     let mut build = docker::compose_with_build(ctx)?;
     build.arg("build");
-    process::run(&mut build)?;
+    docker::run(build)?;
 
     // Delegate to the repository's test script when present.
     let script = ctx

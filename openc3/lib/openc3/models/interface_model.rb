@@ -519,14 +519,7 @@ module OpenC3
         relay.options << stream_option unless relay.options.include?(stream_option)
         relay.update
       else
-        # Shares the DEFAULT bridge (created by ScopeModel) when @bridge_name is
-        # DEFAULT; otherwise stands up a new named hub. Adds this interface's stream.
-        relay = BridgeModel.build_microservice(
-          bridge_name: @bridge_name, scope: @scope, shard: @shard, plugin: @plugin
-        )
-        relay.options << stream_option
-        relay.create
-        relay.deploy(gem_path, variables)
+        raise "Bridge #{@bridge_name} does not exist"
       end
       relay
     end
@@ -591,12 +584,7 @@ module OpenC3
       relay = MicroserviceModel.get_model(name: bridge_relay_name, scope: @scope)
       if relay
         relay.options = relay.options.reject { |option| option[0].to_s.upcase == 'STREAM' && option[1] == @name }
-        # Destroy the relay once no interfaces route through it anymore.
-        if relay.options.none? { |option| option[0].to_s.upcase == 'STREAM' }
-          relay.destroy
-        else
-          relay.update
-        end
+        relay.update
       end
       host = HostMicroserviceModel.get_model(name: @name, scope: @scope)
       host.destroy if host

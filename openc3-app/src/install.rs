@@ -221,13 +221,51 @@ fn install_docker_linux() -> Result<()> {
     };
     notify("Running the official Docker install script...");
     process::run(&mut cmd)?;
-    notify(
-        "Docker installed.\n\
-         NEXT STEP (required to use Docker without sudo): run\n  \
-         sudo usermod -aG docker $USER\n\
-         then log out and back in (or reboot) for the change to take effect.",
-    );
+    add_user_to_docker_group();
     Ok(())
+}
+
+/// Add the invoking user to the `docker` group so Docker can be used without
+/// sudo. openc3-app itself then reaches Docker via `sg docker` (see
+/// docker.rs::group) so it works in this session without an app restart; a
+/// plain login shell picks up the group on next login (or `newgrp docker`).
+fn add_user_to_docker_group() {
+    // The real user — sudo preserves it in SUDO_USER; fall back to USER.
+    let user = std::env::var("SUDO_USER")
+        .ok()
+        .filter(|u| !u.is_empty())
+        .or_else(|| std::env::var("USER").ok())
+        .unwrap_or_default();
+    if user.is_empty() || user == "root" {
+        notify("Docker installed. (Running as root — no docker group change needed.)");
+        return;
+    }
+    // Ensure the group exists, then add the user. Both need root (use sudo when
+    // we aren't already root, as the install script itself did).
+    let steps: [&[&str]; 2] = [&["groupadd", "-f", "docker"], &["usermod", "-aG", "docker", &user]];
+    for step in steps {
+        let mut cmd = if is_root() {
+            let mut c = Command::new(step[0]);
+            c.args(&step[1..]);
+            c
+        } else {
+            let mut c = Command::new("sudo");
+            c.args(step);
+            c
+        };
+        if let Err(error) = process::run(&mut cmd) {
+            notify(&format!(
+                "Docker installed, but adding '{user}' to the docker group failed ({error}).\n\
+                 MANUAL STEP: run  sudo usermod -aG docker {user}  then log out and back in.",
+            ));
+            return;
+        }
+    }
+    notify(&format!(
+        "Docker installed and '{user}' added to the docker group. openc3-app will use \
+         Docker in this session automatically (no restart needed). For a plain terminal, \
+         run `newgrp docker` or start a new login session.",
+    ));
 }
 
 const WINGET_MANUAL: &str = "winget (the Windows Package Manager) was not found, so the engine \

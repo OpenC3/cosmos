@@ -712,13 +712,15 @@ impl State {
             }
             Message::CloseRequested(id) => {
                 if id == self.main_window {
-                    // Closing the main window doesn't quit: hide it to the tray
-                    // (or just minimize where there's no tray). The tray's Quit
-                    // (or a real close) exits.
                     if crate::tray::ENABLED {
+                        // With a tray (macOS/Windows), closing hides to the tray
+                        // instead of quitting; the tray's Quit (or a real close)
+                        // exits. Restore via the tray's Show.
                         window::change_mode(id, window::Mode::Hidden)
                     } else {
-                        window::minimize(id, true)
+                        // No tray (Linux): the close button should actually quit,
+                        // otherwise the window just hides and the process lingers.
+                        self.quit()
                     }
                 } else {
                     // Other windows (e.g. logs) close normally.

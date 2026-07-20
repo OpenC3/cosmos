@@ -3,7 +3,6 @@
 use crate::cli::UtilCommand;
 use crate::context::Context;
 use crate::docker::{self, IMAGES};
-use crate::process;
 use anyhow::{Context as _, Result};
 use base64::Engine;
 use sha2::{Digest, Sha256};
@@ -81,7 +80,7 @@ fn pull(ctx: &Context, tag: &str, repo: &str, ns: &str, suffix: &str) -> Result<
     for image in IMAGES {
         let mut cmd = engine(ctx)?;
         cmd.arg("pull").arg(format!("{repo}/{ns}/{image}{suffix}:{tag}"));
-        process::run(&mut cmd)?;
+        docker::run(cmd)?;
     }
     Ok(())
 }
@@ -93,12 +92,12 @@ fn save(ctx: &Context, repo: &str, ns: &str, tag: &str, suffix: &str) -> Result<
         let reference = format!("{repo}/{ns}/{image}{suffix}:{tag}");
         let mut pull = engine(ctx)?;
         pull.arg("pull").arg(&reference);
-        process::run(&mut pull)?;
+        docker::run(pull)?;
 
         let out = tmp.join(format!("{image}{suffix}-{tag}.tar"));
         let mut save = engine(ctx)?;
         save.arg("save").arg(&reference).arg("-o").arg(&out);
-        process::run(&mut save)?;
+        docker::run(save)?;
     }
     Ok(())
 }
@@ -109,7 +108,7 @@ fn load(ctx: &Context, tag: &str, suffix: &str) -> Result<()> {
         let path = tmp.join(format!("{image}{suffix}-{tag}.tar"));
         let mut cmd = engine(ctx)?;
         cmd.arg("load").arg("-i").arg(&path);
-        process::run(&mut cmd)?;
+        docker::run(cmd)?;
     }
     Ok(())
 }
@@ -130,7 +129,7 @@ fn tag_images(
         let dst = format!("{repo2}/{ns2}/{image}{suffix}:{tag2}");
         let mut cmd = engine(ctx)?;
         cmd.arg("tag").arg(&src).arg(&dst);
-        process::run(&mut cmd)?;
+        docker::run(cmd)?;
     }
     Ok(())
 }
@@ -139,7 +138,7 @@ fn push(ctx: &Context, repo: &str, ns: &str, tag: &str, suffix: &str) -> Result<
     for image in IMAGES {
         let mut cmd = engine(ctx)?;
         cmd.arg("push").arg(format!("{repo}/{ns}/{image}{suffix}:{tag}"));
-        process::run(&mut cmd)?;
+        docker::run(cmd)?;
     }
     Ok(())
 }

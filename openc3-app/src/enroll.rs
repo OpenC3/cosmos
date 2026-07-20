@@ -23,7 +23,7 @@ use std::path::{Path, PathBuf};
 
 use crate::bridge::{self, BridgeClient};
 use crate::context::Context;
-use crate::{docker, process};
+use crate::docker;
 
 /// The bridge openc3-app is currently paired with, persisted across launches.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -161,7 +161,7 @@ fn auto_enroll(ctx: &Context, bridge_name: &str, app_public_key_hex: &str) -> Re
         .arg("bridgeenroll")
         .arg(bridge_name)
         .arg(app_public_key_hex);
-    let out = process::capture(&mut cmd)?;
+    let out = docker::capture(cmd)?;
     if !out.status.success() {
         bail!(
             "bridgeenroll failed: {}",

@@ -3,7 +3,6 @@
 
 use crate::context::Context;
 use crate::docker;
-use crate::process;
 use anyhow::Result;
 use serde::Deserialize;
 use std::time::Duration;
@@ -205,7 +204,7 @@ impl ContainerStatus {
 pub fn snapshot(ctx: &Context) -> Result<Vec<ContainerStatus>> {
     let mut cmd = docker::compose(ctx)?;
     cmd.args(["ps", "--all", "--format", "json"]);
-    let out = process::capture(&mut cmd)?;
+    let out = docker::capture(cmd)?;
     if !out.status.success() {
         let stderr = String::from_utf8_lossy(&out.stderr);
         anyhow::bail!("docker compose ps failed: {stderr}");
@@ -233,7 +232,7 @@ fn fetch_stats(ctx: &Context) -> std::collections::HashMap<String, (String, Stri
     };
     let mut cmd = docker::engine_cmd(rt);
     cmd.args(["stats", "--no-stream", "--format", "{{json .}}"]);
-    let Ok(out) = process::capture(&mut cmd) else {
+    let Ok(out) = docker::capture(cmd) else {
         return map;
     };
     if !out.status.success() {
