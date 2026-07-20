@@ -88,6 +88,90 @@ module OpenC3
         end
       end
 
+      it "starts a new file when stored good times move backward" do
+        capture_io do |stdout|
+          now = Time.now.to_nsec_from_epoch
+          plw = PacketLogWriter.new(@log_dir, 'test')
+          # Stored packet at the current time establishes the previous time
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now, true, "\x01\x02", nil, '0-0')
+          # A stored packet with a valid but earlier time is a new/overlapping replay
+          # run and must roll a new file rather than log an out of order error
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now - 1_000_000_000, true, "\x03\x04", nil, '0-0')
+          expect(stdout.string).to_not match("out of order time detected")
+          threads = plw.shutdown
+          threads.each { |t| t.join }
+          # Rolling produces two files (the first is closed when the second opens)
+          expect(@files.keys.length).to eq 2
+        end
+      end
+
+      it "segregates invalid (pre clock sync) stored times into their own file" do
+        capture_io do |stdout|
+          now = Time.now.to_nsec_from_epoch
+          plw = PacketLogWriter.new(@log_dir, 'test')
+          # Valid stored packet at the current time opens a normally named file
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now, true, "\x01\x02", nil, '0-0')
+          # Stored packet with a 1970 time (before clock/GPS sync) rolls into its own file
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', 1_000_000_000, true, "\x03\x04", nil, '0-0')
+          # The first valid packet after the 1970s rolls a fresh, properly named file
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now + 1_000_000_000, true, "\x05\x06", nil, '0-0')
+          expect(stdout.string).to_not match("out of order time detected")
+          expect(stdout.string).to match("segregating invalid packet time")
+          threads = plw.shutdown
+          threads.each { |t| t.join }
+          # Three files: valid, invalid (1970), valid
+          expect(@files.keys.length).to eq 3
+          # Exactly one file is named with the invalid (pre clock sync) time; rest are current
+          years = @files.keys.map { |name| name[0..3].to_i }
+          expect(years.count { |y| y < 2000 }).to eq 1
+          expect(years.count { |y| y >= 2000 }).to eq 2
+        end
+      end
+
+      it "segregates invalid (pre clock sync) realtime times into their own file" do
+        capture_io do |stdout|
+          now = Time.now.to_nsec_from_epoch
+          plw = PacketLogWriter.new(@log_dir, 'test')
+          # Realtime packets before the clock/GPS synced report a 1970 time
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', 1_000_000_000, false, "\x01\x02", nil, '0-0')
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', 2_000_000_000, false, "\x03\x04", nil, '0-0')
+          # First valid time after the clock syncs rolls a fresh, properly named file
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now, false, "\x05\x06", nil, '0-0')
+          expect(stdout.string).to_not match("out of order time detected")
+          expect(stdout.string).to match("segregating invalid packet time")
+          threads = plw.shutdown
+          threads.each { |t| t.join }
+          # Two files: invalid (1970) then valid - the valid file is not tainted with 1970
+          expect(@files.keys.length).to eq 2
+          years = @files.keys.map { |name| name[0..3].to_i }
+          expect(years.count { |y| y < 2000 }).to eq 1
+          expect(years.count { |y| y >= 2000 }).to eq 1
+        end
+      end
+
+      it "does not log an out of order error when historical stored telemetry precedes live telemetry" do
+        # Reproduces issue #3540: injecting historical telemetry with stored=true and a
+        # past received_time then receiving live telemetry logged an out of order error.
+        capture_io do |stdout|
+          now = Time.now.to_nsec_from_epoch
+          past = 2_794_000_000_000 # ~1970-01-01 00:46:34, the time from the issue report
+          plw = PacketLogWriter.new(@log_dir, 'test')
+          # Historical telemetry injected with stored=true and a past time / received_time
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', past, true, "\x01\x02", nil, '0-0', received_time_nsec_since_epoch: past)
+          # Live telemetry with a modern time / received_time must not trigger the check
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now, false, "\x03\x04", nil, '0-0', received_time_nsec_since_epoch: now)
+          expect(stdout.string).to_not match("out of order time detected")
+          threads = plw.shutdown
+          threads.each { |t| t.join }
+          # The historical (1970) packet is segregated from the live packet: two files,
+          # one named with the pre-2000 time, so the live file's name is not tainted
+          expect(@files.keys.length).to eq 2
+          years = @files.keys.map { |name| name[0..3].to_i }
+          expect(years.count { |y| y < 2000 }).to eq 1
+          expect(years.count { |y| y >= 2000 }).to eq 1
+        end
+      end
+
       it "writes binary data to a binary file" do
         first_time = Time.now.to_nsec_from_epoch
         last_time = first_time += 1_000_000_000

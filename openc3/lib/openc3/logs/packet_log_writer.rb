@@ -96,14 +96,12 @@ module OpenC3
       @mutex.lock if take_mutex
       begin
         if entry_type == :RAW_PACKET or entry_type == :JSON_PACKET
-          # Only care about the timestamps on the real (non-stored) packets being in order.
-          # Stored (historical) packets are intentionally out of order and should bypass the check.
-          process_out_of_order = !stored
+          process_out_of_order = true
         else
           # Metadata timestamps don't matter
           process_out_of_order = false
         end
-        prepare_write(time_nsec_since_epoch, data.length, redis_topic, redis_offset, allow_new_file: allow_new_file, process_out_of_order: process_out_of_order)
+        prepare_write(time_nsec_since_epoch, data.length, redis_topic, redis_offset, allow_new_file: allow_new_file, process_out_of_order: process_out_of_order, stored: stored)
         write_entry(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id, received_time_nsec_since_epoch: received_time_nsec_since_epoch, extra: extra) if @file
       ensure
         @mutex.unlock if take_mutex
