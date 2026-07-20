@@ -84,6 +84,9 @@ class TestWebSocketApiEdgeCases(unittest.TestCase):
         )
         api.identifier = {"channel": "TestChannel"}
         api.stream = Mock()
+        # Skip the subscribe handshake; this test exercises read() timeout during
+        # the data phase, not subscription confirmation.
+        api.subscribed = True
 
         # Simulate slow responses - return multiple ping messages
         call_count = [0]
@@ -117,6 +120,8 @@ class TestWebSocketApiSubscribe(unittest.TestCase):
         api = WebSocketApi(url="ws://test.com/cable", authentication=mock_auth)
         api.identifier = {"channel": "TestChannel"}
         api.stream = Mock()
+        # subscribe() now blocks until the server confirms the subscription
+        api.stream.read.return_value = '{"type":"confirm_subscription"}'
         return api
 
     # ActionCable derives `params` (which the server uses for
@@ -140,6 +145,18 @@ class TestWebSocketApiSubscribe(unittest.TestCase):
         api.subscribe()
         api.subscribe()
         self.assertEqual(api.stream.write.call_count, 1)
+
+    # Regression: write_action must subscribe (which injects the token into the
+    # identifier) BEFORE serializing the identifier, so the message command's
+    # identifier matches the subscription's. Otherwise ActionCable silently
+    # ignores the action and no data ever streams.
+    def test_action_identifier_includes_token(self):
+        api = self._make_api()
+        api.write_action({"action": "add"})
+        frames = [json.loads(c.args[0]) for c in api.stream.write.call_args_list]
+        message = next(f for f in frames if f["command"] == "message")
+        identifier = json.loads(message["identifier"])
+        self.assertEqual(identifier["token"], "test_token")
 
 
 if __name__ == "__main__":

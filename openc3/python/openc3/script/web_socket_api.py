@@ -110,6 +110,31 @@ class WebSocketApi:
             json_hash["identifier"] = json.dumps(self.identifier)
             self.stream.write(json.dumps(json_hash))
             self.subscribed = True
+            self._wait_for_subscribed()
+
+    def _wait_for_subscribed(self):
+        """Block until the server confirms the subscription.
+
+        ActionCable / anycable-go process 'subscribe' and 'message' commands as
+        independent RPCs, so an action (add/remove) written immediately after
+        subscribe can reach StreamingChannel#add before the subscription's
+        broadcaster exists, where it is silently dropped (a no-op) and no data
+        ever streams. Waiting for confirm_subscription guarantees the broadcaster
+        is ready before any action is written.
+        """
+        while True:
+            message = self.stream.read()
+            if not message:
+                raise RuntimeError("WebSocket closed before subscription was confirmed")
+            json_hash = json.loads(message)
+            msg_type = json_hash.get("type")
+            if msg_type == "confirm_subscription":
+                return
+            if msg_type == "reject_subscription":
+                raise RuntimeError("Subscription Rejected")
+            if msg_type == "disconnect" and json_hash.get("reason") == "unauthorized":
+                raise RuntimeError("Unauthorized")
+            # Ignore welcome / ping and keep waiting for confirmation
 
     def unsubscribe(self):
         """Will unsubscribe to the channel based on @identifier"""
@@ -122,6 +147,13 @@ class WebSocketApi:
 
     def write_action(self, data_hash):
         """Send an ActionCable command"""
+        # Subscribe first so the token is present in self.identifier before we
+        # serialize it below. ActionCable matches a 'message' command to its
+        # subscription by the exact identifier string; if subscribe() injected
+        # the token only afterward, the message identifier (no token) would not
+        # match the subscription identifier (with token) and the server would
+        # silently ignore the action.
+        self.subscribe()
         json_hash = {}
         json_hash["command"] = "message"
         json_hash["identifier"] = json.dumps(self.identifier)
