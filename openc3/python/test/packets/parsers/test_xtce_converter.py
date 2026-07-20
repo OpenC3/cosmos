@@ -22,8 +22,21 @@ from openc3.packets.parsers.xtce_converter import XtceConverter
 class TestXtceConverter(unittest.TestCase):
     """Test the XtceConverter class"""
 
+    SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "xtce_schemas", "SpaceSystem_06-11-06.xsd")
+
+    @classmethod
+    def setUpClass(cls):
+        cls._schema = etree.XMLSchema(etree.parse(cls.SCHEMA_PATH))
+
     def setUp(self):
         self.pc = PacketConfig()
+
+    def assert_schema_valid(self, xtce_file):
+        """Assert the generated XTCE file validates against the OMG XTCE 1.0 schema."""
+        doc = etree.parse(xtce_file)
+        if not self._schema.validate(doc):
+            errors = "\n".join(f"line {e.line}: {e.message}" for e in self._schema.error_log)
+            self.fail(f"XTCE 1.0 schema validation errors:\n{errors}")
 
     def test_converter_creates_output_directory(self):
         """Test that converter creates the output directory"""
@@ -65,6 +78,7 @@ class TestXtceConverter(unittest.TestCase):
             # XTCE file should exist
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
             self.assertTrue(os.path.exists(xtce_file))
+            self.assert_schema_valid(xtce_file)
 
     def test_converter_creates_xtce_file_for_commands(self):
         """Test that converter creates XTCE file for command packets"""
@@ -81,6 +95,7 @@ class TestXtceConverter(unittest.TestCase):
             # XTCE file should exist
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
             self.assertTrue(os.path.exists(xtce_file))
+            self.assert_schema_valid(xtce_file)
 
     def test_xtce_file_is_valid_xml(self):
         """Test that generated XTCE file is valid XML"""
@@ -96,6 +111,7 @@ class TestXtceConverter(unittest.TestCase):
 
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
             # Should parse without errors
+            self.assert_schema_valid(xtce_file)
             tree = etree.parse(xtce_file)
             root = tree.getroot()
             self.assertIsNotNone(root)
@@ -113,6 +129,7 @@ class TestXtceConverter(unittest.TestCase):
             XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
 
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assert_schema_valid(xtce_file)
             tree = etree.parse(xtce_file)
             root = tree.getroot()
 
@@ -133,6 +150,7 @@ class TestXtceConverter(unittest.TestCase):
             XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
 
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assert_schema_valid(xtce_file)
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
@@ -152,6 +170,7 @@ class TestXtceConverter(unittest.TestCase):
             XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
 
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assert_schema_valid(xtce_file)
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
@@ -171,6 +190,7 @@ class TestXtceConverter(unittest.TestCase):
             XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
 
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assert_schema_valid(xtce_file)
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
@@ -190,6 +210,7 @@ class TestXtceConverter(unittest.TestCase):
             XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
 
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assert_schema_valid(xtce_file)
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
@@ -209,6 +230,7 @@ class TestXtceConverter(unittest.TestCase):
             XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
 
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assert_schema_valid(xtce_file)
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
@@ -230,6 +252,7 @@ class TestXtceConverter(unittest.TestCase):
             XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
 
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assert_schema_valid(xtce_file)
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
@@ -251,6 +274,7 @@ class TestXtceConverter(unittest.TestCase):
             XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
 
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assert_schema_valid(xtce_file)
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
@@ -272,6 +296,7 @@ class TestXtceConverter(unittest.TestCase):
             XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
 
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assert_schema_valid(xtce_file)
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
@@ -293,6 +318,7 @@ class TestXtceConverter(unittest.TestCase):
             XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
 
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assert_schema_valid(xtce_file)
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
@@ -315,6 +341,7 @@ class TestXtceConverter(unittest.TestCase):
             XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
 
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assert_schema_valid(xtce_file)
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
@@ -343,6 +370,7 @@ class TestXtceConverter(unittest.TestCase):
             XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
 
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assert_schema_valid(xtce_file)
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
@@ -363,6 +391,7 @@ class TestXtceConverter(unittest.TestCase):
             XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
 
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assert_schema_valid(xtce_file)
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
@@ -383,6 +412,7 @@ class TestXtceConverter(unittest.TestCase):
             XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
 
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assert_schema_valid(xtce_file)
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
@@ -403,6 +433,7 @@ class TestXtceConverter(unittest.TestCase):
             XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
 
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assert_schema_valid(xtce_file)
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
@@ -427,6 +458,42 @@ class TestXtceConverter(unittest.TestCase):
             # Verify file was created
             xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
             self.assertTrue(os.path.exists(xtce_file))
+            self.assert_schema_valid(xtce_file)
+
+    def test_xtce_validates_against_schema(self):
+        """Generated XTCE validates against the OMG XTCE 1.0 schema.
+
+        Exercises little-endian multi-byte integer/float, an enumeration, a string,
+        and both telemetry and command array items so the ByteOrderList placement and
+        Array{Parameter,Argument}RefEntry references are covered.
+        """
+        tf = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tf.write('TELEMETRY TGT1 TLMPKT BIG_ENDIAN "Telemetry"\n')
+        tf.write('  ID_ITEM OPCODE 0 8 UINT 1 "Opcode"\n')
+        tf.write('  ITEM UNSIGNED 8 16 UINT "Unsigned"\n')
+        tf.write("    STATE FALSE 0\n")
+        tf.write("    STATE TRUE 1\n")
+        tf.write('  ITEM FLOATER 24 32 FLOAT "Float"\n')
+        tf.write("    POLY_READ_CONVERSION 10.0 0.5\n")
+        tf.write('  ITEM STR 56 32 STRING "String"\n')
+        tf.write('  ARRAY_ITEM ARRAY_ITEM 88 8 UINT 80 "Array"\n')
+        tf.write('COMMAND TGT1 CMDPKT LITTLE_ENDIAN "Command"\n')
+        tf.write('  ID_PARAMETER OPCODE 0 16 UINT 0 0 0 "Opcode"\n')
+        tf.write('  PARAMETER CMD_SIGNED 16 16 INT -100 100 0 "Signed"\n')
+        tf.write('  ARRAY_PARAMETER CMD_ARRAY 32 64 FLOAT 640 "Array of 10 64bit floats"\n')
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+        with tempfile.TemporaryDirectory() as output_dir:
+            XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
+            xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            doc = etree.parse(xtce_file)
+            schema_dir = os.path.join(os.path.dirname(__file__), "xtce_schemas")
+            schema = etree.XMLSchema(etree.parse(os.path.join(schema_dir, "SpaceSystem_06-11-06.xsd")))
+            valid = schema.validate(doc)
+            errors = "\n".join(f"line {e.line}: {e.message}" for e in schema.error_log)
+            self.assertTrue(valid, f"XTCE 1.0 schema validation errors:\n{errors}")
 
 
 if __name__ == "__main__":

@@ -137,26 +137,37 @@ class XtceConverter:
             telemetry (dict): Telemetry packets hash
             target_name (str): Name of the target
         """
+        # Nothing to emit for targets without telemetry (e.g. command-only targets).
+        # An empty ParameterTypeSet/ParameterSet is invalid per the XTCE schema.
+        if target_name not in telemetry:
+            return
+
         # Gather and make unique all the packet items
-        unique_items = self._get_unique(telemetry[target_name]) if target_name in telemetry else {}
+        unique_items = self._get_unique(telemetry[target_name])
 
         tlm_meta = etree.SubElement(root, f"{{{self.XTCE_NAMESPACE}}}TelemetryMetaData")
 
-        # ParameterTypeSet
-        param_type_set = etree.SubElement(tlm_meta, f"{{{self.XTCE_NAMESPACE}}}ParameterTypeSet")
-        for _item_name, item in unique_items.items():
-            self._to_xtce_type(item, "Parameter", param_type_set)
+        # ParameterTypeSet / ParameterSet (only when non-empty; the schema requires children)
+        if unique_items:
+            param_type_set = etree.SubElement(tlm_meta, f"{{{self.XTCE_NAMESPACE}}}ParameterTypeSet")
+            for _item_name, item in unique_items.items():
+                self._to_xtce_type(item, "Parameter", param_type_set)
 
-        # ParameterSet
-        param_set = etree.SubElement(tlm_meta, f"{{{self.XTCE_NAMESPACE}}}ParameterSet")
-        for _item_name, item in unique_items.items():
-            self._to_xtce_item(item, "Parameter", param_set)
+            param_set = etree.SubElement(tlm_meta, f"{{{self.XTCE_NAMESPACE}}}ParameterSet")
+            for _item_name, item in unique_items.items():
+                self._to_xtce_item(item, "Parameter", param_set)
 
         # ContainerSet
-        if target_name in telemetry:
-            container_set = etree.SubElement(tlm_meta, f"{{{self.XTCE_NAMESPACE}}}ContainerSet")
-            for packet_name, packet in telemetry[target_name].items():
-                # Base container
+        container_set = etree.SubElement(tlm_meta, f"{{{self.XTCE_NAMESPACE}}}ContainerSet")
+        for packet_name, packet in telemetry[target_name].items():
+            attrs = {"name": packet_name}
+            if packet.description:
+                attrs["shortDescription"] = packet.description
+
+            # A BaseContainer requires a RestrictionCriteria, so only use the abstract
+            # base + inheritance pattern when the packet has ID items to compare against.
+            # Otherwise emit a single container holding the entries directly.
+            if packet.id_items and len(packet.id_items) > 0:
                 base_attrs = {"name": f"{packet_name}_Base", "abstract": "true"}
                 base_container = etree.SubElement(
                     container_set,
@@ -165,10 +176,6 @@ class XtceConverter:
                 )
                 self._process_entry_list(base_container, packet, "TELEMETRY")
 
-                # Actual container
-                attrs = {"name": packet_name}
-                if packet.description:
-                    attrs["shortDescription"] = packet.description
                 container = etree.SubElement(
                     container_set,
                     f"{{{self.XTCE_NAMESPACE}}}SequenceContainer",
@@ -180,23 +187,27 @@ class XtceConverter:
                     f"{{{self.XTCE_NAMESPACE}}}BaseContainer",
                     attrib={"containerRef": f"{packet_name}_Base"},
                 )
-
-                # Add restriction criteria if ID items exist
-                if packet.id_items and len(packet.id_items) > 0:
-                    restriction = etree.SubElement(
-                        base_container_elem,
-                        f"{{{self.XTCE_NAMESPACE}}}RestrictionCriteria",
+                restriction = etree.SubElement(
+                    base_container_elem,
+                    f"{{{self.XTCE_NAMESPACE}}}RestrictionCriteria",
+                )
+                comparison_list = etree.SubElement(restriction, f"{{{self.XTCE_NAMESPACE}}}ComparisonList")
+                for item in packet.id_items:
+                    etree.SubElement(
+                        comparison_list,
+                        f"{{{self.XTCE_NAMESPACE}}}Comparison",
+                        attrib={
+                            "parameterRef": item.name,
+                            "value": str(item.id_value),
+                        },
                     )
-                    comparison_list = etree.SubElement(restriction, f"{{{self.XTCE_NAMESPACE}}}ComparisonList")
-                    for item in packet.id_items:
-                        etree.SubElement(
-                            comparison_list,
-                            f"{{{self.XTCE_NAMESPACE}}}Comparison",
-                            attrib={
-                                "parameterRef": item.name,
-                                "value": str(item.id_value),
-                            },
-                        )
+            else:
+                container = etree.SubElement(
+                    container_set,
+                    f"{{{self.XTCE_NAMESPACE}}}SequenceContainer",
+                    attrib=attrs,
+                )
+                self._process_entry_list(container, packet, "TELEMETRY")
 
     def _create_commands(self, root, commands, target_name):
         """Create command metadata in XTCE format
@@ -433,13 +444,13 @@ class XtceConverter:
                 f"{{{self.XTCE_NAMESPACE}}}Enumerated{param_or_arg}Type",
                 attrib=attrs,
             )
-            self._to_xtce_endianness(item, enum_type)
             self._to_xtce_units(item, enum_type)
-            etree.SubElement(
+            enum_encoding = etree.SubElement(
                 enum_type,
                 f"{{{self.XTCE_NAMESPACE}}}IntegerDataEncoding",
                 attrib={"sizeInBits": str(item.bit_size), "encoding": encoding},
             )
+            self._to_xtce_endianness(item, enum_encoding)
             enum_list = etree.SubElement(enum_type, f"{{{self.XTCE_NAMESPACE}}}EnumerationList")
             for state_name, state_value in item.states.items():
                 if state_value == "ANY":  # Skip special OpenC3 state
@@ -462,22 +473,17 @@ class XtceConverter:
                 attrs["signed"] = "true" if signed else "false"
 
             int_type = etree.SubElement(parent, f"{{{self.XTCE_NAMESPACE}}}{type_string}", attrib=attrs)
-            self._to_xtce_endianness(item, int_type)
             self._to_xtce_units(item, int_type)
 
+            encoding_elem = etree.SubElement(
+                int_type,
+                f"{{{self.XTCE_NAMESPACE}}}IntegerDataEncoding",
+                attrib={"sizeInBits": str(item.bit_size), "encoding": encoding},
+            )
+            # ByteOrderList must be the first child of the DataEncoding element.
+            self._to_xtce_endianness(item, encoding_elem)
             if has_poly_conversion:
-                encoding_elem = etree.SubElement(
-                    int_type,
-                    f"{{{self.XTCE_NAMESPACE}}}IntegerDataEncoding",
-                    attrib={"sizeInBits": str(item.bit_size), "encoding": encoding},
-                )
                 self._to_xtce_conversion(item, encoding_elem)
-            else:
-                etree.SubElement(
-                    int_type,
-                    f"{{{self.XTCE_NAMESPACE}}}IntegerDataEncoding",
-                    attrib={"sizeInBits": str(item.bit_size), "encoding": encoding},
-                )
 
             self._to_xtce_limits(item, int_type)
             if hasattr(item, "range") and item.range:
@@ -505,26 +511,21 @@ class XtceConverter:
             attrs["shortDescription"] = item.description
 
         float_type = etree.SubElement(parent, f"{{{self.XTCE_NAMESPACE}}}Float{param_or_arg}Type", attrib=attrs)
-        self._to_xtce_endianness(item, float_type)
         self._to_xtce_units(item, float_type)
 
         has_poly_conversion = (item.read_conversion and isinstance(item.read_conversion, PolynomialConversion)) or (
             item.write_conversion and isinstance(item.write_conversion, PolynomialConversion)
         )
 
+        encoding_elem = etree.SubElement(
+            float_type,
+            f"{{{self.XTCE_NAMESPACE}}}FloatDataEncoding",
+            attrib={"sizeInBits": str(item.bit_size), "encoding": "IEEE754_1985"},
+        )
+        # ByteOrderList must be the first child of the DataEncoding element.
+        self._to_xtce_endianness(item, encoding_elem)
         if has_poly_conversion:
-            encoding_elem = etree.SubElement(
-                float_type,
-                f"{{{self.XTCE_NAMESPACE}}}FloatDataEncoding",
-                attrib={"sizeInBits": str(item.bit_size), "encoding": "IEEE754_1985"},
-            )
             self._to_xtce_conversion(item, encoding_elem)
-        else:
-            etree.SubElement(
-                float_type,
-                f"{{{self.XTCE_NAMESPACE}}}FloatDataEncoding",
-                attrib={"sizeInBits": str(item.bit_size), "encoding": "IEEE754_1985"},
-            )
 
         self._to_xtce_limits(item, float_type)
         if hasattr(item, "range") and item.range:
