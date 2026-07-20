@@ -275,7 +275,7 @@ class PacketItemParser:
         if data_type == "ARRAY":
             value = str(self.parser.parameters[index])
             try:
-                value = ConfigParser.parse_value(value)
+                value = ConfigParser.parse_value(value, config_parser=self.parser)
             except Exception as e:
                 raise self.parser.error(f"Unparsable value for ARRAY: {value}") from e
             if isinstance(value, list):
@@ -285,7 +285,7 @@ class PacketItemParser:
         if data_type == "OBJECT":
             value = str(self.parser.parameters[index])
             try:
-                value = ConfigParser.parse_value(value)
+                value = ConfigParser.parse_value(value, config_parser=self.parser)
             except Exception as e:
                 raise self.parser.error(f"Unparsable value for OBJECT: {value}") from e
             if isinstance(value, dict):
@@ -333,7 +333,7 @@ class PacketItemParser:
         if data_type == "ARRAY":
             value = str(self.parser.parameters[index])
             try:
-                value = ConfigParser.parse_value(value)
+                value = ConfigParser.parse_value(value, config_parser=self.parser)
             except Exception as e:
                 raise self.parser.error(f"Unparsable value for ARRAY: {value}") from e
             if isinstance(value, list):
@@ -343,7 +343,7 @@ class PacketItemParser:
         if data_type == "OBJECT":
             value = str(self.parser.parameters[index])
             try:
-                value = ConfigParser.parse_value(value)
+                value = ConfigParser.parse_value(value, config_parser=self.parser)
             except Exception as e:
                 raise self.parser.error(f"Unparsable value for OBJECT: {value}") from e
             if isinstance(value, dict):
