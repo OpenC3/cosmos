@@ -153,7 +153,6 @@ class TestInterfaceMicroservice(unittest.TestCase):
             )
 
     def test_creates_an_interface_updates_status_and_starts_cmd_thread(self):
-        init_threads = threading.active_count()
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
         self.assertEqual(im.config["name"], "DEFAULT__INTERFACE__INST_INT")
         self.assertEqual(im.interface.name, "INST_INT")
@@ -165,13 +164,16 @@ class TestInterfaceMicroservice(unittest.TestCase):
         self.assertEqual(data["INST_INT"]["name"], "INST_INT")
         self.assertEqual(data["INST_INT"]["state"], "ATTEMPTING")
 
-        # Each interface microservice starts 3 threads: microservice_status_thread in microservice.rb
-        # and the InterfaceCmdHandlerThread in interface_microservice.rb
-        # and a metrics thread
-        self.assertEqual(threading.active_count() - init_threads, 3)
+        # The command handler thread is created and running. We check the handler
+        # thread directly rather than the global thread count because the metrics
+        # thread is a process-wide singleton, so the delta depends on test ordering
+        # across the full suite.
+        self.assertIsNotNone(im.handler_thread)
+        self.assertTrue(im.handler_thread.thread.is_alive())
+
         im.shutdown()
-        time.sleep(0.1)  # Allow threads to exit
-        self.assertEqual(threading.active_count(), init_threads)
+        im.handler_thread.thread.join(5)  # Wait for the handler to exit (no fixed sleep race)
+        self.assertFalse(im.handler_thread.thread.is_alive())
 
     # def test_preserves_existing_packet_counts(self):
     #     # Initialize the telemetry topic with a non-zero RECEIVED_COUNT
@@ -505,7 +507,9 @@ class TestInterfaceMicroservice(unittest.TestCase):
             self.assertIn("Stale tlmcnt Redis key detected for unknown packet INST OLD_PACKET", stdout.getvalue())
 
     def test_process_cmd_with_all_fields_and_missing_optional_fields(self):
-        """Test process_cmd succeeds with full msg_hash and with only required fields."""
+        """Test process_cmd succeeds with full msg_hash and with only required fields.
+        Also verifies queue_username (the original author, shown as "Queued By")
+        is carried through to the command extra."""
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
         thread = threading.Thread(target=im.run)
         thread.start()
@@ -528,12 +532,19 @@ class TestInterfaceMicroservice(unittest.TestCase):
             b"hazardous_check": b"TRUE",
             b"cmd_string": b"cmd('INST ABORT')",
             b"username": b"test_user",
+            b"queue_username": b"DEFAULT__MULTI__INST",
             b"validate": b"TRUE",
             b"manual": b"FALSE",
             b"log_message": b"TRUE",
         }
-        result = handler.process_cmd(topic, msg_id, full_msg_hash, None)
+        with patch("openc3.microservices.interface_microservice.CommandDecomTopic.write_packet") as mock_write:
+            result = handler.process_cmd(topic, msg_id, full_msg_hash, None)
         self.assertEqual(result, "SUCCESS")
+        # queue_username must be copied into the command extra so Command History
+        # can show "Queued By" for queued commands
+        command = mock_write.call_args[0][0]
+        self.assertEqual(command.extra["username"], "test_user")
+        self.assertEqual(command.extra.get("queue_username"), "DEFAULT__MULTI__INST")
 
         # Minimal msg_hash — only required fields; optional fields use .get() defaults
         minimal_msg_hash = {
@@ -556,6 +567,137 @@ class TestInterfaceMicroservice(unittest.TestCase):
         handler.interface.cmd_target_enabled["INST"] = False
         result = handler.process_cmd(topic, msg_id, full_msg_hash, None)
         self.assertIsNone(result)
+
+    def test_process_cmd_supports_interface_directives(self):
+        """Directive messages on the CMD}INTERFACE topic: interface_details and
+        target_control (enable/disable and the error path)."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        handler = im.handler_thread
+        topic = "{DEFAULT__CMD}INTERFACE__INST_INT"
+        msg_id = f"{int(time.time() * 1000)}-0"
+
+        # interface_details returns the interface details as JSON
+        result = handler.process_cmd(topic, msg_id, {b"interface_details": b"1"}, None)
+        self.assertEqual(json.loads(result)["name"], "INST_INT")
+
+        # target_control disable turns off both cmd and tlm for the target
+        disable = json.dumps(
+            {"target_name": "INST", "cmd_only": False, "tlm_only": False, "action": "disable"}
+        ).encode()
+        self.assertEqual(handler.process_cmd(topic, msg_id, {b"target_control": disable}, None), "SUCCESS")
+        self.assertFalse(im.interface.cmd_target_enabled["INST"])
+        self.assertFalse(im.interface.tlm_target_enabled["INST"])
+
+        # target_control enable turns them back on
+        enable = json.dumps({"target_name": "INST", "cmd_only": False, "tlm_only": False, "action": "enable"}).encode()
+        self.assertEqual(handler.process_cmd(topic, msg_id, {b"target_control": enable}, None), "SUCCESS")
+        self.assertTrue(im.interface.cmd_target_enabled["INST"])
+        self.assertTrue(im.interface.tlm_target_enabled["INST"])
+
+        # target_control with invalid JSON returns the error message (not SUCCESS)
+        result = handler.process_cmd(topic, msg_id, {b"target_control": b"not json"}, None)
+        self.assertNotEqual(result, "SUCCESS")
+
+        # A raw write while not connected reports that
+        result = handler.process_cmd(topic, msg_id, {b"raw": b"\x00\x01"}, None)
+        self.assertEqual(result, "Interface not connected: INST_INT")
+
+        # interface_cmd / protocol_cmd / inject_tlm error paths return the error
+        self.assertNotEqual(handler.process_cmd(topic, msg_id, {b"interface_cmd": b"{}"}, None), "SUCCESS")
+        self.assertNotEqual(handler.process_cmd(topic, msg_id, {b"protocol_cmd": b"{}"}, None), "SUCCESS")
+        self.assertNotEqual(handler.process_cmd(topic, msg_id, {b"inject_tlm": b"not valid"}, None), "SUCCESS")
+
+    def test_process_cmd_connected_interface_directives(self):
+        """Raw write and stream logging directives against a connected interface."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        thread = threading.Thread(target=im.run)
+        thread.start()
+        self.addCleanup(thread.join, 5)
+        self.addCleanup(im.shutdown)
+        time.sleep(0.1)
+
+        handler = im.handler_thread
+        topic = "{DEFAULT__CMD}INTERFACE__INST_INT"
+        msg_id = f"{int(time.time() * 1000)}-0"
+
+        # Raw write to a connected interface results in an UNKNOWN packet
+        self.assertEqual(handler.process_cmd(topic, msg_id, {b"raw": b"\x00\x01\x02\x03"}, None), "SUCCESS")
+
+        # Enable then disable stream logging
+        self.assertEqual(handler.process_cmd(topic, msg_id, {b"log_stream": b"true"}, None), "SUCCESS")
+        self.assertEqual(handler.process_cmd(topic, msg_id, {b"log_stream": b"false"}, None), "SUCCESS")
+
+    def test_process_cmd_command_error_and_hazardous_branches(self):
+        """Hazardous check, invalid command, and not-connected branches — none
+        of which require the interface to be connected."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        handler = im.handler_thread
+        topic = "{DEFAULT__CMD}TARGET__INST"
+        msg_id = f"{int(time.time() * 1000)}-0"
+
+        # CLEAR is HAZARDOUS: with hazardous_check enabled it returns a HazardousError
+        result = handler.process_cmd(
+            topic,
+            msg_id,
+            {
+                b"target_name": b"INST",
+                b"cmd_name": b"CLEAR",
+                b"cmd_params": json.dumps({}).encode(),
+                b"hazardous_check": b"TRUE",
+                b"cmd_string": b"cmd('INST CLEAR')",
+            },
+            None,
+        )
+        self.assertTrue(result.startswith("HazardousError"))
+
+        # Neither cmd_params nor cmd_buffer present raises "Invalid command received"
+        result = handler.process_cmd(topic, msg_id, {b"target_name": b"INST", b"cmd_name": b"ABORT"}, None)
+        self.assertIn("Invalid command received", result)
+
+        # A valid command while the interface is not connected reports that
+        result = handler.process_cmd(
+            topic,
+            msg_id,
+            {
+                b"target_name": b"INST",
+                b"cmd_name": b"ABORT",
+                b"cmd_params": json.dumps({}).encode(),
+                b"hazardous_check": b"FALSE",
+            },
+            None,
+        )
+        self.assertEqual(result, "Interface not connected: INST_INT")
+
+    def test_process_cmd_identifies_a_cmd_buffer(self):
+        """A command sent as a raw cmd_buffer is identified and written to the
+        connected interface."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        thread = threading.Thread(target=im.run)
+        thread.start()
+        self.addCleanup(thread.join, 5)
+        self.addCleanup(im.shutdown)
+        time.sleep(0.1)
+
+        handler = im.handler_thread
+        topic = "{DEFAULT__CMD}TARGET__INST"
+        msg_id = f"{int(time.time() * 1000)}-0"
+
+        abort = System.commands.build_cmd("INST", "ABORT")
+        result = handler.process_cmd(
+            topic,
+            msg_id,
+            {
+                b"target_name": b"INST",
+                b"cmd_name": b"ABORT",
+                b"cmd_buffer": abort.buffer,
+                b"cmd_string": b"cmd('INST ABORT')",
+                b"username": b"test_user",
+            },
+            None,
+        )
+        self.assertEqual(result, "SUCCESS")
 
     def test_run_does_not_write_status_after_cancel_thread_set(self):
         """When stop() sets cancel_thread, disconnect() and run() must not
