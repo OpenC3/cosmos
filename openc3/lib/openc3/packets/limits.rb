@@ -182,10 +182,10 @@ module OpenC3
       raise "LATEST packet not valid" if packet_name.upcase == LATEST_PACKET_NAME
 
       packets = @config.telemetry[target_name.to_s.upcase]
-      raise "Telemetry target '#{target_name.to_s.upcase}' does not exist" unless packets
+      raise "Telemetry target '#{target_name.to_s.upcase}' does not exist (limits lookup)" unless packets
 
       packet = packets[packet_name.to_s.upcase]
-      raise "Telemetry packet '#{target_name.to_s.upcase} #{packet_name.to_s.upcase}' does not exist" unless packet
+      raise "Telemetry packet '#{target_name.to_s.upcase} #{packet_name.to_s.upcase}' does not exist (limits lookup)" unless packet
 
       return packet
     end

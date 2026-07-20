@@ -100,7 +100,7 @@ module OpenC3
 
       when :LIMITS_SET
         sets = sets(scope: scope)
-        raise "Set '#{event[:set]}' does not exist!" unless sets.key?(event[:set])
+        raise "Limits set '#{event[:set]}' does not exist" unless sets.key?(event[:set])
 
         # Set all existing sets to "false"
         sets = sets.transform_values! { |_key, _value| "false" }

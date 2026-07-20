@@ -233,7 +233,7 @@ module OpenC3
       # Array of objects with key and size methods
       result
     rescue Aws::S3::Errors::NoSuchBucket
-      raise NotFound, "Bucket '#{bucket}' does not exist."
+      raise NotFound, "Bucket '#{bucket}' does not exist (list_objects)"
     end
 
     # Lists the files under a specified path
@@ -283,7 +283,7 @@ module OpenC3
       end
       result
     rescue Aws::S3::Errors::NoSuchBucket
-      raise NotFound, "Bucket '#{bucket}' does not exist."
+      raise NotFound, "Bucket '#{bucket}' does not exist (list_files)"
     end
 
     # get metadata for a specific object

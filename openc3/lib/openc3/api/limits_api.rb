@@ -134,7 +134,7 @@ module OpenC3
           break
         end
       end
-      raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist" unless found_item
+      raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist while enabling limits" unless found_item
 
       TargetModel.set_packet(target_name, packet_name, packet, scope: scope)
 
@@ -167,7 +167,7 @@ module OpenC3
           break
         end
       end
-      raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist" unless found_item
+      raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist while disabling limits" unless found_item
 
       TargetModel.set_packet(target_name, packet_name, packet, scope: scope)
 
@@ -239,7 +239,7 @@ module OpenC3
           end
         end
       end
-      raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist" unless found_item
+      raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist while setting limits" unless found_item
       message = "Setting '#{target_name} #{packet_name} #{item_name}' limits to #{red_low} #{yellow_low} #{yellow_high} #{red_high}"
       message << " #{green_low} #{green_high}" if green_low && green_high
       message << " in set #{limits_set} with persistence #{persistence} as enabled #{enabled}"
@@ -286,7 +286,7 @@ module OpenC3
           break
         end
       end
-      raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist" unless found_item
+      raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist while setting state color" unless found_item
       message = "Setting '#{target_name} #{packet_name} #{item_name}' state #{state_name} color to #{color}"
       Logger.info(message, scope: scope)
 

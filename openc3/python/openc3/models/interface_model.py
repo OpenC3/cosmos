@@ -228,7 +228,7 @@ class InterfaceModel(Model):
     def ensure_target_exists(self, target_name):
         target = TargetModel.get(name=target_name, scope=self.scope)
         if not target:
-            raise RuntimeError(f"Target {target_name} does not exist")
+            raise RuntimeError(f"Target '{target_name}' does not exist (InterfaceModel)")
         return target
 
     def unmap_target(self, target_name, cmd_only=False, tlm_only=False):

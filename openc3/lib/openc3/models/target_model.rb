@@ -295,7 +295,7 @@ module OpenC3
 
       # Assume it exists and just try to get it to avoid an extra call to Store.exist?
       json = store_for_target(target_name, scope: scope).hget("#{scope}__openc3#{type.to_s.downcase}__#{target_name}", packet_name)
-      raise "Packet '#{target_name} #{packet_name}' does not exist" if json.nil?
+      raise "Packet definition '#{target_name} #{packet_name}' does not exist" if json.nil?
 
       packet = JSON.parse(json, allow_nan: true, create_additions: true)
 
@@ -316,7 +316,7 @@ module OpenC3
     # @return [Array<Hash>] All packet hashes under the target_name
     def self.packets(target_name, type: :TLM, scope:)
       raise "Unknown type #{type} for #{target_name}" unless VALID_TYPES.include?(type)
-      raise "Target '#{target_name}' does not exist for scope: #{scope}" unless get(name: target_name, scope: scope)
+      raise "Target '#{target_name}' does not exist for scope: #{scope} (TargetModel)" unless get(name: target_name, scope: scope)
 
       result = []
       packets = store_for_target(target_name, scope: scope).hgetall("#{scope}__openc3#{type.to_s.downcase}__#{target_name}")
@@ -352,7 +352,7 @@ module OpenC3
     def self.packet_item(target_name, packet_name, item_name, type: :TLM, scope:)
       packet = packet(target_name, packet_name, type: type, scope: scope)
       item = packet['items'].find { |item| item['name'] == item_name.to_s }
-      raise "Item '#{packet['target_name']} #{packet['packet_name']} #{item_name}' does not exist" unless item
+      raise "Item '#{packet['target_name']} #{packet['packet_name']} #{item_name}' does not exist (TargetModel)" unless item
       item
     end
 

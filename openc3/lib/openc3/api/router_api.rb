@@ -46,7 +46,7 @@ module OpenC3
     def get_router(router_name, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', router_name: router_name, manual: manual, scope: scope, token: token)
       router = RouterModel.get(name: router_name, scope: scope)
-      raise "Router '#{router_name}' does not exist" unless router
+      raise "Router '#{router_name}' does not exist (get_router)" unless router
 
       router.merge(RouterStatusModel.get(name: router_name, scope: scope))
     end
@@ -144,7 +144,7 @@ module OpenC3
       # TODO: Check if they have command authority for the targets mapped to this router
       authorize(permission: 'system_set', router_name: router_name, manual: manual, scope: scope, token: token)
       router = RouterModel.get_model(name: router_name, scope: scope)
-      raise "Router '#{router_name}' does not exist" unless router
+      raise "Router '#{router_name}' does not exist (map_target_to_router)" unless router
 
       if Array === target_name
         target_names = target_name
@@ -167,7 +167,7 @@ module OpenC3
       # TODO: Check if they have command authority for the targets mapped to this router
       authorize(permission: 'system_set', router_name: router_name, manual: manual, scope: scope, token: token)
       router = RouterModel.get_model(name: router_name, scope: scope)
-      raise "Router '#{router_name}' does not exist" unless router
+      raise "Router '#{router_name}' does not exist (unmap_target_from_router)" unless router
 
       if Array === target_name
         target_names = target_name

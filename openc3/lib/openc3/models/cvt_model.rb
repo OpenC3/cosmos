@@ -86,7 +86,7 @@ module OpenC3
         return hash if hash and (now - cache_time) < cache_timeout
       end
       packet = store_for_target(target_name, scope: scope).hget(key, packet_name)
-      raise "Packet '#{target_name} #{packet_name}' does not exist" unless packet
+      raise "Packet '#{target_name} #{packet_name}' has no current values in CVT" unless packet
       hash = JSON.parse(packet, allow_nan: true, create_additions: true)
       @@packet_cache[tgt_pkt_key] = [now, hash]
       hash
@@ -107,7 +107,7 @@ module OpenC3
         hash["#{item_name}__C"] = value
         hash[item_name] = value
       else
-        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
+        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name} (set_item)"
       end
       set(hash, target_name: target_name, packet_name: packet_name, queued: queued, scope: scope)
     end
@@ -252,7 +252,7 @@ module OpenC3
       when :FORMATTED, :WITH_UNITS
         hash["#{item_name}__F"] = value.to_s # Always a String
       else
-        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
+        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name} (override)"
       end
 
       tgt_pkt_key = "#{scope}__tlm__#{target_name}__#{packet_name}"
@@ -277,7 +277,7 @@ module OpenC3
       when :FORMATTED, :WITH_UNITS
         hash.delete("#{item_name}__F")
       else
-        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
+        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name} (normalize)"
       end
 
       tgt_pkt_key = "#{scope}__tlm__#{target_name}__#{packet_name}"
@@ -327,7 +327,7 @@ module OpenC3
       when :RAW
         types = [item_name]
       else
-        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
+        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name} (get_item)"
       end
 
       tgt_pkt_key = "#{scope}__tlm__#{target_name}__#{packet_name}"

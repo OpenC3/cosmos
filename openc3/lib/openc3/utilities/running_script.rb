@@ -643,7 +643,7 @@ class RunningScript
 
     # Retrieve file
     @body = ::Script.body(@script_status.scope, @script_status.filename)
-    raise "Script not found: #{@script_status.filename}" if @body.nil?
+    raise "Script not found during initialization: #{@script_status.filename}" if @body.nil?
     breakpoints = @@breakpoints[@script_status.filename]&.filter { |_, present| present }&.map { |line_number, _| line_number - 1 } # -1 because frontend lines are 0-indexed
     breakpoints ||= []
     running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :file, filename: @script_status.filename, scope: @script_status.scope, text: @body.to_utf8, breakpoints: breakpoints })
@@ -1518,7 +1518,7 @@ class RunningScript
       running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints })
     else
       text = ::Script.body(@script_status.scope, filename)
-      raise "Script not found: #{filename}" if text.nil?
+      raise "Script not found during load/require: #{filename}" if text.nil?
       @@file_cache[filename] = text
       @body = text
       running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints })

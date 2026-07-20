@@ -534,15 +534,15 @@ module OpenC3
       if /Parameter/.match?(element.name)
         # Look up the parameter and parameter type
         parameter = @parameters[element['parameterRef']]
-        raise "parameterRef #{element['parameterRef']} not found" unless parameter
+        raise "parameterRef #{element['parameterRef']} not found (parameter lookup)" unless parameter
 
         parameter_type = @parameter_types[parameter.parameterTypeRef]
-        raise "parameterTypeRef #{parameter.parameterTypeRef} not found" unless parameter_type
+        raise "parameterTypeRef #{parameter.parameterTypeRef} not found (parameter type lookup)" unless parameter_type
 
         if element.name == 'ArrayParameterRefEntry'
           array_type = parameter_type
           parameter_type = @parameter_types[array_type.arrayTypeRef]
-          raise "arrayTypeRef #{parameter.arrayTypeRef} not found" unless parameter_type
+          raise "arrayTypeRef #{parameter.arrayTypeRef} not found (array parameter type)" unless parameter_type
         end
         refName = 'parameterRef'
         object = parameter
@@ -552,22 +552,22 @@ module OpenC3
         if element.name == 'ArrayArgumentRefEntry'
           # Requiring parameterRef for argument arrays appears to be a defect in the schema
           argument = @arguments[element['parameterRef']]
-          raise "parameterRef #{element['parameterRef']} not found" unless argument
+          raise "parameterRef #{element['parameterRef']} not found (array argument lookup)" unless argument
 
           argument_type = @argument_types[argument.argumentTypeRef]
-          raise "argumentTypeRef #{argument.argumentTypeRef} not found" unless argument_type
+          raise "argumentTypeRef #{argument.argumentTypeRef} not found (array argument type lookup)" unless argument_type
 
           array_type = argument_type
           argument_type = @argument_types[array_type.arrayTypeRef]
-          raise "arrayTypeRef #{array_type.arrayTypeRef} not found" unless argument_type
+          raise "arrayTypeRef #{array_type.arrayTypeRef} not found (array argument element type)" unless argument_type
 
           refName = 'parameterRef'
         else
           argument = @arguments[element['argumentRef']]
-          raise "argumentRef #{element['argumentRef']} not found" unless argument
+          raise "argumentRef #{element['argumentRef']} not found (argument lookup)" unless argument
 
           argument_type = @argument_types[argument.argumentTypeRef]
-          raise "argumentTypeRef #{argument.argumentTypeRef} not found" unless argument_type
+          raise "argumentTypeRef #{argument.argumentTypeRef} not found (argument type lookup)" unless argument_type
 
           refName = 'argumentRef'
         end

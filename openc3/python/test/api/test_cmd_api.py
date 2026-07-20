@@ -760,11 +760,11 @@ class TestCmdApi(unittest.TestCase):
         self.assertEqual(get_cmd_time(), (None, None, 0, 0))
 
     def test_get_cmd_cnt_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH ABORT' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH ABORT' does not exist"):
             get_cmd_cnt("BLAH", "ABORT")
 
     def test_get_cmd_cnt_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             get_cmd_cnt("INST BLAH")
 
     def test_get_cmd_cnt_returns_the_transmit_count(self):

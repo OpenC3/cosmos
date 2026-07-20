@@ -426,7 +426,7 @@ module OpenC3
       end
 
       it "complains if an item doesn't exist" do
-        expect { @s.get_item("test2") }.to raise_error(ArgumentError, "Unknown item: test2")
+        expect { @s.get_item("test2") }.to raise_error(ArgumentError, "Unknown item: test2 (get_item)")
       end
     end
 
@@ -461,7 +461,7 @@ module OpenC3
         @s.append_item("test2", 16, :UINT)
         expect(@s.defined_length).to eql 3
         @s.delete_item("test1")
-        expect { @s.get_item("test1") }.to raise_error(ArgumentError, "Unknown item: test1")
+        expect { @s.get_item("test1") }.to raise_error(ArgumentError, "Unknown item: test1 (get_item)")
         expect(@s.defined_length).to eql 3
         expect(@s.items["TEST1"]).to be_nil
         expect(@s.items["TEST2"]).not_to be_nil
@@ -552,7 +552,7 @@ module OpenC3
 
     describe "read" do
       it "complains if item doesn't exist" do
-        expect { Structure.new.read("BLAH") }.to raise_error(ArgumentError, "Unknown item: BLAH")
+        expect { Structure.new.read("BLAH") }.to raise_error(ArgumentError, "Unknown item: BLAH (get_item)")
       end
 
       it "reads data from the buffer" do
@@ -586,7 +586,7 @@ module OpenC3
 
     describe "write" do
       it "complains if item doesn't exist" do
-        expect { Structure.new.write("BLAH", 0) }.to raise_error(ArgumentError, "Unknown item: BLAH")
+        expect { Structure.new.write("BLAH", 0) }.to raise_error(ArgumentError, "Unknown item: BLAH (get_item)")
       end
 
       it "writes data to the buffer" do
@@ -873,7 +873,7 @@ module OpenC3
       it "complains if it can't find an item" do
         s = Structure.new(:BIG_ENDIAN)
         s.enable_method_missing
-        expect { s.test1 }.to raise_error(ArgumentError, "Unknown item: test1")
+        expect { s.test1 }.to raise_error(ArgumentError, "Unknown item: test1 (get_item)")
       end
     end
 
