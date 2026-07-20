@@ -1,0 +1,209 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+# Builds the openc3-app native installers on each OS/arch (native runners, since
+# a .dmg needs macOS and a .msi/WiX needs Windows). Run it manually
+# (workflow_dispatch) to build without publishing — installers land as artifacts;
+# pushing an `openc3-app-v*` tag additionally attaches them to a GitHub Release.
+name: openc3-app Release Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Which target to build"
+        type: choice
+        default: all
+        options:
+          - all
+          - linux-x86_64
+          - linux-arm64
+          - macos-x86_64
+          - macos-arm64
+          - windows-x86_64
+  push:
+    tags:
+      - "openc3-app-v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openc3-app-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Compute the build matrix so a manual run can target a single OS/arch (the
+  # `target` input); tag pushes always build everything.
+  setup:
+    name: Select targets
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+      - name: Build the target matrix
+        id: pick
+        env:
+          TARGET: ${{ github.event.inputs.target || 'all' }}
+        run: |
+          all='[
+            {"runner":"ubuntu-latest","name":"linux-x86_64","packager_args":"-f deb -f appimage"},
+            {"runner":"ubuntu-24.04-arm","name":"linux-arm64","packager_args":"-f deb -f appimage"},
+            {"runner":"macos-13","name":"macos-x86_64","packager_args":"-f dmg"},
+            {"runner":"macos-14","name":"macos-arm64","packager_args":"-f dmg"},
+            {"runner":"windows-latest","name":"windows-x86_64","packager_args":"-f nsis -f wix"}
+          ]'
+          if [ "$TARGET" = "all" ]; then
+            matrix=$(echo "$all" | jq -c '{include: .}')
+          else
+            matrix=$(echo "$all" | jq -c --arg t "$TARGET" '{include: [.[] | select(.name == $t)]}')
+          fi
+          echo "Selected: $matrix"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: ${{ matrix.name }}
+    needs: setup
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
+    defaults:
+      run:
+        working-directory: openc3-app
+    steps:
+      # harden-runner only supports Linux runners.
+      - name: Harden the runner (Audit all outbound calls)
+        if: runner.os == 'Linux'
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Install/refresh the Rust toolchain
+        run: rustup update --no-self-update stable && rustup default stable
+
+      # Caches the cargo registry, build target, and installed binaries (so
+      # cargo-packager isn't rebuilt every run). Keyed per-runner automatically.
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          workspaces: openc3-app
+
+      - name: Install cargo-packager
+        run: cargo install cargo-packager --locked
+
+      - name: Build the release binary
+        run: cargo build --release
+
+      - name: Package installers
+        env:
+          # Build the AppImage without FUSE (unavailable on hosted runners);
+          # ignored on macOS/Windows.
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+          # macOS signing + notarization. cargo-packager imports the base64 .p12
+          # cert into a temporary keychain and signs/notarizes when these are set;
+          # if the secrets are absent they expand to empty and the build is simply
+          # left unsigned (ad-hoc). Ignored on Linux/Windows. Configure these repo
+          # secrets to produce signed, notarized macOS builds:
+          #   APPLE_CERTIFICATE           base64 of the Developer ID .p12
+          #   APPLE_CERTIFICATE_PASSWORD  its password
+          #   APPLE_SIGNING_IDENTITY      e.g. "Developer ID Application: NAME (TEAMID)"
+          #   APPLE_ID / APPLE_PASSWORD   Apple ID + app-specific password
+          #   APPLE_TEAM_ID               10-char team id
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: cargo packager --release ${{ matrix.packager_args }} --out-dir dist/installers
+
+      - name: Upload installers
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: openc3-app-${{ matrix.name }}
+          path: openc3-app/dist/installers/*
+          if-no-files-found: error
+
+  # Prove the .deb installs cleanly (dependencies resolve, binary runs) in a
+  # fresh Ubuntu container. Runs whenever the linux-x86_64 target was built.
+  deb-smoke-test:
+    name: .deb install smoke test
+    needs: build
+    if: ${{ github.event.inputs.target == '' || github.event.inputs.target == 'all' || github.event.inputs.target == 'linux-x86_64' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      - name: Download the linux-x86_64 installers
+        run: gh run download "$GITHUB_RUN_ID" -n openc3-app-linux-x86_64 --dir pkg
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+
+      - name: Install the .deb in a clean Ubuntu container
+        run: |
+          docker run --rm -v "$PWD/pkg:/pkg" ubuntu:24.04 bash -lc '
+            set -euo pipefail
+            deb=$(ls /pkg/*.deb | head -1)
+            echo "Testing $deb"
+            echo "== Depends =="; dpkg -I "$deb" | grep -i depends
+            # Guard the libxkbcommon dependency declaration (needed for the GUI).
+            dpkg -I "$deb" | grep -qi "libxkbcommon0" \
+              || { echo "ERROR: libxkbcommon0 not declared in Depends"; exit 1; }
+            # Discover the installed binary path from the package contents.
+            bin=$(dpkg -c "$deb" | awk "{print \$6}" | grep -E "\./usr/bin/[^/]+$" | head -1 | sed "s|^\.||")
+            echo "Binary: $bin"
+            apt-get update
+            apt-get install -y "$deb"
+            # CLI/headless works without a display or libxkbcommon; prove it runs.
+            "$bin" --help >/dev/null
+            echo "OK: installed and $bin --help ran"
+          '
+
+  release:
+    name: Attach to GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/openc3-app-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create/upload the release
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      - name: Download built installers
+        run: gh run download "$GITHUB_RUN_ID" --dir artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+
+      - name: Create/update the release and upload installers
+        run: |
+          files=$(find artifacts -type f)
+          echo "Attaching:"; echo "$files"
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --title "openc3-app $GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" $files --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
