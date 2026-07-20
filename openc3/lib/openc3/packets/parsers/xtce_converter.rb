@@ -312,16 +312,18 @@ module OpenC3
                 process_entry_list(xml, packet, :COMMAND, unique_tlm_params)
                   #xml['xtce'].BaseContainer(:containerRef => "#{target_name}_#{packet_name}_CommandContainer")
                 if packet.id_items && packet.id_items.length > 0
-                  packet.id_items.each do |item|
-                    xml['xtce'].BaseContainer(:containerRef => "#{packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_Commands") do
-                      xml['xtce'].RestrictionCriteria do
-                        xml['xtce'].ComparisonList do
+                  # A CommandContainer allows only one BaseContainer, so emit all ID
+                  # comparisons in a single RestrictionCriteria/ComparisonList.
+                  xml['xtce'].BaseContainer(:containerRef => "#{packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_Commands") do
+                    xml['xtce'].RestrictionCriteria do
+                      xml['xtce'].ComparisonList do
+                        packet.id_items.each do |item|
                           item_prefix = unique_tlm_params.include?(item.name) ? "CMD_" : ""
                           xml['xtce'].Comparison(:parameterRef => item_prefix + item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR),:value => item.id_value)
                         end
-                      end # Restriction Criteria
-                    end # Base Container
-                  end # for each packet ID item
+                      end
+                    end # Restriction Criteria
+                  end # Base Container
                 end # If id items
               end # Command Container
             end # MetaCommand
@@ -351,7 +353,12 @@ module OpenC3
       initial_value = nil
       if item.default && !item.array_size
         unless item.default.is_printable?
-          initial_value = '0x' + item.default.simple_formatted
+          if string_or_binary == :BLOCK
+            # Binary initialValue is xs:hexBinary: raw hex digits, no 0x prefix.
+            initial_value = item.default.simple_formatted
+          else
+            initial_value = '0x' + item.default.simple_formatted
+          end
         else
           if string_or_binary == :STRING
             initial_value = item.default.inspect
@@ -667,7 +674,12 @@ module OpenC3
       attrs[:characterWidth] = 8 if string_or_binary == 'String'
       if item.default && !item.array_size
         unless item.default.is_printable?
-          attrs[:initialValue] = '0x' + item.default.simple_formatted
+          if string_or_binary == 'Binary'
+            # Binary initialValue is xs:hexBinary: raw hex digits, no 0x prefix.
+            attrs[:initialValue] = item.default.simple_formatted
+          else
+            attrs[:initialValue] = '0x' + item.default.simple_formatted
+          end
         else
           if string_or_binary == 'String'
             attrs[:initialValue] = item.default.inspect

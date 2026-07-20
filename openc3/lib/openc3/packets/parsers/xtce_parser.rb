@@ -693,7 +693,10 @@ module OpenC3
           item.default = []
         else
           if type.initialValue
-            if type.initialValue.upcase.start_with?("0X")
+            if data_type == :BLOCK
+              # Binary initialValue is xs:hexBinary (raw hex, optional 0x prefix)
+              item.default = type.initialValue.hex_to_byte_string
+            elsif type.initialValue.upcase.start_with?("0X")
               item.default = type.initialValue.hex_to_byte_string
             else
               # Strip quotes from strings

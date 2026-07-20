@@ -492,7 +492,7 @@ module OpenC3
       tf.puts "          </xtce:SizeInBits>"
       tf.puts "        </xtce:StringDataEncoding>"
       tf.puts "      </xtce:StringArgumentType>"
-      tf.puts "      <xtce:BinaryArgumentType name=\"CMD_PKT_CMD_BLOCK_Type\" initialValue=\"0xBEEF\" shortDescription=\"Block\">"
+      tf.puts "      <xtce:BinaryArgumentType name=\"CMD_PKT_CMD_BLOCK_Type\" initialValue=\"BEEF\" shortDescription=\"Block\">"
       tf.puts "        <xtce:UnitSet/>"
       tf.puts "        <xtce:BinaryDataEncoding>"
       tf.puts "          <xtce:SizeInBits>"
@@ -514,7 +514,7 @@ module OpenC3
       tf.puts "          <xtce:Argument name=\"CMD_DOUBLE\" argumentTypeRef=\"CMD_PKT_CMD_DOUBLE_Type\" initialValue=\"0.0\"/>"
       tf.puts "          <xtce:Argument name=\"CMD_STRING\" argumentTypeRef=\"CMD_PKT_CMD_STRING_Type\" initialValue=\"&quot;DEAD&quot;\"/>"
       tf.puts "          <xtce:Argument name=\"CMD_STRING2\" argumentTypeRef=\"CMD_PKT_CMD_STRING2_Type\" initialValue=\"0xDEAD\"/>"
-      tf.puts "          <xtce:Argument name=\"CMD_BLOCK\" argumentTypeRef=\"CMD_PKT_CMD_BLOCK_Type\" initialValue=\"0xBEEF\"/>"
+      tf.puts "          <xtce:Argument name=\"CMD_BLOCK\" argumentTypeRef=\"CMD_PKT_CMD_BLOCK_Type\" initialValue=\"BEEF\"/>"
       tf.puts "        </xtce:ArgumentList>"
       tf.puts "        <xtce:CommandContainer name=\"CMD_PKT_Commands\">"
       tf.puts "          <xtce:EntryList>"
@@ -684,6 +684,18 @@ module OpenC3
         Object.send(:remove_const, :Conversion2) if Object.const_defined?(:Conversion2)
       end
 
+      # Validate a generated XTCE file against the vendored OMG XTCE 1.2 schema.
+      # The schema imports xml.xsd via a relative path, so validate from within the
+      # schema directory to resolve it offline.
+      def assert_xtce_schema_valid(xml_path)
+        schema_dir = File.expand_path(File.join(File.dirname(__FILE__), "xtce_schemas"))
+        doc = Nokogiri::XML(File.read(xml_path))
+        errors = Dir.chdir(schema_dir) do
+          Nokogiri::XML::Schema(File.read("SpaceSystem_20180204.xsd")).validate(doc)
+        end
+        expect(errors).to be_empty, "XTCE 1.2 schema validation errors:\n#{errors.map(&:message).join("\n")}"
+      end
+
       it "converts simple tlm and aliases name" do
         expected_tf = telemetry_file("TGT1") do |telem_file|
           sample_simple_tlm_packet_with_alias(telem_file)
@@ -697,6 +709,7 @@ module OpenC3
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         expected_output = Nokogiri::XML(File.open(expected_tf.path))
         expect(xtce_doc).to be_equivalent_to(expected_output)
@@ -721,6 +734,7 @@ module OpenC3
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
         Nokogiri::XML(File.open(xml_path))
         Nokogiri::XML(File.open(expected_tf.path))
         expected_tf.unlink
@@ -742,6 +756,7 @@ module OpenC3
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         expected_output = Nokogiri::XML(File.open(expected_tf.path))
         expect(xtce_doc).to be_equivalent_to(expected_output)
@@ -764,6 +779,7 @@ module OpenC3
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         expected_output = Nokogiri::XML(File.open(expected_tf.path))
         expect(xtce_doc).to be_equivalent_to(expected_output)
@@ -802,6 +818,7 @@ module OpenC3
         @pc.to_xtce(spec_install, "PACKET_TIME")
         combination_dir = File.join(spec_install)
         output_path = XtceConverter.combine_output_xtce(combination_dir)
+        assert_xtce_schema_valid(output_path)
         result_xml = Nokogiri::XML(File.open(output_path))
 
         expected_output = Nokogiri::XML(File.open(expected_tf.path))
@@ -844,6 +861,7 @@ module OpenC3
         @pc.to_xtce(spec_install, "PACKET_TIME")
         combination_dir = File.join(spec_install)
         output_path = XtceConverter.combine_output_xtce(combination_dir, "TGT1")
+        assert_xtce_schema_valid(output_path)
         result_xml = Nokogiri::XML(File.open(output_path))
 
         expected_output = Nokogiri::XML(File.open(expected_tf.path))
@@ -886,6 +904,7 @@ module OpenC3
         @pc.to_xtce(spec_install, "PACKET_TIME")
         combination_dir = File.join(spec_install)
         output_path = XtceConverter.combine_output_xtce(combination_dir, "TGT2")
+        assert_xtce_schema_valid(output_path)
         result_xml = Nokogiri::XML(File.open(output_path))
         expected_output = Nokogiri::XML(File.open(expected_tf.path))
         expect(result_xml).to be_equivalent_to(expected_output)
@@ -966,6 +985,7 @@ module OpenC3
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
         expect(File.exist?(xml_path)).to be true
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         expected_result_xml = Nokogiri::XML(File.open(expected_tf))
@@ -988,14 +1008,7 @@ module OpenC3
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
-        doc = Nokogiri::XML(File.read(xml_path))
-        # The vendored 1.2 SpaceSystem.xsd imports xml.xsd via a relative path,
-        # so validate from within the schema directory to resolve it offline.
-        schema_dir = File.expand_path(File.join(File.dirname(__FILE__), "xtce_schemas"))
-        errors = Dir.chdir(schema_dir) do
-          Nokogiri::XML::Schema(File.read("SpaceSystem_20180204.xsd")).validate(doc)
-        end
-        expect(errors).to be_empty, "XTCE 1.2 schema validation errors:\n#{errors.map(&:message).join("\n")}"
+        assert_xtce_schema_valid(xml_path)
         tf.unlink
         FileUtils.rm_rf File.join(spec_install, "TGT1")
       end
@@ -1094,6 +1107,7 @@ module OpenC3
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
         expect(File.exist?(xml_path)).to be true
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         expected_xtce_file = algorithm_xtce()
@@ -1138,6 +1152,7 @@ module OpenC3
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
         expect(File.exist?(xml_path)).to be true
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         expected_xtce_file = special_packet_time_xtce()
@@ -1171,6 +1186,7 @@ module OpenC3
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
         expect(File.exist?(xml_path)).to be true
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         # Verify conversions are present
@@ -1192,6 +1208,7 @@ module OpenC3
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
         expect(File.exist?(xml_path)).to be true
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         # Verify DEFAULT limits are present
@@ -1212,6 +1229,7 @@ module OpenC3
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
         expect(File.exist?(xml_path)).to be true
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         # Verify little endian byte order is present
@@ -1232,6 +1250,7 @@ module OpenC3
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
         expect(File.exist?(xml_path)).to be true
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         expect(xtce_doc.to_s).to include("EnumeratedArgumentType")
@@ -1250,6 +1269,7 @@ module OpenC3
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
         expect(File.exist?(xml_path)).to be true
         tf.unlink
         FileUtils.rm_rf File.join(spec_install, "TGT1")
@@ -1266,6 +1286,7 @@ module OpenC3
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
         expect(File.exist?(xml_path)).to be true
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         expect(xtce_doc.to_s).to include("StringDataEncoding")
@@ -1284,6 +1305,7 @@ module OpenC3
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
         expect(File.exist?(xml_path)).to be true
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         # Unpacked items should have LocationInContainerInBits
@@ -1304,6 +1326,7 @@ module OpenC3
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
         expect(File.exist?(xml_path)).to be true
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         # Should have both ID parameters
@@ -1324,6 +1347,7 @@ module OpenC3
         spec_install = File.join("..", "..", "install")
         @pc.to_xtce(spec_install, "PACKET_TIME")
         xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
         expect(File.exist?(xml_path)).to be true
         xtce_doc = Nokogiri::XML(File.open(xml_path))
         expect(xtce_doc.to_s).to include("ArrayParameterType")
