@@ -238,7 +238,7 @@ module OpenC3
 
         plugin_model.minimum_cosmos_version = pkg.spec.metadata['openc3_cosmos_minimum_version']
 
-        # Process app store metadata
+        # Process OpenC3 Store metadata
         plugin_model.title = pkg.spec.metadata['openc3_store_title'] || pkg.spec.summary.strip
         plugin_model.description = pkg.spec.metadata['openc3_store_description'] || pkg.spec.description.strip
         plugin_model.licenses = pkg.spec.licenses
