@@ -447,8 +447,9 @@ module OpenC3
           temp_type = item.id_value ? "Parameter" : type
           prefix = (cmd_vs_tlm == :COMMAND && unique_tlm_params.include?(item.name)) ? "CMD_" : ""
           if item.array_size
-            # Requiring parameterRef for argument arrays appears to be a defect in the schema
-            reference_symbol = temp_type == "Argument" ? :parameterRef : "#{temp_type.downcase}Ref".to_sym
+            # XTCE 1.2 defines dedicated argumentRef/parameterRef attributes for
+            # Array{Argument,Parameter}RefEntry, so derive the reference from the type.
+            reference_symbol = "#{temp_type.downcase}Ref".to_sym
             xml['xtce'].public_send("Array#{temp_type}RefEntry".intern, reference_symbol => prefix + item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)) do
               set_fixed_value(xml, item) if !packed
               xml['xtce'].DimensionList do

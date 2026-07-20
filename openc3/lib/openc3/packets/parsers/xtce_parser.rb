@@ -550,9 +550,12 @@ module OpenC3
       else
         # Look up the argument and argument type
         if element.name == 'ArrayArgumentRefEntry'
-          # Requiring parameterRef for argument arrays appears to be a defect in the schema
-          argument = @arguments[element['parameterRef']]
-          raise "parameterRef #{element['parameterRef']} not found (array argument lookup)" unless argument
+          # XTCE 1.2 requires argumentRef on ArrayArgumentRefEntry. Older XTCE
+          # (1.0/1.1) and files exported by prior COSMOS versions used parameterRef
+          # here (a defect in those schemas), so accept it as a fallback.
+          refName = element['argumentRef'] ? 'argumentRef' : 'parameterRef'
+          argument = @arguments[element[refName]]
+          raise "#{refName} #{element[refName]} not found (array argument lookup)" unless argument
 
           argument_type = @argument_types[argument.argumentTypeRef]
           raise "argumentTypeRef #{argument.argumentTypeRef} not found (array argument type lookup)" unless argument_type
@@ -560,8 +563,6 @@ module OpenC3
           array_type = argument_type
           argument_type = @argument_types[array_type.arrayTypeRef]
           raise "arrayTypeRef #{array_type.arrayTypeRef} not found (array argument element type)" unless argument_type
-
-          refName = 'parameterRef'
         else
           argument = @arguments[element['argumentRef']]
           raise "argumentRef #{element['argumentRef']} not found (argument lookup)" unless argument

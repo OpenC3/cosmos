@@ -521,7 +521,7 @@ module OpenC3
       tf.puts "            <xtce:ParameterRefEntry parameterRef=\"CMD_OPCODE\"/>"
       tf.puts "            <xtce:ArgumentRefEntry argumentRef=\"CMD_UNSIGNED\"/>"
       tf.puts "            <xtce:ArgumentRefEntry argumentRef=\"CMD_SIGNED\"/>"
-      tf.puts "            <xtce:ArrayArgumentRefEntry parameterRef=\"CMD_ARRAY\">"
+      tf.puts "            <xtce:ArrayArgumentRefEntry argumentRef=\"CMD_ARRAY\">"
       tf.puts "              <xtce:DimensionList>"
       tf.puts "                <xtce:Dimension>"
       tf.puts "                  <xtce:StartingIndex>"
@@ -675,6 +675,13 @@ module OpenC3
     describe "Convert CMD and TLM definitions" do
       before(:each) do
         @pc = PacketConfig.new
+      end
+
+      after(:each) do
+        # Several tests here define a top-level Conversion2 class via `load`. Ruby
+        # reopens (not replaces) the constant, so a custom initialize would leak
+        # into other spec files that also define Conversion2. Remove it to isolate.
+        Object.send(:remove_const, :Conversion2) if Object.const_defined?(:Conversion2)
       end
 
       it "converts simple tlm and aliases name" do
@@ -966,6 +973,85 @@ module OpenC3
         expected_tf.unlink
         tf.unlink
         FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "generates XTCE that validates against the OMG XTCE 1.2 schema" do
+        tf = Tempfile.new('unittest')
+        # Include an array argument to exercise ArrayArgumentRefEntry, which the
+        # XTCE 1.2 schema requires to use argumentRef (not parameterRef).
+        cmd = "COMMAND TGT1 CMDPKT LITTLE_ENDIAN \"Command\"\n"\
+              "  ID_PARAMETER OPCODE 0 16 UINT 0 0 0 \"Opcode\"\n"\
+              "  ARRAY_PARAMETER CMD_ARRAY 16 64 FLOAT 640 \"Array of 10 64bit floats\"\n"
+        tf.puts cmd
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        doc = Nokogiri::XML(File.read(xml_path))
+        # The vendored 1.2 SpaceSystem.xsd imports xml.xsd via a relative path,
+        # so validate from within the schema directory to resolve it offline.
+        schema_dir = File.expand_path(File.join(File.dirname(__FILE__), "xtce_schemas"))
+        errors = Dir.chdir(schema_dir) do
+          Nokogiri::XML::Schema(File.read("SpaceSystem_20180204.xsd")).validate(doc)
+        end
+        expect(errors).to be_empty, "XTCE 1.2 schema validation errors:\n#{errors.map(&:message).join("\n")}"
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "rejects ArrayArgumentRefEntry using parameterRef against the XTCE 1.2 schema" do
+        # Guards the fix for the regression where array command arguments were
+        # exported with parameterRef. The XTCE 1.2 schema requires argumentRef, so
+        # the buggy form below must be reported as invalid.
+        buggy = <<~XTCE
+          <?xml version="1.0" encoding="UTF-8"?>
+          <xtce:SpaceSystem xmlns:xtce="http://www.omg.org/spec/XTCE/20180204" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="TGT1" xsi:schemaLocation="http://www.omg.org/spec/XTCE/20180204 https://www.omg.org/spec/XTCE/20180204/SpaceSystem.xsd">
+            <xtce:CommandMetaData>
+              <xtce:ArgumentTypeSet>
+                <xtce:FloatArgumentType name="CMDPKT_CMD_ARRAY_Type" sizeInBits="64">
+                  <xtce:UnitSet/>
+                  <xtce:FloatDataEncoding sizeInBits="64" encoding="IEEE754_1985"/>
+                </xtce:FloatArgumentType>
+                <xtce:ArrayArgumentType name="CMDPKT_CMD_ARRAY_ArrayType" arrayTypeRef="CMDPKT_CMD_ARRAY_Type">
+                  <xtce:DimensionList>
+                    <xtce:Dimension>
+                      <xtce:StartingIndex><xtce:FixedValue>0</xtce:FixedValue></xtce:StartingIndex>
+                      <xtce:EndingIndex><xtce:FixedValue>0</xtce:FixedValue></xtce:EndingIndex>
+                    </xtce:Dimension>
+                  </xtce:DimensionList>
+                </xtce:ArrayArgumentType>
+              </xtce:ArgumentTypeSet>
+              <xtce:MetaCommandSet>
+                <xtce:MetaCommand name="CMDPKT">
+                  <xtce:ArgumentList>
+                    <xtce:Argument name="CMD_ARRAY" argumentTypeRef="CMDPKT_CMD_ARRAY_ArrayType"/>
+                  </xtce:ArgumentList>
+                  <xtce:CommandContainer name="CMDPKT_Commands">
+                    <xtce:EntryList>
+                      <xtce:ArrayArgumentRefEntry parameterRef="CMD_ARRAY">
+                        <xtce:DimensionList>
+                          <xtce:Dimension>
+                            <xtce:StartingIndex><xtce:FixedValue>0</xtce:FixedValue></xtce:StartingIndex>
+                            <xtce:EndingIndex><xtce:FixedValue>9</xtce:FixedValue></xtce:EndingIndex>
+                          </xtce:Dimension>
+                        </xtce:DimensionList>
+                      </xtce:ArrayArgumentRefEntry>
+                    </xtce:EntryList>
+                  </xtce:CommandContainer>
+                </xtce:MetaCommand>
+              </xtce:MetaCommandSet>
+            </xtce:CommandMetaData>
+          </xtce:SpaceSystem>
+        XTCE
+        doc = Nokogiri::XML(buggy)
+        schema_dir = File.expand_path(File.join(File.dirname(__FILE__), "xtce_schemas"))
+        errors = Dir.chdir(schema_dir) do
+          Nokogiri::XML::Schema(File.read("SpaceSystem_20180204.xsd")).validate(doc)
+        end
+        messages = errors.map(&:message).join("\n")
+        expect(messages).to match(/parameterRef.*not allowed/)
+        expect(messages).to match(/argumentRef.*required/)
       end
 
 
