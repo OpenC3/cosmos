@@ -23,7 +23,7 @@ Gem::Specification.new do |s|
   s.files = Dir.glob("{targets,lib,public,tools,microservices}/**/*") + %w(Rakefile README.md LICENSE.md plugin.txt)
 
   s.metadata = {
-    # These fields are used when you submit your plugin to our App Store at store.openc3.com
+    # These fields are used when you submit your plugin to the OpenC3 Store at store.openc3.com
     # See this help page for more detail: https://store.openc3.com/help/guidelines
     "source_code_uri" => "https://github.com/your-github/plugin-repo",
     "openc3_store_title" => "<%= plugin_orig %>",

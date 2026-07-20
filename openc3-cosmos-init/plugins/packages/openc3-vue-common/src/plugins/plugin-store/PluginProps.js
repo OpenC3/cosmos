@@ -28,7 +28,7 @@ export default {
     description: String,
     keywords: Array,
     img_path: String, // Set for local plugins
-    image_url: String, // Set for app store plugins
+    image_url: String, // Set for OpenC3 Store plugins
     licenses: Array,
     // rating: Number,
     // downloads: Number,
@@ -139,7 +139,7 @@ export default {
         return ''
       }
       if (localStorage.getItem('pluginStore.isApiKeySet') !== 'true') {
-        return 'Please add your App Store API key using the settings cog icon.'
+        return 'Please add your OpenC3 Store API key using the settings cog icon.'
       }
       if (this.access === 'enterprise') {
         return 'A COSMOS Enterprise license is required for this plugin.'
