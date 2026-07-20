@@ -306,6 +306,20 @@ class BridgeMicroservice(Microservice):
             self.logger.warn(f"Bridge handler error: {type(error).__name__}: {error}")
             await self._close(conn)
 
+    async def _read_request(self, recv):
+        """Read a full request from a bi-stream until the peer finishes writing.
+        A single `read()` can return only a partial payload (especially over a
+        relay, where data arrives in smaller chunks), so loop to EOF to avoid
+        truncated/undecodable JSON."""
+        data = b""
+        with contextlib.suppress(Exception):
+            while not self.cancel_thread:
+                chunk = await recv.read(PUMP_CHUNK_BYTES)
+                if not chunk:
+                    break
+                data += bytes(chunk)
+        return data
+
     async def _serve_enroll(self, conn):
         """Redeem a one-time manual-enrollment code (Phase 2 remote pairing).
 
@@ -318,9 +332,7 @@ class BridgeMicroservice(Microservice):
         bi = await conn.accept_bi()
         send = bi.send()
         recv = bi.recv()
-        request = b""
-        with contextlib.suppress(Exception):
-            request = bytes(await recv.read(PUMP_CHUNK_BYTES))
+        request = await self._read_request(recv)
         response = {"ok": False, "error": "invalid enrollment code"}
         try:
             code = json.loads(request or b"{}").get("code")
@@ -467,9 +479,7 @@ class BridgeMicroservice(Microservice):
         bi = await conn.accept_bi()
         send = bi.send()
         recv = bi.recv()
-        request = b""
-        with contextlib.suppress(Exception):
-            request = bytes(await recv.read(PUMP_CHUNK_BYTES))
+        request = await self._read_request(recv)
         try:
             keys = json.loads(request or b"{}").get("keys") or []
             self._authorized_hosts = {str(key) for key in keys}
@@ -491,13 +501,7 @@ class BridgeMicroservice(Microservice):
         bi = await conn.accept_bi()
         send = bi.send()
         recv = bi.recv()
-        request = b""
-        with contextlib.suppress(Exception):
-            while not self.cancel_thread:
-                chunk = await recv.read(PUMP_CHUNK_BYTES)
-                if not chunk:
-                    break
-                request += bytes(chunk)
+        request = await self._read_request(recv)
         have = {}
         with contextlib.suppress(ValueError, TypeError):
             have = json.loads(request or b"{}").get("have") or {}
