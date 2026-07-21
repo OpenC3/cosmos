@@ -34,6 +34,10 @@ use cli::{Cli, Command, InstallTarget};
 use context::Context;
 
 fn main() {
+    // If the user was added to the docker group but this process predates that
+    // (e.g. right after installing Docker), re-exec into the group so Docker is
+    // usable without a full logout. Must run before any docker use.
+    docker::relaunch_in_docker_group_if_needed();
     let cli = Cli::parse();
     if let Err(e) = run(cli) {
         eprintln!("error: {e:#}");

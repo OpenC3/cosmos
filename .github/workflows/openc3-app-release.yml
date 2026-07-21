@@ -148,6 +148,16 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: cargo packager --release --target ${{ matrix.rust_target }} ${{ matrix.packager_args }} --out-dir dist/installers
 
+      # Also ship the standalone binary as a .tar.gz so non-Debian distros (and
+      # anyone who doesn't want the .deb/AppImage) can just extract and run it.
+      # tar preserves the executable bit, which a bare file in the artifact zip
+      # would not.
+      - name: Bundle the standalone binary (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          bindir="target/${{ matrix.rust_target }}/release"
+          tar -C "$bindir" -czf "dist/installers/openc3-${{ matrix.name }}.tar.gz" openc3
+
       - name: Upload installers
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -177,19 +187,24 @@ jobs:
       - name: Install the .deb in a clean Ubuntu container
         run: |
           docker run --rm -v "$PWD/pkg:/pkg" ubuntu:24.04 bash -lc '
-            set -euo pipefail
+            # No pipefail: pipelines here end in early-exit consumers (head/grep -q)
+            # that SIGPIPE the upstream, which pipefail would treat as failure.
+            set -eu
             deb=$(ls /pkg/*.deb | head -1)
             echo "Testing $deb"
-            echo "== Depends =="; dpkg -I "$deb" | grep -i depends
+            echo "== Depends =="
+            dpkg -I "$deb" | grep -i depends
             # Guard the libxkbcommon dependency declaration (needed for the GUI).
-            dpkg -I "$deb" | grep -qi "libxkbcommon0" \
-              || { echo "ERROR: libxkbcommon0 not declared in Depends"; exit 1; }
-            # Discover the installed binary path from the package contents.
-            bin=$(dpkg -c "$deb" | awk "{print \$6}" | grep -E "\./usr/bin/[^/]+$" | head -1 | sed "s|^\.||")
-            echo "Binary: $bin"
+            if ! dpkg -I "$deb" | grep -qi "libxkbcommon0"; then
+              echo "ERROR: libxkbcommon0 not declared in Depends"; exit 1
+            fi
             apt-get update
             apt-get install -y "$deb"
-            # CLI/headless works without a display or libxkbcommon; prove it runs.
+            # Find the installed executable and run it (CLI/headless needs no
+            # display or libxkbcommon), proving the package works end to end.
+            pkg=$(dpkg-deb -f "$deb" Package)
+            bin=$(dpkg -L "$pkg" | grep "/usr/bin/" | head -1)
+            echo "Binary: $bin"
             "$bin" --help >/dev/null
             echo "OK: installed and $bin --help ran"
           '

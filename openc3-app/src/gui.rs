@@ -492,6 +492,10 @@ impl State {
                         // Keep the install page in sync as components are added,
                         // and once everything is present, advance automatically.
                         if !self.busy {
+                            // If Docker was just installed and we were added to the
+                            // docker group, re-exec into it so Docker becomes usable
+                            // this session (replaces the process; no-op otherwise).
+                            crate::docker::relaunch_in_docker_group_if_needed();
                             self.maybe_refresh_env();
                             if self.env.all_present() {
                                 self.go_main();

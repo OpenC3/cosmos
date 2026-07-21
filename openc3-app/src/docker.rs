@@ -23,59 +23,87 @@ pub fn engine_cmd(rt: &Runtime) -> Command {
     Command::new(&rt.engine)
 }
 
-/// Run a docker-derived command, transparently applying the `docker` group via
-/// `sg` on Linux when this process isn't in that group yet (see
-/// [`group::needs_wrap`]). This is what lets docker work right after the
-/// installer adds the user to the group — no app restart required. On other
-/// platforms (and when unneeded) it runs the command unchanged.
-pub fn run(cmd: Command) -> Result<()> {
-    process::run(&mut group::wrap(cmd))
+/// Run a docker-derived command.
+pub fn run(mut cmd: Command) -> Result<()> {
+    process::run(&mut cmd)
 }
 
 /// Like [`run`] but captures output regardless of exit status.
-pub fn capture(cmd: Command) -> Result<std::process::Output> {
-    process::capture(&mut group::wrap(cmd))
+pub fn capture(mut cmd: Command) -> Result<std::process::Output> {
+    process::capture(&mut cmd)
 }
 
-/// Transparently run docker commands under the `docker` group via `sg` when the
-/// current process was started before the user was added to the group. A running
-/// process can't change its own supplementary groups, but each docker command is
-/// a fresh child, so `sg docker -c '<cmd>'` (which re-reads group membership)
-/// gives it access — no logout / app restart needed.
-mod group {
-    use std::process::Command;
+/// If the installer just added the user to the `docker` group but this process
+/// doesn't have that group yet (it predates the change), re-exec the whole app
+/// through `sg docker` so it — and all of its docker calls — gain socket access
+/// without a full logout. A process can't change its own supplementary groups,
+/// so re-execing is the only in-place way. No-op elsewhere or when already
+/// usable; guarded against re-exec loops.
+pub fn relaunch_in_docker_group_if_needed() {
+    group::relaunch_if_needed();
+}
 
-    /// Wrap `cmd` as `sg docker -c '<program args…>'` when needed; otherwise
-    /// return it unchanged. Env overrides and the working directory are set on
-    /// the `sg` command and inherited by the shell it runs.
-    pub fn wrap(cmd: Command) -> Command {
-        if !needs_wrap() {
-            return cmd;
+mod group {
+    /// Env guard so a re-exec (or a failed one) never loops.
+    #[cfg(target_os = "linux")]
+    const GUARD: &str = "OPENC3_DOCKER_REGROUP";
+
+    #[cfg(target_os = "linux")]
+    pub fn relaunch_if_needed() {
+        use std::os::unix::process::CommandExt;
+        use std::process::Command;
+
+        if std::env::var_os(GUARD).is_some() || !should_join() {
+            return;
         }
-        let mut shell = shell_quote(&cmd.get_program().to_string_lossy());
-        for arg in cmd.get_args() {
-            shell.push(' ');
-            shell.push_str(&shell_quote(&arg.to_string_lossy()));
+        let Ok(exe) = std::env::current_exe() else {
+            return;
+        };
+        // Re-run the exact same invocation inside `sg docker`.
+        let mut inner = shell_quote(&exe.to_string_lossy());
+        for arg in std::env::args().skip(1) {
+            inner.push(' ');
+            inner.push_str(&shell_quote(&arg));
         }
-        let mut sg = Command::new("sg");
-        sg.arg("docker").arg("-c").arg(shell);
-        for (key, val) in cmd.get_envs() {
-            match val {
-                Some(v) => {
-                    sg.env(key, v);
-                }
-                None => {
-                    sg.env_remove(key);
-                }
-            }
-        }
-        if let Some(dir) = cmd.get_current_dir() {
-            sg.current_dir(dir);
-        }
-        sg
+        // Set the guard on this process first so a failed exec doesn't retry.
+        std::env::set_var(GUARD, "1");
+        crate::logging::info(
+            "docker",
+            "Joining the 'docker' group (re-launching) so Docker works without a re-login…",
+        );
+        // Replaces this process image; only returns on error.
+        let err = Command::new("sg")
+            .arg("docker")
+            .arg("-c")
+            .arg(format!("exec {inner}"))
+            .exec();
+        crate::logging::warn(
+            "docker",
+            &format!("could not join the docker group ({err}); log out and back in to use Docker"),
+        );
     }
 
-    /// POSIX single-quote escaping so arbitrary args survive `sh -c`.
+    #[cfg(not(target_os = "linux"))]
+    pub fn relaunch_if_needed() {}
+
+    /// True when we should re-exec into the docker group: not root, `sg` is
+    /// available, this process isn't in the group yet, but the user is a member
+    /// per the group database (e.g. after the installer's `usermod`).
+    #[cfg(target_os = "linux")]
+    fn should_join() -> bool {
+        if id_field(&["-u"]).as_deref() == Some("0") || !crate::process::which("sg") {
+            return false;
+        }
+        if id_groups(None).iter().any(|g| g == "docker") {
+            return false;
+        }
+        username()
+            .map(|u| id_groups(Some(&u)).iter().any(|g| g == "docker"))
+            .unwrap_or(false)
+    }
+
+    /// POSIX single-quote escaping so arbitrary paths/args survive `sh -c`.
+    #[cfg(target_os = "linux")]
     fn shell_quote(s: &str) -> String {
         let mut out = String::with_capacity(s.len() + 2);
         out.push('\'');
@@ -90,44 +118,7 @@ mod group {
         out
     }
 
-    #[cfg(target_os = "linux")]
-    pub fn needs_wrap() -> bool {
-        use std::sync::atomic::{AtomicBool, Ordering};
-        // Once wrapping becomes possible (user added to the group) it stays so;
-        // cache to avoid re-running `id` on every docker command afterward.
-        static ACTIVE: AtomicBool = AtomicBool::new(false);
-        if ACTIVE.load(Ordering::Relaxed) {
-            return true;
-        }
-        // Root already has socket access; sg must exist to switch groups.
-        if id_field(&["-u"]).as_deref() == Some("0") || !crate::process::which("sg") {
-            return false;
-        }
-        // If this process already has the docker group, nothing to do.
-        if session_groups().iter().any(|g| g == "docker") {
-            return false;
-        }
-        // Wrap only once the user is a member per the group database (e.g. after
-        // the installer's `usermod`), so `sg docker` succeeds without a password.
-        let configured = username()
-            .map(|u| id_groups(Some(&u)).iter().any(|g| g == "docker"))
-            .unwrap_or(false);
-        if configured {
-            ACTIVE.store(true, Ordering::Relaxed);
-        }
-        configured
-    }
-
-    #[cfg(not(target_os = "linux"))]
-    pub fn needs_wrap() -> bool {
-        false
-    }
-
-    #[cfg(target_os = "linux")]
-    fn session_groups() -> Vec<String> {
-        id_groups(None)
-    }
-
+    /// Group names for `user` (or the current process when `None`).
     #[cfg(target_os = "linux")]
     fn id_groups(user: Option<&str>) -> Vec<String> {
         let mut args = vec!["-nG"];
@@ -141,7 +132,7 @@ mod group {
 
     #[cfg(target_os = "linux")]
     fn id_field(args: &[&str]) -> Option<String> {
-        let mut cmd = Command::new("id");
+        let mut cmd = std::process::Command::new("id");
         cmd.args(args);
         crate::process::stdout_string(&mut cmd).ok().map(|s| s.trim().to_string())
     }
