@@ -7604,13 +7604,13 @@ delete_screen("INST", "ADCS")
 
 <span class="badge badge--secondary since-heading">Since 5.6.0</span>
 
-Returns a list of available telemetry screens.
+Returns a hash of available telemetry screens keyed by target name, where each value is a list of screen names for that target.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
-get_screen_list() # => ['INST ADCS', 'INST COMMANDING', ...]
+get_screen_list() # => {'INST': ['ADCS', 'COMMANDING', ...], 'INST2': [...]}
 ```
 
 </TabItem>
@@ -7618,7 +7618,7 @@ get_screen_list() # => ['INST ADCS', 'INST COMMANDING', ...]
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-get_screen_list() # => ['INST ADCS', 'INST COMMANDING', ...]
+get_screen_list() # => {"INST" => ["ADCS", "COMMANDING", ...], "INST2" => [...]}
 ```
 
 </TabItem>
