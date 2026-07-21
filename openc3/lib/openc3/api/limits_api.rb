@@ -273,7 +273,7 @@ module OpenC3
       unless color.nil?
         color = color.to_s.upcase
         unless PacketItem::STATE_COLORS.include?(color.intern)
-          raise "Invalid state color #{color}. Must be one of #{PacketItem::STATE_COLORS.join(' ')}."
+          raise "Invalid state color '#{color}'. Must be one of #{PacketItem::STATE_COLORS.join(', ')}."
         end
       end
       packet = TargetModel.packet(target_name, packet_name, scope: scope)

@@ -192,7 +192,7 @@ module OpenC3
           tf.puts '  APPEND_ITEM item1 8 UINT "state item"'
           tf.puts '    STATE WORST 1 ORANGE'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid state color ORANGE/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid state color 'ORANGE'/)
           tf.unlink
         end
 

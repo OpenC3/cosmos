@@ -236,11 +236,11 @@ module OpenC3
       end
 
       it "complains about non-existent states" do
-        expect { @limits.set_state_color("TGT1", "PKT1", "STATE1", "BLAH", "RED") }.to raise_error(RuntimeError, /State BLAH does not exist/)
+        expect { @limits.set_state_color("TGT1", "PKT1", "STATE1", "BLAH", "RED") }.to raise_error(RuntimeError, "State 'BLAH' does not exist for item 'TGT1 PKT1 STATE1'")
       end
 
       it "complains about invalid colors" do
-        expect { @limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "PURPLE") }.to raise_error(RuntimeError, /Invalid state color PURPLE/)
+        expect { @limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "PURPLE") }.to raise_error(RuntimeError, "Invalid state color 'PURPLE'. Must be one of GREEN, YELLOW, RED.")
       end
 
       it "clears the color of a state when passed nil" do
@@ -261,7 +261,7 @@ module OpenC3
       end
 
       it "complains about non-existent states when clearing" do
-        expect { @limits.set_state_color("TGT1", "PKT1", "STATE1", "BLAH", nil) }.to raise_error(RuntimeError, /State BLAH does not exist/)
+        expect { @limits.set_state_color("TGT1", "PKT1", "STATE1", "BLAH", nil) }.to raise_error(RuntimeError, "State 'BLAH' does not exist for item 'TGT1 PKT1 STATE1'")
       end
     end
   end

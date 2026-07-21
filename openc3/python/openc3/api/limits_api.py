@@ -343,7 +343,7 @@ def set_state_color(target_name, packet_name, item_name, state_name, color, scop
         color = str(color).upper()
         if color not in PacketItem.VALID_STATE_COLORS:
             raise RuntimeError(
-                f"Invalid state color {color}. Must be one of {' '.join(PacketItem.VALID_STATE_COLORS)}."
+                f"Invalid state color '{color}'. Must be one of {', '.join(PacketItem.VALID_STATE_COLORS)}."
             )
     packet = TargetModel.packet(target_name, packet_name, scope=scope)
     found_item = None

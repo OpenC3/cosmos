@@ -223,7 +223,7 @@ class TestLimits(unittest.TestCase):
             self.limits.set_state_color("TGT1", "PKT1", "STATE1", "BLAH", "RED")
 
     def test_set_state_color_complains_about_invalid_colors(self):
-        with self.assertRaisesRegex(RuntimeError, "Invalid state color PURPLE"):
+        with self.assertRaisesRegex(RuntimeError, "Invalid state color 'PURPLE'"):
             self.limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "PURPLE")
 
     def test_set_state_color_clears_the_color_of_a_state_when_passed_none(self):
@@ -242,5 +242,5 @@ class TestLimits(unittest.TestCase):
         self.assertNotIn("CONNECTED", item.state_colors)
 
     def test_set_state_color_complains_about_non_existent_states_when_clearing(self):
-        with self.assertRaisesRegex(RuntimeError, "State BLAH does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "State 'BLAH' does not exist"):
             self.limits.set_state_color("TGT1", "PKT1", "STATE1", "BLAH", None)

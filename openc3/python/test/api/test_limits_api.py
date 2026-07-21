@@ -218,7 +218,7 @@ class TestLimitsApi(unittest.TestCase):
             set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "BLAH", "RED")
 
     def test_set_state_color_complains_about_invalid_colors(self):
-        with self.assertRaisesRegex(RuntimeError, "Invalid state color PURPLE"):
+        with self.assertRaisesRegex(RuntimeError, "Invalid state color 'PURPLE'"):
             set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", "PURPLE")
 
     def test_set_state_color_changes_the_color_of_a_state(self):

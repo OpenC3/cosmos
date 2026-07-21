@@ -122,7 +122,7 @@ class StateParser:
         color = self.parser.parameters[2].upper()
         if color not in PacketItem.VALID_STATE_COLORS:
             raise self.parser.error(
-                f"Invalid state color {color}. Must be one of {' '.join(PacketItem.VALID_STATE_COLORS)}.",
+                f"Invalid state color '{color}'. Must be one of {', '.join(PacketItem.VALID_STATE_COLORS)}.",
                 self.usage,
             )
 

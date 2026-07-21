@@ -188,10 +188,12 @@ class Limits:
         packet = self._get_packet(target_name, packet_name)
         item = packet.get_item(item_name)
         if item.states is None:
-            raise RuntimeError(f"Item {target_name} {packet_name} {item_name} does not have any states")
+            raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not have any states")
         state_name = str(state_name).upper()
         if state_name not in item.states:
-            raise RuntimeError(f"State '{state_name}' does not exist for '{target_name} {packet_name} {item_name}'")
+            raise RuntimeError(
+                f"State '{state_name}' does not exist for item '{target_name} {packet_name} {item_name}'"
+            )
         if color is None:
             # Clear the state color while keeping state_colors as a dict so limits
             # checking (which indexes state_colors by value) continues to work.
@@ -202,7 +204,7 @@ class Limits:
         color = str(color).upper()
         if color not in PacketItem.VALID_STATE_COLORS:
             raise RuntimeError(
-                f"Invalid state color {color}. Must be one of {' '.join(PacketItem.VALID_STATE_COLORS)}."
+                f"Invalid state color '{color}'. Must be one of {', '.join(PacketItem.VALID_STATE_COLORS)}."
             )
         if item.state_colors is None:
             item.state_colors = {}

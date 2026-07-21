@@ -149,11 +149,11 @@ module OpenC3
       end
 
       it "complains about non-existent states" do
-        expect { @api.set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "BLAH", "RED") }.to raise_error(RuntimeError, /State 'BLAH' does not exist/)
+        expect { @api.set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "BLAH", "RED") }.to raise_error(RuntimeError, "State 'BLAH' does not exist")
       end
 
       it "complains about invalid colors" do
-        expect { @api.set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", "PURPLE") }.to raise_error(RuntimeError, /Invalid state color PURPLE/)
+        expect { @api.set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", "PURPLE") }.to raise_error(RuntimeError, "Invalid state color 'PURPLE'")
       end
 
       it "changes the color of a state" do
