@@ -155,6 +155,8 @@ module OpenC3
 
       before do
         api.instance_variable_set(:@stream, mock_stream)
+        # subscribe() now blocks until the server confirms the subscription
+        allow(mock_stream).to receive(:read).and_return('{"type":"confirm_subscription"}')
       end
 
       # ActionCable derives `params` (which the server uses for
@@ -177,6 +179,19 @@ module OpenC3
         expect(mock_stream).to receive(:write).once
         api.subscribe
         api.subscribe
+      end
+
+      # Regression: write_action must subscribe (which injects the token into the
+      # identifier) BEFORE serializing the identifier, so the message command's
+      # identifier matches the subscription's. Otherwise ActionCable silently
+      # ignores the action and no data ever streams.
+      it "includes the token in the action identifier so it matches the subscription" do
+        writes = []
+        allow(mock_stream).to receive(:write) { |msg| writes << msg }
+        api.write_action({ 'action' => 'add' })
+        message = writes.map { |w| JSON.parse(w) }.find { |f| f['command'] == 'message' }
+        identifier = JSON.parse(message['identifier'])
+        expect(identifier['token']).to eq('test_token')
       end
     end
   end

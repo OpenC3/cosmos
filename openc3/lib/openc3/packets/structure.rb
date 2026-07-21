@@ -326,7 +326,7 @@ module OpenC3
     # @return [StructureItem] StructureItem or one of its subclasses
     def get_item(name)
       item = @items[name.upcase]
-      raise ArgumentError, "Unknown item: #{name}" unless item
+      raise ArgumentError, "Unknown item: #{name} (get_item)" unless item
 
       return item
     end
@@ -358,7 +358,7 @@ module OpenC3
     # @param name [String] Name of the item to delete in the items Hash
     def delete_item(name)
       item = @items[name.upcase]
-      raise ArgumentError, "Unknown item: #{name}" unless item
+      raise ArgumentError, "Unknown item: #{name} (delete_item)" unless item
 
       # Find the item to delete in the sorted_items array
       item_index = nil

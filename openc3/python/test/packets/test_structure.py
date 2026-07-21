@@ -340,7 +340,7 @@ class TestStructureGetItem(unittest.TestCase):
         self.assertIsNotNone(self.s.get_item("test1"))
 
     def test_complains_if_an_item_doesnt_exist(self):
-        self.assertRaisesRegex(ValueError, "Unknown item: test2", self.s.get_item, "test2")
+        self.assertRaisesRegex(ValueError, r"Unknown item: test2 \(get_item\)", self.s.get_item, "test2")
 
 
 class TestStructureSetItem(unittest.TestCase):
@@ -375,7 +375,7 @@ class TestStructureDeleteItem(unittest.TestCase):
         self.s.append_item("test2", 16, "UINT")
         self.assertEqual(self.s.defined_length, 3)
         self.s.delete_item("test1")
-        self.assertRaisesRegex(ValueError, "Unknown item: test1", self.s.get_item, "test1")
+        self.assertRaisesRegex(ValueError, r"Unknown item: test1 \(get_item\)", self.s.get_item, "test1")
         self.assertEqual(self.s.defined_length, 3)
         self.assertIsNone(self.s.items.get("TEST1"))
         self.assertIsNotNone(self.s.items["TEST2"])
@@ -458,7 +458,7 @@ class TestStructureWriteItem(unittest.TestCase):
 
 class TestStructureRead(unittest.TestCase):
     def test_complains_if_item_doesnt_exist(self):
-        self.assertRaisesRegex(ValueError, "Unknown item: BLAH", Structure().read, "BLAH")
+        self.assertRaisesRegex(ValueError, r"Unknown item: BLAH \(get_item\)", Structure().read, "BLAH")
 
     def test_reads_data_from_the_buffer(self):
         s = Structure()
@@ -487,7 +487,7 @@ class TestStructureRead(unittest.TestCase):
 
 class TestStructureWrite(unittest.TestCase):
     def test_complains_if_item_doesnt_exist(self):
-        with self.assertRaisesRegex(ValueError, "Unknown item: BLAH"):
+        with self.assertRaisesRegex(ValueError, r"Unknown item: BLAH \(get_item\)"):
             Structure().write("BLAH", 0)
 
     def test_writes_data_to_the_buffer(self):

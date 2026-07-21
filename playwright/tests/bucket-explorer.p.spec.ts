@@ -8,7 +8,6 @@
 # See LICENSE.md for more details.
 */
 
-// @ts-check
 import { test, expect } from './fixture'
 
 test.use({
@@ -127,13 +126,17 @@ test('direct URLs', async ({ page, utils }) => {
   await page.goto('/tools/bucketexplorer/blah')
   await expect(page.locator('.v-app-bar')).toContainText('Bucket Explorer')
   await expect(
-    page.getByText('Unknown bucket / volume OPENC3_BLAH_BUCKET'),
+    page.getByText('Unknown bucket / volume OPENC3_BLAH_BUCKET', {
+      exact: true,
+    }),
   ).toBeVisible()
   // Prepending %2F makes it a volume
   await page.goto('/tools/bucketexplorer/%2FBAD')
   await expect(page.locator('.v-app-bar')).toContainText('Bucket Explorer')
   await expect(
-    page.getByText('Unknown bucket / volume OPENC3_BAD_VOLUME'),
+    page.getByText('Unknown bucket / volume OPENC3_BAD_VOLUME', {
+      exact: true,
+    }),
   ).toBeVisible()
 })
 
@@ -226,7 +229,11 @@ async function uploadAs(page: any, filename: string) {
 
 test('delete multiple selected files', async ({ page, utils }) => {
   const id = Math.ceil(Math.random() * 1_000_000)
-  const files = [`multi_${id}_a.json`, `multi_${id}_b.json`, `multi_${id}_c.json`]
+  const files = [
+    `multi_${id}_a.json`,
+    `multi_${id}_b.json`,
+    `multi_${id}_c.json`,
+  ]
 
   await page.goto(
     '/tools/bucketexplorer/config%2FDEFAULT%2Ftargets_modified%2F__TEMP__%2F',
@@ -272,7 +279,10 @@ test('delete multiple selected files', async ({ page, utils }) => {
 })
 
 test('navigate logs and tools bucket', async ({ page, utils }) => {
-  test.setTimeout(3 * 60 * 1000) // 3 minutes
+  // raw_logs only appears once the raw packet log file is cut to the bucket,
+  // which happens on INST's TLM_LOG_CYCLE_TIME (60s in CI, 300s locally), so
+  // allow enough time for that cycle plus the reload retries below.
+  test.setTimeout(7 * 60 * 1000)
   // Keep clicking alternatively on tools and then logs to force a refresh
   // This allows the DEFAULT folder to appear in time
   await expect(async () => {
@@ -294,12 +304,18 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
     await expect(page.locator('tbody > tr').first()).toHaveText(/\w+_logs/)
     await expect(page.locator('tbody > tr').last()).toHaveText(/\w+_logs/)
   }
-  // Reload and ensure we get to the same place
-  await page.reload()
-  await expect(page.locator('[data-test="file-path"]')).toHaveText(
-    '/ DEFAULT /',
-  )
-  await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)
+  // Reload (also verifies we return to the same place) until the raw_logs
+  // folder has been cut to the bucket - on a fresh instance it isn't there
+  // until the first TLM_LOG_CYCLE_TIME elapses, and the listing only refreshes
+  // on reload.
+  await expect(async () => {
+    await page.reload()
+    await expect(page.locator('[data-test="file-path"]')).toHaveText(
+      '/ DEFAULT /',
+    )
+    await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)
+    await expect(page.getByRole('cell', { name: 'raw_logs' })).toBeVisible()
+  }).toPass({ timeout: 6 * 60 * 1000 })
   // Ensure the log files have the correct dates
   let date = new Date().toISOString().split('T')[0].replace(/-/g, '')
   await page.getByRole('cell', { name: 'raw_logs' }).click()

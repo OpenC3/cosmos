@@ -195,7 +195,7 @@ module OpenC3
                 msg_hash = critical_model.cmd_hash
                 release_critical = true
               else
-                next "Critical command #{msg_hash['release_critical']} not found"
+                next "Critical command '#{msg_hash['release_critical']}' not found (interface command processing)"
               end
             end
             if msg_hash.key?('target_control')

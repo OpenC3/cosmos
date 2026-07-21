@@ -191,7 +191,7 @@ class Limits:
             raise RuntimeError(f"Item {target_name} {packet_name} {item_name} does not have any states")
         state_name = str(state_name).upper()
         if state_name not in item.states:
-            raise RuntimeError(f"State {state_name} does not exist for {target_name} {packet_name} {item_name}")
+            raise RuntimeError(f"State '{state_name}' does not exist for '{target_name} {packet_name} {item_name}'")
         if color is None:
             # Clear the state color while keeping state_colors as a dict so limits
             # checking (which indexes state_colors by value) continues to work.
@@ -217,10 +217,12 @@ class Limits:
 
         packets = self.config.telemetry.get(target_name.upper())
         if packets is None:
-            raise RuntimeError(f"Telemetry target '{target_name.upper()}' does not exist")
+            raise RuntimeError(f"Telemetry target '{target_name.upper()}' does not exist (limits lookup)")
 
         packet = packets.get(packet_name.upper())
         if packet is None:
-            raise RuntimeError(f"Telemetry packet '{target_name.upper()} {packet_name.upper()}' does not exist")
+            raise RuntimeError(
+                f"Telemetry packet '{target_name.upper()} {packet_name.upper()}' does not exist (limits lookup)"
+            )
 
         return packet

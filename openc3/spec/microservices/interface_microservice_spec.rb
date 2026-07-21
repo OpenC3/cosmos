@@ -266,19 +266,29 @@ module OpenC3
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql("ATTEMPTING")
 
-        expect(CommandDecomTopic).to receive(:write_packet) do |command, scope|
-          expect(command.target_name).to eql("INST")
-          expect(command.packet_name).to eql("ABORT")
-          expect(scope).to eql({:scope => "DEFAULT"})
+        # Capture the command in the main thread so the expectations reliably
+        # fail the example rather than raising inside the interface thread
+        # (RSpec's ExpectationNotMetError is not a StandardError and would be
+        # swallowed when the interface thread dies).
+        captured = nil
+        allow(CommandDecomTopic).to receive(:write_packet) do |command, _scope|
+          captured = command
         end
         Thread.new { im.run }
         sleep 0.01
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "CONNECTED"
 
-        @api.cmd("INST", "ABORT")
+        # queue_username is the original author (shown as "Queued By"), passed
+        # by the queue microservice when a command is released from a queue
+        @api.cmd("INST", "ABORT", queue_username: "DEFAULT__MULTI__INST")
         sleep 0.01
         im.shutdown
+
+        expect(captured).to_not be_nil
+        expect(captured.target_name).to eql("INST")
+        expect(captured.packet_name).to eql("ABORT")
+        expect(captured.extra['queue_username']).to eql("DEFAULT__MULTI__INST")
       end
 
       it "handles obfuscated params" do

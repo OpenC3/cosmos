@@ -347,7 +347,7 @@ module OpenC3
 
       it "should complain about unknown targets" do
         model1 = InterfaceModel.get_model(name: "TEST1_INT", scope: "DEFAULT")
-        expect { model1.map_target("TARGET5") }.to raise_error(RuntimeError, "Target TARGET5 does not exist")
+        expect { model1.map_target("TARGET5") }.to raise_error(RuntimeError, "Target 'TARGET5' does not exist (InterfaceModel)")
 
         umodel = double(MicroserviceModel)
         expect(umodel).to receive(:target_names).and_return([]).at_least(:once)

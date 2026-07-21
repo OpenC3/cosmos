@@ -161,7 +161,7 @@ module OpenC3
         expect {
           LimitsEventTopic.write({ type: :LIMITS_SET, set: "TVAC",
               time_nsec: Time.now.to_nsec_from_epoch, message: "Limits Set" }, scope: "DEFAULT")
-        }.to raise_error(RuntimeError, "Set 'TVAC' does not exist!")
+        }.to raise_error(RuntimeError, "Limits set 'TVAC' does not exist")
       end
 
       it "raise on unknown types" do

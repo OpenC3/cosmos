@@ -112,7 +112,7 @@ class LimitsEventTopic(Topic):
             case "LIMITS_SET":
                 sets = cls.sets(scope=scope)
                 if sets.get(event["set"]) is None:
-                    raise RuntimeError(f"Set '{event['set']}' does not exist!")
+                    raise RuntimeError(f"Limits set '{event['set']}' does not exist")
 
                 # Set all existing sets to "false"
                 sets = dict.fromkeys(sets, "false")

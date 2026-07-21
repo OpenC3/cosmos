@@ -91,15 +91,15 @@ class TestLimits(unittest.TestCase):
         tf.close()
 
     def test_enabled_complains_about_non_existent_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Telemetry target 'TGTX' does not exist \(limits lookup\)"):
             self.limits.enabled("TGTX", "PKT1", "ITEM1")
 
     def test_enabled_complains_about_non_existent_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Telemetry packet 'TGT1 PKTX' does not exist \(limits lookup\)"):
             self.limits.enabled("TGT1", "PKTX", "ITEM1")
 
     def test_enabled_complains_about_non_existent_items(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'TGT1 PKT1 ITEMX' does not exist \(Packet\)"):
             self.limits.enabled("TGT1", "PKT1", "ITEMX")
 
     def test_returns_whether_limits_are_enable_for_an_item(self):
@@ -109,15 +109,15 @@ class TestLimits(unittest.TestCase):
         self.assertTrue(self.limits.enabled("TGT1", "PKT1", "ITEM5"))
 
     def test_enable_complains_about_non_existent_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Telemetry target 'TGTX' does not exist \(limits lookup\)"):
             self.limits.enable("TGTX", "PKT1", "ITEM1")
 
     def test_enable_complains_about_non_existent_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Telemetry packet 'TGT1 PKTX' does not exist \(limits lookup\)"):
             self.limits.enable("TGT1", "PKTX", "ITEM1")
 
     def test_enable_complains_about_non_existent_items(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'TGT1 PKT1 ITEMX' does not exist \(Packet\)"):
             self.limits.enable("TGT1", "PKT1", "ITEMX")
 
     def test_enables_limits_for_an_item(self):
@@ -127,15 +127,15 @@ class TestLimits(unittest.TestCase):
         self.assertTrue(self.limits.enabled("TGT1", "PKT1", "ITEM5"))
 
     def test_disable_complains_about_non_existent_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Telemetry target 'TGTX' does not exist \(limits lookup\)"):
             self.limits.disable("TGTX", "PKT1", "ITEM1")
 
     def test_disable_complains_about_non_existent_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Telemetry packet 'TGT1 PKTX' does not exist \(limits lookup\)"):
             self.limits.disable("TGT1", "PKTX", "ITEM1")
 
     def test_disable_complains_about_non_existent_items(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'TGT1 PKT1 ITEMX' does not exist \(Packet\)"):
             self.limits.disable("TGT1", "PKT1", "ITEMX")
 
     def test_disables_limits_for_an_item(self):
@@ -219,7 +219,7 @@ class TestLimits(unittest.TestCase):
             self.limits.set_state_color("TGT1", "PKT1", "ITEM5", "CONNECTED", "RED")
 
     def test_set_state_color_complains_about_non_existent_states(self):
-        with self.assertRaisesRegex(RuntimeError, "State BLAH does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "State 'BLAH' does not exist for item 'TGT1 PKT1 STATE1'"):
             self.limits.set_state_color("TGT1", "PKT1", "STATE1", "BLAH", "RED")
 
     def test_set_state_color_complains_about_invalid_colors(self):

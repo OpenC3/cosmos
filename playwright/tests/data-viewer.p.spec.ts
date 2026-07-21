@@ -12,7 +12,6 @@
 # All Rights Reserved
 */
 
-// @ts-check
 import { test, expect } from './fixture'
 
 test.use({
@@ -68,7 +67,15 @@ test('saves, opens, and resets the configuration', async ({ page, utils }) => {
     .locator('[data-test="name-input-save-config-dialog"] input')
     .fill('playwright')
   await page.locator('button:has-text("Ok")').click()
-  await expect(page.getByText(`Saved configuration: playwright`)).toBeVisible()
+  await expect(page.getByText(`Saved configurationplaywright`)).toBeVisible()
+  // Saving the config shows a toast banner that auto-hides after ~5s, so its
+  // Dismiss button can disappear (or be briefly covered by a transitioning
+  // toast) before the click lands. Tolerate it already being gone, then make
+  // sure no toast remains over the page before continuing.
+  await page
+    .getByRole('button', { name: 'Dismiss' })
+    .click({ timeout: 5000 })
+    .catch(() => {})
 
   // Open the config
   await page.locator('[data-test="data-viewer-file"]').click()

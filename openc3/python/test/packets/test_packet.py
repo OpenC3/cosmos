@@ -312,7 +312,7 @@ class Buffer(unittest.TestCase):
 
     def test_complains_if_an_item_doesnt_exist(self):
         p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT PKT TEST' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'TGT PKT TEST' does not exist \(Packet\)"):
             p.get_item("test")
 
 

@@ -145,7 +145,7 @@ def enable_limits(*args, scope=OPENC3_SCOPE):
             found_item = item
             break
     if found_item is None:
-        raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist")
+        raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist while enabling limits")
 
     TargetModel.set_packet(target_name, packet_name, packet, scope=scope)
 
@@ -189,7 +189,7 @@ def disable_limits(*args, scope=OPENC3_SCOPE):
             found_item = item
             break
     if found_item is None:
-        raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist")
+        raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist while disabling limits")
 
     TargetModel.set_packet(target_name, packet_name, packet, scope=scope)
 
@@ -291,7 +291,7 @@ def set_limits(
             else:
                 raise RuntimeError("Cannot set_limits on item without any limits")
     if found_item is None:
-        raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist")
+        raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist while setting limits")
     message = (
         f"Setting '{target_name} {packet_name} {item_name}' limits to {red_low} {yellow_low} {yellow_high} {red_high}"
     )
@@ -365,7 +365,7 @@ def set_state_color(target_name, packet_name, item_name, state_name, color, scop
             found_item = item
             break
     if found_item is None:
-        raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist")
+        raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist while setting state color")
     if color is None:
         message = f"Clearing '{target_name} {packet_name} {item_name}' state {state_name} color"
     else:

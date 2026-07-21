@@ -12,7 +12,6 @@
 # All Rights Reserved
 */
 
-// @ts-check
 import { Page } from '@playwright/test'
 import { Utilities } from '../../utilities'
 import { test, expect } from './../fixture'

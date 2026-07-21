@@ -256,7 +256,7 @@ module OpenC3
 
     def ensure_target_exists(target_name)
       target = TargetModel.get(name: target_name, scope: @scope)
-      raise "Target #{target_name} does not exist" unless target
+      raise "Target '#{target_name}' does not exist (InterfaceModel)" unless target
       target
     end
 

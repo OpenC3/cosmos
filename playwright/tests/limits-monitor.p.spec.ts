@@ -12,7 +12,6 @@
 # All Rights Reserved
 */
 
-// @ts-check
 import { test, expect } from './fixture'
 import { format } from 'date-fns'
 
@@ -39,7 +38,7 @@ test('changes the limits set', async ({ page, utils }) => {
   await expect
     .poll(
       async () =>
-        page.locator('[data-test=limits-set]').locator('input').inputValue(),
+        await page.locator('[data-test=limits-set]').locator('input').inputValue(),
       {
         timeout: 15000,
       },
@@ -63,7 +62,7 @@ test('changes the limits set', async ({ page, utils }) => {
   await expect
     .poll(
       async () =>
-        page.locator('[data-test=limits-set]').locator('input').inputValue(),
+        await page.locator('[data-test=limits-set]').locator('input').inputValue(),
       {
         timeout: 15000,
       },
@@ -131,13 +130,28 @@ test('saves, opens, and resets the configuration', async ({ page, utils }) => {
   await page.locator('text=Save Configuration').click()
   await page.getByLabel('Configuration Name').fill('playwright')
   await page.locator('button:has-text("Ok")').click()
-  await page.getByRole('button', { name: 'Dismiss' }).click({ timeout: 20000 })
+  await expect(page.getByText(`Saved configurationplaywright`)).toBeVisible()
+  // Saving the config shows a toast banner that auto-hides after ~5s, so its
+  // Dismiss button can disappear (or be briefly covered by a transitioning
+  // toast) before the click lands. Tolerate it already being gone, then make
+  // sure no toast remains over the page before continuing.
+  await page
+    .getByRole('button', { name: 'Dismiss' })
+    .click({ timeout: 5000 })
+    .catch(() => {})
 
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Open Configuration').click()
   await page.locator(`td:has-text("playwright")`).click()
   await page.locator('button:has-text("Ok")').click()
-  await page.getByRole('button', { name: 'Dismiss' }).click({ timeout: 20000 })
+  // Opening the config shows a toast banner that auto-hides after ~5s, so its
+  // Dismiss button can disappear (or be briefly covered by a transitioning
+  // toast) before the click lands. Tolerate it already being gone, then make
+  // sure no toast remains over the page before continuing.
+  await page
+    .getByRole('button', { name: 'Dismiss' })
+    .click({ timeout: 5000 })
+    .catch(() => {})
 
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Show Ignored').click()

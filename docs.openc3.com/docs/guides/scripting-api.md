@@ -759,7 +759,7 @@ These methods notify the user that something has occurred.
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Displays a message to the user and waits for them to press an ok button.
+Displays a message to the user and waits for them to press an ok button. If the user clicks Cancel instead, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">

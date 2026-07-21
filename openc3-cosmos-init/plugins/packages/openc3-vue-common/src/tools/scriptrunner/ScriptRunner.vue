@@ -187,6 +187,16 @@
               readonly
               hide-details
             />
+            <v-chip
+              v-if="lifecycleVisible"
+              class="ml-4 align-self-center"
+              :color="lifecycleColor"
+              variant="flat"
+              data-test="lifecycle-chip"
+              @click="showLifecycle = true"
+            >
+              {{ lifecycleLabel }}
+            </v-chip>
             <v-progress-circular
               v-if="state === 'Connecting...'"
               :size="40"
@@ -213,7 +223,6 @@
                     density="compact"
                     variant="outlined"
                     hide-details
-                    clearable
                     style="max-width: 200px; min-width: 160px"
                     class="mr-2"
                     data-test="python-venv-select"
@@ -285,7 +294,7 @@
                 color="primary"
                 text="Start"
                 data-test="start-button"
-                :disabled="startOrGoDisabled || !executeUser"
+                :disabled="startOrGoDisabled || !executeUser || runBlocked"
                 :hidden="suiteRunner"
                 @click="startHandler"
               />
@@ -501,7 +510,7 @@
                 color="primary"
                 text="Start"
                 data-test="start-button"
-                :disabled="startOrGoDisabled || !executeUser"
+                :disabled="startOrGoDisabled || !executeUser || runBlocked"
                 :hidden="suiteRunner"
                 @click="startHandler"
               />
@@ -644,6 +653,17 @@
     :text="suiteError"
     :width="1000"
   />
+  <script-lifecycle-dialog
+    v-if="showLifecycle"
+    v-model="showLifecycle"
+    :filename="filename"
+    :state="lifecycleState"
+    :history="lifecycleHistory"
+    :can-approve="canApprove"
+    :can-edit="!readOnlyUser"
+    :time-zone="timeZone"
+    @updated="lifecycleUpdated"
+  />
   <critical-cmd-dialog
     v-model="displayCriticalCmd"
     :uuid="criticalCmdUuid"
@@ -651,6 +671,13 @@
     :cmd-user="criticalCmdUser"
     :persistent="true"
     @status="promptDialogCallback"
+  />
+  <version-history-dialog
+    v-if="showVersionHistory"
+    v-model="showVersionHistory"
+    :filename="filename"
+    :current-body="editor ? editor.getValue() : ''"
+    @restored="onVersionRestored"
   />
   <!-- Command Editor Dialog -->
   <v-dialog
@@ -744,6 +771,7 @@ import OverridesDialog from '@/tools/scriptrunner/Dialogs/OverridesDialog.vue'
 import PromptDialog from '@/tools/scriptrunner/Dialogs/PromptDialog.vue'
 import ResultsDialog from '@/tools/scriptrunner/Dialogs/ResultsDialog.vue'
 import ScriptEnvironmentDialog from '@/tools/scriptrunner/Dialogs/ScriptEnvironmentDialog.vue'
+import ScriptLifecycleDialog from '@/tools/scriptrunner/Dialogs/ScriptLifecycleDialog.vue'
 import CommandEditor from '@/components/CommandEditor.vue'
 import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
 import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
@@ -754,6 +782,15 @@ import {
 } from '@/tools/scriptrunner/autocomplete'
 import { SleepAnnotator } from '@/tools/scriptrunner/annotations'
 import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
+import { useScriptLifecycle } from '@/tools/scriptrunner/useScriptLifecycle'
+// Lazy-load the Enterprise-only Version History dialog so Monaco (~3 MB
+// minified) lives in its own chunk that only downloads when the user
+// opens version history. Core builds never reach this code path because
+// the menu item is gated on the /openc3-api/info enterprise flag.
+import { defineAsyncComponent } from 'vue'
+const VersionHistoryDialog = defineAsyncComponent(
+  () => import('@/tools/scriptrunner/VersionHistoryDialog.vue'),
+)
 
 // Matches target_file.rb TEMP_FOLDER
 const TEMP_FOLDER = '__TEMP__'
@@ -780,12 +817,14 @@ export default {
     PromptDialog,
     ResultsDialog,
     ScriptEnvironmentDialog,
+    ScriptLifecycleDialog,
     SimpleTextDialog,
     SuiteRunner,
     RunningScripts,
     ScriptLogMessages,
     CriticalCmdDialog,
     CommandEditor,
+    VersionHistoryDialog,
   },
   mixins: [AceEditorModes, ClassificationBanners],
   beforeRouteUpdate: function (to, from, next) {
@@ -815,7 +854,7 @@ export default {
   setup() {
     const containerHeight = useContainerHeight()
 
-    return { containerHeight }
+    return { containerHeight, ...useScriptLifecycle() }
   },
   data() {
     return {
@@ -861,6 +900,9 @@ export default {
       breakpoints: {},
       enableStackTraces: false,
       filename: NEW_FILENAME,
+      showVersionHistory: false,
+      // Enterprise-only feature; populated from /openc3-api/info on mount.
+      isEnterprise: false,
       readOnlyUser: false,
       executeUser: true,
       saveAllowed: true,
@@ -971,6 +1013,10 @@ export default {
       displayCriticalCmd: false,
       editorBoxSize: 50,
       lockingEnabled: true,
+      canApprove: false,
+      // Enterprise-only Version History; enabled when the backend has
+      // OPENC3_VERSION_HISTORY_DIR set (reported by /openc3-api/info).
+      scriptVersionsEnabled: false,
       pythonVenv: 'system',
       pythonVenvs: [],
     }
@@ -1033,6 +1079,17 @@ export default {
       }
       return !!this.lockedBy
     },
+    // Users with only the script_run (runner) permission may only run
+    // approved scripts when the lifecycle feature is enabled
+    runBlocked: function () {
+      return (
+        this.lifecycleEnabled &&
+        this.scriptVersionsEnabled &&
+        this.readOnlyUser &&
+        this.executeUser &&
+        this.lifecycleState !== 'approved'
+      )
+    },
     // Returns the currently shown filename
     fullFilename: function () {
       if (this.currentFilename) return this.currentFilename
@@ -1045,6 +1102,21 @@ export default {
     // This makes sure that string doesn't show up in the dialog
     filenameOrBlank: function () {
       return this.filename === NEW_FILENAME ? '' : this.filename
+    },
+    // Temp files are auto-saved unsaved scripts under the __TEMP__ folder.
+    // They aren't real saved scripts, so they get no lifecycle.
+    isTempFile: function () {
+      return this.filename.startsWith(`${TEMP_FOLDER}/`)
+    },
+    // Lifecycle only applies to real, saved (non-temp, non-untitled) scripts.
+    // It is git-backed, so it also requires the version store (Enterprise).
+    lifecycleVisible: function () {
+      return (
+        this.lifecycleEnabled &&
+        this.scriptVersionsEnabled &&
+        this.filename !== NEW_FILENAME &&
+        !this.isTempFile
+      )
     },
     menus: function () {
       return [
@@ -1100,7 +1172,11 @@ export default {
             {
               label: 'Save File',
               icon: 'mdi-content-save',
-              disabled: this.scriptId || this.readOnlyUser,
+              disabled:
+                this.scriptId || this.readOnlyUser || this.scriptApproved,
+              tooltip: this.scriptApproved
+                ? 'Script is approved and cannot be modified. Move it back to review to edit.'
+                : null,
               command: () => {
                 this.saveFile()
               },
@@ -1130,7 +1206,11 @@ export default {
             {
               label: 'Delete File',
               icon: 'mdi-delete',
-              disabled: this.scriptId || this.readOnlyUser,
+              disabled:
+                this.scriptId || this.readOnlyUser || this.scriptApproved,
+              tooltip: this.scriptApproved
+                ? 'Script is approved and cannot be deleted. Move it back to review to delete.'
+                : null,
               command: () => {
                 this.delete()
               },
@@ -1188,6 +1268,17 @@ export default {
                 this.showScripts = true
               },
             },
+            ...(this.lifecycleVisible
+              ? [
+                  {
+                    label: 'Script Lifecycle',
+                    icon: 'mdi-list-status',
+                    command: () => {
+                      this.showLifecycle = true
+                    },
+                  },
+                ]
+              : []),
             {
               divider: true,
             },
@@ -1290,6 +1381,25 @@ export default {
                 this.deleteAllBreakpoints()
               },
             },
+            // Enterprise-only Version History entry. ScriptVersionController
+            // lives in the openc3-enterprise gem; omit the divider + item
+            // entirely so Core builds don't render a dead menu option.
+            ...(this.scriptVersionsEnabled
+              ? [
+                  { divider: true },
+                  {
+                    label: 'Version History',
+                    icon: 'mdi-history',
+                    disabled:
+                      this.scriptId ||
+                      !this.filename ||
+                      this.filename === NEW_FILENAME,
+                    command: () => {
+                      this.showVersionHistory = true
+                    },
+                  },
+                ]
+              : []),
           ],
         },
       ]
@@ -1301,10 +1411,25 @@ export default {
       if (!this.suiteRunner) {
         this.startOrGoDisabled = val
       }
-      if (this.readOnlyUser == false && val == false && !this.inline) {
+      if (!this.readOnlyUser && !val && !this.inline && !this.scriptApproved) {
         this.editor.setReadOnly(val)
       } else {
         this.editor.setReadOnly(true)
+      }
+    },
+    scriptApproved: function (val) {
+      if (!this.editor) {
+        return
+      }
+      if (val) {
+        this.editor.setReadOnly(true)
+      } else if (
+        !this.readOnlyUser &&
+        !this.isLocked &&
+        !this.inline &&
+        !this.scriptId
+      ) {
+        this.editor.setReadOnly(false)
       }
     },
     fullFilename: function (filename) {
@@ -1340,6 +1465,17 @@ export default {
     // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
     this.api.ensure_offline_access()
+    // Detect Enterprise and whether the Version History backend is enabled
+    // (OPENC3_VERSION_HISTORY_DIR set) so we can show the menu item.
+    Api.get('/openc3-api/info')
+      .then((response) => {
+        this.isEnterprise = !!response.data?.enterprise
+        this.scriptVersionsEnabled = !!response.data?.script_versions
+      })
+      .catch(() => {
+        this.isEnterprise = false
+        this.scriptVersionsEnabled = false
+      })
     this.api
       .get_setting('time_zone')
       .then((response) => {
@@ -1359,6 +1495,11 @@ export default {
       }
     } catch (error) {
       // Keep default (true)
+    }
+    await this.loadLifecycleSetting()
+
+    if (this.filename !== NEW_FILENAME) {
+      this.fetchLifecycle(this.filename)
     }
 
     this.updateOverridesCount()
@@ -1388,6 +1529,7 @@ export default {
       if (role == 'admin' || role == 'operator') {
         this.readOnlyUser = false
         this.executeUser = true
+        this.canApprove = true
       } else if (role == 'runner') {
         this.executeUser = true
       } else {
@@ -1410,6 +1552,13 @@ export default {
             ) {
               this.executeUser = true
             }
+            if (
+              response.data.permissions.some(
+                (i) => i.permission == 'script_approver',
+              )
+            ) {
+              this.canApprove = true
+            }
           }
         })
       }
@@ -1422,7 +1571,7 @@ export default {
         execute: this.executeUser,
       })
     }
-    if (this.readOnlyUser == true) {
+    if (this.readOnlyUser) {
       this.alertType = 'info'
       let text = `User ${user['preferred_username']} is read only`
       if (this.executeUser) {
@@ -1480,7 +1629,11 @@ export default {
     })
 
     this.editor.container.addEventListener('resize', this.doResize)
-    this.editor.container.addEventListener('keydown', this.keydown)
+    // Listen on window (not editor.container) so Ctrl-S saves regardless of
+    // where focus is — attaching to the editor only caught the key while the
+    // cursor was in the editor, which made saving feel inconsistent after
+    // using a menu, button, or dialog. Removed in beforeUnmount.
+    window.addEventListener('keydown', this.keydown)
 
     this.cable = new Cable('/script-api/cable')
 
@@ -1528,6 +1681,7 @@ export default {
     if (this.scriptId && !this.inline) {
       sessionStorage.setItem('script_runner__script_id', this.scriptId)
     }
+    window.removeEventListener('keydown', this.keydown)
     this.editor.destroy()
     this.editor.container.remove()
   },
@@ -1869,7 +2023,7 @@ export default {
       // NOTE: metaKey == Command on Mac
       if (
         (event.metaKey || event.ctrlKey) &&
-        event.keyCode === 'S'.charCodeAt(0)
+        event.key?.toLowerCase() === 's'
       ) {
         if (event.shiftKey) {
           event.preventDefault()
@@ -1983,7 +2137,7 @@ export default {
       // We may have changed the contents (if there were sub-scripts)
       // so don't let the undo manager think this is a change
       this.editor.session.getUndoManager().reset()
-      if (this.readOnlyUser == false && !this.inline) {
+      if (!this.readOnlyUser && !this.inline && !this.scriptApproved) {
         this.editor.setReadOnly(false)
       }
 
@@ -2625,6 +2779,7 @@ export default {
       this.filename = NEW_FILENAME
       this.currentFilename = null
       this.tempFilename = null
+      this.resetLifecycle()
       this.files = {} // Clear the cached file list
       this.editor.session.setValue('')
       this.saveAllowed = true
@@ -2632,6 +2787,7 @@ export default {
       this.suiteRunner = false
       this.startOrGoDisabled = false
       this.envDisabled = false
+      this.pythonVenv = 'system'
       if (!this.inline) {
         this.$router
           .replace({
@@ -2837,6 +2993,7 @@ class TestSuite(Suite):
       // so the selection persists across runs.
       if (!newFilename.startsWith(TEMP_FOLDER)) {
         this.pythonVenv = null
+        this.tempFilename = null
       }
       if (!this.inline) {
         // Update the URL with the filename
@@ -2885,6 +3042,7 @@ class TestSuite(Suite):
       }
       // Disable suite buttons if we didn't successfully parse the suite
       this.disableSuiteButtons = file.success == false
+      this.fetchLifecycle(this.filename)
       this.doResize()
     },
     clearTemp() {
@@ -2935,6 +3093,14 @@ class TestSuite(Suite):
     // or automatically by 'Start' (to ensure a consistent backend file) or autoSave
     async saveFile(type = 'menu') {
       if (this.readOnlyUser) {
+        return
+      }
+      if (this.scriptApproved) {
+        if (type === 'menu') {
+          this.setError(
+            'Script is approved and cannot be modified. Move it back to review to edit.',
+          )
+        }
         return
       }
       if (this.saveAllowed) {
@@ -3019,6 +3185,10 @@ class TestSuite(Suite):
             if (response.status == 422) {
               this.alertType = 'error'
               this.alertText = response.data.suites
+            } else if (response.status == 403 && response.data?.message) {
+              // e.g. attempting to save over an approved script
+              this.alertType = 'error'
+              this.alertText = response.data.message
             } else {
               this.alertType = 'error'
               this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
@@ -3035,11 +3205,17 @@ class TestSuite(Suite):
     async saveAsFilename(filename) {
       this.filename = filename.split('*')[0]
       this.currentFilename = null
+      // The lifecycle state belongs to the file, not the editor contents,
+      // so clear it before saving under the new name. The server still
+      // rejects overwriting a different approved script.
+      this.resetLifecycle()
       if (this.tempFilename) {
         Api.post(`/script-api/scripts/${this.tempFilename}/delete`)
         this.tempFilename = null
       }
       await this.saveFile('menu')
+      // Pick up the actual lifecycle state of the file we saved over
+      this.fetchLifecycle(this.filename)
     },
     delete() {
       let filename = this.filename
@@ -3186,6 +3362,9 @@ class TestSuite(Suite):
       ) {
         Api.post(`/script-api/scripts/${this.filename}/unlock`)
       }
+    },
+    onVersionRestored: function () {
+      this.reloadFile()
     },
     backToNewScript: async function () {
       // Disconnect from the current script
