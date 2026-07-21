@@ -466,7 +466,15 @@ export default {
 
     // Fetch queues if in command mode
     if (this.mode === 'cmd') {
-      Api.get('/openc3-api/queues')
+      // Users with limited permissions (e.g. cmd scoped to a single target)
+      // may lack the cmd_info permission required to list queues. Ignore the
+      // 401/403 responses so we don't surface a spurious error banner - simply
+      // fall back to the default "None" queue option.
+      Api.get('/openc3-api/queues', {
+        headers: {
+          'Ignore-Errors': '401,403',
+        },
+      })
         .then((response) => {
           this.queueNames = [{ label: 'None', value: null }]
           if (response.data && Array.isArray(response.data)) {
@@ -476,9 +484,13 @@ export default {
           }
         })
         .catch((error) => {
-          // eslint-disable-next-line no-console
-          console.error('Error fetching queues:', error)
-          // Keep default "None" option even if fetch fails
+          // Keep default "None" option even if fetch fails. Only log errors
+          // that aren't the expected permission responses handled above.
+          const status = error.response?.status
+          if (status !== 401 && status !== 403) {
+            // eslint-disable-next-line no-console
+            console.error('Error fetching queues:', error)
+          }
         })
     }
 
