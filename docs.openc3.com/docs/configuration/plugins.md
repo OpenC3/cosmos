@@ -791,7 +791,7 @@ Container to execute and run the microservice in. Only used in COSMOS Enterprise
 ### SECRET
 <span class="badge badge--secondary since-right">Since 5.3.0</span>**Define a secret needed by this microservice**
 
-Defines a secret for this microservice. For more information see [Admin Secrets](/docs/tools/admin#secrets).
+Defines a secret for this microservice. For more information see [Admin Secrets](/docs/tools/admin#secrets). Note that unlike the INTERFACE SECRET, the microservice SECRET does not take an Option Name parameter, because the secret value is injected directly into the microservice process as an environment variable (Type ENV) or written to a file (Type FILE).
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
