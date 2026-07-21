@@ -213,6 +213,7 @@ module OpenC3
         event = @api.get_limits_events.last[1]
         expect(event['type']).to eql("LIMITS_STATE_COLOR")
         expect(event['state_name']).to eql("UNAVAILABLE")
+        expect(event).to have_key('color') # Key present with an explicit nil, matching the Python test
         expect(event['color']).to be_nil
       end
     end

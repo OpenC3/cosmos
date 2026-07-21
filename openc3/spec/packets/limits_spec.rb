@@ -248,7 +248,7 @@ module OpenC3
         @limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "RED")
         expect(item.state_colors["CONNECTED"]).to eql(:RED)
         expect(@limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", nil)).to be_nil
-        expect(item.state_colors["CONNECTED"]).to be_nil
+        expect(item.state_colors).to_not have_key("CONNECTED")
         # state_colors remains a Hash so limits checking still works
         expect(item.state_colors).to be_a(Hash)
       end
@@ -257,7 +257,7 @@ module OpenC3
         item = @tlm.packet("TGT1", "PKT1").get_item("STATE1")
         @limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "RED")
         @limits.set_state_color("TGT1", "PKT1", "STATE1", "connected", nil)
-        expect(item.state_colors["CONNECTED"]).to be_nil
+        expect(item.state_colors).to_not have_key("CONNECTED")
       end
 
       it "complains about non-existent states when clearing" do

@@ -263,7 +263,9 @@ module OpenC3
     # @param item_name [String] Item name
     # @param state_name [String] Name of the state to change (e.g. 'CONNECTED')
     # @param color [String, nil] New color for the state. Must be GREEN, YELLOW,
-    #   or RED. Pass nil to clear (remove) the state color.
+    #   or RED. Pass nil to clear (remove) the state color. Setting a color also
+    #   enables limits for the item, but clearing the color (nil) does not change
+    #   whether limits are enabled.
     def set_state_color(target_name, packet_name, item_name, state_name, color,
                         manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
