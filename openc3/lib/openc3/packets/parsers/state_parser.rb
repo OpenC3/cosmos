@@ -124,7 +124,7 @@ module OpenC3
     def get_state_colors(item)
       color = @parser.parameters[2].upcase.to_sym
       unless PacketItem::STATE_COLORS.include? color
-        raise @parser.error("Invalid state color #{color}. Must be one of #{PacketItem::STATE_COLORS.join(' ')}.", @usage)
+        raise @parser.error("Invalid state color '#{color}'. Must be one of #{PacketItem::STATE_COLORS.join(', ')}.", @usage)
       end
 
       item.limits.enabled = true

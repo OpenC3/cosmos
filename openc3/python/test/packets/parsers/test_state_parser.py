@@ -177,7 +177,7 @@ class TestStateParser(unittest.TestCase):
         tf.write('  APPEND_ITEM item1 8 UINT "state item"\n')
         tf.write("    STATE WORST 1 ORANGE\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, "Invalid state color ORANGE"):
+        with self.assertRaisesRegex(ConfigParser.Error, "Invalid state color 'ORANGE'"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
