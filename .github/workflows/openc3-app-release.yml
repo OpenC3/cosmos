@@ -176,7 +176,13 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: openc3-app-${{ matrix.name }}
-          path: openc3-app/dist/installers/*
+          # Exclude the loose .app bundle cargo-packager leaves beside the .dmg:
+          # a .app inside the artifact zip loses its code signature (the sealed
+          # CodeResources), so it fails Gatekeeper. Ship the .dmg, which keeps
+          # the bundle intact.
+          path: |
+            openc3-app/dist/installers/*
+            !openc3-app/dist/installers/*.app
           if-no-files-found: error
 
   # Prove the .deb installs cleanly (dependencies resolve, binary runs) in a
