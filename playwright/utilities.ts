@@ -47,6 +47,12 @@ export class Utilities {
 
     if (packet) {
       await this.page.locator('[data-test=select-packet]').click()
+      // Filter since the packet list can be long; typing collapses the
+      // virtualized v-list so the target option stays stable during click
+      // (otherwise the option can detach from the DOM mid-render).
+      await this.page
+        .getByRole('combobox', { name: 'Select Packet' })
+        .fill(packet)
       await this.page.getByRole('option', { name: packet, exact: true }).click()
       await expect(
         this.page.locator('[data-test="select-packet"]'),

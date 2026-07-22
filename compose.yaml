@@ -447,6 +447,9 @@ services:
       - OPENC3_CONFIG_BUCKET=${OPENC3_CONFIG_BUCKET}
       - OPENC3_LOGS_BUCKET=${OPENC3_LOGS_BUCKET}
       - OPENC3_TOOLS_BUCKET=${OPENC3_TOOLS_BUCKET}
+      # initbuckets reads this to grant the reduced-privilege ScriptRunner
+      # bucket user read access to the config/logs buckets (ensure_scriptrunner_policy)
+      - OPENC3_SR_BUCKET_USERNAME=${OPENC3_SR_BUCKET_USERNAME}
       - OPENC3_CLOUD=${OPENC3_CLOUD}
       - OPENC3_AWS_ARN_PREFIX=${OPENC3_AWS_ARN_PREFIX}
       - AWS_REGION=${AWS_REGION}
