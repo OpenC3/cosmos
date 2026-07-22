@@ -125,6 +125,22 @@ jobs:
       - name: Build the release binary
         run: cargo build --release --target ${{ matrix.rust_target }}
 
+      # cargo-packager takes the codesign identity from the `signing-identity`
+      # config field, not an env var. Cargo.toml defaults it to ad-hoc ("-");
+      # replace it with the real Developer ID when the secret is present so the
+      # build is signed (and can be notarized). BSD sed (macOS runner).
+      - name: Set macOS Developer ID signing identity
+        if: runner.os == 'macOS'
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          if [ -n "$APPLE_SIGNING_IDENTITY" ]; then
+            sed -i '' "s|signing-identity = \"-\"|signing-identity = \"$APPLE_SIGNING_IDENTITY\"|" Cargo.toml
+            echo "Signing with: $APPLE_SIGNING_IDENTITY"
+          else
+            echo "No APPLE_SIGNING_IDENTITY secret; building ad-hoc signed (unsigned distribution)."
+          fi
+
       # Notarization uses an App Store Connect API key, which must be a .p8 file
       # on disk. Decode it from the base64 secret and point APPLE_API_KEY_PATH at
       # it — only when the secret is set (otherwise the build is left unsigned).
@@ -151,13 +167,15 @@ jobs:
           #   APPLE_CERTIFICATE           base64 of the Developer ID .p12
           #   APPLE_CERTIFICATE_PASSWORD  its password
           #   APPLE_SIGNING_IDENTITY      "Developer ID Application: NAME (TEAMID)"
+          #                               (consumed by the sed step above — cargo-
+          #                               packager reads the identity from the
+          #                               Cargo.toml config field, not this env)
           #   APPLE_API_KEY               App Store Connect API Key ID
           #   APPLE_API_ISSUER            App Store Connect Issuer ID
           #   APPLE_API_KEY_P8            base64 of AuthKey_<KeyID>.p8 (decoded to
           #                               APPLE_API_KEY_PATH by the step above)
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: cargo packager --release --target ${{ matrix.rust_target }} ${{ matrix.packager_args }} --out-dir dist/installers

@@ -76,6 +76,13 @@ icons = [
 
 [package.metadata.packager.macos]
 minimum-system-version = "11.0"
+# cargo-packager reads the codesign identity from THIS field (not an env var).
+# Default to ad-hoc ("-") so every build produces a valid, self-consistent .app
+# bundle — an unsigned bundle is rejected by Gatekeeper ("damaged" / "code has
+# no resources"). The release workflow replaces this with the real
+# "Developer ID Application: …" identity when signing secrets are present, which
+# also enables notarization.
+signing-identity = "-"
 
 [package.metadata.packager.nsis]
 installer-mode = "both"
