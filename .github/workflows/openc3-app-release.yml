@@ -125,27 +125,41 @@ jobs:
       - name: Build the release binary
         run: cargo build --release --target ${{ matrix.rust_target }}
 
+      # Notarization uses an App Store Connect API key, which must be a .p8 file
+      # on disk. Decode it from the base64 secret and point APPLE_API_KEY_PATH at
+      # it — only when the secret is set (otherwise the build is left unsigned).
+      - name: Write App Store Connect API key (macOS)
+        if: runner.os == 'macOS'
+        env:
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          if [ -n "$APPLE_API_KEY_P8" ]; then
+            keyfile="$RUNNER_TEMP/asc_api_key.p8"
+            printf '%s' "$APPLE_API_KEY_P8" | base64 --decode > "$keyfile"
+            echo "APPLE_API_KEY_PATH=$keyfile" >> "$GITHUB_ENV"
+          fi
+
       - name: Package installers
         env:
           # Build the AppImage without FUSE (unavailable on hosted runners);
           # ignored on macOS/Windows.
           APPIMAGE_EXTRACT_AND_RUN: "1"
           # macOS signing + notarization. cargo-packager imports the base64 .p12
-          # cert into a temporary keychain and signs/notarizes when these are set;
-          # if the secrets are absent they expand to empty and the build is simply
-          # left unsigned (ad-hoc). Ignored on Linux/Windows. Configure these repo
-          # secrets to produce signed, notarized macOS builds:
+          # cert into a temporary keychain and signs, then notarizes with an App
+          # Store Connect API key. Absent secrets expand to empty, leaving the
+          # build unsigned (ad-hoc). Ignored on Linux/Windows. Repo secrets:
           #   APPLE_CERTIFICATE           base64 of the Developer ID .p12
           #   APPLE_CERTIFICATE_PASSWORD  its password
-          #   APPLE_SIGNING_IDENTITY      e.g. "Developer ID Application: NAME (TEAMID)"
-          #   APPLE_ID / APPLE_PASSWORD   Apple ID + app-specific password
-          #   APPLE_TEAM_ID               10-char team id
+          #   APPLE_SIGNING_IDENTITY      "Developer ID Application: NAME (TEAMID)"
+          #   APPLE_API_KEY               App Store Connect API Key ID
+          #   APPLE_API_ISSUER            App Store Connect Issuer ID
+          #   APPLE_API_KEY_P8            base64 of AuthKey_<KeyID>.p8 (decoded to
+          #                               APPLE_API_KEY_PATH by the step above)
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: cargo packager --release --target ${{ matrix.rust_target }} ${{ matrix.packager_args }} --out-dir dist/installers
 
       # Also ship the standalone binary as a .tar.gz so non-Debian distros (and
