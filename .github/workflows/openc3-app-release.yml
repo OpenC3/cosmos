@@ -91,6 +91,10 @@ jobs:
     name: ${{ matrix.name }}
     needs: setup
     runs-on: ${{ matrix.runner }}
+    # `notarytool submit --wait` has no built-in timeout; a stuck submission or
+    # auth-retry would otherwise run to the 6-hour job default. Cap it so a hung
+    # notarization fails in minutes while we debug.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
@@ -154,6 +158,35 @@ jobs:
             printf '%s' "$APPLE_API_KEY_P8" | base64 --decode > "$keyfile"
             echo "APPLE_API_KEY_PATH=$keyfile" >> "$GITHUB_ENV"
           fi
+
+      # DEBUG: notarization (`notarytool submit --wait`) hung for 24 min with no
+      # output. cargo-packager captures the subprocess, so there's no progress
+      # visibility. Exercise the credentials directly — a fast, visible call that
+      # proves auth + connectivity to Apple's notary service before the long
+      # submit. If THIS hangs (times out at 3 min) or errors, the problem is a
+      # bad API key id / issuer / key file (or blocked egress), not a slow Apple
+      # queue. `head -1` prints only the PEM banner, never the key material.
+      - name: Check notarization credentials (macOS, debug)
+        if: runner.os == 'macOS'
+        timeout-minutes: 3
+        env:
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          set -eu
+          if [ -z "${APPLE_API_KEY_PATH:-}" ]; then
+            echo "APPLE_API_KEY_PATH unset — no API key; notarization would be skipped."
+            exit 0
+          fi
+          echo "== key file =="
+          ls -l "$APPLE_API_KEY_PATH"
+          head -1 "$APPLE_API_KEY_PATH"
+          echo "== key id set: $([ -n "${APPLE_API_KEY:-}" ] && echo yes || echo NO), issuer set: $([ -n "${APPLE_API_ISSUER:-}" ] && echo yes || echo NO) =="
+          echo "== notarytool history (proves auth + connectivity) =="
+          xcrun notarytool history \
+            --key "$APPLE_API_KEY_PATH" \
+            --key-id "$APPLE_API_KEY" \
+            --issuer "$APPLE_API_ISSUER"
 
       - name: Package installers
         env:
