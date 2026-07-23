@@ -18,6 +18,15 @@
 class RunningScriptChannel < ApplicationCable::Channel
   @@broadcasters = {}
 
+  # How long the live-tail broadcaster waits before its first read when the
+  # client has not armed it via the 'tail' action. Covers legacy clients
+  # (older CLI gems / frontend bundles / third-party websocket consumers)
+  # that only subscribe and read: their events are delayed by up to this
+  # much at attach, in exchange for not being dropped by the
+  # stream-registration race described below. Current clients perform
+  # 'tail' after the subscription confirmation and get events immediately.
+  LEGACY_ARM_DELAY = 1.0
+
   def subscribed
     # Defensive: if the auth before_subscribe callback rejected us, skip work.
     return if subscription_rejected?
@@ -61,14 +70,33 @@ class RunningScriptChannel < ApplicationCable::Channel
     # there is nothing left to stream.
     return if complete
 
+    # Start the live tail, but DELAYED: a broadcast issued right now can race
+    # the gateway registering our stream_from above and be silently dropped.
+    # That loses any events written between the xrange and the thread's first
+    # read, and a script that then goes quiet (e.g. parked in a wait) never
+    # publishes again -- leaving the client stuck on "Connecting...". Current
+    # clients arm the tail immediately via the 'tail' action (see #tail),
+    # performed after the subscription confirmation has round-tripped, which
+    # guarantees the stream is registered. The delay is only the fallback for
+    # legacy clients that never perform 'tail'.
     begin
-      broadcaster = RunningScriptReplayThread.new(subscription_key, params[:id], last_offset)
+      broadcaster = RunningScriptReplayThread.new(subscription_key, params[:id], last_offset,
+                                                  arm_delay: LEGACY_ARM_DELAY)
       broadcaster.start
       @@broadcasters[subscription_key] = broadcaster
     rescue StandardError => e
       # Best-effort: a replay failure must not break the subscription.
       OpenC3::Logger.warn("running_script replay start failed: #{e.message}") rescue nil
     end
+  end
+
+  # Channel action performed by the client after it receives the
+  # subscription confirmation. By then the gateway has registered this
+  # subscription's stream, so live broadcasts can no longer be dropped --
+  # skip the legacy arm delay and start tailing right away. No-ops if the
+  # script already completed (no broadcaster) or on duplicate performs.
+  def tail
+    @@broadcasters["running-script-#{uuid}"]&.arm
   end
 
   def unsubscribed

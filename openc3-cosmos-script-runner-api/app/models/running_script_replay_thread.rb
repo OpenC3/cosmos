@@ -23,21 +23,46 @@ require 'openc3'
 # separately by RunningScriptChannel#subscribed via transmit(), because a
 # stream broadcast issued from this thread can race the gateway registering the
 # subscriber's stream_from and be dropped -- which is exactly how a
-# fast-completing script's output used to be lost. The channel reads the backlog
-# up to @start_offset and starts us there, so there is no gap and no duplicate
+# fast-completing script's output used to be lost. For the same reason the
+# first read is deferred: current clients arm() the tail via the 'tail'
+# channel action after their subscription confirmation round-trips (proving
+# the stream is registered); legacy clients that never perform 'tail' fall
+# back to a fixed arm_delay. The channel reads the backlog up to
+# @start_offset and starts us there, so there is no gap and no duplicate
 # delivery. Modeled on MessagesThread/TopicsThread in cmd-tlm-api.
 class RunningScriptReplayThread
-  def initialize(subscription_key, id, start_offset = '0-0')
+  def initialize(subscription_key, id, start_offset = '0-0', arm_delay: 0.0)
     @subscription_key = subscription_key
     @topic = "running-script-channel:#{id}:replay"
     # Tail strictly after the backlog the channel already transmitted.
-    @offsets = [start_offset]
+    # Guard nil explicitly: a nil offset makes read_topics raise and
+    # silently kills the thread (worst case re-delivery from 0-0 is
+    # preferable to no delivery at all).
+    @offsets = [start_offset || '0-0']
+    # Wait up to arm_delay before the first read unless arm() is called
+    # sooner. Broadcasts issued before the gateway registers the
+    # subscriber's stream are silently dropped; current clients arm() as
+    # soon as their subscription confirmation round-trips (proving
+    # registration), while legacy clients fall back to the fixed delay.
+    @arm_delay = arm_delay
+    @armed = arm_delay <= 0.0
     @cancel_thread = false
     @thread = nil
   end
 
+  # Skip any remaining arm delay and start reading/broadcasting immediately
+  def arm
+    @armed = true
+  end
+
   def start
     @thread = Thread.new do
+      unless @armed
+        deadline = Time.now + @arm_delay
+        while !@armed && !@cancel_thread && Time.now < deadline
+          sleep 0.05
+        end
+      end
       while !@cancel_thread
         # read_topics blocks up to ~1s for new entries then returns, so the loop
         # both drains the backlog (offset starts at '0-0') and tails live.
