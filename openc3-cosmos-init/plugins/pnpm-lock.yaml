@@ -82,6 +82,9 @@ importers:
       prettier:
         specifier: 3.8.5
         version: 3.8.5
+      rollup-plugin-sourcemaps2:
+        specifier: ^0.5.8
+        version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
         specifier: 1.101.0
         version: 1.101.0
@@ -125,6 +128,9 @@ importers:
       prettier:
         specifier: 3.8.5
         version: 3.8.5
+      rollup-plugin-sourcemaps2:
+        specifier: ^0.5.8
+        version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
         specifier: 1.101.0
         version: 1.101.0
@@ -171,6 +177,9 @@ importers:
       prettier:
         specifier: 3.8.5
         version: 3.8.5
+      rollup-plugin-sourcemaps2:
+        specifier: ^0.5.8
+        version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
         specifier: 1.101.0
         version: 1.101.0
@@ -232,6 +241,9 @@ importers:
       prettier:
         specifier: 3.8.5
         version: 3.8.5
+      rollup-plugin-sourcemaps2:
+        specifier: ^0.5.8
+        version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
         specifier: 1.101.0
         version: 1.101.0
@@ -272,6 +284,9 @@ importers:
       prettier:
         specifier: 3.8.5
         version: 3.8.5
+      rollup-plugin-sourcemaps2:
+        specifier: ^0.5.8
+        version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
         specifier: 1.101.0
         version: 1.101.0
@@ -315,6 +330,9 @@ importers:
       prettier:
         specifier: 3.8.5
         version: 3.8.5
+      rollup-plugin-sourcemaps2:
+        specifier: ^0.5.8
+        version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
         specifier: 1.101.0
         version: 1.101.0
@@ -358,6 +376,9 @@ importers:
       prettier:
         specifier: 3.8.5
         version: 3.8.5
+      rollup-plugin-sourcemaps2:
+        specifier: ^0.5.8
+        version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
         specifier: 1.101.0
         version: 1.101.0
@@ -404,6 +425,9 @@ importers:
       prettier:
         specifier: 3.8.5
         version: 3.8.5
+      rollup-plugin-sourcemaps2:
+        specifier: ^0.5.8
+        version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
         specifier: 1.101.0
         version: 1.101.0
@@ -447,6 +471,9 @@ importers:
       prettier:
         specifier: 3.8.5
         version: 3.8.5
+      rollup-plugin-sourcemaps2:
+        specifier: ^0.5.8
+        version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
         specifier: 1.101.0
         version: 1.101.0
@@ -490,6 +517,9 @@ importers:
       prettier:
         specifier: 3.8.5
         version: 3.8.5
+      rollup-plugin-sourcemaps2:
+        specifier: ^0.5.8
+        version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
         specifier: 1.101.0
         version: 1.101.0
@@ -539,6 +569,9 @@ importers:
       prettier:
         specifier: 3.8.5
         version: 3.8.5
+      rollup-plugin-sourcemaps2:
+        specifier: ^0.5.8
+        version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
         specifier: 1.101.0
         version: 1.101.0
@@ -582,6 +615,9 @@ importers:
       prettier:
         specifier: 3.8.5
         version: 3.8.5
+      rollup-plugin-sourcemaps2:
+        specifier: ^0.5.8
+        version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
         specifier: 1.101.0
         version: 1.101.0
@@ -631,6 +667,9 @@ importers:
       prettier:
         specifier: 3.8.5
         version: 3.8.5
+      rollup-plugin-sourcemaps2:
+        specifier: ^0.5.8
+        version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
         specifier: 1.101.0
         version: 1.101.0
@@ -683,6 +722,9 @@ importers:
       prettier:
         specifier: 3.8.5
         version: 3.8.5
+      rollup-plugin-sourcemaps2:
+        specifier: ^0.5.8
+        version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
         specifier: 1.101.0
         version: 1.101.0
@@ -787,6 +829,9 @@ importers:
       prettier:
         specifier: 3.8.5
         version: 3.8.5
+      rollup-plugin-sourcemaps2:
+        specifier: ^0.5.8
+        version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
         specifier: 1.101.0
         version: 1.101.0
@@ -875,6 +920,9 @@ importers:
       prettier:
         specifier: 3.8.5
         version: 3.8.5
+      rollup-plugin-sourcemaps2:
+        specifier: ^0.5.8
+        version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       vite:
         specifier: 7.3.6
         version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.101.0)
@@ -1302,6 +1350,15 @@ packages:
 
   '@rolldown/pluginutils@1.0.1':
     resolution: {integrity: sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==}
+
+  '@rollup/pluginutils@5.4.0':
+    resolution: {integrity: sha512-MfPp06CjRLfXQ3wY0R8vJDYBy/MvVcc9OulEfR0B8Iv9ko+GCNaRZ+EpJYFl27LhKsZK0o420sYCRHCjfCgeUg==}
+    engines: {node: '>=14.0.0'}
+    peerDependencies:
+      rollup: ^1.20.0||^2.0.0||^3.0.0||^4.0.0
+    peerDependenciesMeta:
+      rollup:
+        optional: true
 
   '@rollup/rollup-android-arm-eabi@4.60.4':
     resolution: {integrity: sha512-F5QXMSiFebS9hKZj02XhWLLnRpJ3B3AROP0tWbFBSj+6kCbg5m9j5JoHKd4mmSVy5mS/IMQloYgYxCuJC0fxEQ==}
@@ -2258,6 +2315,16 @@ packages:
   rfdc@1.4.1:
     resolution: {integrity: sha512-q1b3N5QkRUWUl7iyylaaj3kOpIT0N2i9MqIEQXP73GVsN9cw3fdx8X63cEmWhJGi2PPCF23Ijp7ktmd39rawIA==}
 
+  rollup-plugin-sourcemaps2@0.5.8:
+    resolution: {integrity: sha512-c5BfiVbKAmaz+RoEhFF44Tg/X2QoLxEB8F7wS/eNWDJF/NKxi0SF7srN3Dg0RUnIcYLyCOwscket5Mr3BImMbg==}
+    engines: {node: '>=22.13.0'}
+    peerDependencies:
+      '@types/node': '>=18.0.0'
+      rollup: '>=4'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+
   rollup@4.60.4:
     resolution: {integrity: sha512-WHeFSbZYsPu3+bLoNRUuAO+wavNlocOPf3wSHTP7hcFKVnJeWsYlCDbr3mTS14FCizf9ccIxXA8sGL8zKeQN3g==}
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
@@ -2854,6 +2921,14 @@ snapshots:
   '@pkgr/core@0.2.9': {}
 
   '@rolldown/pluginutils@1.0.1': {}
+
+  '@rollup/pluginutils@5.4.0(rollup@4.60.4)':
+    dependencies:
+      '@types/estree': 1.0.9
+      estree-walker: 2.0.2
+      picomatch: 4.0.4
+    optionalDependencies:
+      rollup: 4.60.4
 
   '@rollup/rollup-android-arm-eabi@4.60.4':
     optional: true
@@ -3717,6 +3792,13 @@ snapshots:
   requireindex@1.2.0: {}
 
   rfdc@1.4.1: {}
+
+  rollup-plugin-sourcemaps2@0.5.8(@types/node@25.0.3)(rollup@4.60.4):
+    dependencies:
+      '@rollup/pluginutils': 5.4.0(rollup@4.60.4)
+      rollup: 4.60.4
+    optionalDependencies:
+      '@types/node': 25.0.3
 
   rollup@4.60.4:
     dependencies:
