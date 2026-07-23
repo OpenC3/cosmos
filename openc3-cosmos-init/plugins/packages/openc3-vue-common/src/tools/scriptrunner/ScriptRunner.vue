@@ -121,7 +121,7 @@
               <v-tooltip :open-delay="600" location="top">
                 <template #activator="{ props }">
                   <v-btn
-                    v-if="!scriptId"
+                    v-if="!scriptActive"
                     v-bind="props"
                     icon="mdi-cached"
                     variant="text"
@@ -139,7 +139,7 @@
                     @click="backToNewScript"
                   />
                 </template>
-                <span v-if="!scriptId"> Reload File </span>
+                <span v-if="!scriptActive"> Reload File </span>
                 <span v-else> Back to New Script </span>
               </v-tooltip>
             </div>
@@ -358,17 +358,17 @@
             <v-divider />
             <v-list-item title="Execute Selection" @click="executeSelection" />
             <v-list-item
-              v-if="scriptId"
+              v-if="executionPhase === 'active'"
               title="Goto Line"
               @click="runFromCursor"
             />
             <v-list-item
-              v-if="!scriptId"
+              v-if="!scriptActive"
               title="Run From Line"
               @click="runFromCursor"
             />
             <v-list-item
-              v-if="!scriptId"
+              v-if="!scriptActive"
               title="Clear Local Breakpoints"
               @click="clearBreakpoints"
             />
@@ -390,7 +390,7 @@
               class="mr-4"
               text="Step"
               append-icon="mdi-step-forward"
-              :disabled="!scriptId"
+              :disabled="executionPhase !== 'active'"
               data-test="step-button"
               @click="step"
             />
@@ -884,6 +884,20 @@ export default {
       alertText: '',
       state: null,
       scriptId: null,
+      // Execution lifecycle owned by this component. scriptId is not a
+      // reliable "is a script running" marker: the backend publishes the
+      // terminal state ('completed', etc.) as a 'line' event BEFORE the
+      // 'complete' event that drives scriptComplete(), so there is a window
+      // where the UI shows completed but scriptId is still set and an async
+      // reloadFile is pending. 'idle' -> 'active' (initScriptStart),
+      // 'active' -> 'finishing' (terminal state seen in processLine),
+      // any -> 'idle' (end of scriptComplete).
+      executionPhase: 'idle',
+      // Generation counter guarding async loads (reloadFile, the processLine
+      // file fetch). Incremented whenever the authoritative file/breakpoint
+      // source changes; stale callbacks compare their captured value and
+      // drop their results instead of clobbering newer state.
+      sessionEpoch: 0,
       startOrGoButton: START,
       startOrGoDisabled: false,
       envDisabled: false,
@@ -1022,6 +1036,14 @@ export default {
     }
   },
   computed: {
+    // True for the entire execution lifecycle: from Start (or connecting to
+    // a running script) through the finishing window between the terminal
+    // 'line' event and scriptComplete(). Use this to gate editing/UI, not
+    // scriptId, which is set late (after the run POST returns) and cleared
+    // late (during scriptComplete after an async reload).
+    scriptActive: function () {
+      return this.executionPhase !== 'idle'
+    },
     stateTimer: function () {
       if (this.state === 'waiting' || this.state === 'paused') {
         return `${this.state} ${this.waitingTime}s`
@@ -1126,7 +1148,7 @@ export default {
             {
               label: 'New File',
               icon: 'mdi-file-plus',
-              disabled: this.scriptId || this.readOnlyUser,
+              disabled: this.scriptActive || this.readOnlyUser,
               command: () => {
                 this.newFileWithConfirm()
               },
@@ -1134,7 +1156,7 @@ export default {
             {
               label: 'New Suite',
               icon: 'mdi-file-document-plus',
-              disabled: this.scriptId || this.readOnlyUser,
+              disabled: this.scriptActive || this.readOnlyUser,
               subMenu: [
                 {
                   label: 'Ruby',
@@ -1155,7 +1177,7 @@ export default {
             {
               label: 'Open File',
               icon: 'mdi-folder-open',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.openFileWithConfirm()
               },
@@ -1163,7 +1185,7 @@ export default {
             {
               label: 'Open Recent',
               icon: 'mdi-folder-open',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               subMenu: this.recent,
             },
             {
@@ -1173,7 +1195,7 @@ export default {
               label: 'Save File',
               icon: 'mdi-content-save',
               disabled:
-                this.scriptId || this.readOnlyUser || this.scriptApproved,
+                this.scriptActive || this.readOnlyUser || this.scriptApproved,
               tooltip: this.scriptApproved
                 ? 'Script is approved and cannot be modified. Move it back to review to edit.'
                 : null,
@@ -1184,7 +1206,7 @@ export default {
             {
               label: 'Save As...',
               icon: 'mdi-content-save',
-              disabled: this.scriptId || this.readOnlyUser,
+              disabled: this.scriptActive || this.readOnlyUser,
               command: () => {
                 this.saveAs()
               },
@@ -1195,7 +1217,7 @@ export default {
             {
               label: 'Download',
               icon: 'mdi-cloud-download',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.download()
               },
@@ -1207,7 +1229,7 @@ export default {
               label: 'Delete File',
               icon: 'mdi-delete',
               disabled:
-                this.scriptId || this.readOnlyUser || this.scriptApproved,
+                this.scriptActive || this.readOnlyUser || this.scriptApproved,
               tooltip: this.scriptApproved
                 ? 'Script is approved and cannot be deleted. Move it back to review to delete.'
                 : null,
@@ -1230,7 +1252,7 @@ export default {
             {
               label: 'Replace',
               icon: 'mdi-find-replace',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.editor.execCommand('replace')
               },
@@ -1238,7 +1260,7 @@ export default {
             {
               label: 'Set Line Delay',
               icon: 'mdi-invoice-text-clock',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.$dialog.open({
                   title: 'Info',
@@ -1285,7 +1307,7 @@ export default {
             {
               label: 'Global Environment',
               icon: 'mdi-library',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.showEnvironment = !this.showEnvironment
               },
@@ -1293,7 +1315,7 @@ export default {
             {
               label: 'Metadata',
               icon: 'mdi-calendar',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.inputMetadata.callback = () => {}
                 this.showMetadata()
@@ -1312,7 +1334,7 @@ export default {
             {
               label: 'Syntax Check',
               icon: 'mdi-file-check',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.syntaxCheck()
               },
@@ -1320,7 +1342,7 @@ export default {
             {
               label: 'Mnemonic Check',
               icon: 'mdi-spellcheck',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.checkMnemonics()
               },
@@ -1328,7 +1350,7 @@ export default {
             {
               label: 'Instrumented Script',
               icon: 'mdi-code-braces-box',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.showInstrumented()
               },
@@ -1336,7 +1358,7 @@ export default {
             {
               label: 'Call Stack',
               icon: 'mdi-format-list-numbered',
-              disabled: !this.scriptId,
+              disabled: !this.scriptActive,
               command: () => {
                 this.showCallStack()
               },
@@ -1354,7 +1376,7 @@ export default {
             {
               label: 'Toggle Disconnect',
               icon: 'mdi-connection',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.toggleDisconnect()
               },
@@ -1363,7 +1385,7 @@ export default {
               label: 'Enable Stack Traces',
               checkbox: true,
               checked: this.enableStackTraces,
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 // Toggling the checkbox closes the menu so no need
                 // to check state, just toggle existing value
@@ -1376,7 +1398,7 @@ export default {
             {
               label: 'Delete All Breakpoints',
               icon: 'mdi-delete-circle-outline',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.deleteAllBreakpoints()
               },
@@ -1391,7 +1413,7 @@ export default {
                     label: 'Version History',
                     icon: 'mdi-history',
                     disabled:
-                      this.scriptId ||
+                      this.scriptActive ||
                       !this.filename ||
                       this.filename === NEW_FILENAME,
                     command: () => {
@@ -1427,7 +1449,7 @@ export default {
         !this.readOnlyUser &&
         !this.isLocked &&
         !this.inline &&
-        !this.scriptId
+        !this.scriptActive
       ) {
         this.editor.setReadOnly(false)
       }
@@ -1833,6 +1855,12 @@ export default {
       this.editor.gotoLine(this.files[filename].lineNo)
     },
     tryLoadRunningScript: function (id) {
+      // Gate editing immediately: we're (probably) about to attach to a
+      // running script, and gutter clicks made during this fetch would be
+      // wiped when the running file loads. Every exit path normalizes the
+      // phase: initScriptStart() on attach, scriptComplete() on
+      // completed/not-found.
+      this.executionPhase = 'active'
       return Api.get(`/script-api/running-script/${id}`)
         .then((response) => {
           if (response.data) {
@@ -1905,9 +1933,11 @@ export default {
     },
     runFromCursor: function () {
       const start_row = this.editor.getCursorPosition().row + 1
-      if (!this.scriptId) {
+      if (!this.scriptActive) {
         this.start(null, null, start_row)
-      } else {
+      } else if (this.executionPhase === 'active' && this.scriptId) {
+        // Only command a live script: not during 'finishing' (script process
+        // already dead) and not before the run POST returns scriptId
         Api.post(
           `/script-api/running-script/${this.scriptId}/executewhilepaused`,
           {
@@ -1925,9 +1955,9 @@ export default {
       if (range.end.column === 0) {
         end_row -= 1
       }
-      if (!this.scriptId) {
+      if (!this.scriptActive) {
         this.start(null, null, start_row, end_row)
-      } else {
+      } else if (this.executionPhase === 'active' && this.scriptId) {
         Api.post(
           `/script-api/running-script/${this.scriptId}/executewhilepaused`,
           {
@@ -1942,14 +1972,20 @@ export default {
       this.editor.session.clearBreakpoints()
     },
     toggleBreakpoint: function ($event) {
-      // Don't allow setting breakpoints while running
-      if (!this.scriptId) {
-        const row = $event.getDocumentPosition().row
-        if ($event.editor.session.getBreakpoints(row, 0)[row]) {
-          $event.editor.session.clearBreakpoint(row)
-        } else {
-          $event.editor.session.setBreakpoint(row)
-        }
+      // Don't allow setting breakpoints during script execution. Gate on
+      // scriptActive rather than scriptId: after the terminal 'line' event
+      // the state box shows completed but scriptComplete() hasn't run yet
+      // (scriptId still set, async reloadFile pending), and a click in that
+      // window would be silently undone by the server-driven
+      // restoreBreakpoints when the reload lands.
+      if (this.scriptActive) {
+        return
+      }
+      const row = $event.getDocumentPosition().row
+      if ($event.editor.session.getBreakpoints(row, 0)[row]) {
+        $event.editor.session.clearBreakpoint(row)
+      } else {
+        $event.editor.session.setBreakpoint(row)
       }
     },
     updateBreakpoints: function ($event, session) {
@@ -2016,7 +2052,7 @@ export default {
     },
     async keydown(event) {
       // Don't ever save if running or readonly
-      if (this.scriptId || this.editor.getReadOnly() === true) {
+      if (this.scriptActive || this.editor.getReadOnly() === true) {
         return
       }
       // NOTE: Chrome does not allow overriding Ctrl-N, Ctrl-Shift-N, Ctrl-T, Ctrl-Shift-T, Ctrl-W
@@ -2036,7 +2072,7 @@ export default {
     },
     onChange(event) {
       // Don't track changes when we're running or read-only (locked)
-      if (this.scriptId || this.editor.getReadOnly() === true) {
+      if (this.scriptActive || this.editor.getReadOnly() === true) {
         return
       }
       if (this.editor.session.getUndoManager().canUndo()) {
@@ -2086,6 +2122,7 @@ export default {
         })
     },
     initScriptStart() {
+      this.executionPhase = 'active'
       this.disableSuiteButtons = true
       this.startOrGoDisabled = true
       this.envDisabled = true
@@ -2098,6 +2135,9 @@ export default {
     async scriptStart(id) {
       this.$emit('script-id', id)
       this.scriptId = id
+      // Invalidate any file loads still in flight from before this run
+      // so they can't overwrite the editor mid-execution
+      this.sessionEpoch++
       // Ensure only one subscription is ever active. scriptStart can be reached
       // again while a subscription already exists -- most notably "Connect to
       // Running Script", which updates the route (beforeRouteUpdate) on the
@@ -2108,30 +2148,53 @@ export default {
         await this.subscription.unsubscribe()
         this.subscription = null
       }
+      if (this.scriptId !== id) {
+        // A newer scriptStart (or scriptComplete) superseded this call
+        // while we awaited the unsubscribe: let it own the subscription
+        return
+      }
       this.receivedEvents.length = 0 // Drop any events not yet processed
       // Reset prompt tracking so the first prompt re-published on this fresh
       // subscription is always processed and displayed. Without this, attaching
       // to a running script (which reuses the component) could carry over a
       // stale activePromptId and skip showing the dialog (see handleScript).
       this.activePromptId = ''
-      this.subscription = await this.cable.createSubscription(
+      const subscription = await this.cable.createSubscription(
         'RunningScriptChannel',
         window.openc3Scope,
         {
           received: (data) => this.received(data),
         },
         {
-          id: this.scriptId,
+          id,
         },
       )
+      if (this.scriptId !== id) {
+        // Superseded while subscribing: drop the subscription we just made
+        // instead of overwriting (and leaking) the newer one
+        await subscription.unsubscribe()
+        return
+      }
+      this.subscription = subscription
     },
     async scriptComplete() {
+      // Invalidate in-flight per-line file fetches (processLine) so a late
+      // response can't restore the running script's breakpoints/content
+      // over the freshly reloaded file below
+      this.sessionEpoch++
       // Make sure we process no more events
       if (this.subscription) {
         await this.subscription.unsubscribe()
         this.subscription = null
       }
       this.receivedEvents.length = 0 // Clear any unprocessed events
+      // Close any prompt dialogs a killed/stopped script left open;
+      // answering them would POST to a script that no longer exists
+      this.prompt.show = false
+      this.ask.show = false
+      this.file.show = false
+      this.bucket.show = false
+      this.activePromptId = ''
 
       await this.reloadFile() // Make sure the right file is shown
       // We may have changed the contents (if there were sub-scripts)
@@ -2155,6 +2218,9 @@ export default {
       this.stopDisabled = true
       // Overrides can be set from a script
       this.updateOverridesCount()
+      // Execution lifecycle fully over: editor reloaded, breakpoints
+      // restored, scriptId cleared. Gutter clicks are honored again.
+      this.executionPhase = 'idle'
     },
     environmentHandler: function (event) {
       this.scriptEnvironment.env = event
@@ -2238,7 +2304,11 @@ export default {
       Api.post(`/script-api/running-script/${this.scriptId}/stop`)
     },
     step() {
-      Api.post(`/script-api/running-script/${this.scriptId}/step`)
+      // Only command a live script: not during 'finishing' and not before
+      // the run POST returns scriptId
+      if (this.executionPhase === 'active' && this.scriptId) {
+        Api.post(`/script-api/running-script/${this.scriptId}/step`)
+      }
     },
     // This is called by processLine no matter the current state
     handleWaiting() {
@@ -2268,8 +2338,15 @@ export default {
           this.files[data.filename] = { content: '', lineNo: 0 }
 
           // Request the script we need
+          const epoch = this.sessionEpoch
           Api.get(`/script-api/scripts/${data.filename}`)
             .then((response) => {
+              if (epoch !== this.sessionEpoch) {
+                // A newer file source took over while this fetch was in
+                // flight (script completed / new file loaded) - drop it
+                // rather than clobber the current breakpoints and content
+                return
+              }
               // Success - Save the script text and mark the currentFilename as null
               // so it will get loaded in on the next line executed
               this.files[data.filename] = {
@@ -2281,6 +2358,9 @@ export default {
               this.currentFilename = null
             })
             .catch((err) => {
+              if (epoch !== this.sessionEpoch) {
+                return
+              }
               // Error - Restore the file contents to null so we'll try the API again on the next line
               this.files[data.filename] = null
             })
@@ -2351,6 +2431,24 @@ export default {
           // 'complete' message in processReceived() which always follows.
           // Calling scriptComplete() here would unsubscribe the channel
           // before the 'complete' message (with suite report) arrives.
+          // Mark the window between this terminal state and scriptComplete()
+          // so user input (e.g. gutter clicks) stays gated until cleanup.
+          // Guarded so a duplicate/replayed terminal event arriving after
+          // scriptComplete can't push an idle session back to 'finishing'.
+          if (this.executionPhase === 'active') {
+            this.executionPhase = 'finishing'
+            // The script process is gone; don't leave Go/Pause/Stop posting
+            // to it during the finishing window. Inside the phase guard so
+            // a replayed terminal event can't wedge Start disabled once
+            // scriptComplete has re-enabled it.
+            this.startOrGoDisabled = true
+            this.pauseOrRetryDisabled = true
+            this.stopDisabled = true
+          }
+          // Stop the waiting timer: nothing else clears it on terminal
+          // states, and a surviving interval carries its stale waitingStart
+          // into the next run's waiting display
+          this.clearWaiting()
           this.removeAllMarkers()
           break
 
@@ -2727,18 +2825,35 @@ export default {
         })
       }
       // We have to wait for all the upload API requests to finish before notifying the prompt
-      Promise.all(promises).then((responses) => {
-        Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-          data: {
-            method: this.file.multiple
-              ? 'open_files_dialog'
-              : 'open_file_dialog',
-            answer: fileNames,
-            prompt_id: this.activePromptId,
-          },
+      Promise.all(promises)
+        .then((responses) => {
+          Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
+            data: {
+              method: this.file.multiple
+                ? 'open_files_dialog'
+                : 'open_file_dialog',
+              answer: fileNames,
+              prompt_id: this.activePromptId,
+            },
+          })
+          this.file.show = false // Close the dialog immediately to avoid race condition
         })
-        this.file.show = false // Close the dialog immediately to avoid race condition
-      })
+        .catch((error) => {
+          // An upload failed. Answer with cancel so the running script
+          // doesn't wait forever on a reply that will never come (repeats
+          // of the same prompt_id are ignored, so nothing would recover).
+          Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
+            data: {
+              method: this.file.multiple
+                ? 'open_files_dialog'
+                : 'open_file_dialog',
+              answer: 'COSMOS__CANCEL',
+              prompt_id: this.activePromptId,
+            },
+          })
+          this.file.show = false
+          this.setError(`File upload failed: ${error}`)
+        })
     },
     bucketDialogCallback(response) {
       this.bucket.show = false
@@ -2775,6 +2890,10 @@ export default {
       }
     },
     newFile() {
+      // Invalidate in-flight loads (reloadFile, processLine fetch) so a
+      // late response can't reinstall the old file over the blank editor --
+      // especially after delete(), which lands here
+      this.sessionEpoch++
       this.unlockFile()
       this.filename = NEW_FILENAME
       this.currentFilename = null
@@ -2939,6 +3058,9 @@ class TestSuite(Suite):
       // before it's fully loaded and then save over it with a blank file
       this.saveAllowed = false
       this.startOrGoDisabled = true
+      // This load supersedes any earlier in-flight loads; capture the new
+      // epoch so we in turn get dropped if something newer starts
+      const epoch = ++this.sessionEpoch
       await Api.get(`/script-api/scripts/${this.filename}`, {
         headers: {
           Accept: 'application/json',
@@ -2946,6 +3068,9 @@ class TestSuite(Suite):
         },
       })
         .then((response) => {
+          if (epoch !== this.sessionEpoch) {
+            return
+          }
           const file = {
             name: this.filename,
             contents: response.data.contents,
@@ -2965,6 +3090,9 @@ class TestSuite(Suite):
           this.saveAllowed = true
         })
         .catch((error) => {
+          if (epoch !== this.sessionEpoch) {
+            return
+          }
           if (showError === true) {
             this.$notify.caution({
               title: 'File Open Error',
@@ -2977,6 +3105,13 @@ class TestSuite(Suite):
     },
     // Called by the FileOpenDialog to set the file contents
     setFile({ file, locked, breakpoints }, local = false) {
+      // New authoritative content: invalidate older in-flight loads so
+      // their late responses can't overwrite what we install here
+      this.sessionEpoch++
+      // A superseded reloadFile set saveAllowed = false and its .then (the
+      // only place it flips back) is now epoch-dropped -- re-allow here
+      // since we're installing fresh content
+      this.saveAllowed = true
       this.files = {} // Clear the cached file list
       // Split off the ' *' which indicates a file is modified on the server
       let newFilename = file.name.split('*')[0]
@@ -3286,7 +3421,11 @@ class TestSuite(Suite):
       })
     },
     showCallStack() {
-      Api.post(`/script-api/running-script/${this.scriptId}/backtrace`)
+      // Gated on scriptActive, but scriptId can briefly be null while
+      // active (before the run POST returns)
+      if (this.scriptId) {
+        Api.post(`/script-api/running-script/${this.scriptId}/backtrace`)
+      }
     },
     toggleDebug() {
       this.showDebug = !this.showDebug
@@ -3306,12 +3445,15 @@ class TestSuite(Suite):
       } else if (event.key === 'Enter') {
         this.debugHistory.push(this.debug)
         this.debugHistoryIndex = this.debugHistory.length
-        // Post the code to /debug, output is processed by receive()
-        Api.post(`/script-api/running-script/${this.scriptId}/debug`, {
-          data: {
-            args: this.debug,
-          },
-        })
+        // Post the code to /debug, output is processed by receive().
+        // Only command a live script (see step())
+        if (this.executionPhase === 'active' && this.scriptId) {
+          Api.post(`/script-api/running-script/${this.scriptId}/debug`, {
+            data: {
+              args: this.debug,
+            },
+          })
+        }
         this.debug = ''
       } else if (event.key === 'ArrowUp') {
         this.debugHistoryIndex -= 1
