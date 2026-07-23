@@ -502,6 +502,45 @@ class TestConfigParser(unittest.TestCase):
         self.assertEqual(ConfigParser.handle_true_false("HI"), "HI")
         self.assertEqual(ConfigParser.handle_true_false(5.0), 5.0)
 
+    def test_parse_value_prefers_json(self):
+        self.assertEqual(ConfigParser.parse_value("[1, 2, 3]"), [1, 2, 3])
+        self.assertEqual(ConfigParser.parse_value('{"a": 1}'), {"a": 1})
+        self.assertEqual(ConfigParser.parse_value("true"), True)
+        self.assertEqual(ConfigParser.parse_value("null"), None)
+
+    def test_parse_value_falls_back_to_literal_eval(self):
+        for stdout in capture_io():
+            self.assertEqual(ConfigParser.parse_value("['a', 'b']"), ["a", "b"])
+            self.assertIn("is not valid JSON", stdout.getvalue())
+
+    def test_parse_value_warning_includes_parser_context(self):
+        self.cp.filename = "/path/to/config.txt"
+        self.cp.line_number = 42
+        self.cp.keyword = "PARAMETER"
+        for stdout in capture_io():
+            ConfigParser.parse_value("(1, 2)", config_parser=self.cp)
+            message = stdout.getvalue()
+        self.assertIn("/path/to/config.txt:42", message)
+        self.assertIn("PARAMETER", message)
+
+    def test_parse_value_warning_full_line(self):
+        self.cp.filename = "/path/to/config.txt"
+        self.cp.line_number = 42
+        self.cp.keyword = "PARAMETER"
+        for stdout in capture_io():
+            ConfigParser.parse_value("(1, 2)", config_parser=self.cp)
+            message = stdout.getvalue()
+        self.assertIn(
+            "(1, 2) is not valid JSON at /path/to/config.txt:42 (PARAMETER). "
+            "Falling back to Python literal parsing. Please use valid JSON.",
+            message,
+        )
+
+    def test_parse_value_no_warning_when_warn_false(self):
+        for stdout in capture_io():
+            ConfigParser.parse_value("['a']", warn=False)
+            self.assertEqual(stdout.getvalue(), "")
+
     def test_tfn_converts_none_and_null(self):
         self.assertEqual(ConfigParser.handle_true_false_none("NONE"), None)
         self.assertEqual(ConfigParser.handle_true_false_none("NULL"), None)

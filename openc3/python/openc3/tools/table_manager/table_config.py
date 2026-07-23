@@ -10,7 +10,6 @@
 # if purchased from OpenC3, Inc.
 
 import os
-from ast import literal_eval
 
 from openc3.config.config_parser import ConfigParser
 from openc3.conversions.generic_conversion import GenericConversion
@@ -327,7 +326,7 @@ class TableConfig(PacketConfig):
                         item.default = ConfigParser.handle_true_false(self.defaults[index])
                     elif item.data_type in ("ARRAY", "OBJECT", "ANY"):
                         try:
-                            item.default = literal_eval(self.defaults[index])
+                            item.default = ConfigParser.parse_value(self.defaults[index])
                         except Exception:
                             item.default = self.defaults[index]
 

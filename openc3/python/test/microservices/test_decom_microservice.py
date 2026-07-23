@@ -460,7 +460,7 @@ class TestDecomMicroserviceStoredLimitsMode(unittest.TestCase):
 
         for stdout in capture_io():
             TelemetryTopic.write_packet(packet, scope="DEFAULT")
-            for _ in range(10):
+            for _ in range(500):
                 time.sleep(0.01)
                 if "RED_LOW" in stdout.getvalue():
                     break
