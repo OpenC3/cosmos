@@ -195,4 +195,77 @@ module OpenC3
       end
     end
   end
+
+  describe RunningScriptWebSocketApi do
+    # The tail protocol: live script events only flow once the client performs
+    # the 'tail' channel action (see RunningScriptChannel#tail). subscribe()
+    # blocks until confirm_subscription, so sending 'tail' immediately after
+    # guarantees the gateway has registered the stream and the arm cannot race
+    # a broadcast.
+    describe "#subscribe" do
+      let(:api) do
+        RunningScriptWebSocketApi.new(
+          id: "spec-script-1",
+          url: "ws://test.com/script-api/cable",
+          authentication: double("auth", token: "test_token")
+        )
+      end
+
+      let(:mock_stream) { double("stream") }
+      let(:writes) { [] }
+      let(:frames) { writes.map { |w| JSON.parse(w) } }
+
+      before do
+        api.instance_variable_set(:@stream, mock_stream)
+        allow(mock_stream).to receive(:read).and_return('{"type":"confirm_subscription"}')
+        allow(mock_stream).to receive(:write) { |msg| writes << msg }
+      end
+
+      it "arms the tail exactly once, after the subscription is confirmed" do
+        api.subscribe
+        expect(frames.map { |f| f['command'] }).to eq(['subscribe', 'message'])
+        tail = frames.last
+        expect(JSON.parse(tail['data'])).to eq({ 'action' => 'tail' })
+      end
+
+      it "sends the tail action with the subscription's identifier" do
+        api.subscribe
+        subscribe_identifier = frames.first['identifier']
+        tail_identifier = frames.last['identifier']
+        # Must match exactly: ActionCable routes 'message' commands to a
+        # subscription by comparing the raw identifier string
+        expect(tail_identifier).to eq(subscribe_identifier)
+        identifier = JSON.parse(tail_identifier)
+        expect(identifier['channel']).to eq('RunningScriptChannel')
+        expect(identifier['id']).to eq('spec-script-1')
+        expect(identifier['token']).to eq('test_token')
+      end
+
+      it "does not re-send tail on subsequent subscribes" do
+        api.subscribe
+        api.subscribe
+        expect(frames.map { |f| f['command'] }).to eq(['subscribe', 'message'])
+      end
+
+      # write_action calls subscribe() internally, which on the first call is
+      # the overridden subscribe that itself calls write_action for tail. Prove
+      # this does not recurse or duplicate frames and preserves ordering.
+      it "orders frames subscribe, tail, action when an action triggers the first subscribe" do
+        api.write_action({ 'action' => 'other' })
+        expect(frames.map { |f| f['command'] }).to eq(['subscribe', 'message', 'message'])
+        expect(JSON.parse(frames[1]['data'])).to eq({ 'action' => 'tail' })
+        expect(JSON.parse(frames[2]['data'])).to eq({ 'action' => 'other' })
+      end
+
+      it "re-arms the tail after an unsubscribe/resubscribe cycle" do
+        api.subscribe
+        # unsubscribe writes its own frame and clears @subscribed
+        api.unsubscribe
+        api.subscribe
+        commands = frames.map { |f| f['command'] }
+        expect(commands).to eq(['subscribe', 'message', 'unsubscribe', 'subscribe', 'message'])
+        expect(JSON.parse(frames.last['data'])).to eq({ 'action' => 'tail' })
+      end
+    end
+  end
 end

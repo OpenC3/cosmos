@@ -994,6 +994,12 @@ export default {
       // source changes; stale callbacks compare their captured value and
       // drop their results instead of clobbering newer state.
       sessionEpoch: 0,
+      // Generation counter guarding the websocket subscription (scriptStart /
+      // scriptComplete). Comparing scriptId is not enough: two interleaved
+      // scriptStart calls with the SAME id (e.g. beforeRouteUpdate re-firing
+      // for the already-attached script) would both pass an id check, create
+      // two subscriptions, and deliver every event twice.
+      subscribeToken: 0,
       startOrGoButton: START,
       startOrGoDisabled: false,
       envDisabled: false,
@@ -2235,6 +2241,9 @@ export default {
       // Invalidate any file loads still in flight from before this run
       // so they can't overwrite the editor mid-execution
       this.sessionEpoch++
+      // Claim the subscription: any older scriptStart still awaiting its
+      // unsubscribe/subscribe below sees a newer token and drops out
+      const token = ++this.subscribeToken
       // Ensure only one subscription is ever active. scriptStart can be reached
       // again while a subscription already exists -- most notably "Connect to
       // Running Script", which updates the route (beforeRouteUpdate) on the
@@ -2245,7 +2254,7 @@ export default {
         await this.subscription.unsubscribe()
         this.subscription = null
       }
-      if (this.scriptId !== id) {
+      if (token !== this.subscribeToken) {
         // A newer scriptStart (or scriptComplete) superseded this call
         // while we awaited the unsubscribe: let it own the subscription
         return
@@ -2276,7 +2285,7 @@ export default {
           id,
         },
       )
-      if (this.scriptId !== id) {
+      if (token !== this.subscribeToken) {
         // Superseded while subscribing: drop the subscription we just made
         // instead of overwriting (and leaking) the newer one
         await subscription.unsubscribe()
@@ -2285,6 +2294,11 @@ export default {
       this.subscription = subscription
     },
     async scriptComplete() {
+      // Supersede any scriptStart still awaiting its subscription. Must
+      // happen before our unsubscribe below: a start resolving mid-complete
+      // would otherwise install a fresh subscription after we tore ours
+      // down, leaving a leaked channel delivering stale events.
+      this.subscribeToken++
       // Make sure we process no more events
       if (this.subscription) {
         await this.subscription.unsubscribe()
