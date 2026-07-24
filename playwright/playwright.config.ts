@@ -40,9 +40,9 @@ export default defineConfig({
     ? parseInt(process.env.WORKERS) // Use explicit worker count if given
     : process.env.CI
       ? 2 // Otherwise use 2 on CI/CD. The COSMOS Docker stack runs on the same
-        // runner as the browsers; 3 workers starved the event loop and caused
+      : // runner as the browsers; 3 workers starved the event loop and caused
         // the data-viewer/docs streaming tests to time out (see retries note).
-      : undefined, // and a bunch locally (seems to be 7, but the default isn't documented)
+        undefined, // and a bunch locally (seems to be 7, but the default isn't documented)
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI ? 'github' : 'list',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */

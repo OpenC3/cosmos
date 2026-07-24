@@ -2,6 +2,7 @@ node_modules/
 test-results/
 playwright-report/
 coverage
+coverage-raw
 .nyc_output
 # Ignore all the storageState.json files
 *State.json
