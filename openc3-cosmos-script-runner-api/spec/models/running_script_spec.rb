@@ -125,7 +125,7 @@ RSpec.describe RunningScript, type: :model do
       expect(process_env_double["OPENC3_API_TOKEN"]).to eq("valid_token")
     end
 
-    it "raises an error if offline token is invalid" do
+    it "raises an error and cleans up script status if offline token is invalid" do
       # Mock just the authentication parts
       model_double = double("model", offline_access_token: "invalid_token", update: nil)
       allow(model_double).to receive(:offline_access_token=)
@@ -137,6 +137,39 @@ RSpec.describe RunningScript, type: :model do
       expect {
         RunningScript.spawn("DEFAULT", "script.rb", nil, false, nil, "Test User", "testuser")
       }.to raise_error("offline_access token invalid for script")
+
+      # Verify the orphaned script status was cleaned up
+      expect(OpenC3::ScriptStatusModel.count(scope: "DEFAULT", type: "running")).to eq(0)
+    end
+
+    it "raises an error and cleans up script status if no authentication is available" do
+      # Ensure OPENC3_SERVICE_PASSWORD is not set so the fallback auth fails
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('OPENC3_SERVICE_PASSWORD').and_return(nil)
+
+      expect {
+        RunningScript.spawn("DEFAULT", "script.rb")
+      }.to raise_error("No authentication available for script")
+
+      # Verify the orphaned script status was cleaned up
+      expect(OpenC3::ScriptStatusModel.count(scope: "DEFAULT", type: "running")).to eq(0)
+    end
+
+    it "cleans up script status if process.start raises an error" do
+      failing_process = double("process")
+      allow(failing_process).to receive(:io).and_return(double("io", inherit!: nil))
+      allow(failing_process).to receive(:cwd=)
+      allow(failing_process).to receive(:environment).and_return({})
+      allow(failing_process).to receive(:detach=)
+      allow(failing_process).to receive(:start).and_raise(RuntimeError.new("Failed to start process"))
+      allow(ChildProcess).to receive(:build).and_return(failing_process)
+
+      expect {
+        RunningScript.spawn("DEFAULT", "script.rb")
+      }.to raise_error("Failed to start process")
+
+      # Verify the orphaned script status was cleaned up
+      expect(OpenC3::ScriptStatusModel.count(scope: "DEFAULT", type: "running")).to eq(0)
     end
 
     context "per-plugin Python venv detection" do
