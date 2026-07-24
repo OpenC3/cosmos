@@ -8,6 +8,16 @@
 # Two installation paths:
 #   1. If gem_path contains uv.lock: uses `uv sync --frozen` (reproducible)
 #   2. Otherwise: falls back to `uv pip install` for requirements.txt / pyproject.toml
+#
+# Network safety: uv's own HTTP controls (connect timeout, read timeout,
+# bounded retries) make a slow or unreachable index fail fast instead of
+# hanging the plugin install (which stalls the whole deploy - the init hook
+# never completes and helm's --wait times out). These are idle/connect
+# timeouts, NOT a total-transfer cap, so a large but healthy download (e.g.
+# torch over a slow link) is never killed mid-stream as long as bytes keep
+# arriving. Path 1 also tries an OFFLINE sync first so a plugin whose wheels
+# are already in the seeded UV cache installs deterministically without ever
+# touching the network.
 
 PLUGIN_VENV_NAME="$1"
 GEM_PATH="$2"
@@ -18,6 +28,16 @@ if [ -z "$PLUGIN_VENV_NAME" ] || [ -z "$GEM_PATH" ]; then
     echo "Usage: uvinstall <plugin_venv_name> <gem_path> [extra uv args...]"
     exit 1
 fi
+
+# Bound uv's network behavior with uv's own HTTP knobs. Unlike a blunt
+# wall-clock cap, these fail fast on a dead/unreachable index or a stalled
+# connection WITHOUT killing a large but progressing download. All overridable.
+#   UV_HTTP_CONNECT_TIMEOUT - give up connecting to an unreachable index (s)
+#   UV_HTTP_TIMEOUT         - give up when a connection stalls mid-read (s)
+#   UV_HTTP_RETRIES         - bounded retries for transient failures
+export UV_HTTP_CONNECT_TIMEOUT="${UV_HTTP_CONNECT_TIMEOUT:-10}"
+export UV_HTTP_TIMEOUT="${UV_HTTP_TIMEOUT:-30}"
+export UV_HTTP_RETRIES="${UV_HTTP_RETRIES:-3}"
 
 VENV_BASE="/gems/plugin_venvs/${PLUGIN_VENV_NAME}"
 VENV_DIR="${VENV_BASE}/.venv"
@@ -36,8 +56,18 @@ if [ -f "${GEM_PATH}/uv.lock" ] && [ -f "${GEM_PATH}/pyproject.toml" ]; then
     # Create venv and sync dependencies
     cd "${VENV_BASE}"
     uv venv "${VENV_DIR}" --allow-existing
-    uv sync --frozen --no-dev --no-install-project ${UV_ARGS}
+
+    # Prefer an offline sync: if every locked wheel is already in the seeded
+    # UV cache this succeeds instantly and never touches the network, so it
+    # cannot hang and works in air-gapped clusters. Only on a cache miss do we
+    # fall back to an online sync (bounded by the UV_HTTP_* knobs above).
+    uv sync --frozen --no-dev --no-install-project --offline ${UV_ARGS}
     RESULT=$?
+    if [ $RESULT -ne 0 ]; then
+        echo "Offline uv sync failed (exit code ${RESULT}); retrying online"
+        uv sync --frozen --no-dev --no-install-project ${UV_ARGS}
+        RESULT=$?
+    fi
 
     if [ $RESULT -eq 0 ]; then
         echo "uv sync --frozen succeeded"
@@ -83,7 +113,7 @@ if [ $RESULT -eq 0 ]; then
     exit 0
 fi
 
-# Last resort: try --no-index
+# Last resort: try --no-index (cache only, no network)
 echo "Warning: Install failed - retrying with --no-index"
 if [ -f "${GEM_PATH}/requirements.txt" ]; then
     uv pip install --python "${VENV_DIR}" --no-index ${UV_ARGS} -r "${GEM_PATH}/requirements.txt"

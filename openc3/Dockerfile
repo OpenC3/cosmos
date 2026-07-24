@@ -58,5 +58,9 @@ RUN mkdir /gems && chown openc3:openc3 /gems \
 
 ENV HOME=/openc3
 ENV XDG_CACHE_HOME=/tmp/.cache
+# Runtime cache = the /gems volume. The init container copies the baked
+# /openc3/uv_cache seed (see the uv sync steps above) into here at startup.
+# Build-time steps override this per-RUN with UV_CACHE_DIR=/openc3/uv_cache so
+# wheels land in the baked seed, not this volume (which is empty until runtime).
 ENV UV_CACHE_DIR=/gems/uv/
 USER ${USER_ID}:${GROUP_ID}
