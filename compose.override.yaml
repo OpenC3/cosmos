@@ -1,0 +1,158 @@
+# Copyright 2026, OpenC3, Inc.
+# All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+# ---------------------------------------------------------------------------
+# Local compose override
+# ---------------------------------------------------------------------------
+# Edit this file to customize your
+# deployment WITHOUT modifying the upstream compose.yaml. This keeps pulling
+# in future COSMOS updates clean (compose.yaml stays pristine).
+#
+# openc3.sh automatically merges compose.override.yaml on top of compose.yaml
+# when it exists (docker compose -f compose.yaml -f compose.override.yaml ...),
+# so no other changes are needed. See:
+#   https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/
+#
+# HOW OVERRIDING VALUES WORKS
+# ---------------------------------------------------------------------------
+# compose.yaml lists each variable a container needs under "environment:".
+# To change one, redeclare it under "environment:" for that same service here.
+# A value set in an override's "environment:" block WINS over the base value
+# (and wins over any env_file), so this is the way to override values now.
+#
+# Flags that init.sh / the core enable "by presence" (OPENC3_DEMO, the
+# OPENC3_NO_* flags, OPENC3_FORCE_INSTALL, ...) are turned OFF with an EMPTY
+# value ("VAR=") and ON with any non-empty value. Do NOT use 0 to disable -
+# "VAR=0" is non-empty and counts as ON.
+#
+# You can also add brand-new services, volumes, ports, or bind mounts. Only
+# the keys you specify are changed; everything else is inherited from
+# compose.yaml.
+#
+# DO NOT PUT SECRETS HERE
+# ---------------------------------------------------------------------------
+# This file is tracked by git. Never hardcode passwords / keys
+# (OPENC3_*_PASSWORD, SECRET_KEY_BASE, etc.) in this file. To override a
+# secret, put it in a .env.local file next to .env (it is gitignored and is
+# loaded after .env, so its values win). compose.yaml already reads the
+# secrets via ${VAR} interpolation, so setting the value in .env.local is all
+# that is needed - no entry in this file is required. See .env for details.
+# ---------------------------------------------------------------------------
+
+# services:
+# -------------------------------------------------------------------------
+# Command / Telemetry API
+# -------------------------------------------------------------------------
+# openc3-cosmos-cmd-tlm-api:
+#   environment:
+#     # Number of Puma workers (processes). compose.yaml ships a default;
+#     # set this to roughly the number of CPU cores you want the API to use.
+#     - WEB_CONCURRENCY=16
+#     # Enable a default queue for ALL commands. Commands can only opt out by
+#     # specifying a specific queue with the 'queue' parameter.
+#     # Need here as well as in openc3-cosmos-init because init creates the queue
+#     - OPENC3_DEFAULT_QUEUE=DEFAULT
+#     # Rate limiting for authentication endpoints (defaults shown). Prevents
+#     # more than 10 failed password attempts within 120 seconds. In COSMOS
+#     # Enterprise, use Keycloak to configure this instead.
+#     - OPENC3_AUTH_RATE_LIMIT_TO=10
+#     - OPENC3_AUTH_RATE_LIMIT_WITHIN=120
+#     # Default language used by the generators (`openc3.sh cli generate`).
+#     - OPENC3_LANGUAGE=python
+
+# -------------------------------------------------------------------------
+# Script Runner API
+# -------------------------------------------------------------------------
+# openc3-cosmos-script-runner-api:
+#   environment:
+#     # Raise if you run many scripts concurrently.
+#     - WEB_CONCURRENCY=4
+
+# -------------------------------------------------------------------------
+# Operator (runs interfaces / targets / microservices)
+# -------------------------------------------------------------------------
+# openc3-operator:
+#   environment:
+#     # Add a variable your custom targets/interfaces read that is not in
+#     # compose.yaml. env_file also works for adding (but NOT overriding)
+#     # variables that compose.yaml does not already list.
+#     - MY_CUSTOM_SETTING=value
+#   # Expose an interface/router port to the host
+#   ports:
+#     - "127.0.0.1:7779:7779"
+#   # Mount a host directory for a FileInterface dropbox
+#   volumes:
+#     - "/path/on/host/dropbox:/dropbox"
+
+# -------------------------------------------------------------------------
+# Init container (installs plugins / tools on startup)
+# -------------------------------------------------------------------------
+# openc3-cosmos-init:
+#   environment:
+#     # Disable install of the Demo (empty = off, see note above; NOT 0).
+#     - OPENC3_DEMO=
+#     # Enable a default queue for ALL commands. Commands can only opt out by
+#     # specifying a specific queue with the 'queue' parameter.
+#     # Need here as well as in openc3-cosmos-cmd-tlm-api because init creates the queue
+#     - OPENC3_DEFAULT_QUEUE=DEFAULT
+#     # Force the init container to reinstall all plugins even if the same
+#     # version exists. Use to recover from a failed/interrupted init, then
+#     # remove after a successful init.
+#     - OPENC3_FORCE_INSTALL=1
+#     # Don't automatically make the tools bucket public read.
+#     - OPENC3_NO_BUCKET_POLICY=1
+#     # Prevent specific default tools from being installed (empty = install,
+#     # any non-empty value = skip).
+#     - OPENC3_NO_CMDTLMSERVER=1
+#     - OPENC3_NO_LIMITSMONITOR=1
+#     - OPENC3_NO_CMDSENDER=1
+#     - OPENC3_NO_SCRIPTRUNNER=1
+#     - OPENC3_NO_PACKETVIEWER=1
+#     - OPENC3_NO_TLMVIEWER=1
+#     - OPENC3_NO_TLMGRAPHER=1
+#     - OPENC3_NO_DATAEXTRACTOR=1
+#     - OPENC3_NO_DATAVIEWER=1
+#     - OPENC3_NO_HANDBOOKS=1
+#     - OPENC3_NO_TABLEMANAGER=1
+#     - OPENC3_NO_TOOLADMIN=1
+#     - OPENC3_NO_BUCKETEXPLORER=1
+#     - OPENC3_NO_DOCS=1
+
+# -------------------------------------------------------------------------
+# Traefik (reverse proxy)
+# -------------------------------------------------------------------------
+# openc3-traefik:
+#   environment:
+#     # Allow HTTP connections in the Content Security Policy (less secure).
+#     - OPENC3_ALLOW_HTTP=1
+
+# -------------------------------------------------------------------------
+# Log to stderr on any service
+# -------------------------------------------------------------------------
+# OPENC3_LOG_STDERR logs warnings and higher to stderr instead of stdout.
+# It is read by every container - add it under whichever service(s) you want:
+# openc3-operator:
+#   environment:
+#     - OPENC3_LOG_STDERR=1
+
+# ---------------------------------------------------------------------------
+# Adding extra buckets / volumes
+# ---------------------------------------------------------------------------
+# COSMOS discovers additional buckets/volumes from OPENC3_<NAME>_BUCKET /
+# OPENC3_<NAME>_VOLUME variables, where <NAME> is the displayed name and the
+# value is the actual bucket name / root path. These must be visible to the
+# COSMOS services that use storage, and a volume also needs a top-level
+# "volumes:" entry plus a mount on each service. For example:
+#
+# services:
+#   openc3-operator:
+#     environment:
+#       - OPENC3_TEST_BUCKET=test_bucket
+#       - OPENC3_TEST_VOLUME=/data/test
+#     volumes:
+#       - "openc3-test-v:/data/test"
+# volumes:
+#   openc3-test-v: {}

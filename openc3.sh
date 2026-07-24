@@ -94,6 +94,32 @@ find_script() {
 detect_container_runtime
 detect_compose_cmd
 
+# Compose file / env-file arguments used by every compose command below.
+#
+# Env files: .env ships the upstream defaults (tracked). .env.local (if
+# present) is loaded last so its values override .env. .env.local is
+# gitignored, so it is the place to put SECRET overrides (passwords, keys)
+# that must NOT be checked in. Do NOT put secrets in compose.override.yaml -
+# it is tracked. Compose interpolation precedence is:
+#   shell env  >  last --env-file  >  earlier --env-file
+# so a value in .env.local wins over the same value in .env. Once we pass
+# --env-file explicitly, Compose stops auto-loading .env from the cwd, which
+# is why .env must be listed explicitly here.
+#
+# Compose files: a user-provided compose.override.yaml (if present) is merged
+# last so local (non-secret) customizations layer on top of compose.yaml
+# without editing it. See:
+# https://github.com/OpenC3/cosmos/issues/3024
+# https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/
+COMPOSE_FILE_ARGS=(--env-file "$(dirname -- "$0")/${ENV_FILE:-.env}")
+if [[ -f "$(dirname -- "$0")/.env.local" ]]; then
+  COMPOSE_FILE_ARGS+=(--env-file "$(dirname -- "$0")/.env.local")
+fi
+COMPOSE_FILE_ARGS+=(-f "$(dirname -- "$0")/compose.yaml")
+if [[ -f "$(dirname -- "$0")/compose.override.yaml" ]]; then
+  COMPOSE_FILE_ARGS+=(-f "$(dirname -- "$0")/compose.override.yaml")
+fi
+
 $CONTAINER_CMD info | grep -e "rootless$" -e "rootless: true"
 if [[ "$?" -ne 0 ]]; then
   export OPENC3_ROOTFUL=1
@@ -387,9 +413,9 @@ case $1 in
     # Shift off the first argument (script name) to get CLI args
     shift
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     else
-      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     fi
     set +a
     ;;
@@ -438,9 +464,9 @@ case $1 in
     # Shift off the first argument (script name) to get CLI args
     shift
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm --user=root -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     else
-      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm --user=root -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     fi
     set +a
     ;;
@@ -534,14 +560,14 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" stop openc3-operator
-    ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" stop openc3-cosmos-script-runner-api
-    ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" stop openc3-cosmos-cmd-tlm-api
+    ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" stop openc3-operator
+    ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" stop openc3-cosmos-script-runner-api
+    ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" stop openc3-cosmos-cmd-tlm-api
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" stop openc3-metrics
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" stop openc3-metrics
     fi
     sleep 5
-    ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" down -t 30
+    ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" down -t 30
     ;;
   cleanup )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -568,12 +594,12 @@ case $1 in
     # They can specify 'cleanup force' or 'cleanup local force'
     if [[ "$2" == "force" ]] || [[ "$3" == "force" ]]
     then
-      ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" down -t 30 -v
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" down -t 30 -v
     else
       echo "Are you sure? Cleanup removes ALL docker volumes and all $COSMOS_NAME data! (1-Yes / 2-No)"
       select yn in "Yes" "No"; do
         case $yn in
-          Yes ) ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" down -t 30 -v; break;;
+          Yes ) ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" down -t 30 -v; break;;
           No ) exit;;
           * ) echo "Please select 1 for Yes or 2 for No.";;
         esac
@@ -757,13 +783,13 @@ case $1 in
     BUILD_FLAGS="${@:2}"
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
       build_core_images $BUILD_FLAGS
-      run_with_registry_check ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-enterprise-gem
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-enterprise-gem
     else
-      run_with_registry_check ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-ruby
-      run_with_registry_check ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-base
-      run_with_registry_check ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-node
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-ruby
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-base
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-node
     fi
-    run_with_registry_check ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS
+    run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS
     ;;
   build-ubi )
     if [[ "$OPENC3_DEVEL" -eq 0 ]]; then
@@ -856,7 +882,7 @@ case $1 in
       exit 0
     fi
     check_root
-    run_with_registry_check ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" up -d
+    run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" up -d
     ;;
   run-ubi )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -897,7 +923,7 @@ case $1 in
     else
       OPENC3_TSDB_PLATFORM=linux/amd64
     fi
-    run_with_registry_check env DOCKER_DEFAULT_PLATFORM=linux/amd64 OPENC3_IMAGE_SUFFIX=-ubi OPENC3_TSDB_PLATFORM=$OPENC3_TSDB_PLATFORM ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" up -d
+    run_with_registry_check env DOCKER_DEFAULT_PLATFORM=linux/amd64 OPENC3_IMAGE_SUFFIX=-ubi OPENC3_TSDB_PLATFORM=$OPENC3_TSDB_PLATFORM ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" up -d
     ;;
   test )
     # Check for help at any position
@@ -931,7 +957,7 @@ case $1 in
     # Change to cosmos directory since openc3_setup.sh uses relative paths
     cd "$(dirname -- "$0")"
     "$(find_script openc3_setup.sh)"
-    ${CONTAINER_COMPOSE_CMD} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build
+    ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build
     "$(find_script openc3_test.sh)" "${@:2}"
     ;;
   upgrade )
