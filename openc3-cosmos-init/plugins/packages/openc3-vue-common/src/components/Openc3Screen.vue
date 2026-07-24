@@ -278,6 +278,10 @@ export default {
       type: Number,
       default: 0,
     },
+    initialWidth: {
+      type: Number,
+      default: null,
+    },
     minZ: {
       type: Number,
       default: 0,
@@ -358,6 +362,7 @@ export default {
       top: this.initialTop,
       left: this.initialLeft,
       zIndex: this.initialZ,
+      floatedWidth: this.initialWidth,
       changeCounter: 0,
       screenItems: [],
       actualScreenItems: [],
@@ -387,8 +392,8 @@ export default {
     },
     computedStyle() {
       let style = {}
-      // note down what the width was in case it was set to AUTO, because absolute positioning will lose that
-      const origWidth = this.width || this.$refs.bar?.clientWidth
+      const origWidth =
+        this.width || this.floatedWidth || this.$refs.bar?.clientWidth
       if (this.floated) {
         style['position'] = 'absolute'
         style['top'] = this.top + 'px'
@@ -746,6 +751,7 @@ export default {
         this.top,
         this.left,
         this.zIndex,
+        this.floatedWidth,
       ])
     },
     downScreen: function () {
@@ -771,6 +777,7 @@ export default {
           this.top,
           this.left,
           this.zIndex,
+          this.floatedWidth,
         ])
       } else {
         let bodyRect =
@@ -778,6 +785,7 @@ export default {
         let elemRect = this.$refs.bar.getBoundingClientRect()
         this.top = elemRect.top - bodyRect.top - 5
         this.left = elemRect.left - bodyRect.left - 5
+        this.floatedWidth = this.$refs.bar.clientWidth
         this.$refs.bar.onmousedown = this.dragMouseDown
         this.$refs.bar.parentElement.parentElement.style =
           'z-index: ' + this.zIndex
@@ -787,6 +795,7 @@ export default {
           this.top,
           this.left,
           this.zIndex,
+          this.floatedWidth,
         ])
       }
     },
@@ -843,6 +852,7 @@ export default {
         this.top,
         this.left,
         this.zIndex,
+        this.floatedWidth,
       ])
     },
     closeDragElement: function () {

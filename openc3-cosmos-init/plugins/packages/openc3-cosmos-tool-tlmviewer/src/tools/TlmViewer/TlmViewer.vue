@@ -221,6 +221,7 @@
           :initial-top="def.top"
           :initial-left="def.left"
           :initial-z="def.zIndex"
+          :initial-width="def.width"
           :time-zone="timeZone"
           :playback-mode="playbackMode"
           :playback-date-time="playbackDateTime"
@@ -371,6 +372,7 @@ export default {
           top: def.top,
           left: def.left,
           zIndex: def.zIndex,
+          width: def.width,
         }
       })
     },
@@ -593,6 +595,7 @@ export default {
             top: 0,
             left: 0,
             zIndex: 0,
+            width: null,
           })
         })
       }
@@ -660,31 +663,34 @@ export default {
         }
       }
     },
-    floatScreen(definition, floated, top, left, zIndex) {
+    floatScreen(definition, floated, top, left, zIndex, width) {
       definition.floated = floated
       definition.top = top
       definition.left = left
       definition.zIndex = zIndex
+      definition.width = width
       let items = this.grid.getItems([
         document.getElementById(this.screenId(definition.id)),
       ])
       this.grid.remove(items)
       this.grid.refreshItems().layout()
     },
-    unfloatScreen(definition, floated, top, left, zIndex) {
+    unfloatScreen(definition, floated, top, left, zIndex, width) {
       definition.floated = floated
       definition.top = top
       definition.left = left
       definition.zIndex = zIndex
+      definition.width = width
       let items = [document.getElementById(this.screenId(definition.id))]
       this.grid.add(items)
       this.grid.refreshItems().layout()
     },
-    dragScreen(definition, floated, top, left, zIndex) {
+    dragScreen(definition, floated, top, left, zIndex, width) {
       definition.floated = floated
       definition.top = top
       definition.left = left
       definition.zIndex = zIndex
+      definition.width = width
     },
     refreshLayout() {
       setTimeout(() => {
@@ -709,6 +715,7 @@ export default {
               let top = definition.top || 0
               let left = definition.left || 0
               let zIndex = definition.zIndex || 0
+              let width = definition.width || null
               this.pushScreen({
                 id: this.counter++,
                 target: definition.target,
@@ -718,6 +725,7 @@ export default {
                 top: top,
                 left: left,
                 zIndex: zIndex,
+                width: width,
               })
             }, 0) // I don't even know... but Muuri complains if this isn't in a setTimeout
           })
