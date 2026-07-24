@@ -9,12 +9,15 @@
 #   1. If gem_path contains uv.lock: uses `uv sync --frozen` (reproducible)
 #   2. Otherwise: falls back to `uv pip install` for requirements.txt / pyproject.toml
 #
-# Network safety: every uv invocation is bounded by a wall-clock timeout and a
-# per-request HTTP timeout so a slow/unreachable index fails fast instead of
+# Network safety: uv's own HTTP controls (connect timeout, read timeout,
+# bounded retries) make a slow or unreachable index fail fast instead of
 # hanging the plugin install (which stalls the whole deploy - the init hook
-# never completes and helm's --wait times out). Path 1 also tries an OFFLINE
-# sync first so a plugin whose wheels are already in the seeded UV cache
-# installs deterministically without ever touching the network.
+# never completes and helm's --wait times out). These are idle/connect
+# timeouts, NOT a total-transfer cap, so a large but healthy download (e.g.
+# torch over a slow link) is never killed mid-stream as long as bytes keep
+# arriving. Path 1 also tries an OFFLINE sync first so a plugin whose wheels
+# are already in the seeded UV cache installs deterministically without ever
+# touching the network.
 
 PLUGIN_VENV_NAME="$1"
 GEM_PATH="$2"
@@ -26,19 +29,15 @@ if [ -z "$PLUGIN_VENV_NAME" ] || [ -z "$GEM_PATH" ]; then
     exit 1
 fi
 
-# Bound each uv network request so a stalled connection fails fast.
+# Bound uv's network behavior with uv's own HTTP knobs. Unlike a blunt
+# wall-clock cap, these fail fast on a dead/unreachable index or a stalled
+# connection WITHOUT killing a large but progressing download. All overridable.
+#   UV_HTTP_CONNECT_TIMEOUT - give up connecting to an unreachable index (s)
+#   UV_HTTP_TIMEOUT         - give up when a connection stalls mid-read (s)
+#   UV_HTTP_RETRIES         - bounded retries for transient failures
+export UV_HTTP_CONNECT_TIMEOUT="${UV_HTTP_CONNECT_TIMEOUT:-10}"
 export UV_HTTP_TIMEOUT="${UV_HTTP_TIMEOUT:-30}"
-
-# Hard wall-clock cap for a single uv invocation. Even with UV_HTTP_TIMEOUT,
-# retries or DNS stalls could accumulate; this guarantees uv gives up so the
-# caller can fall back (or the init pod can restart) rather than block forever.
-# Wrap uv only when a `timeout` binary is available (busybox/coreutils).
-UV_CMD_TIMEOUT="${UV_CMD_TIMEOUT:-600}"
-if command -v timeout > /dev/null 2>&1; then
-    RUN_UV="timeout ${UV_CMD_TIMEOUT}"
-else
-    RUN_UV=""
-fi
+export UV_HTTP_RETRIES="${UV_HTTP_RETRIES:-3}"
 
 VENV_BASE="/gems/plugin_venvs/${PLUGIN_VENV_NAME}"
 VENV_DIR="${VENV_BASE}/.venv"
@@ -61,12 +60,12 @@ if [ -f "${GEM_PATH}/uv.lock" ] && [ -f "${GEM_PATH}/pyproject.toml" ]; then
     # Prefer an offline sync: if every locked wheel is already in the seeded
     # UV cache this succeeds instantly and never touches the network, so it
     # cannot hang and works in air-gapped clusters. Only on a cache miss do we
-    # fall back to an online sync (bounded by UV_HTTP_TIMEOUT / timeout).
-    $RUN_UV uv sync --frozen --no-dev --no-install-project --offline ${UV_ARGS}
+    # fall back to an online sync (bounded by the UV_HTTP_* knobs above).
+    uv sync --frozen --no-dev --no-install-project --offline ${UV_ARGS}
     RESULT=$?
     if [ $RESULT -ne 0 ]; then
         echo "Offline uv sync failed (exit code ${RESULT}); retrying online"
-        $RUN_UV uv sync --frozen --no-dev --no-install-project ${UV_ARGS}
+        uv sync --frozen --no-dev --no-install-project ${UV_ARGS}
         RESULT=$?
     fi
 
@@ -84,11 +83,11 @@ uv venv "${VENV_DIR}" --allow-existing
 
 if [ -f "${GEM_PATH}/requirements.txt" ]; then
     echo "Installing from requirements.txt via uv pip install"
-    $RUN_UV uv pip install --python "${VENV_DIR}" ${UV_ARGS} -r "${GEM_PATH}/requirements.txt"
+    uv pip install --python "${VENV_DIR}" ${UV_ARGS} -r "${GEM_PATH}/requirements.txt"
     RESULT=$?
 elif [ -f "${GEM_PATH}/pyproject.toml" ]; then
     echo "Installing from pyproject.toml via uv pip install"
-    $RUN_UV uv pip install --python "${VENV_DIR}" ${UV_ARGS} "${GEM_PATH}"
+    uv pip install --python "${VENV_DIR}" ${UV_ARGS} "${GEM_PATH}"
     RESULT=$?
 
     # If the build failed (e.g. Poetry package-mode = false), try installing
@@ -96,9 +95,9 @@ elif [ -f "${GEM_PATH}/pyproject.toml" ]; then
     if [ $RESULT -ne 0 ]; then
         echo "Warning: Failed to build Python package, attempting to install declared dependencies from pyproject.toml"
         TMPFILE=$(mktemp)
-        $RUN_UV uv pip compile ${UV_ARGS} "${GEM_PATH}/pyproject.toml" > "$TMPFILE"
+        uv pip compile ${UV_ARGS} "${GEM_PATH}/pyproject.toml" > "$TMPFILE"
         if [ $? -eq 0 ] && [ -s "$TMPFILE" ]; then
-            $RUN_UV uv pip install --python "${VENV_DIR}" ${UV_ARGS} -r "$TMPFILE"
+            uv pip install --python "${VENV_DIR}" ${UV_ARGS} -r "$TMPFILE"
             RESULT=$?
         fi
         rm -f "$TMPFILE"
