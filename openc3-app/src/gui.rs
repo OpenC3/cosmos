@@ -17,7 +17,7 @@ use std::time::{Duration, Instant};
 
 use iced::widget::image::Handle as ImageHandle;
 use iced::widget::{
-    button, column, container, horizontal_rule, mouse_area, pick_list, progress_bar, row,
+    button, checkbox, column, container, horizontal_rule, mouse_area, pick_list, progress_bar, row,
     scrollable, stack, text, text_editor, text_input, Image, Space,
 };
 use iced::{window, Center, Color, Element, Font, Length, Size, Subscription, Task, Theme};
@@ -124,20 +124,16 @@ fn level_color(level: &str) -> Color {
 /// Result of the startup environment check.
 #[derive(Debug, Clone, Copy)]
 struct EnvCheck {
-    /// A docker or podman binary is available.
+    /// A docker or podman daemon is installed *and running* (reachable).
     container_ok: bool,
+    /// A docker or podman binary is installed (whether or not it's running).
+    container_installed: bool,
     /// The isolated Python runtime is installed.
     python_ok: bool,
     /// The COSMOS environment (cosmos-project folder) is installed.
     cosmos_ok: bool,
 }
 
-impl EnvCheck {
-    /// True when nothing needs installing (the install page can be skipped).
-    fn all_present(&self) -> bool {
-        self.container_ok && self.python_ok && self.cosmos_ok
-    }
-}
 
 /// Data produced by background worker threads, polled by the UI on each tick.
 #[derive(Default)]
@@ -218,6 +214,8 @@ struct State {
     next_operator: Arc<Mutex<Option<OperatorHandles>>>,
     /// Whether the Settings dialog (cleanup + bridge pairing) is showing.
     settings_open: bool,
+    /// Persisted settings (COSMOS URL, run-locally toggle).
+    settings: crate::settings::Settings,
 }
 
 /// Start the host microservice operator on a background thread, wiring the
@@ -260,8 +258,9 @@ fn start_operator(ctx: &Context) -> OperatorHandles {
 enum Message {
     Tick,
     InstallDocker,
-    InstallDockerMac(install::MacEngine),
-    InstallDockerWin(install::WinEngine),
+    InstallDockerMac,
+    InstallDockerWin,
+    StartDocker,
     InstallPython,
     InstallCosmos,
     Skip,
@@ -270,6 +269,8 @@ enum Message {
     OpenBrowser,
     ShowSettings,
     CloseSettings,
+    CosmosUrlChanged(String),
+    RunLocallyToggled(bool),
     LogLevelChanged(LogLevelFilter),
     LogSearchChanged(String),
     ToggleLogPause,
@@ -298,8 +299,10 @@ enum Message {
 
 impl State {
     fn new(ctx: Context, main_window: window::Id) -> Self {
+        let settings = crate::settings::Settings::load(&ctx);
         let env = EnvCheck {
             container_ok: ctx.runtime.is_some(),
+            container_installed: crate::context::container_engine_installed(),
             python_ok: ctx.paths.python_installed(),
             cosmos_ok: ctx.paths.cosmos_installed(),
         };
@@ -343,6 +346,7 @@ impl State {
             bridge_pairing: Arc::new(AtomicBool::new(false)),
             next_operator: Arc::new(Mutex::new(None)),
             settings_open: false,
+            settings,
         }
     }
 
@@ -364,6 +368,7 @@ impl State {
         std::thread::spawn(move || {
             let env = EnvCheck {
                 container_ok: crate::context::container_engine_running(),
+                container_installed: crate::context::container_engine_installed(),
                 python_ok: paths.python_installed(),
                 cosmos_ok: paths.cosmos_installed(),
             };
@@ -382,6 +387,17 @@ impl State {
         self.maybe_refresh_status();
     }
 
+    /// Whether the setup page should be shown. Running COSMOS locally needs
+    /// Docker + Python + the COSMOS environment; running against a remote COSMOS
+    /// only needs the host Python runtime (for the bridge microservices).
+    fn needs_setup(&self) -> bool {
+        if self.settings.run_locally {
+            !(self.env.container_ok && self.env.python_ok && self.env.cosmos_ok)
+        } else {
+            !self.env.python_ok
+        }
+    }
+
     /// Trigger a status refresh on a background thread (the snapshot runs the
     /// blocking `docker ps`/`stats`, so it must never run on the UI thread).
     /// Results are delivered to the UI via [`drain_shared`]. A `refreshing`
@@ -396,21 +412,20 @@ impl State {
         }
         let ctx = self.ctx.clone();
         let shared = self.shared.clone();
-        let url = cosmos_url(&self.ctx);
+        let url = self.settings.effective_cosmos_url().to_string();
+        let run_locally = self.settings.run_locally;
         std::thread::spawn(move || {
-            let result = monitor::snapshot(&ctx);
+            // Only poll local containers when we're managing COSMOS locally.
+            let statuses = if run_locally {
+                monitor::snapshot(&ctx).unwrap_or_default()
+            } else {
+                Vec::new()
+            };
             // Probe the web UI so the Open button only enables once it serves
             // index.html.
             let ready = probe_cosmos(&url);
             if let Ok(mut s) = shared.lock() {
-                match result {
-                    Ok(statuses) => {
-                        s.statuses = Some(statuses);
-                    }
-                    Err(_e) => {
-                        s.statuses = Some(Vec::new());
-                    }
-                }
+                s.statuses = Some(statuses);
                 s.cosmos_ready = Some(ready);
                 s.refreshing = false;
             }
@@ -481,10 +496,10 @@ impl State {
                         // missing once the splash duration elapses.
                         self.maybe_refresh_env();
                         if self.splash_start.elapsed() >= SPLASH_DURATION {
-                            if self.env.all_present() {
-                                self.go_main();
-                            } else {
+                            if self.needs_setup() {
                                 self.page = Page::Install;
+                            } else {
+                                self.go_main();
                             }
                         }
                     }
@@ -497,7 +512,7 @@ impl State {
                             // this session (replaces the process; no-op otherwise).
                             crate::docker::relaunch_in_docker_group_if_needed();
                             self.maybe_refresh_env();
-                            if self.env.all_present() {
+                            if !self.needs_setup() {
                                 self.go_main();
                             }
                         }
@@ -519,21 +534,16 @@ impl State {
                 self.spawn("Installing Docker", move || install::docker(&ctx));
                 Task::none()
             }
-            Message::InstallDockerMac(engine) => {
-                let label = match engine {
-                    install::MacEngine::Colima => "Installing Docker (colima)",
-                    install::MacEngine::DockerDesktop => "Installing Docker Desktop",
-                };
-                self.spawn(label, move || install::install_docker_macos(engine));
+            Message::InstallDockerMac => {
+                self.spawn("Installing Docker Desktop", install::install_docker_macos);
                 Task::none()
             }
-            Message::InstallDockerWin(engine) => {
-                let label = match engine {
-                    install::WinEngine::DockerDesktop => "Installing Docker Desktop",
-                    install::WinEngine::Podman => "Installing Podman",
-                    install::WinEngine::RancherDesktop => "Installing Rancher Desktop",
-                };
-                self.spawn(label, move || install::install_docker_windows(engine));
+            Message::InstallDockerWin => {
+                self.spawn("Installing Docker Desktop", install::install_docker_windows);
+                Task::none()
+            }
+            Message::StartDocker => {
+                self.spawn("Starting Docker", install::start_docker);
                 Task::none()
             }
             Message::InstallPython => {
@@ -557,10 +567,20 @@ impl State {
                 Task::none()
             }
             Message::OpenBrowser => {
-                let url = cosmos_url(&self.ctx);
+                let url = self.settings.effective_cosmos_url().to_string();
                 if let Err(e) = commands::open_browser(&url) {
                     crate::logging::error("openc3-app", &format!("Failed to open browser: {e}"));
                 }
+                Task::none()
+            }
+            Message::CosmosUrlChanged(value) => {
+                self.settings.cosmos_url = value;
+                self.settings.save(&self.ctx);
+                Task::none()
+            }
+            Message::RunLocallyToggled(value) => {
+                self.settings.run_locally = value;
+                self.settings.save(&self.ctx);
                 Task::none()
             }
             Message::ShowSettings => {
@@ -862,12 +882,22 @@ impl State {
     /// Page 2: only shown when docker/podman or the Python runtime is missing.
     /// Offers an install button per missing component plus a Skip button.
     fn view_install(&self) -> Element<'_, Message> {
-        let title = text("Setup").size(32);
-        let subtitle =
-            text("Some components are missing. Install them now, or skip.").size(16);
+        let muted = Color::from_rgb8(0x9E, 0x9E, 0x9E);
+        const PANEL_WIDTH: f32 = 560.0;
 
+        let logo = Image::new(ImageHandle::from_bytes(SPLASH_LOGO.to_vec()))
+            .width(72)
+            .height(72);
+        let title = text("Setup").size(30);
+        let subtitle = text("Install the components COSMOS needs, then continue.")
+            .size(15)
+            .color(muted);
+
+        // Primary install button, disabled while a task is running.
         let action = |label: &str, msg: Message| {
-            let b = button(text(label.to_string())).padding(10);
+            let b = button(text(label.to_string()).size(15))
+                .padding(10)
+                .style(button::primary);
             if self.busy {
                 b
             } else {
@@ -875,102 +905,151 @@ impl State {
             }
         };
 
-        let mut items = column![].spacing(12);
-        if !self.env.container_ok {
-            // Offer a choice of engine on macOS and Windows; a single installer
-            // elsewhere.
-            let docker_row = if cfg!(target_os = "macos") {
-                row![
-                    text("Docker").size(16).width(220),
-                    action("Colima", Message::InstallDockerMac(install::MacEngine::Colima)),
-                    action(
-                        "Docker Desktop",
-                        Message::InstallDockerMac(install::MacEngine::DockerDesktop)
-                    ),
-                ]
-            } else if cfg!(target_os = "windows") {
-                row![
-                    text("Docker").size(16).width(220),
-                    action(
-                        "Docker Desktop",
-                        Message::InstallDockerWin(install::WinEngine::DockerDesktop)
-                    ),
-                    action("Podman", Message::InstallDockerWin(install::WinEngine::Podman)),
-                    action(
-                        "Rancher Desktop",
-                        Message::InstallDockerWin(install::WinEngine::RancherDesktop)
-                    ),
-                ]
-            } else {
-                row![
-                    text("Docker / Podman").size(16).width(220),
-                    action("Install Docker", Message::InstallDocker),
-                ]
+        // Rounded "card" panel: a dark gray so the light card text stays
+        // high-contrast, with a subtle border to define the edge.
+        fn card_style(_theme: &Theme) -> container::Style {
+            container::Style {
+                background: Some(Color::from_rgb8(0x24, 0x24, 0x28).into()),
+                border: iced::border::Border {
+                    color: Color::from_rgb8(0x3A, 0x3A, 0x40),
+                    width: 1.0,
+                    radius: 10.0.into(),
+                },
+                ..container::Style::default()
             }
-            .spacing(12)
-            .align_y(Center);
-            items = items.push(docker_row);
-            // Docker Desktop licensing caveat (it's an option on macOS and Windows).
-            if cfg!(any(target_os = "macos", target_os = "windows")) {
-                items = items.push(
-                    text(install::DOCKER_DESKTOP_LICENSE)
-                        .size(11)
-                        .color(Color::from_rgb8(0x9E, 0x9E, 0x9E)),
-                );
+        }
+
+        // One card per missing component: a name + short description on the
+        // left, the install button flush right.
+        fn card<'a>(
+            name: &str,
+            desc: Element<'a, Message>,
+            btn: Element<'a, Message>,
+        ) -> Element<'a, Message> {
+            container(
+                row![
+                    column![text(name.to_string()).size(17), desc]
+                        .spacing(3)
+                        .width(Length::Fill),
+                    btn,
+                ]
+                .spacing(16)
+                .align_y(Center),
+            )
+            .padding(16)
+            .width(Length::Fill)
+            .style(card_style)
+            .into()
+        }
+
+        let mut cards = column![].spacing(12).width(Length::Fill);
+        // Docker and the COSMOS environment are only needed when running COSMOS
+        // locally; otherwise the only local component is the Python runtime.
+        if self.settings.run_locally && !self.env.container_ok {
+            if self.env.container_installed {
+                // Docker is present but its daemon isn't running: offer to start
+                // it rather than reinstall.
+                cards = cards.push(card(
+                    "Docker",
+                    text("Docker is installed but not running.")
+                        .size(12)
+                        .color(muted)
+                        .into(),
+                    action("Start Docker", Message::StartDocker).into(),
+                ));
+            } else {
+                let docker_msg = if cfg!(target_os = "macos") {
+                    Message::InstallDockerMac
+                } else if cfg!(target_os = "windows") {
+                    Message::InstallDockerWin
+                } else {
+                    Message::InstallDocker
+                };
+                // On macOS/Windows we install Docker Desktop; note its licensing.
+                let mut desc = column![text("The container engine COSMOS runs in.")
+                    .size(12)
+                    .color(muted)]
+                .spacing(3);
+                if cfg!(any(target_os = "macos", target_os = "windows")) {
+                    desc = desc.push(
+                        text(install::DOCKER_DESKTOP_LICENSE)
+                            .size(11)
+                            .color(muted),
+                    );
+                }
+                cards = cards.push(card(
+                    "Docker",
+                    desc.into(),
+                    action("Install Docker", docker_msg).into(),
+                ));
             }
         }
         if !self.env.python_ok {
-            items = items.push(
-                row![
-                    text("Python runtime").size(16).width(220),
-                    action("Install Python", Message::InstallPython),
-                ]
-                .spacing(12)
-                .align_y(Center),
-            );
+            cards = cards.push(card(
+                "Python runtime",
+                text("An isolated interpreter for host scripts.")
+                    .size(12)
+                    .color(muted)
+                    .into(),
+                action("Install Python", Message::InstallPython).into(),
+            ));
         }
-        if !self.env.cosmos_ok {
-            items = items.push(
-                row![
-                    text("COSMOS environment").size(16).width(220),
-                    action("Install COSMOS", Message::InstallCosmos),
-                ]
-                .spacing(12)
-                .align_y(Center),
-            );
+        if self.settings.run_locally && !self.env.cosmos_ok {
+            cards = cards.push(card(
+                "COSMOS environment",
+                text("The COSMOS containers and configuration.")
+                    .size(12)
+                    .color(muted)
+                    .into(),
+                action("Install COSMOS", Message::InstallCosmos).into(),
+            ));
         }
 
-        let skip = button(text("Skip").size(16)).padding(10).on_press(Message::Skip);
+        let cards_panel = container(cards).max_width(PANEL_WIDTH).width(Length::Fill);
+
+        let skip = button(text("Skip for now").size(14))
+            .padding(10)
+            .style(button::text)
+            .on_press(Message::Skip);
 
         let busy_note = if self.busy {
-            text("Working… (detailed output in the terminal)").size(13)
+            text("Working… (progress below and in the terminal)")
+                .size(13)
+                .color(muted)
         } else {
             text(" ").size(13)
         };
 
-        // Show the most recent log lines (from the captured-log sink) so install
-        // progress is visible on this page too.
-        let mut log_col = column![].spacing(2);
+        // Recent log lines in a subtle panel so install progress is visible here.
+        let mut log_col = column![].spacing(2).width(Length::Fill);
         let start = self.log_records.len().saturating_sub(8);
         for rec in &self.log_records[start..] {
             log_col = log_col.push(
                 text(format!("{} {}", rec.level, rec.message))
                     .size(12)
-                    .font(Font::MONOSPACE),
+                    .font(Font::MONOSPACE)
+                    .color(level_color(&rec.level)),
             );
         }
+        let log_panel = container(scrollable(log_col).height(Length::Fill))
+            .padding(12)
+            .width(Length::Fill)
+            .max_width(PANEL_WIDTH)
+            .height(Length::FillPortion(1))
+            .style(card_style);
 
         let content = column![
+            logo,
             title,
             subtitle,
-            Space::with_height(16),
-            items,
-            Space::with_height(16),
+            Space::with_height(10),
+            cards_panel,
+            Space::with_height(2),
             skip,
             busy_note,
-            scrollable(log_col).height(Length::FillPortion(1)),
+            log_panel,
         ]
-        .spacing(10)
+        .spacing(12)
         .padding(30)
         .align_x(Center);
 
@@ -1021,44 +1100,70 @@ impl State {
             }
         };
 
-        // Show Start when nothing is running, Stop once any container is up.
-        let started = self.statuses.iter().any(|c| c.is_running());
-        let primary = if started {
-            action("Stop", Message::Stop)
-        } else {
-            action("Start", Message::Start)
-        };
-        let buttons = row![primary].spacing(10);
+        let run_locally = self.settings.run_locally;
+        let started = run_locally && self.statuses.iter().any(|c| c.is_running());
 
-        // Prominent, full-width button to open the COSMOS web UI; enabled only
-        // once COSMOS is up and serving index.html.
-        let open_label = if self.cosmos_ready {
+        // Prominent, full-width hero button. When running COSMOS locally it
+        // transitions through the lifecycle (Start COSMOS → waiting → Open);
+        // when using a remote COSMOS it's simply an always-enabled Open button.
+        let hero_label = if !run_locally {
+            "Open COSMOS in Browser"
+        } else if !started {
+            "Start COSMOS"
+        } else if self.cosmos_ready {
             "Open COSMOS in Browser"
         } else {
             "Open COSMOS in Browser (waiting for COSMOS…)"
         };
+        let hero_style = if !run_locally {
+            button::success
+        } else if !started {
+            button::primary
+        } else if self.cosmos_ready {
+            button::success
+        } else {
+            button::secondary
+        };
+        let hero_msg = if !run_locally {
+            Some(Message::OpenBrowser)
+        } else if !started {
+            (!self.busy).then_some(Message::Start)
+        } else if self.cosmos_ready {
+            Some(Message::OpenBrowser)
+        } else {
+            None
+        };
         let open_button = button(
-            text(open_label)
+            text(hero_label)
                 .size(18)
                 .width(Length::Fill)
                 .align_x(Center),
         )
         .width(Length::Fill)
         .padding(14)
-        .style(if self.cosmos_ready {
-            button::success
-        } else {
-            button::secondary
-        })
-        .on_press_maybe(self.cosmos_ready.then_some(Message::OpenBrowser));
+        .style(hero_style)
+        .on_press_maybe(hero_msg);
 
-        // Color-coded container status table (Container | Status | CPU | Mem).
+        // Secondary controls: Stop only appears while running locally and up.
+        let buttons = if started {
+            row![action("Stop", Message::Stop)].spacing(10)
+        } else {
+            row![].spacing(10)
+        };
+
+        // Color-coded container status table
+        // (Container | Tag | Status | CPU | Mem | Actions).
         let header_color = Color::from_rgb8(0x9E, 0x9E, 0x9E);
         let mut table = column![row![
             text("Container")
                 .size(13)
                 .font(Font::MONOSPACE)
                 .width(260)
+                .color(header_color),
+            text("Tag")
+                .size(13)
+                .font(Font::MONOSPACE)
+                .width(120)
                 .color(header_color),
             text("Status")
                 .size(13)
@@ -1098,6 +1203,11 @@ impl State {
                         .font(Font::MONOSPACE)
                         .width(260)
                         .wrapping(text::Wrapping::WordOrGlyph),
+                    text(c.tag_display().to_string())
+                        .size(13)
+                        .font(Font::MONOSPACE)
+                        .width(120)
+                        .wrapping(text::Wrapping::WordOrGlyph),
                     text(format!("{indicator}{}", c.display_status()))
                         .size(13)
                         .font(Font::MONOSPACE)
@@ -1117,6 +1227,24 @@ impl State {
                 .align_y(Center);
                 table = table.push(container_row);
             }
+            // Totals footer: summed CPU% and memory across the visible rows.
+            let (cpu_total, mem_total) = monitor::totals(visible.iter().copied());
+            table = table.push(horizontal_rule(1));
+            table = table.push(
+                row![
+                    text("Total")
+                        .size(13)
+                        .font(Font::MONOSPACE)
+                        .width(260)
+                        .color(header_color),
+                    text("").size(13).font(Font::MONOSPACE).width(120),
+                    text("").size(13).font(Font::MONOSPACE).width(170),
+                    text(cpu_total).size(13).font(Font::MONOSPACE).width(70),
+                    text(mem_total).size(13).font(Font::MONOSPACE).width(110),
+                ]
+                .spacing(10)
+                .align_y(Center),
+            );
         }
 
         let running = visible.iter().filter(|c| c.is_running()).count();
@@ -1170,10 +1298,14 @@ impl State {
             .on_press(Message::ToggleStatus)
             .style(button::text)
             .padding(0);
-        let status_section = if self.status_collapsed {
-            column![status_header, horizontal_rule(2)].spacing(8)
+        // The local container table is only meaningful when running COSMOS
+        // locally; hide it entirely for a remote COSMOS.
+        let status_section: Element<'_, Message> = if !self.settings.run_locally {
+            Space::with_height(0).into()
+        } else if self.status_collapsed {
+            column![status_header, horizontal_rule(2)].spacing(8).into()
         } else {
-            column![status_header, horizontal_rule(2), status_body].spacing(8)
+            column![status_header, horizontal_rule(2), status_body].spacing(8).into()
         };
 
         // Bridge microservices (host process supervisor) status table.
@@ -1412,6 +1544,28 @@ impl State {
         ]
         .align_y(Center);
 
+        // COSMOS location: the URL the "Open COSMOS in Browser" button uses, and
+        // whether this app manages a local COSMOS (Docker) or connects to a
+        // remote one.
+        let cosmos_section = column![
+            text("COSMOS").size(16),
+            text("Web address opened by \u{201C}Open COSMOS in Browser\u{201D}.")
+                .size(13)
+                .color(grey),
+            text_input(crate::settings::DEFAULT_COSMOS_URL, &self.settings.cosmos_url)
+                .on_input(Message::CosmosUrlChanged)
+                .padding(8),
+            checkbox("Run COSMOS locally", self.settings.run_locally)
+                .on_toggle(Message::RunLocallyToggled),
+            text(
+                "When off, this app won't install or start/stop a local COSMOS — \
+                 it just opens the URL above."
+            )
+            .size(12)
+            .color(grey),
+        ]
+        .spacing(6);
+
         // Bridge pairing: redeem an enrollment token from a remote COSMOS's
         // Admin → Bridges page. Co-located COSMOS enrolls automatically.
         let pair_section = column![
@@ -1465,6 +1619,7 @@ impl State {
             column![
                 header,
                 horizontal_rule(2),
+                cosmos_section,
                 pair_section,
                 cleanup_section,
             ]
@@ -1605,22 +1760,6 @@ impl State {
         }
         Subscription::batch(subs)
     }
-}
-
-/// The COSMOS web UI URL, taken from the install's `.env`
-/// (`OPENC3_EXTERNAL_URL`) when available, else the default.
-fn cosmos_url(ctx: &Context) -> String {
-    let env = ctx.paths.env_file();
-    if env.exists() {
-        if let Ok(map) = crate::env_file::parse(&env) {
-            if let Some(u) = map.get("OPENC3_EXTERNAL_URL") {
-                if !u.is_empty() {
-                    return u.clone();
-                }
-            }
-        }
-    }
-    "http://localhost:2900".to_string()
 }
 
 /// Probe the COSMOS web UI: ready when `url` returns success and serves the

@@ -4,9 +4,27 @@ use anyhow::{bail, Context, Result};
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
 
+/// On Windows, mark a command so spawning it doesn't pop a console window when
+/// the app runs as the GUI (which has no console of its own — see the
+/// `windows_subsystem` attribute in main.rs). Inherited stdio handles still
+/// work, so CLI output is unaffected. No-op on other platforms.
+pub fn no_window(cmd: &mut Command) {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // CREATE_NO_WINDOW
+        cmd.creation_flags(0x0800_0000);
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = cmd;
+    }
+}
+
 /// Run a command, inheriting stdio so the user sees live output. Returns an
 /// error if the command exits non-zero.
 pub fn run(cmd: &mut Command) -> Result<()> {
+    no_window(cmd);
     let display = describe(cmd);
     let status = cmd
         .status()
@@ -20,6 +38,7 @@ pub fn run(cmd: &mut Command) -> Result<()> {
 /// Run a command capturing stdout/stderr. Returns the captured output
 /// regardless of exit status (caller decides what to do).
 pub fn capture(cmd: &mut Command) -> Result<Output> {
+    no_window(cmd);
     let display = describe(cmd);
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
     cmd.output()

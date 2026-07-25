@@ -19,8 +19,10 @@ use serde::Serialize;
 const MAX_RECORDS: usize = 1000;
 
 /// A captured log record for display in the GUI log table. Mirrors the JSON that
-/// went to stdout so the table shows exactly what was logged.
+/// went to stdout so the table shows exactly what was logged. The fields are
+/// only read by the GUI table, so they're dead in a headless build.
 #[derive(Clone)]
+#[cfg_attr(not(feature = "gui"), allow(dead_code))]
 pub struct LogRecord {
     /// ISO8601 `@timestamp` string.
     pub timestamp: String,
@@ -45,7 +47,8 @@ fn push_record(record: LogRecord) {
     }
 }
 
-/// Snapshot of the captured log records, oldest first.
+/// Snapshot of the captured log records, oldest first. GUI-only consumer.
+#[cfg_attr(not(feature = "gui"), allow(dead_code))]
 pub fn snapshot() -> Vec<LogRecord> {
     sink()
         .lock()
@@ -54,6 +57,7 @@ pub fn snapshot() -> Vec<LogRecord> {
 }
 
 /// Discard all captured log records (the GUI "clear log" action).
+#[cfg_attr(not(feature = "gui"), allow(dead_code))]
 pub fn clear() {
     if let Ok(mut q) = sink().lock() {
         q.clear();

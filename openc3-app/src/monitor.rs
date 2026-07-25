@@ -18,7 +18,7 @@ pub struct Publisher {
 /// One container's status as reported by compose. This is a deserialization
 /// DTO; not every field is read in every code path.
 #[allow(dead_code)]
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 pub struct ContainerStatus {
     #[serde(default, rename = "Service")]
     pub service: String,
@@ -30,6 +30,9 @@ pub struct ContainerStatus {
     pub status: String,
     #[serde(default, rename = "Health")]
     pub health: String,
+    /// Full image reference, e.g. "openc3inc/openc3-cosmos-cmd-tlm-api:6.9.0".
+    #[serde(default, rename = "Image")]
+    pub image: String,
     #[serde(default, rename = "Publishers")]
     pub publishers: Vec<Publisher>,
     /// CPU percentage from `docker stats` (populated by [`snapshot`], not ps).
@@ -175,6 +178,12 @@ impl ContainerStatus {
         }
     }
 
+    /// The image tag (version) for display, e.g. "6.9.0" or "latest", or "-"
+    /// when there's no image.
+    pub fn tag_display(&self) -> &str {
+        image_tag(&self.image)
+    }
+
     /// Comma-separated list of published host ports, or "-" when none.
     pub fn ports_summary(&self) -> String {
         let mut ports: Vec<u32> = self
@@ -197,11 +206,58 @@ impl ContainerStatus {
     }
 }
 
-/// Query the current status of all COSMOS containers.
+/// Query the current status of all COSMOS containers (status + CPU/memory).
 ///
-/// `docker compose ps --format json` emits either a JSON array or one JSON
-/// object per line depending on the version, so we handle both.
+/// Prefers the Docker Engine API over the daemon socket (no subprocess per
+/// poll; see [`crate::dockerapi`]). Falls back to the `docker` CLI when the
+/// socket isn't reachable — e.g. podman without its API socket enabled, or an
+/// unusual `DOCKER_HOST` bollard can't connect to.
 pub fn snapshot(ctx: &Context) -> Result<Vec<ContainerStatus>> {
+    let mut statuses = match crate::dockerapi::snapshot(ctx) {
+        Ok(statuses) => statuses,
+        Err(err) => {
+            crate::logging::debug(
+                "monitor",
+                &format!("Docker API poll unavailable ({err:#}); using the docker CLI"),
+            );
+            snapshot_via_cli(ctx)?
+        }
+    };
+    // Present containers alphabetically (by compose service, then container
+    // name) so the list order is stable and easy to scan.
+    statuses.sort_by(|a, b| {
+        a.service
+            .to_lowercase()
+            .cmp(&b.service.to_lowercase())
+            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+    });
+    Ok(statuses)
+}
+
+/// Extract the image tag (version) from a full image reference. Handles
+/// `@sha256:` digests and registry-port colons (`host:5000/img:tag`). Returns
+/// the implicit "latest" when an image has no tag, or "-" when there's none.
+fn image_tag(image: &str) -> &str {
+    if image.is_empty() {
+        return "-";
+    }
+    // Drop any digest suffix ("name@sha256:...").
+    let reference = image.split('@').next().unwrap_or(image);
+    // The tag follows the last ':' — but only when that ':' isn't the registry
+    // port separator (which is followed by '/').
+    if let Some(idx) = reference.rfind(':') {
+        let candidate = &reference[idx + 1..];
+        if !candidate.is_empty() && !candidate.contains('/') {
+            return candidate;
+        }
+    }
+    "latest"
+}
+
+/// CLI fallback: parse `docker compose ps --format json` (which emits either a
+/// JSON array or one JSON object per line depending on the version) and enrich
+/// with `docker stats`.
+fn snapshot_via_cli(ctx: &Context) -> Result<Vec<ContainerStatus>> {
     let mut cmd = docker::compose(ctx)?;
     cmd.args(["ps", "--all", "--format", "json"]);
     let out = docker::capture(cmd)?;
@@ -283,6 +339,74 @@ fn parse_ps(text: &str) -> Vec<ContainerStatus> {
     result
 }
 
+/// Sum CPU% and memory usage across the given containers, returned as display
+/// strings (e.g. "12.34%", "1.2GiB") for a totals row. Containers without
+/// stats (not running) contribute nothing.
+pub fn totals<'a>(statuses: impl IntoIterator<Item = &'a ContainerStatus>) -> (String, String) {
+    let mut cpu = 0.0_f64;
+    let mut mem = 0.0_f64;
+    for c in statuses {
+        if let Some(v) = parse_cpu(&c.cpu) {
+            cpu += v;
+        }
+        if let Some(v) = parse_mem_bytes(&c.mem) {
+            mem += v;
+        }
+    }
+    (format!("{cpu:.2}%"), human_bytes(mem.round() as u64))
+}
+
+/// Parse a CPU percentage display string ("12.34%") back to a number.
+fn parse_cpu(s: &str) -> Option<f64> {
+    let t = s.trim().trim_end_matches('%').trim();
+    if t.is_empty() {
+        return None;
+    }
+    t.parse().ok()
+}
+
+/// Parse a memory display string ("25.6MiB") back to bytes. Handles the IEC
+/// units `docker stats` emits, plus decimal units defensively.
+fn parse_mem_bytes(s: &str) -> Option<f64> {
+    let t = s.trim();
+    if t.is_empty() || t == "-" {
+        return None;
+    }
+    let split = t.find(|c: char| c.is_ascii_alphabetic())?;
+    let (num, unit) = t.split_at(split);
+    let value: f64 = num.trim().parse().ok()?;
+    let mult = match unit.trim().to_ascii_lowercase().as_str() {
+        "b" => 1.0,
+        "kib" => 1024.0,
+        "mib" => 1024f64.powi(2),
+        "gib" => 1024f64.powi(3),
+        "tib" => 1024f64.powi(4),
+        "pib" => 1024f64.powi(5),
+        "kb" => 1000.0,
+        "mb" => 1000f64.powi(2),
+        "gb" => 1000f64.powi(3),
+        "tb" => 1000f64.powi(4),
+        _ => return None,
+    };
+    Some(value * mult)
+}
+
+/// Format bytes in IEC units similar to `docker stats` (e.g. "25.6MiB").
+pub(crate) fn human_bytes(bytes: u64) -> String {
+    const UNITS: [&str; 6] = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
+    let mut value = bytes as f64;
+    let mut unit = 0;
+    while value >= 1024.0 && unit < UNITS.len() - 1 {
+        value /= 1024.0;
+        unit += 1;
+    }
+    if unit == 0 {
+        format!("{bytes}B")
+    } else {
+        format!("{value:.1}{}", UNITS[unit])
+    }
+}
+
 /// Render a one-line human summary of a snapshot.
 pub fn summarize(statuses: &[ContainerStatus]) -> String {
     if statuses.is_empty() {
@@ -302,6 +426,43 @@ mod tests {
         let v = parse_ps(json);
         assert_eq!(v.len(), 1);
         assert!(v[0].is_healthy());
+    }
+
+    #[test]
+    fn extracts_image_tag() {
+        assert_eq!(image_tag("openc3inc/openc3-cosmos-cmd-tlm-api:6.9.0"), "6.9.0");
+        assert_eq!(image_tag("openc3inc/foo:latest"), "latest");
+        assert_eq!(image_tag("openc3inc/foo"), "latest"); // implicit tag
+        assert_eq!(image_tag("localhost:5000/openc3/foo:1.2"), "1.2");
+        assert_eq!(image_tag("localhost:5000/openc3/foo"), "latest"); // port, no tag
+        assert_eq!(image_tag("foo:1.0@sha256:abc123"), "1.0"); // digest stripped
+        assert_eq!(image_tag(""), "-");
+    }
+
+    #[test]
+    fn human_bytes_uses_iec_units() {
+        assert_eq!(human_bytes(512), "512B");
+        assert_eq!(human_bytes(1024), "1.0KiB");
+        assert_eq!(human_bytes(26_843_546), "25.6MiB");
+    }
+
+    #[test]
+    fn totals_sum_cpu_and_memory() {
+        let a = ContainerStatus {
+            cpu: "10.50%".to_string(),
+            mem: "100.0MiB".to_string(),
+            ..Default::default()
+        };
+        let b = ContainerStatus {
+            cpu: "5.25%".to_string(),
+            mem: "1.0GiB".to_string(),
+            ..Default::default()
+        };
+        // Not running: no stats, contributes nothing.
+        let c = ContainerStatus::default();
+        let (cpu, mem) = totals([&a, &b, &c]);
+        assert_eq!(cpu, "15.75%");
+        assert_eq!(mem, "1.1GiB"); // 100MiB + 1024MiB = 1124MiB ≈ 1.1GiB
     }
 
     #[test]

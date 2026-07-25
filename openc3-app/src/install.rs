@@ -9,20 +9,22 @@ use crate::download;
 use crate::process;
 use anyhow::{bail, Context as _, Result};
 use std::cell::RefCell;
-use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+/// A sink for user-facing install messages.
+type Notifier = Box<dyn Fn(String)>;
+
 thread_local! {
     /// Optional sink for user-facing install messages on the current thread.
-    static NOTIFIER: RefCell<Option<Box<dyn Fn(String)>>> = const { RefCell::new(None) };
+    static NOTIFIER: RefCell<Option<Notifier>> = const { RefCell::new(None) };
 }
 
 /// Route user-facing install messages emitted by [`notify`] to `sink` on the
 /// current thread. The GUI uses this to mirror messages into its activity log;
 /// when no sink is set (the CLI), messages are printed to stdout.
 #[cfg(feature = "gui")]
-pub fn set_notifier(sink: Box<dyn Fn(String)>) {
+pub fn set_notifier(sink: Notifier) {
     NOTIFIER.with(|n| *n.borrow_mut() = Some(sink));
 }
 
@@ -41,30 +43,11 @@ fn notify(msg: impl Into<String>) {
     });
 }
 
-/// Which Docker engine to install on macOS.
-#[derive(Clone, Copy, Debug)]
-pub enum MacEngine {
-    /// Lightweight, CLI-only engine (colima + docker CLI + docker-compose).
-    Colima,
-    /// Full Docker Desktop application.
-    DockerDesktop,
-}
-
-/// Which container engine to install on Windows.
-#[derive(Clone, Copy, Debug)]
-pub enum WinEngine {
-    /// Docker Desktop (turnkey; see licensing note).
-    DockerDesktop,
-    /// Podman (free, no Desktop; uses WSL2).
-    Podman,
-    /// Rancher Desktop configured with the dockerd/moby engine (free; WSL2).
-    RancherDesktop,
-}
-
 /// Docker Desktop licensing caveat, surfaced wherever Docker Desktop is offered.
 pub const DOCKER_DESKTOP_LICENSE: &str = "Note: Docker Desktop requires a paid Docker subscription \
 for organizations with more than 250 employees OR more than $10 million in annual revenue. \
-The free alternatives (colima on macOS; Podman or Rancher Desktop on Windows) avoid this.";
+Free alternatives (colima on macOS; Podman or Rancher Desktop on Windows) avoid this and can be \
+installed manually if needed.";
 
 const UV_VERSION_URL_BASE: &str = "https://github.com/astral-sh/uv/releases/latest/download";
 const CACERT_URL: &str = "https://curl.se/ca/cacert.pem";
@@ -81,13 +64,10 @@ pub fn all(ctx: &Context) -> Result<()> {
 }
 
 /// Install OS-level prerequisites the other installers rely on so the app can
-/// run from a fresh OS: a downloader (curl/wget) on every platform, and
-/// Homebrew on macOS (which also pulls in the Command Line Tools).
+/// run from a fresh OS: a downloader (curl/wget). macOS and Windows ship curl,
+/// so this is only meaningful on Linux.
 pub fn prerequisites(_ctx: &Context) -> Result<()> {
     ensure_downloader()?;
-    if cfg!(target_os = "macos") {
-        ensure_homebrew()?;
-    }
     Ok(())
 }
 
@@ -106,92 +86,150 @@ pub fn docker(_ctx: &Context) -> Result<()> {
     }
 
     if cfg!(target_os = "macos") {
-        // CLI path: ask the user which engine they want.
-        let engine = prompt_mac_engine()?;
-        install_docker_macos(engine)
+        install_docker_macos()
     } else if cfg!(target_os = "linux") {
         install_docker_linux()
     } else if cfg!(target_os = "windows") {
-        // CLI path: ask the user which engine they want.
-        let engine = prompt_win_engine()?;
-        install_docker_windows(engine)
+        install_docker_windows()
     } else {
         bail!("Automated Docker install is not supported on this platform; install Docker manually.")
     }
 }
 
-/// Prompt (on the CLI) for which macOS Docker engine to install. Defaults to
-/// colima on an empty response.
-fn prompt_mac_engine() -> Result<MacEngine> {
-    println!("Choose a Docker engine for macOS:");
-    println!("  1) colima         — lightweight, CLI-only (recommended)");
-    println!("  2) Docker Desktop — full GUI application");
-    println!("{DOCKER_DESKTOP_LICENSE}");
-    print!("Enter 1 or 2 [1]: ");
-    io::stdout().flush().ok();
-    let mut line = String::new();
-    io::stdin().read_line(&mut line).ok();
-    match line.trim() {
-        "2" => Ok(MacEngine::DockerDesktop),
-        _ => Ok(MacEngine::Colima),
+/// Install Docker Desktop on macOS from Docker's official disk image.
+///
+/// We deliberately avoid Homebrew here: `brew` shells out to `sudo`, which
+/// prompts on a TTY the GUI doesn't have, and the Docker cask fails when its
+/// credential-helper binaries already exist (e.g. "already a Binary at
+/// /usr/local/bin/docker-credential-osxkeychain").
+///
+/// Instead we copy Docker.app into /Applications and launch it, letting Docker
+/// Desktop perform its own privileged setup on first launch. That setup shows
+/// Docker's own branded "Docker Desktop needs privileged access" prompt — much
+/// clearer than a generic `osascript` password dialog — and Docker handles any
+/// pre-existing credential helpers itself.
+pub fn install_docker_macos() -> Result<()> {
+    notify(DOCKER_DESKTOP_LICENSE);
+    let arch = if cfg!(target_arch = "aarch64") {
+        "arm64"
+    } else {
+        "amd64"
+    };
+    let url = format!("https://desktop.docker.com/mac/main/{arch}/Docker.dmg");
+
+    let dmg = std::env::temp_dir().join("openc3-Docker.dmg");
+    notify("Downloading Docker Desktop (this is a large download)...");
+    download::to_file(&url, &dmg)?;
+
+    // Mount the image (no admin needed). Clear any stale mount from a prior
+    // attempt first so `attach` doesn't fail on a busy mountpoint.
+    let mount = std::env::temp_dir().join("openc3-docker-mount");
+    let _ = process::run(Command::new("hdiutil").arg("detach").arg(&mount).arg("-force"));
+    notify("Mounting the Docker Desktop image...");
+    process::run(
+        Command::new("hdiutil")
+            .arg("attach")
+            .arg("-nobrowse")
+            .arg("-mountpoint")
+            .arg(&mount)
+            .arg(&dmg),
+    )?;
+
+    let src = mount.join("Docker.app");
+    let dest = "/Applications/Docker.app";
+    notify("Installing Docker Desktop into /Applications...");
+    let result = copy_app_to_applications(&src, dest);
+
+    // Always unmount and clean up, even if the copy failed.
+    let _ = process::run(Command::new("hdiutil").arg("detach").arg(&mount).arg("-force"));
+    let _ = std::fs::remove_file(&dmg);
+    result?;
+
+    // Clear the download quarantine so Gatekeeper doesn't add an extra prompt.
+    let _ = process::run(Command::new("xattr").args(["-dr", "com.apple.quarantine", dest]));
+
+    notify("Launching Docker Desktop...");
+    let _ = process::run(Command::new("open").args(["-a", "Docker"]));
+    notify(
+        "Docker Desktop installed and launching.\n\
+         NEXT STEP: complete Docker's first-run setup (Docker will ask for your password to \
+         finish installing), then start COSMOS.",
+    );
+    Ok(())
+}
+
+/// Copy a `.app` bundle into /Applications. Tries a plain copy first — that
+/// works for admin users (the common case) with no password prompt at all —
+/// and only falls back to an authenticated copy when the user can't write to
+/// /Applications. `ditto` preserves the bundle's code signature and metadata.
+fn copy_app_to_applications(src: &Path, dest: &str) -> Result<()> {
+    let _ = std::fs::remove_dir_all(dest);
+    if process::run(Command::new("ditto").arg(src).arg(dest)).is_ok() {
+        return Ok(());
+    }
+    notify("Administrator access is needed to install into /Applications...");
+    let cmd = format!("rm -rf '{dest}' && /usr/bin/ditto '{}' '{dest}'", src.display());
+    run_with_admin(&cmd)
+}
+
+/// Run a shell command as root via a native macOS authentication dialog, so the
+/// GUI doesn't need a terminal for the password (unlike `sudo`). Only used as a
+/// fallback when the user lacks write access to /Applications.
+fn run_with_admin(shell_command: &str) -> Result<()> {
+    // Escape for embedding inside the AppleScript double-quoted string.
+    let escaped = shell_command.replace('\\', "\\\\").replace('"', "\\\"");
+    let script = format!("do shell script \"{escaped}\" with administrator privileges");
+    process::run(Command::new("osascript").arg("-e").arg(script))
+}
+
+/// Start an already-installed container engine (Docker is installed but its
+/// daemon isn't running). On macOS/Windows this launches Docker Desktop; on
+/// Linux it starts the docker service. GUI-only (the Setup page's Start Docker).
+#[cfg_attr(not(feature = "gui"), allow(dead_code))]
+pub fn start_docker() -> Result<()> {
+    if cfg!(target_os = "macos") {
+        notify("Starting Docker Desktop...");
+        process::run(Command::new("open").args(["-a", "Docker"]))?;
+        notify("Docker Desktop is starting. Wait until it reports it is running.");
+        Ok(())
+    } else if cfg!(target_os = "windows") {
+        notify("Starting Docker Desktop...");
+        let pf = std::env::var("ProgramFiles").unwrap_or_else(|_| r"C:\Program Files".to_string());
+        let exe = format!(r"{pf}\Docker\Docker\Docker Desktop.exe");
+        // `start` returns immediately instead of blocking on the GUI app.
+        process::run(Command::new("cmd").args(["/C", "start", "", &exe]))?;
+        notify("Docker Desktop is starting. Wait until it reports it is running.");
+        Ok(())
+    } else {
+        start_docker_linux_service()
     }
 }
 
-/// Prompt (on the CLI) for which Windows container engine to install. Defaults
-/// to Docker Desktop on an empty response.
-fn prompt_win_engine() -> Result<WinEngine> {
-    println!("Choose a container engine for Windows:");
-    println!("  1) Docker Desktop  — turnkey GUI app (see licensing note)");
-    println!("  2) Podman          — free, no Desktop (uses WSL2)");
-    println!("  3) Rancher Desktop — free, dockerd/moby engine (uses WSL2)");
-    println!("{DOCKER_DESKTOP_LICENSE}");
-    print!("Enter 1, 2, or 3 [1]: ");
-    io::stdout().flush().ok();
-    let mut line = String::new();
-    io::stdin().read_line(&mut line).ok();
-    match line.trim() {
-        "2" => Ok(WinEngine::Podman),
-        "3" => Ok(WinEngine::RancherDesktop),
-        _ => Ok(WinEngine::DockerDesktop),
-    }
-}
-
-/// Install the chosen Docker engine on macOS via Homebrew, installing Homebrew
-/// itself first if necessary.
-pub fn install_docker_macos(engine: MacEngine) -> Result<()> {
-    let brew = ensure_homebrew()?;
-    match engine {
-        MacEngine::Colima => {
-            notify("Installing colima + docker via Homebrew...");
-            process::run(
-                Command::new(&brew).args(["install", "colima", "docker", "docker-compose"]),
-            )?;
-            notify("Starting colima...");
-            // colima may not be on PATH yet; prefer the binary next to brew.
-            let colima = brew
-                .parent()
-                .map(|d| d.join("colima"))
-                .filter(|p| p.exists())
-                .or_else(|| process::which_path("colima"))
-                .unwrap_or_else(|| PathBuf::from("colima"));
-            process::run(Command::new(&colima).arg("start"))?;
-            notify("Docker (colima) is installed and running.");
-        }
-        MacEngine::DockerDesktop => {
-            notify(DOCKER_DESKTOP_LICENSE);
-            notify("Installing Docker Desktop via Homebrew...");
-            process::run(Command::new(&brew).args(["install", "--cask", "docker"]))?;
-            notify("Launching Docker Desktop...");
-            // Best effort: the first launch may require completing setup in the UI.
-            let _ = process::run(Command::new("open").args(["-a", "Docker"]));
-            notify(
-                "Docker Desktop installed and launching.\n\
-                 NEXT STEP: complete first-run setup in the Docker Desktop window (you may be \
-                 asked to grant privileges). Wait until Docker reports 'running' before starting \
-                 COSMOS.",
-            );
-        }
-    }
+/// Start the Docker service on Linux. Prefers a GUI polkit prompt (`pkexec`)
+/// so a GUI launch needs no terminal; falls back to sudo, then to instructions.
+#[cfg_attr(not(feature = "gui"), allow(dead_code))]
+fn start_docker_linux_service() -> Result<()> {
+    notify("Starting the Docker service...");
+    let mut cmd = if is_root() {
+        let mut c = Command::new("systemctl");
+        c.args(["start", "docker"]);
+        c
+    } else if process::which("pkexec") {
+        let mut c = Command::new("pkexec");
+        c.args(["systemctl", "start", "docker"]);
+        c
+    } else if process::which("sudo") {
+        let mut c = Command::new("sudo");
+        c.args(["systemctl", "start", "docker"]);
+        c
+    } else {
+        bail!(
+            "Docker is installed but not running.\n\
+             MANUAL STEP: start it with  sudo systemctl start docker  then try again."
+        );
+    };
+    process::run(&mut cmd)?;
+    notify("Docker service started.");
     Ok(())
 }
 
@@ -254,86 +292,44 @@ fn add_user_to_docker_group() {
             c
         };
         if let Err(error) = process::run(&mut cmd) {
-            notify(&format!(
+            notify(format!(
                 "Docker installed, but adding '{user}' to the docker group failed ({error}).\n\
                  MANUAL STEP: run  sudo usermod -aG docker {user}  then log out and back in.",
             ));
             return;
         }
     }
-    notify(&format!(
+    notify(format!(
         "Docker installed and '{user}' added to the docker group. openc3-app will use \
          Docker in this session automatically (no restart needed). For a plain terminal, \
          run `newgrp docker` or start a new login session.",
     ));
 }
 
-const WINGET_MANUAL: &str = "winget (the Windows Package Manager) was not found, so the engine \
+const WINGET_MANUAL: &str = "winget (the Windows Package Manager) was not found, so Docker Desktop \
 can't be installed automatically.\n\
 MANUAL STEPS:\n  \
 1. Install 'App Installer' from the Microsoft Store (it provides winget), or\n  \
-2. Install your chosen engine manually:\n       \
-Docker Desktop: https://www.docker.com/products/docker-desktop/\n       \
-Podman: https://podman.io/\n       \
-Rancher Desktop: https://rancherdesktop.io/\n  \
+2. Install Docker Desktop manually from https://www.docker.com/products/docker-desktop/\n  \
 then re-run this installation.";
 
-/// Install the chosen container engine on Windows via winget.
-pub fn install_docker_windows(engine: WinEngine) -> Result<()> {
+/// Install Docker Desktop on Windows via winget. Windows offers Docker Desktop
+/// only (the simplest turnkey option); users who need a free alternative can
+/// install Podman or Rancher Desktop manually.
+pub fn install_docker_windows() -> Result<()> {
     if !process::which("winget") {
         bail!("{WINGET_MANUAL}");
     }
-    match engine {
-        WinEngine::DockerDesktop => {
-            notify(DOCKER_DESKTOP_LICENSE);
-            notify("Installing Docker Desktop via winget...");
-            winget_install("Docker.DockerDesktop")?;
-            notify(
-                "Docker Desktop installed.\n\
-                 NEXT STEPS:\n  \
-                 1. Reboot if Windows prompts you to.\n  \
-                 2. Launch Docker Desktop and complete first-run setup (enable WSL2 if asked).\n  \
-                 3. Wait until Docker reports it is running, then start COSMOS.",
-            );
-        }
-        WinEngine::Podman => {
-            notify("Installing Podman via winget...");
-            winget_install("RedHat.Podman")?;
-            if setup_podman_machine() {
-                notify(
-                    "Podman installed and the Podman machine started.\n\
-                     NOTE: `podman compose` needs a Compose provider. If COSMOS fails to start, \
-                     install Docker Compose v2 and ensure it is on PATH.",
-                );
-            } else {
-                notify(
-                    "Podman installed.\n\
-                     NEXT STEPS (open a NEW terminal so PATH picks up podman):\n  \
-                     podman machine init\n  \
-                     podman machine start\n\
-                     Also ensure a Compose provider is available (`podman compose` uses \
-                     docker-compose if present), then start COSMOS.",
-                );
-            }
-        }
-        WinEngine::RancherDesktop => {
-            notify("Installing Rancher Desktop via winget...");
-            winget_install("suse.RancherDesktop")?;
-            if setup_rancher_moby() {
-                notify(
-                    "Rancher Desktop installed and started with the dockerd (moby) engine.\n\
-                     NOTE: first start can take a few minutes while it provisions WSL2.",
-                );
-            } else {
-                notify(
-                    "Rancher Desktop installed.\n\
-                     NEXT STEPS: launch Rancher Desktop, and in Preferences set the Container \
-                     Engine to 'dockerd (moby)' (NOT containerd) so the `docker` CLI is \
-                     available, then start COSMOS.",
-                );
-            }
-        }
-    }
+    notify(DOCKER_DESKTOP_LICENSE);
+    notify("Installing Docker Desktop via winget...");
+    winget_install("Docker.DockerDesktop")?;
+    notify(
+        "Docker Desktop installed.\n\
+         NEXT STEPS:\n  \
+         1. Reboot if Windows prompts you to.\n  \
+         2. Launch Docker Desktop and complete first-run setup (enable WSL2 if asked).\n  \
+         3. Wait until Docker reports it is running, then start COSMOS.",
+    );
     Ok(())
 }
 
@@ -347,68 +343,6 @@ fn winget_install(id: &str) -> Result<()> {
         "--accept-package-agreements",
         "--accept-source-agreements",
     ]))
-}
-
-/// Candidate base directories for Windows program installs.
-fn windows_program_dirs() -> Vec<PathBuf> {
-    let mut dirs = Vec::new();
-    for var in ["ProgramFiles", "ProgramFiles(x86)", "LOCALAPPDATA"] {
-        if let Some(v) = std::env::var_os(var) {
-            dirs.push(PathBuf::from(v));
-        }
-    }
-    dirs
-}
-
-/// Find a Windows executable on PATH or under known install locations. Needed
-/// because a freshly winget-installed tool isn't on the current process's PATH.
-fn find_windows_exe(name: &str, relative_candidates: &[&str]) -> Option<PathBuf> {
-    if let Some(p) = process::which_path(name) {
-        return Some(p);
-    }
-    for base in windows_program_dirs() {
-        for rel in relative_candidates {
-            let p = base.join(rel);
-            if p.exists() {
-                return Some(p);
-            }
-        }
-    }
-    None
-}
-
-/// Best-effort: initialize and start the Podman machine. Returns true on success.
-fn setup_podman_machine() -> bool {
-    let Some(podman) = find_windows_exe("podman", &["RedHat\\Podman\\podman.exe"]) else {
-        return false;
-    };
-    // `machine init` fails if a machine already exists; ignore that case.
-    let _ = process::run(Command::new(&podman).args(["machine", "init"]));
-    process::run(Command::new(&podman).args(["machine", "start"])).is_ok()
-}
-
-/// Best-effort: start Rancher Desktop with the moby engine and Kubernetes off.
-/// Returns true on success.
-fn setup_rancher_moby() -> bool {
-    let candidates = [
-        "Rancher Desktop\\resources\\resources\\win32\\bin\\rdctl.exe",
-        "Programs\\Rancher Desktop\\resources\\resources\\win32\\bin\\rdctl.exe",
-    ];
-    let Some(rdctl) = find_windows_exe("rdctl", &candidates) else {
-        return false;
-    };
-    // Current releases use dotted flags; fall back to the older flag name.
-    if process::run(Command::new(&rdctl).args([
-        "start",
-        "--container-engine.name",
-        "moby",
-        "--kubernetes.enabled=false",
-    ]))
-    .is_ok()
-    {
-        return true;
-    }
-    process::run(Command::new(&rdctl).args(["start", "--container-engine", "moby"])).is_ok()
 }
 
 // ---------------------------------------------------------------------------
@@ -475,57 +409,6 @@ fn install_linux_package(pkg: &str) -> Result<()> {
              MANUAL STEP: install '{pkg}' using your distribution's package manager, then re-run."
         )
     }
-}
-
-/// Clear manual instructions shown when Homebrew can't be installed automatically.
-const HOMEBREW_MANUAL: &str = "Homebrew is required to install Docker on macOS but could not be \
-installed automatically (it needs administrator rights and the Command Line Tools).\n\
-MANUAL STEPS:\n  \
-1. Open the Terminal app (Applications > Utilities > Terminal).\n  \
-2. Paste and run this command:\n       \
-/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"\n  \
-3. Enter your password when prompted, let it finish, then re-run this installation.\n\
-Alternatively, install Docker Desktop manually from https://www.docker.com/products/docker-desktop/";
-
-/// Return the path to the `brew` binary, installing Homebrew if it is missing.
-/// If the automatic install isn't possible, returns an error containing clear
-/// manual steps for the user.
-fn ensure_homebrew() -> Result<PathBuf> {
-    if let Some(p) = brew_path() {
-        return Ok(p);
-    }
-    notify("Homebrew not found; attempting to install it (this can take several minutes)...");
-    if bootstrap_homebrew().is_err() {
-        bail!("{HOMEBREW_MANUAL}");
-    }
-    brew_path().ok_or_else(|| anyhow::anyhow!("{HOMEBREW_MANUAL}"))
-}
-
-/// Run Homebrew's official non-interactive installer (also installs the Command
-/// Line Tools). Fetches itself with curl, which is present on macOS.
-fn bootstrap_homebrew() -> Result<()> {
-    let script = download::to_bytes(
-        "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh",
-    )?;
-    let tmp = std::env::temp_dir().join("install-homebrew.sh");
-    std::fs::write(&tmp, &script)?;
-    let mut cmd = Command::new("/bin/bash");
-    cmd.arg(&tmp).env("NONINTERACTIVE", "1");
-    process::run(&mut cmd)
-}
-
-/// Locate the `brew` executable on PATH or in its standard install locations.
-fn brew_path() -> Option<PathBuf> {
-    if let Some(p) = process::which_path("brew") {
-        return Some(p);
-    }
-    for candidate in ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"] {
-        let p = PathBuf::from(candidate);
-        if p.exists() {
-            return Some(p);
-        }
-    }
-    None
 }
 
 // ---------------------------------------------------------------------------

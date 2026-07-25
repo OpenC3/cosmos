@@ -5,11 +5,18 @@
 //! It launches a graphical control panel by default and exposes the full
 //! `openc3.sh` command set on the command line for headless use.
 
+// On Windows, build as a GUI-subsystem binary so launching the app (the default
+// action, e.g. from a Start-menu shortcut) doesn't flash or keep a console
+// window. CLI invocations re-attach to the parent console in `main` so their
+// output is still visible.
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 mod bridge;
 mod cli;
 mod commands;
 mod context;
 mod docker;
+mod dockerapi;
 mod download;
 mod enroll;
 mod env_file;
@@ -20,6 +27,9 @@ mod logging;
 mod monitor;
 mod operator;
 mod process;
+// Settings (COSMOS URL, run-locally) are only consumed by the GUI.
+#[cfg(feature = "gui")]
+mod settings;
 mod util;
 
 #[cfg(feature = "gui")]
@@ -34,6 +44,12 @@ use cli::{Cli, Command, InstallTarget};
 use context::Context;
 
 fn main() {
+    // Windows GUI-subsystem binaries have no console; when run from a terminal
+    // as a CLI, attach to the parent's console so output is visible. Harmless
+    // no-op when launched from Explorer/a shortcut (no parent console).
+    #[cfg(windows)]
+    attach_parent_console();
+
     // If the user was added to the docker group but this process predates that
     // (e.g. right after installing Docker), re-exec into the group so Docker is
     // usable without a full logout. Must run before any docker use.
@@ -42,6 +58,21 @@ fn main() {
     if let Err(e) = run(cli) {
         eprintln!("error: {e:#}");
         std::process::exit(1);
+    }
+}
+
+/// Attach to the parent process's console (the terminal that launched us) so a
+/// GUI-subsystem binary can still print CLI output. Fails silently when there
+/// is no parent console — i.e. the GUI was launched from Explorer/a shortcut.
+#[cfg(windows)]
+fn attach_parent_console() {
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn AttachConsole(dw_process_id: u32) -> i32;
+    }
+    const ATTACH_PARENT_PROCESS: u32 = 0xFFFF_FFFF;
+    unsafe {
+        AttachConsole(ATTACH_PARENT_PROCESS);
     }
 }
 

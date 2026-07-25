@@ -86,12 +86,20 @@ pub fn status(ctx: &Context) -> Result<()> {
                     RunState::Unknown => "?",
                 };
                 println!(
-                    "  {glyph} {:<34} {:<24} {:>7} {:>12}  {}",
+                    "  {glyph} {:<34} {:<14} {:<24} {:>7} {:>12}  {}",
                     c.service,
+                    c.tag_display(),
                     c.display_status(),
                     c.cpu_display(),
                     c.mem_display(),
                     c.ports_summary()
+                );
+            }
+            if !statuses.is_empty() {
+                let (cpu_total, mem_total) = monitor::totals(&statuses);
+                let (label, blank) = ("Total", "");
+                println!(
+                    "    {label:<34} {blank:<14} {blank:<24} {cpu_total:>7} {mem_total:>12}"
                 );
             }
             Ok(())

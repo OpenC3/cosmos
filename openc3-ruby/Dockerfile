@@ -53,7 +53,7 @@ RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc && \
     cp /root/.gemrc /etc/gemrc
 ENV GEMRC=/etc/gemrc
 
-COPY anycable* /usr/bin
+COPY anycable* /usr/bin/
 RUN /usr/bin/anycable_install.sh
 
 COPY shoreman.sh /usr/bin/shoreman

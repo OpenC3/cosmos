@@ -35,7 +35,7 @@ ENV GEMRC=/etc/gemrc
 
 COPY *.tar.gz /tmp/
 
-COPY anycable* /usr/bin
+COPY anycable* /usr/bin/
 RUN /usr/bin/anycable_install.sh
 
 COPY shoreman.sh /usr/bin/shoreman

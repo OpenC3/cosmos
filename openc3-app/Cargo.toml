@@ -40,6 +40,12 @@ iced = { version = "0.13", default-features = false, features = ["tiny-skia", "t
 iroh = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "io-util", "sync", "time", "macros"] }
 iroh-tickets = "1.0.0"
+# Talk to the Docker Engine API directly over its socket / named pipe for the
+# status+stats poll (see monitor.rs / dockerapi.rs) instead of spawning a
+# `docker` subprocess every tick. Falls back to the CLI when the socket isn't
+# reachable. futures-util is for consuming bollard's stats stream.
+bollard = "0.21"
+futures-util = "0.3"
 
 [profile.release]
 opt-level = "z"

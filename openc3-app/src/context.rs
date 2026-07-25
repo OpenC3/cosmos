@@ -197,13 +197,12 @@ impl Runtime {
 
 fn detect_compose(engine: &str) -> Vec<String> {
     // Prefer the `docker compose` plugin; fall back to standalone docker-compose.
-    let plugin_ok = std::process::Command::new(engine)
-        .args(["compose", "version"])
+    let mut cmd = std::process::Command::new(engine);
+    cmd.args(["compose", "version"])
         .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
+        .stderr(std::process::Stdio::null());
+    crate::process::no_window(&mut cmd);
+    let plugin_ok = cmd.status().map(|s| s.success()).unwrap_or(false);
     if plugin_ok {
         vec![engine.to_string(), "compose".to_string()]
     } else if crate::process::which("docker-compose") {
@@ -215,9 +214,10 @@ fn detect_compose(engine: &str) -> Vec<String> {
 }
 
 fn detect_rootless(engine: &str) -> bool {
-    let out = std::process::Command::new(engine)
-        .arg("info")
-        .output();
+    let mut cmd = std::process::Command::new(engine);
+    cmd.arg("info");
+    crate::process::no_window(&mut cmd);
+    let out = cmd.output();
     match out {
         Ok(o) => {
             let text = String::from_utf8_lossy(&o.stdout);
@@ -239,17 +239,37 @@ pub fn container_engine_running() -> bool {
     engine_info_ok("docker") || engine_info_ok("podman")
 }
 
+/// True when a container engine is actually installed and startable — not just
+/// a stray `docker`/`podman` CLI on PATH. On macOS/Windows a bare `docker`
+/// client (a leftover symlink, a Homebrew formula, or a standalone CLI) does
+/// NOT mean Docker Desktop is present, so we look for the app itself; otherwise
+/// the Setup page would offer to *start* an engine that can't be started.
+#[cfg_attr(not(feature = "gui"), allow(dead_code))]
+pub fn container_engine_installed() -> bool {
+    if cfg!(target_os = "macos") {
+        Path::new("/Applications/Docker.app").exists()
+            || crate::process::which("colima")
+            || crate::process::which("podman")
+    } else if cfg!(target_os = "windows") {
+        let pf = std::env::var("ProgramFiles").unwrap_or_else(|_| r"C:\Program Files".to_string());
+        Path::new(&format!(r"{pf}\Docker\Docker\Docker Desktop.exe")).exists()
+            || crate::process::which("podman")
+    } else {
+        // On Linux the CLI *is* the engine (with dockerd), so presence is enough.
+        crate::process::which("docker") || crate::process::which("podman")
+    }
+}
+
 fn engine_info_ok(engine: &str) -> bool {
     if !crate::process::which(engine) {
         return false;
     }
-    std::process::Command::new(engine)
-        .arg("info")
+    let mut cmd = std::process::Command::new(engine);
+    cmd.arg("info")
         .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+        .stderr(std::process::Stdio::null());
+    crate::process::no_window(&mut cmd);
+    cmd.status().map(|s| s.success()).unwrap_or(false)
 }
 
 #[cfg(unix)]

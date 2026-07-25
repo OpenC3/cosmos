@@ -91,10 +91,10 @@ jobs:
     name: ${{ matrix.name }}
     needs: setup
     runs-on: ${{ matrix.runner }}
-    # `notarytool submit --wait` has no built-in timeout; a stuck submission or
-    # auth-retry would otherwise run to the 6-hour job default. Cap it so a hung
-    # notarization fails in minutes while we debug.
-    timeout-minutes: 30
+    # Backstop against a hung notarization running to the 6-hour job default.
+    # The notarize step below bounds each `notarytool submit` with --timeout and
+    # retries once, so this only trips if something else stalls.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
@@ -159,14 +159,13 @@ jobs:
             echo "APPLE_API_KEY_PATH=$keyfile" >> "$GITHUB_ENV"
           fi
 
-      # DEBUG: notarization (`notarytool submit --wait`) hung for 24 min with no
-      # output. cargo-packager captures the subprocess, so there's no progress
-      # visibility. Exercise the credentials directly — a fast, visible call that
-      # proves auth + connectivity to Apple's notary service before the long
-      # submit. If THIS hangs (times out at 3 min) or errors, the problem is a
-      # bad API key id / issuer / key file (or blocked egress), not a slow Apple
-      # queue. `head -1` prints only the PEM banner, never the key material.
-      - name: Check notarization credentials (macOS, debug)
+      # Fast-fail preflight: prove the App Store Connect credentials authenticate
+      # and Apple's notary service is reachable BEFORE spending minutes building
+      # and signing. A failure/timeout here (3 min) means a bad API key id /
+      # issuer / key file or blocked egress — distinct from a slow Apple queue,
+      # which shows up later in the notarize step. `head -1` prints only the PEM
+      # banner, never the key material.
+      - name: Verify notarization credentials (macOS)
         if: runner.os == 'macOS'
         timeout-minutes: 3
         env:
@@ -193,25 +192,79 @@ jobs:
           # Build the AppImage without FUSE (unavailable on hosted runners);
           # ignored on macOS/Windows.
           APPIMAGE_EXTRACT_AND_RUN: "1"
-          # macOS signing + notarization. cargo-packager imports the base64 .p12
-          # cert into a temporary keychain and signs, then notarizes with an App
-          # Store Connect API key. Absent secrets expand to empty, leaving the
-          # build unsigned (ad-hoc). Ignored on Linux/Windows. Repo secrets:
+          # macOS SIGNING ONLY. cargo-packager imports the base64 .p12 cert into
+          # a temporary keychain and Developer-ID-signs the app (identity comes
+          # from the Cargo.toml config field, set by the sed step above). We
+          # deliberately do NOT pass the App Store Connect API key here: with no
+          # notarization credentials in the environment, cargo-packager logs
+          # "Skipping app notarization" and finishes. Notarization is done in the
+          # dedicated step below against the final .dmg, where it's observable
+          # and bounded (cargo-packager's inline `notarytool submit --wait` is
+          # silent and has no timeout — it hung for 24 min on Apple's queue).
+          # Absent secrets expand to empty, leaving the build ad-hoc signed.
+          # Ignored on Linux/Windows. Repo secrets:
           #   APPLE_CERTIFICATE           base64 of the Developer ID .p12
           #   APPLE_CERTIFICATE_PASSWORD  its password
           #   APPLE_SIGNING_IDENTITY      "Developer ID Application: NAME (TEAMID)"
-          #                               (consumed by the sed step above — cargo-
-          #                               packager reads the identity from the
-          #                               Cargo.toml config field, not this env)
-          #   APPLE_API_KEY               App Store Connect API Key ID
-          #   APPLE_API_ISSUER            App Store Connect Issuer ID
-          #   APPLE_API_KEY_P8            base64 of AuthKey_<KeyID>.p8 (decoded to
-          #                               APPLE_API_KEY_PATH by the step above)
+          #                               (consumed by the sed step above)
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: cargo packager --release --target ${{ matrix.rust_target }} ${{ matrix.packager_args }} --out-dir dist/installers
+
+      # Notarize the actual deliverable — the .dmg — ourselves. cargo-packager's
+      # inline notarization submits a throwaway zip with a silent, unbounded
+      # `notarytool submit --wait` (it hung for 24 min on Apple's queue with no
+      # output). Here we get streamed progress, a hard per-attempt --timeout, one
+      # retry for transient Apple stalls, the notary log on failure, and a
+      # stapled ticket so the DMG passes Gatekeeper offline. Skipped (leaving the
+      # DMG signed but un-notarized) when credentials are absent.
+      - name: Notarize and staple the DMG (macOS)
+        if: runner.os == 'macOS'
+        env:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-        run: cargo packager --release --target ${{ matrix.rust_target }} ${{ matrix.packager_args }} --out-dir dist/installers
+        run: |
+          set -eu
+          if [ -z "${APPLE_API_KEY_PATH:-}" ] || [ -z "${APPLE_API_KEY:-}" ] || [ -z "${APPLE_API_ISSUER:-}" ]; then
+            echo "Notarization credentials absent — leaving the DMG signed but un-notarized."
+            exit 0
+          fi
+          dmg=$(ls dist/installers/*.dmg | head -1)
+          echo "Notarizing $dmg"
+
+          # notarytool streams "Current status" lines; tee keeps them live while
+          # capturing the output so we can pull the submission id on failure.
+          # --timeout makes a stuck Apple queue fail cleanly instead of blocking.
+          attempt() {
+            set +e
+            xcrun notarytool submit "$dmg" \
+              --key "$APPLE_API_KEY_PATH" \
+              --key-id "$APPLE_API_KEY" \
+              --issuer "$APPLE_API_ISSUER" \
+              --wait --timeout 15m 2>&1 | tee /tmp/notarize.out
+            local rc=${PIPESTATUS[0]}
+            set -e
+            return $rc
+          }
+
+          if ! attempt; then
+            echo "::warning::Notarization attempt 1 failed or timed out; retrying once…"
+            if ! attempt; then
+              id=$(grep -Eo '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' /tmp/notarize.out | head -1 || true)
+              if [ -n "${id:-}" ]; then
+                echo "== notary log for $id =="
+                xcrun notarytool log "$id" \
+                  --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY" --issuer "$APPLE_API_ISSUER" || true
+              fi
+              echo "::error::Notarization failed twice for $dmg"
+              exit 1
+            fi
+          fi
+
+          echo "Stapling $dmg"
+          xcrun stapler staple "$dmg"
+          xcrun stapler validate "$dmg"
+          echo "OK: notarized and stapled $dmg"
 
       # Also ship the standalone binary as a .tar.gz so non-Debian distros (and
       # anyone who doesn't want the .deb/AppImage) can just extract and run it.
