@@ -30,7 +30,7 @@ from openc3.utilities.thread_manager import ThreadManager
 
 class TsdbMicroservice(Microservice):
     TRIM_KEEP_MS = 60000  # 1 minute
-    DEFAULT_FLUSH_PERIOD_S = 5.0 # 5 seconds
+    DEFAULT_FLUSH_PERIOD_S = 5.0  # 5 seconds
 
     # QuestDB returns "table does not exist" when QDB_LINE_AUTO_CREATE_NEW_TABLES=false
     # and an ILP write targets a table we haven't created (e.g. after a DROP from the admin UI).
