@@ -30,6 +30,7 @@ from openc3.utilities.thread_manager import ThreadManager
 
 class TsdbMicroservice(Microservice):
     TRIM_KEEP_MS = 60000  # 1 minute
+    DEFAULT_FLUSH_PERIOD_S = 5.0 # 5 seconds
 
     # QuestDB returns "table does not exist" when QDB_LINE_AUTO_CREATE_NEW_TABLES=false
     # and an ILP write targets a table we haven't created (e.g. after a DROP from the admin UI).
@@ -46,11 +47,14 @@ class TsdbMicroservice(Microservice):
         # Extract retain time options from microservice config
         self.cmd_decom_retain_time = None
         self.tlm_decom_retain_time = None
+        self.flush_period_s = self.DEFAULT_FLUSH_PERIOD_S
         for option in self.config.get("options", []):
             if option[0] == "CMD_DECOM_RETAIN_TIME":
                 self.cmd_decom_retain_time = option[1]
             elif option[0] == "TLM_DECOM_RETAIN_TIME":
                 self.tlm_decom_retain_time = option[1]
+            elif option[0] == "DECOM_FLUSH_PERIOD":
+                self.flush_period_s = self.float(option[1])
 
         # Use shared QuestDB client with db_shard from microservice config
         if len(self.topics) <= 0:
@@ -71,6 +75,9 @@ class TsdbMicroservice(Microservice):
 
         # Setup first trim time
         self.next_trim_time_ms = int(time.time() * 1000) + self.TRIM_KEEP_MS
+
+        # Setup first flush time
+        self.next_flush_time_s = time.time() + self.flush_period_s
 
         # Initialize metrics
         self.ingest_count = 0
@@ -165,8 +172,6 @@ class TsdbMicroservice(Microservice):
                 self.questdb.write_row(table_name, values, timestamp_ns, rx_timestamp_ns)
                 self.ingest_count += 1
 
-            # Flush the sender after the full topic read
-            self.questdb.flush()
             if start is not None:
                 diff = time.time() - start  # seconds as a float
                 self.metric.set(name="tsdb_ingest_duration_seconds", value=diff, type="gauge", unit="seconds")
@@ -246,6 +251,14 @@ class TsdbMicroservice(Microservice):
                 pipeline.xtrim(name=topic, minid=trim_offset, approximate=True, limit=0)
             pipeline.execute()
 
+    def flush_if_needed(self):
+        now = time.time()
+        if now > self.next_flush_time_s:
+            self.next_flush_time_s = now + self.flush_period_s
+            self.questdb.flush()
+            diff = time.time() - now  # seconds as a float
+            self.metric.set(name="tsdb_flush_duration_seconds", value=diff, type="gauge", unit="seconds")
+
     def run(self):
         """Main run loop"""
         self.setup_microservice_topic()
@@ -255,6 +268,7 @@ class TsdbMicroservice(Microservice):
             try:
                 self.read_topics()
                 self.trim_topics()
+                self.flush_if_needed()
                 self.count += 1
             except Exception as error:
                 self.error = error
