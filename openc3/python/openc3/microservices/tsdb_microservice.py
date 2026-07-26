@@ -54,7 +54,7 @@ class TsdbMicroservice(Microservice):
             elif option[0] == "TLM_DECOM_RETAIN_TIME":
                 self.tlm_decom_retain_time = option[1]
             elif option[0] == "DECOM_FLUSH_PERIOD":
-                self.flush_period_s = self.float(option[1])
+                self.flush_period_s = float(option[1])
 
         # Use shared QuestDB client with db_shard from microservice config
         if len(self.topics) <= 0:
