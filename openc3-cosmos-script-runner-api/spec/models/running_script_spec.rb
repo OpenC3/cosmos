@@ -155,6 +155,18 @@ RSpec.describe RunningScript, type: :model do
       expect(OpenC3::ScriptStatusModel.count(scope: "DEFAULT", type: "running")).to eq(0)
     end
 
+    it "propagates the error cleanly if failure occurs before script status is created" do
+      # Simulate mkdir_p failing before the ScriptStatusModel is created
+      allow(FileUtils).to receive(:mkdir_p).and_raise(Errno::EACCES.new("Permission denied"))
+
+      expect {
+        RunningScript.spawn("DEFAULT", "script.rb")
+      }.to raise_error(Errno::EACCES)
+
+      # No script status should exist since it was never created
+      expect(OpenC3::ScriptStatusModel.count(scope: "DEFAULT", type: "running")).to eq(0)
+    end
+
     it "cleans up script status if process.start raises an error" do
       failing_process = double("process")
       allow(failing_process).to receive(:io).and_return(double("io", inherit!: nil))

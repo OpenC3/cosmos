@@ -468,57 +468,57 @@ class RunningScript
     user_full_name ||= 'Anonymous'
     start_time = Time.now.utc.iso8601
 
-    process = ChildProcess.build(process_name, runner_path.to_s, running_script_id.to_s, scope)
-    process.io.inherit! # Helps with debugging
-    script_cwd = File.join(RAILS_ROOT, 'tmp', "script_#{running_script_id}")
-    FileUtils.mkdir_p(script_cwd)
-    process.cwd = script_cwd
+    begin
+      process = ChildProcess.build(process_name, runner_path.to_s, running_script_id.to_s, scope)
+      process.io.inherit! # Helps with debugging
+      script_cwd = File.join(RAILS_ROOT, 'tmp', "script_#{running_script_id}")
+      FileUtils.mkdir_p(script_cwd)
+      process.cwd = script_cwd
 
-    # Check for offline access token
-    model = nil
-    model = OpenC3::OfflineAccessModel.get_model(name: username, scope: scope) if username != 'Anonymous'
+      # Check for offline access token
+      model = nil
+      model = OpenC3::OfflineAccessModel.get_model(name: username, scope: scope) if username != 'Anonymous'
 
-    # Load the global environment variables
-    status_environment = {}
-    values = OpenC3::EnvironmentModel.all(scope: scope).values
-    values.each do |env|
-      process.environment[env['key']] = env['value']
-      status_environment[env['key']] = env['value']
-    end
-    # Load the script specific ENV vars set by the GUI
-    # These can override the previously defined global env vars
-    if environment
-      environment.each do |env|
+      # Load the global environment variables
+      status_environment = {}
+      values = OpenC3::EnvironmentModel.all(scope: scope).values
+      values.each do |env|
         process.environment[env['key']] = env['value']
         status_environment[env['key']] = env['value']
       end
-    end
+      # Load the script specific ENV vars set by the GUI
+      # These can override the previously defined global env vars
+      if environment
+        environment.each do |env|
+          process.environment[env['key']] = env['value']
+          status_environment[env['key']] = env['value']
+        end
+      end
 
-    script_status = OpenC3::ScriptStatusModel.new(
-      name: running_script_id.to_s, # Unique id for this script
-      state: 'spawning', # State will be spawning until the script is running
-      shard: 0, # Future enhancement of script runner shards
-      filename: name, # Initial filename never changes
-      current_filename: name, # Current filename updates while we are running
-      line_no: 0, # 0 means not running yet
-      start_line_no: line_no || 1, # Line number to start running the script
-      end_line_no: end_line_no || nil, # Line number to stop running the script
-      username: username, # username of the person who started the script
-      user_full_name: user_full_name, # full name of the person who started the script
-      start_time: start_time, # Time the script started ISO format
-      end_time: nil, # Time the script ended ISO format
-      disconnect: disconnect, # Disconnect is set to true if the script is running in a disconnected mode
-      environment: status_environment, # hash of environment variables set for the script
-      suite_runner: suite_runner ? suite_runner : nil, # current suite information if any
-      errors: nil, # array of errors that occurred during the script run
-      pid: nil, # pid of the script process - set by the script itself when it starts
-      script_engine: script_engine, # script engine filename
-      updated_at: nil, # Set by create/update
-      scope: scope # Scope of the script
-    )
-    script_status.create()
+      script_status = OpenC3::ScriptStatusModel.new(
+        name: running_script_id.to_s, # Unique id for this script
+        state: 'spawning', # State will be spawning until the script is running
+        shard: 0, # Future enhancement of script runner shards
+        filename: name, # Initial filename never changes
+        current_filename: name, # Current filename updates while we are running
+        line_no: 0, # 0 means not running yet
+        start_line_no: line_no || 1, # Line number to start running the script
+        end_line_no: end_line_no || nil, # Line number to stop running the script
+        username: username, # username of the person who started the script
+        user_full_name: user_full_name, # full name of the person who started the script
+        start_time: start_time, # Time the script started ISO format
+        end_time: nil, # Time the script ended ISO format
+        disconnect: disconnect, # Disconnect is set to true if the script is running in a disconnected mode
+        environment: status_environment, # hash of environment variables set for the script
+        suite_runner: suite_runner ? suite_runner : nil, # current suite information if any
+        errors: nil, # array of errors that occurred during the script run
+        pid: nil, # pid of the script process - set by the script itself when it starts
+        script_engine: script_engine, # script engine filename
+        updated_at: nil, # Set by create/update
+        scope: scope # Scope of the script
+      )
+      script_status.create()
 
-    begin
       # Set proper secrets for running script
       process.environment['SECRET_KEY_BASE'] = nil
       process.environment['OPENC3_REDIS_USERNAME'] = ENV['OPENC3_SR_REDIS_USERNAME']
@@ -609,8 +609,11 @@ class RunningScript
       process.start
       running_script_id
     rescue => e
-      script_status.destroy()
-      FileUtils.rm_rf(script_cwd)
+      # Clean up the orphaned script status record so the script
+      # does not remain stuck in 'spawning' state forever.
+      # Guard against nil in case the error occurred before these were assigned.
+      script_status.destroy() if script_status
+      FileUtils.rm_rf(script_cwd) if script_cwd
       raise e
     end
   end
