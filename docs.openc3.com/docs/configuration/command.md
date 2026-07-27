@@ -198,7 +198,7 @@ KEY $.book.title
 #### REQUIRED
 **Parameter is required to be populated in scripts**
 
-When sending the command via Script Runner a value must always be given for the current command parameter. This prevents the user from relying on a default value. Command Sender will not populate a default value so that the user must specify a value.
+When sending the command via Script Runner a value must always be given for the current command parameter. This prevents the user from relying on a default value. Note that this does not affect Command Sender which will still populate the field with the default value provided in the PARAMETER definition.
 
 
 #### MINIMUM_VALUE
