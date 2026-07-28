@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -163,14 +163,16 @@ export default {
         }
 
         if (this.name !== 'Anonymous') {
-          Api.get('/openc3-api/users/active').then((response) => {
-            this.activeUsers = response.data.filter(
-              (item) => !item.includes(this.name),
-            )
-            if (this.activeUsers.length === 0) {
-              this.activeUsers = ['None']
-            }
-          })
+          Api.get('/openc3-api/users/active')
+            .then((response) => {
+              this.activeUsers = response.data.filter(
+                (item) => !item.includes(this.name),
+              )
+              if (this.activeUsers.length === 0) {
+                this.activeUsers = ['None']
+              }
+            })
+            .catch(console.error)
         }
       }
     },
@@ -208,25 +210,27 @@ export default {
       return date.split('T')[0]
     },
     fetchNews: function () {
-      Api.get('/openc3-api/news').then((response) => {
-        // We always get the full list of news we want to display
-        // At some point we may delete old news items so we don't
-        // want to persist news items in the frontend
-        this.news = response.data.sort(
-          (a, b) => Date.parse(b.date) - Date.parse(a.date),
-        )
-        // If we've previously read the news then mark anything older than that as read
-        if (localStorage.lastNewsRead) {
-          this.news.forEach((news) => {
-            news.read =
-              Date.parse(news.date) <= Date.parse(localStorage.lastNewsRead)
-          })
-        }
-      })
+      Api.get('/openc3-api/news')
+        .then((response) => {
+          // We always get the full list of news we want to display
+          // At some point we may delete old news items so we don't
+          // want to persist news items in the frontend
+          this.news = response.data.sort(
+            (a, b) => Date.parse(b.date) - Date.parse(a.date),
+          )
+          // If we've previously read the news then mark anything older than that as read
+          if (localStorage.lastNewsRead) {
+            this.news.forEach((news) => {
+              news.read =
+                Date.parse(news.date) <= Date.parse(localStorage.lastNewsRead)
+            })
+          }
+        })
+        .catch(console.error)
     },
     logout: function () {
       OpenC3Auth.logout()
-      Api.put(`/openc3-api/users/logout/${this.username}`)
+      Api.put(`/openc3-api/users/logout/${this.username}`).catch(console.error)
     },
     login: function () {
       OpenC3Auth.login(location.href)

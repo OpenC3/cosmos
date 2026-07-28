@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -117,22 +117,24 @@ export default {
         },
         // Tools are global and are always installed into the DEFAULT scope
         params: { scope: 'DEFAULT' },
-      }).then((response) => {
-        this.$notify.normal({
-          title: `Reordered tool ${this.tools[evt.oldIndex]}`,
-        })
-        this.update()
       })
+        .then((response) => {
+          this.$notify.normal({
+            title: `Reordered tool ${this.tools[evt.oldIndex]}`,
+          })
+          this.update()
+        })
+        .catch(console.error)
     },
     update() {
       // Tools are global and are always installed into the DEFAULT scope
-      Api.get('/openc3-api/tools', { params: { scope: 'DEFAULT' } }).then(
-        (response) => {
+      Api.get('/openc3-api/tools', { params: { scope: 'DEFAULT' } })
+        .then((response) => {
           this.tools = response.data
           this.name = ''
           this.url = ''
-        },
-      )
+        })
+        .catch(console.error)
     },
     add() {
       Api.post('/openc3-api/tools', {
@@ -161,18 +163,17 @@ export default {
           })
         })
     },
-    showTool(name) {
-      Api.get(`/openc3-api/tools/${name}`, {
+    async showTool(name) {
+      const response = await Api.get(`/openc3-api/tools/${name}`, {
         // Tools are global and are always installed into the DEFAULT scope
         params: { scope: 'DEFAULT' },
-      }).then((response) => {
-        this.tool_id = name
-        this.jsonContent = JSON.stringify(response.data, null, '\t')
-        this.dialogTitle = name
-        this.showDialog = true
       })
+      this.tool_id = name
+      this.jsonContent = JSON.stringify(response.data, null, '\t')
+      this.dialogTitle = name
+      this.showDialog = true
     },
-    dialogCallback(content) {
+    async dialogCallback(content) {
       this.showDialog = false
       if (content !== null) {
         let parsed = JSON.parse(content)
@@ -183,18 +184,17 @@ export default {
           url = '/openc3-api/tools'
         }
 
-        Api[method](url, {
+        await Api[method](url, {
           data: {
             json: content,
           },
           // Tools are global and are always installed into the DEFAULT scope
           params: { scope: 'DEFAULT' },
-        }).then((response) => {
-          this.$notify.normal({
-            title: `Modified tool ${parsed['name']}`,
-          })
-          this.update()
         })
+        this.$notify.normal({
+          title: `Modified tool ${parsed['name']}`,
+        })
+        this.update()
       }
     },
     deleteTool(name) {

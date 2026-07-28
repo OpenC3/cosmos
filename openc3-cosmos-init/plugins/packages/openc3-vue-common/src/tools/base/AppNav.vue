@@ -261,8 +261,8 @@ export default {
         // Do nothing
       })
     // Tools are global and are always installed into the DEFAULT scope
-    Api.get('/openc3-api/tools/all', { params: { scope: 'DEFAULT' } }).then(
-      (response) => {
+    Api.get('/openc3-api/tools/all', { params: { scope: 'DEFAULT' } })
+      .then((response) => {
         this.appNav = response.data
 
         let id = 1
@@ -349,8 +349,8 @@ export default {
             }
           })
         }, 60000)
-      },
-    )
+      })
+      .catch(console.error)
   },
   mounted() {
     globalThis.addEventListener(

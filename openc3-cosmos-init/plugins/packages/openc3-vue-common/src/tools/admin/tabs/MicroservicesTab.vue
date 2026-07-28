@@ -274,22 +274,26 @@ export default {
       return this.microserviceOperations[name]?.operation === 'stopping'
     },
     update: function () {
-      Api.get('/openc3-api/microservice_status/all').then((response) => {
-        this.microservice_status = response.data
-        this.checkOperationCompletion()
-      })
-      Api.get('/openc3-api/microservices/all').then((response) => {
-        // Convert hash of microservices to array of microservices
-        let microservices = []
-        for (const [_microservice_name, microservice] of Object.entries(
-          response.data,
-        )) {
-          microservices.push(microservice)
-        }
-        microservices.sort((a, b) => a.name.localeCompare(b.name))
-        this.allMicroservices = microservices
-        this.applyServiceFilter()
-      })
+      Api.get('/openc3-api/microservice_status/all')
+        .then((response) => {
+          this.microservice_status = response.data
+          this.checkOperationCompletion()
+        })
+        .catch(console.error)
+      Api.get('/openc3-api/microservices/all')
+        .then((response) => {
+          // Convert hash of microservices to array of microservices
+          let microservices = []
+          for (const [_microservice_name, microservice] of Object.entries(
+            response.data,
+          )) {
+            microservices.push(microservice)
+          }
+          microservices.sort((a, b) => a.name.localeCompare(b.name))
+          this.allMicroservices = microservices
+          this.applyServiceFilter()
+        })
+        .catch(console.error)
     },
     checkOperationCompletion: function () {
       for (const [name, tracking] of Object.entries(
@@ -493,13 +497,12 @@ export default {
           })
         })
     },
-    showMicroservice: function (name) {
-      Api.get(`/openc3-api/microservices/${name}`).then((response) => {
-        this.microservice_id = name
-        this.dialogTitle = name
-        this.jsonContent = JSON.stringify(response.data, null, '\t')
-        this.showDialog = true
-      })
+    showMicroservice: async function (name) {
+      const response = await Api.get(`/openc3-api/microservices/${name}`)
+      this.microservice_id = name
+      this.dialogTitle = name
+      this.jsonContent = JSON.stringify(response.data, null, '\t')
+      this.showDialog = true
     },
     showMicroserviceError: function (name) {
       this.dialogTitle = name
@@ -525,7 +528,7 @@ export default {
       }
       return this.microservice_status[microserviceName].state
     },
-    dialogCallback: function (content) {
+    dialogCallback: async function (content) {
       this.showDialog = false
       if (content !== null) {
         let parsed = JSON.parse(content)
@@ -536,19 +539,18 @@ export default {
           url = '/openc3-api/microservices'
         }
 
-        Api[method](url, {
+        await Api[method](url, {
           data: {
             json: content,
           },
-        }).then((response) => {
-          this.alert = 'Modified Microservice'
-          this.alertType = 'success'
-          this.showAlert = true
-          setTimeout(() => {
-            this.showAlert = false
-          }, 5000)
-          this.update()
         })
+        this.alert = 'Modified Microservice'
+        this.alertType = 'success'
+        this.showAlert = true
+        setTimeout(() => {
+          this.showAlert = false
+        }, 5000)
+        this.update()
       }
     },
   },

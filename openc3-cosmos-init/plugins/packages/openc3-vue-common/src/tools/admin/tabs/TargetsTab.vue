@@ -75,41 +75,38 @@ export default {
       showDialog: false,
     }
   },
-  mounted() {
-    this.update()
+  async mounted() {
+    await this.update()
   },
   methods: {
-    update() {
-      Api.get('/openc3-api/targets_modified').then((response) => {
-        this.targets = response.data
-      })
+    async update() {
+      const response = await Api.get('/openc3-api/targets_modified')
+      this.targets = response.data
     },
-    showTarget(name) {
-      Api.get(`/openc3-api/targets/${name}`).then((response) => {
-        this.jsonContent = JSON.stringify(response.data, null, '\t')
-        this.dialogTitle = name
-        this.showDialog = true
-      })
+    async showTarget(name) {
+      const response = await Api.get(`/openc3-api/targets/${name}`)
+      this.jsonContent = JSON.stringify(response.data, null, '\t')
+      this.dialogTitle = name
+      this.showDialog = true
     },
     dialogCallback(content) {
       this.showDialog = false
     },
-    downloadTarget: function (name) {
-      Api.post(`/openc3-api/targets/${name}/download`).then((response) => {
-        // Decode Base64 string
-        const decodedData = window.atob(response.data.contents)
-        // Create UNIT8ARRAY of size same as row data length
-        const uInt8Array = new Uint8Array(decodedData.length)
-        // Insert all character code into uInt8Array
-        for (let i = 0; i < decodedData.length; ++i) {
-          uInt8Array[i] = decodedData.charCodeAt(i)
-        }
-        const blob = new Blob([uInt8Array], { type: 'application/zip' })
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.setAttribute('download', response.data.filename)
-        link.click()
-      })
+    downloadTarget: async function (name) {
+      const response = await Api.post(`/openc3-api/targets/${name}/download`)
+      // Decode Base64 string
+      const decodedData = window.atob(response.data.contents)
+      // Create UNIT8ARRAY of size same as row data length
+      const uInt8Array = new Uint8Array(decodedData.length)
+      // Insert all character code into uInt8Array
+      for (let i = 0; i < decodedData.length; ++i) {
+        uInt8Array[i] = decodedData.charCodeAt(i)
+      }
+      const blob = new Blob([uInt8Array], { type: 'application/zip' })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.setAttribute('download', response.data.filename)
+      link.click()
     },
   },
 }
