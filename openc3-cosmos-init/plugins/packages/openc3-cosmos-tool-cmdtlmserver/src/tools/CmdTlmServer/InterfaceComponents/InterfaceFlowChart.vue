@@ -53,7 +53,7 @@ const edges = ref([])
 let layoutNeeded = false
 let structureChanged = false
 
-async function layoutGraph(direction, force = false) {
+function layoutGraph(direction, force = false) {
   if (layoutNeeded || force) {
     nodes.value = layout(nodes.value, edges.value, direction)
     layoutNeeded = false
@@ -281,7 +281,7 @@ onConnect((params) => {
               cmd_or_tlm === 'tlm',
               false,
             )
-            .then((response) => {
+            .then(() => {
               addEdges(params)
               edges.value.push(params)
             })
@@ -290,7 +290,7 @@ onConnect((params) => {
   }
 })
 
-onNodesChange(async (changes) => {
+onNodesChange((changes) => {
   const nextChanges = []
 
   for (const change of changes) {
@@ -309,7 +309,7 @@ onNodesChange(async (changes) => {
   applyNodeChanges(nextChanges)
 })
 
-onEdgesChange(async (changes) => {
+onEdgesChange((changes) => {
   const nextChanges = []
   for (const change of changes) {
     if (change.type !== 'remove') {
@@ -389,7 +389,7 @@ onEdgesChange(async (changes) => {
                   cmd_or_tlm === 'cmd',
                   cmd_or_tlm === 'tlm',
                 )
-                .then((response) => {
+                .then(() => {
                   applyEdgeChanges([change])
                   edges.value.forEach((edge, index) => {
                     if (edge.id === change.id) {
@@ -406,7 +406,7 @@ onEdgesChange(async (changes) => {
                   cmd_or_tlm === 'cmd',
                   cmd_or_tlm === 'tlm',
                 )
-                .then((response) => {
+                .then(() => {
                   applyEdgeChanges([change])
                   edges.value.forEach((edge, index) => {
                     if (edge.id === change.id) {
@@ -924,7 +924,7 @@ function updateFlowChart() {
 
 watch(
   () => props.interfaceDetails,
-  async () => {
+  () => {
     if (props.interfaceDetails !== null) {
       updateFlowChart()
     }
@@ -934,7 +934,7 @@ watch(
 
 watch(
   () => props.routerDetails,
-  async () => {
+  () => {
     if (props.routerDetails !== null) {
       updateFlowChart()
     }

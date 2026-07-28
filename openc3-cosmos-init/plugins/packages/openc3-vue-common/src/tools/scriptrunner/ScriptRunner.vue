@@ -1675,7 +1675,7 @@ export default {
         }
       }
     }
-    this.updateInterval = setInterval(async () => {
+    this.updateInterval = setInterval(() => {
       this.processReceived()
     }, 100) // Every 100ms
   },

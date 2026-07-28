@@ -30,6 +30,8 @@ export default defineConfig([
         },
       ],
 
+      'require-await': 'error',
+
       'vue/multi-word-component-names': 'off',
 
       'vue/valid-v-slot': [
