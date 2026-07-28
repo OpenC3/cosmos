@@ -89,9 +89,11 @@ export default {
     }
   },
   created() {
-    Api.get('/openc3-api/info').then(({ data }) => {
-      this.isEnterprise = data.enterprise
-    })
+    Api.get('/openc3-api/info')
+      .then(({ data }) => {
+        this.isEnterprise = data.enterprise
+      })
+      .catch(console.error)
   },
 }
 </script>

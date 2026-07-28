@@ -1581,9 +1581,11 @@ export default {
       this.showAlert = true
     }
 
-    Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
-      this.screenKeywords = response.data
-    })
+    Api.get('/openc3-api/autocomplete/keywords/screen')
+      .then((response) => {
+        this.screenKeywords = response.data
+      })
+      .catch(console.error)
 
     if (this.inline) {
       this.readOnly = true
@@ -1782,21 +1784,23 @@ export default {
       this.receivedEvents.length = 0 // Clear any unprocessed events
     },
     showMetadata() {
-      Api.get('/openc3-api/metadata').then((response) => {
-        // TODO: This is how Calendar creates new metadata items via makeMetadataEvent
-        this.inputMetadata.events = response.data.map((event) => {
-          return {
-            name: 'Metadata',
-            start: new Date(event.start * 1000),
-            end: new Date(event.start * 1000),
-            color: event.color,
-            type: event.type,
-            timed: true,
-            metadata: event,
-          }
+      Api.get('/openc3-api/metadata')
+        .then((response) => {
+          // TODO: This is how Calendar creates new metadata items via makeMetadataEvent
+          this.inputMetadata.events = response.data.map((event) => {
+            return {
+              name: 'Metadata',
+              start: new Date(event.start * 1000),
+              end: new Date(event.start * 1000),
+              color: event.color,
+              type: event.type,
+              timed: true,
+              metadata: event,
+            }
+          })
+          this.inputMetadata.show = true
         })
-        this.inputMetadata.show = true
-      })
+        .catch(console.error)
     },
     messageSortOrder(order) {
       // See ScriptLogMessages for these strings
@@ -1915,7 +1919,7 @@ export default {
               args: [this.filenameSelect, start_row],
             },
           },
-        )
+        ).catch(console.error)
       }
     },
     executeSelection: function () {
@@ -1935,7 +1939,7 @@ export default {
               args: [this.filenameSelect, start_row, end_row],
             },
           },
-        )
+        ).catch(console.error)
       }
     },
     clearBreakpoints: function () {
@@ -2056,13 +2060,15 @@ export default {
               Accept: 'application/json',
               'Content-Type': 'text/plain',
             },
-          }).then((response) => {
-            let alertText = ''
-            alertText += `<strong>${response.data.title}</strong><br/><br/>`
-            alertText += JSON.parse(response.data.description)
-            this.$dialog.alert(alertText.trim(), { html: true })
-            return
           })
+            .then((response) => {
+              let alertText = ''
+              alertText += `<strong>${response.data.title}</strong><br/><br/>`
+              alertText += JSON.parse(response.data.description)
+              this.$dialog.alert(alertText.trim(), { html: true })
+              return
+            })
+            .catch(console.error)
         }
       }
       this.mnemonicChecker
@@ -2224,21 +2230,31 @@ export default {
         this.filenameSelect = this.currentFilename
         this.fileNameChanged(this.currentFilename)
       }
-      Api.post(`/script-api/running-script/${this.scriptId}/go`)
+      Api.post(`/script-api/running-script/${this.scriptId}/go`).catch(
+        console.error,
+      )
     },
     pauseOrRetry() {
       if (this.pauseOrRetryButton === PAUSE) {
-        Api.post(`/script-api/running-script/${this.scriptId}/pause`)
+        Api.post(`/script-api/running-script/${this.scriptId}/pause`).catch(
+          console.error,
+        )
       } else {
         this.pauseOrRetryButton = PAUSE
-        Api.post(`/script-api/running-script/${this.scriptId}/retry`)
+        Api.post(`/script-api/running-script/${this.scriptId}/retry`).catch(
+          console.error,
+        )
       }
     },
     stop() {
-      Api.post(`/script-api/running-script/${this.scriptId}/stop`)
+      Api.post(`/script-api/running-script/${this.scriptId}/stop`).catch(
+        console.error,
+      )
     },
     step() {
-      Api.post(`/script-api/running-script/${this.scriptId}/step`)
+      Api.post(`/script-api/running-script/${this.scriptId}/step`).catch(
+        console.error,
+      )
     },
     // This is called by processLine no matter the current state
     handleWaiting() {
@@ -2507,7 +2523,7 @@ export default {
           prompt_id: this.activePromptId,
           multiple: this.prompt.multiple,
         },
-      })
+      }).catch(console.error)
     },
     handleScript(data) {
       if (data.prompt_complete) {
@@ -2563,7 +2579,7 @@ export default {
                   password: value, // Using password as a key automatically filters it from rails logs
                   prompt_id: this.activePromptId,
                 },
-              })
+              }).catch(console.error)
             } else {
               Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
                 data: {
@@ -2571,7 +2587,7 @@ export default {
                   answer: value,
                   prompt_id: this.activePromptId,
                 },
-              })
+              }).catch(console.error)
             }
           }
           this.ask.show = true // Display the dialog
@@ -2668,7 +2684,7 @@ export default {
                 answer: value,
                 prompt_id: this.activePromptId,
               },
-            })
+            }).catch(console.error)
           }
           this.showMetadata()
           break
@@ -2710,35 +2726,31 @@ export default {
         fileNames = []
         files.forEach((file) => {
           fileNames.push(file.name)
-          promises.push(
-            Api.get(
+          promises.push(async () => {
+            const response = await Api.get(
               `/openc3-api/storage/upload/${encodeURIComponent(
                 `${window.openc3Scope}/tmp/${file.name}`,
               )}?bucket=OPENC3_CONFIG_BUCKET`,
-            ).then((response) => {
-              // This pushes the file into storage by using the fields in the presignedRequest
-              // See storage_controller.rb get_upload_presigned_request()
-              return axios({
-                ...response.data,
-                data: file,
-              })
-            }),
-          )
+            )
+            // This pushes the file into storage by using the fields in the presignedRequest
+            // See storage_controller.rb get_upload_presigned_request()
+            return axios({
+              ...response.data,
+              data: file,
+            })
+          })
         })
       }
       // We have to wait for all the upload API requests to finish before notifying the prompt
-      Promise.all(promises).then((responses) => {
-        Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-          data: {
-            method: this.file.multiple
-              ? 'open_files_dialog'
-              : 'open_file_dialog',
-            answer: fileNames,
-            prompt_id: this.activePromptId,
-          },
-        })
-        this.file.show = false // Close the dialog immediately to avoid race condition
-      })
+      const responses = await Promise.all(promises)
+      Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
+        data: {
+          method: this.file.multiple ? 'open_files_dialog' : 'open_file_dialog',
+          answer: fileNames,
+          prompt_id: this.activePromptId,
+        },
+      }).catch(console.error)
+      this.file.show = false // Close the dialog immediately to avoid race condition
     },
     bucketDialogCallback(response) {
       this.bucket.show = false
@@ -2748,7 +2760,7 @@ export default {
           answer: response,
           prompt_id: this.activePromptId,
         },
-      })
+      }).catch(console.error)
     },
     setError(event) {
       this.alertType = 'error'
@@ -3210,7 +3222,9 @@ class TestSuite(Suite):
       // rejects overwriting a different approved script.
       this.resetLifecycle()
       if (this.tempFilename) {
-        Api.post(`/script-api/scripts/${this.tempFilename}/delete`)
+        Api.post(`/script-api/scripts/${this.tempFilename}/delete`).catch(
+          console.error,
+        )
         this.tempFilename = null
       }
       await this.saveFile('menu')
@@ -3264,12 +3278,14 @@ class TestSuite(Suite):
           Accept: 'application/json',
           'Content-Type': 'text/plain',
         },
-      }).then((response) => {
-        this.information.title = response.data.title
-        this.information.text = JSON.parse(response.data.description)
-        this.information.show = true
-        this.information.width = '600'
       })
+        .then((response) => {
+          this.information.title = response.data.title
+          this.information.text = JSON.parse(response.data.description)
+          this.information.show = true
+          this.information.width = '600'
+        })
+        .catch(console.error)
     },
     showInstrumented() {
       Api.post(`/script-api/scripts/${this.filename}/instrumented`, {
@@ -3278,15 +3294,19 @@ class TestSuite(Suite):
           Accept: 'application/json',
           'Content-Type': 'text/plain',
         },
-      }).then((response) => {
-        this.information.title = response.data.title
-        this.information.text = JSON.parse(response.data.description)
-        this.information.show = true
-        this.information.width = '90vw'
       })
+        .then((response) => {
+          this.information.title = response.data.title
+          this.information.text = JSON.parse(response.data.description)
+          this.information.show = true
+          this.information.width = '90vw'
+        })
+        .catch(console.error)
     },
     showCallStack() {
-      Api.post(`/script-api/running-script/${this.scriptId}/backtrace`)
+      Api.post(`/script-api/running-script/${this.scriptId}/backtrace`).catch(
+        console.error,
+      )
     },
     toggleDebug() {
       this.showDebug = !this.showDebug
@@ -3311,7 +3331,7 @@ class TestSuite(Suite):
           data: {
             args: this.debug,
           },
-        })
+        }).catch(console.error)
         this.debug = ''
       } else if (event.key === 'ArrowUp') {
         this.debugHistoryIndex -= 1
@@ -3360,7 +3380,9 @@ class TestSuite(Suite):
         !this.readOnly &&
         !this.readOnlyUser
       ) {
-        Api.post(`/script-api/scripts/${this.filename}/unlock`)
+        Api.post(`/script-api/scripts/${this.filename}/unlock`).catch(
+          console.error,
+        )
       }
     },
     onVersionRestored: function () {

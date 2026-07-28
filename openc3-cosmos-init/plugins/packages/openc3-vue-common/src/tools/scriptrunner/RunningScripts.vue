@@ -290,13 +290,13 @@ function useScriptTable(endpoint, errorTitle) {
 
   function setPage(newPage) {
     page.value = newPage
-    fetchScripts()
+    void fetchScripts()
   }
 
   function setItemsPerPage(newItemsPerPage) {
     itemsPerPage.value = newItemsPerPage
     page.value = 1
-    fetchScripts()
+    void fetchScripts()
   }
 
   // Debounce search so we refetch from the server after the user stops typing.
@@ -305,7 +305,7 @@ function useScriptTable(endpoint, errorTitle) {
     search,
     debounce(() => {
       page.value = 1
-      fetchScripts()
+      void fetchScripts()
     }, 300),
   )
 
@@ -382,9 +382,9 @@ const dialogFilename = ref('')
 
 watch(activeTab, (newTab) => {
   if (newTab === 'running') {
-    getRunningScripts()
+    void getRunningScripts()
   } else if (newTab === 'completed') {
-    getCompletedScripts()
+    void getCompletedScripts()
   }
 })
 
@@ -398,13 +398,12 @@ onMounted(async () => {
     // Do nothing
   }
 
-  getRunningScripts()
-  getCompletedScripts()
+  await Promise.all([getRunningScripts(), getCompletedScripts()])
 
   // Start a timer to refresh the running scripts list every 5 seconds
   refreshTimer.value = setInterval(() => {
     if (activeTab.value === 'running') {
-      getRunningScripts()
+      void getRunningScripts()
     }
   }, 5000)
 })
@@ -495,7 +494,7 @@ async function deleteScript(script) {
     notify.normal({
       body: `Stopped script: ${script.name} ${script.filename}`,
     })
-    getRunningScripts()
+    getRunningScripts().catch(console.error)
   } catch (error) {
     if (error !== true) {
       notify.caution({

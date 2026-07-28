@@ -245,17 +245,21 @@ export default {
       this.showProcessOutput = true
     },
     update() {
-      Api.get('/openc3-api/packages').then((response) => {
-        this.gems = response.data.ruby
-        this.python = response.data.python
-      })
-      Api.get('/openc3-api/packages/trees').then((response) => {
-        this.pythonTrees = response.data
-      })
+      Api.get('/openc3-api/packages')
+        .then((response) => {
+          this.gems = response.data.ruby
+          this.python = response.data.python
+        })
+        .catch(console.error)
+      Api.get('/openc3-api/packages/trees')
+        .then((response) => {
+          this.pythonTrees = response.data
+        })
+        .catch(console.error)
     },
     updateProcesses: function () {
-      Api.get('/openc3-api/process_status/package_?substr=true').then(
-        (response) => {
+      Api.get('/openc3-api/process_status/package_?substr=true')
+        .then((response) => {
           this.processes = response.data
           if (Object.keys(this.processes).length > 0) {
             // process_manager.rb script operates on a 5 second cycle
@@ -264,8 +268,8 @@ export default {
               this.update()
             }, 2500)
           }
-        },
-      )
+        })
+        .catch(console.error)
     },
     selectFile() {
       this.progress = 0

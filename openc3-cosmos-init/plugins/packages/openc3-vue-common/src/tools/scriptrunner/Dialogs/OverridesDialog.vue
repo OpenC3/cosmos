@@ -134,6 +134,6 @@ async function deleteOverride(item) {
 }
 
 onMounted(() => {
-  getOverrides()
+  void getOverrides()
 })
 </script>

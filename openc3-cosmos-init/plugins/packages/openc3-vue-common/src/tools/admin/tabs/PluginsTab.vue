@@ -334,18 +334,22 @@ export default {
       this.showProcessOutput = true
     },
     update: function () {
-      Api.get('/openc3-api/plugins/all').then((response) => {
-        this.plugins = Object.entries(response.data).map(
-          ([_, plugin]) => plugin,
-        )
-      })
-      Api.get('/openc3-api/targets_modified').then((response) => {
-        this.targets = response.data
-      })
+      Api.get('/openc3-api/plugins/all')
+        .then((response) => {
+          this.plugins = Object.entries(response.data).map(
+            ([_, plugin]) => plugin,
+          )
+        })
+        .catch(console.error)
+      Api.get('/openc3-api/targets_modified')
+        .then((response) => {
+          this.targets = response.data
+        })
+        .catch(console.error)
     },
     updateProcesses: function () {
-      Api.get('openc3-api/process_status/plugin_?substr=true').then(
-        (response) => {
+      Api.get('openc3-api/process_status/plugin_?substr=true')
+        .then((response) => {
           this.processes = response.data
           if (Object.keys(this.processes).length > 0) {
             setTimeout(() => {
@@ -353,8 +357,8 @@ export default {
               this.update()
             }, 5000)
           }
-        },
-      )
+        })
+        .catch(console.error)
     },
     upload: function (existing = null, storeData = null) {
       const method = existing ? 'put' : 'post'
@@ -458,37 +462,42 @@ export default {
         data: {
           plugin_hash: JSON.stringify(pluginHash),
         },
-      }).then((response) => {
-        this.alert = `Started installing plugin ${this.pluginName} ...`
-        this.alertType = 'success'
-        this.showAlert = true
-        this.currentPlugin = null
-        this.file = undefined
-        this.variables = {}
-        this.pluginTxt = ''
-        this.existingPluginTxt = null
-        this.storePluginId = null
-        this.storeVersionId = null
-        setTimeout(() => {
-          this.showAlert = false
-          this.updateProcesses()
-        }, 5000)
-        this.update()
       })
+        .then((response) => {
+          this.alert = `Started installing plugin ${this.pluginName} ...`
+          this.alertType = 'success'
+          this.showAlert = true
+          this.currentPlugin = null
+          this.file = undefined
+          this.variables = {}
+          this.pluginTxt = ''
+          this.existingPluginTxt = null
+          this.storePluginId = null
+          this.storeVersionId = null
+          setTimeout(() => {
+            this.showAlert = false
+            this.updateProcesses()
+          }, 5000)
+          this.update()
+        })
+        .catch(console.error)
     },
     editPlugin: function (plugin) {
       this.resetControlState()
-      Api.get(`/openc3-api/plugins/${plugin}`).then((response) => {
-        let existingPluginTxt = null
-        if (response.data.existing_plugin_txt_lines !== undefined) {
-          existingPluginTxt = response.data.existing_plugin_txt_lines.join('\n')
-        }
-        this.pluginName = response.data.name
-        this.variables = response.data.variables
-        this.pluginTxt = response.data.plugin_txt_lines.join('\n')
-        this.existingPluginTxt = existingPluginTxt
-        this.showPluginDialog = true
-      })
+      Api.get(`/openc3-api/plugins/${plugin}`)
+        .then((response) => {
+          let existingPluginTxt = null
+          if (response.data.existing_plugin_txt_lines !== undefined) {
+            existingPluginTxt =
+              response.data.existing_plugin_txt_lines.join('\n')
+          }
+          this.pluginName = response.data.name
+          this.variables = response.data.variables
+          this.pluginTxt = response.data.plugin_txt_lines.join('\n')
+          this.existingPluginTxt = existingPluginTxt
+          this.showPluginDialog = true
+        })
+        .catch(console.error)
     },
     deletePrompt: function (plugin) {
       this.resetControlState()
@@ -511,12 +520,14 @@ export default {
       this.alert = `Removing plugin ${plugin} ...`
       this.alertType = 'success'
       this.showAlert = true
-      Api.delete(`/openc3-api/plugins/${plugin}`).then((response) => {
-        setTimeout(() => {
-          this.showAlert = false
-          this.updateProcesses()
-        }, 5000)
-      })
+      Api.delete(`/openc3-api/plugins/${plugin}`)
+        .then((response) => {
+          setTimeout(() => {
+            this.showAlert = false
+            this.updateProcesses()
+          }, 5000)
+        })
+        .catch(console.error)
       this.update()
     },
     migrateToUv: function (plugin) {
@@ -529,8 +540,8 @@ export default {
           },
         )
         .then(() => {
-          Api.post(`/openc3-api/plugins/${plugin}/migrate_to_uv`).then(
-            (response) => {
+          Api.post(`/openc3-api/plugins/${plugin}/migrate_to_uv`)
+            .then((response) => {
               this.alert = `Started migrating plugin ${plugin} to UV ...`
               this.alertType = 'success'
               this.showAlert = true
@@ -538,8 +549,8 @@ export default {
                 this.showAlert = false
                 this.updateProcesses()
               }, 5000)
-            },
-          )
+            })
+            .catch(console.error)
         })
     },
     upgradePlugin(plugin) {

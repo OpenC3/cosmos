@@ -200,25 +200,29 @@ export default {
       if (this.metadata) {
         Api.put(`/openc3-api/metadata/${this.metadata.start}`, {
           data,
-        }).then((response) => {
-          this.$notify.normal({
-            title: 'Updated Metadata',
-            body: `Metadata updated: (${response.data.start})`,
-          })
-          this.$emit('update', response.data)
-          this.show = !this.show
         })
+          .then((response) => {
+            this.$notify.normal({
+              title: 'Updated Metadata',
+              body: `Metadata updated: (${response.data.start})`,
+            })
+            this.$emit('update', response.data)
+            this.show = !this.show
+          })
+          .catch(console.error)
       } else {
         Api.post('/openc3-api/metadata', {
           data,
-        }).then((response) => {
-          this.$notify.normal({
-            title: 'Created new Metadata',
-            body: `Metadata: (${response.data.start})`,
-          })
-          this.$emit('update', response.data)
-          this.show = !this.show
         })
+          .then((response) => {
+            this.$notify.normal({
+              title: 'Created new Metadata',
+              body: `Metadata: (${response.data.start})`,
+            })
+            this.$emit('update', response.data)
+            this.show = !this.show
+          })
+          .catch(console.error)
       }
       // We don't do the $emit or set show here because it has to be in the callback
     },
