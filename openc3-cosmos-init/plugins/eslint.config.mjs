@@ -20,7 +20,7 @@ export default defineConfig([
     },
 
     rules: {
-      'no-console': 'error',
+      'no-console': ['error', { allow: ['error'] }],
       'no-debugger': 'error',
 
       'prettier/prettier': [

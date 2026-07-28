@@ -476,7 +476,6 @@ export default {
           }
         })
         .catch((error) => {
-          // eslint-disable-next-line no-console
           console.error('Error fetching queues:', error)
           // Keep default "None" option even if fetch fails
         })

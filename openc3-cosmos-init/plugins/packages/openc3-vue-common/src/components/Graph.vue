@@ -674,7 +674,6 @@ export default {
               this.updateGraphData()
             })
             .catch((error) => {
-              // eslint-disable-next-line no-console
               console.error('Error fetching playback telemetry:', error)
             })
             .finally(() => {

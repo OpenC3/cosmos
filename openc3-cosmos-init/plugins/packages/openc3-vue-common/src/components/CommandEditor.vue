@@ -252,7 +252,6 @@ export default {
               return this.api.get_cmd(this.targetName, this.commandName)
             },
             (error) => {
-              // eslint-disable-next-line no-console
               console.error('Error getting ignored parameters:', error)
             },
           )
@@ -338,7 +337,6 @@ export default {
               }
             },
             (error) => {
-              // eslint-disable-next-line no-console
               console.error('Error getting command parameters:', error)
               this.$emit('command-loaded', null)
             },
