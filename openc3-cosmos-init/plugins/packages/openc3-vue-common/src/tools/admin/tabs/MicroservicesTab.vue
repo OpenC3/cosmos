@@ -539,7 +539,7 @@ export default {
           url = '/openc3-api/microservices'
         }
 
-        const response = await Api[method](url, {
+        await Api[method](url, {
           data: {
             json: content,
           },

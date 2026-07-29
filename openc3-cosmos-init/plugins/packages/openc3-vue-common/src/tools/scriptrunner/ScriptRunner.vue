@@ -2742,7 +2742,7 @@ export default {
         })
       }
       // We have to wait for all the upload API requests to finish before notifying the prompt
-      const responses = await Promise.all(promises)
+      await Promise.all(promises)
       Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
         data: {
           method: this.file.multiple ? 'open_files_dialog' : 'open_file_dialog',
