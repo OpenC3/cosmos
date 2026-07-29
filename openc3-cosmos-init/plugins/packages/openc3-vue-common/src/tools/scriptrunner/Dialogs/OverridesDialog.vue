@@ -133,7 +133,7 @@ async function deleteOverride(item) {
   overrides.value.splice(index, 1)
 }
 
-onMounted(() => {
-  void getOverrides()
+onMounted(async () => {
+  await getOverrides()
 })
 </script>
