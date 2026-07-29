@@ -609,11 +609,15 @@ class RunningScript
       process.start
       running_script_id
     rescue => e
-      # Clean up the orphaned script status record so the script
-      # does not remain stuck in 'spawning' state forever.
-      # Guard against nil in case the error occurred before these were assigned.
-      script_status.destroy() if script_status
-      FileUtils.rm_rf(script_cwd) if script_cwd
+      begin
+        # Clean up the orphaned script status record so the script
+        # does not remain stuck in 'spawning' state forever.
+        # Guard against nil in case the error occurred before these were assigned.
+        script_status.destroy() if script_status
+        FileUtils.rm_rf(script_cwd) if script_cwd
+      rescue => cleanup_error
+        OpenC3::Logger.error("Failed to cleanup after spawn failure: #{cleanup_error.message}")
+      end
       raise e
     end
   end

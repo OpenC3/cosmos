@@ -70,7 +70,7 @@ class RunningScriptController < ApplicationController
       return unless authorization('script_run', target_name: target_name)
       running_script_publish("cmd-running-script-channel:#{params[:id]}", "stop")
 
-      if pid
+      if pid and pid > 0
         # Give the process 1 second to stop from stop message
         stopped = false
         start_time = Time.now
