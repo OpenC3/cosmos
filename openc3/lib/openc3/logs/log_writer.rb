@@ -328,9 +328,9 @@ module OpenC3
             start_new_file()
           elsif !stored
             # Warning: Creating new files here can cause lots of files to be created if packets make it through out of order
-            # Changed to just a error to prevent file thrashing
+            # Changed to just a warning to prevent file thrashing
             unless @out_of_order
-              Logger.error("Log writer out of order time detected (increase buffer depth?): #{Time.from_nsec_from_epoch(@previous_time_nsec_since_epoch)} #{Time.from_nsec_from_epoch(time_nsec_since_epoch)}")
+              Logger.warn("Log writer out of order time detected (increase buffer depth?): #{Time.from_nsec_from_epoch(@previous_time_nsec_since_epoch)} #{Time.from_nsec_from_epoch(time_nsec_since_epoch)}")
               @out_of_order = true
             end
           end
