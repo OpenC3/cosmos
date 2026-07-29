@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -145,9 +145,11 @@ export default {
     },
   },
   created: function () {
-    Api.get('/openc3-api/info').then(({ data }) => {
-      this.isEnterprise = data.enterprise
-    })
+    Api.get('/openc3-api/info')
+      .then(({ data }) => {
+        this.isEnterprise = data.enterprise
+      })
+      .catch(console.error)
     this.loadSetting(URL_SETTING_NAME, { scope: SETTING_SCOPE })
     this.loadSetting(API_KEY_SETTING_NAME, { scope: SETTING_SCOPE })
     this.$emit('update:storeUrl', this.storeUrl)

@@ -40,9 +40,11 @@ export default class ScreenCompleter {
     // See openc3-cosmos-cmd-tlm-api/app/controllers/script_autocomplete_controller.rb
     // for how the autocompleteData is built
 
-    Api.get(`/openc3-api/autocomplete/data/screen`).then((response) => {
-      this.autocompleteData = response.data
-    })
+    Api.get(`/openc3-api/autocomplete/data/screen`)
+      .then((response) => {
+        this.autocompleteData = response.data
+      })
+      .catch(console.error)
     this.api = new OpenC3Api()
   }
 

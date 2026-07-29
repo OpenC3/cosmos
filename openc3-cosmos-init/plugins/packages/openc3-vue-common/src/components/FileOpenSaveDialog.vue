@@ -225,25 +225,29 @@ export default {
     },
   },
   created() {
-    Api.get('/openc3-api/targets').then((response) => {
-      this.targets = response.data
-      this.targets.push('__TEMP__') // Also support __TEMP__
-      const loadPromises = this.targets.map((target) => {
-        // Name not found so push the item and add a children array
-        this.items.push({
-          id: target,
-          disabled: true,
-          title: target,
-          children: [],
-          path: target,
+    Api.get('/openc3-api/targets')
+      .then((response) => {
+        this.targets = response.data
+        this.targets.push('__TEMP__') // Also support __TEMP__
+        const loadPromises = this.targets.map((target) => {
+          // Name not found so push the item and add a children array
+          this.items.push({
+            id: target,
+            disabled: true,
+            title: target,
+            children: [],
+            path: target,
+          })
+          // Load the targets 1 by 1 in the background
+          return this.loadFiles(target)
         })
-        // Load the targets 1 by 1 in the background
-        return this.loadFiles(target)
+        Promise.all(loadPromises)
+          .then(() => {
+            this.disableButtons = false
+          })
+          .catch(console.error)
       })
-      Promise.all(loadPromises).then(() => {
-        this.disableButtons = false
-      })
-    })
+      .catch(console.error)
   },
   methods: {
     calcIcon: function (filename) {

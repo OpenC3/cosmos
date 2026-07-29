@@ -321,9 +321,11 @@ export default {
     },
   },
   created: function () {
-    Api.get('/openc3-api/info').then(({ data }) => {
-      this.installedCosmosVersion = data.version
-    })
+    Api.get('/openc3-api/info')
+      .then(({ data }) => {
+        this.installedCosmosVersion = data.version
+      })
+      .catch(console.error)
   },
   mounted: function () {
     this.selectedVersionId = this.current_version_id
@@ -348,7 +350,7 @@ export default {
       })
     },
     copyChecksum: function () {
-      navigator.clipboard.writeText(this.versionChecksum)
+      navigator.clipboard.writeText(this.versionChecksum).catch(console.error)
       this.showCopiedTooltip = true
       setTimeout(() => {
         this.showCopiedTooltip = false

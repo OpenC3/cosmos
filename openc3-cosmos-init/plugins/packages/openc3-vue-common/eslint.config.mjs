@@ -9,8 +9,7 @@ const packageDir = dirname(fileURLToPath(import.meta.url))
 export default defineConfig([
   baseConfig,
   {
-    // TODO: expand this list to other parts of the src folder and to other packages
-    files: ['src/tools/**/*.{js,vue}'],
+    files: ['src/**/*.{js,vue}'],
 
     plugins: {
       '@typescript-eslint': tseslint.plugin,

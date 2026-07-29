@@ -152,14 +152,17 @@ export default {
             this.plugins = data
           }
         })
+        .catch(console.error)
         .finally(() => {
           this.loading = false
         })
     },
     fetchUserContext: function () {
-      Api.get('/openc3-api/info').then(({ data }) => {
-        this.isEnterprise = !!data.enterprise
-      })
+      Api.get('/openc3-api/info')
+        .then(({ data }) => {
+          this.isEnterprise = !!data.enterprise
+        })
+        .catch(console.error)
       const roles = OpenC3Auth.userroles() || []
       this.isAdmin = roles.includes('admin')
     },
