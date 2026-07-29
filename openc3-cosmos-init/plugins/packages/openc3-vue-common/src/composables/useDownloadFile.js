@@ -13,30 +13,30 @@
 
 import { Api } from '@openc3/js-common/services'
 
+// Decode a Base64 string into raw bytes
+function base64ToBytes(base64) {
+  const decodedData = window.atob(base64)
+  // Create UNIT8ARRAY of size same as row data length
+  const uInt8Array = new Uint8Array(decodedData.length)
+  // Insert all character code into uInt8Array
+  for (let i = 0; i < decodedData.length; ++i) {
+    uInt8Array[i] = decodedData.codePointAt(i)
+  }
+  return uInt8Array
+}
+
+// Make a link and then 'click' on it to start the download
+function saveBlob(blob, filename) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', filename)
+  link.click()
+  // Let the browser start the download before releasing the blob
+  setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
 export function useDownloadFile() {
-  // Decode a Base64 string into raw bytes
-  function base64ToBytes(base64) {
-    const decodedData = window.atob(base64)
-    // Create UNIT8ARRAY of size same as row data length
-    const uInt8Array = new Uint8Array(decodedData.length)
-    // Insert all character code into uInt8Array
-    for (let i = 0; i < decodedData.length; ++i) {
-      uInt8Array[i] = decodedData.charCodeAt(i)
-    }
-    return uInt8Array
-  }
-
-  // Make a link and then 'click' on it to start the download
-  function saveBlob(blob, filename) {
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', filename)
-    link.click()
-    // Let the browser start the download before releasing the blob
-    setTimeout(() => URL.revokeObjectURL(url), 0)
-  }
-
   // POST to url and download the response as a file. The response is expected
   // to be JSON with 'contents' and 'filename' attributes.
   //   data:    request body passed to Api.post, a FormData implies multipart
