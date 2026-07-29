@@ -135,7 +135,7 @@ export default {
       this.$emit('delete', plugin)
     },
     fetchMicroservices: async function () {
-      const reseponse = await Api.get('/openc3-api/microservices/all')
+      const response = await Api.get('/openc3-api/microservices/all')
       this.microservices = response.data
     },
   },
