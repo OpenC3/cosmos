@@ -2,7 +2,8 @@
   "name": "openc3",
   "private": true,
   "scripts": {
-    "build:common": "pnpm -F @openc3/*-common build"
+    "build:common": "pnpm -F @openc3/*-common build",
+    "lint": "./lint-all.mjs"
   },
   "devDependencies": {
     "@vue/eslint-config-prettier": "10.2.0",
