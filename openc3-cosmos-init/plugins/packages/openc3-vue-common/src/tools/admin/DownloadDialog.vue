@@ -152,7 +152,6 @@ export default {
           this.response = response.data
         })
         .catch(console.error)
-      this.response = response.data
       setTimeout(() => {
         this.disableSearch = false
       }, 10000)
