@@ -282,21 +282,22 @@ function useScriptTable(endpoint, errorTitle) {
       scripts.value = data.items || []
       total.value = data.total || scripts.value.length
     } catch (error) {
+      console.error(error)
       notify.caution({ title: errorTitle, body: error.message })
     } finally {
       loading.value = false
     }
   }
 
-  function setPage(newPage) {
+  async function setPage(newPage) {
     page.value = newPage
-    void fetchScripts()
+    await fetchScripts()
   }
 
-  function setItemsPerPage(newItemsPerPage) {
+  async function setItemsPerPage(newItemsPerPage) {
     itemsPerPage.value = newItemsPerPage
     page.value = 1
-    void fetchScripts()
+    await fetchScripts()
   }
 
   // Debounce search so we refetch from the server after the user stops typing.
@@ -305,7 +306,7 @@ function useScriptTable(endpoint, errorTitle) {
     search,
     debounce(() => {
       page.value = 1
-      void fetchScripts()
+      fetchScripts().catch(console.error)
     }, 300),
   )
 
@@ -380,11 +381,11 @@ const dialogName = ref('')
 const dialogContent = ref('')
 const dialogFilename = ref('')
 
-watch(activeTab, (newTab) => {
+watch(activeTab, async (newTab) => {
   if (newTab === 'running') {
-    void getRunningScripts()
+    await getRunningScripts()
   } else if (newTab === 'completed') {
-    void getCompletedScripts()
+    await getCompletedScripts()
   }
 })
 
@@ -401,9 +402,9 @@ onMounted(async () => {
   await Promise.all([getRunningScripts(), getCompletedScripts()])
 
   // Start a timer to refresh the running scripts list every 5 seconds
-  refreshTimer.value = setInterval(() => {
+  refreshTimer.value = setInterval(async () => {
     if (activeTab.value === 'running') {
-      void getRunningScripts()
+      await getRunningScripts()
     }
   }, 5000)
 })
@@ -494,7 +495,7 @@ async function deleteScript(script) {
     notify.normal({
       body: `Stopped script: ${script.name} ${script.filename}`,
     })
-    getRunningScripts().catch(console.error)
+    await getRunningScripts()
   } catch (error) {
     if (error !== true) {
       notify.caution({
