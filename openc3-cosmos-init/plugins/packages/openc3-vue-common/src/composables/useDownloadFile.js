@@ -20,7 +20,7 @@ function base64ToBytes(base64) {
   const uInt8Array = new Uint8Array(decodedData.length)
   // Insert all character code into uInt8Array
   for (let i = 0; i < decodedData.length; ++i) {
-    uInt8Array[i] = decodedData.codePointAt(i)
+    uInt8Array[i] = decodedData.charCodeAt(i)
   }
   return uInt8Array
 }
