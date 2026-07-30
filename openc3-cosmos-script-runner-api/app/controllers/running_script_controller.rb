@@ -66,43 +66,55 @@ class RunningScriptController < ApplicationController
     running_script = OpenC3::ScriptStatusModel.get_model(name: params[:id], scope: params[:scope])
     if running_script
       target_name = running_script.filename.split('/')[0]
-      pid = running_script.pid.to_i
+      pid = running_script.pid&.to_i
       return unless authorization('script_run', target_name: target_name)
       running_script_publish("cmd-running-script-channel:#{params[:id]}", "stop")
 
-      # Give the process 1 second to stop from stop message
       stopped = false
-      start_time = Time.now
-      while Time.now - start_time < 1.0
-        begin
-          Process.getpgid(pid.to_i)
-          sleep 0.1
-        rescue Errno::ESRCH
-          stopped = true
-          break
-        end
-      end
-
-      # If the process is still running
-      # Send a SIGINT and give it one more second
-      if not stopped
-        Process.kill("SIGINT", pid)
+      if pid and pid > 0
+        # Give the process 1 second to stop from stop message
         start_time = Time.now
         while Time.now - start_time < 1.0
           begin
-            Process.getpgid(pid.to_i)
+            Process.getpgid(pid)
             sleep 0.1
           rescue Errno::ESRCH
             stopped = true
             break
           end
         end
+
+        # If the process is still running
+        # Send a SIGINT and give it one more second
+        if not stopped
+          begin
+            Process.kill("SIGINT", pid)
+          rescue Errno::ESRCH
+            stopped = true
+          end
+          start_time = Time.now
+          while Time.now - start_time < 1.0
+            begin
+              Process.getpgid(pid)
+              sleep 0.1
+            rescue Errno::ESRCH
+              stopped = true
+              break
+            end
+          end
+        end
+
+        # If the process is still running send a hard kill signal
+        if not stopped
+          begin
+            Process.kill("SIGKILL", pid)
+          rescue Errno::ESRCH
+            stopped = true
+          end
+        end
       end
 
-      # If the process is still running send a hard kill signal
-      if not stopped
-        Process.kill("SIGKILL", pid)
-
+      if pid.nil? or not stopped
         # Also need to cleanup the status model in this case because the process will not die and cleanup
         running_script.end_time = Time.now.utc.iso8601
         running_script.state = "killed"
