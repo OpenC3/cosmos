@@ -1,5 +1,5 @@
-# Build a NATIVE Windows installer (.msi via WiX and/or .exe via NSIS) for the
-# host architecture. Run this on Windows in PowerShell:
+# Build a NATIVE Windows installer (.msi via WiX) for the host architecture.
+# Run this on Windows in PowerShell:
 #
 #   powershell -ExecutionPolicy Bypass -File .\package.ps1
 #
@@ -21,12 +21,12 @@ if ($LASTEXITCODE -ne 0) {
     cargo install cargo-packager --locked
 }
 
-# 3. Produce the host-native installer(s) (NSIS .exe and/or WiX .msi).
+# 3. Produce the WiX .msi installer.
 $out = "dist\installers"
 New-Item -ItemType Directory -Force -Path $out | Out-Null
-Write-Host "Building installer(s) into $out\ ..."
-cargo packager --release --out-dir $out
+Write-Host "Building installer into $out\ ..."
+cargo packager --release -f wix --out-dir $out
 
 Write-Host ""
-Write-Host "Done. Installers in $out\:"
-Get-ChildItem -Path $out -Include *.msi, *.exe -Recurse | ForEach-Object { $_.FullName }
+Write-Host "Done. Installer in $out\:"
+Get-ChildItem -Path $out -Include *.msi -Recurse | ForEach-Object { $_.FullName }

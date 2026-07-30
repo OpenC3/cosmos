@@ -271,6 +271,8 @@ enum Message {
     CloseSettings,
     CosmosUrlChanged(String),
     RunLocallyToggled(bool),
+    EditionChanged(crate::settings::Edition),
+    EnterpriseTokenChanged(String),
     LogLevelChanged(LogLevelFilter),
     LogSearchChanged(String),
     ToggleLogPause,
@@ -298,8 +300,10 @@ enum Message {
 }
 
 impl State {
-    fn new(ctx: Context, main_window: window::Id) -> Self {
+    fn new(mut ctx: Context, main_window: window::Id) -> Self {
         let settings = crate::settings::Settings::load(&ctx);
+        // The persisted edition is the source of truth in the GUI.
+        ctx.enterprise = settings.edition.is_enterprise();
         let env = EnvCheck {
             container_ok: ctx.runtime.is_some(),
             container_installed: crate::context::container_engine_installed(),
@@ -553,7 +557,14 @@ impl State {
             }
             Message::InstallCosmos => {
                 let ctx = self.ctx.clone();
-                self.spawn("Installing COSMOS", move || install::cosmos(&ctx, "latest"));
+                let enterprise = self.settings.edition.is_enterprise();
+                let token = self.settings.enterprise_token.clone();
+                let label = if enterprise {
+                    "Installing COSMOS Enterprise"
+                } else {
+                    "Installing COSMOS Core"
+                };
+                self.spawn(label, move || install::cosmos(&ctx, "latest", enterprise, &token));
                 Task::none()
             }
             Message::Start => {
@@ -580,6 +591,19 @@ impl State {
             }
             Message::RunLocallyToggled(value) => {
                 self.settings.run_locally = value;
+                self.settings.save(&self.ctx);
+                Task::none()
+            }
+            Message::EditionChanged(edition) => {
+                self.settings.edition = edition;
+                // The rest of the app (compose profiles, upgrade source) keys off
+                // ctx.enterprise, so keep it in sync with the chosen edition.
+                self.ctx.enterprise = edition.is_enterprise();
+                self.settings.save(&self.ctx);
+                Task::none()
+            }
+            Message::EnterpriseTokenChanged(value) => {
+                self.settings.enterprise_token = value;
                 self.settings.save(&self.ctx);
                 Task::none()
             }
@@ -943,6 +967,24 @@ impl State {
         }
 
         let mut cards = column![].spacing(12).width(Length::Fill);
+        // Which edition to install. Only relevant to a local install; the same
+        // choice is also available in Settings.
+        if self.settings.run_locally {
+            cards = cards.push(card(
+                "Edition",
+                text("Choose which COSMOS edition to install.")
+                    .size(12)
+                    .color(muted)
+                    .into(),
+                pick_list(
+                    crate::settings::Edition::ALL,
+                    Some(self.settings.edition),
+                    Message::EditionChanged,
+                )
+                .text_size(14)
+                .into(),
+            ));
+        }
         // Docker and the COSMOS environment are only needed when running COSMOS
         // locally; otherwise the only local component is the Python runtime.
         if self.settings.run_locally && !self.env.container_ok {
@@ -995,14 +1037,42 @@ impl State {
             ));
         }
         if self.settings.run_locally && !self.env.cosmos_ok {
-            cards = cards.push(card(
-                "COSMOS environment",
-                text("The COSMOS containers and configuration.")
-                    .size(12)
-                    .color(muted)
-                    .into(),
-                action("Install COSMOS", Message::InstallCosmos).into(),
-            ));
+            if self.settings.edition.is_enterprise() {
+                // Enterprise needs an access token; disable install until it's set.
+                let token_empty = self.settings.enterprise_token.trim().is_empty();
+                let desc = column![
+                    text("COSMOS Enterprise from repos.openc3.com (requires an access token).")
+                        .size(12)
+                        .color(muted),
+                    text_input("Access token", &self.settings.enterprise_token)
+                        .on_input(Message::EnterpriseTokenChanged)
+                        .secure(true)
+                        .size(13)
+                        .padding(6)
+                        .width(Length::Fill),
+                ]
+                .spacing(6);
+                let btn = {
+                    let b = button(text("Install COSMOS").size(15))
+                        .padding(10)
+                        .style(button::primary);
+                    if self.busy || token_empty {
+                        b
+                    } else {
+                        b.on_press(Message::InstallCosmos)
+                    }
+                };
+                cards = cards.push(card("COSMOS environment", desc.into(), btn.into()));
+            } else {
+                cards = cards.push(card(
+                    "COSMOS environment",
+                    text("The COSMOS containers and configuration.")
+                        .size(12)
+                        .color(muted)
+                        .into(),
+                    action("Install COSMOS", Message::InstallCosmos).into(),
+                ));
+            }
         }
 
         let cards_panel = container(cards).max_width(PANEL_WIDTH).width(Length::Fill);
@@ -1547,8 +1617,19 @@ impl State {
         // COSMOS location: the URL the "Open COSMOS in Browser" button uses, and
         // whether this app manages a local COSMOS (Docker) or connects to a
         // remote one.
-        let cosmos_section = column![
+        let mut cosmos_section = column![
             text("COSMOS").size(16),
+            row![
+                text("Edition").size(13).width(70),
+                pick_list(
+                    crate::settings::Edition::ALL,
+                    Some(self.settings.edition),
+                    Message::EditionChanged,
+                )
+                .text_size(13),
+            ]
+            .spacing(8)
+            .align_y(Center),
             text("Web address opened by \u{201C}Open COSMOS in Browser\u{201D}.")
                 .size(13)
                 .color(grey),
@@ -1565,6 +1646,20 @@ impl State {
             .color(grey),
         ]
         .spacing(6);
+        // Enterprise needs an access token for the private repos.openc3.com repo.
+        if self.settings.edition.is_enterprise() {
+            cosmos_section = cosmos_section.push(
+                text_input("Enterprise access token", &self.settings.enterprise_token)
+                    .on_input(Message::EnterpriseTokenChanged)
+                    .secure(true)
+                    .padding(8),
+            );
+            cosmos_section = cosmos_section.push(
+                text("Access token for repos.openc3.com (COSMOS Enterprise).")
+                    .size(12)
+                    .color(grey),
+            );
+        }
 
         // Bridge pairing: redeem an enrollment token from a remote COSMOS's
         // Admin → Bridges page. Co-located COSMOS enrolls automatically.

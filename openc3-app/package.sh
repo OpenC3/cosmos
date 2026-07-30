@@ -3,7 +3,7 @@
 # Build a NATIVE installer for the current host OS and architecture.
 #
 # Native installers must be produced on their own platform (a .dmg needs macOS,
-# an .msi/.exe needs Windows, .deb/AppImage need Linux), so this script
+# an .msi needs Windows, .deb/AppImage need Linux), so this script
 # packages for whatever machine it runs on:
 #
 #   macOS   -> .app + .dmg            (dist/installers/)

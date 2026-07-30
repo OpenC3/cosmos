@@ -36,11 +36,35 @@ pub fn to_file(url: &str, dest: &Path) -> Result<()> {
 
 /// Download `url` and return the body as bytes.
 pub fn to_bytes(url: &str) -> Result<Vec<u8>> {
+    to_bytes_inner(url, None)
+}
+
+/// Like [`to_bytes`] but authenticates with a Forgejo/Gitea access token
+/// (`Authorization: token <token>`), for the private COSMOS Enterprise repo.
+pub fn to_bytes_auth(url: &str, token: &str) -> Result<Vec<u8>> {
+    to_bytes_inner(url, Some(token))
+}
+
+fn to_bytes_inner(url: &str, token: Option<&str>) -> Result<Vec<u8>> {
     println!("Downloading {url}");
+    // Forgejo/Gitea accept the token via an Authorization header on both the API
+    // and web archive routes.
+    let header = token.map(|t| format!("Authorization: token {t}"));
     let out = if process::which("curl") {
-        process::capture(Command::new("curl").args(["-fSL", "--retry", "3", url]))?
+        let mut cmd = Command::new("curl");
+        cmd.args(["-fSL", "--retry", "3"]);
+        if let Some(h) = &header {
+            cmd.args(["-H", h]);
+        }
+        cmd.arg(url);
+        process::capture(&mut cmd)?
     } else if process::which("wget") {
-        process::capture(Command::new("wget").args(["-qO-", url]))?
+        let mut cmd = Command::new("wget");
+        if let Some(h) = &header {
+            cmd.args(["--header", h]);
+        }
+        cmd.args(["-qO-", url]);
+        process::capture(&mut cmd)?
     } else {
         bail!("neither curl nor wget is available to download {url}");
     };

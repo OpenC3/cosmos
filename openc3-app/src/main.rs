@@ -44,6 +44,13 @@ use cli::{Cli, Command, InstallTarget};
 use context::Context;
 
 fn main() {
+    // A macOS app launched from Finder/Launchpad inherits a minimal PATH
+    // (/usr/bin:/bin:/usr/sbin:/sbin) that omits Homebrew and Docker locations,
+    // so `docker` isn't found and the app wrongly concludes Docker isn't
+    // running. Make those tool directories searchable. Must run before any
+    // `which`/spawn (Context::new detects the engine).
+    ensure_tool_path();
+
     // Windows GUI-subsystem binaries have no console; when run from a terminal
     // as a CLI, attach to the parent's console so output is visible. Harmless
     // no-op when launched from Explorer/a shortcut (no parent console).
@@ -60,6 +67,42 @@ fn main() {
         std::process::exit(1);
     }
 }
+
+/// Ensure the standard macOS tool directories (Homebrew, Docker) are on PATH.
+/// A GUI launch from Finder/Launchpad gets only a minimal PATH, which hides the
+/// `docker` CLI so engine detection and `docker compose` fail. Appends the
+/// well-known locations (existing entries keep priority) so they're found. No-op
+/// on other platforms and harmless when launched from a terminal.
+#[cfg(target_os = "macos")]
+fn ensure_tool_path() {
+    use std::path::PathBuf;
+    let mut candidates: Vec<PathBuf> = vec![
+        "/opt/homebrew/bin".into(),
+        "/opt/homebrew/sbin".into(),
+        "/usr/local/bin".into(),
+        "/usr/local/sbin".into(),
+        // Docker Desktop's bundled CLI, in case its /usr/local/bin symlinks
+        // were never created.
+        "/Applications/Docker.app/Contents/Resources/bin".into(),
+    ];
+    if let Some(home) = std::env::var_os("HOME") {
+        candidates.push(PathBuf::from(home).join(".docker/bin"));
+    }
+
+    let current = std::env::var_os("PATH").unwrap_or_default();
+    let mut dirs: Vec<PathBuf> = std::env::split_paths(&current).collect();
+    for dir in candidates {
+        if dir.is_dir() && !dirs.contains(&dir) {
+            dirs.push(dir);
+        }
+    }
+    if let Ok(joined) = std::env::join_paths(dirs) {
+        std::env::set_var("PATH", joined);
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn ensure_tool_path() {}
 
 /// Attach to the parent process's console (the terminal that launched us) so a
 /// GUI-subsystem binary can still print CLI output. Fails silently when there
@@ -90,7 +133,9 @@ fn run(cli: Cli) -> Result<()> {
             InstallTarget::Prerequisites => install::prerequisites(&ctx),
             InstallTarget::Docker => install::docker(&ctx),
             InstallTarget::Python => install::python(&ctx),
-            InstallTarget::Cosmos { tag } => install::cosmos(&ctx, &tag),
+            InstallTarget::Cosmos { tag } => {
+                install::cosmos(&ctx, &tag, ctx.enterprise, &install::enterprise_token_from_env())
+            }
         },
         Command::Build { flags } => commands::build(&ctx, &flags),
         Command::Run => commands::run(&ctx),

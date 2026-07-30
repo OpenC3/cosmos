@@ -242,12 +242,27 @@ pub fn upgrade(ctx: &Context, tag: &str, preview: bool) -> Result<()> {
         );
     }
 
-    let enterprise = ctx.enterprise || dir.join("openc3-enterprise-traefik").is_dir();
-    let url = if enterprise || tag.to_lowercase().contains("enterprise") {
-        "https://github.com/OpenC3/cosmos-enterprise-project.git"
+    let enterprise = ctx.enterprise
+        || dir.join("openc3-enterprise-traefik").is_dir()
+        || tag.to_lowercase().contains("enterprise");
+    let url = if enterprise {
+        // Enterprise now lives in the private Forgejo repo (repos.openc3.com).
+        "https://repos.openc3.com/OpenC3/cosmos-enterprise-project.git"
     } else {
         "https://github.com/OpenC3/cosmos-project.git"
     };
+
+    // Enterprise fetches authenticate with a repos.openc3.com access token
+    // (Forgejo accepts it as an Authorization header). For the CLI it comes from
+    // OPENC3_ENTERPRISE_TOKEN.
+    let token = crate::install::enterprise_token_from_env();
+    if enterprise && token.trim().is_empty() {
+        bail!(
+            "COSMOS Enterprise upgrades require a repos.openc3.com access token.\n\
+             Set OPENC3_ENTERPRISE_TOKEN and try again."
+        );
+    }
+    let token_opt: Option<&str> = if enterprise { Some(&token) } else { None };
 
     let real_tag = tag.strip_prefix("enterprise-").unwrap_or(tag).to_string();
 
@@ -260,10 +275,10 @@ pub fn upgrade(ctx: &Context, tag: &str, preview: bool) -> Result<()> {
     }
 
     println!("Fetching latest changes from the 'cosmos' remote...");
-    process::run(git(dir).args(["fetch", "cosmos"]))?;
+    process::run(git_net(dir, token_opt).args(["fetch", "cosmos"]))?;
 
     let hash = process::stdout_string(
-        git(dir).args(["ls-remote", "cosmos", &format!("refs/tags/{real_tag}")]),
+        git_net(dir, token_opt).args(["ls-remote", "cosmos", &format!("refs/tags/{real_tag}")]),
     )?;
     let hash = hash
         .split_whitespace()
@@ -296,6 +311,20 @@ pub fn upgrade(ctx: &Context, tag: &str, preview: bool) -> Result<()> {
 fn git(dir: &std::path::Path) -> Command {
     let mut cmd = Command::new("git");
     cmd.current_dir(dir);
+    cmd
+}
+
+/// A git command in `dir` for network operations, optionally authenticating to a
+/// private Forgejo repo with an access token. The token is supplied via git's
+/// `GIT_CONFIG_*` environment variables (an `http.extraHeader`), so it never
+/// lands in the process argv or in `.git/config`.
+fn git_net(dir: &std::path::Path, token: Option<&str>) -> Command {
+    let mut cmd = git(dir);
+    if let Some(t) = token {
+        cmd.env("GIT_CONFIG_COUNT", "1")
+            .env("GIT_CONFIG_KEY_0", "http.extraHeader")
+            .env("GIT_CONFIG_VALUE_0", format!("Authorization: token {t}"));
+    }
     cmd
 }
 

@@ -52,6 +52,10 @@ installed manually if needed.";
 const UV_VERSION_URL_BASE: &str = "https://github.com/astral-sh/uv/releases/latest/download";
 const CACERT_URL: &str = "https://curl.se/ca/cacert.pem";
 const COSMOS_PROJECT_REPO: &str = "https://github.com/OpenC3/cosmos-project";
+/// COSMOS Enterprise lives in a private Forgejo repo; its tag/branch source
+/// archives are fetched from the Gitea-compatible API with a token.
+const ENTERPRISE_ARCHIVE_BASE: &str =
+    "https://repos.openc3.com/api/v1/repos/OpenC3/cosmos-enterprise-project/archive";
 const DEFAULT_PYTHON: &str = "3.12";
 
 /// Install everything in dependency order.
@@ -59,8 +63,15 @@ pub fn all(ctx: &Context) -> Result<()> {
     prerequisites(ctx)?;
     docker(ctx)?;
     python(ctx)?;
-    cosmos(ctx, "latest")?;
+    cosmos(ctx, "latest", ctx.enterprise, &enterprise_token_from_env())?;
     Ok(())
+}
+
+/// The COSMOS Enterprise access token for CLI installs, taken from the
+/// `OPENC3_ENTERPRISE_TOKEN` environment variable. (The GUI stores it in
+/// settings.)
+pub fn enterprise_token_from_env() -> String {
+    std::env::var("OPENC3_ENTERPRISE_TOKEN").unwrap_or_default()
 }
 
 /// Install OS-level prerequisites the other installers rely on so the app can
@@ -533,7 +544,11 @@ fn uv_target() -> Result<String> {
 // ---------------------------------------------------------------------------
 
 /// Download and lay out the OpenC3 COSMOS environment under `<root>/cosmos`.
-pub fn cosmos(ctx: &Context, tag: &str) -> Result<()> {
+///
+/// `enterprise` selects COSMOS Enterprise (a private Forgejo repo), which
+/// requires `token` (a repos.openc3.com access token); Core downloads from the
+/// public GitHub `cosmos-project`.
+pub fn cosmos(ctx: &Context, tag: &str, enterprise: bool, token: &str) -> Result<()> {
     ensure_downloader()?;
     if ctx.paths.cosmos_installed() {
         notify(format!(
@@ -543,12 +558,29 @@ pub fn cosmos(ctx: &Context, tag: &str) -> Result<()> {
         return setup_cosmos(ctx);
     }
 
-    let url = if tag == "latest" {
-        format!("{COSMOS_PROJECT_REPO}/archive/refs/heads/main.tar.gz")
+    let bytes = if enterprise {
+        if token.trim().is_empty() {
+            bail!(
+                "COSMOS Enterprise requires a repos.openc3.com access token.\n\
+                 Enter it in Settings (or the Setup page) and try again."
+            );
+        }
+        // The Gitea API archive endpoint takes a branch or tag as the ref.
+        let git_ref = if tag == "latest" { "main" } else { tag };
+        let url = format!("{ENTERPRISE_ARCHIVE_BASE}/{git_ref}.tar.gz");
+        notify("Downloading COSMOS Enterprise...");
+        download::to_bytes_auth(&url, token).context(
+            "downloading COSMOS Enterprise (check your access token has read access to the repo)",
+        )?
     } else {
-        format!("{COSMOS_PROJECT_REPO}/archive/refs/tags/{tag}.tar.gz")
+        let url = if tag == "latest" {
+            format!("{COSMOS_PROJECT_REPO}/archive/refs/heads/main.tar.gz")
+        } else {
+            format!("{COSMOS_PROJECT_REPO}/archive/refs/tags/{tag}.tar.gz")
+        };
+        notify("Downloading COSMOS Core...");
+        download::to_bytes(&url)?
     };
-    let bytes = download::to_bytes(&url)?;
 
     let stage = ctx.paths.root.join(".cosmos-stage");
     let _ = std::fs::remove_dir_all(&stage);

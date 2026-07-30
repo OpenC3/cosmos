@@ -58,10 +58,12 @@ panic = "abort"
 tray-icon = "0.24.1"
 
 # Native installer configuration (cargo-packager). The host OS determines which
-# formats are produced: dmg/app on macOS, deb/rpm/appimage on Linux, nsis/wix on
-# Windows. See package.sh.
+# formats are produced: dmg/app on macOS, deb/appimage on Linux, and the WiX
+# .msi on Windows. See package.sh / package.ps1.
 [package.metadata.packager]
-product-name = "OpenC3 COSMOS"
+# Underscored so the installed app, installers, and artifacts have no spaces in
+# their names/paths. (In-app UI text still reads "OpenC3 COSMOS".)
+product-name = "OpenC3_COSMOS"
 identifier = "com.openc3.cosmos"
 description = "OpenC3 COSMOS native launcher and manager"
 long-description = "Installs and manages a complete OpenC3 COSMOS environment: a Docker engine, an isolated Python runtime, and the COSMOS containers. Runs as a GUI by default or fully headless from the command line."
@@ -89,9 +91,6 @@ minimum-system-version = "11.0"
 # "Developer ID Application: …" identity when signing secrets are present, which
 # also enables notarization.
 signing-identity = "-"
-
-[package.metadata.packager.nsis]
-installer-mode = "both"
 
 # winit (the GUI's windowing) loads libxkbcommon at runtime via dlopen for
 # keyboard handling on Linux (X11 and Wayland). Because it's dlopen'd it never

@@ -1,4 +1,4 @@
-# OpenC3 Builder’s License
+# OpenC3 Builder's License
 
 ## Acceptance
 
@@ -12,7 +12,7 @@ The licensor grants you a non-exclusive, royalty-free, worldwide, non-sublicensa
 
 - You may not provide the software or its functionality to third parties as any part of a hosted or managed service.
 - You may not distribute any changes made to the software on a commercial basis.
-- You may not alter, remove, or obscure any licensing, copyright, or other notices of the licensor in the software. Any use of the licensor’s trademarks is subject to applicable law.
+- You may not alter, remove, or obscure any licensing, copyright, or other notices of the licensor in the software. Any use of the licensor's trademarks is subject to applicable law.
 
 ## Patents
 
