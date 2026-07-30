@@ -568,6 +568,13 @@ Sets the retention time directly on QuestDB tables for automatic data expiration
 |-----------|-------------|----------|
 | Time | Retention time value with unit (e.g., "24h" for 24 hours, "30d" for 30 days, "1y" for 1 year). Supported units are h (hours), d (days), w (weeks), M (months), y (years). Default = nil = Forever | True |
 
+### DECOM_FLUSH_PERIOD
+**Period in seconds between flushing rows to the TSDB. Higher values use less CPU.**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Period | Number of seconds between flushing rows to the TSDB (default = 5.0) | True |
+
 ### LOG_RETAIN_TIME
 **How long to keep all regular telemetry logs in seconds.**
 
