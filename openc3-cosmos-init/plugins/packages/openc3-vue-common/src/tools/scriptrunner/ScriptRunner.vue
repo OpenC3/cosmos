@@ -2726,19 +2726,22 @@ export default {
         fileNames = []
         files.forEach((file) => {
           fileNames.push(file.name)
-          promises.push(async () => {
-            const response = await Api.get(
+          promises.push(
+            Api.get(
               `/openc3-api/storage/upload/${encodeURIComponent(
                 `${window.openc3Scope}/tmp/${file.name}`,
               )}?bucket=OPENC3_CONFIG_BUCKET`,
             )
-            // This pushes the file into storage by using the fields in the presignedRequest
-            // See storage_controller.rb get_upload_presigned_request()
-            return axios({
-              ...response.data,
-              data: file,
-            })
-          })
+              .then((response) => {
+                // This pushes the file into storage by using the fields in the presignedRequest
+                // See storage_controller.rb get_upload_presigned_request()
+                return axios({
+                  ...response.data,
+                  data: file,
+                })
+              })
+              .catch(console.error),
+          )
         })
       }
       // We have to wait for all the upload API requests to finish before notifying the prompt
