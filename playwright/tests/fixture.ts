@@ -77,23 +77,26 @@ export const test = base.extend<{
           username = 'admin'
           password = 'admin'
         }
-        if (username === 'admin') {
-          await page.locator('input[name="username"]').fill('admin')
-          await page.locator('input[name="password"]').fill('admin')
-          await Promise.all([
-            page.waitForURL(`${baseURL}${toolPath}`),
-            page.locator('button:has-text("Sign In")').click(),
-          ])
-          await page.context().storageState({ path: 'adminStorageState.json' })
-        } else {
-          await page.locator('input[name="username"]').fill('operator')
-          await page.locator('input[name="password"]').fill('operator')
-          await Promise.all([
-            page.waitForURL(`${baseURL}${toolPath}`),
-            page.locator('button:has-text("Sign In")').click(),
-          ])
-          await page.context().storageState({ path: 'storageState.json' })
-        }
+        // Persisting the refreshed session is load-bearing, not just a cache:
+        // the admin/operator choice above is inferred from the @admin tag or an
+        // 'admin' tool path, so a spec that only sets
+        // `storageState: adminStorageState.json` (e.g. systemhealth) would come
+        // back through here as *operator* if its saved session had gone stale.
+        // Keeping the file fresh is what stops that. Safe because every spec
+        // that logs out mid-test runs in the single-worker *.s.spec.ts batch, so
+        // these fixed paths are never written by two workers at once.
+        await page.locator('input[name="username"]').fill(username)
+        await page.locator('input[name="password"]').fill(password)
+        await Promise.all([
+          page.waitForURL(`${baseURL}${toolPath}`),
+          page.locator('button:has-text("Sign In")').click(),
+        ])
+        await page.context().storageState({
+          path:
+            username === 'admin'
+              ? 'adminStorageState.json'
+              : 'storageState.json',
+        })
       }
     }
     await expect(page.locator('.v-app-bar')).toContainText(toolName, {
