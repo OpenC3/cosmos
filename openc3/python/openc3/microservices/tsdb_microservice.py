@@ -178,17 +178,20 @@ class TsdbMicroservice(Microservice):
             self.metric.set(name="tsdb_ingest_total", value=self.ingest_count, type="counter")
 
         except IngressError as error:
+            self._handle_ingress_error(error)
+
+    def _handle_ingress_error(self, error):
+        # Cast the value to fit the column type and retry
+        self.error_count += 1
+        self.metric.set(name="tsdb_ingest_error_total", value=self.error_count, type="counter")
+        if self.MISSING_TABLE_RE.search(str(error)):
+            # Table was dropped (e.g. via admin UI). Recreate with proper COSMOS schema
+            # and replay pending rows. ILP auto-create is disabled to prevent QuestDB
+            # from creating a schema-less table with the wrong designated TIMESTAMP.
+            self._handle_missing_table(error)
+        else:
             # Cast the value to fit the column type and retry
-            self.error_count += 1
-            self.metric.set(name="tsdb_ingest_error_total", value=self.error_count, type="counter")
-            if self.MISSING_TABLE_RE.search(str(error)):
-                # Table was dropped (e.g. via admin UI). Recreate with proper COSMOS schema
-                # and replay pending rows. ILP auto-create is disabled to prevent QuestDB
-                # from creating a schema-less table with the wrong designated TIMESTAMP.
-                self._handle_missing_table(error)
-            else:
-                # Cast the value to fit the column type and retry
-                self.questdb.handle_ingress_error(error)
+            self.questdb.handle_ingress_error(error)
 
     def _handle_missing_table(self, error):
         """Recreate a table that ILP rejected because it does not exist."""
@@ -255,7 +258,12 @@ class TsdbMicroservice(Microservice):
         now = time.time()
         if now > self.next_flush_time_s:
             self.next_flush_time_s = now + self.flush_period_s
-            self.questdb.flush()
+            try:
+                self.questdb.flush()
+            except IngressError as error:
+                # Server-side ILP errors (cast mismatch, missing table) surface at flush,
+                # so route them through the same recovery paths as read_topics
+                self._handle_ingress_error(error)
             diff = time.time() - now  # seconds as a float
             self.metric.set(name="tsdb_flush_duration_seconds", value=diff, type="gauge", unit="seconds")
 
@@ -284,7 +292,12 @@ class TsdbMicroservice(Microservice):
     def shutdown(self):
         """Graceful shutdown."""
         super().shutdown()
-        self.questdb.flush()
+        try:
+            self.questdb.flush()
+        except IngressError as error:
+            # Server-side ILP errors (cast mismatch, missing table) surface at flush,
+            # so route them through the same recovery paths as read_topics
+            self._handle_ingress_error(error)
         self.questdb.close()
 
 
