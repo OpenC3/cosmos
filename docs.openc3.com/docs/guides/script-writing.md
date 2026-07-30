@@ -40,6 +40,10 @@ Both languages provides a script writer a lot of power. But with great power com
   - `class CcsdsUtility: # in 'ccsds_utility.py'`
 - Don't add useless comments but instead describe intent
 
+:::note[Languages Cannot Be Mixed]
+Script Runner supports both Python and Ruby, but each script must be written entirely in one language. You cannot import a Ruby script from a Python script (or vice versa) or mix the two syntaxes in a single file.
+:::
+
 <div style={{"clear": 'both'}}></div>
 
 The following is an example of good Ruby style:

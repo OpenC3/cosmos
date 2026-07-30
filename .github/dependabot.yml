@@ -9,12 +9,23 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+# Updates are grouped so each ecosystem produces a single weekly PR for
+# minor/patch bumps. Major version updates are intentionally left out of the
+# groups so Dependabot opens an individual PR for each one (they usually need
+# manual review).
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: uv
     directory: /openc3/python
@@ -22,88 +33,55 @@ updates:
       interval: weekly
     ignore:
       - dependency-name: openc3
+    groups:
+      uv:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
 
   # Bundler
   - package-ecosystem: bundler
-    directory: /
+    directories:
+      - /
+      - /openc3
+      - /openc3-cosmos-cmd-tlm-api
+      - /openc3-cosmos-script-runner-api
+      - /openc3/test/integration/tsdb/ruby
     schedule:
       interval: weekly
-
-  - package-ecosystem: bundler
-    directory: /openc3-cosmos-cmd-tlm-api
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: bundler
-    directory: /openc3-cosmos-script-runner-api
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: bundler
-    directory: /openc3
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: bundler
-    directory: /openc3/test/integration/tsdb/ruby
-    schedule:
-      interval: weekly
+    groups:
+      bundler:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
 
   # Docker
   - package-ecosystem: docker
-    directory: /openc3-buckets
+    directories:
+      - /openc3
+      - /openc3-buckets
+      - /openc3-cosmos-cmd-tlm-api
+      - /openc3-cosmos-init
+      - /openc3-cosmos-script-runner-api
+      - /openc3-node
+      - /openc3-operator
+      - /openc3-redis
+      - /openc3-ruby
+      - /openc3-traefik
+      - /openc3-tsdb
     schedule:
       interval: weekly
-
-  - package-ecosystem: docker
-    directory: /openc3-cosmos-cmd-tlm-api
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: docker
-    directory: /openc3-cosmos-init
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: docker
-    directory: /openc3-cosmos-script-runner-api
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: docker
-    directory: /openc3-node
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: docker
-    directory: /openc3-operator
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: docker
-    directory: /openc3-redis
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: docker
-    directory: /openc3-ruby
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: docker
-    directory: /openc3-traefik
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: docker
-    directory: /openc3-tsdb
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: docker
-    directory: /openc3
-    schedule:
-      interval: weekly
+    groups:
+      docker:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
 
   # Ignore all npm updates as we have a process for uding them with package_audit.rb
   - package-ecosystem: npm
@@ -122,43 +100,10 @@ updates:
       - dependency-name: vue
       - dependency-name: vue-router
       - dependency-name: vuetify
-
-  # - package-ecosystem: npm
-  #   directory: /docs.openc3.com
-  #   schedule:
-  #     interval: weekly
-
-  # - package-ecosystem: npm
-  #   directory: /playwright
-  #   schedule:
-  #     interval: weekly
-
-  # - package-ecosystem: npm
-  #   directory: /openc3-cosmos-init/plugins
-  #   schedule:
-  #     interval: weekly
-
-  # - package-ecosystem: npm
-  #   directory: /openc3/templates/tool_angular
-  #   schedule:
-  #     interval: weekly
-
-  # - package-ecosystem: npm
-  #   directory: /openc3/templates/tool_react
-  #   schedule:
-  #     interval: weekly
-
-  # - package-ecosystem: npm
-  #   directory: /openc3/templates/tool_svelte
-  #   schedule:
-  #     interval: weekly
-
-  # - package-ecosystem: npm
-  #   directory: /openc3/templates/tool_vue
-  #   schedule:
-  #     interval: weekly
-
-  # - package-ecosystem: npm
-  #   directory: /openc3/templates/widget
-  #   schedule:
-  #     interval: weekly
+    groups:
+      npm:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
