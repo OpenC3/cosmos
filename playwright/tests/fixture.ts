@@ -13,11 +13,34 @@ import { Utilities } from '../utilities'
 import { CoverageReport } from 'monocart-coverage-reports'
 import coverageOptions from '../coverage.config.mjs'
 
-// V8 coverage is Chromium-only and only collected when COVERAGE is set,
+// V8 coverage is Chromium-only and only collected when COVERAGE=1,
 // so normal runs pay no profiler overhead. Requires bundles built with
 // sourcemaps: `vite build --mode coverage` (see tool vite.config.js).
 const collectCoverage = (browserName: string) =>
-  !!process.env.COVERAGE && browserName === 'chromium'
+  process.env.COVERAGE === '1' && browserName === 'chromium'
+
+// resetOnNavigation: false keeps counters across the reloads and route changes
+// our tests perform constantly. Never let coverage bookkeeping fail a test.
+const startCoverage = async (page: any) => {
+  try {
+    await page.coverage.startJSCoverage({ resetOnNavigation: false })
+  } catch {
+    // Page already closed or navigated away - nothing to profile.
+  }
+}
+
+const stopCoverage = async (page: any) => {
+  try {
+    const coverage = await page.coverage.stopJSCoverage()
+    // Appends raw V8 data to coverage/.cache (safe across workers AND
+    // separate `playwright test` invocations); generate-coverage.mjs
+    // merges everything into one report at the end of `pnpm test`
+    await new CoverageReport(coverageOptions).add(coverage)
+  } catch {
+    // Page closed (directly or by context teardown) before we could read it.
+    // Swallow so we don't mask the real test failure.
+  }
+}
 
 // Extend the page fixture to goto the OpenC3 tool and wait for potential
 // redirect to authentication login (Enterprise only).
@@ -40,9 +63,10 @@ export const test = base.extend<{
     use,
   ) => {
     if (collectCoverage(browserName)) {
-      // resetOnNavigation: false keeps counters across the reloads and
-      // route changes our tests perform constantly
-      await page.coverage.startJSCoverage({ resetOnNavigation: false })
+      await startCoverage(page)
+      // Specs also open secondary pages (context.newPage() and screen popups);
+      // profile those too or their bundles are missing from the report.
+      context.on('page', startCoverage)
     }
     // Disable alert toast popups before the first navigation so the
     // Notifications component reads it on load (localStorage.notoast === 'true'
@@ -110,11 +134,11 @@ export const test = base.extend<{
     await use(utils)
 
     if (collectCoverage(browserName)) {
-      const coverage = await page.coverage.stopJSCoverage()
-      // Appends raw V8 data to coverage/.cache (safe across workers AND
-      // separate `playwright test` invocations); generate-coverage.mjs
-      // merges everything into one report at the end of `pnpm test`
-      await new CoverageReport(coverageOptions).add(coverage)
+      context.off('page', startCoverage)
+      // Only pages still open can be read; ones the test closed itself are lost.
+      for (const open of context.pages()) {
+        await stopCoverage(open)
+      }
     }
   },
 })
