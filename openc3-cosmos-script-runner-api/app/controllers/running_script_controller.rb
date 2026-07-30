@@ -70,9 +70,9 @@ class RunningScriptController < ApplicationController
       return unless authorization('script_run', target_name: target_name)
       running_script_publish("cmd-running-script-channel:#{params[:id]}", "stop")
 
+      stopped = false
       if pid and pid > 0
         # Give the process 1 second to stop from stop message
-        stopped = false
         start_time = Time.now
         while Time.now - start_time < 1.0
           begin
@@ -87,7 +87,11 @@ class RunningScriptController < ApplicationController
         # If the process is still running
         # Send a SIGINT and give it one more second
         if not stopped
-          Process.kill("SIGINT", pid)
+          begin
+            Process.kill("SIGINT", pid)
+          rescue Errno::ESRCH
+            stopped = true
+          end
           start_time = Time.now
           while Time.now - start_time < 1.0
             begin
@@ -102,7 +106,11 @@ class RunningScriptController < ApplicationController
 
         # If the process is still running send a hard kill signal
         if not stopped
-          Process.kill("SIGKILL", pid)
+          begin
+            Process.kill("SIGKILL", pid)
+          rescue Errno::ESRCH
+            stopped = true
+          end
         end
       end
 
