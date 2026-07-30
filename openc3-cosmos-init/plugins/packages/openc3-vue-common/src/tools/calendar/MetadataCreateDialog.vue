@@ -181,7 +181,7 @@ export default {
     clearHandler: function () {
       this.show = !this.show
     },
-    submitHandler() {
+    async submitHandler() {
       const color = this.color
       const metadata = this.metadataVals.reduce((result, element) => {
         result[element.key] = element.value
@@ -197,30 +197,45 @@ export default {
           this.startDate + ' ' + this.startTime + 'Z',
         ).toISOString()
       }
-      if (this.metadata) {
-        Api.put(`/openc3-api/metadata/${this.metadata.start}`, {
-          data,
-        }).then((response) => {
+      try {
+        let response
+        if (this.metadata) {
+          response = await Api.put(
+            `/openc3-api/metadata/${this.metadata.start}`,
+            {
+              data,
+            },
+          )
           this.$notify.normal({
             title: 'Updated Metadata',
             body: `Metadata updated: (${response.data.start})`,
           })
-          this.$emit('update', response.data)
-          this.show = !this.show
-        })
-      } else {
-        Api.post('/openc3-api/metadata', {
-          data,
-        }).then((response) => {
+        } else {
+          response = await Api.post('/openc3-api/metadata', {
+            data,
+          })
           this.$notify.normal({
             title: 'Created new Metadata',
             body: `Metadata: (${response.data.start})`,
           })
-          this.$emit('update', response.data)
-          this.show = !this.show
-        })
+        }
+        this.$emit('update', response.data)
+        this.show = !this.show
+      } catch (error) {
+        this.errorHandler(error)
       }
       // We don't do the $emit or set show here because it has to be in the callback
+    },
+    // Only one metadata entry can exist per second, so a start that duplicates
+    // an existing entry comes back as a 409. Notify and leave the dialog open
+    // (the start time is the thing the user has to change) rather than failing
+    // silently, which looks like the Ok button simply did nothing.
+    errorHandler: function (error) {
+      const message = error.response?.data?.message || error
+      this.$notify.serious({
+        title: 'Error',
+        body: `Failed to save metadata due to ${message}`,
+      })
     },
   },
 }
