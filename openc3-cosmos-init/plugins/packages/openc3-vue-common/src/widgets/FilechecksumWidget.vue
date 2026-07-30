@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -158,7 +158,6 @@ export default {
         file.copied = true
         setTimeout(() => (file.copied = false), 2000)
       } catch (err) {
-        // eslint-disable-next-line no-console
         console.error('Failed to copy checksum:', err)
       }
     },

@@ -489,7 +489,6 @@ export default {
         }
       })
       .catch((error) => {
-        // eslint-disable-next-line no-console
         console.error('Error loading screens:', error)
       })
     Api.get('/openc3-api/autocomplete/keywords/screen')
@@ -497,7 +496,6 @@ export default {
         this.keywords = response.data
       })
       .catch((error) => {
-        // eslint-disable-next-line no-console
         console.error('Error loading screen keywords:', error)
       })
 
@@ -608,7 +606,6 @@ export default {
           'Ignore-Errors': '404',
         },
       }).catch((error) => {
-        // eslint-disable-next-line no-console
         console.error(
           `Error loading screen ${screen} for target ${target}:`,
           error,
