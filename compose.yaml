@@ -69,6 +69,7 @@ services:
     #   # you can uncomment the following line to expose it.
     #   - "127.0.0.1:8812:8812" # OPENC3_TSDB_QUERY_PORT
     volumes:
+      - "openc3-tsdb-tmp-v:/tmp"
       - "openc3-tsdb-v:/var/lib/questdb"
     restart: "unless-stopped"
     logging:
@@ -489,6 +490,7 @@ services:
       - OPENC3_NO_DOCS
 
 volumes:
+  openc3-tsdb-tmp-v: {}
   openc3-tsdb-v: {}
   openc3-redis-v: {}
   openc3-redis-ephemeral-v: {}

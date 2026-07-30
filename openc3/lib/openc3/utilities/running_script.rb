@@ -468,145 +468,158 @@ class RunningScript
     user_full_name ||= 'Anonymous'
     start_time = Time.now.utc.iso8601
 
-    process = ChildProcess.build(process_name, runner_path.to_s, running_script_id.to_s, scope)
-    process.io.inherit! # Helps with debugging
-    script_cwd = File.join(RAILS_ROOT, 'tmp', "script_#{running_script_id}")
-    FileUtils.mkdir_p(script_cwd)
-    process.cwd = script_cwd
+    begin
+      process = ChildProcess.build(process_name, runner_path.to_s, running_script_id.to_s, scope)
+      process.io.inherit! # Helps with debugging
+      script_cwd = File.join(RAILS_ROOT, 'tmp', "script_#{running_script_id}")
+      FileUtils.mkdir_p(script_cwd)
+      process.cwd = script_cwd
 
-    # Check for offline access token
-    model = nil
-    model = OpenC3::OfflineAccessModel.get_model(name: username, scope: scope) if username != 'Anonymous'
+      # Check for offline access token
+      model = nil
+      model = OpenC3::OfflineAccessModel.get_model(name: username, scope: scope) if username != 'Anonymous'
 
-    # Load the global environment variables
-    status_environment = {}
-    values = OpenC3::EnvironmentModel.all(scope: scope).values
-    values.each do |env|
-      process.environment[env['key']] = env['value']
-      status_environment[env['key']] = env['value']
-    end
-    # Load the script specific ENV vars set by the GUI
-    # These can override the previously defined global env vars
-    if environment
-      environment.each do |env|
+      # Load the global environment variables
+      status_environment = {}
+      values = OpenC3::EnvironmentModel.all(scope: scope).values
+      values.each do |env|
         process.environment[env['key']] = env['value']
         status_environment[env['key']] = env['value']
       end
-    end
-
-    script_status = OpenC3::ScriptStatusModel.new(
-      name: running_script_id.to_s, # Unique id for this script
-      state: 'spawning', # State will be spawning until the script is running
-      shard: 0, # Future enhancement of script runner shards
-      filename: name, # Initial filename never changes
-      current_filename: name, # Current filename updates while we are running
-      line_no: 0, # 0 means not running yet
-      start_line_no: line_no || 1, # Line number to start running the script
-      end_line_no: end_line_no || nil, # Line number to stop running the script
-      username: username, # username of the person who started the script
-      user_full_name: user_full_name, # full name of the person who started the script
-      start_time: start_time, # Time the script started ISO format
-      end_time: nil, # Time the script ended ISO format
-      disconnect: disconnect, # Disconnect is set to true if the script is running in a disconnected mode
-      environment: status_environment, # hash of environment variables set for the script
-      suite_runner: suite_runner ? suite_runner : nil, # current suite information if any
-      errors: nil, # array of errors that occurred during the script run
-      pid: nil, # pid of the script process - set by the script itself when it starts
-      script_engine: script_engine, # script engine filename
-      updated_at: nil, # Set by create/update
-      scope: scope # Scope of the script
-    )
-    script_status.create()
-
-    # Set proper secrets for running script
-    process.environment['SECRET_KEY_BASE'] = nil
-    process.environment['OPENC3_REDIS_USERNAME'] = ENV['OPENC3_SR_REDIS_USERNAME']
-    process.environment['OPENC3_REDIS_PASSWORD'] = ENV['OPENC3_SR_REDIS_PASSWORD']
-    process.environment['OPENC3_BUCKET_USERNAME'] = ENV['OPENC3_SR_BUCKET_USERNAME']
-    process.environment['OPENC3_BUCKET_PASSWORD'] = ENV['OPENC3_SR_BUCKET_PASSWORD']
-    process.environment['OPENC3_SR_REDIS_USERNAME'] = nil
-    process.environment['OPENC3_SR_REDIS_PASSWORD'] = nil
-    process.environment['OPENC3_SR_BUCKET_USERNAME'] = nil
-    process.environment['OPENC3_SR_BUCKET_PASSWORD'] = nil
-    process.environment['OPENC3_API_CLIENT'] = ENV['OPENC3_API_CLIENT']
-    if model and model.offline_access_token
-      auth = OpenC3::OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
-      valid_token = auth.get_token_from_refresh_token(model.offline_access_token)
-      if valid_token
-        process.environment['OPENC3_API_TOKEN'] = model.offline_access_token
-      else
-        model.offline_access_token = nil
-        model.update
-        raise "offline_access token invalid for script"
-      end
-    else
-      process.environment['OPENC3_API_USER'] = ENV['OPENC3_API_USER']
-      if ENV['OPENC3_SERVICE_PASSWORD']
-        process.environment['OPENC3_API_PASSWORD'] = ENV['OPENC3_SERVICE_PASSWORD']
-      else
-        raise "No authentication available for script"
-      end
-    end
-    process.environment['GEM_HOME'] = ENV['GEM_HOME']
-
-    # Resolve the per-plugin Python venv for this script. For saved scripts
-    # we look up which plugin owns the target and check whether that plugin
-    # has an isolated UV venv. For temp scripts the frontend can pass a
-    # python_venv name directly, skipping the target lookup entirely.
-    python_venv_dir = nil
-    begin
-      target_name = name.split('/')[0].to_s.upcase
-      if target_name == '__TEMP__' && python_venv
-        # File.basename prevents path traversal (strips directory components)
-        safe_name = File.basename(python_venv.to_s)
-        candidate = "/gems/plugin_venvs/#{safe_name}/.venv"
-        python_venv_dir = candidate if File.directory?(candidate)
-      else
-        target_info = OpenC3::TargetModel.get(name: target_name, scope: scope)
-        if target_info && target_info['plugin']
-          sanitized_name = "#{scope}__#{target_info['plugin']}".tr('^a-zA-Z0-9_-', '_')
-          candidate = "/gems/plugin_venvs/#{sanitized_name}/.venv"
-          python_venv_dir = candidate if File.directory?(candidate)
+      # Load the script specific ENV vars set by the GUI
+      # These can override the previously defined global env vars
+      if environment
+        environment.each do |env|
+          process.environment[env['key']] = env['value']
+          status_environment[env['key']] = env['value']
         end
       end
-    rescue => e
-      OpenC3::Logger.debug("Could not resolve plugin venv for script '#{name}': #{e.message}")
-    end
 
-    if python_venv_dir
-      process.environment['VIRTUAL_ENV'] = python_venv_dir
-      process.environment['PATH'] = "#{python_venv_dir}/bin:#{ENV.fetch('PATH', '')}"
-      process.environment['PYTHONUSERBASE'] = python_venv_dir
-      # Add plugin venv site-packages to PYTHONPATH so the base venv's Python
-      # binary can find plugin-specific packages. PYTHONPATH is always respected
-      # by CPython regardless of venv activation state.
-      site_packages = Dir.glob("#{python_venv_dir}/lib/python*/site-packages").first
-      existing_pythonpath = ENV.fetch('PYTHONPATH', '')
-      if site_packages
-        process.environment['PYTHONPATH'] = existing_pythonpath.empty? ? site_packages : "#{site_packages}:#{existing_pythonpath}"
+      script_status = OpenC3::ScriptStatusModel.new(
+        name: running_script_id.to_s, # Unique id for this script
+        state: 'spawning', # State will be spawning until the script is running
+        shard: 0, # Future enhancement of script runner shards
+        filename: name, # Initial filename never changes
+        current_filename: name, # Current filename updates while we are running
+        line_no: 0, # 0 means not running yet
+        start_line_no: line_no || 1, # Line number to start running the script
+        end_line_no: end_line_no || nil, # Line number to stop running the script
+        username: username, # username of the person who started the script
+        user_full_name: user_full_name, # full name of the person who started the script
+        start_time: start_time, # Time the script started ISO format
+        end_time: nil, # Time the script ended ISO format
+        disconnect: disconnect, # Disconnect is set to true if the script is running in a disconnected mode
+        environment: status_environment, # hash of environment variables set for the script
+        suite_runner: suite_runner ? suite_runner : nil, # current suite information if any
+        errors: nil, # array of errors that occurred during the script run
+        pid: nil, # pid of the script process - set by the script itself when it starts
+        script_engine: script_engine, # script engine filename
+        updated_at: nil, # Set by create/update
+        scope: scope # Scope of the script
+      )
+      script_status.create()
+
+      # Set proper secrets for running script
+      process.environment['SECRET_KEY_BASE'] = nil
+      process.environment['OPENC3_REDIS_USERNAME'] = ENV['OPENC3_SR_REDIS_USERNAME']
+      process.environment['OPENC3_REDIS_PASSWORD'] = ENV['OPENC3_SR_REDIS_PASSWORD']
+      process.environment['OPENC3_BUCKET_USERNAME'] = ENV['OPENC3_SR_BUCKET_USERNAME']
+      process.environment['OPENC3_BUCKET_PASSWORD'] = ENV['OPENC3_SR_BUCKET_PASSWORD']
+      process.environment['OPENC3_SR_REDIS_USERNAME'] = nil
+      process.environment['OPENC3_SR_REDIS_PASSWORD'] = nil
+      process.environment['OPENC3_SR_BUCKET_USERNAME'] = nil
+      process.environment['OPENC3_SR_BUCKET_PASSWORD'] = nil
+      process.environment['OPENC3_API_CLIENT'] = ENV['OPENC3_API_CLIENT']
+      if model and model.offline_access_token
+        auth = OpenC3::OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
+        valid_token = auth.get_token_from_refresh_token(model.offline_access_token)
+        if valid_token
+          process.environment['OPENC3_API_TOKEN'] = model.offline_access_token
+        else
+          model.offline_access_token = nil
+          model.update
+          raise "offline_access token invalid for script"
+        end
       else
-        process.environment['PYTHONPATH'] = existing_pythonpath.empty? ? nil : existing_pythonpath
+        process.environment['OPENC3_API_USER'] = ENV['OPENC3_API_USER']
+        if ENV['OPENC3_SERVICE_PASSWORD']
+          process.environment['OPENC3_API_PASSWORD'] = ENV['OPENC3_SERVICE_PASSWORD']
+        else
+          raise "No authentication available for script"
+        end
       end
-    else
-      system_venv = File.dirname(ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python').chomp('/bin')
-      process.environment['VIRTUAL_ENV'] = system_venv
-      process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE']
-      process.environment['PYTHONPATH'] = ENV['PYTHONPATH']
-    end
+      process.environment['GEM_HOME'] = ENV['GEM_HOME']
 
-    # Spawned process should not be controlled by same Bundler constraints as spawning process
-    ENV.each do |key, _value|
-      if key =~ /^BUNDLE/
-        process.environment[key] = nil
+      # Resolve the per-plugin Python venv for this script. For saved scripts
+      # we look up which plugin owns the target and check whether that plugin
+      # has an isolated UV venv. For temp scripts the frontend can pass a
+      # python_venv name directly, skipping the target lookup entirely.
+      python_venv_dir = nil
+      begin
+        target_name = name.split('/')[0].to_s.upcase
+        if target_name == '__TEMP__' && python_venv
+          # File.basename prevents path traversal (strips directory components)
+          safe_name = File.basename(python_venv.to_s)
+          candidate = "/gems/plugin_venvs/#{safe_name}/.venv"
+          python_venv_dir = candidate if File.directory?(candidate)
+        else
+          target_info = OpenC3::TargetModel.get(name: target_name, scope: scope)
+          if target_info && target_info['plugin']
+            sanitized_name = "#{scope}__#{target_info['plugin']}".tr('^a-zA-Z0-9_-', '_')
+            candidate = "/gems/plugin_venvs/#{sanitized_name}/.venv"
+            python_venv_dir = candidate if File.directory?(candidate)
+          end
+        end
+      rescue => e
+        OpenC3::Logger.debug("Could not resolve plugin venv for script '#{name}': #{e.message}")
       end
-    end
-    process.environment['RUBYOPT'] = nil # Removes loading bundler setup
-    process.environment['OPENC3_SCOPE'] = scope
-    process.environment['RAILS_ROOT'] = RAILS_ROOT
 
-    process.detach = true
-    process.start
-    running_script_id
+      if python_venv_dir
+        process.environment['VIRTUAL_ENV'] = python_venv_dir
+        process.environment['PATH'] = "#{python_venv_dir}/bin:#{ENV.fetch('PATH', '')}"
+        process.environment['PYTHONUSERBASE'] = python_venv_dir
+        # Add plugin venv site-packages to PYTHONPATH so the base venv's Python
+        # binary can find plugin-specific packages. PYTHONPATH is always respected
+        # by CPython regardless of venv activation state.
+        site_packages = Dir.glob("#{python_venv_dir}/lib/python*/site-packages").first
+        existing_pythonpath = ENV.fetch('PYTHONPATH', '')
+        if site_packages
+          process.environment['PYTHONPATH'] = existing_pythonpath.empty? ? site_packages : "#{site_packages}:#{existing_pythonpath}"
+        else
+          process.environment['PYTHONPATH'] = existing_pythonpath.empty? ? nil : existing_pythonpath
+        end
+      else
+        system_venv = File.dirname(ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python').chomp('/bin')
+        process.environment['VIRTUAL_ENV'] = system_venv
+        process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE']
+        process.environment['PYTHONPATH'] = ENV['PYTHONPATH']
+      end
+
+      # Spawned process should not be controlled by same Bundler constraints as spawning process
+      ENV.each do |key, _value|
+        if key =~ /^BUNDLE/
+          process.environment[key] = nil
+        end
+      end
+      process.environment['RUBYOPT'] = nil # Removes loading bundler setup
+      process.environment['OPENC3_SCOPE'] = scope
+      process.environment['RAILS_ROOT'] = RAILS_ROOT
+
+      process.detach = true
+      process.start
+      running_script_id
+    rescue => e
+      begin
+        # Clean up the orphaned script status record so the script
+        # does not remain stuck in 'spawning' state forever.
+        # Guard against nil in case the error occurred before these were assigned.
+        script_status.destroy() if script_status
+        FileUtils.rm_rf(script_cwd) if script_cwd
+      rescue => cleanup_error
+        OpenC3::Logger.error("Failed to cleanup after spawn failure: #{cleanup_error.message}")
+      end
+      raise e
+    end
   end
 
   def initialize(script_status)

@@ -401,7 +401,9 @@ class QuestDBClient:
         try:
             if self.ingest:
                 self.ingest.close()
-            self.ingest = Sender(Protocol.Http, host, port, username=username, password=password)
+            self.ingest = Sender(
+                Protocol.Http, host, port, username=username, password=password, auto_flush_interval="off"
+            )
             self.ingest.establish()
         except Exception as e:
             raise ConnectionError(f"Failed to connect to QuestDB: {e}") from e

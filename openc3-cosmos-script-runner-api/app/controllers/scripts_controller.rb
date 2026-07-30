@@ -227,6 +227,9 @@ class ScriptsController < ApplicationController
     else
       render plain: "Script not found: #{name}", status: :not_found
     end
+  rescue => e
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 
   def lock
