@@ -2727,18 +2727,15 @@ export default {
         })
       }
       // We have to wait for all the upload API requests to finish before notifying the prompt
-      Promise.all(promises).then((responses) => {
-        Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-          data: {
-            method: this.file.multiple
-              ? 'open_files_dialog'
-              : 'open_file_dialog',
-            answer: fileNames,
-            prompt_id: this.activePromptId,
-          },
-        })
-        this.file.show = false // Close the dialog immediately to avoid race condition
+      await Promise.all(promises)
+      Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
+        data: {
+          method: this.file.multiple ? 'open_files_dialog' : 'open_file_dialog',
+          answer: fileNames,
+          prompt_id: this.activePromptId,
+        },
       })
+      this.file.show = false // Close the dialog immediately to avoid race condition
     },
     bucketDialogCallback(response) {
       this.bucket.show = false
