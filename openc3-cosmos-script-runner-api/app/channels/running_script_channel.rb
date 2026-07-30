@@ -35,12 +35,12 @@ class RunningScriptChannel < ApplicationCable::Channel
     # output/state still receives what it missed (the raw anycable broadcast is
     # pub/sub with no history, which left state stuck on "Connecting..." or
     # output as "No data").
-    subscription_key = "running-script-#{uuid}"
-    stream_from subscription_key
+    key = subscription_key()
+    stream_from key
     # Guard against a duplicate broadcaster for this key (e.g. if subscribed
     # fires again before unsubscribed) which would deliver every event twice.
-    @@broadcasters[subscription_key]&.stop
-    @@broadcasters.delete(subscription_key)
+    @@broadcasters[key]&.stop
+    @@broadcasters.delete(key)
 
     # Deliver the existing backlog via transmit() rather than a stream
     # broadcast. transmit is returned with the subscription confirmation and
@@ -80,10 +80,10 @@ class RunningScriptChannel < ApplicationCable::Channel
     # has round-tripped, which guarantees the stream is registered. The delay is
     # only the fallback for legacy clients that never perform 'ready'.
     begin
-      broadcaster = RunningScriptReplayThread.new(subscription_key, params[:id], last_offset,
+      broadcaster = RunningScriptReplayThread.new(key, params[:id], last_offset,
                                                   arm_delay: LEGACY_ARM_DELAY)
       broadcaster.start
-      @@broadcasters[subscription_key] = broadcaster
+      @@broadcasters[key] = broadcaster
     rescue StandardError => e
       # Best-effort: a replay failure must not break the subscription.
       OpenC3::Logger.warn("running_script replay start failed: #{e.message}") rescue nil
@@ -101,11 +101,27 @@ class RunningScriptChannel < ApplicationCable::Channel
   end
 
   def unsubscribed
-    subscription_key = "running-script-#{uuid}"
-    if @@broadcasters[subscription_key]
-      stop_stream_from subscription_key
-      @@broadcasters[subscription_key].stop
-      @@broadcasters.delete(subscription_key)
+    key = subscription_key()
+    if @@broadcasters[key]
+      stop_stream_from key
+      @@broadcasters[key].stop
+      @@broadcasters.delete(key)
     end
+  end
+
+  private
+
+  # The stream (and @@broadcasters) key must identify this subscription, not
+  # just its connection. `uuid` is an identified_by on the connection, so it is
+  # shared by every RunningScriptChannel subscription in the same browser tab.
+  # Keying on it alone meant tearing down one subscription stopped the replay
+  # thread of another script's subscription on the same connection -- which left
+  # that script's Script Runner stuck on "Connecting..." with no live events.
+  # AnyCable is stateless between commands so this has to be derived, not
+  # generated: (connection, script id) is unique because the client dedupes
+  # subscriptions by identifier, so a connection only ever has one subscription
+  # per script.
+  def subscription_key
+    "running-script-#{uuid}-#{params[:id]}"
   end
 end
