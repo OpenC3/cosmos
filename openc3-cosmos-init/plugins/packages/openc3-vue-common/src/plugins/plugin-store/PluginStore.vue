@@ -54,6 +54,28 @@
       />
     </div>
     <v-spacer />
+    <v-alert
+      v-if="showApiKeyBanner"
+      class="my-3"
+      type="info"
+      density="compact"
+      data-test="api-key-banner"
+    >
+      You're using COSMOS Enterprise, but you haven't set an OpenC3 Store API
+      key yet. You must set this to access Enterprise plugins.
+      <br />
+      Visit the
+      <a :href="accountSettingsUrl" target="_blank" class="text-white">
+        OpenC3 Store account settings<v-icon
+          icon="mdi-open-in-new"
+          size="x-small"
+        />
+      </a>
+      to generate an API key. Then, return here and open the Plugin Store
+      settings with the
+      <v-icon icon="mdi-cog" size="small" /> icon above, and finally paste your
+      API key into the API key field.
+    </v-alert>
     <span class=""> Click on a plugin to see more information about it </span>
     <v-alert
       v-if="storeError"
@@ -111,10 +133,19 @@ export default {
       storeUrl: DEFAULT_STORE_URL,
       isEnterprise: false,
       isAdmin: true,
+      isApiKeySet: localStorage.getItem('pluginStore.isApiKeySet') === 'true',
       loading: false,
     }
   },
   computed: {
+    showApiKeyBanner: function () {
+      return this.isEnterprise && !this.isApiKeySet
+    },
+    accountSettingsUrl: function () {
+      const url = this.storeUrl || DEFAULT_STORE_URL
+      const navigableHost = url.replace('host.docker.internal', 'localhost')
+      return new URL('account', navigableHost)
+    },
     filteredPlugins: function () {
       let filtered = this.plugins
       if (this.search.length) {
@@ -129,6 +160,14 @@ export default {
     },
     installAllowed: function () {
       return !this.isEnterprise || this.isAdmin
+    },
+  },
+  watch: {
+    showSettingsDialog: function (val) {
+      if (!val) {
+        this.isApiKeySet =
+          localStorage.getItem('pluginStore.isApiKeySet') === 'true'
+      }
     },
   },
   mounted: function () {
