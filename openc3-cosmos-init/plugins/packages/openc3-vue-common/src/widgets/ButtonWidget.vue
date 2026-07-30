@@ -119,7 +119,6 @@ export default {
         })
       } catch (error) {
         if (error?.name !== 'AbortError') {
-          // eslint-disable-next-line no-console
           console.error(error)
         }
       } finally {

@@ -674,7 +674,6 @@ export default {
               this.updateGraphData()
             })
             .catch((error) => {
-              // eslint-disable-next-line no-console
               console.error('Error fetching playback telemetry:', error)
             })
             .finally(() => {
@@ -1096,8 +1095,7 @@ export default {
         // This must be the same or we're going to have problems
         // because the data comes back in an ordered array
         if (screenItems.length != data.length) {
-          // eslint-disable-next-line no-console
-          console.log(
+          console.error(
             'Error getting tlm available',
             screenItems,
             this.graphItems,
