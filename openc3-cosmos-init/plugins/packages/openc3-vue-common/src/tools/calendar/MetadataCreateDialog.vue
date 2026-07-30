@@ -49,7 +49,7 @@
               <v-btn
                 type="submit"
                 color="primary"
-                :disabled="!!error"
+                :disabled="!!typeError"
                 @click.prevent="submitHandler"
               >
                 Ok
