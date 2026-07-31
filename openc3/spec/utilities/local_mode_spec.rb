@@ -938,6 +938,13 @@ module OpenC3
         LocalMode.save_setting('DEFAULT', 'data', JSON.generate(json, allow_nan: true))
         expect(JSON.parse(File.read("#{@tmp_dir}/DEFAULT/settings/data.json"))).to eq(json)
       end
+
+      it "should write non-String data as JSON so it can be read back" do
+        setup_sync_test()
+        hash = {"cpu" => {"redThreshold" => 90.0, "lastTriggerTimeRed" => nil}}
+        LocalMode.save_setting('DEFAULT', 'hash', hash)
+        expect(JSON.parse(File.read("#{@tmp_dir}/DEFAULT/settings/hash.json"))).to eq(hash)
+      end
     end
 
     describe "open_local_file" do
