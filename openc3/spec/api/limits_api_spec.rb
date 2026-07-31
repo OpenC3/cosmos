@@ -149,11 +149,11 @@ module OpenC3
       end
 
       it "complains about non-existent states" do
-        expect { @api.set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "BLAH", "RED") }.to raise_error(RuntimeError, /State 'BLAH' does not exist/)
+        expect { @api.set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "BLAH", "RED") }.to raise_error(RuntimeError, "State 'BLAH' does not exist for item 'INST HEALTH_STATUS GROUND1STATUS'")
       end
 
       it "complains about invalid colors" do
-        expect { @api.set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", "PURPLE") }.to raise_error(RuntimeError, /Invalid state color PURPLE/)
+        expect { @api.set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", "PURPLE") }.to raise_error(RuntimeError, "Invalid state color 'PURPLE'. Must be one of GREEN, YELLOW, RED.")
       end
 
       it "changes the color of a state" do
@@ -189,6 +189,32 @@ module OpenC3
           item = System.telemetry.packet('INST', 'HEALTH_STATUS').get_item('GROUND1STATUS')
           expect(item.state_colors['CONNECTED']).to eql(:RED)
         end
+      end
+
+      it "clears the color of a state when passed nil" do
+        @api.set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", "RED")
+        item = @api.get_item("INST", "HEALTH_STATUS", "GROUND1STATUS")
+        expect(item['states']['CONNECTED']['color']).to eql("RED")
+        @api.set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", nil)
+        item = @api.get_item("INST", "HEALTH_STATUS", "GROUND1STATUS")
+        expect(item['states']['CONNECTED']).to_not have_key('color')
+      end
+
+      it "does not validate the color when clearing" do
+        expect { @api.set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", nil) }.to_not raise_error
+      end
+
+      it "complains about non-existent states when clearing" do
+        expect { @api.set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "BLAH", nil) }.to raise_error(RuntimeError, /State 'BLAH' does not exist/)
+      end
+
+      it "writes a LIMITS_STATE_COLOR event with nil color when clearing" do
+        @api.set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "UNAVAILABLE", nil)
+        event = @api.get_limits_events.last[1]
+        expect(event['type']).to eql("LIMITS_STATE_COLOR")
+        expect(event['state_name']).to eql("UNAVAILABLE")
+        expect(event).to have_key('color') # Key present with an explicit nil, matching the Python test
+        expect(event['color']).to be_nil
       end
     end
 

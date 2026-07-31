@@ -55,6 +55,14 @@ if not defined CONTAINER_COMPOSE_CMD (
   exit /b 1
 )
 
+REM Merge a user-provided compose.override.yaml (if present) on top of
+REM compose.yaml so local customizations layer on without editing compose.yaml.
+REM See https://github.com/OpenC3/cosmos/issues/3024
+set COMPOSE_OVERRIDE=
+if exist "%~dp0compose.override.yaml" (
+  set COMPOSE_OVERRIDE=-f "%~dp0compose.override.yaml"
+)
+
 if "%1" == "" (
   GOTO usage
 )
@@ -77,9 +85,9 @@ if "%1" == "cli" (
   REM Note: The service name is always openc3-cosmos-cmd-tlm-api; compose.yaml pulls the correct image
   REM (enterprise or non-enterprise) based on environment variables.
   if "%OPENC3_ENTERPRISE%" == "1" (
-    !CONTAINER_COMPOSE_CMD! -f %~dp0compose.yaml run -it --rm -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_USER=!OPENC3_API_USER! -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+    !CONTAINER_COMPOSE_CMD! -f %~dp0compose.yaml !COMPOSE_OVERRIDE! run -it --rm -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_USER=!OPENC3_API_USER! -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
   ) else (
-    !CONTAINER_COMPOSE_CMD! -f %~dp0compose.yaml run -it --rm -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+    !CONTAINER_COMPOSE_CMD! -f %~dp0compose.yaml !COMPOSE_OVERRIDE! run -it --rm -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
   )
   GOTO :EOF
 )
@@ -90,9 +98,9 @@ if "%1" == "cliroot" (
   REM Note: The service name is always openc3-cosmos-cmd-tlm-api; compose.yaml pulls the correct image
   REM (enterprise or non-enterprise) based on environment variables.
   if "%OPENC3_ENTERPRISE%" == "1" (
-    !CONTAINER_COMPOSE_CMD! -f %~dp0compose.yaml run -it --rm --user=root -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_USER=!OPENC3_API_USER! -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+    !CONTAINER_COMPOSE_CMD! -f %~dp0compose.yaml !COMPOSE_OVERRIDE! run -it --rm --user=root -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_USER=!OPENC3_API_USER! -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
   ) else (
-    !CONTAINER_COMPOSE_CMD! -f %~dp0compose.yaml run -it --rm --user=root -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+    !CONTAINER_COMPOSE_CMD! -f %~dp0compose.yaml !COMPOSE_OVERRIDE! run -it --rm --user=root -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
   )
   GOTO :EOF
 )
@@ -136,9 +144,9 @@ GOTO usage
 :startup
   if "%OPENC3_DEVEL%" == "1" (
     CALL openc3 build || exit /b
-    !CONTAINER_COMPOSE_CMD! -f compose.yaml up -d
+    !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! up -d
   ) else (
-    !CONTAINER_COMPOSE_CMD! -f compose.yaml up -d
+    !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! up -d
   )
   @echo off
 GOTO :EOF
@@ -151,7 +159,7 @@ GOTO :EOF
     !CONTAINER_COMPOSE_CMD! stop openc3-metrics
   )
   timeout /t 5 /nobreak
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml down -t 30
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! down -t 30
   @echo off
 GOTO :EOF
 
@@ -204,7 +212,7 @@ GOTO :EOF
 goto :try_cleanup
 
 :cleanup_y
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml down -t 30 -v
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! down -t 30 -v
 
   if "%2" == "local" (
     FOR /d %%a IN (%~dp0plugins\DEFAULT\*) DO RD /S /Q "%%a"
@@ -223,30 +231,30 @@ GOTO :EOF
   if "%OPENC3_ENTERPRISE%" == "1" (
     REM Enterprise: build core images first when OPENC3_TAG=latest, then enterprise
     CALL :build_core_images
-    !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-enterprise-gem || GOTO :pull_failed
+    !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-build.yaml build openc3-enterprise-gem || GOTO :pull_failed
   ) else (
-    !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-ruby || GOTO :pull_failed
-    !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-base || GOTO :pull_failed
-    !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build openc3-node || GOTO :pull_failed
+    !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-build.yaml build openc3-ruby || GOTO :pull_failed
+    !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-build.yaml build openc3-base || GOTO :pull_failed
+    !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-build.yaml build openc3-node || GOTO :pull_failed
   )
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build || GOTO :pull_failed
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-build.yaml build || GOTO :pull_failed
   @echo off
 GOTO :EOF
 
 :run
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml up -d || GOTO :pull_failed
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! up -d || GOTO :pull_failed
   @echo off
 GOTO :EOF
 
 :dev
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-dev.yaml up -d
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-dev.yaml up -d
   @echo off
 GOTO :EOF
 
 :test
   REM Building COSMOS
   CALL scripts\windows\openc3_setup || exit /b
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml -f compose-build.yaml build
+  !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-build.yaml build
   set args=%*
   call set args=%%args:*%1=%%
   REM Running tests

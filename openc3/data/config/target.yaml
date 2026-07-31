@@ -104,6 +104,13 @@ TARGET:
             Supported units are h (hours), d (days), w (weeks), M (months), y (years).
             Default = nil = Forever
           values: \d+[hdwMy]
+    DECOM_FLUSH_PERIOD:
+      summary: Period in seconds between flushing rows to the TSDB. Higher values use less CPU.
+      parameters:
+        - name: Period
+          required: true
+          description: Number of seconds between flushing rows to the TSDB (default = 5.0)
+          values: .+
     LOG_RETAIN_TIME:
       summary: How long to keep all regular telemetry logs in seconds.
       parameters:

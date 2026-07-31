@@ -27,6 +27,14 @@ on:
 
 env:
   OPENC3_ARGON2_PROFILE: "unsafe_cheapest"
+  # Build the tool bundles with sourcemaps (openc3-cosmos-init build arg) so
+  # V8 coverage collected by the tests can map back to original sources.
+  # The build-cosmos action mixes this into the init image cache key, so the
+  # coverage variant caches separately from production builds.
+  COVERAGE_BUILD: "1"
+  # Collect V8 coverage in the Playwright fixture (chromium only) and
+  # generate reports in coverage/ at teardown
+  COVERAGE: "1"
 
 permissions:
   contents: read
@@ -46,7 +54,7 @@ jobs:
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 24
@@ -95,15 +103,15 @@ jobs:
         run: pnpm playwright test --project=chromium tests/wait-for-build.spec.ts
         working-directory: playwright
       - name: Run Playwright tests
-        # Run separately to allow for parallelism
+        # Run separately to allow for parallelism. With COVERAGE=1 each test
+        # caches V8 coverage; `pnpm coverage` (chained at the end of pnpm
+        # test) merges every invocation's cache into coverage/lcov.info
+        # (plus html and cobertura).
         run: ./playwright.sh run-chromium --grep-invert='enterprise'
-        working-directory: playwright
-      - name: Generate coverage
-        run: pnpm fixlinux; pnpm cobertura
         working-directory: playwright
       - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
-          directory: playwright/coverage
+          files: playwright/coverage/lcov.info
           flags: frontend # See codecov.yml
           token: ${{ secrets.CODECOV_TOKEN }}
       - name: Upload test artifacts

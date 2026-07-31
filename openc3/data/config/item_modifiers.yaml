@@ -136,7 +136,8 @@ LIMITS:
     - name: Persistence
       required: true
       description: Number of consecutive times the telemetry item must be within
-        a different limits range before changing limits state.
+        a different limits range before changing limits state. Note if you have
+        multiple LIMITS items they should all have the same persistence value.
       values: \d+
     - name: Initial State
       required: true

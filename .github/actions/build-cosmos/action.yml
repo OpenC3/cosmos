@@ -45,6 +45,13 @@ runs:
           [ -z "$name" ] && continue
           read -ra ctx <<< "$ctx_str"
           own=$(git ls-tree -r HEAD "${ctx[@]}" | sha256sum | cut -c1-12)
+          # openc3-cosmos-init consumes the COVERAGE_BUILD build arg (the
+          # playwright workflow sets it to 1 for sourcemapped tool bundles).
+          # Mix it into the hash so coverage and production variants get
+          # separate cache entries instead of poisoning each other.
+          if [ "$name" = "openc3-cosmos-init" ]; then
+            own="${own}-cov${COVERAGE_BUILD:-0}"
+          fi
           parent_hashes=""
           for p in $parents_str; do
             parent_hashes="$parent_hashes ${HASH[$p]}"

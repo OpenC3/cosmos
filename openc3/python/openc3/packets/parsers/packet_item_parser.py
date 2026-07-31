@@ -9,8 +9,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from ast import literal_eval
-
 from openc3.config.config_parser import ConfigParser
 from openc3.packets.packet import Packet
 from openc3.packets.packet_item import PacketItem
@@ -277,7 +275,7 @@ class PacketItemParser:
         if data_type == "ARRAY":
             value = str(self.parser.parameters[index])
             try:
-                value = literal_eval(value)
+                value = ConfigParser.parse_value(value, config_parser=self.parser)
             except Exception as e:
                 raise self.parser.error(f"Unparsable value for ARRAY: {value}") from e
             if isinstance(value, list):
@@ -287,7 +285,7 @@ class PacketItemParser:
         if data_type == "OBJECT":
             value = str(self.parser.parameters[index])
             try:
-                value = literal_eval(value)
+                value = ConfigParser.parse_value(value, config_parser=self.parser)
             except Exception as e:
                 raise self.parser.error(f"Unparsable value for OBJECT: {value}") from e
             if isinstance(value, dict):
@@ -298,7 +296,7 @@ class PacketItemParser:
             value = str(self.parser.parameters[index])
             if len(value) > 0:
                 try:
-                    return literal_eval(value)
+                    return ConfigParser.parse_value(value, warn=False)
                 except Exception:
                     return value
             else:
@@ -335,7 +333,7 @@ class PacketItemParser:
         if data_type == "ARRAY":
             value = str(self.parser.parameters[index])
             try:
-                value = literal_eval(value)
+                value = ConfigParser.parse_value(value, config_parser=self.parser)
             except Exception as e:
                 raise self.parser.error(f"Unparsable value for ARRAY: {value}") from e
             if isinstance(value, list):
@@ -345,7 +343,7 @@ class PacketItemParser:
         if data_type == "OBJECT":
             value = str(self.parser.parameters[index])
             try:
-                value = literal_eval(value)
+                value = ConfigParser.parse_value(value, config_parser=self.parser)
             except Exception as e:
                 raise self.parser.error(f"Unparsable value for OBJECT: {value}") from e
             if isinstance(value, dict):
@@ -356,7 +354,7 @@ class PacketItemParser:
             value = str(self.parser.parameters[index])
             if len(value) > 0:
                 try:
-                    return literal_eval(value)
+                    return ConfigParser.parse_value(value, warn=False)
                 except Exception:
                     return value
             else:

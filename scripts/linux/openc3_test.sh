@@ -118,9 +118,11 @@ case $1 in
       echo ""
       echo "This command:"
       echo "  1. Starts OpenC3 containers"
-      echo "  2. Runs fixlinux script"
-      echo "  3. Executes pnpm test"
-      echo "  4. Generates coverage report"
+      echo "  2. Executes pnpm test with V8 coverage collection"
+      echo ""
+      echo "Coverage reports are generated in playwright/coverage/ at the"
+      echo "end of the test run. NOTE: the tool bundles must have been built"
+      echo "with COVERAGE_BUILD=1 for coverage to map back to sources."
       echo ""
       echo "Options:"
       echo "  -h, --help    Show this help message"
@@ -128,9 +130,7 @@ case $1 in
     fi
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     cd playwright
-    pnpm run fixlinux
-    pnpm test
-    pnpm coverage
+    COVERAGE=1 pnpm test
     cd -
     ;;
   * )

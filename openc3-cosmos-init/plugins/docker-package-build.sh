@@ -27,3 +27,17 @@ ls *.gem
 echo "--- packageInstall $1 mv gem file"
 mv ${1}-*.gem ${GEMS}
 echo "=== packageInstall $1 mv gem complete"
+
+# Pre-warm the shared UV wheel cache with this plugin's locked Python
+# dependencies (cwd is still FOLDER_NAME from the cd above). Without this the
+# runtime per-plugin venv install (uvinstall) must fetch the plugin's exact
+# locked wheels from PyPI, because the image only seeds core's own dependency
+# versions - a guaranteed cache miss for any plugin pinning a different version
+# (e.g. demo numpy 2.4.6 vs core 2.2.6). Seeding here makes the runtime install
+# an offline cache hit: fast, deterministic, and works in air-gapped clusters.
+if command -v uv > /dev/null 2>&1 && [ -f uv.lock ] && [ -f pyproject.toml ]; then
+  echo "--- packageBuild $1 warm UV cache (uv sync --frozen)"
+  UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project \
+    || echo "Warning: UV cache warm failed for $1 - runtime install will fall back to network"
+  echo "=== packageBuild $1 warm UV cache complete"
+fi
