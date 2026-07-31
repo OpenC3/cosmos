@@ -2970,16 +2970,17 @@ export default {
         )
         this.file.show = false // Close the dialog immediately to avoid race condition
       }
-      // We have to wait for all the upload API requests to finish before notifying the prompt
-      Promise.all(promises)
-        .then(() => respond(fileNames))
-        .catch((error) => {
-          // An upload failed. Answer with cancel so the running script
-          // doesn't wait forever on a reply that will never come (repeats
-          // of the same prompt_id are ignored, so nothing would recover).
-          respond('COSMOS__CANCEL')
-          this.setError(`File upload failed: ${error}`)
-        })
+      try {
+        // We have to wait for all the upload API requests to finish before notifying the prompt
+        await Promise.all(promises)
+        respond(fileNames)
+      } catch (error) {
+        // An upload failed. Answer with cancel so the running script
+        // doesn't wait forever on a reply that will never come (repeats
+        // of the same prompt_id are ignored, so nothing would recover).
+        respond('COSMOS__CANCEL')
+        this.setError(`File upload failed: ${error}`)
+      }
     },
     bucketDialogCallback(response) {
       this.bucket.show = false
