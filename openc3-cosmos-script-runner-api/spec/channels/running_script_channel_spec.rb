@@ -40,7 +40,7 @@ RSpec.describe RunningScriptChannel, type: :channel do
   end
 
   describe '#subscribed' do
-    it 'transmits the backlog and starts a live tail with the legacy arm delay' do
+    it 'transmits the backlog and starts streaming live events with the legacy delay' do
       backlog({ 'type' => 'line', 'line_no' => 1 }, { 'type' => 'output', 'line' => 'hi' })
       subscribe id: '42'
       expect(subscription).to be_confirmed
@@ -48,16 +48,16 @@ RSpec.describe RunningScriptChannel, type: :channel do
         { 'type' => 'line', 'line_no' => 1 },
         { 'type' => 'output', 'line' => 'hi' },
       ])
-      # The tail must start strictly after the transmitted backlog (no gap, no
+      # Streaming must start strictly after the transmitted backlog (no gap, no
       # duplicates) and stay unarmed for up to LEGACY_ARM_DELAY unless the
-      # client performs 'tail'
+      # client performs 'ready'
       expect(RunningScriptReplayThread).to have_received(:new).with(
         subscription_key, '42', '101-0', arm_delay: RunningScriptChannel::LEGACY_ARM_DELAY
       )
       expect(broadcaster).to have_received(:start)
     end
 
-    it 'does not start a tail when the backlog already holds the terminal complete' do
+    it 'does not start streaming when the backlog already holds the terminal complete' do
       backlog({ 'type' => 'line', 'line_no' => 1 }, { 'type' => 'complete' })
       subscribe id: '42'
       expect(subscription).to be_confirmed
@@ -75,26 +75,26 @@ RSpec.describe RunningScriptChannel, type: :channel do
     end
   end
 
-  describe '#tail' do
-    it 'arms the live tail so events flow without waiting out the legacy delay' do
+  describe '#ready' do
+    it 'starts streaming events without waiting out the legacy delay' do
       backlog({ 'type' => 'line', 'line_no' => 1 })
       subscribe id: '42'
-      perform :tail
+      perform :ready
       expect(broadcaster).to have_received(:arm)
     end
 
     it 'no-ops when the script already completed and no broadcaster exists' do
       backlog({ 'type' => 'complete' })
       subscribe id: '42'
-      expect { perform :tail }.not_to raise_error
+      expect { perform :ready }.not_to raise_error
       expect(broadcaster).not_to have_received(:arm)
     end
 
-    it 'is safe to perform repeatedly (client reconnects re-arm)' do
+    it 'is safe to perform repeatedly (client reconnects report ready again)' do
       backlog({ 'type' => 'line', 'line_no' => 1 })
       subscribe id: '42'
-      perform :tail
-      perform :tail
+      perform :ready
+      perform :ready
       expect(broadcaster).to have_received(:arm).twice
     end
   end

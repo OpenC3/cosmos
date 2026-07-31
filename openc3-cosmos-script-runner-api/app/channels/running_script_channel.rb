@@ -18,13 +18,13 @@
 class RunningScriptChannel < ApplicationCable::Channel
   @@broadcasters = {}
 
-  # How long the live-tail broadcaster waits before its first read when the
-  # client has not armed it via the 'tail' action. Covers legacy clients
-  # (older CLI gems / frontend bundles / third-party websocket consumers)
-  # that only subscribe and read: their events are delayed by up to this
-  # much at attach, in exchange for not being dropped by the
-  # stream-registration race described below. Current clients perform
-  # 'tail' after the subscription confirmation and get events immediately.
+  # How long the live event broadcaster waits before its first read when the
+  # client has not declared itself ready to stream events via the 'ready'
+  # action. Covers legacy clients (older CLI gems / frontend bundles /
+  # third-party websocket consumers) that only subscribe and read: their events
+  # are delayed by up to this much at attach, in exchange for not being dropped
+  # by the stream-registration race described below. Current clients perform
+  # 'ready' after the subscription confirmation and get events immediately.
   LEGACY_ARM_DELAY = 1.0
 
   def subscribed
@@ -48,7 +48,7 @@ class RunningScriptChannel < ApplicationCable::Channel
     # thread) can race the gateway registering our stream_from above and be
     # dropped -- which is how a fast-completing script (e.g. a parse-time crash)
     # lost all of its output. We record the last backlog offset and, only if the
-    # script has not already finished, start a thread to tail LIVE events from
+    # script has not already finished, start a thread to stream LIVE events from
     # there (those are written later, after stream_from is registered).
     topic = "running-script-channel:#{params[:id]}:replay"
     last_offset = '0-0'
@@ -70,15 +70,15 @@ class RunningScriptChannel < ApplicationCable::Channel
     # there is nothing left to stream.
     return if complete
 
-    # Start the live tail, but DELAYED: a broadcast issued right now can race
-    # the gateway registering our stream_from above and be silently dropped.
-    # That loses any events written between the xrange and the thread's first
-    # read, and a script that then goes quiet (e.g. parked in a wait) never
+    # Start streaming live events, but DELAYED: a broadcast issued right now can
+    # race the gateway registering our stream_from above and be silently
+    # dropped. That loses any events written between the xrange and the thread's
+    # first read, and a script that then goes quiet (e.g. parked in a wait) never
     # publishes again -- leaving the client stuck on "Connecting...". Current
-    # clients arm the tail immediately via the 'tail' action (see #tail),
-    # performed after the subscription confirmation has round-tripped, which
-    # guarantees the stream is registered. The delay is only the fallback for
-    # legacy clients that never perform 'tail'.
+    # clients declare themselves ready to stream events immediately via the
+    # 'ready' action (see #ready), performed after the subscription confirmation
+    # has round-tripped, which guarantees the stream is registered. The delay is
+    # only the fallback for legacy clients that never perform 'ready'.
     begin
       broadcaster = RunningScriptReplayThread.new(subscription_key, params[:id], last_offset,
                                                   arm_delay: LEGACY_ARM_DELAY)
@@ -90,12 +90,13 @@ class RunningScriptChannel < ApplicationCable::Channel
     end
   end
 
-  # Channel action performed by the client after it receives the
-  # subscription confirmation. By then the gateway has registered this
-  # subscription's stream, so live broadcasts can no longer be dropped --
-  # skip the legacy arm delay and start tailing right away. No-ops if the
-  # script already completed (no broadcaster) or on duplicate performs.
-  def tail
+  # Channel action performed by the client to declare that it is ready to
+  # stream events: it has received the subscription confirmation, so by now the
+  # gateway has registered this subscription's stream and live broadcasts can no
+  # longer be dropped. Skips the legacy delay and starts streaming right away.
+  # No-ops if the script already completed (no broadcaster) or on duplicate
+  # performs.
+  def ready
     @@broadcasters["running-script-#{uuid}"]&.arm
   end
 

@@ -160,12 +160,12 @@ class TestWebSocketApiSubscribe(unittest.TestCase):
         self.assertEqual(identifier["token"], "test_token")
 
 
-class TestRunningScriptWebSocketApiTail(unittest.TestCase):
-    """Verify the tail protocol: live script events only flow once the client
-    performs the 'tail' channel action (see RunningScriptChannel#tail).
-    subscribe() blocks until confirm_subscription, so sending 'tail'
-    immediately after guarantees the gateway has registered the stream and
-    the arm cannot race a broadcast."""
+class TestRunningScriptWebSocketApiReady(unittest.TestCase):
+    """Verify the ready protocol: live script events only flow once the client
+    performs the 'ready' channel action (see RunningScriptChannel#ready).
+    subscribe() blocks until confirm_subscription, so sending 'ready'
+    immediately after guarantees the gateway has registered the stream and the
+    client cannot report ready in a way that races a broadcast."""
 
     def _make_api(self):
         mock_auth = Mock()
@@ -182,14 +182,14 @@ class TestRunningScriptWebSocketApiTail(unittest.TestCase):
     def _frames(self, api):
         return [json.loads(c.args[0]) for c in api.stream.write.call_args_list]
 
-    def test_subscribe_arms_tail_exactly_once_after_confirmation(self):
+    def test_subscribe_reports_ready_exactly_once_after_confirmation(self):
         api = self._make_api()
         api.subscribe()
         frames = self._frames(api)
         self.assertEqual([f["command"] for f in frames], ["subscribe", "message"])
-        self.assertEqual(json.loads(frames[-1]["data"]), {"action": "tail"})
+        self.assertEqual(json.loads(frames[-1]["data"]), {"action": "ready"})
 
-    def test_tail_action_identifier_matches_subscription(self):
+    def test_ready_action_identifier_matches_subscription(self):
         api = self._make_api()
         api.subscribe()
         frames = self._frames(api)
@@ -201,7 +201,7 @@ class TestRunningScriptWebSocketApiTail(unittest.TestCase):
         self.assertEqual(identifier["id"], "spec-script-1")
         self.assertEqual(identifier["token"], "test_token")
 
-    def test_no_tail_resend_on_subsequent_subscribes(self):
+    def test_no_ready_resend_on_subsequent_subscribes(self):
         api = self._make_api()
         api.subscribe()
         api.subscribe()
@@ -209,17 +209,17 @@ class TestRunningScriptWebSocketApiTail(unittest.TestCase):
         self.assertEqual([f["command"] for f in frames], ["subscribe", "message"])
 
     # write_action calls subscribe() internally, which on the first call is
-    # the overridden subscribe that itself calls write_action for tail. Prove
+    # the overridden subscribe that itself calls write_action for ready. Prove
     # this does not recurse or duplicate frames and preserves ordering.
-    def test_action_triggering_first_subscribe_orders_subscribe_tail_action(self):
+    def test_action_triggering_first_subscribe_orders_subscribe_ready_action(self):
         api = self._make_api()
         api.write_action({"action": "other"})
         frames = self._frames(api)
         self.assertEqual([f["command"] for f in frames], ["subscribe", "message", "message"])
-        self.assertEqual(json.loads(frames[1]["data"]), {"action": "tail"})
+        self.assertEqual(json.loads(frames[1]["data"]), {"action": "ready"})
         self.assertEqual(json.loads(frames[2]["data"]), {"action": "other"})
 
-    def test_rearms_tail_after_unsubscribe_resubscribe_cycle(self):
+    def test_reports_ready_again_after_unsubscribe_resubscribe_cycle(self):
         api = self._make_api()
         api.subscribe()
         api.unsubscribe()
@@ -229,7 +229,7 @@ class TestRunningScriptWebSocketApiTail(unittest.TestCase):
             [f["command"] for f in frames],
             ["subscribe", "message", "unsubscribe", "subscribe", "message"],
         )
-        self.assertEqual(json.loads(frames[-1]["data"]), {"action": "tail"})
+        self.assertEqual(json.loads(frames[-1]["data"]), {"action": "ready"})
 
 
 if __name__ == "__main__":

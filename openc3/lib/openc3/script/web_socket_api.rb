@@ -259,15 +259,15 @@ module OpenC3
     end
 
     # The backlog of script events is transmitted with the subscription
-    # confirmation, but LIVE events only flow once the client arms the tail
-    # (see RunningScriptChannel#tail) -- a broadcast sent before the gateway
-    # has registered this subscription's stream would be silently dropped.
-    # subscribe() blocks until confirm_subscription, so the tail action is
-    # guaranteed to arrive after the stream is registered.
+    # confirmation, but LIVE events only flow once the client reports that it is
+    # ready to stream events (see RunningScriptChannel#ready) -- a broadcast sent
+    # before the gateway has registered this subscription's stream would be
+    # silently dropped. subscribe() blocks until confirm_subscription, so the
+    # 'ready' action is guaranteed to arrive after the stream is registered.
     def subscribe
       was_subscribed = @subscribed
       super
-      write_action({ 'action' => 'tail' }) unless was_subscribed
+      write_action({ 'action' => 'ready' }) unless was_subscribed
     end
   end
 

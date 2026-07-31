@@ -13,7 +13,7 @@
 
 require 'openc3'
 
-# Tails a running script's replay stream and re-broadcasts each new event to a
+# Streams a running script's replay stream and re-broadcasts each new event to a
 # single ActionCable subscription. The running script (running_script.rb /
 # running_script.py) mirrors every per-script frontend event into the stream
 # "running-script-channel:<id>:replay" (capped + short TTL).
@@ -24,33 +24,35 @@ require 'openc3'
 # stream broadcast issued from this thread can race the gateway registering the
 # subscriber's stream_from and be dropped -- which is exactly how a
 # fast-completing script's output used to be lost. For the same reason the
-# first read is deferred: current clients arm() the tail via the 'tail'
-# channel action after their subscription confirmation round-trips (proving
-# the stream is registered); legacy clients that never perform 'tail' fall
-# back to a fixed arm_delay. The channel reads the backlog up to
+# first read is deferred: current clients declare themselves ready to stream
+# events via the 'ready' channel action after their subscription confirmation
+# round-trips (proving the stream is registered), which arm()s us; legacy
+# clients that never perform 'ready' fall back to a fixed arm_delay. The
+# channel reads the backlog up to
 # @start_offset and starts us there, so there is no gap and no duplicate
 # delivery. Modeled on MessagesThread/TopicsThread in cmd-tlm-api.
 class RunningScriptReplayThread
   def initialize(subscription_key, id, start_offset = '0-0', arm_delay: 0.0)
     @subscription_key = subscription_key
     @topic = "running-script-channel:#{id}:replay"
-    # Tail strictly after the backlog the channel already transmitted.
+    # Stream strictly after the backlog the channel already transmitted.
     # Guard nil explicitly: a nil offset makes read_topics raise and
     # silently kills the thread (worst case re-delivery from 0-0 is
     # preferable to no delivery at all).
     @offsets = [start_offset || '0-0']
     # Wait up to arm_delay before the first read unless arm() is called
     # sooner. Broadcasts issued before the gateway registers the
-    # subscriber's stream are silently dropped; current clients arm() as
-    # soon as their subscription confirmation round-trips (proving
-    # registration), while legacy clients fall back to the fixed delay.
+    # subscriber's stream are silently dropped; current clients report ready
+    # to stream events as soon as their subscription confirmation round-trips
+    # (proving registration), while legacy clients fall back to the fixed delay.
     @arm_delay = arm_delay
     @armed = arm_delay <= 0.0
     @cancel_thread = false
     @thread = nil
   end
 
-  # Skip any remaining arm delay and start reading/broadcasting immediately
+  # Called when the client is ready to stream events: skip any remaining delay
+  # and start reading/broadcasting immediately
   def arm
     @armed = true
   end
@@ -65,7 +67,7 @@ class RunningScriptReplayThread
       end
       while !@cancel_thread
         # read_topics blocks up to ~1s for new entries then returns, so the loop
-        # both drains the backlog (offset starts at '0-0') and tails live.
+        # both drains the backlog (offset starts at '0-0') and streams live.
         OpenC3::Topic.read_topics([@topic], @offsets) do |_topic, msg_id, msg_hash, _redis|
           @offsets[0] = msg_id
           data = msg_hash['data']

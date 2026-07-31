@@ -795,21 +795,26 @@ const GO = 'Go'
 const PAUSE = 'Pause'
 const RETRY = 'Retry'
 // Matches is_complete in script_status_model
-const TERMINAL_STATES = [
+const TERMINAL_STATES = new Set([
   'completed',
   'completed_errors',
   'stopped',
   'crashed',
   'killed',
-]
+])
 
 // detectLanguage() heuristics
 const RUBY_REQUIRE_REGEX = /^\s*(require|load|puts) /
 const RUBY_END_REGEX = /^\s*end\s*$/
-// Since python types are defined like "def method(string: str):"
-// we make sure the line doesn't end in ':' which indicates Python
-// (?!:)$ is a negative lookahead to ensure it doesn't end in ':'
-const RUBY_NAMED_PARAMS_REGEX = /\(.*\w+:\s+.+\)(?!:)$/ // named parameters
+// Ruby named parameters, e.g. "foo(bar: 1)". Split into two independent tests
+// because the single regex this replaced (/\(.*\w+:\s+.+\)(?!:)$/) nested two
+// greedy .* around \w+:, so a long line that did NOT match cost time quadratic
+// in its length -- and detectLanguage() runs this over every line of the file.
+// Each half below has one unambiguous quantifier and so is linear.
+// Python type annotations are defined like "def method(string: str):", so
+// requiring the line to end in ')' rather than ':' is what excludes them.
+const CLOSING_PAREN_REGEX = /\)$/
+const NAMED_PARAM_REGEX = /\w:\s/
 const PYTHON_IMPORT_REGEX = /^\s*(import|from) /
 const PYTHON_BLOCK_REGEX = /^\s*(if|def|while|else|elif|class).*:\s*$/
 const PYTHON_FSTRING_REGEX = /\(f"/ // f strings
@@ -1986,7 +1991,7 @@ export default {
         .then((response) => {
           if (response.data) {
             let state = response.data.state
-            if (!TERMINAL_STATES.includes(state)) {
+            if (!TERMINAL_STATES.has(state)) {
               this.filename = response.data.filename
               this.tryLoadSuites(response)
               this.initScriptStart()
@@ -2269,15 +2274,16 @@ export default {
         'RunningScriptChannel',
         window.openc3Scope,
         {
-          // Arm the backend's live event tail only after the subscription
-          // is confirmed: a broadcast sent before the gateway registers our
-          // stream is silently dropped, which could permanently lose the
-          // startup line events of a script that then goes quiet (stuck on
-          // 'Connecting...'). Fires again on reconnect, re-arming the tail.
-          // See RunningScriptChannel#tail. Not an arrow function: `this`
-          // must be the subscription so perform() targets this channel.
+          // Tell the backend we are ready to stream events only after the
+          // subscription is confirmed: a broadcast sent before the gateway
+          // registers our stream is silently dropped, which could permanently
+          // lose the startup line events of a script that then goes quiet
+          // (stuck on 'Connecting...'). Fires again on reconnect, so the
+          // backend is told we are ready again. See RunningScriptChannel#ready.
+          // Not an arrow function: `this` must be the subscription so perform()
+          // targets this channel.
           connected() {
-            this.perform('tail')
+            this.perform('ready')
           },
           received: (data) => this.received(data),
         },
@@ -3196,7 +3202,8 @@ export default {
         if (line.match(PYTHON_FSTRING_REGEX)) {
           return 'python'
         }
-        if (line.match(RUBY_NAMED_PARAMS_REGEX)) {
+        // Cheap end-anchored test first so most lines never run the second
+        if (CLOSING_PAREN_REGEX.test(line) && NAMED_PARAM_REGEX.test(line)) {
           return 'ruby'
         }
       }

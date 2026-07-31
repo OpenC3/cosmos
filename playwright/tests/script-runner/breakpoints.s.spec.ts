@@ -92,21 +92,24 @@ test('remembers breakpoints and clears all', async ({ page, utils }) => {
     `INST/procedures/checks.rb`,
   )
 
+  // Match just the breakpoint class rather than the full class attribute: ace
+  // adds others of its own (ace_gutter-active-line, ace_error, ...) depending
+  // on where the cursor and script state happen to be
   await expect(page.locator('.ace_gutter-cell').nth(1)).toHaveClass(
-    'ace_gutter-cell ace_breakpoint',
+    /ace_breakpoint/,
   )
   await expect(page.locator('.ace_gutter-cell').nth(3)).toHaveClass(
-    'ace_gutter-cell ace_breakpoint',
+    /ace_breakpoint/,
   )
 
   await page.locator('[data-test=script-runner-script]').click()
   await page.getByText('Delete All Breakpoints').click()
   await page.locator('.v-dialog >> button:has-text("Delete")').click()
 
-  await expect(page.locator('.ace_gutter-cell').nth(1)).toHaveClass(
-    'ace_gutter-cell ',
+  await expect(page.locator('.ace_gutter-cell').nth(1)).not.toHaveClass(
+    /ace_breakpoint/,
   )
-  await expect(page.locator('.ace_gutter-cell').nth(3)).toHaveClass(
-    'ace_gutter-cell ',
+  await expect(page.locator('.ace_gutter-cell').nth(3)).not.toHaveClass(
+    /ace_breakpoint/,
   )
 })

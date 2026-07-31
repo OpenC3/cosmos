@@ -305,15 +305,16 @@ class RunningScriptWebSocketApi(ScriptWebSocketApi):
 
     def subscribe(self):
         # The backlog of script events is transmitted with the subscription
-        # confirmation, but LIVE events only flow once the client arms the
-        # tail (see RunningScriptChannel#tail) -- a broadcast sent before the
-        # gateway has registered this subscription's stream would be silently
-        # dropped. subscribe() blocks until confirm_subscription, so the tail
-        # action is guaranteed to arrive after the stream is registered.
+        # confirmation, but LIVE events only flow once the client reports that
+        # it is ready to stream events (see RunningScriptChannel#ready) -- a
+        # broadcast sent before the gateway has registered this subscription's
+        # stream would be silently dropped. subscribe() blocks until
+        # confirm_subscription, so the 'ready' action is guaranteed to arrive
+        # after the stream is registered.
         was_subscribed = self.subscribed
         super().subscribe()
         if not was_subscribed:
-            self.write_action({"action": "tail"})
+            self.write_action({"action": "ready"})
 
 
 class AllScriptsWebSocketApi(ScriptWebSocketApi):

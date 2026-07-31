@@ -75,7 +75,7 @@ RSpec.describe RunningScriptReplayThread, type: :model do
       expect(wait_for_read(1.0)).not_to be_nil
     end
 
-    it 'falls back to reading after arm_delay for legacy clients that never arm' do
+    it 'falls back to reading after arm_delay for legacy clients that never report ready' do
       allow(OpenC3::Topic).to receive(:read_topics) do
         reads << Time.now
         sleep 0.05
@@ -103,7 +103,7 @@ RSpec.describe RunningScriptReplayThread, type: :model do
   end
 
   describe '#start' do
-    it 'tails from the given offset and broadcasts each event to the subscription' do
+    it 'streams from the given offset and broadcasts each event to the subscription' do
       broadcasts = []
       allow(ActionCable.server).to receive(:broadcast) { |key, event| broadcasts << [key, event] }
       line_event = { 'type' => 'line', 'line_no' => 1 }
@@ -127,7 +127,7 @@ RSpec.describe RunningScriptReplayThread, type: :model do
       ])
     end
 
-    it 'skips entries with no data and keeps tailing' do
+    it 'skips entries with no data and keeps streaming' do
       broadcasts = []
       allow(ActionCable.server).to receive(:broadcast) { |key, event| broadcasts << [key, event] }
       event = { 'type' => 'complete' }
