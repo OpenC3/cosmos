@@ -5,8 +5,20 @@
 # so plugins can reuse system wheels without re-downloading (critical for airgapped environments)
 if [ -d "/openc3/uv_cache" ]; then
     echo "Seeding UV cache from /openc3/uv_cache into /gems/uv ..."
-    cp -rn /openc3/uv_cache/. /gems/uv/ 2>/dev/null || cp -r /openc3/uv_cache/. /gems/uv/
-    echo "UV cache seeded"
+    mkdir -p /gems/uv
+    # Plain -r only. Do NOT add:
+    #   -n  BusyBox cp (Alpine) applies no-clobber at the DIRECTORY level:
+    #       `cp -rn src/. dest/` where dest already exists copies nothing and
+    #       still exits 0, so the seed silently becomes a no-op on every restart
+    #       after the first and plugin installs quietly fall back to the network
+    #       (GNU cp only skips existing files, so this bites Alpine only).
+    #   -a  implies -p, and this runs as the unprivileged openc3 user, so
+    #       preserving ownership fails on every file the seed didn't chown.
+    # Overwriting is safe: uv's cache is content-addressed, so any path present
+    # in both the seed and the volume holds identical bytes.
+    cp -r /openc3/uv_cache/. /gems/uv/
+    # Size makes a failed/empty copy obvious in the logs instead of silent.
+    echo "UV cache seeded ($(du -sh /gems/uv 2>/dev/null | cut -f1))"
 fi
 
 date

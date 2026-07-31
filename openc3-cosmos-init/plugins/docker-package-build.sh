@@ -14,9 +14,16 @@ if [ -z "${FOLDER_NAME}" ]; then # if WORKSPACE_NAME is unset or empty string
 fi
 
 mkdir -p ${GEMS}
-# Always exists so the Dockerfile's `COPY --from=<stage> /openc3/uv_cache/`
-# succeeds even for a stage whose plugins have no Python dependencies.
-mkdir -p /openc3/uv_cache
+# Plugin wheels are warmed into their OWN directory, not /openc3/uv_cache. The
+# docs stage (openc3-tmp5) copies all of /openc3 in from openc3-base, so it
+# already has base's /openc3/uv_cache; warming into that same path would make
+# the Dockerfile's COPY duplicate the entire base cache into the final image.
+# A dedicated dir keeps every stage's contribution to just its own plugins,
+# which is what lets the Dockerfile COPY unconditionally from all stages.
+# Created unconditionally so that COPY succeeds even for a stage whose plugins
+# have no Python dependencies.
+UV_CACHE_PLUGINS=/openc3/uv_cache_plugins
+mkdir -p ${UV_CACHE_PLUGINS}
 
 echo "<<< packageBuild $1"
 cd ${FOLDER_NAME}
@@ -45,6 +52,6 @@ echo "=== packageInstall $1 mv gem complete"
 # let set -e fail the build loudly instead of warning and moving on.
 if [ -f uv.lock ] && [ -f pyproject.toml ]; then
   echo "--- packageBuild $1 warm UV cache (uv sync --frozen)"
-  UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project
+  UV_CACHE_DIR=${UV_CACHE_PLUGINS} uv sync --frozen --no-dev --no-install-project
   echo "=== packageBuild $1 warm UV cache complete"
 fi
