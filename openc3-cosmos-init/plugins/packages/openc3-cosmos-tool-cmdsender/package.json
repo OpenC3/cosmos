@@ -14,7 +14,7 @@
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
     "ace-builds": "1.44.0",
-    "axios": "1.18.1",
+    "axios": "1.19.0",
     "date-fns": "4.4.0",
     "single-spa-vue": "3.0.1",
     "sprintf-js": "1.1.3"
