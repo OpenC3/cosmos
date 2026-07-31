@@ -39,11 +39,18 @@ RUN pnpm config set registry ${NPM_URL}
 RUN pnpm config set fetch-timeout 600000
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
+# COVERAGE_BUILD=1 makes every vite build emit sourcemaps so the Playwright
+# tests can map V8 coverage back to original sources (see the tool
+# vite.config.js files). Leave at 0 for production images - the maps
+# roughly triple the tool bundle footprint.
+ARG COVERAGE_BUILD=0
+ENV COVERAGE_BUILD=${COVERAGE_BUILD}
+
 # Build @openc3/js-common and @openc3/vue-common
 RUN pnpm build:common
 
 # Copy in helper scripts for building
-COPY ./plugins/docker-package-build.sh ./plugins/eslint.config.mjs ./plugins/.nycrc ./
+COPY ./plugins/docker-package-build.sh ./plugins/eslint.config.mjs ./
 RUN chmod +x ./docker-package-build.sh
 
 FROM openc3-frontend-tmp AS openc3-tmp1

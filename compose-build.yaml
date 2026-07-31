@@ -135,6 +135,10 @@ services:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
         OPENC3_TAG: ${OPENC3_TAG}
+        # 1 = build the tool bundles with sourcemaps so Playwright V8
+        # coverage can map back to original sources. Never set for
+        # production images (maps roughly triple the tool footprint).
+        COVERAGE_BUILD: ${COVERAGE_BUILD:-0}
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init:${OPENC3_TAG}"
     depends_on:
       - "openc3-node"
