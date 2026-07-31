@@ -50,8 +50,16 @@ echo "=== packageInstall $1 mv gem complete"
 # every plugin build stage, derives from), so it is not checked for here - a
 # missing uv or a failed sync means the offline guarantee is silently broken, so
 # let set -e fail the build loudly instead of warning and moving on.
+#
+# --no-build forbids building source distributions, so no third-party setup.py
+# runs during the image build. This script only ever handles first-party plugins
+# (the Dockerfile invokes it with hardcoded package names), and every Python
+# dependency they declare today publishes wheels. If a future first-party plugin
+# genuinely needs an sdist, drop --no-build here AND in verify-uv-cache.sh and
+# document why. Runtime plugin installs (uvinstall) intentionally stay
+# permissive - user plugins are allowed to depend on sdist-only packages.
 if [ -f uv.lock ] && [ -f pyproject.toml ]; then
   echo "--- packageBuild $1 warm UV cache (uv sync --frozen)"
-  UV_CACHE_DIR=${UV_CACHE_PLUGINS} uv sync --frozen --no-dev --no-install-project
+  UV_CACHE_DIR=${UV_CACHE_PLUGINS} uv sync --frozen --no-dev --no-install-project --no-build
   echo "=== packageBuild $1 warm UV cache complete"
 fi

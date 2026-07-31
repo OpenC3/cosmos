@@ -39,8 +39,11 @@ for GEM in "${GEMS_DIR}"/*.gem; do
     # --offline mirrors what uvinstall attempts first at runtime.
     # UV_PYTHON_DOWNLOADS=never keeps a requires-python mismatch from silently
     # reaching for a managed Python download instead of failing here.
+    # --no-build matches docker-package-build.sh so no setup.py runs during the
+    # image build, and asserts the cache holds real wheels rather than sdists
+    # this step would have to build.
     if ! (cd "${SRC}" && UV_CACHE_DIR="${CACHE_DIR}" UV_PYTHON_DOWNLOADS=never \
-            uv sync --frozen --no-dev --no-install-project --offline); then
+            uv sync --frozen --no-dev --no-install-project --offline --no-build); then
         echo "ERROR: ${NAME} cannot install its Python dependencies from the baked UV cache."
         echo "       Add a 'COPY --from=<build stage> /openc3/uv_cache_plugins/ /openc3/uv_cache/'"
         echo "       for the stage that builds ${NAME} in openc3-cosmos-init/Dockerfile."
