@@ -44,9 +44,11 @@ for GEM in "${GEMS_DIR}"/*.gem; do
     # this step would have to build.
     if ! (cd "${SRC}" && UV_CACHE_DIR="${CACHE_DIR}" UV_PYTHON_DOWNLOADS=never \
             uv sync --frozen --no-dev --no-install-project --offline --no-build); then
-        echo "ERROR: ${NAME} cannot install its Python dependencies from the baked UV cache."
-        echo "       Add a 'COPY --from=<build stage> /openc3/uv_cache_plugins/ /openc3/uv_cache/'"
-        echo "       for the stage that builds ${NAME} in openc3-cosmos-init/Dockerfile."
+        {
+            echo "ERROR: ${NAME} cannot install its Python dependencies from the baked UV cache."
+            echo "       Add a 'COPY --from=<build stage> /openc3/uv_cache_plugins/ /openc3/uv_cache/'"
+            echo "       for the stage that builds ${NAME} in openc3-cosmos-init/Dockerfile."
+        } >&2
         exit 1
     fi
     CHECKED=$((CHECKED + 1))
