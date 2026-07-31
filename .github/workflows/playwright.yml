@@ -98,10 +98,9 @@ jobs:
         shell: 'script -q -e -c "bash {0}"'
         run: ./playwright.sh build-plugin
         working-directory: playwright
-        # Ensure we're connected and running
-      - name: Wait for build
-        run: pnpm playwright test --project=chromium tests/wait-for-build.spec.ts
-        working-directory: playwright
+      # `pnpm test` now starts with test:wait (tests/wait-for-build.spec.ts), which
+      # waits for the interfaces to connect and then takes the demo sim out of
+      # QUIET mode, so there is no separate "Wait for build" step to run here.
       - name: Run Playwright tests
         # Run separately to allow for parallelism. With COVERAGE=1 each test
         # caches V8 coverage; `pnpm coverage` (chained at the end of pnpm
