@@ -151,7 +151,7 @@ test('runs a script', async ({ page, utils }) => {
       .map((item) => parseInt(item.name, 10))
     return Math.max(...ids).toString() // ids increase, so ours is the largest
   })
-  expect(scriptId).toMatch(/^\d+$/)
+  expect(scriptId, 'no running disconnect.rb script found via /script-api/running-script').toMatch(/^\d+$/)
 
   await page.locator('[data-test="script-runner-script"]').click()
   await page.getByText('Execution Status').click()
