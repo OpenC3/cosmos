@@ -157,7 +157,6 @@ export default class Cable {
       return
     }
     this._recovery = setTimeout(() => {
-      this._recovery = null
       const subscriptions = [...this._subscriptions]
       if (this._cable) {
         this._cable.cable.disconnect()
@@ -171,6 +170,10 @@ export default class Cable {
           Promise.resolve(),
         )
         .catch((error) => console.error('failed to recover cable', error))
+        .finally(() => {
+          // clear recovery at the end of the callback to avoid overlapping recoveries
+          this._recovery = null
+        })
     }, RECOVERY_DELAY)
   }
   _cancelRecovery() {
