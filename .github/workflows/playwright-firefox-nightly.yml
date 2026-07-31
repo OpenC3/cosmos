@@ -75,13 +75,9 @@ jobs:
         shell: 'script -q -e -c "bash {0}"'
         run: ./playwright.sh build-plugin
         working-directory: playwright
-        # Ensure we're connected and running. Unlike the chromium workflows this
-        # step is still required: the run below invokes playwright directly rather
-        # than through `pnpm test`, so it never picks up the test:wait script that
-        # waits for the interfaces and takes the demo sim out of QUIET mode.
-      - name: Wait for build
-        run: pnpm playwright test --project=firefox tests/wait-for-build.spec.ts
-        working-directory: playwright
+        # No separate "Wait for build" step: the firefox project depends on the
+        # 'setup' project (tests/global.setup.ts), which waits for the interfaces
+        # to connect and takes the demo sim out of QUIET mode on every invocation.
       - name: Run Playwright Firefox tests
         run: |
           pnpm playwright test --project=firefox ./tests/**/*.p.spec.ts --grep-invert='enterprise'
