@@ -37,7 +37,8 @@ On Windows use `openc3.bat` in place of `openc3.sh`.
 
 ## High-level Overview of Current Support
 
-1.  Integer, Float, Enumerated, String, Binary and Boolean Parameter/Argument Types are supported
+1.  Integer, Float, Enumerated, String and Binary Parameter/Argument Types are supported
+1.  Boolean Parameter/Argument Types can be imported (they are exported as Enumerated)
 1.  Array Parameter/Argument Types are supported (one dimension only)
 1.  All DataEncodings are supported
 1.  Telemetry and Commands are supported
@@ -50,11 +51,21 @@ On Windows use `openc3.bat` in place of `openc3.sh`.
 1.  Big and little endian items are supported
 1.  Only one SpaceSystem per .xtce file
 1.  Packets with gaps between items are supported: each entry is located with a
-    LocationInContainerInBits relative to the container start or end
+    LocationInContainerInBits relative to the container start, the container end,
+    or the previous entry
 
 ## Supported Elements and Attributes
 
-The following elements and associated attributes are currently supported.
+The following elements and associated attributes are currently supported. Unless
+noted otherwise, an element is both read when importing a .xtce file and written
+when exporting one. Two annotations appear in the list:
+
+- **import only** - the element is understood when reading a .xtce file, but is
+  never produced by the COSMOS exporter because COSMOS has no equivalent concept
+  to write out.
+- **written on export, ignored on import** - the COSMOS exporter emits the
+  element so the generated file is complete and schema valid, but the importer
+  does not act on it, so the information it carries is lost on a round trip.
 
 - SpaceSystem
 - TelemetryMetaData
@@ -69,7 +80,6 @@ The following elements and associated attributes are currently supported.
 - RestrictionCriteria
 - ComparisonList
 - MetaCommandSet
-- DefaultCalibrator
 - ArgumentTypeSet
 - ArgumentList
 - ArgumentAssignmentList
@@ -83,8 +93,8 @@ The following elements and associated attributes are currently supported.
 - StringArgumentType
 - BinaryParameterType
 - BinaryArgumentType
-- BooleanParameterType
-- BooleanArgumentType
+- BooleanParameterType (import only)
+- BooleanArgumentType (import only)
 - ArrayParameterType
 - ArrayArgumentType
 - DimensionList
@@ -100,7 +110,7 @@ The following elements and associated attributes are currently supported.
 - SizeInBits
 - Fixed
 - FixedValue
-- TerminationChar
+- TerminationChar (written on export, ignored on import)
 - UnitSet
 - Unit
 - PolynomialCalibrator
@@ -122,25 +132,26 @@ The following elements and associated attributes are currently supported.
 - ArgumentRefEntry
 - ArrayParameterRefEntry
 - ArrayArgumentRefEntry
-- ContainerRefEntry
+- ContainerRefEntry (import only)
 - BaseMetaCommand
 - Comparison
 - MetaCommand
 - CommandContainer
 - ArgumentAssignment
-- ReferenceTime
-- Epoch
-- ErrorDetectCorrect
-- AncillaryDataSet
-- AncillaryData
 
 ## Ignored Elements
 
-The following elements are simply ignored by COSMOS:
+The following elements are recognized but have no effect on the resulting
+configuration:
 
 - Header
 - AliasSet
 - Alias
+- ReferenceTime
+- Epoch
+- AncillaryDataSet
+- AncillaryData
+- ErrorDetectCorrect - the item is read as an unsigned integer and the CRC is not calculated
 
 ## Unsupported Elements
 
