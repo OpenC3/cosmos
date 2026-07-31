@@ -14,6 +14,44 @@
 
 import { test, expect } from './fixture'
 
+// Take the demo sim targets out of QUIET mode. The demo boots quiet
+// (INST/lib/sim_inst.rb @quiet = true, INST2/lib/sim_inst.py self.quiet = True),
+// and QUIET suppresses every limits violation: temps cycle inside in-limits
+// bands, GROUND1STATUS/GROUND2STATUS are pinned CONNECTED, PARAMS VALUE2/VALUE4
+// write 0 (GREEN) and the NaN/Infinity injection into TEMP2 is disabled. Specs
+// that assert on red/yellow limits (limits-monitor, data-extractor's NaN checks,
+// the enterprise autonomic TEMP1 == RED_HIGH and GROUND2STATUS != CONNECTED
+// triggers) need it off.
+//
+// This lives here rather than in global.setup.ts because the setup project is a
+// dependency of every other project, so it ran *before* this spec's CONNECTED
+// checks -- the cmd was sent while the interfaces were still coming up and the
+// API answered 500. QUIET is sim-microservice global state, so setting it once
+// per run is enough.
+async function resetQuiet(page) {
+  for (const target of ['INST', 'INST2']) {
+    const status = await page.evaluate(async (target) => {
+      const response = await fetch('/openc3-api/api', {
+        method: 'POST',
+        headers: {
+          Authorization: localStorage.openc3Token,
+          'Content-Type': 'application/json-rpc',
+          manual: 'true',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'cmd',
+          params: `${target} QUIET with STATE FALSE`,
+          id: 1,
+          keyword_params: { scope: 'DEFAULT' },
+        }),
+      })
+      return response.status
+    }, target)
+    expect(status).toBe(200)
+  }
+}
+
 test('waits for the services to deploy and connect', async ({
   page,
   utils,
@@ -36,4 +74,7 @@ test('waits for the services to deploy and connect', async ({
   ).toContainText('CONNECTED', {
     timeout: 60000,
   })
+
+  // Both interfaces are connected, so the sim will accept commands now.
+  await resetQuiet(page)
 })

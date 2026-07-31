@@ -113,7 +113,8 @@ case $1 in
             echo "See: https://playwright.dev/docs/test-cli"
             exit 0
         fi
-        pnpm test
+        # Forward any extra options (e.g. --grep-invert) instead of dropping them
+        pnpm test "${@:2}"
         ;;
 
     run-enterprise )
@@ -129,7 +130,8 @@ case $1 in
             echo "  -h, --help    Show this help message"
             exit 0
         fi
-        pnpm test:enterprise
+        # Forward any extra options (e.g. --grep) instead of dropping them
+        pnpm test:enterprise "${@:2}"
         ;;
 
     run-aws )
