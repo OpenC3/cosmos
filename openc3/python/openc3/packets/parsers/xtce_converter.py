@@ -19,11 +19,17 @@ from openc3.conversions.polynomial_conversion import PolynomialConversion
 class XtceConverter:
     """Converts OpenC3 packet definitions to XTCE (XML Telemetric and Command Exchange) format"""
 
+    # XML namespaces are opaque identifiers matched by exact string comparison, not URLs
+    # that get fetched, so these must stay http to match the namespaces OMG and W3C
+    # defined. The schema location below is the only URL actually dereferenced and it
+    # uses https.
     # XTCE 1.2, matching the Ruby converter so both implementations emit the same version
-    XTCE_NAMESPACE = "http://www.omg.org/spec/XTCE/20180204"
-    XSI_NAMESPACE = "http://www.w3.org/2001/XMLSchema-instance"
+    XTCE_NAMESPACE = "http://www.omg.org/spec/XTCE/20180204"  # NOSONAR
+    XSI_NAMESPACE = "http://www.w3.org/2001/XMLSchema-instance"  # NOSONAR
     MAX_64_BIT_INT = 9223372036854775807
-    SCHEMA_LOCATION = "http://www.omg.org/spec/XTCE/20180204 https://www.omg.org/spec/XTCE/20180204/SpaceSystem.xsd"
+    SCHEMA_LOCATION = (
+        "http://www.omg.org/spec/XTCE/20180204 https://www.omg.org/spec/XTCE/20180204/SpaceSystem.xsd"  # NOSONAR
+    )
 
     @classmethod
     def convert(cls, commands, telemetry, output_dir):
