@@ -53,19 +53,13 @@ sidebar_custom_props:
    cosmos/playwright % pnpm test
    ```
 
-1. _[Optional]_ Fix istanbul/nyc coverage source lookups (use `fixwindows` if not on Linux).
-
-   Tests will run successfully without this step and you will get coverage statistics, but line-by-line coverage won't work.
+1. _[Optional]_ Collect code coverage. Coverage uses Chromium's V8 profiler, so the tool bundles must be built with sourcemaps and installed into the running COSMOS first (`COVERAGE_BUILD=1 ./openc3.sh build`), then run the tests with coverage collection enabled:
 
    ```bash
-   cosmos/playwright % pnpm fixlinux
+   cosmos/playwright % COVERAGE=1 pnpm test
    ```
 
-1. Generate code coverage
-
-   ```bash
-   cosmos/playwright % pnpm coverage
-   ```
+   Reports (html, lcov, cobertura) are generated in `cosmos/playwright/coverage/` when the run completes.
 
 Code coverage reports can be viewed at `cosmos/playwright/coverage/index.html`
 

@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -64,10 +64,7 @@ export default {
             }
           }
         })
-        .catch((error) => {
-          // eslint-disable-next-line no-console
-          console.error(error)
-        })
+        .catch(console.error)
     },
     startContextTagAutoRefresh() {
       this.stopContextTagAutoRefresh()
