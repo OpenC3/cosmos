@@ -2276,6 +2276,9 @@ export default {
       // to a running script (which reuses the component) could carry over a
       // stale activePromptId and skip showing the dialog (see handleScript).
       this.activePromptId = ''
+      // `connected` below is called with `this` bound to the subscription, so
+      // hold onto the component to reach its methods from there.
+      const self = this
       const subscription = await this.cable.createSubscription(
         'RunningScriptChannel',
         window.openc3Scope,
@@ -2295,7 +2298,7 @@ export default {
             // a resumed session doesn't re-run it. Re-seed from the script's
             // status so the display can't be left showing a stale state.
             if (data?.reconnected) {
-              this.refreshScriptStatus()
+              self.refreshScriptStatus()
             }
           },
           received: (data) => this.received(data),
