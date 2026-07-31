@@ -15,9 +15,9 @@
 # never completes and helm's --wait times out). These are idle/connect
 # timeouts, NOT a total-transfer cap, so a large but healthy download (e.g.
 # torch over a slow link) is never killed mid-stream as long as bytes keep
-# arriving. Path 1 also tries an OFFLINE sync first so a plugin whose wheels
-# are already in the seeded UV cache installs deterministically without ever
-# touching the network.
+# arriving. Both paths try OFFLINE first so a plugin whose wheels are already
+# in the seeded UV cache installs deterministically without ever touching the
+# network.
 
 PLUGIN_VENV_NAME="$1"
 GEM_PATH="$2"
@@ -35,9 +35,24 @@ fi
 #   UV_HTTP_CONNECT_TIMEOUT - give up connecting to an unreachable index (s)
 #   UV_HTTP_TIMEOUT         - give up when a connection stalls mid-read (s)
 #   UV_HTTP_RETRIES         - bounded retries for transient failures
+# The values below match uv's own defaults; they are set explicitly so plugin
+# installs keep this behavior even if a future uv release changes its defaults,
+# and so an operator has a documented place to raise them for a slow index.
 export UV_HTTP_CONNECT_TIMEOUT="${UV_HTTP_CONNECT_TIMEOUT:-10}"
 export UV_HTTP_TIMEOUT="${UV_HTTP_TIMEOUT:-30}"
 export UV_HTTP_RETRIES="${UV_HTTP_RETRIES:-3}"
+
+# Run a uv command offline first (cache-only: instant, cannot hang, works in
+# air-gapped clusters) and only retry online on a cache miss. Both paths below
+# use this so a plugin whose wheels are already in the seeded UV cache never
+# touches the network.
+uv_offline_then_online() {
+    if uv "$@" --offline; then
+        return 0
+    fi
+    echo "Offline uv install failed; retrying online"
+    uv "$@"
+}
 
 VENV_BASE="/gems/plugin_venvs/${PLUGIN_VENV_NAME}"
 VENV_DIR="${VENV_BASE}/.venv"
@@ -57,17 +72,9 @@ if [ -f "${GEM_PATH}/uv.lock" ] && [ -f "${GEM_PATH}/pyproject.toml" ]; then
     cd "${VENV_BASE}"
     uv venv "${VENV_DIR}" --allow-existing
 
-    # Prefer an offline sync: if every locked wheel is already in the seeded
-    # UV cache this succeeds instantly and never touches the network, so it
-    # cannot hang and works in air-gapped clusters. Only on a cache miss do we
-    # fall back to an online sync (bounded by the UV_HTTP_* knobs above).
-    uv sync --frozen --no-dev --no-install-project --offline ${UV_ARGS}
+    # Offline sync first, online only on a cache miss (bounded by UV_HTTP_*)
+    uv_offline_then_online sync --frozen --no-dev --no-install-project ${UV_ARGS}
     RESULT=$?
-    if [ $RESULT -ne 0 ]; then
-        echo "Offline uv sync failed (exit code ${RESULT}); retrying online"
-        uv sync --frozen --no-dev --no-install-project ${UV_ARGS}
-        RESULT=$?
-    fi
 
     if [ $RESULT -eq 0 ]; then
         echo "uv sync --frozen succeeded"
@@ -79,25 +86,35 @@ if [ -f "${GEM_PATH}/uv.lock" ] && [ -f "${GEM_PATH}/pyproject.toml" ]; then
 fi
 
 # Path 2: Fallback - use uv pip install for requirements.txt or pyproject.toml
+# Every install here is also offline-first (same reasoning as path 1), so an
+# unlocked plugin whose wheels happen to be cached installs without network too.
 uv venv "${VENV_DIR}" --allow-existing
 
 if [ -f "${GEM_PATH}/requirements.txt" ]; then
     echo "Installing from requirements.txt via uv pip install"
-    uv pip install --python "${VENV_DIR}" ${UV_ARGS} -r "${GEM_PATH}/requirements.txt"
+    uv_offline_then_online pip install --python "${VENV_DIR}" ${UV_ARGS} -r "${GEM_PATH}/requirements.txt"
     RESULT=$?
 elif [ -f "${GEM_PATH}/pyproject.toml" ]; then
     echo "Installing from pyproject.toml via uv pip install"
-    uv pip install --python "${VENV_DIR}" ${UV_ARGS} "${GEM_PATH}"
+    uv_offline_then_online pip install --python "${VENV_DIR}" ${UV_ARGS} "${GEM_PATH}"
     RESULT=$?
 
     # If the build failed (e.g. Poetry package-mode = false), try installing
-    # declared dependencies only without building the package itself.
+    # declared dependencies only without building the package itself. The
+    # compile step only resolves declared deps into a pinned requirements file;
+    # the install that follows it is the one that fetches, so it gets the same
+    # offline-then-online treatment. Each compile attempt re-truncates TMPFILE
+    # so a partial offline write can never be mixed into the online result.
     if [ $RESULT -ne 0 ]; then
         echo "Warning: Failed to build Python package, attempting to install declared dependencies from pyproject.toml"
         TMPFILE=$(mktemp)
-        uv pip compile ${UV_ARGS} "${GEM_PATH}/pyproject.toml" > "$TMPFILE"
-        if [ $? -eq 0 ] && [ -s "$TMPFILE" ]; then
-            uv pip install --python "${VENV_DIR}" ${UV_ARGS} -r "$TMPFILE"
+        uv pip compile --offline ${UV_ARGS} "${GEM_PATH}/pyproject.toml" > "$TMPFILE"
+        if [ $? -ne 0 ] || [ ! -s "$TMPFILE" ]; then
+            echo "Offline uv pip compile failed; retrying online"
+            uv pip compile ${UV_ARGS} "${GEM_PATH}/pyproject.toml" > "$TMPFILE"
+        fi
+        if [ -s "$TMPFILE" ]; then
+            uv_offline_then_online pip install --python "${VENV_DIR}" ${UV_ARGS} -r "$TMPFILE"
             RESULT=$?
         fi
         rm -f "$TMPFILE"
@@ -113,19 +130,8 @@ if [ $RESULT -eq 0 ]; then
     exit 0
 fi
 
-# Last resort: try --no-index (cache only, no network)
-echo "Warning: Install failed - retrying with --no-index"
-if [ -f "${GEM_PATH}/requirements.txt" ]; then
-    uv pip install --python "${VENV_DIR}" --no-index ${UV_ARGS} -r "${GEM_PATH}/requirements.txt"
-elif [ -f "${GEM_PATH}/pyproject.toml" ]; then
-    uv pip install --python "${VENV_DIR}" --no-index ${UV_ARGS} "${GEM_PATH}"
-fi
-
-if [ $? -eq 0 ]; then
-    echo "Python packages installed successfully (with --no-index)"
-    touch "${VENV_BASE}/.uv_managed"
-    exit 0
-fi
-
+# No --no-index last resort here anymore: every attempt above already ran
+# cache-only first via uv_offline_then_online, so a cache-only retry at this
+# point would repeat an attempt that has already failed.
 echo "ERROR: uvinstall failed for plugin ${PLUGIN_VENV_NAME}"
 exit 1

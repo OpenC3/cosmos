@@ -14,6 +14,9 @@ if [ -z "${FOLDER_NAME}" ]; then # if WORKSPACE_NAME is unset or empty string
 fi
 
 mkdir -p ${GEMS}
+# Always exists so the Dockerfile's `COPY --from=<stage> /openc3/uv_cache/`
+# succeeds even for a stage whose plugins have no Python dependencies.
+mkdir -p /openc3/uv_cache
 
 echo "<<< packageBuild $1"
 cd ${FOLDER_NAME}
@@ -35,9 +38,13 @@ echo "=== packageInstall $1 mv gem complete"
 # versions - a guaranteed cache miss for any plugin pinning a different version
 # (e.g. demo numpy 2.4.6 vs core 2.2.6). Seeding here makes the runtime install
 # an offline cache hit: fast, deterministic, and works in air-gapped clusters.
-if command -v uv > /dev/null 2>&1 && [ -f uv.lock ] && [ -f pyproject.toml ]; then
+#
+# uv is provided by the openc3-ruby base image (which openc3-node, and therefore
+# every plugin build stage, derives from), so it is not checked for here - a
+# missing uv or a failed sync means the offline guarantee is silently broken, so
+# let set -e fail the build loudly instead of warning and moving on.
+if [ -f uv.lock ] && [ -f pyproject.toml ]; then
   echo "--- packageBuild $1 warm UV cache (uv sync --frozen)"
-  UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project \
-    || echo "Warning: UV cache warm failed for $1 - runtime install will fall back to network"
+  UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project
   echo "=== packageBuild $1 warm UV cache complete"
 fi

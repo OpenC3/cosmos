@@ -136,6 +136,14 @@ COPY --from=openc3-tmp3 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gem
 COPY --from=openc3-tmp4 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp5 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp5 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/openc3-cosmos-tool-docs/pnpm-lock.yaml /openc3/openc3-cosmos-tool-docs/pnpm-lock.yaml
+# Merge the plugin UV wheel cache warmed by docker-package-build.sh into the
+# baked seed this image already inherits from openc3-base (core's own wheels).
+# Without this the warmed wheels die with the throwaway build stage and the
+# runtime offline install (uvinstall) misses on any plugin that pins a version
+# core doesn't (e.g. demo numpy 2.4.6). openc3-cosmos-demo is the only plugin
+# with a uv.lock today, so only its stage (openc3-tmp4) has anything to add -
+# add a COPY here if another stage gains a Python plugin.
+COPY --from=openc3-tmp4 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/uv_cache/ /openc3/uv_cache/
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-js-common/ /openc3/plugins/packages/openc3-js-common/
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-vue-common/ /openc3/plugins/packages/openc3-vue-common/
 COPY --from=openc3-tmp1 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-tool-base/ /openc3/plugins/packages/openc3-tool-base/
