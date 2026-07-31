@@ -173,7 +173,7 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./init.sh ./verify-uv-cache.sh /openc3
 
 # Fail the build if any shipped plugin gem cannot install its Python
 # dependencies from the baked cache with no network. Catches a build stage
-# whose warmed wheels never made it into the COPYs above - which otherwise only
+# whose warmed wheels never made it into the copies above - which otherwise only
 # surfaces as a failed plugin install in an air-gapped cluster.
 RUN /openc3/verify-uv-cache.sh
 
