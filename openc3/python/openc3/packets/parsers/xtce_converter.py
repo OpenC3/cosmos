@@ -19,9 +19,11 @@ from openc3.conversions.polynomial_conversion import PolynomialConversion
 class XtceConverter:
     """Converts OpenC3 packet definitions to XTCE (XML Telemetric and Command Exchange) format"""
 
-    XTCE_NAMESPACE = "http://www.omg.org/space/xtce"
+    # XTCE 1.2, matching the Ruby converter so both implementations emit the same version
+    XTCE_NAMESPACE = "http://www.omg.org/spec/XTCE/20180204"
     XSI_NAMESPACE = "http://www.w3.org/2001/XMLSchema-instance"
-    SCHEMA_LOCATION = "http://www.omg.org/space/xtce http://www.omg.org/spec/XTCE/20061101/06-11-06.xsd"
+    MAX_64_BIT_INT = 9223372036854775807
+    SCHEMA_LOCATION = "http://www.omg.org/spec/XTCE/20180204 https://www.omg.org/spec/XTCE/20180204/SpaceSystem.xsd"
 
     @classmethod
     def convert(cls, commands, telemetry, output_dir):
@@ -318,17 +320,21 @@ class XtceConverter:
         type_name = "Argument" if cmd_vs_tlm == "COMMAND" else "Parameter"
         entry_list = etree.SubElement(parent, f"{{{self.XTCE_NAMESPACE}}}EntryList")
 
-        packed = packet.packed
+        # packed is a method on Packet, not a property, so it must be called.
+        # Unpacked packets need an explicit LocationInContainerInBits per entry.
+        packed = packet.packed()
         for item in packet.sorted_items:
             if item.data_type == "DERIVED":
                 continue
 
             # Handle arrays
             if item.array_size:
+                # XTCE 1.2 gives Array{Argument,Parameter}RefEntry a dedicated
+                # argumentRef / parameterRef attribute, so derive it from the type.
                 array_ref = etree.SubElement(
                     entry_list,
                     f"{{{self.XTCE_NAMESPACE}}}Array{type_name}RefEntry",
-                    attrib={"parameterRef": item.name},
+                    attrib={f"{type_name.lower()}Ref": item.name},
                 )
                 if not packed:
                     self._set_fixed_value(array_ref, item)
@@ -406,12 +412,19 @@ class XtceConverter:
             if item.description:
                 attrs["shortDescription"] = item.description
             attrs["arrayTypeRef"] = f"{item.name}_Type"
-            attrs["numberOfDimensions"] = "1"
-            etree.SubElement(
+            # XTCE 1.2 replaced the numberOfDimensions attribute with a required
+            # DimensionList. OpenC3 only supports one-dimensional arrays.
+            array_type = etree.SubElement(
                 parent,
                 f"{{{self.XTCE_NAMESPACE}}}Array{param_or_arg}Type",
                 attrib=attrs,
             )
+            dim_list = etree.SubElement(array_type, f"{{{self.XTCE_NAMESPACE}}}DimensionList")
+            dimension = etree.SubElement(dim_list, f"{{{self.XTCE_NAMESPACE}}}Dimension")
+            start_idx = etree.SubElement(dimension, f"{{{self.XTCE_NAMESPACE}}}StartingIndex")
+            etree.SubElement(start_idx, f"{{{self.XTCE_NAMESPACE}}}FixedValue").text = "0"
+            end_idx = etree.SubElement(dimension, f"{{{self.XTCE_NAMESPACE}}}EndingIndex")
+            etree.SubElement(end_idx, f"{{{self.XTCE_NAMESPACE}}}FixedValue").text = "0"
 
     def _to_xtce_int(self, item, param_or_arg, parent):
         """Convert integer item to XTCE
@@ -435,7 +448,8 @@ class XtceConverter:
                     break
 
         signed = item.data_type == "INT"
-        encoding = "twosCompliment" if signed else "unsigned"
+        # XTCE 1.2 corrected the 1.0 'twosCompliment' misspelling
+        encoding = "twosComplement" if signed else "unsigned"
 
         if item.states:
             # Enumerated type
@@ -480,21 +494,12 @@ class XtceConverter:
                 f"{{{self.XTCE_NAMESPACE}}}IntegerDataEncoding",
                 attrib={"sizeInBits": str(item.bit_size), "encoding": encoding},
             )
-            # ByteOrderList must be the first child of the DataEncoding element.
             self._to_xtce_endianness(item, encoding_elem)
             if has_poly_conversion:
                 self._to_xtce_conversion(item, encoding_elem)
 
             self._to_xtce_limits(item, int_type)
-            if hasattr(item, "range") and item.range:
-                etree.SubElement(
-                    int_type,
-                    f"{{{self.XTCE_NAMESPACE}}}ValidRange",
-                    attrib={
-                        "minInclusive": str(item.range.start),
-                        "maxInclusive": str(item.range.stop - 1),
-                    },
-                )
+            self._to_xtce_valid_range(item, param_or_arg, int_type)
 
     def _to_xtce_float(self, item, param_or_arg, parent):
         """Convert float item to XTCE
@@ -522,21 +527,12 @@ class XtceConverter:
             f"{{{self.XTCE_NAMESPACE}}}FloatDataEncoding",
             attrib={"sizeInBits": str(item.bit_size), "encoding": "IEEE754_1985"},
         )
-        # ByteOrderList must be the first child of the DataEncoding element.
         self._to_xtce_endianness(item, encoding_elem)
         if has_poly_conversion:
             self._to_xtce_conversion(item, encoding_elem)
 
         self._to_xtce_limits(item, float_type)
-        if hasattr(item, "range") and item.range:
-            etree.SubElement(
-                float_type,
-                f"{{{self.XTCE_NAMESPACE}}}ValidRange",
-                attrib={
-                    "minInclusive": str(item.range.start),
-                    "maxInclusive": str(item.range.stop - 1),
-                },
-            )
+        self._to_xtce_valid_range(item, param_or_arg, float_type)
 
     def _to_xtce_string(self, item, param_or_arg, parent, string_or_binary):
         """Convert string/binary item to XTCE
@@ -553,9 +549,11 @@ class XtceConverter:
 
         if item.default and item.array_size is None:
             try:
-                # Try to determine if printable
                 if isinstance(item.default, bytes | bytearray):
-                    if all(32 <= b < 127 for b in item.default):
+                    if string_or_binary == "Binary":
+                        # Binary initialValue is xs:hexBinary: raw hex digits, no 0x prefix.
+                        attrs["initialValue"] = item.default.hex()
+                    elif all(32 <= b < 127 for b in item.default):
                         attrs["initialValue"] = repr(item.default.decode("utf-8"))
                     else:
                         attrs["initialValue"] = "0x" + item.default.hex()
@@ -617,22 +615,19 @@ class XtceConverter:
                 attrs["description"] = item.units_full
             etree.SubElement(unit_set, f"{{{self.XTCE_NAMESPACE}}}Unit", attrib=attrs).text = item.units
 
-    def _to_xtce_endianness(self, item, parent):
-        """Add endianness to XTCE type
+    def _to_xtce_endianness(self, item, encoding):
+        """Add endianness to an XTCE DataEncoding element
+
+        XTCE 1.2 removed ByteOrderList in favor of the byteOrder attribute on the
+        DataEncoding. mostSignificantByteFirst is the schema default so it is only
+        emitted for little endian items larger than a single byte.
 
         Args:
             item: Packet item
-            parent: Parent XML element
+            encoding: DataEncoding XML element
         """
         if item.endianness == "LITTLE_ENDIAN" and item.bit_size > 8:
-            byte_order_list = etree.SubElement(parent, f"{{{self.XTCE_NAMESPACE}}}ByteOrderList")
-            num_bytes = ((item.bit_size - 1) // 8) + 1
-            for byte_significance in range(num_bytes):
-                etree.SubElement(
-                    byte_order_list,
-                    f"{{{self.XTCE_NAMESPACE}}}Byte",
-                    attrib={"byteSignificance": str(byte_significance)},
-                )
+            encoding.set("byteOrder", "leastSignificantByteFirst")
 
     def _to_xtce_conversion(self, item, parent):
         """Add conversion to XTCE type
@@ -651,6 +646,29 @@ class XtceConverter:
                     f"{{{self.XTCE_NAMESPACE}}}Term",
                     attrib={"coefficient": str(coeff), "exponent": str(index)},
                 )
+
+    def _to_xtce_valid_range(self, item, param_or_arg, parent):
+        """Add the item minimum / maximum as an XTCE ValidRange
+
+        Arguments require the range to be wrapped in a ValidRangeSet.
+
+        Args:
+            item: Packet item
+            param_or_arg (str): "Parameter" or "Argument"
+            parent: Type XML element
+        """
+        if item.minimum is None or item.maximum is None:
+            return
+        # Ranges beyond 64 bits (e.g. the FLOAT MIN / MAX defaults) aren't representable
+        if item.maximum > self.MAX_64_BIT_INT:
+            return
+
+        attrs = {"minInclusive": str(item.minimum), "maxInclusive": str(item.maximum)}
+        if param_or_arg == "Parameter":
+            etree.SubElement(parent, f"{{{self.XTCE_NAMESPACE}}}ValidRange", attrib=attrs)
+        else:
+            range_set = etree.SubElement(parent, f"{{{self.XTCE_NAMESPACE}}}ValidRangeSet")
+            etree.SubElement(range_set, f"{{{self.XTCE_NAMESPACE}}}ValidRange", attrib=attrs)
 
     def _to_xtce_limits(self, item, parent):
         """Add limits to XTCE type

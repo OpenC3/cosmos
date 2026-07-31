@@ -279,8 +279,6 @@ module OpenC3
             end
           end
         end
-        #unique_command_args_without_ids = get_unique_without_ids(commands[target_name])
-        #if unique_command_args_without_ids.size > 0
         xml['xtce'].ArgumentTypeSet do
           commands[target_name].each do |packet_name, packet|
             packet.items.each do |arg_name, arg|
@@ -352,19 +350,13 @@ module OpenC3
     def get_string_or_block_initial_value(item, string_or_binary)
       initial_value = nil
       if item.default && !item.array_size
-        unless item.default.is_printable?
-          if string_or_binary == :BLOCK
-            # Binary initialValue is xs:hexBinary: raw hex digits, no 0x prefix.
-            initial_value = item.default.simple_formatted
-          else
-            initial_value = '0x' + item.default.simple_formatted
-          end
+        if string_or_binary == :BLOCK
+          # Binary initialValue is xs:hexBinary: raw hex digits, no 0x prefix.
+          initial_value = item.default.simple_formatted
+        elsif !item.default.is_printable?
+          initial_value = '0x' + item.default.simple_formatted
         else
-          if string_or_binary == :STRING
-            initial_value = item.default.inspect
-          else
-            initial_value = item.default.inspect.unpack('H*').first
-          end
+          initial_value = item.default.inspect
         end
       end
       initial_value
@@ -374,26 +366,6 @@ module OpenC3
       unique = {}
       items.each do |packet_name, packet|
         packet.sorted_items.each do |item|
-          unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] ||= []
-          unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] << item
-        end
-      end
-      unique.each do |item_name, unique_items|
-        if unique_items.length <= 1
-          unique[item_name] = unique_items[0]
-          next
-        end
-        unique[item_name] = unique_items[0]
-      end
-      unique
-    end
-
-    def get_unique_without_ids(items)
-      unique = {}
-      items.each do |packet_name, packet|
-        packet.sorted_items.each do |item|
-          next if item.data_type == :DERIVED
-          next if item.id_value
           unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] ||= []
           unique[item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR)] << item
         end
@@ -673,24 +645,18 @@ module OpenC3
       attrs = { :name => (prefix + item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR) + '_Type') }
       attrs[:characterWidth] = 8 if string_or_binary == 'String'
       if item.default && !item.array_size
-        unless item.default.is_printable?
-          if string_or_binary == 'Binary'
-            # Binary initialValue is xs:hexBinary: raw hex digits, no 0x prefix.
-            attrs[:initialValue] = item.default.simple_formatted
-          else
-            attrs[:initialValue] = '0x' + item.default.simple_formatted
-          end
+        if string_or_binary == 'Binary'
+          # Binary initialValue is xs:hexBinary: raw hex digits, no 0x prefix.
+          attrs[:initialValue] = item.default.simple_formatted
+        elsif !item.default.is_printable?
+          attrs[:initialValue] = '0x' + item.default.simple_formatted
         else
-          if string_or_binary == 'String'
-            attrs[:initialValue] = item.default.inspect
-          else
-            attrs[:initialValue] = item.default.inspect.unpack('H*').first
-          end
+          attrs[:initialValue] = item.default.inspect
         end
       end
       attrs[:shortDescription] = item.description if item.description
       xml['xtce'].public_send(string_or_binary + param_or_arg + 'Type', attrs) do
-        # Don't call to_xtce_endianness for Strings or Blocks
+        # Strings and Blocks don't get a byteOrder
         to_xtce_units(item, xml)
         if string_or_binary == 'String'
           xml['xtce'].StringDataEncoding(:encoding => 'UTF-8') do
@@ -793,16 +759,6 @@ module OpenC3
         end
       else
         xml['xtce'].UnitSet
-      end
-    end
-
-    def to_xtce_endianness(item, xml)
-      if item.endianness == :LITTLE_ENDIAN and item.bit_size > 8
-        xml['xtce'].ByteOrderList do
-          (((item.bit_size - 1) / 8) + 1).times do |byte_significance|
-            xml['xtce'].Byte(:byteSignificance => byte_significance)
-          end
-        end
       end
     end
 

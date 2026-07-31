@@ -1067,6 +1067,86 @@ module OpenC3
         expect(messages).to match(/argumentRef.*required/)
       end
 
+      it "converts little endian conversions, ranges and unpacked items" do
+        tf = Tempfile.new('unittest')
+        cmd = "COMMAND TGT1 CMDPKT LITTLE_ENDIAN \"Command\"\n"\
+              "  PARAMETER CMD_INT 0 16 INT -100 100 0 \"Int with a conversion\"\n"\
+              "    POLY_WRITE_CONVERSION 10.0 0.5\n"\
+              "  PARAMETER CMD_FLOAT 16 32 FLOAT -1.5 1.5 0.0 \"Float with a range\"\n"
+        tf.puts cmd
+        # A second packet sharing the ID parameter name exercises the unique ID lookup
+        cmd2 = "COMMAND TGT1 CMDPKT2 LITTLE_ENDIAN \"Command\"\n"\
+               "  ID_PARAMETER OPCODE 0 8 UINT 0 1 1 \"Opcode\"\n"\
+               "COMMAND TGT1 CMDPKT3 LITTLE_ENDIAN \"Command\"\n"\
+               "  ID_PARAMETER OPCODE 0 8 UINT 0 1 0 \"Opcode\"\n"
+        tf.puts cmd2
+        # A gap between items makes the packet unpacked, which locates each entry
+        # explicitly. TRAILER is relative to the end of the packet.
+        tlm = "TELEMETRY TGT1 TLMPKT BIG_ENDIAN \"Telemetry\"\n"\
+              "  ITEM HEAD 0 8 UINT \"Head\"\n"\
+              "  ITEM TRAILER -16 16 UINT \"Trailer\"\n"\
+              "  ITEM DERIVED_ITEM 0 0 DERIVED \"Derived without a conversion\"\n"
+        tf.puts tlm
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
+
+        doc = Nokogiri::XML(File.read(xml_path))
+        doc.remove_namespaces!
+        # An integer with a polynomial conversion is exported as a float type
+        int_encoding = doc.at_xpath("//FloatArgumentType[@name='CMDPKT_CMD_INT_Type']/IntegerDataEncoding")
+        expect(int_encoding['byteOrder']).to eql "leastSignificantByteFirst"
+        expect(int_encoding.at_xpath("DefaultCalibrator")).to_not be_nil
+
+        float_range = doc.at_xpath("//FloatArgumentType[@name='CMDPKT_CMD_FLOAT_Type']/ValidRangeSet/ValidRange")
+        expect(float_range['minInclusive']).to eql "-1.5"
+        expect(float_range['maxInclusive']).to eql "1.5"
+
+        trailer = doc.at_xpath("//ParameterRefEntry[@parameterRef='TRAILER']/LocationInContainerInBits")
+        expect(trailer['referenceLocation']).to eql "containerEnd"
+        expect(trailer.at_xpath("FixedValue").text).to eql "16"
+
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "round trips BLOCK defaults as hexBinary" do
+        tf = Tempfile.new('unittest')
+        # BLOCK initialValue is xs:hexBinary regardless of whether the bytes happen
+        # to be printable, so both defaults export as raw hex digits.
+        cmd = "COMMAND TGT1 CMDPKT BIG_ENDIAN \"Command\"\n"\
+              "  ID_PARAMETER OPCODE 0 16 UINT 0 0 0 \"Opcode\"\n"\
+              "  PARAMETER PRINTABLE 16 32 BLOCK \"DEAD\" \"Printable block\"\n"\
+              "  PARAMETER UNPRINTABLE 48 32 BLOCK 0xDEADBEEF \"Unprintable block\"\n"
+        tf.puts cmd
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
+
+        doc = Nokogiri::XML(File.read(xml_path))
+        doc.remove_namespaces!
+        printable = doc.at_xpath("//BinaryArgumentType[@name='CMDPKT_PRINTABLE_Type']")
+        expect(printable['initialValue']).to eql "44454144"
+        unprintable = doc.at_xpath("//BinaryArgumentType[@name='CMDPKT_UNPRINTABLE_Type']")
+        expect(unprintable['initialValue']).to eql "DEADBEEF"
+
+        # Importing the generated file gives back the original defaults
+        pc = PacketConfig.new
+        pc.process_file(xml_path, "TGT1")
+        packet = pc.commands["TGT1"]["CMDPKT"]
+        expect(packet.get_item("PRINTABLE").default).to eql "DEAD"
+        expect(packet.get_item("UNPRINTABLE").default).to eql "\xDE\xAD\xBE\xEF"
+
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
 
       it "converts the DERIVED Tlm" do
         filename = File.join(File.dirname(__FILE__), "../../conversion2.rb")

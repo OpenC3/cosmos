@@ -175,6 +175,156 @@ module OpenC3
         tf.unlink
       end
 
+      context "with an array argument" do
+        # XTCE 1.2 requires argumentRef on ArrayArgumentRefEntry, but XTCE 1.0/1.1 and
+        # files exported by prior COSMOS versions used parameterRef, so both must import.
+        def array_cmd_file(ref_name, ref_value = "CMD_ARRAY")
+          command_file("TGT") do |tf|
+            tf.puts "<xtce:ArgumentTypeSet>"
+            tf.puts "  <xtce:FloatArgumentType name=\"CMD_ARRAY_Type\" sizeInBits=\"64\">"
+            tf.puts "    <xtce:UnitSet/>"
+            tf.puts "    <xtce:FloatDataEncoding sizeInBits=\"64\" encoding=\"IEEE754_1985\"/>"
+            tf.puts "  </xtce:FloatArgumentType>"
+            tf.puts "  <xtce:ArrayArgumentType name=\"CMD_ARRAY_ArrayType\" arrayTypeRef=\"CMD_ARRAY_Type\">"
+            tf.puts "    <xtce:DimensionList>"
+            tf.puts "      <xtce:Dimension>"
+            tf.puts "        <xtce:StartingIndex><xtce:FixedValue>0</xtce:FixedValue></xtce:StartingIndex>"
+            tf.puts "        <xtce:EndingIndex><xtce:FixedValue>0</xtce:FixedValue></xtce:EndingIndex>"
+            tf.puts "      </xtce:Dimension>"
+            tf.puts "    </xtce:DimensionList>"
+            tf.puts "  </xtce:ArrayArgumentType>"
+            tf.puts "</xtce:ArgumentTypeSet>"
+            tf.puts "<xtce:MetaCommandSet>"
+            tf.puts "  <xtce:MetaCommand name=\"PKT_Base\" abstract=\"true\">"
+            tf.puts "    <xtce:ArgumentList>"
+            tf.puts "      <xtce:Argument name=\"CMD_ARRAY\" argumentTypeRef=\"CMD_ARRAY_ArrayType\"/>"
+            tf.puts "    </xtce:ArgumentList>"
+            tf.puts "    <xtce:CommandContainer name=\"PKT_CommandContainer\">"
+            tf.puts "      <xtce:EntryList>"
+            tf.puts "        <xtce:ArrayArgumentRefEntry #{ref_name}=\"#{ref_value}\">"
+            tf.puts "          <xtce:DimensionList>"
+            tf.puts "            <xtce:Dimension>"
+            tf.puts "              <xtce:StartingIndex><xtce:FixedValue>0</xtce:FixedValue></xtce:StartingIndex>"
+            tf.puts "              <xtce:EndingIndex><xtce:FixedValue>9</xtce:FixedValue></xtce:EndingIndex>"
+            tf.puts "            </xtce:Dimension>"
+            tf.puts "          </xtce:DimensionList>"
+            tf.puts "        </xtce:ArrayArgumentRefEntry>"
+            tf.puts "      </xtce:EntryList>"
+            tf.puts "    </xtce:CommandContainer>"
+            tf.puts "  </xtce:MetaCommand>"
+            tf.puts "  <xtce:MetaCommand name=\"PKT\" shortDescription=\"PKT description\">"
+            tf.puts "    <xtce:BaseMetaCommand metaCommandRef=\"PKT_Base\"/>"
+            tf.puts "  </xtce:MetaCommand>"
+            tf.puts "</xtce:MetaCommandSet>"
+          end
+        end
+
+        it "processes argumentRef" do
+          tf = array_cmd_file("argumentRef")
+          @pc.process_file(tf.path, 'TGT')
+          item = @pc.commands['TGT']['PKT'].get_item('CMD_ARRAY')
+          expect(item.data_type).to eql :FLOAT
+          expect(item.bit_size).to eql 64
+          expect(item.array_size).to eql 640
+          tf.unlink
+        end
+
+        it "processes parameterRef exported by older versions" do
+          tf = array_cmd_file("parameterRef")
+          @pc.process_file(tf.path, 'TGT')
+          item = @pc.commands['TGT']['PKT'].get_item('CMD_ARRAY')
+          expect(item.data_type).to eql :FLOAT
+          expect(item.bit_size).to eql 64
+          expect(item.array_size).to eql 640
+          tf.unlink
+        end
+
+        it "complains about an unknown argumentRef" do
+          tf = array_cmd_file("argumentRef", "NOPE")
+          expect { @pc.process_file(tf.path, 'TGT') }.to raise_error(/argumentRef NOPE not found/)
+          tf.unlink
+        end
+
+        it "complains about an unknown parameterRef" do
+          tf = array_cmd_file("parameterRef", "NOPE")
+          expect { @pc.process_file(tf.path, 'TGT') }.to raise_error(/parameterRef NOPE not found/)
+          tf.unlink
+        end
+      end
+
+      context "with string and binary argument defaults" do
+        # Defaults are only assigned for commands (set_min_max_default returns early
+        # for telemetry), so these all use command arguments.
+        def string_arg_type(tf, name, initial_value = nil)
+          attrs = "name=\"#{name}_Type\" characterWidth=\"8\""
+          attrs += " initialValue=#{initial_value.encode(xml: :attr)}" if initial_value
+          tf.puts "  <xtce:StringArgumentType #{attrs}>"
+          tf.puts "    <xtce:UnitSet/>"
+          tf.puts "    <xtce:StringDataEncoding encoding=\"UTF-8\">"
+          tf.puts "      <xtce:SizeInBits><xtce:Fixed><xtce:FixedValue>40</xtce:FixedValue></xtce:Fixed></xtce:SizeInBits>"
+          tf.puts "    </xtce:StringDataEncoding>"
+          tf.puts "  </xtce:StringArgumentType>"
+        end
+
+        it "processes quoted, unquoted, hex, missing and array initial values" do
+          names = ["QUOTED", "UNQUOTED", "HEX", "EMPTY"]
+          tf = command_file("TGT") do |file|
+            file.puts "<xtce:ArgumentTypeSet>"
+            string_arg_type(file, "QUOTED", '"HELLO"')
+            string_arg_type(file, "UNQUOTED", 'WORLD')
+            string_arg_type(file, "HEX", '0xDEAD')
+            string_arg_type(file, "EMPTY")
+            string_arg_type(file, "ARRAY")
+            file.puts "  <xtce:ArrayArgumentType name=\"ARRAY_ArrayType\" arrayTypeRef=\"ARRAY_Type\">"
+            file.puts "    <xtce:DimensionList>"
+            file.puts "      <xtce:Dimension>"
+            file.puts "        <xtce:StartingIndex><xtce:FixedValue>0</xtce:FixedValue></xtce:StartingIndex>"
+            file.puts "        <xtce:EndingIndex><xtce:FixedValue>0</xtce:FixedValue></xtce:EndingIndex>"
+            file.puts "      </xtce:Dimension>"
+            file.puts "    </xtce:DimensionList>"
+            file.puts "  </xtce:ArrayArgumentType>"
+            file.puts "</xtce:ArgumentTypeSet>"
+            file.puts "<xtce:MetaCommandSet>"
+            file.puts "  <xtce:MetaCommand name=\"PKT_Base\" abstract=\"true\">"
+            file.puts "    <xtce:ArgumentList>"
+            names.each do |name|
+              file.puts "      <xtce:Argument name=\"#{name}\" argumentTypeRef=\"#{name}_Type\"/>"
+            end
+            file.puts "      <xtce:Argument name=\"ARRAY\" argumentTypeRef=\"ARRAY_ArrayType\"/>"
+            file.puts "    </xtce:ArgumentList>"
+            file.puts "    <xtce:CommandContainer name=\"PKT_CommandContainer\">"
+            file.puts "      <xtce:EntryList>"
+            names.each do |name|
+              file.puts "        <xtce:ArgumentRefEntry argumentRef=\"#{name}\"/>"
+            end
+            file.puts "        <xtce:ArrayArgumentRefEntry argumentRef=\"ARRAY\">"
+            file.puts "          <xtce:DimensionList>"
+            file.puts "            <xtce:Dimension>"
+            file.puts "              <xtce:StartingIndex><xtce:FixedValue>0</xtce:FixedValue></xtce:StartingIndex>"
+            file.puts "              <xtce:EndingIndex><xtce:FixedValue>1</xtce:FixedValue></xtce:EndingIndex>"
+            file.puts "            </xtce:Dimension>"
+            file.puts "          </xtce:DimensionList>"
+            file.puts "        </xtce:ArrayArgumentRefEntry>"
+            file.puts "      </xtce:EntryList>"
+            file.puts "    </xtce:CommandContainer>"
+            file.puts "  </xtce:MetaCommand>"
+            file.puts "  <xtce:MetaCommand name=\"PKT\" shortDescription=\"PKT description\">"
+            file.puts "    <xtce:BaseMetaCommand metaCommandRef=\"PKT_Base\"/>"
+            file.puts "  </xtce:MetaCommand>"
+            file.puts "</xtce:MetaCommandSet>"
+          end
+
+          @pc.process_file(tf.path, 'TGT')
+          packet = @pc.commands['TGT']['PKT']
+          expect(packet.get_item('QUOTED').default).to eql "HELLO"
+          expect(packet.get_item('UNQUOTED').default).to eql "WORLD"
+          expect(packet.get_item('HEX').default).to eql "\xDE\xAD"
+          expect(packet.get_item('EMPTY').default).to eql ""
+          expect(packet.get_item('ARRAY').default).to eql []
+          tf.unlink
+        end
+      end
+
       context "with units" do
         it "processes description and value" do
           tf = telemetry_file("TGT") do |file|
