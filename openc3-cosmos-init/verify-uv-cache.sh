@@ -1,6 +1,15 @@
 #!/bin/sh
-# Build-time assertion: every plugin gem shipped in this image must be able to
-# install its Python dependencies from the baked UV cache with NO network.
+# Build-time assertion: every plugin gem shipped in this image that declares
+# BOTH uv.lock and pyproject.toml must be able to install its Python
+# dependencies from the baked UV cache with NO network.
+#
+# Scope, precisely: this covers exactly the plugins docker-package-build.sh
+# warms, which is uvinstall's path 1 (`uv sync --frozen`). uvinstall's fallback
+# paths (requirements.txt, or a pyproject.toml with no uv.lock) are NOT warmed
+# at image build and so are NOT verified here - a plugin using them installs
+# online at runtime. Gems in that shape are reported below as UNVERIFIED so the
+# gap is visible in the build log rather than silent. Closing it means teaching
+# docker-package-build.sh to warm those paths too, then extending the loop here.
 #
 # Why this exists: the wheels a plugin needs are warmed in a throwaway build
 # stage (docker-package-build.sh) and only reach the final image through an
@@ -20,6 +29,7 @@ WORK=$(mktemp -d)
 trap 'rm -rf "${WORK}"' EXIT
 
 CHECKED=0
+UNVERIFIED=""
 for GEM in "${GEMS_DIR}"/*.gem; do
     [ -f "${GEM}" ] || continue
     NAME=$(basename "${GEM}" .gem)
@@ -28,9 +38,16 @@ for GEM in "${GEMS_DIR}"/*.gem; do
     gem unpack "${GEM}" --target "${DEST}" > /dev/null
     SRC=$(find "${DEST}" -mindepth 1 -maxdepth 1 -type d | head -1)
 
-    # Only plugins with a uv.lock take uvinstall's reproducible path (see
-    # openc3/bin/uvinstall path 1); everything else has nothing to verify.
+    # Only plugins with both uv.lock and pyproject.toml take uvinstall's
+    # reproducible path (see openc3/bin/uvinstall path 1), and that is the only
+    # path docker-package-build.sh warms - so it is the only one with a cache to
+    # assert against. A gem declaring Python dependencies some other way still
+    # installs at runtime, just online, so call it out rather than dropping it
+    # in with the plugins that have no Python dependencies at all.
     if [ -z "${SRC}" ] || [ ! -f "${SRC}/uv.lock" ] || [ ! -f "${SRC}/pyproject.toml" ]; then
+        if [ -n "${SRC}" ] && { [ -f "${SRC}/requirements.txt" ] || [ -f "${SRC}/pyproject.toml" ]; }; then
+            UNVERIFIED="${UNVERIFIED} ${NAME}"
+        fi
         rm -rf "${DEST}"
         continue
     fi
@@ -55,4 +72,9 @@ for GEM in "${GEMS_DIR}"/*.gem; do
     rm -rf "${DEST}"
 done
 
-echo "=== offline UV cache verified for ${CHECKED} plugin gem(s)"
+if [ -n "${UNVERIFIED}" ]; then
+    # Not a build failure: these plugins install fine on a networked cluster,
+    # and failing here would break a build for a gap that predates this check.
+    echo "WARNING: UNVERIFIED (no uv.lock - not warmed, will install online):${UNVERIFIED}" >&2
+fi
+echo "=== offline UV cache verified for ${CHECKED} plugin gem(s) taking uv sync --frozen"
