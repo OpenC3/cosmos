@@ -104,6 +104,13 @@ export default class Cable {
   }
   disconnect() {
     this._cancelRecovery()
+    // Mark the subscriptions dead before dropping them. Closing the consumer
+    // rejects any subscribe still waiting on its ack, which surfaces as
+    // disconnected with allowReconnect false -- that must not schedule a
+    // recovery, since we just cancelled one and the consumer is going away.
+    this._subscriptions.forEach((subscription) => {
+      subscription._unsubscribed = true
+    })
     this._subscriptions.clear()
     if (this._cable) {
       this._cable.cable.disconnect()
