@@ -76,6 +76,22 @@ class TestExtractFieldsFromCmdText:
         result = extract_fields_from_cmd_text("TARGET PACKET with KEY1 VALUE1, KEY2 2, KEY3 '3', KEY4 4.0")
         assert result == ("TARGET", "PACKET", {"KEY1": "VALUE1", "KEY2": 2, "KEY3": "3", "KEY4": 4.0})
 
+    def test_does_not_require_whitespace_after_comma(self):
+        result = extract_fields_from_cmd_text("TARGET PACKET with KEY1 VALUE1,KEY2 2,KEY3 '3',KEY4 4.0")
+        assert result == ("TARGET", "PACKET", {"KEY1": "VALUE1", "KEY2": 2, "KEY3": "3", "KEY4": 4.0})
+
+        # Mixed spacing around the commas
+        result = extract_fields_from_cmd_text("TARGET PACKET with KEY1 VALUE1 ,KEY2 2, KEY3 '3' , KEY4 4.0")
+        assert result == ("TARGET", "PACKET", {"KEY1": "VALUE1", "KEY2": 2, "KEY3": "3", "KEY4": 4.0})
+
+    def test_allows_a_trailing_comma(self):
+        result = extract_fields_from_cmd_text("TARGET PACKET with KEY1 VALUE1, KEY2 2,")
+        assert result == ("TARGET", "PACKET", {"KEY1": "VALUE1", "KEY2": 2})
+
+    def test_preserves_commas_inside_quoted_strings_and_arrays(self):
+        result = extract_fields_from_cmd_text("TARGET PACKET with KEY1 'A,B',KEY2 [1,2,3],KEY3 \"C, D\"")
+        assert result == ("TARGET", "PACKET", {"KEY1": "A,B", "KEY2": [1, 2, 3], "KEY3": "C, D"})
+
     def test_handles_multiple_array_parameters(self):
         result = extract_fields_from_cmd_text("TARGET PACKET with KEY1 [1,2,3,4], KEY2 2, KEY3 '3', KEY4 [5, 6, 7, 8]")
         assert result == ("TARGET", "PACKET", {"KEY1": [1, 2, 3, 4], "KEY2": 2, "KEY3": "3", "KEY4": [5, 6, 7, 8]})

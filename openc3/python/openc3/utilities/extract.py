@@ -19,12 +19,14 @@ import re
 
 
 # Tokenizer for command parameters: matches double-quoted strings, single-quoted strings,
-# bracket-delimited arrays, or bare words (non-whitespace runs)
+# bracket-delimited arrays, a bare comma delimiter, or bare words. Commas are tokenized
+# separately so whitespace around them is optional.
 SCANNING_REGULAR_EXPRESSION = re.compile(
     r""" "(?:[^\\"]|\\.)*"            # double-quoted string (with escaped chars)
        | '(?:[^\\']|\\.)*'            # single-quoted string (with escaped chars)
        | \[(?:[^\\\[\]]|\\.)*\]       # bracket-delimited array (with escaped chars)
-       | \S+                          # bare word
+       | ,                            # comma delimiter
+       | [^\s,]+                      # bare word
     """,
     re.VERBOSE,
 )
@@ -167,28 +169,25 @@ def extract_fields_from_cmd_text(text):
         second_half = SCANNING_REGULAR_EXPRESSION.findall(split_string[1])
         keyword = None
         value = None
-        comma = None
         for item in second_half:
-            if keyword is None:
+            if item == ",":
+                # A comma completes the current keyword / value pair
+                if keyword is not None:
+                    if value is None:
+                        raise RuntimeError(f"Missing value for last command parameter: {text:s}")
+                    add_cmd_parameter(keyword, value, cmd_params)
+                    keyword = None
+                    value = None
+            elif keyword is None:
                 keyword = item
-                continue
-            if value is None:
-                if item.endswith(","):
-                    value = item[0:-1]
-                    comma = True
-                else:
-                    value = item
-                    continue
-            if not comma and item != ",":
+            elif value is None:
+                value = item
+            else:
                 raise RuntimeError(f"Missing comma in command parameters: {text:s}")
+        if keyword is not None:
+            if value is None:
+                raise RuntimeError(f"Missing value for last command parameter: {text:s}")
             add_cmd_parameter(keyword, value, cmd_params)
-            keyword = None
-            value = None
-            comma = None
-        if keyword is not None and value is not None:
-            add_cmd_parameter(keyword, value, cmd_params)
-        else:
-            raise RuntimeError(f"Missing value for last command parameter: {text:s}")
 
     return target_name, cmd_name, cmd_params
 
