@@ -41,12 +41,36 @@ module OpenC3
         model.create
         model = ToolModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
         model.create
+        # Tools are always created in DEFAULT regardless of the requested scope
         model = ToolModel.new(folder_name: "OTHER", name: "OTHER", scope: "OTHER")
         model.create
         names = ToolModel.names(scope: "DEFAULT")
-        expect(names).to contain_exactly("TEST", "SPEC")
+        expect(names).to contain_exactly("TEST", "SPEC", "OTHER")
         names = ToolModel.names(scope: "OTHER")
-        expect(names).to contain_exactly("OTHER")
+        expect(names).to contain_exactly("TEST", "SPEC", "OTHER")
+      end
+    end
+
+    describe "scope handling" do
+      it "always creates tools in the DEFAULT scope" do
+        model = ToolModel.new(folder_name: "OTHER", name: "OTHER", scope: "OTHER")
+        expect(model.scope).to eql "DEFAULT"
+        model.create
+        expect(Store.hgetall("OTHER__#{ToolModel::PRIMARY_KEY}")).to be_empty
+        expect(ToolModel.get(name: "OTHER", scope: "OTHER")["name"]).to eql "OTHER"
+        expect(ToolModel.get(name: "OTHER", scope: "DEFAULT")["name"]).to eql "OTHER"
+      end
+
+      it "ignores scope in handle_config" do
+        parser = double("ConfigParser").as_null_object
+        tool = ToolModel.handle_config(parser, "TOOL", ["FOLDER", "NAME"], scope: "OTHER")
+        expect(tool.scope).to eql "DEFAULT"
+      end
+
+      it "returns tools from DEFAULT in all_scopes" do
+        model = ToolModel.new(folder_name: "OTHER", name: "OTHER", scope: "OTHER")
+        model.create
+        expect(ToolModel.all_scopes.keys).to contain_exactly("OTHER")
       end
     end
 

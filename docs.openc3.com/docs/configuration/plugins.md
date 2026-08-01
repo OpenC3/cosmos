@@ -568,6 +568,13 @@ Sets the retention time directly on QuestDB tables for automatic data expiration
 |-----------|-------------|----------|
 | Time | Retention time value with unit (e.g., "24h" for 24 hours, "30d" for 30 days, "1y" for 1 year). Supported units are h (hours), d (days), w (weeks), M (months), y (years). Default = nil = Forever | True |
 
+### DECOM_FLUSH_PERIOD
+**Period in seconds between flushing rows to the TSDB. Higher values use less CPU.**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Period | Number of seconds between flushing rows to the TSDB (default = 5.0) | True |
+
 ### LOG_RETAIN_TIME
 **How long to keep all regular telemetry logs in seconds.**
 
@@ -870,7 +877,9 @@ STOPPED
 ## TOOL
 **Define a tool**
 
-Defines a tool that the plugin adds to the OpenC3 system. Tools are web based applications that make use of the Single-SPA javascript library that allows them to by dynamically added to the running system as independent frontend microservices.
+Defines a tool that the plugin adds to the OpenC3 system. Tools are web based applications that make use of the Single-SPA javascript library that allows them to be dynamically added to the running system as independent frontend microservices.
+Tools are global to the entire COSMOS installation. Regardless of the scope a plugin is installed into, its tools are always installed into the DEFAULT scope and are available in every scope.
+
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
