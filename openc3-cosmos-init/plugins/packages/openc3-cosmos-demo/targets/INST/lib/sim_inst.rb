@@ -452,10 +452,12 @@ module OpenC3
         end
       end
 
-      # Every 10s throw an unknown packet at the server just to demo that
-      data = Array.new(10) { rand(0..255) }.pack("C*")
-      if count_100hz % 1000 == 900
-        pending_packets << Packet.new(nil, nil, :BIG_ENDIAN, nil, data)
+      unless @quiet
+        # Every 10s throw an unknown packet at the server just to demo that
+        data = Array.new(10) { rand(0..255) }.pack("C*")
+        if count_100hz % 1000 == 900
+          pending_packets << Packet.new(nil, nil, :BIG_ENDIAN, nil, data)
+        end
       end
 
       if @variable_arrays_updated
