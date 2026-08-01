@@ -2331,7 +2331,7 @@ export default {
         line_no: data.line_no,
         state: data.state,
       })
-      if (TERMINAL_STATES.includes(data.state)) {
+      if (TERMINAL_STATES.has(data.state)) {
         this.scriptComplete()
       }
     },
