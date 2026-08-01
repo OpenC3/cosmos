@@ -49,6 +49,24 @@ class TestMicroservice(unittest.TestCase):
                 "Microservice DEFAULT__TYPE__NAME run method returned cleanly and will now shutdown."
             )
 
+    def test_as_json_supports_custom_dict(self):
+        microservice = Microservice("DEFAULT__TYPE__CUSTOM")
+        microservice.custom = {"processed": 100, "errors": 2}
+        self.assertEqual(microservice.as_json()["custom"], {"processed": 100, "errors": 2})
+        microservice.shutdown()
+        time.sleep(0.1)
+
+    def test_as_json_supports_custom_object_with_as_json(self):
+        class CustomStatus:
+            def as_json(self):
+                return {"processed": 100}
+
+        microservice = Microservice("DEFAULT__TYPE__CUSTOM")
+        microservice.custom = CustomStatus()
+        self.assertEqual(microservice.as_json()["custom"], {"processed": 100})
+        microservice.shutdown()
+        time.sleep(0.1)
+
     def test_retries_transient_bucket_failures_on_startup(self):
         os.environ["OPENC3_MICROSERVICE_NAME"] = "DEFAULT__TYPE__NAME"
         config = {
