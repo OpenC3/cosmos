@@ -131,7 +131,7 @@ spec = Gem::Specification.new do |s|
   s.add_development_dependency 'ruby-prof', '~> 2.0' if RUBY_ENGINE == 'ruby' # MRI Only
   s.add_development_dependency 'simplecov', '~> 0.22'
   s.add_development_dependency 'rexml', '3.4.4' # 3.4.2 throws an error. See https://github.com/ruby/rexml/issues/287
-  s.add_development_dependency 'simplecov-cobertura', '~> 3.0'
+  s.add_development_dependency 'simplecov-cobertura', '~> 4.0'
   # simplecov_json_formatter formatter supports SonarQube
   # s.add_development_dependency 'simplecov_json_formatter', '~> 0.1'
 
