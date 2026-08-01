@@ -85,7 +85,13 @@ class Microservice:
         if self.error is not None:
             json["error"] = repr(self.error)
         if self.custom is not None:
-            json["custom"] = self.custom.as_json()
+            # Ruby's Hash#as_json exists but Python dicts have no as_json
+            # so allow plain dicts (or anything JSON serializable) directly
+            as_json = getattr(self.custom, "as_json", None)
+            if callable(as_json):
+                json["custom"] = as_json()
+            else:
+                json["custom"] = self.custom
         return json
 
     def __init__(self, name, is_plugin=False):

@@ -42,6 +42,44 @@ class TestMicroserviceStatusModel(unittest.TestCase):
         microservice2.shutdown()
         time.sleep(0.1)
 
+    def test_stores_custom_status_dict(self):
+        model = MicroserviceStatusModel(
+            "DEFAULT__TYPE__TEST",
+            state="RUNNING",
+            custom={"processed": 100, "errors": 2},
+            scope="DEFAULT",
+        )
+        self.assertEqual(model.as_json()["custom"], {"processed": 100, "errors": 2})
+        MicroserviceStatusModel.set(model.as_json(), scope="DEFAULT")
+        micro = MicroserviceStatusModel.get("DEFAULT__TYPE__TEST", scope="DEFAULT")
+        self.assertEqual(micro["custom"], {"processed": 100, "errors": 2})
+
+    def test_stores_custom_status_object_with_as_json(self):
+        class CustomStatus:
+            def as_json(self):
+                return {"processed": 100}
+
+        model = MicroserviceStatusModel(
+            "DEFAULT__TYPE__TEST",
+            state="RUNNING",
+            custom=CustomStatus(),
+            scope="DEFAULT",
+        )
+        self.assertEqual(model.as_json()["custom"], {"processed": 100})
+
+    def test_stores_custom_status_object_with_non_callable_as_json(self):
+        class CustomStatus:
+            as_json = "not callable"
+
+        custom = CustomStatus()
+        model = MicroserviceStatusModel(
+            "DEFAULT__TYPE__TEST",
+            state="RUNNING",
+            custom=custom,
+            scope="DEFAULT",
+        )
+        self.assertEqual(model.as_json()["custom"], custom)
+
     def test_get_from_correct_db_shard(self):
         MicroserviceModel("DEFAULT__TYPE__TEST", scope="DEFAULT", db_shard=0).create()
         MicroserviceStatusModel.set({"name": "DEFAULT__TYPE__TEST", "state": "RUNNING"}, scope="DEFAULT")
