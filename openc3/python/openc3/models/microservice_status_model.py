@@ -100,8 +100,9 @@ class MicroserviceStatusModel(DbShardedModel, Model):
         if self.custom is not None:
             # Ruby's Hash#as_json exists but Python dicts have no as_json
             # so allow plain dicts (or anything JSON serializable) directly
-            if hasattr(self.custom, "as_json"):
-                json_data["custom"] = self.custom.as_json()
+            as_json = getattr(self.custom, "as_json", None)
+            if callable(as_json):
+                json_data["custom"] = as_json()
             else:
                 json_data["custom"] = self.custom
         return json_data

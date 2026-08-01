@@ -67,6 +67,17 @@ class TestMicroservice(unittest.TestCase):
         microservice.shutdown()
         time.sleep(0.1)
 
+    def test_as_json_supports_custom_object_with_non_callable_as_json(self):
+        class CustomStatus:
+            as_json = "not callable"
+
+        custom = CustomStatus()
+        microservice = Microservice("DEFAULT__TYPE__CUSTOM")
+        microservice.custom = custom
+        self.assertEqual(microservice.as_json()["custom"], custom)
+        microservice.shutdown()
+        time.sleep(0.1)
+
     def test_retries_transient_bucket_failures_on_startup(self):
         os.environ["OPENC3_MICROSERVICE_NAME"] = "DEFAULT__TYPE__NAME"
         config = {
