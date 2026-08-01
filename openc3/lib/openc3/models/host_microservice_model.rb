@@ -35,6 +35,7 @@ module OpenC3
     attr_accessor :env
     attr_accessor :options
     attr_accessor :secret_options
+    attr_accessor :protocols
     attr_accessor :secrets
     attr_accessor :container
     attr_accessor :needs_dependencies
@@ -68,6 +69,7 @@ module OpenC3
       env: {},
       options: [],
       secret_options: [],
+      protocols: [],
       secrets: [],
       container: nil,
       needs_dependencies: false,
@@ -83,6 +85,7 @@ module OpenC3
       @env = env
       @options = options
       @secret_options = secret_options
+      @protocols = protocols
       @secrets = secrets
       @container = container
       @needs_dependencies = needs_dependencies
@@ -98,6 +101,7 @@ module OpenC3
         'env' => @env,
         'options' => @options,
         'secret_options' => @secret_options,
+        'protocols' => @protocols,
         'secrets' => @secrets.as_json(*a),
         'container' => @container,
         'needs_dependencies' => @needs_dependencies,

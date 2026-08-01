@@ -15,7 +15,7 @@ path = "src/main.rs"
 # The GUI is on by default per the requirements. Build with
 # `--no-default-features` for a smaller headless-only binary.
 default = ["gui"]
-gui = ["dep:iced"]
+gui = ["dep:iced", "dep:rfd"]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
@@ -46,6 +46,18 @@ iroh-tickets = "1.0.0"
 # reachable. futures-util is for consuming bollard's stats stream.
 bollard = "0.21"
 futures-util = "0.3"
+# Native folder picker for the Development Mode setting (GUI only). The
+# xdg-portal backend avoids a GTK C dependency on Linux (keeping the build
+# pure-Rust/cross-compilable); native dialogs on macOS/Windows.
+rfd = { version = "0.15", default-features = false, features = ["xdg-portal", "tokio"], optional = true }
+
+# The software renderer (tiny-skia) and text shaping (cosmic-text) are painfully
+# slow when built unoptimized, so a debug `cargo run` feels sluggish even though
+# release is snappy. Optimize dependencies (but NOT our own crate, so app-crate
+# incremental builds stay fast and debuggable) so `cargo run` renders at full
+# speed. Standard practice for graphics/GUI apps.
+[profile.dev.package."*"]
+opt-level = 3
 
 [profile.release]
 opt-level = "z"
@@ -53,6 +65,17 @@ lto = true
 codegen-units = 1
 strip = true
 panic = "abort"
+
+# Profiling build: optimized but with debug symbols kept and LTO off for clear
+# stack frames. Use with samply (https://github.com/mstange/samply):
+#   cargo build --profile profiling
+#   samply record ./target/profiling/openc3
+[profile.profiling]
+inherits = "release"
+opt-level = 2
+lto = false
+debug = true
+strip = false
 
 [target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies]
 tray-icon = "0.24.1"

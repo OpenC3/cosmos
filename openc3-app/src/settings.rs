@@ -50,6 +50,11 @@ pub struct Settings {
     /// Access token for the private COSMOS Enterprise repo (repos.openc3.com).
     /// Only used when `edition` is Enterprise.
     pub enterprise_token: String,
+    /// Development mode: force OPENC3_TAG / OPENC3_ENTERPRISE_TAG to "latest"
+    /// and drive COSMOS from a local source checkout's `openc3.sh`.
+    pub dev_mode: bool,
+    /// The local source checkout used in development mode (contains `openc3.sh`).
+    pub dev_folder: String,
 }
 
 impl Default for Settings {
@@ -59,6 +64,8 @@ impl Default for Settings {
             run_locally: true,
             edition: Edition::Core,
             enterprise_token: String::new(),
+            dev_mode: false,
+            dev_folder: String::new(),
         }
     }
 }

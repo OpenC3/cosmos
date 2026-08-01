@@ -19,13 +19,24 @@ use std::collections::HashMap;
 const WORKDIR_LABEL: &str = "com.docker.compose.project.working_dir";
 const SERVICE_LABEL: &str = "com.docker.compose.service";
 
-/// Query all COSMOS containers (status + CPU/memory) via the Docker Engine API.
-/// Errors if the daemon socket can't be reached or a request fails, so the
-/// caller can fall back to the CLI path.
-pub fn snapshot(ctx: &Context) -> Result<Vec<ContainerStatus>> {
-    // Compose records the absolute working directory it was launched from; our
-    // cosmos path is already absolute (see Paths::resolve), so it matches.
-    let workdir = ctx.paths.cosmos.to_string_lossy().to_string();
+/// Query all COSMOS containers via the Docker Engine API. When `with_stats` is
+/// false, only the container list/status is fetched (fast); when true, each
+/// running container is additionally polled for CPU/memory, which is slow
+/// (`docker stats` double-samples ~1-2s per container). Errors if the daemon
+/// socket can't be reached, so the caller can fall back to the CLI path.
+pub fn snapshot(ctx: &Context, with_stats: bool) -> Result<Vec<ContainerStatus>> {
+    // Compose records the absolute working directory it was launched from. In
+    // development mode COSMOS is launched from the source checkout, so scope the
+    // status to that folder; otherwise our (absolute) cosmos install path.
+    // Trim a trailing slash so e.g. ".../cosmos/" still matches the label
+    // ".../cosmos" that compose stored.
+    let workdir = ctx
+        .dev_folder
+        .as_ref()
+        .unwrap_or(&ctx.paths.cosmos)
+        .to_string_lossy()
+        .trim_end_matches('/')
+        .to_string();
     let docker = Docker::connect_with_defaults().context("connecting to the Docker Engine API")?;
     // A current-thread runtime spawns no background threads and is cheap to
     // build per poll; the per-container stats calls are IO-bound and overlap
@@ -34,10 +45,10 @@ pub fn snapshot(ctx: &Context) -> Result<Vec<ContainerStatus>> {
         .enable_all()
         .build()
         .context("building tokio runtime for the Docker API")?;
-    rt.block_on(collect(&docker, &workdir))
+    rt.block_on(collect(&docker, &workdir, with_stats))
 }
 
-async fn collect(docker: &Docker, workdir: &str) -> Result<Vec<ContainerStatus>> {
+async fn collect(docker: &Docker, workdir: &str, with_stats: bool) -> Result<Vec<ContainerStatus>> {
     let mut filters = HashMap::new();
     filters.insert(
         "label".to_string(),
@@ -57,7 +68,7 @@ async fn collect(docker: &Docker, workdir: &str) -> Result<Vec<ContainerStatus>>
     let mut set = tokio::task::JoinSet::new();
     for summary in list {
         let docker = docker.clone();
-        set.spawn(async move { build_status(&docker, summary).await });
+        set.spawn(async move { build_status(&docker, summary, with_stats).await });
     }
     let mut out = Vec::new();
     while let Some(joined) = set.join_next().await {
@@ -68,7 +79,7 @@ async fn collect(docker: &Docker, workdir: &str) -> Result<Vec<ContainerStatus>>
     Ok(out)
 }
 
-async fn build_status(docker: &Docker, c: ContainerSummary) -> ContainerStatus {
+async fn build_status(docker: &Docker, c: ContainerSummary, with_stats: bool) -> ContainerStatus {
     let labels = c.labels.unwrap_or_default();
     let service = labels.get(SERVICE_LABEL).cloned().unwrap_or_default();
     let name = c
@@ -102,7 +113,7 @@ async fn build_status(docker: &Docker, c: ContainerSummary) -> ContainerStatus {
         mem: String::new(),
     };
 
-    if cs.state.eq_ignore_ascii_case("running") {
+    if with_stats && cs.state.eq_ignore_ascii_case("running") {
         if let Some(id) = c.id.as_deref() {
             if let Some((cpu, mem)) = fetch_stats(docker, id).await {
                 cs.cpu = cpu;

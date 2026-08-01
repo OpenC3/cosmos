@@ -89,7 +89,8 @@ RUN apt-get update && \
       python3-pip \
       python3-venv \
       tini \
-      unzip && \
+      unzip \
+      vim && \
     gem update --system 3.7.2 && \
     gem install rake && \
     gem install google-protobuf && \

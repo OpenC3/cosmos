@@ -5,10 +5,48 @@ use crate::context::Context;
 use crate::{docker, env_file, install, monitor, process};
 use anyhow::{bail, Context as _, Result};
 use std::io::Write;
+use std::path::Path;
 use std::process::Command;
+
+/// In development mode, run the source checkout's `openc3.sh` (or `openc3.bat`
+/// on Windows) with `subcommand`, from that directory. OPENC3_TAG /
+/// OPENC3_ENTERPRISE_TAG overrides are inherited from the process environment
+/// (the GUI sets them when dev mode is on).
+fn run_dev(dev: &Path, subcommand: &str, args: &[String]) -> Result<()> {
+    let (script_name, launcher): (&str, Option<&str>) = if cfg!(windows) {
+        ("openc3.bat", None)
+    } else {
+        ("openc3.sh", Some("bash"))
+    };
+    let script = dev.join(script_name);
+    if !script.exists() {
+        bail!(
+            "Development folder '{}' does not contain {}.",
+            dev.display(),
+            script_name
+        );
+    }
+    let mut cmd = match launcher {
+        Some(sh) => {
+            let mut c = Command::new(sh);
+            c.arg(&script);
+            c
+        }
+        None => Command::new(&script),
+    };
+    cmd.arg(subcommand);
+    for a in args {
+        cmd.arg(a);
+    }
+    cmd.current_dir(dev);
+    process::run(&mut cmd)
+}
 
 /// `build` — build all COSMOS containers from source (dev installs only).
 pub fn build(ctx: &Context, flags: &[String]) -> Result<()> {
+    if let Some(dev) = &ctx.dev_folder {
+        return run_dev(dev, "build", flags);
+    }
     if !ctx.paths.is_devel() {
         bail!("'build' is only available for development installs (no compose-build.yaml found).");
     }
@@ -23,6 +61,9 @@ pub fn build(ctx: &Context, flags: &[String]) -> Result<()> {
 
 /// `run` — start the containers detached.
 pub fn run(ctx: &Context) -> Result<()> {
+    if let Some(dev) = &ctx.dev_folder {
+        return run_dev(dev, "run", &[]);
+    }
     check_not_root();
     install::setup_cosmos(ctx)?;
     docker::up(ctx)?;
@@ -32,6 +73,9 @@ pub fn run(ctx: &Context) -> Result<()> {
 
 /// `start` — build (dev) then run.
 pub fn start(ctx: &Context, flags: &[String]) -> Result<()> {
+    if let Some(dev) = &ctx.dev_folder {
+        return run_dev(dev, "start", flags);
+    }
     if ctx.paths.is_devel() {
         build(ctx, flags)?;
     }
@@ -40,6 +84,9 @@ pub fn start(ctx: &Context, flags: &[String]) -> Result<()> {
 
 /// `stop` — gracefully stop and tear down.
 pub fn stop(ctx: &Context) -> Result<()> {
+    if let Some(dev) = &ctx.dev_folder {
+        return run_dev(dev, "stop", &[]);
+    }
     docker::stop(ctx)
 }
 
@@ -72,7 +119,7 @@ pub fn open_browser(url: &str) -> Result<()> {
 /// `status` — show a color-coded-style container status table.
 pub fn status(ctx: &Context) -> Result<()> {
     use crate::monitor::RunState;
-    match monitor::snapshot(ctx) {
+    match monitor::snapshot(ctx, true) {
         Ok(statuses) => {
             let running = statuses.iter().filter(|c| c.is_running()).count();
             println!("{} of {} containers running", running, statuses.len());
@@ -118,7 +165,8 @@ pub fn logs(ctx: &Context, service: Option<&str>, follow: bool) -> Result<()> {
 pub fn monitor_loop(ctx: &Context) -> Result<()> {
     println!("Monitoring COSMOS containers (Ctrl-C to stop)...");
     loop {
-        match monitor::snapshot(ctx) {
+        // Health only — no per-container CPU/mem stats needed here.
+        match monitor::snapshot(ctx, false) {
             Ok(statuses) => {
                 let unhealthy: Vec<_> = statuses.iter().filter(|c| !c.is_healthy()).collect();
                 let summary = monitor::summarize(&statuses);
@@ -147,6 +195,15 @@ pub fn cleanup(ctx: &Context, local: bool, force: bool) -> Result<()> {
             println!("Aborted.");
             return Ok(());
         }
+    }
+    if let Some(dev) = &ctx.dev_folder {
+        // Already confirmed above; pass `force` so openc3.sh doesn't re-prompt.
+        let mut args = Vec::new();
+        if local {
+            args.push("local".to_string());
+        }
+        args.push("force".to_string());
+        return run_dev(dev, "cleanup", &args);
     }
     docker::down_volumes(ctx)?;
     if local {

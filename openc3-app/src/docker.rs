@@ -153,20 +153,40 @@ mod group {
 /// Build a base `docker compose -f <cosmos>/compose.yaml` command running with
 /// the COSMOS directory as the working directory (so the bundled `.env` and
 /// relative volume paths resolve correctly).
+///
+/// In development mode COSMOS is launched from a source checkout, so target that
+/// folder's compose project (matching where the containers actually run — e.g.
+/// for `docker compose exec` during bridge enrollment) rather than the app's
+/// installed copy.
 pub fn compose(ctx: &Context) -> Result<Command> {
     let rt = ctx.runtime()?;
-    if !ctx.paths.cosmos_installed() {
-        bail!(
-            "COSMOS environment not installed at {}. Run `openc3 install cosmos`.",
-            ctx.paths.cosmos.display()
-        );
-    }
+    let (dir, compose_file) = match &ctx.dev_folder {
+        Some(dev) => {
+            let file = dev.join("compose.yaml");
+            if !file.exists() {
+                bail!(
+                    "Development folder {} has no compose.yaml.",
+                    dev.display()
+                );
+            }
+            (dev.clone(), file)
+        }
+        None => {
+            if !ctx.paths.cosmos_installed() {
+                bail!(
+                    "COSMOS environment not installed at {}. Run `openc3 install cosmos`.",
+                    ctx.paths.cosmos.display()
+                );
+            }
+            (ctx.paths.cosmos.clone(), ctx.paths.compose_file())
+        }
+    };
     let mut cmd = Command::new(&rt.compose[0]);
     for part in &rt.compose[1..] {
         cmd.arg(part);
     }
-    cmd.arg("-f").arg(ctx.paths.compose_file());
-    cmd.current_dir(&ctx.paths.cosmos);
+    cmd.arg("-f").arg(&compose_file);
+    cmd.current_dir(&dir);
     apply_runtime_env(&mut cmd, rt);
     Ok(cmd)
 }

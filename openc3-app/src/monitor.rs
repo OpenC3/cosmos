@@ -206,21 +206,26 @@ impl ContainerStatus {
     }
 }
 
-/// Query the current status of all COSMOS containers (status + CPU/memory).
+/// Query the current status of all COSMOS containers.
+///
+/// `with_stats` controls whether per-container CPU/memory is collected — that's
+/// the slow part (`docker stats` double-samples ~1-2s per container), so callers
+/// that only need presence/health/uptime (readiness checks, the collapsed status
+/// summary) should pass `false`.
 ///
 /// Prefers the Docker Engine API over the daemon socket (no subprocess per
 /// poll; see [`crate::dockerapi`]). Falls back to the `docker` CLI when the
 /// socket isn't reachable — e.g. podman without its API socket enabled, or an
 /// unusual `DOCKER_HOST` bollard can't connect to.
-pub fn snapshot(ctx: &Context) -> Result<Vec<ContainerStatus>> {
-    let mut statuses = match crate::dockerapi::snapshot(ctx) {
+pub fn snapshot(ctx: &Context, with_stats: bool) -> Result<Vec<ContainerStatus>> {
+    let mut statuses = match crate::dockerapi::snapshot(ctx, with_stats) {
         Ok(statuses) => statuses,
         Err(err) => {
             crate::logging::debug(
                 "monitor",
                 &format!("Docker API poll unavailable ({err:#}); using the docker CLI"),
             );
-            snapshot_via_cli(ctx)?
+            snapshot_via_cli(ctx, with_stats)?
         }
     };
     // Present containers alphabetically (by compose service, then container
@@ -257,7 +262,7 @@ fn image_tag(image: &str) -> &str {
 /// CLI fallback: parse `docker compose ps --format json` (which emits either a
 /// JSON array or one JSON object per line depending on the version) and enrich
 /// with `docker stats`.
-fn snapshot_via_cli(ctx: &Context) -> Result<Vec<ContainerStatus>> {
+fn snapshot_via_cli(ctx: &Context, with_stats: bool) -> Result<Vec<ContainerStatus>> {
     let mut cmd = docker::compose(ctx)?;
     cmd.args(["ps", "--all", "--format", "json"]);
     let out = docker::capture(cmd)?;
@@ -268,12 +273,15 @@ fn snapshot_via_cli(ctx: &Context) -> Result<Vec<ContainerStatus>> {
     let text = String::from_utf8_lossy(&out.stdout);
     let mut statuses = parse_ps(&text);
 
-    // Enrich with CPU/memory utilization from `docker stats` (best effort).
-    let stats = fetch_stats(ctx);
-    for s in &mut statuses {
-        if let Some((cpu, mem)) = stats.get(&s.name) {
-            s.cpu = cpu.clone();
-            s.mem = mem.clone();
+    // Enrich with CPU/memory utilization from `docker stats` (best effort) only
+    // when the caller wants it — `docker stats` is the slow part.
+    if with_stats {
+        let stats = fetch_stats(ctx);
+        for s in &mut statuses {
+            if let Some((cpu, mem)) = stats.get(&s.name) {
+                s.cpu = cpu.clone();
+                s.mem = mem.clone();
+            }
         }
     }
     Ok(statuses)

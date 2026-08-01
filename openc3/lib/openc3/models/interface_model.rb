@@ -38,6 +38,8 @@ module OpenC3
     attr_accessor :disable_disconnect
     attr_accessor :options
     attr_accessor :secret_options
+    attr_accessor :bridge_options
+    attr_accessor :bridge_secret_options
     attr_accessor :protocols
     attr_accessor :interfaces
     attr_accessor :log_stream
@@ -114,6 +116,9 @@ module OpenC3
       options: [],
       secret_options: [],
       protocols: [],
+      bridge_options: [],
+      bridge_secret_options: [],
+      bridge_protocols: [],
       log_stream: nil,
       updated_at: nil,
       plugin: nil,
@@ -161,7 +166,10 @@ module OpenC3
       @disable_disconnect = disable_disconnect
       @options = options
       @secret_options = secret_options
+      @bridge_options = bridge_options
+      @bridge_secret_options = bridge_secret_options
       @protocols = protocols
+      @bridge_protocols = bridge_protocols
       @log_stream = log_stream
       @needs_dependencies = needs_dependencies
       @cmd = cmd
@@ -243,6 +251,9 @@ module OpenC3
         'options' => @options,
         'secret_options' => @secret_options,
         'protocols' => @protocols,
+        'bridge_options' => @options,
+        'bridge_secret_options' => @secret_options,
+        'bridge_protocols' => @bridge_protocols,
         'log_stream' => @log_stream,
         'plugin' => @plugin,
         'needs_dependencies' => @needs_dependencies,
@@ -340,6 +351,10 @@ module OpenC3
         parser.verify_num_parameters(2, nil, "#{keyword} <Option Name> <Option Value 1> <Option Value 2 (optional)> <etc>")
         @options << parameters.dup
 
+      when 'BRIDGE_OPTION'
+        parser.verify_num_parameters(2, nil, "#{keyword} <Option Name> <Option Value 1> <Option Value 2 (optional)> <etc>")
+        @bridge_options << parameters.dup
+
       when 'PROTOCOL'
         usage = "#{keyword} <READ WRITE READ_WRITE> <protocol filename or classname> <Protocol specific parameters>"
         parser.verify_num_parameters(2, nil, usage)
@@ -348,6 +363,15 @@ module OpenC3
         end
 
         @protocols << parameters.dup
+
+      when 'BRIDGE_PROTOCOL'
+        usage = "#{keyword} <READ WRITE READ_WRITE> <protocol filename or classname> <Protocol specific parameters>"
+        parser.verify_num_parameters(2, nil, usage)
+        unless %w(READ WRITE READ_WRITE).include? parameters[0].upcase
+          raise parser.error("Invalid protocol type: #{parameters[0]}", usage)
+        end
+
+        @bridge_protocols << parameters.dup
 
       when 'DONT_LOG'
         Logger.warn "DONT_LOG is deprecated and does nothing."
@@ -362,6 +386,15 @@ module OpenC3
         if ConfigParser.handle_nil(parameters[3])
           # Option Name, Secret Name
           @secret_options << [parameters[3], parameters[1]]
+        end
+        @secrets[-1] << ConfigParser.handle_nil(parameters[4])
+
+      when 'BRIDGE_SECRET'
+        parser.verify_num_parameters(3, 5, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path> <Option Name (Optional)> <Secret Store Name (Optional)>")
+        @secrets << parameters[0..2]
+        if ConfigParser.handle_nil(parameters[3])
+          # Option Name, Secret Name
+          @bridge_secret_options << [parameters[3], parameters[1]]
         end
         @secrets[-1] << ConfigParser.handle_nil(parameters[4])
 
@@ -535,8 +568,9 @@ module OpenC3
         config_params: @config_params,
         work_dir: @work_dir,
         env: @env,
-        options: @options,
-        secret_options: @secret_options,
+        options: @bridge_options,
+        secret_options: @bridge_secret_options,
+        protocols: @bridge_protocols,
         secrets: @secrets,
         container: @container,
         needs_dependencies: @needs_dependencies,

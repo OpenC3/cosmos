@@ -5,3 +5,4 @@
 /bin
 /tmp
 Cargo.lock.bak
+/openc3-app-settings.json

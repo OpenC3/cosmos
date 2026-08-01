@@ -166,7 +166,7 @@ fn run(cli: Cli) -> Result<()> {
             op.set_bridge_connector(
                 Box::new(move || enroll::connect_bridge(&connect_ctx)),
                 Box::new(move || {
-                    monitor::snapshot(&ready_ctx)
+                    monitor::snapshot(&ready_ctx, false)
                         .ok()
                         .and_then(|s| s.iter().filter_map(|c| c.uptime()).min())
                 }),
@@ -236,7 +236,7 @@ fn headless_summary(root: Option<std::path::PathBuf>, enterprise: bool) -> Resul
         }
     );
     if ctx.paths.cosmos_installed() && ctx.runtime.is_some() {
-        if let Ok(statuses) = monitor::snapshot(&ctx) {
+        if let Ok(statuses) = monitor::snapshot(&ctx, false) {
             println!("  status:  {}", monitor::summarize(&statuses));
         }
     }

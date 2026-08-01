@@ -138,12 +138,14 @@ fn build_env(name: &str, config: &MicroserviceConfig) -> BTreeMap<String, String
     env
 }
 
-/// When `OPENC3_DEVEL` points at the local openc3 gem (as in the Rails APIs'
-/// `export OPENC3_DEVEL=../openc3`), the local openc3 Python source directory
-/// (`$OPENC3_DEVEL/python`) to install into host venvs instead of the published
-/// `openc3` package. Returns `None` when the variable is unset/empty or doesn't
-/// point at the openc3 Python package (e.g. the `OPENC3_DEVEL=1` boolean form
-/// used by `openc3.sh`), so normal installs are unaffected.
+/// When `OPENC3_DEVEL` points at the local openc3 gem, install the local openc3
+/// Python source (`$OPENC3_DEVEL/python`) into host venvs (editable) instead of
+/// the published `openc3` package. The GUI's Development Mode sets this to the
+/// openc3 gem inside the dev folder (see `gui::apply_dev_env`); the CLI can set
+/// it manually (as the Rails APIs do: `export OPENC3_DEVEL=../openc3`). Returns
+/// `None` when unset/empty or not pointing at the openc3 Python package (e.g.
+/// the `OPENC3_DEVEL=1` boolean form used by `openc3.sh`), so normal installs are
+/// unaffected.
 fn openc3_devel_source() -> Option<PathBuf> {
     let devel = std::env::var("OPENC3_DEVEL").ok().filter(|v| !v.is_empty())?;
     let path = Path::new(&devel).join("python");
@@ -587,6 +589,9 @@ pub struct MicroserviceOperator {
     next_bridge_check: Instant,
     /// Enroll attempts made during the current COSMOS up-session (bounded).
     enroll_attempts: u32,
+    /// Set by the GUI's "Retry" button to re-arm enrollment immediately (even
+    /// after the bounded attempts have been exhausted).
+    retry: Arc<AtomicBool>,
     /// Earliest instant to run the next plugin-file sync. Syncing hits the hub's
     /// (synchronous, event-loop-blocking) gem scan, so it's throttled well below
     /// the operator cycle rather than run every cycle.
@@ -655,9 +660,18 @@ impl MicroserviceOperator {
             cosmos_uptime: None,
             next_bridge_check: Instant::now(),
             enroll_attempts: 0,
+            retry: Arc::new(AtomicBool::new(false)),
             next_file_sync: Instant::now(),
             last_sync: None,
         }
+    }
+
+    /// Share a retry flag with the GUI. Setting it (via the "Retry" button)
+    /// re-arms bridge enrollment on the next cycle, even after the bounded
+    /// auto-enroll attempts have been exhausted.
+    #[allow(dead_code)] // used by the GUI, not the headless binary
+    pub fn set_retry_flag(&mut self, flag: Arc<AtomicBool>) {
+        self.retry = flag;
     }
 
 
@@ -744,6 +758,13 @@ impl MicroserviceOperator {
             || self.cosmos_uptime.is_none()
         {
             return;
+        }
+        // A manual retry re-arms enrollment immediately — reset the attempt
+        // counter and clear any wait so we try again this cycle.
+        if self.retry.swap(false, Ordering::Relaxed) {
+            self.enroll_attempts = 0;
+            self.next_bridge_check = Instant::now();
+            self.unpaired_reason = Some("retrying…".to_string());
         }
         let now = Instant::now();
         if now < self.next_bridge_check {

@@ -17,8 +17,8 @@ use std::time::{Duration, Instant};
 
 use iced::widget::image::Handle as ImageHandle;
 use iced::widget::{
-    button, checkbox, column, container, horizontal_rule, mouse_area, pick_list, progress_bar, row,
-    scrollable, stack, text, text_editor, text_input, Image, Space,
+    button, checkbox, column, container, horizontal_rule, pick_list, progress_bar, row,
+    scrollable, text, text_editor, text_input, Image, Space,
 };
 use iced::{window, Center, Color, Element, Font, Length, Size, Subscription, Task, Theme};
 
@@ -209,6 +209,9 @@ struct State {
     /// True while a manual pairing is running on a background thread (keeps the
     /// UI responsive and guards against re-submitting).
     bridge_pairing: Arc<AtomicBool>,
+    /// Shared with the operator; the "Retry" button sets it to re-arm bridge
+    /// enrollment. Persists across operator restarts (pairing).
+    bridge_retry: Arc<AtomicBool>,
     /// Handles for an operator started by a background pairing task, handed back
     /// to the UI thread (swapped in on the next tick) so pairing never blocks.
     next_operator: Arc<Mutex<Option<OperatorHandles>>>,
@@ -229,7 +232,7 @@ type OperatorHandles = (
     Option<JoinHandle<()>>,
 );
 
-fn start_operator(ctx: &Context) -> OperatorHandles {
+fn start_operator(ctx: &Context, retry: Arc<AtomicBool>) -> OperatorHandles {
     let mut operator =
         MicroserviceOperator::new(ctx.paths.python.clone(), ctx.paths.microservices.clone());
     // Auto-enroll runs in the operator loop once COSMOS has been up a while
@@ -242,11 +245,13 @@ fn start_operator(ctx: &Context) -> OperatorHandles {
         // COSMOS "uptime" = how long the whole stack has been up = the uptime of
         // its most-recently-started running container.
         Box::new(move || {
-            crate::monitor::snapshot(&ready_ctx)
+            // Uptime only — no CPU/mem stats (the slow part).
+            crate::monitor::snapshot(&ready_ctx, false)
                 .ok()
                 .and_then(|s| s.iter().filter_map(|c| c.uptime()).min())
         }),
     );
+    operator.set_retry_flag(retry);
     let status = operator.status_handle();
     let bridge_status = operator.bridge_status_handle();
     let shutdown = operator.shutdown_handle();
@@ -273,6 +278,10 @@ enum Message {
     RunLocallyToggled(bool),
     EditionChanged(crate::settings::Edition),
     EnterpriseTokenChanged(String),
+    DevModeToggled(bool),
+    DevFolderChanged(String),
+    BrowseDevFolder,
+    DevFolderPicked(Option<std::path::PathBuf>),
     LogLevelChanged(LogLevelFilter),
     LogSearchChanged(String),
     ToggleLogPause,
@@ -283,6 +292,8 @@ enum Message {
     CancelCleanup,
     BridgeTokenAction(text_editor::Action),
     SubmitBridgeToken,
+    /// Re-arm bridge auto-enrollment (the "Retry" button).
+    RetryBridge,
     /// Expand/collapse the Container Status section.
     ToggleStatus,
     ViewLogs(String),
@@ -304,6 +315,9 @@ impl State {
         let settings = crate::settings::Settings::load(&ctx);
         // The persisted edition is the source of truth in the GUI.
         ctx.enterprise = settings.edition.is_enterprise();
+        // Development mode: source folder first, then env overrides derived from it.
+        ctx.dev_folder = dev_folder_from_settings(&settings);
+        apply_dev_env(settings.dev_mode, ctx.dev_folder.as_deref());
         let env = EnvCheck {
             container_ok: ctx.runtime.is_some(),
             container_installed: crate::context::container_engine_installed(),
@@ -313,8 +327,9 @@ impl State {
 
         // Start the host microservice operator (process spawner/monitor) on a
         // background thread and keep a handle to its published status.
+        let bridge_retry = Arc::new(AtomicBool::new(false));
         let (operator_status, bridge_status_handle, operator_shutdown, operator_thread) =
-            start_operator(&ctx);
+            start_operator(&ctx, bridge_retry.clone());
 
         crate::logging::info("openc3-app", "OpenC3 COSMOS control panel ready.");
 
@@ -348,6 +363,7 @@ impl State {
             cleanup_input: String::new(),
             bridge_token_content: text_editor::Content::new(),
             bridge_pairing: Arc::new(AtomicBool::new(false)),
+            bridge_retry,
             next_operator: Arc::new(Mutex::new(None)),
             settings_open: false,
             settings,
@@ -391,6 +407,13 @@ impl State {
         self.maybe_refresh_status();
     }
 
+    /// Re-apply development-mode settings: the process-env tag overrides and the
+    /// context's dev source folder.
+    fn apply_dev_settings(&mut self) {
+        self.ctx.dev_folder = dev_folder_from_settings(&self.settings);
+        apply_dev_env(self.settings.dev_mode, self.ctx.dev_folder.as_deref());
+    }
+
     /// Whether the setup page should be shown. Running COSMOS locally needs
     /// Docker + Python + the COSMOS environment; running against a remote COSMOS
     /// only needs the host Python runtime (for the bridge microservices).
@@ -418,10 +441,13 @@ impl State {
         let shared = self.shared.clone();
         let url = self.settings.effective_cosmos_url().to_string();
         let run_locally = self.settings.run_locally;
+        // The per-container CPU/mem stats are expensive; only collect them when
+        // the status table is expanded to actually show them.
+        let with_stats = !self.status_collapsed;
         std::thread::spawn(move || {
             // Only poll local containers when we're managing COSMOS locally.
             let statuses = if run_locally {
-                monitor::snapshot(&ctx).unwrap_or_default()
+                monitor::snapshot(&ctx, with_stats).unwrap_or_default()
             } else {
                 Vec::new()
             };
@@ -585,8 +611,9 @@ impl State {
                 Task::none()
             }
             Message::CosmosUrlChanged(value) => {
+                // Persisted on close (see CloseSettings) so typing doesn't hit
+                // disk on every keystroke.
                 self.settings.cosmos_url = value;
-                self.settings.save(&self.ctx);
                 Task::none()
             }
             Message::RunLocallyToggled(value) => {
@@ -603,8 +630,38 @@ impl State {
                 Task::none()
             }
             Message::EnterpriseTokenChanged(value) => {
+                // Persisted on close (see CloseSettings).
                 self.settings.enterprise_token = value;
+                Task::none()
+            }
+            Message::DevModeToggled(value) => {
+                self.settings.dev_mode = value;
+                self.apply_dev_settings();
                 self.settings.save(&self.ctx);
+                Task::none()
+            }
+            Message::DevFolderChanged(value) => {
+                // Persisted on close (see CloseSettings).
+                self.settings.dev_folder = value;
+                self.apply_dev_settings();
+                Task::none()
+            }
+            Message::BrowseDevFolder => Task::perform(
+                async {
+                    rfd::AsyncFileDialog::new()
+                        .set_title("Choose the COSMOS development folder")
+                        .pick_folder()
+                        .await
+                        .map(|handle| handle.path().to_path_buf())
+                },
+                Message::DevFolderPicked,
+            ),
+            Message::DevFolderPicked(picked) => {
+                if let Some(path) = picked {
+                    self.settings.dev_folder = path.to_string_lossy().into_owned();
+                    self.apply_dev_settings();
+                    self.settings.save(&self.ctx);
+                }
                 Task::none()
             }
             Message::ShowSettings => {
@@ -613,6 +670,8 @@ impl State {
             }
             Message::CloseSettings => {
                 self.settings_open = false;
+                // Persist any text-field edits made while the dialog was open.
+                self.settings.save(&self.ctx);
                 Task::none()
             }
             Message::LogLevelChanged(level) => {
@@ -668,6 +727,11 @@ impl State {
             }
             Message::ToggleStatus => {
                 self.status_collapsed = !self.status_collapsed;
+                // Expanding now shows CPU/mem, which the poll skips while
+                // collapsed — refresh right away so they populate promptly.
+                if !self.status_collapsed && !self.busy {
+                    self.maybe_refresh_status();
+                }
                 Task::none()
             }
             Message::BridgeTokenAction(action) => {
@@ -696,6 +760,7 @@ impl State {
                 let shutdown = self.operator_shutdown.clone();
                 let old_thread = self.operator_thread.take();
                 let pairing = self.bridge_pairing.clone();
+                let retry = self.bridge_retry.clone();
                 let next_operator = self.next_operator.clone();
                 std::thread::spawn(move || {
                     let handles = match crate::enroll::enroll_with_token(&ctx, &token) {
@@ -709,7 +774,7 @@ impl State {
                             if let Some(handle) = old_thread {
                                 let _ = handle.join();
                             }
-                            start_operator(&ctx)
+                            start_operator(&ctx, retry)
                         }
                         Err(e) => {
                             crate::logging::error("bridge", &format!("Enrollment failed: {e:#}"));
@@ -722,6 +787,14 @@ impl State {
                     }
                     pairing.store(false, Ordering::Relaxed);
                 });
+                Task::none()
+            }
+            Message::RetryBridge => {
+                // Re-arm the operator's bridge enrollment; it picks this up on
+                // its next cycle. Optimistically reflect it in the UI.
+                self.bridge_retry.store(true, Ordering::Relaxed);
+                self.bridge_status.message = "Retrying…".to_string();
+                crate::logging::info("bridge", "Retrying bridge connection…");
                 Task::none()
             }
             Message::ViewLogs(service) => {
@@ -1132,6 +1205,15 @@ impl State {
 
     /// Page 3: the main control panel with live container status.
     fn view_main(&self) -> Element<'_, Message> {
+        // When the Settings dialog is open, render only the dialog. Building and
+        // rasterizing the full main page (log/status/microservice tables) behind
+        // it every frame under the software renderer makes the dialog slow to
+        // open and laggy to type in. The dialog fills the screen with its own
+        // dimmed backdrop, so nothing is lost.
+        if self.settings_open {
+            return self.view_settings_modal();
+        }
+
         // Header: title on the left, a settings gear on the right. The gear opens
         // the Settings dialog (bridge pairing + cleanup).
         let gear = button(
@@ -1446,7 +1528,7 @@ impl State {
         } else {
             self.bridge_status.message.as_str()
         };
-        let cosmos_row = row![
+        let mut cosmos_row = row![
             text("COSMOS:").size(13).font(Font::MONOSPACE),
             text(format!("{cosmos_glyph}{cosmos_message}"))
                 .size(13)
@@ -1455,6 +1537,16 @@ impl State {
         ]
         .spacing(8)
         .align_y(Center);
+        // Offer a manual retry whenever the bridge isn't connected (auto-enroll
+        // gives up after a few tries per COSMOS up-session).
+        if !self.bridge_status.connected {
+            cosmos_row = cosmos_row.push(Space::with_width(Length::Fill));
+            cosmos_row = cosmos_row.push(
+                button(text("Retry").size(12))
+                    .padding(4)
+                    .on_press(Message::RetryBridge),
+            );
+        }
 
         let ms_section = column![
             text("Bridge Microservices").size(18),
@@ -1487,14 +1579,12 @@ impl State {
         .spacing(6)
         .padding(20);
 
-        let base = container(content).width(Length::Fill).height(Length::Fill);
-
-        // Overlay the Settings dialog on top of the main page when open.
-        if self.settings_open {
-            stack![base, self.view_settings_modal()].into()
-        } else {
-            base.into()
-        }
+        // (The Settings dialog is handled by the early return at the top of this
+        // method, so here we only render the main page.)
+        container(content)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
     }
 
     /// Scrolling log messages table (replaces the old Activity panel). Shows
@@ -1710,11 +1800,45 @@ impl State {
         ]
         .spacing(6);
 
+        // Development mode: forces the *_TAG env vars to "latest" and drives
+        // COSMOS from a local source checkout's openc3.sh.
+        let mut dev_section = column![
+            text("Development").size(16),
+            checkbox("Development Mode", self.settings.dev_mode)
+                .on_toggle(Message::DevModeToggled),
+            text(
+                "Forces OPENC3_TAG and OPENC3_ENTERPRISE_TAG to \"latest\" (overriding the .env) \
+                 and runs COSMOS from a local source checkout's openc3.sh."
+            )
+            .size(12)
+            .color(grey),
+        ]
+        .spacing(6);
+        if self.settings.dev_mode {
+            dev_section = dev_section.push(
+                row![
+                    text_input(
+                        "Development folder (contains openc3.sh)",
+                        &self.settings.dev_folder
+                    )
+                    .on_input(Message::DevFolderChanged)
+                    .padding(8)
+                    .width(Length::Fill),
+                    button(text("Browse…"))
+                        .padding(8)
+                        .on_press(Message::BrowseDevFolder),
+                ]
+                .spacing(8)
+                .align_y(Center),
+            );
+        }
+
         let card = container(
             column![
                 header,
                 horizontal_rule(2),
                 cosmos_section,
+                dev_section,
                 pair_section,
                 cleanup_section,
             ]
@@ -1731,28 +1855,20 @@ impl State {
             }
         });
 
-        // Dimmed backdrop filling the window; clicking it closes the dialog.
-        let backdrop = mouse_area(
-            container(Space::new(Length::Fill, Length::Fill))
+        // Render as a full page (not an overlay): the card centered on the
+        // normal background, scrollable if it's taller than the window. This
+        // avoids compositing a full-window semi-transparent backdrop every frame
+        // under the software renderer, which the modal did. The ✕ in the header
+        // closes it.
+        container(scrollable(
+            container(card)
                 .width(Length::Fill)
-                .height(Length::Fill)
-                .style(|_theme: &Theme| container::Style {
-                    background: Some(iced::Background::Color(Color::from_rgba(0.0, 0.0, 0.0, 0.6))),
-                    ..container::Style::default()
-                }),
-        )
-        .on_press(Message::CloseSettings);
-
-        // The centered card sits above the backdrop. Wrapping it in a mouse_area
-        // that swallows presses keeps clicks inside the card (its padding/labels)
-        // from falling through to the backdrop and closing the dialog.
-        let centered = container(mouse_area(card).on_press(Message::Ignore))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .center_x(Length::Fill)
-            .center_y(Length::Fill);
-
-        stack![backdrop, centered].into()
+                .center_x(Length::Fill)
+                .padding(20),
+        ))
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
     }
 
     /// Destructive cleanup confirmation. Requires typing "cleanup" to enable
@@ -1854,6 +1970,51 @@ impl State {
             subs.push(iced::time::every(Duration::from_millis(200)).map(|_| Message::PollTray));
         }
         Subscription::batch(subs)
+    }
+}
+
+/// Apply the development-mode process-environment overrides so child processes
+/// (docker compose / openc3.sh) and host-microservice venvs pick them up:
+///   * OPENC3_TAG / OPENC3_ENTERPRISE_TAG = "latest" (override the `.env`), and
+///   * OPENC3_DEVEL = the local openc3 gem in the dev folder, so host venvs
+///     install openc3 editable from the working-tree source (see
+///     `operator::openc3_devel_source`) instead of the published package.
+fn apply_dev_env(dev_mode: bool, dev_folder: Option<&std::path::Path>) {
+    if dev_mode {
+        std::env::set_var("OPENC3_TAG", "latest");
+        std::env::set_var("OPENC3_ENTERPRISE_TAG", "latest");
+        match dev_folder.and_then(openc3_gem_dir) {
+            Some(gem) => std::env::set_var("OPENC3_DEVEL", gem),
+            None => std::env::remove_var("OPENC3_DEVEL"),
+        }
+    } else {
+        std::env::remove_var("OPENC3_TAG");
+        std::env::remove_var("OPENC3_ENTERPRISE_TAG");
+        std::env::remove_var("OPENC3_DEVEL");
+    }
+}
+
+/// The local openc3 gem directory (containing a Python package) inside a dev
+/// checkout, for OPENC3_DEVEL. Handles the monorepo layout (`<dev>/openc3/python`)
+/// and the case where the dev folder itself is the openc3 gem (`<dev>/python`).
+fn openc3_gem_dir(dev: &std::path::Path) -> Option<std::path::PathBuf> {
+    let monorepo = dev.join("openc3");
+    if monorepo.join("python").join("pyproject.toml").is_file() {
+        return Some(monorepo);
+    }
+    if dev.join("python").join("pyproject.toml").is_file() {
+        return Some(dev.to_path_buf());
+    }
+    None
+}
+
+/// The development source folder to drive COSMOS from, when dev mode is on and a
+/// (non-empty) folder is configured.
+fn dev_folder_from_settings(settings: &crate::settings::Settings) -> Option<std::path::PathBuf> {
+    if settings.dev_mode && !settings.dev_folder.trim().is_empty() {
+        Some(std::path::PathBuf::from(settings.dev_folder.trim()))
+    } else {
+        None
     }
 }
 

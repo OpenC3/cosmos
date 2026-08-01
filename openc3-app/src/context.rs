@@ -304,6 +304,11 @@ pub struct Context {
     pub paths: Paths,
     pub runtime: Option<Runtime>,
     pub enterprise: bool,
+    /// When set (development mode), COSMOS is driven from this local source
+    /// checkout's `openc3.sh` instead of the app's installed compose, and the
+    /// container status is scoped to this directory. Set by the GUI from
+    /// settings; `None` for normal installs and the CLI.
+    pub dev_folder: Option<PathBuf>,
 }
 
 impl Context {
@@ -312,6 +317,7 @@ impl Context {
             paths: Paths::resolve(root_override)?,
             runtime: Runtime::detect(),
             enterprise,
+            dev_folder: None,
         })
     }
 

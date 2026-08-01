@@ -24,6 +24,15 @@
     {
       "path": "../discovery",
     },
+    {
+      "path": "../openc3-cosmos-scpi-power-supply",
+    },
+    {
+      "path": "../openc3-cosmos-bridge-serial",
+    },
+    {
+      "path": "../openc3-cosmos-scpi-multimeter",
+    },
   ],
   "settings": {
     "rubyLsp.bundleGemfile": "openc3/Gemfile",

@@ -75,6 +75,9 @@ class InterfaceModel(Model):
         options: list | None = None,
         secret_options: list | None = None,
         protocols: list | None = None,
+        bridge_options: list | None = None,
+        bridge_secret_options: list | None = None,
+        bridge_protocols: list | None = None,
         log_stream=None,
         updated_at: float | None = None,
         plugin: str | None = None,
@@ -129,6 +132,9 @@ class InterfaceModel(Model):
         self.options = [] if options is None else options
         self.secret_options = [] if secret_options is None else secret_options
         self.protocols = [] if protocols is None else protocols
+        self.bridge_options = [] if bridge_options is None else bridge_options
+        self.bridge_secret_options = [] if bridge_secret_options is None else bridge_secret_options
+        self.bridge_protocols = [] if bridge_protocols is None else bridge_protocols
         self.log_stream = log_stream
         self.needs_dependencies = needs_dependencies
         self.cmd = cmd
@@ -188,14 +194,12 @@ class InterfaceModel(Model):
         interface_or_router.auto_reconnect = self.auto_reconnect
         interface_or_router.reconnect_delay = self.reconnect_delay
         interface_or_router.disable_disconnect = self.disable_disconnect
-        # Connection options belong to the host interface for a bridged interface.
-        if not self.bridge_name:
-            for option in self.options:
-                interface_or_router.set_option(option[0], option[1:])
-            for option in self.secret_options:
-                secret_name = option[1]
-                secret_value = interface_or_router.secrets.get(secret_name, scope=self.scope)
-                interface_or_router.set_option(option[0], [secret_value])
+        for option in self.options:
+            interface_or_router.set_option(option[0], option[1:])
+        for option in self.secret_options:
+            secret_name = option[1]
+            secret_value = interface_or_router.secrets.get(secret_name, scope=self.scope)
+            interface_or_router.set_option(option[0], [secret_value])
         for protocol in self.protocols:
             klass = get_class_from_module(
                 filename_to_module(protocol[1]),
@@ -223,6 +227,9 @@ class InterfaceModel(Model):
             "options": self.options,
             "secret_options": self.secret_options,
             "protocols": self.protocols,
+            "bridge_options": self.bridge_options,
+            "bridge_secret_options": self.bridge_secret_options,
+            "bridge_protocols": self.bridge_protocols,
             "log_stream": self.log_stream,
             "plugin": self.plugin,
             "needs_dependencies": self.needs_dependencies,
