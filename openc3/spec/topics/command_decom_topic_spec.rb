@@ -24,18 +24,23 @@ module OpenC3
       # VALUE has a write conversion which doubles the given value so the
       # buffer never holds what the user actually commanded.
       # STATE only has states and thus reads back correctly from the buffer.
+      # BOTH has states and a write conversion and must still read back the state name.
       let(:packet) do
         packet = Packet.new('TARGET', 'CMD')
         item = packet.append_item('VALUE', 16, :UINT)
         item.write_conversion = PolynomialConversion.new(0, 2)
         item = packet.append_item('STATE', 8, :UINT)
         item.states = { 'FALSE' => 0, 'TRUE' => 1 }
+        item = packet.append_item('BOTH', 8, :UINT)
+        item.states = { 'OFF' => 0, 'ON' => 1 }
+        item.write_conversion = PolynomialConversion.new(0, 1)
         packet.received_time = Time.now
         packet.packet_time = Time.now
         packet.received_count = 1
         packet.stored = false
         packet.write('VALUE', 5)
         packet.write('STATE', 'TRUE')
+        packet.write('BOTH', 'ON')
         packet
       end
 
@@ -95,6 +100,15 @@ module OpenC3
         hash = json_data(packet)
         expect(hash['STATE']).to eq(1)
         expect(hash['STATE__C']).to eq('TRUE')
+      end
+
+      it "reads the state name for items with both states and a write conversion" do
+        # States take precedence over the write conversion so the logged value is
+        # always the normalized state name rather than whatever the user gave
+        packet.given_values = { 'BOTH' => 1 }
+        hash = json_data(packet)
+        expect(hash['BOTH']).to eq(1)
+        expect(hash['BOTH__C']).to eq('ON')
       end
 
       it "ignores given values for raw commands" do

@@ -33,8 +33,10 @@ module OpenC3
       # Items with a write conversion have already been transformed by the time the
       # value lands in the buffer, so reading the buffer back does not recover what
       # the user actually commanded. Use the given values (as passed to build_cmd)
-      # for those items. Raw commands bypass the write conversions entirely so their
-      # given values are raw and must not be logged as converted.
+      # for those items. State items are the exception: the user can give either the
+      # state name or the state value, so they always read from the buffer to log the
+      # normalized state name. Raw commands bypass the write conversions entirely so
+      # their given values are raw and must not be logged as converted.
       given_values = packet.raw ? nil : packet.given_values
       given_values = given_values.transform_keys { |key| key.to_s.upcase } if given_values
       # Read additional value types using given_raw to avoid re-reading from buffer
@@ -44,7 +46,7 @@ module OpenC3
         else
           given_raw = json_hash[item.name]
           if item.write_conversion or item.states
-            if item.write_conversion and given_values and given_values.key?(item.name)
+            if item.write_conversion and !item.states and given_values and given_values.key?(item.name)
               json_hash[item.name + "__C"] = given_values[item.name]
             else
               json_hash[item.name + "__C"] = packet.read_item(item, :CONVERTED, packet.buffer, given_raw)

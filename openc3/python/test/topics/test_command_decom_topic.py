@@ -49,18 +49,23 @@ class TestCommandDecomTopic(unittest.TestCase):
     # VALUE has a write conversion which doubles the given value so the buffer
     # never holds what the user actually commanded.
     # STATE only has states and thus reads back correctly from the buffer.
+    # BOTH has states and a write conversion and must still read back the state name.
     def _make_packet(self):
         packet = Packet("TARGET", "CMD")
         item = packet.append_item("VALUE", 16, "UINT")
         item.write_conversion = PolynomialConversion(0, 2)
         item = packet.append_item("STATE", 8, "UINT")
         item.states = {"FALSE": 0, "TRUE": 1}
+        item = packet.append_item("BOTH", 8, "UINT")
+        item.states = {"OFF": 0, "ON": 1}
+        item.write_conversion = PolynomialConversion(0, 1)
         packet.packet_time = datetime.datetime.now()
         packet.received_time = datetime.datetime.now()
         packet.received_count = 1
         packet.stored = False
         packet.write("VALUE", 5)
         packet.write("STATE", "TRUE")
+        packet.write("BOTH", "ON")
         return packet
 
     def _json_data(self, packet):
@@ -108,6 +113,15 @@ class TestCommandDecomTopic(unittest.TestCase):
         hash = self._json_data(packet)
         self.assertEqual(hash["STATE"], 1)
         self.assertEqual(hash["STATE__C"], "TRUE")
+
+    def test_reads_state_name_for_items_with_states_and_write_conversion(self):
+        # States take precedence over the write conversion so the logged value is
+        # always the normalized state name rather than whatever the user gave
+        packet = self._make_packet()
+        packet.given_values = {"BOTH": 1}
+        hash = self._json_data(packet)
+        self.assertEqual(hash["BOTH"], 1)
+        self.assertEqual(hash["BOTH__C"], "ON")
 
     def test_ignores_given_values_for_raw_commands(self):
         # Raw commands skip the write conversion so the given value is the raw value
