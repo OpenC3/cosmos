@@ -15,7 +15,9 @@ require 'rails_helper'
 
 RSpec.describe RunningScriptChannel, type: :channel do
   let(:uuid) { 'test-uuid' }
-  let(:subscription_key) { "running-script-#{uuid}" }
+  # Keyed by (connection, script id) -- not connection alone -- so tearing down
+  # one script's subscription can't stop another's replay thread
+  let(:subscription_key) { "running-script-#{uuid}-42" }
   let(:broadcaster) { instance_double(RunningScriptReplayThread, start: nil, arm: nil, stop: nil) }
 
   before(:each) do
@@ -40,7 +42,7 @@ RSpec.describe RunningScriptChannel, type: :channel do
   end
 
   describe '#subscribed' do
-    it 'transmits the backlog and starts streaming live events with the legacy delay' do
+    it 'transmits the backlog and starts streaming live events bounded by the arm timeout' do
       backlog({ 'type' => 'line', 'line_no' => 1 }, { 'type' => 'output', 'line' => 'hi' })
       subscribe id: '42'
       expect(subscription).to be_confirmed
@@ -49,10 +51,10 @@ RSpec.describe RunningScriptChannel, type: :channel do
         { 'type' => 'output', 'line' => 'hi' },
       ])
       # Streaming must start strictly after the transmitted backlog (no gap, no
-      # duplicates) and stay unarmed for up to LEGACY_ARM_DELAY unless the
+      # duplicates) and stay unarmed for up to ARM_TIMEOUT unless the
       # client performs 'ready'
       expect(RunningScriptReplayThread).to have_received(:new).with(
-        subscription_key, '42', '101-0', arm_delay: RunningScriptChannel::LEGACY_ARM_DELAY
+        subscription_key, '42', '101-0', arm_delay: RunningScriptChannel::ARM_TIMEOUT
       )
       expect(broadcaster).to have_received(:start)
     end
@@ -76,7 +78,7 @@ RSpec.describe RunningScriptChannel, type: :channel do
   end
 
   describe '#ready' do
-    it 'starts streaming events without waiting out the legacy delay' do
+    it 'starts streaming events without waiting out the arm timeout' do
       backlog({ 'type' => 'line', 'line_no' => 1 })
       subscribe id: '42'
       perform :ready

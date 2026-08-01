@@ -25,19 +25,28 @@ const RECOVERY_DELAY = 1000
 // Wraps an anycable subscription so one that dies unrecoverably is replaced
 // transparently, keeping the object the caller holds valid across the swap.
 //
-// The anycable client only retries a subscribe itself when its own send fails
-// with a DisconnectedError. When the WebSocket has closed but the client hasn't
-// processed the close yet (e.g. the tab was starved of CPU long enough for the
-// server to drop the connection), the transport instead throws a plain
-// `Error('WebSocket is not connected')` from inside the protocol's subscribe
-// promise -- after it recorded the subscription as pending but before it armed
-// the timers that would expire it. The client logs "failed to subscribe", closes
-// the subscription, and leaves the pending entry behind forever, so every later
-// subscribe for that channel on that consumer is rejected with "Already
-// subscribing". Callers were left waiting on events that would never arrive --
-// Script Runner connecting to a running script, for instance, sat on
-// "Connecting..." indefinitely. Only a new consumer clears that state, so
-// recovery is handled by Cable rather than per subscription.
+// Works around an upstream bug in @anycable/core (through 1.1.6). When the
+// WebSocket has closed but the client hasn't processed the close yet (e.g. the
+// tab was starved of CPU long enough for the server to drop the connection),
+// WebSocketTransport#send throws a plain `Error('WebSocket is not connected')`
+// rather than the DisconnectedError that Cable#subscribe recognizes as "retry
+// on reconnect". It therefore takes the fatal branch instead: it logs "failed
+// to subscribe", closes the subscription and calls hub.unsubscribe, so the
+// channel is gone for good and is never re-subscribed when the connection comes
+// back. Callers were left waiting on events that would never arrive -- Script
+// Runner connecting to a running script, for instance, sat on "Connecting..."
+// indefinitely.
+//
+// Re-subscribing immediately isn't enough: ActionCableProtocol#subscribe
+// recorded the subscription as pending before that send and never removes it
+// (the ack timers are armed after the send, so nothing expires it). Until the
+// consumer processes the socket close and resets the protocol, a re-subscribe
+// for the same identifier is rejected with "Already subscribing" -- which is
+// itself a plain Error, so it kills the channel the same way. Rebuilding the
+// consumer clears that state deterministically, hence recovery lives on Cable
+// rather than on the individual subscription.
+//
+// Upstream fix submitted; this can go once the released client carries it.
 class ResilientSubscription {
   constructor(cable, channel, scope, callbacks, additionalOptions) {
     this._cable = cable

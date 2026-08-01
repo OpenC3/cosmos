@@ -18,14 +18,14 @@
 class RunningScriptChannel < ApplicationCable::Channel
   @@broadcasters = {}
 
-  # How long the live event broadcaster waits before its first read when the
-  # client has not declared itself ready to stream events via the 'ready'
-  # action. Covers legacy clients (older CLI gems / frontend bundles /
-  # third-party websocket consumers) that only subscribe and read: their events
-  # are delayed by up to this much at attach, in exchange for not being dropped
-  # by the stream-registration race described below. Current clients perform
-  # 'ready' after the subscription confirmation and get events immediately.
-  LEGACY_ARM_DELAY = 1.0
+  # Upper bound on how long the live event broadcaster waits for the client's
+  # 'ready' before starting to read anyway. This is the correctness floor for
+  # the stream-registration race described in #subscribed, not a legacy-client
+  # allowance: it also covers a 'ready' that never arrives because the client
+  # died or the perform was lost. Every in-tree client (ScriptRunner.vue, the
+  # Ruby and Python WebSocketApi) performs 'ready', so in practice this only
+  # costs latency for third-party consumers that just subscribe and read.
+  ARM_TIMEOUT = 1.0
 
   def subscribed
     # Defensive: if the auth before_subscribe callback rejected us, skip work.
@@ -74,14 +74,14 @@ class RunningScriptChannel < ApplicationCable::Channel
     # race the gateway registering our stream_from above and be silently
     # dropped. That loses any events written between the xrange and the thread's
     # first read, and a script that then goes quiet (e.g. parked in a wait) never
-    # publishes again -- leaving the client stuck on "Connecting...". Current
-    # clients declare themselves ready to stream events immediately via the
-    # 'ready' action (see #ready), performed after the subscription confirmation
-    # has round-tripped, which guarantees the stream is registered. The delay is
-    # only the fallback for legacy clients that never perform 'ready'.
+    # publishes again -- leaving the client stuck on "Connecting...". Clients
+    # declare themselves ready to stream events via the 'ready' action (see
+    # #ready), performed after the subscription confirmation has round-tripped,
+    # which guarantees the stream is registered. ARM_TIMEOUT bounds the wait for
+    # a 'ready' that never comes.
     begin
       broadcaster = RunningScriptReplayThread.new(key, params[:id], last_offset,
-                                                  arm_delay: LEGACY_ARM_DELAY)
+                                                  arm_delay: ARM_TIMEOUT)
       broadcaster.start
       @@broadcasters[key] = broadcaster
     rescue StandardError => e
@@ -93,11 +93,11 @@ class RunningScriptChannel < ApplicationCable::Channel
   # Channel action performed by the client to declare that it is ready to
   # stream events: it has received the subscription confirmation, so by now the
   # gateway has registered this subscription's stream and live broadcasts can no
-  # longer be dropped. Skips the legacy delay and starts streaming right away.
+  # longer be dropped. Skips the remaining ARM_TIMEOUT and streams right away.
   # No-ops if the script already completed (no broadcaster) or on duplicate
   # performs.
   def ready
-    @@broadcasters["running-script-#{uuid}"]&.arm
+    @@broadcasters[subscription_key()]&.arm
   end
 
   def unsubscribed
