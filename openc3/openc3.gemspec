@@ -84,7 +84,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'rack',      '~> 3.1'
   s.add_runtime_dependency 'rackup',    '~> 2.1'
   s.add_runtime_dependency 'rake',      '~> 13.0'
-  s.add_runtime_dependency 'rdoc',      '~> 7.0'
+  s.add_runtime_dependency 'rdoc',      '>= 7', '< 9'
   s.add_runtime_dependency 'redis',     '~> 5.4'
   s.add_runtime_dependency 'rubyzip',   '~> 3.0'
   s.add_runtime_dependency 'uuidtools', '~> 3.0'
