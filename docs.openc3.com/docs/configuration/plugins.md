@@ -877,9 +877,7 @@ STOPPED
 ## TOOL
 **Define a tool**
 
-Defines a tool that the plugin adds to the OpenC3 system. Tools are web based applications that make use of the Single-SPA javascript library that allows them to be dynamically added to the running system as independent frontend microservices.
-Tools are global to the entire COSMOS installation. Regardless of the scope a plugin is installed into, its tools are always installed into the DEFAULT scope and are available in every scope.
-
+Defines a tool that the plugin adds to the OpenC3 system. Tools are web based applications that make use of the Single-SPA javascript library that allows them to by dynamically added to the running system as independent frontend microservices.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
