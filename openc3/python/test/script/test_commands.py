@@ -149,6 +149,12 @@ class TestCommands(unittest.TestCase):
             )
         self.assertEqual(gArgs, ("INST ABORT",))
 
+    def test_sends_extra_metadata(self):
+        extra = {"flow_uuid": "1234-5678", "hv_id": 42}
+        for _stdout in capture_io():
+            cmd("INST ABORT", extra=extra)
+        self.assertEqual(gKwargs["extra"], extra)
+
     def test_sends_a_cmd_raw(self):
         global gArgs
         global gKwargs
