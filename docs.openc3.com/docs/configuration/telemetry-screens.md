@@ -1766,11 +1766,13 @@ The canvas coordinate frame places (0,0) in the upper-left corner of the canvas.
 
 Example Usage:
 ```cosmos
-CANVAS 100 50
+CANVAS 150 50
   SETTING BACKCOLOR 17 21 28
   CANVASLABEL 5 30 "Dark canvas" 18 white
 END
 ```
+![CANVAS](/img/telemetry_viewer/widgets/canvas.png)
+
 The following settings apply to CANVAS. They are applied using the SETTING keyword.
 #### BACKCOLOR
 <span class="badge badge--secondary since-right">Since 7.2.1</span>**Sets the background color of the canvas**
@@ -1819,8 +1821,8 @@ END
 Example Usage:
 ```cosmos
 CANVAS 200 100
-  CANVASLABELVALUE INST HEALTH_STATUS TEMP1 5 34 12 red
-  CANVASLABELVALUE INST HEALTH_STATUS TEMP2 5 70 10 blue FORMATTED
+  CANVASLABELVALUE INST HEALTH_STATUS TEMP1 5 34 20 red
+  CANVASLABELVALUE INST HEALTH_STATUS TEMP2 5 70 16 blue FORMATTED
 END
 ```
 ![CANVASLABELVALUE](/img/telemetry_viewer/widgets/canvaslabelvalue.png)

@@ -487,6 +487,7 @@ class TargetModel(Model):
         tlm_log_retain_time=None,
         cmd_decom_retain_time=None,
         tlm_decom_retain_time=None,
+        decom_flush_period=5.0,
         cleanup_poll_time=3600,
         needs_dependencies=False,
         target_microservices=None,

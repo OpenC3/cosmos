@@ -276,6 +276,29 @@ RSpec.describe RunningScriptController, type: :controller do
       end
     end
 
+    context "when script has no pid (spawn failed)" do
+      it "skips process signaling and cleans up the status model" do
+        script_model = double("ScriptModel")
+        allow(script_model).to receive(:filename).and_return("INST/procedures/test.rb")
+        allow(script_model).to receive(:pid).and_return(nil)
+        allow(script_model).to receive(:end_time=)
+        allow(script_model).to receive(:state=)
+        allow(script_model).to receive(:update)
+        allow(OpenC3::ScriptStatusModel).to receive(:get_model).and_return(script_model)
+        expect_any_instance_of(RunningScriptController).to receive(:running_script_publish).at_least(:once).with("cmd-running-script-channel:1", "stop")
+
+        expect(Process).not_to receive(:kill)
+        expect(Process).not_to receive(:getpgid)
+
+        expect(script_model).to receive(:state=).with("killed")
+        expect(script_model).to receive(:update)
+
+        delete :delete, params: {id: "1", scope: "DEFAULT"}
+
+        expect(response.status).to eq(200)
+      end
+    end
+
     context "when script does not exist" do
       it "returns not found" do
         delete :delete, params: {id: "999", scope: "DEFAULT"}

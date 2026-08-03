@@ -62,8 +62,6 @@ class JsonRpc(dict):
 class JsonRpcRequest(JsonRpc):
     """Represents a JSON Remote Procedure Call Request"""
 
-    DANGEROUS_METHODS = ["__send__", "send", "instance_eval", "instance_exec"]
-
     def __init__(self, id: int, method_name: str, *args, **kwargs):
         """Constructor
 

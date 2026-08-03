@@ -257,6 +257,18 @@ module OpenC3
       }
       super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
     end
+
+    # The backlog of script events is transmitted with the subscription
+    # confirmation, but LIVE events only flow once the client reports that it is
+    # ready to stream events (see RunningScriptChannel#ready) -- a broadcast sent
+    # before the gateway has registered this subscription's stream would be
+    # silently dropped. subscribe() blocks until confirm_subscription, so the
+    # 'ready' action is guaranteed to arrive after the stream is registered.
+    def subscribe
+      was_subscribed = @subscribed
+      super
+      write_action({ 'action' => 'ready' }) unless was_subscribed
+    end
   end
 
   # All Scripts WebSocket

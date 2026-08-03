@@ -89,4 +89,8 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
 
    If this does not return you could be blocking the 443 port to Keycloak. Update your firewall settings and try again.
 
+1. On AWS, QuestDB CPU utilization is high.
+
+   If you are running on older AWS instance families (like t2, m4, or c4), your virtualization layer relies heavily on Xen. Modern Nitro-based instances (like m5, c5, t3, or newer) leverage hardware-assisted virtualization that has much better performance on time based system calls. Switch to one of these instance types.
+
 Encountering an issue not on this list? If you're a customer, please get in touch at [support@openc3.com](mailto:support@openc3.com).
