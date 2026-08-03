@@ -281,13 +281,16 @@ module OpenC3
 
         # queue_username is the original author (shown as "Queued By"), passed
         # by the queue microservice when a command is released from a queue
-        @api.cmd("INST", "ABORT", queue_username: "DEFAULT__MULTI__INST")
+        @api.cmd("INST", "ABORT", queue_username: "DEFAULT__MULTI__INST",
+          extra: { 'flow_uuid' => '1234-5678', 'username' => 'untrusted' })
         sleep 0.01
         im.shutdown
 
         expect(captured).to_not be_nil
         expect(captured.target_name).to eql("INST")
         expect(captured.packet_name).to eql("ABORT")
+        expect(captured.extra['flow_uuid']).to eql('1234-5678')
+        expect(captured.extra['username']).to_not eql('untrusted')
         expect(captured.extra['queue_username']).to eql("DEFAULT__MULTI__INST")
       end
 

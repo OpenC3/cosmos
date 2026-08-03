@@ -45,6 +45,8 @@ module OpenC3
       # Save the existing cmd_params Hash and JSON generate before writing to the topic
       cmd_params = command['cmd_params']
       command['cmd_params'] = JSON.generate(command['cmd_params'].as_json, allow_nan: true)
+      extra = command['extra']
+      command['extra'] = JSON.generate(extra.as_json, allow_nan: true) if extra
       OpenC3.inject_context(command)
 
       db_shard = Store.db_shard_for_target(command['target_name'], scope: scope)
@@ -53,6 +55,7 @@ module OpenC3
       if timeout <= 0
         Topic.write_topic("{#{scope}__CMD}TARGET__#{command['target_name']}", command, '*', 100, db_shard: db_shard)
         command["cmd_params"] = cmd_params # Restore the original cmd_params Hash
+        command['extra'] = extra if extra
         return command
       end
 
@@ -60,6 +63,7 @@ module OpenC3
       Topic.update_topic_offsets([ack_topic], db_shard: db_shard)
       cmd_id = Topic.write_topic("{#{scope}__CMD}TARGET__#{command['target_name']}", command, '*', 100, db_shard: db_shard)
       command["cmd_params"] = cmd_params # Restore the original cmd_params Hash
+      command['extra'] = extra if extra
       time = Time.now
       while (Time.now - time) < timeout
         Topic.read_topics([ack_topic], db_shard: db_shard) do |_topic, _msg_id, msg_hash, _redis|

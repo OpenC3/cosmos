@@ -86,7 +86,10 @@ module OpenC3
     describe '#process_queued_commands' do
       let(:command1) { { 'username' => 'test_user', 'value' => 'cmd("TARGET", "COMMAND", {"PARAM": 1})' } }
       let(:command2) { { 'username' => 'test_user', 'value' => 'cmd("TARGET", "COMMAND2", {"PARAM": 2})' } }
-      let(:command3_new_format) { { 'username' => 'test_user', 'target_name' => 'TARGET', 'cmd_name' => 'COMMAND3', 'cmd_params' => JSON.generate({ 'PARAM' => 3 }) } }
+      let(:command3_new_format) do
+        { 'username' => 'test_user', 'target_name' => 'TARGET', 'cmd_name' => 'COMMAND3',
+          'cmd_params' => JSON.generate({ 'PARAM' => 3 }), 'extra' => { 'flow_uuid' => '1234-5678' } }
+      end
       let(:command4_new_format) { { 'username' => 'test_user', 'target_name' => 'TARGET', 'cmd_name' => 'COMMAND4' } }
 
       before do
@@ -114,9 +117,9 @@ module OpenC3
 
         expect(Store).to have_received(:bzpopmin).exactly(3).times
         expect(processor).to have_received(:cmd)
-          .with(command1['value'], queue: false, scope: scope, timeout: nil, validate: true, queue_username: 'test_user')
+          .with(command1['value'], queue: false, scope: scope, timeout: nil, validate: true, queue_username: 'test_user', extra: nil)
         expect(processor).to have_received(:cmd)
-          .with(command2['value'], queue: false, scope: scope, timeout: nil, validate: true, queue_username: 'test_user')
+          .with(command2['value'], queue: false, scope: scope, timeout: nil, validate: true, queue_username: 'test_user', extra: nil)
       end
 
       it 'processes commands with new format (target_name, cmd_name, cmd_params)' do
@@ -136,7 +139,8 @@ module OpenC3
 
         expect(Store).to have_received(:bzpopmin).exactly(2).times
         expect(processor).to have_received(:cmd)
-          .with('TARGET', 'COMMAND3', { 'PARAM' => 3 }, queue: false, scope: scope, timeout: nil, validate: true, queue_username: 'test_user')
+          .with('TARGET', 'COMMAND3', { 'PARAM' => 3 }, queue: false, scope: scope, timeout: nil, validate: true,
+            queue_username: 'test_user', extra: { 'flow_uuid' => '1234-5678' })
       end
 
       it 'processes commands with new format without cmd_params' do
@@ -156,7 +160,7 @@ module OpenC3
 
         expect(Store).to have_received(:bzpopmin).exactly(2).times
         expect(processor).to have_received(:cmd)
-          .with('TARGET', 'COMMAND4', {}, queue: false, scope: scope, timeout: nil, validate: true, queue_username: 'test_user')
+          .with('TARGET', 'COMMAND4', {}, queue: false, scope: scope, timeout: nil, validate: true, queue_username: 'test_user', extra: nil)
       end
 
       it 'processes mixed legacy and new format commands' do
@@ -178,9 +182,10 @@ module OpenC3
 
         expect(Store).to have_received(:bzpopmin).exactly(3).times
         expect(processor).to have_received(:cmd)
-          .with(command1['value'], queue: false, scope: scope, timeout: nil, validate: true, queue_username: 'test_user')
+          .with(command1['value'], queue: false, scope: scope, timeout: nil, validate: true, queue_username: 'test_user', extra: nil)
         expect(processor).to have_received(:cmd)
-          .with('TARGET', 'COMMAND3', { 'PARAM' => 3 }, queue: false, scope: scope, timeout: nil, validate: true, queue_username: 'test_user')
+          .with('TARGET', 'COMMAND3', { 'PARAM' => 3 }, queue: false, scope: scope, timeout: nil, validate: true,
+            queue_username: 'test_user', extra: { 'flow_uuid' => '1234-5678' })
       end
 
       it 'processes legacy command with validate false and timeout 0' do
@@ -200,7 +205,7 @@ module OpenC3
         processor.process_queued_commands
 
         expect(processor).to have_received(:cmd)
-          .with(command_no_validate['value'], queue: false, scope: scope, timeout: 0, validate: false, queue_username: 'test_user')
+          .with(command_no_validate['value'], queue: false, scope: scope, timeout: 0, validate: false, queue_username: 'test_user', extra: nil)
       end
 
       it 'processes new format command with validate false and timeout 0' do
@@ -220,7 +225,7 @@ module OpenC3
         processor.process_queued_commands
 
         expect(processor).to have_received(:cmd)
-          .with('TARGET', 'COMMAND3', { 'PARAM' => 3 }, queue: false, scope: scope, timeout: 0, validate: false, queue_username: 'test_user')
+          .with('TARGET', 'COMMAND3', { 'PARAM' => 3 }, queue: false, scope: scope, timeout: 0, validate: false, queue_username: 'test_user', extra: nil)
       end
 
       it 'logs error for invalid command format (missing required fields)' do

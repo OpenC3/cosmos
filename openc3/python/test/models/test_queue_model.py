@@ -97,6 +97,26 @@ class TestQueueModel(unittest.TestCase):
 
     @patch("openc3.models.queue_model.Store")
     @patch("openc3.models.queue_model.QueueModel.get_model")
+    def test_queue_command_with_extra_metadata(self, mock_get_model, mock_store):
+        mock_model = Mock()
+        mock_model.state = "RUNNING"
+        mock_get_model.return_value = mock_model
+        mock_store.zrevrange.return_value = []
+
+        with patch("time.time_ns", return_value=1234567890):
+            QueueModel.queue_command(
+                "TEST",
+                command="CMD",
+                username="user",
+                scope="DEFAULT",
+                extra={"flow_uuid": "1234-5678"},
+            )
+
+        queued = json.loads(next(iter(mock_store.zadd.call_args.args[1])))
+        self.assertEqual(queued["extra"], {"flow_uuid": "1234-5678"})
+
+    @patch("openc3.models.queue_model.Store")
+    @patch("openc3.models.queue_model.QueueModel.get_model")
     def test_queue_command_with_existing_items(self, mock_get_model, mock_store):
         mock_model = Mock()
         mock_model.state = "RUNNING"
