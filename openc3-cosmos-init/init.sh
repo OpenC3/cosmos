@@ -6,7 +6,21 @@
 if [ -d "/openc3/uv_cache" ]; then
     echo "Seeding UV cache from /openc3/uv_cache into /gems/uv ..."
     mkdir -p /gems/uv
-    # Plain -r only. Do NOT add:
+    # -r -u -f, and nothing else. Why each:
+    #   -u  copy only when the source is newer than the destination (or the
+    #       destination is missing), so a restart on a volume already seeded
+    #       walks the tree instead of rewriting ~200MB of wheels every time.
+    #       Safe here because uv's cache is content-addressed: a path present in
+    #       both trees holds identical bytes, and a changed wheel lands under a
+    #       new hashed path that -u still copies because it doesn't exist yet.
+    #       Verified against BusyBox v1.37 cp: newer source copies, older or
+    #       equal-mtime source is skipped.
+    #   -f  unlink and rewrite a destination that can't be opened for writing,
+    #       instead of failing the whole seed on it. Nothing in the cache this
+    #       image bakes today is write-protected, so -f is insurance for a
+    #       volume seeded by an older image or a uv release that writes
+    #       read-only cache entries.
+    # Do NOT add:
     #   -n  BusyBox cp (Alpine) applies no-clobber at the DIRECTORY level:
     #       `cp -rn src/. dest/` where dest already exists copies nothing and
     #       still exits 0, so the seed silently becomes a no-op on every restart
@@ -14,11 +28,12 @@ if [ -d "/openc3/uv_cache" ]; then
     #       (GNU cp only skips existing files, so this bites Alpine only).
     #   -a  implies -p, and this runs as the unprivileged openc3 user, so
     #       preserving ownership fails on every file the seed didn't chown.
-    # Overwriting is safe: uv's cache is content-addressed, so any path present
-    # in both the seed and the volume holds identical bytes.
-    cp -r /openc3/uv_cache/. /gems/uv/
-    # Size makes a failed/empty copy obvious in the logs instead of silent.
-    echo "UV cache seeded ($(du -sh /gems/uv 2>/dev/null | cut -f1))"
+    if cp -ruf /openc3/uv_cache/. /gems/uv/; then
+        # Size makes a failed/empty copy obvious in the logs instead of silent.
+        echo "UV cache seeded ($(du -sh /gems/uv 2>/dev/null | cut -f1))"
+    else
+        echo "WARNING: UV cache seed failed - plugin installs may hit the network" >&2
+    fi
 fi
 
 date

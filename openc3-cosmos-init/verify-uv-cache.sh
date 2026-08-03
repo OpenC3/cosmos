@@ -77,4 +77,17 @@ if [ -n "${UNVERIFIED}" ]; then
     # and failing here would break a build for a gap that predates this check.
     echo "WARNING: UNVERIFIED (no uv.lock - not warmed, will install online):${UNVERIFIED}" >&2
 fi
+
+# Verifying nothing is indistinguishable from verifying everything successfully,
+# so treat it as a failure: it means GEMS_DIR moved, the gem glob stopped
+# matching, or the last uv.lock plugin left the image. Every build ships at
+# least openc3-cosmos-demo, which declares uv.lock + pyproject.toml.
+if [ "${CHECKED}" -eq 0 ]; then
+    {
+        echo "ERROR: no plugin gem with uv.lock was verified - expected at least one."
+        echo "       Checked ${GEMS_DIR}/*.gem; confirm that path still holds the shipped gems."
+    } >&2
+    exit 1
+fi
+
 echo "=== offline UV cache verified for ${CHECKED} plugin gem(s) taking uv sync --frozen"

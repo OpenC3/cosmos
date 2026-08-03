@@ -50,7 +50,10 @@ uv_offline_then_online() {
     if uv "$@" --offline; then
         return 0
     fi
-    echo "Offline uv install failed; retrying online"
+    # Expected for any plugin whose wheels aren't in the seeded cache (a new
+    # third-party plugin, or a pin that differs from the one baked in), so this
+    # is informational, not an error - the online attempt below is the real one.
+    echo "Offline uv cache miss; retrying online"
     uv "$@"
 }
 
@@ -114,7 +117,7 @@ elif [ -f "${GEM_PATH}/pyproject.toml" ]; then
         uv pip compile --offline ${UV_ARGS} "${GEM_PATH}/pyproject.toml" > "$TMPFILE"
         COMPILED=$?
         if [ $COMPILED -ne 0 ] || [ ! -s "$TMPFILE" ]; then
-            echo "Offline uv pip compile failed; retrying online"
+            echo "Offline uv pip compile missed the cache; retrying online"
             uv pip compile ${UV_ARGS} "${GEM_PATH}/pyproject.toml" > "$TMPFILE"
             COMPILED=$?
         fi
