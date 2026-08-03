@@ -437,6 +437,11 @@ module OpenC3
             @current_parameter&.cosmos_name = cosmos_alias['alias']
           when 'Argument'
             @current_argument&.cosmos_name = cosmos_alias['alias']
+          else
+            # Do Nothing - COSMOS also writes aliases on SequenceContainer, MetaCommand
+            # and SpaceSystem to carry the original packet and target names. Those are
+            # not restored: a packet is registered under its name as soon as it is
+            # created, so renaming it here would leave the registration disagreeing.
           end
         end
 
