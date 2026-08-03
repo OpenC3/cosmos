@@ -24,14 +24,12 @@ INVALID_CHARS = '[]./'
 REPLACEMENT_CHAR = '_'
 ALIAS_NAMESPACE = 'COSMOS'
 
-COMBINED_NAME = "COMBINED"
 # IntegerRangeType declares minInclusive / maxInclusive as xs:long, so an integer range
 # outside these bounds (a full 64 bit UINT, for example) cannot be expressed as a
 # ValidRange. FloatRangeType uses xs:double and needs no such clamp.
 XS_LONG_MIN = -9223372036854775808
 XS_LONG_MAX = 9223372036854775807
 COSMOS_NATIVE_DERIVED_ITEMS = ['PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED', 'RECEIVED_TIMESECONDS', 'RECEIVED_TIMEFORMATTED', 'RECEIVED_COUNT']
-PACKET_TIME_STRING = "PACKET_TIME"
 
 module OpenC3
   class XtceConverter

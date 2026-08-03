@@ -1381,6 +1381,35 @@ module OpenC3
         FileUtils.rm_rf File.join(spec_install, "TGT1")
       end
 
+      it "round trips a packet with gaps between items" do
+        tf = Tempfile.new('unittest')
+        # Unpacked items carry a LocationInContainerInBits each, which is what lets the
+        # gaps survive. The last item is positioned from the container end.
+        tlm = "TELEMETRY TGT1 TLMPKT BIG_ENDIAN \"Telemetry\"\n"\
+              "  ID_ITEM ID 0 16 UINT 1 \"Identifier\"\n"\
+              "  ITEM AFTER_GAP 32 16 UINT \"Item after a 16 bit gap\"\n"\
+              "  ITEM TRAILER -16 16 UINT \"Item from the end\"\n"
+        tf.puts tlm
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        original = @pc.telemetry["TGT1"]["TLMPKT"].sorted_items.reject { |item| item.data_type == :DERIVED }
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
+
+        pc = PacketConfig.new
+        pc.process_file(xml_path, "TGT1")
+        reimported = pc.telemetry["TGT1"]["TLMPKT"].sorted_items.reject { |item| item.data_type == :DERIVED }
+
+        expect(reimported.map(&:name)).to eql original.map(&:name)
+        expect(reimported.map(&:bit_offset)).to eql original.map(&:bit_offset)
+        expect(reimported.map(&:bit_size)).to eql original.map(&:bit_size)
+
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
       it "round trips item names it had to change to write valid XTCE" do
         tf = Tempfile.new('unittest')
         # Two reasons a written name differs from the item name: characters XTCE forbids,
