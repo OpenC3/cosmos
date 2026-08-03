@@ -274,7 +274,7 @@ export default {
     update() {
       if (this.tabId != this.curTab) return
       if (this.data.length !== 0) {
-        this.api.get_target_interfaces().then(async (info) => {
+        this.api.get_target_interfaces().then((info) => {
           for (let i = 0; i < info.length; i++) {
             this.data[i].name = info[i][0]
             this.data[i].interface = info[i][1]

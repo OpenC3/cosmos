@@ -67,6 +67,7 @@ jobs:
             plugins:
               - 'openc3-cosmos-init/plugins/package.json'
               - 'openc3-cosmos-init/plugins/pnpm-lock.yaml'
+              - 'openc3-cosmos-init/plugins/eslint.config.mjs'
             demo:
               - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/**'
             admin:
