@@ -160,14 +160,14 @@ def xtce_converter(args)
     opts.on("-p", "--plugin PLUGIN", "Export .xtce file(s) from the plugin") do |arg|
       options[:plugin] = arg
     end
-    opts.on("-v", "--variables", "Optional variables file to pass to the plugin") do |arg|
+    opts.on("-v VARIABLES", "--variables VARIABLES", "Optional variables file to pass to the plugin") do |arg|
       options[:variables] = arg
     end
     opts.on("-r ROOT_TARGET", "--root_target ROOT_TARGET", "Optional flag to set which target is at the root of an XTCE document. If not specified, each target will be placed under a generic 'root' spacesystem") do |arg|
       options[:root_target_name] = arg
     end
-    opts.on("-t TIME_ASSOCIATION_NAME", "--time_association_name TIME_ASSOCIATION_NAME", "Optional flag to set which target is at the root of an XTCE document. If not specified, each target will be placed under a generic 'root' spacesystem") do |arg|
-      options[:time_association_name] = "PACKET_TIME"
+    opts.on("-t TIME_ASSOCIATION_NAME", "--time_association_name TIME_ASSOCIATION_NAME", "Optional telemetry item name to export as each packet's time, emitted as a TimeAssociation. If not specified, no TimeAssociation is written") do |arg|
+      options[:time_association_name] = arg
     end
     opts.on("--[no-]validate", "Validate .xtce files against the OMG XTCE 1.2 schema. On by default when exporting, where an invalid file fails the export. Off by default when importing, where it only reports since COSMOS also imports XTCE 1.0 / 1.1") do |arg|
       options[:validate] = arg

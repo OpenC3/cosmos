@@ -1340,6 +1340,111 @@ module OpenC3
         FileUtils.rm_rf File.join(spec_install, "TGT1")
       end
 
+      it "references arguments by the name they are declared with" do
+        tf = Tempfile.new('unittest')
+        # A command argument sharing a name with a telemetry parameter used to be
+        # referenced as CMD_<NAME> while still being declared as <NAME>, which the
+        # schema cannot catch (refs are plain strings) and which fails to re-import
+        tlm = "TELEMETRY TGT1 TLMPKT BIG_ENDIAN \"Telemetry\"\n"\
+              "  APPEND_ID_ITEM ID 16 INT 1 \"Identifier\"\n"\
+              "  APPEND_ITEM VALUE 32 FLOAT \"Value\"\n"
+        tf.puts tlm
+        cmd = "COMMAND TGT1 CMDPKT BIG_ENDIAN \"Command\"\n"\
+              "  APPEND_ID_PARAMETER ID 16 INT 1 1 1 \"Identifier\"\n"\
+              "  APPEND_PARAMETER VALUE 32 FLOAT 0 10 5 \"Value\"\n"
+        tf.puts cmd
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
+
+        doc = Nokogiri::XML(File.read(xml_path))
+        doc.remove_namespaces!
+        declared = doc.xpath("//ArgumentList/Argument").map { |node| node['name'] }
+        referenced = doc.xpath("//EntryList/ArgumentRefEntry | //EntryList/ArrayArgumentRefEntry").map do |node|
+          node['argumentRef']
+        end
+        expect(referenced).to_not be_empty
+        expect(referenced - declared).to be_empty
+        # The ID item is a Parameter in CommandMetaData, where CMD_ does disambiguate it
+        # from the telemetry parameter of the same name
+        expect(doc.at_xpath("//CommandMetaData//Parameter[@name='CMD_ID']")).to_not be_nil
+
+        # And the file imports, which it could not do with a dangling reference
+        pc = PacketConfig.new
+        pc.process_file(xml_path, "TGT1")
+        expect(pc.commands["TGT1"]["CMDPKT"].get_item("VALUE").default).to eql 5.0
+
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "round trips item names it had to change to write valid XTCE" do
+        tf = Tempfile.new('unittest')
+        # Two reasons a written name differs from the item name: characters XTCE forbids,
+        # and the CMD_ prefix on a command ID parameter sharing a telemetry name. Both
+        # are recorded in a COSMOS AliasSet, which the importer reads back.
+        tlm = "TELEMETRY TGT1 TLMPKT BIG_ENDIAN \"Telemetry\"\n"\
+              "  APPEND_ID_ITEM ID 16 UINT 1 \"Identifier\"\n"
+        tf.puts tlm
+        cmd = "COMMAND TGT1 CMDPKT BIG_ENDIAN \"Command\"\n"\
+              "  APPEND_ID_PARAMETER ID 16 UINT 1 1 1 \"Identifier\"\n"\
+              "  APPEND_PARAMETER ARG[0].VALUE 16 UINT 0 100 5 \"Mangled name\"\n"
+        tf.puts cmd
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
+
+        doc = Nokogiri::XML(File.read(xml_path))
+        doc.remove_namespaces!
+        # Written names are XTCE safe and the originals are carried in an alias
+        expect(doc.at_xpath("//CommandMetaData//Parameter[@name='CMD_ID']/AliasSet/Alias")['alias']).to eql "ID"
+        expect(doc.at_xpath("//Argument[@name='ARG_0__VALUE']/AliasSet/Alias")['alias']).to eql "ARG[0].VALUE"
+
+        pc = PacketConfig.new
+        pc.process_file(xml_path, "TGT1")
+        command = pc.commands["TGT1"]["CMDPKT"]
+        expect(command.sorted_items.map(&:name)).to include("ID", "ARG[0].VALUE")
+        expect(command.get_item("ID").id_value).to eql 1
+        expect(command.get_item("ARG[0].VALUE").default).to eql 5
+
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "uses whatever item name it is given for the TimeAssociation" do
+        tf = Tempfile.new('unittest')
+        # Nothing about the time association is specific to the name PACKET_TIME, which
+        # is what makes the --time_association_name CLI flag worth passing through
+        tf.puts 'TELEMETRY TGT1 TLMPKT LITTLE_ENDIAN "Packet"'
+        tf.puts '  ID_ITEM ID 0 16 INT 1 "Integer Item"'
+        tf.puts '  ITEM MY_TIME 16 32 UINT "Time item"'
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "MY_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
+
+        doc = Nokogiri::XML(File.read(xml_path))
+        doc.remove_namespaces!
+        association = doc.at_xpath("//Parameter[@name='ID']/ParameterProperties/TimeAssociation")
+        expect(association['parameterRef']).to eql "MY_TIME"
+        associations = doc.xpath("//ParameterProperties/TimeAssociation")
+        expect(associations.map { |node| node['parameterRef'] }.uniq).to eql ["MY_TIME"]
+        # The time item is the source of the association, not a subject of it
+        expect(doc.at_xpath("//Parameter[@name='MY_TIME']/ParameterProperties")).to be_nil
+        expect(associations.length).to eql doc.xpath("//ParameterSet/Parameter").length - 1
+
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
       it "validates a file against the vendored schema from any working directory" do
         tf = Tempfile.new('unittest')
         tlm = "TELEMETRY TGT1 TLMPKT BIG_ENDIAN \"Telemetry\"\n"\

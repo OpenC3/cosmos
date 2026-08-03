@@ -324,6 +324,97 @@ module OpenC3
           tf.unlink
         end
 
+        it "restores the item name from a COSMOS alias" do
+          # COSMOS writes an alias whenever it has to change a name to get valid XTCE:
+          # characters XTCE forbids, or the CMD_ prefix on a command ID parameter that
+          # shares its name with a telemetry parameter. Both must survive a round trip.
+          tf = command_file("TGT") do |file|
+            file.puts "<xtce:ParameterTypeSet>"
+            file.puts "  <xtce:IntegerParameterType name=\"CMD_ID_Type\" signed=\"false\">"
+            file.puts "    <xtce:UnitSet/>"
+            file.puts "    <xtce:IntegerDataEncoding sizeInBits=\"16\" encoding=\"unsigned\"/>"
+            file.puts "  </xtce:IntegerParameterType>"
+            file.puts "</xtce:ParameterTypeSet>"
+            file.puts "<xtce:ParameterSet>"
+            file.puts "  <xtce:Parameter name=\"CMD_ID\" parameterTypeRef=\"CMD_ID_Type\">"
+            file.puts "    <xtce:AliasSet>"
+            file.puts "      <xtce:Alias nameSpace=\"COSMOS\" alias=\"ID\"/>"
+            file.puts "    </xtce:AliasSet>"
+            file.puts "  </xtce:Parameter>"
+            file.puts "</xtce:ParameterSet>"
+            file.puts "<xtce:ArgumentTypeSet>"
+            file.puts "  <xtce:IntegerArgumentType name=\"MANGLED_Type\" signed=\"false\">"
+            file.puts "    <xtce:UnitSet/>"
+            file.puts "    <xtce:IntegerDataEncoding sizeInBits=\"16\" encoding=\"unsigned\"/>"
+            file.puts "  </xtce:IntegerArgumentType>"
+            file.puts "</xtce:ArgumentTypeSet>"
+            file.puts "<xtce:MetaCommandSet>"
+            file.puts "  <xtce:MetaCommand name=\"PKT\">"
+            file.puts "    <xtce:ArgumentList>"
+            file.puts "      <xtce:Argument name=\"MANGLED\" argumentTypeRef=\"MANGLED_Type\">"
+            file.puts "        <xtce:AliasSet>"
+            file.puts "          <xtce:Alias nameSpace=\"COSMOS\" alias=\"ARG[0].VALUE\"/>"
+            file.puts "        </xtce:AliasSet>"
+            file.puts "      </xtce:Argument>"
+            file.puts "    </xtce:ArgumentList>"
+            file.puts "    <xtce:CommandContainer name=\"PKT_CommandContainer\">"
+            file.puts "      <xtce:EntryList>"
+            file.puts "        <xtce:ParameterRefEntry parameterRef=\"CMD_ID\"/>"
+            file.puts "        <xtce:ArgumentRefEntry argumentRef=\"MANGLED\"/>"
+            file.puts "      </xtce:EntryList>"
+            file.puts "      <xtce:BaseContainer containerRef=\"PKT_CommandContainer\">"
+            file.puts "        <xtce:RestrictionCriteria>"
+            file.puts "          <xtce:ComparisonList>"
+            # The comparison uses the XTCE name, not the alias
+            file.puts "            <xtce:Comparison parameterRef=\"CMD_ID\" value=\"5\"/>"
+            file.puts "          </xtce:ComparisonList>"
+            file.puts "        </xtce:RestrictionCriteria>"
+            file.puts "      </xtce:BaseContainer>"
+            file.puts "    </xtce:CommandContainer>"
+            file.puts "  </xtce:MetaCommand>"
+            file.puts "</xtce:MetaCommandSet>"
+          end
+
+          @pc.process_file(tf.path, 'TGT')
+          packet = @pc.commands['TGT']['PKT']
+          expect(packet.sorted_items.map(&:name)).to include("ID", "ARG[0].VALUE")
+          expect(packet.sorted_items.map(&:name)).to_not include("CMD_ID", "MANGLED")
+          # The ID value from the Comparison lands on the renamed item
+          expect(packet.get_item("ID").id_value).to eql 5
+          tf.unlink
+        end
+
+        it "keeps the XTCE name when an alias is from another namespace" do
+          tf = command_file("TGT") do |file|
+            file.puts "<xtce:ArgumentTypeSet>"
+            file.puts "  <xtce:IntegerArgumentType name=\"ARG_Type\" signed=\"false\">"
+            file.puts "    <xtce:UnitSet/>"
+            file.puts "    <xtce:IntegerDataEncoding sizeInBits=\"16\" encoding=\"unsigned\"/>"
+            file.puts "  </xtce:IntegerArgumentType>"
+            file.puts "</xtce:ArgumentTypeSet>"
+            file.puts "<xtce:MetaCommandSet>"
+            file.puts "  <xtce:MetaCommand name=\"PKT\">"
+            file.puts "    <xtce:ArgumentList>"
+            file.puts "      <xtce:Argument name=\"ARG\" argumentTypeRef=\"ARG_Type\">"
+            file.puts "        <xtce:AliasSet>"
+            file.puts "          <xtce:Alias nameSpace=\"SOMEONE_ELSE\" alias=\"THEIR_NAME\"/>"
+            file.puts "        </xtce:AliasSet>"
+            file.puts "      </xtce:Argument>"
+            file.puts "    </xtce:ArgumentList>"
+            file.puts "    <xtce:CommandContainer name=\"PKT_CommandContainer\">"
+            file.puts "      <xtce:EntryList>"
+            file.puts "        <xtce:ArgumentRefEntry argumentRef=\"ARG\"/>"
+            file.puts "      </xtce:EntryList>"
+            file.puts "    </xtce:CommandContainer>"
+            file.puts "  </xtce:MetaCommand>"
+            file.puts "</xtce:MetaCommandSet>"
+          end
+
+          @pc.process_file(tf.path, 'TGT')
+          expect(@pc.commands['TGT']['PKT'].sorted_items.map(&:name)).to include("ARG")
+          tf.unlink
+        end
+
         it "names the offending argument when a binary initialValue isn't hexBinary" do
           tf = command_file("TGT") do |file|
             file.puts "<xtce:ArgumentTypeSet>"

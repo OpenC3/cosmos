@@ -519,7 +519,11 @@ module OpenC3
         packet.sorted_items.each do |item|
           next if item.data_type == :DERIVED
           temp_type = item.id_value ? "Parameter" : type
-          prefix = (cmd_vs_tlm == :COMMAND && unique_tlm_params.include?(item.name)) ? "CMD_" : ""
+          # Only ID items become Parameters in CommandMetaData, where a name shared with
+          # a telemetry parameter is a real collision and gets a CMD_ prefix. Arguments
+          # are scoped to their MetaCommand and are declared unprefixed, so prefixing the
+          # reference here would point at an Argument that doesn't exist.
+          prefix = (temp_type == "Parameter" && cmd_vs_tlm == :COMMAND && unique_tlm_params.include?(item.name)) ? "CMD_" : ""
           if item.array_size
             # XTCE 1.2 defines dedicated argumentRef/parameterRef attributes for
             # Array{Argument,Parameter}RefEntry, so derive the reference from the type.
@@ -846,7 +850,9 @@ module OpenC3
               xml['xtce'].Alias(:nameSpace => ALIAS_NAMESPACE, :alias => item.name)
             end
           end
-          if has_packet_time
+          # The time item is the source of the association, so it doesn't get one -
+          # pointing it at itself says a parameter is its own timestamp.
+          if has_packet_time && item.name != @packet_time_string
             xml['xtce'].ParameterProperties do
               xml['xtce'].TimeAssociation(:parameterRef => @packet_time_string)
             end

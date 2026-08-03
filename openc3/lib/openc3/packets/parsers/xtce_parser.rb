@@ -154,7 +154,10 @@ module OpenC3
       current_type
     end
 
-    XTCE_IGNORED_ELEMENTS = ['text', 'AliasSet', 'Alias', 'Header']
+    XTCE_IGNORED_ELEMENTS = ['text', 'Alias', 'Header']
+
+    # Namespace COSMOS writes its own item names into when the XTCE name had to differ
+    COSMOS_ALIAS_NAMESPACE = 'COSMOS'
 
     def xtce_process_element(element)
       if XTCE_IGNORED_ELEMENTS.include?(element.name)
@@ -418,6 +421,25 @@ module OpenC3
         end
         @arguments[element["name"]] = @current_argument
 
+      when 'AliasSet'
+        # COSMOS records the original item name here whenever it had to write a different
+        # one: a name containing characters XTCE forbids, or the CMD_ prefix that keeps a
+        # command ID item from colliding with a telemetry parameter of the same name.
+        # Restoring it means a name survives an export / import round trip. References
+        # elsewhere in the document still use the XTCE name, which is what the parameter
+        # and argument lookups are keyed by, so nothing else has to change.
+        cosmos_alias = element.elements.find do |child|
+          child.name == 'Alias' && child['nameSpace'] == COSMOS_ALIAS_NAMESPACE
+        end
+        if cosmos_alias and cosmos_alias['alias']
+          case element.parent&.name
+          when 'Parameter'
+            @current_parameter&.cosmos_name = cosmos_alias['alias']
+          when 'Argument'
+            @current_argument&.cosmos_name = cosmos_alias['alias']
+          end
+        end
+
       when 'ParameterProperties'
         element.attributes.each do |att_name, att|
           @current_parameter[att.name] = att.value
@@ -452,8 +474,10 @@ module OpenC3
         # Handled in MetaCommand
 
       when 'Comparison'
-        # Need to set ID value for item
-        item = @current_packet.get_item(element['parameterRef'])
+        # Need to set ID value for item. The reference is the XTCE name, which is not the
+        # item's name when an alias restored the original.
+        parameter = @parameters[element['parameterRef']]
+        item = @current_packet.get_item(parameter ? cosmos_item_name(parameter) : element['parameterRef'])
         item.id_value = Integer(element['value'])
         if @current_cmd_or_tlm == PacketConfig::COMMAND
           item.default = item.id_value
@@ -476,8 +500,9 @@ module OpenC3
         xtce_handle_base_container('BaseContainer', element)
 
       when 'ArgumentAssignment'
-        # Need to set ID value for item
-        item = @current_packet.get_item(element['argumentName'])
+        # Need to set ID value for item, by the item's name rather than the XTCE name
+        argument = @arguments[element['argumentName']]
+        item = @current_packet.get_item(argument ? cosmos_item_name(argument) : element['argumentName'])
         value = element['argumentValue']
         if item.states && item.states[value.to_s.upcase]
           item.id_value = item.states[value.to_s.upcase]
@@ -496,9 +521,16 @@ module OpenC3
       return true # Recurse further
     end
 
+    # The COSMOS name of a parameter / argument: its alias when the XTCE name had to
+    # differ from it, otherwise the XTCE name itself
+    def cosmos_item_name(object)
+      object.cosmos_name || object.name
+    end
+
     def process_ref_entry(element)
       reference_location, bit_offset = xtce_handle_location_in_container_in_bits(element)
       object, type, data_type, array_type = get_object_types(element)
+      item_name = cosmos_item_name(object)
       bit_size = Integer(type.sizeInBits)
       if array_type
         array_bit_size = process_array_type(element, bit_size)
@@ -509,16 +541,16 @@ module OpenC3
       if bit_offset
         case reference_location
         when 'containerStart'
-          item = @current_packet.define_item(object.name, bit_offset, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
+          item = @current_packet.define_item(item_name, bit_offset, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
         when 'containerEnd'
-          item = @current_packet.define_item(object.name, -bit_offset, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
+          item = @current_packet.define_item(item_name, -bit_offset, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
         when 'previousEntry', nil
-          item = @current_packet.define_item(object.name, @current_packet.length + bit_offset, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
+          item = @current_packet.define_item(item_name, @current_packet.length + bit_offset, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
         when 'nextEntry'
           raise 'nextEntry is not supported'
         end
       else
-        item = @current_packet.append_item(object.name, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
+        item = @current_packet.append_item(item_name, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
       end
 
       item.description = type.shortDescription if type.shortDescription
