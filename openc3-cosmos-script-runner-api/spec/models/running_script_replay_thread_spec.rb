@@ -75,7 +75,7 @@ RSpec.describe RunningScriptReplayThread, type: :model do
       expect(wait_for_read(1.0)).not_to be_nil
     end
 
-    it 'falls back to reading after arm_delay for legacy clients that never report ready' do
+    it 'falls back to reading after arm_delay when ready never arrives' do
       allow(OpenC3::Topic).to receive(:read_topics) do
         reads << Time.now
         sleep 0.05

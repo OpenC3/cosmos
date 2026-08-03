@@ -133,20 +133,43 @@ test('runs a script', async ({ page, utils }) => {
     },
   )
 
+  // Ask the API which script the parent just launched instead of assuming it is
+  // the first disconnect.rb row. The table is unsorted, shows 10 rows per page
+  // and refreshes itself every 5 seconds, and a failed earlier run can leave its
+  // own disconnect.rb sitting at an error, so "first row mentioning the
+  // filename" is neither guaranteed to be on the page nor to be this script.
+  const scriptId = await page.evaluate(async () => {
+    const response = await fetch(
+      '/script-api/running-script?scope=DEFAULT&limit=100',
+      { headers: { Authorization: localStorage.openc3Token } },
+    )
+    const { items } = (await response.json()) as {
+      items: { name: string; filename: string }[]
+    }
+    const ids = items
+      .filter((item) => item.filename === 'INST/procedures/disconnect.rb')
+      .map((item) => parseInt(item.name, 10))
+    return Math.max(...ids).toString() // ids increase, so ours is the largest
+  })
+  expect(scriptId, 'no running disconnect.rb script found via /script-api/running-script').toMatch(/^\d+$/)
+
   await page.locator('[data-test="script-runner-script"]').click()
   await page.getByText('Execution Status').click()
   await utils.sleep(1000)
-  await page.getByText('Running Scripts').click()
+  await page.getByRole('tab', { name: 'Running Scripts' }).click()
   await expect(
     page.locator('[data-test="running-scripts"] thead').getByText('Connect'),
   ).toBeVisible()
-  await page
-    .locator(
-      '[data-test="running-scripts"] tr:has-text("INST/procedures/disconnect.rb")',
-    )
-    .first()
-    .getByRole('button', { name: 'Connect' })
-    .click()
+  // Search keeps our script on the first page, and identifying its row by id
+  // (rendered as a button in the Id column) means the 5 second refresh can't
+  // shift another script's Connect button under the click.
+  await page.locator('[data-test=running-search] input').fill(scriptId)
+  const scriptRow = page
+    .locator('[data-test="running-scripts"] tbody tr')
+    .filter({ has: page.getByRole('button', { name: scriptId, exact: true }) })
+    .filter({ visible: true })
+  await expect(scriptRow).toHaveCount(1)
+  await scriptRow.getByRole('button', { name: 'Connect' }).click()
 
   await expect(page.locator('[data-test=state] input')).toHaveValue('error', {
     timeout: 20000,

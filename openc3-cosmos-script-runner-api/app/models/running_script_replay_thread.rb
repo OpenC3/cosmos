@@ -26,8 +26,8 @@ require 'openc3'
 # fast-completing script's output used to be lost. For the same reason the
 # first read is deferred: current clients declare themselves ready to stream
 # events via the 'ready' channel action after their subscription confirmation
-# round-trips (proving the stream is registered), which arm()s us; legacy
-# clients that never perform 'ready' fall back to a fixed arm_delay. The
+# round-trips (proving the stream is registered), which arm()s us. A 'ready'
+# that never arrives is bounded by arm_delay. The
 # channel reads the backlog up to
 # @start_offset and starts us there, so there is no gap and no duplicate
 # delivery. Modeled on MessagesThread/TopicsThread in cmd-tlm-api.
@@ -44,7 +44,7 @@ class RunningScriptReplayThread
     # sooner. Broadcasts issued before the gateway registers the
     # subscriber's stream are silently dropped; current clients report ready
     # to stream events as soon as their subscription confirmation round-trips
-    # (proving registration), while legacy clients fall back to the fixed delay.
+    # (proving registration); arm_delay bounds a 'ready' that never arrives.
     @arm_delay = arm_delay
     @armed = arm_delay <= 0.0
     @cancel_thread = false
