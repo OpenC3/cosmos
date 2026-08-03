@@ -159,7 +159,6 @@ export default {
         )
         this.loadedKeywords = response.data
       } catch (error) {
-        // eslint-disable-next-line no-console
         console.error('Error loading screen keywords:', error)
       }
     },

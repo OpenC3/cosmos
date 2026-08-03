@@ -11,8 +11,18 @@
 import { test as setup, expect } from '@playwright/test'
 import { STORAGE_STATE, ADMIN_STORAGE_STATE } from './../playwright.config'
 
-// Take the demo sim targets out of QUIET mode. QUIET is sim-microservice global
-// state (not per-browser), so it only needs to be set once at suite start.
+// Take the demo sim targets out of QUIET mode. The demo boots quiet
+// (INST/lib/sim_inst.rb @quiet = true, INST2/lib/sim_inst.py self.quiet = True),
+// and QUIET suppresses every limits violation: temps cycle inside in-limits
+// bands, GROUND1STATUS/GROUND2STATUS are pinned CONNECTED, PARAMS VALUE2/VALUE4
+// write 0 (GREEN) and the NaN/Infinity injection into TEMP2 is disabled. Specs
+// that assert on red/yellow limits (limits-monitor, data-extractor's NaN checks,
+// the enterprise autonomic TEMP1 == RED_HIGH and GROUND2STATUS != CONNECTED
+// triggers) need it off. QUIET is sim-microservice global state, so setting it
+// once per playwright invocation is enough.
+//
+// The command is only sent after the interfaces report CONNECTED below;
+// commanding while they are still coming up gets a 500 from the API.
 async function resetQuiet(page) {
   for (const target of ['INST', 'INST2']) {
     const status = await page.evaluate(async (target) => {
@@ -37,7 +47,31 @@ async function resetQuiet(page) {
   }
 }
 
+// Wait for the services to deploy and the demo interfaces to connect. This runs
+// here rather than in a separate spec so that any single-file run
+// (e.g. `pnpm playwright test ./tests/command-sender.p.spec.ts
+// --project=chromium`) also gets a connected, non-QUIET demo.
+async function waitForBuild(page) {
+  await expect(page.locator('.v-app-bar')).toContainText('CmdTlmServer')
+  // Check the 3rd column (nth starts at 0) on the row containing INST_INT says CONNECTED
+  await expect(
+    page
+      .locator('[data-test="interfaces-table"]')
+      .locator('tr:has-text("INST_INT") td >> nth=2'),
+  ).toContainText('CONNECTED', {
+    timeout: 120000,
+  })
+  await expect(
+    page
+      .locator('[data-test="interfaces-table"]')
+      .locator('tr:has-text("INST2_INT") td >> nth=2'),
+  ).toContainText('CONNECTED', {
+    timeout: 60000,
+  })
+}
+
 setup('global setup', async ({ page }) => {
+  setup.setTimeout(5 * 60 * 1000) // 5 minutes to build, deploy and connect
   await page.goto('/tools/cmdtlmserver')
   if (process.env.ENTERPRISE === '1') {
     await page.getByLabel('Username or email').fill('operator')
@@ -98,6 +132,6 @@ setup('global setup', async ({ page }) => {
     }
   }
 
-  // Ensure the sim starts out of QUIET mode regardless of edition.
+  await waitForBuild(page)
   await resetQuiet(page)
 })

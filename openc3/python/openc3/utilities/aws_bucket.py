@@ -138,9 +138,22 @@ class AwsBucket(Bucket):
                 return response
             else:
                 return self.client.get_object(Bucket=bucket, Key=key, Range=range)
-        # If the key is not found return nil
-        except ClientError:
-            return None
+        except ClientError as error:
+            code = error.response.get("Error", {}).get("Code")
+            # If the key is not found return None
+            if code in ("NoSuchKey", "404"):
+                return None
+            # AWS S3 returns 403 AccessDenied rather than 404 NoSuchKey when the caller
+            # does not have s3:ListBucket on the bucket. Callers which probe for an
+            # optional key (i.e. TargetFile.body checking targets_modified first) would
+            # otherwise raise instead of falling through, so treat it as not found.
+            # Warn since a genuine permission problem looks identical from here.
+            if code in ("AccessDenied", "403"):
+                Logger.warn(
+                    f"Access denied reading {bucket}/{key}. Treating as not found. Verify bucket permissions if this key should exist."
+                )
+                return None
+            raise
 
     def list_objects(self, bucket, prefix=None, max_request=1000, max_total=100_000):
         try:

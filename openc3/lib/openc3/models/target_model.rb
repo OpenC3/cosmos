@@ -78,6 +78,7 @@ module OpenC3
     attr_accessor :tlm_log_retain_time
     attr_accessor :cmd_decom_retain_time
     attr_accessor :tlm_decom_retain_time
+    attr_accessor :decom_flush_period
     attr_accessor :cleanup_poll_time
     attr_accessor :needs_dependencies
     attr_accessor :target_microservices
@@ -471,6 +472,7 @@ module OpenC3
       tlm_log_retain_time: nil,
       cmd_decom_retain_time: nil,
       tlm_decom_retain_time: nil,
+      decom_flush_period: 5.0,
       cleanup_poll_time: 3600,
       needs_dependencies: false,
       target_microservices: {},
@@ -499,6 +501,7 @@ module OpenC3
       @tlm_log_retain_time = tlm_log_retain_time
       @cmd_decom_retain_time = cmd_decom_retain_time
       @tlm_decom_retain_time = tlm_decom_retain_time
+      @decom_flush_period = decom_flush_period
       @cleanup_poll_time = cleanup_poll_time
       @needs_dependencies = needs_dependencies
       @target_microservices = target_microservices
@@ -532,6 +535,7 @@ module OpenC3
         'tlm_log_retain_time' => @tlm_log_retain_time,
         'cmd_decom_retain_time' => @cmd_decom_retain_time,
         'tlm_decom_retain_time' => @tlm_decom_retain_time,
+        'decom_flush_period' => @decom_flush_period,
         'cleanup_poll_time' => @cleanup_poll_time,
         'needs_dependencies' => @needs_dependencies,
         'target_microservices' => @target_microservices.as_json(),
@@ -586,6 +590,9 @@ module OpenC3
         if @tlm_decom_retain_time and !@tlm_decom_retain_time.match?(/^\d+[hdwMy]$/)
           raise ConfigParser::Error.new(parser, "TLM_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y (e.g., 24h, 7d, 1y)")
         end
+      when 'DECOM_FLUSH_PERIOD'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Flush period in seconds>")
+        @decom_flush_period = Float(parameters[0])
       when 'REDUCED_MINUTE_LOG_RETAIN_TIME', 'REDUCED_HOUR_LOG_RETAIN_TIME', 'REDUCED_DAY_LOG_RETAIN_TIME', 'REDUCED_LOG_RETAIN_TIME'
         # DEPRECATED
       when 'REDUCER_DISABLE', 'REDUCER_DISABLED', 'REDUCER_MAX_CPU_UTILIZATION', 'REDUCED_MAX_CPU_UTILIZATION'
@@ -781,7 +788,7 @@ module OpenC3
     rescue => e
       Logger.warn("Modified diff check failed for #{@scope}/#{name}: #{e.message}")
     end
-    
+
     def check_column_header_lengths(system)
       too_long = []
       [system.packet_config.telemetry, system.packet_config.commands].each do |packets_by_target|
@@ -1194,6 +1201,7 @@ module OpenC3
       options = []
       options << ["CMD_DECOM_RETAIN_TIME", @cmd_decom_retain_time] if @cmd_decom_retain_time
       options << ["TLM_DECOM_RETAIN_TIME", @tlm_decom_retain_time] if @tlm_decom_retain_time
+      options << ["DECOM_FLUSH_PERIOD", @decom_flush_period] if @decom_flush_period
       microservice = MicroserviceModel.new(
         name: microservice_name,
         folder_name: @folder_name,

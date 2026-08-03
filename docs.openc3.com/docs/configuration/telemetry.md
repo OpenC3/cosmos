@@ -343,7 +343,7 @@ Attempting to define a named set before DEFAULT will raise an error of the form
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Limits Set | Name of the limits set. A DEFAULT set is required and must be defined before any other named sets for this item. If you have no unique limits sets use the keyword DEFAULT. | True |
-| Persistence | Number of consecutive times the telemetry item must be within a different limits range before changing limits state. | True |
+| Persistence | Number of consecutive times the telemetry item must be within a different limits range before changing limits state. Note if you have multiple LIMITS items they should all have the same persistence value. | True |
 | Initial State | Whether limits monitoring for this telemetry item is initially enabled or disabled. Note if you have multiple LIMITS items they should all have the same initial state.<br/><br/>Valid Values: <span class="values">ENABLED, DISABLED</span> | True |
 | Red Low Limit | If the telemetry value is less than or equal to this value a Red Low condition will be detected | True |
 | Yellow Low Limit | If the telemetry value is less than or equal to this value, but greater than the Red Low Limit, a Yellow Low condition will be detected | True |

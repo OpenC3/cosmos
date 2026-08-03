@@ -18,6 +18,15 @@
 class RunningScriptChannel < ApplicationCable::Channel
   @@broadcasters = {}
 
+  # How long the live event broadcaster waits before its first read when the
+  # client has not declared itself ready to stream events via the 'ready'
+  # action. Covers legacy clients (older CLI gems / frontend bundles /
+  # third-party websocket consumers) that only subscribe and read: their events
+  # are delayed by up to this much at attach, in exchange for not being dropped
+  # by the stream-registration race described below. Current clients perform
+  # 'ready' after the subscription confirmation and get events immediately.
+  LEGACY_ARM_DELAY = 1.0
+
   def subscribed
     # Defensive: if the auth before_subscribe callback rejected us, skip work.
     return if subscription_rejected?
@@ -39,7 +48,7 @@ class RunningScriptChannel < ApplicationCable::Channel
     # thread) can race the gateway registering our stream_from above and be
     # dropped -- which is how a fast-completing script (e.g. a parse-time crash)
     # lost all of its output. We record the last backlog offset and, only if the
-    # script has not already finished, start a thread to tail LIVE events from
+    # script has not already finished, start a thread to stream LIVE events from
     # there (those are written later, after stream_from is registered).
     topic = "running-script-channel:#{params[:id]}:replay"
     last_offset = '0-0'
@@ -61,14 +70,34 @@ class RunningScriptChannel < ApplicationCable::Channel
     # there is nothing left to stream.
     return if complete
 
+    # Start streaming live events, but DELAYED: a broadcast issued right now can
+    # race the gateway registering our stream_from above and be silently
+    # dropped. That loses any events written between the xrange and the thread's
+    # first read, and a script that then goes quiet (e.g. parked in a wait) never
+    # publishes again -- leaving the client stuck on "Connecting...". Current
+    # clients declare themselves ready to stream events immediately via the
+    # 'ready' action (see #ready), performed after the subscription confirmation
+    # has round-tripped, which guarantees the stream is registered. The delay is
+    # only the fallback for legacy clients that never perform 'ready'.
     begin
-      broadcaster = RunningScriptReplayThread.new(subscription_key, params[:id], last_offset)
+      broadcaster = RunningScriptReplayThread.new(subscription_key, params[:id], last_offset,
+                                                  arm_delay: LEGACY_ARM_DELAY)
       broadcaster.start
       @@broadcasters[subscription_key] = broadcaster
     rescue StandardError => e
       # Best-effort: a replay failure must not break the subscription.
       OpenC3::Logger.warn("running_script replay start failed: #{e.message}") rescue nil
     end
+  end
+
+  # Channel action performed by the client to declare that it is ready to
+  # stream events: it has received the subscription confirmation, so by now the
+  # gateway has registered this subscription's stream and live broadcasts can no
+  # longer be dropped. Skips the legacy delay and starts streaming right away.
+  # No-ops if the script already completed (no broadcaster) or on duplicate
+  # performs.
+  def ready
+    @@broadcasters["running-script-#{uuid}"]&.arm
   end
 
   def unsubscribed
