@@ -2219,7 +2219,6 @@ export default {
               alertText += `<strong>${response.data.title}</strong><br/><br/>`
               alertText += JSON.parse(response.data.description)
               this.$dialog.alert(alertText.trim(), { html: true })
-              return
             })
             .catch(console.error)
         }
