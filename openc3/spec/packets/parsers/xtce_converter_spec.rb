@@ -72,16 +72,21 @@ module OpenC3
       tf.puts "      </xtce:Parameter>"
       tf.puts "    </xtce:ParameterSet>"
       tf.puts "    <xtce:ContainerSet>"
+      # A packet with ID items inherits from an abstract container holding the entries
+      # so the ID comparisons have a BaseContainer to live on
+      tf.puts "      <xtce:SequenceContainer name=\"TLMPKT_Base\" abstract=\"true\">"
+      tf.puts "        <xtce:EntryList>"
+      tf.puts "          <xtce:ParameterRefEntry parameterRef=\"TLM_OPCODE\"/>"
+      tf.puts "        </xtce:EntryList>"
+      tf.puts "      </xtce:SequenceContainer>"
       tf.puts "      <xtce:SequenceContainer name=\"TLMPKT\" shortDescription=\"TLMPKT Description\">"
       if with_allow_short
         tf.puts "        <xtce:AncillaryDataSet>"
         tf.puts "          <xtce:AncillaryData name=\"ALLOW_SHORT\">true</xtce:AncillaryData>"
         tf.puts "        </xtce:AncillaryDataSet>"
       end
-      tf.puts "        <xtce:EntryList>"
-      tf.puts "          <xtce:ParameterRefEntry parameterRef=\"TLM_OPCODE\"/>"
-      tf.puts "        </xtce:EntryList>"
-      tf.puts "        <xtce:BaseContainer containerRef=\"TLMPKT\">"
+      tf.puts "        <xtce:EntryList/>"
+      tf.puts "        <xtce:BaseContainer containerRef=\"TLMPKT_Base\">"
       tf.puts "          <xtce:RestrictionCriteria>"
       tf.puts "            <xtce:ComparisonList>"
       tf.puts "              <xtce:Comparison parameterRef=\"TLM_OPCODE\" value=\"0\"/>"
@@ -119,7 +124,9 @@ module OpenC3
       tf.puts "      </xtce:EnumeratedArgumentType>"
       tf.puts "    </xtce:ArgumentTypeSet>"
       tf.puts "    <xtce:MetaCommandSet>"
-      tf.puts "      <xtce:MetaCommand name=\"CMDPKT\" shortDescription=\"Command\">"
+      # A command with ID items inherits from an abstract MetaCommand holding the
+      # arguments and entries so the ID comparisons have a BaseContainer to live on
+      tf.puts "      <xtce:MetaCommand name=\"CMDPKT_Base\" abstract=\"true\">"
       tf.puts "        <xtce:ArgumentList>"
       tf.puts "          <xtce:Argument name=\"CMD_0__ATTRIBUTES_BOOL\" argumentTypeRef=\"CMDPKT_CMD_0__ATTRIBUTES_BOOL_Type\" initialValue=\"TRUE\">"
       tf.puts "            <xtce:AliasSet>"
@@ -127,12 +134,18 @@ module OpenC3
       tf.puts "            </xtce:AliasSet>"
       tf.puts "          </xtce:Argument>"
       tf.puts "        </xtce:ArgumentList>"
-      tf.puts "        <xtce:CommandContainer name=\"CMDPKT_Commands\">"
+      tf.puts "        <xtce:CommandContainer name=\"CMDPKT_CommandsBase\">"
       tf.puts "          <xtce:EntryList>"
       tf.puts "            <xtce:ParameterRefEntry parameterRef=\"CMD_0__ATTRIBUTES_ID\"/>"
       tf.puts "            <xtce:ArgumentRefEntry argumentRef=\"CMD_0__ATTRIBUTES_BOOL\"/>"
       tf.puts "          </xtce:EntryList>"
-      tf.puts "          <xtce:BaseContainer containerRef=\"CMDPKT_Commands\">"
+      tf.puts "        </xtce:CommandContainer>"
+      tf.puts "      </xtce:MetaCommand>"
+      tf.puts "      <xtce:MetaCommand name=\"CMDPKT\" shortDescription=\"Command\">"
+      tf.puts "        <xtce:BaseMetaCommand metaCommandRef=\"CMDPKT_Base\"/>"
+      tf.puts "        <xtce:CommandContainer name=\"CMDPKT_Commands\">"
+      tf.puts "          <xtce:EntryList/>"
+      tf.puts "          <xtce:BaseContainer containerRef=\"CMDPKT_CommandsBase\">"
       tf.puts "            <xtce:RestrictionCriteria>"
       tf.puts "              <xtce:ComparisonList>"
       tf.puts "                <xtce:Comparison parameterRef=\"CMD_0__ATTRIBUTES_ID\" value=\"0\"/>"
@@ -168,12 +181,15 @@ module OpenC3
       tf.puts "      <xtce:Parameter name=\"DYNAMIC\" parameterTypeRef=\"DYNAMIC_Type\"/>"
       tf.puts "    </xtce:ParameterSet>"
       tf.puts "    <xtce:ContainerSet>"
-      tf.puts "      <xtce:SequenceContainer name=\"TLMPKT\" shortDescription=\"TLMPKT Description\">"
+      tf.puts "      <xtce:SequenceContainer name=\"TLMPKT_Base\" abstract=\"true\">"
       tf.puts "        <xtce:EntryList>"
       tf.puts "          <xtce:ParameterRefEntry parameterRef=\"OPCODE\"/>"
       tf.puts "          <xtce:ParameterRefEntry parameterRef=\"DYNAMIC\"/>"
       tf.puts "        </xtce:EntryList>"
-      tf.puts "        <xtce:BaseContainer containerRef=\"TLMPKT\">"
+      tf.puts "      </xtce:SequenceContainer>"
+      tf.puts "      <xtce:SequenceContainer name=\"TLMPKT\" shortDescription=\"TLMPKT Description\">"
+      tf.puts "        <xtce:EntryList/>"
+      tf.puts "        <xtce:BaseContainer containerRef=\"TLMPKT_Base\">"
       tf.puts "          <xtce:RestrictionCriteria>"
       tf.puts "            <xtce:ComparisonList>"
       tf.puts "              <xtce:Comparison parameterRef=\"OPCODE\" value=\"0\"/>"
@@ -267,7 +283,8 @@ module OpenC3
       tf.puts "              <xtce:FixedValue>0</xtce:FixedValue>"
       tf.puts "            </xtce:StartingIndex>"
       tf.puts "            <xtce:EndingIndex>"
-      tf.puts "              <xtce:FixedValue>0</xtce:FixedValue>"
+      # 80 bits of 8 bit items is 10 elements, so the inclusive ending index is 9
+      tf.puts "              <xtce:FixedValue>9</xtce:FixedValue>"
       tf.puts "            </xtce:EndingIndex>"
       tf.puts "          </xtce:Dimension>"
       tf.puts "        </xtce:DimensionList>"
@@ -334,10 +351,7 @@ module OpenC3
       tf.puts "      <xtce:Parameter name=\"NOT_PACKED\" parameterTypeRef=\"NOT_PACKED_Type\"/>"
       tf.puts "    </xtce:ParameterSet>"
       tf.puts "    <xtce:ContainerSet>"
-      tf.puts "      <xtce:SequenceContainer name=\"TLM_PKT\" shortDescription=\"Telemetry\">"
-      tf.puts "        <xtce:AliasSet>"
-      tf.puts "          <xtce:Alias nameSpace=\"COSMOS\" alias=\"TLM/PKT\"/>"
-      tf.puts "        </xtce:AliasSet>"
+      tf.puts "      <xtce:SequenceContainer name=\"TLM_PKT_Base\" abstract=\"true\">"
       tf.puts "        <xtce:EntryList>"
       tf.puts "          <xtce:ParameterRefEntry parameterRef=\"OPCODE\">"
       tf.puts "            <xtce:LocationInContainerInBits referenceLocation=\"containerStart\">"
@@ -395,7 +409,13 @@ module OpenC3
       tf.puts "            </xtce:LocationInContainerInBits>"
       tf.puts "          </xtce:ParameterRefEntry>"
       tf.puts "        </xtce:EntryList>"
-      tf.puts "        <xtce:BaseContainer containerRef=\"TLM_PKT\">"
+      tf.puts "      </xtce:SequenceContainer>"
+      tf.puts "      <xtce:SequenceContainer name=\"TLM_PKT\" shortDescription=\"Telemetry\">"
+      tf.puts "        <xtce:AliasSet>"
+      tf.puts "          <xtce:Alias nameSpace=\"COSMOS\" alias=\"TLM/PKT\"/>"
+      tf.puts "        </xtce:AliasSet>"
+      tf.puts "        <xtce:EntryList/>"
+      tf.puts "        <xtce:BaseContainer containerRef=\"TLM_PKT_Base\">"
       tf.puts "          <xtce:RestrictionCriteria>"
       tf.puts "            <xtce:ComparisonList>"
       tf.puts "              <xtce:Comparison parameterRef=\"OPCODE\" value=\"1\"/>"
@@ -449,7 +469,7 @@ module OpenC3
       tf.puts "              <xtce:FixedValue>0</xtce:FixedValue>"
       tf.puts "            </xtce:StartingIndex>"
       tf.puts "            <xtce:EndingIndex>"
-      tf.puts "              <xtce:FixedValue>0</xtce:FixedValue>"
+      tf.puts "              <xtce:FixedValue>9</xtce:FixedValue>"
       tf.puts "            </xtce:EndingIndex>"
       tf.puts "          </xtce:Dimension>"
       tf.puts "        </xtce:DimensionList>"
@@ -465,12 +485,21 @@ module OpenC3
       tf.puts "            </xtce:PolynomialCalibrator>"
       tf.puts "          </xtce:DefaultCalibrator>"
       tf.puts "        </xtce:FloatDataEncoding>"
+      # MIN / MAX on a 32 bit FLOAT argument is a finite range, which FloatRangeType
+      # (xs:double) can express
+      tf.puts "        <xtce:ValidRangeSet>"
+      tf.puts "          <xtce:ValidRange minInclusive=\"-3.402823e+38\" maxInclusive=\"3.402823e+38\"/>"
+      tf.puts "        </xtce:ValidRangeSet>"
       tf.puts "      </xtce:FloatArgumentType>"
       tf.puts "      <xtce:FloatArgumentType name=\"CMD_PKT_CMD_DOUBLE_Type\" sizeInBits=\"64\" initialValue=\"0.0\" shortDescription=\"Double\">"
       tf.puts "        <xtce:UnitSet/>"
       tf.puts "        <xtce:FloatDataEncoding sizeInBits=\"64\" encoding=\"IEEE754_1985\" byteOrder=\"leastSignificantByteFirst\"/>"
+      tf.puts "        <xtce:ValidRangeSet>"
+      tf.puts "          <xtce:ValidRange minInclusive=\"-1.7976931348623157e+308\" maxInclusive=\"1.7976931348623157e+308\"/>"
+      tf.puts "        </xtce:ValidRangeSet>"
       tf.puts "      </xtce:FloatArgumentType>"
-      tf.puts "      <xtce:StringArgumentType name=\"CMD_PKT_CMD_STRING_Type\" characterWidth=\"8\" initialValue=\"&quot;DEAD&quot;\" shortDescription=\"String\">"
+      # String initialValue is the value itself, unquoted
+      tf.puts "      <xtce:StringArgumentType name=\"CMD_PKT_CMD_STRING_Type\" characterWidth=\"8\" initialValue=\"DEAD\" shortDescription=\"String\">"
       tf.puts "        <xtce:UnitSet/>"
       tf.puts "        <xtce:StringDataEncoding encoding=\"UTF-8\">"
       tf.puts "          <xtce:SizeInBits>"
@@ -502,21 +531,18 @@ module OpenC3
       tf.puts "      </xtce:BinaryArgumentType>"
       tf.puts "    </xtce:ArgumentTypeSet>"
       tf.puts "    <xtce:MetaCommandSet>"
-      tf.puts "      <xtce:MetaCommand name=\"CMD_PKT\" shortDescription=\"Command\">"
-      tf.puts "        <xtce:AliasSet>"
-      tf.puts "          <xtce:Alias nameSpace=\"COSMOS\" alias=\"CMD/PKT\"/>"
-      tf.puts "        </xtce:AliasSet>"
+      tf.puts "      <xtce:MetaCommand name=\"CMD_PKT_Base\" abstract=\"true\">"
       tf.puts "        <xtce:ArgumentList>"
       tf.puts "          <xtce:Argument name=\"CMD_UNSIGNED\" argumentTypeRef=\"CMD_PKT_CMD_UNSIGNED_Type\" initialValue=\"TRUE\"/>"
       tf.puts "          <xtce:Argument name=\"CMD_SIGNED\" argumentTypeRef=\"CMD_PKT_CMD_SIGNED_Type\" initialValue=\"0\"/>"
       tf.puts "          <xtce:Argument name=\"CMD_ARRAY\" argumentTypeRef=\"CMD_PKT_CMD_ARRAY_ArrayType\" initialValue=\"\"/>"
       tf.puts "          <xtce:Argument name=\"CMD_FLOAT\" argumentTypeRef=\"CMD_PKT_CMD_FLOAT_Type\" initialValue=\"10.0\"/>"
       tf.puts "          <xtce:Argument name=\"CMD_DOUBLE\" argumentTypeRef=\"CMD_PKT_CMD_DOUBLE_Type\" initialValue=\"0.0\"/>"
-      tf.puts "          <xtce:Argument name=\"CMD_STRING\" argumentTypeRef=\"CMD_PKT_CMD_STRING_Type\" initialValue=\"&quot;DEAD&quot;\"/>"
+      tf.puts "          <xtce:Argument name=\"CMD_STRING\" argumentTypeRef=\"CMD_PKT_CMD_STRING_Type\" initialValue=\"DEAD\"/>"
       tf.puts "          <xtce:Argument name=\"CMD_STRING2\" argumentTypeRef=\"CMD_PKT_CMD_STRING2_Type\" initialValue=\"0xDEAD\"/>"
       tf.puts "          <xtce:Argument name=\"CMD_BLOCK\" argumentTypeRef=\"CMD_PKT_CMD_BLOCK_Type\" initialValue=\"BEEF\"/>"
       tf.puts "        </xtce:ArgumentList>"
-      tf.puts "        <xtce:CommandContainer name=\"CMD_PKT_Commands\">"
+      tf.puts "        <xtce:CommandContainer name=\"CMD_PKT_CommandsBase\">"
       tf.puts "          <xtce:EntryList>"
       tf.puts "            <xtce:ParameterRefEntry parameterRef=\"CMD_OPCODE\"/>"
       tf.puts "            <xtce:ArgumentRefEntry argumentRef=\"CMD_UNSIGNED\"/>"
@@ -539,7 +565,16 @@ module OpenC3
       tf.puts "            <xtce:ArgumentRefEntry argumentRef=\"CMD_STRING2\"/>"
       tf.puts "            <xtce:ArgumentRefEntry argumentRef=\"CMD_BLOCK\"/>"
       tf.puts "          </xtce:EntryList>"
-      tf.puts "          <xtce:BaseContainer containerRef=\"CMD_PKT_Commands\">"
+      tf.puts "        </xtce:CommandContainer>"
+      tf.puts "      </xtce:MetaCommand>"
+      tf.puts "      <xtce:MetaCommand name=\"CMD_PKT\" shortDescription=\"Command\">"
+      tf.puts "        <xtce:AliasSet>"
+      tf.puts "          <xtce:Alias nameSpace=\"COSMOS\" alias=\"CMD/PKT\"/>"
+      tf.puts "        </xtce:AliasSet>"
+      tf.puts "        <xtce:BaseMetaCommand metaCommandRef=\"CMD_PKT_Base\"/>"
+      tf.puts "        <xtce:CommandContainer name=\"CMD_PKT_Commands\">"
+      tf.puts "          <xtce:EntryList/>"
+      tf.puts "          <xtce:BaseContainer containerRef=\"CMD_PKT_CommandsBase\">"
       tf.puts "            <xtce:RestrictionCriteria>"
       tf.puts "              <xtce:ComparisonList>"
       tf.puts "                <xtce:Comparison parameterRef=\"CMD_OPCODE\" value=\"0\"/>"
@@ -594,13 +629,11 @@ module OpenC3
       tf.puts "        <xtce:EntryList>"
       tf.puts "          <xtce:ParameterRefEntry parameterRef=\"ID\"/>"
       tf.puts "        </xtce:EntryList>"
-      tf.puts "        <xtce:BaseContainer containerRef=\"PKT2\"/>"
       tf.puts "      </xtce:SequenceContainer>"
       tf.puts "      <xtce:SequenceContainer name=\"PKT1\" shortDescription=\"Packet\">"
       tf.puts "        <xtce:EntryList>"
       tf.puts "          <xtce:ParameterRefEntry parameterRef=\"ID\"/>"
       tf.puts "        </xtce:EntryList>"
-      tf.puts "        <xtce:BaseContainer containerRef=\"PKT1\"/>"
       tf.puts "      </xtce:SequenceContainer>"
       tf.puts "    </xtce:ContainerSet>"
       tf.puts "  </xtce:TelemetryMetaData>"
@@ -662,7 +695,6 @@ module OpenC3
       tf.puts "        <xtce:EntryList>"
       tf.puts "          <xtce:ParameterRefEntry parameterRef=\"ID\"/>"
       tf.puts "        </xtce:EntryList>"
-      tf.puts "        <xtce:BaseContainer containerRef=\"PKT1\"/>"
       tf.puts "      </xtce:SequenceContainer>"
       tf.puts "    </xtce:ContainerSet>"
       tf.puts "  </xtce:TelemetryMetaData>"
@@ -688,12 +720,8 @@ module OpenC3
       # The schema imports xml.xsd via a relative path, so validate from within the
       # schema directory to resolve it offline.
       def assert_xtce_schema_valid(xml_path)
-        schema_dir = File.expand_path(File.join(File.dirname(__FILE__), "xtce_schemas"))
-        doc = Nokogiri::XML(File.read(xml_path))
-        errors = Dir.chdir(schema_dir) do
-          Nokogiri::XML::Schema(File.read("SpaceSystem_20180204.xsd")).validate(doc)
-        end
-        expect(errors).to be_empty, "XTCE 1.2 schema validation errors:\n#{errors.map(&:message).join("\n")}"
+        errors = XtceConverter.schema_errors(xml_path)
+        expect(errors).to be_empty, "XTCE 1.2 schema validation errors:\n#{errors.join("\n")}"
       end
 
       it "converts simple tlm and aliases name" do
@@ -1057,12 +1085,11 @@ module OpenC3
             </xtce:CommandMetaData>
           </xtce:SpaceSystem>
         XTCE
-        doc = Nokogiri::XML(buggy)
-        schema_dir = File.expand_path(File.join(File.dirname(__FILE__), "xtce_schemas"))
-        errors = Dir.chdir(schema_dir) do
-          Nokogiri::XML::Schema(File.read("SpaceSystem_20180204.xsd")).validate(doc)
-        end
-        messages = errors.map(&:message).join("\n")
+        tf = Tempfile.new(['unittest', '.xtce'])
+        tf.write(buggy)
+        tf.close
+        messages = XtceConverter.schema_errors(tf.path).join("\n")
+        tf.unlink
         expect(messages).to match(/parameterRef.*not allowed/)
         expect(messages).to match(/argumentRef.*required/)
       end
@@ -1142,6 +1169,238 @@ module OpenC3
         packet = pc.commands["TGT1"]["CMDPKT"]
         expect(packet.get_item("PRINTABLE").default).to eql "DEAD"
         expect(packet.get_item("UNPRINTABLE").default).to eql "\xDE\xAD\xBE\xEF"
+
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "round trips STRING defaults without quoting them" do
+        tf = Tempfile.new('unittest')
+        cmd = "COMMAND TGT1 CMDPKT BIG_ENDIAN \"Command\"\n"\
+              "  ID_PARAMETER OPCODE 0 16 UINT 0 0 0 \"Opcode\"\n"\
+              "  PARAMETER STR 16 32 STRING \"DEAD\" \"String\"\n"
+        tf.puts cmd
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
+
+        doc = Nokogiri::XML(File.read(xml_path))
+        doc.remove_namespaces!
+        # A quoted initialValue would make the quotes part of the default for every
+        # reader but our own importer
+        str_type = doc.at_xpath("//StringArgumentType[@name='CMDPKT_STR_Type']")
+        expect(str_type['initialValue']).to eql "DEAD"
+
+        pc = PacketConfig.new
+        pc.process_file(xml_path, "TGT1")
+        expect(pc.commands["TGT1"]["CMDPKT"].get_item("STR").default).to eql "DEAD"
+
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "still imports the quoted STRING defaults written by COSMOS 7.2 and earlier" do
+        tf = Tempfile.new(['unittest', '.xtce'])
+        tf.puts <<~XTCE
+          <?xml version="1.0" encoding="UTF-8"?>
+          <xtce:SpaceSystem xmlns:xtce="http://www.omg.org/spec/XTCE/20180204" name="TGT1">
+            <xtce:CommandMetaData>
+              <xtce:ArgumentTypeSet>
+                <xtce:StringArgumentType name="STR_Type" characterWidth="8" initialValue="&quot;DEAD&quot;">
+                  <xtce:UnitSet/>
+                  <xtce:StringDataEncoding encoding="UTF-8">
+                    <xtce:SizeInBits>
+                      <xtce:Fixed><xtce:FixedValue>32</xtce:FixedValue></xtce:Fixed>
+                    </xtce:SizeInBits>
+                  </xtce:StringDataEncoding>
+                </xtce:StringArgumentType>
+              </xtce:ArgumentTypeSet>
+              <xtce:MetaCommandSet>
+                <xtce:MetaCommand name="CMDPKT">
+                  <xtce:ArgumentList>
+                    <xtce:Argument name="STR" argumentTypeRef="STR_Type"/>
+                  </xtce:ArgumentList>
+                  <xtce:CommandContainer name="CMDPKT_Commands">
+                    <xtce:EntryList>
+                      <xtce:ArgumentRefEntry argumentRef="STR"/>
+                    </xtce:EntryList>
+                  </xtce:CommandContainer>
+                </xtce:MetaCommand>
+              </xtce:MetaCommandSet>
+            </xtce:CommandMetaData>
+          </xtce:SpaceSystem>
+        XTCE
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        expect(@pc.commands["TGT1"]["CMDPKT"].get_item("STR").default).to eql "DEAD"
+        tf.unlink
+      end
+
+      it "emits no ParameterTypeSet when a target's items are all DERIVED" do
+        tf = Tempfile.new('unittest')
+        # An empty ParameterTypeSet / ParameterSet is invalid per the schema
+        tlm = "TELEMETRY TGT1 TLMPKT BIG_ENDIAN \"Derived only\"\n"\
+              "  ITEM DERIVED_ITEM 0 0 DERIVED \"Derived\"\n"
+        tf.puts tlm
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
+
+        doc = Nokogiri::XML(File.read(xml_path))
+        doc.remove_namespaces!
+        expect(doc.at_xpath("//ParameterTypeSet")).to be_nil
+        expect(doc.at_xpath("//ParameterSet")).to be_nil
+
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "does not emit a container that inherits from itself" do
+        tf = Tempfile.new('unittest')
+        tlm = "TELEMETRY TGT1 TLMPKT BIG_ENDIAN \"Telemetry\"\n"\
+              "  ID_ITEM OPCODE 0 8 UINT 1 \"Opcode\"\n"\
+              "  ITEM VALUE 8 16 UINT \"Value\"\n"
+        tf.puts tlm
+        # A distinct ID name so the exporter's CMD_ prefix for names shared with
+        # telemetry doesn't come into it
+        cmd = "COMMAND TGT1 CMDPKT BIG_ENDIAN \"Command\"\n"\
+              "  ID_PARAMETER FUNC_CODE 0 8 UINT 1 1 1 \"Function code\"\n"\
+              "  PARAMETER ARG 8 16 UINT 0 100 0 \"Arg\"\n"
+        tf.puts cmd
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
+
+        doc = Nokogiri::XML(File.read(xml_path))
+        doc.remove_namespaces!
+        # The ID comparisons need a BaseContainer, which must reference something other
+        # than its own container or consumers resolving inheritance hit a cycle
+        containers = doc.xpath("//SequenceContainer | //CommandContainer")
+        expect(containers.size).to be > 0
+        containers.each do |container|
+          base = container.at_xpath("BaseContainer")
+          next unless base
+
+          expect(base['containerRef']).to_not eql container['name']
+        end
+        expect(doc.at_xpath("//SequenceContainer[@name='TLMPKT']/BaseContainer")['containerRef']).to eql "TLMPKT_Base"
+        expect(doc.at_xpath("//SequenceContainer[@name='TLMPKT_Base']")['abstract']).to eql "true"
+        expect(doc.at_xpath("//MetaCommand[@name='CMDPKT']/BaseMetaCommand")['metaCommandRef']).to eql "CMDPKT_Base"
+
+        # And the packets still import with all their items and ID values
+        pc = PacketConfig.new
+        pc.process_file(xml_path, "TGT1")
+        packet = pc.telemetry["TGT1"]["TLMPKT"]
+        expect(packet.sorted_items.map(&:name)).to include("OPCODE", "VALUE")
+        expect(packet.get_item("OPCODE").id_value).to eql 1
+        command = pc.commands["TGT1"]["CMDPKT"]
+        expect(command.sorted_items.map(&:name)).to include("FUNC_CODE", "ARG")
+        expect(command.get_item("FUNC_CODE").id_value).to eql 1
+
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "only emits a ValidRange the schema can express" do
+        tf = Tempfile.new('unittest')
+        cmd = "COMMAND TGT1 CMDPKT BIG_ENDIAN \"Command\"\n"\
+              "  PARAMETER U64 0 64 UINT MIN MAX 0 \"Uint64\"\n"\
+              "  PARAMETER F64 64 64 FLOAT MIN MAX 0.0 \"Float64\"\n"\
+              "  PARAMETER I16 128 16 INT -100 100 0 \"Int16\"\n"
+        tf.puts cmd
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
+
+        doc = Nokogiri::XML(File.read(xml_path))
+        doc.remove_namespaces!
+        # A full 64 bit UINT range exceeds IntegerRangeType's xs:long bounds
+        expect(doc.at_xpath("//IntegerArgumentType[@name='CMDPKT_U64_Type']/ValidRangeSet")).to be_nil
+        # FloatRangeType is xs:double, so even the FLOAT MIN / MAX defaults fit
+        float_range = doc.at_xpath("//FloatArgumentType[@name='CMDPKT_F64_Type']/ValidRangeSet/ValidRange")
+        expect(float_range['minInclusive'].to_f).to eql(-Float::MAX)
+        expect(float_range['maxInclusive'].to_f).to eql Float::MAX
+        int_range = doc.at_xpath("//IntegerArgumentType[@name='CMDPKT_I16_Type']/ValidRangeSet/ValidRange")
+        expect(int_range['minInclusive']).to eql "-100"
+        expect(int_range['maxInclusive']).to eql "100"
+
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "validates a file against the vendored schema from any working directory" do
+        tf = Tempfile.new('unittest')
+        tlm = "TELEMETRY TGT1 TLMPKT BIG_ENDIAN \"Telemetry\"\n"\
+              "  ID_ITEM OPCODE 0 8 UINT 1 \"Opcode\"\n"
+        tf.puts tlm
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.expand_path(File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce"))
+
+        # The schema imports xml.xsd relative to itself, so a naive File.read of it only
+        # resolves when the process happens to be sitting in the schema directory
+        Dir.chdir(Dir.tmpdir) do
+          expect(XtceConverter.schema_errors(xml_path)).to be_empty
+          expect(XtceConverter.xtce_namespace(xml_path)).to eql XtceConverter::XTCE_1_2_NAMESPACE
+        end
+
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
+      it "reports schema errors and the declared namespace of an older file" do
+        tf = Tempfile.new(['unittest', '.xtce'])
+        tf.puts <<~XTCE
+          <?xml version="1.0" encoding="UTF-8"?>
+          <xtce:SpaceSystem xmlns:xtce="http://www.omg.org/space/xtce" name="TGT1">
+            <xtce:TelemetryMetaData>
+              <xtce:ParameterTypeSet/>
+            </xtce:TelemetryMetaData>
+          </xtce:SpaceSystem>
+        XTCE
+        tf.close
+
+        # An XTCE 1.0 file is not measured against the 1.2 schema, it just reports which
+        # namespace it declared so a caller can skip validation
+        expect(XtceConverter.xtce_namespace(tf.path)).to eql "http://www.omg.org/space/xtce"
+        expect(XtceConverter.schema_errors(tf.path)).to_not be_empty
+        tf.unlink
+      end
+
+      it "sizes an array type's dimension from the element count" do
+        tf = Tempfile.new('unittest')
+        tlm = "TELEMETRY TGT1 TLMPKT BIG_ENDIAN \"Telemetry\"\n"\
+              "  ARRAY_ITEM ARRAY_ITEM 0 8 UINT 80 \"Array of 10 8 bit items\"\n"
+        tf.puts tlm
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
+
+        doc = Nokogiri::XML(File.read(xml_path))
+        doc.remove_namespaces!
+        # One dimension is the single Dimension element; the indices are inclusive and
+        # give that dimension's length, so 10 elements ends at 9
+        dimensions = doc.xpath("//ArrayParameterType[@name='ARRAY_ITEM_ArrayType']/DimensionList/Dimension")
+        expect(dimensions.size).to eql 1
+        expect(dimensions[0].at_xpath("StartingIndex/FixedValue").text).to eql "0"
+        expect(dimensions[0].at_xpath("EndingIndex/FixedValue").text).to eql "9"
 
         tf.unlink
         FileUtils.rm_rf File.join(spec_install, "TGT1")

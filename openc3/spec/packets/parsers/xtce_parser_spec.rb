@@ -323,6 +323,36 @@ module OpenC3
           expect(packet.get_item('ARRAY').default).to eql []
           tf.unlink
         end
+
+        it "names the offending argument when a binary initialValue isn't hexBinary" do
+          tf = command_file("TGT") do |file|
+            file.puts "<xtce:ArgumentTypeSet>"
+            file.puts "  <xtce:BinaryArgumentType name=\"BLK_Type\" initialValue=\"nothex\">"
+            file.puts "    <xtce:UnitSet/>"
+            file.puts "    <xtce:BinaryDataEncoding>"
+            file.puts "      <xtce:SizeInBits><xtce:FixedValue>32</xtce:FixedValue></xtce:SizeInBits>"
+            file.puts "    </xtce:BinaryDataEncoding>"
+            file.puts "  </xtce:BinaryArgumentType>"
+            file.puts "</xtce:ArgumentTypeSet>"
+            file.puts "<xtce:MetaCommandSet>"
+            file.puts "  <xtce:MetaCommand name=\"PKT\">"
+            file.puts "    <xtce:ArgumentList>"
+            file.puts "      <xtce:Argument name=\"BLK\" argumentTypeRef=\"BLK_Type\"/>"
+            file.puts "    </xtce:ArgumentList>"
+            file.puts "    <xtce:CommandContainer name=\"PKT_CommandContainer\">"
+            file.puts "      <xtce:EntryList>"
+            file.puts "        <xtce:ArgumentRefEntry argumentRef=\"BLK\"/>"
+            file.puts "      </xtce:EntryList>"
+            file.puts "    </xtce:CommandContainer>"
+            file.puts "  </xtce:MetaCommand>"
+            file.puts "</xtce:MetaCommandSet>"
+          end
+
+          # Without this the failure surfaces as a bare Integer() ArgumentError from
+          # deep inside hex_to_byte_string
+          expect { @pc.process_file(tf.path, 'TGT') }.to raise_error(/BLK initialValue 'nothex' is not valid hexBinary/)
+          tf.unlink
+        end
       end
 
       context "with units" do

@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import os
+import sys
 import tempfile
 import unittest
 
@@ -22,7 +23,12 @@ from openc3.packets.parsers.xtce_converter import XtceConverter
 class TestXtceConverter(unittest.TestCase):
     """Test the XtceConverter class"""
 
-    SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "xtce_schemas", "SpaceSystem_20180204.xsd")
+    # The schema is vendored once, in the Ruby gem's data directory, so the two
+    # implementations can't drift onto different copies. Tests aren't packaged, so
+    # reaching across the repo here is fine.
+    SCHEMA_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "..", "..", "..", "data", "xtce_schemas", "SpaceSystem_20180204.xsd"
+    )
 
     @classmethod
     def setUpClass(cls):
@@ -481,6 +487,9 @@ class TestXtceConverter(unittest.TestCase):
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
+            # Both arrays hold 10 elements (80 bits of 8, 640 bits of 64), so the
+            # inclusive ending index is 9. The single Dimension is what makes the array
+            # one-dimensional; the indices give that dimension's length.
             for type_name, item_name in [
                 ("ArrayParameterType", "ARRAY_ITEM"),
                 ("ArrayArgumentType", "CMD_ARRAY"),
@@ -494,7 +503,7 @@ class TestXtceConverter(unittest.TestCase):
                 start = dimensions[0].find("xtce:StartingIndex/xtce:FixedValue", namespaces=nsmap)
                 end = dimensions[0].find("xtce:EndingIndex/xtce:FixedValue", namespaces=nsmap)
                 self.assertEqual(start.text, "0")
-                self.assertEqual(end.text, "0")
+                self.assertEqual(end.text, "9", item_name)
 
     def test_xtce_array_ref_entries(self):
         """Array entries reference argumentRef for commands and parameterRef for telemetry"""
@@ -707,20 +716,23 @@ class TestXtceConverter(unittest.TestCase):
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
+            # String initialValue is the value itself. Quoting it would make the quotes
+            # part of the default for every reader but our own importer.
             str_type = tree.find('.//xtce:StringArgumentType[@name="STR_PARAM_Type"]', namespaces=nsmap)
-            self.assertIn("DEAD", str_type.get("initialValue"))
+            self.assertEqual(str_type.get("initialValue"), "DEAD")
 
-            # Binary initialValue is xs:hexBinary: raw hex digits, no 0x prefix
+            # Binary initialValue is xs:hexBinary: raw hex digits, no 0x prefix, upper
+            # case (hexBinary's canonical form, and what the Ruby converter writes)
             bin_type = tree.find('.//xtce:BinaryArgumentType[@name="BIN_PARAM_Type"]', namespaces=nsmap)
-            self.assertEqual(bin_type.get("initialValue"), "deadbeef")
+            self.assertEqual(bin_type.get("initialValue"), "DEADBEEF")
 
             # A string default given as printable bytes round trips as text
             printable = tree.find('.//xtce:StringArgumentType[@name="PRINTABLE_PARAM_Type"]', namespaces=nsmap)
-            self.assertIn("DEAD", printable.get("initialValue"))
+            self.assertEqual(printable.get("initialValue"), "DEAD")
 
             # A string default that isn't printable falls back to a hex literal
             unprintable = tree.find('.//xtce:StringArgumentType[@name="UNPRINTABLE_PARAM_Type"]', namespaces=nsmap)
-            self.assertEqual(unprintable.get("initialValue"), "0xdead")
+            self.assertEqual(unprintable.get("initialValue"), "0xDEAD")
 
     def test_xtce_unrepresentable_default_is_skipped(self):
         """A default that cannot be rendered is omitted rather than raising"""
@@ -745,9 +757,11 @@ class TestXtceConverter(unittest.TestCase):
         self.assertIsNone(root[0].get("initialValue"))
 
     def test_xtce_valid_range_skipped_when_unrepresentable(self):
-        """Ranges wider than 64 bits (the FLOAT MIN / MAX defaults) are skipped"""
+        """An integer range wider than xs:long is skipped, a wide float range is not"""
         self.process_config(
-            'COMMAND TGT1 CMD1 BIG_ENDIAN "Test"\n  APPEND_PARAMETER FLOAT_PARAM 64 FLOAT MIN MAX 0.0 "Float"\n'
+            'COMMAND TGT1 CMD1 BIG_ENDIAN "Test"\n'
+            '  APPEND_PARAMETER FLOAT_PARAM 64 FLOAT MIN MAX 0.0 "Float"\n'
+            '  APPEND_PARAMETER UINT_PARAM 64 UINT MIN MAX 0 "Uint"\n'
         )
 
         with tempfile.TemporaryDirectory() as output_dir:
@@ -758,8 +772,30 @@ class TestXtceConverter(unittest.TestCase):
             tree = etree.parse(xtce_file)
             nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
 
+            # A full 64 bit UINT range exceeds IntegerRangeType's xs:long bounds, so
+            # emitting it would be schema invalid
+            uint_type = tree.find('.//xtce:IntegerArgumentType[@name="UINT_PARAM_Type"]', namespaces=nsmap)
+            self.assertIsNone(uint_type.find("xtce:ValidRangeSet", namespaces=nsmap))
+
+            # FloatRangeType is xs:double, so even the FLOAT MIN / MAX defaults fit
             float_type = tree.find('.//xtce:FloatArgumentType[@name="FLOAT_PARAM_Type"]', namespaces=nsmap)
-            self.assertIsNone(float_type.find("xtce:ValidRangeSet", namespaces=nsmap))
+            float_range = float_type.find("xtce:ValidRangeSet/xtce:ValidRange", namespaces=nsmap)
+            self.assertIsNotNone(float_range)
+            self.assertEqual(float(float_range.get("minInclusive")), -sys.float_info.max)
+            self.assertEqual(float(float_range.get("maxInclusive")), sys.float_info.max)
+
+    def test_xtce_valid_range_skipped_when_not_finite(self):
+        """A non-finite float range has no valid xs:double form, so it is skipped"""
+        self.process_config('COMMAND TGT1 CMD1 BIG_ENDIAN "Test"\n  APPEND_PARAMETER F 64 FLOAT 0.0 1.0 0.0 "F"\n')
+        item = self.pc.commands["TGT1"]["CMD1"].get_item("F")
+        item.minimum = float("-inf")
+        item.maximum = float("inf")
+
+        converter = XtceConverter({}, {}, tempfile.mkdtemp())
+        root = etree.Element("root")
+        converter._to_xtce_valid_range(item, "Argument", root)
+
+        self.assertEqual(len(root), 0)
 
     def test_xtce_parameter_valid_range_is_not_wrapped(self):
         """Parameters emit a bare ValidRange while arguments use a ValidRangeSet"""

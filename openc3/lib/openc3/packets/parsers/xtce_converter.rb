@@ -25,13 +25,46 @@ REPLACEMENT_CHAR = '_'
 ALIAS_NAMESPACE = 'COSMOS'
 
 COMBINED_NAME = "COMBINED"
-MAX_64_BIT_INT = 18446744073709551614
+# IntegerRangeType declares minInclusive / maxInclusive as xs:long, so an integer range
+# outside these bounds (a full 64 bit UINT, for example) cannot be expressed as a
+# ValidRange. FloatRangeType uses xs:double and needs no such clamp.
+XS_LONG_MIN = -9223372036854775808
+XS_LONG_MAX = 9223372036854775807
 COSMOS_NATIVE_DERIVED_ITEMS = ['PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED', 'RECEIVED_TIMESECONDS', 'RECEIVED_TIMEFORMATTED', 'RECEIVED_COUNT']
 PACKET_TIME_STRING = "PACKET_TIME"
 
 module OpenC3
   class XtceConverter
     attr_accessor :current_target_name
+
+    # The namespace COSMOS exports. Files declaring an older namespace still import.
+    XTCE_1_2_NAMESPACE = 'http://www.omg.org/spec/XTCE/20180204'
+    # The OMG schema is vendored so validation works with no network, which matters in
+    # an air gapped system: the schemaLocation the files declare is an omg.org URL.
+    SCHEMA_DIR = File.join(PATH, 'data', 'xtce_schemas')
+    SCHEMA_FILE = File.join(SCHEMA_DIR, 'SpaceSystem_20180204.xsd')
+
+    # The XTCE namespace an existing .xtce file declares on its root element
+    #
+    # @param filename [String] Path to a .xtce file
+    # @return [String, nil] The declared namespace, or nil if the file has none
+    def self.xtce_namespace(filename)
+      Nokogiri::XML(File.read(filename)).root&.namespace&.href
+    end
+
+    # Validate an .xtce file against the vendored OMG XTCE 1.2 schema
+    #
+    # Only meaningful for files declaring XTCE_1_2_NAMESPACE. XTCE 1.0 / 1.1 files
+    # import fine but report errors against this schema, so check xtce_namespace first.
+    #
+    # @param filename [String] Path to a .xtce file
+    # @return [Array<String>] Validation error messages, empty when the file is valid
+    def self.schema_errors(filename)
+      # File.open, not File.read: the schema imports xml.xsd relative to itself, which
+      # Nokogiri can only resolve from the IO's path
+      @schema ||= Nokogiri::XML::Schema(File.open(SCHEMA_FILE))
+      @schema.validate(Nokogiri::XML(File.read(filename))).map(&:message)
+    end
 
     # Output a previously parsed definition file into the XTCE format
     #
@@ -206,19 +239,24 @@ module OpenC3
       # Gather and make unique all the packet items
       return unless telemetry[target_name]
 
-      unique_items = telemetry[target_name] ? get_unique(telemetry[target_name]) : {}
+      unique_items = get_unique(telemetry[target_name])
+      has_packet_time = unique_items.include?(@packet_time_string)
 
       xml['xtce'].TelemetryMetaData do
-        xml['xtce'].ParameterTypeSet do
-          unique_items.each do |item_name, item|
-            to_xtce_type(item, 'Parameter', xml)
+        # The schema requires at least one child in each set, so emit neither when the
+        # target's packets hold nothing but DERIVED items. DERIVED items produce a TODO
+        # comment at most, never a ParameterType, so they don't count here.
+        if unique_items.any? { |_item_name, item| item.data_type != :DERIVED }
+          xml['xtce'].ParameterTypeSet do
+            unique_items.each do |item_name, item|
+              to_xtce_type(item, 'Parameter', xml)
+            end
           end
-        end
-        has_packet_time = unique_items.include?(@packet_time_string)
 
-        xml['xtce'].ParameterSet do
-          unique_items.each do |item_name, item|
-            to_xtce_item(item, 'Parameter', xml, has_packet_time: has_packet_time)
+          xml['xtce'].ParameterSet do
+            unique_items.each do |item_name, item|
+              to_xtce_item(item, 'Parameter', xml, has_packet_time: has_packet_time)
+            end
           end
         end
 
@@ -228,6 +266,20 @@ module OpenC3
               # Replaces invalid characters if any exist
               attrs = { :name => packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR) }
               attrs['shortDescription'] = packet.description if packet.description
+              container_name = packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)
+              has_id_items = (packet.id_items && packet.id_items.length > 0)
+
+              # RestrictionCriteria only exists on a BaseContainer, so a packet with ID
+              # items needs something to inherit from: an abstract container holding the
+              # entries, which the concrete container then restricts. Pointing the
+              # BaseContainer at its own container instead would make it inherit from
+              # itself, which is a cycle for any consumer that resolves inheritance.
+              if has_id_items
+                xml['xtce'].SequenceContainer(:name => "#{container_name}_Base", :abstract => "true") do
+                  process_entry_list(xml, packet, :TELEMETRY)
+                end
+              end
+
               xml['xtce'].SequenceContainer(attrs) do
                 # Adds an alias if any invalid characters exist
                 if packet_name.count(INVALID_CHARS) > 0
@@ -240,9 +292,10 @@ module OpenC3
                     xml['xtce'].AncillaryData("true", :name => "ALLOW_SHORT")
                   end
                 end
-                process_entry_list(xml, packet, :TELEMETRY)
-                xml['xtce'].BaseContainer(:containerRef => (packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR))) do
-                  if packet.id_items && packet.id_items.length > 0
+                if has_id_items
+                  # The entries come from the base container. EntryList is required.
+                  xml['xtce'].EntryList
+                  xml['xtce'].BaseContainer(:containerRef => "#{container_name}_Base") do
                     xml['xtce'].RestrictionCriteria do
                       xml['xtce'].ComparisonList do
                         packet.id_items.each do |item|
@@ -251,6 +304,8 @@ module OpenC3
                       end
                     end
                   end
+                else
+                  process_entry_list(xml, packet, :TELEMETRY)
                 end
               end # SequenceContainer
             end # telemetry.each
@@ -290,29 +345,53 @@ module OpenC3
         end
         xml['xtce'].MetaCommandSet do
           commands[target_name].each do |packet_name, packet|
-            attrs = { :name => packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR) }
+            command_name = packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)
+            attrs = { :name => command_name }
             attrs['shortDescription'] = packet.description if packet.description
+            argument_list_sorted_items = get_sorted_non_id_items(packet.sorted_items)
+            has_id_items = (packet.id_items && packet.id_items.length > 0)
+
+            # Like telemetry above, the ID comparisons live in a RestrictionCriteria,
+            # which only exists on a BaseContainer, so emit an abstract MetaCommand
+            # holding the arguments and entries for the concrete one to inherit and
+            # restrict. Referencing its own CommandContainer would be a cycle.
+            if has_id_items
+              xml['xtce'].MetaCommand(:name => "#{command_name}_Base", :abstract => "true") do
+                if argument_list_sorted_items.size > 0
+                  xml['xtce'].ArgumentList do
+                    argument_list_sorted_items.each do |item|
+                      to_xtce_item(item, 'Argument', xml, prefix: command_name + "_")
+                    end
+                  end # ArgumentList
+                end
+                xml['xtce'].CommandContainer(:name => "#{command_name}_CommandsBase") do
+                  process_entry_list(xml, packet, :COMMAND, unique_tlm_params)
+                end # Command Container
+              end # MetaCommand
+            end
+
             xml['xtce'].MetaCommand(attrs) do
               if packet_name.count(INVALID_CHARS) > 0
                 xml['xtce'].AliasSet do
                   xml['xtce'].Alias(:nameSpace => ALIAS_NAMESPACE, :alias => packet_name)
                 end # AliasSet
               end # If packet contains invalid chars
-              argument_list_sorted_items = get_sorted_non_id_items(packet.sorted_items)
-              if argument_list_sorted_items.size > 0
+              if has_id_items
+                xml['xtce'].BaseMetaCommand(:metaCommandRef => "#{command_name}_Base")
+              elsif argument_list_sorted_items.size > 0
                 xml['xtce'].ArgumentList do
                   argument_list_sorted_items.each do |item|
-                    to_xtce_item(item, 'Argument', xml, prefix: packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR) + "_")
+                    to_xtce_item(item, 'Argument', xml, prefix: command_name + "_")
                   end
                 end # ArgumentList
               end # If Arguments List is greater than 0
-              xml['xtce'].CommandContainer(:name => "#{packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_Commands") do
-                process_entry_list(xml, packet, :COMMAND, unique_tlm_params)
-                  #xml['xtce'].BaseContainer(:containerRef => "#{target_name}_#{packet_name}_CommandContainer")
-                if packet.id_items && packet.id_items.length > 0
+              xml['xtce'].CommandContainer(:name => "#{command_name}_Commands") do
+                if has_id_items
+                  # The entries come from the base container. EntryList is required.
+                  xml['xtce'].EntryList
                   # A CommandContainer allows only one BaseContainer, so emit all ID
                   # comparisons in a single RestrictionCriteria/ComparisonList.
-                  xml['xtce'].BaseContainer(:containerRef => "#{packet_name.tr(INVALID_CHARS, REPLACEMENT_CHAR)}_Commands") do
+                  xml['xtce'].BaseContainer(:containerRef => "#{command_name}_CommandsBase") do
                     xml['xtce'].RestrictionCriteria do
                       xml['xtce'].ComparisonList do
                         packet.id_items.each do |item|
@@ -322,6 +401,8 @@ module OpenC3
                       end
                     end # Restriction Criteria
                   end # Base Container
+                else
+                  process_entry_list(xml, packet, :COMMAND, unique_tlm_params)
                 end # If id items
               end # Command Container
             end # MetaCommand
@@ -347,16 +428,30 @@ module OpenC3
       initial_value
     end
 
+    # Ending index of an array item's single dimension. XTCE indices are inclusive, so
+    # an array of N elements ends at N - 1. A non-positive bit size means a variable
+    # length array whose element count isn't known at export time, reported as a single
+    # element.
+    def array_ending_index(item)
+      return 0 if item.bit_size <= 0 || item.array_size <= 0
+
+      (item.array_size / item.bit_size) - 1
+    end
+
+    # Initial value for a String or Binary type. Pass :BLOCK / 'Binary' for binary
+    # items and :STRING / 'String' for string items.
     def get_string_or_block_initial_value(item, string_or_binary)
       initial_value = nil
       if item.default && !item.array_size
-        if string_or_binary == :BLOCK
-          # Binary initialValue is xs:hexBinary: raw hex digits, no 0x prefix.
+        if string_or_binary == :BLOCK || string_or_binary == 'Binary'
+          # Binary initialValue is xs:hexBinary: raw hex digits, no 0x prefix
           initial_value = item.default.simple_formatted
         elsif !item.default.is_printable?
           initial_value = '0x' + item.default.simple_formatted
         else
-          initial_value = item.default.inspect
+          # String initialValue is the value itself. Quoting it (inspect) would make
+          # the quotes part of the default for anything but our own importer.
+          initial_value = item.default
         end
       end
       initial_value
@@ -437,7 +532,7 @@ module OpenC3
                     xml['xtce'].FixedValue(0)
                   end
                   xml['xtce'].EndingIndex do
-                    xml['xtce'].FixedValue((item.array_size / item.bit_size) - 1)
+                    xml['xtce'].FixedValue(array_ending_index(item))
                   end
                 end
               end
@@ -500,7 +595,9 @@ module OpenC3
               end # StartingIndex
               xml['xtce'].EndingIndex do
                 xml['xtce'].FixedValue do
-                  xml['xtce'].text 0 # OpenC3 Only supports one-dimensional arrays
+                  # OpenC3 only supports one-dimensional arrays, which is the single
+                  # Dimension above. The indices give that dimension's length.
+                  xml['xtce'].text array_ending_index(item)
                 end # FixedValue
               end # EndingIndex
             end # Dimension
@@ -591,16 +688,10 @@ module OpenC3
               xml['xtce'].IntegerDataEncoding(:sizeInBits => item.bit_size, :encoding => encoding)
             end
           end
+          # ValidRange comes from IntegerDataType and DefaultAlarm from
+          # IntegerParameterType, which extends it, so ValidRange must be emitted first.
+          to_xtce_valid_range(item, param_or_arg, xml)
           to_xtce_limits(item, xml)
-          if item.range and item.range.last <= MAX_64_BIT_INT
-            if param_or_arg == "Parameter"
-              xml['xtce'].ValidRange(:minInclusive => item.range.first, :maxInclusive => item.range.last)
-            else
-              xml['xtce'].ValidRangeSet do
-                xml['xtce'].ValidRange(:minInclusive => item.range.first, :maxInclusive => item.range.last)
-              end
-            end
-          end
         end # Type
       end # if item.states
     end
@@ -628,15 +719,35 @@ module OpenC3
             xml['xtce'].FloatDataEncoding(:sizeInBits => item.bit_size, :encoding => 'IEEE754_1985')
           end
         end
+        # ValidRange comes from FloatDataType and DefaultAlarm from FloatParameterType,
+        # which extends it, so ValidRange must be emitted first.
+        to_xtce_valid_range(item, param_or_arg, xml)
         to_xtce_limits(item, xml)
-        if item.range and item.range.last < MAX_64_BIT_INT
-          if param_or_arg == "Parameter"
-            xml['xtce'].ValidRange(:minInclusive => item.range.first, :maxInclusive => item.range.last)
-          else
-            xml['xtce'].ValidRangeSet do
-                xml['xtce'].ValidRange(:minInclusive => item.range.first, :maxInclusive => item.range.last)
-            end
-          end
+      end
+    end
+
+    # Emit the item minimum / maximum as an XTCE ValidRange. Arguments wrap it in a
+    # ValidRangeSet; parameters use a bare ValidRange.
+    def to_xtce_valid_range(item, param_or_arg, xml)
+      return unless item.range
+
+      minimum = item.range.first
+      maximum = item.range.last
+      if item.data_type == :INT or item.data_type == :UINT
+        # IntegerRangeType is xs:long, so a wider range (a full 64 bit UINT, for
+        # example) can't be expressed and is dropped rather than emitted invalid.
+        return if minimum < XS_LONG_MIN or maximum > XS_LONG_MAX
+      else
+        # FloatRangeType is xs:double, which covers any finite float. Infinity and NaN
+        # have no valid xs:double lexical form here, so skip them.
+        return unless minimum.finite? and maximum.finite?
+      end
+
+      if param_or_arg == "Parameter"
+        xml['xtce'].ValidRange(:minInclusive => minimum, :maxInclusive => maximum)
+      else
+        xml['xtce'].ValidRangeSet do
+          xml['xtce'].ValidRange(:minInclusive => minimum, :maxInclusive => maximum)
         end
       end
     end
@@ -644,16 +755,8 @@ module OpenC3
     def to_xtce_string(item, param_or_arg, xml, string_or_binary, prefix: "")
       attrs = { :name => (prefix + item.name.tr(INVALID_CHARS, REPLACEMENT_CHAR) + '_Type') }
       attrs[:characterWidth] = 8 if string_or_binary == 'String'
-      if item.default && !item.array_size
-        if string_or_binary == 'Binary'
-          # Binary initialValue is xs:hexBinary: raw hex digits, no 0x prefix.
-          attrs[:initialValue] = item.default.simple_formatted
-        elsif !item.default.is_printable?
-          attrs[:initialValue] = '0x' + item.default.simple_formatted
-        else
-          attrs[:initialValue] = item.default.inspect
-        end
-      end
+      initial_value = get_string_or_block_initial_value(item, string_or_binary)
+      attrs[:initialValue] = initial_value if initial_value
       attrs[:shortDescription] = item.description if item.description
       xml['xtce'].public_send(string_or_binary + param_or_arg + 'Type', attrs) do
         # Strings and Blocks don't get a byteOrder

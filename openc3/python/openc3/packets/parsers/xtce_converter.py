@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import math
 import os
 
 from lxml import etree  # type: ignore[import]
@@ -26,10 +27,15 @@ class XtceConverter:
     # XTCE 1.2, matching the Ruby converter so both implementations emit the same version
     XTCE_NAMESPACE = "http://www.omg.org/spec/XTCE/20180204"  # NOSONAR
     XSI_NAMESPACE = "http://www.w3.org/2001/XMLSchema-instance"  # NOSONAR
-    MAX_64_BIT_INT = 9223372036854775807
     SCHEMA_LOCATION = (
         "http://www.omg.org/spec/XTCE/20180204 https://www.omg.org/spec/XTCE/20180204/SpaceSystem.xsd"  # NOSONAR
     )
+
+    # IntegerRangeType declares minInclusive / maxInclusive as xs:long, so an integer
+    # range outside these bounds (a full 64 bit UINT, for example) cannot be expressed.
+    # FloatRangeType uses xs:double and needs no such clamp.
+    XS_LONG_MIN = -9223372036854775808
+    XS_LONG_MAX = 9223372036854775807
 
     @classmethod
     def convert(cls, commands, telemetry, output_dir):
@@ -172,9 +178,10 @@ class XtceConverter:
             if packet.description:
                 attrs["shortDescription"] = packet.description
 
-            # A BaseContainer requires a RestrictionCriteria, so only use the abstract
-            # base + inheritance pattern when the packet has ID items to compare against.
-            # Otherwise emit a single container holding the entries directly.
+            # A RestrictionCriteria only exists on a BaseContainer, so a packet with ID
+            # items needs an abstract container to inherit from and restrict. Without ID
+            # items there is nothing to restrict, so emit a single container holding the
+            # entries directly rather than an inheritance pair that says nothing.
             if packet.id_items and len(packet.id_items) > 0:
                 base_attrs = {"name": f"{packet_name}_Base", "abstract": "true"}
                 base_container = etree.SubElement(
@@ -351,7 +358,7 @@ class XtceConverter:
                 etree.SubElement(start_idx, f"{{{self.XTCE_NAMESPACE}}}FixedValue").text = "0"
                 end_idx = etree.SubElement(dimension, f"{{{self.XTCE_NAMESPACE}}}EndingIndex")
                 etree.SubElement(end_idx, f"{{{self.XTCE_NAMESPACE}}}FixedValue").text = str(
-                    (item.array_size // item.bit_size) - 1
+                    self._array_ending_index(item)
                 )
             else:
                 # Regular item
@@ -392,6 +399,23 @@ class XtceConverter:
             )
             etree.SubElement(location, f"{{{self.XTCE_NAMESPACE}}}FixedValue").text = str(-item.bit_offset)
 
+    def _array_ending_index(self, item):
+        """Ending index of an array item's single dimension
+
+        XTCE indices are inclusive, so an array of N elements ends at N - 1. A
+        non-positive bit size means a variable length array whose element count isn't
+        known at export time, which is reported as a single element.
+
+        Args:
+            item: Packet item with an array_size
+
+        Returns:
+            int: The EndingIndex FixedValue
+        """
+        if item.bit_size <= 0 or item.array_size <= 0:
+            return 0
+        return (item.array_size // item.bit_size) - 1
+
     def _to_xtce_type(self, item, param_or_arg, parent):
         """Convert item to XTCE type definition
 
@@ -419,7 +443,9 @@ class XtceConverter:
                 attrs["shortDescription"] = item.description
             attrs["arrayTypeRef"] = f"{item.name}_Type"
             # XTCE 1.2 replaced the numberOfDimensions attribute with a required
-            # DimensionList. OpenC3 only supports one-dimensional arrays.
+            # DimensionList. OpenC3 only supports one-dimensional arrays, which is a
+            # single Dimension; the indices give that dimension's length, not the
+            # number of dimensions.
             array_type = etree.SubElement(
                 parent,
                 f"{{{self.XTCE_NAMESPACE}}}Array{param_or_arg}Type",
@@ -430,7 +456,7 @@ class XtceConverter:
             start_idx = etree.SubElement(dimension, f"{{{self.XTCE_NAMESPACE}}}StartingIndex")
             etree.SubElement(start_idx, f"{{{self.XTCE_NAMESPACE}}}FixedValue").text = "0"
             end_idx = etree.SubElement(dimension, f"{{{self.XTCE_NAMESPACE}}}EndingIndex")
-            etree.SubElement(end_idx, f"{{{self.XTCE_NAMESPACE}}}FixedValue").text = "0"
+            etree.SubElement(end_idx, f"{{{self.XTCE_NAMESPACE}}}FixedValue").text = str(self._array_ending_index(item))
 
     def _to_xtce_int(self, item, param_or_arg, parent):
         """Convert integer item to XTCE
@@ -557,14 +583,17 @@ class XtceConverter:
             try:
                 if isinstance(item.default, bytes | bytearray):
                     if string_or_binary == "Binary":
-                        # Binary initialValue is xs:hexBinary: raw hex digits, no 0x prefix.
-                        attrs["initialValue"] = item.default.hex()
+                        # Binary initialValue is xs:hexBinary: raw hex digits, no 0x
+                        # prefix. Upper case is hexBinary's canonical form and matches
+                        # the Ruby converter.
+                        attrs["initialValue"] = item.default.hex().upper()
                     elif all(32 <= b < 127 for b in item.default):
-                        attrs["initialValue"] = repr(item.default.decode("utf-8"))
+                        # String initialValue is the value itself, unquoted
+                        attrs["initialValue"] = item.default.decode("utf-8")
                     else:
-                        attrs["initialValue"] = "0x" + item.default.hex()
+                        attrs["initialValue"] = "0x" + item.default.hex().upper()
                 else:
-                    attrs["initialValue"] = repr(str(item.default))
+                    attrs["initialValue"] = str(item.default)
             except Exception:
                 pass
 
@@ -665,8 +694,14 @@ class XtceConverter:
         """
         if item.minimum is None or item.maximum is None:
             return
-        # Ranges beyond 64 bits (e.g. the FLOAT MIN / MAX defaults) aren't representable
-        if item.maximum > self.MAX_64_BIT_INT:
+        if item.data_type in ["INT", "UINT"]:
+            # IntegerRangeType is xs:long, so a wider range (a full 64 bit UINT, for
+            # example) can't be expressed and is dropped rather than emitted invalid.
+            if item.minimum < self.XS_LONG_MIN or item.maximum > self.XS_LONG_MAX:
+                return
+        elif not (math.isfinite(item.minimum) and math.isfinite(item.maximum)):
+            # FloatRangeType is xs:double, which covers any finite float. Infinity and
+            # NaN have no valid xs:double lexical form here, so skip them.
             return
 
         attrs = {"minInclusive": str(item.minimum), "maxInclusive": str(item.maximum)}

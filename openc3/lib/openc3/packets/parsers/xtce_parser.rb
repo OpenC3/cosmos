@@ -695,11 +695,16 @@ module OpenC3
           if type.initialValue
             if data_type == :BLOCK
               # Binary initialValue is xs:hexBinary (raw hex, optional 0x prefix)
-              item.default = type.initialValue.hex_to_byte_string
+              begin
+                item.default = type.initialValue.hex_to_byte_string
+              rescue ArgumentError, TypeError => e
+                raise "#{item.name} initialValue '#{type.initialValue}' is not valid hexBinary (#{e.message})"
+              end
             elsif type.initialValue.upcase.start_with?("0X")
               item.default = type.initialValue.hex_to_byte_string
             else
-              # Strip quotes from strings
+              # Strip the quotes COSMOS 7.2 and earlier wrote around string defaults.
+              # Current exports write the value unquoted.
               if type.initialValue[0] == '"' && type.initialValue[-1] == '"'
                 item.default = type.initialValue[1..-2]
               else

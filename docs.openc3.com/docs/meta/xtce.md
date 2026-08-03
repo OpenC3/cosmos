@@ -11,7 +11,18 @@ COSMOS has support for the [XTCE Command and Telemetry Definition Standard](http
 
 COSMOS exports **XTCE 1.2** (namespace `http://www.omg.org/spec/XTCE/20180204`), and generated files validate against the OMG `SpaceSystem.xsd` schema they declare. Both the Ruby and Python exporters produce the same version.
 
-Importing is more permissive: files declaring XTCE 1.0, 1.1 or 1.2 are all accepted. Where the versions differ, COSMOS accepts both spellings, for example an `ArrayArgumentRefEntry` may use `argumentRef` (1.2) or `parameterRef` (1.0/1.1 and files exported by COSMOS 7.2 and earlier), and byte order may be given as a `ByteOrderList` (1.0/1.1) or the `byteOrder` attribute (1.2).
+Importing is more permissive: files declaring XTCE 1.0, 1.1 or 1.2 are all accepted. Where the versions differ, COSMOS accepts both spellings, for example an `ArrayArgumentRefEntry` may use `argumentRef` (1.2) or `parameterRef` (1.0/1.1 and files exported by COSMOS 7.2 and earlier), and byte order may be given as a `ByteOrderList` (1.0/1.1) or the `byteOrder` attribute (1.2). A `StringParameterType` / `StringArgumentType` `initialValue` may be quoted (COSMOS 7.2 and earlier) or unquoted (what COSMOS writes now, and what the standard calls for).
+
+Files exported by COSMOS 7.2 and earlier import here. The reverse is not guaranteed: two of the schema conformance fixes in this version are not understood by a 7.2 importer, which expects `parameterRef` on an `ArrayArgumentRefEntry` (it reports `parameterRef not found`) and reads a binary `initialValue` as a literal string unless it is `0x` prefixed (so a `hexBinary` default is silently taken as text). Import an .xtce file with an older COSMOS only if it has no array command arguments and no binary defaults.
+
+## How Packets Are Structured on Export
+
+A packet with ID items is exported as a pair: an abstract container holding the entries, and a concrete container that inherits from it and adds the ID comparisons. The comparisons have to live in a `RestrictionCriteria`, which only exists on a `BaseContainer`, so there has to be something to inherit from.
+
+- Telemetry: `<SequenceContainer name="PKT_Base" abstract="true">` with the `EntryList`, then `<SequenceContainer name="PKT">` with a `BaseContainer` referencing `PKT_Base` and the `RestrictionCriteria` inside it.
+- Commands: `<MetaCommand name="CMD_Base" abstract="true">` with the `ArgumentList` and a `CommandContainer` named `CMD_CommandsBase`, then `<MetaCommand name="CMD">` with a `BaseMetaCommand` and a `CommandContainer` whose `BaseContainer` carries the `RestrictionCriteria`.
+
+A packet with no ID items is a single container holding its entries, with no `BaseContainer` at all.
 
 ## Running COSMOS using an .xtce definition file
 
@@ -25,6 +36,8 @@ Use the following command to convert a .xtce file into COSMOS configuration file
 openc3.sh cli xtce_converter --import <xtce_filename> --output <output_dir>
 ```
 
+Add `--validate` to check the file against the XTCE 1.2 schema before importing it. The result is reported and the import proceeds either way, because COSMOS accepts more than the 1.2 schema does: a valid XTCE 1.0 file imports correctly while reporting errors against 1.2. A file declaring an older namespace is not measured against the 1.2 schema at all, it just says so and moves on.
+
 ## Converting a COSMOS Configuration to XTCE
 
 Use the following command to convert your openc3 plugin into .xtce files, one per target. The converted .xtce files will be placed into a target folder in the given output directory.
@@ -32,6 +45,10 @@ Use the following command to convert your openc3 plugin into .xtce files, one pe
 ```
 openc3.sh cli xtce_converter --plugin <plugin.gem> --output <output_dir>
 ```
+
+Exported files are validated against the XTCE 1.2 schema and an invalid file fails the export with a non-zero exit code, so a config that COSMOS cannot express in valid XTCE is reported here rather than by whatever ground system the file was written for. Pass `--no-validate` to write the files anyway.
+
+The schema is vendored in the gem (`data/xtce_schemas`), so validation needs no network access. The `schemaLocation` the exported files declare is an omg.org URL, which an air gapped system cannot fetch.
 
 On Windows use `openc3.bat` in place of `openc3.sh`.
 
