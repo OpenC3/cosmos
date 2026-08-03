@@ -60,6 +60,9 @@ staged_files.each do |file|
 
   # Skip vendored/third-party JS files
   next if file.start_with?('openc3-cosmos-init/plugins/packages/openc3-tool-base/public/js/')
+  
+  # Skip generated docs folder
+  next if file.start_with?('docs/')
 
   # Read file content with encoding handling
   begin
