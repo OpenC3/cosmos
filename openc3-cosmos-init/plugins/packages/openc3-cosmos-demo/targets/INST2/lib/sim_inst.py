@@ -454,7 +454,7 @@ class SimInst(SimulatedTarget):
                     packet.write("CcsdsLength", len(packet.buffer) - 7)
 
         # Every 10s throw an unknown packet at the server just to demo that
-        if count_100hz % 1000 == 900:
+        if not self.quiet and count_100hz % 1000 == 900:
             pending_packets.append(
                 Packet(None, None, "BIG_ENDIAN", None, random.randbytes(10))
             )

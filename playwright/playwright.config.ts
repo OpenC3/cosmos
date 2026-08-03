@@ -83,9 +83,10 @@ export default defineConfig({
     // },
     {
       name: 'chromium',
-      // Enterprise specs have their own project below; without this the core
-      // `./tests/**/*.p.spec.ts` glob would start picking them up now that they
-      // use the same .p.spec.ts naming.
+      // The enterprise specs have their own project below. Without this the core
+      // test:parallel glob picks them up now that they use the same .p.spec.ts
+      // naming, running them with fullyParallel: true (which breaks their
+      // ordered chains) on top of the dedicated enterprise batches.
       testIgnore: '**/enterprise/**',
       dependencies: ['setup'],
       use: {

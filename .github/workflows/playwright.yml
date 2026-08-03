@@ -98,16 +98,17 @@ jobs:
         shell: 'script -q -e -c "bash {0}"'
         run: ./playwright.sh build-plugin
         working-directory: playwright
-        # Ensure we're connected and running
-      - name: Wait for build
-        run: pnpm playwright test --project=chromium tests/wait-for-build.spec.ts
-        working-directory: playwright
+      # tests/global.setup.ts (the 'setup' project every other project depends on)
+      # waits for the interfaces to connect and then takes the demo sim out of
+      # QUIET mode, so there is no separate "Wait for build" step to run here.
       - name: Run Playwright tests
         # Run separately to allow for parallelism. With COVERAGE=1 each test
         # caches V8 coverage; `pnpm coverage` (chained at the end of pnpm
         # test) merges every invocation's cache into coverage/lcov.info
         # (plus html and cobertura).
-        run: ./playwright.sh run-chromium --grep-invert='enterprise'
+        # Enterprise specs are excluded by testIgnore on the chromium project
+        # in playwright.config.ts, so no --grep-invert is needed here.
+        run: ./playwright.sh run-chromium
         working-directory: playwright
       - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
