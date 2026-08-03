@@ -1990,12 +1990,18 @@ export default {
       return Api.get(`/script-api/running-script/${id}`)
         .then((response) => {
           if (response.data) {
-            let state = response.data.state
-            if (!TERMINAL_STATES.has(state)) {
+            if (!TERMINAL_STATES.has(response.data.state)) {
               this.filename = response.data.filename
               this.tryLoadSuites(response)
               this.initScriptStart()
               this.scriptStart(id)
+              // Show the state we just fetched rather than waiting on the first
+              // channel event. A script paused at an error or a prompt only
+              // republishes its state about once a second, and a script that is
+              // simply running between lines may not publish for even longer, so
+              // without this the user stares at "Connecting..." with no idea
+              // what the script is doing.
+              this.applyScriptStatus(response.data)
             } else {
               this.$notify.caution({
                 title: `Script ${id} has already completed`,
@@ -2270,6 +2276,9 @@ export default {
       // to a running script (which reuses the component) could carry over a
       // stale activePromptId and skip showing the dialog (see handleScript).
       this.activePromptId = ''
+      // `connected` below is called with `this` bound to the subscription, so
+      // hold onto the component to reach its methods from there.
+      const self = this
       const subscription = await this.cable.createSubscription(
         'RunningScriptChannel',
         window.openc3Scope,
@@ -2282,8 +2291,15 @@ export default {
           // backend is told we are ready again. See RunningScriptChannel#ready.
           // Not an arrow function: `this` must be the subscription so perform()
           // targets this channel.
-          connected() {
+          connected(data) {
             this.perform('ready')
+            // A reconnect can silently cost us events: the channel's backlog
+            // replay only runs when the server processes a fresh subscribe, and
+            // a resumed session doesn't re-run it. Re-seed from the script's
+            // status so the display can't be left showing a stale state.
+            if (data?.reconnected) {
+              self.refreshScriptStatus()
+            }
           },
           received: (data) => this.received(data),
         },
@@ -2298,6 +2314,41 @@ export default {
         return
       }
       this.subscription = subscription
+    },
+    // Update the display from a script status (GET running-script/:id) rather
+    // than a channel event. The state field is otherwise only ever set from
+    // channel events, so any gap in the event stream leaves it stale.
+    applyScriptStatus(data) {
+      const filename = data.current_filename || data.filename
+      if (!filename) {
+        return
+      }
+      // Reuse processLine so the state, markers and button enable/disable all
+      // follow the same rules they would for a real 'line' event.
+      this.processLine({
+        type: 'line',
+        filename: filename,
+        line_no: data.line_no,
+        state: data.state,
+      })
+      if (TERMINAL_STATES.has(data.state)) {
+        this.scriptComplete()
+      }
+    },
+    async refreshScriptStatus() {
+      const id = this.scriptId
+      if (!id) {
+        return
+      }
+      try {
+        const response = await Api.get(`/script-api/running-script/${id}`)
+        // Ignore a response that lost the race with a switch to another script
+        if (response.data && this.scriptId === id) {
+          this.applyScriptStatus(response.data)
+        }
+      } catch (error) {
+        // Nothing to seed from -- leave the display as is
+      }
     },
     async scriptComplete() {
       // Supersede any scriptStart still awaiting its subscription. Must
@@ -2922,16 +2973,17 @@ export default {
         )
         this.file.show = false // Close the dialog immediately to avoid race condition
       }
-      // We have to wait for all the upload API requests to finish before notifying the prompt
-      Promise.all(promises)
-        .then(() => respond(fileNames))
-        .catch((error) => {
-          // An upload failed. Answer with cancel so the running script
-          // doesn't wait forever on a reply that will never come (repeats
-          // of the same prompt_id are ignored, so nothing would recover).
-          respond('COSMOS__CANCEL')
-          this.setError(`File upload failed: ${error}`)
-        })
+      try {
+        // We have to wait for all the upload API requests to finish before notifying the prompt
+        await Promise.all(promises)
+        respond(fileNames)
+      } catch (error) {
+        // An upload failed. Answer with cancel so the running script
+        // doesn't wait forever on a reply that will never come (repeats
+        // of the same prompt_id are ignored, so nothing would recover).
+        respond('COSMOS__CANCEL')
+        this.setError(`File upload failed: ${error}`)
+      }
     },
     bucketDialogCallback(response) {
       this.bucket.show = false
