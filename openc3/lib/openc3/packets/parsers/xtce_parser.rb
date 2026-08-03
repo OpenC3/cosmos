@@ -550,7 +550,9 @@ module OpenC3
         when 'containerEnd'
           item = @current_packet.define_item(item_name, -bit_offset, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
         when 'previousEntry', nil
-          item = @current_packet.define_item(item_name, @current_packet.length + bit_offset, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
+          # Packet#length is bytes while the location is bits, so the offset is measured
+          # from the end of what has been defined so far in bits
+          item = @current_packet.define_item(item_name, (@current_packet.length * 8) + bit_offset, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
         when 'nextEntry'
           raise 'nextEntry is not supported'
         end
