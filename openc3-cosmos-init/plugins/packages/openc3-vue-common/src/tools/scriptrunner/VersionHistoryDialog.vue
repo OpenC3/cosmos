@@ -61,7 +61,12 @@
                 :data-test="`version-${versions.length - idx}`"
                 @click="selectVersion(v.version_id)"
               >
-                <v-tooltip activator="parent" location="top" :open-delay="500">
+                <v-tooltip
+                  activator="parent"
+                  location="top"
+                  :open-delay="500"
+                  content-class="version-tooltip"
+                >
                   <span style="white-space: pre-line">{{
                     fullLabel(v, idx)
                   }}</span>
@@ -77,6 +82,7 @@
                     v-if="v.source === 'plugin-upgrade'"
                     :open-delay="600"
                     location="top"
+                    content-class="version-tooltip"
                   >
                     <template #activator="{ props: tt }">
                       <v-chip
@@ -102,6 +108,7 @@
                     v-if="idx !== versions.length - 1"
                     :open-delay="600"
                     location="top"
+                    content-class="version-tooltip"
                   >
                     <template #activator="{ props: tt }">
                       <v-btn
@@ -248,6 +255,13 @@ export default {
       diffLoading: false,
       differ: null,
       restoringVersionId: null,
+      // Bumped by every render request. renderView and renderDiff both await
+      // network fetches, so a newer request can complete while an older one is
+      // still in flight -- the older one then creates its editor in the shared
+      // container and stomps the newer content (a stale diff editor showing up
+      // underneath a "Viewing" header). Each render captures the token and
+      // bails after every await once it is no longer the current one.
+      renderToken: 0,
     }
   },
   computed: {
@@ -397,13 +411,17 @@ export default {
     },
     async renderView() {
       if (!this.selectedVersionId) return
+      const token = ++this.renderToken
       this.diffLoading = true
       this.teardownDiffer()
       try {
         const body = await this.fetchVersionBody(this.selectedVersionId)
+        if (token !== this.renderToken) return
         await this.$nextTick()
+        if (token !== this.renderToken) return
         this.diffLoading = false
         await this.$nextTick()
+        if (token !== this.renderToken) return
         if (this.$refs.differContainer) {
           const language = this.monacoLanguage
           const stamp = Date.now()
@@ -430,6 +448,7 @@ export default {
           this.differ = editor
         }
       } catch ({ response }) {
+        if (token !== this.renderToken) return
         this.diffLoading = false
         this.$notify.caution({
           title: 'Failed to load version',
@@ -439,6 +458,7 @@ export default {
     },
     async renderDiff() {
       if (!this.selectedVersionId || !this.diffBaseVersionId) return
+      const token = ++this.renderToken
       this.diffLoading = true
       this.teardownDiffer()
       try {
@@ -446,9 +466,12 @@ export default {
           this.fetchVersionBody(this.diffBaseVersionId),
           this.fetchVersionBody(this.selectedVersionId),
         ])
+        if (token !== this.renderToken) return
         await this.$nextTick()
+        if (token !== this.renderToken) return
         this.diffLoading = false
         await this.$nextTick()
+        if (token !== this.renderToken) return
         if (this.$refs.differContainer) {
           const language = this.monacoLanguage
           // markRaw is critical. Vue 3's Options API wraps data() refs in
@@ -496,6 +519,7 @@ export default {
           this.differ = editor
         }
       } catch ({ response }) {
+        if (token !== this.renderToken) return
         this.diffLoading = false
         this.$notify.caution({
           title: 'Failed to load version',
@@ -591,6 +615,14 @@ export default {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* This tooltip covers the row above its activator, and during the scale
+   transition its overlay still takes pointer events -- clicks on the
+   neighboring version row get swallowed. The tooltip is display-only, so opt
+   its whole subtree out of hit testing. */
+:global(.version-tooltip),
+:global(.version-tooltip *) {
+  pointer-events: none !important;
 }
 .differ-container {
   flex: 1 1 auto;
