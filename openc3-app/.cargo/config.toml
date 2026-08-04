@@ -1,0 +1,9 @@
+# Statically link the MSVC C runtime on Windows so the installed executable
+# doesn't depend on the Visual C++ Redistributable (VCRUNTIME140.dll,
+# MSVCP140.dll) being present on the target machine. Without this a clean
+# Windows install fails with "VCRUNTIME140.dll was not found".
+#
+# Target-scoped, so macOS/Linux builds are unaffected. cargo reads this because
+# builds run from the openc3-app directory.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
