@@ -66,6 +66,9 @@ export default {
     return {
       width: 200,
       height: 200,
+      // Let v-textarea render embedded newlines as actual line breaks
+      // rather than the escaped "\n" sequence used by single-line displays.
+      preserveWhitespace: true,
     }
   },
   computed: {
