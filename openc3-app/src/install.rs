@@ -357,6 +357,151 @@ fn winget_install(id: &str) -> Result<()> {
 }
 
 // ---------------------------------------------------------------------------
+// Windows optional features (the WSL2 / virtualization stack Docker needs)
+// ---------------------------------------------------------------------------
+
+/// Windows optional features Docker Desktop's WSL2 backend and virtualization
+/// depend on. The first element is the DISM / Win32_OptionalFeature name; the
+/// second is a human label for the UI.
+#[cfg(windows)]
+const WINDOWS_FEATURES: [(&str, &str); 3] = [
+    ("VirtualMachinePlatform", "Virtual Machine Platform"),
+    ("HypervisorPlatform", "Windows Hypervisor Platform"),
+    ("Microsoft-Windows-Subsystem-Linux", "Windows Subsystem for Linux"),
+];
+
+/// The required Windows features that are not currently enabled, as (name,
+/// label) pairs. Queried via the `Win32_OptionalFeature` WMI class, which
+/// standard users can read without elevation (no UAC prompt), so it's safe to
+/// call on every launch. Always empty off Windows.
+#[cfg_attr(not(feature = "gui"), allow(dead_code))]
+pub fn missing_windows_features() -> Vec<&'static str> {
+    #[cfg(windows)]
+    {
+        // Iterate the array by value (each item is (&'static str, &'static str)).
+        let mut missing = Vec::new();
+        for (name, label) in WINDOWS_FEATURES {
+            if !feature_enabled(name) {
+                missing.push(label);
+            }
+        }
+        missing
+    }
+    #[cfg(not(windows))]
+    {
+        Vec::new()
+    }
+}
+
+/// True if a Win32_OptionalFeature is Enabled (InstallState 1). Read-only WMI
+/// query — no elevation needed.
+#[cfg(windows)]
+fn feature_enabled(name: &str) -> bool {
+    let mut cmd = Command::new("powershell");
+    cmd.args([
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        &format!(
+            "(Get-CimInstance -ClassName Win32_OptionalFeature -Filter \"Name='{name}'\").InstallState"
+        ),
+    ]);
+    match process::capture(&mut cmd) {
+        // InstallState: 1 = Enabled, 2 = Disabled, 3 = Absent.
+        Ok(out) if out.status.success() => String::from_utf8_lossy(&out.stdout).trim() == "1",
+        _ => false,
+    }
+}
+
+/// Enable the required Windows features (Virtual Machine Platform, Windows
+/// Hypervisor Platform, WSL). Enabling needs administrator rights, so this
+/// elevates a PowerShell that runs `Enable-WindowsOptionalFeature` for each
+/// (idempotent — already-enabled features are a no-op). A restart is required
+/// afterward for the changes to take effect. No-op off Windows.
+#[cfg_attr(not(feature = "gui"), allow(dead_code))]
+pub fn enable_windows_features() -> Result<()> {
+    #[cfg(windows)]
+    {
+        notify("Enabling required Windows features (Virtual Machine Platform, Windows Hypervisor Platform, WSL)...");
+        notify("Windows will ask for administrator permission.");
+        // Write a small script and run it elevated. A file avoids fragile nested
+        // PowerShell quoting through Start-Process -Verb RunAs.
+        let script = "\
+$ErrorActionPreference = 'Stop'\r\n\
+$features = @('VirtualMachinePlatform','HypervisorPlatform','Microsoft-Windows-Subsystem-Linux')\r\n\
+foreach ($f in $features) {\r\n\
+    Enable-WindowsOptionalFeature -Online -FeatureName $f -All -NoRestart | Out-Null\r\n\
+}\r\n";
+        let path = std::env::temp_dir().join("openc3_enable_features.ps1");
+        std::fs::write(&path, script).context("writing feature-enable script")?;
+        let path_str = path.to_string_lossy().replace('\'', "''");
+        // Elevate: launch the script with RunAs, wait, and propagate its exit
+        // code so a cancelled UAC prompt surfaces as an error.
+        let outer = format!(
+            "$p = Start-Process powershell -Verb RunAs -Wait -PassThru -ArgumentList \
+             '-NoProfile','-ExecutionPolicy','Bypass','-File','{path_str}'; exit $p.ExitCode"
+        );
+        let mut cmd = Command::new("powershell");
+        cmd.args(["-NoProfile", "-Command", &outer]);
+        let result = process::run(&mut cmd);
+        let _ = std::fs::remove_file(&path);
+        result.context(
+            "enabling Windows features (administrator permission is required; the prompt may have been declined)",
+        )?;
+        notify(
+            "Windows features enabled.\n\
+             IMPORTANT: RESTART Windows for the changes to take effect, then launch Docker Desktop \
+             and complete its first-run setup.",
+        );
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    {
+        Ok(())
+    }
+}
+
+/// Whether hardware virtualization (Intel VT-x / AMD-V/SVM) is enabled in the
+/// BIOS/UEFI — a hard requirement for Docker's WSL2/Hyper-V backend that the app
+/// cannot turn on itself (it's a firmware setting). `Some(true)` = enabled (or a
+/// hypervisor is already running on it), `Some(false)` = present but disabled in
+/// firmware, `None` = unknown/not determinable. Read-only WMI (no elevation).
+/// Always `None` off Windows.
+#[cfg_attr(not(feature = "gui"), allow(dead_code))]
+pub fn virtualization_enabled() -> Option<bool> {
+    #[cfg(windows)]
+    {
+        // If a hypervisor is already present, virtualization is clearly on (and
+        // Win32_Processor.VirtualizationFirmwareEnabled becomes unreliable once
+        // Hyper-V owns the CPU), so check that first. Otherwise fall back to the
+        // per-processor firmware flag: true -> enabled, false -> disabled in
+        // BIOS, neither -> unknown (property not populated).
+        let mut cmd = Command::new("powershell");
+        cmd.args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "$cs=Get-CimInstance Win32_ComputerSystem; \
+             if($cs.HypervisorPresent){'enabled'} \
+             else { $v=@(Get-CimInstance Win32_Processor | ForEach-Object { $_.VirtualizationFirmwareEnabled }); \
+             if($v -contains $true){'enabled'} elseif($v -contains $false){'disabled'} else {'unknown'} }",
+        ]);
+        match process::capture(&mut cmd) {
+            Ok(out) if out.status.success() => match String::from_utf8_lossy(&out.stdout).trim() {
+                "enabled" => Some(true),
+                "disabled" => Some(false),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        None
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Prerequisite bootstrapping
 // ---------------------------------------------------------------------------
 

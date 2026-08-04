@@ -15,7 +15,7 @@ path = "src/main.rs"
 # The GUI is on by default per the requirements. Build with
 # `--no-default-features` for a smaller headless-only binary.
 default = ["gui"]
-gui = ["dep:iced", "dep:rfd"]
+gui = ["dep:iced", "dep:rfd", "dep:image"]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
@@ -36,6 +36,9 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 # and the cross-built Linux/Windows binaries), and avoids pulling wgpu/metal
 # (and their future-incompat `block` dependency).
 iced = { version = "0.13", default-features = false, features = ["tiny-skia", "tokio", "image"], optional = true }
+# Decode the embedded PNG logo into RGBA for the system-tray icon (GUI only).
+# Already in the tree via iced's "image" feature, so this adds no real build cost.
+image = { version = "0.24", default-features = false, features = ["png"], optional = true }
 # Iroh peer-to-peer bridge between the app and host microservices.
 iroh = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "io-util", "sync", "time", "macros"] }
@@ -79,6 +82,12 @@ strip = false
 
 [target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies]
 tray-icon = "0.24.1"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# Toggle the Dock icon via the NSApplication activation policy when hiding to /
+# showing from the menu-bar tray. objc2 0.6 is already in the tree (tray-icon/
+# winit), so this adds no real build cost.
+objc2 = "0.6"
 
 # Native installer configuration (cargo-packager). The host OS determines which
 # formats are produced: dmg/app on macOS, deb/appimage on Linux, and the WiX

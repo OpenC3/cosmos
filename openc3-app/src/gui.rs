@@ -17,8 +17,8 @@ use std::time::{Duration, Instant};
 
 use iced::widget::image::Handle as ImageHandle;
 use iced::widget::{
-    button, checkbox, column, container, horizontal_rule, pick_list, progress_bar, row,
-    scrollable, text, text_editor, text_input, Image, Space,
+    button, checkbox, column, container, horizontal_rule, opaque, pick_list, progress_bar, row,
+    scrollable, stack, text, text_editor, text_input, Image, Space,
 };
 use iced::{window, Center, Color, Element, Font, Length, Size, Subscription, Task, Theme};
 
@@ -132,6 +132,14 @@ struct EnvCheck {
     python_ok: bool,
     /// The COSMOS environment (cosmos-project folder) is installed.
     cosmos_ok: bool,
+    /// Windows: the optional features Docker's WSL2 backend needs (Virtual
+    /// Machine Platform, Windows Hypervisor Platform, WSL) are all enabled.
+    /// Always true off Windows.
+    windows_features_ok: bool,
+    /// Windows: hardware virtualization (VT-x/AMD-V) state from firmware.
+    /// `Some(false)` means it's disabled in the BIOS/UEFI (a hard blocker the app
+    /// can't fix); `Some(true)` enabled; `None` unknown. Always `None` off Windows.
+    virtualization: Option<bool>,
 }
 
 
@@ -224,6 +232,8 @@ struct State {
     /// context; if it changed we restart the operator so the bridge re-enrolls
     /// against the new compose context.
     dev_context_on_open: Option<std::path::PathBuf>,
+    /// Whether the "Shutdown COSMOS?" confirmation modal is showing.
+    shutdown_confirm: bool,
 }
 
 /// Start the host microservice operator on a background thread, wiring the
@@ -266,12 +276,19 @@ enum Message {
     InstallDocker,
     InstallDockerMac,
     InstallDockerWin,
+    /// Windows: enable the WSL2/virtualization optional features Docker needs.
+    EnableWindowsFeatures,
     StartDocker,
     InstallPython,
     InstallCosmos,
     Skip,
     Start,
+    /// Ask to shut COSMOS down — opens the confirmation modal.
     Stop,
+    /// Confirm the shutdown (from the modal) and actually stop COSMOS.
+    ConfirmShutdown,
+    /// Dismiss the shutdown confirmation modal without stopping.
+    CancelShutdown,
     OpenBrowser,
     ShowSettings,
     CloseSettings,
@@ -324,6 +341,8 @@ impl State {
             container_installed: crate::context::container_engine_installed(),
             python_ok: ctx.paths.python_installed(),
             cosmos_ok: ctx.paths.cosmos_installed(),
+            windows_features_ok: install::missing_windows_features().is_empty(),
+            virtualization: install::virtualization_enabled(),
         };
 
         // Start the host microservice operator (process spawner/monitor) on a
@@ -370,6 +389,7 @@ impl State {
             settings,
             // Set when the Settings page opens; only compared on close.
             dev_context_on_open: None,
+            shutdown_confirm: false,
         }
     }
 
@@ -394,6 +414,8 @@ impl State {
                 container_installed: crate::context::container_engine_installed(),
                 python_ok: paths.python_installed(),
                 cosmos_ok: paths.cosmos_installed(),
+                windows_features_ok: install::missing_windows_features().is_empty(),
+                virtualization: install::virtualization_enabled(),
             };
             if let Ok(mut s) = shared.lock() {
                 s.env = Some(env);
@@ -448,11 +470,15 @@ impl State {
     }
 
     /// Whether the setup page should be shown. Running COSMOS locally needs
-    /// Docker + Python + the COSMOS environment; running against a remote COSMOS
-    /// only needs the host Python runtime (for the bridge microservices).
+    /// Docker + Python + the COSMOS environment (plus, on Windows, the WSL2/
+    /// virtualization features Docker depends on); running against a remote
+    /// COSMOS only needs the host Python runtime (for the bridge microservices).
     fn needs_setup(&self) -> bool {
         if self.settings.run_locally {
-            !(self.env.container_ok && self.env.python_ok && self.env.cosmos_ok)
+            !(self.env.windows_features_ok
+                && self.env.container_ok
+                && self.env.python_ok
+                && self.env.cosmos_ok)
         } else {
             !self.env.python_ok
         }
@@ -605,6 +631,10 @@ impl State {
                 self.spawn("Installing Docker Desktop", install::install_docker_windows);
                 Task::none()
             }
+            Message::EnableWindowsFeatures => {
+                self.spawn("Enabling Windows features", install::enable_windows_features);
+                Task::none()
+            }
             Message::StartDocker => {
                 self.spawn("Starting Docker", install::start_docker);
                 Task::none()
@@ -632,6 +662,16 @@ impl State {
                 Task::none()
             }
             Message::Stop => {
+                // Don't stop immediately — confirm first (see the modal in view).
+                self.shutdown_confirm = true;
+                Task::none()
+            }
+            Message::CancelShutdown => {
+                self.shutdown_confirm = false;
+                Task::none()
+            }
+            Message::ConfirmShutdown => {
+                self.shutdown_confirm = false;
                 let ctx = self.ctx.clone();
                 self.spawn("Stopping COSMOS", move || commands::stop(&ctx));
                 Task::none()
@@ -887,7 +927,9 @@ impl State {
                     if crate::tray::ENABLED {
                         // With a tray (macOS/Windows), closing hides to the tray
                         // instead of quitting; the tray's Quit (or a real close)
-                        // exits. Restore via the tray's Show.
+                        // exits. Restore via the tray's Show. On macOS also drop
+                        // the Dock icon so a tray-hidden app doesn't linger there.
+                        crate::tray::set_dock_visible(false);
                         window::change_mode(id, window::Mode::Hidden)
                     } else {
                         // No tray (Linux): the close button should actually quit,
@@ -901,6 +943,8 @@ impl State {
             }
             Message::PollTray => match crate::tray::poll() {
                 Some(crate::tray::TrayAction::Show) => {
+                    // Restore the Dock icon (macOS) before showing/focusing.
+                    crate::tray::set_dock_visible(true);
                     window::change_mode(self.main_window, window::Mode::Windowed)
                         .chain(window::gain_focus(self.main_window))
                 }
@@ -992,6 +1036,8 @@ impl State {
             Page::Main => {
                 if self.cleanup_confirm {
                     self.view_cleanup_confirm()
+                } else if self.shutdown_confirm {
+                    self.view_shutdown_confirm()
                 } else {
                     self.view_main()
                 }
@@ -1105,6 +1151,62 @@ impl State {
                 .into(),
             ));
         }
+        // Hardware virtualization must be enabled in BIOS/UEFI for Docker's
+        // backend. We can only detect and inform — it's a firmware setting the
+        // app can't change. Only warn when we're sure it's off (Some(false));
+        // Some(true)/None (unknown, or off Windows) show nothing.
+        if self.settings.run_locally && self.env.virtualization == Some(false) {
+            let amber = Color::from_rgb8(0xFF, 0xB3, 0x00);
+            cards = cards.push(card(
+                "Virtualization disabled in BIOS",
+                column![
+                    text(
+                        "Hardware virtualization (Intel VT-x / AMD-V) is turned off in your \
+                         computer's firmware. Docker's WSL2 backend can't run until it's on — \
+                         this is a BIOS/UEFI setting the app can't change for you."
+                    )
+                    .size(12)
+                    .color(muted),
+                    text(
+                        "Restart, enter BIOS/UEFI setup (often F2/F10/Del at boot), enable \
+                         Virtualization / VT-x / SVM (usually under CPU or Advanced), save, and \
+                         reboot."
+                    )
+                    .size(12)
+                    .color(muted),
+                ]
+                .spacing(4)
+                .into(),
+                text("⚠ BIOS setting").size(12).color(amber).into(),
+            ));
+        }
+        // Windows needs the WSL2 / virtualization optional features enabled
+        // before Docker's backend will run — offer to enable them (elevated; a
+        // restart follows). Always satisfied off Windows, so the card is
+        // Windows-only in practice. Shown before Docker since it's a prerequisite.
+        if self.settings.run_locally && !self.env.windows_features_ok {
+            cards = cards.push(card(
+                "Windows features",
+                column![
+                    text("Docker's WSL2 backend needs these Windows features enabled:")
+                        .size(12)
+                        .color(muted),
+                    text(
+                        "• Virtual Machine Platform\n\
+                         • Windows Hypervisor Platform\n\
+                         • Windows Subsystem for Linux"
+                    )
+                    .size(12)
+                    .color(muted),
+                    text("Enabling requires administrator approval and a Windows restart.")
+                        .size(11)
+                        .color(muted),
+                ]
+                .spacing(4)
+                .into(),
+                action("Enable Windows Features", Message::EnableWindowsFeatures).into(),
+            ));
+        }
         // Docker and the COSMOS environment are only needed when running COSMOS
         // locally; otherwise the only local component is the Python runtime.
         if self.settings.run_locally && !self.env.container_ok {
@@ -1195,7 +1297,13 @@ impl State {
             }
         }
 
-        let cards_panel = container(cards).max_width(PANEL_WIDTH).width(Length::Fill);
+        // Scroll the cards within a bounded region so that when many components
+        // need installing they don't push the activity log down to an unreadable
+        // sliver — the cards and the log share the flexible height (3:2 below).
+        let cards_panel = container(scrollable(cards).height(Length::Fill))
+            .max_width(PANEL_WIDTH)
+            .width(Length::Fill)
+            .height(Length::FillPortion(3));
 
         let skip = button(text("Skip for now").size(14))
             .padding(10)
@@ -1225,7 +1333,7 @@ impl State {
             .padding(12)
             .width(Length::Fill)
             .max_width(PANEL_WIDTH)
-            .height(Length::FillPortion(1))
+            .height(Length::FillPortion(2))
             .style(card_style);
 
         let content = column![
@@ -1241,7 +1349,8 @@ impl State {
         ]
         .spacing(12)
         .padding(30)
-        .align_x(Center);
+        .align_x(Center)
+        .height(Length::Fill);
 
         container(content)
             .width(Length::Fill)
@@ -1972,6 +2081,56 @@ impl State {
         .into()
     }
 
+    /// The main page with a centered "Shutdown COSMOS?" confirmation modal
+    /// layered over a dim scrim, so a shutdown is never a single misclick. The
+    /// overlay is `opaque` so the dimmed main view behind it isn't interactive.
+    fn view_shutdown_confirm(&self) -> Element<'_, Message> {
+        fn scrim_style(_theme: &Theme) -> container::Style {
+            container::Style {
+                background: Some(Color::from_rgba8(0, 0, 0, 0.6).into()),
+                ..container::Style::default()
+            }
+        }
+        fn card_style(_theme: &Theme) -> container::Style {
+            container::Style {
+                background: Some(Color::from_rgb8(0x24, 0x24, 0x28).into()),
+                border: iced::border::Border {
+                    color: Color::from_rgb8(0x3A, 0x3A, 0x40),
+                    width: 1.0,
+                    radius: 10.0.into(),
+                },
+                ..container::Style::default()
+            }
+        }
+        let card = container(
+            column![
+                text("Shutdown COSMOS?").size(22),
+                text("This stops all COSMOS containers running locally. Are you sure?").size(15),
+                Space::with_height(8),
+                row![
+                    button(text("Cancel"))
+                        .padding(10)
+                        .on_press(Message::CancelShutdown),
+                    button(text("Shutdown COSMOS"))
+                        .padding(10)
+                        .style(button::danger)
+                        .on_press(Message::ConfirmShutdown),
+                ]
+                .spacing(10),
+            ]
+            .spacing(12),
+        )
+        .padding(24)
+        .style(card_style);
+        let overlay = container(card)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x(Length::Fill)
+            .center_y(Length::Fill)
+            .style(scrim_style);
+        stack![self.view_main(), opaque(overlay)].into()
+    }
+
     /// Destructive cleanup confirmation. Requires typing "cleanup" to enable
     /// the proceed button.
     fn view_cleanup_confirm(&self) -> Element<'_, Message> {
@@ -2122,10 +2281,12 @@ fn dev_folder_from_settings(settings: &crate::settings::Settings) -> Option<std:
 /// Probe the COSMOS web UI: ready when `url` returns success and serves the
 /// index HTML. Uses curl with a short timeout; returns false on any failure.
 fn probe_cosmos(url: &str) -> bool {
-    let out = std::process::Command::new("curl")
-        .args(["-fsSL", "--max-time", "3", url])
-        .output();
-    match out {
+    // Route through process::capture so it gets CREATE_NO_WINDOW on Windows —
+    // this is polled continuously, and a bare Command would flash a curl console
+    // window every time (the GUI has no console of its own).
+    let mut cmd = std::process::Command::new("curl");
+    cmd.args(["-fsSL", "--max-time", "3", url]);
+    match crate::process::capture(&mut cmd) {
         Ok(o) if o.status.success() => {
             let body = String::from_utf8_lossy(&o.stdout).to_lowercase();
             body.contains("<html") || body.contains("<!doctype html")

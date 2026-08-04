@@ -425,6 +425,9 @@ impl OperatorProcess {
         command.env("OPENC3_SCOPE", &self.scope);
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
+        // Don't pop a console window for each host microservice on Windows (the
+        // GUI has no console of its own); stdout/stderr are piped and unaffected.
+        crate::process::no_window(&mut command);
 
         let mut child = command.spawn()?;
         self.pid = Some(child.id());

@@ -134,6 +134,7 @@ fn read_current(root: &Path) -> Option<Current> {
 /// correct one. A **manual** token (redeemed from Admin → Bridges) is preserved —
 /// it's user-supplied, not derivable from the local context, so clearing it would
 /// silently break a remote pairing. Best-effort — a missing file is success.
+#[cfg_attr(not(feature = "gui"), allow(dead_code))]
 pub fn forget_cached_ticket(root: &Path) {
     if let Some(current) = read_current(root) {
         if current.manual {

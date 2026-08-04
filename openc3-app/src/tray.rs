@@ -51,9 +51,9 @@ mod imp {
             .with_menu(Box::new(menu))
             .with_tooltip("OpenC3 COSMOS")
             .with_icon(icon())
-            // On macOS the icon is a black+alpha template so the OS tints it to
-            // match the menu bar (light/dark). Other platforms use it as-is.
-            .with_icon_as_template(cfg!(target_os = "macos"))
+            // Show the branded logo as-is on every platform (not tinted as a
+            // macOS template), so the colored icon appears in the menu bar/tray.
+            .with_icon_as_template(false)
             .build()
         {
             // Keep the icon (and its menu/items) alive for the process lifetime.
@@ -77,11 +77,36 @@ mod imp {
         action
     }
 
-    /// "COS" over "MOS" on a transparent background, rendered from a tiny
-    /// built-in 5x7 bitmap font (no asset file / font crate needed). On macOS
-    /// the letters are black so the template icon tints correctly for the menu
-    /// bar; elsewhere they're white (visible on the typically-dark tray).
+    /// The tray/menu-bar icon: the branded app logo on every platform (macOS
+    /// included). A plain monochrome template is invisible on a light Windows 11
+    /// taskbar — which is why the icon previously appeared "missing" — so we use
+    /// the colored logo as-is everywhere.
     fn icon() -> Icon {
+        icon_logo()
+    }
+
+    /// The app's branded PNG logo decoded to RGBA for the tray. Falls back to the
+    /// drawn template if decoding ever fails, so the tray always gets an icon.
+    fn icon_logo() -> Icon {
+        const LOGO_PNG: &[u8] = include_bytes!("../assets/icons/128x128.png");
+        match image::load_from_memory(LOGO_PNG) {
+            Ok(img) => {
+                let rgba = img.into_rgba8();
+                let (w, h) = rgba.dimensions();
+                Icon::from_rgba(rgba.into_raw(), w, h).expect("valid tray icon")
+            }
+            Err(e) => {
+                crate::logging::warn("tray", &format!("failed to decode tray logo: {e}; using fallback"));
+                icon_template()
+            }
+        }
+    }
+
+    /// "COS" over "MOS" on a transparent background, rendered from a tiny
+    /// built-in 5x7 bitmap font (no asset file / font crate needed). Fallback
+    /// only — used if the branded logo ever fails to decode — so the tray still
+    /// gets an icon. Letters are black on macOS, white elsewhere.
+    fn icon_template() -> Icon {
         const W: usize = 64;
         const H: usize = 64;
         const SCALE: usize = 3; // pixels per font cell
@@ -155,3 +180,27 @@ mod imp {
 }
 
 pub use imp::{init, poll};
+
+/// Show or hide the macOS Dock icon. When the app is hidden to the tray we switch
+/// to the "accessory" activation policy so it drops out of the Dock (menu-bar-app
+/// style); showing it again restores the "regular" policy and the Dock icon. This
+/// is what stops a tray-hidden app from lingering in the Dock. No-op off macOS —
+/// only macOS has this Dock / activation-policy concept.
+#[cfg_attr(not(target_os = "macos"), allow(unused_variables))]
+pub fn set_dock_visible(visible: bool) {
+    #[cfg(target_os = "macos")]
+    {
+        use objc2::runtime::AnyObject;
+        use objc2::{class, msg_send};
+        // NSApplicationActivationPolicy: Regular = 0 (Dock icon shown),
+        // Accessory = 1 (no Dock icon). Must be called on the main thread — the
+        // iced update loop, our only caller, runs there.
+        let policy: isize = if visible { 0 } else { 1 };
+        unsafe {
+            let app: *mut AnyObject = msg_send![class!(NSApplication), sharedApplication];
+            if !app.is_null() {
+                let _: () = msg_send![app, setActivationPolicy: policy];
+            }
+        }
+    }
+}

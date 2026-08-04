@@ -353,6 +353,8 @@ pub fn upgrade(ctx: &Context, tag: &str, preview: bool) -> Result<()> {
     let mut apply = git(dir);
     apply.args(["apply", "--whitespace=fix", "--exclude=plugins/*"]);
     apply.stdin(std::process::Stdio::piped());
+    // No flashing console window on Windows (the GUI has no console of its own).
+    process::no_window(&mut apply);
     let mut child = apply.spawn().context("spawning git apply")?;
     if let Some(mut stdin) = child.stdin.take() {
         stdin.write_all(diff.as_bytes())?;
