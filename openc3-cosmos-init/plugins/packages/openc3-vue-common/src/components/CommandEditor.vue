@@ -80,12 +80,21 @@
         <v-list-item
           v-for="(item, index) in contextMenuOptions"
           :key="index"
+          :data-test="item.dataTest"
           @click.stop="item.action"
         >
           <v-list-item-title>{{ item.title }}</v-list-item-title>
         </v-list-item>
       </v-list>
     </v-menu>
+
+    <input
+      ref="blockUploadInput"
+      type="file"
+      style="display: none"
+      data-test="block-upload-input"
+      @change="onBlockUploadFile($event)"
+    />
 
     <details-dialog
       v-model="viewDetails"
@@ -182,23 +191,38 @@ export default {
       contextMenuShown: false,
       viewDetails: false,
       parameterName: '',
+      selectedRow: null,
       hazardousParameters: {},
       x: 0,
       y: 0,
-      contextMenuOptions: [
-        {
-          title: 'Details',
-          action: () => {
-            this.contextMenuShown = false
-            this.viewDetails = true
-          },
-        },
-      ],
     }
   },
   computed: {
     hasHazardousParameter() {
       return Object.values(this.hazardousParameters).some((v) => v === true)
+    },
+    contextMenuOptions() {
+      const options = [
+        {
+          title: 'Details',
+          dataTest: 'cmd-param-details',
+          action: () => {
+            this.contextMenuShown = false
+            this.viewDetails = true
+          },
+        },
+      ]
+      if (this.selectedRow && this.selectedRow.type === 'BLOCK') {
+        options.push({
+          title: 'Upload Data',
+          dataTest: 'cmd-param-upload-data',
+          action: () => {
+            this.contextMenuShown = false
+            this.openBlockUploadPicker()
+          },
+        })
+      }
+      return options
     },
   },
   created() {
@@ -232,12 +256,39 @@ export default {
     showContextMenu(event, row) {
       event.preventDefault()
       this.parameterName = row.item.parameter_name
+      this.selectedRow = row.item
       this.contextMenuShown = false
       this.x = event.clientX
       this.y = event.clientY
       this.$nextTick(() => {
         this.contextMenuShown = true
       })
+    },
+    openBlockUploadPicker() {
+      const input = this.$refs.blockUploadInput
+      if (!input) return
+      // Reset so re-selecting the same file still fires @change
+      input.value = ''
+      input.click()
+    },
+    async onBlockUploadFile(event) {
+      const file = event.target.files && event.target.files[0]
+      if (!file || !this.selectedRow) return
+      const targetRow = this.selectedRow
+      try {
+        const buffer = await file.arrayBuffer()
+        const bytes = new Uint8Array(buffer)
+        let hex = '0x'
+        for (const byte of bytes) {
+          hex += byte.toString(16).padStart(2, '0').toUpperCase()
+        }
+        // Setting val on the row updates the bound CommandParameterEditor.
+        // The "0x..." prefix lets convertToValue parse it as a binary BLOCK.
+        targetRow.val = hex
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('Error reading uploaded file:', err)
+      }
     },
     updateCmdParams() {
       this.ignoredParams = []
