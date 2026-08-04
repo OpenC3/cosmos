@@ -69,3 +69,61 @@ class TestBuildAggregationSelects(unittest.TestCase):
             self.assertTrue(QuestDBClient.numeric_column_type(t))
         for t in ["VARCHAR", "SYMBOL", "STRING", "BOOLEAN", "TIMESTAMP", None]:
             self.assertFalse(QuestDBClient.numeric_column_type(t))
+
+
+class TestCreateTableConvertedColumns(unittest.TestCase):
+    def setUp(self):
+        self.client = QuestDBClient()
+        self.ddl = []
+        self.client._execute_ddl = lambda sql: self.ddl.append(sql)
+        # Table doesn't exist so create_table takes the CREATE TABLE path
+        self.client._get_existing_columns = lambda table_name: None
+
+    def _create(self, item, cmd_or_tlm):
+        self.client.create_table("INST", "PKT", {"items": [item]}, cmd_or_tlm, scope="DEFAULT")
+        return "\n".join(self.ddl)
+
+    def test_commands_type_write_conversion_converted_column_as_double(self):
+        # The user given value is logged into __C and is typically engineering units
+        # (a float) even when the item itself is an integer
+        item = {
+            "name": "VALUE",
+            "data_type": "UINT",
+            "bit_size": 16,
+            "write_conversion": {"class": "PolynomialConversion"},
+        }
+        sql = self._create(item, "CMD")
+        self.assertIn('"VALUE" int', sql)
+        self.assertIn('"VALUE__C" double', sql)
+
+    def test_commands_type_string_write_conversion_converted_column_as_varchar(self):
+        item = {
+            "name": "LABEL",
+            "data_type": "STRING",
+            "bit_size": 64,
+            "write_conversion": {"class": "GenericConversion"},
+        }
+        sql = self._create(item, "CMD")
+        self.assertIn('"LABEL__C" varchar', sql)
+        self.assertTrue(self.client.varchar_columns["DEFAULT__CMD__INST__PKT__LABEL__C"])
+
+    def test_states_take_precedence_over_write_conversion(self):
+        item = {
+            "name": "STATE",
+            "data_type": "UINT",
+            "bit_size": 8,
+            "states": {"FALSE": 0, "TRUE": 1},
+            "write_conversion": {"class": "GenericConversion"},
+        }
+        sql = self._create(item, "CMD")
+        self.assertIn('"STATE__C" varchar', sql)
+
+    def test_telemetry_ignores_write_conversion(self):
+        item = {
+            "name": "VALUE",
+            "data_type": "UINT",
+            "bit_size": 16,
+            "write_conversion": {"class": "PolynomialConversion"},
+        }
+        sql = self._create(item, "TLM")
+        self.assertNotIn("VALUE__C", sql)
