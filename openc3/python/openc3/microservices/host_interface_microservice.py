@@ -91,6 +91,17 @@ PUMP_CHUNK_BYTES = 65536
 # Delay between reconnect attempts.
 RECONNECT_DELAY = 5.0
 
+# Data-channel readiness handshake (MUST match bridge_interface.py). After the
+# data legs pair, the host sends READY (up, paired, ready) and waits for the
+# COSMOS bridge_interface to reply GO before it connects the device — so we never
+# touch hardware until COSMOS is connected. The bytes are consumed before raw
+# device data flows, so they never mix with it.
+BRIDGE_READY = b"\x01"
+BRIDGE_GO = b"\x02"
+
+# Max wait for COSMOS's GO after we send READY before giving up and parking.
+HANDSHAKE_TIMEOUT = 30.0
+
 
 class HostInterfaceMicroservice:
     def __init__(self):
@@ -286,7 +297,15 @@ class HostInterfaceMicroservice:
 
     # --------------------------------------------------------------------- data
     async def _data_loop(self, endpoint, addr):
-        """Connect the device + data tunnel while COSMOS wants us connected."""
+        """Bridge the device to COSMOS while COSMOS wants us connected.
+
+        Ordering matters: we pair the data tunnel and complete the READY/GO
+        handshake with the COSMOS bridge_interface BEFORE connecting the device,
+        so the device is only ever opened once COSMOS is connected (req 2). We do
+        NOT auto-reconnect: whatever ends a session (a requested disconnect, the
+        tunnel dropping, or a device error) parks us until COSMOS issues a fresh
+        connect. COSMOS is authoritative — it detects the bridge_interface
+        disconnect and re-commands us if it wants us back (req 5)."""
         alpn = f"{HOST_ALPN_PREFIX}{self.channel}".encode()
         while not self.shutdown:
             await self._connect_event.wait()  # wait until COSMOS requests connect
@@ -295,19 +314,28 @@ class HostInterfaceMicroservice:
             interface = None
             connection = None
             try:
-                interface = self.build_interface()
-                interface.connect()
-                self._interface = interface
-                Logger.info(f"{self.name}: connected {interface.connection_string()}")
-
+                # 1. Pair the data tunnel first — no hardware touched yet.
                 connection = await endpoint.connect(addr, alpn)
                 # bridge_microservice (server) opens+primes the bi-stream; accept
-                # it and strip the primer, then it is raw device bytes.
+                # it and strip the primer.
                 bi = await connection.accept_bi()
                 send = bi.send()
                 recv = bi.recv()
                 await recv.read(PRIME_BYTES)
+                # 2. Tell COSMOS we are up, paired, and ready (req 1).
+                await send.write_all(BRIDGE_READY)
+                # 3. Wait for COSMOS to confirm it is connected before we open the
+                #    device. COSMOS is authoritative on connection order (req 2).
+                go = await asyncio.wait_for(self._read_exact(recv, len(BRIDGE_GO)), timeout=HANDSHAKE_TIMEOUT)
+                if go != BRIDGE_GO:
+                    raise RuntimeError(f"unexpected bridge handshake {go!r}")
                 Logger.info(f"{self.name}: bridged to COSMOS on {alpn.decode()}")
+
+                # 4. Now connect the device and start pumping raw bytes.
+                interface = self.build_interface()
+                interface.connect()
+                self._interface = interface
+                Logger.info(f"{self.name}: connected {interface.connection_string()}")
 
                 loop = asyncio.get_event_loop()
                 up = asyncio.create_task(self._device_to_bridge(loop, interface, send))
@@ -330,11 +358,23 @@ class HostInterfaceMicroservice:
                         result = connection.close()
                         if asyncio.iscoroutine(result):
                             await result
-            # Retry only if COSMOS still wants us connected (transient error);
-            # a requested disconnect leaves `_connect_event` cleared so we park.
-            if not self.shutdown and self._desired_connected:
-                Logger.info(f"{self.name}: reconnecting in {RECONNECT_DELAY}s")
-                await asyncio.sleep(RECONNECT_DELAY)
+            # Never auto-reconnect (req 5). Park (clear the connect event) until
+            # COSMOS issues a fresh connect over the control channel. This holds
+            # whether the session ended from a requested disconnect, a dropped
+            # tunnel, or a device error — COSMOS drives every (re)connection.
+            self._set_desired(False)
+
+    async def _read_exact(self, recv, n):
+        """Read exactly n bytes from an Iroh recv stream (for the fixed-size
+        handshake). read(k) returns at most k bytes, so this never over-reads
+        into the raw device data that follows."""
+        buf = b""
+        while len(buf) < n:
+            chunk = await recv.read(n - len(buf))
+            if not chunk:
+                raise RuntimeError(f"{self.name}: bridge stream closed during handshake")
+            buf += bytes(chunk)
+        return buf
 
     async def _device_to_bridge(self, loop, interface, send):
         """Read from the device and forward to COSMOS. With BRIDGE_PROTOCOLs the

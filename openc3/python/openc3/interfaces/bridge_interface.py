@@ -54,6 +54,17 @@ CTRL_ALPN_PREFIX = "ctrl/"
 # Delay before retrying the (persistent) control channel after it drops.
 CTRL_RECONNECT_DELAY = 5.0
 
+# Data-channel readiness handshake (MUST match host_interface_microservice.py).
+# The hub primes and pairs the data legs, but that alone is not proof the host is
+# ready (the hub primes each leg the instant it arrives). So once the tunnel is
+# paired the host sends READY (it is up, paired, and ready); only then does this
+# interface report connected and reply GO, at which point the host connects its
+# device. This guarantees (1) COSMOS never "connects" before the host is ready
+# and (2) the host never touches hardware before COSMOS is connected. The bytes
+# are consumed before raw device data flows, so they never mix with it.
+BRIDGE_READY = b"\x01"
+BRIDGE_GO = b"\x02"
+
 
 class BridgeInterface(Interface):
     """Streams raw bytes to/from bridge_microservice over an Iroh connection.
@@ -136,10 +147,14 @@ class BridgeInterface(Interface):
             asyncio.run_coroutine_threadsafe(self._startup(), self._loop).result(self.connect_timeout)
             self._ctrl_task = asyncio.run_coroutine_threadsafe(self._start_control(), self._loop).result(5)
             self._started = True
-        # Tell the host to connect its device, then bring up the data tunnel.
+        # Ask the host to (re)connect, then bring up the data tunnel. connect()
+        # only returns once the host is up, paired, and ready (see the READY/GO
+        # handshake in _establish_data); until then it raises so the normal
+        # reconnect logic retries. The +5 lets the inner handshake timeout fire
+        # (and clean up the tunnel) before this outer wait gives up.
         self._want_connected = True
         self._send_command("connect")
-        asyncio.run_coroutine_threadsafe(self._establish_data(), self._loop).result(self.connect_timeout)
+        asyncio.run_coroutine_threadsafe(self._establish_data(), self._loop).result(self.connect_timeout + 5)
 
     def _run_loop(self):
         asyncio.set_event_loop(self._loop)
@@ -173,15 +188,41 @@ class BridgeInterface(Interface):
         # host microservice serving the same stream. Raw device bytes only; this
         # flows transparently through bridge_microservice.
         alpn = f"stream/{self.name}".encode()
-        self._connection = await self._endpoint.connect(addr, alpn)
-        # bridge_microservice is the server: it opens+primes the bi-stream, so we
-        # accept it and discard the primer byte before pumping raw bytes.
-        bi = await self._connection.accept_bi()
-        self._send_stream = bi.send()
-        recv = bi.recv()
-        await recv.read(1)
-        self._connected = True
-        self._reader_task = self._loop.create_task(self._reader(recv))
+        try:
+            self._connection = await self._endpoint.connect(addr, alpn)
+            # bridge_microservice is the server: it opens+primes the bi-stream, so
+            # we accept it and discard the primer byte.
+            bi = await self._connection.accept_bi()
+            self._send_stream = bi.send()
+            recv = bi.recv()
+            await recv.read(1)
+            # Do NOT report connected yet. Wait for the host's READY, which only
+            # arrives once the host has connected and paired its own data leg and
+            # is ready — so a successful connect() proves the host is up. (req 1)
+            ready = await asyncio.wait_for(self._read_exact(recv, len(BRIDGE_READY)), timeout=self.connect_timeout)
+            if ready != BRIDGE_READY:
+                raise RuntimeError(f"{self.name}: unexpected bridge handshake {ready!r}")
+            # Tell the host it may now connect its device and start reading. (req 2)
+            await self._send(BRIDGE_GO)
+            self._connected = True
+            self._reader_task = self._loop.create_task(self._reader(recv))
+        except BaseException:
+            # A failed/timed-out handshake must leave no half-open tunnel behind,
+            # so the InterfaceMicroservice's retry starts clean.
+            await self._close_data()
+            raise
+
+    async def _read_exact(self, recv, n):
+        """Read exactly n bytes from an Iroh recv stream (for the fixed-size
+        handshake). read(k) returns at most k bytes, so this never over-reads
+        into the raw device data that follows."""
+        buf = b""
+        while len(buf) < n:
+            chunk = await recv.read(n - len(buf))
+            if not chunk:
+                raise RuntimeError(f"{self.name}: bridge stream closed during handshake")
+            buf += bytes(chunk)
+        return buf
 
     async def _reader(self, recv):
         """Pump raw bytes from the Iroh stream into the read queue."""
