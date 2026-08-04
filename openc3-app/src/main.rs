@@ -165,11 +165,7 @@ fn run(cli: Cli) -> Result<()> {
             let ready_ctx = ctx.clone();
             op.set_bridge_connector(
                 Box::new(move || enroll::connect_bridge(&connect_ctx)),
-                Box::new(move || {
-                    monitor::snapshot(&ready_ctx, false)
-                        .ok()
-                        .and_then(|s| s.iter().filter_map(|c| c.uptime()).min())
-                }),
+                Box::new(move || monitor::cosmos_readiness(&ready_ctx, false)),
             );
             op.run();
             Ok(())

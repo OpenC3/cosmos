@@ -614,8 +614,9 @@ pub struct MicroserviceOperator {
 /// Establishes (or re-establishes) the bridge connection; returns the hub ticket
 /// and client, or a short human reason for the GUI. Retried while unpaired.
 type BridgeConnector = Box<dyn Fn() -> Result<(String, BridgeClient), String> + Send>;
-/// Returns how long the COSMOS containers have been up (None if not running).
-type CosmosUptime = Box<dyn Fn() -> Option<Duration> + Send>;
+/// Classifies COSMOS's container readiness (running + uptime, or a specific
+/// reason it isn't) so the unpaired status can explain *why* enrollment waits.
+type CosmosUptime = Box<dyn Fn() -> crate::monitor::CosmosReadiness + Send>;
 
 /// COSMOS must be up this long before we attempt auto-enroll (lets the bridge
 /// microservice finish starting and publish its ticket).
@@ -783,25 +784,48 @@ impl MicroserviceOperator {
         }
         self.next_bridge_check = now + BRIDGE_CHECK_INTERVAL;
 
-        let uptime = match &self.cosmos_uptime {
+        let readiness = match &self.cosmos_uptime {
             Some(check) => check(),
             None => return,
         };
-        match uptime {
-            None => {
-                // COSMOS down: reset so attempts re-arm when it starts.
+        use crate::monitor::CosmosReadiness;
+        match readiness {
+            // Docker isn't reachable at all — say so rather than blaming COSMOS.
+            CosmosReadiness::DockerUnavailable(err) => {
                 self.enroll_attempts = 0;
-                self.unpaired_reason = Some("waiting for COSMOS to start".to_string());
+                self.unpaired_reason =
+                    Some(format!("Docker not reachable — is Docker Desktop running? ({err})"));
+                return;
+            }
+            // Docker is up but this compose context has no COSMOS containers. The
+            // usual cause is the app pointing at the wrong place: Development-mode
+            // folder, a different compose project, or a remote COSMOS (which needs
+            // manual token pairing on Admin → Bridges).
+            CosmosReadiness::NoContainers => {
+                self.enroll_attempts = 0;
+                self.unpaired_reason = Some(
+                    "no COSMOS containers found in this Docker context — if COSMOS runs \
+                     elsewhere (remote, or a different compose project/Dev folder), pair \
+                     with a token from Admin → Bridges"
+                        .to_string(),
+                );
+                return;
+            }
+            // Containers exist but aren't running.
+            CosmosReadiness::NotRunning => {
+                self.enroll_attempts = 0;
+                self.unpaired_reason =
+                    Some("COSMOS containers are present but not running — start COSMOS".to_string());
                 return;
             }
             // Freshly (re)started: wait for the warm-up. Resetting attempts here
             // is what re-arms enrollment each time COSMOS restarts.
-            Some(up) if up < BRIDGE_WARMUP => {
+            CosmosReadiness::Up(up) if up < BRIDGE_WARMUP => {
                 self.enroll_attempts = 0;
                 self.unpaired_reason = Some("COSMOS starting — auto-enroll shortly".to_string());
                 return;
             }
-            Some(_) => {}
+            CosmosReadiness::Up(_) => {}
         }
         if self.enroll_attempts >= BRIDGE_MAX_ATTEMPTS {
             // Gave up for this up-session; wait for a COSMOS restart to re-arm.

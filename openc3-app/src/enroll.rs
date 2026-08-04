@@ -30,6 +30,13 @@ use crate::docker;
 struct Current {
     bridge: String,
     ticket: String,
+    /// How this pairing was obtained. Auto tickets come from `bridgeenroll` over
+    /// local Docker and are cheap to re-derive, so a context switch may clear
+    /// them; a manual token (redeemed from Admin → Bridges) is user-supplied and
+    /// must be preserved. Defaults to false (auto) for tickets written before
+    /// this field existed.
+    #[serde(default)]
+    manual: bool,
 }
 
 /// A manual enrollment token's decoded payload (base64url JSON), produced by the
@@ -51,6 +58,20 @@ fn identity_path(root: &Path) -> PathBuf {
 
 fn current_path(root: &Path) -> PathBuf {
     bridge_dir(root).join("current.json")
+}
+
+/// A concise, single-line form of an error's top-level message for the GUI
+/// status line (the full chain always goes to the log). Keeps the real reason
+/// visible without letting a multi-line stderr blow up the status text.
+fn brief(err: &anyhow::Error) -> String {
+    let msg = err.to_string();
+    let line = msg.lines().next().unwrap_or("").trim();
+    const MAX: usize = 160;
+    if line.chars().count() > MAX {
+        format!("{}…", line.chars().take(MAX - 1).collect::<String>())
+    } else {
+        line.to_string()
+    }
 }
 
 /// Lowercase hex-encode bytes.
@@ -106,11 +127,36 @@ fn read_current(root: &Path) -> Option<Current> {
     serde_json::from_str(&contents).ok()
 }
 
-fn write_current(root: &Path, bridge: &str, ticket: &str) -> Result<()> {
+/// Forget the cached hub ticket so the next connect re-runs enrollment from
+/// scratch against the current context. Used when Development Mode changes which
+/// COSMOS compose context the bridge talks to: an auto-enrolled ticket may point
+/// at a different COSMOS (or none), so we drop it and let auto-enroll resolve the
+/// correct one. A **manual** token (redeemed from Admin → Bridges) is preserved —
+/// it's user-supplied, not derivable from the local context, so clearing it would
+/// silently break a remote pairing. Best-effort — a missing file is success.
+pub fn forget_cached_ticket(root: &Path) {
+    if let Some(current) = read_current(root) {
+        if current.manual {
+            crate::logging::info(
+                "bridge",
+                "Keeping manually-paired bridge ticket (not clearing on context change)",
+            );
+            return;
+        }
+    }
+    match std::fs::remove_file(current_path(root)) {
+        Ok(()) => crate::logging::info("bridge", "Cleared cached bridge ticket; will re-enroll"),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => crate::logging::warn("bridge", &format!("could not clear cached bridge ticket: {e}")),
+    }
+}
+
+fn write_current(root: &Path, bridge: &str, ticket: &str, manual: bool) -> Result<()> {
     std::fs::create_dir_all(bridge_dir(root)).ok();
     let current = Current {
         bridge: bridge.to_string(),
         ticket: ticket.to_string(),
+        manual,
     };
     std::fs::write(current_path(root), serde_json::to_string_pretty(&current)?)
         .context("persisting current bridge")?;
@@ -139,11 +185,13 @@ fn resolve_ticket(ctx: &Context, app_public_key_hex: &str) -> Result<String, Str
         .filter(|n| !n.is_empty())
         .unwrap_or_else(|| "DEFAULT".to_string());
     let ticket = auto_enroll(ctx, &name, app_public_key_hex).map_err(|e| {
-        // Full detail to the log; a short reason for the GUI.
+        // Full detail to the log; a short, real reason for the GUI. COSMOS is
+        // confirmed up by the time we get here, so surface what actually failed
+        // (usually the bridgeenroll CLI output) rather than "is COSMOS running?".
         crate::logging::warn("bridge", &format!("auto-enroll with '{name}' failed: {e:#}"));
-        "auto-enroll failed (is COSMOS running?)".to_string()
+        format!("enrolling bridge '{name}' failed: {}", brief(&e))
     })?;
-    let _ = write_current(&ctx.paths.root, &name, &ticket);
+    let _ = write_current(&ctx.paths.root, &name, &ticket, false); // auto
     crate::logging::info("bridge", &format!("auto-enrolled with '{name}'"));
     Ok(ticket)
 }
@@ -188,7 +236,7 @@ pub fn enroll_with_token(ctx: &Context, token: &str) -> Result<String> {
         serde_json::from_slice(&raw).context("enrollment token has an unexpected format")?;
     let secret = load_or_create_secret(&ctx.paths.root)?;
     bridge::enroll(secret, &parsed.ticket, &parsed.code).context("redeeming enrollment token")?;
-    write_current(&ctx.paths.root, &parsed.bridge, &parsed.ticket)?;
+    write_current(&ctx.paths.root, &parsed.bridge, &parsed.ticket, true)?; // manual
     crate::logging::info("bridge", &format!("enrolled with '{}' via token", parsed.bridge));
     Ok(parsed.bridge)
 }
@@ -213,6 +261,10 @@ pub fn connect_bridge(ctx: &Context) -> Result<(String, BridgeClient), String> {
                 "bridge",
                 &format!("failed to connect to bridge_microservice: {e:#}"),
             );
-            "invalid bridge ticket".to_string()
+            format!(
+                "can't reach the bridge hub — it may still be starting, or its ticket is \
+                 stale after a COSMOS restart; press Retry ({})",
+                brief(&e)
+            )
         })
 }

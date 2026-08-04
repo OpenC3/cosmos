@@ -239,6 +239,38 @@ pub fn snapshot(ctx: &Context, with_stats: bool) -> Result<Vec<ContainerStatus>>
     Ok(statuses)
 }
 
+/// COSMOS container readiness for bridge enrollment, derived from a compose
+/// snapshot. Distinguishes the reasons enrollment can't proceed so the GUI can
+/// explain *why* instead of always claiming COSMOS hasn't started.
+#[derive(Debug, Clone)]
+pub enum CosmosReadiness {
+    /// Docker itself isn't reachable (daemon stopped / socket error). Carries a
+    /// short reason.
+    DockerUnavailable(String),
+    /// Docker is reachable but no COSMOS containers exist for the compose context
+    /// openc3-app is pointed at (wrong project, Development-mode folder, or a
+    /// remote COSMOS that needs manual token pairing).
+    NoContainers,
+    /// COSMOS containers exist but none are running (stopped / exited / restarting).
+    NotRunning,
+    /// COSMOS is running; carries the smallest container uptime (for warm-up gating).
+    Up(Duration),
+}
+
+/// Classify COSMOS's container state for the bridge-enrollment gate. `with_stats`
+/// is passed through to [`snapshot`] (keep it false here — this is polled often
+/// and only needs states/uptimes, not CPU/mem).
+pub fn cosmos_readiness(ctx: &Context, with_stats: bool) -> CosmosReadiness {
+    match snapshot(ctx, with_stats) {
+        Err(err) => CosmosReadiness::DockerUnavailable(format!("{err:#}")),
+        Ok(statuses) if statuses.is_empty() => CosmosReadiness::NoContainers,
+        Ok(statuses) => match statuses.iter().filter_map(|c| c.uptime()).min() {
+            Some(uptime) => CosmosReadiness::Up(uptime),
+            None => CosmosReadiness::NotRunning,
+        },
+    }
+}
+
 /// Extract the image tag (version) from a full image reference. Handles
 /// `@sha256:` digests and registry-port colons (`host:5000/img:tag`). Returns
 /// the implicit "latest" when an image has no tag, or "-" when there's none.

@@ -219,6 +219,11 @@ struct State {
     settings_open: bool,
     /// Persisted settings (COSMOS URL, run-locally toggle).
     settings: crate::settings::Settings,
+    /// The effective Development-mode context (dev folder, or None) captured when
+    /// the Settings page was opened. On close we compare against the current
+    /// context; if it changed we restart the operator so the bridge re-enrolls
+    /// against the new compose context.
+    dev_context_on_open: Option<std::path::PathBuf>,
 }
 
 /// Start the host microservice operator on a background thread, wiring the
@@ -242,14 +247,10 @@ fn start_operator(ctx: &Context, retry: Arc<AtomicBool>) -> OperatorHandles {
     let ready_ctx = ctx.clone();
     operator.set_bridge_connector(
         Box::new(move || crate::enroll::connect_bridge(&connect_ctx)),
-        // COSMOS "uptime" = how long the whole stack has been up = the uptime of
-        // its most-recently-started running container.
-        Box::new(move || {
-            // Uptime only — no CPU/mem stats (the slow part).
-            crate::monitor::snapshot(&ready_ctx, false)
-                .ok()
-                .and_then(|s| s.iter().filter_map(|c| c.uptime()).min())
-        }),
+        // Classify COSMOS container readiness (running/uptime, or a specific
+        // reason it isn't) so the unpaired status explains why. Uptime only — no
+        // CPU/mem stats (the slow part).
+        Box::new(move || crate::monitor::cosmos_readiness(&ready_ctx, false)),
     );
     operator.set_retry_flag(retry);
     let status = operator.status_handle();
@@ -367,6 +368,8 @@ impl State {
             next_operator: Arc::new(Mutex::new(None)),
             settings_open: false,
             settings,
+            // Set when the Settings page opens; only compared on close.
+            dev_context_on_open: None,
         }
     }
 
@@ -412,6 +415,36 @@ impl State {
     fn apply_dev_settings(&mut self) {
         self.ctx.dev_folder = dev_folder_from_settings(&self.settings);
         apply_dev_env(self.settings.dev_mode, self.ctx.dev_folder.as_deref());
+    }
+
+    /// Restart the host-microservice operator so it picks up the current context
+    /// (e.g. after a Development-mode compose-context switch). When `reenroll`,
+    /// any auto-enrolled ticket is dropped first so enrollment re-runs against the
+    /// new context instead of reusing a ticket for the old one; a manual token is
+    /// preserved (see `forget_cached_ticket`). Runs on a background thread; the
+    /// fresh handles are swapped in on the next tick via `next_operator`, so the
+    /// UI never blocks and the operator's bridge closures capture the updated `ctx`.
+    fn restart_operator(&mut self, reenroll: bool) {
+        let ctx = self.ctx.clone();
+        let shutdown = self.operator_shutdown.clone();
+        let old_thread = self.operator_thread.take();
+        let retry = self.bridge_retry.clone();
+        let next_operator = self.next_operator.clone();
+        std::thread::spawn(move || {
+            if reenroll {
+                crate::enroll::forget_cached_ticket(&ctx.paths.root);
+            }
+            // Tell the old operator to stop and wait for it, so we don't run two
+            // operators (double host microservices) against the same bridge.
+            shutdown.store(true, Ordering::Relaxed);
+            if let Some(handle) = old_thread {
+                let _ = handle.join();
+            }
+            let handles = start_operator(&ctx, retry);
+            if let Ok(mut slot) = next_operator.lock() {
+                *slot = Some(handles);
+            }
+        });
     }
 
     /// Whether the setup page should be shown. Running COSMOS locally needs
@@ -666,12 +699,26 @@ impl State {
             }
             Message::ShowSettings => {
                 self.settings_open = true;
+                // Remember the effective dev context so we can tell on close
+                // whether it changed (and thus whether to re-enroll the bridge).
+                self.dev_context_on_open = self.ctx.dev_folder.clone();
                 Task::none()
             }
             Message::CloseSettings => {
                 self.settings_open = false;
                 // Persist any text-field edits made while the dialog was open.
                 self.settings.save(&self.ctx);
+                // If Development Mode was switched on/off (or the dev folder
+                // changed), the bridge's compose context changed — restart the
+                // operator so enrollment re-runs against the new context.
+                if self.ctx.dev_folder != self.dev_context_on_open {
+                    crate::logging::info(
+                        "bridge",
+                        "Development context changed; re-running bridge enrollment",
+                    );
+                    self.dev_context_on_open = self.ctx.dev_folder.clone();
+                    self.restart_operator(true);
+                }
                 Task::none()
             }
             Message::LogLevelChanged(level) => {
@@ -1298,7 +1345,7 @@ impl State {
 
         // Secondary controls: Stop only appears while running locally and up.
         let buttons = if started {
-            row![action("Stop", Message::Stop)].spacing(10)
+            row![action("Shutdown COSMOS", Message::Stop)].spacing(10)
         } else {
             row![].spacing(10)
         };
@@ -1581,17 +1628,20 @@ impl State {
         };
         let mut cosmos_row = row![
             text("COSMOS:").size(13).font(Font::MONOSPACE),
+            // Fill + wrap so the (sometimes long) diagnostic reason stays fully
+            // visible and never pushes the Retry button off the row.
             text(format!("{cosmos_glyph}{cosmos_message}"))
                 .size(13)
                 .font(Font::MONOSPACE)
-                .color(cosmos_color),
+                .color(cosmos_color)
+                .width(Length::Fill)
+                .wrapping(text::Wrapping::WordOrGlyph),
         ]
         .spacing(8)
         .align_y(Center);
         // Offer a manual retry whenever the bridge isn't connected (auto-enroll
         // gives up after a few tries per COSMOS up-session).
         if !self.bridge_status.connected {
-            cosmos_row = cosmos_row.push(Space::with_width(Length::Fill));
             cosmos_row = cosmos_row.push(
                 button(text("Retry").size(12))
                     .padding(4)
