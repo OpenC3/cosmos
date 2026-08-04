@@ -46,18 +46,21 @@ module OpenC3
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
+    # NOTE: scope is deprecated since 7.3.0 as tools always live in the DEFAULT scope, see TOOL_SCOPE
     def self.get(name:, scope: nil)
       super("#{TOOL_SCOPE}__#{PRIMARY_KEY}", name: name)
     end
 
+    # NOTE: scope is deprecated since 7.3.0 as tools always live in the DEFAULT scope, see TOOL_SCOPE
     def self.names(scope: nil)
       array = []
-      all(scope: scope).each do |name, _tool|
+      all().each do |name, _tool|
         array << name
       end
       array
     end
 
+    # NOTE: scope is deprecated since 7.3.0 as tools always live in the DEFAULT scope, see TOOL_SCOPE
     def self.all(scope: nil)
       ordered_array = []
       tools = unordered_all()
@@ -93,9 +96,10 @@ module OpenC3
 
     # The ToolsTab.vue calls the ToolsController which uses this method to reorder the tools
     # Position is index in the list starting with 0 = first
+    # NOTE: scope is deprecated since 7.3.0 as tools always live in the DEFAULT scope, see TOOL_SCOPE
     def self.set_position(name:, position:, scope: nil)
-      scope = TOOL_SCOPE
-      moving = from_json(get(name: name, scope: scope), scope: scope)
+      tool_scope = TOOL_SCOPE
+      moving = from_json(get(name: name, scope: tool_scope), scope: tool_scope)
       old_pos = moving.position
       new_pos = position
       direction = :down
@@ -106,8 +110,8 @@ module OpenC3
       end
 
       # Go through all the tools and reorder
-      all(scope: scope).each do |_tool_name, tool|
-        tool_model = from_json(tool, scope: scope)
+      all(scope: tool_scope).each do |_tool_name, tool|
+        tool_model = from_json(tool, scope: tool_scope)
         # Update the requested model to the new position
         if tool_model.name == name
           tool_model.position = position
@@ -139,7 +143,7 @@ module OpenC3
       needs_dependencies: false,
       disable_erb: nil,
       import_map_items: nil,
-      scope: nil
+      scope: nil  # NOTE: deprecated since 7.3.0 as tools are always created in the DEFAULT scope, see TOOL_SCOPE
     )
       # Tools are always created in the DEFAULT scope regardless of the scope
       # the plugin is being installed into, see TOOL_SCOPE
@@ -163,7 +167,7 @@ module OpenC3
     end
 
     def create(update: false, force: false, queued: false)
-      tools = self.class.all(scope: @scope)
+      tools = self.class.all()
 
       # Make sure a tool with this folder_name doesn't already exist
       # NOTE: Tools are global (TOOL_SCOPE) so this check is across all scopes
@@ -316,6 +320,7 @@ module OpenC3
     ##################################################
 
     # Returns the list of tools or the default OpenC3 tool set if no tools have been created
+    # NOTE: scope is deprecated since 7.3.0 as tools always live in the DEFAULT scope, see TOOL_SCOPE
     def self.unordered_all(scope: nil)
       tools = Store.hgetall("#{TOOL_SCOPE}__#{PRIMARY_KEY}")
       tools.each do |key, value|
