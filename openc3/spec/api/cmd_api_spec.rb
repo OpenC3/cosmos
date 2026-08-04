@@ -147,6 +147,18 @@ module OpenC3
           expect(command['username']).to_not eql 'original_author'
         end
 
+        it "carries extra metadata" do
+          extra = { 'flow_uuid' => '1234-5678', 'hv_id' => 42 }
+          command = @api.send(method, "INST", "ABORT", extra: extra)
+          expect(command['extra']).to eql extra
+        end
+
+        it "rejects invalid extra metadata" do
+          expect { @api.send(method, "INST", "ABORT", extra: 'invalid') }.to raise_error(
+            "Invalid extra parameter: invalid. Must be a Hash."
+          )
+        end
+
         it "warns about required parameters" do
           expect { @api.send(method, "INST COLLECT with DURATION 5") }.to raise_error(/Required/)
         end

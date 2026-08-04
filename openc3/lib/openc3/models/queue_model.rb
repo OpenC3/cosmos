@@ -40,7 +40,7 @@ module OpenC3
     end
     # END NOTE
 
-    def self.queue_command(name, command: nil, target_name: nil, cmd_name: nil, cmd_params: nil, validate: true, timeout: nil, username:, scope:)
+    def self.queue_command(name, command: nil, target_name: nil, cmd_name: nil, cmd_params: nil, extra: nil, validate: true, timeout: nil, username:, scope:)
       model = get_model(name: name, scope: scope)
       raise QueueError, "Queue '#{name}' not found in scope '#{scope}'" unless model
 
@@ -53,7 +53,7 @@ module OpenC3
       id = result.empty? ? 1.0 : result[0][1].to_f + 1
 
       command_data = build_command_data(username: username, command: command, target_name: target_name,
-                                        cmd_name: cmd_name, cmd_params: cmd_params, validate: validate, timeout: timeout)
+                                        cmd_name: cmd_name, cmd_params: cmd_params, extra: extra, validate: validate, timeout: timeout)
       Store.zadd("#{scope}:#{name}", id, command_data.to_json)
       model.notify(kind: 'command')
     end
@@ -61,7 +61,7 @@ module OpenC3
     # Build the hash that gets serialized into Redis. Always uses symbol keys so
     # downstream code in this class can access values consistently. cmd_params is
     # JSON-encoded as a string so binary data survives the round-trip via as_json.
-    def self.build_command_data(username:, command: nil, target_name: nil, cmd_name: nil, cmd_params: nil, validate: nil, timeout: nil)
+    def self.build_command_data(username:, command: nil, target_name: nil, cmd_name: nil, cmd_params: nil, extra: nil, validate: nil, timeout: nil)
       command_data = { username: username, timestamp: Time.now.to_nsec_from_epoch }
       if target_name && cmd_name
         command_data[:target_name] = target_name
@@ -74,6 +74,7 @@ module OpenC3
       end
       command_data[:validate] = validate unless validate.nil?
       command_data[:timeout] = timeout unless timeout.nil?
+      command_data[:extra] = extra unless extra.nil?
       command_data
     end
 
@@ -118,7 +119,7 @@ module OpenC3
       QueueTopic.write_notification(notification, scope: @scope)
     end
 
-    def insert_command(id: nil, username:, command: nil, target_name: nil, cmd_name: nil, cmd_params: nil, validate: nil, timeout: nil)
+    def insert_command(id: nil, username:, command: nil, target_name: nil, cmd_name: nil, cmd_params: nil, extra: nil, validate: nil, timeout: nil)
       if @state == 'DISABLE'
         command_name = command || "#{target_name} #{cmd_name}"
         raise QueueError, "Queue '#{@name}' is disabled. Command '#{command_name}' not queued."
@@ -130,12 +131,12 @@ module OpenC3
       end
 
       command_data = self.class.build_command_data(username: username, command: command, target_name: target_name,
-                                                   cmd_name: cmd_name, cmd_params: cmd_params, validate: validate, timeout: timeout)
+                                                   cmd_name: cmd_name, cmd_params: cmd_params, extra: extra, validate: validate, timeout: timeout)
       Store.zadd("#{@scope}:#{@name}", id, command_data.to_json)
       notify(kind: 'command')
     end
 
-    def update_command(id:, username:, command: nil, target_name: nil, cmd_name: nil, cmd_params: nil, validate: nil, timeout: nil)
+    def update_command(id:, username:, command: nil, target_name: nil, cmd_name: nil, cmd_params: nil, extra: nil, validate: nil, timeout: nil)
       if @state == 'DISABLE'
         raise QueueError, "Queue '#{@name}' is disabled. Command at id #{id} not updated."
       end
@@ -147,7 +148,7 @@ module OpenC3
 
       Store.zremrangebyscore("#{@scope}:#{@name}", id, id)
       command_data = self.class.build_command_data(username: username, command: command, target_name: target_name,
-                                                   cmd_name: cmd_name, cmd_params: cmd_params, validate: validate, timeout: timeout)
+                                                   cmd_name: cmd_name, cmd_params: cmd_params, extra: extra, validate: validate, timeout: timeout)
       Store.zadd("#{@scope}:#{@name}", id, command_data.to_json)
       notify(kind: 'command')
     end
