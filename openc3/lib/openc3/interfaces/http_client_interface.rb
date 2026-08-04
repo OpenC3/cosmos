@@ -237,7 +237,6 @@ module OpenC3
       result['read_timeout'] = @read_timeout
       result['connect_timeout'] = @connect_timeout
       result['include_request_in_response'] = @include_request_in_response
-      result['request_queue_length'] = @request_queue.length
       return result
     end
   end

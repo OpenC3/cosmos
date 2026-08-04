@@ -52,6 +52,8 @@ from openc3.models.bridge_model import BridgeModel
 from openc3.models.host_microservice_model import HostMicroserviceModel
 from openc3.models.model import Model
 from openc3.models.scope_model import ScopeModel
+from openc3.topics.config_topic import ConfigTopic
+from openc3.topics.topic import Topic
 from openc3.utilities.store_queued import EphemeralStoreQueued
 
 
@@ -60,6 +62,17 @@ from openc3.utilities.store_queued import EphemeralStoreQueued
 # the two legs on the same <name> and enforces identity only on the host leg.
 STREAM_ALPN_PREFIX = "stream/"
 HOST_ALPN_PREFIX = "host/"
+
+# Control path: a second paired channel per interface carrying newline-delimited
+# JSON (not raw bytes) — the host pushes its live InterfaceStatus up, and COSMOS
+# sends connect/disconnect down. COSMOS dials ctrl/<name>; the host dials
+# hostctrl/<name>. Paired on a distinct channel key so it never mixes with the
+# data path.
+CTRL_ALPN_PREFIX = "ctrl/"
+HOSTCTRL_ALPN_PREFIX = "hostctrl/"
+# Prefix for the rendezvous channel key of a control pair (keeps it disjoint from
+# the data path's bare <name> key).
+CTRL_CHANNEL_PREFIX = b"ctrl/"
 
 # Control API ALPNs dialed by openc3-app.
 API_HOST_MICROSERVICES = b"api/host_microservices"
@@ -70,12 +83,20 @@ API_AUTHORIZE = b"api/authorize"
 # Serves the scope's plugin lib/ files (hash-delta) so host interfaces can use
 # plugin code. The host has no bucket/gem access, so the hub reads and ships it.
 API_FILES = b"api/files"
+# Returns the latest host InterfaceStatus per interface (tapped from the control
+# channel), so openc3-app can display host interface status in its bridge section.
+API_INTERFACE_STATUS = b"api/interface_status"
 
 # The /gems volume (present in all deployments) holds the plugin gem cache.
 GEM_HOME = os.environ.get("GEM_HOME") or "/gems"
 # Bootstrap ALPN for manual enrollment (validated by a one-time code, not by
 # the authorized app identity — this is how that identity gets established).
 API_ENROLL = b"api/enroll"
+
+# How often the relay re-queries its streams (from the HostMicroserviceModels)
+# and re-advertises ALPNs, so newly-deployed bridged interfaces are picked up
+# without the operator having to respawn the relay.
+STREAM_REFRESH_INTERVAL = 5.0
 
 # One-byte stream primer. QUIC only surfaces a bi-stream to the peer's accept_bi
 # once the opener writes, so on the data path the hub (server) opens+primes and
@@ -115,13 +136,19 @@ class BridgeMicroservice(Microservice):
     def __init__(self, name):
         super().__init__(name)
         self.bridge_name = self._bridge_name()
-        # Interface/stream names this bridge relays (microservice OPTION STREAM
-        # <name>, repeatable). Their stream/<name> ALPNs are advertised so the
-        # QUIC handshake accepts data-path connections for them.
+        # Interface/stream names this bridge relays, discovered live by querying
+        # the HostMicroserviceModels for this bridge (NOT passed as static
+        # OPTIONs). Their stream/<name> ALPNs are advertised so the QUIC handshake
+        # accepts data-path connections for them; _stream_watcher re-advertises as
+        # the set changes so new interfaces are picked up without a relay restart.
         self.streams = self._streams()
-        # channel (name bytes) -> (send, recv, connection, future) for the first
-        # arrival on a data-path channel, awaiting its partner.
+        # channel (name bytes) -> (send, recv, connection, future, is_host) for
+        # the first arrival on a data/control channel, awaiting its partner.
         self._waiting = {}
+        # Latest host InterfaceStatus per interface name, tapped from the control
+        # channel as it flows host -> COSMOS. Served to openc3-app over
+        # api/interface_status so it can show host interface status too.
+        self._interface_status = {}
         # Authorized host-microservice identities (Iroh EndpointId hex strings)
         # allowed on the host/<name> data path. Published by openc3-app over
         # api/authorize each cycle; held in memory only (matches the ephemeral,
@@ -135,11 +162,34 @@ class BridgeMicroservice(Microservice):
         self._gem_file_cache = {}
 
     def _streams(self):
+        """The stream (interface) names this bridge relays, from the
+        HostMicroserviceModels whose bridge_name matches ours. Queried live (not
+        read from static OPTIONs) so adding/removing a bridged interface does not
+        change this relay's MicroserviceModel — which would make the operator
+        respawn it. Sorted so an unchanged set never looks changed to
+        _stream_watcher."""
         streams = []
-        for option in self.config.get("options") or []:
-            if isinstance(option, list | tuple) and len(option) >= 2 and str(option[0]).upper() == "STREAM":
-                streams.append(option[1])
-        return streams
+        for _name, data in HostMicroserviceModel.all(self.scope).items():
+            if isinstance(data, str):
+                data = json.loads(data)
+            if data.get("bridge_name") != self.bridge_name:
+                continue
+            stream = data.get("stream")
+            if stream and stream not in streams:
+                streams.append(stream)
+        return sorted(streams)
+
+    def _build_alpns(self):
+        """Full ALPN set to advertise: a stream/host/ctrl/hostctrl quad per
+        relayed stream, plus the fixed control-API ALPNs."""
+        alpns = []
+        for s in self.streams:
+            alpns.append(f"{STREAM_ALPN_PREFIX}{s}".encode())
+            alpns.append(f"{HOST_ALPN_PREFIX}{s}".encode())
+            alpns.append(f"{CTRL_ALPN_PREFIX}{s}".encode())
+            alpns.append(f"{HOSTCTRL_ALPN_PREFIX}{s}".encode())
+        alpns += [API_HOST_MICROSERVICES, API_LOG, API_AUTHORIZE, API_ENROLL, API_FILES, API_INTERFACE_STATUS]
+        return alpns
 
     def _bridge_name(self):
         """This bridge's name (microservice OPTION BRIDGE_NAME, else the NAME
@@ -176,11 +226,10 @@ class BridgeMicroservice(Microservice):
         model, private_key = self._ensure_keys(iroh)
         secret_key = bytes.fromhex(private_key)
         port = self._ensure_port(model)
-        # Advertise a stream/<name> ALPN for each configured stream (the data
-        # path) plus the control API ALPNs (always available for openc3-app).
-        alpns = [f"{STREAM_ALPN_PREFIX}{s}".encode() for s in self.streams]
-        alpns += [f"{HOST_ALPN_PREFIX}{s}".encode() for s in self.streams]
-        alpns += [API_HOST_MICROSERVICES, API_LOG, API_AUTHORIZE, API_ENROLL, API_FILES]
+        # Advertise a stream/<name> ALPN quad for each relayed stream (data +
+        # control paths) plus the fixed control API ALPNs (always available for
+        # openc3-app). _stream_watcher re-advertises this set as streams change.
+        alpns = self._build_alpns()
         # Bind a fixed UDP port (published to the host from the operator
         # container). By default there is NO relay: co-located peers reach the hub
         # directly via 127.0.0.1. To allow REMOTE peers (across the internet/NAT),
@@ -188,20 +237,20 @@ class BridgeMicroservice(Microservice):
         # self-hosted one); the hub then advertises that relay in its ticket.
         relay = os.environ.get("OPENC3_BRIDGE_RELAY")
         if relay:
-            options = dict(
-                preset=iroh.preset_n0(),
-                relay_mode=iroh.RelayMode.custom_from_urls([relay]),
-                bind_addr=f"0.0.0.0:{port}",
-                alpns=alpns,
-                secret_key=secret_key,
-            )
+            options = {
+                "preset": iroh.preset_n0(),
+                "relay_mode": iroh.RelayMode.custom_from_urls([relay]),
+                "bind_addr": f"0.0.0.0:{port}",
+                "alpns": alpns,
+                "secret_key": secret_key,
+            }
         else:
-            options = dict(
-                preset=iroh.preset_n0_disable_relay(),
-                bind_addr=f"0.0.0.0:{port}",
-                alpns=alpns,
-                secret_key=secret_key,
-            )
+            options = {
+                "preset": iroh.preset_n0_disable_relay(),
+                "bind_addr": f"0.0.0.0:{port}",
+                "alpns": alpns,
+                "secret_key": secret_key,
+            }
         endpoint = await iroh.Endpoint.bind(iroh.EndpointOptions(**options))
         # Advertise a host-reachable local address: Docker publishes
         # 127.0.0.1:<port>/udp on the host straight through to this container port,
@@ -234,6 +283,7 @@ class BridgeMicroservice(Microservice):
         self.logger.info(f"Bridge '{self.bridge_name}' hub listening on port {port}; ticket: {ticket}")
 
         watcher = asyncio.create_task(self._shutdown_watcher(endpoint))
+        streams = asyncio.create_task(self._stream_watcher(endpoint))
         try:
             while not self.cancel_thread:
                 incoming = await endpoint.accept_next()
@@ -243,6 +293,7 @@ class BridgeMicroservice(Microservice):
                 asyncio.create_task(self._handle(incoming))
         finally:
             watcher.cancel()
+            streams.cancel()
 
     async def _shutdown_watcher(self, endpoint):
         """Close the endpoint on shutdown so the accept loop wakes and exits."""
@@ -252,6 +303,58 @@ class BridgeMicroservice(Microservice):
             result = endpoint.close()
             if asyncio.iscoroutine(result):
                 await result
+
+    def _read_config_changes(self, topic, offset, timeout_ms):
+        """Block (in an executor thread) until a config change is published on the
+        ConfigTopic or timeout_ms elapses, returning the message ids read. Fully
+        drains the read_topics generator here since its blocking xread only runs
+        while iterating. Offsets are passed in explicitly (not left to the store's
+        thread-local tracking) so this is correct across executor threads."""
+        ids = []
+        with contextlib.suppress(Exception):
+            for _topic, msg_id, _msg_hash, _redis in Topic.read_topics([topic], [offset], timeout_ms):
+                ids.append(msg_id)
+        return ids
+
+    async def _stream_watcher(self, endpoint):
+        """Keep the endpoint's advertised ALPNs in sync with the set of streams
+        this bridge relays. Because the relay discovers streams by querying the
+        HostMicroserviceModels (not static OPTIONs), a newly-deployed or removed
+        bridged interface never mutates this relay's MicroserviceModel — so the
+        operator does not respawn it; instead we adapt the live ALPN set here,
+        keeping the same identity/ticket.
+
+        Wakes immediately on ConfigTopic changes (interface created/deleted, ...)
+        and also re-checks every STREAM_REFRESH_INTERVAL as a fallback (covers a
+        missed message or a bridge created before this watcher started)."""
+        loop = asyncio.get_event_loop()
+        config_topic = f"{self.scope}{ConfigTopic.PRIMARY_KEY}"
+        timeout_ms = int(STREAM_REFRESH_INTERVAL * 1000)
+        # Start at the current end of the topic so we only wake on NEW changes.
+        try:
+            offset = await loop.run_in_executor(None, Topic.get_last_offset, config_topic)
+        except Exception:
+            offset = "0-0"
+        while not self.cancel_thread:
+            # Block until a config change arrives or the fallback interval elapses.
+            ids = await loop.run_in_executor(None, self._read_config_changes, config_topic, offset, timeout_ms)
+            if ids:
+                offset = ids[-1]
+            if self.cancel_thread:
+                break
+            try:
+                streams = self._streams()
+            except Exception as error:
+                self.logger.warn(f"Bridge '{self.bridge_name}': stream refresh error: {type(error).__name__}: {error}")
+                continue
+            if streams == self.streams:
+                continue
+            added = sorted(set(streams) - set(self.streams))
+            removed = sorted(set(self.streams) - set(streams))
+            self.streams = streams
+            with contextlib.suppress(Exception):
+                endpoint.set_alpns(self._build_alpns())
+            self.logger.info(f"Bridge '{self.bridge_name}': streams updated (added={added}, removed={removed})")
 
     async def _handle(self, incoming):
         """Accept one connection and dispatch it by negotiated ALPN."""
@@ -266,7 +369,7 @@ class BridgeMicroservice(Microservice):
             if alpn == API_ENROLL:
                 # Bootstrap: gated by a one-time code, not the app identity.
                 await self._serve_enroll(conn)
-            elif alpn in (API_HOST_MICROSERVICES, API_LOG, API_AUTHORIZE, API_FILES):
+            elif alpn in (API_HOST_MICROSERVICES, API_LOG, API_AUTHORIZE, API_FILES, API_INTERFACE_STATUS):
                 # Control APIs are restricted to the enrolled openc3-app identity.
                 if not self._authorized(conn):
                     self.logger.warn(
@@ -280,6 +383,8 @@ class BridgeMicroservice(Microservice):
                     await self._serve_authorize(conn)
                 elif alpn == API_FILES:
                     await self._serve_files(conn)
+                elif alpn == API_INTERFACE_STATUS:
+                    await self._serve_interface_status(conn)
                 else:
                     await self._serve_log(conn)
             elif alpn.startswith(HOST_ALPN_PREFIX.encode()):
@@ -299,6 +404,26 @@ class BridgeMicroservice(Microservice):
                     await self._close(conn)
                     return
                 await self._rendezvous(name, conn)
+            elif alpn.startswith(HOSTCTRL_ALPN_PREFIX.encode()):
+                # Host-side control leg (status up / commands down): same identity
+                # rule as the host data leg. Paired on a distinct control channel.
+                if str(conn.remote_id()) not in self._authorized_hosts:
+                    self.logger.warn(f"Rejected unauthorized host control connection from {conn.remote_id()}")
+                    await self._close(conn)
+                    return
+                await self._rendezvous(
+                    CTRL_CHANNEL_PREFIX + alpn[len(HOSTCTRL_ALPN_PREFIX) :], conn, is_host=True
+                )
+            elif alpn.startswith(CTRL_ALPN_PREFIX.encode()):
+                # COSMOS-side control leg: same identity rule as the COSMOS data leg.
+                name = alpn[len(CTRL_ALPN_PREFIX) :]
+                if not self._authorized_interface(conn, name.decode("utf-8", "replace")):
+                    self.logger.warn(
+                        f"Rejected unauthorized COSMOS control connection from {conn.remote_id()}"
+                    )
+                    await self._close(conn)
+                    return
+                await self._rendezvous(CTRL_CHANNEL_PREFIX + name, conn, is_host=False)
             else:
                 self.logger.warn(f"Bridge received unknown ALPN {alpn!r}")
                 await self._close(conn)
@@ -377,24 +502,43 @@ class BridgeMicroservice(Microservice):
 
     # --- Data path (rendezvous) ---------------------------------------------
 
-    async def _rendezvous(self, channel, conn):
-        """Pair two connections sharing a stream/<name> ALPN and pump bytes.
+    async def _rendezvous(self, channel, conn, is_host=False):
+        """Pair two connections sharing a channel and pump bytes between them.
 
         The hub is the server, so it opens+primes each connection's bi-stream
         (the clients accept+strip the primer). The first arrival parks; the
-        second pumps raw bytes between the pair in both directions.
+        second pumps bytes between the pair in both directions. For a control
+        channel (``ctrl/<name>`` key), the host->COSMOS direction is tapped to
+        capture the host's InterfaceStatus for api/interface_status.
         """
         bi = await conn.open_bi()
         send = bi.send()
         recv = bi.recv()
         await send.write_all(PRIME)
 
+        # Control channels are keyed ctrl/<name>; tap the host leg's status.
+        ctrl_name = None
+        if channel.startswith(CTRL_CHANNEL_PREFIX):
+            ctrl_name = channel[len(CTRL_CHANNEL_PREFIX) :].decode("utf-8", "replace")
+
         partner = self._waiting.pop(channel, None)
         if partner is not None:
-            p_send, p_recv, _p_conn, p_future = partner
+            p_send, p_recv, _p_conn, p_future, _p_is_host = partner
             self.logger.info(f"Paired {channel.decode('utf-8', 'replace')}")
-            up = asyncio.create_task(self._pump(p_recv, send))
-            down = asyncio.create_task(self._pump(recv, p_send))
+            if ctrl_name is not None:
+                # Identify the host leg so we tap host->COSMOS (status) and pump
+                # COSMOS->host (commands) plainly.
+                if is_host:
+                    host_recv, cosmos_send = recv, p_send
+                    cosmos_recv, host_send = p_recv, send
+                else:
+                    host_recv, cosmos_send = p_recv, send
+                    cosmos_recv, host_send = recv, p_send
+                up = asyncio.create_task(self._pump_status(host_recv, cosmos_send, ctrl_name))
+                down = asyncio.create_task(self._pump(cosmos_recv, host_send))
+            else:
+                up = asyncio.create_task(self._pump(p_recv, send))
+                down = asyncio.create_task(self._pump(recv, p_send))
             try:
                 await asyncio.wait({up, down}, return_when=asyncio.FIRST_COMPLETED)
             finally:
@@ -405,7 +549,7 @@ class BridgeMicroservice(Microservice):
                 await self._close(conn)
         else:
             future = asyncio.get_event_loop().create_future()
-            self._waiting[channel] = (send, recv, conn, future)
+            self._waiting[channel] = (send, recv, conn, future, is_host)
             try:
                 await asyncio.wait_for(future, timeout=PAIR_TIMEOUT)
             except asyncio.TimeoutError:
@@ -424,6 +568,44 @@ class BridgeMicroservice(Microservice):
                 await send.write_all(bytes(data))
             with contextlib.suppress(Exception):
                 await send.finish()
+
+    async def _pump_status(self, recv, send, name):
+        """Like _pump, but for the control channel host->COSMOS direction: forward
+        the bytes and tap newline-delimited status JSON into `_interface_status`."""
+        buffer = b""
+        with contextlib.suppress(asyncio.CancelledError):
+            while not self.cancel_thread:
+                data = await recv.read(PUMP_CHUNK_BYTES)
+                if not data:  # peer finished/closed
+                    break
+                await send.write_all(bytes(data))
+                buffer += bytes(data)
+                while b"\n" in buffer:
+                    line, buffer = buffer.split(b"\n", 1)
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        msg = json.loads(line)
+                    except ValueError:
+                        continue
+                    if msg.get("type") == "status" and isinstance(msg.get("status"), dict):
+                        self._interface_status[name] = msg["status"]
+            with contextlib.suppress(Exception):
+                await send.finish()
+
+    async def _serve_interface_status(self, conn):
+        """Return the latest host InterfaceStatus per interface as JSON."""
+        bi = await conn.accept_bi()
+        send = bi.send()
+        recv = bi.recv()
+        with contextlib.suppress(Exception):
+            await recv.read(PUMP_CHUNK_BYTES)  # consume the request
+        payload = json.dumps(self._interface_status).encode()
+        await send.write_all(payload)
+        with contextlib.suppress(Exception):
+            await send.finish()
+        await self._drain_close(conn)
 
     # --- Control APIs -------------------------------------------------------
 
@@ -464,6 +646,8 @@ class BridgeMicroservice(Microservice):
                     "stream": data.get("stream"),
                     "config_params": data.get("config_params") or [],
                     "options": options,
+                    # BRIDGE_PROTOCOLs run on the host next to the device.
+                    "protocols": data.get("protocols") or [],
                     "work_dir": data.get("work_dir"),
                     "env": data.get("env") or {},
                     "container": data.get("container"),

@@ -1479,6 +1479,21 @@ impl State {
                 .font(Font::MONOSPACE)
                 .width(80)
                 .color(header_color),
+            text("Connection")
+                .size(13)
+                .font(Font::MONOSPACE)
+                .width(140)
+                .color(header_color),
+            text("Rx")
+                .size(13)
+                .font(Font::MONOSPACE)
+                .width(110)
+                .color(header_color),
+            text("Tx")
+                .size(13)
+                .font(Font::MONOSPACE)
+                .width(Length::Fill)
+                .color(header_color),
         ]
         .spacing(10)]
         .spacing(6);
@@ -1508,6 +1523,42 @@ impl State {
                             .size(13)
                             .font(Font::MONOSPACE)
                             .width(80),
+                        {
+                            // Host interface connection state (for bridged interfaces).
+                            let state = m
+                                .interface_state
+                                .clone()
+                                .filter(|s| !s.is_empty())
+                                .unwrap_or_else(|| "-".to_string());
+                            let iface_color = match m.interface_state.as_deref() {
+                                Some("CONNECTED") => green,
+                                Some(s) if !s.is_empty() => {
+                                    Color::from_rgb8(0xFF, 0xB3, 0x00) // amber: not connected
+                                }
+                                _ => header_color,
+                            };
+                            text(state)
+                                .size(13)
+                                .font(Font::MONOSPACE)
+                                .width(140)
+                                .color(iface_color)
+                        },
+                        text(
+                            m.rxbytes
+                                .map(crate::monitor::human_bytes)
+                                .unwrap_or_else(|| "-".to_string())
+                        )
+                        .size(13)
+                        .font(Font::MONOSPACE)
+                        .width(110),
+                        text(
+                            m.txbytes
+                                .map(crate::monitor::human_bytes)
+                                .unwrap_or_else(|| "-".to_string())
+                        )
+                        .size(13)
+                        .font(Font::MONOSPACE)
+                        .width(Length::Fill),
                     ]
                     .spacing(10)
                     .align_y(Center),

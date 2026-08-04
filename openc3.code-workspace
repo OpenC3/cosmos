@@ -33,6 +33,12 @@
     {
       "path": "../openc3-cosmos-scpi-multimeter",
     },
+    {
+      "path": "../openc3-cosmos-webrtc",
+    },
+    {
+      "path": "../openc3-cosmos-inffni-rover-x1",
+    },
   ],
   "settings": {
     "rubyLsp.bundleGemfile": "openc3/Gemfile",

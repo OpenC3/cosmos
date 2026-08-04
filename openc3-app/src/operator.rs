@@ -14,7 +14,7 @@
 //! into a bounded buffer (first N + last N lines) so death messages can be
 //! reported without unbounded memory growth, mirroring `OperatorProcessIO`.
 
-use crate::bridge::{BridgeClient, HostSpec};
+use crate::bridge::{BridgeClient, HostSpec, InterfaceStatus};
 use tokio::sync::mpsc::UnboundedSender;
 use crate::process;
 use std::collections::{BTreeMap, VecDeque};
@@ -113,6 +113,13 @@ pub struct MicroserviceStatus {
     pub running: bool,
     pub pid: Option<u32>,
     pub cmd: String,
+    /// Host interface connection state (e.g. "CONNECTED"/"DISCONNECTED"), when
+    /// this microservice is a bridged interface reporting status. `None` for
+    /// non-interface microservices or before any status has been received.
+    pub interface_state: Option<String>,
+    /// Bytes received from / transmitted to the host device, if known.
+    pub rxbytes: Option<u64>,
+    pub txbytes: Option<u64>,
 }
 
 /// Health of openc3-app's connection to the COSMOS bridge hub, published for
@@ -569,6 +576,9 @@ pub struct MicroserviceOperator {
     /// Client to the COSMOS bridge_microservice hub: source of the host
     /// microservice list and destination for forwarded host logs.
     bridge_client: Option<BridgeClient>,
+    /// Latest host InterfaceStatus per microservice name, fetched from the hub
+    /// and attached to the published status for the GUI's bridge section.
+    interface_status: std::collections::HashMap<String, InterfaceStatus>,
     /// Sender for forwarding host stdout up to COSMOS (from the bridge client).
     log_tx: Option<UnboundedSender<String>>,
     /// Per-host-microservice Iroh identities (name -> (secret_hex, public_hex)),
@@ -652,6 +662,7 @@ impl MicroserviceOperator {
             microservices_dir,
             bridge_ticket: None,
             bridge_client: None,
+            interface_status: std::collections::HashMap::new(),
             log_tx: None,
             host_keys: BTreeMap::new(),
             bridge_status: Arc::new(Mutex::new(BridgeConnectionStatus::default())),
@@ -838,16 +849,35 @@ impl MicroserviceOperator {
     fn publish_status(&mut self) {
         let mut list = Vec::with_capacity(self.processes.len());
         for (name, process) in self.processes.iter_mut() {
+            let iface = self.interface_status.get(name);
             list.push(MicroserviceStatus {
                 name: name.clone(),
                 scope: process.scope.clone(),
                 running: process.alive(),
                 pid: process.pid,
                 cmd: process.cmd_line(),
+                interface_state: iface
+                    .map(|s| s.state.clone())
+                    .filter(|s| !s.is_empty()),
+                rxbytes: iface.map(|s| s.rxbytes),
+                txbytes: iface.map(|s| s.txbytes),
             });
         }
         if let Ok(mut status) = self.status.lock() {
             *status = list;
+        }
+    }
+
+    /// Fetch the latest host InterfaceStatus from the hub (best effort). Keeps
+    /// the previous values on a transient error; clears them when unpaired.
+    fn refresh_interface_status(&mut self) {
+        let fetched = self.bridge_client.as_ref().map(|c| c.fetch_interface_status());
+        match fetched {
+            Some(Ok(statuses)) => {
+                self.interface_status = statuses.into_iter().map(|s| (s.name.clone(), s)).collect();
+            }
+            Some(Err(_)) => {} // transient; keep the previous statuses
+            None => self.interface_status.clear(),
         }
     }
 
@@ -1282,6 +1312,7 @@ impl MicroserviceOperator {
             self.respawn_changed();
             self.start_new();
             self.respawn_dead();
+            self.refresh_interface_status();
             self.publish_status();
             if self.is_shutdown() {
                 break;
@@ -1326,6 +1357,7 @@ fn host_specs_to_configs(specs: Vec<HostSpec>) -> ConfigMap {
         let host_interface = serde_json::json!({
             "config_params": spec.config_params,
             "options": spec.options,
+            "protocols": spec.protocols,
         })
         .to_string();
         let mut env = spec.env.clone();

@@ -31,6 +31,9 @@ const API_ENROLL: &[u8] = b"api/enroll";
 const API_AUTHORIZE: &[u8] = b"api/authorize";
 /// ALPN for syncing the scope's plugin files (lib/, requirements, pyproject).
 const API_FILES: &[u8] = b"api/files";
+/// ALPN for fetching host InterfaceStatus (tapped by the hub from the control
+/// channel), so openc3-app can show host interface status in its bridge section.
+const API_INTERFACE_STATUS: &[u8] = b"api/interface_status";
 /// Upper bound on a small API response we will read.
 const MAX_RESPONSE: usize = 16 * 1024 * 1024;
 /// Upper bound on a file-sync payload (plugin files can be larger).
@@ -151,10 +154,30 @@ pub struct HostSpec {
     pub config_params: Vec<serde_json::Value>,
     #[serde(default)]
     pub options: Vec<serde_json::Value>,
+    /// BRIDGE_PROTOCOLs to run on the host next to the device. Each entry is
+    /// `[READ|WRITE|READ_WRITE, protocol filename/classname, params...]`.
+    #[serde(default)]
+    pub protocols: Vec<serde_json::Value>,
     #[serde(default)]
     pub env: BTreeMap<String, String>,
     #[serde(default)]
     pub needs_dependencies: bool,
+}
+
+/// A host interface's status, as reported over the control channel and tapped by
+/// the hub. Only the fields openc3-app displays are captured; the rest is ignored.
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct InterfaceStatus {
+    /// The host microservice name, used to match this status to a microservice.
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub state: String,
+    /// Bytes received from the device (rx) and written to it (tx).
+    #[serde(default)]
+    pub rxbytes: u64,
+    #[serde(default)]
+    pub txbytes: u64,
 }
 
 /// Client connection to the COSMOS `bridge_microservice` hub.
@@ -220,6 +243,35 @@ impl BridgeClient {
             let specs: Vec<HostSpec> =
                 serde_json::from_slice(&data).context("parsing host_microservices response")?;
             Ok(specs)
+        })
+    }
+
+    /// Fetch the latest host InterfaceStatus per interface from the hub (which
+    /// taps it from the control channel). Returns the status objects; each
+    /// carries the microservice `name` used to match it to a host microservice.
+    pub fn fetch_interface_status(&self) -> Result<Vec<InterfaceStatus>> {
+        self.runtime.block_on(async {
+            let conn = self
+                .endpoint
+                .connect(self.addr.clone(), API_INTERFACE_STATUS)
+                .await
+                .map_err(|e| anyhow::anyhow!("connect api/interface_status: {e}"))?;
+            let (mut send, mut recv) = conn
+                .open_bi()
+                .await
+                .map_err(|e| anyhow::anyhow!("open_bi: {e}"))?;
+            send.write_all(b"interface_status")
+                .await
+                .map_err(|e| anyhow::anyhow!("write request: {e}"))?;
+            let _ = send.finish();
+            let data = recv
+                .read_to_end(MAX_RESPONSE)
+                .await
+                .map_err(|e| anyhow::anyhow!("read response: {e}"))?;
+            // The hub returns { interface-name: status-object }.
+            let map: std::collections::BTreeMap<String, InterfaceStatus> =
+                serde_json::from_slice(&data).context("parsing interface_status response")?;
+            Ok(map.into_values().collect())
         })
     }
 

@@ -32,6 +32,7 @@ supported. The ALPN must match bridge_microservice / openc3-app.
 
 import asyncio
 import contextlib
+import json
 import os
 import queue
 import threading
@@ -45,6 +46,13 @@ from openc3.utilities.logger import Logger
 
 # Size of each raw read from the Iroh stream.
 READ_CHUNK_BYTES = 65536
+
+# Control-channel ALPN (JSON status up / connect-disconnect commands down),
+# distinct from the raw-byte data path (stream/<name>).
+CTRL_ALPN_PREFIX = "ctrl/"
+
+# Delay before retrying the (persistent) control channel after it drops.
+CTRL_RECONNECT_DELAY = 5.0
 
 
 class BridgeInterface(Interface):
@@ -70,16 +78,32 @@ class BridgeInterface(Interface):
         self._scope = "DEFAULT"
         self._secret_key_hex = None
 
-        # asyncio machinery, owned by a dedicated background thread.
+        # asyncio machinery, owned by a dedicated background thread. The loop,
+        # thread, endpoint, and control channel are started once and persist for
+        # the interface's life so COSMOS can (re)connect the host and keep
+        # receiving status even while the data tunnel is disconnected.
         self._loop = None
         self._thread = None
         self._endpoint = None
+        self._started = False
+        self._addr = None
+        # Data path (per connect/disconnect).
         self._connection = None
         self._send_stream = None
         self._reader_task = None
         # Thread-safe hand-off of received bytes to read_interface().
         self._read_queue = None
         self._connected = False
+        # Control path (persistent): the host's latest reported status and the
+        # current send stream for connect/disconnect commands.
+        self._ctrl_task = None
+        self._ctrl_send = None
+        self._host_status = None
+        self._host_status_lock = threading.Lock()
+        # Whether COSMOS wants the host connected; re-asserted to the host each
+        # time the control channel (re)establishes, so the desired state survives
+        # a control drop and can't be lost to a startup race.
+        self._want_connected = False
 
     def connection_string(self):
         return "Iroh bridge to bridge_microservice"
@@ -104,31 +128,47 @@ class BridgeInterface(Interface):
             )
         self.ticket = model.ticket
         self._read_queue = queue.Queue()
-        self._loop = asyncio.new_event_loop()
-        self._thread = threading.Thread(target=self._run_loop, daemon=True)
-        self._thread.start()
-        # Establish the Iroh connection and wait for it (raises on failure).
-        asyncio.run_coroutine_threadsafe(self._establish(), self._loop).result(self.connect_timeout)
+        # Start the persistent loop/thread/endpoint/control once.
+        if not self._started:
+            self._loop = asyncio.new_event_loop()
+            self._thread = threading.Thread(target=self._run_loop, daemon=True)
+            self._thread.start()
+            asyncio.run_coroutine_threadsafe(self._startup(), self._loop).result(self.connect_timeout)
+            self._ctrl_task = asyncio.run_coroutine_threadsafe(self._start_control(), self._loop).result(5)
+            self._started = True
+        # Tell the host to connect its device, then bring up the data tunnel.
+        self._want_connected = True
+        self._send_command("connect")
+        asyncio.run_coroutine_threadsafe(self._establish_data(), self._loop).result(self.connect_timeout)
 
     def _run_loop(self):
         asyncio.set_event_loop(self._loop)
         self._loop.run_forever()
 
-    async def _establish(self):
+    async def _startup(self):
+        """One-time setup on the loop: identity, registration, and the endpoint."""
         import iroh
 
         # Bind a stable per-process identity and register its public key so the
-        # hub authorizes this COSMOS leg (re-registered each connect; idempotent).
+        # hub authorizes this COSMOS leg.
         if self._secret_key_hex is None:
             self._secret_key_hex = bytes(iroh.SecretKey.generate().to_bytes()).hex()
         secret_key = iroh.SecretKey.from_bytes(bytes.fromhex(self._secret_key_hex))
         public_key = bytes(secret_key.public().to_bytes()).hex()
         BridgeInterfaceModel(name=self.name, scope=self._scope, public_key=public_key).create(force=True)
-
         self._endpoint = await iroh.Endpoint.bind(
             iroh.EndpointOptions(preset=iroh.preset_n0(), secret_key=bytes.fromhex(self._secret_key_hex))
         )
+
+    async def _start_control(self):
+        """Launch the persistent control-channel task on the loop."""
+        return self._loop.create_task(self._control_loop())
+
+    async def _establish_data(self):
+        import iroh
+
         addr = iroh.EndpointTicket.from_string(self.ticket).endpoint_addr()
+        self._addr = addr
         # Route by ALPN: stream/<INTERFACE_NAME>. openc3-app pairs this with the
         # host microservice serving the same stream. Raw device bytes only; this
         # flows transparently through bridge_microservice.
@@ -180,28 +220,109 @@ class BridgeInterface(Interface):
     async def _send(self, data):
         await self._send_stream.write_all(data)
 
+    # Note: we intentionally do NOT override as_json(). The base Interface
+    # reports state (authoritative to this side — the InterfaceMicroservice
+    # drives it from connect/disconnect) plus byte/packet counts off the tunnel,
+    # which carries the same bytes the host device sees. Injecting host-reported
+    # fields here both lagged the state after a Disconnect and pushed keys
+    # (connection_string) that InterfaceStatusModel doesn't accept. The host's
+    # live status is surfaced separately to openc3-app via the hub control tap.
+
+    # ------------------------------------------------------------------ control
+    async def _control_loop(self):
+        """Persistent control channel: read the host's status, hold the send
+        stream for commands. Reconnects on drop; independent of the data tunnel."""
+        alpn = f"{CTRL_ALPN_PREFIX}{self.name}".encode()
+        while True:
+            connection = None
+            try:
+                connection = await self._endpoint.connect(self._addr or await self._resolve_addr(), alpn)
+                bi = await connection.accept_bi()  # hub opens+primes
+                self._ctrl_send = bi.send()
+                recv = bi.recv()
+                await recv.read(1)
+                # (Re)assert the desired state so it survives control drops and a
+                # startup race where connect()'s command was sent before pairing.
+                await self._write_command("connect" if self._want_connected else "disconnect")
+                await self._ctrl_read_status(recv)
+            except asyncio.CancelledError:
+                break
+            except Exception as error:
+                Logger.info(f"{self.name}: control channel error: {type(error).__name__}: {error}")
+            finally:
+                self._ctrl_send = None
+                if connection is not None:
+                    with contextlib.suppress(Exception):
+                        result = connection.close()
+                        if asyncio.iscoroutine(result):
+                            await result
+            await asyncio.sleep(CTRL_RECONNECT_DELAY)
+
+    async def _resolve_addr(self):
+        import iroh
+
+        return iroh.EndpointTicket.from_string(self.ticket).endpoint_addr()
+
+    async def _ctrl_read_status(self, recv):
+        """Read newline-delimited status JSON from the host into `_host_status`."""
+        buffer = b""
+        while True:
+            data = await recv.read(READ_CHUNK_BYTES)
+            if not data:  # control stream closed
+                break
+            buffer += bytes(data)
+            while b"\n" in buffer:
+                line, buffer = buffer.split(b"\n", 1)
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    msg = json.loads(line)
+                except ValueError:
+                    continue
+                if msg.get("type") == "status" and isinstance(msg.get("status"), dict):
+                    with self._host_status_lock:
+                        self._host_status = msg["status"]
+
+    def _send_command(self, cmd):
+        """Send a connect/disconnect command to the host over the control channel
+        (best effort — the host also follows the data tunnel's presence)."""
+        if self._loop is None or not self._loop.is_running():
+            return
+        with contextlib.suppress(Exception):
+            asyncio.run_coroutine_threadsafe(self._write_command(cmd), self._loop).result(5)
+
+    async def _write_command(self, cmd):
+        if self._ctrl_send is None:
+            return
+        await self._ctrl_send.write_all((json.dumps({"type": "cmd", "cmd": cmd}) + "\n").encode())
+
     def disconnect(self):
+        # Tell the host to disconnect its device, then tear down the DATA tunnel.
+        # The persistent loop/endpoint/control stay up so status keeps flowing and
+        # a later connect() can reconnect the host.
+        self._want_connected = False
+        self._send_command("disconnect")
         self._connected = False
         if self._loop is not None and self._loop.is_running():
             with contextlib.suppress(Exception):
-                asyncio.run_coroutine_threadsafe(self._close(), self._loop).result(5)
-            self._loop.call_soon_threadsafe(self._loop.stop)
-        if self._thread is not None:
-            self._thread.join(timeout=5)
-            self._thread = None
+                asyncio.run_coroutine_threadsafe(self._close_data(), self._loop).result(5)
         # Unblock read_interface if it's waiting.
         if self._read_queue is not None:
             self._read_queue.put(None)
         super().disconnect()
 
-    async def _close(self):
+    async def _close_data(self):
         if self._reader_task is not None:
             self._reader_task.cancel()
+            self._reader_task = None
         with contextlib.suppress(Exception):
             if self._send_stream is not None:
                 await self._send_stream.finish()
+        self._send_stream = None
         with contextlib.suppress(Exception):
             if self._connection is not None:
                 result = self._connection.close()
                 if asyncio.iscoroutine(result):
                     await result
+        self._connection = None

@@ -528,7 +528,7 @@ module OpenC3
         @target_names.each { |target_name| ensure_target_exists(target_name) }
         microservice.create
         microservice.deploy(gem_path, variables)
-        deploy_bridge_relay(gem_path, variables)
+        deploy_bridge_relay
         deploy_host_microservice
         ConfigTopic.write({ kind: 'created', type: type.downcase, name: @name, plugin: @plugin }, scope: @scope)
         Logger.info "Configured bridged #{type.downcase} microservice #{microservice_name} (bridge #{@bridge_name})"
@@ -541,19 +541,17 @@ module OpenC3
       "#{@scope}__BRIDGE__#{@bridge_name.to_s.upcase}"
     end
 
-    # Ensure the shared bridge_microservice relay for @bridge_name exists and
-    # advertises this interface's stream. Multiple bridged interfaces sharing a
-    # bridge name all route through the same relay, each adding an OPTION STREAM.
-    def deploy_bridge_relay(gem_path, variables)
-      relay_name = bridge_relay_name
-      stream_option = ['STREAM', @name]
-      relay = MicroserviceModel.get_model(name: relay_name, scope: @scope)
-      if relay
-        relay.options << stream_option unless relay.options.include?(stream_option)
-        relay.update
-      else
-        raise "Bridge #{@bridge_name} does not exist"
-      end
+    # Verify the shared bridge_microservice relay for @bridge_name exists.
+    # Multiple bridged interfaces sharing a bridge name all route through the
+    # same relay. The relay discovers which streams to advertise by querying the
+    # HostMicroserviceModels for its bridge (see bridge_microservice.py), so we
+    # deliberately do NOT push this interface's stream onto the relay as an
+    # OPTION: mutating (updating) the relay's MicroserviceModel would make the
+    # operator respawn the relay every time a bridged interface is added or
+    # removed. Leaving the model untouched lets the relay adapt live instead.
+    def deploy_bridge_relay
+      relay = MicroserviceModel.get_model(name: bridge_relay_name, scope: @scope)
+      raise "Bridge #{@bridge_name} does not exist" unless relay
       relay
     end
 
@@ -611,15 +609,13 @@ module OpenC3
       end
     end
 
-    # Clean up the host-side pieces of a bridged interface: remove this
-    # interface's stream from the shared bridge_microservice relay (destroying
-    # the relay when its last stream is removed) and destroy the host model.
+    # Clean up the host-side pieces of a bridged interface by destroying its
+    # HostMicroserviceModel. The shared bridge_microservice relay is left
+    # untouched: it discovers its streams by querying the HostMicroserviceModels,
+    # so removing this one makes the relay drop the stream's ALPN on its own.
+    # (Mutating the relay's MicroserviceModel here would respawn it.) The relay
+    # itself is destroyed with its BridgeModel, not per-interface.
     def undeploy_bridge
-      relay = MicroserviceModel.get_model(name: bridge_relay_name, scope: @scope)
-      if relay
-        relay.options = relay.options.reject { |option| option[0].to_s.upcase == 'STREAM' && option[1] == @name }
-        relay.update
-      end
       host = HostMicroserviceModel.get_model(name: @name, scope: @scope)
       host.destroy if host
     end

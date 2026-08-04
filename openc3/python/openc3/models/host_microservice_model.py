@@ -20,9 +20,10 @@ class HostMicroserviceModel(Model):
     Written by the Ruby InterfaceModel#deploy for bridged interfaces (the BRIDGE
     keyword) and read here by the bridge_microservice, which serves the list to
     openc3-app over the ``api/host_microservices`` ALPN. openc3-app spawns each
-    host microservice; it performs raw data transfer only (protocols and target
-    definitions stay on the Docker side of COSMOS) and speaks Iroh back to the
-    bridge_microservice on the ``stream/<name>`` ALPN.
+    host microservice; it performs raw data transfer plus any BRIDGE_PROTOCOLs
+    (which run on the host next to the device), while target definitions and
+    regular PROTOCOLs stay on the Docker side of COSMOS. It speaks Iroh back to
+    the bridge_microservice on the ``stream/<name>`` ALPN.
 
     Kept separate from MicroserviceModel so the normal COSMOS operator never runs
     these host-only microservices.
@@ -71,6 +72,7 @@ class HostMicroserviceModel(Model):
         env: dict | None = None,
         options: list | None = None,
         secret_options: list | None = None,
+        protocols: list | None = None,
         secrets: list | None = None,
         container: str = None,
         needs_dependencies: bool = False,
@@ -94,6 +96,8 @@ class HostMicroserviceModel(Model):
         self.env = {} if env is None else env
         self.options = [] if options is None else options
         self.secret_options = [] if secret_options is None else secret_options
+        # BRIDGE_PROTOCOLs, run on the host next to the device (not in COSMOS).
+        self.protocols = [] if protocols is None else protocols
         self.secrets = [] if secrets is None else secrets
         self.container = container
         self.needs_dependencies = needs_dependencies
@@ -109,6 +113,7 @@ class HostMicroserviceModel(Model):
             "env": self.env,
             "options": self.options,
             "secret_options": self.secret_options,
+            "protocols": self.protocols,
             "secrets": self.secrets,
             "container": self.container,
             "needs_dependencies": self.needs_dependencies,
