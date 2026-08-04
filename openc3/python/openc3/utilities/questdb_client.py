@@ -1204,6 +1204,10 @@ class QuestDBClient:
                 time.sleep(0.5)
                 # Reconnect ILP sender to clear its cached schema
                 self.connect_ingest()
+
+            # TTL is only accepted in CREATE TABLE, so an existing table needs an explicit
+            # ALTER to pick up a changed (or newly added / removed) retain time.
+            self._reconcile_ttl(table_name, retain_time)
         else:
             # Table doesn't exist — create it. _execute_ddl retries connection errors;
             # any non-connection failure propagates so the caller knows table creation failed.
@@ -1244,15 +1248,89 @@ class QuestDBClient:
 
         return table_name
 
-    def _convert_retain_time_to_questdb_format(self, retain_time):
+    def _reconcile_ttl(self, table_name, retain_time):
         """
-        Convert TTL from compact format (e.g., "30d", "1y") to QuestDB format (e.g., "30 DAY", "1 YEAR").
+        Apply retain_time to an already existing table via ALTER TABLE SET TTL.
+
+        TTL can only be declared in CREATE TABLE, so a table created before a
+        retain time was configured (or created with a different one) keeps its old
+        TTL forever unless it is explicitly altered.
+
+        Args:
+            table_name: Sanitized table name
+            retain_time: TTL string like "30d", or None to remove any existing TTL
+        """
+        desired = self._normalize_retain_time(retain_time)
+        existing = self._get_existing_ttl(table_name)
+        if existing is None:
+            # Couldn't read the current TTL, don't guess and thrash the table with DDL
+            return
+
+        # QuestDB reports "no TTL" as value 0. Use the same sentinel for a removed retain time.
+        if desired is None:
+            if retain_time:
+                # Invalid value, already warned in _normalize_retain_time. Leave the table alone.
+                return
+            desired = (0, "HOUR")
+
+        if desired == existing:
+            return
+
+        try:
+            self._execute_ddl(f'ALTER TABLE "{table_name}" SET TTL {desired[0]} {desired[1]}')
+        except self._CONNECTION_ERROR_TYPES:
+            raise
+        except psycopg.Error as error:
+            self._log_error(f"QuestDB: Error setting TTL on table {table_name}: {error}")
+            return
+        if desired[0] == 0:
+            self._log_info(f"QuestDB: Removed TTL from table {table_name} (was {existing[0]} {existing[1]})")
+        else:
+            self._log_info(
+                f"QuestDB: Set TTL on table {table_name} to {desired[0]} {desired[1]} (was {existing[0]} {existing[1]})"
+            )
+
+    def _get_existing_ttl(self, table_name):
+        """
+        Query QuestDB for the TTL currently set on a table.
+
+        Returns:
+            Tuple of (value, unit) where value 0 means no TTL, or None if the TTL
+            could not be determined.
+        """
+        try:
+            with self.query.cursor() as cur:
+                cur.execute("SELECT ttlValue, ttlUnit FROM tables() WHERE table_name = %s", (table_name,))
+                row = cur.fetchone()
+                if not row:
+                    return None
+                return (int(row[0]), str(row[1]).upper())
+        except self._CONNECTION_ERROR_TYPES:
+            raise
+        except (psycopg.Error, TypeError, ValueError) as error:
+            # TypeError / ValueError can occur in unit tests with mock cursors
+            self._log_warn(f"QuestDB: Could not read TTL for table {table_name}: {error}")
+            return None
+
+    def _normalize_retain_time(self, retain_time):
+        """
+        Convert TTL from compact format (e.g., "30d") to the normalized (value, unit)
+        pair QuestDB reports in tables().
+
+        QuestDB rewrites TTLs into the largest unit that divides evenly (48 HOUR becomes
+        2 DAY, 7 DAY becomes 1 WEEK), so applying the same normalization here lets the
+        desired TTL be compared directly against the existing one.
+
+        QuestDB also requires the TTL to be an integer multiple of the partition size and
+        only ever drops whole partitions. Tables are PARTITION BY DAY, so an hours value
+        that isn't a multiple of 24 is rejected outright by QuestDB and is rounded up to
+        one day here instead.
 
         Args:
             retain_time: TTL string in format like "30d", "1w", "6M", "1y"
 
         Returns:
-            QuestDB-compatible TTL string or None if invalid
+            Tuple of (value, unit) such as (30, "DAY"), or None if invalid
         """
         if not retain_time:
             return None
@@ -1272,15 +1350,41 @@ class QuestDBClient:
             self._log_warn(f"QuestDB: Invalid retain_time format '{retain_time}', expected format like '30d', '1y'")
             return None
 
-        value = match.group(1)
-        unit_suffix = match.group(2)
-        questdb_unit = unit_map.get(unit_suffix)
+        value = int(match.group(1))
+        unit = unit_map[match.group(2)]
 
-        if not questdb_unit:
-            self._log_warn(f"QuestDB: Unknown retain_time unit '{unit_suffix}'")
+        if value == 0:
+            self._log_warn(f"QuestDB: Invalid retain_time '{retain_time}', value must be greater than 0")
             return None
 
-        return f"{value} {questdb_unit}"
+        if unit == "HOUR" and value % 24 != 0:
+            # Tables are PARTITION BY DAY and QuestDB drops whole partitions only
+            self._log_warn(
+                f"QuestDB: retain_time '{retain_time}' is less than the DAY partition size, using 1 DAY instead"
+            )
+            return (1, "DAY")
+        if unit == "HOUR":
+            value //= 24
+            unit = "DAY"
+        if unit == "DAY" and value % 7 == 0:
+            value //= 7
+            unit = "WEEK"
+        return (value, unit)
+
+    def _convert_retain_time_to_questdb_format(self, retain_time):
+        """
+        Convert TTL from compact format (e.g., "30d", "1y") to QuestDB format (e.g., "30 DAY", "1 YEAR").
+
+        Args:
+            retain_time: TTL string in format like "30d", "1w", "6M", "1y"
+
+        Returns:
+            QuestDB-compatible TTL string or None if invalid
+        """
+        normalized = self._normalize_retain_time(retain_time)
+        if normalized is None:
+            return None
+        return f"{normalized[0]} {normalized[1]}"
 
     def convert_value(self, value, item_name, table_name=None):
         """
