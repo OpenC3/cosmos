@@ -126,9 +126,29 @@ module OpenC3
         )
       end
 
+      it "should complain about a leading or duplicated comma" do
+        expect { extract_fields_from_cmd_text("TARGET PACKET with ,") }.to raise_error(/Missing command parameter before comma/)
+        expect { extract_fields_from_cmd_text("TARGET PACKET with , KEY1 VALUE1") }.to raise_error(/Missing command parameter before comma/)
+        expect { extract_fields_from_cmd_text("TARGET PACKET with KEY1 VALUE1,,KEY2 2") }.to raise_error(/Missing command parameter before comma/)
+        expect { extract_fields_from_cmd_text("TARGET PACKET with KEY1 VALUE1,,") }.to raise_error(/Missing command parameter before comma/)
+      end
+
       it "should preserve commas inside quoted strings and arrays" do
         expect(extract_fields_from_cmd_text("TARGET PACKET with KEY1 'A,B',KEY2 [1,2,3],KEY3 \"C, D\"")).to eql(
           ['TARGET', 'PACKET', { 'KEY1' => 'A,B', 'KEY2' => [1, 2, 3], 'KEY3' => 'C, D' }]
+        )
+      end
+
+      it "should handle nested array parameters" do
+        expect(extract_fields_from_cmd_text("TARGET PACKET with KEY1 [[1,2],[3,4]]")).to eql(
+          ['TARGET', 'PACKET', { 'KEY1' => [[1, 2], [3, 4]] }]
+        )
+        # Whitespace inside the nested array and no whitespace around the delimiter
+        expect(extract_fields_from_cmd_text("TARGET PACKET with KEY1 [[1, 2], [3, 4]],KEY2 5")).to eql(
+          ['TARGET', 'PACKET', { 'KEY1' => [[1, 2], [3, 4]], 'KEY2' => 5 }]
+        )
+        expect(extract_fields_from_cmd_text("TARGET PACKET with KEY1 [['1','2'],['3','4']], KEY2 [[1,2],[3,4]]")).to eql(
+          ['TARGET', 'PACKET', { 'KEY1' => [['1', '2'], ['3', '4']], 'KEY2' => [[1, 2], [3, 4]] }]
         )
       end
 

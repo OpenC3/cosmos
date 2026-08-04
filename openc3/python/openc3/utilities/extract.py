@@ -19,12 +19,12 @@ import re
 
 
 # Tokenizer for command parameters: matches double-quoted strings, single-quoted strings,
-# bracket-delimited arrays, a bare comma delimiter, or bare words. Commas are tokenized
-# separately so whitespace around them is optional.
+# bracket-delimited arrays (one level of nesting), a bare comma delimiter, or bare words.
+# Commas are tokenized separately so whitespace around them is optional.
 SCANNING_REGULAR_EXPRESSION = re.compile(
     r""" "(?:[^\\"]|\\.)*"            # double-quoted string (with escaped chars)
        | '(?:[^\\']|\\.)*'            # single-quoted string (with escaped chars)
-       | \[(?:[^\\\[\]]|\\.)*\]       # bracket-delimited array (with escaped chars)
+       | \[(?:[^\\\[\]]|\\.|\[(?:[^\\\[\]]|\\.)*\])*\]   # array, one level of nesting
        | ,                            # comma delimiter
        | [^\s,]+                      # bare word
     """,
@@ -171,13 +171,15 @@ def extract_fields_from_cmd_text(text):
         value = None
         for item in second_half:
             if item == ",":
-                # A comma completes the current keyword / value pair
-                if keyword is not None:
-                    if value is None:
-                        raise RuntimeError(f"Missing value for last command parameter: {text:s}")
-                    add_cmd_parameter(keyword, value, cmd_params)
-                    keyword = None
-                    value = None
+                # A comma completes the current keyword / value pair.
+                # A comma with nothing pending is a leading or duplicated comma.
+                if keyword is None:
+                    raise RuntimeError(f"Missing command parameter before comma: {text:s}")
+                if value is None:
+                    raise RuntimeError(f"Missing value for last command parameter: {text:s}")
+                add_cmd_parameter(keyword, value, cmd_params)
+                keyword = None
+                value = None
             elif keyword is None:
                 keyword = item
             elif value is None:

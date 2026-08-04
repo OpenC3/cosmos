@@ -88,9 +88,30 @@ class TestExtractFieldsFromCmdText:
         result = extract_fields_from_cmd_text("TARGET PACKET with KEY1 VALUE1, KEY2 2,")
         assert result == ("TARGET", "PACKET", {"KEY1": "VALUE1", "KEY2": 2})
 
+    def test_complains_about_a_leading_or_duplicated_comma(self):
+        for text in [
+            "TARGET PACKET with ,",
+            "TARGET PACKET with , KEY1 VALUE1",
+            "TARGET PACKET with KEY1 VALUE1,,KEY2 2",
+            "TARGET PACKET with KEY1 VALUE1,,",
+        ]:
+            with pytest.raises(RuntimeError, match="Missing command parameter before comma"):
+                extract_fields_from_cmd_text(text)
+
     def test_preserves_commas_inside_quoted_strings_and_arrays(self):
         result = extract_fields_from_cmd_text("TARGET PACKET with KEY1 'A,B',KEY2 [1,2,3],KEY3 \"C, D\"")
         assert result == ("TARGET", "PACKET", {"KEY1": "A,B", "KEY2": [1, 2, 3], "KEY3": "C, D"})
+
+    def test_handles_nested_array_parameters(self):
+        result = extract_fields_from_cmd_text("TARGET PACKET with KEY1 [[1,2],[3,4]]")
+        assert result == ("TARGET", "PACKET", {"KEY1": [[1, 2], [3, 4]]})
+
+        # Whitespace inside the nested array and no whitespace around the delimiter
+        result = extract_fields_from_cmd_text("TARGET PACKET with KEY1 [[1, 2], [3, 4]],KEY2 5")
+        assert result == ("TARGET", "PACKET", {"KEY1": [[1, 2], [3, 4]], "KEY2": 5})
+
+        result = extract_fields_from_cmd_text("TARGET PACKET with KEY1 [['1','2'],['3','4']], KEY2 [[1,2],[3,4]]")
+        assert result == ("TARGET", "PACKET", {"KEY1": [["1", "2"], ["3", "4"]], "KEY2": [[1, 2], [3, 4]]})
 
     def test_handles_multiple_array_parameters(self):
         result = extract_fields_from_cmd_text("TARGET PACKET with KEY1 [1,2,3,4], KEY2 2, KEY3 '3', KEY4 [5, 6, 7, 8]")

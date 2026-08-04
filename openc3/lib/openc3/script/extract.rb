@@ -21,9 +21,10 @@ require 'openc3/utilities/store'
 module OpenC3
   module Extract
     # Tokenizer for command parameters: matches double quoted strings, single quoted strings,
-    # bracket delimited arrays, a bare comma delimiter, or bare words (runs of non-whitespace,
-    # non-comma characters). Commas are tokenized separately so whitespace around them is optional.
-    SCANNING_REGULAR_EXPRESSION = %r{ (?:"(?:[^\\"]|\\.)*") | (?:'(?:[^\\']|\\.)*') | (?:\[(?:[^\\\[\]]|\\.)*\]) | , | [^\s,]+ }x # "
+    # bracket delimited arrays (one level of nesting), a bare comma delimiter, or bare words
+    # (runs of non-whitespace, non-comma characters). Commas are tokenized separately so
+    # whitespace around them is optional.
+    SCANNING_REGULAR_EXPRESSION = %r{ (?:"(?:[^\\"]|\\.)*") | (?:'(?:[^\\']|\\.)*') | (?:\[(?:[^\\\[\]]|\\.|\[(?:[^\\\[\]]|\\.)*\])*\]) | , | [^\s,]+ }x # "
 
     private
 
@@ -93,13 +94,13 @@ module OpenC3
         value = nil
         second_half.each do |item|
           if item == ','
-            # A comma completes the current keyword / value pair
-            if keyword
-              raise "Missing value for last command parameter: #{text}" unless value
-              add_cmd_parameter(keyword, value, packet, cmd_params)
-              keyword = nil
-              value = nil
-            end
+            # A comma completes the current keyword / value pair.
+            # A comma with nothing pending is a leading or duplicated comma.
+            raise "Missing command parameter before comma: #{text}" unless keyword
+            raise "Missing value for last command parameter: #{text}" unless value
+            add_cmd_parameter(keyword, value, packet, cmd_params)
+            keyword = nil
+            value = nil
           elsif keyword.nil?
             keyword = item
           elsif value.nil?
