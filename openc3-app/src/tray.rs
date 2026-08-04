@@ -77,26 +77,27 @@ mod imp {
         action
     }
 
-    /// The tray/menu-bar icon: the branded app logo on every platform (macOS
-    /// included). A plain monochrome template is invisible on a light Windows 11
-    /// taskbar — which is why the icon previously appeared "missing" — so we use
-    /// the colored logo as-is everywhere.
+    /// The tray/menu-bar icon: a purpose-built "COS"/"MOS" badge (bold white on
+    /// the brand-blue rounded square) on every platform. The full app logo turned
+    /// to mush when the OS shrank it to tray size, and a plain monochrome template
+    /// is invisible on a light Windows 11 taskbar; this badge stays legible and
+    /// high-contrast at ~16-22px. Regenerate with tools/gen_tray_icon.py.
     fn icon() -> Icon {
-        icon_logo()
+        icon_badge()
     }
 
-    /// The app's branded PNG logo decoded to RGBA for the tray. Falls back to the
-    /// drawn template if decoding ever fails, so the tray always gets an icon.
-    fn icon_logo() -> Icon {
-        const LOGO_PNG: &[u8] = include_bytes!("../assets/icons/128x128.png");
-        match image::load_from_memory(LOGO_PNG) {
+    /// The COS/MOS badge PNG decoded to RGBA for the tray. Falls back to the drawn
+    /// template if decoding ever fails, so the tray always gets an icon.
+    fn icon_badge() -> Icon {
+        const BADGE_PNG: &[u8] = include_bytes!("../assets/tray.png");
+        match image::load_from_memory(BADGE_PNG) {
             Ok(img) => {
                 let rgba = img.into_rgba8();
                 let (w, h) = rgba.dimensions();
                 Icon::from_rgba(rgba.into_raw(), w, h).expect("valid tray icon")
             }
             Err(e) => {
-                crate::logging::warn("tray", &format!("failed to decode tray logo: {e}; using fallback"));
+                crate::logging::warn("tray", &format!("failed to decode tray badge: {e}; using fallback"));
                 icon_template()
             }
         }
@@ -199,7 +200,11 @@ pub fn set_dock_visible(visible: bool) {
         unsafe {
             let app: *mut AnyObject = msg_send![class!(NSApplication), sharedApplication];
             if !app.is_null() {
-                let _: () = msg_send![app, setActivationPolicy: policy];
+                // -[NSApplication setActivationPolicy:] returns BOOL, so the
+                // declared return type must be `bool` — objc2 verifies the
+                // Objective-C type encoding at runtime and aborts on a mismatch
+                // (declaring `()` panicked with "expected 'B', found 'v'").
+                let _changed: bool = msg_send![app, setActivationPolicy: policy];
             }
         }
     }

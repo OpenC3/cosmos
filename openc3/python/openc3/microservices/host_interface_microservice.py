@@ -43,6 +43,7 @@ import asyncio
 import contextlib
 import json
 import os
+import signal
 import sys
 import traceback
 
@@ -173,15 +174,39 @@ class HostInterfaceMicroservice:
             return
         try:
             asyncio.run(self._serve())
+        except KeyboardInterrupt:
+            # SIGINT delivered before our async handler was installed (or on a
+            # loop that can't install one) — still a clean shutdown, not a crash.
+            Logger.info(f"{self.name}: shutting down (interrupt)")
         except Exception:
             Logger.error(f"{self.name}: host interface crashed:\n{traceback.format_exc()}")
 
     async def _serve(self):
         import iroh
 
+        loop = asyncio.get_running_loop()
         self._connect_event = asyncio.Event()
         self._disconnect_event = asyncio.Event()
         self._disconnect_event.set()  # start disconnected; COSMOS drives connect
+
+        # Shut down cleanly on SIGINT/SIGTERM. openc3-app soft-stops us with
+        # SIGINT when it closes; without this the default handler raises
+        # KeyboardInterrupt and dumps a traceback. Instead: flip `shutdown`, wake
+        # any parked loop, and set `stop` so the run loop below cancels the tasks
+        # and lets their finally blocks disconnect the device / close connections.
+        stop = asyncio.Event()
+
+        def _request_stop():
+            self.shutdown = True
+            self._connect_event.set()
+            self._disconnect_event.set()
+            stop.set()
+
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            # add_signal_handler is unsupported on some loops (e.g. Windows
+            # Proactor); there the process is hard-stopped instead.
+            with contextlib.suppress(NotImplementedError, ValueError, RuntimeError):
+                loop.add_signal_handler(sig, _request_stop)
 
         # Bind with the openc3-app-provided identity so the hub can verify us.
         # No relay by default (co-located); set OPENC3_BRIDGE_RELAY to the same
@@ -196,14 +221,24 @@ class HostInterfaceMicroservice:
         endpoint = await iroh.Endpoint.bind(iroh.EndpointOptions(**opts))
         addr = iroh.EndpointTicket.from_string(self.ticket).endpoint_addr()
 
-        # Run the persistent control channel and the (gated) data channel together.
+        # Run the persistent control channel and the (gated) data channel until a
+        # shutdown signal arrives (or a task exits on its own), then cancel both
+        # and await them so their finally blocks run before we close the endpoint.
         control = asyncio.create_task(self._control_loop(endpoint, addr))
         data = asyncio.create_task(self._data_loop(endpoint, addr))
+        stopper = asyncio.create_task(stop.wait())
         try:
-            await asyncio.gather(control, data)
+            await asyncio.wait({control, data, stopper}, return_when=asyncio.FIRST_COMPLETED)
         finally:
-            control.cancel()
-            data.cancel()
+            self.shutdown = True
+            for task in (control, data, stopper):
+                task.cancel()
+            await asyncio.gather(control, data, stopper, return_exceptions=True)
+            with contextlib.suppress(Exception):
+                result = endpoint.close()
+                if asyncio.iscoroutine(result):
+                    await result
+        Logger.info(f"{self.name}: shut down")
 
     def _set_desired(self, connected):
         if connected == self._desired_connected:
@@ -248,13 +283,21 @@ class HostInterfaceMicroservice:
                 await asyncio.sleep(RECONNECT_DELAY)
 
     async def _read_commands(self, recv):
-        """Read newline-delimited JSON commands (connect/disconnect) from COSMOS."""
+        """Read newline-delimited JSON commands (connect/disconnect) from COSMOS.
+
+        Each read is coalesced to its NET final desired state: on reconnect after
+        the app has been closed a while, COSMOS's cycling can leave a backlog of
+        stale connect/disconnect commands buffered on the (parked) control channel
+        that all flush at once. Acting on each would thrash the device and spam the
+        log, so we apply only the last command in the batch, and only when it
+        actually changes our desired state."""
         buffer = b""
         while not self.shutdown:
             data = await recv.read(PUMP_CHUNK_BYTES)
             if not data:  # control stream closed
                 break
             buffer += bytes(data)
+            desired = None
             while b"\n" in buffer:
                 line, buffer = buffer.split(b"\n", 1)
                 line = line.strip()
@@ -266,11 +309,12 @@ class HostInterfaceMicroservice:
                     continue
                 cmd = msg.get("cmd")
                 if cmd == "connect":
-                    Logger.info(f"{self.name}: COSMOS requested connect")
-                    self._set_desired(True)
+                    desired = True
                 elif cmd == "disconnect":
-                    Logger.info(f"{self.name}: COSMOS requested disconnect")
-                    self._set_desired(False)
+                    desired = False
+            if desired is not None and desired != self._desired_connected:
+                Logger.info(f"{self.name}: COSMOS requested {'connect' if desired else 'disconnect'}")
+                self._set_desired(desired)
 
     async def _send_status(self, send):
         """Push the interface's live status up to COSMOS every STATUS_INTERVAL."""
