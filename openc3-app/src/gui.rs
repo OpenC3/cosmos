@@ -160,6 +160,9 @@ struct Shared {
     /// flight; its result lands in `env`.
     checking_env: bool,
     env: Option<EnvCheck>,
+    /// Set by the enable-Windows-features task on success: the features only take
+    /// effect after a reboot, so the UI should prompt the user to restart.
+    restart_pending: bool,
 }
 
 struct State {
@@ -234,6 +237,9 @@ struct State {
     dev_context_on_open: Option<std::path::PathBuf>,
     /// Whether the "Shutdown COSMOS?" confirmation modal is showing.
     shutdown_confirm: bool,
+    /// Whether to show the "restart Windows" prompt (a Windows feature was just
+    /// enabled and only takes effect after a reboot).
+    restart_pending: bool,
 }
 
 /// Start the host microservice operator on a background thread, wiring the
@@ -278,6 +284,10 @@ enum Message {
     InstallDockerWin,
     /// Windows: enable the WSL2/virtualization optional features Docker needs.
     EnableWindowsFeatures,
+    /// Windows: restart now to apply newly-enabled features.
+    RestartWindows,
+    /// Dismiss the restart prompt (restart later).
+    DismissRestart,
     StartDocker,
     InstallPython,
     InstallCosmos,
@@ -390,6 +400,7 @@ impl State {
             // Set when the Settings page opens; only compared on close.
             dev_context_on_open: None,
             shutdown_confirm: false,
+            restart_pending: false,
         }
     }
 
@@ -550,6 +561,11 @@ impl State {
             if let Some(ready) = s.cosmos_ready.take() {
                 self.cosmos_ready = ready;
             }
+            // One-shot: the enable-features task flagged a pending restart.
+            if s.restart_pending {
+                self.restart_pending = true;
+                s.restart_pending = false;
+            }
         }
     }
 
@@ -632,7 +648,17 @@ impl State {
                 Task::none()
             }
             Message::EnableWindowsFeatures => {
-                self.spawn("Enabling Windows features", install::enable_windows_features);
+                // Dedicated spawn so we can flag a pending restart on success.
+                self.spawn_enable_windows_features();
+                Task::none()
+            }
+            Message::RestartWindows => {
+                self.restart_pending = false;
+                self.spawn("Restarting Windows", install::restart_windows);
+                Task::none()
+            }
+            Message::DismissRestart => {
+                self.restart_pending = false;
                 Task::none()
             }
             Message::StartDocker => {
@@ -1013,6 +1039,38 @@ impl State {
         });
     }
 
+    /// Like [`spawn`](Self::spawn), but for enabling Windows features: on success
+    /// it flags a pending restart so the UI prompts the user (the features only
+    /// take effect after a reboot).
+    fn spawn_enable_windows_features(&self) {
+        {
+            let mut s = self.shared.lock().unwrap();
+            if s.busy {
+                crate::logging::warn("openc3-app", "A task is already running; please wait.");
+                return;
+            }
+            s.busy = true;
+        }
+        crate::logging::info("openc3-app", "Enabling Windows features...");
+        let shared = self.shared.clone();
+        std::thread::spawn(move || {
+            install::set_notifier(Box::new(|m| crate::logging::info("openc3-app", &m)));
+            let result = install::enable_windows_features();
+            install::clear_notifier();
+            match &result {
+                Ok(()) => crate::logging::info("openc3-app", "Enabling Windows features: done."),
+                Err(e) => crate::logging::error("openc3-app", &format!("Enabling Windows features: ERROR: {e}")),
+            }
+            if let Ok(mut s) = shared.lock() {
+                s.busy = false;
+                // Prompt for a restart only if the features were enabled cleanly.
+                if result.is_ok() {
+                    s.restart_pending = true;
+                }
+            }
+        });
+    }
+
     /// Per-window title.
     fn title(&self, window_id: window::Id) -> String {
         if Some(window_id) == self.logs_window {
@@ -1030,7 +1088,7 @@ impl State {
         if Some(window_id) == self.logs_window {
             return self.view_logs_window();
         }
-        match self.page {
+        let content = match self.page {
             Page::Splash => self.view_splash(),
             Page::Install => self.view_install(),
             Page::Main => {
@@ -1042,7 +1100,68 @@ impl State {
                     self.view_main()
                 }
             }
+        };
+        // A just-enabled Windows feature needs a reboot — overlay a restart
+        // prompt over whatever page is showing until the user acts on it.
+        if self.restart_pending {
+            self.with_restart_prompt(content)
+        } else {
+            content
         }
+    }
+
+    /// Overlay a "restart Windows" modal (dim scrim + centered card) on `base`.
+    /// Enabling Windows optional features only takes effect after a reboot, so
+    /// after doing so we prompt the user to restart now or later.
+    fn with_restart_prompt<'a>(&self, base: Element<'a, Message>) -> Element<'a, Message> {
+        fn scrim_style(_theme: &Theme) -> container::Style {
+            container::Style {
+                background: Some(Color::from_rgba8(0, 0, 0, 0.6).into()),
+                ..container::Style::default()
+            }
+        }
+        fn card_style(_theme: &Theme) -> container::Style {
+            container::Style {
+                background: Some(Color::from_rgb8(0x24, 0x24, 0x28).into()),
+                border: iced::border::Border {
+                    color: Color::from_rgb8(0x3A, 0x3A, 0x40),
+                    width: 1.0,
+                    radius: 10.0.into(),
+                },
+                ..container::Style::default()
+            }
+        }
+        let card = container(
+            column![
+                text("Restart required").size(22),
+                text(
+                    "Windows features were enabled. They only take effect after a restart. \
+                     Restart now to finish setup?"
+                )
+                .size(15),
+                Space::with_height(8),
+                row![
+                    button(text("Restart Later"))
+                        .padding(10)
+                        .on_press(Message::DismissRestart),
+                    button(text("Restart Now"))
+                        .padding(10)
+                        .style(button::danger)
+                        .on_press(Message::RestartWindows),
+                ]
+                .spacing(10),
+            ]
+            .spacing(12),
+        )
+        .padding(24)
+        .style(card_style);
+        let overlay = container(card)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x(Length::Fill)
+            .center_y(Length::Fill)
+            .style(scrim_style);
+        stack![base, opaque(overlay)].into()
     }
 
     /// Page 1: branded splash shown for [`SPLASH_DURATION`] while the
@@ -1310,12 +1429,32 @@ impl State {
             .style(button::text)
             .on_press(Message::Skip);
 
-        let busy_note = if self.busy {
-            text("Working… (progress below and in the terminal)")
-                .size(13)
-                .color(muted)
+        // Prominent, animated "installing" indicator so it's obvious work is
+        // happening (installs can take minutes with no card-level feedback).
+        let busy_note: Element<'_, Message> = if self.busy {
+            let green = Color::from_rgb8(0x4C, 0xAF, 0x50);
+            let frame = SPINNER[self.spinner % SPINNER.len()];
+            container(
+                row![
+                    text(frame).size(24).font(Font::MONOSPACE).color(green),
+                    column![
+                        text("Installing…").size(16),
+                        text("This can take several minutes. Live progress is shown below.")
+                            .size(12)
+                            .color(muted),
+                    ]
+                    .spacing(2),
+                ]
+                .spacing(14)
+                .align_y(Center),
+            )
+            .padding(12)
+            .width(Length::Fill)
+            .max_width(PANEL_WIDTH)
+            .style(card_style)
+            .into()
         } else {
-            text(" ").size(13)
+            Space::with_height(0).into()
         };
 
         // Recent log lines in a subtle panel so install progress is visible here.
@@ -2213,6 +2352,9 @@ impl State {
         // install page at a moderate rate; refresh container status every 2s.
         let interval = match self.page {
             Page::Splash => Duration::from_millis(200),
+            // Tick fast while an install is running so the spinner animates;
+            // otherwise poll the setup page at a moderate rate.
+            Page::Install if self.busy => Duration::from_millis(120),
             Page::Install => Duration::from_millis(750),
             // Tick fast while the first status sample is still loading so the
             // spinner animates, then settle to a 2s status poll.

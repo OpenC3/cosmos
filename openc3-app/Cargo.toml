@@ -89,6 +89,13 @@ tray-icon = "0.24.1"
 # winit), so this adds no real build cost.
 objc2 = "0.6"
 
+[target.'cfg(windows)'.build-dependencies]
+# Embed assets/icons/icon.ico into the .exe (see build.rs) so Explorer, the
+# taskbar, and the desktop/Start shortcuts show the OpenC3 COSMOS logo. Host-
+# scoped: only pulled when building on a Windows host (the release workflow's
+# Windows job), matching build.rs's `#[cfg(windows)]` gate.
+winresource = "0.1"
+
 # Native installer configuration (cargo-packager). The host OS determines which
 # formats are produced: dmg/app on macOS, deb/appimage on Linux, and the WiX
 # .msi on Windows. See package.sh / package.ps1.

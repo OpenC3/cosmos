@@ -461,6 +461,22 @@ foreach ($f in $features) {\r\n\
     }
 }
 
+/// Restart Windows (`shutdown /r /t 0`) so newly-enabled optional features take
+/// effect. Interactive users can restart without elevation. No-op off Windows.
+#[cfg_attr(not(feature = "gui"), allow(dead_code))]
+pub fn restart_windows() -> Result<()> {
+    #[cfg(windows)]
+    {
+        notify("Restarting Windows...");
+        process::run(Command::new("shutdown").args(["/r", "/t", "0"]))?;
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    {
+        Ok(())
+    }
+}
+
 /// Whether hardware virtualization (Intel VT-x / AMD-V/SVM) is enabled in the
 /// BIOS/UEFI — a hard requirement for Docker's WSL2/Hyper-V backend that the app
 /// cannot turn on itself (it's a firmware setting). `Some(true)` = enabled (or a
