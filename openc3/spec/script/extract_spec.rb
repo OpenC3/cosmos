@@ -110,6 +110,48 @@ module OpenC3
         )
       end
 
+      it "should not require whitespace after the comma delimiter" do
+        expect(extract_fields_from_cmd_text("TARGET PACKET with KEY1 VALUE1,KEY2 2,KEY3 '3',KEY4 4.0")).to eql(
+          ['TARGET', 'PACKET', { 'KEY1' => 'VALUE1', 'KEY2' => 2, 'KEY3' => '3', 'KEY4' => 4.0 }]
+        )
+        # Mixed spacing around the commas
+        expect(extract_fields_from_cmd_text("TARGET PACKET with KEY1 VALUE1 ,KEY2 2, KEY3 '3' , KEY4 4.0")).to eql(
+          ['TARGET', 'PACKET', { 'KEY1' => 'VALUE1', 'KEY2' => 2, 'KEY3' => '3', 'KEY4' => 4.0 }]
+        )
+      end
+
+      it "should allow a trailing comma" do
+        expect(extract_fields_from_cmd_text("TARGET PACKET with KEY1 VALUE1, KEY2 2,")).to eql(
+          ['TARGET', 'PACKET', { 'KEY1' => 'VALUE1', 'KEY2' => 2 }]
+        )
+      end
+
+      it "should complain about a leading or duplicated comma" do
+        expect { extract_fields_from_cmd_text("TARGET PACKET with ,") }.to raise_error(/Missing command parameter before comma/)
+        expect { extract_fields_from_cmd_text("TARGET PACKET with , KEY1 VALUE1") }.to raise_error(/Missing command parameter before comma/)
+        expect { extract_fields_from_cmd_text("TARGET PACKET with KEY1 VALUE1,,KEY2 2") }.to raise_error(/Missing command parameter before comma/)
+        expect { extract_fields_from_cmd_text("TARGET PACKET with KEY1 VALUE1,,") }.to raise_error(/Missing command parameter before comma/)
+      end
+
+      it "should preserve commas inside quoted strings and arrays" do
+        expect(extract_fields_from_cmd_text("TARGET PACKET with KEY1 'A,B',KEY2 [1,2,3],KEY3 \"C, D\"")).to eql(
+          ['TARGET', 'PACKET', { 'KEY1' => 'A,B', 'KEY2' => [1, 2, 3], 'KEY3' => 'C, D' }]
+        )
+      end
+
+      it "should handle nested array parameters" do
+        expect(extract_fields_from_cmd_text("TARGET PACKET with KEY1 [[1,2],[3,4]]")).to eql(
+          ['TARGET', 'PACKET', { 'KEY1' => [[1, 2], [3, 4]] }]
+        )
+        # Whitespace inside the nested array and no whitespace around the delimiter
+        expect(extract_fields_from_cmd_text("TARGET PACKET with KEY1 [[1, 2], [3, 4]],KEY2 5")).to eql(
+          ['TARGET', 'PACKET', { 'KEY1' => [[1, 2], [3, 4]], 'KEY2' => 5 }]
+        )
+        expect(extract_fields_from_cmd_text("TARGET PACKET with KEY1 [['1','2'],['3','4']], KEY2 [[1,2],[3,4]]")).to eql(
+          ['TARGET', 'PACKET', { 'KEY1' => [['1', '2'], ['3', '4']], 'KEY2' => [[1, 2], [3, 4]] }]
+        )
+      end
+
       it "should handle multiple array parameters" do
         expect(extract_fields_from_cmd_text("TARGET PACKET with KEY1 [1,2,3,4], KEY2 2, KEY3 '3', KEY4 [5, 6, 7, 8]")).to eql(
           ['TARGET', 'PACKET', { 'KEY1' => [1, 2, 3, 4], 'KEY2' => 2, 'KEY3' => '3', 'KEY4' => [5, 6, 7, 8] }]
