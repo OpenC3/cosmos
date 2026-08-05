@@ -584,6 +584,11 @@ export default {
       ) {
         return // No change
       }
+      // The chooser clears its selection when the target has no packets or the
+      // request failed (e.g. no permission). Nothing to look up in that case.
+      if (!event.targetName || !event.packetName) {
+        return
+      }
       try {
         this.loadingPacket = true
         const target = await this.api.get_target(event.targetName)
