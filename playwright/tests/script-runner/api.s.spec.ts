@@ -211,10 +211,16 @@ async function testMetadataApis(
 ) {
   // Clear other test data
   await page.goto('/tools/admin/redis')
-  await page
-    .getByLabel('Redis command')
-    .fill('zremrangebyscore DEFAULT__METADATA -inf +inf')
-  await page.getByLabel('Redis command').press('Enter')
+  const redisCommand = page.getByLabel('Redis command')
+  await redisCommand.fill('zremrangebyscore DEFAULT__METADATA -inf +inf')
+  // Wait for the command to actually land. page.goto() aborts in-flight
+  // requests, so pressing Enter and immediately navigating away made the
+  // clear a race: when it lost, stale metadata survived into the run below.
+  const redisResponse = page.waitForResponse((response) =>
+    response.url().includes('/openc3-api/redis/exec'),
+  )
+  await redisCommand.press('Enter')
+  expect((await redisResponse).ok()).toBe(true)
   await page.goto('/tools/scriptrunner')
 
   await openFile(page, utils, filename)
@@ -222,17 +228,24 @@ async function testMetadataApis(
   await page.locator('[data-test="script-runner-script-metadata"]').click()
   await utils.sleep(500)
   await expect(page.locator('[data-test="new-event"]')).toBeVisible()
-  // Delete any existing metadata so we start fresh
-  while (true) {
-    if (await page.$('[data-test=delete-event]')) {
-      await page.locator('[data-test=delete-event] >> nth=0').click()
-      await page.locator('[data-test=confirm-dialog-delete]').click()
-      await utils.sleep(300)
-    } else {
-      break
-    }
+  // Delete any existing metadata so we start fresh. The redis clear above
+  // should have emptied this, so normally the loop doesn't run at all.
+  const deleteButtons = page.locator('[data-test=delete-event]')
+  let remaining = await deleteButtons.count()
+  while (remaining > 0) {
+    await deleteButtons.first().click()
+    await page.locator('[data-test=confirm-dialog-delete]').click()
+    // The row is spliced out of the table when the confirm resolves. Wait on
+    // that rather than a fixed sleep, which under CI load could tick before
+    // the re-render and then click a stale row.
+    remaining -= 1
+    await expect(deleteButtons).toHaveCount(remaining)
   }
   await page.locator('[data-test="close-event-list"]').click()
+  // metadata_input() reopens this same dialog, so wait for it to actually go
+  // away. Otherwise the toBeVisible() below can match the dialog we just
+  // closed and the click lands on a detaching element.
+  await expect(page.locator('[data-test="new-event"]')).not.toBeVisible()
 
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test="new-event"]')).toBeVisible({
@@ -249,7 +262,12 @@ async function testMetadataApis(
     .locator('[data-test="value-0"]')
     .locator('input')
     .fill('inputvalue')
-  await page.getByRole('button', { name: 'Ok' }).click()
+  const okButton = page.getByRole('button', { name: 'Ok' })
+  await okButton.click()
+  // The create dialog only closes once the POST succeeds. If it fails (e.g. a
+  // 409 because the start collides with an existing entry) it stays open and
+  // its scrim silently blocks Close below, so fail here where it's diagnosable.
+  await expect(okButton).not.toBeVisible()
   await page.locator('[data-test="close-event-list"]').click()
 
   await expect(page.locator('[data-test=state] input')).toHaveValue(
