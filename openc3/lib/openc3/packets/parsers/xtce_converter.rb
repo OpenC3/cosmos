@@ -60,7 +60,7 @@ module OpenC3
     def self.schema_errors(filename)
       # File.open, not File.read: the schema imports xml.xsd relative to itself, which
       # Nokogiri can only resolve from the IO's path
-      @schema ||= Nokogiri::XML::Schema(File.open(SCHEMA_FILE))
+      @schema ||= File.open(SCHEMA_FILE) { |f| Nokogiri::XML::Schema(f) }
       @schema.validate(Nokogiri::XML(File.read(filename))).map(&:message)
     end
 
