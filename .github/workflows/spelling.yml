@@ -43,6 +43,8 @@ jobs:
       - uses: codespell-project/actions-codespell@8f01853be192eb0f849a5c7d721450e7a467c579 # v2.2
         with:
           # Skip generated code as well as cstol_converter which has false
-          # positivies on ADN and Adn
-          skip: ./docs,*.map,*.min.js,*.pem,*.bin,pnpm-lock.yaml,cstol_converter,vue.global*,vuetify-labs*
+          # positives on ADN and Adn. *.xsd covers vendored third party schemas
+          # (e.g. the OMG XTCE schemas) which must stay byte for byte identical
+          # to the published versions, typos included.
+          skip: ./docs,*.map,*.min.js,*.pem,*.bin,*.xsd,pnpm-lock.yaml,cstol_converter,vue.global*,vuetify-labs*
           ignore_words_file: .whitelist

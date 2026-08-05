@@ -931,6 +931,25 @@ module OpenC3
         expect { model.deploy(@target_dir, variables) }.to raise_error(/No target files found/)
       end
 
+      it "converts the target to .xtce and says which item is the packet time" do
+        model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
+        model.create
+        Dir.mktmpdir do |output_dir|
+          expect { model.deploy(@target_dir, { "xtce_output" => output_dir, "time_association_name" => "PACKET_TIME" }) }
+            .to output(/Using mnemonic 'PACKET_TIME' as the packet time item/).to_stdout
+          expect(File.exist?(File.join(output_dir, @target, "cmd_tlm", "inst.xtce"))).to be true
+        end
+      end
+
+      it "says no TimeAssociation is written when no packet time item is given" do
+        model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
+        model.create
+        Dir.mktmpdir do |output_dir|
+          expect { model.deploy(@target_dir, { "xtce_output" => output_dir }) }
+            .to output(/No packet time item given/).to_stdout
+        end
+      end
+
       it "puts the packets in Redis" do
         model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
         model.create

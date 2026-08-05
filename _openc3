@@ -431,7 +431,11 @@ _openc3_cli() {
                 '(-i --import)'{-i,--import}'[import .xtce file]:file:_files -g "*.xtce"' \
                 '(-o --output)'{-o,--output}'[output directory]:directory:_directories' \
                 '(-p --plugin)'{-p,--plugin}'[export from plugin]:plugin:_files -g "*.gem"' \
-                '(-v --variables)'{-v,--variables}'[variables file]:file:_files'
+                '(-v --variables)'{-v,--variables}'[variables file]:file:_files' \
+                '(-r --root_target)'{-r,--root_target}'[target at the root of the XTCE document]:target name' \
+                '(-t --time_association_name)'{-t,--time_association_name}'[time association name]:name' \
+                '(--validate --no-validate)--validate[validate against the XTCE 1.2 schema]' \
+                '(--validate --no-validate)--no-validate[skip XTCE 1.2 schema validation]'
             ;;
         cstol_converter)
             _arguments \
