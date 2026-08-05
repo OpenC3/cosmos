@@ -2952,6 +2952,19 @@ export default {
           break
       }
     },
+    async uploadFile(file) {
+      const response = await Api.get(
+        `/openc3-api/storage/upload/${encodeURIComponent(
+          `${window.openc3Scope}/tmp/${file.name}`,
+        )}?bucket=OPENC3_CONFIG_BUCKET`,
+      )
+      // This pushes the file into storage by using the fields in the presignedRequest
+      // See storage_controller.rb get_upload_presigned_request()
+      return axios({
+        ...response.data,
+        data: file,
+      })
+    },
     async fileDialogCallback(files) {
       // Set fileNames to 'COSMOS__CANCEL' in case they cancelled
       // otherwise we will populate it with the file names they selected
@@ -2962,22 +2975,7 @@ export default {
         fileNames = []
         files.forEach((file) => {
           fileNames.push(file.name)
-          promises.push(
-            Api.get(
-              `/openc3-api/storage/upload/${encodeURIComponent(
-                `${window.openc3Scope}/tmp/${file.name}`,
-              )}?bucket=OPENC3_CONFIG_BUCKET`,
-            )
-              .then((response) => {
-                // This pushes the file into storage by using the fields in the presignedRequest
-                // See storage_controller.rb get_upload_presigned_request()
-                return axios({
-                  ...response.data,
-                  data: file,
-                })
-              })
-              .catch(console.error),
-          )
+          promises.push(this.uploadFile(file))
         })
       }
       const respond = (answer) => {
