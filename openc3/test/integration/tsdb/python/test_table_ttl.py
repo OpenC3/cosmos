@@ -19,7 +19,7 @@ verify create_table issues ALTER TABLE ... SET TTL for existing tables.
 
 They also pin down the QuestDB behaviors the implementation depends on:
 - tables() reports TTL normalized to the largest evenly dividing unit
-  (48 HOUR -> 2 DAY, 7 DAY -> 1 WEEK)
+  (48 HOUR -> 2 DAY, 7 DAY -> 1 WEEK, 12 MONTH -> 1 YEAR)
 - TTL must be an integer multiple of the partition size (PARTITION BY DAY),
   so hour retain times are rounded up to whole days (1h -> 1 DAY, 25h -> 2 DAY)
 - TTL 0 removes the TTL
@@ -85,6 +85,8 @@ class TestRetainTimeNormalization:
         assert questdb_client._normalize_retain_time("7d") == (1, "WEEK")
         assert questdb_client._normalize_retain_time("2w") == (2, "WEEK")
         assert questdb_client._normalize_retain_time("6M") == (6, "MONTH")
+        assert questdb_client._normalize_retain_time("12M") == (1, "YEAR")
+        assert questdb_client._normalize_retain_time("24M") == (2, "YEAR")
         assert questdb_client._normalize_retain_time("1y") == (1, "YEAR")
 
     def test_rounds_partial_hours_up_to_whole_days(self, questdb_client):
@@ -128,6 +130,17 @@ class TestCreateTableTtl:
 
         questdb_client.create_table(target, packet, PACKET_DEF, retain_time="1h")
         assert _get_ttl(questdb_client, table_name) == (1, "DAY")
+
+    def test_month_multiple_of_a_year_converges(self, questdb_client, clean_table):
+        # QuestDB reports 12 MONTH as 1 YEAR. If _normalize_retain_time didn't do the
+        # same, desired would never equal existing and every restart would re-ALTER.
+        target = "TBLTTL"
+        packet = "YEARLY"
+        table_name = clean_table(f"DEFAULT__TLM__{target}__{packet}")
+
+        questdb_client.create_table(target, packet, PACKET_DEF, retain_time="12M")
+        assert _get_ttl(questdb_client, table_name) == (1, "YEAR")
+        assert questdb_client._normalize_retain_time("12M") == _get_ttl(questdb_client, table_name)
 
     def test_adds_ttl_to_existing_table(self, questdb_client, clean_table):
         target = "TBLTTL"

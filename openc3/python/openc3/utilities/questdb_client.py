@@ -1256,6 +1256,10 @@ class QuestDBClient:
         retain time was configured (or created with a different one) keeps its old
         TTL forever unless it is explicitly altered.
 
+        This is best effort and never raises. Retention is not load bearing for ingest
+        and callers such as the tsdb microservice ingress error recovery path clear
+        buffered rows when create_table raises.
+
         Args:
             table_name: Sanitized table name
             retain_time: TTL string like "30d", or None to remove any existing TTL
@@ -1278,8 +1282,6 @@ class QuestDBClient:
 
         try:
             self._execute_ddl(f'ALTER TABLE "{table_name}" SET TTL {desired[0]} {desired[1]}')
-        except self._CONNECTION_ERROR_TYPES:
-            raise
         except psycopg.Error as error:
             self._log_error(f"QuestDB: Error setting TTL on table {table_name}: {error}")
             return
@@ -1305,9 +1307,9 @@ class QuestDBClient:
                 if not row:
                     return None
                 return (int(row[0]), str(row[1]).upper())
-        except self._CONNECTION_ERROR_TYPES:
-            raise
         except (psycopg.Error, TypeError, ValueError) as error:
+            # Connection errors are swallowed too. Retention is best effort and callers
+            # like the ingress error recovery path drop buffered rows on exception.
             # TypeError / ValueError can occur in unit tests with mock cursors
             self._log_warn(f"QuestDB: Could not read TTL for table {table_name}: {error}")
             return None
@@ -1318,8 +1320,8 @@ class QuestDBClient:
         pair QuestDB reports in tables().
 
         QuestDB rewrites TTLs into the largest unit that divides evenly (48 HOUR becomes
-        2 DAY, 7 DAY becomes 1 WEEK), so applying the same normalization here lets the
-        desired TTL be compared directly against the existing one.
+        2 DAY, 7 DAY becomes 1 WEEK, 12 MONTH becomes 1 YEAR), so applying the same
+        normalization here lets the desired TTL be compared directly against the existing one.
 
         QuestDB also requires the TTL to be an integer multiple of the partition size and
         only ever drops whole partitions. Tables are PARTITION BY DAY, so an hours value
@@ -1371,6 +1373,9 @@ class QuestDBClient:
         if unit == "DAY" and value % 7 == 0:
             value //= 7
             unit = "WEEK"
+        if unit == "MONTH" and value % 12 == 0:
+            value //= 12
+            unit = "YEAR"
         return (value, unit)
 
     def _convert_retain_time_to_questdb_format(self, retain_time):
