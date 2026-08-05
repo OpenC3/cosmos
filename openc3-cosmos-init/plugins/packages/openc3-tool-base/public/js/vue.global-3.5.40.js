@@ -1,5 +1,5 @@
 /**
-* vue v3.5.39
+* vue v3.5.40
 * (c) 2018-present Yuxi (Evan) You and Vue contributors
 * @license MIT
 **/
@@ -452,8 +452,9 @@ var Vue = (function (exports) {
         this._isPaused = true;
         let i, l;
         if (this.scopes) {
-          for (i = 0, l = this.scopes.length; i < l; i++) {
-            this.scopes[i].pause();
+          const scopes = this.scopes.slice();
+          for (i = 0, l = scopes.length; i < l; i++) {
+            scopes[i].pause();
           }
         }
         for (i = 0, l = this.effects.length; i < l; i++) {
@@ -470,12 +471,14 @@ var Vue = (function (exports) {
           this._isPaused = false;
           let i, l;
           if (this.scopes) {
-            for (i = 0, l = this.scopes.length; i < l; i++) {
-              this.scopes[i].resume();
+            const scopes = this.scopes.slice();
+            for (i = 0, l = scopes.length; i < l; i++) {
+              scopes[i].resume();
             }
           }
-          for (i = 0, l = this.effects.length; i < l; i++) {
-            this.effects[i].resume();
+          const effects = this.effects.slice();
+          for (i = 0, l = effects.length; i < l; i++) {
+            effects[i].resume();
           }
         }
       }
@@ -537,8 +540,9 @@ var Vue = (function (exports) {
         }
         this.cleanups.length = 0;
         if (this.scopes) {
-          for (i = 0, l = this.scopes.length; i < l; i++) {
-            this.scopes[i].stop(true);
+          const scopes = this.scopes.slice();
+          for (i = 0, l = scopes.length; i < l; i++) {
+            scopes[i].stop(true);
           }
           this.scopes.length = 0;
         }
@@ -3035,10 +3039,12 @@ var Vue = (function (exports) {
         setBlockTracking(-1);
       }
       const prevInstance = setCurrentRenderingInstance(ctx);
+      const prevStackSize = blockStack.length;
       let res;
       try {
         res = fn(...args);
       } finally {
+        for (let i = blockStack.length; i > prevStackSize; i--) closeBlock();
         setCurrentRenderingInstance(prevInstance);
         if (renderFnWithContext._d) {
           setBlockTracking(1);
@@ -4124,12 +4130,7 @@ var Vue = (function (exports) {
       }
     }
     if (isFunction(ref)) {
-      pauseTracking();
-      try {
-        callWithErrorHandling(ref, owner, 12, [value, refs]);
-      } finally {
-        resetTracking();
-      }
+      callWithErrorHandling(ref, owner, 12, [value, refs]);
     } else {
       const _isString = isString(ref);
       const _isRef = isRef(ref);
@@ -4500,6 +4501,7 @@ Server rendered element contains more child nodes than client vdom.`
         if (props) {
           {
             const isCustomElement = el.tagName.includes("-");
+            const namespace = el.namespaceURI.includes("svg") ? "svg" : el.namespaceURI.includes("MathML") ? "mathml" : void 0;
             for (const key in props) {
               if (// #11189 skip if this node has directives that have created hooks
               // as it could have mutated the DOM in any possible way
@@ -4508,7 +4510,7 @@ Server rendered element contains more child nodes than client vdom.`
               }
               if (forcePatch && (key.endsWith("value") || key === "indeterminate") || isOn(key) && !isReservedProp(key) || // force hydrate v-bind with .prop modifiers
               key[0] === "." || isCustomElement && !isReservedProp(key) || dynamicProps && dynamicProps.includes(key)) {
-                patchProp(el, key, null, props[key], void 0, parentComponent);
+                patchProp(el, key, null, props[key], namespace, parentComponent);
               }
             }
           }
@@ -5011,6 +5013,7 @@ Server rendered element contains fewer child nodes than client vdom.`
       name: "AsyncComponentWrapper",
       __asyncLoader: load,
       __asyncHydrate(el, instance, hydrate) {
+        const wasConnected = el.isConnected;
         let patched = false;
         (instance.bu || (instance.bu = [])).push(() => patched = true);
         const performHydrate = () => {
@@ -5022,6 +5025,7 @@ Server rendered element contains fewer child nodes than client vdom.`
             }
             return;
           }
+          if (!el.parentNode || wasConnected && !el.isConnected) return;
           hydrate();
         };
         const doHydrate = hydrateStrategy ? () => {
@@ -5574,14 +5578,15 @@ If this is a native custom element, make sure to exclude it from component resol
     return slots;
   }
 
-  function renderSlot(slots, name, props = {}, fallback, noSlotted) {
+  function renderSlot(slots, name, props = {}, fallback, noSlotted, branchKey) {
     if (currentRenderingInstance.ce || currentRenderingInstance.parent && isAsyncWrapper(currentRenderingInstance.parent) && currentRenderingInstance.parent.ce) {
-      const hasProps = Object.keys(props).length > 0;
-      if (name !== "default") props.name = name;
+      const slotProps = branchKey != null && props.key == null ? extend({}, props, { key: branchKey }) : props;
+      const hasProps = Object.keys(slotProps).length > 0;
+      if (name !== "default") slotProps.name = name;
       return openBlock(), createBlock(
         Fragment,
         null,
-        [createVNode("slot", props, fallback && fallback())],
+        [createVNode("slot", slotProps, fallback && fallback())],
         hasProps ? -2 : 64
       );
     }
@@ -5595,25 +5600,33 @@ If this is a native custom element, make sure to exclude it from component resol
     if (slot && slot._c) {
       slot._d = false;
     }
+    const prevStackSize = blockStack.length;
     openBlock();
-    const validSlotContent = slot && ensureValidVNode(slot(props));
-    const slotKey = props.key || // slot content array of a dynamic conditional slot may have a branch
-    // key attached in the `createSlots` helper, respect that
-    validSlotContent && validSlotContent.key;
-    const rendered = createBlock(
-      Fragment,
-      {
-        key: (slotKey && !isSymbol(slotKey) ? slotKey : `_${name}`) + // #7256 force differentiate fallback content from actual content
-        (!validSlotContent && fallback ? "_fb" : "")
-      },
-      validSlotContent || (fallback ? fallback() : []),
-      validSlotContent && slots._ === 1 ? 64 : -2
-    );
+    let rendered;
+    try {
+      const validSlotContent = slot && ensureValidVNode(slot(props));
+      const slotKey = props.key || branchKey || // slot content array of a dynamic conditional slot may have a branch
+      // key attached in the `createSlots` helper, respect that
+      validSlotContent && validSlotContent.key;
+      rendered = createBlock(
+        Fragment,
+        {
+          key: (slotKey && !isSymbol(slotKey) ? slotKey : `_${name}`) + // #7256 force differentiate fallback content from actual content
+          (!validSlotContent && fallback ? "_fb" : "")
+        },
+        validSlotContent || (fallback ? fallback() : []),
+        validSlotContent && slots._ === 1 ? 64 : -2
+      );
+    } catch (err) {
+      for (let i = blockStack.length; i > prevStackSize; i--) closeBlock();
+      throw err;
+    } finally {
+      if (slot && slot._c) {
+        slot._d = true;
+      }
+    }
     if (!noSlotted && rendered.scopeId) {
       rendered.slotScopeIds = [rendered.scopeId + "-s"];
-    }
-    if (slot && slot._c) {
-      slot._d = true;
     }
     return rendered;
   }
@@ -10917,7 +10930,7 @@ Component that was made reactive: `,
     return true;
   }
 
-  const version = "3.5.39";
+  const version = "3.5.40";
   const warn = warn$1 ;
   const ErrorTypeStrings = ErrorTypeStrings$1 ;
   const devtools = devtools$1 ;
@@ -12589,13 +12602,13 @@ Expected function or array of functions, received type ${typeof value}.`
     // <select multiple> value need to be deep traversed
     deep: true,
     created(el, { value, modifiers: { number } }, vnode) {
-      const isSetModel = isSet(value);
+      el._modelValue = value;
       addEventListener(el, "change", () => {
         const selectedVal = Array.prototype.filter.call(el.options, (o) => o.selected).map(
           (o) => number ? looseToNumber(getValue(o)) : getValue(o)
         );
         el[assignKey](
-          el.multiple ? isSetModel ? new Set(selectedVal) : selectedVal : selectedVal[0]
+          el.multiple ? isSet(el._modelValue) ? new Set(selectedVal) : selectedVal : selectedVal[0]
         );
         el._assigning = true;
         nextTick(() => {
@@ -12609,7 +12622,8 @@ Expected function or array of functions, received type ${typeof value}.`
     mounted(el, { value }) {
       setSelected(el, value);
     },
-    beforeUpdate(el, _binding, vnode) {
+    beforeUpdate(el, { value }, vnode) {
+      el._modelValue = value;
       el[assignKey] = getModelAssigner(vnode);
     },
     updated(el, { value }) {
@@ -14198,6 +14212,9 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
     return [props, callPath];
   }
   function injectProp(node, prop, context) {
+    if (node.type !== 13 && injectSlotKey(node, prop)) {
+      return;
+    }
     let propsWithInjection;
     let props = node.type === 13 ? node.props : node.arguments[2];
     let callPath = [];
@@ -14254,6 +14271,24 @@ Use a v-bind binding combined with a v-on listener that emits update:x event ins
         node.arguments[2] = propsWithInjection;
       }
     }
+  }
+  function injectSlotKey(node, prop) {
+    var _a, _b, _c;
+    if (prop.key.type !== 4 || prop.key.content !== "key") {
+      return false;
+    }
+    const props = node.arguments[2];
+    if (props && !isString(props)) {
+      const [unnormalizedProps] = getUnnormalizedProps(props);
+      if (unnormalizedProps && !isString(unnormalizedProps) && unnormalizedProps.type === 15 && hasProp(prop, unnormalizedProps)) {
+        return true;
+      }
+    }
+    (_a = node.arguments)[2] || (_a[2] = "{}");
+    (_b = node.arguments)[3] || (_b[3] = "undefined");
+    (_c = node.arguments)[4] || (_c[4] = "undefined");
+    node.arguments[5] = prop.value;
+    return true;
   }
   function hasProp(prop, props) {
     let result = false;
