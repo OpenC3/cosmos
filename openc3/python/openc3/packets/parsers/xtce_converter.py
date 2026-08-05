@@ -246,28 +246,44 @@ class XtceConverter:
         # MetaCommandSet
         meta_cmd_set = etree.SubElement(cmd_meta, f"{{{self.XTCE_NAMESPACE}}}MetaCommandSet")
         for packet_name, packet in commands[target_name].items():
-            # Base MetaCommand
-            base_attrs = {"name": f"{packet_name}_Base", "abstract": "true"}
-            base_cmd = etree.SubElement(
-                meta_cmd_set,
-                f"{{{self.XTCE_NAMESPACE}}}MetaCommand",
-                attrib=base_attrs,
-            )
+            has_id_items = bool(packet.id_items)
 
-            # ArgumentList
-            arg_list = etree.SubElement(base_cmd, f"{{{self.XTCE_NAMESPACE}}}ArgumentList")
-            for item in packet.sorted_items:
-                if item.data_type == "DERIVED":
-                    continue
-                self._to_xtce_item(item, "Argument", arg_list)
+            # The ID values are ArgumentAssignments on a BaseMetaCommand, so a packet
+            # with ID items needs an abstract MetaCommand to hold the arguments and
+            # entries and inherit from. A packet without them gets neither, matching
+            # the Ruby converter rather than emitting an unused abstract command.
+            if has_id_items:
+                arg_and_container_parent = etree.SubElement(
+                    meta_cmd_set,
+                    f"{{{self.XTCE_NAMESPACE}}}MetaCommand",
+                    attrib={"name": f"{packet_name}_Base", "abstract": "true"},
+                )
+            else:
+                attrs = {"name": packet_name}
+                if packet.description:
+                    attrs["shortDescription"] = packet.description
+                arg_and_container_parent = etree.SubElement(
+                    meta_cmd_set, f"{{{self.XTCE_NAMESPACE}}}MetaCommand", attrib=attrs
+                )
+
+            # ArgumentList. An empty one is not valid, so a packet of nothing but
+            # DERIVED items gets none.
+            arg_items = [item for item in packet.sorted_items if item.data_type != "DERIVED"]
+            if arg_items:
+                arg_list = etree.SubElement(arg_and_container_parent, f"{{{self.XTCE_NAMESPACE}}}ArgumentList")
+                for item in arg_items:
+                    self._to_xtce_item(item, "Argument", arg_list)
 
             # CommandContainer
             cmd_container = etree.SubElement(
-                base_cmd,
+                arg_and_container_parent,
                 f"{{{self.XTCE_NAMESPACE}}}CommandContainer",
                 attrib={"name": f"{target_name}_{packet_name}_CommandContainer"},
             )
             self._process_entry_list(cmd_container, packet, "COMMAND")
+
+            if not has_id_items:
+                continue
 
             # Actual MetaCommand
             attrs = {"name": packet_name}
@@ -279,19 +295,16 @@ class XtceConverter:
                 f"{{{self.XTCE_NAMESPACE}}}BaseMetaCommand",
                 attrib={"metaCommandRef": f"{packet_name}_Base"},
             )
-
-            # Add argument assignments if ID items exist
-            if packet.id_items and len(packet.id_items) > 0:
-                arg_assign_list = etree.SubElement(base_meta_cmd, f"{{{self.XTCE_NAMESPACE}}}ArgumentAssignmentList")
-                for item in packet.id_items:
-                    etree.SubElement(
-                        arg_assign_list,
-                        f"{{{self.XTCE_NAMESPACE}}}ArgumentAssignment",
-                        attrib={
-                            "argumentName": item.name,
-                            "argumentValue": str(item.id_value),
-                        },
-                    )
+            arg_assign_list = etree.SubElement(base_meta_cmd, f"{{{self.XTCE_NAMESPACE}}}ArgumentAssignmentList")
+            for item in packet.id_items:
+                etree.SubElement(
+                    arg_assign_list,
+                    f"{{{self.XTCE_NAMESPACE}}}ArgumentAssignment",
+                    attrib={
+                        "argumentName": item.name,
+                        "argumentValue": str(item.id_value),
+                    },
+                )
 
     def _get_unique(self, packets):
         """Get unique items from packets
@@ -530,8 +543,11 @@ class XtceConverter:
             if has_poly_conversion:
                 self._to_xtce_conversion(item, encoding_elem)
 
-            self._to_xtce_limits(item, int_type)
+            # ValidRange comes first: it's on IntegerDataType while DefaultAlarm is on
+            # the extending Integer{Parameter,Argument}Type, and the XSD requires the
+            # base type's elements before the extension's.
             self._to_xtce_valid_range(item, param_or_arg, int_type)
+            self._to_xtce_limits(item, int_type)
 
     def _to_xtce_float(self, item, param_or_arg, parent):
         """Convert float item to XTCE
@@ -563,8 +579,9 @@ class XtceConverter:
         if has_poly_conversion:
             self._to_xtce_conversion(item, encoding_elem)
 
-        self._to_xtce_limits(item, float_type)
+        # ValidRange before DefaultAlarm, same base / extension ordering as the int type
         self._to_xtce_valid_range(item, param_or_arg, float_type)
+        self._to_xtce_limits(item, float_type)
 
     def _to_xtce_string(self, item, param_or_arg, parent, string_or_binary):
         """Convert string/binary item to XTCE
@@ -581,17 +598,27 @@ class XtceConverter:
 
         if item.default and item.array_size is None:
             try:
-                if isinstance(item.default, bytes | bytearray):
+                default = item.default
+                # A STRING default comes out of the config parser as str, a BLOCK
+                # default as bytes / bytearray. Both are compared as bytes below.
+                if isinstance(default, str):
+                    default = default.encode("utf-8")
+                if isinstance(default, bytes | bytearray):
                     if string_or_binary == "Binary":
                         # Binary initialValue is xs:hexBinary: raw hex digits, no 0x
                         # prefix. Upper case is hexBinary's canonical form and matches
                         # the Ruby converter.
-                        attrs["initialValue"] = item.default.hex().upper()
-                    elif all(32 <= b < 127 for b in item.default):
+                        attrs["initialValue"] = default.hex().upper()
+                    elif all(32 <= b < 127 for b in default) and bytes(default[0:2]).upper() != b"0X":
                         # String initialValue is the value itself, unquoted
-                        attrs["initialValue"] = item.default.decode("utf-8")
+                        attrs["initialValue"] = default.decode("utf-8")
                     else:
-                        attrs["initialValue"] = "0x" + item.default.hex().upper()
+                        # XML can't carry the non printable bytes of a string default, so
+                        # COSMOS writes them as a 0x prefixed hex escape. A printable
+                        # default that starts with 0x is escaped the same way, otherwise
+                        # the importer reads it back as binary and "0xABCD" round trips
+                        # as the bytes \xAB\xCD.
+                        attrs["initialValue"] = "0x" + default.hex().upper()
                 else:
                     attrs["initialValue"] = str(item.default)
             except Exception:

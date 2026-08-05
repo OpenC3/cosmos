@@ -162,13 +162,22 @@ The following elements are recognized but have no effect on the resulting
 configuration:
 
 - Header
-- AliasSet
-- Alias
 - ReferenceTime
 - Epoch
 - AncillaryDataSet
 - AncillaryData
 - ErrorDetectCorrect - the item is read as an unsigned integer and the CRC is not calculated
+- AliasSet / Alias - except for an `Alias` in the `COSMOS` namespace on a `Parameter` or an `Argument`, which restores the original COSMOS item name (see below)
+
+## Item Name Round Trip
+
+XTCE forbids characters COSMOS allows in an item name, and a command ID item is
+prefixed with `CMD_` so it cannot collide with a telemetry parameter of the same
+name. Whenever the exporter has to write a different name it records the original in
+an `Alias` in the `COSMOS` namespace, and the importer restores it, so `CMD_ID` comes
+back as `ID` and `CMD_0__ATTRIBUTES_ID` as `CMD[0].ATTRIBUTES/ID`. Aliases COSMOS also
+writes on `SequenceContainer`, `MetaCommand` and `SpaceSystem` are not restored,
+because a packet is registered under its name as soon as it is created.
 
 ## Unsupported Elements
 

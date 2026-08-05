@@ -1202,6 +1202,34 @@ module OpenC3
         FileUtils.rm_rf File.join(spec_install, "TGT1")
       end
 
+      it "round trips a STRING default that starts with 0x" do
+        tf = Tempfile.new('unittest')
+        cmd = "COMMAND TGT1 CMDPKT BIG_ENDIAN \"Command\"\n"\
+              "  ID_PARAMETER OPCODE 0 16 UINT 0 0 0 \"Opcode\"\n"\
+              "  PARAMETER STR 16 48 STRING \"0xABCD\" \"String\"\n"
+        tf.puts cmd
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        spec_install = File.join("..", "..", "install")
+        @pc.to_xtce(spec_install, "PACKET_TIME")
+        xml_path = File.join(spec_install, "TGT1", "cmd_tlm", "tgt1.xtce")
+        assert_xtce_schema_valid(xml_path)
+
+        doc = Nokogiri::XML(File.read(xml_path))
+        doc.remove_namespaces!
+        # Written unquoted, "0xABCD" would come back as the bytes \xAB\xCD, so it goes
+        # out as the same 0x prefixed hex escape used for non printable defaults
+        str_type = doc.at_xpath("//StringArgumentType[@name='CMDPKT_STR_Type']")
+        expect(str_type['initialValue']).to eql "0x307841424344"
+
+        pc = PacketConfig.new
+        pc.process_file(xml_path, "TGT1")
+        expect(pc.commands["TGT1"]["CMDPKT"].get_item("STR").default).to eql "0xABCD"
+
+        tf.unlink
+        FileUtils.rm_rf File.join(spec_install, "TGT1")
+      end
+
       it "still imports the quoted STRING defaults written by COSMOS 7.2 and earlier" do
         tf = Tempfile.new(['unittest', '.xtce'])
         tf.puts <<~XTCE

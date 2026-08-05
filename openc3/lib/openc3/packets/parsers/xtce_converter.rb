@@ -444,7 +444,11 @@ module OpenC3
         if string_or_binary == :BLOCK || string_or_binary == 'Binary'
           # Binary initialValue is xs:hexBinary: raw hex digits, no 0x prefix
           initial_value = item.default.simple_formatted
-        elsif !item.default.is_printable?
+        elsif !item.default.is_printable? || item.default.upcase.start_with?('0X')
+          # XML can't carry the non printable bytes of a string default, so COSMOS
+          # writes them as a 0x prefixed hex escape. A printable default that starts
+          # with 0x has to be escaped the same way, otherwise the importer reads it
+          # back as binary and "0xABCD" round trips as the bytes \xAB\xCD.
           initial_value = '0x' + item.default.simple_formatted
         else
           # String initialValue is the value itself. Quoting it (inspect) would make

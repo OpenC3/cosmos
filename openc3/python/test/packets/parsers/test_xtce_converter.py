@@ -842,6 +842,101 @@ class TestXtceConverter(unittest.TestCase):
             self.assertEqual(critical.get("minInclusive"), "-80.0")
             self.assertEqual(critical.get("maxInclusive"), "80.0")
 
+    def test_xtce_abstract_meta_command_only_with_id_items(self):
+        """The abstract MetaCommand exists to carry ArgumentAssignments for ID items"""
+        self.process_config(
+            'COMMAND TGT1 WITHID BIG_ENDIAN "Has an ID"\n'
+            '  APPEND_ID_PARAMETER OPCODE 8 UINT 7 7 7 "Opcode"\n'
+            '  APPEND_PARAMETER VAL 16 UINT 0 100 5 "Val"\n'
+            'COMMAND TGT1 NOID BIG_ENDIAN "No ID"\n'
+            '  APPEND_PARAMETER VAL 16 UINT 0 100 5 "Val"\n'
+        )
+
+        with tempfile.TemporaryDirectory() as output_dir:
+            XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
+
+            xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assert_schema_valid(xtce_file)
+            tree = etree.parse(xtce_file)
+            nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
+
+            self.assertIsNotNone(tree.find('.//xtce:MetaCommand[@name="WITHID_Base"]', namespaces=nsmap))
+            assignment = tree.find(
+                './/xtce:MetaCommand[@name="WITHID"]/xtce:BaseMetaCommand'
+                "/xtce:ArgumentAssignmentList/xtce:ArgumentAssignment",
+                namespaces=nsmap,
+            )
+            self.assertEqual(assignment.get("argumentName"), "OPCODE")
+            self.assertEqual(assignment.get("argumentValue"), "7")
+
+            # No ID items, so no abstract command and the arguments and entries are on
+            # the concrete one
+            self.assertIsNone(tree.find('.//xtce:MetaCommand[@name="NOID_Base"]', namespaces=nsmap))
+            no_id = tree.find('.//xtce:MetaCommand[@name="NOID"]', namespaces=nsmap)
+            self.assertIsNone(no_id.find("xtce:BaseMetaCommand", namespaces=nsmap))
+            self.assertIsNotNone(no_id.find('xtce:ArgumentList/xtce:Argument[@name="VAL"]', namespaces=nsmap))
+            self.assertIsNotNone(no_id.find("xtce:CommandContainer/xtce:EntryList", namespaces=nsmap))
+
+    def test_xtce_valid_range_comes_before_limits(self):
+        """An item with both a range and limits emits ValidRange before DefaultAlarm.
+
+        ValidRange is on the base {Integer,Float}DataType and DefaultAlarm on the
+        extending {Integer,Float}ParameterType, so the XSD rejects the other order.
+        An item imported from XTCE carries both.
+        """
+        self.process_config(
+            'TELEMETRY TGT1 PKT1 BIG_ENDIAN "Test"\n'
+            '  APPEND_ID_ITEM ID 8 UINT 1 "Id"\n'
+            '  APPEND_ITEM INTVAL 16 UINT "Int"\n'
+            "    LIMITS DEFAULT 1 ENABLED 1 2 8 9\n"
+            '  APPEND_ITEM FLTVAL 32 FLOAT "Float"\n'
+            "    LIMITS DEFAULT 1 ENABLED 1.0 2.0 8.0 9.0\n"
+        )
+        packet = self.pc.telemetry["TGT1"]["PKT1"]
+        packet.get_item("INTVAL").minimum = 0
+        packet.get_item("INTVAL").maximum = 100
+        packet.get_item("FLTVAL").minimum = 0.0
+        packet.get_item("FLTVAL").maximum = 100.0
+
+        with tempfile.TemporaryDirectory() as output_dir:
+            XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
+
+            xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assert_schema_valid(xtce_file)
+            tree = etree.parse(xtce_file)
+            nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
+
+            for type_name in ('IntegerParameterType[@name="INTVAL_Type"]', 'FloatParameterType[@name="FLTVAL_Type"]'):
+                item_type = tree.find(f".//xtce:{type_name}", namespaces=nsmap)
+                tags = [etree.QName(child).localname for child in item_type]
+                self.assertLess(tags.index("ValidRange"), tags.index("DefaultAlarm"))
+
+    def test_xtce_string_default_starting_with_0x_is_escaped(self):
+        """A STRING default that starts with 0x goes out as a hex escape.
+
+        Written as itself it would come back from the importer as the bytes it spells,
+        so it uses the same escape as a non printable default.
+        """
+        self.process_config(
+            'COMMAND TGT1 CMD1 BIG_ENDIAN "Test"\n'
+            '  APPEND_ID_PARAMETER OPCODE 8 UINT 1 1 1 "Opcode"\n'
+            '  APPEND_PARAMETER STR 48 STRING "0xABCD" "Hex looking string"\n'
+            '  APPEND_PARAMETER STR2 40 STRING "HELLO" "Plain string"\n'
+        )
+
+        with tempfile.TemporaryDirectory() as output_dir:
+            XtceConverter.convert(self.pc.commands, self.pc.telemetry, output_dir)
+
+            xtce_file = os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1.xtce")
+            self.assert_schema_valid(xtce_file)
+            tree = etree.parse(xtce_file)
+            nsmap = {"xtce": XtceConverter.XTCE_NAMESPACE}
+
+            escaped = tree.find('.//xtce:StringArgumentType[@name="STR_Type"]', namespaces=nsmap)
+            self.assertEqual(escaped.get("initialValue"), "0x" + b"0xABCD".hex().upper())
+            plain = tree.find('.//xtce:StringArgumentType[@name="STR2_Type"]', namespaces=nsmap)
+            self.assertEqual(plain.get("initialValue"), "HELLO")
+
     def test_xtce_validates_against_schema(self):
         """Generated XTCE validates against the OMG XTCE 1.2 schema.
 
