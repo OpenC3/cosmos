@@ -1,0 +1,3 @@
+# Space Power setup
+cmd("BLUE_HEO QUIET with STATE TRUE")
+cmd("BLUE_HEO SCENARIO_START with START '2026-06-30T10:45:10'")
