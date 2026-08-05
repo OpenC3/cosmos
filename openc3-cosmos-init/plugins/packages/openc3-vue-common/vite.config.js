@@ -3,6 +3,36 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import sourcemaps from 'rollup-plugin-sourcemaps2'
 
+// monaco-editor 0.56's entry point registers the css / html / json /
+// typescript language services, and each one spawns its own web worker with
+// `new Worker(new URL('css.worker.js', import.meta.url), ...)`. In this lib
+// build vite emits those workers as dist/assets/*.worker-<hash>.js and
+// rewrites the URLs to root-absolute /assets/... paths, which are wrong under
+// COSMOS's microfrontend routing (tools are served under /tools/<name>/) and
+// which downstream tool builds then try to resolve out of their own public/
+// dir - "Could not resolve entry module public/assets/css.worker-*.js".
+// COSMOS only edits Ruby / Python / JS scripts, so drop the four services.
+// Monarch syntax highlighting (which runs on the main thread) and every
+// editor contribution are unaffected.
+const monacoLanguageServiceStub = () => {
+  const stub = resolve(__dirname, './build/monaco-language-service-stub.js')
+  return {
+    name: 'openc3:monaco-language-service-stub',
+    enforce: 'pre',
+    resolveId(source, importer) {
+      if (
+        importer?.includes('monaco-editor') &&
+        /languages\/features\/(css|html|json|typescript)\/register\.js$/.test(
+          source,
+        )
+      ) {
+        return stub
+      }
+      return null
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => {
   // Sourcemaps roughly tripled the dist/ footprint after the Monaco swap
   // (the dialog chunk's map alone is ~14 MB). Keep them in dev / the
@@ -57,6 +87,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     plugins: [
+      monacoLanguageServiceStub(),
       vue(),
       // Chain the prebuilt @openc3/js-common dist sourcemaps into this
       // build's maps so coverage resolves to their original src (rollup
