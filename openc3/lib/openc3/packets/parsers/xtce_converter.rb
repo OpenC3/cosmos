@@ -37,8 +37,8 @@ module OpenC3
 
     # The namespace COSMOS exports. Files declaring an older namespace still import.
     XTCE_1_2_NAMESPACE = 'http://www.omg.org/spec/XTCE/20180204'
-    # The OMG schema is vendored so validation works with no network, which matters in
-    # an air gapped system: the schemaLocation the files declare is an omg.org URL.
+    # The OMG schemas are vendored here and validation reads them from disk, so it works
+    # air gapped. The omg.org URL the files declare in schemaLocation is never fetched.
     SCHEMA_DIR = File.join(PATH, 'data', 'xtce_schemas')
     SCHEMA_FILE = File.join(SCHEMA_DIR, 'SpaceSystem_20180204.xsd')
 

@@ -48,7 +48,7 @@ openc3.sh cli xtce_converter --plugin <plugin.gem> --output <output_dir>
 
 Exported files are validated against the XTCE 1.2 schema and an invalid file fails the export with a non-zero exit code, so a config that COSMOS cannot express in valid XTCE is reported here rather than by whatever ground system the file was written for. Pass `--no-validate` to write the files anyway.
 
-The schema is vendored in the gem (`data/xtce_schemas`), so validation needs no network access. The `schemaLocation` the exported files declare is an omg.org URL, which an air gapped system cannot fetch.
+Validation is entirely offline and works in an air gapped system. The OMG schemas ship inside the gem (`data/xtce_schemas`) and validation reads them from there. Exported files still declare an omg.org URL in `schemaLocation`, but that is only a hint for other ground systems reading the file; COSMOS never fetches it.
 
 On Windows use `openc3.bat` in place of `openc3.sh`.
 
