@@ -34,12 +34,43 @@ pub fn clear_notifier() {
     NOTIFIER.with(|n| *n.borrow_mut() = None);
 }
 
+thread_local! {
+    /// Optional sink for important instructions ([`notify_dialog`]) to surface as
+    /// a dismissible GUI popup (e.g. Docker's post-install NEXT STEPS).
+    static DIALOG: RefCell<Option<Notifier>> = const { RefCell::new(None) };
+}
+
+/// Route dialog-worthy messages to `sink`; the GUI shows them as a popup with an
+/// OK button. When unset (the CLI) they only go to the normal message log.
+#[cfg(feature = "gui")]
+pub fn set_dialog_notifier(sink: Notifier) {
+    DIALOG.with(|d| *d.borrow_mut() = Some(sink));
+}
+
+/// Remove any dialog notifier set for the current thread.
+#[cfg(feature = "gui")]
+pub fn clear_dialog_notifier() {
+    DIALOG.with(|d| *d.borrow_mut() = None);
+}
+
 /// Emit a user-facing message: to the thread's notifier if set, else stdout.
 fn notify(msg: impl Into<String>) {
     let msg = msg.into();
     NOTIFIER.with(|n| match n.borrow().as_ref() {
         Some(sink) => sink(msg),
         None => println!("{msg}"),
+    });
+}
+
+/// Emit an important instruction that goes to the normal message log AND, in the
+/// GUI, pops up in a dismissible dialog (used for post-install NEXT STEPS).
+fn notify_dialog(msg: impl Into<String>) {
+    let msg = msg.into();
+    notify(msg.clone()); // still record it in the activity log / stdout
+    DIALOG.with(|d| {
+        if let Some(sink) = d.borrow().as_ref() {
+            sink(msg);
+        }
     });
 }
 
@@ -161,7 +192,7 @@ pub fn install_docker_macos() -> Result<()> {
 
     notify("Launching Docker Desktop...");
     let _ = process::run(Command::new("open").args(["-a", "Docker"]));
-    notify(
+    notify_dialog(
         "Docker Desktop installed and launching.\n\
          NEXT STEP: complete Docker's first-run setup (Docker will ask for your password to \
          finish installing), then start COSMOS.",
@@ -334,7 +365,7 @@ pub fn install_docker_windows() -> Result<()> {
     notify(DOCKER_DESKTOP_LICENSE);
     notify("Installing Docker Desktop via winget...");
     winget_install("Docker.DockerDesktop")?;
-    notify(
+    notify_dialog(
         "Docker Desktop installed.\n\
          NEXT STEPS:\n  \
          1. Reboot if Windows prompts you to.\n  \

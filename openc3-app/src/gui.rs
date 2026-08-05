@@ -163,6 +163,9 @@ struct Shared {
     /// Set by the enable-Windows-features task on success: the features only take
     /// effect after a reboot, so the UI should prompt the user to restart.
     restart_pending: bool,
+    /// An important instruction (e.g. post-install NEXT STEPS) emitted by a task,
+    /// to be shown as a dismissible popup on the next tick.
+    pending_dialog: Option<String>,
 }
 
 struct State {
@@ -240,6 +243,9 @@ struct State {
     /// Whether to show the "restart Windows" prompt (a Windows feature was just
     /// enabled and only takes effect after a reboot).
     restart_pending: bool,
+    /// Text of a dismissible instruction popup (post-install NEXT STEPS), if one
+    /// is currently showing.
+    dialog: Option<String>,
 }
 
 /// Start the host microservice operator on a background thread, wiring the
@@ -288,6 +294,8 @@ enum Message {
     RestartWindows,
     /// Dismiss the restart prompt (restart later).
     DismissRestart,
+    /// Dismiss the instruction popup (NEXT STEPS).
+    DismissDialog,
     StartDocker,
     InstallPython,
     InstallCosmos,
@@ -401,6 +409,7 @@ impl State {
             dev_context_on_open: None,
             shutdown_confirm: false,
             restart_pending: false,
+            dialog: None,
         }
     }
 
@@ -566,6 +575,10 @@ impl State {
                 self.restart_pending = true;
                 s.restart_pending = false;
             }
+            // One-shot: a task emitted a dialog-worthy instruction (NEXT STEPS).
+            if let Some(msg) = s.pending_dialog.take() {
+                self.dialog = Some(msg);
+            }
         }
     }
 
@@ -659,6 +672,10 @@ impl State {
             }
             Message::DismissRestart => {
                 self.restart_pending = false;
+                Task::none()
+            }
+            Message::DismissDialog => {
+                self.dialog = None;
                 Task::none()
             }
             Message::StartDocker => {
@@ -1022,13 +1039,21 @@ impl State {
         crate::logging::info("openc3-app", &format!("{label}..."));
         let shared = self.shared.clone();
         std::thread::spawn(move || {
-            // Mirror install progress / NEXT STEPS messages into the log (stdout
-            // + the in-app table) so GUI users see them, not just the terminal.
+            // Mirror install progress into the log (stdout + the in-app table).
             install::set_notifier(Box::new(move |m| {
                 crate::logging::info("openc3-app", &m);
             }));
+            // Surface dialog-worthy instructions (post-install NEXT STEPS) as a
+            // popup: stash the text for the UI to show on its next tick.
+            let dialog_shared = shared.clone();
+            install::set_dialog_notifier(Box::new(move |m| {
+                if let Ok(mut s) = dialog_shared.lock() {
+                    s.pending_dialog = Some(m);
+                }
+            }));
             let result = f();
             install::clear_notifier();
+            install::clear_dialog_notifier();
             match result {
                 Ok(()) => crate::logging::info("openc3-app", &format!("{label}: done.")),
                 Err(e) => crate::logging::error("openc3-app", &format!("{label}: ERROR: {e}")),
@@ -1055,8 +1080,15 @@ impl State {
         let shared = self.shared.clone();
         std::thread::spawn(move || {
             install::set_notifier(Box::new(|m| crate::logging::info("openc3-app", &m)));
+            let dialog_shared = shared.clone();
+            install::set_dialog_notifier(Box::new(move |m| {
+                if let Ok(mut s) = dialog_shared.lock() {
+                    s.pending_dialog = Some(m);
+                }
+            }));
             let result = install::enable_windows_features();
             install::clear_notifier();
+            install::clear_dialog_notifier();
             match &result {
                 Ok(()) => crate::logging::info("openc3-app", "Enabling Windows features: done."),
                 Err(e) => crate::logging::error("openc3-app", &format!("Enabling Windows features: ERROR: {e}")),
@@ -1103,11 +1135,65 @@ impl State {
         };
         // A just-enabled Windows feature needs a reboot — overlay a restart
         // prompt over whatever page is showing until the user acts on it.
-        if self.restart_pending {
+        let content = if self.restart_pending {
             self.with_restart_prompt(content)
         } else {
             content
+        };
+        // Post-install instructions (NEXT STEPS) pop up over everything with an OK.
+        if let Some(msg) = &self.dialog {
+            self.with_dialog(content, msg)
+        } else {
+            content
         }
+    }
+
+    /// Overlay a dismissible instruction popup (dim scrim + centered card with an
+    /// OK button) on `base` — used for post-install NEXT STEPS so they're not
+    /// buried in the activity log.
+    fn with_dialog<'a>(&self, base: Element<'a, Message>, message: &str) -> Element<'a, Message> {
+        fn scrim_style(_theme: &Theme) -> container::Style {
+            container::Style {
+                background: Some(Color::from_rgba8(0, 0, 0, 0.6).into()),
+                ..container::Style::default()
+            }
+        }
+        fn card_style(_theme: &Theme) -> container::Style {
+            container::Style {
+                background: Some(Color::from_rgb8(0x24, 0x24, 0x28).into()),
+                border: iced::border::Border {
+                    color: Color::from_rgb8(0x3A, 0x3A, 0x40),
+                    width: 1.0,
+                    radius: 10.0.into(),
+                },
+                ..container::Style::default()
+            }
+        }
+        let card = container(
+            column![
+                text("Next steps").size(22),
+                text(message.to_string()).size(14),
+                Space::with_height(8),
+                row![
+                    Space::with_width(Length::Fill),
+                    button(text("OK"))
+                        .padding(10)
+                        .style(button::primary)
+                        .on_press(Message::DismissDialog),
+                ],
+            ]
+            .spacing(12),
+        )
+        .padding(24)
+        .max_width(520.0)
+        .style(card_style);
+        let overlay = container(card)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x(Length::Fill)
+            .center_y(Length::Fill)
+            .style(scrim_style);
+        stack![base, opaque(overlay)].into()
     }
 
     /// Overlay a "restart Windows" modal (dim scrim + centered card) on `base`.
@@ -1458,9 +1544,17 @@ impl State {
         };
 
         // Recent log lines in a subtle panel so install progress is visible here.
+        // Show only INFO and above: DEBUG lines (e.g. the repeated "Docker API
+        // poll unavailable" CLI-fallback notice, expected while Docker isn't up
+        // yet) are internal noise that clutters the setup progress.
         let mut log_col = column![].spacing(2).width(Length::Fill);
-        let start = self.log_records.len().saturating_sub(8);
-        for rec in &self.log_records[start..] {
+        let visible: Vec<&crate::logging::LogRecord> = self
+            .log_records
+            .iter()
+            .filter(|r| level_rank(&r.level) >= level_rank("INFO"))
+            .collect();
+        let start = visible.len().saturating_sub(8);
+        for rec in &visible[start..] {
             log_col = log_col.push(
                 text(format!("{} {}", rec.level, rec.message))
                     .size(12)
