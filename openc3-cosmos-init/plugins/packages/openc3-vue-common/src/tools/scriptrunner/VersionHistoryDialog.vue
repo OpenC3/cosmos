@@ -223,7 +223,10 @@ import * as monaco from 'monaco-editor'
 // base64 blob URL so it loads independent of the asset path — required
 // under COSMOS's microfrontend routing where a normal worker URL would
 // resolve relative to the wrong base and throw an unhelpful Worker error.
-import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker&inline'
+// The subpath has no esm/vs/ prefix: monaco 0.56 maps "./*" to
+// "./esm/vs/*.js" in its exports, so the old deep path double-prefixes and
+// fails to resolve.
+import EditorWorker from 'monaco-editor/editor/editor.worker?worker&inline'
 
 // Wire workers on both self and window — Monaco checks self in some code
 // paths and window in others. Defining once at module load is fine; Monaco
