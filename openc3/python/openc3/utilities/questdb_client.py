@@ -1324,7 +1324,7 @@ class QuestDBClient:
         QuestDB also requires the TTL to be an integer multiple of the partition size and
         only ever drops whole partitions. Tables are PARTITION BY DAY, so an hours value
         that isn't a multiple of 24 is rejected outright by QuestDB and is rounded up to
-        one day here instead.
+        the next whole day here instead ("1h" and "23h" become 1 DAY, "25h" becomes 2 DAY).
 
         Args:
             retain_time: TTL string in format like "30d", "1w", "6M", "1y"
@@ -1357,14 +1357,16 @@ class QuestDBClient:
             self._log_warn(f"QuestDB: Invalid retain_time '{retain_time}', value must be greater than 0")
             return None
 
-        if unit == "HOUR" and value % 24 != 0:
-            # Tables are PARTITION BY DAY and QuestDB drops whole partitions only
-            self._log_warn(
-                f"QuestDB: retain_time '{retain_time}' is less than the DAY partition size, using 1 DAY instead"
-            )
-            return (1, "DAY")
         if unit == "HOUR":
-            value //= 24
+            # Tables are PARTITION BY DAY and QuestDB drops whole partitions only, so round
+            # up to the next whole day rather than retain less data than requested
+            days = -(-value // 24)
+            if value % 24 != 0:
+                self._log_warn(
+                    f"QuestDB: retain_time '{retain_time}' is not a multiple of the DAY partition size, "
+                    f"using {days} DAY instead"
+                )
+            value = days
             unit = "DAY"
         if unit == "DAY" and value % 7 == 0:
             value //= 7

@@ -21,7 +21,7 @@ They also pin down the QuestDB behaviors the implementation depends on:
 - tables() reports TTL normalized to the largest evenly dividing unit
   (48 HOUR -> 2 DAY, 7 DAY -> 1 WEEK)
 - TTL must be an integer multiple of the partition size (PARTITION BY DAY),
-  so sub-day retain times are rounded up to 1 DAY
+  so hour retain times are rounded up to whole days (1h -> 1 DAY, 25h -> 2 DAY)
 - TTL 0 removes the TTL
 
 Run with:
@@ -87,12 +87,16 @@ class TestRetainTimeNormalization:
         assert questdb_client._normalize_retain_time("6M") == (6, "MONTH")
         assert questdb_client._normalize_retain_time("1y") == (1, "YEAR")
 
-    def test_rounds_sub_partition_hours_up_to_one_day(self, questdb_client):
+    def test_rounds_partial_hours_up_to_whole_days(self, questdb_client):
         # Tables are PARTITION BY DAY and QuestDB rejects a TTL that isn't an
-        # integer multiple of the partition size
+        # integer multiple of the partition size. Round up so we never retain
+        # less data than was requested.
         assert questdb_client._normalize_retain_time("1h") == (1, "DAY")
         assert questdb_client._normalize_retain_time("6h") == (1, "DAY")
-        assert questdb_client._normalize_retain_time("25h") == (1, "DAY")
+        assert questdb_client._normalize_retain_time("23h") == (1, "DAY")
+        assert questdb_client._normalize_retain_time("25h") == (2, "DAY")
+        assert questdb_client._normalize_retain_time("36h") == (2, "DAY")
+        assert questdb_client._normalize_retain_time("169h") == (8, "DAY")
 
     def test_returns_none_for_invalid(self, questdb_client):
         assert questdb_client._normalize_retain_time(None) is None

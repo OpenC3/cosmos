@@ -82,7 +82,8 @@ TARGET:
         Sets the retention time directly on QuestDB tables for automatic data expiration.
         QuestDB will automatically remove data older than this retention time.
         Tables are partitioned by day and QuestDB only drops whole partitions, so the
-        effective granularity is one day. Values smaller than a day are treated as 1 day,
+        effective granularity is one day. Hour values are rounded up to whole days
+        ("1h" becomes 1 day, "25h" becomes 2 days) so data is never dropped early,
         and data is not removed until the entire day partition is older than the retention
         time (expect up to a day of extra data). Expiration is evaluated when new data is
         written to the table, so an idle table is not expired.
@@ -102,7 +103,8 @@ TARGET:
         Sets the retention time directly on QuestDB tables for automatic data expiration.
         QuestDB will automatically remove data older than this retention time.
         Tables are partitioned by day and QuestDB only drops whole partitions, so the
-        effective granularity is one day. Values smaller than a day are treated as 1 day,
+        effective granularity is one day. Hour values are rounded up to whole days
+        ("1h" becomes 1 day, "25h" becomes 2 days) so data is never dropped early,
         and data is not removed until the entire day partition is older than the retention
         time (expect up to a day of extra data). Expiration is evaluated when new data is
         written to the table, so an idle table is not expired.
