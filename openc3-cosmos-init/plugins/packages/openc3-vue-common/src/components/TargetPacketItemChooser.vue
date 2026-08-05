@@ -512,6 +512,9 @@ export default {
         if (this.selectedTargetName) {
           // Selected target name was set but we still have to update packets
           this.updatePackets()
+        } else if (this.targetNames.length === 0) {
+          // No targets to select so re-enable and let the user see empty lists
+          this.internalDisabled = false
         } else {
           this.selectedTargetName = this.targetNames[0].value
           this.targetNameChanged(this.selectedTargetName)
@@ -569,26 +572,29 @@ export default {
           if (this.allowAll) {
             this.packetNames.unshift(this.ALL)
           }
+          // Nothing to select, e.g. a target with no commands. Don't call
+          // updatePacketDetails which would request a null packet.
+          if (this.packetNames.length === 0) {
+            this.selectedPacketName = null
+            this.itemNames = []
+            this.selectedItemName = null
+            this.description = ''
+            this.hazardous = false
+            this.hazardousDescription = ''
+            this.internalDisabled = false
+            return
+          }
           if (!this.selectedPacketName) {
-            if (this.packetNames.length === 0) {
-              this.selectedPacketName = null
-            } else {
-              this.selectedPacketName = this.packetNames[0].value
-              if (
-                this.selectedPacketName === 'LATEST' &&
-                this.packetNames.length > 1
-              ) {
-                this.selectedPacketName = this.packetNames[1].value
-              }
+            this.selectedPacketName = this.packetNames[0].value
+            if (
+              this.selectedPacketName === 'LATEST' &&
+              this.packetNames.length > 1
+            ) {
+              this.selectedPacketName = this.packetNames[1].value
             }
           }
+          // Note: updatePacketDetails calls updateItems if chooseItem is set
           this.updatePacketDetails(this.selectedPacketName)
-          const item = this.packetNames.find((packet) => {
-            return packet.value === this.selectedPacketName
-          })
-          if (item && this.chooseItem) {
-            this.updateItems()
-          }
           this.internalDisabled = false
         })
         .catch(() => {
@@ -609,6 +615,13 @@ export default {
 
     updateItems: function () {
       if (this.selectedPacketName === 'ALL') {
+        return
+      }
+      // No packet selected, e.g. a target with no packets, so nothing to request
+      if (!this.selectedPacketName) {
+        this.itemNames = []
+        this.selectedItemName = null
+        this.internalDisabled = false
         return
       }
       // In glob mode, skip API calls if the packet name is free text (not a known packet)

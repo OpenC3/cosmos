@@ -1028,10 +1028,10 @@ export default {
             }
           })
           .catch((error) => {
-            let message =
-              error.response?.data?.error?.message ||
-              error.response?.data?.message ||
-              JSON.stringify(error, null, 2)
+            // Note: OpenC3Api rejects with an Error built from the server
+            // response so the message is the useful part. JSON.stringify on an
+            // Error returns '{}' because its fields aren't enumerable.
+            let message = error.message || JSON.stringify(error, null, 2)
             if (
               !this.errors.find((existing) => {
                 return existing.message === message
