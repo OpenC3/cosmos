@@ -482,42 +482,48 @@ export default {
         })
     }
 
-    this.api.get_target_names().then((result) => {
-      this.targetNames = result.flatMap((target) => {
-        // Ignore the UNKNOWN target as it doesn't make sense to select this
-        if (target == 'UNKNOWN') {
-          return []
+    this.api
+      .get_target_names()
+      .then((result) => {
+        this.targetNames = result.flatMap((target) => {
+          // Ignore the UNKNOWN target as it doesn't make sense to select this
+          if (target == 'UNKNOWN') {
+            return []
+          }
+          return { label: target, value: target }
+        })
+        // TODO: This is a nice enhancement but results in logs of API calls for many targets
+        // See if we can reduce this to a single API call
+        // Filter out any targets without packets
+        // for (let i = this.targetNames.length - 1; i >= 0; i--) {
+        //   const cmd =
+        //     this.mode === 'tlm' ? 'get_all_tlm_names' : 'get_all_cmd_names'
+        //   await this.api[cmd](this.targetNames[i].value).then((names) => {
+        //     if (names.length === 0) {
+        //       this.targetNames.splice(i, 1)
+        //     }
+        //   })
+        // }
+        if (this.allowAllTargets) {
+          this.targetNames.unshift(this.ALL)
         }
-        return { label: target, value: target }
+        // If the initial target name is not set, default to the first target
+        // which also updates packets and items as needed
+        if (this.selectedTargetName) {
+          // Selected target name was set but we still have to update packets
+          this.updatePackets()
+        } else {
+          this.selectedTargetName = this.targetNames[0].value
+          this.targetNameChanged(this.selectedTargetName)
+        }
+        if (this.unknown) {
+          this.targetNames.push(this.UNKNOWN)
+        }
       })
-      // TODO: This is a nice enhancement but results in logs of API calls for many targets
-      // See if we can reduce this to a single API call
-      // Filter out any targets without packets
-      // for (let i = this.targetNames.length - 1; i >= 0; i--) {
-      //   const cmd =
-      //     this.mode === 'tlm' ? 'get_all_tlm_names' : 'get_all_cmd_names'
-      //   await this.api[cmd](this.targetNames[i].value).then((names) => {
-      //     if (names.length === 0) {
-      //       this.targetNames.splice(i, 1)
-      //     }
-      //   })
-      // }
-      if (this.allowAllTargets) {
-        this.targetNames.unshift(this.ALL)
-      }
-      // If the initial target name is not set, default to the first target
-      // which also updates packets and items as needed
-      if (this.selectedTargetName) {
-        // Selected target name was set but we still have to update packets
-        this.updatePackets()
-      } else {
-        this.selectedTargetName = this.targetNames[0].value
-        this.targetNameChanged(this.selectedTargetName)
-      }
-      if (this.unknown) {
-        this.targetNames.push(this.UNKNOWN)
-      }
-    })
+      .catch(() => {
+        // Re-enable the dropdowns so we're not stuck disabled forever
+        this.internalDisabled = false
+      })
   },
   methods: {
     selectOnFocus: function (refName) {
@@ -549,41 +555,56 @@ export default {
       this.internalDisabled = true
       const cmd =
         this.mode === 'tlm' ? 'get_all_tlm_names' : 'get_all_cmd_names'
-      this.api[cmd](this.selectedTargetName, this.hidden).then((names) => {
-        this.packetNames = names.map((name) => {
-          return {
-            label: name,
-            value: name,
+      this.api[cmd](this.selectedTargetName, this.hidden)
+        .then((names) => {
+          this.packetNames = names.map((name) => {
+            return {
+              label: name,
+              value: name,
+            }
+          })
+          if (this.includeLatestPacketInDropdown) {
+            this.packetNames.unshift(this.LATEST)
           }
-        })
-        if (this.includeLatestPacketInDropdown) {
-          this.packetNames.unshift(this.LATEST)
-        }
-        if (this.allowAll) {
-          this.packetNames.unshift(this.ALL)
-        }
-        if (!this.selectedPacketName) {
-          if (this.packetNames.length === 0) {
-            this.selectedPacketName = null
-          } else {
-            this.selectedPacketName = this.packetNames[0].value
-            if (
-              this.selectedPacketName === 'LATEST' &&
-              this.packetNames.length > 1
-            ) {
-              this.selectedPacketName = this.packetNames[1].value
+          if (this.allowAll) {
+            this.packetNames.unshift(this.ALL)
+          }
+          if (!this.selectedPacketName) {
+            if (this.packetNames.length === 0) {
+              this.selectedPacketName = null
+            } else {
+              this.selectedPacketName = this.packetNames[0].value
+              if (
+                this.selectedPacketName === 'LATEST' &&
+                this.packetNames.length > 1
+              ) {
+                this.selectedPacketName = this.packetNames[1].value
+              }
             }
           }
-        }
-        this.updatePacketDetails(this.selectedPacketName)
-        const item = this.packetNames.find((packet) => {
-          return packet.value === this.selectedPacketName
+          this.updatePacketDetails(this.selectedPacketName)
+          const item = this.packetNames.find((packet) => {
+            return packet.value === this.selectedPacketName
+          })
+          if (item && this.chooseItem) {
+            this.updateItems()
+          }
+          this.internalDisabled = false
         })
-        if (item && this.chooseItem) {
-          this.updateItems()
-        }
-        this.internalDisabled = false
-      })
+        .catch(() => {
+          // The request failed, e.g. the user doesn't have permission on this
+          // target. Clear the packets but re-enable the dropdowns so they can
+          // select a different target. The error itself is displayed by the
+          // global error notification.
+          this.packetNames = []
+          this.selectedPacketName = null
+          this.itemNames = []
+          this.selectedItemName = null
+          this.description = ''
+          this.hazardous = false
+          this.hazardousDescription = ''
+          this.internalDisabled = false
+        })
     },
 
     updateItems: function () {
@@ -616,10 +637,15 @@ export default {
             })
             this.finishUpdateItems()
           })
+          .catch(() => {
+            this.itemNames = []
+            this.selectedItemName = null
+            this.internalDisabled = false
+          })
       } else {
         const cmd = this.mode === 'tlm' ? 'get_tlm' : 'get_cmd'
-        this.api[cmd](this.selectedTargetName, this.selectedPacketName).then(
-          (packet) => {
+        this.api[cmd](this.selectedTargetName, this.selectedPacketName)
+          .then((packet) => {
             let items = []
             packet.items.forEach((item) => {
               if (!item['hidden']) {
@@ -640,13 +666,23 @@ export default {
             })
             this.itemNames.sort((a, b) => (a.label > b.label ? 1 : -1))
             this.finishUpdateItems()
-          },
-        )
+          })
+          .catch(() => {
+            this.itemNames = []
+            this.selectedItemName = null
+            this.internalDisabled = false
+          })
       }
     },
     finishUpdateItems: function () {
       if (this.allowAll) {
         this.itemNames.unshift(this.ALL)
+      }
+      if (this.itemNames.length === 0) {
+        this.selectedItemName = null
+        this.description = ''
+        this.internalDisabled = false
+        return
       }
       if (!this.selectedItemName) {
         this.selectedItemName = this.itemNames[0].value
@@ -734,13 +770,18 @@ export default {
         if (packet) {
           this.selectedPacketName = packet.value
           const cmd = this.mode === 'tlm' ? 'get_tlm' : 'get_cmd'
-          this.api[cmd](this.selectedTargetName, this.selectedPacketName).then(
-            (packet) => {
+          this.api[cmd](this.selectedTargetName, this.selectedPacketName)
+            .then((packet) => {
               this.description = packet.description
               this.hazardous = packet.hazardous
               this.hazardousDescription = packet.hazardous_description || ''
-            },
-          )
+            })
+            .catch(() => {
+              this.description = ''
+              this.hazardous = false
+              this.hazardousDescription = ''
+              this.internalDisabled = false
+            })
         }
       }
       if (this.chooseItem) {
