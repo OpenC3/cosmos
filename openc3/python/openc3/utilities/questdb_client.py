@@ -1146,6 +1146,17 @@ class QuestDBClient:
                 if item.get("states"):
                     desired_columns[f"{item_name}__C"] = "varchar"
                     self.varchar_columns[f"{table_name}__{item_name}__C"] = True
+                elif cmd_or_tlm == "CMD" and item.get("write_conversion"):
+                    # Commands log the value the user gave rather than the post write
+                    # conversion value in the buffer (see CommandDecomTopic.write_packet).
+                    # Write conversions typically take engineering units so the given
+                    # value can be a float even for an integer item. Use double so the
+                    # value isn't truncated to the item data type.
+                    if item.get("data_type") in ["STRING", "BLOCK"]:
+                        desired_columns[f"{item_name}__C"] = "varchar"
+                        self.varchar_columns[f"{table_name}__{item_name}__C"] = True
+                    else:
+                        desired_columns[f"{item_name}__C"] = "double"
                 elif item.get("read_conversion"):
                     rc = item.get("read_conversion")
                     converted_type = rc.get("converted_type") if rc else None

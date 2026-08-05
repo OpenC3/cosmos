@@ -25,6 +25,13 @@ module OpenC3
   class ToolModel < Model
     PRIMARY_KEY = 'openc3_tools'
 
+    # Tools are global to the entire COSMOS installation and are always stored
+    # in the DEFAULT scope. The frontend navigation always requests the tool
+    # list from DEFAULT, so a tool installed into any other scope would be
+    # inaccessible. Every scope parameter in this class is therefore ignored
+    # and replaced with TOOL_SCOPE.
+    TOOL_SCOPE = 'DEFAULT'
+
     attr_accessor :folder_name
     attr_accessor :icon
     attr_accessor :url
@@ -39,21 +46,24 @@ module OpenC3
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
+    # NOTE: scope is deprecated since 7.3.0 as tools always live in the DEFAULT scope, see TOOL_SCOPE
     def self.get(name:, scope: nil)
-      super("#{scope}__#{PRIMARY_KEY}", name: name)
+      super("#{TOOL_SCOPE}__#{PRIMARY_KEY}", name: name)
     end
 
+    # NOTE: scope is deprecated since 7.3.0 as tools always live in the DEFAULT scope, see TOOL_SCOPE
     def self.names(scope: nil)
       array = []
-      all(scope: scope).each do |name, _tool|
+      all().each do |name, _tool|
         array << name
       end
       array
     end
 
+    # NOTE: scope is deprecated since 7.3.0 as tools always live in the DEFAULT scope, see TOOL_SCOPE
     def self.all(scope: nil)
       ordered_array = []
-      tools = unordered_all(scope: scope)
+      tools = unordered_all()
       tools.each do |_name, tool|
         ordered_array << tool
       end
@@ -65,14 +75,10 @@ module OpenC3
       ordered_hash
     end
 
+    # Tools only exist in the DEFAULT scope. Kept for backwards compatibility
+    # with the ToolsController importmap endpoint.
     def self.all_scopes
-      result = {}
-      scopes = OpenC3::ScopeModel.all
-      scopes.each do |key, _scope|
-        tools = unordered_all(scope: key)
-        result.merge!(tools)
-      end
-      result
+      unordered_all()
     end
 
     # Called by the PluginModel to allow this class to validate it's top-level keyword: "TOOL"
@@ -80,7 +86,8 @@ module OpenC3
       case keyword
       when 'TOOL'
         parser.verify_num_parameters(2, 2, "TOOL <Folder Name> <Name>")
-        return self.new(folder_name: parameters[0], name: parameters[1], plugin: plugin, needs_dependencies: needs_dependencies, scope: scope)
+        # NOTE: scope is intentionally ignored, see TOOL_SCOPE
+        return self.new(folder_name: parameters[0], name: parameters[1], plugin: plugin, needs_dependencies: needs_dependencies, scope: TOOL_SCOPE)
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Tool: #{keyword} #{parameters.join(" ")}")
       end
@@ -89,8 +96,10 @@ module OpenC3
 
     # The ToolsTab.vue calls the ToolsController which uses this method to reorder the tools
     # Position is index in the list starting with 0 = first
-    def self.set_position(name:, position:, scope:)
-      moving = from_json(get(name: name, scope: scope), scope: scope)
+    # NOTE: scope is deprecated since 7.3.0 as tools always live in the DEFAULT scope, see TOOL_SCOPE
+    def self.set_position(name:, position:, scope: nil)
+      tool_scope = TOOL_SCOPE
+      moving = from_json(get(name: name, scope: tool_scope), scope: tool_scope)
       old_pos = moving.position
       new_pos = position
       direction = :down
@@ -101,8 +110,8 @@ module OpenC3
       end
 
       # Go through all the tools and reorder
-      all(scope: scope).each do |_tool_name, tool|
-        tool_model = from_json(tool, scope: scope)
+      all(scope: tool_scope).each do |_tool_name, tool|
+        tool_model = from_json(tool, scope: tool_scope)
         # Update the requested model to the new position
         if tool_model.name == name
           tool_model.position = position
@@ -134,9 +143,11 @@ module OpenC3
       needs_dependencies: false,
       disable_erb: nil,
       import_map_items: nil,
-      scope:
+      scope: nil  # NOTE: deprecated since 7.3.0 as tools are always created in the DEFAULT scope, see TOOL_SCOPE
     )
-      super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at, scope: scope)
+      # Tools are always created in the DEFAULT scope regardless of the scope
+      # the plugin is being installed into, see TOOL_SCOPE
+      super("#{TOOL_SCOPE}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at, scope: TOOL_SCOPE)
       @folder_name = folder_name
       @icon = icon
       @url = url
@@ -156,14 +167,15 @@ module OpenC3
     end
 
     def create(update: false, force: false, queued: false)
-      tools = self.class.all(scope: @scope)
+      tools = self.class.all()
 
       # Make sure a tool with this folder_name doesn't already exist
+      # NOTE: Tools are global (TOOL_SCOPE) so this check is across all scopes
       unless update
         if @folder_name
           tools.each do |_tool_name, tool|
             if tool['folder_name'] == @folder_name
-              raise "Tool with folder_name #{@folder_name} already exists at create"
+              raise "Tool with folder_name #{@folder_name} already exists at create. Tools are global to the entire COSMOS installation and can only be installed once."
             end
           end
         end
@@ -308,8 +320,9 @@ module OpenC3
     ##################################################
 
     # Returns the list of tools or the default OpenC3 tool set if no tools have been created
+    # NOTE: scope is deprecated since 7.3.0 as tools always live in the DEFAULT scope, see TOOL_SCOPE
     def self.unordered_all(scope: nil)
-      tools = Store.hgetall("#{scope}__#{PRIMARY_KEY}")
+      tools = Store.hgetall("#{TOOL_SCOPE}__#{PRIMARY_KEY}")
       tools.each do |key, value|
         tools[key] = JSON.parse(value, allow_nan: true, create_additions: true)
       end
