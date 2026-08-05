@@ -1079,7 +1079,7 @@ export default {
       }
       this.tlmAvailableTimeout = setTimeout(() => {
         this.api
-          .get_tlm_available(this.screenItems, { 'Ignore-Errors': '403' })
+          .get_tlm_available(this.screenItems, {}, { 'Ignore-Errors': '403' })
           .then((data) => {
             this.actualScreenItems = data
             // This must be the same or we're going to have problems

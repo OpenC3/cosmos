@@ -529,6 +529,17 @@ export default {
       })
   },
   methods: {
+    emitOnSet: function () {
+      this.$emit('on-set', {
+        targetName: this.selectedTargetName,
+        packetName: this.selectedPacketName,
+        itemName: this.selectedItemNameWIndex,
+        valueType: this.selectedValueType,
+        reduced: this.selectedReduced,
+        reducedType: this.selectedReducedType,
+        queueName: this.selectedQueueName,
+      })
+    },
     selectOnFocus: function (refName) {
       this.$nextTick(() => {
         const component = this.$refs[refName]
@@ -582,6 +593,9 @@ export default {
             this.hazardous = false
             this.hazardousDescription = ''
             this.internalDisabled = false
+            // Tell the parent the selection is gone so it doesn't keep acting
+            // on the previous packet / item
+            this.emitOnSet()
             return
           }
           if (!this.selectedPacketName) {
@@ -610,6 +624,7 @@ export default {
           this.hazardous = false
           this.hazardousDescription = ''
           this.internalDisabled = false
+          this.emitOnSet()
         })
     },
 
@@ -654,6 +669,7 @@ export default {
             this.itemNames = []
             this.selectedItemName = null
             this.internalDisabled = false
+            this.emitOnSet()
           })
       } else {
         const cmd = this.mode === 'tlm' ? 'get_tlm' : 'get_cmd'
@@ -684,6 +700,7 @@ export default {
             this.itemNames = []
             this.selectedItemName = null
             this.internalDisabled = false
+            this.emitOnSet()
           })
       }
     },
@@ -695,21 +712,14 @@ export default {
         this.selectedItemName = null
         this.description = ''
         this.internalDisabled = false
+        this.emitOnSet()
         return
       }
       if (!this.selectedItemName) {
         this.selectedItemName = this.itemNames[0].value
       }
       this.description = this.itemNames[0].description
-      this.$emit('on-set', {
-        targetName: this.selectedTargetName,
-        packetName: this.selectedPacketName,
-        itemName: this.selectedItemNameWIndex,
-        valueType: this.selectedValueType,
-        reduced: this.selectedReduced,
-        reducedType: this.selectedReducedType,
-        queueName: this.selectedQueueName,
-      })
+      this.emitOnSet()
       this.internalDisabled = false
     },
 
@@ -754,15 +764,7 @@ export default {
 
     queueNameChanged: function (value) {
       this.selectedQueueName = value
-      this.$emit('on-set', {
-        targetName: this.selectedTargetName,
-        packetName: this.selectedPacketName,
-        itemName: this.selectedItemNameWIndex,
-        valueType: this.selectedValueType,
-        reduced: this.selectedReduced,
-        reducedType: this.selectedReducedType,
-        queueName: this.selectedQueueName,
-      })
+      this.emitOnSet()
     },
 
     updatePacketDetails: function (value) {
@@ -800,15 +802,7 @@ export default {
       if (this.chooseItem) {
         this.updateItems()
       } else {
-        this.$emit('on-set', {
-          targetName: this.selectedTargetName,
-          packetName: this.selectedPacketName,
-          itemName: this.selectedItemNameWIndex,
-          valueType: this.selectedValueType,
-          reduced: this.selectedReduced,
-          reducedType: this.selectedReducedType,
-          queueName: this.selectedQueueName,
-        })
+        this.emitOnSet()
       }
     },
 
@@ -824,15 +818,7 @@ export default {
       if (item) {
         this.selectedItemName = item.value
         this.description = item.description
-        this.$emit('on-set', {
-          targetName: this.selectedTargetName,
-          packetName: this.selectedPacketName,
-          itemName: this.selectedItemNameWIndex,
-          valueType: this.selectedValueType,
-          reduced: this.selectedReduced,
-          reducedType: this.selectedReducedType,
-          queueName: this.selectedQueueName,
-        })
+        this.emitOnSet()
       } else if (
         this.globEnabled &&
         typeof value === 'string' &&
@@ -844,15 +830,7 @@ export default {
     },
 
     indexChanged: function (value) {
-      this.$emit('on-set', {
-        targetName: this.selectedTargetName,
-        packetName: this.selectedPacketName,
-        itemName: this.selectedItemNameWIndex,
-        valueType: this.selectedValueType,
-        reduced: this.selectedReduced,
-        reducedType: this.selectedReducedType,
-        queueName: this.selectedQueueName,
-      })
+      this.emitOnSet()
     },
 
     buttonPressed: function () {

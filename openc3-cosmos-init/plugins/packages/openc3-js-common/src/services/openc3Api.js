@@ -439,8 +439,8 @@ export default class OpenC3Api {
     return this.exec('get_tlm_buffer', [target_name, packet_name])
   }
 
-  get_tlm_available(items, headerOptions = {}) {
-    return this.exec('get_tlm_available', [items], {}, headerOptions)
+  get_tlm_available(items, kwparams = {}, headerOptions = {}) {
+    return this.exec('get_tlm_available', [items], kwparams, headerOptions)
   }
 
   async get_tlm_values(
