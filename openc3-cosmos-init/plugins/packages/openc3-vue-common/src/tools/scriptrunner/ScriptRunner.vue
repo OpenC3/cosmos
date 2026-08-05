@@ -1685,36 +1685,28 @@ export default {
     // Fetch custom role permissions concurrently rather than one
     // serialized round trip per role
     await Promise.all(
-      customRoles.map((role) =>
-        Api.get(`/openc3-api/roles/${role}`).then((response) => {
+      customRoles.map(async (role) => {
+        const response = await Api.get(`/openc3-api/roles/${role}`)
+        if (response.data !== null && response.data.permissions !== undefined) {
           if (
-            response.data !== null &&
-            response.data.permissions !== undefined
+            response.data.permissions.some((i) => i.permission == 'script_edit')
           ) {
-            if (
-              response.data.permissions.some(
-                (i) => i.permission == 'script_edit',
-              )
-            ) {
-              this.readOnlyUser = false
-            }
-            if (
-              response.data.permissions.some(
-                (i) => i.permission == 'script_run',
-              )
-            ) {
-              this.executeUser = true
-            }
-            if (
-              response.data.permissions.some(
-                (i) => i.permission == 'script_approver',
-              )
-            ) {
-              this.canApprove = true
-            }
+            this.readOnlyUser = false
           }
-        }),
-      ),
+          if (
+            response.data.permissions.some((i) => i.permission == 'script_run')
+          ) {
+            this.executeUser = true
+          }
+          if (
+            response.data.permissions.some(
+              (i) => i.permission == 'script_approver',
+            )
+          ) {
+            this.canApprove = true
+          }
+        }
+      }),
     )
     // Output the userinfo for use in the SuiteRunner component
     if (!this.inline) {

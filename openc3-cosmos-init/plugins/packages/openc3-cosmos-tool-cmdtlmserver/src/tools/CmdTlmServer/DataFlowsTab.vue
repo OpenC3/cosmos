@@ -46,12 +46,14 @@ export default {
   },
   methods: {
     update() {
-      this.api.get_interface_names().then((names) => {
-        const promises = [...names].map((name) => {
-          return this.api.interface_details(name)
-        })
+      this.api
+        .get_interface_names()
+        .then(async (names) => {
+          const promises = [...names].map((name) => {
+            return this.api.interface_details(name)
+          })
 
-        Promise.all(promises).then((responses) => {
+          const responses = await Promise.all(promises)
           this.interfaceDetails = {}
           let index = 0
           names.forEach((name) => {
@@ -59,14 +61,16 @@ export default {
             index += 1
           })
         })
-      })
+        .catch(console.error)
 
-      this.api.get_router_names().then((names) => {
-        const promises = [...names].map((name) => {
-          return this.api.router_details(name)
-        })
+      this.api
+        .get_router_names()
+        .then(async (names) => {
+          const promises = [...names].map((name) => {
+            return this.api.router_details(name)
+          })
 
-        Promise.all(promises).then((responses) => {
+          const responses = await Promise.all(promises)
           this.routerDetails = {}
           let index = 0
           names.forEach((name) => {
@@ -74,7 +78,7 @@ export default {
             index += 1
           })
         })
-      })
+        .catch(console.error)
     },
   },
 }
