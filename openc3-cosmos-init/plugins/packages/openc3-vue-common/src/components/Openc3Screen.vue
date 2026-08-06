@@ -1024,6 +1024,11 @@ export default {
             this.staleTime,
             this.cacheTimeout,
             dateTime,
+            null,
+            // A user without 'tlm' permission on these items gets a 403 on every
+            // update. Don't raise the global notification, we display the error
+            // on the screen itself (click the error icon in the screen toolbar).
+            { 'Ignore-Errors': '403' },
           )
           .then((data) => {
             if (data && data.length > 0) {
@@ -1033,7 +1038,10 @@ export default {
             }
           })
           .catch((error) => {
-            let message = JSON.stringify(error, null, 2)
+            // Note: OpenC3Api rejects with an Error built from the server
+            // response so the message is the useful part. JSON.stringify on an
+            // Error returns '{}' because its fields aren't enumerable.
+            let message = error.message || JSON.stringify(error, null, 2)
             if (
               !this.errors.find((existing) => {
                 return existing.message === message
@@ -1080,7 +1088,7 @@ export default {
       }
       this.tlmAvailableTimeout = setTimeout(() => {
         this.api
-          .get_tlm_available(this.screenItems)
+          .get_tlm_available(this.screenItems, {}, { 'Ignore-Errors': '403' })
           .then((data) => {
             this.actualScreenItems = data
             // This must be the same or we're going to have problems

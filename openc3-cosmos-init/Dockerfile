@@ -143,12 +143,38 @@ COPY --from=openc3-tmp3 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gem
 COPY --from=openc3-tmp4 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp5 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp5 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/openc3-cosmos-tool-docs/pnpm-lock.yaml /openc3/openc3-cosmos-tool-docs/pnpm-lock.yaml
+# Merge the plugin UV wheel caches warmed by docker-package-build.sh into the
+# baked seed this image already inherits from openc3-base (core's own wheels).
+# Without this the warmed wheels die with the throwaway build stage and the
+# runtime offline install (uvinstall) misses on any plugin that pins a version
+# core doesn't (e.g. demo numpy 2.4.6).
+#
+# Copied from EVERY build stage rather than just the one with a Python plugin
+# today (openc3-tmp4 / openc3-cosmos-demo): docker-package-build.sh always
+# creates /openc3/uv_cache_plugins, so a stage with no Python plugins
+# contributes an empty directory, and adding a Python plugin to any stage is
+# covered without editing this file. verify-uv-cache.sh below fails the build
+# if that ever stops being true.
+#
+# Do NOT add `uv cache prune --ci` to shrink these layers - it deletes exactly
+# the pre-built wheels the offline install depends on.
+COPY --from=openc3-tmp1 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/uv_cache_plugins/ /openc3/uv_cache/
+COPY --from=openc3-tmp2 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/uv_cache_plugins/ /openc3/uv_cache/
+COPY --from=openc3-tmp3 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/uv_cache_plugins/ /openc3/uv_cache/
+COPY --from=openc3-tmp4 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/uv_cache_plugins/ /openc3/uv_cache/
+COPY --from=openc3-tmp5 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/uv_cache_plugins/ /openc3/uv_cache/
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-js-common/ /openc3/plugins/packages/openc3-js-common/
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-vue-common/ /openc3/plugins/packages/openc3-vue-common/
 COPY --from=openc3-tmp1 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-tool-base/ /openc3/plugins/packages/openc3-tool-base/
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/pnpm-lock.yaml /openc3/plugins/pnpm-lock.yaml
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/pnpm-workspace.yaml /openc3/plugins/pnpm-workspace.yaml
 # Copy in other necessary code/config for the container
-COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./init.sh /openc3/
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./init.sh ./verify-uv-cache.sh /openc3/
+
+# Fail the build if any shipped plugin gem cannot install its Python
+# dependencies from the baked cache with no network. Catches a build stage
+# whose warmed wheels never made it into the copies above - which otherwise only
+# surfaces as a failed plugin install in an air-gapped cluster.
+RUN /openc3/verify-uv-cache.sh
 
 CMD [ "/openc3/init.sh" ]

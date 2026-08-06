@@ -439,8 +439,8 @@ export default class OpenC3Api {
     return this.exec('get_tlm_buffer', [target_name, packet_name])
   }
 
-  get_tlm_available(items) {
-    return this.exec('get_tlm_available', [items])
+  get_tlm_available(items, kwparams = {}, headerOptions = {}) {
+    return this.exec('get_tlm_available', [items], kwparams, headerOptions)
   }
 
   async get_tlm_values(
@@ -449,6 +449,7 @@ export default class OpenC3Api {
     cache_timeout = null,
     start_time = null,
     end_time = null,
+    headerOptions = {},
   ) {
     let kw_args = {
       stale_time: stale_time,
@@ -466,7 +467,7 @@ export default class OpenC3Api {
       'get_tlm_values',
       [items],
       kw_args,
-      {},
+      headerOptions,
       10000, // 10s timeout ... should never be this long
     )
     if (data && data.length > 0) {
