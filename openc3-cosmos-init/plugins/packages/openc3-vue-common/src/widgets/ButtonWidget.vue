@@ -163,11 +163,13 @@ export default {
       }
       Api.post(`/script-api/scripts/${scriptName}/run`, {
         data: { environment: envArray },
-      }).then((response) => {
-        if (openScript) {
-          window.open(`/tools/scriptrunner/${response.data}`, '_blank')
-        }
       })
+        .then((response) => {
+          if (openScript) {
+            window.open(`/tools/scriptrunner/${response.data}`, '_blank')
+          }
+        })
+        .catch(console.error)
     },
   },
 }

@@ -32,24 +32,31 @@ export default class MnemonicChecker {
     this.api = new OpenC3Api()
 
     this.targets = {}
-    this.api.get_target_names().then((response) => {
-      response.forEach((target) => {
-        this.targets[target] = {
-          cmd: null,
-          tlm: null,
-        }
+    this.api
+      .get_target_names()
+      .then((response) => {
+        response.forEach((target) => {
+          this.targets[target] = {
+            cmd: null,
+            tlm: null,
+          }
+        })
       })
-    })
+      .catch(console.error)
 
     this.cmdKeywordExpressions = []
-    getKeywords('cmd').then((response) => {
-      this.cmdKeywordExpressions = response.data.map(toKeywordRegex)
-    })
+    getKeywords('cmd')
+      .then((response) => {
+        this.cmdKeywordExpressions = response.data.map(toKeywordRegex)
+      })
+      .catch(console.error)
 
     this.tlmKeywordExpressions = []
-    getKeywords('tlm').then((response) => {
-      this.tlmKeywordExpressions = response.data.map(toKeywordRegex)
-    })
+    getKeywords('tlm')
+      .then((response) => {
+        this.tlmKeywordExpressions = response.data.map(toKeywordRegex)
+      })
+      .catch(console.error)
   }
 
   async checkText(text) {

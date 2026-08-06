@@ -1685,36 +1685,28 @@ export default {
     // Fetch custom role permissions concurrently rather than one
     // serialized round trip per role
     await Promise.all(
-      customRoles.map((role) =>
-        Api.get(`/openc3-api/roles/${role}`).then((response) => {
+      customRoles.map(async (role) => {
+        const response = await Api.get(`/openc3-api/roles/${role}`)
+        if (response.data !== null && response.data.permissions !== undefined) {
           if (
-            response.data !== null &&
-            response.data.permissions !== undefined
+            response.data.permissions.some((i) => i.permission == 'script_edit')
           ) {
-            if (
-              response.data.permissions.some(
-                (i) => i.permission == 'script_edit',
-              )
-            ) {
-              this.readOnlyUser = false
-            }
-            if (
-              response.data.permissions.some(
-                (i) => i.permission == 'script_run',
-              )
-            ) {
-              this.executeUser = true
-            }
-            if (
-              response.data.permissions.some(
-                (i) => i.permission == 'script_approver',
-              )
-            ) {
-              this.canApprove = true
-            }
+            this.readOnlyUser = false
           }
-        }),
-      ),
+          if (
+            response.data.permissions.some((i) => i.permission == 'script_run')
+          ) {
+            this.executeUser = true
+          }
+          if (
+            response.data.permissions.some(
+              (i) => i.permission == 'script_approver',
+            )
+          ) {
+            this.canApprove = true
+          }
+        }
+      }),
     )
     // Output the userinfo for use in the SuiteRunner component
     if (!this.inline) {
@@ -1734,9 +1726,11 @@ export default {
       this.showAlert = true
     }
 
-    Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
-      this.screenKeywords = response.data
-    })
+    Api.get('/openc3-api/autocomplete/keywords/screen')
+      .then((response) => {
+        this.screenKeywords = response.data
+      })
+      .catch(console.error)
 
     if (this.inline) {
       this.readOnly = true
@@ -1930,21 +1924,23 @@ export default {
       this.receivedEvents.length = 0 // Clear any unprocessed events
     },
     showMetadata() {
-      Api.get('/openc3-api/metadata').then((response) => {
-        // TODO: This is how Calendar creates new metadata items via makeMetadataEvent
-        this.inputMetadata.events = response.data.map((event) => {
-          return {
-            name: 'Metadata',
-            start: new Date(event.start * 1000),
-            end: new Date(event.start * 1000),
-            color: event.color,
-            type: event.type,
-            timed: true,
-            metadata: event,
-          }
+      Api.get('/openc3-api/metadata')
+        .then((response) => {
+          // TODO: This is how Calendar creates new metadata items via makeMetadataEvent
+          this.inputMetadata.events = response.data.map((event) => {
+            return {
+              name: 'Metadata',
+              start: new Date(event.start * 1000),
+              end: new Date(event.start * 1000),
+              color: event.color,
+              type: event.type,
+              timed: true,
+              metadata: event,
+            }
+          })
+          this.inputMetadata.show = true
         })
-        this.inputMetadata.show = true
-      })
+        .catch(console.error)
     },
     messageSortOrder(order) {
       // See ScriptLogMessages for these strings
@@ -2082,7 +2078,7 @@ export default {
           {
             data: { args },
           },
-        )
+        ).catch(console.error)
       }
     },
     clearBreakpoints: function () {
@@ -2209,12 +2205,14 @@ export default {
               Accept: 'application/json',
               'Content-Type': 'text/plain',
             },
-          }).then((response) => {
-            let alertText = ''
-            alertText += `<strong>${response.data.title}</strong><br/><br/>`
-            alertText += JSON.parse(response.data.description)
-            this.$dialog.alert(alertText.trim(), { html: true })
           })
+            .then((response) => {
+              let alertText = ''
+              alertText += `<strong>${response.data.title}</strong><br/><br/>`
+              alertText += JSON.parse(response.data.description)
+              this.$dialog.alert(alertText.trim(), { html: true })
+            })
+            .catch(console.error)
         }
       }
       this.mnemonicChecker
@@ -2460,22 +2458,28 @@ export default {
         this.filenameSelect = this.currentFilename
         this.fileNameChanged(this.currentFilename)
       }
-      Api.post(`/script-api/running-script/${this.scriptId}/go`)
+      Api.post(`/script-api/running-script/${this.scriptId}/go`).catch(
+        console.error,
+      )
     },
     pauseOrRetry() {
       if (this.pauseOrRetryButton === PAUSE) {
-        Api.post(`/script-api/running-script/${this.scriptId}/pause`)
+        Api.post(`/script-api/running-script/${this.scriptId}/pause`).catch(
+          console.error,
+        )
       } else {
         this.pauseOrRetryButton = PAUSE
-        Api.post(`/script-api/running-script/${this.scriptId}/retry`)
+        Api.post(`/script-api/running-script/${this.scriptId}/retry`).catch(
+          console.error,
+        )
       }
     },
-    stop() {
-      Api.post(`/script-api/running-script/${this.scriptId}/stop`)
+    async stop() {
+      await Api.post(`/script-api/running-script/${this.scriptId}/stop`)
     },
-    step() {
+    async step() {
       if (this.liveScriptId) {
-        Api.post(`/script-api/running-script/${this.liveScriptId}/step`)
+        await Api.post(`/script-api/running-script/${this.liveScriptId}/step`)
       }
     },
     // This is called by processLine no matter the current state
@@ -2940,6 +2944,19 @@ export default {
           break
       }
     },
+    async uploadFile(file) {
+      const response = await Api.get(
+        `/openc3-api/storage/upload/${encodeURIComponent(
+          `${window.openc3Scope}/tmp/${file.name}`,
+        )}?bucket=OPENC3_CONFIG_BUCKET`,
+      )
+      // This pushes the file into storage by using the fields in the presignedRequest
+      // See storage_controller.rb get_upload_presigned_request()
+      return axios({
+        ...response.data,
+        data: file,
+      })
+    },
     async fileDialogCallback(files) {
       // Set fileNames to 'COSMOS__CANCEL' in case they cancelled
       // otherwise we will populate it with the file names they selected
@@ -2950,20 +2967,7 @@ export default {
         fileNames = []
         files.forEach((file) => {
           fileNames.push(file.name)
-          promises.push(
-            Api.get(
-              `/openc3-api/storage/upload/${encodeURIComponent(
-                `${window.openc3Scope}/tmp/${file.name}`,
-              )}?bucket=OPENC3_CONFIG_BUCKET`,
-            ).then((response) => {
-              // This pushes the file into storage by using the fields in the presignedRequest
-              // See storage_controller.rb get_upload_presigned_request()
-              return axios({
-                ...response.data,
-                data: file,
-              })
-            }),
-          )
+          promises.push(this.uploadFile(file))
         })
       }
       const respond = (answer) => {
@@ -3369,7 +3373,9 @@ export default {
       // rejects overwriting a different approved script.
       this.resetLifecycle()
       if (this.tempFilename) {
-        Api.post(`/script-api/scripts/${this.tempFilename}/delete`)
+        Api.post(`/script-api/scripts/${this.tempFilename}/delete`).catch(
+          console.error,
+        )
         this.tempFilename = null
       }
       await this.saveFile('menu')
@@ -3423,12 +3429,14 @@ export default {
           Accept: 'application/json',
           'Content-Type': 'text/plain',
         },
-      }).then((response) => {
-        this.information.title = response.data.title
-        this.information.text = JSON.parse(response.data.description)
-        this.information.show = true
-        this.information.width = '600'
       })
+        .then((response) => {
+          this.information.title = response.data.title
+          this.information.text = JSON.parse(response.data.description)
+          this.information.show = true
+          this.information.width = '600'
+        })
+        .catch(console.error)
     },
     showInstrumented() {
       Api.post(`/script-api/scripts/${this.filename}/instrumented`, {
@@ -3437,16 +3445,20 @@ export default {
           Accept: 'application/json',
           'Content-Type': 'text/plain',
         },
-      }).then((response) => {
-        this.information.title = response.data.title
-        this.information.text = JSON.parse(response.data.description)
-        this.information.show = true
-        this.information.width = '90vw'
       })
+        .then((response) => {
+          this.information.title = response.data.title
+          this.information.text = JSON.parse(response.data.description)
+          this.information.show = true
+          this.information.width = '90vw'
+        })
+        .catch(console.error)
     },
     showCallStack() {
       if (this.liveScriptId) {
-        Api.post(`/script-api/running-script/${this.liveScriptId}/backtrace`)
+        Api.post(
+          `/script-api/running-script/${this.liveScriptId}/backtrace`,
+        ).catch(console.error)
       }
     },
     toggleDebug() {
@@ -3473,7 +3485,7 @@ export default {
             data: {
               args: this.debug,
             },
-          })
+          }).catch(console.error)
         }
         this.debug = ''
       } else if (event.key === 'ArrowUp') {
@@ -3523,7 +3535,9 @@ export default {
         !this.readOnly &&
         !this.readOnlyUser
       ) {
-        Api.post(`/script-api/scripts/${this.filename}/unlock`)
+        Api.post(`/script-api/scripts/${this.filename}/unlock`).catch(
+          console.error,
+        )
       }
     },
     onVersionRestored: function () {

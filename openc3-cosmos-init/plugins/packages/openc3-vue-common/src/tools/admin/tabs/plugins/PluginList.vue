@@ -134,10 +134,9 @@ export default {
     deletePrompt: function (plugin) {
       this.$emit('delete', plugin)
     },
-    fetchMicroservices: function () {
-      Api.get('/openc3-api/microservices/all').then((response) => {
-        this.microservices = response.data
-      })
+    fetchMicroservices: async function () {
+      const response = await Api.get('/openc3-api/microservices/all')
+      this.microservices = response.data
     },
   },
 }

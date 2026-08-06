@@ -153,24 +153,28 @@ export default {
     }
   },
   methods: {
-    loadModifiedFiles() {
-      for (const target of this.targets) {
-        Api.get(`/openc3-api/targets/${target.name}/modified_files`).then(
-          (response) => {
-            if (response.data.length !== 0) {
-              this.modifiedTargets.push({
-                name: target.name,
-                files: response.data.map((file) => ({
-                  file,
-                  fullName: file.startsWith(`${target.name}/`)
-                    ? file
-                    : `${target.name}/${file}`,
-                })),
-              })
-            }
-          },
-        )
-      }
+    async loadModifiedFiles() {
+      // Request all targets concurrently, then assign once so the list renders
+      // in target order rather than response order.
+      const responses = await Promise.all(
+        this.targets.map((target) =>
+          Api.get(`/openc3-api/targets/${target.name}/modified_files`)
+            .then((response) => response.data)
+            .catch((error) => {
+              console.error(error)
+              return []
+            }),
+        ),
+      )
+      this.modifiedTargets = this.targets
+        .map(({ name }, index) => ({
+          name,
+          files: responses[index].map((file) => ({
+            file,
+            fullName: file.startsWith(`${name}/`) ? file : `${name}/${file}`,
+          })),
+        }))
+        .filter(({ files }) => files.length > 0)
     },
     async loadDiff() {
       this.loading = true

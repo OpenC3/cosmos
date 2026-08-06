@@ -163,19 +163,21 @@ export default {
           Accept: 'application/json',
           'Content-Type': 'text/plain',
         },
-      }).then((response) => {
-        this.redisResponse = response.data.result
-        let redis =
-          this.redisEndpoint === 'ephemeral' ? 'Ephemeral' : 'Persistent'
-        if (this.db_shard !== 0) {
-          redis += ` (db_shard ${this.db_shard})`
-        }
-        this.commands.unshift({
-          redis: redis,
-          command: this.redisCommandText,
-          response: this.redisResponse,
-        })
       })
+        .then((response) => {
+          this.redisResponse = response.data.result
+          let redis =
+            this.redisEndpoint === 'ephemeral' ? 'Ephemeral' : 'Persistent'
+          if (this.db_shard !== 0) {
+            redis += ` (db_shard ${this.db_shard})`
+          }
+          this.commands.unshift({
+            redis: redis,
+            command: this.redisCommandText,
+            response: this.redisResponse,
+          })
+        })
+        .catch(console.error)
     },
   },
 }

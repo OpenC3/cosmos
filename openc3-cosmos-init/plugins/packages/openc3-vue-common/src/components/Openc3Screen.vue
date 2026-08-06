@@ -894,16 +894,16 @@ export default {
             },
           },
           0,
-        )
+        ).catch(console.error)
       })
     },
     deleteScreen: function () {
       this.editDialog = false
-      Api.delete(`/openc3-api/screen/${this.target}/${this.screen}`).then(
-        (response) => {
+      Api.delete(`/openc3-api/screen/${this.target}/${this.screen}`)
+        .then((response) => {
           this.$emit('delete-screen')
-        },
-      )
+        })
+        .catch(console.error)
     },
     minMaxTransition: function () {
       this.expand = !this.expand
