@@ -292,10 +292,9 @@ export default {
 
     // Handle going "back" from the plugin store
     // (idk why v-bottom-sheet's close-on-back prop isn't working)
-    const that = this
-    window.onpopstate = function () {
-      if (that.showPluginStore) {
-        that.showPluginStore = false
+    window.onpopstate = () => {
+      if (this.showPluginStore) {
+        this.showPluginStore = false
         history.go(1)
       }
     }

@@ -100,19 +100,18 @@ export default {
     screen: function () {
       // This exists for backwards compatibility of screen definitions since widgets no longer have a reference
       // to the Openc3Screen component instance
-      const that = this
       return {
-        getNamedWidget: function (widgetName) {
-          return that.store.namedWidget(that.toQualifiedWidgetName(widgetName))
+        getNamedWidget: (widgetName) => {
+          return this.store.namedWidget(this.toQualifiedWidgetName(widgetName))
         },
-        open: function (target, screen) {
-          that.$emit('open', target, screen)
+        open: (target, screen) => {
+          this.$emit('open', target, screen)
         },
-        close: function (target, screen) {
-          that.$emit('close', target, screen)
+        close: (target, screen) => {
+          this.$emit('close', target, screen)
         },
-        closeAll: function () {
-          that.$emit('closeAll')
+        closeAll: () => {
+          this.$emit('closeAll')
         },
       }
     },
