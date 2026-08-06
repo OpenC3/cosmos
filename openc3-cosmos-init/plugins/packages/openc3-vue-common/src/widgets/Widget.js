@@ -318,7 +318,7 @@ export default {
     // Capture a point-in-time snapshot of every named widget on this screen so a
     // sandboxed BUTTON script can read them synchronously (the sandbox bridge is
     // async, so getNamedWidget('X').text() cannot be a live cross-frame call).
-    // Only the read accessors that exist on each widget are captured.
+    // Only the read accessors (and value) that exist on each widget are captured.
     namedWidgetsSnapshot() {
       const snapshot = {}
       const prefix = `${this.screenId}:`
@@ -335,6 +335,19 @@ export default {
           entry.checked = widget.checked()
         if (typeof widget.date === 'function') entry.date = widget.date()
         if (typeof widget.time === 'function') entry.time = widget.time()
+        // Also capture the raw value data property (CHECKBUTTON, COMBOBOX,
+        // TEXTFIELD) so a script can read .value like it could back when
+        // getNamedWidget returned the live component. Restricted to primitives
+        // so the snapshot always survives structuredClone into the sandbox.
+        const value = widget.value
+        if (
+          value === null ||
+          typeof value === 'string' ||
+          typeof value === 'number' ||
+          typeof value === 'boolean'
+        ) {
+          entry.value = value
+        }
         snapshot[key.slice(prefix.length)] = entry
       }
       return snapshot
