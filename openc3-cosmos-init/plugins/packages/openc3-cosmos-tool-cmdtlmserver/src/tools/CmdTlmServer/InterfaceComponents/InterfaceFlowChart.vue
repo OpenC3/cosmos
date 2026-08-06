@@ -427,8 +427,8 @@ onEdgesChange(async (changes) => {
 // Protocol node layout. Protocol nodes are sized from their label so a row of
 // them can be positioned without overlapping and the parent interface / router
 // node can be made wide enough to hold the entire row.
-const PROTOCOL_START_X = 50 // Left margin inside the interface / router node
-const PROTOCOL_END_X = 50 // Right margin (CMD / TLM handle labels live here)
+const PROTOCOL_LEFT_MARGIN = 50 // Left margin inside the interface / router node
+const PROTOCOL_RIGHT_MARGIN = 50 // Right margin (CMD / TLM handle labels live here)
 const PROTOCOL_GAP = 10 // Horizontal space between protocol nodes
 const PROTOCOL_CHAR_WIDTH = 6.5 // Approximate width of a 10px label character
 const PROTOCOL_CHROME = 40 // Icon, padding and border of a protocol node
@@ -439,7 +439,7 @@ const PROTOCOL_READ_Y = 148 // Lower row
 // Position a row of protocols left to right, returning the label, width and
 // relative x position of each
 function layoutProtocolRow(protocols) {
-  let x = PROTOCOL_START_X
+  let x = PROTOCOL_LEFT_MARGIN
   return protocols.map((protocol) => {
     let label = protocol.name
     if (label.slice(-8) === 'Protocol') {
@@ -472,8 +472,8 @@ function protocolLayout(details) {
   const readRow = layoutProtocolRow(details.read_protocols || [])
   const width = Math.max(
     200,
-    protocolRowWidth(writeRow) + PROTOCOL_END_X,
-    protocolRowWidth(readRow) + PROTOCOL_END_X,
+    protocolRowWidth(writeRow) + PROTOCOL_RIGHT_MARGIN,
+    protocolRowWidth(readRow) + PROTOCOL_RIGHT_MARGIN,
   )
   return { writeRow, readRow, width }
 }
