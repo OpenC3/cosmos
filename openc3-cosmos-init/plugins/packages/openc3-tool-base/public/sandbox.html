@@ -116,7 +116,10 @@
 
           var screen = {
             getNamedWidget: function (widgetName) {
-              var snap = snapshot[widgetName] || {}
+              // Snapshot keys are upcased (NAMED_WIDGET names are upcased at
+              // parse time) so lookups are case insensitive
+              var name = String(widgetName).toUpperCase()
+              var snap = snapshot[name] || {}
               return {
                 text: function () {
                   return snap.text
@@ -140,7 +143,7 @@
                   callBridge({
                     type: 'call',
                     target: 'namedWidget',
-                    name: widgetName,
+                    name: name,
                     op: 'setValue',
                     value: newValue,
                   })

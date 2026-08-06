@@ -310,8 +310,10 @@ export default {
           return `rgb(${setting[0]},${setting[1]},${setting[2]})`
       }
     },
+    // Named widget lookups are case insensitive so we upcase the name to build
+    // the store key. Note NAMED_WIDGET names are already upcased at parse time.
     toQualifiedWidgetName(widgetName) {
-      return `${this.screenId}:${widgetName}`
+      return `${this.screenId}:${String(widgetName).toUpperCase()}`
     },
     // Capture a point-in-time snapshot of every named widget on this screen so a
     // sandboxed BUTTON script can read them synchronously (the sandbox bridge is
