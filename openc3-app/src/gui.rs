@@ -37,6 +37,11 @@ const ICON_FONT: Font = Font::with_name("openc3-icons");
 const GEAR_GLYPH: &str = "\u{E900}";
 /// The close (X) glyph's codepoint in [`ICON_FONT`] (Private Use Area).
 const CLOSE_GLYPH: &str = "\u{E901}";
+/// Disclosure carets in [`ICON_FONT`] (Private Use Area). Shipped in our own
+/// font because some Windows font fallbacks lack the Unicode triangle U+25B6
+/// (it rendered as tofu / a white square).
+const CARET_RIGHT_GLYPH: &str = "\u{E902}";
+const CARET_DOWN_GLYPH: &str = "\u{E903}";
 /// Light grey that reads on the dark UI, used for the gear icon.
 const GEAR_COLOR: Color = Color::from_rgb(0.81, 0.81, 0.81);
 
@@ -166,6 +171,9 @@ struct Shared {
     /// An important instruction (e.g. post-install NEXT STEPS) emitted by a task,
     /// to be shown as a dismissible popup on the next tick.
     pending_dialog: Option<String>,
+    /// The most recent progress line from a running task (e.g. a `docker compose`
+    /// pull line), shown live as the busy indicator's status.
+    activity: Option<String>,
 }
 
 struct State {
@@ -246,6 +254,11 @@ struct State {
     /// Text of a dismissible instruction popup (post-install NEXT STEPS), if one
     /// is currently showing.
     dialog: Option<String>,
+    /// Latest progress line from the running task, shown by the busy indicator.
+    activity: Option<String>,
+    /// Single-instance lock held for our lifetime; also lets us poll for a later
+    /// launch's request to surface our window.
+    singleton: crate::single_instance::Guard,
 }
 
 /// Start the host microservice operator on a background thread, wiring the
@@ -347,7 +360,7 @@ enum Message {
 }
 
 impl State {
-    fn new(mut ctx: Context, main_window: window::Id) -> Self {
+    fn new(mut ctx: Context, main_window: window::Id, singleton: crate::single_instance::Guard) -> Self {
         let settings = crate::settings::Settings::load(&ctx);
         // The persisted edition is the source of truth in the GUI.
         ctx.enterprise = settings.edition.is_enterprise();
@@ -410,6 +423,8 @@ impl State {
             shutdown_confirm: false,
             restart_pending: false,
             dialog: None,
+            activity: None,
+            singleton,
         }
     }
 
@@ -557,6 +572,14 @@ impl State {
         }
         if let Ok(mut s) = self.shared.lock() {
             self.busy = s.busy;
+            // Track the latest task progress line for the busy indicator; clear
+            // it once the task finishes.
+            if let Some(a) = s.activity.take() {
+                self.activity = Some(a);
+            }
+            if !self.busy {
+                self.activity = None;
+            }
             if let Some(content) = s.fetched_logs.take() {
                 self.logs_content = text_editor::Content::with_text(&content);
             }
@@ -641,7 +664,14 @@ impl State {
                         }
                     }
                 }
-                Task::none()
+                // A second launch may have asked us to surface our window (this
+                // covers platforms without a tray poll; tray platforms also catch
+                // it faster in PollTray).
+                if self.singleton.take_show_request() {
+                    self.show_main_window()
+                } else {
+                    Task::none()
+                }
             }
             Message::Skip => {
                 self.go_main();
@@ -984,16 +1014,18 @@ impl State {
                     window::close(id)
                 }
             }
-            Message::PollTray => match crate::tray::poll() {
-                Some(crate::tray::TrayAction::Show) => {
-                    // Restore the Dock icon (macOS) before showing/focusing.
-                    crate::tray::set_dock_visible(true);
-                    window::change_mode(self.main_window, window::Mode::Windowed)
-                        .chain(window::gain_focus(self.main_window))
+            Message::PollTray => {
+                // A second launch asking us to surface our window (checked here
+                // too so tray platforms react within the 200ms poll).
+                if self.singleton.take_show_request() {
+                    return self.show_main_window();
                 }
-                Some(crate::tray::TrayAction::Quit) => self.quit(),
-                None => Task::none(),
-            },
+                match crate::tray::poll() {
+                    Some(crate::tray::TrayAction::Show) => self.show_main_window(),
+                    Some(crate::tray::TrayAction::Quit) => self.quit(),
+                    None => Task::none(),
+                }
+            }
             Message::WindowClosed(id) => {
                 if Some(id) == self.logs_window {
                     self.logs_window = None;
@@ -1009,6 +1041,15 @@ impl State {
             }
             Message::Ignore => Task::none(),
         }
+    }
+
+    /// Surface the main window: restore the Dock icon (macOS), un-hide from the
+    /// tray, and focus it. Used by the tray's Show and by a second launch asking
+    /// the running instance to come to the front.
+    fn show_main_window(&self) -> Task<Message> {
+        crate::tray::set_dock_visible(true);
+        window::change_mode(self.main_window, window::Mode::Windowed)
+            .chain(window::gain_focus(self.main_window))
     }
 
     /// Stop the supervised microservices cleanly, then exit — so we don't orphan
@@ -1039,9 +1080,14 @@ impl State {
         crate::logging::info("openc3-app", &format!("{label}..."));
         let shared = self.shared.clone();
         std::thread::spawn(move || {
-            // Mirror install progress into the log (stdout + the in-app table).
+            // Mirror install progress into the log (stdout + the in-app table)
+            // and record the latest line as the live busy-indicator status.
+            let activity_shared = shared.clone();
             install::set_notifier(Box::new(move |m| {
                 crate::logging::info("openc3-app", &m);
+                if let Ok(mut s) = activity_shared.lock() {
+                    s.activity = Some(m);
+                }
             }));
             // Surface dialog-worthy instructions (post-install NEXT STEPS) as a
             // popup: stash the text for the UI to show on its next tick.
@@ -1825,20 +1871,30 @@ impl State {
         } else {
             format!("{running} of {total} running")
         };
-        let arrow = if self.status_collapsed {
-            "\u{25B6}" // ▶
+        // Render the disclosure caret from our embedded icon font (the Unicode
+        // triangles tofu'd on some Windows font fallbacks); the label stays in
+        // the normal font.
+        let caret = if self.status_collapsed {
+            CARET_RIGHT_GLYPH
         } else {
-            "\u{25BC}" // ▼
+            CARET_DOWN_GLYPH
         };
         let header_label = if self.status_collapsed {
-            format!("{arrow}  Container Status  ({status_summary})")
+            format!("Container Status  ({status_summary})")
         } else {
-            format!("{arrow}  Container Status")
+            "Container Status".to_string()
         };
-        let status_header = button(text(header_label).size(18))
-            .on_press(Message::ToggleStatus)
-            .style(button::text)
-            .padding(0);
+        let status_header = button(
+            row![
+                text(caret).font(ICON_FONT).size(14).color(GEAR_COLOR),
+                text(header_label).size(18),
+            ]
+            .spacing(8)
+            .align_y(Center),
+        )
+        .on_press(Message::ToggleStatus)
+        .style(button::text)
+        .padding(0);
         // The local container table is only meaningful when running COSMOS
         // locally; hide it entirely for a remote COSMOS.
         let status_section: Element<'_, Message> = if !self.settings.run_locally {
@@ -1999,8 +2055,22 @@ impl State {
         ]
         .spacing(8);
 
+        // While a task runs, show a spinner and the latest progress line (e.g.
+        // the current `docker compose` pull status on first-run downloads) so the
+        // app never looks hung. Full detail streams into the Log Messages table.
         let busy_note: Element<'_, Message> = if self.busy {
-            text("Working… (detailed output in the terminal)").size(13).into()
+            let frame = SPINNER[self.spinner % SPINNER.len()];
+            let status = self.activity.as_deref().unwrap_or("Working…");
+            row![
+                text(frame).size(18).font(Font::MONOSPACE).color(green),
+                text(status.to_string())
+                    .size(13)
+                    .width(Length::Fill)
+                    .wrapping(text::Wrapping::WordOrGlyph),
+            ]
+            .spacing(10)
+            .align_y(Center)
+            .into()
         } else {
             Space::with_height(0).into()
         };
@@ -2450,9 +2520,10 @@ impl State {
             // otherwise poll the setup page at a moderate rate.
             Page::Install if self.busy => Duration::from_millis(120),
             Page::Install => Duration::from_millis(750),
-            // Tick fast while the first status sample is still loading so the
-            // spinner animates, then settle to a 2s status poll.
-            Page::Main if !self.status_loaded => Duration::from_millis(120),
+            // Tick fast while the first status sample is still loading, or while
+            // a task is running, so the spinner/progress animates; then settle to
+            // a 2s status poll.
+            Page::Main if self.busy || !self.status_loaded => Duration::from_millis(120),
             Page::Main => Duration::from_secs(2),
         };
         let mut subs = vec![
@@ -2575,6 +2646,25 @@ fn state_style(c: &ContainerStatus) -> (&'static str, Color) {
 /// into their own draggable OS window. The main window is opened in the
 /// initializer and the app exits when it is closed.
 pub fn launch(root_override: Option<PathBuf>, enterprise: bool) -> anyhow::Result<()> {
+    // Only one GUI instance may run — a second launch signals the first to show
+    // its window (it may be hidden in the tray) and exits, rather than spawning a
+    // duplicate (another tray icon / operator). Uses a per-user lock file (no
+    // fixed port to collide with) that the OS releases on crash. See
+    // `single_instance`. Resolve the root the same way Context will so the lock
+    // lives in the app's data dir; fall back to the temp dir if that fails.
+    let root = crate::context::Paths::resolve(root_override.clone())
+        .map(|p| p.root)
+        .unwrap_or_else(|_| std::env::temp_dir());
+    let guard = match crate::single_instance::acquire(&root) {
+        crate::single_instance::Acquire::Secondary => {
+            crate::logging::info(
+                "openc3-app",
+                "OpenC3 COSMOS is already running; brought its window to the front.",
+            );
+            return Ok(());
+        }
+        crate::single_instance::Acquire::Primary(guard) => guard,
+    };
     iced::daemon(State::title, State::update, State::view)
         .subscription(State::subscription)
         .theme(|_state, _window| Theme::Dark)
@@ -2592,7 +2682,7 @@ pub fn launch(root_override: Option<PathBuf>, enterprise: bool) -> anyhow::Resul
                 ..window::Settings::default()
             };
             let (id, open) = window::open(settings);
-            (State::new(ctx, id), open.map(|_| Message::Ignore))
+            (State::new(ctx, id, guard), open.map(|_| Message::Ignore))
         })
         .map_err(|e| anyhow::anyhow!("GUI error: {e}"))
 }

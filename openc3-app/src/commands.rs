@@ -66,8 +66,12 @@ pub fn run(ctx: &Context) -> Result<()> {
     }
     check_not_root();
     install::setup_cosmos(ctx)?;
-    docker::up(ctx)?;
-    println!("COSMOS is starting. Access it at http://localhost:2900");
+    // On first run Docker downloads all the container images, which can take
+    // several minutes. Stream compose's progress through the notifier so the GUI
+    // (and CLI) show what's happening instead of appearing hung.
+    install::progress("Starting COSMOS containers (first run downloads images — this can take several minutes)…");
+    docker::up(ctx, |line| install::progress(line))?;
+    install::progress("COSMOS is starting. Access it at http://localhost:2900");
     Ok(())
 }
 

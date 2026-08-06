@@ -5,6 +5,8 @@ from fontTools.pens.ttGlyphPen import TTGlyphPen
 UPM = 1000
 GEAR_CP = 0xE900
 CLOSE_CP = 0xE901
+CARET_RIGHT_CP = 0xE902
+CARET_DOWN_CP = 0xE903
 
 
 def _ccw(pts):
@@ -38,6 +40,28 @@ def build_close():
     return pen.glyph()
 
 
+def _triangle(pts):
+    """A single filled triangle glyph from three points."""
+    pen = TTGlyphPen(None)
+    pts = _ccw([(round(x), round(y)) for x, y in pts])
+    pen.moveTo(pts[0])
+    for p in pts[1:]:
+        pen.lineTo(p)
+    pen.closePath()
+    return pen.glyph()
+
+
+def build_caret_right():
+    """A right-pointing disclosure triangle (collapsed state). Some Windows font
+    fallbacks lack U+25B6, so we ship our own glyph like the gear."""
+    return _triangle([(360, 700), (360, 180), (680, 440)])
+
+
+def build_caret_down():
+    """A down-pointing disclosure triangle (expanded state)."""
+    return _triangle([(240, 620), (760, 620), (500, 300)])
+
+
 def build_gear():
     pen = TTGlyphPen(None)
     cx, cy = 500, 440
@@ -67,12 +91,33 @@ def build_gear():
     return pen.glyph()
 
 fb = FontBuilder(UPM, isTTF=True)
-fb.setupGlyphOrder([".notdef", "gear", "close"])
-fb.setupCharacterMap({GEAR_CP: "gear", CLOSE_CP: "close"})
-fb.setupGlyf(
-    {".notdef": TTGlyphPen(None).glyph(), "gear": build_gear(), "close": build_close()}
+fb.setupGlyphOrder([".notdef", "gear", "close", "caret-right", "caret-down"])
+fb.setupCharacterMap(
+    {
+        GEAR_CP: "gear",
+        CLOSE_CP: "close",
+        CARET_RIGHT_CP: "caret-right",
+        CARET_DOWN_CP: "caret-down",
+    }
 )
-fb.setupHorizontalMetrics({".notdef": (600, 0), "gear": (1000, 60), "close": (1000, 100)})
+fb.setupGlyf(
+    {
+        ".notdef": TTGlyphPen(None).glyph(),
+        "gear": build_gear(),
+        "close": build_close(),
+        "caret-right": build_caret_right(),
+        "caret-down": build_caret_down(),
+    }
+)
+fb.setupHorizontalMetrics(
+    {
+        ".notdef": (600, 0),
+        "gear": (1000, 60),
+        "close": (1000, 100),
+        "caret-right": (820, 300),
+        "caret-down": (900, 200),
+    }
+)
 fb.setupHorizontalHeader(ascent=900, descent=-100)
 fb.setupNameTable(
     {
@@ -96,4 +141,6 @@ print(
     "saved. family:", f["name"].getDebugName(1),
     "| gear U+E900:", GEAR_CP in cmap,
     "| close U+E901:", CLOSE_CP in cmap,
+    "| caret-right U+E902:", CARET_RIGHT_CP in cmap,
+    "| caret-down U+E903:", CARET_DOWN_CP in cmap,
 )

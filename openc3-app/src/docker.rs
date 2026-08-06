@@ -210,10 +210,12 @@ fn apply_runtime_env(cmd: &mut Command, rt: &Runtime) {
 }
 
 /// `docker compose up -d`
-pub fn up(ctx: &Context) -> Result<()> {
+pub fn up(ctx: &Context, on_line: impl FnMut(&str)) -> Result<()> {
     let mut cmd = compose(ctx)?;
     cmd.args(["up", "-d"]);
-    run(cmd)
+    // Stream progress (image pulls on first run can take minutes) to `on_line`
+    // instead of blocking silently.
+    process::run_streamed(&mut cmd, on_line)
 }
 
 /// Gracefully stop the COSMOS services, then `down`.

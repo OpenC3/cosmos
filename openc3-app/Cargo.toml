@@ -15,7 +15,7 @@ path = "src/main.rs"
 # The GUI is on by default per the requirements. Build with
 # `--no-default-features` for a smaller headless-only binary.
 default = ["gui"]
-gui = ["dep:iced", "dep:rfd", "dep:image"]
+gui = ["dep:iced", "dep:rfd", "dep:image", "dep:fs4"]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
@@ -39,6 +39,10 @@ iced = { version = "0.13", default-features = false, features = ["tiny-skia", "t
 # Decode the embedded PNG logo into RGBA for the system-tray icon (GUI only).
 # Already in the tree via iced's "image" feature, so this adds no real build cost.
 image = { version = "0.24", default-features = false, features = ["png"], optional = true }
+# Cross-platform advisory file lock for the single-instance guard (GUI only). A
+# lock file avoids a fixed TCP port (no chance of colliding with another app) and
+# the OS releases the lock on crash. Sits on rustix/windows-sys, already in tree.
+fs4 = { version = "0.13", optional = true }
 # Iroh peer-to-peer bridge between the app and host microservices.
 iroh = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "io-util", "sync", "time", "macros"] }

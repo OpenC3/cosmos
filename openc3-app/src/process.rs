@@ -35,6 +35,57 @@ pub fn run(cmd: &mut Command) -> Result<()> {
     Ok(())
 }
 
+/// Run a command, streaming each stdout/stderr line to `on_line` as it arrives,
+/// and erroring on a non-zero exit. Used to surface long-running progress (e.g.
+/// `docker compose up` pulling images on first run) live instead of blocking
+/// silently. Both pipes are drained concurrently (via reader threads feeding a
+/// channel) so a full pipe can't deadlock the child.
+pub fn run_streamed(cmd: &mut Command, mut on_line: impl FnMut(&str)) -> Result<()> {
+    use std::io::{BufRead, BufReader};
+    use std::sync::mpsc;
+    no_window(cmd);
+    let display = describe(cmd);
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let mut child = cmd
+        .spawn()
+        .with_context(|| format!("failed to spawn: {display}"))?;
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+    let (tx, rx) = mpsc::channel::<String>();
+    let tx2 = tx.clone();
+    let h1 = stdout.map(|out| {
+        std::thread::spawn(move || {
+            for line in BufReader::new(out).lines().map_while(std::result::Result::ok) {
+                let _ = tx.send(line);
+            }
+        })
+    });
+    let h2 = stderr.map(|err| {
+        std::thread::spawn(move || {
+            for line in BufReader::new(err).lines().map_while(std::result::Result::ok) {
+                let _ = tx2.send(line);
+            }
+        })
+    });
+    // Iteration ends once both reader threads finish (both senders dropped).
+    for line in rx {
+        on_line(&line);
+    }
+    if let Some(h) = h1 {
+        let _ = h.join();
+    }
+    if let Some(h) = h2 {
+        let _ = h.join();
+    }
+    let status = child
+        .wait()
+        .with_context(|| format!("waiting for: {display}"))?;
+    if !status.success() {
+        bail!("command failed ({}): {display}", status);
+    }
+    Ok(())
+}
+
 /// Run a command capturing stdout/stderr. Returns the captured output
 /// regardless of exit status (caller decides what to do).
 pub fn capture(cmd: &mut Command) -> Result<Output> {

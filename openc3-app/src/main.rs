@@ -38,6 +38,9 @@ mod gui;
 #[cfg(feature = "gui")]
 mod tray;
 
+#[cfg(feature = "gui")]
+mod single_instance;
+
 use anyhow::Result;
 use clap::Parser;
 use cli::{Cli, Command, InstallTarget};
@@ -101,7 +104,30 @@ fn ensure_tool_path() {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
+/// Ensure Docker Desktop's bundled CLI directory is on PATH. Docker adds it to
+/// the *system* PATH at install time, but a GUI that was already running when
+/// Docker is installed (the first-run setup flow) keeps its old environment and
+/// so can't find `docker` — the Setup page then never sees the daemon come up.
+/// We add the well-known bin dir up front, even if it doesn't exist yet: once
+/// Docker installs into it this same session, `docker` resolves for detection,
+/// `docker info`, and `docker compose` — without mutating the environment from a
+/// worker thread (which would be racy). No-op if already present.
+#[cfg(target_os = "windows")]
+fn ensure_tool_path() {
+    use std::path::PathBuf;
+    let pf = std::env::var("ProgramFiles").unwrap_or_else(|_| r"C:\Program Files".to_string());
+    let docker_bin = PathBuf::from(format!(r"{pf}\Docker\Docker\resources\bin"));
+    let current = std::env::var_os("PATH").unwrap_or_default();
+    let mut dirs: Vec<PathBuf> = std::env::split_paths(&current).collect();
+    if !dirs.contains(&docker_bin) {
+        dirs.push(docker_bin);
+        if let Ok(joined) = std::env::join_paths(dirs) {
+            std::env::set_var("PATH", joined);
+        }
+    }
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn ensure_tool_path() {}
 
 /// Attach to the parent process's console (the terminal that launched us) so a

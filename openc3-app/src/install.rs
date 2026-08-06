@@ -53,6 +53,12 @@ pub fn clear_dialog_notifier() {
     DIALOG.with(|d| *d.borrow_mut() = None);
 }
 
+/// Public entry point for other modules (e.g. `commands`) to emit a user-facing
+/// progress line through the same GUI-log / stdout routing as install messages.
+pub fn progress(msg: impl Into<String>) {
+    notify(msg);
+}
+
 /// Emit a user-facing message: to the thread's notifier if set, else stdout.
 fn notify(msg: impl Into<String>) {
     let msg = msg.into();
@@ -235,6 +241,13 @@ pub fn start_docker() -> Result<()> {
         notify("Docker Desktop is starting. Wait until it reports it is running.");
         Ok(())
     } else if cfg!(target_os = "windows") {
+        // Update WSL before Docker starts — Docker Desktop's WSL2 backend needs
+        // a current WSL. Best-effort: ignore the result (WSL absent, already
+        // current, offline, etc.) and don't pop a console.
+        notify("Updating WSL (if needed)...");
+        let mut wsl = Command::new("wsl");
+        wsl.arg("--update");
+        let _ = process::capture(&mut wsl);
         notify("Starting Docker Desktop...");
         let pf = std::env::var("ProgramFiles").unwrap_or_else(|_| r"C:\Program Files".to_string());
         let exe = format!(r"{pf}\Docker\Docker\Docker Desktop.exe");
