@@ -27,6 +27,12 @@ export function useLayout() {
     previousDirection.value = direction
 
     for (const node of nodes) {
+      // Protocol nodes are positioned relative to their parent interface / router
+      // node and move with it, so they must not take part in the layout
+      if (node.parentNode) {
+        continue
+      }
+
       // if you need width+height of nodes for your layout, you can use the dimensions property of the internal node (`GraphNode` type)
       const graphNode = findNode(node.id)
 
@@ -47,20 +53,22 @@ export function useLayout() {
     return nodes.map((node) => {
       const nodeWithPosition = dagreGraph.node(node.id)
 
-      if (
-        node.type == 'cosmos' ||
-        node.type == 'interface' ||
-        node.type == 'router' ||
-        node.type == 'target'
-      ) {
-        return {
-          ...node,
-          targetPosition: isHorizontal ? Position.Left : Position.Top,
-          sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
-          position: { x: nodeWithPosition.x, y: nodeWithPosition.y },
-        }
-      } else {
+      if (!nodeWithPosition) {
         return node
+      }
+
+      return {
+        ...node,
+        targetPosition: isHorizontal ? Position.Left : Position.Top,
+        sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
+        // dagre returns the center of the node but Vue Flow positions nodes by
+        // their top left corner. Without this the right / bottom half of every
+        // node eats into the separation dagre allocated, so wide nodes (an
+        // interface with many protocols) overlap their neighbors.
+        position: {
+          x: nodeWithPosition.x - nodeWithPosition.width / 2,
+          y: nodeWithPosition.y - nodeWithPosition.height / 2,
+        },
       }
     })
   }
