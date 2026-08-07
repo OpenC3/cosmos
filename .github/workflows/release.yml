@@ -92,7 +92,6 @@ jobs:
         with:
           driver: cloud
           endpoint: "openc3inc/github-builder"
-          install: true
       - name: Update version to desired
         run: ruby openc3_set_versions.rb
         working-directory: scripts/release

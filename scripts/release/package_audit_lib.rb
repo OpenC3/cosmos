@@ -660,8 +660,9 @@ end
 def check_grafana(client, containers, dockerfile_path: nil, build_files: [])
   container = containers.select { |val| val[:name].include?('grafana') }[0]
   version = container[:base_image].split(':')[-1]
-  # Both grafana/grafana and grafana/grafana-oss share the same version tags;
-  # use grafana/grafana to match the container base_image above.
+  # grafana/grafana is the OSS build and is the actively tagged repo. Do NOT
+  # switch this to grafana/grafana-oss: that repo stopped publishing tags after
+  # 13.0.2 (2026-06), so it no longer shares version tags with grafana/grafana.
   versions = docker_hub_candidate_tags(client, 'grafana/grafana', version)
   candidates = validate_versions(versions, version, 'grafana')
   new_version = prompt_for_upgrade('grafana', version, candidates)
