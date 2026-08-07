@@ -12,4 +12,5 @@
 */
 
 export { useContainerHeight } from './useContainerHeight'
+export { useDownloadFile, useDownloadZip } from './useDownloadFile'
 export { useTimeFilters } from './useTimeFilters'

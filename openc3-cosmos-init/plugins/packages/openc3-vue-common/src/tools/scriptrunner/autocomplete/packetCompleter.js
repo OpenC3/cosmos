@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -34,14 +34,18 @@ export default class PacketCompleter {
     this.keywordExpressions = [] // Keywords that trigger the autocomplete feature
     this.autocompleteData = [] // Data to populate the autocomplete list
 
-    getKeywords(type).then((response) => {
-      this.keywordExpressions = response.data.map(toMethodCallSyntaxRegex)
-      expressionsReadyCallback()
-    })
-    getAutocompleteData(type).then((response) => {
-      this.autocompleteData = response.data
-      dataReadyCallback()
-    })
+    getKeywords(type)
+      .then((response) => {
+        this.keywordExpressions = response.data.map(toMethodCallSyntaxRegex)
+        expressionsReadyCallback()
+      })
+      .catch(console.error)
+    getAutocompleteData(type)
+      .then((response) => {
+        this.autocompleteData = response.data
+        dataReadyCallback()
+      })
+      .catch(console.error)
   }
 
   getCompletions(_editor, session, position, _prefix, callback) {

@@ -129,6 +129,7 @@
 <script>
 import { Api } from '@openc3/js-common/services'
 import { PluginDetailsDialog, PluginProps } from '@/plugins/plugin-store'
+import { useDownloadZip } from '@/composables'
 
 export default {
   components: {
@@ -153,6 +154,11 @@ export default {
     scriptVersionsEnabled: Boolean,
   },
   emits: ['edit', 'delete', 'upgrade', 'migrate-to-uv'],
+  setup() {
+    const downloadZip = useDownloadZip()
+
+    return { downloadZip }
+  },
   data() {
     return {
       showCard: false,
@@ -197,41 +203,11 @@ export default {
         this.showCard = true
       }
     },
-    downloadPlugin: function () {
-      Api.post(`/openc3-api/packages/${this.name}/download`).then(
-        (response) => {
-          // Decode Base64 string
-          const decodedData = window.atob(response.data.contents)
-          // Create UNIT8ARRAY of size same as row data length
-          const uInt8Array = new Uint8Array(decodedData.length)
-          // Insert all character code into uInt8Array
-          for (let i = 0; i < decodedData.length; ++i) {
-            uInt8Array[i] = decodedData.charCodeAt(i)
-          }
-          const blob = new Blob([uInt8Array], { type: 'application/zip' })
-          const link = document.createElement('a')
-          link.href = URL.createObjectURL(blob)
-          link.setAttribute('download', response.data.filename)
-          link.click()
-        },
-      )
+    downloadPlugin: async function () {
+      await this.downloadZip(`/openc3-api/packages/${this.name}/download`)
     },
-    downloadTarget: function (name) {
-      Api.post(`/openc3-api/targets/${name}/download`).then((response) => {
-        // Decode Base64 string
-        const decodedData = window.atob(response.data.contents)
-        // Create UNIT8ARRAY of size same as row data length
-        const uInt8Array = new Uint8Array(decodedData.length)
-        // Insert all character code into uInt8Array
-        for (let i = 0; i < decodedData.length; ++i) {
-          uInt8Array[i] = decodedData.charCodeAt(i)
-        }
-        const blob = new Blob([uInt8Array], { type: 'application/zip' })
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.setAttribute('download', response.data.filename)
-        link.click()
-      })
+    downloadTarget: async function (name) {
+      await this.downloadZip(`/openc3-api/targets/${name}/download`)
     },
     async exportHistory() {
       this.exporting = true

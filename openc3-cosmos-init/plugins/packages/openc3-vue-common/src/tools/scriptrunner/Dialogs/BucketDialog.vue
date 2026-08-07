@@ -224,10 +224,12 @@ export default {
     },
   },
   created() {
-    Api.get('/openc3-api/storage/buckets').then((response) => {
-      this.buckets = response.data
-      this.applyDefaultPath()
-    })
+    Api.get('/openc3-api/storage/buckets')
+      .then((response) => {
+        this.buckets = response.data
+        this.applyDefaultPath()
+      })
+      .catch(console.error)
   },
   methods: {
     formatSize(bytes) {

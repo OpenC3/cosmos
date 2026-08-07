@@ -235,7 +235,7 @@ export function runButtonScript(options) {
           })
           break
         case 'call':
-          dispatch(message)
+          dispatch(message).catch(console.error)
           break
         case 'done':
           finish(resolve, undefined)

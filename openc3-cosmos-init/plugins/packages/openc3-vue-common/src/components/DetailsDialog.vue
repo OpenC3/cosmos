@@ -387,33 +387,32 @@ export default {
     },
     async requestDetails() {
       if (this.type === 'tlm') {
-        this.api
-          .get_tlm_available([
-            `${this.targetName}__${this.packetName}__${this.itemName}__RAW`,
-            `${this.targetName}__${this.packetName}__${this.itemName}__CONVERTED`,
-            `${this.targetName}__${this.packetName}__${this.itemName}__FORMATTED`,
-          ])
-          .then((available) => {
-            if (available && available.length > 0) {
-              this.available = available
-            }
-            this.api
-              .get_item(this.targetName, this.packetName, this.itemName)
-              .then((details) => {
-                this.details = details
-                // If the item does not have limits explicitly null it
-                // to make the check in the template easier
-                if (!this.hasLimits(details)) {
-                  this.details.limits = null
-                }
-              })
-          })
+        const available = await this.api.get_tlm_available([
+          `${this.targetName}__${this.packetName}__${this.itemName}__RAW`,
+          `${this.targetName}__${this.packetName}__${this.itemName}__CONVERTED`,
+          `${this.targetName}__${this.packetName}__${this.itemName}__FORMATTED`,
+        ])
+        if (available && available.length > 0) {
+          this.available = available
+        }
+        const details = await this.api.get_item(
+          this.targetName,
+          this.packetName,
+          this.itemName,
+        )
+        this.details = details
+        // If the item does not have limits explicitly null it
+        // to make the check in the template easier
+        if (!this.hasLimits(details)) {
+          this.details.limits = null
+        }
       } else {
-        this.api
-          .get_parameter(this.targetName, this.packetName, this.itemName)
-          .then((details) => {
-            this.details = details
-          })
+        const details = await this.api.get_parameter(
+          this.targetName,
+          this.packetName,
+          this.itemName,
+        )
+        this.details = details
       }
     },
     async changeLimitsEnabled() {

@@ -19,6 +19,7 @@ from websockets.exceptions import ConnectionClosedOK
 
 from openc3.script.web_socket_api import (
     MessagesWebSocketApi,
+    RunningScriptWebSocketApi,
     WebSocketApi,
 )
 from openc3.utilities.time import to_nsec_from_epoch
@@ -157,6 +158,78 @@ class TestWebSocketApiSubscribe(unittest.TestCase):
         message = next(f for f in frames if f["command"] == "message")
         identifier = json.loads(message["identifier"])
         self.assertEqual(identifier["token"], "test_token")
+
+
+class TestRunningScriptWebSocketApiReady(unittest.TestCase):
+    """Verify the ready protocol: live script events only flow once the client
+    performs the 'ready' channel action (see RunningScriptChannel#ready).
+    subscribe() blocks until confirm_subscription, so sending 'ready'
+    immediately after guarantees the gateway has registered the stream and the
+    client cannot report ready in a way that races a broadcast."""
+
+    def _make_api(self):
+        mock_auth = Mock()
+        mock_auth.token.return_value = "test_token"
+        api = RunningScriptWebSocketApi(
+            id="spec-script-1",
+            url="ws://test.com/script-api/cable",
+            authentication=mock_auth,
+        )
+        api.stream = Mock()
+        api.stream.read.return_value = '{"type":"confirm_subscription"}'
+        return api
+
+    def _frames(self, api):
+        return [json.loads(c.args[0]) for c in api.stream.write.call_args_list]
+
+    def test_subscribe_reports_ready_exactly_once_after_confirmation(self):
+        api = self._make_api()
+        api.subscribe()
+        frames = self._frames(api)
+        self.assertEqual([f["command"] for f in frames], ["subscribe", "message"])
+        self.assertEqual(json.loads(frames[-1]["data"]), {"action": "ready"})
+
+    def test_ready_action_identifier_matches_subscription(self):
+        api = self._make_api()
+        api.subscribe()
+        frames = self._frames(api)
+        # Must match exactly: ActionCable routes 'message' commands to a
+        # subscription by comparing the raw identifier string
+        self.assertEqual(frames[-1]["identifier"], frames[0]["identifier"])
+        identifier = json.loads(frames[-1]["identifier"])
+        self.assertEqual(identifier["channel"], "RunningScriptChannel")
+        self.assertEqual(identifier["id"], "spec-script-1")
+        self.assertEqual(identifier["token"], "test_token")
+
+    def test_no_ready_resend_on_subsequent_subscribes(self):
+        api = self._make_api()
+        api.subscribe()
+        api.subscribe()
+        frames = self._frames(api)
+        self.assertEqual([f["command"] for f in frames], ["subscribe", "message"])
+
+    # write_action calls subscribe() internally, which on the first call is
+    # the overridden subscribe that itself calls write_action for ready. Prove
+    # this does not recurse or duplicate frames and preserves ordering.
+    def test_action_triggering_first_subscribe_orders_subscribe_ready_action(self):
+        api = self._make_api()
+        api.write_action({"action": "other"})
+        frames = self._frames(api)
+        self.assertEqual([f["command"] for f in frames], ["subscribe", "message", "message"])
+        self.assertEqual(json.loads(frames[1]["data"]), {"action": "ready"})
+        self.assertEqual(json.loads(frames[2]["data"]), {"action": "other"})
+
+    def test_reports_ready_again_after_unsubscribe_resubscribe_cycle(self):
+        api = self._make_api()
+        api.subscribe()
+        api.unsubscribe()
+        api.subscribe()
+        frames = self._frames(api)
+        self.assertEqual(
+            [f["command"] for f in frames],
+            ["subscribe", "message", "unsubscribe", "subscribe", "message"],
+        )
+        self.assertEqual(json.loads(frames[-1]["data"]), {"action": "ready"})
 
 
 if __name__ == "__main__":

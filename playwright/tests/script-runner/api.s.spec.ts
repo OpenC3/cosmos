@@ -133,20 +133,43 @@ test('runs a script', async ({ page, utils }) => {
     },
   )
 
+  // Ask the API which script the parent just launched instead of assuming it is
+  // the first disconnect.rb row. The table is unsorted, shows 10 rows per page
+  // and refreshes itself every 5 seconds, and a failed earlier run can leave its
+  // own disconnect.rb sitting at an error, so "first row mentioning the
+  // filename" is neither guaranteed to be on the page nor to be this script.
+  const scriptId = await page.evaluate(async () => {
+    const response = await fetch(
+      '/script-api/running-script?scope=DEFAULT&limit=100',
+      { headers: { Authorization: localStorage.openc3Token } },
+    )
+    const { items } = (await response.json()) as {
+      items: { name: string; filename: string }[]
+    }
+    const ids = items
+      .filter((item) => item.filename === 'INST/procedures/disconnect.rb')
+      .map((item) => parseInt(item.name, 10))
+    return Math.max(...ids).toString() // ids increase, so ours is the largest
+  })
+  expect(scriptId, 'no running disconnect.rb script found via /script-api/running-script').toMatch(/^\d+$/)
+
   await page.locator('[data-test="script-runner-script"]').click()
   await page.getByText('Execution Status').click()
   await utils.sleep(1000)
-  await page.getByText('Running Scripts').click()
+  await page.getByRole('tab', { name: 'Running Scripts' }).click()
   await expect(
     page.locator('[data-test="running-scripts"] thead').getByText('Connect'),
   ).toBeVisible()
-  await page
-    .locator(
-      '[data-test="running-scripts"] tr:has-text("INST/procedures/disconnect.rb")',
-    )
-    .first()
-    .getByRole('button', { name: 'Connect' })
-    .click()
+  // Search keeps our script on the first page, and identifying its row by id
+  // (rendered as a button in the Id column) means the 5 second refresh can't
+  // shift another script's Connect button under the click.
+  await page.locator('[data-test=running-search] input').fill(scriptId)
+  const scriptRow = page
+    .locator('[data-test="running-scripts"] tbody tr')
+    .filter({ has: page.getByRole('button', { name: scriptId, exact: true }) })
+    .filter({ visible: true })
+  await expect(scriptRow).toHaveCount(1)
+  await scriptRow.getByRole('button', { name: 'Connect' }).click()
 
   await expect(page.locator('[data-test=state] input')).toHaveValue('error', {
     timeout: 20000,
@@ -188,10 +211,16 @@ async function testMetadataApis(
 ) {
   // Clear other test data
   await page.goto('/tools/admin/redis')
-  await page
-    .getByLabel('Redis command')
-    .fill('zremrangebyscore DEFAULT__METADATA -inf +inf')
-  await page.getByLabel('Redis command').press('Enter')
+  const redisCommand = page.getByLabel('Redis command')
+  await redisCommand.fill('zremrangebyscore DEFAULT__METADATA -inf +inf')
+  // Wait for the command to actually land. page.goto() aborts in-flight
+  // requests, so pressing Enter and immediately navigating away made the
+  // clear a race: when it lost, stale metadata survived into the run below.
+  const redisResponse = page.waitForResponse((response) =>
+    response.url().includes('/openc3-api/redis/exec'),
+  )
+  await redisCommand.press('Enter')
+  expect((await redisResponse).ok()).toBe(true)
   await page.goto('/tools/scriptrunner')
 
   await openFile(page, utils, filename)
@@ -199,17 +228,24 @@ async function testMetadataApis(
   await page.locator('[data-test="script-runner-script-metadata"]').click()
   await utils.sleep(500)
   await expect(page.locator('[data-test="new-event"]')).toBeVisible()
-  // Delete any existing metadata so we start fresh
-  while (true) {
-    if (await page.$('[data-test=delete-event]')) {
-      await page.locator('[data-test=delete-event] >> nth=0').click()
-      await page.locator('[data-test=confirm-dialog-delete]').click()
-      await utils.sleep(300)
-    } else {
-      break
-    }
+  // Delete any existing metadata so we start fresh. The redis clear above
+  // should have emptied this, so normally the loop doesn't run at all.
+  const deleteButtons = page.locator('[data-test=delete-event]')
+  let remaining = await deleteButtons.count()
+  while (remaining > 0) {
+    await deleteButtons.first().click()
+    await page.locator('[data-test=confirm-dialog-delete]').click()
+    // The row is spliced out of the table when the confirm resolves. Wait on
+    // that rather than a fixed sleep, which under CI load could tick before
+    // the re-render and then click a stale row.
+    remaining -= 1
+    await expect(deleteButtons).toHaveCount(remaining)
   }
   await page.locator('[data-test="close-event-list"]').click()
+  // metadata_input() reopens this same dialog, so wait for it to actually go
+  // away. Otherwise the toBeVisible() below can match the dialog we just
+  // closed and the click lands on a detaching element.
+  await expect(page.locator('[data-test="new-event"]')).not.toBeVisible()
 
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test="new-event"]')).toBeVisible({
@@ -226,7 +262,12 @@ async function testMetadataApis(
     .locator('[data-test="value-0"]')
     .locator('input')
     .fill('inputvalue')
-  await page.getByRole('button', { name: 'Ok' }).click()
+  const okButton = page.getByRole('button', { name: 'Ok' })
+  await okButton.click()
+  // The create dialog only closes once the POST succeeds. If it fails (e.g. a
+  // 409 because the start collides with an existing entry) it stays open and
+  // its scrim silently blocks Close below, so fail here where it's diagnosable.
+  await expect(okButton).not.toBeVisible()
   await page.locator('[data-test="close-event-list"]').click()
 
   await expect(page.locator('[data-test=state] input')).toHaveValue(

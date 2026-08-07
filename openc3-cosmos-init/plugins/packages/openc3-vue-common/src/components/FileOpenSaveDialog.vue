@@ -224,57 +224,54 @@ export default {
       return new RegExp(expression)
     },
   },
-  created() {
-    Api.get('/openc3-api/targets').then((response) => {
-      this.targets = response.data
-      this.targets.push('__TEMP__') // Also support __TEMP__
-      const loadPromises = this.targets.map((target) => {
-        // Name not found so push the item and add a children array
-        this.items.push({
-          id: target,
-          disabled: true,
-          title: target,
-          children: [],
-          path: target,
-        })
-        // Load the targets 1 by 1 in the background
-        return this.loadFiles(target)
+  async created() {
+    const response = await Api.get('/openc3-api/targets')
+    this.targets = response.data
+    this.targets.push('__TEMP__') // Also support __TEMP__
+    const loadPromises = this.targets.map((target) => {
+      // Name not found so push the item and add a children array
+      this.items.push({
+        id: target,
+        disabled: true,
+        title: target,
+        children: [],
+        path: target,
       })
-      Promise.all(loadPromises).then(() => {
-        this.disableButtons = false
-      })
+      // Load the targets 1 by 1 in the background
+      return this.loadFiles(target)
     })
+    await Promise.all(loadPromises)
+    this.disableButtons = false
   },
   methods: {
     calcIcon: function (filename) {
       return fileIcon(filename)
     },
-    loadFiles: function (target) {
-      return Api.get(this.apiUrl, { params: { target } })
-        .then((response) => {
-          if (response.data.length === 0) {
-            // Delete from items since there is no data
-            this.items = this.items.filter((item) => item.id !== target)
-            return
-          }
-          for (let file of response.data.sort()) {
-            // Make a copy of the entire file path before calling insertFile
-            // because insertFile does recursion and needs the original path
-            this.filepath = file
-            this.insertFile(this.items, 2, file)
-          }
-          if (this.inputFilename) {
-            this.selectedFile = this.inputFilename
-          }
-          // Enable the target we just populated
-          const index = this.items.findIndex((item) => item.id === target)
-          if (index !== -1) {
-            this.items[index].disabled = false
-          }
-        })
-        .catch((error) => {
-          this.$emit('error', `Failed to connect to OpenC3. ${error}`)
-        })
+    loadFiles: async function (target) {
+      try {
+        const response = await Api.get(this.apiUrl, { params: { target } })
+        if (response.data.length === 0) {
+          // Delete from items since there is no data
+          this.items = this.items.filter((item) => item.id !== target)
+          return
+        }
+        for (let file of response.data.sort()) {
+          // Make a copy of the entire file path before calling insertFile
+          // because insertFile does recursion and needs the original path
+          this.filepath = file
+          this.insertFile(this.items, 2, file)
+        }
+        if (this.inputFilename) {
+          this.selectedFile = this.inputFilename
+        }
+        // Enable the target we just populated
+        const index = this.items.findIndex((item) => item.id === target)
+        if (index !== -1) {
+          this.items[index].disabled = false
+        }
+      } catch (error) {
+        this.$emit('error', `Failed to connect to OpenC3. ${error}`)
+      }
     },
     clear: function () {
       this.show = false

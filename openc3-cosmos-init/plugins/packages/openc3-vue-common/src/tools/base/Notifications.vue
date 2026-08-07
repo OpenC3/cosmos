@@ -320,9 +320,11 @@ export default {
     window.addEventListener('openc3-ack-alert', this.onAckAlert)
     this.subscribe()
     // Get the initial number of running scripts
-    Api.get('/script-api/running-script').then((response) => {
-      this.numScripts = response.data.total
-    })
+    Api.get('/script-api/running-script')
+      .then((response) => {
+        this.numScripts = response.data.total
+      })
+      .catch(console.error)
   },
   unmounted: function () {
     window.removeEventListener('openc3-ack-alert', this.onAckAlert)

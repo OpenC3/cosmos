@@ -454,7 +454,7 @@ export default {
   },
   watch: {
     // This is the upload function that is activated when the file gets set
-    file: async function () {
+    file: function () {
       if (this.file === null) return
       this.uploadFilePath = `${this.path}${this.file.name}`
       this.uploadPathDialog = true

@@ -704,6 +704,11 @@ export default {
           // Then add all the screens in order
           config.forEach((definition, index) => {
             const response = responses[index]
+            // loadScreen catches its own errors and resolves undefined (a
+            // removed plugin makes 404 expected), so skip screens that
+            // failed rather than dereferencing undefined in the timeout
+            // below, where the TypeError would be unrecoverable.
+            if (!response || !response.data) return
             setTimeout(() => {
               let floated = definition.floated
               if (!floated) {

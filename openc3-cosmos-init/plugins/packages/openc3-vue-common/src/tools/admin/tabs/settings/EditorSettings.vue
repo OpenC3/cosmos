@@ -115,10 +115,12 @@ export default {
   created() {
     this.loadSetting(SCRIPT_LOCKING_SETTING)
     this.loadSetting(SCRIPT_LIFECYCLE_SETTING)
-    Api.get('/openc3-api/info').then(({ data }) => {
-      this.isEnterprise = data.enterprise === true
-      this.gitHistoryEnabled = data.script_versions === true
-    })
+    Api.get('/openc3-api/info')
+      .then(({ data }) => {
+        this.isEnterprise = data.enterprise === true
+        this.gitHistoryEnabled = data.script_versions === true
+      })
+      .catch(console.error)
   },
   methods: {
     save: function () {
