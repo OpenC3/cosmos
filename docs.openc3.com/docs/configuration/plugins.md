@@ -553,7 +553,7 @@ The following keywords must follow a TARGET keyword.
 ### CMD_DECOM_RETAIN_TIME
 <span class="badge badge--secondary since-right">Since 7.0.0</span>**How long to keep command decommutation records in the TSDB.**
 
-Sets the retention time directly on QuestDB tables for automatic data expiration. QuestDB will automatically remove data older than this retention time.
+Sets the retention time directly on QuestDB tables for automatic data expiration. QuestDB will automatically remove data older than this retention time. Tables are partitioned by day and QuestDB only drops whole partitions, so the effective granularity is one day. Hour values are rounded up to whole days ("1h" becomes 1 day, "25h" becomes 2 days) so data is never dropped early, and data is not removed until the entire day partition is older than the retention time (expect up to a day of extra data). Expiration is evaluated when new data is written to the table, so an idle table is not expired. Changing this value and reinstalling the plugin updates existing tables.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -562,7 +562,7 @@ Sets the retention time directly on QuestDB tables for automatic data expiration
 ### TLM_DECOM_RETAIN_TIME
 <span class="badge badge--secondary since-right">Since 7.0.0</span>**How long to keep telemetry decommutation records in the TSDB.**
 
-Sets the retention time directly on QuestDB tables for automatic data expiration. QuestDB will automatically remove data older than this retention time.
+Sets the retention time directly on QuestDB tables for automatic data expiration. QuestDB will automatically remove data older than this retention time. Tables are partitioned by day and QuestDB only drops whole partitions, so the effective granularity is one day. Hour values are rounded up to whole days ("1h" becomes 1 day, "25h" becomes 2 days) so data is never dropped early, and data is not removed until the entire day partition is older than the retention time (expect up to a day of extra data). Expiration is evaluated when new data is written to the table, so an idle table is not expired. Changing this value and reinstalling the plugin updates existing tables.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
