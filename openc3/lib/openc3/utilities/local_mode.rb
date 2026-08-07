@@ -468,13 +468,25 @@ module OpenC3
     end
 
     def self.sync_settings()
+      # Matches the env var seeding done by `openc3cli initsettings`: a setting
+      # that already exists is left alone so a value changed in the Admin
+      # Console isn't reverted by the file on every restart. Set
+      # OPENC3_SETTINGS_OVERWRITE to make the files authoritative.
+      overwrite = SettingModel.truthy_env?(ENV, SettingModel::OVERWRITE_ENV_VAR)
       scopes = ScopeModel.names()
       scopes.each do |scope|
         Dir["#{OPENC3_LOCAL_MODE_PATH}/#{scope}/settings/*.json"].each do |config|
           name = File.basename(config, ".json")
+          if !overwrite and SettingModel.get(name: name, scope: scope)
+            puts "Setting #{name} already exists - leaving unchanged"
+            next
+          end
           puts "Syncing setting #{name}"
-          # Anything can be stored in settings so read and set directly
-          data = File.read(config)
+          # Anything can be stored in settings. save_setting writes non-strings
+          # as JSON, so parse it back rather than storing the file contents
+          # verbatim - otherwise a boolean setting round-trips to the string
+          # "false", which is truthy in the frontend.
+          data = SettingModel.coerce(File.read(config))
           SettingModel.set({ name: name, data: data }, scope: scope)
         end
       end

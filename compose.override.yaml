@@ -120,6 +120,23 @@
 #     - OPENC3_NO_TOOLADMIN=1
 #     - OPENC3_NO_BUCKETEXPLORER=1
 #     - OPENC3_NO_DOCS=1
+#     # Seed Admin Console settings, one variable per setting, named
+#     # OPENC3_SETTING_<NAME> where <NAME> is the setting name upcased.
+#     # These are NOT listed in compose.yaml - adding them here is what makes
+#     # them reach the container, so no compose.yaml edit is ever needed.
+#     - OPENC3_SETTING_TIME_ZONE=UTC
+#     - OPENC3_SETTING_TIME_FORMAT=24hr
+#     - OPENC3_SETTING_AI_CHAT=false
+#     # A setting that already exists in Redis is left alone, so a value
+#     # changed in the Admin Console survives a restart. Set this to make the
+#     # environment authoritative and rewrite the values on every init.
+#     # Unlike the OPENC3_NO_* flags above, this one reads its value: 1/true
+#     # is on, and 0/false/empty is off rather than the surprising on.
+#     - OPENC3_SETTINGS_OVERWRITE=1
+#     # An unrecognized setting name is an error, so a typo like
+#     # OPENC3_SETTING_TIME_ZONES fails init instead of silently doing
+#     # nothing. Set to 1/true to allow a name COSMOS doesn't know yet.
+#     - OPENC3_SETTINGS_ALLOW_UNKNOWN=1
 
 # -------------------------------------------------------------------------
 # Traefik (reverse proxy)

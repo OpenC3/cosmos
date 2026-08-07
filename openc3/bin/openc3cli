@@ -78,6 +78,7 @@ def print_usage
   puts "  cli xtce_converter                # Convert to and from the XTCE format. Run with --help for more info."
   puts "  cli cstol_converter               # Converts CSTOL files (.prc) to COSMOS. Run with --help for more info."
   puts "  cli setpassword                   # Set the initial password from OPENC3_API_PASSWORD env var"
+  puts "  cli initsettings                  # Seed settings from OPENC3_SETTING_* env vars"
   puts "  cli migratetouv PLUGIN_NAME SCOPE # Migrate plugin to per-plugin UV virtual environment"
   puts ""
 end
@@ -1491,6 +1492,37 @@ if not ARGV[0].nil? # argument(s) given
     end
     # Always ensure the scriptrunner policy is in place since it is required for script execution
     client.ensure_scriptrunner_policy(ENV['OPENC3_CONFIG_BUCKET'], ENV['OPENC3_LOGS_BUCKET'])
+
+  when 'initsettings'
+    if ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli initsettings"
+      puts ""
+      puts "Seed COSMOS settings from the environment. Settings that already exist are"
+      puts "left unchanged so values edited in the Admin Console survive a restart."
+      puts ""
+      puts "Environment:"
+      puts "  OPENC3_SETTING_<NAME>          One variable per setting, e.g."
+      puts "                                 OPENC3_SETTING_TIME_ZONE=UTC sets 'time_zone'"
+      puts "  OPENC3_SETTINGS_OVERWRITE      1/true to overwrite existing settings on every"
+      puts "                                 run. 0/false/unset leaves them alone"
+      puts "  OPENC3_SETTINGS_ALLOW_UNKNOWN  1/true to allow setting names COSMOS doesn't"
+      puts "                                 recognize. Without it an unknown name is an"
+      puts "                                 error, so a typo can't silently do nothing"
+      puts ""
+      puts "Known settings: #{OpenC3::SettingModel::KNOWN_SETTINGS.keys.sort.join(', ')}"
+      puts ""
+      puts "Values are parsed as JSON when possible so booleans and numbers keep their type,"
+      puts "otherwise they are used as strings. Quote a string that looks like JSON: '\"true\"'"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit 0
+    end
+    begin
+      OpenC3::SettingModel.apply_defaults()
+    rescue => e
+      abort "Error applying default settings: #{e.message}"
+    end
 
   when 'runmigrations'
     if ARGV[1] == '--help' || ARGV[1] == '-h'

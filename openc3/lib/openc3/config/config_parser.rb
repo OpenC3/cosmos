@@ -307,6 +307,34 @@ module OpenC3
       return value
     end
 
+    # Values handle_true_false_strict accepts, in addition to 'TRUE'/'FALSE'.
+    # '1' and '0' are here rather than in handle_true_false because that method
+    # passes unrecognized values through, so it can't tell the number 1 from a
+    # boolean - TABLE_MANAGER item defaults rely on 1 staying 1.
+    TRUE_VALUES = ['1', 'TRUE']
+    FALSE_VALUES = ['0', 'FALSE', '']
+
+    # Converts a String containing '1', 'TRUE', '0', 'FALSE' or '' to a true or
+    # false Ruby primitive. Unlike handle_true_false, which returns anything it
+    # doesn't recognize unchanged, an unrecognized value raises.
+    #
+    # Use this for a flag where guessing is worse than failing - notably an
+    # environment variable that is enabled by presence elsewhere in COSMOS, so
+    # that 'VAR=0' means off here rather than the surprising on.
+    #
+    # @param value [Object] value to convert, nil returns the default
+    # @param description [String] what the value is, used in the error message
+    # @param default [true|false] returned when value is nil
+    # @return [true|false]
+    def self.handle_true_false_strict(value, description: 'value', default: false)
+      return default if value.nil?
+      normalized = value.to_s.strip.upcase
+      return true if TRUE_VALUES.include?(normalized)
+      return false if FALSE_VALUES.include?(normalized)
+      raise ArgumentError, "Invalid value #{value.to_s.strip.inspect} for #{description}. " \
+                           "Must be one of: #{(TRUE_VALUES + FALSE_VALUES - ['']).join(', ')}"
+    end
+
     # Converts a String containing '', 'NIL', 'NULL', 'TRUE' or 'FALSE' to nil,
     # true or false Ruby primitives. All other values are simply returned.
     #

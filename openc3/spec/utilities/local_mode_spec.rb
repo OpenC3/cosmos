@@ -18,6 +18,7 @@
 require "spec_helper"
 require "openc3/utilities/local_mode"
 require "openc3/models/scope_model"
+require "openc3/models/setting_model"
 require "openc3/models/gem_model"
 require "openc3/models/plugin_model"
 require "openc3/utilities/aws_bucket"
@@ -210,7 +211,9 @@ module OpenC3
 
         expect(ToolConfigModel).to receive(:save_config).with("telemetry-grapher", "temps", "[]", {:local_mode=>false, :scope=>"DEFAULT"})
         expect(ToolConfigModel).to receive(:save_config).with("tlm-viewer", "screens", "[]", {:local_mode=>false, :scope=>"DEFAULT"})
-        expect(SettingModel).to receive(:set).with({name: "classification_banner", data: "{\"text\":\"CLASS\"}"}, {:scope=>"DEFAULT"})
+        # A JSON file is parsed back to the object it was saved from rather than
+        # stored as its serialized string
+        expect(SettingModel).to receive(:set).with({name: "classification_banner", data: {"text" => "CLASS"}}, {:scope=>"DEFAULT"})
         expect(SettingModel).to receive(:set).with({name: "source_url", data: "https://github.com/openc3/cosmos"}, {:scope=>"DEFAULT"})
 
         $load_plugin_plugin_file_path = []
@@ -922,6 +925,65 @@ module OpenC3
         expect(JSON.parse(File.read("#{@tmp_dir}/DEFAULT/tool_config/tlm-viewer/temps.json"))).to eq(json)
         LocalMode.delete_tool_config('DEFAULT', 'tlm-viewer', 'temps')
         expect(File.exist?("#{@tmp_dir}/DEFAULT/tool_config/tlm-viewer/temps.json")).to be false
+      end
+    end
+
+    describe "sync_settings" do
+      # Write a settings file the way an operator would drop one into the
+      # local plugins folder
+      def write_setting(name, contents)
+        FileUtils.mkdir_p("#{@tmp_dir}/DEFAULT/settings")
+        File.write("#{@tmp_dir}/DEFAULT/settings/#{name}.json", contents)
+      end
+
+      before(:each) do
+        mock_redis()
+        ScopeModel.new(name: 'DEFAULT').create
+        ENV.delete('OPENC3_SETTINGS_OVERWRITE')
+        allow($stdout).to receive(:puts)
+      end
+
+      after(:each) do
+        ENV.delete('OPENC3_SETTINGS_OVERWRITE')
+      end
+
+      it "syncs a setting that doesn't exist yet" do
+        write_setting('time_zone', 'UTC')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('UTC')
+      end
+
+      it "stores a boolean as a boolean rather than the string" do
+        # "false" is truthy in the frontend, so the file has to round trip
+        write_setting('ai_chat', 'false')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'ai_chat', scope: 'DEFAULT')['data']).to be false
+      end
+
+      it "stores an object setting as an object" do
+        write_setting('classification_banner', '{"text":"UNCLASSIFIED"}')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'classification_banner', scope: 'DEFAULT')['data']).to eq({ 'text' => 'UNCLASSIFIED' })
+      end
+
+      it "leaves an existing setting unchanged so Admin Console edits survive" do
+        SettingModel.set({ name: 'time_zone', data: 'local' }, scope: 'DEFAULT')
+        write_setting('time_zone', 'UTC')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('local')
+      end
+
+      it "overwrites an existing setting when OPENC3_SETTINGS_OVERWRITE is set" do
+        SettingModel.set({ name: 'time_zone', data: 'local' }, scope: 'DEFAULT')
+        write_setting('time_zone', 'UTC')
+        ENV['OPENC3_SETTINGS_OVERWRITE'] = '1'
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('UTC')
+      end
+
+      it "does nothing when there are no settings files" do
+        expect { LocalMode.sync_settings() }.to_not raise_error
+        expect(SettingModel.names()).to be_empty
       end
     end
 
