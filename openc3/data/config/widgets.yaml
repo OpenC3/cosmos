@@ -1450,9 +1450,10 @@ Interactive Widgets:
         button code's behalf). A few consequences of this isolation:
 
         - `alert()` no longer pauses code execution while the alert is displayed.
-        - `screen.getNamedWidget("WIDGET_NAME").text()` (and `selected()` / `checked()`) return the
-          widget's value as it was when the button was clicked; a `.value =` assignment made earlier
-          in the same button click is not guaranteed to be visible to a later read in that same click.
+        - `screen.getNamedWidget("WIDGET_NAME").text()` (and `selected()` / `checked()` / `value`)
+          return the widget's value as it was when the button was clicked; a `.value =` assignment
+          made earlier in the same button click is not guaranteed to be visible to a later read in
+          that same click.
         - The `self` variable (the internal widget component) is no longer available to button code.
       parameters:
         - name: Button Text

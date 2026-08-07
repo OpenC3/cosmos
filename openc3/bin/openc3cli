@@ -104,6 +104,42 @@ def check_environment
   end
 end
 
+# Report how an existing .xtce file fares against the XTCE 1.2 schema without failing
+def xtce_report_validation(filename)
+  namespace = OpenC3::XtceConverter.xtce_namespace(filename)
+  if namespace != OpenC3::XtceConverter::XTCE_1_2_NAMESPACE
+    puts "#{File.basename(filename)} declares #{namespace ? namespace : 'no XTCE namespace'}, skipping XTCE 1.2 schema validation"
+    return
+  end
+  errors = OpenC3::XtceConverter.schema_errors(filename)
+  if errors.empty?
+    puts "#{File.basename(filename)} is valid XTCE 1.2"
+  else
+    $stderr.puts "WARNING: #{filename} is not valid XTCE 1.2:"
+    errors.each { |error| $stderr.puts "  #{error}" }
+  end
+end
+
+# Validate every .xtce file written under output_dir. Returns false if any is invalid.
+def xtce_validate_exported(output_dir)
+  files = Dir.glob(File.join(output_dir, "**", "*.xtce")).sort
+  if files.empty?
+    $stderr.puts "ERROR: no .xtce files were written to #{output_dir}"
+    return false
+  end
+  valid = true
+  files.each do |filename|
+    errors = OpenC3::XtceConverter.schema_errors(filename)
+    next if errors.empty?
+
+    valid = false
+    $stderr.puts "ERROR: #{filename} is not valid XTCE 1.2:"
+    errors.each { |error| $stderr.puts "  #{error}" }
+  end
+  puts "Validated #{files.length} .xtce file(s) against the OMG XTCE 1.2 schema" if valid
+  valid
+end
+
 def xtce_converter(args)
   options = {}
   option_parser = OptionParser.new do |opts|
@@ -124,14 +160,17 @@ def xtce_converter(args)
     opts.on("-p", "--plugin PLUGIN", "Export .xtce file(s) from the plugin") do |arg|
       options[:plugin] = arg
     end
-    opts.on("-v", "--variables", "Optional variables file to pass to the plugin") do |arg|
+    opts.on("-v VARIABLES", "--variables VARIABLES", "Optional variables file to pass to the plugin") do |arg|
       options[:variables] = arg
     end
     opts.on("-r ROOT_TARGET", "--root_target ROOT_TARGET", "Optional flag to set which target is at the root of an XTCE document. If not specified, each target will be placed under a generic 'root' spacesystem") do |arg|
       options[:root_target_name] = arg
     end
-    opts.on("-t TIME_ASSOCIATION_NAME", "--time_association_name TIME_ASSOCIATION_NAME", "Optional flag to set which target is at the root of an XTCE document. If not specified, each target will be placed under a generic 'root' spacesystem") do |arg|
-      options[:time_association_name] = "PACKET_TIME"
+    opts.on("-t TIME_ASSOCIATION_NAME", "--time_association_name TIME_ASSOCIATION_NAME", "Optional telemetry item name to export as each packet's time, emitted as a TimeAssociation. If not specified, no TimeAssociation is written") do |arg|
+      options[:time_association_name] = arg
+    end
+    opts.on("--[no-]validate", "Validate .xtce files against the OMG XTCE 1.2 schema. On by default when exporting, where an invalid file fails the export. Off by default when importing, where it only reports since COSMOS also imports XTCE 1.0 / 1.1") do |arg|
+      options[:validate] = arg
     end
   end
 
@@ -151,6 +190,9 @@ def xtce_converter(args)
   OpenC3::Logger.level = OpenC3::Logger::DEBUG
 
   if options[:import] && options[:output]
+    # Reporting only. COSMOS imports XTCE 1.0 / 1.1 too, and those report errors against
+    # the 1.2 schema while importing perfectly well, so this never blocks an import.
+    xtce_report_validation(options[:import]) if options[:validate]
     packet_config = OpenC3::PacketConfig.new
     puts "Processing #{options[:import]}..."
     packet_config.process_file(options[:import], nil)
@@ -168,7 +210,14 @@ def xtce_converter(args)
       OpenC3::PluginModel.install_phase2(plugin_hash, scope: 'DEFAULT', validate_only: true,
         gem_file_path: options[:plugin])
       OpenC3::XtceConverter.combine_output_xtce(options[:output], options[:root_target_name])
-      result = 0 # bash and Windows consider 0 success
+      # Validate what we just wrote unless told not to. An exporter bug that only shows
+      # up on a particular config otherwise produces a file that looks fine here and is
+      # rejected by whatever ground system it was written for.
+      if options[:validate] == false
+        result = 0
+      else
+        result = xtce_validate_exported(options[:output]) ? 0 : ERROR_CODE
+      end # bash and Windows consider 0 success
     rescue => e
       puts "Error: #{e.message}"
       puts e.backtrace

@@ -154,7 +154,10 @@ module OpenC3
       current_type
     end
 
-    XTCE_IGNORED_ELEMENTS = ['text', 'AliasSet', 'Alias', 'Header']
+    XTCE_IGNORED_ELEMENTS = ['text', 'Alias', 'Header']
+
+    # Namespace COSMOS writes its own item names into when the XTCE name had to differ
+    COSMOS_ALIAS_NAMESPACE = 'COSMOS'
 
     def xtce_process_element(element)
       if XTCE_IGNORED_ELEMENTS.include?(element.name)
@@ -418,6 +421,30 @@ module OpenC3
         end
         @arguments[element["name"]] = @current_argument
 
+      when 'AliasSet'
+        # COSMOS records the original item name here whenever it had to write a different
+        # one: a name containing characters XTCE forbids, or the CMD_ prefix that keeps a
+        # command ID item from colliding with a telemetry parameter of the same name.
+        # Restoring it means a name survives an export / import round trip. References
+        # elsewhere in the document still use the XTCE name, which is what the parameter
+        # and argument lookups are keyed by, so nothing else has to change.
+        cosmos_alias = element.elements.find do |child|
+          child.name == 'Alias' && child['nameSpace'] == COSMOS_ALIAS_NAMESPACE
+        end
+        if cosmos_alias and cosmos_alias['alias']
+          case element.parent&.name
+          when 'Parameter'
+            @current_parameter&.cosmos_name = cosmos_alias['alias']
+          when 'Argument'
+            @current_argument&.cosmos_name = cosmos_alias['alias']
+          else
+            # Do Nothing - COSMOS also writes aliases on SequenceContainer, MetaCommand
+            # and SpaceSystem to carry the original packet and target names. Those are
+            # not restored: a packet is registered under its name as soon as it is
+            # created, so renaming it here would leave the registration disagreeing.
+          end
+        end
+
       when 'ParameterProperties'
         element.attributes.each do |att_name, att|
           @current_parameter[att.name] = att.value
@@ -452,8 +479,10 @@ module OpenC3
         # Handled in MetaCommand
 
       when 'Comparison'
-        # Need to set ID value for item
-        item = @current_packet.get_item(element['parameterRef'])
+        # Need to set ID value for item. The reference is the XTCE name, which is not the
+        # item's name when an alias restored the original.
+        parameter = @parameters[element['parameterRef']]
+        item = @current_packet.get_item(parameter ? cosmos_item_name(parameter) : element['parameterRef'])
         item.id_value = Integer(element['value'])
         if @current_cmd_or_tlm == PacketConfig::COMMAND
           item.default = item.id_value
@@ -476,8 +505,9 @@ module OpenC3
         xtce_handle_base_container('BaseContainer', element)
 
       when 'ArgumentAssignment'
-        # Need to set ID value for item
-        item = @current_packet.get_item(element['argumentName'])
+        # Need to set ID value for item, by the item's name rather than the XTCE name
+        argument = @arguments[element['argumentName']]
+        item = @current_packet.get_item(argument ? cosmos_item_name(argument) : element['argumentName'])
         value = element['argumentValue']
         if item.states && item.states[value.to_s.upcase]
           item.id_value = item.states[value.to_s.upcase]
@@ -496,9 +526,16 @@ module OpenC3
       return true # Recurse further
     end
 
+    # The COSMOS name of a parameter / argument: its alias when the XTCE name had to
+    # differ from it, otherwise the XTCE name itself
+    def cosmos_item_name(object)
+      object.cosmos_name || object.name
+    end
+
     def process_ref_entry(element)
       reference_location, bit_offset = xtce_handle_location_in_container_in_bits(element)
       object, type, data_type, array_type = get_object_types(element)
+      item_name = cosmos_item_name(object)
       bit_size = Integer(type.sizeInBits)
       if array_type
         array_bit_size = process_array_type(element, bit_size)
@@ -509,16 +546,18 @@ module OpenC3
       if bit_offset
         case reference_location
         when 'containerStart'
-          item = @current_packet.define_item(object.name, bit_offset, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
+          item = @current_packet.define_item(item_name, bit_offset, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
         when 'containerEnd'
-          item = @current_packet.define_item(object.name, -bit_offset, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
+          item = @current_packet.define_item(item_name, -bit_offset, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
         when 'previousEntry', nil
-          item = @current_packet.define_item(object.name, @current_packet.length + bit_offset, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
+          # Packet#length is bytes while the location is bits, so the offset is measured
+          # from the end of what has been defined so far in bits
+          item = @current_packet.define_item(item_name, (@current_packet.length * 8) + bit_offset, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
         when 'nextEntry'
           raise 'nextEntry is not supported'
         end
       else
-        item = @current_packet.append_item(object.name, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
+        item = @current_packet.append_item(item_name, bit_size, data_type, array_bit_size, type.endianness) # overflow = :ERROR, format_string = nil, read_conversion = nil, write_conversion = nil, id_value = nil)
       end
 
       item.description = type.shortDescription if type.shortDescription
@@ -550,9 +589,12 @@ module OpenC3
       else
         # Look up the argument and argument type
         if element.name == 'ArrayArgumentRefEntry'
-          # Requiring parameterRef for argument arrays appears to be a defect in the schema
-          argument = @arguments[element['parameterRef']]
-          raise "parameterRef #{element['parameterRef']} not found (array argument lookup)" unless argument
+          # XTCE 1.2 requires argumentRef on ArrayArgumentRefEntry. Older XTCE
+          # (1.0/1.1) and files exported by prior COSMOS versions used parameterRef
+          # here (a defect in those schemas), so accept it as a fallback.
+          refName = element['argumentRef'] ? 'argumentRef' : 'parameterRef'
+          argument = @arguments[element[refName]]
+          raise "#{refName} #{element[refName]} not found (array argument lookup)" unless argument
 
           argument_type = @argument_types[argument.argumentTypeRef]
           raise "argumentTypeRef #{argument.argumentTypeRef} not found (array argument type lookup)" unless argument_type
@@ -560,8 +602,6 @@ module OpenC3
           array_type = argument_type
           argument_type = @argument_types[array_type.arrayTypeRef]
           raise "arrayTypeRef #{array_type.arrayTypeRef} not found (array argument element type)" unless argument_type
-
-          refName = 'parameterRef'
         else
           argument = @arguments[element['argumentRef']]
           raise "argumentRef #{element['argumentRef']} not found (argument lookup)" unless argument
@@ -692,10 +732,18 @@ module OpenC3
           item.default = []
         else
           if type.initialValue
-            if type.initialValue.upcase.start_with?("0X")
+            if data_type == :BLOCK
+              # Binary initialValue is xs:hexBinary (raw hex, optional 0x prefix)
+              begin
+                item.default = type.initialValue.hex_to_byte_string
+              rescue ArgumentError, TypeError => e
+                raise "#{item.name} initialValue '#{type.initialValue}' is not valid hexBinary (#{e.message})"
+              end
+            elsif type.initialValue.upcase.start_with?("0X")
               item.default = type.initialValue.hex_to_byte_string
             else
-              # Strip quotes from strings
+              # Strip the quotes COSMOS 7.2 and earlier wrote around string defaults.
+              # Current exports write the value unquoted.
               if type.initialValue[0] == '"' && type.initialValue[-1] == '"'
                 item.default = type.initialValue[1..-2]
               else

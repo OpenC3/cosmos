@@ -175,6 +175,363 @@ module OpenC3
         tf.unlink
       end
 
+      context "with an array argument" do
+        # XTCE 1.2 requires argumentRef on ArrayArgumentRefEntry, but XTCE 1.0/1.1 and
+        # files exported by prior COSMOS versions used parameterRef, so both must import.
+        def array_cmd_file(ref_name, ref_value = "CMD_ARRAY")
+          command_file("TGT") do |tf|
+            tf.puts "<xtce:ArgumentTypeSet>"
+            tf.puts "  <xtce:FloatArgumentType name=\"CMD_ARRAY_Type\" sizeInBits=\"64\">"
+            tf.puts "    <xtce:UnitSet/>"
+            tf.puts "    <xtce:FloatDataEncoding sizeInBits=\"64\" encoding=\"IEEE754_1985\"/>"
+            tf.puts "  </xtce:FloatArgumentType>"
+            tf.puts "  <xtce:ArrayArgumentType name=\"CMD_ARRAY_ArrayType\" arrayTypeRef=\"CMD_ARRAY_Type\">"
+            tf.puts "    <xtce:DimensionList>"
+            tf.puts "      <xtce:Dimension>"
+            tf.puts "        <xtce:StartingIndex><xtce:FixedValue>0</xtce:FixedValue></xtce:StartingIndex>"
+            tf.puts "        <xtce:EndingIndex><xtce:FixedValue>0</xtce:FixedValue></xtce:EndingIndex>"
+            tf.puts "      </xtce:Dimension>"
+            tf.puts "    </xtce:DimensionList>"
+            tf.puts "  </xtce:ArrayArgumentType>"
+            tf.puts "</xtce:ArgumentTypeSet>"
+            tf.puts "<xtce:MetaCommandSet>"
+            tf.puts "  <xtce:MetaCommand name=\"PKT_Base\" abstract=\"true\">"
+            tf.puts "    <xtce:ArgumentList>"
+            tf.puts "      <xtce:Argument name=\"CMD_ARRAY\" argumentTypeRef=\"CMD_ARRAY_ArrayType\"/>"
+            tf.puts "    </xtce:ArgumentList>"
+            tf.puts "    <xtce:CommandContainer name=\"PKT_CommandContainer\">"
+            tf.puts "      <xtce:EntryList>"
+            tf.puts "        <xtce:ArrayArgumentRefEntry #{ref_name}=\"#{ref_value}\">"
+            tf.puts "          <xtce:DimensionList>"
+            tf.puts "            <xtce:Dimension>"
+            tf.puts "              <xtce:StartingIndex><xtce:FixedValue>0</xtce:FixedValue></xtce:StartingIndex>"
+            tf.puts "              <xtce:EndingIndex><xtce:FixedValue>9</xtce:FixedValue></xtce:EndingIndex>"
+            tf.puts "            </xtce:Dimension>"
+            tf.puts "          </xtce:DimensionList>"
+            tf.puts "        </xtce:ArrayArgumentRefEntry>"
+            tf.puts "      </xtce:EntryList>"
+            tf.puts "    </xtce:CommandContainer>"
+            tf.puts "  </xtce:MetaCommand>"
+            tf.puts "  <xtce:MetaCommand name=\"PKT\" shortDescription=\"PKT description\">"
+            tf.puts "    <xtce:BaseMetaCommand metaCommandRef=\"PKT_Base\"/>"
+            tf.puts "  </xtce:MetaCommand>"
+            tf.puts "</xtce:MetaCommandSet>"
+          end
+        end
+
+        it "processes argumentRef" do
+          tf = array_cmd_file("argumentRef")
+          @pc.process_file(tf.path, 'TGT')
+          item = @pc.commands['TGT']['PKT'].get_item('CMD_ARRAY')
+          expect(item.data_type).to eql :FLOAT
+          expect(item.bit_size).to eql 64
+          expect(item.array_size).to eql 640
+          tf.unlink
+        end
+
+        it "processes parameterRef exported by older versions" do
+          tf = array_cmd_file("parameterRef")
+          @pc.process_file(tf.path, 'TGT')
+          item = @pc.commands['TGT']['PKT'].get_item('CMD_ARRAY')
+          expect(item.data_type).to eql :FLOAT
+          expect(item.bit_size).to eql 64
+          expect(item.array_size).to eql 640
+          tf.unlink
+        end
+
+        it "complains about an unknown argumentRef" do
+          tf = array_cmd_file("argumentRef", "NOPE")
+          expect { @pc.process_file(tf.path, 'TGT') }.to raise_error(/argumentRef NOPE not found/)
+          tf.unlink
+        end
+
+        it "complains about an unknown parameterRef" do
+          tf = array_cmd_file("parameterRef", "NOPE")
+          expect { @pc.process_file(tf.path, 'TGT') }.to raise_error(/parameterRef NOPE not found/)
+          tf.unlink
+        end
+      end
+
+      context "with string and binary argument defaults" do
+        # Defaults are only assigned for commands (set_min_max_default returns early
+        # for telemetry), so these all use command arguments.
+        def string_arg_type(tf, name, initial_value = nil)
+          attrs = "name=\"#{name}_Type\" characterWidth=\"8\""
+          attrs += " initialValue=#{initial_value.encode(xml: :attr)}" if initial_value
+          tf.puts "  <xtce:StringArgumentType #{attrs}>"
+          tf.puts "    <xtce:UnitSet/>"
+          tf.puts "    <xtce:StringDataEncoding encoding=\"UTF-8\">"
+          tf.puts "      <xtce:SizeInBits><xtce:Fixed><xtce:FixedValue>40</xtce:FixedValue></xtce:Fixed></xtce:SizeInBits>"
+          tf.puts "    </xtce:StringDataEncoding>"
+          tf.puts "  </xtce:StringArgumentType>"
+        end
+
+        it "processes quoted, unquoted, hex, missing and array initial values" do
+          names = ["QUOTED", "UNQUOTED", "HEX", "EMPTY"]
+          tf = command_file("TGT") do |file|
+            file.puts "<xtce:ArgumentTypeSet>"
+            string_arg_type(file, "QUOTED", '"HELLO"')
+            string_arg_type(file, "UNQUOTED", 'WORLD')
+            string_arg_type(file, "HEX", '0xDEAD')
+            string_arg_type(file, "EMPTY")
+            string_arg_type(file, "ARRAY")
+            file.puts "  <xtce:ArrayArgumentType name=\"ARRAY_ArrayType\" arrayTypeRef=\"ARRAY_Type\">"
+            file.puts "    <xtce:DimensionList>"
+            file.puts "      <xtce:Dimension>"
+            file.puts "        <xtce:StartingIndex><xtce:FixedValue>0</xtce:FixedValue></xtce:StartingIndex>"
+            file.puts "        <xtce:EndingIndex><xtce:FixedValue>0</xtce:FixedValue></xtce:EndingIndex>"
+            file.puts "      </xtce:Dimension>"
+            file.puts "    </xtce:DimensionList>"
+            file.puts "  </xtce:ArrayArgumentType>"
+            file.puts "</xtce:ArgumentTypeSet>"
+            file.puts "<xtce:MetaCommandSet>"
+            file.puts "  <xtce:MetaCommand name=\"PKT_Base\" abstract=\"true\">"
+            file.puts "    <xtce:ArgumentList>"
+            names.each do |name|
+              file.puts "      <xtce:Argument name=\"#{name}\" argumentTypeRef=\"#{name}_Type\"/>"
+            end
+            file.puts "      <xtce:Argument name=\"ARRAY\" argumentTypeRef=\"ARRAY_ArrayType\"/>"
+            file.puts "    </xtce:ArgumentList>"
+            file.puts "    <xtce:CommandContainer name=\"PKT_CommandContainer\">"
+            file.puts "      <xtce:EntryList>"
+            names.each do |name|
+              file.puts "        <xtce:ArgumentRefEntry argumentRef=\"#{name}\"/>"
+            end
+            file.puts "        <xtce:ArrayArgumentRefEntry argumentRef=\"ARRAY\">"
+            file.puts "          <xtce:DimensionList>"
+            file.puts "            <xtce:Dimension>"
+            file.puts "              <xtce:StartingIndex><xtce:FixedValue>0</xtce:FixedValue></xtce:StartingIndex>"
+            file.puts "              <xtce:EndingIndex><xtce:FixedValue>1</xtce:FixedValue></xtce:EndingIndex>"
+            file.puts "            </xtce:Dimension>"
+            file.puts "          </xtce:DimensionList>"
+            file.puts "        </xtce:ArrayArgumentRefEntry>"
+            file.puts "      </xtce:EntryList>"
+            file.puts "    </xtce:CommandContainer>"
+            file.puts "  </xtce:MetaCommand>"
+            file.puts "  <xtce:MetaCommand name=\"PKT\" shortDescription=\"PKT description\">"
+            file.puts "    <xtce:BaseMetaCommand metaCommandRef=\"PKT_Base\"/>"
+            file.puts "  </xtce:MetaCommand>"
+            file.puts "</xtce:MetaCommandSet>"
+          end
+
+          @pc.process_file(tf.path, 'TGT')
+          packet = @pc.commands['TGT']['PKT']
+          expect(packet.get_item('QUOTED').default).to eql "HELLO"
+          expect(packet.get_item('UNQUOTED').default).to eql "WORLD"
+          expect(packet.get_item('HEX').default).to eql "\xDE\xAD"
+          expect(packet.get_item('EMPTY').default).to eql ""
+          expect(packet.get_item('ARRAY').default).to eql []
+          tf.unlink
+        end
+
+        it "restores the item name from a COSMOS alias" do
+          # COSMOS writes an alias whenever it has to change a name to get valid XTCE:
+          # characters XTCE forbids, or the CMD_ prefix on a command ID parameter that
+          # shares its name with a telemetry parameter. Both must survive a round trip.
+          tf = command_file("TGT") do |file|
+            file.puts "<xtce:ParameterTypeSet>"
+            file.puts "  <xtce:IntegerParameterType name=\"CMD_ID_Type\" signed=\"false\">"
+            file.puts "    <xtce:UnitSet/>"
+            file.puts "    <xtce:IntegerDataEncoding sizeInBits=\"16\" encoding=\"unsigned\"/>"
+            file.puts "  </xtce:IntegerParameterType>"
+            file.puts "</xtce:ParameterTypeSet>"
+            file.puts "<xtce:ParameterSet>"
+            file.puts "  <xtce:Parameter name=\"CMD_ID\" parameterTypeRef=\"CMD_ID_Type\">"
+            file.puts "    <xtce:AliasSet>"
+            file.puts "      <xtce:Alias nameSpace=\"COSMOS\" alias=\"ID\"/>"
+            file.puts "    </xtce:AliasSet>"
+            file.puts "  </xtce:Parameter>"
+            file.puts "</xtce:ParameterSet>"
+            file.puts "<xtce:ArgumentTypeSet>"
+            file.puts "  <xtce:IntegerArgumentType name=\"MANGLED_Type\" signed=\"false\">"
+            file.puts "    <xtce:UnitSet/>"
+            file.puts "    <xtce:IntegerDataEncoding sizeInBits=\"16\" encoding=\"unsigned\"/>"
+            file.puts "  </xtce:IntegerArgumentType>"
+            file.puts "</xtce:ArgumentTypeSet>"
+            file.puts "<xtce:MetaCommandSet>"
+            file.puts "  <xtce:MetaCommand name=\"PKT\">"
+            file.puts "    <xtce:ArgumentList>"
+            file.puts "      <xtce:Argument name=\"MANGLED\" argumentTypeRef=\"MANGLED_Type\">"
+            file.puts "        <xtce:AliasSet>"
+            file.puts "          <xtce:Alias nameSpace=\"COSMOS\" alias=\"ARG[0].VALUE\"/>"
+            file.puts "        </xtce:AliasSet>"
+            file.puts "      </xtce:Argument>"
+            file.puts "    </xtce:ArgumentList>"
+            file.puts "    <xtce:CommandContainer name=\"PKT_CommandContainer\">"
+            file.puts "      <xtce:EntryList>"
+            file.puts "        <xtce:ParameterRefEntry parameterRef=\"CMD_ID\"/>"
+            file.puts "        <xtce:ArgumentRefEntry argumentRef=\"MANGLED\"/>"
+            file.puts "      </xtce:EntryList>"
+            file.puts "      <xtce:BaseContainer containerRef=\"PKT_CommandContainer\">"
+            file.puts "        <xtce:RestrictionCriteria>"
+            file.puts "          <xtce:ComparisonList>"
+            # The comparison uses the XTCE name, not the alias
+            file.puts "            <xtce:Comparison parameterRef=\"CMD_ID\" value=\"5\"/>"
+            file.puts "          </xtce:ComparisonList>"
+            file.puts "        </xtce:RestrictionCriteria>"
+            file.puts "      </xtce:BaseContainer>"
+            file.puts "    </xtce:CommandContainer>"
+            file.puts "  </xtce:MetaCommand>"
+            file.puts "</xtce:MetaCommandSet>"
+          end
+
+          @pc.process_file(tf.path, 'TGT')
+          packet = @pc.commands['TGT']['PKT']
+          expect(packet.sorted_items.map(&:name)).to include("ID", "ARG[0].VALUE")
+          expect(packet.sorted_items.map(&:name)).to_not include("CMD_ID", "MANGLED")
+          # The ID value from the Comparison lands on the renamed item
+          expect(packet.get_item("ID").id_value).to eql 5
+          tf.unlink
+        end
+
+        it "keeps the XTCE name when an alias is from another namespace" do
+          tf = command_file("TGT") do |file|
+            file.puts "<xtce:ArgumentTypeSet>"
+            file.puts "  <xtce:IntegerArgumentType name=\"ARG_Type\" signed=\"false\">"
+            file.puts "    <xtce:UnitSet/>"
+            file.puts "    <xtce:IntegerDataEncoding sizeInBits=\"16\" encoding=\"unsigned\"/>"
+            file.puts "  </xtce:IntegerArgumentType>"
+            file.puts "</xtce:ArgumentTypeSet>"
+            file.puts "<xtce:MetaCommandSet>"
+            file.puts "  <xtce:MetaCommand name=\"PKT\">"
+            file.puts "    <xtce:ArgumentList>"
+            file.puts "      <xtce:Argument name=\"ARG\" argumentTypeRef=\"ARG_Type\">"
+            file.puts "        <xtce:AliasSet>"
+            file.puts "          <xtce:Alias nameSpace=\"SOMEONE_ELSE\" alias=\"THEIR_NAME\"/>"
+            file.puts "        </xtce:AliasSet>"
+            file.puts "      </xtce:Argument>"
+            file.puts "    </xtce:ArgumentList>"
+            file.puts "    <xtce:CommandContainer name=\"PKT_CommandContainer\">"
+            file.puts "      <xtce:EntryList>"
+            file.puts "        <xtce:ArgumentRefEntry argumentRef=\"ARG\"/>"
+            file.puts "      </xtce:EntryList>"
+            file.puts "    </xtce:CommandContainer>"
+            file.puts "  </xtce:MetaCommand>"
+            file.puts "</xtce:MetaCommandSet>"
+          end
+
+          @pc.process_file(tf.path, 'TGT')
+          expect(@pc.commands['TGT']['PKT'].sorted_items.map(&:name)).to include("ARG")
+          tf.unlink
+        end
+
+        it "sets the ID value from an ArgumentAssignment" do
+          # The shape the Python exporter writes: an abstract MetaCommand holding the
+          # arguments and entries, and a concrete one assigning the ID value
+          tf = command_file("TGT") do |file|
+            file.puts "<xtce:ArgumentTypeSet>"
+            file.puts "  <xtce:IntegerArgumentType name=\"OPCODE_Type\" signed=\"false\">"
+            file.puts "    <xtce:UnitSet/>"
+            file.puts "    <xtce:IntegerDataEncoding sizeInBits=\"8\" encoding=\"unsigned\"/>"
+            file.puts "  </xtce:IntegerArgumentType>"
+            file.puts "  <xtce:EnumeratedArgumentType name=\"MODE_Type\">"
+            file.puts "    <xtce:UnitSet/>"
+            file.puts "    <xtce:IntegerDataEncoding sizeInBits=\"8\" encoding=\"unsigned\"/>"
+            file.puts "    <xtce:EnumerationList>"
+            file.puts "      <xtce:Enumeration value=\"0\" label=\"OFF\"/>"
+            file.puts "      <xtce:Enumeration value=\"1\" label=\"ON\"/>"
+            file.puts "    </xtce:EnumerationList>"
+            file.puts "  </xtce:EnumeratedArgumentType>"
+            file.puts "</xtce:ArgumentTypeSet>"
+            file.puts "<xtce:MetaCommandSet>"
+            file.puts "  <xtce:MetaCommand name=\"PKT_Base\" abstract=\"true\">"
+            file.puts "    <xtce:ArgumentList>"
+            file.puts "      <xtce:Argument name=\"OPCODE\" argumentTypeRef=\"OPCODE_Type\"/>"
+            file.puts "      <xtce:Argument name=\"MODE\" argumentTypeRef=\"MODE_Type\"/>"
+            file.puts "    </xtce:ArgumentList>"
+            file.puts "    <xtce:CommandContainer name=\"PKT_CommandContainer\">"
+            file.puts "      <xtce:EntryList>"
+            file.puts "        <xtce:ArgumentRefEntry argumentRef=\"OPCODE\"/>"
+            file.puts "        <xtce:ArgumentRefEntry argumentRef=\"MODE\"/>"
+            file.puts "      </xtce:EntryList>"
+            file.puts "    </xtce:CommandContainer>"
+            file.puts "  </xtce:MetaCommand>"
+            file.puts "  <xtce:MetaCommand name=\"PKT\">"
+            file.puts "    <xtce:BaseMetaCommand metaCommandRef=\"PKT_Base\">"
+            file.puts "      <xtce:ArgumentAssignmentList>"
+            file.puts "        <xtce:ArgumentAssignment argumentName=\"OPCODE\" argumentValue=\"7\"/>"
+            # A state name resolves through the enumeration rather than Integer()
+            file.puts "        <xtce:ArgumentAssignment argumentName=\"MODE\" argumentValue=\"ON\"/>"
+            file.puts "      </xtce:ArgumentAssignmentList>"
+            file.puts "    </xtce:BaseMetaCommand>"
+            file.puts "  </xtce:MetaCommand>"
+            file.puts "</xtce:MetaCommandSet>"
+          end
+
+          @pc.process_file(tf.path, 'TGT')
+          packet = @pc.commands['TGT']['PKT']
+          expect(packet.get_item('OPCODE').id_value).to eql 7
+          expect(packet.get_item('OPCODE').default).to eql 7
+          expect(packet.get_item('MODE').id_value).to eql 1
+          expect(packet.id_items.map(&:name)).to include("OPCODE", "MODE")
+          tf.unlink
+        end
+
+        it "locates an entry relative to the previous entry" do
+          tf = telemetry_file("TGT") do |file|
+            file.puts "<xtce:ParameterTypeSet>"
+            file.puts "  <xtce:IntegerParameterType name=\"ITEM_Type\" signed=\"false\">"
+            file.puts "    <xtce:UnitSet/>"
+            file.puts "    <xtce:IntegerDataEncoding sizeInBits=\"16\" encoding=\"unsigned\"/>"
+            file.puts "  </xtce:IntegerParameterType>"
+            file.puts "</xtce:ParameterTypeSet>"
+            file.puts "<xtce:ParameterSet>"
+            file.puts "  <xtce:Parameter name=\"FIRST\" parameterTypeRef=\"ITEM_Type\"/>"
+            file.puts "  <xtce:Parameter name=\"SECOND\" parameterTypeRef=\"ITEM_Type\"/>"
+            file.puts "</xtce:ParameterSet>"
+            file.puts "<xtce:ContainerSet>"
+            file.puts "  <xtce:SequenceContainer name=\"PKT\">"
+            file.puts "    <xtce:EntryList>"
+            file.puts "      <xtce:ParameterRefEntry parameterRef=\"FIRST\"/>"
+            # 16 bits past the end of the previous entry, leaving a gap
+            file.puts "      <xtce:ParameterRefEntry parameterRef=\"SECOND\">"
+            file.puts "        <xtce:LocationInContainerInBits referenceLocation=\"previousEntry\">"
+            file.puts "          <xtce:FixedValue>16</xtce:FixedValue>"
+            file.puts "        </xtce:LocationInContainerInBits>"
+            file.puts "      </xtce:ParameterRefEntry>"
+            file.puts "    </xtce:EntryList>"
+            file.puts "  </xtce:SequenceContainer>"
+            file.puts "</xtce:ContainerSet>"
+          end
+
+          @pc.process_file(tf.path, 'TGT')
+          packet = @pc.telemetry['TGT']['PKT']
+          expect(packet.get_item('FIRST').bit_offset).to eql 0
+          expect(packet.get_item('SECOND').bit_offset).to eql 32
+          tf.unlink
+        end
+
+        it "names the offending argument when a binary initialValue isn't hexBinary" do
+          tf = command_file("TGT") do |file|
+            file.puts "<xtce:ArgumentTypeSet>"
+            file.puts "  <xtce:BinaryArgumentType name=\"BLK_Type\" initialValue=\"nothex\">"
+            file.puts "    <xtce:UnitSet/>"
+            file.puts "    <xtce:BinaryDataEncoding>"
+            file.puts "      <xtce:SizeInBits><xtce:FixedValue>32</xtce:FixedValue></xtce:SizeInBits>"
+            file.puts "    </xtce:BinaryDataEncoding>"
+            file.puts "  </xtce:BinaryArgumentType>"
+            file.puts "</xtce:ArgumentTypeSet>"
+            file.puts "<xtce:MetaCommandSet>"
+            file.puts "  <xtce:MetaCommand name=\"PKT\">"
+            file.puts "    <xtce:ArgumentList>"
+            file.puts "      <xtce:Argument name=\"BLK\" argumentTypeRef=\"BLK_Type\"/>"
+            file.puts "    </xtce:ArgumentList>"
+            file.puts "    <xtce:CommandContainer name=\"PKT_CommandContainer\">"
+            file.puts "      <xtce:EntryList>"
+            file.puts "        <xtce:ArgumentRefEntry argumentRef=\"BLK\"/>"
+            file.puts "      </xtce:EntryList>"
+            file.puts "    </xtce:CommandContainer>"
+            file.puts "  </xtce:MetaCommand>"
+            file.puts "</xtce:MetaCommandSet>"
+          end
+
+          # Without this the failure surfaces as a bare Integer() ArgumentError from
+          # deep inside hex_to_byte_string
+          expect { @pc.process_file(tf.path, 'TGT') }.to raise_error(/BLK initialValue 'nothex' is not valid hexBinary/)
+          tf.unlink
+        end
+      end
+
       context "with units" do
         it "processes description and value" do
           tf = telemetry_file("TGT") do |file|

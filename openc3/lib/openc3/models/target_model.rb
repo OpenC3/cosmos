@@ -725,7 +725,11 @@ module OpenC3
         check_column_header_lengths(system)
         if variables["xtce_output"]
           puts "Converting target #{@name} to .xtce files in #{variables["xtce_output"]}/#{@name}"
-          puts "    Using mnemonic '#{variables['time_association_name']}' as the packet time item."
+          if variables['time_association_name'].to_s.empty?
+            puts "    No packet time item given, so no TimeAssociation will be written."
+          else
+            puts "    Using mnemonic '#{variables['time_association_name']}' as the packet time item."
+          end
           system.packet_config.to_xtce(variables["xtce_output"], variables['time_association_name'])
         end
         unless validate_only
