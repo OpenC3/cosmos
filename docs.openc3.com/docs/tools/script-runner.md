@@ -100,7 +100,7 @@ Right clicking a script brings up several options:
 
 ## Script Lifecycle
 
-<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+<span class="badge badge--secondary since-heading">Since 7.3.0</span>
 
 The Script Lifecycle feature tracks scripts through three states: **In Development**, **In Review**, and **Approved**. It is disabled by default and can be enabled in the Admin Console under Settings → Script Lifecycle Settings.
 
