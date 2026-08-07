@@ -21,7 +21,14 @@
 
 set -eux
 cd ../..
-eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' .env) ;
+# Load .env as DEFAULTS only. Variables already set in the environment (e.g. by
+# the GitHub Actions release workflow) win, so CI can point OPENC3_ENTERPRISE_REGISTRY
+# at ghcr.io even though .env defaults it to repos.openc3.com.
+while IFS='=' read -r key value; do
+  [[ -z "$key" || "$key" == \#* ]] && continue
+  printf -v "$key" '%s' "${!key:-$value}"
+  export "$key"
+done < .env
 # OPENC3_REGISTRY=localhost:5000 # Uncomment for local builds
 # OPENC3_ENTERPRISE_REGISTRY=localhost:5000 # Uncomment for local builds
 
