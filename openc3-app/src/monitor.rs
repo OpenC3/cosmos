@@ -68,6 +68,11 @@ pub enum RunState {
 impl ContainerStatus {
     /// True when the container is up (and healthy if a healthcheck exists).
     pub fn is_healthy(&self) -> bool {
+        // A one-shot container (e.g. openc3-cosmos-init) that ran and exited 0 has
+        // done its job — that's a healthy outcome, not a problem to warn about.
+        if self.run_state() == RunState::ExitedSuccess {
+            return true;
+        }
         let running = self.state.eq_ignore_ascii_case("running");
         let health_ok = self.health.is_empty()
             || self.health.eq_ignore_ascii_case("healthy")
@@ -466,6 +471,20 @@ mod tests {
         let v = parse_ps(json);
         assert_eq!(v.len(), 1);
         assert!(v[0].is_healthy());
+    }
+
+    #[test]
+    fn exited_zero_is_healthy_but_nonzero_is_not() {
+        // A one-shot init container that completed (exit 0) is healthy...
+        let ok = parse_ps(
+            r#"[{"Service":"openc3-cosmos-init","State":"exited","Status":"Exited (0) 2 minutes ago"}]"#,
+        );
+        assert!(ok[0].is_healthy());
+        // ...but a non-zero exit is still unhealthy.
+        let bad = parse_ps(
+            r#"[{"Service":"openc3-cosmos-init","State":"exited","Status":"Exited (1) 2 minutes ago"}]"#,
+        );
+        assert!(!bad[0].is_healthy());
     }
 
     #[test]

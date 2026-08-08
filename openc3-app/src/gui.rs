@@ -248,6 +248,10 @@ struct State {
     dev_context_on_open: Option<std::path::PathBuf>,
     /// Whether the "Shutdown COSMOS?" confirmation modal is showing.
     shutdown_confirm: bool,
+    /// Whether the "Quit OpenC3 COSMOS?" confirmation modal is showing. Only used
+    /// where there's no tray to hide to (Linux), so the close (X) button asks
+    /// before actually exiting.
+    quit_confirm: bool,
     /// Whether to show the "restart Windows" prompt (a Windows feature was just
     /// enabled and only takes effect after a reboot).
     restart_pending: bool,
@@ -320,6 +324,10 @@ enum Message {
     ConfirmShutdown,
     /// Dismiss the shutdown confirmation modal without stopping.
     CancelShutdown,
+    /// Confirm quitting the app (from the no-tray close prompt) and exit.
+    ConfirmQuit,
+    /// Dismiss the quit confirmation modal and keep running.
+    CancelQuit,
     OpenBrowser,
     ShowSettings,
     CloseSettings,
@@ -421,6 +429,7 @@ impl State {
             // Set when the Settings page opens; only compared on close.
             dev_context_on_open: None,
             shutdown_confirm: false,
+            quit_confirm: false,
             restart_pending: false,
             dialog: None,
             activity: None,
@@ -743,6 +752,14 @@ impl State {
                 self.shutdown_confirm = false;
                 Task::none()
             }
+            Message::ConfirmQuit => {
+                self.quit_confirm = false;
+                self.quit()
+            }
+            Message::CancelQuit => {
+                self.quit_confirm = false;
+                Task::none()
+            }
             Message::ConfirmShutdown => {
                 self.shutdown_confirm = false;
                 let ctx = self.ctx.clone();
@@ -1005,9 +1022,10 @@ impl State {
                         crate::tray::set_dock_visible(false);
                         window::change_mode(id, window::Mode::Hidden)
                     } else {
-                        // No tray (Linux): the close button should actually quit,
-                        // otherwise the window just hides and the process lingers.
-                        self.quit()
+                        // No tray (Linux): closing actually quits, so confirm
+                        // first rather than exiting on a stray click.
+                        self.quit_confirm = true;
+                        Task::none()
                     }
                 } else {
                     // Other windows (e.g. logs) close normally.
@@ -1187,11 +1205,67 @@ impl State {
             content
         };
         // Post-install instructions (NEXT STEPS) pop up over everything with an OK.
-        if let Some(msg) = &self.dialog {
+        let content = if let Some(msg) = &self.dialog {
             self.with_dialog(content, msg)
         } else {
             content
+        };
+        // Confirm quitting where there's no tray to hide to (Linux).
+        if self.quit_confirm {
+            self.with_quit_prompt(content)
+        } else {
+            content
         }
+    }
+
+    /// Overlay a "Quit OpenC3 COSMOS?" confirmation on `base`. Shown when the
+    /// close (X) button would actually exit (no tray to hide to), so a stray
+    /// click doesn't tear everything down.
+    fn with_quit_prompt<'a>(&self, base: Element<'a, Message>) -> Element<'a, Message> {
+        fn scrim_style(_theme: &Theme) -> container::Style {
+            container::Style {
+                background: Some(Color::from_rgba8(0, 0, 0, 0.6).into()),
+                ..container::Style::default()
+            }
+        }
+        fn card_style(_theme: &Theme) -> container::Style {
+            container::Style {
+                background: Some(Color::from_rgb8(0x24, 0x24, 0x28).into()),
+                border: iced::border::Border {
+                    color: Color::from_rgb8(0x3A, 0x3A, 0x40),
+                    width: 1.0,
+                    radius: 10.0.into(),
+                },
+                ..container::Style::default()
+            }
+        }
+        let card = container(
+            column![
+                text("Quit OpenC3 COSMOS?").size(22),
+                text("This closes the app. Host interfaces it manages will stop.").size(15),
+                Space::with_height(8),
+                row![
+                    button(text("Cancel"))
+                        .padding(10)
+                        .on_press(Message::CancelQuit),
+                    button(text("Quit"))
+                        .padding(10)
+                        .style(button::danger)
+                        .on_press(Message::ConfirmQuit),
+                ]
+                .spacing(10),
+            ]
+            .spacing(12),
+        )
+        .padding(24)
+        .style(card_style);
+        let overlay = container(card)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x(Length::Fill)
+            .center_y(Length::Fill)
+            .style(scrim_style);
+        stack![base, opaque(overlay)].into()
     }
 
     /// Overlay a dismissible instruction popup (dim scrim + centered card with an

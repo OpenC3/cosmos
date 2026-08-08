@@ -333,32 +333,51 @@ fn add_user_to_docker_group() {
         notify("Docker installed. (Running as root — no docker group change needed.)");
         return;
     }
-    // Ensure the group exists, then add the user. Both need root (use sudo when
-    // we aren't already root, as the install script itself did).
-    let steps: [&[&str]; 2] = [&["groupadd", "-f", "docker"], &["usermod", "-aG", "docker", &user]];
-    for step in steps {
-        let mut cmd = if is_root() {
-            let mut c = Command::new(step[0]);
-            c.args(&step[1..]);
-            c
-        } else {
-            let mut c = Command::new("sudo");
-            c.args(step);
-            c
-        };
-        if let Err(error) = process::run(&mut cmd) {
-            notify(format!(
-                "Docker installed, but adding '{user}' to the docker group failed ({error}).\n\
-                 MANUAL STEP: run  sudo usermod -aG docker {user}  then log out and back in.",
-            ));
-            return;
+    // Create the group and add the user in a single privileged step (one prompt).
+    let script = format!("groupadd -f docker && usermod -aG docker {}", shell_single_quote(&user));
+    match run_root_shell(&script) {
+        Ok(()) => notify(format!(
+            "Docker installed and '{user}' added to the docker group. openc3-app will try to use \
+             Docker in this session automatically. For a plain terminal, run `newgrp docker` or \
+             start a new login session.",
+        )),
+        Err(error) => {
+            // Common in a GUI launch: no terminal for a sudo password prompt.
+            // Give the user the exact commands to run themselves, in a popup.
+            crate::logging::warn("install", &format!("docker group add failed: {error:#}"));
+            notify_dialog(
+                "Docker is installed, but adding you to the 'docker' group needs administrator \
+                 rights and couldn't be done automatically.\n\n\
+                 Run these in a terminal, then start COSMOS:\n\n  \
+                 sudo groupadd docker\n  \
+                 sudo usermod -aG docker $USER\n  \
+                 newgrp docker\n\n\
+                 (Instead of `newgrp docker` you can log out and back in.)",
+            );
         }
     }
-    notify(format!(
-        "Docker installed and '{user}' added to the docker group. openc3-app will use \
-         Docker in this session automatically (no restart needed). For a plain terminal, \
-         run `newgrp docker` or start a new login session.",
-    ));
+}
+
+/// Run `shell_cmd` as root suitably for a GUI (windowed) launch: prefer pkexec,
+/// whose graphical polkit prompt works without a controlling terminal; then fall
+/// back to a NON-interactive sudo (`-n`), which succeeds only with cached or
+/// passwordless sudo — a GUI has no terminal to type a password into, so we must
+/// not let sudo hang waiting for one. Errors if neither is usable.
+fn run_root_shell(shell_cmd: &str) -> Result<()> {
+    if is_root() {
+        process::run(Command::new("sh").arg("-c").arg(shell_cmd))
+    } else if process::which("pkexec") {
+        process::run(Command::new("pkexec").arg("sh").arg("-c").arg(shell_cmd))
+    } else if process::which("sudo") {
+        process::run(Command::new("sudo").arg("-n").arg("sh").arg("-c").arg(shell_cmd))
+    } else {
+        bail!("neither pkexec nor sudo is available to gain root")
+    }
+}
+
+/// POSIX single-quote a string so it's safe to embed in a `sh -c` command.
+fn shell_single_quote(s: &str) -> String {
+    format!("'{}'", s.replace('\'', "'\\''"))
 }
 
 const WINGET_MANUAL: &str = "winget (the Windows Package Manager) was not found, so Docker Desktop \
