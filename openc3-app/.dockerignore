@@ -1,5 +1,0 @@
-target/
-dist/
-.git/
-**/*.o
-**/*.rlib
