@@ -16,7 +16,7 @@ require 'find'
 
 module OpenC3
   describe OpenC3 do
-    IGNORED_INTERFACES = %w(__init__ interface simulated_target_interface stream_interface)
+    IGNORED_INTERFACES = %w(__init__ interface simulated_target_interface stream_interface bridge_interface)
     # The following are plugin interfaces are expected to be documented but don't exist in the source
     PLUGIN_INTERFACES = %w(snmp_interface snmp_trap_interface grpc_interface)
     # When python serial interface is implemented, remove this from the list

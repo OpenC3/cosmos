@@ -265,7 +265,7 @@ export default {
         })
     },
     copyToken: function () {
-      navigator.clipboard.writeText(this.token)
+      void navigator.clipboard.writeText(this.token)
       this.alert = 'Token copied to clipboard'
       this.alertType = 'success'
       this.showAlert = true
