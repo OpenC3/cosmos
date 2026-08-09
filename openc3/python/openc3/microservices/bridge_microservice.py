@@ -39,6 +39,7 @@ import asyncio
 import base64
 import contextlib
 import hashlib
+import inspect
 import io
 import json
 import os
@@ -301,7 +302,7 @@ class BridgeMicroservice(Microservice):
             await asyncio.sleep(0.5)
         with contextlib.suppress(Exception):
             result = endpoint.close()
-            if asyncio.iscoroutine(result):
+            if inspect.isawaitable(result):
                 await result
 
     def _read_config_changes(self, topic, offset, timeout_ms):
@@ -829,7 +830,7 @@ class BridgeMicroservice(Microservice):
     async def _close(self, conn):
         with contextlib.suppress(Exception):
             result = conn.close()
-            if asyncio.iscoroutine(result):
+            if inspect.isawaitable(result):
                 await result
 
     async def _drain_close(self, conn):

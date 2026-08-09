@@ -41,6 +41,7 @@ Configuration is passed by openc3-app via environment variables:
 
 import asyncio
 import contextlib
+import inspect
 import json
 import os
 import signal
@@ -236,7 +237,7 @@ class HostInterfaceMicroservice:
             await asyncio.gather(control, data, stopper, return_exceptions=True)
             with contextlib.suppress(Exception):
                 result = endpoint.close()
-                if asyncio.iscoroutine(result):
+                if inspect.isawaitable(result):
                     await result
         Logger.info(f"{self.name}: shut down")
 
@@ -277,7 +278,7 @@ class HostInterfaceMicroservice:
                 if connection is not None:
                     with contextlib.suppress(Exception):
                         result = connection.close()
-                        if asyncio.iscoroutine(result):
+                        if inspect.isawaitable(result):
                             await result
             if not self.shutdown:
                 await asyncio.sleep(RECONNECT_DELAY)
@@ -400,7 +401,7 @@ class HostInterfaceMicroservice:
                 if connection is not None:
                     with contextlib.suppress(Exception):
                         result = connection.close()
-                        if asyncio.iscoroutine(result):
+                        if inspect.isawaitable(result):
                             await result
             # Never auto-reconnect (req 5). Park (clear the connect event) until
             # COSMOS issues a fresh connect over the control channel. This holds

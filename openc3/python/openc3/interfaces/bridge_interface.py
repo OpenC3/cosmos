@@ -32,6 +32,7 @@ supported. The ALPN must match bridge_microservice / openc3-app.
 
 import asyncio
 import contextlib
+import inspect
 import json
 import os
 import queue
@@ -233,6 +234,8 @@ class BridgeInterface(Interface):
                     break
                 self._read_queue.put(bytes(data))
         except asyncio.CancelledError:
+            # Expected on disconnect/shutdown: the reader task is cancelled.
+            # Exit cleanly; the finally block signals the disconnect downstream.
             pass
         except Exception as error:
             Logger.info(f"{self.name}: bridge reader stopped: {type(error).__name__}: {error}")
@@ -295,7 +298,7 @@ class BridgeInterface(Interface):
                 if connection is not None:
                     with contextlib.suppress(Exception):
                         result = connection.close()
-                        if asyncio.iscoroutine(result):
+                        if inspect.isawaitable(result):
                             await result
             await asyncio.sleep(CTRL_RECONNECT_DELAY)
 
@@ -364,6 +367,6 @@ class BridgeInterface(Interface):
         with contextlib.suppress(Exception):
             if self._connection is not None:
                 result = self._connection.close()
-                if asyncio.iscoroutine(result):
+                if inspect.isawaitable(result):
                     await result
         self._connection = None
