@@ -70,7 +70,12 @@ for GEM in "${GEMS_DIR}"/*.gem; do
     # --no-build matches docker-package-build.sh so no setup.py runs during the
     # image build, and asserts the cache holds real wheels rather than sdists
     # this step would have to build.
+    # UV_COMPILE_BYTECODE=0 overrides the base image's UV_COMPILE_BYTECODE=1:
+    # this step only asserts the wheels INSTALL offline from the cache, and byte-
+    # compilation would try to write a temp script into ${CACHE_DIR}, which is the
+    # root-owned, read-only baked seed (the openc3 user we run as can't write it).
     if ! (cd "${SRC}" && UV_CACHE_DIR="${CACHE_DIR}" UV_PYTHON_DOWNLOADS=never \
+            UV_COMPILE_BYTECODE=0 \
             uv sync --frozen --no-dev --no-install-project --offline --no-build); then
         {
             echo "ERROR: ${NAME} cannot install its Python dependencies from the baked UV cache."

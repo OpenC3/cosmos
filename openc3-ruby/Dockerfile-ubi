@@ -107,6 +107,7 @@ RUN cd /opt && \
 
 # htop - https://github.com/htop-dev/htop
 COPY htop-3.4.1.tar.gz /opt/htop-3.4.1.tar.gz
+WORKDIR /opt
 RUN tar -xzf htop-3.4.1.tar.gz
 WORKDIR /opt/htop-3.4.1
 RUN ./autogen.sh && \
