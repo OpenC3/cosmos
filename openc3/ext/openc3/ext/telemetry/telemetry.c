@@ -56,7 +56,7 @@ static VALUE packets(VALUE self, VALUE target_name)
 
   if (!(RTEST(target_packets)))
   {
-    rb_raise(rb_eRuntimeError, "Telemetry target '%s' does not exist", RSTRING_PTR(upcase_target_name));
+    rb_raise(rb_eRuntimeError, "Telemetry target '%s' does not exist (packets lookup)", RSTRING_PTR(upcase_target_name));
   }
 
   return target_packets;

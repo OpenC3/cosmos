@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -20,9 +20,10 @@ import AstroStatusIndicator from './AstroStatusIndicator.vue'
 import CosmosRuxIcon from './CosmosRuxIcon.vue'
 import CustomIcon from './CustomIcon.vue'
 
+// Handles mapping log status levels to astro colors
 const UnknownToAstroStatus = {
-  fatal: 'critical',
-  FATAL: 'critical',
+  fatal: 'fatal',
+  FATAL: 'fatal',
   error: 'critical',
   ERROR: 'critical',
   warn: 'caution',
@@ -42,7 +43,7 @@ const UnknownToAstroStatus = {
   standby: 'standby',
   STANDBY: 'standby',
   off: 'off',
-  OFF: 'OFF',
+  OFF: 'off',
 }
 
 const UnknownToCosmosStatus = {

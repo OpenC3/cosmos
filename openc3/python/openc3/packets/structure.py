@@ -302,7 +302,7 @@ class Structure:
     def get_item(self, name):
         item = self.items.get(name.upper())
         if not item:
-            raise ValueError(f"Unknown item: {name}")
+            raise ValueError(f"Unknown item: {name} (get_item)")
         return item
 
     # self.param item [#name] Instance of StructureItem or one of its subclasses.
@@ -337,7 +337,7 @@ class Structure:
     def delete_item(self, name):
         item = self.items[name.upper()]
         if not item:
-            raise RuntimeError(f"Unknown item: {name}")
+            raise RuntimeError(f"Unknown item: {name} (delete_item)")
 
         # Find the item to delete in the sorted_items array
         item_index = None

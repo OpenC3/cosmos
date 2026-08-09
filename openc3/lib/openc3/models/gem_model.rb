@@ -47,7 +47,7 @@ module OpenC3
       return path if File.exist?(path)
       path = "#{ENV['GEM_HOME']}/cache/#{name}"
       return path if File.exist?(path)
-      raise "Gem #{name} not found"
+      raise "Gem '#{name}' not found"
     end
 
     def self.put(gem_file_path, gem_install: true, scope:)

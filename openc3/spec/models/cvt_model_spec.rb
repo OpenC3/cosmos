@@ -185,7 +185,7 @@ module OpenC3
       end
 
       it "raises on invalid packets" do
-        expect { CvtModel.get_tlm_values([["NOPE","BLAH","TEMP1","RAW"]]) }.to raise_error("Packet 'NOPE BLAH' does not exist")
+        expect { CvtModel.get_tlm_values([["NOPE","BLAH","TEMP1","RAW"]]) }.to raise_error("Packet 'NOPE BLAH' has no current values in CVT")
       end
 
       it "raises on invalid types" do

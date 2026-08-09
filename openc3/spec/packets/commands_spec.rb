@@ -145,7 +145,7 @@ module OpenC3
 
     describe "packets" do
       it "complains about non-existent targets" do
-        expect { @cmd.packets("tgtX") }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist")
+        expect { @cmd.packets("tgtX") }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist (packets lookup)")
       end
 
       it "returns all packets target TGT1" do
@@ -171,11 +171,11 @@ module OpenC3
 
     describe "params" do
       it "complains about non-existent targets" do
-        expect { @cmd.params("TGTX", "PKT1") }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist")
+        expect { @cmd.params("TGTX", "PKT1") }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist (packets lookup)")
       end
 
       it "complains about non-existent packets" do
-        expect { @cmd.params("TGT1", "PKTX") }.to raise_error(RuntimeError, "Command packet 'TGT1 PKTX' does not exist")
+        expect { @cmd.params("TGT1", "PKTX") }.to raise_error(RuntimeError, "Command packet 'TGT1 PKTX' does not exist (packet lookup)")
       end
 
       it "returns all items from packet TGT1/PKT1" do
@@ -197,11 +197,11 @@ module OpenC3
 
     describe "packet" do
       it "complains about non-existent targets" do
-        expect { @cmd.packet("tgtX", "pkt1") }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist")
+        expect { @cmd.packet("tgtX", "pkt1") }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist (packets lookup)")
       end
 
       it "complains about non-existent packets" do
-        expect { @cmd.packet("TGT1", "PKTX") }.to raise_error(RuntimeError, "Command packet 'TGT1 PKTX' does not exist")
+        expect { @cmd.packet("TGT1", "PKTX") }.to raise_error(RuntimeError, "Command packet 'TGT1 PKTX' does not exist (packet lookup)")
       end
 
       it "returns the specified packet" do
@@ -320,15 +320,15 @@ module OpenC3
       [true, false].each do |range_checking|
         [true, false].each do |raw|
           it "complains about non-existent targets" do
-            expect { @cmd.build_cmd("tgtX", "pkt1", range_checking, raw) }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist")
+            expect { @cmd.build_cmd("tgtX", "pkt1", range_checking, raw) }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist (build_cmd)")
           end
 
           it "complains about non-existent packets" do
-            expect { @cmd.build_cmd("tgt1", "pktX", range_checking, raw) }.to raise_error(RuntimeError, "Command packet 'TGT1 PKTX' does not exist")
+            expect { @cmd.build_cmd("tgt1", "pktX", range_checking, raw) }.to raise_error(RuntimeError, "Command packet 'TGT1 PKTX' does not exist (build_cmd)")
           end
 
           it "complains about non-existent items" do
-            expect { @cmd.build_cmd("tgt1", "pkt1", { "itemX" => 1 }, range_checking, raw) }.to raise_error(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist")
+            expect { @cmd.build_cmd("tgt1", "pkt1", { "itemX" => 1 }, range_checking, raw) }.to raise_error(RuntimeError, "Item 'TGT1 PKT1 ITEMX' does not exist (Packet)")
           end
 
           it "complains about missing required parameters" do
@@ -498,15 +498,15 @@ module OpenC3
 
     describe "cmd_hazardous?" do
       it "complains about non-existent targets" do
-        expect { @cmd.cmd_hazardous?("tgtX", "pkt1") }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist")
+        expect { @cmd.cmd_hazardous?("tgtX", "pkt1") }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist (build_cmd)")
       end
 
       it "complains about non-existent packets" do
-        expect { @cmd.cmd_hazardous?("tgt1", "pktX") }.to raise_error(RuntimeError, "Command packet 'TGT1 PKTX' does not exist")
+        expect { @cmd.cmd_hazardous?("tgt1", "pktX") }.to raise_error(RuntimeError, "Command packet 'TGT1 PKTX' does not exist (build_cmd)")
       end
 
       it "complains about non-existent items" do
-        expect { @cmd.cmd_hazardous?("tgt1", "pkt1", { "itemX" => 1 }) }.to raise_error(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist")
+        expect { @cmd.cmd_hazardous?("tgt1", "pkt1", { "itemX" => 1 }) }.to raise_error(RuntimeError, "Item 'TGT1 PKT1 ITEMX' does not exist (Packet)")
       end
 
       it "returns true if the command overall is hazardous" do

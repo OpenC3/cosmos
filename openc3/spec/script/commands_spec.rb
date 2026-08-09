@@ -144,7 +144,7 @@ module OpenC3
           end
 
           it "raises if a command item does not exist" do
-            expect { cmd('INST COLLECT with TYPE NORMAL, DURATION 5, NOPE 10') }.to raise_error(/Packet item 'INST COLLECT NOPE' does not exist/)
+            expect { cmd('INST COLLECT with TYPE NORMAL, DURATION 5, NOPE 10') }.to raise_error(/Item 'INST COLLECT NOPE' does not exist/)
           end
 
           if connect == 'connected'

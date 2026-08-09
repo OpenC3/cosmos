@@ -285,11 +285,110 @@ module OpenC3
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
         expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, erb_variables, validate_only: false).and_return(nil)
-        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, erb_variables, validate_only: false).and_return(nil)
+        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, erb_variables, validate_only: false, upgrade_context: nil).and_return(nil)
         plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => variables, "plugin_txt_lines" => ["TOOL THE_FOLDER THE_NAME", "  #{URL}", "TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT")
         expect(plugin_model['needs_dependencies']).to eql false
       end
 
+      it "threads version_history_files and username into the TargetModel upgrade_context" do
+        s3 = instance_double("Aws::S3::Client").as_null_object
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+
+        expect(GemModel).to receive(:get).and_return("my_plugin.gem")
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            file.puts "TOOL <%= folder %> <%= name %>"
+            file.puts "  #{URL}"
+            file.puts "TARGET <%= folder %> <%= name %>"
+          end
+        end
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        spec = double("spec")
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:name).and_return("test-plugin")
+        allow(spec).to receive(:version).and_return("1.0.0")
+        allow(spec).to receive(:runtime_dependencies).and_return([])
+        allow(spec).to receive(:metadata).and_return({})
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
+
+        variables = { "folder" => { "value" => "THE_FOLDER" }, "name" => { "value" => "THE_NAME" } }
+        erb_variables = { "folder" => "THE_FOLDER", "name" => "THE_NAME", "scope" => 'DEFAULT' }
+        expect(GemModel).to receive(:install).and_return(nil)
+        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, erb_variables, validate_only: false).and_return(nil)
+        # The upgrade hints (username + version_history_files) are stripped from
+        # the plugin_hash and rebuilt into the TargetModel upgrade_context with
+        # the resolved "name version" plugin label.
+        expect_any_instance_of(TargetModel).to receive(:deploy).with(
+          anything, erb_variables, validate_only: false,
+          upgrade_context: { username: "upgrader",
+                             plugin: "test-plugin 1.0.0",
+                             version_files: ["THE_NAME/screen.txt"] }
+        ).and_return(nil)
+        PluginModel.install_phase2({"name" => "name", "variables" => variables,
+          "username" => "upgrader", "version_history_files" => ["THE_NAME/screen.txt"],
+          "plugin_txt_lines" => ["TOOL THE_FOLDER THE_NAME", "  #{URL}", "TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT")
+      end
+
+      it "passes a diff_collector upgrade_context and makes no side effects when diff_only" do
+        s3 = instance_double("Aws::S3::Client").as_null_object
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+
+        expect(GemModel).to receive(:get).and_return("my_plugin.gem")
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            file.puts "TARGET <%= folder %> <%= name %>"
+          end
+        end
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        spec = double("spec")
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:name).and_return("test-plugin")
+        allow(spec).to receive(:version).and_return("1.0.0")
+        allow(spec).to receive(:runtime_dependencies).and_return([])
+        allow(spec).to receive(:metadata).and_return({})
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
+
+        variables = { "folder" => { "value" => "THE_FOLDER" }, "name" => { "value" => "THE_NAME" } }
+        erb_variables = { "folder" => "THE_FOLDER", "name" => "THE_NAME", "scope" => 'DEFAULT' }
+        # Dry run: no gem install and the deploy is validate_only with a
+        # diff_collector array for the target to append modified files into.
+        expect(GemModel).to_not receive(:install)
+        expect(GemModel).to_not receive(:destroy_all_other_versions)
+        expect_any_instance_of(TargetModel).to receive(:deploy).with(
+          anything, erb_variables, validate_only: true,
+          upgrade_context: { diff_collector: [] }
+        ).and_return(nil)
+        result = PluginModel.install_phase2({"name" => "name", "variables" => variables,
+          "plugin_txt_lines" => ["TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT", diff_only: true)
+        # Returns the (deduped) collected diff list rather than the plugin json.
+        expect(result).to eql([])
+      end
+    end
+
+    describe "self.modified_diff" do
+      it "delegates to install_phase2 with diff_only and returns the file list" do
+        expect(PluginModel).to receive(:install_phase2).with(
+          hash_including("name" => "name"), scope: "DEFAULT", diff_only: true
+        ).and_return(["TGT/screen.txt"])
+        expect(PluginModel.modified_diff({"name" => "name"}, scope: "DEFAULT")).to eql(["TGT/screen.txt"])
+      end
+
+      it "returns an empty array and logs when install_phase2 raises" do
+        expect(PluginModel).to receive(:install_phase2).and_raise("boom")
+        expect(Logger).to receive(:warn).with(/modified_diff failed: boom/)
+        expect(PluginModel.modified_diff({"name" => "name"}, scope: "DEFAULT")).to eql([])
+      end
+    end
+
+    describe "self.install_phase2 errors" do
       it "raises on non-lowercase screen file names" do
         s3 = instance_double("Aws::S3::Client").as_null_object
         allow(Aws::S3::Client).to receive(:new).and_return(s3)
@@ -371,7 +470,7 @@ module OpenC3
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
         expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, {"scope" => 'DEFAULT'}, validate_only: false).and_return(nil)
-        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, {"scope" => 'DEFAULT'}, validate_only: false).and_return(nil)
+        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, {"scope" => 'DEFAULT'}, validate_only: false, upgrade_context: nil).and_return(nil)
         plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
         expect(plugin_model['needs_dependencies']).to eql true
       end
@@ -407,7 +506,7 @@ module OpenC3
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
         expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, {"scope" => 'DEFAULT'}, validate_only: false).and_return(nil)
-        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, {"scope" => 'DEFAULT'}, validate_only: false).and_return(nil)
+        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, {"scope" => 'DEFAULT'}, validate_only: false, upgrade_context: nil).and_return(nil)
         plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
         expect(plugin_model['needs_dependencies']).to eql true
       end
@@ -444,7 +543,7 @@ module OpenC3
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
         expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, {"scope" => 'DEFAULT'}, validate_only: false).and_return(nil)
-        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, {"scope" => 'DEFAULT'}, validate_only: false).and_return(nil)
+        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, {"scope" => 'DEFAULT'}, validate_only: false, upgrade_context: nil).and_return(nil)
         plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
         expect(plugin_model['needs_dependencies']).to eql true
       end
@@ -672,7 +771,7 @@ module OpenC3
 
       it "removes per-plugin Python venv directory when it exists" do
         plugin = PluginModel.new(name: "PLUG", scope: "DEFAULT")
-        venv_path = '/gems/plugin_venvs/PLUG'
+        venv_path = '/gems/plugin_venvs/DEFAULT__PLUG'
         expect(File).to receive(:directory?).with(venv_path).and_return(true)
         expect(FileUtils).to receive(:rm_rf).with(venv_path)
         plugin.undeploy
@@ -680,7 +779,7 @@ module OpenC3
 
       it "does not error when per-plugin Python venv directory does not exist" do
         plugin = PluginModel.new(name: "PLUG", scope: "DEFAULT")
-        venv_path = '/gems/plugin_venvs/PLUG'
+        venv_path = '/gems/plugin_venvs/DEFAULT__PLUG'
         expect(File).to receive(:directory?).with(venv_path).and_return(false)
         expect(FileUtils).not_to receive(:rm_rf).with(venv_path)
         expect { plugin.undeploy }.not_to raise_error
@@ -688,7 +787,7 @@ module OpenC3
 
       it "sanitizes plugin name for venv directory path" do
         plugin = PluginModel.new(name: "my.plugin@1.0__0", scope: "DEFAULT")
-        sanitized_path = '/gems/plugin_venvs/my_plugin_1_0__0'
+        sanitized_path = '/gems/plugin_venvs/DEFAULT__my_plugin_1_0__0'
         expect(File).to receive(:directory?).with(sanitized_path).and_return(true)
         expect(FileUtils).to receive(:rm_rf).with(sanitized_path)
         plugin.undeploy
@@ -822,19 +921,19 @@ module OpenC3
 
       it "returns true when needs_dependencies is true and .uv_managed marker is absent" do
         model = PluginModel.new(name: "TEST", needs_dependencies: true, scope: "DEFAULT")
-        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST/.uv_managed').and_return(false)
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__TEST/.uv_managed').and_return(false)
         expect(model.needs_uv_migration?).to be true
       end
 
       it "returns false when .uv_managed marker exists" do
         model = PluginModel.new(name: "TEST", needs_dependencies: true, scope: "DEFAULT")
-        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST/.uv_managed').and_return(true)
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__TEST/.uv_managed').and_return(true)
         expect(model.needs_uv_migration?).to be false
       end
 
       it "sanitizes plugin name for marker path" do
         model = PluginModel.new(name: "my.plugin@1.0", needs_dependencies: true, scope: "DEFAULT")
-        allow(File).to receive(:exist?).with('/gems/plugin_venvs/my_plugin_1_0/.uv_managed').and_return(false)
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__my_plugin_1_0/.uv_managed').and_return(false)
         expect(model.needs_uv_migration?).to be true
       end
     end
@@ -842,7 +941,7 @@ module OpenC3
     describe "migrate_to_uv!" do
       it "returns true immediately when already migrated (marker exists)" do
         model = PluginModel.new(name: "TEST__0", needs_dependencies: true, scope: "DEFAULT")
-        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST__0/.uv_managed').and_return(true)
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__TEST__0/.uv_managed').and_return(true)
         expect(model.migrate_to_uv!(scope: "DEFAULT")).to be true
       end
 
@@ -852,7 +951,7 @@ module OpenC3
 
         # Marker doesn't exist
         allow(File).to receive(:exist?).and_call_original
-        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST__0/.uv_managed').and_return(false)
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__TEST__0/.uv_managed').and_return(false)
 
         # GemModel.get returns a path
         expect(GemModel).to receive(:get).with("TEST").and_return("/gems/cache/test.gem")
@@ -882,7 +981,7 @@ module OpenC3
         model.create
 
         allow(File).to receive(:exist?).and_call_original
-        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST__0/.uv_managed').and_return(false)
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__TEST__0/.uv_managed').and_return(false)
 
         expect(GemModel).to receive(:get).with("TEST").and_return("/gems/cache/test.gem")
 
@@ -909,7 +1008,7 @@ module OpenC3
         model.create
 
         allow(File).to receive(:exist?).and_call_original
-        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST__0/.uv_managed').and_return(false)
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__TEST__0/.uv_managed').and_return(false)
 
         expect(GemModel).to receive(:get).with("TEST").and_return("/gems/cache/test.gem")
 
@@ -926,7 +1025,7 @@ module OpenC3
         model.create
 
         allow(File).to receive(:exist?).and_call_original
-        allow(File).to receive(:exist?).with('/gems/plugin_venvs/TEST__0/.uv_managed').and_return(false)
+        allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__TEST__0/.uv_managed').and_return(false)
 
         expect(GemModel).to receive(:get).with("TEST").and_return("/gems/cache/test.gem")
 

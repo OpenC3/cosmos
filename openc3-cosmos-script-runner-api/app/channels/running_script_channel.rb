@@ -18,6 +18,15 @@
 class RunningScriptChannel < ApplicationCable::Channel
   @@broadcasters = {}
 
+  # Upper bound on how long the live event broadcaster waits for the client's
+  # 'ready' before starting to read anyway. This is the correctness floor for
+  # the stream-registration race described in #subscribed, not a legacy-client
+  # allowance: it also covers a 'ready' that never arrives because the client
+  # died or the perform was lost. Every in-tree client (ScriptRunner.vue, the
+  # Ruby and Python WebSocketApi) performs 'ready', so in practice this only
+  # costs latency for third-party consumers that just subscribe and read.
+  ARM_TIMEOUT = 1.0
+
   def subscribed
     # Defensive: if the auth before_subscribe callback rejected us, skip work.
     return if subscription_rejected?
@@ -26,12 +35,12 @@ class RunningScriptChannel < ApplicationCable::Channel
     # output/state still receives what it missed (the raw anycable broadcast is
     # pub/sub with no history, which left state stuck on "Connecting..." or
     # output as "No data").
-    subscription_key = "running-script-#{uuid}"
-    stream_from subscription_key
+    key = subscription_key()
+    stream_from key
     # Guard against a duplicate broadcaster for this key (e.g. if subscribed
     # fires again before unsubscribed) which would deliver every event twice.
-    @@broadcasters[subscription_key]&.stop
-    @@broadcasters.delete(subscription_key)
+    @@broadcasters[key]&.stop
+    @@broadcasters.delete(key)
 
     # Deliver the existing backlog via transmit() rather than a stream
     # broadcast. transmit is returned with the subscription confirmation and
@@ -39,7 +48,7 @@ class RunningScriptChannel < ApplicationCable::Channel
     # thread) can race the gateway registering our stream_from above and be
     # dropped -- which is how a fast-completing script (e.g. a parse-time crash)
     # lost all of its output. We record the last backlog offset and, only if the
-    # script has not already finished, start a thread to tail LIVE events from
+    # script has not already finished, start a thread to stream LIVE events from
     # there (those are written later, after stream_from is registered).
     topic = "running-script-channel:#{params[:id]}:replay"
     last_offset = '0-0'
@@ -61,22 +70,58 @@ class RunningScriptChannel < ApplicationCable::Channel
     # there is nothing left to stream.
     return if complete
 
+    # Start streaming live events, but DELAYED: a broadcast issued right now can
+    # race the gateway registering our stream_from above and be silently
+    # dropped. That loses any events written between the xrange and the thread's
+    # first read, and a script that then goes quiet (e.g. parked in a wait) never
+    # publishes again -- leaving the client stuck on "Connecting...". Clients
+    # declare themselves ready to stream events via the 'ready' action (see
+    # #ready), performed after the subscription confirmation has round-tripped,
+    # which guarantees the stream is registered. ARM_TIMEOUT bounds the wait for
+    # a 'ready' that never comes.
     begin
-      broadcaster = RunningScriptReplayThread.new(subscription_key, params[:id], last_offset)
+      broadcaster = RunningScriptReplayThread.new(key, params[:id], last_offset,
+                                                  arm_delay: ARM_TIMEOUT)
       broadcaster.start
-      @@broadcasters[subscription_key] = broadcaster
+      @@broadcasters[key] = broadcaster
     rescue StandardError => e
       # Best-effort: a replay failure must not break the subscription.
       OpenC3::Logger.warn("running_script replay start failed: #{e.message}") rescue nil
     end
   end
 
+  # Channel action performed by the client to declare that it is ready to
+  # stream events: it has received the subscription confirmation, so by now the
+  # gateway has registered this subscription's stream and live broadcasts can no
+  # longer be dropped. Skips the remaining ARM_TIMEOUT and streams right away.
+  # No-ops if the script already completed (no broadcaster) or on duplicate
+  # performs.
+  def ready
+    @@broadcasters[subscription_key()]&.arm
+  end
+
   def unsubscribed
-    subscription_key = "running-script-#{uuid}"
-    if @@broadcasters[subscription_key]
-      stop_stream_from subscription_key
-      @@broadcasters[subscription_key].stop
-      @@broadcasters.delete(subscription_key)
+    key = subscription_key()
+    if @@broadcasters[key]
+      stop_stream_from key
+      @@broadcasters[key].stop
+      @@broadcasters.delete(key)
     end
+  end
+
+  private
+
+  # The stream (and @@broadcasters) key must identify this subscription, not
+  # just its connection. `uuid` is an identified_by on the connection, so it is
+  # shared by every RunningScriptChannel subscription in the same browser tab.
+  # Keying on it alone meant tearing down one subscription stopped the replay
+  # thread of another script's subscription on the same connection -- which left
+  # that script's Script Runner stuck on "Connecting..." with no live events.
+  # AnyCable is stateless between commands so this has to be derived, not
+  # generated: (connection, script id) is unique because the client dedupes
+  # subscriptions by identifier, so a connection only ever has one subscription
+  # per script.
+  def subscription_key
+    "running-script-#{uuid}-#{params[:id]}"
   end
 end

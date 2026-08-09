@@ -27,7 +27,7 @@ Most data types can be printed in a COSMOS script simply by doing <code>print(tl
 
 ### Naming Convention
 
-Telemetry Packets and Items can be named however you want with very few exceptions. The following is not allowed in Packet or Item names: `__` (double underscore), `[[` or `]]` (double brackets), whitespace, and ending a name with underscore. Item names are also limited to a maximum of 127 characters because they are used as column headers when telemetry data is stored in the time series database (QuestDB). While not much else is _explicitly_ restricted we've found the following guidelines to be helpful.
+Telemetry Packets and Items can be named however you want with very few exceptions. The following is not allowed in Packet or Item names: `__` (double underscore), `[[` or `]]` (double brackets), whitespace, and ending a name with underscore. Item names are also limited to a maximum of 127 characters because they are used as column headers when telemetry data is stored in the time series database (QuestDB). Note that all target, packet, item, and state names are automatically converted to uppercase (COSMOS is not case sensitive), so mixed case cannot be used to visually separate words. Use underscores or dashes instead, e.g. `LOW_POWER_MODE` rather than `LowPowerMode` which becomes the harder to read `LOWPOWERMODE`. While not much else is _explicitly_ restricted we've found the following guidelines to be helpful.
 
 - Use underscores
 

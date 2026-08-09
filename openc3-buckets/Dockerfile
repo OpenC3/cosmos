@@ -1,7 +1,7 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG DEBIAN_RELEASE=trixie
 # Make sure to update build_multi_arch.sh with the same version when updating versitygw version
-ARG OPENC3_VERSITYGW_VERSION=v1.6.0
+ARG OPENC3_VERSITYGW_VERSION=v1.7.0
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/debian:${DEBIAN_RELEASE}-slim
 

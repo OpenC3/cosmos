@@ -195,7 +195,16 @@ test('edits a graph', async ({ page, utils }) => {
   await page.getByRole('button', { name: 'New Line' }).click()
   await page.getByLabel('Y Value').fill('20')
   await page.getByText('white').click()
-  await page.getByRole('option', { name: 'darkorange' }).click()
+  // The color list is virtually scrolled and opens anchored on the selected
+  // color (white), so scroll up until darkorange is rendered
+  const colorList = page.getByRole('listbox', { name: 'Color' })
+  const darkorange = colorList.getByRole('option', { name: 'darkorange' })
+  await expect(async () => {
+    await colorList.hover()
+    await page.mouse.wheel(0, -200)
+    await expect(darkorange).toBeVisible({ timeout: 500 })
+  }).toPass()
+  await darkorange.click()
 
   await page.getByRole('tab', { name: 'Items' }).click()
   await expect(page.locator('[data-test=edit-graph-items]')).toContainText(

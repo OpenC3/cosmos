@@ -161,7 +161,7 @@ class TestTargetModelPackets(unittest.TestCase):
             TargetModel.packets("INST", type="OTHER", scope="DEFAULT")
 
     def test_raises_for_a_non_existent_target(self):
-        with self.assertRaisesRegex(RuntimeError, "Target 'NOPE' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Target 'NOPE' does not exist.*\(TargetModel\)"):
             TargetModel.packets("NOPE", type="TLM", scope="DEFAULT")
 
     def test_returns_all_telemetry_packets(self):
@@ -216,11 +216,11 @@ class TestTargetModelPacket(unittest.TestCase):
             TargetModel.packet("INST", "HEALTH_STATUS", type="OTHER", scope="DEFAULT")
 
     def test_raises_for_a_non_existent_target(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist"):
             TargetModel.packet("BLAH", "HEALTH_STATUS", type="TLM", scope="DEFAULT")
 
     def test_raises_for_a_non_existent_packet(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             TargetModel.packet("INST", "BLAH", type="TLM", scope="DEFAULT")
 
     def test_returns_packet_hash_if_the_telemetry_exists(self):
@@ -310,15 +310,15 @@ class TestTargetModelPacketItem(unittest.TestCase):
             TargetModel.packet_item("INST", "HEALTH_STATUS", "CCSDSVER", type="OTHER", scope="DEFAULT")
 
     def test_raises_for_a_non_existent_target(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist"):
             TargetModel.packet_item("BLAH", "HEALTH_STATUS", "CCSDSVER", scope="DEFAULT")
 
     def test_raises_for_a_non_existent_packet(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             TargetModel.packet_item("INST", "BLAH", "CCSDSVER", scope="DEFAULT")
 
     def test_raises_for_a_non_existent_item(self):
-        with self.assertRaisesRegex(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'INST HEALTH_STATUS BLAH' does not exist \(TargetModel\)"):
             TargetModel.packet_item("INST", "HEALTH_STATUS", "BLAH", scope="DEFAULT")
 
     def test_returns_item_hash_if_the_telemetry_item_exists(self):
@@ -344,11 +344,11 @@ class TestTargetModelPacketItems(unittest.TestCase):
             TargetModel.packet_items("INST", "HEALTH_STATUS", ["CCSDSVER"], type="OTHER", scope="DEFAULT")
 
     def test_raises_for_a_non_existent_target(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist"):
             TargetModel.packet_items("BLAH", "HEALTH_STATUS", ["CCSDSVER"], scope="DEFAULT")
 
     def test_raises_for_a_non_existent_packet(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             TargetModel.packet_items("INST", "BLAH", ["CCSDSVER"], scope="DEFAULT")
 
     def test_raises_for_a_non_existent_item(self):

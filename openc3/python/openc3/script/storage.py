@@ -153,7 +153,7 @@ def _get_download_url(path: str, scope: str = OPENC3_SCOPE):
             scope=scope,
         )
         if response.status_code != 200:
-            raise RuntimeError(f"File not found: {path} in scope: {scope}")
+            raise RuntimeError(f"File not found: '{path}' in scope: {scope} (download URL lookup)")
 
     endpoint = f"/openc3-api/storage/download/{scope}/{targets}/{path}"
     # external must be true because we're using this URL from the frontend
@@ -173,7 +173,7 @@ def _get_storage_file(path, bucket="OPENC3_CONFIG_BUCKET", scope=OPENC3_SCOPE):
     uri = _get_uri(result["url"])
     response = requests.get(uri)
     if response.status_code == 404:
-        raise RuntimeError(f"File not found: {scope}/{path}")
+        raise RuntimeError(f"File not found: '{path}' in scope: {scope} (storage download)")
     file.write(response.content)
     file.seek(0)
     return file

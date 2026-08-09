@@ -55,7 +55,8 @@ module OpenC3
         plugin_name = microservice_config["plugin"]
         plugin_venv_dir = nil
         if plugin_name
-          sanitized_name = plugin_name.tr('^a-zA-Z0-9_-', '_')
+          scope = microservice_name.split("__")[0]
+          sanitized_name = "#{scope}__#{plugin_name}".tr('^a-zA-Z0-9_-', '_')
           candidate = "/gems/plugin_venvs/#{sanitized_name}/.venv"
           plugin_venv_dir = candidate if File.directory?(candidate)
         end

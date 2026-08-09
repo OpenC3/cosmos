@@ -485,7 +485,10 @@ module OpenC3
       config_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/settings/#{name}.json"
       return unless File.expand_path(config_path).start_with?(OPENC3_LOCAL_MODE_PATH)
       FileUtils.mkdir_p(File.dirname(config_path))
-      # Anything can be stored as a setting so write it out directly
+      # Anything can be stored as a setting. Strings are written directly since
+      # they're already the serialized form. Anything else is written as JSON so
+      # sync_settings can read it back rather than a Ruby inspect string.
+      data = JSON.generate(data.as_json(:allow_nan => true)) unless String === data
       File.write(config_path, data)
     end
 

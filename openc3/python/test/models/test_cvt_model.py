@@ -267,12 +267,12 @@ class TestCvtModel(unittest.TestCase):
         self.assertEqual(CvtModel.get_tlm_values([]), ([]))
 
     def test_gettlm_raises_on_invalid_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'NOPE BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet 'NOPE BLAH' has no current values in CVT"):
             CvtModel.get_tlm_values([["NOPE", "BLAH", "TEMP1", "RAW"]])
 
     def test_gettlm_raises_on_invalid_items(self):
         self.update_temp1()
-        with self.assertRaisesRegex(RuntimeError, "Item 'INST HEALTH_STATUS NOPE' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'INST HEALTH_STATUS NOPE' does not exist \(get_tlm_values\)"):
             CvtModel.get_tlm_values([["INST", "HEALTH_STATUS", "NOPE", "RAW"]])
 
     def test_gettlm_raises_on_invalid_types(self):

@@ -141,7 +141,7 @@ def inject_tlm(target_name, packet_name, item_hash=None, type="CONVERTED", store
     target_name = target_name.upper()
     packet_name = packet_name.upper()
     if type not in CvtModel.VALUE_TYPES:
-        raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name}")
+        raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} (inject_tlm)")
 
     if item_hash:
         item_hash = {k.upper(): v for k, v in item_hash.items()}
@@ -271,7 +271,7 @@ def get_tlm_packet(*args, stale_time: int = 30, type: str = "CONVERTED", scope: 
     packet = TargetModel.packet(target_name, packet_name, scope=scope)
     t = _validate_tlm_type(type)
     if t is None:
-        raise TypeError(f"Unknown type '{type}' for {target_name} {packet_name}")
+        raise TypeError(f"Unknown type '{type}' for {target_name} {packet_name} (get_tlm_packet)")
     cvt_items = []
     for item in packet["items"]:
         if not item.get("hidden", False):

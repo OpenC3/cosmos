@@ -80,7 +80,7 @@ module OpenC3
         expect { GemModel.install("openc3-test1.gem", scope: 'DEFAULT') }.to \
           raise_error(Gem::Package::FormatError, /package metadata is missing/)
         expect { GemModel.install("openc3-test3.gem", scope: 'DEFAULT') }.to \
-          raise_error(RuntimeError, /Gem openc3-test3.gem not found/)
+          raise_error(RuntimeError, /Gem 'openc3-test3.gem' not found/)
       end
     end
 

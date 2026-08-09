@@ -112,7 +112,7 @@ class CvtModel(Model):
                 return pkt_hash
         packet = cls._store_for_target(target_name, scope).hget(key, packet_name)
         if packet is None:
-            raise RuntimeError(f"Packet '{target_name} {packet_name}' does not exist")
+            raise RuntimeError(f"Packet '{target_name} {packet_name}' has no current values in CVT")
         pkt_hash = json.loads(packet, cls=JsonDecoder)
         CvtModel.packet_cache[tgt_pkt_key] = [now, pkt_hash]
         return pkt_hash
@@ -142,7 +142,7 @@ class CvtModel(Model):
                 pkt_hash[f"{item_name}__C"] = value
                 pkt_hash[item_name] = value
             case _:
-                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
+                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name} (set_item)")
         cls.set(
             pkt_hash,
             target_name=target_name,
@@ -253,7 +253,9 @@ class CvtModel(Model):
                         item_result.insert(1, pkt_hash.get(f"{value_keys[-1]}__L"))
                 else:
                     if value_keys[-1] not in pkt_hash:
-                        raise RuntimeError(f"Item '{target_name} {packet_name} {value_keys[-1]}' does not exist")
+                        raise RuntimeError(
+                            f"Item '{target_name} {packet_name} {value_keys[-1]}' does not exist (get_tlm_values)"
+                        )
                     else:
                         item_result.insert(1, None)
             results.append(item_result)
@@ -313,7 +315,7 @@ class CvtModel(Model):
             case "FORMATTED" | "WITH_UNITS":
                 pkt_hash[f"{item_name}__F"] = str(value)  # Always a String
             case _:
-                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
+                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name} (override)")
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
         CvtModel.override_cache[tgt_pkt_key] = [time.time(), pkt_hash]
         store.hset(f"{scope}__override__{target_name}", packet_name, json.dumps(pkt_hash))
@@ -342,7 +344,7 @@ class CvtModel(Model):
                 if f"{item_name}__F" in pkt_hash:
                     pkt_hash.pop(f"{item_name}__F")
             case _:
-                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
+                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name} (normalize)")
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
         if len(pkt_hash) == 0:
             if tgt_pkt_key in CvtModel.override_cache:
@@ -398,7 +400,7 @@ class CvtModel(Model):
             case "RAW":
                 types = [item_name]
             case _:
-                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
+                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name} (get_item)")
 
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
         overrides = cls._get_overrides(

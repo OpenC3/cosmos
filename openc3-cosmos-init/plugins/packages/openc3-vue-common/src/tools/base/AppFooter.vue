@@ -72,22 +72,27 @@ export default {
     this.chromeless = urlParams.get('chromeless')
 
     this.getSourceUrl()
-    Api.get('/openc3-api/info').then((response) => {
-      if (response.data.enterprise) {
-        this.edition = 'COSMOS Enterprise'
-      } else {
-        this.edition = 'COSMOS Core'
-      }
-      this.enterprise = response.data.enterprise
-      this.license = response.data.license
-      this.version = response.data.version
-    })
+    Api.get('/openc3-api/info')
+      .then((response) => {
+        if (response.data.enterprise) {
+          this.edition = 'COSMOS Enterprise'
+        } else {
+          this.edition = 'COSMOS Core'
+        }
+        this.enterprise = response.data.enterprise
+        this.license = response.data.license
+        this.version = response.data.version
+      })
+      .catch(console.error)
   },
   methods: {
     getSourceUrl: function () {
-      new OpenC3Api().get_settings(['source_url']).then((response) => {
-        this.sourceUrl = response[0]
-      })
+      new OpenC3Api()
+        .get_settings(['source_url'])
+        .then((response) => {
+          this.sourceUrl = response[0]
+        })
+        .catch(console.error)
     },
     upgrade: function () {
       if (!this.enterprise) {

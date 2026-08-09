@@ -278,6 +278,10 @@ export default {
       type: Number,
       default: 0,
     },
+    initialWidth: {
+      type: Number,
+      default: null,
+    },
     minZ: {
       type: Number,
       default: 0,
@@ -358,6 +362,7 @@ export default {
       top: this.initialTop,
       left: this.initialLeft,
       zIndex: this.initialZ,
+      floatedWidth: this.initialWidth,
       changeCounter: 0,
       screenItems: [],
       actualScreenItems: [],
@@ -387,8 +392,8 @@ export default {
     },
     computedStyle() {
       let style = {}
-      // note down what the width was in case it was set to AUTO, because absolute positioning will lose that
-      const origWidth = this.width || this.$refs.bar?.clientWidth
+      const origWidth =
+        this.width || this.floatedWidth || this.$refs.bar?.clientWidth
       if (this.floated) {
         style['position'] = 'absolute'
         style['top'] = this.top + 'px'
@@ -746,6 +751,7 @@ export default {
         this.top,
         this.left,
         this.zIndex,
+        this.floatedWidth,
       ])
     },
     downScreen: function () {
@@ -771,6 +777,7 @@ export default {
           this.top,
           this.left,
           this.zIndex,
+          this.floatedWidth,
         ])
       } else {
         let bodyRect =
@@ -778,6 +785,7 @@ export default {
         let elemRect = this.$refs.bar.getBoundingClientRect()
         this.top = elemRect.top - bodyRect.top - 5
         this.left = elemRect.left - bodyRect.left - 5
+        this.floatedWidth = this.$refs.bar.clientWidth
         this.$refs.bar.onmousedown = this.dragMouseDown
         this.$refs.bar.parentElement.parentElement.style =
           'z-index: ' + this.zIndex
@@ -787,6 +795,7 @@ export default {
           this.top,
           this.left,
           this.zIndex,
+          this.floatedWidth,
         ])
       }
     },
@@ -843,6 +852,7 @@ export default {
         this.top,
         this.left,
         this.zIndex,
+        this.floatedWidth,
       ])
     },
     closeDragElement: function () {
@@ -884,16 +894,16 @@ export default {
             },
           },
           0,
-        )
+        ).catch(console.error)
       })
     },
     deleteScreen: function () {
       this.editDialog = false
-      Api.delete(`/openc3-api/screen/${this.target}/${this.screen}`).then(
-        (response) => {
+      Api.delete(`/openc3-api/screen/${this.target}/${this.screen}`)
+        .then((response) => {
           this.$emit('delete-screen')
-        },
-      )
+        })
+        .catch(console.error)
     },
     minMaxTransition: function () {
       this.expand = !this.expand
@@ -1014,6 +1024,11 @@ export default {
             this.staleTime,
             this.cacheTimeout,
             dateTime,
+            null,
+            // A user without 'tlm' permission on these items gets a 403 on every
+            // update. Don't raise the global notification, we display the error
+            // on the screen itself (click the error icon in the screen toolbar).
+            { 'Ignore-Errors': '403' },
           )
           .then((data) => {
             if (data && data.length > 0) {
@@ -1023,7 +1038,10 @@ export default {
             }
           })
           .catch((error) => {
-            let message = JSON.stringify(error, null, 2)
+            // Note: OpenC3Api rejects with an Error built from the server
+            // response so the message is the useful part. JSON.stringify on an
+            // Error returns '{}' because its fields aren't enumerable.
+            let message = error.message || JSON.stringify(error, null, 2)
             if (
               !this.errors.find((existing) => {
                 return existing.message === message
@@ -1047,8 +1065,7 @@ export default {
         values.length != this.screenItems.length ||
         values.length != this.actualScreenItems.length
       ) {
-        // eslint-disable-next-line no-console
-        console.log(
+        console.error(
           `get_tlm_values mismatch: data.length: ${values.length}, screenItems.length: ${this.screenItems.length}, actualScreenItems.length: ${this.actualScreenItems.length}`,
           JSON.stringify(values),
           JSON.stringify(this.screenItems),
@@ -1071,14 +1088,13 @@ export default {
       }
       this.tlmAvailableTimeout = setTimeout(() => {
         this.api
-          .get_tlm_available(this.screenItems)
+          .get_tlm_available(this.screenItems, {}, { 'Ignore-Errors': '403' })
           .then((data) => {
             this.actualScreenItems = data
             // This must be the same or we're going to have problems
             // because the data comes back in an ordered array
             if (this.screenItems.length != data.length) {
-              // eslint-disable-next-line no-console
-              console.log(
+              console.error(
                 'Error getting tlm available',
                 this.screenItems,
                 this.actualScreenItems,
@@ -1116,8 +1132,7 @@ export default {
             }
           })
           .catch((error) => {
-            // eslint-disable-next-line no-console
-            console.log('Error getting tlm available', error)
+            console.error('Error getting tlm available', error)
             this.actualScreenItems = this.screenItems
           })
         this.tlmAvailableTimeout = null

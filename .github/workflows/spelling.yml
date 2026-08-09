@@ -35,14 +35,16 @@ jobs:
       contents: read
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: codespell-project/actions-codespell@8f01853be192eb0f849a5c7d721450e7a467c579 # v2.2
         with:
           # Skip generated code as well as cstol_converter which has false
-          # positivies on ADN and Adn
-          skip: ./docs,*.map,*.min.js,*.pem,*.bin,pnpm-lock.yaml,cstol_converter,vue.global*,vuetify-labs*
+          # positives on ADN and Adn. *.xsd covers vendored third party schemas
+          # (e.g. the OMG XTCE schemas) which must stay byte for byte identical
+          # to the published versions, typos included.
+          skip: ./docs,*.map,*.min.js,*.pem,*.bin,*.xsd,pnpm-lock.yaml,cstol_converter,vue.global*,vuetify-labs*
           ignore_words_file: .whitelist

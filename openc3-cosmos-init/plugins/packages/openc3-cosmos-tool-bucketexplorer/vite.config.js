@@ -1,13 +1,21 @@
 import { resolve } from 'path'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import sourcemaps from 'rollup-plugin-sourcemaps2'
 import { devServerPlugin } from '@openc3/js-common/viteDevServerPlugin'
 
 const DEFAULT_EXTENSIONS = ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
 
 export default defineConfig((options) => {
+  // Sourcemaps map V8 coverage from the Playwright tests back to original
+  // sources but bloat the production build that gets baked into the
+  // openc3-cosmos-init image, so they are opt-in: COVERAGE_BUILD=1 (CI
+  // coverage build) or any non-production mode enables them.
+  const coverageBuild =
+    process.env.COVERAGE_BUILD === '1' || options.mode !== 'production'
   return {
     build: {
+      sourcemap: coverageBuild,
       outDir: 'tools/bucketexplorer',
       emptyOutDir: true,
       rollupOptions: {
@@ -34,6 +42,10 @@ export default defineConfig((options) => {
           },
         },
       }),
+      // Chain the prebuilt @openc3/*-common dist sourcemaps into this
+      // build's maps so coverage resolves to their original src (rollup
+      // does not read dependency .map files on its own)
+      coverageBuild && sourcemaps(),
       devServerPlugin(options),
     ],
     resolve: {

@@ -117,7 +117,11 @@ MICROSERVICE:
           values: .+
     SECRET:
       summary: Define a secret needed by this microservice
-      description: Defines a secret for this microservice. For more information see [Admin Secrets](/docs/tools/admin#secrets).
+      description:
+        Defines a secret for this microservice. For more information see [Admin Secrets](/docs/tools/admin#secrets).
+        Note that unlike the INTERFACE SECRET, the microservice SECRET does not take an Option Name parameter,
+        because the secret value is injected directly into the microservice process as an environment variable
+        (Type ENV) or written to a file (Type FILE).
       since: 5.3.0
       parameters:
         - name: Type

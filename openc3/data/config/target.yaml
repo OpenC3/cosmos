@@ -81,6 +81,13 @@ TARGET:
       description:
         Sets the retention time directly on QuestDB tables for automatic data expiration.
         QuestDB will automatically remove data older than this retention time.
+        Tables are partitioned by day and QuestDB only drops whole partitions, so the
+        effective granularity is one day. Hour values are rounded up to whole days
+        ("1h" becomes 1 day, "25h" becomes 2 days) so data is never dropped early,
+        and data is not removed until the entire day partition is older than the retention
+        time (expect up to a day of extra data). Expiration is evaluated when new data is
+        written to the table, so an idle table is not expired.
+        Changing this value and reinstalling the plugin updates existing tables.
       since: 7.0.0
       parameters:
         - name: Time
@@ -95,6 +102,13 @@ TARGET:
       description:
         Sets the retention time directly on QuestDB tables for automatic data expiration.
         QuestDB will automatically remove data older than this retention time.
+        Tables are partitioned by day and QuestDB only drops whole partitions, so the
+        effective granularity is one day. Hour values are rounded up to whole days
+        ("1h" becomes 1 day, "25h" becomes 2 days) so data is never dropped early,
+        and data is not removed until the entire day partition is older than the retention
+        time (expect up to a day of extra data). Expiration is evaluated when new data is
+        written to the table, so an idle table is not expired.
+        Changing this value and reinstalling the plugin updates existing tables.
       since: 7.0.0
       parameters:
         - name: Time
@@ -104,6 +118,13 @@ TARGET:
             Supported units are h (hours), d (days), w (weeks), M (months), y (years).
             Default = nil = Forever
           values: \d+[hdwMy]
+    DECOM_FLUSH_PERIOD:
+      summary: Period in seconds between flushing rows to the TSDB. Higher values use less CPU.
+      parameters:
+        - name: Period
+          required: true
+          description: Number of seconds between flushing rows to the TSDB (default = 5.0)
+          values: .+
     LOG_RETAIN_TIME:
       summary: How long to keep all regular telemetry logs in seconds.
       parameters:

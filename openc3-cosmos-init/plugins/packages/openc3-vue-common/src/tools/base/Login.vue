@@ -126,12 +126,14 @@ export default {
     },
   },
   created: function () {
-    Api.get('/openc3-api/auth/token-exists', this.options).then((response) => {
-      this.isSet = !!response.data.result
-      if (!this.isSet) {
-        this.reset = true
-      }
-    })
+    Api.get('/openc3-api/auth/token-exists', this.options)
+      .then((response) => {
+        this.isSet = !!response.data.result
+        if (!this.isSet) {
+          this.reset = true
+        }
+      })
+      .catch(console.error)
   },
   mounted: function () {
     if (localStorage.openc3Token) {

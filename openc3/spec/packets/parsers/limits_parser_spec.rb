@@ -106,7 +106,7 @@ module OpenC3
         tf.puts '  APPEND_ID_ITEM id 8 UINT 1 "ID"'
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5'
-        tf.puts '    LIMITS TVAC 1 DISABLED 1 2 6 7 3 5'
+        tf.puts '    LIMITS TVAC 1 ENABLED 1 2 6 7 3 5'
         tf.close
         @pc.process_file(tf.path, "TGT1")
         expect(@pc.warnings[-1]).to match(/persistence setting conflict with DEFAULT/)

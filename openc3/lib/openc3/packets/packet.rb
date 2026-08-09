@@ -616,7 +616,7 @@ module OpenC3
     def get_item(name)
       return super(name)
     rescue ArgumentError
-      raise "Packet item '#{@target_name} #{@packet_name} #{name.upcase}' does not exist"
+      raise "Item '#{@target_name} #{@packet_name} #{name.upcase}' does not exist (Packet)"
     end
 
     # Read an item in the packet

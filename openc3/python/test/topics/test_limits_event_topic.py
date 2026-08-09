@@ -216,7 +216,7 @@ class TestLimitsEventTopic(unittest.TestCase):
         self.assertEqual(sets["DEFAULT"], "false")
 
     def test_raise_limits_set_when_set_does_not_exist(self):
-        with self.assertRaisesRegex(RuntimeError, "Set 'BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Limits set 'BLAH' does not exist"):
             event = {"type": "LIMITS_SET", "set": "BLAH", "message": "Limits Set"}
             LimitsEventTopic.write(event, scope="DEFAULT")
 

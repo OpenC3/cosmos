@@ -224,11 +224,11 @@ class TestTlmApi(unittest.TestCase):
             time.sleep(0.001)
 
     def test_inject_tlm_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist"):
             inject_tlm("BLAH", "HEALTH_STATUS")
 
     def test_inject_tlm_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             inject_tlm("INST", "BLAH")
 
     def test_inject_tlm_complains_about_non_existant_items(self):
@@ -528,7 +528,7 @@ class TestTlmApi(unittest.TestCase):
 
     # get_all_tlm
     def test_get_all_tlm_raises_if_the_target_does_not_exist(self):
-        with self.assertRaisesRegex(RuntimeError, "Target 'BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Target 'BLAH' does not exist.*\(TargetModel\)"):
             get_all_tlm("BLAH", scope="DEFAULT")
 
     def test_get_all_tlm_returns_an_array_of_all_packet_hashes(self):
@@ -588,9 +588,9 @@ class TestTlmApi(unittest.TestCase):
 
     # get_tlm
     def test_get_tlm_raises_if_the_target_or_packet_do_not_exist(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist"):
             get_tlm("BLAH", "HEALTH_STATUS", scope="DEFAULT")
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             get_tlm("INST BLAH", scope="DEFAULT")
 
     def test_get_tlm_returns_a_packet_hash(self):
@@ -603,11 +603,11 @@ class TestTlmApi(unittest.TestCase):
 
     # get_item
     def test_get_item_raises_if_the_target_or_packet_or_item_do_not_exist(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist"):
             get_item("BLAH", "HEALTH_STATUS", "CCSDSVER", scope="DEFAULT")
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             get_item("INST BLAH CCSDSVER", scope="DEFAULT")
-        with self.assertRaisesRegex(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'INST HEALTH_STATUS BLAH' does not exist \(TargetModel\)"):
             get_item("INST", "HEALTH_STATUS", "BLAH", scope="DEFAULT")
         with self.assertRaisesRegex(RuntimeError, "ERROR: Target name, packet name and item name required."):
             get_item("INST HEALTH_STATUS", scope="DEFAULT")
@@ -643,15 +643,15 @@ class TestTlmApi(unittest.TestCase):
 
     # get_tlm_packet
     def test_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist"):
             get_tlm_packet("BLAH", "HEALTH_STATUS")
 
     def test_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             get_tlm_packet("INST BLAH")
 
     def test_complains_using_latest(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST LATEST' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST LATEST' does not exist"):
             get_tlm_packet("INST", "LATEST")
 
     def test_complains_about_non_existant_value_types(self):
@@ -782,15 +782,15 @@ class TestTlmApi(unittest.TestCase):
 
     # get_tlm_values
     def test_get_tlm_values_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' has no current values in CVT"):
             get_tlm_values(["BLAH__HEALTH_STATUS__TEMP1__CONVERTED"])
 
     def test_get_tlm_values_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' has no current values in CVT"):
             get_tlm_values(["INST__BLAH__TEMP1__CONVERTED"])
 
     def test_get_tlm_values_complains_about_non_existant_items(self):
-        with self.assertRaisesRegex(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'INST HEALTH_STATUS BLAH' does not exist \(get_tlm_values\)"):
             get_tlm_values(["INST__HEALTH_STATUS__BLAH__CONVERTED"])
         with self.assertRaisesRegex(RuntimeError, "Item 'INST LATEST BLAH' does not exist for scope: DEFAULT"):
             get_tlm_values(["INST__LATEST__BLAH__CONVERTED"])
@@ -1103,11 +1103,11 @@ class TestTlmApi(unittest.TestCase):
                     raise RuntimeError("Found too many packets")
 
     def test_get_tlm_cnt_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH ABORT' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH ABORT' does not exist"):
             get_tlm_cnt("BLAH", "ABORT")
 
     def test_get_tlm_cnt_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             get_tlm_cnt("INST", "BLAH")
 
     def test_get_tlm_cnt_complains_about_missing_packet(self):
@@ -1138,11 +1138,11 @@ class TestTlmApi(unittest.TestCase):
         self.assertEqual(cnts, ([result]))
 
     def test_get_packet_derived_items_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH ABORT' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH ABORT' does not exist"):
             get_packet_derived_items("BLAH", "ABORT")
 
     def test_get_packet_derived_items_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             get_packet_derived_items("INST", "BLAH")
 
     def test_get_packet_derived_items_returns_the_packet_derived_items(self):

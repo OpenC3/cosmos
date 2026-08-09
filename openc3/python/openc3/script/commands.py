@@ -214,7 +214,9 @@ def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
                         found = item
                         break
             if not found:
-                raise RuntimeError(f"Packet item '{target_name} {cmd_name} {param_name}' does not exist")
+                raise RuntimeError(
+                    f"Item '{target_name} {cmd_name} {param_name}' does not exist (command parameter validation)"
+                )
     _log_cmd(command, raw, no_range, no_hazardous)
 
 

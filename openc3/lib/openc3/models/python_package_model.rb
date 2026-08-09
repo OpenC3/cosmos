@@ -194,7 +194,7 @@ module OpenC3
       if result.length > 0
         return result[0] if File.exist?(result[0])
       end
-      raise "Package #{name} not found"
+      raise "Package '#{name}' not found"
     end
 
     def self.put(package_file_path, package_install: true, scope:, plugin: nil)

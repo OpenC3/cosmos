@@ -374,7 +374,7 @@ module OpenC3
 
     describe "send_raw" do
       it "raises on unknown interfaces" do
-        expect { @api.send_raw("BLAH_INT", "\x00\x01\x02\x03") }.to raise_error("Interface 'BLAH_INT' does not exist")
+        expect { @api.send_raw("BLAH_INT", "\x00\x01\x02\x03") }.to raise_error("Interface 'BLAH_INT' does not exist (get_interface)")
       end
 
       it "sends raw data to an interface" do
@@ -582,12 +582,12 @@ module OpenC3
 
     describe "get_cmd_cnt" do
       it "complains about non-existent targets" do
-        expect { @api.get_cmd_cnt("BLAH", "ABORT") }.to raise_error("Packet 'BLAH ABORT' does not exist")
-        expect { @api.get_cmd_cnt("BLAH ABORT") }.to raise_error("Packet 'BLAH ABORT' does not exist")
+        expect { @api.get_cmd_cnt("BLAH", "ABORT") }.to raise_error("Packet definition 'BLAH ABORT' does not exist")
+        expect { @api.get_cmd_cnt("BLAH ABORT") }.to raise_error("Packet definition 'BLAH ABORT' does not exist")
       end
 
       it "complains about non-existent packets" do
-        expect { @api.get_cmd_cnt("INST", "BLAH") }.to raise_error("Packet 'INST BLAH' does not exist")
+        expect { @api.get_cmd_cnt("INST", "BLAH") }.to raise_error("Packet definition 'INST BLAH' does not exist")
       end
 
       it "returns the transmit count" do

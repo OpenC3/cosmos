@@ -27,7 +27,7 @@ Most data types can be printed in a COSMOS script simply by doing <code>print(tl
 
 ### Naming Convention
 
-Telemetry Packets and Items can be named however you want with very few exceptions. The following is not allowed in Packet or Item names: `__` (double underscore), `[[` or `]]` (double brackets), whitespace, and ending a name with underscore. Item names are also limited to a maximum of 127 characters because they are used as column headers when telemetry data is stored in the time series database (QuestDB). While not much else is _explicitly_ restricted we've found the following guidelines to be helpful.
+Telemetry Packets and Items can be named however you want with very few exceptions. The following is not allowed in Packet or Item names: `__` (double underscore), `[[` or `]]` (double brackets), whitespace, and ending a name with underscore. Item names are also limited to a maximum of 127 characters because they are used as column headers when telemetry data is stored in the time series database (QuestDB). Note that all target, packet, item, and state names are automatically converted to uppercase (COSMOS is not case sensitive), so mixed case cannot be used to visually separate words. Use underscores or dashes instead, e.g. `LOW_POWER_MODE` rather than `LowPowerMode` which becomes the harder to read `LOWPOWERMODE`. While not much else is _explicitly_ restricted we've found the following guidelines to be helpful.
 
 - Use underscores
 
@@ -343,7 +343,7 @@ Attempting to define a named set before DEFAULT will raise an error of the form
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Limits Set | Name of the limits set. A DEFAULT set is required and must be defined before any other named sets for this item. If you have no unique limits sets use the keyword DEFAULT. | True |
-| Persistence | Number of consecutive times the telemetry item must be within a different limits range before changing limits state. | True |
+| Persistence | Number of consecutive times the telemetry item must be within a different limits range before changing limits state. Note if you have multiple LIMITS items they should all have the same persistence value. | True |
 | Initial State | Whether limits monitoring for this telemetry item is initially enabled or disabled. Note if you have multiple LIMITS items they should all have the same initial state.<br/><br/>Valid Values: <span class="values">ENABLED, DISABLED</span> | True |
 | Red Low Limit | If the telemetry value is less than or equal to this value a Red Low condition will be detected | True |
 | Yellow Low Limit | If the telemetry value is less than or equal to this value, but greater than the Red Low Limit, a Yellow Low condition will be detected | True |

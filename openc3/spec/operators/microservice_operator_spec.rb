@@ -57,7 +57,7 @@ module OpenC3
           "needs_dependencies" => true,
           "plugin" => "my-plugin__0"
         }
-        sanitized_name = "my-plugin__0"
+        sanitized_name = "DEFAULT__my-plugin__0"
         venv_dir = "/gems/plugin_venvs/#{sanitized_name}/.venv"
         allow(File).to receive(:directory?).with(venv_dir).and_return(true)
 
@@ -75,7 +75,7 @@ module OpenC3
           "needs_dependencies" => true,
           "plugin" => "my-plugin__0"
         }
-        venv_dir = "/gems/plugin_venvs/my-plugin__0/.venv"
+        venv_dir = "/gems/plugin_venvs/DEFAULT__my-plugin__0/.venv"
         allow(File).to receive(:directory?).with(venv_dir).and_return(false)
 
         _cmd, _work_dir, env, _scope, _container = @operator.convert_microservice_to_process_definition("DEFAULT__TYPE__NAME", config)
@@ -106,7 +106,7 @@ module OpenC3
           "plugin" => "my.plugin@1.0"
         }
         # tr('^a-zA-Z0-9_-', '_') converts dots and @ to underscores
-        sanitized_name = "my_plugin_1_0"
+        sanitized_name = "DEFAULT__my_plugin_1_0"
         venv_dir = "/gems/plugin_venvs/#{sanitized_name}/.venv"
         allow(File).to receive(:directory?).with(venv_dir).and_return(true)
 

@@ -83,12 +83,12 @@ api
 
 The `screen` object provides methods for interacting with widgets and screens:
 
-| Method                         | Description                                              |
-| ------------------------------ | -------------------------------------------------------- |
-| `screen.getNamedWidget(name)`  | Returns a reference to a named widget (see NAMED_WIDGET) |
-| `screen.open(target, screen)`  | Opens another telemetry screen                           |
-| `screen.close(target, screen)` | Closes a specific telemetry screen                       |
-| `screen.closeAll()`            | Closes all open telemetry screens                        |
+| Method                         | Description                                                                             |
+| ------------------------------ | --------------------------------------------------------------------------------------- |
+| `screen.getNamedWidget(name)`  | Returns a reference to a named widget (see NAMED_WIDGET). The name is case insensitive. |
+| `screen.open(target, screen)`  | Opens another telemetry screen                                                          |
+| `screen.close(target, screen)` | Closes a specific telemetry screen                                                      |
+| `screen.closeAll()`            | Closes all open telemetry screens                                                       |
 
 **Example using named widgets:**
 
@@ -411,7 +411,7 @@ getNamedWidget returns the widget itself and thus must be operated on using meth
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Widget Name | The unique name applied to the following widget instance. Names must be unique per screen. | True |
+| Widget Name | The unique name applied to the following widget instance. Names must be unique per screen. Names are case insensitive, e.g. getNamedWidget('duration') returns the widget named DURATION. | True |
 | Widget Type | One of the widget types listed in Widget Descriptions | True |
 | Widget Parameters | The unique parameters for the given widget type | True |
 
@@ -1593,9 +1593,10 @@ objects still work exactly as before (the real work is performed by the applicat
 button code's behalf). A few consequences of this isolation:
 
 - `alert()` no longer pauses code execution while the alert is displayed.
-- `screen.getNamedWidget("WIDGET_NAME").text()` (and `selected()` / `checked()`) return the
-  widget's value as it was when the button was clicked; a `.value =` assignment made earlier
-  in the same button click is not guaranteed to be visible to a later read in that same click.
+- `screen.getNamedWidget("WIDGET_NAME").text()` (and `selected()` / `checked()` / `value`)
+  return the widget's value as it was when the button was clicked; a `.value =` assignment
+  made earlier in the same button click is not guaranteed to be visible to a later read in
+  that same click.
 - The `self` variable (the internal widget component) is no longer available to button code.
 
 
@@ -1766,11 +1767,13 @@ The canvas coordinate frame places (0,0) in the upper-left corner of the canvas.
 
 Example Usage:
 ```cosmos
-CANVAS 100 50
+CANVAS 150 50
   SETTING BACKCOLOR 17 21 28
   CANVASLABEL 5 30 "Dark canvas" 18 white
 END
 ```
+![CANVAS](/img/telemetry_viewer/widgets/canvas.png)
+
 The following settings apply to CANVAS. They are applied using the SETTING keyword.
 #### BACKCOLOR
 <span class="badge badge--secondary since-right">Since 7.2.1</span>**Sets the background color of the canvas**
@@ -1819,8 +1822,8 @@ END
 Example Usage:
 ```cosmos
 CANVAS 200 100
-  CANVASLABELVALUE INST HEALTH_STATUS TEMP1 5 34 12 red
-  CANVASLABELVALUE INST HEALTH_STATUS TEMP2 5 70 10 blue FORMATTED
+  CANVASLABELVALUE INST HEALTH_STATUS TEMP1 5 34 20 red
+  CANVASLABELVALUE INST HEALTH_STATUS TEMP2 5 70 16 blue FORMATTED
 END
 ```
 ![CANVASLABELVALUE](/img/telemetry_viewer/widgets/canvaslabelvalue.png)

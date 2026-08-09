@@ -3,42 +3,33 @@
   "version": "1.0.0",
   "description": "OpenC3 integration testing",
   "scripts": {
-    "test": "pnpm test:parallel --quiet && pnpm test:serial --quiet",
-    "test:parallel": "playwright test ./tests/*.p.spec.ts --project=chromium && playwright test ./tests/**/*.p.spec.ts --project=chromium",
+    "coverage": "node generate-coverage.mjs",
+    "test": "pnpm test:parallel --quiet && pnpm test:serial --quiet && pnpm coverage",
+    "test:parallel:root": "playwright test ./tests/*.p.spec.ts --project=chromium",
+    "test:parallel:nested": "playwright test ./tests/**/*.p.spec.ts --project=chromium",
+    "test:parallel": "pnpm test:parallel:root && pnpm test:parallel:nested",
     "test:serial": "playwright test ./tests/**/*.s.spec.ts --project=chromium --workers=1",
-    "test:enterprise": "ENTERPRISE=1 playwright test ./tests/enterprise/*.spec.ts --project=chromium --workers=1",
+    "test:enterprise": "pnpm test:enterprise:parallel && pnpm test:enterprise:serial",
+    "test:enterprise:parallel": "ENTERPRISE=1 playwright test ./tests/enterprise/*.p.spec.ts --project=enterprise",
+    "test:enterprise:serial": "ENTERPRISE=1 playwright test ./tests/enterprise/*.s.spec.ts --project=enterprise --workers=1",
     "test:keycloak": "ENTERPRISE=1 playwright test ./tests/keycloak.setup.ts --workers=1",
-    "fixlinux": "cp ./context.js node_modules/istanbul-lib-report/lib/context.js",
-    "fixwindows": "copy .\\context.js node_modules\\istanbul-lib-report\\lib\\context.js",
-    "coverage": "nyc report --reporter=html",
-    "cobertura": "nyc report --reporter=cobertura",
-    "clean": "rm -rf .nyc_output || rmdir /s /q .nyc_output; rm -rf coverage || rmdir /s /q coverage; rm -rf test-results || rmdir /s /q test-results",
+    "clean": "rm -rf coverage coverage-raw test-results || (rmdir /s /q coverage & rmdir /s /q coverage-raw & rmdir /s /q test-results)",
     "format": "prettier -w ./",
     "lint": "eslint ."
   },
   "dependencies": {
-    "@playwright/test": "1.61.1",
+    "@playwright/test": "1.62.1",
     "date-fns": "4.4.0",
     "jszip": "^3.10.1",
-    "nyc": "^18.0.0",
-    "prettier": "^3.9.3"
+    "monocart-coverage-reports": "^2.12.12",
+    "prettier": "^3.9.6"
   },
   "devDependencies": {
-    "@types/node": "^25.9.4",
-    "eslint": "^10.7.0",
-    "globals": "^17.7.0",
+    "@types/node": "^25.9.5",
+    "eslint": "^10.8.0",
+    "globals": "^17.9.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.64.0"
-  },
-  "nyc": {
-    "excludeAfterRemap": false,
-    "all": true,
-    "cache": false,
-    "extension": [
-      ".js",
-      ".ts",
-      ".vue"
-    ]
+    "typescript-eslint": "^8.66.0"
   },
   "pnpm": {
     "overrides": {

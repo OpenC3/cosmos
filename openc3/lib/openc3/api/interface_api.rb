@@ -47,7 +47,7 @@ module OpenC3
     def get_interface(interface_name, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', interface_name: interface_name, manual: manual, scope: scope, token: token)
       interface = InterfaceModel.get(name: interface_name, scope: scope)
-      raise "Interface '#{interface_name}' does not exist" unless interface
+      raise "Interface '#{interface_name}' does not exist (get_interface)" unless interface
 
       interface.merge(InterfaceStatusModel.get(name: interface_name, scope: scope))
     end
@@ -160,7 +160,7 @@ module OpenC3
       # TODO: Check if they have command authority for the targets mapped to this interface
       authorize(permission: 'system_set', interface_name: interface_name, manual: manual, scope: scope, token: token)
       interface = InterfaceModel.get_model(name: interface_name, scope: scope)
-      raise "Interface '#{interface_name}' does not exist" unless interface
+      raise "Interface '#{interface_name}' does not exist (unmap_target_from_interface)" unless interface
 
       if Array === target_name
         target_names = target_name

@@ -12,7 +12,8 @@
 # All Rights Reserved
 */
 
-// @ts-check
+import type { Page } from '@playwright/test'
+import { Utilities } from '../../utilities'
 import { test, expect } from './../fixture'
 
 test.use({
@@ -20,7 +21,7 @@ test.use({
   toolName: 'Script Runner',
 })
 
-async function openFile(page, utils, filename) {
+async function openFile(page: Page, utils: Utilities, filename: string) {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
   await utils.sleep(500) // Allow background data to fetch
@@ -41,7 +42,12 @@ async function openFile(page, utils, filename) {
   }
 }
 
-async function runScript(page, utils, filename, callback = async () => {}) {
+async function runScript(
+  page: Page,
+  utils: Utilities,
+  filename: string,
+  callback = async (): Promise<any> => {},
+) {
   await openFile(page, utils, filename)
   await page.locator('[data-test=start-button]').click()
   await callback()
@@ -127,20 +133,43 @@ test('runs a script', async ({ page, utils }) => {
     },
   )
 
+  // Ask the API which script the parent just launched instead of assuming it is
+  // the first disconnect.rb row. The table is unsorted, shows 10 rows per page
+  // and refreshes itself every 5 seconds, and a failed earlier run can leave its
+  // own disconnect.rb sitting at an error, so "first row mentioning the
+  // filename" is neither guaranteed to be on the page nor to be this script.
+  const scriptId = await page.evaluate(async () => {
+    const response = await fetch(
+      '/script-api/running-script?scope=DEFAULT&limit=100',
+      { headers: { Authorization: localStorage.openc3Token } },
+    )
+    const { items } = (await response.json()) as {
+      items: { name: string; filename: string }[]
+    }
+    const ids = items
+      .filter((item) => item.filename === 'INST/procedures/disconnect.rb')
+      .map((item) => parseInt(item.name, 10))
+    return Math.max(...ids).toString() // ids increase, so ours is the largest
+  })
+  expect(scriptId, 'no running disconnect.rb script found via /script-api/running-script').toMatch(/^\d+$/)
+
   await page.locator('[data-test="script-runner-script"]').click()
   await page.getByText('Execution Status').click()
   await utils.sleep(1000)
-  await page.getByText('Running Scripts').click()
+  await page.getByRole('tab', { name: 'Running Scripts' }).click()
   await expect(
     page.locator('[data-test="running-scripts"] thead').getByText('Connect'),
   ).toBeVisible()
-  await page
-    .locator(
-      '[data-test="running-scripts"] tr:has-text("INST/procedures/disconnect.rb")',
-    )
-    .first()
-    .getByRole('button', { name: 'Connect' })
-    .click()
+  // Search keeps our script on the first page, and identifying its row by id
+  // (rendered as a button in the Id column) means the 5 second refresh can't
+  // shift another script's Connect button under the click.
+  await page.locator('[data-test=running-search] input').fill(scriptId)
+  const scriptRow = page
+    .locator('[data-test="running-scripts"] tbody tr')
+    .filter({ has: page.getByRole('button', { name: scriptId, exact: true }) })
+    .filter({ visible: true })
+  await expect(scriptRow).toHaveCount(1)
+  await scriptRow.getByRole('button', { name: 'Connect' }).click()
 
   await expect(page.locator('[data-test=state] input')).toHaveValue('error', {
     timeout: 20000,
@@ -175,13 +204,23 @@ test('test python stash apis', async ({ page, utils }) => {
   await runScript(page, utils, 'stash.py')
 })
 
-async function testMetadataApis(page, utils, filename) {
+async function testMetadataApis(
+  page: Page,
+  utils: Utilities,
+  filename: string,
+) {
   // Clear other test data
   await page.goto('/tools/admin/redis')
-  await page
-    .getByLabel('Redis command')
-    .fill('zremrangebyscore DEFAULT__METADATA -inf +inf')
-  await page.getByLabel('Redis command').press('Enter')
+  const redisCommand = page.getByLabel('Redis command')
+  await redisCommand.fill('zremrangebyscore DEFAULT__METADATA -inf +inf')
+  // Wait for the command to actually land. page.goto() aborts in-flight
+  // requests, so pressing Enter and immediately navigating away made the
+  // clear a race: when it lost, stale metadata survived into the run below.
+  const redisResponse = page.waitForResponse((response) =>
+    response.url().includes('/openc3-api/redis/exec'),
+  )
+  await redisCommand.press('Enter')
+  expect((await redisResponse).ok()).toBe(true)
   await page.goto('/tools/scriptrunner')
 
   await openFile(page, utils, filename)
@@ -189,17 +228,24 @@ async function testMetadataApis(page, utils, filename) {
   await page.locator('[data-test="script-runner-script-metadata"]').click()
   await utils.sleep(500)
   await expect(page.locator('[data-test="new-event"]')).toBeVisible()
-  // Delete any existing metadata so we start fresh
-  while (true) {
-    if (await page.$('[data-test=delete-event]')) {
-      await page.locator('[data-test=delete-event] >> nth=0').click()
-      await page.locator('[data-test=confirm-dialog-delete]').click()
-      await utils.sleep(300)
-    } else {
-      break
-    }
+  // Delete any existing metadata so we start fresh. The redis clear above
+  // should have emptied this, so normally the loop doesn't run at all.
+  const deleteButtons = page.locator('[data-test=delete-event]')
+  let remaining = await deleteButtons.count()
+  while (remaining > 0) {
+    await deleteButtons.first().click()
+    await page.locator('[data-test=confirm-dialog-delete]').click()
+    // The row is spliced out of the table when the confirm resolves. Wait on
+    // that rather than a fixed sleep, which under CI load could tick before
+    // the re-render and then click a stale row.
+    remaining -= 1
+    await expect(deleteButtons).toHaveCount(remaining)
   }
   await page.locator('[data-test="close-event-list"]').click()
+  // metadata_input() reopens this same dialog, so wait for it to actually go
+  // away. Otherwise the toBeVisible() below can match the dialog we just
+  // closed and the click lands on a detaching element.
+  await expect(page.locator('[data-test="new-event"]')).not.toBeVisible()
 
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test="new-event"]')).toBeVisible({
@@ -216,7 +262,12 @@ async function testMetadataApis(page, utils, filename) {
     .locator('[data-test="value-0"]')
     .locator('input')
     .fill('inputvalue')
-  await page.getByRole('button', { name: 'Ok' }).click()
+  const okButton = page.getByRole('button', { name: 'Ok' })
+  await okButton.click()
+  // The create dialog only closes once the POST succeeds. If it fails (e.g. a
+  // 409 because the start collides with an existing entry) it stays open and
+  // its scrim silently blocks Close below, so fail here where it's diagnosable.
+  await expect(okButton).not.toBeVisible()
   await page.locator('[data-test="close-event-list"]').click()
 
   await expect(page.locator('[data-test=state] input')).toHaveValue(
@@ -259,61 +310,199 @@ test('test python metadata apis', async ({ page, utils }) => {
   )
 })
 
-async function testScreenApis(page, utils, filename, target) {
-  await runScript(page, utils, filename, async function () {
-    // script displays INST ADCS
-    await expect(
-      page.getByText(`${target} ADCS`, { exact: true }),
-    ).toBeVisible()
-    // script displays INST HS
-    await expect(page.getByText(`${target} HS`, { exact: true })).toBeVisible()
-    // script calls clear_screen("INST", "ADCS")
-    await expect(
-      page.getByText(`${target} ADCS`, { exact: true }),
-    ).not.toBeVisible()
-    // script displays INST IMAGE
-    await expect(
-      page.getByText(`${target} IMAGE`, { exact: true }),
-    ).toBeVisible()
-    // script calls clear_all_screens()
-    await expect(
-      page.getByText(`${target} HS`, { exact: true }),
-    ).not.toBeVisible()
-    await expect(
-      page.getByText(`${target} IMAGE`, { exact: true }),
-    ).not.toBeVisible()
-    // script creates local screen "TEST"
-    await expect(page.getByText('LOCAL TEST', { exact: true })).toBeVisible()
-    // script calls clear_all_screens()
-    await expect(
-      page.getByText('LOCAL TEST', { exact: true }),
-    ).not.toBeVisible()
-    // script creates local screen "INST TEST"
-    await expect(
-      page.getByText(`${target} TEST`, { exact: true }),
-    ).toBeVisible()
-    // script calls clear_all_screens()
-    await expect(
-      page.getByText(`${target} TEST`, { exact: true }),
-    ).not.toBeVisible()
-    // script deletes INST TEST and tries to display it which results in error
-    await expect(page.locator('[data-test=state] input')).toHaveValue('error')
-    await page.locator('[data-test=go-button]').click()
-  })
+// The screen APIs were originally exercised by a single long script that
+// chained ~10 transient-state assertions. Each screen was only visible for a
+// 2s window, so under load a lagged render could miss a window and fail the
+// whole test; a retry then re-ran every step (and re-triggered the file lock
+// contention in openFile). These are split into focused tests, each running a
+// small inline script so a failure is isolated, retries are cheap, and there
+// is no "<user> is editing this script" lock to work around.
+
+type ScriptLanguage = 'ruby' | 'python'
+
+// A leading marker line forces Script Runner's language auto-detection for an
+// unsaved inline script (see detectLanguage in ScriptRunner.vue): `puts ` marks
+// Ruby, an `(f"` f-string marks Python.
+function languageMarker(language: ScriptLanguage): string {
+  return language === 'ruby' ? 'puts "start"' : 'print(f"start")'
 }
 
-test('test ruby screen apis', async ({ page, utils }) => {
-  await testScreenApis(page, utils, 'screens.rb', 'INST')
-})
+function screenDefinition(language: ScriptLanguage, target: string): string {
+  const body = `
+SCREEN AUTO AUTO 1.0
 
-test('test python screen apis', async ({ page, utils }) => {
-  await testScreenApis(page, utils, 'screens.py', 'INST2')
-})
+VERTICALBOX "Test Screen"
+  LABELVALUE ${target} HEALTH_STATUS TEMP1
+END
+`
+  return language === 'ruby' ? `'${body}'` : `"""${body}"""`
+}
+
+async function startInlineScript(page: Page, script: string) {
+  await page.locator('textarea').fill(script)
+  await page.locator('[data-test=start-button]').click()
+}
+
+async function expectCompleted(page: Page) {
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    { timeout: 30000 },
+  )
+}
+
+// Generous timeout so a slow first render (fetch definition + telemetry
+// subscribe over the WebSocket) doesn't miss a screen's visibility window.
+const SCREEN_TIMEOUT = 15000
+
+async function testDisplayAndClearScreen(
+  page: Page,
+  language: ScriptLanguage,
+  target: string,
+) {
+  await startInlineScript(
+    page,
+    `${languageMarker(language)}
+display_screen("${target}", "ADCS")
+wait(3)
+display_screen("${target}", "HS", 400, 0)
+wait(3)
+clear_screen("${target}", "ADCS")
+wait(3)
+clear_all_screens()`,
+  )
+  const timeout = SCREEN_TIMEOUT
+  await expect(page.getByText(`${target} ADCS`, { exact: true })).toBeVisible({
+    timeout,
+  })
+  await expect(page.getByText(`${target} HS`, { exact: true })).toBeVisible({
+    timeout,
+  })
+  // clear_screen removes only ADCS; HS stays up
+  await expect(
+    page.getByText(`${target} ADCS`, { exact: true }),
+  ).not.toBeVisible({ timeout })
+  await expect(page.getByText(`${target} HS`, { exact: true })).toBeVisible({
+    timeout,
+  })
+  // clear_all_screens removes HS
+  await expect(page.getByText(`${target} HS`, { exact: true })).not.toBeVisible(
+    { timeout },
+  )
+  await expectCompleted(page)
+}
+
+async function testClearAllScreens(
+  page: Page,
+  language: ScriptLanguage,
+  target: string,
+) {
+  await startInlineScript(
+    page,
+    `${languageMarker(language)}
+display_screen("${target}", "IMAGE")
+wait(3)
+display_screen("${target}", "HS", 400, 0)
+wait(3)
+clear_all_screens()`,
+  )
+  const timeout = SCREEN_TIMEOUT
+  await expect(page.getByText(`${target} IMAGE`, { exact: true })).toBeVisible({
+    timeout,
+  })
+  await expect(page.getByText(`${target} HS`, { exact: true })).toBeVisible({
+    timeout,
+  })
+  await expect(
+    page.getByText(`${target} IMAGE`, { exact: true }),
+  ).not.toBeVisible({ timeout })
+  await expect(page.getByText(`${target} HS`, { exact: true })).not.toBeVisible(
+    { timeout },
+  )
+  await expectCompleted(page)
+}
+
+async function testLocalScreen(
+  page: Page,
+  language: ScriptLanguage,
+  target: string,
+) {
+  await startInlineScript(
+    page,
+    `${languageMarker(language)}
+local_screen("TEST", ${screenDefinition(language, target)})
+wait(3)
+clear_all_screens()`,
+  )
+  const timeout = SCREEN_TIMEOUT
+  await expect(page.getByText('LOCAL TEST', { exact: true })).toBeVisible({
+    timeout,
+  })
+  await expect(page.getByText('LOCAL TEST', { exact: true })).not.toBeVisible({
+    timeout,
+  })
+  await expectCompleted(page)
+}
+
+async function testCreateAndDeleteScreen(
+  page: Page,
+  language: ScriptLanguage,
+  target: string,
+) {
+  await startInlineScript(
+    page,
+    `${languageMarker(language)}
+create_screen("${target}", "TEST", ${screenDefinition(language, target)})
+display_screen("${target}", "TEST")
+wait(3)
+clear_all_screens()
+delete_screen("${target}", "TEST")
+display_screen("${target}", "TEST") # Expected to fail because the screen was deleted`,
+  )
+  const timeout = SCREEN_TIMEOUT
+  await expect(page.getByText(`${target} TEST`, { exact: true })).toBeVisible({
+    timeout,
+  })
+  await expect(
+    page.getByText(`${target} TEST`, { exact: true }),
+  ).not.toBeVisible({ timeout })
+  // Displaying the deleted screen raises an error
+  await expect(page.locator('[data-test=state] input')).toHaveValue('error', {
+    timeout,
+  })
+  await page.locator('[data-test=go-button]').click()
+  await expectCompleted(page)
+}
+
+for (const { language, target } of [
+  { language: 'ruby' as const, target: 'INST' },
+  { language: 'python' as const, target: 'INST2' },
+]) {
+  // The `utils` fixture performs the goto to the Script Runner tool, so it must
+  // be destructured (even when otherwise unused) for the page to navigate.
+  test(`test ${language} display and clear screen`, async ({ page, utils }) => {
+    await testDisplayAndClearScreen(page, language, target)
+  })
+
+  test(`test ${language} clear all screens`, async ({ page, utils }) => {
+    await testClearAllScreens(page, language, target)
+  })
+
+  test(`test ${language} local screen`, async ({ page, utils }) => {
+    await testLocalScreen(page, language, target)
+  })
+
+  test(`test ${language} create and delete screen`, async ({ page, utils }) => {
+    await testCreateAndDeleteScreen(page, language, target)
+  })
+}
 
 test('test ruby script apis', async ({ page, utils }) => {
   await runScript(page, utils, 'scripting.rb', async function () {
     await expect(page.locator('[data-test=state] input')).toHaveValue(
       /paused \d+s/,
+      {
+        timeout: 20000,
+      },
     )
     await page.locator('[data-test=step-button]').click()
     await utils.sleep(500)
@@ -329,6 +518,9 @@ test('test python script apis', async ({ page, utils }) => {
   await runScript(page, utils, 'scripting.py', async function () {
     await expect(page.locator('[data-test=state] input')).toHaveValue(
       /paused \d+s/,
+      {
+        timeout: 20000,
+      },
     )
     await page.locator('[data-test=step-button]').click()
     await utils.sleep(500)

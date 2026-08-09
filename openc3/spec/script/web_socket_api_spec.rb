@@ -155,6 +155,8 @@ module OpenC3
 
       before do
         api.instance_variable_set(:@stream, mock_stream)
+        # subscribe() now blocks until the server confirms the subscription
+        allow(mock_stream).to receive(:read).and_return('{"type":"confirm_subscription"}')
       end
 
       # ActionCable derives `params` (which the server uses for
@@ -177,6 +179,92 @@ module OpenC3
         expect(mock_stream).to receive(:write).once
         api.subscribe
         api.subscribe
+      end
+
+      # Regression: write_action must subscribe (which injects the token into the
+      # identifier) BEFORE serializing the identifier, so the message command's
+      # identifier matches the subscription's. Otherwise ActionCable silently
+      # ignores the action and no data ever streams.
+      it "includes the token in the action identifier so it matches the subscription" do
+        writes = []
+        allow(mock_stream).to receive(:write) { |msg| writes << msg }
+        api.write_action({ 'action' => 'add' })
+        message = writes.map { |w| JSON.parse(w) }.find { |f| f['command'] == 'message' }
+        identifier = JSON.parse(message['identifier'])
+        expect(identifier['token']).to eq('test_token')
+      end
+    end
+  end
+
+  describe RunningScriptWebSocketApi do
+    # The ready protocol: live script events only flow once the client performs
+    # the 'ready' channel action (see RunningScriptChannel#ready). subscribe()
+    # blocks until confirm_subscription, so sending 'ready' immediately after
+    # guarantees the gateway has registered the stream and the client cannot
+    # report ready in a way that races a broadcast.
+    describe "#subscribe" do
+      let(:api) do
+        RunningScriptWebSocketApi.new(
+          id: "spec-script-1",
+          url: "ws://test.com/script-api/cable",
+          authentication: double("auth", token: "test_token")
+        )
+      end
+
+      let(:mock_stream) { double("stream") }
+      let(:writes) { [] }
+      let(:frames) { writes.map { |w| JSON.parse(w) } }
+
+      before do
+        api.instance_variable_set(:@stream, mock_stream)
+        allow(mock_stream).to receive(:read).and_return('{"type":"confirm_subscription"}')
+        allow(mock_stream).to receive(:write) { |msg| writes << msg }
+      end
+
+      it "reports ready to stream events exactly once, after the subscription is confirmed" do
+        api.subscribe
+        expect(frames.map { |f| f['command'] }).to eq(['subscribe', 'message'])
+        ready = frames.last
+        expect(JSON.parse(ready['data'])).to eq({ 'action' => 'ready' })
+      end
+
+      it "sends the ready action with the subscription's identifier" do
+        api.subscribe
+        subscribe_identifier = frames.first['identifier']
+        ready_identifier = frames.last['identifier']
+        # Must match exactly: ActionCable routes 'message' commands to a
+        # subscription by comparing the raw identifier string
+        expect(ready_identifier).to eq(subscribe_identifier)
+        identifier = JSON.parse(ready_identifier)
+        expect(identifier['channel']).to eq('RunningScriptChannel')
+        expect(identifier['id']).to eq('spec-script-1')
+        expect(identifier['token']).to eq('test_token')
+      end
+
+      it "does not re-send ready on subsequent subscribes" do
+        api.subscribe
+        api.subscribe
+        expect(frames.map { |f| f['command'] }).to eq(['subscribe', 'message'])
+      end
+
+      # write_action calls subscribe() internally, which on the first call is
+      # the overridden subscribe that itself calls write_action for ready. Prove
+      # this does not recurse or duplicate frames and preserves ordering.
+      it "orders frames subscribe, ready, action when an action triggers the first subscribe" do
+        api.write_action({ 'action' => 'other' })
+        expect(frames.map { |f| f['command'] }).to eq(['subscribe', 'message', 'message'])
+        expect(JSON.parse(frames[1]['data'])).to eq({ 'action' => 'ready' })
+        expect(JSON.parse(frames[2]['data'])).to eq({ 'action' => 'other' })
+      end
+
+      it "reports ready again after an unsubscribe/resubscribe cycle" do
+        api.subscribe
+        # unsubscribe writes its own frame and clears @subscribed
+        api.unsubscribe
+        api.subscribe
+        commands = frames.map { |f| f['command'] }
+        expect(commands).to eq(['subscribe', 'message', 'unsubscribe', 'subscribe', 'message'])
+        expect(JSON.parse(frames.last['data'])).to eq({ 'action' => 'ready' })
       end
     end
   end

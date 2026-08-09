@@ -200,7 +200,7 @@ class TestCommands(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "ERROR: Invalid number of arguments"):
             cmd("INST", "COLLECT", "TYPE", "SPECIAL")
 
-        with self.assertRaisesRegex(RuntimeError, "Packet item 'INST COLLECT NOPE' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Item 'INST COLLECT NOPE' does not exist"):
             cmd("INST", "COLLECT", {"NOPE": "NOPE"})
 
     def test_sends_a_hazardous_cmd(self):

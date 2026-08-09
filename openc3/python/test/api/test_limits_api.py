@@ -74,15 +74,15 @@ class TestLimitsApi(unittest.TestCase):
         time.sleep(0.001)
 
     def test_get_limits_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist"):
             get_limits("BLAH", "HEALTH_STATUS", "TEMP1")
 
     def test_get_limits_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             get_limits("INST", "BLAH", "TEMP1")
 
     def test_get_limits_complains_about_non_existant_items(self):
-        with self.assertRaisesRegex(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'INST HEALTH_STATUS BLAH' does not exist \(TargetModel\)"):
             get_limits("INST", "HEALTH_STATUS", "BLAH")
 
     def test_gets_limits_for_an_item(self):
@@ -115,11 +115,11 @@ class TestLimitsApi(unittest.TestCase):
         )
 
     def test_set_limits_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist"):
             set_limits("BLAH", "HEALTH_STATUS", "TEMP1", 0.0, 10.0, 20.0, 30.0)
 
     def test_set_limits_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             set_limits("INST", "BLAH", "TEMP1", 0.0, 10.0, 20.0, 30.0)
 
     def test_set_limits_complains_about_non_existant_items(self):
@@ -202,11 +202,11 @@ class TestLimitsApi(unittest.TestCase):
         )
 
     def test_set_state_color_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist"):
             set_state_color("BLAH", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", "RED")
 
     def test_set_state_color_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             set_state_color("INST", "BLAH", "GROUND1STATUS", "CONNECTED", "RED")
 
     def test_set_state_color_complains_about_non_existant_items(self):
@@ -218,7 +218,7 @@ class TestLimitsApi(unittest.TestCase):
             set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "BLAH", "RED")
 
     def test_set_state_color_complains_about_invalid_colors(self):
-        with self.assertRaisesRegex(RuntimeError, "Invalid state color PURPLE"):
+        with self.assertRaisesRegex(RuntimeError, "Invalid state color 'PURPLE'"):
             set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", "PURPLE")
 
     def test_set_state_color_changes_the_color_of_a_state(self):
@@ -243,6 +243,29 @@ class TestLimitsApi(unittest.TestCase):
         self.assertEqual(event["item_name"], "GROUND1STATUS")
         self.assertEqual(event["state_name"], "UNAVAILABLE")
         self.assertEqual(event["color"], "RED")
+
+    def test_set_state_color_clears_the_color_of_a_state_when_passed_none(self):
+        set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", "RED")
+        item = get_item("INST", "HEALTH_STATUS", "GROUND1STATUS")
+        self.assertEqual(item["states"]["CONNECTED"]["color"], "RED")
+        set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", None)
+        item = get_item("INST", "HEALTH_STATUS", "GROUND1STATUS")
+        self.assertNotIn("color", item["states"]["CONNECTED"])
+
+    def test_set_state_color_does_not_validate_the_color_when_clearing(self):
+        # Should not raise
+        set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "CONNECTED", None)
+
+    def test_set_state_color_complains_about_non_existant_states_when_clearing(self):
+        with self.assertRaisesRegex(RuntimeError, "State 'BLAH' does not exist"):
+            set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "BLAH", None)
+
+    def test_set_state_color_writes_a_limits_state_color_event_with_none_when_clearing(self):
+        set_state_color("INST", "HEALTH_STATUS", "GROUND1STATUS", "UNAVAILABLE", None)
+        event = get_limits_events()[-1][1]
+        self.assertEqual(event["type"], "LIMITS_STATE_COLOR")
+        self.assertEqual(event["state_name"], "UNAVAILABLE")
+        self.assertIsNone(event["color"])
 
     def test_get_limits_groups_returns_all_the_limits_groups(self):
         self.assertEqual(
@@ -510,30 +533,30 @@ class TestLimitsApi(unittest.TestCase):
             get_overall_limits_state([["INST", "HEALTH_STATUS"]])
 
     def test_limits_enabled_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist"):
             limits_enabled("BLAH", "HEALTH_STATUS", "TEMP1")
 
     def test_limits_enabled_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             limits_enabled("INST", "BLAH", "TEMP1")
 
     def test_limits_enabled_complains_about_non_existant_items(self):
-        with self.assertRaisesRegex(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'INST HEALTH_STATUS BLAH' does not exist \(TargetModel\)"):
             limits_enabled("INST", "HEALTH_STATUS", "BLAH")
 
     def test_limits_enabled_returns_whether_limits_are_enable_for_an_item(self):
         self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
 
     def test_enable_limits_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist"):
             enable_limits("BLAH", "HEALTH_STATUS", "TEMP1")
 
     def test_enable_limits_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             enable_limits("INST", "BLAH", "TEMP1")
 
     def test_enable_limits_complains_about_non_existant_items(self):
-        with self.assertRaisesRegex(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'INST HEALTH_STATUS BLAH' does not exist \(TargetModel\)"):
             enable_limits("INST", "HEALTH_STATUS", "BLAH")
 
     def test_enable_limits_enables_limits_for_an_item(self):
@@ -544,15 +567,15 @@ class TestLimitsApi(unittest.TestCase):
         self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
 
     def test_disable_limits_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist"):
             disable_limits("BLAH", "HEALTH_STATUS", "TEMP1")
 
     def test_disable_limits_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             disable_limits("INST", "BLAH", "TEMP1")
 
     def test_disable_limits_complains_about_non_existant_items(self):
-        with self.assertRaisesRegex(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'INST HEALTH_STATUS BLAH' does not exist \(TargetModel\)"):
             disable_limits("INST", "HEALTH_STATUS", "BLAH")
 
     def test_disable_limits_disables_limits_for_an_item(self):

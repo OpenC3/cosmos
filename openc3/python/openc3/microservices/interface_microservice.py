@@ -324,6 +324,9 @@ class InterfaceCmdHandlerThread:
             command.extra["cmd_string"] = msg_hash.get(b"cmd_string", b"").decode()
             command.extra["username"] = msg_hash.get(b"username", b"").decode()
             command.extra["interface_name"] = self.interface.name
+            # Record the original queuing user (author) shown as "Queued By" in Command History
+            if msg_hash.get(b"queue_username"):
+                command.extra["queue_username"] = msg_hash.get(b"queue_username", b"").decode()
             # Add approver info if this was a critical command that was approved
             if critical_model is not None:
                 command.extra["approver"] = critical_model.approver
@@ -512,9 +515,8 @@ class RouterTlmHandlerThread:
                 elif msg_hash.get(b"router_cmd"):
                     params = json.loads(msg_hash[b"router_cmd"])
                     try:
-                        self.logger.info(
-                            f"{self.router.name}: router_cmd: {params['cmd_name']} {' '.join(params['cmd_params'])}"
-                        )
+                        str_params = " ".join([str(i) for i in params["cmd_params"]])
+                        self.logger.info(f"{self.router.name}: router_cmd: {params['cmd_name']} {str_params}")
                         self.router.interface_cmd(params["cmd_name"], *params["cmd_params"])
                         result = "SUCCESS"
                     except Exception as error:
@@ -523,8 +525,9 @@ class RouterTlmHandlerThread:
                 elif msg_hash.get(b"protocol_cmd"):
                     params = json.loads(msg_hash[b"protocol_cmd"])
                     try:
+                        str_params = " ".join([str(i) for i in params["cmd_params"]])
                         self.logger.info(
-                            f"{self.router.name}: protocol_cmd: {params['cmd_name']} {' '.join(params['cmd_params'])} read_write: {params['read_write']} index: {params['index']}"
+                            f"{self.router.name}: protocol_cmd: {params['cmd_name']} {str_params} read_write: {params['read_write']} index: {params['index']}"
                         )
                         self.router.protocol_cmd(
                             params["cmd_name"],
@@ -596,12 +599,13 @@ class RouterTlmHandlerThread:
                     else:
                         result = None
 
-            # Send result back to generator and get next message
-            topic, msg_id, msg_hash, _redis = generator.send(result)
-
-            # Exit loop if shutdown was requested
+            # Exit loop if shutdown was requested (matches the Ruby behavior of
+            # returning immediately rather than reading another message)
             if result == "SHUTDOWN":
                 break
+
+            # Send result back to generator and get next message
+            topic, msg_id, msg_hash, _redis = generator.send(result)
 
 
 class InterfaceMicroservice(Microservice):

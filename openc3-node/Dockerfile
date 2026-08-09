@@ -8,7 +8,7 @@ USER root
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends nodejs npm && \
-    npm install --global --ignore-scripts pnpm@latest-10 && \
+    npm install --global --ignore-scripts pnpm@10.34.5 && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 USER ${USER_ID}:${GROUP_ID}

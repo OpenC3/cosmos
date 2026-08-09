@@ -123,7 +123,7 @@ module OpenC3
       target_name = target_name.upcase
       packet_name = packet_name.upcase
       unless CvtModel::VALUE_TYPES.include?(type)
-        raise "Unknown type '#{type}' for #{target_name} #{packet_name}"
+        raise "Unknown type '#{type}' for #{target_name} #{packet_name} (inject_tlm)"
       end
 
       if item_hash

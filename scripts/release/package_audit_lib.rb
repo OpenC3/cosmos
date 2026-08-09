@@ -49,9 +49,33 @@ def major_version_change?(old_v, new_v)
   new_m[1].to_i > old_m[1].to_i
 end
 
-# Upgrade-aware prompt. Defaults to yes; if the change crosses a major version
+# Leading numeric components of a version, ignoring a "v" prefix and any
+# trailing suffix. "v1.8.1.1-alpine" => [1, 8, 1, 1], "7.1.2.pre.beta0" => [7, 1, 2]
+def version_parts(version)
+  match = version.to_s.match(/\Av?(\d+(?:\.\d+)*)/)
+  return [] unless match
+  match[1].split('.').map(&:to_i)
+end
+
+# True if the first two components (major.minor) are identical, i.e. the change
+# is a patch/build level bump like 1.8.1 -> 1.8.1.1, 1.8.1.1 -> 1.8.2, or
+# 2026.8.23 -> 2026.8.24. Returns false if either version lacks two components
+# so we fall back to prompting when we can't tell.
+def patch_version_change?(old_v, new_v)
+  old_parts = version_parts(old_v)
+  new_parts = version_parts(new_v)
+  return false if old_parts.length < 2 || new_parts.length < 2
+  old_parts[0, 2] == new_parts[0, 2]
+end
+
+# Upgrade-aware prompt. Patch level changes (same major.minor) apply without
+# asking. Otherwise defaults to yes; if the change crosses a major version
 # boundary, asks a follow-up "Are you sure?" that defaults to no.
 def prompt_update?(message, current, new_version)
+  if patch_version_change?(current, new_version)
+    puts "#{message} [auto-yes: patch update #{current} -> #{new_version}]"
+    return true
+  end
   return false unless prompt_yes_no(message)
   return true unless major_version_change?(current, new_version)
   prompt_yes_no("  Major version change (#{current} -> #{new_version}). Are you sure?", default: false)
@@ -794,7 +818,7 @@ def check_tool_base(path, base_pkgs, force: false)
       # vue and vuetify are special cases due to the package names
       alt_package = package
       if package == 'vue'
-        alt_package = 'vue.global.prod'
+        alt_package = 'vue.runtime.global.prod'
       elsif package == 'vuetify'
         alt_package = 'vuetify-labs'
       end
@@ -825,11 +849,11 @@ def check_tool_base(path, base_pkgs, force: false)
           # Remove the old non-prod base file only when the version changed; on a
           # forced same-version re-download the new file has the same name.
           if existing && !version_matches
-            old_base_filename = existing.sub('vue.global.prod', 'vue.global').sub('.min.js', '.js')
+            old_base_filename = existing.sub('vue.runtime.global.prod', 'vue.global').sub('.min.js', '.js')
             FileUtils.rm_f old_base_filename
           end
-          outfile = "public/js/#{package}.global.prod-#{latest}.min.js"
-          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.prod.js --output #{outfile}`
+          outfile = "public/js/#{package}.runtime.global.prod-#{latest}.min.js"
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.runtime.global.prod.js --output #{outfile}`
           validate_outfile(outfile, package, latest)
         when 'single-spa'
           outfile = "public/js/#{package}-#{latest}.min.js"
@@ -891,7 +915,43 @@ def check_tool_base(path, base_pkgs, force: false)
         end
       end
     end
+    # The SystemJS import map is a separate file from index.html so it has to be
+    # updated as well. Sync it unconditionally (not just on an accepted prompt)
+    # so a previously missed update is repaired on the next run.
+    sync_importmap(packages)
   end
+end
+
+# Update public/js/importmap.json so every import points at the versioned file
+# we have on disk. The import map keys are the bare package names ('vue') while
+# the values are the on-disk filenames ('/js/vue.runtime.global.prod-X.Y.Z.min.js'),
+# so match on the key and only swap the version out of the path.
+# packages is a Hash of package name => version (from package.json)
+def sync_importmap(packages, path: 'public/js/importmap.json')
+  return unless File.exist?(path)
+  importmap = JSON.parse(File.read(path))
+  imports = importmap['imports'] || {}
+  changed = false
+  imports.each do |package, url|
+    latest = packages[package]
+    if latest.nil?
+      # vuex (and anything else not in base_pkgs) isn't version managed here
+      local = File.join('public', url.sub(%r{\A/}, ''))
+      puts "ERROR: #{path} references #{url} which doesn't exist" unless File.exist?(local)
+      next
+    end
+    updated = url.sub(/-\d+\.\d+\.\d+/, "-#{latest}")
+    local = File.join('public', updated.sub(%r{\A/}, ''))
+    if !File.exist?(local)
+      puts "ERROR: #{path} needs #{updated} for #{package} #{latest} but #{local} doesn't exist"
+      next
+    end
+    next if updated == url
+    imports[package] = updated
+    changed = true
+    puts "  Updated #{path}: #{package} => #{updated}"
+  end
+  File.write(path, JSON.pretty_generate(importmap) + "\n") if changed
 end
 
 def validate_outfile(outfile, package, latest)

@@ -113,12 +113,20 @@ case $1 in
             echo "See: https://playwright.dev/docs/test-cli"
             exit 0
         fi
-        pnpm test
+        # Chain the leaf scripts here rather than calling `pnpm test`. pnpm appends
+        # script args to the end of the whole command string, so with an && chain
+        # they would only reach the last link (the coverage merge, which ignores
+        # argv). Forwarding to each leaf individually keeps quoted args intact,
+        # e.g. --grep='command sender'.
+        pnpm test:parallel:root --quiet "${@:2}" \
+          && pnpm test:parallel:nested --quiet "${@:2}" \
+          && pnpm test:serial --quiet "${@:2}" \
+          && pnpm coverage
         ;;
 
     run-enterprise )
         if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
-            echo "Usage: $0 run-enterprise"
+            echo "Usage: $0 run-enterprise [PLAYWRIGHT_OPTIONS]"
             echo ""
             echo "Run enterprise Playwright tests."
             echo ""
@@ -126,10 +134,17 @@ case $1 in
             echo "running OpenC3 Enterprise instance."
             echo ""
             echo "Options:"
-            echo "  -h, --help    Show this help message"
+            echo "  -h, --help              Show this help message"
+            echo "  PLAYWRIGHT_OPTIONS      Additional Playwright CLI options"
+            echo ""
+            echo "See: https://playwright.dev/docs/test-cli"
             exit 0
         fi
-        pnpm test:enterprise
+        # Chain the leaf scripts here so extra options reach every playwright
+        # invocation (see run-chromium above for why `pnpm test:enterprise` can't
+        # forward them itself).
+        pnpm test:enterprise:parallel "${@:2}" \
+          && pnpm test:enterprise:serial "${@:2}"
         ;;
 
     run-aws )
@@ -147,7 +162,7 @@ case $1 in
             echo "  -h, --help    Show this help message"
             exit 0
         fi
-        sed -i 's#http://localhost:2900#https://aws.openc3.com#' playwright.config.ts
+        sed -i.bak 's#http://localhost:2900#https://aws.openc3.com#' playwright.config.ts && rm -f playwright.config.ts.bak
         KEYCLOAK_URL=https://aws.openc3.com/auth/admin/master/console REDIRECT_URL=https://aws.openc3.com/* pnpm test:keycloak
         pnpm test:enterprise
         ;;

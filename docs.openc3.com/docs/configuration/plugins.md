@@ -553,7 +553,7 @@ The following keywords must follow a TARGET keyword.
 ### CMD_DECOM_RETAIN_TIME
 <span class="badge badge--secondary since-right">Since 7.0.0</span>**How long to keep command decommutation records in the TSDB.**
 
-Sets the retention time directly on QuestDB tables for automatic data expiration. QuestDB will automatically remove data older than this retention time.
+Sets the retention time directly on QuestDB tables for automatic data expiration. QuestDB will automatically remove data older than this retention time. Tables are partitioned by day and QuestDB only drops whole partitions, so the effective granularity is one day. Hour values are rounded up to whole days ("1h" becomes 1 day, "25h" becomes 2 days) so data is never dropped early, and data is not removed until the entire day partition is older than the retention time (expect up to a day of extra data). Expiration is evaluated when new data is written to the table, so an idle table is not expired. Changing this value and reinstalling the plugin updates existing tables.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -562,11 +562,18 @@ Sets the retention time directly on QuestDB tables for automatic data expiration
 ### TLM_DECOM_RETAIN_TIME
 <span class="badge badge--secondary since-right">Since 7.0.0</span>**How long to keep telemetry decommutation records in the TSDB.**
 
-Sets the retention time directly on QuestDB tables for automatic data expiration. QuestDB will automatically remove data older than this retention time.
+Sets the retention time directly on QuestDB tables for automatic data expiration. QuestDB will automatically remove data older than this retention time. Tables are partitioned by day and QuestDB only drops whole partitions, so the effective granularity is one day. Hour values are rounded up to whole days ("1h" becomes 1 day, "25h" becomes 2 days) so data is never dropped early, and data is not removed until the entire day partition is older than the retention time (expect up to a day of extra data). Expiration is evaluated when new data is written to the table, so an idle table is not expired. Changing this value and reinstalling the plugin updates existing tables.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Time | Retention time value with unit (e.g., "24h" for 24 hours, "30d" for 30 days, "1y" for 1 year). Supported units are h (hours), d (days), w (weeks), M (months), y (years). Default = nil = Forever | True |
+
+### DECOM_FLUSH_PERIOD
+**Period in seconds between flushing rows to the TSDB. Higher values use less CPU.**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Period | Number of seconds between flushing rows to the TSDB (default = 5.0) | True |
 
 ### LOG_RETAIN_TIME
 **How long to keep all regular telemetry logs in seconds.**
@@ -791,7 +798,7 @@ Container to execute and run the microservice in. Only used in COSMOS Enterprise
 ### SECRET
 <span class="badge badge--secondary since-right">Since 5.3.0</span>**Define a secret needed by this microservice**
 
-Defines a secret for this microservice. For more information see [Admin Secrets](/docs/tools/admin#secrets).
+Defines a secret for this microservice. For more information see [Admin Secrets](/docs/tools/admin#secrets). Note that unlike the INTERFACE SECRET, the microservice SECRET does not take an Option Name parameter, because the secret value is injected directly into the microservice process as an environment variable (Type ENV) or written to a file (Type FILE).
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -870,7 +877,9 @@ STOPPED
 ## TOOL
 **Define a tool**
 
-Defines a tool that the plugin adds to the OpenC3 system. Tools are web based applications that make use of the Single-SPA javascript library that allows them to by dynamically added to the running system as independent frontend microservices.
+Defines a tool that the plugin adds to the OpenC3 system. Tools are web based applications that make use of the Single-SPA javascript library that allows them to be dynamically added to the running system as independent frontend microservices.
+Tools are global to the entire COSMOS installation. Regardless of the scope a plugin is installed into, its tools are always installed into the DEFAULT scope and are available in every scope.
+
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|

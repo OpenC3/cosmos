@@ -106,7 +106,7 @@ module OpenC3
       cmd_params.each do |param_name, _param_value|
         param = command['items'].find { |item| item['name'] == param_name }
         unless param
-          raise "Packet item '#{target_name} #{cmd_name} #{param_name}' does not exist"
+          raise "Item '#{target_name} #{cmd_name} #{param_name}' does not exist (command parameter validation)"
         end
       end
       _log_cmd(command, raw, no_range, no_hazardous)

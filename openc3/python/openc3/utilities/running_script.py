@@ -90,10 +90,10 @@ def _openc3_script_sleep(sleep_time=None):
     if sleep_time is None:  # Handle infinite wait
         sleep_time = 30000000
     if sleep_time > 0.0:
-        end_time = time.time() + sleep_time
+        end_time = _time.time() + sleep_time
         count = 0
-        while time.time() < end_time:
-            time.sleep(0.01)
+        while _time.time() < end_time:
+            _time.sleep(0.01)
             count += 1
             if RunningScript.instance.use_instrumentation and (count % 100) == 0:  # Approximately Every Second
                 running_script_anycable_publish(
@@ -151,6 +151,11 @@ from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.store import Store
 from openc3.utilities.store_queued import EphemeralStoreQueued
 from openc3.utilities.target_file import TargetFile
+
+
+# This is to deconflict with the python `time` module so that user scripts
+# can do `from time import time` instead of just `import time`.
+_time = time
 
 
 # Define all the user input methods used in scripting which we need to broadcast to the frontend
@@ -327,7 +332,7 @@ class RunningScript:
         self.debug_code_completion = None
         self.top_level_instrumented_cache = None
         self.output_time = cdatetime.now(timezone.utc).strftime(RunningScript.STRFTIME_FORMAT)
-        self.output_time_value = time.time()
+        self.output_time_value = _time.time()
         self.script_globals = globals()
         self.suite_report = None
 
@@ -493,7 +498,7 @@ class RunningScript:
         self.retry_needed = False
         self.use_instrumentation = True
         self.call_stack = []
-        self.pre_line_time = time.time()
+        self.pre_line_time = _time.time()
         self.exceptions = None
         self.script_binding = [{}, {}]
         self.inline_eval = None
@@ -570,7 +575,7 @@ class RunningScript:
         return result
 
     def pre_line_instrumentation(self, filename, line_number, global_variables, local_variables):
-        self.pre_line_time = time.time()
+        self.pre_line_time = _time.time()
         self.script_binding = [global_variables, local_variables]
         self.script_status.current_filename = filename
         self.script_status.line_no = line_number
@@ -738,7 +743,7 @@ class RunningScript:
         if not line_number:
             line_number = self.script_status.line_no
         self.output_time = cdatetime.now(timezone.utc).strftime(RunningScript.STRFTIME_FORMAT)
-        self.output_time_value = time.time()
+        self.output_time_value = _time.time()
         string = self.output_io.getvalue()
         self.output_io.truncate(0)
         self.output_io.seek(0)
@@ -799,7 +804,7 @@ class RunningScript:
             self.prompt_id = prompt["id"]
         while not self.go and not self.stop:
             self.check_execute_while_paused()
-            time.sleep(0.01)
+            _time.sleep(0.01)
             count += 1
             if count % 100 == 0:  # Approximately Every Second
                 running_script_anycable_publish(
@@ -837,7 +842,7 @@ class RunningScript:
         self.go = False
         while not self.go and not self.stop and not self.retry_needed:
             self.check_execute_while_paused()
-            time.sleep(0.01)
+            _time.sleep(0.01)
             count += 1
             if (count % 100) == 0:  # Approximately Every Second
                 running_script_anycable_publish(
@@ -1088,7 +1093,7 @@ class RunningScript:
                     instrumented_script = self.instrument_script(text, instrument_filename)
 
                 # Execute the script
-                self.pre_line_time = time.time()
+                self.pre_line_time = _time.time()
                 # script_globals["__name__"] == "openc3.utilities.running_script"
                 # ...so instead we set it to "__main__"
                 self.script_globals["__name__"] = "__main__"
@@ -1178,9 +1183,9 @@ class RunningScript:
 
     def handle_line_delay(self):
         if RunningScript.line_delay > 0.0:
-            sleep_time = RunningScript.line_delay - (time.time() - self.pre_line_time)
+            sleep_time = RunningScript.line_delay - (_time.time() - self.pre_line_time)
             if sleep_time > 0.0:
-                time.sleep(sleep_time)
+                _time.sleep(sleep_time)
 
     def handle_exception(self, exc_type, exc_value, exc_traceback, fatal, filename=None, line_number=0):
         self.exceptions = self.exceptions or []
@@ -1273,7 +1278,7 @@ class RunningScript:
         while True:
             if RunningScript.cancel_output:
                 break
-            if (time.time() - self.output_time_value) > 5.0:
+            if (_time.time() - self.output_time_value) > 5.0:
                 self.handle_output_io()
             if RunningScript.cancel_output:
                 break

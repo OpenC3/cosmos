@@ -59,7 +59,7 @@ module OpenC3
     # @param index [Integer] Which value to return
     # @return [Boolean] Single value converted to a boolean (true or false)
     def bool(item, index = 0)
-      raise "#{item} not found" unless keys.include?(item)
+      raise "CSV key '#{item}' not found for bool conversion" unless keys.include?(item)
 
       if Range === index
         @hash[item][index].map do |x|
@@ -91,7 +91,7 @@ module OpenC3
     # @param index [Integer] Which value to return
     # @return [Integer] Single value converted to an integer
     def int(item, index = 0)
-      raise "#{item} not found" unless keys.include?(item)
+      raise "CSV key '#{item}' not found for int conversion" unless keys.include?(item)
 
       if Range === index
         @hash[item][index].map { |x| x.to_i }
@@ -107,7 +107,7 @@ module OpenC3
     # @param index [Integer] Which value to return
     # @return [Float] Single value converted to a float
     def float(item, index = 0)
-      raise "#{item} not found" unless keys.include?(item)
+      raise "CSV key '#{item}' not found for float conversion" unless keys.include?(item)
 
       if Range === index
         @hash[item][index].map { |x| x.to_f }
@@ -122,7 +122,7 @@ module OpenC3
     # @param index [Integer] Which value to return
     # @return [String] Single value converted to a string
     def string(item, index = 0)
-      raise "#{item} not found" unless keys.include?(item)
+      raise "CSV key '#{item}' not found for string lookup" unless keys.include?(item)
 
       if Range === index
         @hash[item][index].map { |x| x.to_s }
@@ -138,7 +138,7 @@ module OpenC3
     # @param index [Integer] Which value to return
     # @return [Symbol] Single value converted to a symbol
     def symbol(item, index = 0)
-      raise "#{item} not found" unless keys.include?(item)
+      raise "CSV key '#{item}' not found for symbol lookup" unless keys.include?(item)
 
       if Range === index
         @hash[item][index].map { |x| x.intern }

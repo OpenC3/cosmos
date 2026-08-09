@@ -253,7 +253,7 @@ module OpenC3
           check_exception("check", "INST HEALTH_STATUS TEMP1 == 9", type: :RAW, scope: "DEFAULT")
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 == 9 failed/)
           check_exception("check", "INST HEALTH_STATUS TEMP1 == 9", type: :RAW, scope: "OTHER")
-          expect(stdout.string).to match(/Packet 'INST HEALTH_STATUS' does not exist/)
+          expect(stdout.string).to match(/Packet definition 'INST HEALTH_STATUS' does not exist/)
         end
       end
 

@@ -21,7 +21,14 @@
 
 set -eux
 cd ../..
-eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' .env) ;
+# Load .env as DEFAULTS only. Variables already set in the environment (e.g. by
+# the GitHub Actions release workflow) win, so CI can point OPENC3_ENTERPRISE_REGISTRY
+# at ghcr.io even though .env defaults it to repos.openc3.com.
+while IFS='=' read -r key value; do
+  [[ -z "$key" || "$key" == \#* ]] && continue
+  printf -v "$key" '%s' "${!key:-$value}"
+  export "$key"
+done < .env
 # OPENC3_REGISTRY=localhost:5000 # Uncomment for local builds
 # OPENC3_ENTERPRISE_REGISTRY=localhost:5000 # Uncomment for local builds
 
@@ -30,12 +37,12 @@ if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_PLATFORMS=linux/amd64
   DOCKERFILE='Dockerfile-ubi'
   SUFFIX='-ubi'
-  OPENC3_VERSITYGW_VERSION=v1.6.0
+  OPENC3_VERSITYGW_VERSION=v1.7.0
 else
   OPENC3_PLATFORMS=linux/amd64,linux/arm64
   DOCKERFILE='Dockerfile'
   SUFFIX=''
-  OPENC3_VERSITYGW_VERSION=v1.6.0
+  OPENC3_VERSITYGW_VERSION=v1.7.0
 fi
 
 # Setup cacert.pem
@@ -320,9 +327,9 @@ fi
 # Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
 if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik
-  OPENC3_TRAEFIK_RELEASE=v3.7.5
+  OPENC3_TRAEFIK_RELEASE=v3.7.10
 else
-  OPENC3_TRAEFIK_RELEASE=v3.7.5
+  OPENC3_TRAEFIK_RELEASE=v3.7.10
 fi
 cd ../openc3-traefik
 docker buildx build \

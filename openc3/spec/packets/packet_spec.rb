@@ -434,7 +434,7 @@ module OpenC3
     describe "get_item" do
       it "complains if an item doesn't exist" do
         p = Packet.new("tgt", "pkt")
-        expect { p.get_item("test") }.to raise_error(RuntimeError, "Packet item 'TGT PKT TEST' does not exist")
+        expect { p.get_item("test") }.to raise_error(RuntimeError, "Item 'TGT PKT TEST' does not exist (Packet)")
       end
     end
 

@@ -538,7 +538,7 @@ class Packet(Structure):
             return super().get_item(name)
         except ValueError as error:
             raise RuntimeError(
-                f"Packet item '{self.target_name} {self.packet_name} {name.upper()}' does not exist"
+                f"Item '{self.target_name} {self.packet_name} {name.upper()}' does not exist (Packet)"
             ) from error
 
     # Read an item in the packet

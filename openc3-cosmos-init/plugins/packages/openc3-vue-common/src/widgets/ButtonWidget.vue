@@ -119,7 +119,6 @@ export default {
         })
       } catch (error) {
         if (error?.name !== 'AbortError') {
-          // eslint-disable-next-line no-console
           console.error(error)
         }
       } finally {
@@ -164,11 +163,13 @@ export default {
       }
       Api.post(`/script-api/scripts/${scriptName}/run`, {
         data: { environment: envArray },
-      }).then((response) => {
-        if (openScript) {
-          window.open(`/tools/scriptrunner/${response.data}`, '_blank')
-        }
       })
+        .then((response) => {
+          if (openScript) {
+            window.open(`/tools/scriptrunner/${response.data}`, '_blank')
+          }
+        })
+        .catch(console.error)
     },
   },
 }

@@ -44,6 +44,38 @@ module OpenC3
   class ScopeModel < Model
     PRIMARY_KEY = "openc3_scopes"
 
+    # Default thresholds used by the System Health tool and the metrics
+    # microservices. Stored in the 'system_health' setting as a JSON string.
+    SYSTEM_HEALTH_DEFAULTS = {
+      "cpu" => {
+        "redThreshold" => 90.0,
+        "yellowThreshold" => 80.0,
+        "snoozeMinutes" => 15,
+        "lastTriggerTimeRed" => nil,  # timestamp or nil
+        "lastTriggerTimeYellow" => nil,  # timestamp or nil
+        "sustainedSeconds" => 15
+      },
+      "memory" => {
+        "redThreshold" => 90.0,
+        "yellowThreshold" => 80.0,
+        "snoozeMinutes" => 15,
+        "lastTriggerTimeRed" => nil,  # timestamp or nil
+        "lastTriggerTimeYellow" => nil,  # timestamp or nil
+        "sustainedSeconds" => 15
+      },
+      "disk" => {
+        "redThreshold" => 90.0,
+        "yellowThreshold" => 80.0,
+        "snoozeMinutes" => 720,  # 12 hours
+        "lastTriggerTimeRed" => nil,  # timestamp or nil
+        "lastTriggerTimeYellow" => nil,  # timestamp or nil
+        "sustainedSeconds" => 60
+      },
+      "global" => {
+        "enableAlerts" => true
+      }
+    }
+
     attr_accessor :children
     attr_accessor :text_log_cycle_time
     attr_accessor :text_log_cycle_size
@@ -431,36 +463,8 @@ module OpenC3
       SettingModel.set({name: "news_feed", data: true}, scope: @scope)
 
       setting = SettingModel.get(name: "system_health")
-      system_health_data = {
-        "cpu" => {
-          "redThreshold" => 90.0,
-          "yellowThreshold" => 80.0,
-          "snoozeMinutes" => 15,
-          "lastTriggerTimeRed" => nil,  # timestamp or nil
-          "lastTriggerTimeYellow" => nil,  # timestamp or nil
-          "sustainedSeconds" => 15
-        },
-        "memory" => {
-          "redThreshold" => 90.0,
-          "yellowThreshold" => 80.0,
-          "snoozeMinutes" => 15,
-          "lastTriggerTimeRed" => nil,  # timestamp or nil
-          "lastTriggerTimeYellow" => nil,  # timestamp or nil
-          "sustainedSeconds" => 15
-        },
-        "disk" => {
-          "redThreshold" => 90.0,
-          "yellowThreshold" => 80.0,
-          "snoozeMinutes" => 720,  # 12 hours
-          "lastTriggerTimeRed" => nil,  # timestamp or nil
-          "lastTriggerTimeYellow" => nil,  # timestamp or nil
-          "sustainedSeconds" => 60
-        },
-        "global" => {
-          "enableAlerts" => true
-        }
-      }
-      SettingModel.set({name: "system_health", data: system_health_data}, scope: "DEFAULT") unless setting
+      # Settings are stored as JSON strings
+      SettingModel.set({name: "system_health", data: JSON.generate(SYSTEM_HEALTH_DEFAULTS)}, scope: "DEFAULT") unless setting
     end
   end
 end

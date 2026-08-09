@@ -30,6 +30,7 @@ require 'openc3/topics/config_topic'
 require 'openc3/system'
 require 'openc3/utilities/local_mode'
 require 'openc3/utilities/bucket'
+require 'openc3/utilities/target_file'
 require 'openc3/utilities/zip'
 require 'fileutils'
 require 'ostruct'
@@ -77,6 +78,7 @@ module OpenC3
     attr_accessor :tlm_log_retain_time
     attr_accessor :cmd_decom_retain_time
     attr_accessor :tlm_decom_retain_time
+    attr_accessor :decom_flush_period
     attr_accessor :cleanup_poll_time
     attr_accessor :needs_dependencies
     attr_accessor :target_microservices
@@ -124,6 +126,63 @@ module OpenC3
       targets.sort.to_h
     end
 
+    # Splits a plugin instance name ("openc3-cosmos-demo-7.2.0.gem__0") into
+    # [base_name, version] (["openc3-cosmos-demo", "7.2.0"]), or nil when the
+    # name doesn't carry a version segment. Drops the "__N" install-instance
+    # suffix and the ".gem" extension first.
+    def self.plugin_name_version(plugin_instance)
+      return nil if plugin_instance.nil? || plugin_instance.empty?
+      gem = plugin_instance.split('__')[0].sub(/\.gem\z/, '')
+      parts = gem.split('-')
+      return nil if parts.length < 2
+      [parts[0..-2].join('-'), parts[-1]]
+    end
+
+    # "name version" of the plugin that installed this target (e.g.
+    # "openc3-cosmos-demo 7.2.0"), derived from the plugin instance name
+    # ("openc3-cosmos-demo-7.2.0.gem__0"), or nil if unavailable. Used to
+    # annotate the Version History baseline with the file's origin.
+    def self.plugin_version_label(target_name, scope:)
+      model = get(name: target_name, scope: scope)
+      name, version = plugin_name_version(model && model['plugin'])
+      return nil unless name
+      "#{name} #{version}"
+    rescue
+      nil
+    end
+
+    # Version-stripped plugin base name that owns this target, e.g.
+    # "openc3-cosmos-demo" from instance "openc3-cosmos-demo-7.2.0.gem__0".
+    # Used as the per-plugin Version History repo key: stable across upgrades
+    # (only the version segment changes), so history survives version bumps.
+    # Returns nil when the target has no owning plugin (e.g. a hand-created
+    # target); callers fall back to a no-plugin bucket.
+    def self.plugin_base_name(target_name, scope:)
+      model = get(name: target_name, scope: scope)
+      name, _version = plugin_name_version(model && model['plugin'])
+      name
+    rescue
+      nil
+    end
+
+    # Uninstall-only: remove a plugin's entire Version History repo. Called
+    # from the CLI uninstall path with the plugin instance name; upgrade reuses
+    # the repo and must never call this. No-op in Core builds (or whenever
+    # OPENC3_VERSION_HISTORY_DIR is unset) since VersionStore is absent or
+    # disabled. Best-effort: a failure here must not abort the uninstall.
+    def self.destroy_script_versions(plugin_instance_name, scope:)
+      name, _version = plugin_name_version(plugin_instance_name)
+      return unless name
+      begin
+        require 'openc3-enterprise/utilities/version_store'
+      rescue LoadError
+        return
+      end
+      ::VersionStore.destroy_repo(scope: scope, plugin: name)
+    rescue => e
+      Logger.warn("destroy_script_versions failed for #{scope}/#{plugin_instance_name}: #{e.message}")
+    end
+
     # Given target's modified file list
     def self.modified_files(target_name, scope:)
       modified = []
@@ -146,7 +205,19 @@ module OpenC3
       modified.sort
     end
 
-    def self.delete_modified(target_name, scope:)
+    # files: optional list of specific modified files to delete, each a name
+    # relative to scope ("TARGET/sub/path", matching modified_files output).
+    # When given, only those files are removed (used by plugin upgrade to drop
+    # some modified files while keeping others); when nil, every modified file
+    # for the target is removed (the original behavior).
+    def self.delete_modified(target_name, scope:, files: nil)
+      if files && !files.empty?
+        files.each do |name|
+          # TargetFile.destroy handles both local mode and the bucket.
+          OpenC3::TargetFile.destroy(scope, name)
+        end
+        return
+      end
       if ENV['OPENC3_LOCAL_MODE']
         OpenC3::LocalMode.delete_modified(target_name, scope: scope)
       end
@@ -225,7 +296,7 @@ module OpenC3
 
       # Assume it exists and just try to get it to avoid an extra call to Store.exist?
       json = store_for_target(target_name, scope: scope).hget("#{scope}__openc3#{type.to_s.downcase}__#{target_name}", packet_name)
-      raise "Packet '#{target_name} #{packet_name}' does not exist" if json.nil?
+      raise "Packet definition '#{target_name} #{packet_name}' does not exist" if json.nil?
 
       packet = JSON.parse(json, allow_nan: true, create_additions: true)
 
@@ -246,7 +317,7 @@ module OpenC3
     # @return [Array<Hash>] All packet hashes under the target_name
     def self.packets(target_name, type: :TLM, scope:)
       raise "Unknown type #{type} for #{target_name}" unless VALID_TYPES.include?(type)
-      raise "Target '#{target_name}' does not exist for scope: #{scope}" unless get(name: target_name, scope: scope)
+      raise "Target '#{target_name}' does not exist for scope: #{scope} (TargetModel)" unless get(name: target_name, scope: scope)
 
       result = []
       packets = store_for_target(target_name, scope: scope).hgetall("#{scope}__openc3#{type.to_s.downcase}__#{target_name}")
@@ -282,7 +353,7 @@ module OpenC3
     def self.packet_item(target_name, packet_name, item_name, type: :TLM, scope:)
       packet = packet(target_name, packet_name, type: type, scope: scope)
       item = packet['items'].find { |item| item['name'] == item_name.to_s }
-      raise "Item '#{packet['target_name']} #{packet['packet_name']} #{item_name}' does not exist" unless item
+      raise "Item '#{packet['target_name']} #{packet['packet_name']} #{item_name}' does not exist (TargetModel)" unless item
       item
     end
 
@@ -401,6 +472,7 @@ module OpenC3
       tlm_log_retain_time: nil,
       cmd_decom_retain_time: nil,
       tlm_decom_retain_time: nil,
+      decom_flush_period: 5.0,
       cleanup_poll_time: 3600,
       needs_dependencies: false,
       target_microservices: {},
@@ -429,6 +501,7 @@ module OpenC3
       @tlm_log_retain_time = tlm_log_retain_time
       @cmd_decom_retain_time = cmd_decom_retain_time
       @tlm_decom_retain_time = tlm_decom_retain_time
+      @decom_flush_period = decom_flush_period
       @cleanup_poll_time = cleanup_poll_time
       @needs_dependencies = needs_dependencies
       @target_microservices = target_microservices
@@ -462,6 +535,7 @@ module OpenC3
         'tlm_log_retain_time' => @tlm_log_retain_time,
         'cmd_decom_retain_time' => @cmd_decom_retain_time,
         'tlm_decom_retain_time' => @tlm_decom_retain_time,
+        'decom_flush_period' => @decom_flush_period,
         'cleanup_poll_time' => @cleanup_poll_time,
         'needs_dependencies' => @needs_dependencies,
         'target_microservices' => @target_microservices.as_json(),
@@ -516,6 +590,9 @@ module OpenC3
         if @tlm_decom_retain_time and !@tlm_decom_retain_time.match?(/^\d+[hdwMy]$/)
           raise ConfigParser::Error.new(parser, "TLM_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y (e.g., 24h, 7d, 1y)")
         end
+      when 'DECOM_FLUSH_PERIOD'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Flush period in seconds>")
+        @decom_flush_period = Float(parameters[0])
       when 'REDUCED_MINUTE_LOG_RETAIN_TIME', 'REDUCED_HOUR_LOG_RETAIN_TIME', 'REDUCED_DAY_LOG_RETAIN_TIME', 'REDUCED_LOG_RETAIN_TIME'
         # DEPRECATED
       when 'REDUCER_DISABLE', 'REDUCER_DISABLED', 'REDUCER_MAX_CPU_UTILIZATION', 'REDUCED_MAX_CPU_UTILIZATION'
@@ -577,11 +654,23 @@ module OpenC3
       return nil
     end
 
-    def deploy(gem_path, variables, validate_only: false)
+    # upgrade_context (plugin upgrades only) drives two modes, both keyed by
+    # the deployed file name "TARGET/sub/path" (matches modified_files output):
+    #   { diff_collector: [] } — dry run (with validate_only): append the names
+    #     of modified files whose live content differs from the rendered plugin
+    #     content. Read-only; used to warn before an upgrade.
+    #   { username:, plugin: "name version", version_files: [<name>...] } — for
+    #     each listed file with a modified copy: record the modified copy in
+    #     Version History, drop the shadow so the plugin content becomes current,
+    #     then commit the incoming content as a plugin-upgrade version.
+    # nil (the default and Core builds without VersionStore) = no-op.
+    def deploy(gem_path, variables, validate_only: false, upgrade_context: nil)
       variables["target_name"] = @name
       start_path = "/targets/#{@folder_name}/"
       temp_dir = Dir.mktmpdir
       found = false
+      diff_collector = upgrade_context && upgrade_context[:diff_collector]
+      versioning = !validate_only && upgrade_context && upgrade_context[:version_files] && version_store_available?
       begin
         target_path = gem_path + start_path + "**/*"
         Dir.glob(target_path) do |filename|
@@ -617,6 +706,16 @@ module OpenC3
           File.open(local_path, 'wb') { |file| file.write(data) }
           found = true
           @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: data) unless validate_only
+
+          # Plugin upgrade: either collect this file into the diff (dry run) or
+          # take it from the plugin while preserving the modified copy in
+          # Version History. Both skip files with no modified copy.
+          name = "#{@name}/#{target_folder_path}"
+          if diff_collector
+            collect_modified_diff(name, data, diff_collector)
+          elsif versioning && upgrade_context[:version_files].include?(name)
+            apply_upgrade_version(name, data, upgrade_context)
+          end
         end
         raise "No target files found at #{target_path}" unless found
 
@@ -626,7 +725,11 @@ module OpenC3
         check_column_header_lengths(system)
         if variables["xtce_output"]
           puts "Converting target #{@name} to .xtce files in #{variables["xtce_output"]}/#{@name}"
-          puts "    Using mnemonic '#{variables['time_association_name']}' as the packet time item."
+          if variables['time_association_name'].to_s.empty?
+            puts "    No packet time item given, so no TimeAssociation will be written."
+          else
+            puts "    Using mnemonic '#{variables['time_association_name']}' as the packet time item."
+          end
           system.packet_config.to_xtce(variables["xtce_output"], variables['time_association_name'])
         end
         unless validate_only
@@ -638,6 +741,56 @@ module OpenC3
       ensure
         FileUtils.remove_entry_secure(temp_dir, true)
       end
+    end
+
+    # Version History is an Enterprise feature. The plugin deploy runs in the
+    # cmd-tlm-api process, which (unlike script-runner-api) doesn't otherwise
+    # require the store, so lazily load it on demand. Returns false in Core
+    # builds where the Enterprise gem isn't present.
+    def version_store_available?
+      return true if defined?(::VersionStore)
+      require 'openc3-enterprise/utilities/version_store'
+      defined?(::VersionStore) ? true : false
+    rescue LoadError
+      false
+    end
+
+    # See deploy/upgrade_context. Reads the modified shadow directly (not
+    # TargetFile.body, which would fall back to the just-overwritten pristine
+    # copy), commits it, removes it, then commits the incoming plugin content.
+    # Best-effort: a versioning failure must not abort the plugin upgrade.
+    def apply_upgrade_version(name, new_data, ctx)
+      modified_key = "#{@scope}/targets_modified/#{name}"
+      resp = @bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: modified_key)
+      return unless resp && resp.body
+      old_body = resp.body.read
+      # Nothing actually changed — the modification already matches the plugin.
+      # Leave the (identical) shadow in place and create no version churn.
+      return if old_body.b == new_data.b
+      old_body = old_body.force_encoding('UTF-8') unless File.extname(name) == '.bin'
+      # Preserve the pre-upgrade (user-modified) content as a version.
+      # Idempotent: a no-op when it already matches the latest version.
+      ::VersionStore.commit(scope: @scope, name: name, text: old_body)
+      # Drop the modified shadow so the plugin file (already written to
+      # targets/) becomes the live content.
+      OpenC3::TargetFile.destroy(@scope, name)
+      # Commit the incoming plugin content as a plugin-upgrade version,
+      # attributed to the installing user.
+      ::VersionStore.commit(scope: @scope, name: name, text: new_data,
+        username: ctx[:username], source: 'plugin-upgrade', plugin: ctx[:plugin])
+    rescue => e
+      Logger.warn("Version History upgrade capture failed for #{@scope}/#{name}: #{e.message}")
+    end
+
+    # Dry-run companion to apply_upgrade_version: append name to collector when
+    # a modified copy exists and differs (by bytes) from the rendered plugin
+    # content. Read-only.
+    def collect_modified_diff(name, new_data, collector)
+      resp = @bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: "#{@scope}/targets_modified/#{name}")
+      return unless resp && resp.body
+      collector << name if resp.body.read.b != new_data.b
+    rescue => e
+      Logger.warn("Modified diff check failed for #{@scope}/#{name}: #{e.message}")
     end
 
     def check_column_header_lengths(system)
@@ -1052,6 +1205,7 @@ module OpenC3
       options = []
       options << ["CMD_DECOM_RETAIN_TIME", @cmd_decom_retain_time] if @cmd_decom_retain_time
       options << ["TLM_DECOM_RETAIN_TIME", @tlm_decom_retain_time] if @tlm_decom_retain_time
+      options << ["DECOM_FLUSH_PERIOD", @decom_flush_period] if @decom_flush_period
       microservice = MicroserviceModel.new(
         name: microservice_name,
         folder_name: @folder_name,

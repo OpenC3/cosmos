@@ -2,14 +2,17 @@
   "name": "openc3",
   "private": true,
   "scripts": {
-    "build:common": "pnpm -F @openc3/*-common build"
+    "build:common": "pnpm -F @openc3/*-common build",
+    "lint": "./lint-all.mjs"
   },
   "devDependencies": {
     "@vue/eslint-config-prettier": "10.2.0",
-    "eslint": "10.6.0",
-    "eslint-plugin-vue": "10.9.2",
+    "eslint": "10.8.0",
+    "eslint-plugin-vue": "10.10.0",
     "eslint-plugin-vuetify": "2.7.2",
-    "globals": "17.7.0",
+    "globals": "17.9.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.64.0",
     "vue-eslint-parser": "10.4.1"
   }
 }

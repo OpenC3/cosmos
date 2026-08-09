@@ -584,6 +584,11 @@ export default {
       ) {
         return // No change
       }
+      // The chooser clears its selection when the target has no packets or the
+      // request failed (e.g. no permission). Nothing to look up in that case.
+      if (!event.targetName || !event.packetName) {
+        return
+      }
       try {
         this.loadingPacket = true
         const target = await this.api.get_target(event.targetName)
@@ -706,10 +711,7 @@ export default {
               .then((values) => {
                 this.latestGetTlmValues(values)
               })
-              .catch((error) => {
-                // eslint-disable-next-line no-console
-                console.log(error)
-              })
+              .catch(console.error)
           } else {
             this.api
               .get_all_tlm_item_names(this.targetName)
@@ -729,10 +731,7 @@ export default {
               .then((values) => {
                 this.latestGetTlmValues(values)
               })
-              .catch((error) => {
-                // eslint-disable-next-line no-console
-                console.log(error)
-              })
+              .catch(console.error)
           }
         } else {
           // Regular packet handling using get_tlm_packet
@@ -786,10 +785,7 @@ export default {
             // Catch errors but just log to the console
             // We don't clear the updater because errors can happen on upgrade
             // and we want to continue updating once the new plugin comes online
-            .catch((error) => {
-              // eslint-disable-next-line no-console
-              console.log(error)
-            })
+            .catch(console.error)
         }
         if (loadingFirstTlm) {
           loadingFirstTlm = false

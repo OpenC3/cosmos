@@ -192,7 +192,7 @@ const config = {
             label: "Documentation",
           },
           {
-            to: "https://openc3.com/enterprise/",
+            to: "https://openc3.com/cosmos-enterprise/",
             label: "Enterprise",
           },
         ],

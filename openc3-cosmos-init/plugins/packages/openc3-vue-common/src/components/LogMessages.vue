@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -87,8 +87,27 @@
         </time>
       </template>
       <template #item.level="{ item }">
-        <span :style="'display: inline-flex; color:' + getColor(item.level)">
-          <rux-status class="mr-1" :status="getStatus(item.level)"></rux-status>
+        <span
+          :style="
+            'display: inline-flex; align-items: center; color:' +
+            getColor(item.level)
+          "
+        >
+          <!-- astro rux-status has no 'fatal' shape, so draw an octagon that
+               inherits the fatal text color. -->
+          <v-icon
+            v-if="item.level === 'FATAL'"
+            size="16"
+            class="mr-1"
+            style="margin-left: -2px"
+          >
+            mdi-alert-octagon
+          </v-icon>
+          <rux-status
+            v-else
+            class="mr-1"
+            :status="getStatus(item.level)"
+          ></rux-status>
           {{ item.level }}</span
         >
       </template>

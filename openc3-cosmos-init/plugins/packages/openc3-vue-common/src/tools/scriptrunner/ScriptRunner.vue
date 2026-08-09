@@ -121,7 +121,7 @@
               <v-tooltip :open-delay="600" location="top">
                 <template #activator="{ props }">
                   <v-btn
-                    v-if="!scriptId"
+                    v-if="!scriptActive"
                     v-bind="props"
                     icon="mdi-cached"
                     variant="text"
@@ -139,7 +139,7 @@
                     @click="backToNewScript"
                   />
                 </template>
-                <span v-if="!scriptId"> Reload File </span>
+                <span v-if="!scriptActive"> Reload File </span>
                 <span v-else> Back to New Script </span>
               </v-tooltip>
             </div>
@@ -187,6 +187,16 @@
               readonly
               hide-details
             />
+            <v-chip
+              v-if="lifecycleVisible"
+              class="ml-4 align-self-center"
+              :color="lifecycleColor"
+              variant="flat"
+              data-test="lifecycle-chip"
+              @click="showLifecycle = true"
+            >
+              {{ lifecycleLabel }}
+            </v-chip>
             <v-progress-circular
               v-if="state === 'Connecting...'"
               :size="40"
@@ -213,7 +223,6 @@
                     density="compact"
                     variant="outlined"
                     hide-details
-                    clearable
                     style="max-width: 200px; min-width: 160px"
                     class="mr-2"
                     data-test="python-venv-select"
@@ -285,7 +294,7 @@
                 color="primary"
                 text="Start"
                 data-test="start-button"
-                :disabled="startOrGoDisabled || !executeUser"
+                :disabled="startOrGoDisabled || !executeUser || runBlocked"
                 :hidden="suiteRunner"
                 @click="startHandler"
               />
@@ -349,17 +358,12 @@
             <v-divider />
             <v-list-item title="Execute Selection" @click="executeSelection" />
             <v-list-item
-              v-if="scriptId"
-              title="Goto Line"
+              v-if="executionPhase !== 'finishing'"
+              :title="scriptActive ? 'Goto Line' : 'Run From Line'"
               @click="runFromCursor"
             />
             <v-list-item
-              v-if="!scriptId"
-              title="Run From Line"
-              @click="runFromCursor"
-            />
-            <v-list-item
-              v-if="!scriptId"
+              v-if="!scriptActive"
               title="Clear Local Breakpoints"
               @click="clearBreakpoints"
             />
@@ -381,7 +385,7 @@
               class="mr-4"
               text="Step"
               append-icon="mdi-step-forward"
-              :disabled="!scriptId"
+              :disabled="!liveScriptId"
               data-test="step-button"
               @click="step"
             />
@@ -501,7 +505,7 @@
                 color="primary"
                 text="Start"
                 data-test="start-button"
-                :disabled="startOrGoDisabled || !executeUser"
+                :disabled="startOrGoDisabled || !executeUser || runBlocked"
                 :hidden="suiteRunner"
                 @click="startHandler"
               />
@@ -644,6 +648,17 @@
     :text="suiteError"
     :width="1000"
   />
+  <script-lifecycle-dialog
+    v-if="showLifecycle"
+    v-model="showLifecycle"
+    :filename="filename"
+    :state="lifecycleState"
+    :history="lifecycleHistory"
+    :can-approve="canApprove"
+    :can-edit="!readOnlyUser"
+    :time-zone="timeZone"
+    @updated="lifecycleUpdated"
+  />
   <critical-cmd-dialog
     v-model="displayCriticalCmd"
     :uuid="criticalCmdUuid"
@@ -651,6 +666,13 @@
     :cmd-user="criticalCmdUser"
     :persistent="true"
     @status="promptDialogCallback"
+  />
+  <version-history-dialog
+    v-if="showVersionHistory"
+    v-model="showVersionHistory"
+    :filename="filename"
+    :current-body="editor ? editor.getValue() : ''"
+    @restored="onVersionRestored"
   />
   <!-- Command Editor Dialog -->
   <v-dialog
@@ -744,6 +766,7 @@ import OverridesDialog from '@/tools/scriptrunner/Dialogs/OverridesDialog.vue'
 import PromptDialog from '@/tools/scriptrunner/Dialogs/PromptDialog.vue'
 import ResultsDialog from '@/tools/scriptrunner/Dialogs/ResultsDialog.vue'
 import ScriptEnvironmentDialog from '@/tools/scriptrunner/Dialogs/ScriptEnvironmentDialog.vue'
+import ScriptLifecycleDialog from '@/tools/scriptrunner/Dialogs/ScriptLifecycleDialog.vue'
 import CommandEditor from '@/components/CommandEditor.vue'
 import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
 import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
@@ -754,6 +777,15 @@ import {
 } from '@/tools/scriptrunner/autocomplete'
 import { SleepAnnotator } from '@/tools/scriptrunner/annotations'
 import RunningScripts from '@/tools/scriptrunner/RunningScripts.vue'
+import { useScriptLifecycle } from '@/tools/scriptrunner/useScriptLifecycle'
+// Lazy-load the Enterprise-only Version History dialog so Monaco (~3 MB
+// minified) lives in its own chunk that only downloads when the user
+// opens version history. Core builds never reach this code path because
+// the menu item is gated on the /openc3-api/info enterprise flag.
+import { defineAsyncComponent } from 'vue'
+const VersionHistoryDialog = defineAsyncComponent(
+  () => import('@/tools/scriptrunner/VersionHistoryDialog.vue'),
+)
 
 // Matches target_file.rb TEMP_FOLDER
 const TEMP_FOLDER = '__TEMP__'
@@ -762,6 +794,112 @@ const START = 'Start'
 const GO = 'Go'
 const PAUSE = 'Pause'
 const RETRY = 'Retry'
+// Matches is_complete in script_status_model
+const TERMINAL_STATES = new Set([
+  'completed',
+  'completed_errors',
+  'stopped',
+  'crashed',
+  'killed',
+])
+
+// detectLanguage() heuristics
+const RUBY_REQUIRE_REGEX = /^\s*(require|load|puts) /
+const RUBY_END_REGEX = /^\s*end\s*$/
+// Ruby named parameters, e.g. "foo(bar: 1)". Split into two independent tests
+// because the single regex this replaced (/\(.*\w+:\s+.+\)(?!:)$/) nested two
+// greedy .* around \w+:, so a long line that did NOT match cost time quadratic
+// in its length -- and detectLanguage() runs this over every line of the file.
+// Each half below has one unambiguous quantifier and so is linear.
+// Python type annotations are defined like "def method(string: str):", so
+// requiring the line to end in ')' rather than ':' is what excludes them.
+const CLOSING_PAREN_REGEX = /\)$/
+const NAMED_PARAM_REGEX = /\w:\s/
+const PYTHON_IMPORT_REGEX = /^\s*(import|from) /
+const PYTHON_BLOCK_REGEX = /^\s*(if|def|while|else|elif|class).*:\s*$/
+const PYTHON_FSTRING_REGEX = /\(f"/ // f strings
+
+const RUBY_SUITE_TEMPLATE = `require 'openc3/script/suite.rb'
+
+# Group class name should indicate what the scripts are testing
+class Power < OpenC3::Group
+  # Methods beginning with script_ are added to Script dropdown
+  def script_power_on
+    # Using OpenC3::Group.puts adds the output to the Test Report
+    # This can be useful for requirements verification, QA notes, etc
+    OpenC3::Group.puts "Verifying requirement SR-1"
+    configure()
+  end
+
+  # Other methods are not added to Script dropdown
+  def configure
+  end
+
+  def setup
+    # Run when Group Setup button is pressed
+    # Run before all scripts when Group Start is pressed
+  end
+
+  def teardown
+    # Run when Group Teardown button is pressed
+    # Run after all scripts when Group Start is pressed
+  end
+end
+
+class TestSuite < OpenC3::Suite
+  def initialize
+    add_group('Power')
+  end
+  def setup
+    # Run when Suite Setup button is pressed
+    # Run before all groups when Suite Start is pressed
+  end
+  def teardown
+    # Run when Suite Teardown button is pressed
+    # Run after all groups when Suite Start is pressed
+  end
+end
+`
+
+const PYTHON_SUITE_TEMPLATE = `from openc3.script.suite import Suite, Group
+
+# Group class name should indicate what the scripts are testing
+class Power(Group):
+    # Methods beginning with script_ are added to Script dropdown
+    def script_power_on(self):
+        # Using Group.print adds the output to the Test Report
+        # This can be useful for requirements verification, QA notes, etc
+        Group.print("Verifying requirement SR-1")
+        self.configure()
+
+    # Other methods are not added to Script dropdown
+    def configure(self):
+        pass
+
+    def setup(self):
+        # Run when Group Setup button is pressed
+        # Run before all scripts when Group Start is pressed
+        pass
+
+    def teardown(self):
+        # Run when Group Teardown button is pressed
+        # Run after all scripts when Group Start is pressed
+        pass
+
+class TestSuite(Suite):
+    def __init__(self):
+        self.add_group(Power)
+
+    def setup(self):
+        # Run when Suite Setup button is pressed
+        # Run before all groups when Suite Start is pressed
+        pass
+
+    def teardown(self):
+        # Run when Suite Teardown button is pressed
+        # Run after all groups when Suite Start is pressed
+        pass
+`
 
 export default {
   components: {
@@ -780,12 +918,14 @@ export default {
     PromptDialog,
     ResultsDialog,
     ScriptEnvironmentDialog,
+    ScriptLifecycleDialog,
     SimpleTextDialog,
     SuiteRunner,
     RunningScripts,
     ScriptLogMessages,
     CriticalCmdDialog,
     CommandEditor,
+    VersionHistoryDialog,
   },
   mixins: [AceEditorModes, ClassificationBanners],
   beforeRouteUpdate: function (to, from, next) {
@@ -815,7 +955,7 @@ export default {
   setup() {
     const containerHeight = useContainerHeight()
 
-    return { containerHeight }
+    return { containerHeight, ...useScriptLifecycle() }
   },
   data() {
     return {
@@ -845,12 +985,30 @@ export default {
       alertText: '',
       state: null,
       scriptId: null,
+      // Execution lifecycle owned by this component. scriptId is not a
+      // reliable "is a script running" marker: the backend publishes the
+      // terminal state ('completed', etc.) as a 'line' event BEFORE the
+      // 'complete' event that drives scriptComplete(), so there is a window
+      // where the UI shows completed but scriptId is still set and an async
+      // reloadFile is pending. 'idle' -> 'active' (initScriptStart),
+      // 'active' -> 'finishing' (terminal state seen in processLine),
+      // any -> 'idle' (end of scriptComplete).
+      executionPhase: 'idle',
+      // Generation counter guarding async loads (reloadFile, the processLine
+      // file fetch). Incremented whenever the authoritative file/breakpoint
+      // source changes; stale callbacks compare their captured value and
+      // drop their results instead of clobbering newer state.
+      sessionEpoch: 0,
+      // Generation counter guarding the websocket subscription (scriptStart /
+      // scriptComplete). Comparing scriptId is not enough: two interleaved
+      // scriptStart calls with the SAME id (e.g. beforeRouteUpdate re-firing
+      // for the already-attached script) would both pass an id check, create
+      // two subscriptions, and deliver every event twice.
+      subscribeToken: 0,
       startOrGoButton: START,
       startOrGoDisabled: false,
       envDisabled: false,
       pauseOrRetryButton: PAUSE,
-      pauseOrRetryDisabled: false,
-      stopDisabled: false,
       showEnvironment: false,
       showDebug: false,
       debug: '',
@@ -861,6 +1019,9 @@ export default {
       breakpoints: {},
       enableStackTraces: false,
       filename: NEW_FILENAME,
+      showVersionHistory: false,
+      // Enterprise-only feature; populated from /openc3-api/info on mount.
+      isEnterprise: false,
       readOnlyUser: false,
       executeUser: true,
       saveAllowed: true,
@@ -875,7 +1036,6 @@ export default {
       cable: null,
       fatal: false,
       updateInterval: null,
-      receivedEvents: [],
       messages: [],
       messagesNewestOnTop: true,
       inlineTab: 'script',
@@ -971,11 +1131,39 @@ export default {
       displayCriticalCmd: false,
       editorBoxSize: 50,
       lockingEnabled: true,
+      canApprove: false,
+      // Enterprise-only Version History; enabled when the backend has
+      // OPENC3_VERSION_HISTORY_DIR set (reported by /openc3-api/info).
+      scriptVersionsEnabled: false,
       pythonVenv: 'system',
       pythonVenvs: [],
     }
   },
   computed: {
+    // True for the entire execution lifecycle: from Start (or connecting to
+    // a running script) through the finishing window between the terminal
+    // 'line' event and scriptComplete(). Use this to gate editing/UI, not
+    // scriptId, which is set late (after the run POST returns) and cleared
+    // late (during scriptComplete after an async reload).
+    scriptActive: function () {
+      return this.executionPhase !== 'idle'
+    },
+    // The id of a script we can command right now. Non-null only while the
+    // phase is 'active' (not during 'finishing', when the script process is
+    // already gone) and after the run POST has returned the id (scriptId is
+    // briefly null at the start of the 'active' phase).
+    liveScriptId: function () {
+      return this.executionPhase === 'active' ? this.scriptId : null
+    },
+    // Pause/Retry and Stop only make sense against a commandable script;
+    // deriving these (rather than imperatively toggling flags at every
+    // lifecycle write site) makes stale-event wedges impossible
+    pauseOrRetryDisabled: function () {
+      return !this.liveScriptId
+    },
+    stopDisabled: function () {
+      return !this.liveScriptId
+    },
     stateTimer: function () {
       if (this.state === 'waiting' || this.state === 'paused') {
         return `${this.state} ${this.waitingTime}s`
@@ -1033,6 +1221,17 @@ export default {
       }
       return !!this.lockedBy
     },
+    // Users with only the script_run (runner) permission may only run
+    // approved scripts when the lifecycle feature is enabled
+    runBlocked: function () {
+      return (
+        this.lifecycleEnabled &&
+        this.scriptVersionsEnabled &&
+        this.readOnlyUser &&
+        this.executeUser &&
+        this.lifecycleState !== 'approved'
+      )
+    },
     // Returns the currently shown filename
     fullFilename: function () {
       if (this.currentFilename) return this.currentFilename
@@ -1046,6 +1245,21 @@ export default {
     filenameOrBlank: function () {
       return this.filename === NEW_FILENAME ? '' : this.filename
     },
+    // Temp files are auto-saved unsaved scripts under the __TEMP__ folder.
+    // They aren't real saved scripts, so they get no lifecycle.
+    isTempFile: function () {
+      return this.filename.startsWith(`${TEMP_FOLDER}/`)
+    },
+    // Lifecycle only applies to real, saved (non-temp, non-untitled) scripts.
+    // It is git-backed, so it also requires the version store (Enterprise).
+    lifecycleVisible: function () {
+      return (
+        this.lifecycleEnabled &&
+        this.scriptVersionsEnabled &&
+        this.filename !== NEW_FILENAME &&
+        !this.isTempFile
+      )
+    },
     menus: function () {
       return [
         {
@@ -1054,7 +1268,7 @@ export default {
             {
               label: 'New File',
               icon: 'mdi-file-plus',
-              disabled: this.scriptId || this.readOnlyUser,
+              disabled: this.scriptActive || this.readOnlyUser,
               command: () => {
                 this.newFileWithConfirm()
               },
@@ -1062,20 +1276,20 @@ export default {
             {
               label: 'New Suite',
               icon: 'mdi-file-document-plus',
-              disabled: this.scriptId || this.readOnlyUser,
+              disabled: this.scriptActive || this.readOnlyUser,
               subMenu: [
                 {
                   label: 'Ruby',
                   icon: 'mdi-language-ruby',
                   command: () => {
-                    this.newRubyTestSuite()
+                    this.newTestSuite(RUBY_SUITE_TEMPLATE)
                   },
                 },
                 {
                   label: 'Python',
                   icon: 'mdi-language-python',
                   command: () => {
-                    this.newPythonTestSuite()
+                    this.newTestSuite(PYTHON_SUITE_TEMPLATE)
                   },
                 },
               ],
@@ -1083,7 +1297,7 @@ export default {
             {
               label: 'Open File',
               icon: 'mdi-folder-open',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.openFileWithConfirm()
               },
@@ -1091,7 +1305,7 @@ export default {
             {
               label: 'Open Recent',
               icon: 'mdi-folder-open',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               subMenu: this.recent,
             },
             {
@@ -1100,7 +1314,11 @@ export default {
             {
               label: 'Save File',
               icon: 'mdi-content-save',
-              disabled: this.scriptId || this.readOnlyUser,
+              disabled:
+                this.scriptActive || this.readOnlyUser || this.scriptApproved,
+              tooltip: this.scriptApproved
+                ? 'Script is approved and cannot be modified. Move it back to review to edit.'
+                : null,
               command: () => {
                 this.saveFile()
               },
@@ -1108,7 +1326,7 @@ export default {
             {
               label: 'Save As...',
               icon: 'mdi-content-save',
-              disabled: this.scriptId || this.readOnlyUser,
+              disabled: this.scriptActive || this.readOnlyUser,
               command: () => {
                 this.saveAs()
               },
@@ -1119,7 +1337,7 @@ export default {
             {
               label: 'Download',
               icon: 'mdi-cloud-download',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.download()
               },
@@ -1130,7 +1348,11 @@ export default {
             {
               label: 'Delete File',
               icon: 'mdi-delete',
-              disabled: this.scriptId || this.readOnlyUser,
+              disabled:
+                this.scriptActive || this.readOnlyUser || this.scriptApproved,
+              tooltip: this.scriptApproved
+                ? 'Script is approved and cannot be deleted. Move it back to review to delete.'
+                : null,
               command: () => {
                 this.delete()
               },
@@ -1150,7 +1372,7 @@ export default {
             {
               label: 'Replace',
               icon: 'mdi-find-replace',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.editor.execCommand('replace')
               },
@@ -1158,7 +1380,7 @@ export default {
             {
               label: 'Set Line Delay',
               icon: 'mdi-invoice-text-clock',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.$dialog.open({
                   title: 'Info',
@@ -1188,13 +1410,24 @@ export default {
                 this.showScripts = true
               },
             },
+            ...(this.lifecycleVisible
+              ? [
+                  {
+                    label: 'Script Lifecycle',
+                    icon: 'mdi-list-status',
+                    command: () => {
+                      this.showLifecycle = true
+                    },
+                  },
+                ]
+              : []),
             {
               divider: true,
             },
             {
               label: 'Global Environment',
               icon: 'mdi-library',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.showEnvironment = !this.showEnvironment
               },
@@ -1202,7 +1435,7 @@ export default {
             {
               label: 'Metadata',
               icon: 'mdi-calendar',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.inputMetadata.callback = () => {}
                 this.showMetadata()
@@ -1221,7 +1454,7 @@ export default {
             {
               label: 'Syntax Check',
               icon: 'mdi-file-check',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.syntaxCheck()
               },
@@ -1229,7 +1462,7 @@ export default {
             {
               label: 'Mnemonic Check',
               icon: 'mdi-spellcheck',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.checkMnemonics()
               },
@@ -1237,7 +1470,7 @@ export default {
             {
               label: 'Instrumented Script',
               icon: 'mdi-code-braces-box',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.showInstrumented()
               },
@@ -1245,7 +1478,7 @@ export default {
             {
               label: 'Call Stack',
               icon: 'mdi-format-list-numbered',
-              disabled: !this.scriptId,
+              disabled: !this.scriptActive,
               command: () => {
                 this.showCallStack()
               },
@@ -1263,7 +1496,7 @@ export default {
             {
               label: 'Toggle Disconnect',
               icon: 'mdi-connection',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.toggleDisconnect()
               },
@@ -1272,7 +1505,7 @@ export default {
               label: 'Enable Stack Traces',
               checkbox: true,
               checked: this.enableStackTraces,
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 // Toggling the checkbox closes the menu so no need
                 // to check state, just toggle existing value
@@ -1285,11 +1518,30 @@ export default {
             {
               label: 'Delete All Breakpoints',
               icon: 'mdi-delete-circle-outline',
-              disabled: this.scriptId,
+              disabled: this.scriptActive,
               command: () => {
                 this.deleteAllBreakpoints()
               },
             },
+            // Enterprise-only Version History entry. ScriptVersionController
+            // lives in the openc3-enterprise gem; omit the divider + item
+            // entirely so Core builds don't render a dead menu option.
+            ...(this.scriptVersionsEnabled
+              ? [
+                  { divider: true },
+                  {
+                    label: 'Version History',
+                    icon: 'mdi-history',
+                    disabled:
+                      this.scriptActive ||
+                      !this.filename ||
+                      this.filename === NEW_FILENAME,
+                    command: () => {
+                      this.showVersionHistory = true
+                    },
+                  },
+                ]
+              : []),
           ],
         },
       ]
@@ -1301,10 +1553,25 @@ export default {
       if (!this.suiteRunner) {
         this.startOrGoDisabled = val
       }
-      if (this.readOnlyUser == false && val == false && !this.inline) {
+      if (!this.readOnlyUser && !val && !this.inline && !this.scriptApproved) {
         this.editor.setReadOnly(val)
       } else {
         this.editor.setReadOnly(true)
+      }
+    },
+    scriptApproved: function (val) {
+      if (!this.editor) {
+        return
+      }
+      if (val) {
+        this.editor.setReadOnly(true)
+      } else if (
+        !this.readOnlyUser &&
+        !this.isLocked &&
+        !this.inline &&
+        !this.scriptActive
+      ) {
+        this.editor.setReadOnly(false)
       }
     },
     fullFilename: function (filename) {
@@ -1337,9 +1604,24 @@ export default {
     },
   },
   created: async function () {
+    // Websocket event queue drained by the processReceived interval.
+    // Deliberately NOT in data(): nothing renders from it, and reactive
+    // proxying would tax the hottest data path (per line event)
+    this.receivedEvents = []
     // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
     this.api.ensure_offline_access()
+    // Detect Enterprise and whether the Version History backend is enabled
+    // (OPENC3_VERSION_HISTORY_DIR set) so we can show the menu item.
+    Api.get('/openc3-api/info')
+      .then((response) => {
+        this.isEnterprise = !!response.data?.enterprise
+        this.scriptVersionsEnabled = !!response.data?.script_versions
+      })
+      .catch(() => {
+        this.isEnterprise = false
+        this.scriptVersionsEnabled = false
+      })
     this.api
       .get_setting('time_zone')
       .then((response) => {
@@ -1350,16 +1632,20 @@ export default {
       .catch((error) => {
         // Do nothing
       })
-    try {
-      const lockingResponse = await this.api.get_setting(
-        'script_runner_locking',
-      )
-      if (lockingResponse !== null && lockingResponse !== undefined) {
-        this.lockingEnabled = lockingResponse
-      }
-    } catch (error) {
-      // Keep default (true)
-    }
+    // Independent settings fetches: run them concurrently
+    await Promise.all([
+      this.api
+        .get_setting('script_runner_locking')
+        .then((lockingResponse) => {
+          if (lockingResponse !== null && lockingResponse !== undefined) {
+            this.lockingEnabled = lockingResponse
+          }
+        })
+        .catch(() => {
+          // Keep default (true)
+        }),
+      this.loadLifecycleSetting(),
+    ])
 
     this.updateOverridesCount()
 
@@ -1381,6 +1667,7 @@ export default {
     let roles = OpenC3Auth.userroles()
     this.readOnlyUser = true
     this.executeUser = false
+    const customRoles = []
     for (let role of roles) {
       if (role == 'viewer') {
         continue
@@ -1388,32 +1675,39 @@ export default {
       if (role == 'admin' || role == 'operator') {
         this.readOnlyUser = false
         this.executeUser = true
+        this.canApprove = true
       } else if (role == 'runner') {
         this.executeUser = true
       } else {
-        await Api.get(`/openc3-api/roles/${role}`).then((response) => {
-          if (
-            response.data !== null &&
-            response.data.permissions !== undefined
-          ) {
-            if (
-              response.data.permissions.some(
-                (i) => i.permission == 'script_edit',
-              )
-            ) {
-              this.readOnlyUser = false
-            }
-            if (
-              response.data.permissions.some(
-                (i) => i.permission == 'script_run',
-              )
-            ) {
-              this.executeUser = true
-            }
-          }
-        })
+        customRoles.push(role)
       }
     }
+    // Fetch custom role permissions concurrently rather than one
+    // serialized round trip per role
+    await Promise.all(
+      customRoles.map(async (role) => {
+        const response = await Api.get(`/openc3-api/roles/${role}`)
+        if (response.data !== null && response.data.permissions !== undefined) {
+          if (
+            response.data.permissions.some((i) => i.permission == 'script_edit')
+          ) {
+            this.readOnlyUser = false
+          }
+          if (
+            response.data.permissions.some((i) => i.permission == 'script_run')
+          ) {
+            this.executeUser = true
+          }
+          if (
+            response.data.permissions.some(
+              (i) => i.permission == 'script_approver',
+            )
+          ) {
+            this.canApprove = true
+          }
+        }
+      }),
+    )
     // Output the userinfo for use in the SuiteRunner component
     if (!this.inline) {
       localStorage['script_runner__userinfo'] = JSON.stringify({
@@ -1422,7 +1716,7 @@ export default {
         execute: this.executeUser,
       })
     }
-    if (this.readOnlyUser == true) {
+    if (this.readOnlyUser) {
       this.alertType = 'info'
       let text = `User ${user['preferred_username']} is read only`
       if (this.executeUser) {
@@ -1432,9 +1726,11 @@ export default {
       this.showAlert = true
     }
 
-    Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
-      this.screenKeywords = response.data
-    })
+    Api.get('/openc3-api/autocomplete/keywords/screen')
+      .then((response) => {
+        this.screenKeywords = response.data
+      })
+      .catch(console.error)
 
     if (this.inline) {
       this.readOnly = true
@@ -1480,20 +1776,19 @@ export default {
     })
 
     this.editor.container.addEventListener('resize', this.doResize)
-    this.editor.container.addEventListener('keydown', this.keydown)
+    // Listen on window (not editor.container) so Ctrl-S saves regardless of
+    // where focus is — attaching to the editor only caught the key while the
+    // cursor was in the editor, which made saving feel inconsistent after
+    // using a menu, button, or dialog. Removed in beforeUnmount.
+    window.addEventListener('keydown', this.keydown)
 
     this.cable = new Cable('/script-api/cable')
 
     if (!this.inline && localStorage['script_runner__recent']) {
-      this.recent = JSON.parse(localStorage['script_runner__recent'])
       // Rebuild the command since that doesn't get stringified
-      this.recent = this.recent.map((item) => ({
-        ...item,
-        command: async (event) => {
-          this.filename = event.label
-          await this.reloadFile()
-        },
-      }))
+      this.recent = JSON.parse(localStorage['script_runner__recent']).map(
+        (item) => this.buildRecentEntry(item.label),
+      )
     }
     if (!this.inline) {
       if (this.$route.query?.file) {
@@ -1520,7 +1815,7 @@ export default {
         }
       }
     }
-    this.updateInterval = setInterval(async () => {
+    this.updateInterval = setInterval(() => {
       this.processReceived()
     }, 100) // Every 100ms
   },
@@ -1528,6 +1823,7 @@ export default {
     if (this.scriptId && !this.inline) {
       sessionStorage.setItem('script_runner__script_id', this.scriptId)
     }
+    window.removeEventListener('keydown', this.keydown)
     this.editor.destroy()
     this.editor.container.remove()
   },
@@ -1628,21 +1924,23 @@ export default {
       this.receivedEvents.length = 0 // Clear any unprocessed events
     },
     showMetadata() {
-      Api.get('/openc3-api/metadata').then((response) => {
-        // TODO: This is how Calendar creates new metadata items via makeMetadataEvent
-        this.inputMetadata.events = response.data.map((event) => {
-          return {
-            name: 'Metadata',
-            start: new Date(event.start * 1000),
-            end: new Date(event.start * 1000),
-            color: event.color,
-            type: event.type,
-            timed: true,
-            metadata: event,
-          }
+      Api.get('/openc3-api/metadata')
+        .then((response) => {
+          // TODO: This is how Calendar creates new metadata items via makeMetadataEvent
+          this.inputMetadata.events = response.data.map((event) => {
+            return {
+              name: 'Metadata',
+              start: new Date(event.start * 1000),
+              end: new Date(event.start * 1000),
+              color: event.color,
+              type: event.type,
+              timed: true,
+              metadata: event,
+            }
+          })
+          this.inputMetadata.show = true
         })
-        this.inputMetadata.show = true
-      })
+        .catch(console.error)
     },
     messageSortOrder(order) {
       // See ScriptLogMessages for these strings
@@ -1665,36 +1963,41 @@ export default {
       this.editor.setValue(this.files[filename].content)
       this.restoreBreakpoints(filename)
       this.editor.clearSelection()
+      this.markLine(this.files[filename].lineNo, this.state)
+    },
+    // Replace all fullLine markers with a single `${clazz}Marker` on lineNo
+    // (1-based) and scroll to it
+    markLine(lineNo, clazz) {
       this.removeAllMarkers()
       this.editor.session.addMarker(
-        new this.Range(
-          this.files[filename].lineNo - 1,
-          0,
-          this.files[filename].lineNo - 1,
-          1,
-        ),
-        `${this.state}Marker`,
+        new this.Range(lineNo - 1, 0, lineNo - 1, 1),
+        `${clazz}Marker`,
         'fullLine',
       )
-      this.editor.gotoLine(this.files[filename].lineNo)
+      this.editor.gotoLine(lineNo)
     },
     tryLoadRunningScript: function (id) {
+      // Gate editing immediately: we're (probably) about to attach to a
+      // running script, and gutter clicks made during this fetch would be
+      // wiped when the running file loads. Every exit path normalizes the
+      // phase: initScriptStart() on attach, scriptComplete() on
+      // completed/not-found.
+      this.executionPhase = 'active'
       return Api.get(`/script-api/running-script/${id}`)
         .then((response) => {
           if (response.data) {
-            let state = response.data.state
-            // Check for all the completed states, see is_complete in script_status_model
-            if (
-              state !== 'completed' &&
-              state !== 'completed_errors' &&
-              state !== 'stopped' &&
-              state !== 'crashed' &&
-              state !== 'killed'
-            ) {
+            if (!TERMINAL_STATES.has(response.data.state)) {
               this.filename = response.data.filename
               this.tryLoadSuites(response)
               this.initScriptStart()
               this.scriptStart(id)
+              // Show the state we just fetched rather than waiting on the first
+              // channel event. A script paused at an error or a prompt only
+              // republishes its state about once a second, and a script that is
+              // simply running between lines may not publish for even longer, so
+              // without this the user stares at "Connecting..." with no idea
+              // what the script is doing.
+              this.applyScriptStatus(response.data)
             } else {
               this.$notify.caution({
                 title: `Script ${id} has already completed`,
@@ -1751,18 +2054,7 @@ export default {
     },
     runFromCursor: function () {
       const start_row = this.editor.getCursorPosition().row + 1
-      if (!this.scriptId) {
-        this.start(null, null, start_row)
-      } else {
-        Api.post(
-          `/script-api/running-script/${this.scriptId}/executewhilepaused`,
-          {
-            data: {
-              args: [this.filenameSelect, start_row],
-            },
-          },
-        )
-      }
+      this.executeRange(start_row)
     },
     executeSelection: function () {
       const range = this.editor.getSelectionRange()
@@ -1771,31 +2063,42 @@ export default {
       if (range.end.column === 0) {
         end_row -= 1
       }
-      if (!this.scriptId) {
+      this.executeRange(start_row, end_row)
+    },
+    executeRange: function (start_row, end_row = null) {
+      if (!this.scriptActive) {
         this.start(null, null, start_row, end_row)
-      } else {
+      } else if (this.liveScriptId) {
+        const args = [this.filenameSelect, start_row]
+        if (end_row !== null) {
+          args.push(end_row)
+        }
         Api.post(
-          `/script-api/running-script/${this.scriptId}/executewhilepaused`,
+          `/script-api/running-script/${this.liveScriptId}/executewhilepaused`,
           {
-            data: {
-              args: [this.filenameSelect, start_row, end_row],
-            },
+            data: { args },
           },
-        )
+        ).catch(console.error)
       }
     },
     clearBreakpoints: function () {
       this.editor.session.clearBreakpoints()
     },
     toggleBreakpoint: function ($event) {
-      // Don't allow setting breakpoints while running
-      if (!this.scriptId) {
-        const row = $event.getDocumentPosition().row
-        if ($event.editor.session.getBreakpoints(row, 0)[row]) {
-          $event.editor.session.clearBreakpoint(row)
-        } else {
-          $event.editor.session.setBreakpoint(row)
-        }
+      // Don't allow setting breakpoints during script execution. Gate on
+      // scriptActive rather than scriptId: after the terminal 'line' event
+      // the state box shows completed but scriptComplete() hasn't run yet
+      // (scriptId still set, async reloadFile pending), and a click in that
+      // window would be silently undone by the server-driven
+      // restoreBreakpoints when the reload lands.
+      if (this.scriptActive) {
+        return
+      }
+      const row = $event.getDocumentPosition().row
+      if ($event.editor.session.getBreakpoints(row, 0)[row]) {
+        $event.editor.session.clearBreakpoint(row)
+      } else {
+        $event.editor.session.setBreakpoint(row)
       }
     },
     updateBreakpoints: function ($event, session) {
@@ -1862,14 +2165,14 @@ export default {
     },
     async keydown(event) {
       // Don't ever save if running or readonly
-      if (this.scriptId || this.editor.getReadOnly() === true) {
+      if (this.scriptActive || this.editor.getReadOnly() === true) {
         return
       }
       // NOTE: Chrome does not allow overriding Ctrl-N, Ctrl-Shift-N, Ctrl-T, Ctrl-Shift-T, Ctrl-W
       // NOTE: metaKey == Command on Mac
       if (
         (event.metaKey || event.ctrlKey) &&
-        event.keyCode === 'S'.charCodeAt(0)
+        event.key?.toLowerCase() === 's'
       ) {
         if (event.shiftKey) {
           event.preventDefault()
@@ -1882,7 +2185,7 @@ export default {
     },
     onChange(event) {
       // Don't track changes when we're running or read-only (locked)
-      if (this.scriptId || this.editor.getReadOnly() === true) {
+      if (this.scriptActive || this.editor.getReadOnly() === true) {
         return
       }
       if (this.editor.session.getUndoManager().canUndo()) {
@@ -1902,13 +2205,14 @@ export default {
               Accept: 'application/json',
               'Content-Type': 'text/plain',
             },
-          }).then((response) => {
-            let alertText = ''
-            alertText += `<strong>${response.data.title}</strong><br/><br/>`
-            alertText += JSON.parse(response.data.description)
-            this.$dialog.alert(alertText.trim(), { html: true })
-            return
           })
+            .then((response) => {
+              let alertText = ''
+              alertText += `<strong>${response.data.title}</strong><br/><br/>`
+              alertText += JSON.parse(response.data.description)
+              this.$dialog.alert(alertText.trim(), { html: true })
+            })
+            .catch(console.error)
         }
       }
       this.mnemonicChecker
@@ -1932,11 +2236,10 @@ export default {
         })
     },
     initScriptStart() {
+      this.executionPhase = 'active'
       this.disableSuiteButtons = true
       this.startOrGoDisabled = true
       this.envDisabled = true
-      this.pauseOrRetryDisabled = true
-      this.stopDisabled = true
       this.state = 'Connecting...'
       this.startOrGoButton = GO
       this.editor.setReadOnly(true)
@@ -1944,6 +2247,12 @@ export default {
     async scriptStart(id) {
       this.$emit('script-id', id)
       this.scriptId = id
+      // Invalidate any file loads still in flight from before this run
+      // so they can't overwrite the editor mid-execution
+      this.sessionEpoch++
+      // Claim the subscription: any older scriptStart still awaiting its
+      // unsubscribe/subscribe below sees a newer token and drops out
+      const token = ++this.subscribeToken
       // Ensure only one subscription is ever active. scriptStart can be reached
       // again while a subscription already exists -- most notably "Connect to
       // Running Script", which updates the route (beforeRouteUpdate) on the
@@ -1954,36 +2263,114 @@ export default {
         await this.subscription.unsubscribe()
         this.subscription = null
       }
+      if (token !== this.subscribeToken) {
+        // A newer scriptStart (or scriptComplete) superseded this call
+        // while we awaited the unsubscribe: let it own the subscription
+        return
+      }
       this.receivedEvents.length = 0 // Drop any events not yet processed
       // Reset prompt tracking so the first prompt re-published on this fresh
       // subscription is always processed and displayed. Without this, attaching
       // to a running script (which reuses the component) could carry over a
       // stale activePromptId and skip showing the dialog (see handleScript).
       this.activePromptId = ''
-      this.subscription = await this.cable.createSubscription(
+      // `connected` below is called with `this` bound to the subscription, so
+      // hold onto the component to reach its methods from there.
+      const self = this
+      const subscription = await this.cable.createSubscription(
         'RunningScriptChannel',
         window.openc3Scope,
         {
+          // Tell the backend we are ready to stream events only after the
+          // subscription is confirmed: a broadcast sent before the gateway
+          // registers our stream is silently dropped, which could permanently
+          // lose the startup line events of a script that then goes quiet
+          // (stuck on 'Connecting...'). Fires again on reconnect, so the
+          // backend is told we are ready again. See RunningScriptChannel#ready.
+          // Not an arrow function: `this` must be the subscription so perform()
+          // targets this channel.
+          connected(data) {
+            this.perform('ready')
+            // A reconnect can silently cost us events: the channel's backlog
+            // replay only runs when the server processes a fresh subscribe, and
+            // a resumed session doesn't re-run it. Re-seed from the script's
+            // status so the display can't be left showing a stale state.
+            if (data?.reconnected) {
+              self.refreshScriptStatus()
+            }
+          },
           received: (data) => this.received(data),
         },
         {
-          id: this.scriptId,
+          id,
         },
       )
+      if (token !== this.subscribeToken) {
+        // Superseded while subscribing: drop the subscription we just made
+        // instead of overwriting (and leaking) the newer one
+        await subscription.unsubscribe()
+        return
+      }
+      this.subscription = subscription
+    },
+    // Update the display from a script status (GET running-script/:id) rather
+    // than a channel event. The state field is otherwise only ever set from
+    // channel events, so any gap in the event stream leaves it stale.
+    applyScriptStatus(data) {
+      const filename = data.current_filename || data.filename
+      if (!filename) {
+        return
+      }
+      // Reuse processLine so the state, markers and button enable/disable all
+      // follow the same rules they would for a real 'line' event.
+      this.processLine({
+        type: 'line',
+        filename: filename,
+        line_no: data.line_no,
+        state: data.state,
+      })
+      if (TERMINAL_STATES.has(data.state)) {
+        this.scriptComplete()
+      }
+    },
+    async refreshScriptStatus() {
+      const id = this.scriptId
+      if (!id) {
+        return
+      }
+      try {
+        const response = await Api.get(`/script-api/running-script/${id}`)
+        // Ignore a response that lost the race with a switch to another script
+        if (response.data && this.scriptId === id) {
+          this.applyScriptStatus(response.data)
+        }
+      } catch (error) {
+        // Nothing to seed from -- leave the display as is
+      }
     },
     async scriptComplete() {
+      // Supersede any scriptStart still awaiting its subscription. Must
+      // happen before our unsubscribe below: a start resolving mid-complete
+      // would otherwise install a fresh subscription after we tore ours
+      // down, leaving a leaked channel delivering stale events.
+      this.subscribeToken++
       // Make sure we process no more events
       if (this.subscription) {
         await this.subscription.unsubscribe()
         this.subscription = null
       }
       this.receivedEvents.length = 0 // Clear any unprocessed events
+      // Close any prompt dialogs a killed/stopped script left open;
+      // answering them would POST to a script that no longer exists
+      this.closePromptDialogs()
 
+      // Note: reloadFile bumps sessionEpoch, invalidating any in-flight
+      // per-line file fetches (processLine) from the finished run
       await this.reloadFile() // Make sure the right file is shown
       // We may have changed the contents (if there were sub-scripts)
       // so don't let the undo manager think this is a change
       this.editor.session.getUndoManager().reset()
-      if (this.readOnlyUser == false && !this.inline) {
+      if (!this.readOnlyUser && !this.inline && !this.scriptApproved) {
         this.editor.setReadOnly(false)
       }
 
@@ -1997,10 +2384,11 @@ export default {
       // Disable start if suiteRunner
       this.startOrGoDisabled = this.suiteRunner
       this.envDisabled = false
-      this.pauseOrRetryDisabled = true
-      this.stopDisabled = true
       // Overrides can be set from a script
       this.updateOverridesCount()
+      // Execution lifecycle fully over: editor reloaded, breakpoints
+      // restored, scriptId cleared. Gutter clicks are honored again.
+      this.executionPhase = 'idle'
     },
     environmentHandler: function (event) {
       this.scriptEnvironment.env = event
@@ -2070,28 +2458,40 @@ export default {
         this.filenameSelect = this.currentFilename
         this.fileNameChanged(this.currentFilename)
       }
-      Api.post(`/script-api/running-script/${this.scriptId}/go`)
+      Api.post(`/script-api/running-script/${this.scriptId}/go`).catch(
+        console.error,
+      )
     },
     pauseOrRetry() {
       if (this.pauseOrRetryButton === PAUSE) {
-        Api.post(`/script-api/running-script/${this.scriptId}/pause`)
+        Api.post(`/script-api/running-script/${this.scriptId}/pause`).catch(
+          console.error,
+        )
       } else {
         this.pauseOrRetryButton = PAUSE
-        Api.post(`/script-api/running-script/${this.scriptId}/retry`)
+        Api.post(`/script-api/running-script/${this.scriptId}/retry`).catch(
+          console.error,
+        )
       }
     },
-    stop() {
-      Api.post(`/script-api/running-script/${this.scriptId}/stop`)
+    async stop() {
+      await Api.post(`/script-api/running-script/${this.scriptId}/stop`)
     },
-    step() {
-      Api.post(`/script-api/running-script/${this.scriptId}/step`)
+    async step() {
+      if (this.liveScriptId) {
+        await Api.post(`/script-api/running-script/${this.liveScriptId}/step`)
+      }
     },
     // This is called by processLine no matter the current state
     handleWaiting() {
-      // First check if we're not waiting and if so clear the interval
+      // Not waiting/paused: tear down any timer and bail. Without the
+      // return, every 'running' line event would recreate the interval
+      // (timer churn per line, and a background tick for the whole run).
       if (this.state !== 'waiting' && this.state !== 'paused') {
         this.clearWaiting()
-      } else if (this.waitingInterval !== null) {
+        return
+      }
+      if (this.waitingInterval !== null) {
         // If we're waiting and the interval is active then nothing to do
         return
       }
@@ -2106,7 +2506,11 @@ export default {
       clearInterval(this.waitingInterval)
       this.waitingInterval = null
     },
-    processLine(data) {
+    // display=false skips the Ace marker/scroll work; processReceived
+    // passes it for 'line' events that are immediately superseded by
+    // another 'line' event in the same drain (only the last one is ever
+    // visible). State handling always runs.
+    processLine(data, display = true) {
       if (data.filename && data.filename !== this.currentFilename) {
         if (!this.files[data.filename]) {
           // We don't have the contents of the running file (probably because connected to running script)
@@ -2114,8 +2518,15 @@ export default {
           this.files[data.filename] = { content: '', lineNo: 0 }
 
           // Request the script we need
+          const epoch = this.sessionEpoch
           Api.get(`/script-api/scripts/${data.filename}`)
             .then((response) => {
+              if (epoch !== this.sessionEpoch) {
+                // A newer file source took over while this fetch was in
+                // flight (script completed / new file loaded) - drop it
+                // rather than clobber the current breakpoints and content
+                return
+              }
               // Success - Save the script text and mark the currentFilename as null
               // so it will get loaded in on the next line executed
               this.files[data.filename] = {
@@ -2127,6 +2538,9 @@ export default {
               this.currentFilename = null
             })
             .catch((err) => {
+              if (epoch !== this.sessionEpoch) {
+                return
+              }
               // Error - Restore the file contents to null so we'll try the API again on the next line
               this.files[data.filename] = null
             })
@@ -2138,24 +2552,17 @@ export default {
         }
       }
       this.state = data.state
-      const markers = this.editor.session.getMarkers()
       switch (this.state) {
         // Handle all the script states, see script_status_model for details
         // spawning, init, running, paused, waiting, breakpoint, error, crashed, stopped, completed, completed_errors, killed
         case 'running':
           this.handleWaiting()
           this.startOrGoDisabled = false
-          this.pauseOrRetryDisabled = false
-          this.stopDisabled = false
           this.pauseOrRetryButton = PAUSE
 
-          this.removeAllMarkers()
-          this.editor.session.addMarker(
-            new this.Range(data.line_no - 1, 0, data.line_no - 1, 1),
-            'runningMarker',
-            'fullLine',
-          )
-          this.editor.gotoLine(data.line_no)
+          if (display) {
+            this.markLine(data.line_no, 'running')
+          }
           this.files[data.filename].lineNo = data.line_no
           break
         case 'error':
@@ -2168,23 +2575,20 @@ export default {
         case 'breakpoint':
           this.handleWaiting()
           this.startOrGoDisabled = false
-          this.pauseOrRetryDisabled = false
-          this.stopDisabled = false
-          let existing = Object.keys(markers).filter(
-            (key) => markers[key].clazz === `${this.state}Marker`,
-          )
-          if (existing.length === 0) {
-            this.removeAllMarkers()
-            let line = data.line_no > 0 ? data.line_no : 1
-            this.editor.session.addMarker(
-              new this.Range(line - 1, 0, line - 1, 1),
-              `${this.state}Marker`,
-              'fullLine',
+          if (display) {
+            // Only fetch markers here: this is the sole case that reads
+            // them, and it's off the per-line hot path
+            const markers = this.editor.session.getMarkers()
+            const existing = Object.keys(markers).filter(
+              (key) => markers[key].clazz === `${this.state}Marker`,
             )
-            this.editor.gotoLine(line)
-            // Fatal errors don't always have a filename set
-            if (data.filename) {
-              this.files[data.filename].lineNo = line
+            if (existing.length === 0) {
+              let line = data.line_no > 0 ? data.line_no : 1
+              this.markLine(line, this.state)
+              // Fatal errors don't always have a filename set
+              if (data.filename) {
+                this.files[data.filename].lineNo = line
+              }
             }
           }
           break
@@ -2197,6 +2601,23 @@ export default {
           // 'complete' message in processReceived() which always follows.
           // Calling scriptComplete() here would unsubscribe the channel
           // before the 'complete' message (with suite report) arrives.
+          // Mark the window between this terminal state and scriptComplete()
+          // so user input (e.g. gutter clicks) stays gated until cleanup.
+          // Guarded so a duplicate/replayed terminal event arriving after
+          // scriptComplete can't push an idle session back to 'finishing'.
+          if (this.executionPhase === 'active') {
+            this.executionPhase = 'finishing'
+            // The script process is gone; don't leave Go posting to it
+            // during the finishing window (Pause/Stop derive from
+            // liveScriptId and disable themselves). Inside the phase guard
+            // so a replayed terminal event can't wedge Start disabled once
+            // scriptComplete has re-enabled it.
+            this.startOrGoDisabled = true
+          }
+          // Stop the waiting timer: nothing else clears it on terminal
+          // states, and a surviving interval carries its stale waitingStart
+          // into the next run's waiting display
+          this.clearWaiting()
           this.removeAllMarkers()
           break
 
@@ -2205,11 +2626,16 @@ export default {
       }
     },
     processReceived() {
+      if (this.receivedEvents.length === 0) {
+        return
+      }
       let count = 0
-      for (let data of this.receivedEvents) {
+      const outputLines = []
+      const events = this.receivedEvents
+      for (let i = 0; i < events.length; i++) {
+        const data = events[i]
         count += 1
         // console.log(data) // Uncomment for debugging
-        let index = 0
         switch (data.type) {
           case 'file':
             this.files[data.filename] = { content: data.text, lineNo: 0 }
@@ -2219,12 +2645,14 @@ export default {
             }
             break
           case 'line':
-            // A further optimization would be to only process the last line of a batch
-            // However with some testing this did not seem to make much difference
-            // and was preventing the highlighting of the final line of a script because
-            // the last line of the final batch was line_number 0 with state stopped
-            // and that would never highlight the actual final line
-            this.processLine(data)
+            // Every 'line' event runs the state machine (buttons, phase,
+            // lineNo bookkeeping), but the Ace marker/scroll work is only
+            // done for the last consecutive 'line' event in this drain --
+            // intermediate ones would be overdrawn before the next paint.
+            // (We can't skip events entirely: the final batch of a script
+            // ends with a line_number 0 stopped event, and dropping the
+            // preceding events would lose the final-line highlight.)
+            this.processLine(data, events[i + 1]?.type !== 'line')
             break
           case 'output':
             // data.line can consist of multiple lines split by newlines,
@@ -2238,17 +2666,13 @@ export default {
             } else {
               dataLine = String(dataLine)
             }
+            // Accumulate and apply once after the loop: per-line reactive
+            // unshift/pop through a 200-element array is O(lines * 200)
+            // and triggers watchers per line instead of once per batch
             for (const line of dataLine.split('\n')) {
               if (line) {
-                if (this.messagesNewestOnTop) {
-                  this.messages.unshift({ message: line })
-                } else {
-                  this.messages.push({ message: line })
-                }
+                outputLines.push({ message: line })
               }
-            }
-            while (this.messages.length > this.maxArrayLength) {
-              this.messages.pop()
             }
             break
           case 'script':
@@ -2270,53 +2694,37 @@ export default {
           case 'step':
             this.showDebug = true
             break
-          case 'screen':
-            let found = false
-            let definition = {}
-            for (screen of this.screens) {
-              if (
-                screen.target == data.target_name &&
-                screen.screen == data.screen_name
-              ) {
-                definition = screen
-                found = true
-                break
-              }
-              index += 1
-            }
+          case 'screen': {
+            const screenIndex = this.screens.findIndex(
+              (s) =>
+                s.target == data.target_name && s.screen == data.screen_name,
+            )
+            const definition =
+              screenIndex === -1 ? {} : this.screens[screenIndex]
             definition.target = data.target_name
             definition.screen = data.screen_name
             definition.definition = data.definition
-            if (data.x) {
-              definition.left = data.x
-            } else {
-              definition.left = 0
-            }
-            if (data.y) {
-              definition.top = data.y
-            } else {
-              definition.top = 0
-            }
+            definition.left = data.x || 0
+            definition.top = data.y || 0
             definition.count = this.updateCounter++
-            if (!found) {
+            if (screenIndex === -1) {
               definition.id = this.idCounter++
-              this.screens[this.screens.length] = definition
+              this.screens.push(definition)
             } else {
-              this.screens[index] = definition
+              this.screens[screenIndex] = definition
             }
             break
-          case 'clearscreen':
-            for (screen of this.screens) {
-              if (
-                screen.target == data.target_name &&
-                screen.screen == data.screen_name
-              ) {
-                this.screens.splice(index, 1)
-                break
-              }
-              index += 1
+          }
+          case 'clearscreen': {
+            const screenIndex = this.screens.findIndex(
+              (s) =>
+                s.target == data.target_name && s.screen == data.screen_name,
+            )
+            if (screenIndex !== -1) {
+              this.screens.splice(screenIndex, 1)
             }
             break
+          }
           case 'clearallscreens':
             this.screens = []
             break
@@ -2337,6 +2745,18 @@ export default {
         }
       }
 
+      if (outputLines.length > 0) {
+        if (this.messagesNewestOnTop) {
+          this.messages = outputLines
+            .reverse()
+            .concat(this.messages)
+            .slice(0, this.maxArrayLength)
+        } else {
+          this.messages = this.messages
+            .concat(outputLines)
+            .slice(0, this.maxArrayLength)
+        }
+      }
       // Remove all the events we processed
       this.receivedEvents.splice(0, count)
     },
@@ -2344,24 +2764,34 @@ export default {
       this.cable.recordPing()
       this.receivedEvents.push(data)
     },
+    // All prompt responses share the running-script prompt endpoint and
+    // the active prompt id; payload carries the method-specific fields
+    answerPrompt(method, payload) {
+      return Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
+        data: {
+          method,
+          prompt_id: this.activePromptId,
+          ...payload,
+        },
+      })
+    },
+    closePromptDialogs() {
+      this.prompt.show = false
+      this.ask.show = false
+      this.file.show = false
+      this.bucket.show = false
+      this.activePromptId = ''
+    },
     promptDialogCallback(value) {
       this.prompt.show = false
-      Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-        data: {
-          method: this.prompt.method,
-          answer: value,
-          prompt_id: this.activePromptId,
-          multiple: this.prompt.multiple,
-        },
+      this.answerPrompt(this.prompt.method, {
+        answer: value,
+        multiple: this.prompt.multiple,
       })
     },
     handleScript(data) {
       if (data.prompt_complete) {
-        this.activePromptId = ''
-        this.prompt.show = false
-        this.ask.show = false
-        this.file.show = false
-        this.bucket.show = false
+        this.closePromptDialogs()
         return
       }
       // The running script re-publishes the active prompt about once a second
@@ -2381,6 +2811,12 @@ export default {
       this.prompt.hazardous = ''
       this.prompt.buttons = []
       this.prompt.multiple = null
+      // Shared optional kwargs (only the prompt-family dialogs read these;
+      // harmless for the rest since both fields were just reset above)
+      if (data.kwargs) {
+        this.prompt.subtitle = data.kwargs.informative || ''
+        this.prompt.details = data.kwargs.details || ''
+      }
       switch (data.method) {
         case 'ask':
         case 'ask_string':
@@ -2402,23 +2838,9 @@ export default {
           }
           this.ask.callback = (value) => {
             this.ask.show = false // Close the dialog
-            if (this.ask.password) {
-              Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-                data: {
-                  method: data.method,
-                  password: value, // Using password as a key automatically filters it from rails logs
-                  prompt_id: this.activePromptId,
-                },
-              })
-            } else {
-              Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-                data: {
-                  method: data.method,
-                  answer: value,
-                  prompt_id: this.activePromptId,
-                },
-              })
-            }
+            // Using password as a key automatically filters it from rails logs
+            const key = this.ask.password ? 'password' : 'answer'
+            this.answerPrompt(data.method, { [key]: value })
           }
           this.ask.show = true // Display the dialog
           break
@@ -2447,12 +2869,6 @@ export default {
           this.displayCriticalCmd = true
           break
         case 'prompt':
-          if (data.kwargs && data.kwargs.informative) {
-            this.prompt.subtitle = data.kwargs.informative
-          }
-          if (data.kwargs && data.kwargs.details) {
-            this.prompt.details = data.kwargs.details
-          }
           this.prompt.message = data.args[0]
           this.prompt.buttons = [{ text: 'Ok', value: 'Ok' }]
           this.prompt.callback = this.promptDialogCallback
@@ -2460,12 +2876,6 @@ export default {
           break
         case 'combo_box':
         case 'check_box':
-          if (data.kwargs && data.kwargs.informative) {
-            this.prompt.subtitle = data.kwargs.informative
-          }
-          if (data.kwargs && data.kwargs.details) {
-            this.prompt.details = data.kwargs.details
-          }
           // check_box is always multiple choice, combo_box is single choice unless kwargs.multiple is set to true
           if (
             data.method === 'check_box' ||
@@ -2483,12 +2893,6 @@ export default {
           break
         case 'message_box':
         case 'vertical_message_box':
-          if (data.kwargs && data.kwargs.informative) {
-            this.prompt.subtitle = data.kwargs.informative
-          }
-          if (data.kwargs && data.kwargs.details) {
-            this.prompt.details = data.kwargs.details
-          }
           this.prompt.message = data.args[0]
           data.args.slice(1).forEach((v) => {
             this.prompt.buttons.push({ text: v, value: v })
@@ -2508,13 +2912,7 @@ export default {
         case 'metadata_input':
           this.inputMetadata.callback = (value) => {
             this.inputMetadata.show = false
-            Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-              data: {
-                method: data.method,
-                answer: value,
-                prompt_id: this.activePromptId,
-              },
-            })
+            this.answerPrompt(data.method, { answer: value })
           }
           this.showMetadata()
           break
@@ -2546,6 +2944,19 @@ export default {
           break
       }
     },
+    async uploadFile(file) {
+      const response = await Api.get(
+        `/openc3-api/storage/upload/${encodeURIComponent(
+          `${window.openc3Scope}/tmp/${file.name}`,
+        )}?bucket=OPENC3_CONFIG_BUCKET`,
+      )
+      // This pushes the file into storage by using the fields in the presignedRequest
+      // See storage_controller.rb get_upload_presigned_request()
+      return axios({
+        ...response.data,
+        data: file,
+      })
+    },
     async fileDialogCallback(files) {
       // Set fileNames to 'COSMOS__CANCEL' in case they cancelled
       // otherwise we will populate it with the file names they selected
@@ -2556,45 +2967,31 @@ export default {
         fileNames = []
         files.forEach((file) => {
           fileNames.push(file.name)
-          promises.push(
-            Api.get(
-              `/openc3-api/storage/upload/${encodeURIComponent(
-                `${window.openc3Scope}/tmp/${file.name}`,
-              )}?bucket=OPENC3_CONFIG_BUCKET`,
-            ).then((response) => {
-              // This pushes the file into storage by using the fields in the presignedRequest
-              // See storage_controller.rb get_upload_presigned_request()
-              return axios({
-                ...response.data,
-                data: file,
-              })
-            }),
-          )
+          promises.push(this.uploadFile(file))
         })
       }
-      // We have to wait for all the upload API requests to finish before notifying the prompt
-      Promise.all(promises).then((responses) => {
-        Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-          data: {
-            method: this.file.multiple
-              ? 'open_files_dialog'
-              : 'open_file_dialog',
-            answer: fileNames,
-            prompt_id: this.activePromptId,
-          },
-        })
+      const respond = (answer) => {
+        this.answerPrompt(
+          this.file.multiple ? 'open_files_dialog' : 'open_file_dialog',
+          { answer },
+        )
         this.file.show = false // Close the dialog immediately to avoid race condition
-      })
+      }
+      try {
+        // We have to wait for all the upload API requests to finish before notifying the prompt
+        await Promise.all(promises)
+        respond(fileNames)
+      } catch (error) {
+        // An upload failed. Answer with cancel so the running script
+        // doesn't wait forever on a reply that will never come (repeats
+        // of the same prompt_id are ignored, so nothing would recover).
+        respond('COSMOS__CANCEL')
+        this.setError(`File upload failed: ${error}`)
+      }
     },
     bucketDialogCallback(response) {
       this.bucket.show = false
-      Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
-        data: {
-          method: 'open_bucket_dialog',
-          answer: response,
-          prompt_id: this.activePromptId,
-        },
-      })
+      this.answerPrompt('open_bucket_dialog', { answer: response })
     },
     setError(event) {
       this.alertType = 'error'
@@ -2621,10 +3018,15 @@ export default {
       }
     },
     newFile() {
+      // Invalidate in-flight loads (reloadFile, processLine fetch) so a
+      // late response can't reinstall the old file over the blank editor --
+      // especially after delete(), which lands here
+      this.sessionEpoch++
       this.unlockFile()
       this.filename = NEW_FILENAME
       this.currentFilename = null
       this.tempFilename = null
+      this.resetLifecycle()
       this.files = {} // Clear the cached file list
       this.editor.session.setValue('')
       this.saveAllowed = true
@@ -2632,6 +3034,7 @@ export default {
       this.suiteRunner = false
       this.startOrGoDisabled = false
       this.envDisabled = false
+      this.pythonVenv = 'system'
       if (!this.inline) {
         this.$router
           .replace({
@@ -2643,106 +3046,15 @@ export default {
       }
       this.doResize()
     },
-    async newRubyTestSuite() {
+    async newTestSuite(template) {
       const confirmed = await this.confirmUnsavedChanges()
       if (!confirmed) return
       this.newFile()
-      this.editor.session.setValue(`require 'openc3/script/suite.rb'
-
-# Group class name should indicate what the scripts are testing
-class Power < OpenC3::Group
-  # Methods beginning with script_ are added to Script dropdown
-  def script_power_on
-    # Using OpenC3::Group.puts adds the output to the Test Report
-    # This can be useful for requirements verification, QA notes, etc
-    OpenC3::Group.puts "Verifying requirement SR-1"
-    configure()
-  end
-
-  # Other methods are not added to Script dropdown
-  def configure
-  end
-
-  def setup
-    # Run when Group Setup button is pressed
-    # Run before all scripts when Group Start is pressed
-  end
-
-  def teardown
-    # Run when Group Teardown button is pressed
-    # Run after all scripts when Group Start is pressed
-  end
-end
-
-class TestSuite < OpenC3::Suite
-  def initialize
-    add_group('Power')
-  end
-  def setup
-    # Run when Suite Setup button is pressed
-    # Run before all groups when Suite Start is pressed
-  end
-  def teardown
-    # Run when Suite Teardown button is pressed
-    # Run after all groups when Suite Start is pressed
-  end
-end
-`)
+      this.editor.session.setValue(template)
       await this.saveFile('auto')
     },
-    async newPythonTestSuite() {
-      const confirmed = await this.confirmUnsavedChanges()
-      if (!confirmed) return
-      this.newFile()
-      this.editor.session.setValue(`from openc3.script.suite import Suite, Group
-
-# Group class name should indicate what the scripts are testing
-class Power(Group):
-    # Methods beginning with script_ are added to Script dropdown
-    def script_power_on(self):
-        # Using Group.print adds the output to the Test Report
-        # This can be useful for requirements verification, QA notes, etc
-        Group.print("Verifying requirement SR-1")
-        self.configure()
-
-    # Other methods are not added to Script dropdown
-    def configure(self):
-        pass
-
-    def setup(self):
-        # Run when Group Setup button is pressed
-        # Run before all scripts when Group Start is pressed
-        pass
-
-    def teardown(self):
-        # Run when Group Teardown button is pressed
-        # Run after all scripts when Group Start is pressed
-        pass
-
-class TestSuite(Suite):
-    def __init__(self):
-        self.add_group(Power)
-
-    def setup(self):
-        # Run when Suite Setup button is pressed
-        # Run before all groups when Suite Start is pressed
-        pass
-
-    def teardown(self):
-        # Run when Suite Teardown button is pressed
-        # Run after all groups when Suite Start is pressed
-        pass
-`)
-      await this.saveFile('auto')
-    },
-    addToRecent(filename) {
-      // See if this filename is already in the recent ... if so remove it
-      let index = this.recent.findIndex((i) => i.label === filename)
-      if (index !== -1) {
-        this.recent.splice(index, 1)
-      }
-      // Push this filename to the front of the recently used
-      this.recent.unshift({
+    buildRecentEntry(filename) {
+      return {
         label: filename,
         icon: fileIcon(filename),
         command: async (event) => {
@@ -2751,19 +3063,31 @@ class TestSuite(Suite):
           this.filename = event.label
           await this.reloadFile()
         },
-      })
-      if (this.recent.length > 8) {
-        this.recent.pop()
       }
-      // This only stringifies the label and icon ... not the command
+    },
+    // This only stringifies the label and icon ... not the command
+    persistRecent() {
       if (!this.inline) {
         localStorage['script_runner__recent'] = JSON.stringify(this.recent)
       }
     },
+    addToRecent(filename) {
+      // See if this filename is already in the recent ... if so remove it
+      let index = this.recent.findIndex((i) => i.label === filename)
+      if (index !== -1) {
+        this.recent.splice(index, 1)
+      }
+      // Push this filename to the front of the recently used
+      this.recent.unshift(this.buildRecentEntry(filename))
+      if (this.recent.length > 8) {
+        this.recent.pop()
+      }
+      this.persistRecent()
+    },
     removeFromRecent(filename) {
       this.recent = this.recent.filter((entry) => entry.label !== filename)
+      this.persistRecent()
       if (!this.inline) {
-        localStorage['script_runner__recent'] = JSON.stringify(this.recent)
         if (localStorage['script_runner__filename'] === filename) {
           localStorage.removeItem('script_runner__filename')
         }
@@ -2779,10 +3103,18 @@ class TestSuite(Suite):
       this.fileOpen = true
     },
     async reloadFile(showError = true) {
+      if (this.filename === NEW_FILENAME) {
+        // Nothing to reload (e.g. completing a script that was never
+        // saved) -- skip the guaranteed-404 fetch and error toast
+        return
+      }
       // Disable start while we're loading the file so we don't hit Start
       // before it's fully loaded and then save over it with a blank file
       this.saveAllowed = false
       this.startOrGoDisabled = true
+      // This load supersedes any earlier in-flight loads; capture the new
+      // epoch so we in turn get dropped if something newer starts
+      const epoch = ++this.sessionEpoch
       await Api.get(`/script-api/scripts/${this.filename}`, {
         headers: {
           Accept: 'application/json',
@@ -2790,6 +3122,9 @@ class TestSuite(Suite):
         },
       })
         .then((response) => {
+          if (epoch !== this.sessionEpoch) {
+            return
+          }
           const file = {
             name: this.filename,
             contents: response.data.contents,
@@ -2805,10 +3140,12 @@ class TestSuite(Suite):
           }
           const locked = response.data.locked
           const breakpoints = response.data.breakpoints
-          this.setFile({ file, locked, breakpoints }, true)
-          this.saveAllowed = true
+          this.setFile({ file, locked, breakpoints }, true) // Sets saveAllowed
         })
         .catch((error) => {
+          if (epoch !== this.sessionEpoch) {
+            return
+          }
           if (showError === true) {
             this.$notify.caution({
               title: 'File Open Error',
@@ -2821,6 +3158,13 @@ class TestSuite(Suite):
     },
     // Called by the FileOpenDialog to set the file contents
     setFile({ file, locked, breakpoints }, local = false) {
+      // New authoritative content: invalidate older in-flight loads so
+      // their late responses can't overwrite what we install here
+      this.sessionEpoch++
+      // A superseded reloadFile set saveAllowed = false and its .then (the
+      // only place it flips back) is now epoch-dropped -- re-allow here
+      // since we're installing fresh content
+      this.saveAllowed = true
       this.files = {} // Clear the cached file list
       // Split off the ' *' which indicates a file is modified on the server
       let newFilename = file.name.split('*')[0]
@@ -2837,6 +3181,7 @@ class TestSuite(Suite):
       // so the selection persists across runs.
       if (!newFilename.startsWith(TEMP_FOLDER)) {
         this.pythonVenv = null
+        this.tempFilename = null
       }
       if (!this.inline) {
         // Update the URL with the filename
@@ -2885,47 +3230,36 @@ class TestSuite(Suite):
       }
       // Disable suite buttons if we didn't successfully parse the suite
       this.disableSuiteButtons = file.success == false
+      this.fetchLifecycle(this.filename)
       this.doResize()
     },
     clearTemp() {
       this.recent = this.recent.filter(
         (entry) => !entry.label.includes('__TEMP__'),
       )
-      if (!this.inline) {
-        localStorage['script_runner__recent'] = JSON.stringify(this.recent)
-      }
+      this.persistRecent()
     },
     detectLanguage() {
-      let rubyRegex1 = new RegExp('^\\s*(require|load|puts) ')
-      let pythonRegex1 = new RegExp('^\\s*(import|from) ')
-      let rubyRegex2 = new RegExp('^\\s*end\\s*$')
-      let pythonRegex2 = new RegExp(
-        '^\\s*(if|def|while|else|elif|class).*:\\s*$',
-      )
-      let pythonRegex3 = /\(f"/ // f strings
-      // Since python types are defined like "def method(string: str):"
-      // we make sure the line doesn't end in ':' which indicates Python
-      // (?!:)$ is a negative lookahead to ensure it doesn't end in ':'
-      let rubyRegex3 = /\(.*\w+:\s+.+\)(?!:)$/ // named parameters
       let text = this.editor.getValue()
       let lines = text.split('\n')
       for (let line of lines) {
-        if (line.match(rubyRegex1)) {
+        if (line.match(RUBY_REQUIRE_REGEX)) {
           return 'ruby'
         }
-        if (line.match(pythonRegex1)) {
+        if (line.match(PYTHON_IMPORT_REGEX)) {
           return 'python'
         }
-        if (line.match(rubyRegex2)) {
+        if (line.match(RUBY_END_REGEX)) {
           return 'ruby'
         }
-        if (line.match(pythonRegex2)) {
+        if (line.match(PYTHON_BLOCK_REGEX)) {
           return 'python'
         }
-        if (line.match(pythonRegex3)) {
+        if (line.match(PYTHON_FSTRING_REGEX)) {
           return 'python'
         }
-        if (line.match(rubyRegex3)) {
+        // Cheap end-anchored test first so most lines never run the second
+        if (CLOSING_PAREN_REGEX.test(line) && NAMED_PARAM_REGEX.test(line)) {
           return 'ruby'
         }
       }
@@ -2935,6 +3269,14 @@ class TestSuite(Suite):
     // or automatically by 'Start' (to ensure a consistent backend file) or autoSave
     async saveFile(type = 'menu') {
       if (this.readOnlyUser) {
+        return
+      }
+      if (this.scriptApproved) {
+        if (type === 'menu') {
+          this.setError(
+            'Script is approved and cannot be modified. Move it back to review to edit.',
+          )
+        }
         return
       }
       if (this.saveAllowed) {
@@ -2951,27 +3293,14 @@ class TestSuite(Suite):
               if (language === 'unknown') {
                 language = AceEditorUtils.getDefaultScriptingLanguage()
               }
-              const uuid = crypto.randomUUID().split('-')[0]
-              if (language === 'ruby') {
-                this.tempFilename =
-                  TEMP_FOLDER +
-                  '/' +
-                  format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
-                  '_' +
-                  uuid +
-                  '_temp.rb'
-              } else if (language === 'python') {
-                this.tempFilename =
-                  TEMP_FOLDER +
-                  '/' +
-                  format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
-                  '_' +
-                  uuid +
-                  '_temp.py'
-              } else {
+              const ext = { ruby: 'rb', python: 'py' }[language]
+              if (!ext) {
                 // No autosave for unknown language
                 return
               }
+              const uuid = crypto.randomUUID().split('-')[0]
+              const timestamp = format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS')
+              this.tempFilename = `${TEMP_FOLDER}/${timestamp}_${uuid}_temp.${ext}`
               this.filename = this.tempFilename
               this.addToRecent(this.filename)
             }
@@ -3019,6 +3348,10 @@ class TestSuite(Suite):
             if (response.status == 422) {
               this.alertType = 'error'
               this.alertText = response.data.suites
+            } else if (response.status == 403 && response.data?.message) {
+              // e.g. attempting to save over an approved script
+              this.alertType = 'error'
+              this.alertText = response.data.message
             } else {
               this.alertType = 'error'
               this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
@@ -3035,11 +3368,19 @@ class TestSuite(Suite):
     async saveAsFilename(filename) {
       this.filename = filename.split('*')[0]
       this.currentFilename = null
+      // The lifecycle state belongs to the file, not the editor contents,
+      // so clear it before saving under the new name. The server still
+      // rejects overwriting a different approved script.
+      this.resetLifecycle()
       if (this.tempFilename) {
-        Api.post(`/script-api/scripts/${this.tempFilename}/delete`)
+        Api.post(`/script-api/scripts/${this.tempFilename}/delete`).catch(
+          console.error,
+        )
         this.tempFilename = null
       }
       await this.saveFile('menu')
+      // Pick up the actual lifecycle state of the file we saved over
+      this.fetchLifecycle(this.filename)
     },
     delete() {
       let filename = this.filename
@@ -3088,12 +3429,14 @@ class TestSuite(Suite):
           Accept: 'application/json',
           'Content-Type': 'text/plain',
         },
-      }).then((response) => {
-        this.information.title = response.data.title
-        this.information.text = JSON.parse(response.data.description)
-        this.information.show = true
-        this.information.width = '600'
       })
+        .then((response) => {
+          this.information.title = response.data.title
+          this.information.text = JSON.parse(response.data.description)
+          this.information.show = true
+          this.information.width = '600'
+        })
+        .catch(console.error)
     },
     showInstrumented() {
       Api.post(`/script-api/scripts/${this.filename}/instrumented`, {
@@ -3102,15 +3445,21 @@ class TestSuite(Suite):
           Accept: 'application/json',
           'Content-Type': 'text/plain',
         },
-      }).then((response) => {
-        this.information.title = response.data.title
-        this.information.text = JSON.parse(response.data.description)
-        this.information.show = true
-        this.information.width = '90vw'
       })
+        .then((response) => {
+          this.information.title = response.data.title
+          this.information.text = JSON.parse(response.data.description)
+          this.information.show = true
+          this.information.width = '90vw'
+        })
+        .catch(console.error)
     },
     showCallStack() {
-      Api.post(`/script-api/running-script/${this.scriptId}/backtrace`)
+      if (this.liveScriptId) {
+        Api.post(
+          `/script-api/running-script/${this.liveScriptId}/backtrace`,
+        ).catch(console.error)
+      }
     },
     toggleDebug() {
       this.showDebug = !this.showDebug
@@ -3131,11 +3480,13 @@ class TestSuite(Suite):
         this.debugHistory.push(this.debug)
         this.debugHistoryIndex = this.debugHistory.length
         // Post the code to /debug, output is processed by receive()
-        Api.post(`/script-api/running-script/${this.scriptId}/debug`, {
-          data: {
-            args: this.debug,
-          },
-        })
+        if (this.liveScriptId) {
+          Api.post(`/script-api/running-script/${this.liveScriptId}/debug`, {
+            data: {
+              args: this.debug,
+            },
+          }).catch(console.error)
+        }
         this.debug = ''
       } else if (event.key === 'ArrowUp') {
         this.debugHistoryIndex -= 1
@@ -3184,8 +3535,13 @@ class TestSuite(Suite):
         !this.readOnly &&
         !this.readOnlyUser
       ) {
-        Api.post(`/script-api/scripts/${this.filename}/unlock`)
+        Api.post(`/script-api/scripts/${this.filename}/unlock`).catch(
+          console.error,
+        )
       }
+    },
+    onVersionRestored: function () {
+      this.reloadFile()
     },
     backToNewScript: async function () {
       // Disconnect from the current script
@@ -3200,13 +3556,9 @@ class TestSuite(Suite):
       return 'scriptRunnerScreen' + id
     },
     closeScreen(id) {
-      let index = 0
-      for (screen of this.screens) {
-        if (screen.id == id) {
-          this.screens.splice(index, 1)
-          break
-        }
-        index += 1
+      const index = this.screens.findIndex((s) => s.id == id)
+      if (index !== -1) {
+        this.screens.splice(index, 1)
       }
     },
   },
