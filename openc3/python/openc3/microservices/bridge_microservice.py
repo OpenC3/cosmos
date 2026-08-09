@@ -372,9 +372,7 @@ class BridgeMicroservice(Microservice):
             elif alpn in (API_HOST_MICROSERVICES, API_LOG, API_AUTHORIZE, API_FILES, API_INTERFACE_STATUS):
                 # Control APIs are restricted to the enrolled openc3-app identity.
                 if not self._authorized(conn):
-                    self.logger.warn(
-                        f"Rejected unauthorized control connection from {conn.remote_id()} on {alpn!r}"
-                    )
+                    self.logger.warn(f"Rejected unauthorized control connection from {conn.remote_id()} on {alpn!r}")
                     await self._close(conn)
                     return
                 if alpn == API_HOST_MICROSERVICES:
@@ -398,9 +396,7 @@ class BridgeMicroservice(Microservice):
                 # COSMOS bridge_interface leg: verify its registered identity.
                 name = alpn[len(STREAM_ALPN_PREFIX) :]
                 if not self._authorized_interface(conn, name.decode("utf-8", "replace")):
-                    self.logger.warn(
-                        f"Rejected unauthorized COSMOS interface connection from {conn.remote_id()}"
-                    )
+                    self.logger.warn(f"Rejected unauthorized COSMOS interface connection from {conn.remote_id()}")
                     await self._close(conn)
                     return
                 await self._rendezvous(name, conn)
@@ -411,16 +407,12 @@ class BridgeMicroservice(Microservice):
                     self.logger.warn(f"Rejected unauthorized host control connection from {conn.remote_id()}")
                     await self._close(conn)
                     return
-                await self._rendezvous(
-                    CTRL_CHANNEL_PREFIX + alpn[len(HOSTCTRL_ALPN_PREFIX) :], conn, is_host=True
-                )
+                await self._rendezvous(CTRL_CHANNEL_PREFIX + alpn[len(HOSTCTRL_ALPN_PREFIX) :], conn, is_host=True)
             elif alpn.startswith(CTRL_ALPN_PREFIX.encode()):
                 # COSMOS-side control leg: same identity rule as the COSMOS data leg.
                 name = alpn[len(CTRL_ALPN_PREFIX) :]
                 if not self._authorized_interface(conn, name.decode("utf-8", "replace")):
-                    self.logger.warn(
-                        f"Rejected unauthorized COSMOS control connection from {conn.remote_id()}"
-                    )
+                    self.logger.warn(f"Rejected unauthorized COSMOS control connection from {conn.remote_id()}")
                     await self._close(conn)
                     return
                 await self._rendezvous(CTRL_CHANNEL_PREFIX + name, conn, is_host=False)
