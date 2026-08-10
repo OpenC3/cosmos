@@ -29,6 +29,7 @@
         label="Enable the in-app AI Chatbot. When disabled, the AI
         chat button and drawer are hidden for all users."
         color="primary"
+        :disabled="settingsLoading"
         data-test="ai-chat-enabled"
       />
     </v-card-text>

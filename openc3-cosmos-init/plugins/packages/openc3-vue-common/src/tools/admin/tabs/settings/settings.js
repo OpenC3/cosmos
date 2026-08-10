@@ -1,5 +1,5 @@
 /*
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -21,11 +21,20 @@ export default {
       errorLoading: false,
       errorSaving: false,
       successSaving: false,
+      // Number of get_setting requests still in flight. Fields are disabled
+      // while loading so a response can't overwrite what the user just typed.
+      pendingLoads: 0,
     }
+  },
+  computed: {
+    settingsLoading: function () {
+      return this.pendingLoads > 0
+    },
   },
   methods: {
     loadSetting: function (setting, kwparams) {
-      this.api
+      this.pendingLoads++
+      return this.api
         .get_setting(setting, kwparams)
         .then((response) => {
           this.parseSetting(response, { setting })
@@ -34,6 +43,9 @@ export default {
           this.parseSetting(null)
           this.errorText = error
           this.errorLoading = true
+        })
+        .finally(() => {
+          this.pendingLoads--
         })
     },
     saveSetting: function (setting, jsonString, kwparams) {

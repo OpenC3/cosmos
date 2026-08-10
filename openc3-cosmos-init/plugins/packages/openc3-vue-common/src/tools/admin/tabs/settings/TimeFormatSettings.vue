@@ -36,6 +36,7 @@
         hide-details
         prepend-icon="mdi-clock-outline"
         single-line
+        :disabled="settingsLoading"
         data-test="time-format"
       />
     </v-card-text>
