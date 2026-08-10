@@ -41,6 +41,7 @@ module OpenC3
     attr_accessor :bridge_options
     attr_accessor :bridge_secret_options
     attr_accessor :protocols
+    attr_accessor :bridge_protocols
     attr_accessor :interfaces
     attr_accessor :log_stream
     attr_accessor :needs_dependencies
@@ -251,8 +252,8 @@ module OpenC3
         'options' => @options,
         'secret_options' => @secret_options,
         'protocols' => @protocols,
-        'bridge_options' => @options,
-        'bridge_secret_options' => @secret_options,
+        'bridge_options' => @bridge_options,
+        'bridge_secret_options' => @bridge_secret_options,
         'bridge_protocols' => @bridge_protocols,
         'log_stream' => @log_stream,
         'plugin' => @plugin,
