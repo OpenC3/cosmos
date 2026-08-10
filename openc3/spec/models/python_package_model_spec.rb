@@ -323,9 +323,8 @@ module OpenC3
     describe ".put" do
       before(:each) do
         @temp_dir = Dir.mktmpdir
-        allow(ENV).to receive(:[]).and_call_original
-        allow(ENV).to receive(:[]).with('PYTHONUSERBASE').and_return(@temp_dir)
         allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('PYTHONUSERBASE').and_return(@temp_dir)
         allow(ENV).to receive(:fetch).with('UV_CACHE_DIR', PythonPackageModel::DEFAULT_UV_CACHE_DIR).and_return(@temp_dir)
       end
 
@@ -375,7 +374,8 @@ module OpenC3
         allow(ENV).to receive(:[]).and_call_original
         allow(ENV).to receive(:[]).with('PYTHONUSERBASE').and_return(@temp_dir)
         allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
-        allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('PYPI_URL', nil).and_return(nil)
         allow(OpenC3::Logger).to receive(:info)
       end
 
@@ -439,7 +439,7 @@ module OpenC3
         pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
         File.write(pkg_file, "fake")
 
-        allow(ENV).to receive(:[]).with('PYPI_URL').and_return("https://env.pypi.example.com")
+        allow(ENV).to receive(:fetch).with('PYPI_URL', nil).and_return("https://env.pypi.example.com")
 
         process_double = double("process", name: "process_123")
         pm = double("process_manager")

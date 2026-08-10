@@ -150,7 +150,7 @@ module OpenC3
         cmd_array = @config["cmd"]
 
         # Get Microservice files from bucket storage
-        bucket = ENV.fetch('OPENC3_CONFIG_BUCKET')
+        bucket = ENV.fetch('OPENC3_CONFIG_BUCKET') { raise 'OPENC3_CONFIG_BUCKET environment variable is required' }
         client = Bucket.getClient()
 
         prefix = "#{@scope}/microservices/#{@name}/"

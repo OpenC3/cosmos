@@ -188,7 +188,7 @@ module OpenC3
     end
 
     def self.get(name)
-      path = "#{ENV.fetch('PYTHONUSERBASE')}/cache"
+      path = "#{ENV.fetch('PYTHONUSERBASE', nil)}/cache"
       FileUtils.mkdir_p(path) unless Dir.exist?(path)
       result = Pathname.new(path).children.select { |c| c.file? and File.basename(c, File.extname(c)) == name }
       if result.length > 0
