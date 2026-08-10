@@ -19,8 +19,7 @@ else:
     py_file_name = f"{os.path.splitext(base)[0]}.py"
 
 print(f"processing:{source_path} into {py_file_name}")
-out = open(py_file_name, "w+")  # noqa: SIM115 - closed after the conversion loop
-with source_path.open() as file:
+with open(py_file_name, "w+") as out, source_path.open() as file:
     for line in file:
         if line.strip() == "end":
             continue
@@ -203,5 +202,3 @@ with source_path.open() as file:
             .replace("...", ":")
         )
         out.write(line)
-
-out.close()
