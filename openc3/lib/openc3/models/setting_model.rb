@@ -50,15 +50,54 @@ module OpenC3
     ALLOW_UNKNOWN_ENV_VAR = 'OPENC3_SETTINGS_ALLOW_UNKNOWN'
 
 
-    # Allowed values for the settings we know about. nil means any value.
+    # Every setting that can be seeded from the environment.
+    #
     # An unknown name is rejected rather than written: nothing reads it, so the
     # result of a typo is a dead Redis key plus a setting the operator believes
     # they configured and did not. ALLOW_UNKNOWN_ENV_VAR opts out.
+    #
+    # TO ADD A SETTING, add a row here. The name is the string the Admin
+    # Console component passes to loadSetting/saveSetting - find it in
+    # openc3-cosmos-init/plugins/packages/openc3-vue-common/src/tools/admin/
+    # tabs/settings/<Name>Settings.vue, e.g. TimeZoneSettings.vue has
+    # `const settingName = 'time_zone'`. Then:
+    #
+    #   type:   :string or :boolean, matching what the component SAVES, not
+    #           what it displays. A component that calls JSON.stringify before
+    #           saveSetting and JSON.parse in parseSetting stores JSON *text*,
+    #           so its type is :string - storing a parsed object instead would
+    #           make its JSON.parse throw. See 'astro' below.
+    #   values: the allowed values, or nil for free text (a URL, a subtitle).
+    #           Copy them from the component's v-select items.
+    #
+    # Example, for a hypothetical LogLevelSettings.vue holding 'log_level':
+    #
+    #   'log_level' => { type: :string, values: ['DEBUG', 'INFO', 'WARN'] },
+    #
+    # No other change is needed - the env var (OPENC3_SETTING_LOG_LEVEL), the
+    # validation and the `cli initsettings --help` listing all follow.
     KNOWN_SETTINGS = {
-      'time_zone' => ['local', 'UTC'],
-      'time_format' => ['ampm', '24hr'],
-      'ai_chat' => [true, false],
-      'news_feed' => [true, false],
+      # Booleans. The frontend treats the string "false" as truthy, so these
+      # have to reach Redis as real booleans.
+      'ai_chat' => { type: :boolean, values: nil },
+      'news_feed' => { type: :boolean, values: nil },
+      'script_runner_locking' => { type: :boolean, values: nil },
+      'script_runner_lifecycle' => { type: :boolean, values: nil }, # Enterprise only
+      # Fixed choice strings
+      'time_zone' => { type: :string, values: ['local', 'UTC'] },
+      'time_format' => { type: :string, values: ['ampm', '24hr'] },
+      'theme' => { type: :string, values: ['cosmosDark', 'cosmosDarkCobalt', 'cosmosDarkIndigo',
+                                           'cosmosDarkSlate', 'cosmosDarkEmerald'] },
+      # Free text
+      'subtitle' => { type: :string, values: nil },
+      'source_url' => { type: :string, values: nil },
+      'rubygems_url' => { type: :string, values: nil },
+      'pypi_url' => { type: :string, values: nil },
+      # JSON *text*: these components JSON.stringify before saving and
+      # JSON.parse on load, so the stored value is a String, not an object
+      'astro' => { type: :string, values: nil },
+      'classification_banner' => { type: :string, values: nil },
+      'context_tag' => { type: :string, values: nil },
     }
 
     # NOTE: The following three class methods are used by the ModelController
@@ -117,25 +156,28 @@ module OpenC3
         next unless key.start_with?(SETTING_ENV_PREFIX)
         name = key[SETTING_ENV_PREFIX.length..-1].downcase
         next if name.empty?
-        settings[name] = coerce(to_str(value))
+        settings[name] = coerce(name, to_str(value))
       end
       settings
     end
 
-    # Environment variables are always strings, but settings hold whatever the
-    # Admin Console stores - 'ai_chat' and 'news_feed' are booleans and the
-    # frontend treats the string "false" as truthy. Parse as JSON so booleans,
-    # numbers, arrays and objects round-trip, and fall back to the raw string
-    # for the common case ('UTC', '24hr') that isn't valid JSON. A value that
-    # must stay a string despite looking like JSON can be quoted: '"true"'.
+    # Environment variables and local mode files are always strings, but a
+    # setting holds whatever the Admin Console stores - a boolean for 'ai_chat',
+    # a String for everything else, including the settings whose String happens
+    # to contain JSON.
     #
-    # @param value [String] raw environment variable value
-    # @return [Object] coerced value
-    def self.coerce(value)
+    # Driven by the declared type rather than by attempting JSON.parse on
+    # everything: parse-and-see turns 'classification_banner' into a Hash and
+    # the component's own JSON.parse then throws on it, and it would turn a
+    # subtitle of "2024" into a number.
+    #
+    # @param name [String] setting name
+    # @param value [String] raw value
+    # @return [Object] value in the form the frontend expects
+    def self.coerce(name, value)
       return value unless value.is_a?(String)
-      JSON.parse(value)
-    rescue JSON::ParserError
-      value
+      return value unless KNOWN_SETTINGS.dig(name, :type) == :boolean
+      ConfigParser.handle_true_false_strict(value, description: "setting '#{name}'")
     end
 
     # Largest value we will write. Settings are read into every browser tab, so
@@ -167,12 +209,27 @@ module OpenC3
         raise "Value for setting '#{name}' is #{size} bytes, exceeds the #{MAX_VALUE_BYTES} byte limit"
       end
 
-      allowed = KNOWN_SETTINGS[name]
+      allowed = KNOWN_SETTINGS.dig(name, :values)
       return if allowed.nil? or allowed.include?(value)
-      # Report the coerced value so 'False' vs false is visible in the error -
-      # the string "false" is truthy in the frontend, which is the whole reason
-      # boolean settings are validated by identity and not by truthiness.
+      # Report the coerced value so 'Local' vs 'local' is visible in the error
       raise "Invalid value #{value.inspect} for setting '#{name}'. Must be one of: #{allowed.map(&:inspect).join(', ')}"
+    end
+
+    # Every setting that can be seeded, with its allowed values, for the
+    # `cli initsettings --help` listing.
+    #
+    # @return [Array<String>] one 'name: allowed values' line per setting
+    def self.describe_settings
+      KNOWN_SETTINGS.map do |name, details|
+        allowed = if details[:values]
+                    details[:values].join(', ')
+                  elsif details[:type] == :boolean
+                    '1, true, 0, false'
+                  else
+                    'any text'
+                  end
+        "#{name}: #{allowed}"
+      end
     end
 
     # Cheap typo detection: same length with one character different, or one

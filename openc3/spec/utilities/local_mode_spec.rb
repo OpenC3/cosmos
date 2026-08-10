@@ -211,9 +211,9 @@ module OpenC3
 
         expect(ToolConfigModel).to receive(:save_config).with("telemetry-grapher", "temps", "[]", {:local_mode=>false, :scope=>"DEFAULT"})
         expect(ToolConfigModel).to receive(:save_config).with("tlm-viewer", "screens", "[]", {:local_mode=>false, :scope=>"DEFAULT"})
-        # A JSON file is parsed back to the object it was saved from rather than
-        # stored as its serialized string
-        expect(SettingModel).to receive(:set).with({name: "classification_banner", data: {"text" => "CLASS"}}, {:scope=>"DEFAULT"})
+        # classification_banner holds JSON *text* - the component JSON.parses it,
+        # so it must not be stored as a parsed object
+        expect(SettingModel).to receive(:set).with({name: "classification_banner", data: "{\"text\":\"CLASS\"}"}, {:scope=>"DEFAULT"})
         expect(SettingModel).to receive(:set).with({name: "source_url", data: "https://github.com/openc3/cosmos"}, {:scope=>"DEFAULT"})
 
         $load_plugin_plugin_file_path = []
@@ -960,10 +960,18 @@ module OpenC3
         expect(SettingModel.get(name: 'ai_chat', scope: 'DEFAULT')['data']).to be false
       end
 
-      it "stores an object setting as an object" do
-        write_setting('classification_banner', '{"text":"UNCLASSIFIED"}')
+      it "keeps a JSON text setting as text" do
+        # The component JSON.parses this, so a parsed Hash would throw
+        json = '{"text":"UNCLASSIFIED"}'
+        write_setting('classification_banner', json)
         LocalMode.sync_settings()
-        expect(SettingModel.get(name: 'classification_banner', scope: 'DEFAULT')['data']).to eq({ 'text' => 'UNCLASSIFIED' })
+        expect(SettingModel.get(name: 'classification_banner', scope: 'DEFAULT')['data']).to eq(json)
+      end
+
+      it "leaves an unknown setting as the text given" do
+        write_setting('brand_new', 'true')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'brand_new', scope: 'DEFAULT')['data']).to eq('true')
       end
 
       it "leaves an existing setting unchanged so Admin Console edits survive" do

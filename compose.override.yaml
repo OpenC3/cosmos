@@ -124,9 +124,18 @@
 #     # OPENC3_SETTING_<NAME> where <NAME> is the setting name upcased.
 #     # These are NOT listed in compose.yaml - adding them here is what makes
 #     # them reach the container, so no compose.yaml edit is ever needed.
-#     - OPENC3_SETTING_TIME_ZONE=UTC
-#     - OPENC3_SETTING_TIME_FORMAT=24hr
-#     - OPENC3_SETTING_AI_CHAT=false
+#     #
+#     # For the current list of settings and their allowed values, run:
+#     #   ./openc3.sh cli initsettings --help
+#     - OPENC3_SETTING_TIME_ZONE=UTC          # local, UTC
+#     - OPENC3_SETTING_TIME_FORMAT=24hr       # ampm, 24hr
+#     - OPENC3_SETTING_THEME=cosmosDarkSlate  # cosmosDark, cosmosDarkCobalt, ...
+#     - OPENC3_SETTING_AI_CHAT=false          # booleans take 1/true/0/false
+#     - OPENC3_SETTING_NEWS_FEED=false
+#     - OPENC3_SETTING_SUBTITLE=Ops Console   # free text
+#     # Settings whose value is JSON text are given verbatim, quoted so the
+#     # colon doesn't end the YAML scalar
+#     - "OPENC3_SETTING_CLASSIFICATION_BANNER={\"text\":\"UNCLASSIFIED\",\"topHeight\":20}"
 #     # A setting that already exists in Redis is left alone, so a value
 #     # changed in the Admin Console survives a restart. Set this to make the
 #     # environment authoritative and rewrite the values on every init.

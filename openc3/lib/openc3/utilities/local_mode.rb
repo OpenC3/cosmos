@@ -482,11 +482,12 @@ module OpenC3
             next
           end
           puts "Syncing setting #{name}"
-          # Anything can be stored in settings. save_setting writes non-strings
-          # as JSON, so parse it back rather than storing the file contents
-          # verbatim - otherwise a boolean setting round-trips to the string
-          # "false", which is truthy in the frontend.
-          data = SettingModel.coerce(File.read(config))
+          # save_setting writes a boolean as the JSON text "true"/"false", so
+          # convert it back rather than storing the file contents verbatim -
+          # the string "false" is truthy in the frontend. Settings that hold
+          # JSON text (classification_banner, astro) stay strings, which is
+          # what their components JSON.parse.
+          data = SettingModel.coerce(name, File.read(config))
           SettingModel.set({ name: name, data: data }, scope: scope)
         end
       end

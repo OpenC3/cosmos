@@ -54,30 +54,71 @@ module OpenC3
     end
 
     describe "self.coerce" do
-      it "parses JSON so booleans keep their type" do
-        expect(SettingModel.coerce('true')).to be true
-        expect(SettingModel.coerce('false')).to be false
+      it "converts a boolean setting to a real boolean" do
+        expect(SettingModel.coerce('ai_chat', 'true')).to be true
+        expect(SettingModel.coerce('ai_chat', 'false')).to be false
+        expect(SettingModel.coerce('news_feed', '1')).to be true
+        expect(SettingModel.coerce('script_runner_locking', '0')).to be false
       end
 
-      it "parses JSON numbers, arrays and objects" do
-        expect(SettingModel.coerce('5')).to eql 5
-        expect(SettingModel.coerce('[1,2]')).to eql [1, 2]
-        expect(SettingModel.coerce('{"a":1}')).to eql({ 'a' => 1 })
+      it "raises on a boolean setting that isn't a boolean" do
+        expect { SettingModel.coerce('ai_chat', 'nope') }
+          .to raise_error(ArgumentError, /Invalid value "nope" for setting 'ai_chat'/)
       end
 
-      it "falls back to the raw string when the value isn't JSON" do
-        expect(SettingModel.coerce('UTC')).to eql 'UTC'
-        expect(SettingModel.coerce('24hr')).to eql '24hr'
-        expect(SettingModel.coerce('')).to eql ''
+      it "leaves a string setting as the text given" do
+        expect(SettingModel.coerce('time_zone', 'UTC')).to eql 'UTC'
+        expect(SettingModel.coerce('time_format', '24hr')).to eql '24hr'
+        expect(SettingModel.coerce('subtitle', '')).to eql ''
       end
 
-      it "keeps a quoted string a string" do
-        expect(SettingModel.coerce('"true"')).to eql 'true'
+      it "doesn't turn a numeric looking string into a number" do
+        # A subtitle of "2024" is a subtitle, not the number 2024
+        expect(SettingModel.coerce('subtitle', '2024')).to eql '2024'
+      end
+
+      it "keeps a JSON text setting as text" do
+        # These components JSON.parse the value, so a parsed Hash would throw
+        json = '{"text":"UNCLASSIFIED"}'
+        expect(SettingModel.coerce('classification_banner', json)).to eql json
+        expect(SettingModel.coerce('astro', '{"hideClock":true}')).to eql '{"hideClock":true}'
+        expect(SettingModel.coerce('context_tag', '{"text":"DEV"}')).to eql '{"text":"DEV"}'
+      end
+
+      it "leaves an unknown setting as the text given" do
+        expect(SettingModel.coerce('brand_new', 'true')).to eql 'true'
       end
 
       it "passes through a value that isn't a String" do
-        expect(SettingModel.coerce(true)).to be true
-        expect(SettingModel.coerce(nil)).to be_nil
+        expect(SettingModel.coerce('ai_chat', true)).to be true
+        expect(SettingModel.coerce('ai_chat', nil)).to be_nil
+      end
+    end
+
+    describe "self.describe_settings" do
+      it "lists every setting with its allowed values" do
+        lines = SettingModel.describe_settings
+        expect(lines.length).to eql SettingModel::KNOWN_SETTINGS.length
+        expect(lines).to include('time_zone: local, UTC')
+        expect(lines).to include('ai_chat: 1, true, 0, false')
+        expect(lines).to include('subtitle: any text')
+      end
+    end
+
+    describe "KNOWN_SETTINGS" do
+      it "declares a valid type for every setting" do
+        SettingModel::KNOWN_SETTINGS.each do |name, details|
+          expect([:string, :boolean]).to include(details[:type]), "#{name} has an invalid type"
+          expect(name).to match(/\A[a-z0-9_]+\z/)
+        end
+      end
+
+      it "only lists allowed values for string settings" do
+        # A boolean's allowed values are fixed, so a values list would be dead
+        SettingModel::KNOWN_SETTINGS.each do |name, details|
+          next unless details[:type] == :boolean
+          expect(details[:values]).to be_nil, "#{name} is a boolean and shouldn't list values"
+        end
       end
     end
 
@@ -151,9 +192,9 @@ module OpenC3
         expect(SettingModel.parse_defaults_env(env)).to eql({ 'time_zone' => 'UTC' })
       end
 
-      it "coerces OPENC3_SETTING_* values" do
-        env = { 'OPENC3_SETTING_AI_CHAT' => 'false' }
-        expect(SettingModel.parse_defaults_env(env)).to eql({ 'ai_chat' => false })
+      it "coerces OPENC3_SETTING_* values by the setting's declared type" do
+        env = { 'OPENC3_SETTING_AI_CHAT' => 'false', 'OPENC3_SETTING_SUBTITLE' => '2024' }
+        expect(SettingModel.parse_defaults_env(env)).to eql({ 'ai_chat' => false, 'subtitle' => '2024' })
       end
 
       it "ignores unrelated env vars and a bare prefix" do
@@ -182,6 +223,8 @@ module OpenC3
         expect { SettingModel.validate_setting!('time_format', '24hr') }.to_not raise_error
         expect { SettingModel.validate_setting!('ai_chat', false) }.to_not raise_error
         expect { SettingModel.validate_setting!('news_feed', true) }.to_not raise_error
+        expect { SettingModel.validate_setting!('theme', 'cosmosDarkSlate') }.to_not raise_error
+        expect { SettingModel.validate_setting!('subtitle', 'anything at all') }.to_not raise_error
       end
 
       it "rejects a value outside the allowed list" do
@@ -189,10 +232,9 @@ module OpenC3
           .to raise_error(/Invalid value "Mars" for setting 'time_zone'.*local.*UTC/)
       end
 
-      it "rejects the string 'false' for a boolean setting" do
-        # "false" is truthy in the frontend, so it must not be accepted
-        expect { SettingModel.validate_setting!('ai_chat', 'false') }
-          .to raise_error(/Invalid value "false" for setting 'ai_chat'/)
+      it "rejects a value outside a theme's allowed list" do
+        expect { SettingModel.validate_setting!('theme', 'cosmosLight') }
+          .to raise_error(/Invalid value "cosmosLight" for setting 'theme'/)
       end
 
       it "rejects a name with invalid characters" do
@@ -245,6 +287,26 @@ module OpenC3
         env = { 'OPENC3_SETTING_AI_CHAT' => 'false' }
         SettingModel.apply_defaults(env: env)
         expect(SettingModel.get(name: 'ai_chat')['data']).to be false
+      end
+
+      it "stores a JSON text setting as the text given" do
+        json = '{"text":"UNCLASSIFIED","topHeight":20}'
+        SettingModel.apply_defaults(env: { 'OPENC3_SETTING_CLASSIFICATION_BANNER' => json })
+        expect(SettingModel.get(name: 'classification_banner')['data']).to eql json
+      end
+
+      it "seeds every setting the Admin Console exposes" do
+        env = SettingModel::KNOWN_SETTINGS.to_h do |name, details|
+          value = if details[:values]
+                    details[:values].first
+                  elsif details[:type] == :boolean
+                    'true'
+                  else
+                    'x'
+                  end
+          ["OPENC3_SETTING_#{name.upcase}", value]
+        end
+        expect(SettingModel.apply_defaults(env: env)).to match_array(SettingModel::KNOWN_SETTINGS.keys)
       end
 
       it "leaves an existing setting unchanged" do
