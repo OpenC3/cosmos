@@ -32,7 +32,9 @@ ENV GEM_HOME=/usr/local/lib/ruby/gems/${RUBY_VERSION}.0
 # is a no-op unless APT_URL is overridden). Handles both the single-file
 # sources.list (bookworm) and the deb822 format (trixie).
 RUN for f in /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources; do \
-      [ -f "$f" ] && sed -i "s|http://deb.debian.org|${APT_URL}|g; s|http://security.debian.org|${APT_URL}|g" "$f" || true; \
+      [ -f "$f" ] && sed -i \
+        "s|http://deb.debian.org|${APT_URL}|g; s|http://security.debian.org|${APT_URL}|g" \
+        "$f" || true; \
     done
 
 LABEL maintainer="support@openc3.com"
@@ -98,7 +100,7 @@ RUN apt-get update && \
     gem cleanup && \
     bundle config build.nokogiri --use-system-libraries && \
     bundle config git.allow_insecure true && \
-    python3 -m pip install --break-system-packages uv==${UV_VERSION} && \
+    python3 -m pip install --break-system-packages "uv==${UV_VERSION}" && \
     rm -rf /var/lib/apt/lists/*
 
 # Configure UV for production container usage
@@ -118,10 +120,10 @@ ARG RBSPY_VERSION=0.49.0
 ARG TARGETARCH
 COPY rbspy-*-unknown-linux-gnu-${RBSPY_VERSION}.tar.gz /tmp/
 RUN RB_ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "aarch64" || echo "x86_64") && \
-    tar -xzf /tmp/rbspy-${RB_ARCH}-unknown-linux-gnu-${RBSPY_VERSION}.tar.gz -C /tmp && \
-    mv /tmp/rbspy-${RB_ARCH}-unknown-linux-gnu /usr/local/bin/rbspy && \
+    tar -xzf "/tmp/rbspy-${RB_ARCH}-unknown-linux-gnu-${RBSPY_VERSION}.tar.gz" -C /tmp && \
+    mv "/tmp/rbspy-${RB_ARCH}-unknown-linux-gnu" /usr/local/bin/rbspy && \
     chmod +x /usr/local/bin/rbspy && \
-    rm -f /tmp/rbspy-*-unknown-linux-gnu-${RBSPY_VERSION}.tar.gz
+    rm -f /tmp/rbspy-*-unknown-linux-gnu-"${RBSPY_VERSION}".tar.gz
 
 # libsocketcan - used by libcsp - https://github.com/linux-can/libsocketcan
 COPY libsocketcan-0.0.12.tar.gz /opt/libsocketcan-0.0.12.tar.gz
@@ -151,7 +153,7 @@ RUN unzip libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip && \
     make && \
     make install && \
     ldconfig && \
-    cp libcsp_py3* /usr/lib/python${PYTHON_VERSION}/lib-dynload/. && \
+    cp libcsp_py3* "/usr/lib/python${PYTHON_VERSION}/lib-dynload/." && \
     cd /opt && \
     rm -rf libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 && \
     rm libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip

@@ -13,7 +13,9 @@ ARG TARGETARCH
 # is a no-op unless APT_URL is overridden). Handles both the single-file
 # sources.list (bookworm) and the deb822 format (trixie).
 RUN for f in /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources; do \
-      [ -f "$f" ] && sed -i "s|http://deb.debian.org|${APT_URL}|g; s|http://security.debian.org|${APT_URL}|g" "$f" || true; \
+      [ -f "$f" ] && sed -i \
+        "s|http://deb.debian.org|${APT_URL}|g; s|http://security.debian.org|${APT_URL}|g" \
+        "$f" || true; \
     done
 
 # Copy and extract versitygw binary from local tar.gz files
@@ -42,8 +44,8 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends netcat-openbsd && \
     rm -rf /var/lib/apt/lists/* && \
     chmod +x /usr/bin/docker-entrypoint.sh && \
-    groupadd -g ${GROUP_ID} ${IMAGE_GROUP} && \
-    useradd -u ${USER_ID} -g ${IMAGE_GROUP} -s /bin/bash ${IMAGE_USER} && \
+    groupadd -g "${GROUP_ID}" "${IMAGE_GROUP}" && \
+    useradd -u "${USER_ID}" -g "${IMAGE_GROUP}" -s /bin/bash "${IMAGE_USER}" && \
     mkdir /data && \
     chown -R "${USER_ID}":"${IMAGE_GROUP}" /data && \
     chmod -R 777 /data

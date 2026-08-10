@@ -285,13 +285,19 @@ class BridgeMicroservice(Microservice):
 
         watcher = asyncio.create_task(self._shutdown_watcher(endpoint))
         streams = asyncio.create_task(self._stream_watcher(endpoint))
+        # Hold strong references to the per-connection handler tasks: asyncio
+        # keeps only weak references, so an un-stored task can be garbage
+        # collected mid-flight. Discard each when it finishes.
+        handlers = set()
         try:
             while not self.cancel_thread:
                 incoming = await endpoint.accept_next()
                 if incoming is None:
                     break  # endpoint closed
                 self.count += 1
-                asyncio.create_task(self._handle(incoming))
+                task = asyncio.create_task(self._handle(incoming))
+                handlers.add(task)
+                task.add_done_callback(handlers.discard)
         finally:
             watcher.cancel()
             streams.cancel()

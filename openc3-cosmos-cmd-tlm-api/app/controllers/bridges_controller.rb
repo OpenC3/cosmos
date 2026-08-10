@@ -31,7 +31,7 @@ class BridgesController < ModelController
 
   # POST /bridges — create a new bridge: deploy its bridge_microservice (the Iroh
   # hub), which generates the bridge's identity and ticket on startup.
-  def create(update_model = false)
+  def create(_update_model = false)
     return unless authorization('admin')
     name = params[:name].to_s.strip.upcase
     if name.empty?

@@ -112,6 +112,11 @@ class BridgeInterface(Interface):
         self._ctrl_send = None
         self._host_status = None
         self._host_status_lock = threading.Lock()
+        # True once the host has reported CONNECTED for the current data session.
+        # Gates the control-channel disconnect detection so the DISCONNECTED the
+        # host reports before it opens its device (during the connect handshake)
+        # can't be mistaken for the host dropping on its own.
+        self._host_connected_seen = False
         # Whether COSMOS wants the host connected; re-asserted to the host each
         # time the control channel (re)establishes, so the desired state survives
         # a control drop and can't be lost to a startup race.
@@ -189,6 +194,9 @@ class BridgeInterface(Interface):
         # host microservice serving the same stream. Raw device bytes only; this
         # flows transparently through bridge_microservice.
         alpn = f"stream/{self.name}".encode()
+        # Fresh data session: require a new CONNECTED from the host before a
+        # reported DISCONNECTED counts as the host dropping on its own.
+        self._host_connected_seen = False
         try:
             self._connection = await self._endpoint.connect(addr, alpn)
             # bridge_microservice is the server: it opens+primes the bi-stream, so
@@ -235,8 +243,9 @@ class BridgeInterface(Interface):
                 self._read_queue.put(bytes(data))
         except asyncio.CancelledError:
             # Expected on disconnect/shutdown: the reader task is cancelled.
-            # Exit cleanly; the finally block signals the disconnect downstream.
-            pass
+            # Re-raise so the cancellation propagates; the finally block still
+            # runs first and signals the disconnect downstream.
+            raise
         except Exception as error:
             Logger.info(f"{self.name}: bridge reader stopped: {type(error).__name__}: {error}")
         finally:
@@ -290,7 +299,9 @@ class BridgeInterface(Interface):
                 await self._write_command("connect" if self._want_connected else "disconnect")
                 await self._ctrl_read_status(recv)
             except asyncio.CancelledError:
-                break
+                # Loop is being torn down (shutdown). Re-raise after the finally
+                # closes the connection so the cancellation propagates.
+                raise
             except Exception as error:
                 Logger.info(f"{self.name}: control channel error: {type(error).__name__}: {error}")
             finally:
@@ -325,8 +336,34 @@ class BridgeInterface(Interface):
                 except ValueError:
                     continue
                 if msg.get("type") == "status" and isinstance(msg.get("status"), dict):
+                    status = msg["status"]
                     with self._host_status_lock:
-                        self._host_status = msg["status"]
+                        self._host_status = status
+                    # Detect the host dropping its device on its own. Once it has
+                    # reported CONNECTED for this session, a later DISCONNECTED
+                    # means the host lost/closed the device without COSMOS asking.
+                    # Make read_interface return nil so COSMOS's
+                    # InterfaceMicroservice disconnects and reconnects (which
+                    # re-commands the host to connect).
+                    state = status.get("state")
+                    if state == "CONNECTED":
+                        self._host_connected_seen = True
+                    elif state == "DISCONNECTED" and self._host_connected_seen:
+                        self._host_connected_seen = False
+                        self._host_disconnected()
+
+    def _host_disconnected(self):
+        """The host reported it dropped its device on its own. Signal the data
+        path to end so read_interface() returns nil and COSMOS reconnects. Mirrors
+        the data-leg EOF path (_reader's finally) but driven by the control
+        channel, which reports the host's state even when the data tunnel's EOF
+        doesn't reach us."""
+        if not self._connected:
+            return
+        Logger.info(f"{self.name}: host reported disconnect; dropping bridge interface")
+        self._connected = False
+        if self._read_queue is not None:
+            self._read_queue.put(None)  # sentinel -> read_interface returns nil
 
     def _send_command(self, cmd):
         """Send a connect/disconnect command to the host over the control channel
