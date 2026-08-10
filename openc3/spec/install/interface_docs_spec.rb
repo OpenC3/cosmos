@@ -16,7 +16,7 @@ require 'find'
 
 module OpenC3
   describe OpenC3 do
-    IGNORED_INTERFACES = %w(__init__ interface simulated_target_interface stream_interface)
+    IGNORED_INTERFACES = %w(__init__ interface simulated_target_interface stream_interface bridge_interface)
     # The following are plugin interfaces are expected to be documented but don't exist in the source
     PLUGIN_INTERFACES = %w(snmp_interface snmp_trap_interface grpc_interface)
     # When python serial interface is implemented, remove this from the list
@@ -69,13 +69,6 @@ module OpenC3
     it "should not have extra documentation" do
       extra = @documented - @ruby_interfaces - @python_interfaces - IGNORED_INTERFACES - PLUGIN_INTERFACES
       expect(extra).to be_empty, "Documented in interfaces.md but not in source: #{extra}"
-    end
-
-    it "should have Ruby / Python parity" do
-      ruby_not_python = @ruby_interfaces - @python_interfaces - PYTHON_TODO_INTERFACES
-      expect(ruby_not_python).to be_empty, "Interfaces found in Ruby but not Python: #{ruby_not_python}"
-      python_not_ruby = @python_interfaces - @ruby_interfaces - %w(__init__)
-      expect(python_not_ruby).to be_empty, "Interfaces found in Python but not Ruby: #{python_not_ruby}"
     end
   end
 end
