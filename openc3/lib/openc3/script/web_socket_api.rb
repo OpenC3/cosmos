@@ -226,7 +226,7 @@ module OpenC3
     def generate_url
       schema = ENV['OPENC3_API_SCHEMA'] || 'http'
       hostname = ENV['OPENC3_API_HOSTNAME'] || (ENV['OPENC3_DEVEL'] ? '127.0.0.1' : 'openc3-cosmos-cmd-tlm-api')
-      port = ENV['OPENC3_API_CABLE_PORT'] || ENV['OPENC3_API_PORT'] || '3901'
+      port = ENV.fetch('OPENC3_API_CABLE_PORT', nil) || ENV.fetch('OPENC3_API_PORT', '3901')
       port = port.to_i
       return "#{schema}://#{hostname}:#{port}/openc3-api/cable"
     end
@@ -242,7 +242,7 @@ module OpenC3
     def generate_url
       schema = ENV['OPENC3_SCRIPT_API_SCHEMA'] || 'http'
       hostname = ENV['OPENC3_SCRIPT_API_HOSTNAME'] || (ENV['OPENC3_DEVEL'] ? '127.0.0.1' : 'openc3-cosmos-script-runner-api')
-      port = ENV['OPENC3_SCRIPT_API_CABLE_PORT'] || ENV['OPENC3_SCRIPT_API_PORT'] || '3902'
+      port = ENV.fetch('OPENC3_SCRIPT_API_CABLE_PORT', nil) || ENV.fetch('OPENC3_SCRIPT_API_PORT', '3902')
       port = port.to_i
       return "#{schema}://#{hostname}:#{port}/script-api/cable"
     end

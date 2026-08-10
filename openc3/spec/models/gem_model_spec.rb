@@ -27,15 +27,15 @@ module OpenC3
   describe GemModel do
     before(:each) do
       mock_redis()
-      @orig_gem_home = ENV['GEM_HOME']
+      @orig_gem_home = ENV.fetch('GEM_HOME', nil)
       @temp_dir = Dir.mktmpdir
       ENV['GEM_HOME'] = @temp_dir
       @scope = "DEFAULT"
       @gem_list = ['openc3-test1.gem', 'openc3-test2.gem']
-      FileUtils.mkdir_p("#{ENV['GEM_HOME']}/cache")
+      FileUtils.mkdir_p("#{ENV.fetch('GEM_HOME')}/cache")
       @gem_list.each do |gem|
-        FileUtils.mkdir_p("#{ENV['GEM_HOME']}/gems/#{File.basename(gem, '.gem')}")
-        FileUtils.touch("#{ENV['GEM_HOME']}/cache/#{gem}")
+        FileUtils.mkdir_p("#{ENV.fetch('GEM_HOME')}/gems/#{File.basename(gem, '.gem')}")
+        FileUtils.touch("#{ENV.fetch('GEM_HOME')}/cache/#{gem}")
       end
     end
 
@@ -54,7 +54,7 @@ module OpenC3
     describe "self.get" do
       it "get the gem on the local filesystem" do
         path = GemModel.get('openc3-test1.gem')
-        expect(path).to eql "#{ENV['GEM_HOME']}/cache/openc3-test1.gem"
+        expect(path).to eql "#{ENV.fetch('GEM_HOME')}/cache/openc3-test1.gem"
       end
     end
 

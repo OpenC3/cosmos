@@ -99,7 +99,7 @@ module OpenC3
     # Apply bucket policy to grant ScriptRunner user access to config and logs buckets
     # This provides reduced permissions compared to the root user for security
     def ensure_scriptrunner_policy(config_bucket, logs_bucket)
-      sr_username = ENV['OPENC3_SR_BUCKET_USERNAME']
+      sr_username = ENV.fetch('OPENC3_SR_BUCKET_USERNAME', nil)
       return unless sr_username
       return if sr_username == ENV['OPENC3_BUCKET_USERNAME'] # Same as root, no policy needed
 

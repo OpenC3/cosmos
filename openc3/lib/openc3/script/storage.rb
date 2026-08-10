@@ -174,12 +174,12 @@ module OpenC3
           bucket_url = ENV["OPENC3_BUCKET_URL"] || "http://openc3-buckets:9000"
           URI.parse("#{bucket_url}#{url}")
         when 'aws'
-          URI.parse("https://s3.#{ENV['AWS_REGION']}.amazonaws.com" + url)
+          URI.parse("https://s3.#{ENV.fetch('AWS_REGION')}.amazonaws.com" + url)
         when 'gcp'
           URI.parse("https://storage.googleapis.com" + url)
         # when 'azure'
         else
-          raise "Unknown cloud #{ENV['OPENC3_CLOUD']}"
+          raise "Unknown cloud #{ENV.fetch('OPENC3_CLOUD', nil)}"
         end
       else
         URI.parse($api_server.generate_url + url)

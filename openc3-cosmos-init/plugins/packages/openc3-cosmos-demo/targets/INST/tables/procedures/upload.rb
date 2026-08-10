@@ -1,5 +1,5 @@
 # TBL_FILENAME is set to the name of the table file
-puts "file:#{ENV['TBL_FILENAME']}"
+puts "file:#{ENV.fetch('TBL_FILENAME', nil)}"
 # Open the file
 file = get_target_file(ENV['TBL_FILENAME'])
 buffer = file.read

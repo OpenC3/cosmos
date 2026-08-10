@@ -21,7 +21,7 @@ module OpenC3
 
     def self.getClient
       raise 'OPENC3_SECRET_BACKEND environment variable is required' unless ENV['OPENC3_SECRET_BACKEND']
-      secrets_class = ENV['OPENC3_SECRET_BACKEND'].capitalize + 'Secrets'
+      secrets_class = ENV.fetch('OPENC3_SECRET_BACKEND').capitalize + 'Secrets'
       klass = OpenC3.require_class('openc3/utilities/' + secrets_class.class_name_to_filename)
       klass.new
     end
@@ -50,7 +50,7 @@ module OpenC3
         type, key, data, _secret_store = secret
         case type
         when 'ENV'
-          @local_secrets[key] = ENV[data]
+          @local_secrets[key] = ENV.fetch(data, nil)
         when 'FILE'
           @local_secrets[key] = File.read(data)
         else

@@ -59,16 +59,15 @@ class ToolsController < ModelController
   end
 
   def auth
-    url = ENV['OPENC3_KEYCLOAK_EXTERNAL_URL']
+    url = ENV.fetch('OPENC3_KEYCLOAK_EXTERNAL_URL', nil)
     unless url
-      url = ENV['OPENC3_KEYCLOAK_URL']
+      url = ENV.fetch('OPENC3_KEYCLOAK_URL')
       if url == "http://openc3-keycloak:8080"
         # Externally should be just /auth
         url = "/auth"
       end
     end
-    realm = ENV['OPENC3_KEYCLOAK_REALM']
-    realm = "openc3" unless realm
-    render js: "var openc3_keycloak_url = \"#{url}\"; var openc3_keycloak_realm = \"#{realm}\"; var openc3_keycloak_client_id = \"#{ENV['OPENC3_API_CLIENT']}\""
+    realm = ENV.fetch('OPENC3_KEYCLOAK_REALM', 'openc3')
+    render js: "var openc3_keycloak_url = \"#{url}\"; var openc3_keycloak_realm = \"#{realm}\"; var openc3_keycloak_client_id = \"#{ENV.fetch('OPENC3_API_CLIENT', nil)}\""
   end
 end
