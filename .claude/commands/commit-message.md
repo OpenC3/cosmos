@@ -79,11 +79,37 @@ Include one when there is more than one logical change:
 - One bullet per logical change, most important first
 - Explain **what** and **why**; the diff already shows how
 - Name the concrete symbol, file, or flag so the bullet is checkable
-- Note a non-obvious consequence a reviewer would otherwise miss
 - Omit the body entirely for a single-purpose change — a good description is enough
 
 If the staged changes are several unrelated things, say so and suggest which
 files to split out rather than writing one message that papers over it.
+
+### Brevity
+
+The spec places no limit on the body (rule 7), but `git log` indents it by four
+columns, so a long line either wraps raggedly in a terminal or runs off the
+edge. Keep it readable there:
+
+- **Hard wrap every body line at 72 characters**, continuation lines indented
+  two spaces to stay visually part of the bullet
+- **One sentence per bullet.** A bullet with two sentences is usually two
+  bullets, or one bullet plus detail that belongs in the PR description
+- **At most 5 bullets.** More than that and the commit is doing too much — say
+  so and suggest the split instead of writing a sixth
+- Drop reasoning a reader can get from the diff or the linked issue. The commit
+  says what changed and why it changed; the PR description carries the argument
+
+Before printing, check the longest body line. If it is over 72 characters,
+rewrite rather than reflow — an over-long line is usually a sign the bullet is
+carrying two ideas.
+
+Wrapped correctly:
+
+```
+- Fix delete_config depending on ambient container state: it returned
+  nil unless OPENC3_LOCAL_MODE was set, so the test only passed in
+  Docker
+```
 
 ## Breaking changes
 
