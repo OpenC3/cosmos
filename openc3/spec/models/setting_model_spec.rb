@@ -422,6 +422,88 @@ module OpenC3
         expect(SettingModel.apply_defaults(env: env)).to match_array(SettingModel::KNOWN_SETTINGS.keys)
       end
 
+      it "applies a changed env value while the setting is untouched" do
+        # The whole point of tracking provenance: editing the env var and
+        # restarting works, which plain skip-if-exists could never do
+        SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => '24hr' })
+        expect(SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => 'ampm' }))
+          .to eql ['time_format']
+        expect(SettingModel.get(name: 'time_format')['data']).to eql 'ampm'
+      end
+
+      it "leaves a setting an operator changed, even when the env differs" do
+        SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => '24hr' })
+        # Admin Console edit
+        SettingModel.set({ name: 'time_format', data: 'ampm' }, scope: nil)
+        expect(SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => '24hr' })).to eql []
+        expect(SettingModel.get(name: 'time_format')['data']).to eql 'ampm'
+      end
+
+      it "keeps leaving an edited setting alone on later inits" do
+        SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => '24hr' })
+        SettingModel.set({ name: 'time_format', data: 'ampm' }, scope: nil)
+        3.times { SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => '24hr' }) }
+        expect(SettingModel.get(name: 'time_format')['data']).to eql 'ampm'
+      end
+
+      it "is a no-op when the env value already matches" do
+        env = { 'OPENC3_SETTING_TIME_FORMAT' => '24hr' }
+        SettingModel.apply_defaults(env: env)
+        expect(SettingModel.apply_defaults(env: env)).to eql []
+      end
+
+      it "tracks provenance for boolean settings too" do
+        SettingModel.apply_defaults(env: { 'OPENC3_SETTING_AI_CHAT' => 'true' })
+        expect(SettingModel.apply_defaults(env: { 'OPENC3_SETTING_AI_CHAT' => 'false' }))
+          .to eql ['ai_chat']
+        expect(SettingModel.get(name: 'ai_chat')['data']).to be false
+        SettingModel.set({ name: 'ai_chat', data: true }, scope: nil)
+        expect(SettingModel.apply_defaults(env: { 'OPENC3_SETTING_AI_CHAT' => 'false' })).to eql []
+        expect(SettingModel.get(name: 'ai_chat')['data']).to be true
+      end
+
+      it "leaves a setting with no provenance record alone" do
+        # Set by the Admin Console, seed_database, or a release before this
+        # tracking existed - clobbering it is the exact failure being prevented
+        SettingModel.set({ name: 'time_format', data: '24hr' }, scope: nil)
+        expect(SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => 'ampm' })).to eql []
+        expect(SettingModel.get(name: 'time_format')['data']).to eql '24hr'
+      end
+
+      it "treats a corrupt provenance record as operator owned" do
+        SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => '24hr' })
+        Store.hset(SettingModel::SEEDED_PRIMARY_KEY, 'time_format', 'not json')
+        expect(SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => 'ampm' })).to eql []
+        expect(SettingModel.get(name: 'time_format')['data']).to eql '24hr'
+      end
+
+      it "lets OVERWRITE recover a setting that has no provenance record" do
+        # The upgrade path: one run with OVERWRITE and the env is back in charge
+        SettingModel.set({ name: 'time_format', data: '24hr' }, scope: nil)
+        SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => 'ampm',
+                                           'OPENC3_SETTINGS_OVERWRITE' => '1' })
+        expect(SettingModel.get(name: 'time_format')['data']).to eql 'ampm'
+        # provenance now recorded, so a later env change applies without OVERWRITE
+        expect(SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => '24hr' }))
+          .to eql ['time_format']
+      end
+
+      it "overwrites an operator edit when OVERWRITE is set" do
+        SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => '24hr' })
+        SettingModel.set({ name: 'time_format', data: 'ampm' }, scope: nil)
+        env = { 'OPENC3_SETTING_TIME_FORMAT' => '24hr', 'OPENC3_SETTINGS_OVERWRITE' => '1' }
+        expect(SettingModel.apply_defaults(env: env)).to eql ['time_format']
+        expect(SettingModel.get(name: 'time_format')['data']).to eql '24hr'
+      end
+
+      it "reports what an overwrite destroyed" do
+        SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => '24hr' })
+        SettingModel.set({ name: 'time_format', data: 'ampm' }, scope: nil)
+        expect($stdout).to receive(:puts).with(/Overwriting setting 'time_format': "ampm" -> "24hr"/)
+        SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => '24hr',
+                                           'OPENC3_SETTINGS_OVERWRITE' => '1' })
+      end
+
       it "leaves an existing setting unchanged" do
         SettingModel.set({ name: 'time_zone', data: 'local' }, scope: nil)
         env = { 'OPENC3_SETTING_TIME_ZONE' => 'UTC' }

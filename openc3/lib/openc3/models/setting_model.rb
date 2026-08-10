@@ -134,15 +134,57 @@ module OpenC3
       written = []
       settings.each do |name, value|
         validate_setting!(name, value, allow_unknown: allow_unknown)
-        if !overwrite and get(name: name)
-          puts "Setting '#{name}' already exists - leaving unchanged"
-          next
+        existing = get(name: name)
+        if existing and !overwrite
+          unless seeded_value?(name, existing['data'])
+            puts "Setting '#{name}' was changed from the seeded value - leaving as #{existing['data'].inspect}"
+            next
+          end
+          if existing['data'] == value
+            puts "Setting '#{name}' already matches #{value.inspect} - leaving unchanged"
+            next
+          end
+          puts "Updating unedited setting '#{name}': #{existing['data'].inspect} -> #{value.inspect}"
+        elsif existing and overwrite and existing['data'] != value
+          # Overwrite discards an Admin Console edit, so say what was lost -
+          # otherwise the log reads identically to a first-time seed
+          puts "Overwriting setting '#{name}': #{existing['data'].inspect} -> #{value.inspect} " \
+               "(#{OVERWRITE_ENV_VAR} is set)"
+        else
+          puts "Set default setting '#{name}' to: #{value.inspect}"
         end
         set({ name: name, data: value }, scope: nil)
-        puts "Set default setting '#{name}' to: #{value.inspect}"
+        record_seeded(name, value)
         written << name
       end
       written
+    end
+
+    # Provenance for the values this seeder wrote, so a later init can tell an
+    # untouched setting from one an operator changed in the Admin Console.
+    # Without it the seeder has two bad options: never update (so editing the
+    # env var does nothing) or always update (so Admin Console edits silently
+    # revert on every restart).
+    SEEDED_PRIMARY_KEY = 'openc3__settings_seeded'
+
+    # @return [Boolean] true when the current value is the one we last seeded,
+    #   meaning nobody has changed it since.
+    #
+    # An unrecorded setting is NOT treated as seeded. It was set by the Admin
+    # Console, by seed_database, or by a release before this tracking existed,
+    # and overwriting it is the silent clobber this mechanism exists to
+    # prevent. The cost is that a deployment upgrading into this feature needs
+    # one run with OVERWRITE_ENV_VAR before env changes take effect again.
+    def self.seeded_value?(name, current)
+      recorded = Store.hget(SEEDED_PRIMARY_KEY, name)
+      return false if recorded.nil?
+      JSON.parse(recorded, allow_nan: true, create_additions: true)['data'] == current
+    rescue JSON::ParserError
+      false
+    end
+
+    def self.record_seeded(name, value)
+      Store.hset(SEEDED_PRIMARY_KEY, name, JSON.generate({ 'data' => value.as_json(allow_nan: true) }))
     end
 
     # Collect every OPENC3_SETTING_<NAME> variable into a name => value hash.
