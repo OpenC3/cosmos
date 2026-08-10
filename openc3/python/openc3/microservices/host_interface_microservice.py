@@ -105,6 +105,21 @@ BRIDGE_GO = b"\x02"
 HANDSHAKE_TIMEOUT = 30.0
 
 
+def _iroh_error_detail(error):
+    """Human-readable detail for an exception. iroh's IrohError keeps its message
+    behind a .message() method (its str()/repr() is just the class name), so call
+    it when present; otherwise fall back to str()."""
+    message = getattr(error, "message", None)
+    if callable(message):
+        try:
+            detail = message()
+            if detail:
+                return f"{type(error).__name__}: {detail}"
+        except Exception:
+            pass
+    return f"{type(error).__name__}: {error}"
+
+
 class HostInterfaceMicroservice:
     def __init__(self):
         self.name = os.environ.get("OPENC3_MICROSERVICE_NAME", "host_interface")
@@ -282,7 +297,7 @@ class HostInterfaceMicroservice:
                 reader.cancel()
                 writer.cancel()
             except Exception as error:
-                Logger.warn(f"{self.name}: control channel error: {type(error).__name__}: {error}")
+                Logger.warn(f"{self.name}: control channel error: {_iroh_error_detail(error)}")
             finally:
                 if connection is not None:
                     with contextlib.suppress(Exception):
@@ -410,7 +425,7 @@ class HostInterfaceMicroservice:
                 down.cancel()
                 stop.cancel()
             except Exception as error:
-                Logger.error(f"{self.name}: bridge error: {type(error).__name__}: {error}")
+                Logger.error(f"{self.name}: bridge error: {_iroh_error_detail(error)}")
             finally:
                 self._interface = None
                 if interface is not None:

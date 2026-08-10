@@ -124,6 +124,21 @@ PAIR_TIMEOUT = 300
 CLOSE_DRAIN_TIMEOUT = 10
 
 
+def _iroh_error_detail(error):
+    """Human-readable detail for an exception. iroh's IrohError keeps its message
+    behind a .message() method (its str()/repr() is just the class name), so call
+    it when present; otherwise fall back to str()."""
+    message = getattr(error, "message", None)
+    if callable(message):
+        try:
+            detail = message()
+            if detail:
+                return f"{type(error).__name__}: {detail}"
+        except Exception:
+            pass
+    return f"{type(error).__name__}: {error}"
+
+
 class BridgeMicroservice(Microservice):
     """The Iroh hub: rendezvous for the data path plus control APIs.
 
@@ -212,8 +227,11 @@ class BridgeMicroservice(Microservice):
 
         try:
             asyncio.run(self._serve())
-        except Exception:
-            self.logger.error(f"Bridge hub crashed:\n{traceback.format_exc()}")
+        except Exception as error:
+            # iroh's IrohError carries its detail in .message(); str()/traceback
+            # render only the class name ("IrohError"), so pull the real message
+            # out explicitly — otherwise the crash log is useless for diagnosis.
+            self.logger.error(f"Bridge hub crashed ({_iroh_error_detail(error)}):\n{traceback.format_exc()}")
 
     def _idle_until_shutdown(self):
         while not self.cancel_thread:
@@ -352,7 +370,7 @@ class BridgeMicroservice(Microservice):
             try:
                 streams = self._streams()
             except Exception as error:
-                self.logger.warn(f"Bridge '{self.bridge_name}': stream refresh error: {type(error).__name__}: {error}")
+                self.logger.warn(f"Bridge '{self.bridge_name}': stream refresh error: {_iroh_error_detail(error)}")
                 continue
             if streams == self.streams:
                 continue
@@ -370,7 +388,14 @@ class BridgeMicroservice(Microservice):
             alpn = await accepting.alpn()
             conn = await accepting.connect()
         except Exception as error:
-            self.logger.warn(f"Bridge accept error: {type(error).__name__}: {error}")
+            # Routine noise on an open UDP port: anything that isn't a real iroh
+            # peer dialing our ticket fails ALPN/TLS negotiation here (port
+            # scanners, health checks, stray QUIC/HTTP3 clients -> "no known
+            # protocol" / WebPKI "UnknownIssuer"). A legitimate bridge peer pins
+            # our node key via the ticket and never hits this. Log at debug so it
+            # doesn't spam; a genuinely misconfigured peer surfaces later as an
+            # authorization rejection (logged at warn) once it does negotiate.
+            self.logger.debug(f"Bridge accept error (ignored): {_iroh_error_detail(error)}")
             return
         try:
             if alpn == API_ENROLL:
@@ -427,7 +452,7 @@ class BridgeMicroservice(Microservice):
                 self.logger.warn(f"Bridge received unknown ALPN {alpn!r}")
                 await self._close(conn)
         except Exception as error:
-            self.logger.warn(f"Bridge handler error: {type(error).__name__}: {error}")
+            self.logger.warn(f"Bridge handler error: {_iroh_error_detail(error)}")
             await self._close(conn)
 
     async def _read_request(self, recv):
@@ -470,7 +495,7 @@ class BridgeMicroservice(Microservice):
             else:
                 self.logger.warn(f"Rejected enrollment attempt from {conn.remote_id()} (bad/absent code)")
         except Exception as error:
-            response = {"ok": False, "error": f"{type(error).__name__}: {error}"}
+            response = {"ok": False, "error": _iroh_error_detail(error)}
         with contextlib.suppress(Exception):
             await send.write_all(json.dumps(response).encode())
             await send.finish()
