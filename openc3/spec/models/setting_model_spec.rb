@@ -140,6 +140,7 @@ module OpenC3
           when '(' then depth += 1; next if depth == 1
           when ')' then depth -= 1; return args << buffer if depth.zero?
           when ',' then (args << buffer; buffer = +''; next) if depth == 1
+          else nil # ordinary character, appended below like a nested ( ) or ,
           end
           buffer << char
         end
@@ -165,6 +166,7 @@ module OpenC3
         case prop_source[/^\s+#{prop}:\s*(.+?),?\s*$/, 1]
         when 'true', 'false' then :boolean
         when /\A'.*'\z/, /\A".*"\z/ then :string
+        else nil # unrecognized shape - the caller reports it as unresolved
         end
       end
 

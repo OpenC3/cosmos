@@ -26,7 +26,9 @@ module OpenC3
       # LocalMode reads OPENC3_LOCAL_MODE_PATH into a constant at load time, so
       # point it at a temp dir the same way local_mode_spec does rather than
       # depending on /plugins existing
-      @saved_local_mode = ENV['OPENC3_LOCAL_MODE']
+      # nil is meaningful: it records that the variable was unset, so the
+      # assignment in after(:each) deletes the key again rather than setting it
+      @saved_local_mode = ENV.fetch('OPENC3_LOCAL_MODE', nil)
       @saved_local_mode_path = LocalMode::OPENC3_LOCAL_MODE_PATH
       ENV['OPENC3_LOCAL_MODE'] = '1'
       @local_mode_dir = Dir.mktmpdir
