@@ -67,6 +67,21 @@ BRIDGE_READY = b"\x01"
 BRIDGE_GO = b"\x02"
 
 
+def _iroh_error_detail(error):
+    """Human-readable detail for an exception. iroh's IrohError keeps its message
+    behind a .message() method (its str()/repr() is just the class name), so call
+    it when present; otherwise fall back to str()."""
+    message = getattr(error, "message", None)
+    if callable(message):
+        try:
+            detail = message()
+            if detail:
+                return f"{type(error).__name__}: {detail}"
+        except Exception:
+            pass
+    return f"{type(error).__name__}: {error}"
+
+
 class BridgeInterface(Interface):
     """Streams raw bytes to/from bridge_microservice over an Iroh connection.
 
@@ -247,7 +262,7 @@ class BridgeInterface(Interface):
             # runs first and signals the disconnect downstream.
             raise
         except Exception as error:
-            Logger.info(f"{self.name}: bridge reader stopped: {type(error).__name__}: {error}")
+            Logger.info(f"{self.name}: bridge reader stopped: {_iroh_error_detail(error)}")
         finally:
             self._connected = False
             self._read_queue.put(None)  # sentinel -> read_interface signals disconnect
@@ -303,7 +318,7 @@ class BridgeInterface(Interface):
                 # closes the connection so the cancellation propagates.
                 raise
             except Exception as error:
-                Logger.info(f"{self.name}: control channel error: {type(error).__name__}: {error}")
+                Logger.info(f"{self.name}: control channel error: {_iroh_error_detail(error)}")
             finally:
                 self._ctrl_send = None
                 if connection is not None:
