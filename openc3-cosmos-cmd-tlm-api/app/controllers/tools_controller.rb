@@ -61,7 +61,7 @@ class ToolsController < ModelController
   def auth
     url = ENV.fetch('OPENC3_KEYCLOAK_EXTERNAL_URL', nil)
     unless url
-      url = ENV.fetch('OPENC3_KEYCLOAK_URL')
+      url = ENV.fetch('OPENC3_KEYCLOAK_URL', nil)
       if url == "http://openc3-keycloak:8080"
         # Externally should be just /auth
         url = "/auth"

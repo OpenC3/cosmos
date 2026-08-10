@@ -34,8 +34,8 @@ module OpenC3
     extend Api
 
     def self.names
-      if Dir.exist?("#{ENV.fetch('GEM_HOME')}/gems")
-        result = Pathname.new("#{ENV.fetch('GEM_HOME')}/gems").children.select { |c| c.directory? }.collect { |p| File.basename(p) + '.gem' }
+      if Dir.exist?("#{ENV.fetch('GEM_HOME', nil)}/gems")
+        result = Pathname.new("#{ENV.fetch('GEM_HOME', nil)}/gems").children.select { |c| c.directory? }.collect { |p| File.basename(p) + '.gem' }
       else
         result = []
       end
@@ -43,9 +43,9 @@ module OpenC3
     end
 
     def self.get(name)
-      path = "#{ENV.fetch('GEM_HOME')}/cosmoscache/#{name}"
+      path = "#{ENV.fetch('GEM_HOME', nil)}/cosmoscache/#{name}"
       return path if File.exist?(path)
-      path = "#{ENV.fetch('GEM_HOME')}/cache/#{name}"
+      path = "#{ENV.fetch('GEM_HOME', nil)}/cache/#{name}"
       return path if File.exist?(path)
       raise "Gem '#{name}' not found"
     end
@@ -54,8 +54,8 @@ module OpenC3
       if File.file?(gem_file_path)
         gem_filename = File.basename(gem_file_path)
         # Put into cosmoscache folder that we control
-        FileUtils.mkdir_p("#{ENV.fetch('GEM_HOME')}/cosmoscache") unless Dir.exist?("#{ENV.fetch('GEM_HOME')}/cosmoscache")
-        FileUtils.cp(gem_file_path, "#{ENV.fetch('GEM_HOME')}/cosmoscache/#{File.basename(gem_file_path)}")
+        FileUtils.mkdir_p("#{ENV.fetch('GEM_HOME', nil)}/cosmoscache") unless Dir.exist?("#{ENV.fetch('GEM_HOME', nil)}/cosmoscache")
+        FileUtils.cp(gem_file_path, "#{ENV.fetch('GEM_HOME', nil)}/cosmoscache/#{File.basename(gem_file_path)}")
         if gem_install
           Logger.info "Installing gem: #{gem_filename}"
           result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "geminstall", gem_filename, scope], "package_install", gem_filename, Time.now + 3600.0, scope: scope)
@@ -91,7 +91,7 @@ module OpenC3
         Gem.install(gem_file_path, "> 0.pre", build_args: ['--no-document, --without development,test'], prerelease: true, domain: :both)
       end
     rescue => e
-      message = "Gem file #{gem_file_path} error installing to #{ENV.fetch('GEM_HOME')}\n#{e.formatted}"
+      message = "Gem file #{gem_file_path} error installing to #{ENV.fetch('GEM_HOME', nil)}\n#{e.formatted}"
       Logger.error message
       raise e
     end

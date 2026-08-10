@@ -171,7 +171,7 @@ module OpenC3
       if $openc3_in_cluster
         case ENV['OPENC3_CLOUD']
         when 'local'
-          bucket_url = ENV["OPENC3_BUCKET_URL"] || "http://openc3-buckets:9000"
+          bucket_url = ENV.fetch("OPENC3_BUCKET_URL", "http://openc3-buckets:9000")
           URI.parse("#{bucket_url}#{url}")
         when 'aws'
           URI.parse("https://s3.#{ENV.fetch('AWS_REGION')}.amazonaws.com" + url)

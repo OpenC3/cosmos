@@ -43,7 +43,7 @@ module OpenC3
     attr_accessor :secrets
 
     def self.run(name = nil)
-      name = ENV.fetch('OPENC3_MICROSERVICE_NAME', 'OPENC3_MICROSERVICE_NAME') unless name
+      name = ENV.fetch('OPENC3_MICROSERVICE_NAME', nil) unless name
       microservice = self.new(name)
       thread = Thread.new do
         begin

@@ -92,7 +92,7 @@ module OpenC3
           # this to work with really large files. Otherwise the entire file has
           # to be held in memory!
           File.open(filename, 'rb') do |file|
-            client.put_object(bucket: ENV.fetch('OPENC3_LOGS_BUCKET', 'logs'), key: bucket_key, body: file, metadata: metadata)
+            client.put_object(bucket: ENV.fetch('OPENC3_LOGS_BUCKET', nil), key: bucket_key, body: file, metadata: metadata)
           end
         rescue => err
           # Try to upload file three times
@@ -103,7 +103,7 @@ module OpenC3
           retry
         end
 
-        Logger.debug "wrote #{ENV.fetch('OPENC3_LOGS_BUCKET', 'logs')}/#{bucket_key}"
+        Logger.debug "wrote #{ENV.fetch('OPENC3_LOGS_BUCKET', nil)}/#{bucket_key}"
 
         File.delete(orig_filename) if orig_filename
         File.delete(filename)

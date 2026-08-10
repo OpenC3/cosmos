@@ -1,7 +1,7 @@
 # TBL_FILENAME is set to the name of the table file
 puts "file:#{ENV.fetch('TBL_FILENAME', nil)}"
 # Open the file
-file = get_target_file(ENV['TBL_FILENAME'])
+file = get_target_file(ENV.fetch('TBL_FILENAME', nil))
 buffer = file.read
 # puts buffer.formatted
 # Implement custom commanding logic to upload the table

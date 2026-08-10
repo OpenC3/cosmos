@@ -237,12 +237,12 @@ module OpenC3
       Logger.microservice_name = 'MicroserviceOperator'
 
       OperatorProcess.setup()
-      @cycle_time = (ENV.fetch('OPERATOR_CYCLE_TIME', nil) and ENV.fetch('OPERATOR_CYCLE_TIME', nil).to_f) || CYCLE_TIME # time in seconds
+      @cycle_time = ENV.fetch('OPERATOR_CYCLE_TIME', CYCLE_TIME).to_f # time in seconds
       # Maximum number of new microservices to start per cycle. This spreads a
       # large startup burst (e.g. installing a plugin with many targets) across
       # multiple cycles so the shared services (object store, redis) aren't
       # stampeded by every microservice connecting at once. 0 = no limit.
-      @max_start_per_cycle = (ENV['OPENC3_OPERATOR_MAX_START_PER_CYCLE'] || 5).to_i
+      @max_start_per_cycle = ENV.fetch('OPENC3_OPERATOR_MAX_START_PER_CYCLE', 5).to_i
 
       @ruby_process_name = ENV.fetch('OPENC3_RUBY', nil)
       if RUBY_ENGINE != 'ruby'
