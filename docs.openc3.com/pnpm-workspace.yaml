@@ -1,0 +1,12 @@
+# pnpm 11 defaults strictDepBuilds to true, which turns "ignored build scripts"
+# from a warning into an install failure. These two dependencies build native /
+# polyfill artifacts and are trusted, so approve them explicitly rather than
+# disabling the check. Note pnpm 11 replaced onlyBuiltDependencies with allowBuilds.
+allowBuilds:
+  '@swc/core': true
+  core-js: true
+
+# 1 day. This is also the pnpm 11 default, set explicitly so it is obvious that
+# newly published versions are held back on purpose (matches
+# openc3-cosmos-init/plugins/pnpm-workspace.yaml).
+minimumReleaseAge: 1440
