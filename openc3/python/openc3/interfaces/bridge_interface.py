@@ -112,11 +112,11 @@ class BridgeInterface(Interface):
         self._ctrl_send = None
         self._host_status = None
         self._host_status_lock = threading.Lock()
-        # True once the host has reported CONNECTED for the current data session.
-        # Gates the control-channel disconnect detection so the DISCONNECTED the
-        # host reports before it opens its device (during the connect handshake)
-        # can't be mistaken for the host dropping on its own.
-        self._host_connected_seen = False
+        # True once the host has reported it is actively trying to connect
+        # (desired=True) for the current data session. Gates the control-channel
+        # disconnect detection so the initial desired=False (before the host
+        # accepts our connect) isn't mistaken for the host dropping on its own.
+        self._host_attempt_seen = False
         # Whether COSMOS wants the host connected; re-asserted to the host each
         # time the control channel (re)establishes, so the desired state survives
         # a control drop and can't be lost to a startup race.
@@ -194,9 +194,9 @@ class BridgeInterface(Interface):
         # host microservice serving the same stream. Raw device bytes only; this
         # flows transparently through bridge_microservice.
         alpn = f"stream/{self.name}".encode()
-        # Fresh data session: require a new CONNECTED from the host before a
-        # reported DISCONNECTED counts as the host dropping on its own.
-        self._host_connected_seen = False
+        # Fresh data session: require the host to report it is trying (desired
+        # True) before a reported desired False counts as it dropping on its own.
+        self._host_attempt_seen = False
         try:
             self._connection = await self._endpoint.connect(addr, alpn)
             # bridge_microservice is the server: it opens+primes the bi-stream, so
@@ -339,17 +339,19 @@ class BridgeInterface(Interface):
                     status = msg["status"]
                     with self._host_status_lock:
                         self._host_status = status
-                    # Detect the host dropping its device on its own. Once it has
-                    # reported CONNECTED for this session, a later DISCONNECTED
-                    # means the host lost/closed the device without COSMOS asking.
-                    # Make read_interface return nil so COSMOS's
+                    # Detect the host dropping on its own via its desired state.
+                    # Once it reports it is trying (desired True), a later desired
+                    # False means the host parked without COSMOS asking — the
+                    # device errored, or (as with a missing USB HID device) never
+                    # opened at all. Make read_interface return nil so COSMOS's
                     # InterfaceMicroservice disconnects and reconnects (which
-                    # re-commands the host to connect).
-                    state = status.get("state")
-                    if state == "CONNECTED":
-                        self._host_connected_seen = True
-                    elif state == "DISCONNECTED" and self._host_connected_seen:
-                        self._host_connected_seen = False
+                    # re-commands the host to connect). Using desired (not the
+                    # CONNECTED state) catches a device that never connected.
+                    desired = status.get("desired")
+                    if desired:
+                        self._host_attempt_seen = True
+                    elif desired is False and self._host_attempt_seen and self._connected:
+                        self._host_attempt_seen = False
                         self._host_disconnected()
 
     def _host_disconnected(self):

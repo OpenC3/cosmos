@@ -128,6 +128,9 @@ class HostInterfaceMicroservice:
         self._desired_connected = False
         self._connect_event = None
         self._disconnect_event = None
+        # Set to push a status line to COSMOS immediately on a state change
+        # (rather than waiting up to STATUS_INTERVAL), so a park propagates fast.
+        self._status_ping = None
         # The currently-connected interface, read (thread-safely enough for a
         # snapshot) by the status publisher.
         self._interface = None
@@ -189,6 +192,7 @@ class HostInterfaceMicroservice:
         self._connect_event = asyncio.Event()
         self._disconnect_event = asyncio.Event()
         self._disconnect_event.set()  # start disconnected; COSMOS drives connect
+        self._status_ping = asyncio.Event()
 
         # Shut down cleanly on SIGINT/SIGTERM. openc3-app soft-stops us with
         # SIGINT when it closes; without this the default handler raises
@@ -251,6 +255,11 @@ class HostInterfaceMicroservice:
         else:
             self._disconnect_event.set()
             self._connect_event.clear()
+        # Report the new desired state to COSMOS right away. This is what lets a
+        # park (e.g. the device failed to open, as with a missing USB HID device)
+        # reach the bridge_interface even though the device never connected.
+        if self._status_ping is not None:
+            self._status_ping.set()
 
     # ------------------------------------------------------------------ control
     async def _control_loop(self, endpoint, addr):
@@ -318,14 +327,21 @@ class HostInterfaceMicroservice:
                 self._set_desired(desired)
 
     async def _send_status(self, send):
-        """Push the interface's live status up to COSMOS every STATUS_INTERVAL."""
+        """Push the interface's live status up to COSMOS: immediately on a state
+        change (via `_status_ping`) and at least every STATUS_INTERVAL as a
+        heartbeat."""
         while not self.shutdown:
+            self._status_ping.clear()
             line = (json.dumps({"type": "status", "status": self._status_snapshot()}) + "\n").encode()
             await send.write_all(line)
-            await asyncio.sleep(STATUS_INTERVAL)
+            with contextlib.suppress(asyncio.TimeoutError):
+                await asyncio.wait_for(self._status_ping.wait(), timeout=STATUS_INTERVAL)
 
     def _status_snapshot(self):
-        """A JSON-able snapshot of the host interface's status."""
+        """A JSON-able snapshot of the host interface's status. `desired` is the
+        state the host is driving toward (True once it accepts COSMOS's connect,
+        False once it parks) — COSMOS uses the True->False transition to detect a
+        host self-disconnect even when the device never opened."""
         interface = self._interface
         if interface is not None:
             try:
@@ -335,10 +351,11 @@ class HostInterfaceMicroservice:
             status["name"] = self.name
             # Reflect the desired/connection state the host is actually in.
             status["state"] = "CONNECTED" if interface.connected() else "DISCONNECTED"
+            status["desired"] = self._desired_connected
             with contextlib.suppress(Exception):
                 status["connection_string"] = interface.connection_string()
             return status
-        return {"name": self.name, "state": "DISCONNECTED"}
+        return {"name": self.name, "state": "DISCONNECTED", "desired": self._desired_connected}
 
     # --------------------------------------------------------------------- data
     async def _data_loop(self, endpoint, addr):
@@ -381,6 +398,7 @@ class HostInterfaceMicroservice:
                 interface.connect()
                 self._interface = interface
                 Logger.info(f"{self.name}: connected {interface.connection_string()}")
+                self._status_ping.set()  # report CONNECTED promptly
 
                 loop = asyncio.get_event_loop()
                 up = asyncio.create_task(self._device_to_bridge(loop, interface, send))
