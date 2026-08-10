@@ -17,6 +17,8 @@
 
 require 'spec_helper'
 require 'openc3/models/interface_model'
+require 'openc3/models/bridge_model'
+require 'openc3/models/host_microservice_model'
 require 'openc3/models/interface_status_model'
 require 'openc3/models/router_model'
 require 'openc3/models/router_status_model'
@@ -331,6 +333,100 @@ module OpenC3
 
         # No status model exists -- undeploy should not raise
         expect { model.undeploy }.to_not raise_error
+      end
+    end
+
+    describe "bridged deploy, undeploy" do
+      before(:each) do
+        mock_redis()
+        local_s3()
+        TargetModel.new(name: "INST", scope: "DEFAULT").create
+      end
+
+      after(:each) do
+        local_s3_unset()
+      end
+
+      it "deploys a COSMOS bridge_interface tunnel and a host microservice against an existing relay" do
+        # The shared relay is created by the bridge (admin tool / scope), not by
+        # interface deploy. Interface deploy only verifies it exists.
+        BridgeModel.build_microservice(bridge_name: "mybridge", scope: "DEFAULT").create
+
+        model = InterfaceModel.new(
+          name: "SERIAL_INT", scope: "DEFAULT", plugin: "PLUG",
+          config_params: ["serial_interface.py", "/dev/ttyUSB0", "/dev/ttyUSB0", "115200"],
+          target_names: ["INST"],
+          protocols: [["READ_WRITE", "burst_protocol.py"]],
+          options: [["FLOW_CONTROL", "NONE"]],
+          bridge_options: [["FLOW_CONTROL", "NONE"]],
+          bridge_protocols: [["READ", "length_protocol.py"]],
+          bridge_name: "mybridge"
+        )
+        model.create
+        model.deploy(Dir.pwd, {})
+
+        # COSMOS side runs the Python interface_microservice (which builds a
+        # BridgeInterface tunnel), keeping this interface's protocols/targets.
+        cosmos = MicroserviceModel.get_model(name: "DEFAULT__INTERFACE__SERIAL_INT", scope: "DEFAULT")
+        expect(cosmos).to_not be_nil
+        expect(cosmos.cmd[0]).to include("python")
+        expect(cosmos.cmd[1]).to eql "interface_microservice.py"
+        expect(cosmos.target_names).to eql ["INST"]
+
+        # The shared relay is left untouched by interface deploy: no per-interface
+        # STREAM option is pushed onto it (that would respawn the relay). It
+        # discovers this interface's stream by querying the HostMicroserviceModels.
+        relay = MicroserviceModel.get_model(name: "DEFAULT__BRIDGE__MYBRIDGE", scope: "DEFAULT")
+        expect(relay).to_not be_nil
+        expect(relay.cmd[1]).to eql "bridge_microservice.py"
+        expect(relay.options).to include(["BRIDGE_NAME", "mybridge"])
+        expect(relay.options).to_not include(["STREAM", "SERIAL_INT"])
+
+        # Host spawn spec for openc3-app: the real interface + bridge connection
+        # options and BRIDGE_PROTOCOLs that run on the host next to the device.
+        host = HostMicroserviceModel.get_model(name: "SERIAL_INT", scope: "DEFAULT")
+        expect(host).to_not be_nil
+        expect(host.bridge_name).to eql "mybridge"
+        expect(host.stream).to eql "SERIAL_INT"
+        expect(host.config_params[0]).to eql "serial_interface.py"
+        expect(host.config_params).to include("115200")
+        expect(host.options).to include(["FLOW_CONTROL", "NONE"])
+        expect(host.protocols).to include(["READ", "length_protocol.py"])
+      end
+
+      it "shares one relay across interfaces; undeploy removes host models but never the relay" do
+        BridgeModel.build_microservice(bridge_name: "shared", scope: "DEFAULT").create
+
+        a = InterfaceModel.new(name: "IFACE1", scope: "DEFAULT", plugin: "PLUG",
+                               config_params: ["serial_interface.py"], bridge_name: "shared")
+        a.create
+        a.deploy(Dir.pwd, {})
+        b = InterfaceModel.new(name: "IFACE2", scope: "DEFAULT", plugin: "PLUG",
+                               config_params: ["serial_interface.py"], bridge_name: "shared")
+        b.create
+        b.deploy(Dir.pwd, {})
+
+        # The relay is never mutated with per-interface STREAM options; both host
+        # models exist and the relay discovers the streams by querying them.
+        relay = MicroserviceModel.get_model(name: "DEFAULT__BRIDGE__SHARED", scope: "DEFAULT")
+        expect(relay.options).to eql([["BRIDGE_NAME", "shared"]])
+        expect(HostMicroserviceModel.get_model(name: "IFACE1", scope: "DEFAULT")).to_not be_nil
+        expect(HostMicroserviceModel.get_model(name: "IFACE2", scope: "DEFAULT")).to_not be_nil
+
+        # Undeploying one interface removes only its host model; the relay is left
+        # completely untouched (unchanged options, so the operator won't respawn it).
+        a.undeploy
+        relay = MicroserviceModel.get_model(name: "DEFAULT__BRIDGE__SHARED", scope: "DEFAULT")
+        expect(relay).to_not be_nil
+        expect(relay.options).to eql([["BRIDGE_NAME", "shared"]])
+        expect(HostMicroserviceModel.get_model(name: "IFACE1", scope: "DEFAULT")).to be_nil
+        expect(HostMicroserviceModel.get_model(name: "IFACE2", scope: "DEFAULT")).to_not be_nil
+
+        # Undeploying the last interface still leaves the relay: it is only ever
+        # destroyed by deleting the bridge from the admin tool, never automatically.
+        b.undeploy
+        expect(MicroserviceModel.get_model(name: "DEFAULT__BRIDGE__SHARED", scope: "DEFAULT")).to_not be_nil
+        expect(HostMicroserviceModel.get_model(name: "IFACE2", scope: "DEFAULT")).to be_nil
       end
     end
 
