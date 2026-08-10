@@ -1,9 +1,15 @@
 import os
 import re
 import sys
+from pathlib import Path
 
 
-base = os.path.basename(sys.argv[1])
+repo_root = Path(__file__).resolve().parents[2]
+source_path = Path(sys.argv[1]).resolve(strict=True)
+if not source_path.is_relative_to(repo_root) or not source_path.is_file():
+    raise ValueError(f"Source must be a regular file inside {repo_root}")
+
+base = os.path.basename(source_path)
 spec = False
 if "spec" in base:
     spec = True
@@ -12,9 +18,9 @@ if "spec" in base:
 else:
     py_file_name = f"{os.path.splitext(base)[0]}.py"
 
-print(f"processing:{sys.argv[1]} into {py_file_name}")
-out = open(py_file_name, "w+")
-with open(sys.argv[1]) as file:
+print(f"processing:{source_path} into {py_file_name}")
+out = open(py_file_name, "w+")  # noqa: SIM115 - closed after the conversion loop
+with source_path.open() as file:
     for line in file:
         if line.strip() == "end":
             continue

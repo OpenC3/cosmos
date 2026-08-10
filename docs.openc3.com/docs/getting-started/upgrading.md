@@ -303,7 +303,7 @@ Now that you've migrated the binary files from Minio to Versitygw you need to in
 
 You will notice CmdTlmServer log messages indicating that the Decom log files are being processed:
 
-```json
+```jsonl
 {"time":"1774626658233033984","@timestamp":"2026-03-27T15:50:58.233034Z","level":"INFO","microservice_name":"DEFAULT__USER__TSDB-MIGRATION-MICROSERVICE","container_name":"47c6c5a1cc82","message":"Completed: DEFAULT/decom_logs/tlm/INST/20260327/20260327145450822594000__20260327150500322594000__DEFAULT__INST__ALL__rt__decom.bin.gz - 14754 packets (total: 28036 packets, 15 files)","type":"log"}
 ...
 {"time":"1774626662373466880","@timestamp":"2026-03-27T15:51:02.373467Z","level":"INFO","microservice_name":"DEFAULT__USER__TSDB-MIGRATION-MICROSERVICE","container_name":"47c6c5a1cc82","message":"Migration complete! Files: 16, Packets: 42452, Errors: 0","type":"log"}
