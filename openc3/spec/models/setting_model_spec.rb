@@ -105,6 +105,117 @@ module OpenC3
       end
     end
 
+    describe "KNOWN_SETTINGS vs the Admin Console" do
+      # KNOWN_SETTINGS is hand maintained, and a name missing from it is not a
+      # harmless omission: an unknown name aborts init, so a setting the Admin
+      # Console offers but the table doesn't list can't be seeded at all. This
+      # reads the setting names straight out of the Vue components so the two
+      # can't drift. The path is repo-only, not shipped in the gem.
+      SETTINGS_VUE_DIR = File.expand_path(
+        '../../../openc3-cosmos-init/plugins/packages/openc3-vue-common/src/tools/admin/tabs/settings',
+        __dir__
+      )
+
+      # Names the components pass to loadSetting / saveSetting, resolving the
+      # `const settingName = 'time_zone'` indirection those files use.
+      def admin_console_setting_names
+        Dir["#{SETTINGS_VUE_DIR}/*Settings.vue"].flat_map do |file|
+          source = File.read(file)
+          consts = source.scan(/(?:const|let)\s+(\w+)\s*=\s*'([a-z0-9_]+)'/).to_h
+          source.scan(/(?:load|save)Setting\(\s*([A-Za-z_]\w*|'[a-z0-9_]+')/).flatten.map do |token|
+            token.start_with?("'") ? token.delete("'") : consts[token]
+          end
+        end.compact.uniq
+      end
+
+      # Text of the arguments of the call whose opening paren is at `index`,
+      # scanning balanced parens so a multi-line JSON.stringify({ ... })
+      # argument comes back whole rather than truncated at its first comma.
+      def call_args(source, index)
+        depth = 0
+        buffer = +''
+        args = []
+        source[index..-1].each_char do |char|
+          case char
+          when '(' then depth += 1; next if depth == 1
+          when ')' then depth -= 1; return args << buffer if depth.zero?
+          when ',' then (args << buffer; buffer = +''; next) if depth == 1
+          end
+          buffer << char
+        end
+        args
+      end
+
+      # What the component passes to saveSetting, which is what ends up in
+      # Redis - the declared type has to match this, not what the control
+      # displays. Three shapes appear in these files:
+      #   saveSetting(NAME, JSON.stringify({...}))  -> JSON text, so :string
+      #   saveSetting(NAME, this.saveObj)           -> ditto, via a method
+      #   saveSetting(NAME, this.someFlag)          -> the data() initial value
+      # Anything else yields nil and is not asserted on.
+      def infer_type(source, token, prop_source)
+        index = source =~ /saveSetting\(\s*#{Regexp.escape(token)}\s*,/
+        return nil unless index
+        argument = call_args(source, source.index('(', index))[1].to_s.strip
+        return :string if argument.include?('JSON.stringify')
+        prop = argument[/this\.(\w+)/, 1]
+        return nil unless prop
+        body = prop_source[/#{prop}:\s*function[^\n]*\n(.*?)\n\s{4}\},/m, 1]
+        return :string if body&.include?('JSON.stringify')
+        case prop_source[/^\s+#{prop}:\s*(.+?),?\s*$/, 1]
+        when 'true', 'false' then :boolean
+        when /\A'.*'\z/, /\A".*"\z/ then :string
+        end
+      end
+
+      # @return [Hash] setting name => type the component saves
+      def admin_console_setting_types
+        Dir["#{SETTINGS_VUE_DIR}/*Settings.vue"].each_with_object({}) do |file, types|
+          source = File.read(file)
+          consts = source.scan(/(?:const|let)\s+(\w+)\s*=\s*'([a-z0-9_]+)'/).to_h
+          source.scan(/saveSetting\(\s*([A-Za-z_]\w*|'[a-z0-9_]+')/).flatten.uniq.each do |token|
+            name = token.start_with?("'") ? token.delete("'") : consts[token]
+            next unless name
+            type = infer_type(source, token, source)
+            types[name] = type if type
+          end
+        end
+      end
+
+      it "lists every setting the Admin Console reads or writes" do
+        skip "Vue sources not present" unless Dir.exist?(SETTINGS_VUE_DIR)
+        found = admin_console_setting_names
+        expect(found).to_not be_empty, "extracted no setting names - the regex needs updating"
+        missing = found - SettingModel::KNOWN_SETTINGS.keys
+        expect(missing).to be_empty,
+                           "Admin Console settings missing from KNOWN_SETTINGS: #{missing.join(', ')}. " \
+                           "Add a row for each - see the comment above KNOWN_SETTINGS."
+      end
+
+      it "doesn't list a setting the Admin Console no longer has" do
+        skip "Vue sources not present" unless Dir.exist?(SETTINGS_VUE_DIR)
+        stale = SettingModel::KNOWN_SETTINGS.keys - admin_console_setting_names
+        expect(stale).to be_empty, "KNOWN_SETTINGS lists settings no component uses: #{stale.join(', ')}"
+      end
+
+      it "declares the type each component actually saves" do
+        skip "Vue sources not present" unless Dir.exist?(SETTINGS_VUE_DIR)
+        inferred = admin_console_setting_types
+        # Require full coverage, not just agreement on what was inferred - a
+        # component written in a shape infer_type doesn't handle would
+        # otherwise quietly shrink this check instead of failing
+        unresolved = admin_console_setting_names - inferred.keys
+        expect(unresolved).to be_empty,
+                              "couldn't infer the saved type for: #{unresolved.join(', ')}. " \
+                              "Teach infer_type the shape those components use."
+        wrong = inferred.reject { |name, type| SettingModel::KNOWN_SETTINGS.dig(name, :type) == type }
+        expect(wrong).to be_empty, wrong.map { |name, type|
+          "'#{name}' is declared #{SettingModel::KNOWN_SETTINGS.dig(name, :type).inspect} " \
+          "but the component saves #{type.inspect}"
+        }.join('; ')
+      end
+    end
+
     describe "KNOWN_SETTINGS" do
       it "declares a valid type for every setting" do
         SettingModel::KNOWN_SETTINGS.each do |name, details|
@@ -338,7 +449,7 @@ module OpenC3
         end
       end
 
-      it "raises on an unparseable overwrite env var rather than guessing" do
+      it "raises on an unparsable overwrite env var rather than guessing" do
         env = {
           'OPENC3_SETTING_TIME_ZONE' => 'UTC',
           'OPENC3_SETTINGS_OVERWRITE' => 'maybe',
@@ -348,7 +459,7 @@ module OpenC3
         expect(SettingModel.get(name: 'time_zone')).to be_nil
       end
 
-      it "raises on an unparseable allow unknown env var" do
+      it "raises on an unparsable allow unknown env var" do
         env = {
           'OPENC3_SETTING_TIME_ZONE' => 'UTC',
           'OPENC3_SETTINGS_ALLOW_UNKNOWN' => 'maybe',
