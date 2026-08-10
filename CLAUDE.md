@@ -274,21 +274,15 @@ Set `ENTERPRISE=1` environment variable for Enterprise features. Enterprise uses
 
 ## Commit Message Format
 
-Use Angular commit message format. Keep messages concise and focused.
+[Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
+Run `/commit-message` to generate one from the staged changes -
+`.claude/commands/commit-message.md` is the authority on format, so the rules
+live in one place rather than being duplicated here.
 
-**Format:**
 ```
-<type>(<scope>): <subject>
+<type>[(<scope>)][!]: <description>
 
-<body>
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
+[body]
 
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
-
-**Guidelines:**
-- Subject line: imperative mood, lowercase, no period, max 72 chars
-- Body: explain what and why (not how), keep concise (2-4 lines max)
-- Scope: component/module affected
-- Always include Claude Code attribution footer
