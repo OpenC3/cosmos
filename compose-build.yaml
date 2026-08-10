@@ -21,9 +21,9 @@ services:
       context: "openc3-ruby"
       network: host
       args:
-        ALPINE_VERSION: ${ALPINE_VERSION}
-        ALPINE_BUILD: ${ALPINE_BUILD}
-        APK_URL: ${APK_URL}
+        DEBIAN_RELEASE: ${DEBIAN_RELEASE}
+        RUBY_VERSION: ${RUBY_VERSION}
+        APT_URL: ${APT_URL}
         RUBYGEMS_URL: ${RUBYGEMS_URL}
         PYPI_URL: ${PYPI_URL}
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
@@ -58,6 +58,8 @@ services:
       context: "openc3-buckets"
       network: host
       args:
+        DEBIAN_RELEASE: ${DEBIAN_RELEASE}
+        APT_URL: ${APT_URL}
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-buckets:${OPENC3_TAG}"
 
