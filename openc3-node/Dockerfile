@@ -8,7 +8,8 @@ USER root
 
 RUN apk update && \
     apk add npm && \
-    npm install --global --ignore-scripts pnpm@10.34.5 && \
+    npm install --global --ignore-scripts pnpm@11.21.0 && \
+    pnpm --version | grep -qx "11.21.0" && \
     rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
 USER ${USER_ID}:${GROUP_ID}

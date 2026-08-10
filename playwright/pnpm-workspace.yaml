@@ -1,1 +1,4 @@
 nodeLinker: hoisted # makes a flat node_modules dir - required by our fixlinux script to be able to browse code coverage
+
+overrides:
+  uuid: ^14.0.0
