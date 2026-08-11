@@ -1,10 +1,15 @@
 # pnpm 11 defaults strictDepBuilds to true, which turns "ignored build scripts"
-# from a warning into an install failure. These two dependencies build native /
-# polyfill artifacts and are trusted, so approve them explicitly rather than
-# disabling the check. Note pnpm 11 replaced onlyBuiltDependencies with allowBuilds.
+# from a warning into an install failure. Note pnpm 11 replaced
+# onlyBuiltDependencies with allowBuilds. An explicit false still counts as a
+# decision, so the check stays on.
+#
+# Neither dependency needs its build script: @swc/core ships prebuilt native
+# bindings via platform optional deps (postinstall only validates them and
+# would npm-install an @swc/wasm fallback), and core-js's postinstall only
+# prints a funding banner.
 allowBuilds:
-  '@swc/core': true
-  core-js: true
+  '@swc/core': false
+  core-js: false
 
 # 1 day. This is also the pnpm 11 default, set explicitly so it is obvious that
 # newly published versions are held back on purpose (matches
