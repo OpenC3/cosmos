@@ -521,6 +521,15 @@ export default {
     // sent from the history. In that case commandName and paramList are undefined
     // and the api calls handle that.
     sendCmd(targetName, commandName, paramList) {
+      // Snapshot what's being sent. The history editor stays editable while the
+      // hazardous check is in flight so this.queueName and the last* variables
+      // can change out from under us before the command actually goes out.
+      const cmdInfo = {
+        targetName,
+        commandName,
+        paramList,
+        queueName: this.queueName,
+      }
       // Store what was actually sent for use in resending hazardous commands
       this.lastTargetName = targetName
       this.lastCommandName = commandName
@@ -542,7 +551,7 @@ export default {
             }
             this.displaySendHazardous = true
           } else {
-            this.executeCmd(false)
+            this.executeCmd(cmdInfo, false)
           }
         },
         (error) => {
@@ -553,14 +562,22 @@ export default {
 
     sendHazardousCmd() {
       this.displaySendHazardous = false
-      this.executeCmd(true)
+      this.executeCmd(
+        {
+          targetName: this.lastTargetName,
+          commandName: this.lastCommandName,
+          paramList: this.lastParamList,
+          queueName: this.lastQueueName,
+        },
+        true,
+      )
     },
 
-    // Sends the last command using the api method matching the current raw and
-    // range check settings. skipHazardousCheck is true once the user has
-    // confirmed the hazardous command dialog.
-    executeCmd(skipHazardousCheck) {
-      const { lastTargetName, lastCommandName, lastParamList } = this
+    // Sends the command described by cmdInfo using the api method matching the
+    // current raw and range check settings. skipHazardousCheck is true once the
+    // user has confirmed the hazardous command dialog.
+    executeCmd(cmdInfo, skipHazardousCheck) {
+      const { targetName, commandName, paramList, queueName } = cmdInfo
       let kwparams = {}
       if (this.validateParameter !== null) {
         kwparams.validate = this.validateParameter.toLowerCase() === 'true'
@@ -568,8 +585,8 @@ export default {
         kwparams.validate = false
       }
       // Add queue parameter if a queue is selected
-      if (this.lastQueueName !== null) {
-        kwparams.queue = this.lastQueueName
+      if (queueName !== null) {
+        kwparams.queue = queueName
       }
       const raw = this.cmdRaw ? '_raw' : ''
       // The no_hazardous_check variants are an implementation detail of the
@@ -593,9 +610,9 @@ export default {
         'Ignore-Errors': this.ignoreRangeChecks ? '428' : '428 500',
       }
       this.api[method](
-        lastTargetName,
-        lastCommandName,
-        lastParamList,
+        targetName,
+        commandName,
+        paramList,
         headers,
         kwparams,
       ).then(
@@ -603,7 +620,7 @@ export default {
           this.processCmdSuccess(cmd, response)
         },
         (error) => {
-          this.processCmdError(lastTargetName, lastCommandName, error)
+          this.processCmdError(targetName, commandName, error)
         },
       )
     },
