@@ -52,7 +52,7 @@
 # that is needed - no entry in this file is required. See .env for details.
 # ---------------------------------------------------------------------------
 
-# services:
+services:
 #   # -----------------------------------------------------------------------
 #   # Command / Telemetry API
 #   # -----------------------------------------------------------------------
@@ -100,8 +100,8 @@
 #   # -----------------------------------------------------------------------
 #   # Init container (installs plugins / tools on startup)
 #   # -----------------------------------------------------------------------
-#  openc3-cosmos-init:
-#    environment:
+  openc3-cosmos-init:
+    environment:
 #       # Disable install of the Demo (empty = off, see note above; NOT 0).
 #       - OPENC3_DEMO=
 #       # Enable a default queue for ALL commands. Commands can only opt out by
@@ -172,7 +172,7 @@
 #       #   - "OPENC3_SETTING_CLASSIFICATION_BANNER={\"text\":\"UNCLASSIFIED\"}"
 #       # These two control HOW the settings above are applied. Neither is
 #       # sticky - both are re-read on every init.
-#       #
+       - OPENC3_SETTING_TIME_ZONEs=Mars
 #       # Rewrite every OPENC3_SETTING_* value on every init, discarding
 #       # Admin Console edits. Unlike the OPENC3_NO_* flags this one reads its
 #       # value: 1/true is on, 0/false/empty is off rather than the

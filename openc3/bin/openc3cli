@@ -1495,10 +1495,10 @@ if not ARGV[0].nil? # argument(s) given
 
   when 'initsettings'
     if ARGV[1] == '--help' || ARGV[1] == '-h'
-      puts "Usage: cli initsettings"
+      puts "Usage: cli initsettings [--dry-run]"
       puts ""
-      puts "Seed COSMOS settings from the environment. Settings that already exist are"
-      puts "left unchanged so values edited in the Admin Console survive a restart."
+      puts "Seed COSMOS settings from the environment. A setting changed in the Admin"
+      puts "Console is left alone, so those edits survive a restart."
       puts ""
       puts "Environment:"
       puts "  OPENC3_SETTING_<NAME>          One variable per setting, e.g."
@@ -1517,11 +1517,19 @@ if not ARGV[0].nil? # argument(s) given
       puts "whose text is JSON (astro, classification_banner, context_tag)."
       puts ""
       puts "Options:"
+      puts "      --dry-run     Report what would be seeded and exit without writing."
+      puts "                    Lists every problem rather than stopping at the first,"
+      puts "                    and works before Redis is up so it can be run ahead of"
+      puts "                    starting COSMOS. Exits non-zero if anything would fail"
       puts "  -h, --help        Show this help message"
       exit 0
     end
+    dry_run = ARGV[1] == '--dry-run'
+    if ARGV[1] and !dry_run
+      abort "Unknown option #{ARGV[1]}. See 'cli initsettings --help'"
+    end
     begin
-      OpenC3::SettingModel.apply_defaults()
+      OpenC3::SettingModel.apply_defaults(dry_run: dry_run)
     rescue => e
       abort "Error applying default settings: #{e.message}"
     end

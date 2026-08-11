@@ -125,39 +125,95 @@ module OpenC3
     # @param env [Hash] environment to read from, defaults to ENV
     # @param overwrite [Boolean, nil] nil reads OVERWRITE_ENV_VAR from env
     # @return [Array<String>] names of the settings that were written
-    def self.apply_defaults(env: ENV, overwrite: nil)
+    # @param dry_run [Boolean] report what would happen and write nothing.
+    #   Reports every problem rather than aborting on the first, and works
+    #   before Redis is up so it can be run ahead of starting COSMOS.
+    def self.apply_defaults(env: ENV, overwrite: nil, dry_run: false)
       overwrite = truthy_env?(env, OVERWRITE_ENV_VAR) if overwrite.nil?
       allow_unknown = truthy_env?(env, ALLOW_UNKNOWN_ENV_VAR)
       settings = parse_defaults_env(env)
-      return [] if settings.empty?
+      if settings.empty?
+        puts "No #{SETTING_ENV_PREFIX}* environment variables set - nothing to seed" if dry_run
+        return []
+      end
 
+      prefix = dry_run ? '[dry run] ' : ''
+      # A dry run is most useful before `openc3.sh start`, when there is no
+      # Redis to compare against. Names and values can still be checked.
+      comparable = dry_run ? redis_available? : true
+      puts "#{prefix}Redis is not reachable - checking names and values only" unless comparable
+
+      problems = []
       written = []
       settings.each do |name, value|
-        validate_setting!(name, value, allow_unknown: allow_unknown)
-        existing = get(name: name)
-        if existing and !overwrite
-          unless seeded_value?(name, existing['data'])
-            puts "Setting '#{name}' was changed from the seeded value - leaving as #{existing['data'].inspect}"
-            next
-          end
-          if existing['data'] == value
-            puts "Setting '#{name}' already matches #{value.inspect} - leaving unchanged"
-            next
-          end
-          puts "Updating unedited setting '#{name}': #{existing['data'].inspect} -> #{value.inspect}"
-        elsif existing and overwrite and existing['data'] != value
-          # Overwrite discards an Admin Console edit, so say what was lost -
-          # otherwise the log reads identically to a first-time seed
-          puts "Overwriting setting '#{name}': #{existing['data'].inspect} -> #{value.inspect} " \
-               "(#{OVERWRITE_ENV_VAR} is set)"
-        else
-          puts "Set default setting '#{name}' to: #{value.inspect}"
+        begin
+          validate_setting!(name, value, allow_unknown: allow_unknown)
+        rescue StandardError => error
+          # Collect rather than abort. The init container restarts on failure
+          # (compose restart: on-failure, Kubernetes restartPolicy OnFailure),
+          # so raising here puts COSMOS in a crash loop over a cosmetic
+          # setting, with the cause buried in restarting container logs.
+          # Skipping leaves the setting at its default, which is the same
+          # outcome as not setting it, and the error is reported below.
+          problems << error.message
+          next
         end
+
+        existing = comparable ? get(name: name) : nil
+        action, message = plan_setting(name, value, existing, overwrite)
+        message += ' (current value unknown)' unless comparable
+        puts "#{prefix}#{message}"
+        next if action == :skip
+
+        written << name
+        next if dry_run
         set({ name: name, data: value }, scope: nil)
         record_seeded(name, value)
-        written << name
+      end
+
+      unless problems.empty?
+        problems.each { |problem| puts "#{prefix}ERROR: #{problem}" }
+        summary = "#{problems.length} setting(s) #{dry_run ? 'would be' : 'were'} skipped due to errors"
+        puts "#{prefix}#{summary} - COSMOS will use the default for #{problems.length == 1 ? 'it' : 'them'}"
+        # Only --dry-run fails the process. It is a preflight check, so a
+        # non-zero exit is the whole point; the real run has to leave COSMOS
+        # running rather than restart forever.
+        $stdout.flush
+        raise "#{summary}: #{problems.join('; ')}" if dry_run
       end
       written
+    end
+
+    # What apply_defaults will do with one setting. Single-sourced so a dry run
+    # cannot report one thing and the real run do another.
+    #
+    # @return [Array(Symbol, String)] :write or :skip, and the line to log
+    def self.plan_setting(name, value, existing, overwrite)
+      if existing.nil?
+        [:write, "Set default setting '#{name}' to: #{value.inspect}"]
+      elsif overwrite
+        if existing['data'] == value
+          [:write, "Setting '#{name}' already matches #{value.inspect}"]
+        else
+          # Overwrite discards an Admin Console edit, so say what was lost -
+          # otherwise the log reads identically to a first-time seed
+          [:write, "Overwriting setting '#{name}': #{existing['data'].inspect} -> " \
+                   "#{value.inspect} (#{OVERWRITE_ENV_VAR} is set)"]
+        end
+      elsif !seeded_value?(name, existing['data'])
+        [:skip, "Setting '#{name}' was changed from the seeded value - leaving as #{existing['data'].inspect}"]
+      elsif existing['data'] == value
+        [:skip, "Setting '#{name}' already matches #{value.inspect} - leaving unchanged"]
+      else
+        [:write, "Updating unedited setting '#{name}': #{existing['data'].inspect} -> #{value.inspect}"]
+      end
+    end
+
+    def self.redis_available?
+      names()
+      true
+    rescue StandardError
+      false
     end
 
     # Provenance for the values this seeder wrote, so a later init can tell an

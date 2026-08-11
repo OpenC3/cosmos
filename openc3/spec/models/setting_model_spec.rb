@@ -568,10 +568,70 @@ module OpenC3
         expect(SettingModel.get(name: 'brand_new')['data']).to eql 'x'
       end
 
-      it "raises and writes nothing further on an invalid value" do
+      it "skips an invalid value instead of aborting init" do
+        # The init container restarts on failure, so raising here would crash
+        # loop COSMOS over a cosmetic setting
         env = { 'OPENC3_SETTING_TIME_ZONE' => 'Mars' }
-        expect { SettingModel.apply_defaults(env: env) }.to raise_error(/Invalid value/)
+        expect { SettingModel.apply_defaults(env: env) }.to_not raise_error
         expect(SettingModel.get(name: 'time_zone')).to be_nil
+      end
+
+      it "still applies the good settings when one is invalid" do
+        env = { 'OPENC3_SETTING_TIME_ZONE' => 'Mars', 'OPENC3_SETTING_TIME_FORMAT' => 'ampm' }
+        expect(SettingModel.apply_defaults(env: env)).to eql ['time_format']
+        expect(SettingModel.get(name: 'time_format')['data']).to eql 'ampm'
+      end
+
+      it "reports every skipped setting and says the default is used" do
+        env = { 'OPENC3_SETTING_TIME_ZONE' => 'Mars', 'OPENC3_SETTING_TIME_ZONES' => 'UTC' }
+        expect($stdout).to receive(:puts).with(/ERROR: Invalid value "Mars"/)
+        expect($stdout).to receive(:puts).with(/ERROR: 'time_zones' is not a known/)
+        expect($stdout).to receive(:puts).with(/2 setting\(s\) were skipped due to errors/)
+        allow($stdout).to receive(:puts)
+        SettingModel.apply_defaults(env: env)
+      end
+
+      it "fails only in a dry run, so a preflight check can gate on it" do
+        env = { 'OPENC3_SETTING_TIME_ZONE' => 'Mars' }
+        expect { SettingModel.apply_defaults(env: env, dry_run: true) }
+          .to raise_error(/1 setting\(s\) would be skipped/)
+      end
+
+      it "writes nothing in a dry run" do
+        env = { 'OPENC3_SETTING_TIME_ZONE' => 'UTC' }
+        expect(SettingModel.apply_defaults(env: env, dry_run: true)).to eql ['time_zone']
+        expect(SettingModel.get(name: 'time_zone')).to be_nil
+      end
+
+      it "reports the planned action for each setting in a dry run" do
+        SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => '24hr' })
+        SettingModel.set({ name: 'time_zone', data: 'local' }, scope: nil)
+        expect($stdout).to receive(:puts).with(/\[dry run\] Updating unedited setting 'time_format'/)
+        expect($stdout).to receive(:puts).with(/\[dry run\] Setting 'time_zone' was changed from the seeded value/)
+        allow($stdout).to receive(:puts)
+        SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => 'ampm',
+                                           'OPENC3_SETTING_TIME_ZONE' => 'UTC' }, dry_run: true)
+      end
+
+      it "is a no-op when OVERWRITE is set and the value already matches" do
+        env = { 'OPENC3_SETTING_TIME_ZONE' => 'UTC', 'OPENC3_SETTINGS_OVERWRITE' => '1' }
+        SettingModel.apply_defaults(env: env)
+        expect($stdout).to receive(:puts).with(/Setting 'time_zone' already matches "UTC"/)
+        allow($stdout).to receive(:puts)
+        SettingModel.apply_defaults(env: env)
+      end
+
+      it "falls back to name and value checks when Redis is unreachable" do
+        allow(SettingModel).to receive(:names).and_raise(StandardError, 'no redis')
+        expect($stdout).to receive(:puts).with(/Redis is not reachable/)
+        allow($stdout).to receive(:puts)
+        expect(SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_ZONE' => 'UTC' }, dry_run: true))
+          .to eql ['time_zone']
+      end
+
+      it "says so when nothing is set" do
+        expect($stdout).to receive(:puts).with(/No OPENC3_SETTING_\* environment variables set/)
+        expect(SettingModel.apply_defaults(env: {}, dry_run: true)).to eql []
       end
 
       it "reads from ENV by default" do

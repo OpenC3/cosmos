@@ -412,10 +412,18 @@ case $1 in
     # Run the command "ruby /openc3/bin/openc3cli" with all parameters starting at 2 since the first is 'openc3'
     # Shift off the first argument (script name) to get CLI args
     shift
+    # Most subcommands run in the cmd-tlm-api container, but a few only make
+    # sense with the init container's environment. initsettings reads
+    # OPENC3_SETTING_* variables, which are set on openc3-cosmos-init - running
+    # it anywhere else reports "nothing to seed" no matter how it is configured.
+    CLI_SERVICE=openc3-cosmos-cmd-tlm-api
+    case "$1" in
+      initsettings ) CLI_SERVICE=openc3-cosmos-init ;;
+    esac
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps $CLI_SERVICE ruby /openc3/bin/openc3cli "$@"
     else
-      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps $CLI_SERVICE ruby /openc3/bin/openc3cli "$@"
     fi
     set +a
     ;;
