@@ -363,6 +363,12 @@ export default {
     this.editor.container.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault()
+        // Don't start another command while one is in flight or waiting on the
+        // hazardous confirmation. Sending would overwrite the last* variables
+        // the pending command still needs.
+        if (this.sendDisabled) {
+          return
+        }
         let command = this.editor.session.getLine(
           this.editor.getCursorPosition().row,
         )
