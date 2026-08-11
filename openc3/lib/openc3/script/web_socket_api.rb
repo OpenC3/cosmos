@@ -237,6 +237,10 @@ module OpenC3
       when 'disconnect'
         # Any other disconnect reason is not fatal; the caller keeps reading
         raise "Unauthorized" if json_hash['reason'] == 'unauthorized'
+      else
+        # ping, welcome, confirm_subscription and anything new the server adds
+        # are informational only
+        nil
       end
     end
 

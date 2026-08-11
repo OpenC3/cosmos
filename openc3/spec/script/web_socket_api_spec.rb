@@ -73,7 +73,7 @@ module OpenC3
   def self.spec_with_env(vars)
     saved = {}
     vars.each do |key, value|
-      saved[key] = ENV.key?(key) ? ENV[key] : :__unset__
+      saved[key] = ENV.fetch(key, :__unset__)
       if value.nil?
         ENV.delete(key)
       else

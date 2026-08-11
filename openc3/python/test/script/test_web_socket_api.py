@@ -327,12 +327,14 @@ class TestWebSocketApiInit(unittest.TestCase):
     # Subclasses forward **options, which would otherwise silently swallow a
     # typo'd option name that explicit keyword arguments used to reject
     def test_rejects_an_unknown_option(self):
+        auth = mock_auth()
         with self.assertRaisesRegex(TypeError, "unexpected keyword argument\\(s\\): read_timout"):
-            WebSocketApi(url="ws://test.com/cable", authentication=mock_auth(), read_timout=5.0)
+            WebSocketApi(url="ws://test.com/cable", authentication=auth, read_timout=5.0)
 
     def test_reports_every_unknown_option(self):
+        auth = mock_auth()
         with self.assertRaisesRegex(TypeError, "unexpected keyword argument\\(s\\): bogus, other"):
-            MessagesWebSocketApi(url="ws://test.com/cable", authentication=mock_auth(), bogus=1, other=2)
+            MessagesWebSocketApi(url="ws://test.com/cable", authentication=auth, bogus=1, other=2)
 
 
 class TestWebSocketApiContextManager(unittest.TestCase):
