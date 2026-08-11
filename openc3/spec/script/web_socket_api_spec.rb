@@ -660,39 +660,52 @@ module OpenC3
 
       it "defaults to the in-cluster service name and cable port" do
         OpenC3.spec_with_env(cleared) do
-          expect(api.generate_url).to eq('http://openc3-cosmos-cmd-tlm-api:3901/openc3-api/cable')
+          expect(api.generate_url).to eq('ws://openc3-cosmos-cmd-tlm-api:3901/openc3-api/cable')
         end
       end
 
       # Outside the cluster the service DNS name does not resolve
       it "uses localhost when OPENC3_DEVEL is set" do
         OpenC3.spec_with_env(cleared.merge('OPENC3_DEVEL' => '../openc3')) do
-          expect(api.generate_url).to eq('http://127.0.0.1:3901/openc3-api/cable')
+          expect(api.generate_url).to eq('ws://127.0.0.1:3901/openc3-api/cable')
         end
       end
 
       it "prefers an explicit hostname over the OPENC3_DEVEL default" do
         OpenC3.spec_with_env(cleared.merge('OPENC3_DEVEL' => '../openc3', 'OPENC3_API_HOSTNAME' => 'example.com')) do
-          expect(api.generate_url).to eq('http://example.com:3901/openc3-api/cable')
+          expect(api.generate_url).to eq('ws://example.com:3901/openc3-api/cable')
         end
       end
 
-      it "honors the schema override" do
+      # http/https are translated to the ws/wss websocket schemes
+      it "translates the http schema to ws" do
+        OpenC3.spec_with_env(cleared.merge('OPENC3_API_SCHEMA' => 'http')) do
+          expect(api.generate_url).to eq('ws://openc3-cosmos-cmd-tlm-api:3901/openc3-api/cable')
+        end
+      end
+
+      it "translates the https schema to wss" do
         OpenC3.spec_with_env(cleared.merge('OPENC3_API_SCHEMA' => 'https')) do
-          expect(api.generate_url).to eq('https://openc3-cosmos-cmd-tlm-api:3901/openc3-api/cable')
+          expect(api.generate_url).to eq('wss://openc3-cosmos-cmd-tlm-api:3901/openc3-api/cable')
+        end
+      end
+
+      it "passes an unrecognized schema through" do
+        OpenC3.spec_with_env(cleared.merge('OPENC3_API_SCHEMA' => 'ws')) do
+          expect(api.generate_url).to eq('ws://openc3-cosmos-cmd-tlm-api:3901/openc3-api/cable')
         end
       end
 
       it "falls back to OPENC3_API_PORT when no cable port is set" do
         OpenC3.spec_with_env(cleared.merge('OPENC3_API_PORT' => '2900')) do
-          expect(api.generate_url).to eq('http://openc3-cosmos-cmd-tlm-api:2900/openc3-api/cable')
+          expect(api.generate_url).to eq('ws://openc3-cosmos-cmd-tlm-api:2900/openc3-api/cable')
         end
       end
 
       # Cable traffic can be routed to a different port than the REST API
       it "prefers OPENC3_API_CABLE_PORT over OPENC3_API_PORT" do
         OpenC3.spec_with_env(cleared.merge('OPENC3_API_PORT' => '2900', 'OPENC3_API_CABLE_PORT' => '3901')) do
-          expect(api.generate_url).to eq('http://openc3-cosmos-cmd-tlm-api:3901/openc3-api/cable')
+          expect(api.generate_url).to eq('ws://openc3-cosmos-cmd-tlm-api:3901/openc3-api/cable')
         end
       end
     end
@@ -701,7 +714,7 @@ module OpenC3
       OpenC3.spec_with_env('OPENC3_API_HOSTNAME' => 'example.com', 'OPENC3_API_CABLE_PORT' => '1234',
                            'OPENC3_API_SCHEMA' => nil, 'OPENC3_DEVEL' => nil) do
         api = CmdTlmWebSocketApi.new(authentication: double("auth", token: "t"))
-        expect(api.instance_variable_get(:@url)).to eq('http://example.com:1234/openc3-api/cable')
+        expect(api.instance_variable_get(:@url)).to eq('ws://example.com:1234/openc3-api/cable')
       end
     end
 
@@ -721,37 +734,37 @@ module OpenC3
 
       it "defaults to the in-cluster script runner service and cable port" do
         OpenC3.spec_with_env(cleared) do
-          expect(api.generate_url).to eq('http://openc3-cosmos-script-runner-api:3902/script-api/cable')
+          expect(api.generate_url).to eq('ws://openc3-cosmos-script-runner-api:3902/script-api/cable')
         end
       end
 
       it "uses localhost when OPENC3_DEVEL is set" do
         OpenC3.spec_with_env(cleared.merge('OPENC3_DEVEL' => '../openc3')) do
-          expect(api.generate_url).to eq('http://127.0.0.1:3902/script-api/cable')
+          expect(api.generate_url).to eq('ws://127.0.0.1:3902/script-api/cable')
         end
       end
 
       it "prefers an explicit hostname over the OPENC3_DEVEL default" do
         OpenC3.spec_with_env(cleared.merge('OPENC3_DEVEL' => '../openc3', 'OPENC3_SCRIPT_API_HOSTNAME' => 'example.com')) do
-          expect(api.generate_url).to eq('http://example.com:3902/script-api/cable')
+          expect(api.generate_url).to eq('ws://example.com:3902/script-api/cable')
         end
       end
 
-      it "honors the schema override" do
+      it "translates the https schema to wss" do
         OpenC3.spec_with_env(cleared.merge('OPENC3_SCRIPT_API_SCHEMA' => 'https')) do
-          expect(api.generate_url).to eq('https://openc3-cosmos-script-runner-api:3902/script-api/cable')
+          expect(api.generate_url).to eq('wss://openc3-cosmos-script-runner-api:3902/script-api/cable')
         end
       end
 
       it "falls back to OPENC3_SCRIPT_API_PORT when no cable port is set" do
         OpenC3.spec_with_env(cleared.merge('OPENC3_SCRIPT_API_PORT' => '2900')) do
-          expect(api.generate_url).to eq('http://openc3-cosmos-script-runner-api:2900/script-api/cable')
+          expect(api.generate_url).to eq('ws://openc3-cosmos-script-runner-api:2900/script-api/cable')
         end
       end
 
       it "prefers OPENC3_SCRIPT_API_CABLE_PORT over OPENC3_SCRIPT_API_PORT" do
         OpenC3.spec_with_env(cleared.merge('OPENC3_SCRIPT_API_PORT' => '2900', 'OPENC3_SCRIPT_API_CABLE_PORT' => '3902')) do
-          expect(api.generate_url).to eq('http://openc3-cosmos-script-runner-api:3902/script-api/cable')
+          expect(api.generate_url).to eq('ws://openc3-cosmos-script-runner-api:3902/script-api/cable')
         end
       end
     end
@@ -760,7 +773,7 @@ module OpenC3
       OpenC3.spec_with_env('OPENC3_SCRIPT_API_HOSTNAME' => 'example.com', 'OPENC3_SCRIPT_API_CABLE_PORT' => '1234',
                            'OPENC3_SCRIPT_API_SCHEMA' => nil, 'OPENC3_DEVEL' => nil) do
         api = ScriptWebSocketApi.new(authentication: double("auth", token: "t"))
-        expect(api.instance_variable_get(:@url)).to eq('http://example.com:1234/script-api/cable')
+        expect(api.instance_variable_get(:@url)).to eq('ws://example.com:1234/script-api/cable')
       end
     end
   end
@@ -981,6 +994,20 @@ module OpenC3
         OpenC3.spec_with_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
                              'OPENC3_API_PASSWORD' => 'password') do
           data = StreamingWebSocketApi.read_all(items: ['ITEM'], end_time: 2_000_000_000, timeout: 0.0)
+          expect(data).to eq([{ "__time" => 1 }])
+        end
+      end
+
+      # Regression: this used to raise NoMethodError on nil.length
+      it "returns the data collected so far when the socket closes early" do
+        stream.queue_read(
+          '{"type":"confirm_subscription"}',
+          '{"message":[{"__time":1}]}'
+          # Socket closes without ever sending the empty-batch end marker
+        )
+        OpenC3.spec_with_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
+                             'OPENC3_API_PASSWORD' => 'password') do
+          data = StreamingWebSocketApi.read_all(items: ['ITEM'], end_time: 2_000_000_000)
           expect(data).to eq([{ "__time" => 1 }])
         end
       end

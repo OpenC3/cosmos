@@ -11,6 +11,7 @@
 
 import json
 import os
+import sys
 import time
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -18,6 +19,7 @@ from unittest.mock import Mock, patch
 
 from websockets.exceptions import ConnectionClosedOK
 
+from openc3.script.exceptions import StopScriptError
 from openc3.script.web_socket_api import (
     AllScriptsWebSocketApi,
     AutonomicEventsWebSocketApi,
@@ -30,6 +32,7 @@ from openc3.script.web_socket_api import (
     RunningScriptWebSocketApi,
     ScriptWebSocketApi,
     StreamingWebSocketApi,
+    SystemEventsWebSocketApi,
     TimelineEventsWebSocketApi,
     WebSocketApi,
 )
@@ -425,6 +428,16 @@ class TestWebSocketApiDisconnect(unittest.TestCase):
         self.assertEqual(api.stream.disconnect_count, 1)
         self.assertFalse(api.subscribed)
 
+    # A half-closed socket makes the courtesy unsubscribe fail; the close itself
+    # must still happen or the socket leaks.
+    def test_still_closes_the_stream_when_unsubscribe_raises(self):
+        api = self._make_api()
+        api.stream.connect()
+        api.subscribed = True
+        api.stream.write = Mock(side_effect=OSError("closed stream"))
+        api.disconnect()
+        self.assertEqual(api.stream.disconnect_count, 1)
+
 
 class TestWebSocketApiUnsubscribe(unittest.TestCase):
     def _make_api(self):
@@ -462,14 +475,36 @@ class TestWebSocketApiRead(unittest.TestCase):
         api.stream.queue_read('{"message":{"level":"INFO","text":"test"}}')
         self.assertEqual(api.read(), {"level": "INFO", "text": "test"})
 
-    # Empty / absent frames are the normal end-of-stream signal when
-    # ActionCable / anycable-go closes the connection
-    def test_returns_the_falsy_frame_at_end_of_stream(self):
+    # Empty frames are the normal end-of-stream signal when ActionCable /
+    # anycable-go closes the connection. Returning None (rather than "") lets
+    # canonical `while (resp := api.read())` consumer loops terminate cleanly.
+    def test_returns_none_on_an_empty_frame(self):
         api = self._make_api()
         api.stream.queue_read("")
-        self.assertEqual(api.read(), "")
-        # Queue is now drained so the stream reports None
         self.assertIsNone(api.read())
+
+    def test_returns_none_when_the_stream_is_drained(self):
+        api = self._make_api()
+        self.assertIsNone(api.read())
+
+    def test_handles_an_empty_frame_after_valid_messages(self):
+        api = self._make_api()
+        api.stream.queue_read('{"message":{"data":"test"}}', "")
+        self.assertEqual(api.read(), {"data": "test"})
+        self.assertIsNone(api.read())
+
+    # Defense-in-depth: a non-empty but malformed frame should not crash a
+    # consumer -- surface it as end-of-stream.
+    def test_returns_none_on_a_malformed_frame(self):
+        api = self._make_api()
+        api.stream.queue_read("not json{")
+        self.assertIsNone(api.read())
+
+    # A disconnect frame carrying no reason at all must not raise KeyError
+    def test_ignores_a_disconnect_with_no_reason(self):
+        api = self._make_api()
+        api.stream.queue_read('{"type":"disconnect"}', '{"message":{"data":"payload"}}')
+        self.assertEqual(api.read(), {"data": "payload"})
 
     def test_ignores_protocol_messages_by_default(self):
         api = self._make_api()
@@ -497,6 +532,58 @@ class TestWebSocketApiRead(unittest.TestCase):
         api = self._make_api()
         api.stream.queue_read('{"type":"ping"}', '{"message":{"data":"quick_response"}}')
         self.assertEqual(api.read(timeout=5.0), {"data": "quick_response"})
+
+
+class TestWebSocketApiReadCooperativeStop(unittest.TestCase):
+    """Inside Script Runner a blocking read on a quiet channel must still honor
+    the user pressing Stop, hence the check on every protocol message."""
+
+    def _make_api(self):
+        api = WebSocketApi(url="ws://test.com/cable", authentication=mock_auth())
+        api.identifier = {"channel": "TestChannel"}
+        api.stream = FakeWebSocketStream()
+        api.subscribed = True
+        return api
+
+    def _patch_running_script(self, instance):
+        """Install a fake running_script module so the lazy sys.modules lookup
+        finds it without importing the real one"""
+        module = Mock()
+        module.RunningScript.instance = instance
+        patcher = patch.dict(sys.modules, {"openc3.utilities.running_script": module})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_raises_stop_script_while_idling_on_protocol_messages(self):
+        self._patch_running_script(Mock(stop=True))
+        api = self._make_api()
+        api.stream.queue_read('{"type":"ping"}')
+        with self.assertRaises(StopScriptError):
+            api.read()
+
+    def test_keeps_reading_when_the_script_is_not_stopping(self):
+        self._patch_running_script(Mock(stop=False))
+        api = self._make_api()
+        api.stream.queue_read('{"type":"ping"}', '{"message":{"data":"payload"}}')
+        self.assertEqual(api.read(), {"data": "payload"})
+
+    def test_does_not_check_for_stop_when_there_is_no_running_script_instance(self):
+        self._patch_running_script(None)
+        api = self._make_api()
+        api.stream.queue_read('{"type":"ping"}', '{"message":{"data":"payload"}}')
+        self.assertEqual(api.read(), {"data": "payload"})
+
+    # Outside Script Runner the module was never imported, so the check is a
+    # no-op and must not import it (which would be a cycle)
+    def test_is_a_no_op_when_running_script_was_never_imported(self):
+        patcher = patch.dict(sys.modules)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        sys.modules.pop("openc3.utilities.running_script", None)
+        api = self._make_api()
+        api.stream.queue_read('{"type":"ping"}', '{"message":{"data":"payload"}}')
+        self.assertEqual(api.read(), {"data": "payload"})
+        self.assertNotIn("openc3.utilities.running_script", sys.modules)
 
 
 class TestWebSocketApiWaitForSubscribed(unittest.TestCase):
@@ -563,11 +650,14 @@ class TestWebSocketApiGenerateAuth(unittest.TestCase):
             auth_class.return_value = "core_auth"
             self.assertEqual(self.api._generate_auth(), "core_auth")
 
-    # NOTE: the Ruby client raises "Environment Variables Not Set for
-    # Authentication" here instead of returning None
-    def test_returns_none_when_no_authentication_environment_is_set(self):
-        with patch.dict(os.environ, {}, clear=True):
-            self.assertIsNone(self.api._generate_auth())
+    # Failing fast beats returning None, which would only surface later as an
+    # AttributeError inside subscribe(). Matches the Ruby client.
+    def test_raises_when_no_authentication_environment_is_set(self):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            self.assertRaisesRegex(RuntimeError, "Environment Variables Not Set for Authentication"),
+        ):
+            self.api._generate_auth()
 
     def test_uses_keycloak_authentication_when_the_api_token_is_set(self):
         env = {"OPENC3_API_TOKEN": "token", "OPENC3_KEYCLOAK_URL": "http://keycloak:8080"}
@@ -692,6 +782,7 @@ class TestChannelIdentifiers(unittest.TestCase):
         CalendarEventsWebSocketApi: "CalendarEventsChannel",
         ConfigEventsWebSocketApi: "ConfigEventsChannel",
         LimitsEventsWebSocketApi: "LimitsEventsChannel",
+        SystemEventsWebSocketApi: "SystemEventsChannel",
         TimelineEventsWebSocketApi: "TimelineEventsChannel",
         QueueEventsWebSocketApi: "QueueEventsChannel",
     }
@@ -755,8 +846,9 @@ class TestChannelIdentifiers(unittest.TestCase):
 
 
 class TestStreamingWebSocketApiActions(unittest.TestCase):
-    def _make_api(self):
-        api = StreamingWebSocketApi(url="ws://test.com/cable", authentication=mock_auth())
+    def _make_api(self, scope=None):
+        kwargs = {"scope": scope} if scope else {}
+        api = StreamingWebSocketApi(url="ws://test.com/cable", authentication=mock_auth(), **kwargs)
         api.stream = FakeWebSocketStream()
         api.stream.queue_read('{"type":"confirm_subscription"}')
         return api
@@ -802,6 +894,13 @@ class TestStreamingWebSocketApiActions(unittest.TestCase):
         self.assertEqual(data["start_time"], to_nsec_from_epoch(start_time))
         self.assertEqual(data["end_time"], to_nsec_from_epoch(end_time))
 
+    def test_add_passes_integer_nanosecond_times_through_unchanged(self):
+        api = self._make_api()
+        api.add(items=["ITEM"], start_time=1_000_000_000, end_time=2_000_000_000)
+        data = self._action_data(api)[0]
+        self.assertEqual(data["start_time"], 1_000_000_000)
+        self.assertEqual(data["end_time"], 2_000_000_000)
+
     def test_add_omits_the_times_when_not_given(self):
         api = self._make_api()
         api.add(items=["ITEM"])
@@ -812,6 +911,18 @@ class TestStreamingWebSocketApiActions(unittest.TestCase):
     def test_add_allows_overriding_the_scope_per_action(self):
         api = self._make_api()
         api.add(items=["ITEM"], scope="OTHER")
+        self.assertEqual(self._action_data(api)[0]["scope"], "OTHER")
+
+    # Regression: the default used to be the import-time OPENC3_SCOPE constant,
+    # so an api built with an explicit scope still streamed from DEFAULT
+    def test_add_defaults_to_the_scope_the_api_was_created_with(self):
+        api = self._make_api(scope="OTHER")
+        api.add(items=["ITEM"])
+        self.assertEqual(self._action_data(api)[0]["scope"], "OTHER")
+
+    def test_remove_defaults_to_the_scope_the_api_was_created_with(self):
+        api = self._make_api(scope="OTHER")
+        api.remove(items=["ITEM"])
         self.assertEqual(self._action_data(api)[0]["scope"], "OTHER")
 
     def test_add_subscribes_before_sending_the_action(self):
@@ -905,6 +1016,16 @@ class TestStreamingWebSocketApiReadAll(unittest.TestCase):
             end_time=datetime(2026, 1, 1, tzinfo=timezone.utc),
             timeout=0.0,
         )
+        self.assertEqual(data, [{"__time": 1}])
+
+    # Regression: this used to raise TypeError on len(None)
+    def test_returns_the_data_collected_so_far_when_the_socket_closes_early(self):
+        self.stream.queue_read(
+            '{"type":"confirm_subscription"}',
+            '{"message":[{"__time":1}]}',
+            # Socket closes without ever sending the empty-batch end marker
+        )
+        data = StreamingWebSocketApi.read_all(items=["ITEM"], end_time=datetime(2026, 1, 1, tzinfo=timezone.utc))
         self.assertEqual(data, [{"__time": 1}])
 
     def test_disconnects_the_stream_when_done(self):

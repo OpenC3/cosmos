@@ -225,6 +225,11 @@ module OpenC3
 
     def generate_url
       schema = ENV.fetch('OPENC3_API_SCHEMA', 'http')
+      # Normalize to the websocket schemes (mirrors the Python client). The
+      # websocket gem accepts http/https too, but ws/wss is what the URL
+      # actually is and Python's websockets library rejects anything else.
+      schema = 'ws' if schema == 'http'
+      schema = 'wss' if schema == 'https'
       hostname = ENV.fetch('OPENC3_API_HOSTNAME', nil) || (ENV['OPENC3_DEVEL'] ? '127.0.0.1' : 'openc3-cosmos-cmd-tlm-api')
       port = ENV.fetch('OPENC3_API_CABLE_PORT', nil) || ENV.fetch('OPENC3_API_PORT', '3901')
       port = port.to_i
@@ -241,6 +246,9 @@ module OpenC3
 
     def generate_url
       schema = ENV.fetch('OPENC3_SCRIPT_API_SCHEMA', 'http')
+      # See CmdTlmWebSocketApi#generate_url for why these are normalized
+      schema = 'ws' if schema == 'http'
+      schema = 'wss' if schema == 'https'
       hostname = ENV.fetch('OPENC3_SCRIPT_API_HOSTNAME', nil) || (ENV['OPENC3_DEVEL'] ? '127.0.0.1' : 'openc3-cosmos-script-runner-api')
       port = ENV.fetch('OPENC3_SCRIPT_API_CABLE_PORT', nil) || ENV.fetch('OPENC3_SCRIPT_API_PORT', '3902')
       port = port.to_i
@@ -466,7 +474,10 @@ module OpenC3
         api.add(items: items, packets: packets, start_time: start_time, end_time: end_time, scope: scope)
         while true
           batch = api.read
-          if batch.length == 0
+          # An empty batch is the end marker. nil means the socket closed before
+          # the end marker arrived (see #read) -- return what we have rather
+          # than raising NoMethodError on nil.
+          if batch.nil? or batch.empty?
             return data
           else
             data.concat(batch)

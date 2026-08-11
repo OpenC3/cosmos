@@ -9,11 +9,15 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import contextlib
 import json
 import os
+import sys
 import time
+from datetime import datetime
 
 from openc3.environment import OPENC3_SCOPE
+from openc3.script.exceptions import StopScriptError
 from openc3.streams.web_socket_client_stream import WebSocketClientStream
 from openc3.utilities.authentication import (
     OpenC3Authentication,
@@ -23,6 +27,28 @@ from openc3.utilities.time import to_nsec_from_epoch
 
 
 # NOTE: For example usage see python/examples/cosmos_web_socket_example.py
+
+
+def _nsec(value):
+    """Accept either a datetime or an already converted 64-bit nanosecond value
+    (mirrors the Ruby client, which accepts a Time or an Integer)"""
+    if isinstance(value, datetime):
+        return to_nsec_from_epoch(value)
+    return value
+
+
+def _stopping():
+    """True if a Script Runner script is being stopped.
+
+    Looks the module up in sys.modules rather than importing it so this stays a
+    no-op outside of Script Runner and cannot create an import cycle (same
+    pattern as openc3.utilities.string).
+    """
+    module = sys.modules.get("openc3.utilities.running_script")
+    if module is None:
+        return False
+    instance = getattr(module.RunningScript, "instance", None)
+    return bool(instance and instance.stop)
 
 
 class WebSocketApi:
@@ -78,25 +104,34 @@ class WebSocketApi:
         start_time = time.time()
         while True:
             message = self.read_message()
-            if message:
+            # Empty string is a normal end-of-stream signal when ActionCable /
+            # anycable-go closes the WS. Normalize it to None so consumer
+            # `while (resp := api.read())` loops exit cleanly.
+            if not message:
+                return None
+
+            try:
                 json_hash = json.loads(message)
-                if ignore_protocol_messages:
-                    msg_type = json_hash.get("type")
-                    if msg_type:  # ping, welcome, confirm_subscription, reject_subscription, disconnect
-                        if msg_type == "disconnect" and json_hash["reason"] == "unauthorized":
-                            raise RuntimeError("Unauthorized")
-                        if msg_type == "reject_subscription":
-                            raise RuntimeError("Subscription Rejected")
-                        if timeout is not None:
-                            end_time = time.time()
-                            if (end_time - start_time) > timeout:
-                                raise TimeoutError("No Data Timeout")
-                        # if defined? RunningScript and RunningScript.instance:
-                        #   if RunningScript.instance.stop?:
-                        #       raise StopScript
-                        continue
-                return json_hash["message"]
-            return message
+            except json.JSONDecodeError:
+                # Defense-in-depth: treat malformed frames as end-of-stream
+                # rather than crashing.
+                return None
+
+            if ignore_protocol_messages:
+                msg_type = json_hash.get("type")
+                if msg_type:  # ping, welcome, confirm_subscription, reject_subscription, disconnect
+                    if msg_type == "disconnect" and json_hash.get("reason") == "unauthorized":
+                        raise RuntimeError("Unauthorized")
+                    if msg_type == "reject_subscription":
+                        raise RuntimeError("Subscription Rejected")
+                    if timeout is not None:
+                        end_time = time.time()
+                        if (end_time - start_time) > timeout:
+                            raise TimeoutError("No Data Timeout")
+                    if _stopping():
+                        raise StopScriptError
+                    continue
+            return json_hash["message"]
 
     def subscribe(self):
         """Will subscribe to the channel based on @identifier"""
@@ -192,7 +227,10 @@ class WebSocketApi:
     def disconnect(self):
         """Disconnect from the websocket and attempt to send unsubscribe message"""
         if self.connected():
-            self.unsubscribe()
+            # A half-closed socket makes the courtesy unsubscribe fail; the
+            # close itself must still happen or the socket leaks.
+            with contextlib.suppress(Exception):
+                self.unsubscribe()
             self.stream.disconnect()
 
     def _generate_auth(self):
@@ -201,7 +239,7 @@ class WebSocketApi:
             if os.environ.get("OPENC3_API_PASSWORD"):
                 return OpenC3Authentication()
             else:
-                return None
+                raise RuntimeError("Environment Variables Not Set for Authentication")
         else:
             return OpenC3KeycloakAuthentication(os.environ.get("OPENC3_KEYCLOAK_URL"))
 
@@ -484,6 +522,33 @@ class LimitsEventsWebSocketApi(CmdTlmWebSocketApi):
         )
 
 
+class SystemEventsWebSocketApi(CmdTlmWebSocketApi):
+    """System Events WebSocket"""
+
+    def __init__(
+        self,
+        history_count=0,
+        url=None,
+        write_timeout=10.0,
+        read_timeout=10.0,
+        connect_timeout=5.0,
+        authentication=None,
+        scope=OPENC3_SCOPE,
+    ):
+        self.identifier = {
+            "channel": "SystemEventsChannel",
+            "history_count": history_count,
+        }
+        super().__init__(
+            url=url,
+            write_timeout=write_timeout,
+            read_timeout=read_timeout,
+            connect_timeout=connect_timeout,
+            authentication=authentication,
+            scope=scope,
+        )
+
+
 class TimelineEventsWebSocketApi(CmdTlmWebSocketApi):
     """Timeline WebSocket"""
 
@@ -566,7 +631,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         packets=None,
         start_time=None,
         end_time=None,
-        scope=OPENC3_SCOPE,
+        scope=None,
     ):
         """
         Request to add data to the stream
@@ -587,16 +652,18 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
                 TARGET - Target name
                 PACKET - Packet name
                 VALUETYPE - RAW, CONVERTED, FORMATTED, or PURE (pure means all types as stored in log)
-            start_time: 64-bit nanoseconds from unix epoch - If not present then realtime
-            end_time: 64-bit nanoseconds from unix epoch - If not present stream forever
-            scope: scope name
+            start_time: datetime or 64-bit nanoseconds from unix epoch - If not present then realtime
+            end_time: datetime or 64-bit nanoseconds from unix epoch - If not present stream forever
+            scope: scope name - defaults to the scope this api was created with
         """
+        if scope is None:
+            scope = self.scope
         data_hash = {}
         data_hash["action"] = "add"
         if start_time is not None:
-            data_hash["start_time"] = to_nsec_from_epoch(start_time)
+            data_hash["start_time"] = _nsec(start_time)
         if end_time is not None:
-            data_hash["end_time"] = to_nsec_from_epoch(end_time)
+            data_hash["end_time"] = _nsec(end_time)
         if items:
             data_hash["items"] = items
         if packets:
@@ -605,7 +672,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         data_hash["token"] = self.authentication.token(include_bearer=False)
         self.write_action(data_hash)
 
-    def remove(self, items=None, packets=None, scope=OPENC3_SCOPE):
+    def remove(self, items=None, packets=None, scope=None):
         """
         Request to remove data from the stream
 
@@ -624,8 +691,10 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
                 TARGET - Target name
                 PACKET - Packet name
                 VALUETYPE - RAW, CONVERTED, FORMATTED, or PURE (pure means all types as stored in log)
-            scope: scope name
+            scope: scope name - defaults to the scope this api was created with
         """
+        if scope is None:
+            scope = self.scope
         data_hash = {}
         data_hash["action"] = "remove"
         if items:
@@ -643,7 +712,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         packets=None,
         start_time=None,
         end_time=None,
-        scope=OPENC3_SCOPE,
+        scope=None,
         timeout=None,
     ):
         """
@@ -663,7 +732,10 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
             )
             while True:
                 batch = api.read()
-                if len(batch) == 0:
+                # An empty batch is the end marker. None means the socket closed
+                # before the end marker arrived (see read) -- return what we
+                # have rather than raising TypeError on len(None).
+                if not batch:
                     break
                 else:
                     data += batch
