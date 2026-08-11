@@ -12,7 +12,7 @@ sidebar_custom_props:
 1. Install pnpm
 
    ```bash
-   npm install --global pnpm@latest-10
+   npm install --global pnpm@latest-11
    ```
 
 1. Clone the COSMOS repo
