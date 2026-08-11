@@ -49,6 +49,9 @@ export default {
         })
     },
     saveSetting: function (setting, jsonString, kwparams) {
+      if (this.settingsLoading) {
+        return
+      }
       this.api
         .set_setting(setting, jsonString, kwparams)
         .then(() => {
