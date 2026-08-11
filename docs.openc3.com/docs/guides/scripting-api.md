@@ -330,7 +330,7 @@ check_box("<Message>", "<checkbox text 1>", ...)
 
 ```python
 value = message_box("Select the sensor number", 'One', 'Two', informative="Smaller informative font")
-value = vertical_message_box("Select the sensor number", 'One', 'Two' details="Regular details")
+value = vertical_message_box("Select the sensor number", 'One', 'Two', details="Regular details")
 value = combo_box("Select the sensor number", 'One', 'Two')
 match value:
     case 'One':
