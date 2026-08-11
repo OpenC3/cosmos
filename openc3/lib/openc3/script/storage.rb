@@ -169,7 +169,7 @@ module OpenC3
 
     def _get_uri(url)
       if $openc3_in_cluster
-        case ENV['OPENC3_CLOUD']
+        case ENV.fetch('OPENC3_CLOUD', nil)
         when 'local'
           bucket_url = ENV.fetch("OPENC3_BUCKET_URL", "http://openc3-buckets:9000")
           URI.parse("#{bucket_url}#{url}")
