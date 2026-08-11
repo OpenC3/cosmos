@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -34,7 +34,7 @@
             v-model="text"
             label="Text"
             data-test="context-tag-text"
-            :disabled="!displayContextTag"
+            :disabled="settingsLoading || !displayContextTag"
           />
         </v-col>
       </v-row>
@@ -44,6 +44,7 @@
             v-model="displayContextTag"
             label="Display context tag"
             color="primary"
+            :disabled="settingsLoading"
             data-test="display-context-tag"
           />
         </v-col>
@@ -53,6 +54,7 @@
             label="Background color"
             :items="colors"
             item-title="text"
+            :disabled="settingsLoading"
             data-test="context-tag-background-color"
           >
             <template v-if="selectedBackgroundColor" #prepend-inner>
@@ -74,7 +76,7 @@
             v-model="customBackgroundColor"
             label="Custom background color"
             :hint="customColorHint"
-            :disabled="selectedBackgroundColor !== false"
+            :disabled="settingsLoading || selectedBackgroundColor !== false"
             :rules="[rules.customColor]"
             data-test="context-tag-custom-background-color"
           >
@@ -94,6 +96,7 @@
             label="Font color"
             :items="colors"
             item-title="text"
+            :disabled="settingsLoading"
             data-test="context-tag-font-color"
           >
             <template v-if="selectedFontColor" #prepend-inner>
@@ -117,7 +120,7 @@
             v-model="customFontColor"
             label="Custom font color"
             :hint="customColorHint"
-            :disabled="selectedFontColor !== false"
+            :disabled="settingsLoading || selectedFontColor !== false"
             :rules="[rules.customColor]"
             data-test="context-tag-custom-font-color"
           >
