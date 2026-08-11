@@ -92,6 +92,35 @@ def mock_auth(token="test_token"):
     return auth
 
 
+def mock_stream_frames(api):
+    """The frames written to a Mock stream, parsed"""
+    return [json.loads(c.args[0]) for c in api.stream.write.call_args_list]
+
+
+def action_data(stream):
+    """The action data hashes, i.e. what StreamingChannel add / remove receives"""
+    return [json.loads(f["data"]) for f in stream.frames() if f["command"] == "message"]
+
+
+class FakeStreamApiTest(unittest.TestCase):
+    """Base for tests driving a WebSocketApi that already has a channel
+    identifier and a fake stream, so they can exercise subscribe/read/write
+    without going through connect. SUBSCRIBED skips the subscription handshake;
+    CONFIRM_SUBSCRIPTION queues the server confirmation so subscribe() returns."""
+
+    SUBSCRIBED = False
+    CONFIRM_SUBSCRIPTION = False
+
+    def _make_api(self):
+        api = WebSocketApi(url="ws://test.com/cable", authentication=mock_auth())
+        api.identifier = {"channel": "TestChannel"}
+        api.stream = FakeWebSocketStream()
+        if self.CONFIRM_SUBSCRIPTION:
+            api.stream.queue_read('{"type":"confirm_subscription"}')
+        api.subscribed = self.SUBSCRIBED
+        return api
+
+
 class TestMessagesWebSocketApiConnectionClosed(unittest.TestCase):
     """Test MessagesWebSocketApi connection closed scenarios"""
 
@@ -183,9 +212,7 @@ class TestWebSocketApiSubscribe(unittest.TestCase):
     """Verify the subscribe wire format the server is actually expecting."""
 
     def _make_api(self):
-        mock_auth = Mock()
-        mock_auth.token.return_value = "test_token"
-        api = WebSocketApi(url="ws://test.com/cable", authentication=mock_auth)
+        api = WebSocketApi(url="ws://test.com/cable", authentication=mock_auth())
         api.identifier = {"channel": "TestChannel"}
         api.stream = Mock()
         # subscribe() now blocks until the server confirms the subscription
@@ -221,8 +248,7 @@ class TestWebSocketApiSubscribe(unittest.TestCase):
     def test_action_identifier_includes_token(self):
         api = self._make_api()
         api.write_action({"action": "add"})
-        frames = [json.loads(c.args[0]) for c in api.stream.write.call_args_list]
-        message = next(f for f in frames if f["command"] == "message")
+        message = next(f for f in mock_stream_frames(api) if f["command"] == "message")
         identifier = json.loads(message["identifier"])
         self.assertEqual(identifier["token"], "test_token")
 
@@ -235,31 +261,26 @@ class TestRunningScriptWebSocketApiReady(unittest.TestCase):
     client cannot report ready in a way that races a broadcast."""
 
     def _make_api(self):
-        mock_auth = Mock()
-        mock_auth.token.return_value = "test_token"
         api = RunningScriptWebSocketApi(
             id="spec-script-1",
             url="ws://test.com/script-api/cable",
-            authentication=mock_auth,
+            authentication=mock_auth(),
         )
         api.stream = Mock()
         api.stream.read.return_value = '{"type":"confirm_subscription"}'
         return api
 
-    def _frames(self, api):
-        return [json.loads(c.args[0]) for c in api.stream.write.call_args_list]
-
     def test_subscribe_reports_ready_exactly_once_after_confirmation(self):
         api = self._make_api()
         api.subscribe()
-        frames = self._frames(api)
+        frames = mock_stream_frames(api)
         self.assertEqual([f["command"] for f in frames], ["subscribe", "message"])
         self.assertEqual(json.loads(frames[-1]["data"]), {"action": "ready"})
 
     def test_ready_action_identifier_matches_subscription(self):
         api = self._make_api()
         api.subscribe()
-        frames = self._frames(api)
+        frames = mock_stream_frames(api)
         # Must match exactly: ActionCable routes 'message' commands to a
         # subscription by comparing the raw identifier string
         self.assertEqual(frames[-1]["identifier"], frames[0]["identifier"])
@@ -272,7 +293,7 @@ class TestRunningScriptWebSocketApiReady(unittest.TestCase):
         api = self._make_api()
         api.subscribe()
         api.subscribe()
-        frames = self._frames(api)
+        frames = mock_stream_frames(api)
         self.assertEqual([f["command"] for f in frames], ["subscribe", "message"])
 
     # write_action calls subscribe() internally, which on the first call is
@@ -281,7 +302,7 @@ class TestRunningScriptWebSocketApiReady(unittest.TestCase):
     def test_action_triggering_first_subscribe_orders_subscribe_ready_action(self):
         api = self._make_api()
         api.write_action({"action": "other"})
-        frames = self._frames(api)
+        frames = mock_stream_frames(api)
         self.assertEqual([f["command"] for f in frames], ["subscribe", "message", "message"])
         self.assertEqual(json.loads(frames[1]["data"]), {"action": "ready"})
         self.assertEqual(json.loads(frames[2]["data"]), {"action": "other"})
@@ -291,7 +312,7 @@ class TestRunningScriptWebSocketApiReady(unittest.TestCase):
         api.subscribe()
         api.unsubscribe()
         api.subscribe()
-        frames = self._frames(api)
+        frames = mock_stream_frames(api)
         self.assertEqual(
             [f["command"] for f in frames],
             ["subscribe", "message", "unsubscribe", "subscribe", "message"],
@@ -353,11 +374,12 @@ class TestWebSocketApiContextManager(unittest.TestCase):
     def test_disconnects_even_when_the_block_raises(self, stream_class):
         stream = FakeWebSocketStream()
         stream_class.return_value = stream
-        with (
-            self.assertRaisesRegex(RuntimeError, "boom"),
-            WebSocketApi(url="ws://test.com/cable", authentication=mock_auth()),
-        ):
-            raise RuntimeError("boom")
+
+        def raise_inside_the_block():
+            with WebSocketApi(url="ws://test.com/cable", authentication=mock_auth()):
+                raise RuntimeError("boom")
+
+        self.assertRaisesRegex(RuntimeError, "boom", raise_inside_the_block)
         self.assertEqual(stream.disconnect_count, 1)
 
 
@@ -418,13 +440,7 @@ class TestWebSocketApiConnected(unittest.TestCase):
         self.assertTrue(api.connected())
 
 
-class TestWebSocketApiDisconnect(unittest.TestCase):
-    def _make_api(self):
-        api = WebSocketApi(url="ws://test.com/cable", authentication=mock_auth())
-        api.identifier = {"channel": "TestChannel"}
-        api.stream = FakeWebSocketStream()
-        return api
-
+class TestWebSocketApiDisconnect(FakeStreamApiTest):
     def test_does_nothing_when_not_connected(self):
         api = self._make_api()
         api.disconnect()
@@ -451,13 +467,7 @@ class TestWebSocketApiDisconnect(unittest.TestCase):
         self.assertEqual(api.stream.disconnect_count, 1)
 
 
-class TestWebSocketApiUnsubscribe(unittest.TestCase):
-    def _make_api(self):
-        api = WebSocketApi(url="ws://test.com/cable", authentication=mock_auth())
-        api.identifier = {"channel": "TestChannel"}
-        api.stream = FakeWebSocketStream()
-        return api
-
+class TestWebSocketApiUnsubscribe(FakeStreamApiTest):
     def test_writes_nothing_when_never_subscribed(self):
         api = self._make_api()
         api.unsubscribe()
@@ -473,14 +483,9 @@ class TestWebSocketApiUnsubscribe(unittest.TestCase):
         self.assertEqual(len(unsubscribes), 1)
 
 
-class TestWebSocketApiRead(unittest.TestCase):
-    def _make_api(self):
-        api = WebSocketApi(url="ws://test.com/cable", authentication=mock_auth())
-        api.identifier = {"channel": "TestChannel"}
-        api.stream = FakeWebSocketStream()
-        # Skip the subscribe handshake; these tests exercise the data phase
-        api.subscribed = True
-        return api
+class TestWebSocketApiRead(FakeStreamApiTest):
+    # Skip the subscribe handshake; these tests exercise the data phase
+    SUBSCRIBED = True
 
     def test_parses_and_returns_message_content(self):
         api = self._make_api()
@@ -546,16 +551,11 @@ class TestWebSocketApiRead(unittest.TestCase):
         self.assertEqual(api.read(timeout=5.0), {"data": "quick_response"})
 
 
-class TestWebSocketApiWrite(unittest.TestCase):
+class TestWebSocketApiWrite(FakeStreamApiTest):
     """Public API for sending a raw frame. write_action no longer routes through
     it (it writes the command frame directly), so cover it on its own."""
 
-    def _make_api(self):
-        api = WebSocketApi(url="ws://test.com/cable", authentication=mock_auth())
-        api.identifier = {"channel": "TestChannel"}
-        api.stream = FakeWebSocketStream()
-        api.stream.queue_read('{"type":"confirm_subscription"}')
-        return api
+    CONFIRM_SUBSCRIPTION = True
 
     def test_subscribes_first_then_writes_the_data_verbatim(self):
         api = self._make_api()
@@ -571,16 +571,11 @@ class TestWebSocketApiWrite(unittest.TestCase):
         self.assertEqual(api.stream.writes[1:], ["one", "two"])
 
 
-class TestWebSocketApiReadCooperativeStop(unittest.TestCase):
+class TestWebSocketApiReadCooperativeStop(FakeStreamApiTest):
     """Inside Script Runner a blocking read on a quiet channel must still honor
     the user pressing Stop, hence the check on every protocol message."""
 
-    def _make_api(self):
-        api = WebSocketApi(url="ws://test.com/cable", authentication=mock_auth())
-        api.identifier = {"channel": "TestChannel"}
-        api.stream = FakeWebSocketStream()
-        api.subscribed = True
-        return api
+    SUBSCRIBED = True
 
     def _patch_running_script(self, instance):
         """Install a fake running_script module so the lazy sys.modules lookup
@@ -623,13 +618,7 @@ class TestWebSocketApiReadCooperativeStop(unittest.TestCase):
         self.assertNotIn("openc3.utilities.running_script", sys.modules)
 
 
-class TestWebSocketApiWaitForSubscribed(unittest.TestCase):
-    def _make_api(self):
-        api = WebSocketApi(url="ws://test.com/cable", authentication=mock_auth())
-        api.identifier = {"channel": "TestChannel"}
-        api.stream = FakeWebSocketStream()
-        return api
-
+class TestWebSocketApiWaitForSubscribed(FakeStreamApiTest):
     def test_returns_on_confirmation_skipping_welcome_and_ping(self):
         api = self._make_api()
         api.stream.queue_read('{"type":"welcome"}', '{"type":"ping"}', '{"type":"confirm_subscription"}')
@@ -891,30 +880,50 @@ class TestStreamingWebSocketApiActions(unittest.TestCase):
         return api
 
     def _action_data(self, api):
-        """The action data hashes, i.e. what StreamingChannel add / remove receives"""
-        return [json.loads(f["data"]) for f in api.stream.frames() if f["command"] == "message"]
+        return action_data(api.stream)
 
-    def test_add_sends_items_scope_and_token(self):
-        api = self._make_api()
-        api.add(items=["DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED"])
-        self.assertEqual(
-            self._action_data(api),
-            [
-                {
-                    "action": "add",
-                    "items": ["DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED"],
-                    "scope": "DEFAULT",
-                    "token": "test_token",
-                }
-            ],
-        )
+    # add and remove build the same action frame apart from the action name
+    def test_sends_items_scope_and_token(self):
+        for action in ("add", "remove"):
+            with self.subTest(action=action):
+                api = self._make_api()
+                getattr(api, action)(items=["DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED"])
+                self.assertEqual(
+                    self._action_data(api),
+                    [
+                        {
+                            "action": action,
+                            "items": ["DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED"],
+                            "scope": "DEFAULT",
+                            "token": "test_token",
+                        }
+                    ],
+                )
 
-    def test_add_sends_packets_when_given(self):
-        api = self._make_api()
-        api.add(packets=["DECOM__TLM__INST__HEALTH_STATUS__CONVERTED"])
-        data = self._action_data(api)[0]
-        self.assertEqual(data["packets"], ["DECOM__TLM__INST__HEALTH_STATUS__CONVERTED"])
-        self.assertNotIn("items", data)
+    def test_sends_packets_when_given(self):
+        for action in ("add", "remove"):
+            with self.subTest(action=action):
+                api = self._make_api()
+                getattr(api, action)(packets=["DECOM__TLM__INST__HEALTH_STATUS__CONVERTED"])
+                data = self._action_data(api)[0]
+                self.assertEqual(data["packets"], ["DECOM__TLM__INST__HEALTH_STATUS__CONVERTED"])
+                self.assertNotIn("items", data)
+
+    def test_allows_overriding_the_scope_per_action(self):
+        for action in ("add", "remove"):
+            with self.subTest(action=action):
+                api = self._make_api()
+                getattr(api, action)(items=["ITEM"], scope="OTHER")
+                self.assertEqual(self._action_data(api)[0]["scope"], "OTHER")
+
+    # Regression: the default used to be the import-time OPENC3_SCOPE constant,
+    # so an api built with an explicit scope still streamed from DEFAULT
+    def test_defaults_to_the_scope_the_api_was_created_with(self):
+        for action in ("add", "remove"):
+            with self.subTest(action=action):
+                api = self._make_api(scope="OTHER")
+                getattr(api, action)(items=["ITEM"])
+                self.assertEqual(self._action_data(api)[0]["scope"], "OTHER")
 
     def test_add_omits_items_and_packets_when_neither_is_given(self):
         api = self._make_api()
@@ -945,54 +954,10 @@ class TestStreamingWebSocketApiActions(unittest.TestCase):
         self.assertNotIn("start_time", data)
         self.assertNotIn("end_time", data)
 
-    def test_add_allows_overriding_the_scope_per_action(self):
-        api = self._make_api()
-        api.add(items=["ITEM"], scope="OTHER")
-        self.assertEqual(self._action_data(api)[0]["scope"], "OTHER")
-
-    # Regression: the default used to be the import-time OPENC3_SCOPE constant,
-    # so an api built with an explicit scope still streamed from DEFAULT
-    def test_add_defaults_to_the_scope_the_api_was_created_with(self):
-        api = self._make_api(scope="OTHER")
-        api.add(items=["ITEM"])
-        self.assertEqual(self._action_data(api)[0]["scope"], "OTHER")
-
-    def test_remove_defaults_to_the_scope_the_api_was_created_with(self):
-        api = self._make_api(scope="OTHER")
-        api.remove(items=["ITEM"])
-        self.assertEqual(self._action_data(api)[0]["scope"], "OTHER")
-
     def test_add_subscribes_before_sending_the_action(self):
         api = self._make_api()
         api.add(items=["ITEM"])
         self.assertEqual([f["command"] for f in api.stream.frames()], ["subscribe", "message"])
-
-    def test_remove_sends_items_scope_and_token(self):
-        api = self._make_api()
-        api.remove(items=["DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED"])
-        self.assertEqual(
-            self._action_data(api),
-            [
-                {
-                    "action": "remove",
-                    "items": ["DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED"],
-                    "scope": "DEFAULT",
-                    "token": "test_token",
-                }
-            ],
-        )
-
-    def test_remove_sends_packets_when_given(self):
-        api = self._make_api()
-        api.remove(packets=["DECOM__TLM__INST__HEALTH_STATUS__CONVERTED"])
-        data = self._action_data(api)[0]
-        self.assertEqual(data["packets"], ["DECOM__TLM__INST__HEALTH_STATUS__CONVERTED"])
-        self.assertNotIn("items", data)
-
-    def test_remove_allows_overriding_the_scope_per_action(self):
-        api = self._make_api()
-        api.remove(items=["ITEM"], scope="OTHER")
-        self.assertEqual(self._action_data(api)[0]["scope"], "OTHER")
 
 
 class TestStreamingWebSocketApiReadAll(unittest.TestCase):
@@ -1028,9 +993,8 @@ class TestStreamingWebSocketApiReadAll(unittest.TestCase):
         end_time = datetime(2026, 1, 2, tzinfo=timezone.utc)
         self.stream.queue_read('{"type":"confirm_subscription"}', '{"message":[]}')
         StreamingWebSocketApi.read_all(items=["ITEM"], start_time=start_time, end_time=end_time, scope="OTHER")
-        data = [json.loads(f["data"]) for f in self.stream.frames() if f["command"] == "message"]
         self.assertEqual(
-            data[0],
+            action_data(self.stream)[0],
             {
                 "action": "add",
                 "items": ["ITEM"],

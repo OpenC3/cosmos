@@ -72,27 +72,37 @@ module OpenC3
   # A nil value means "ensure this variable is unset".
   def self.spec_with_env(vars)
     saved = {}
-    vars.each do |key, value|
-      saved[key] = ENV.fetch(key, :__unset__)
-      if value.nil?
-        ENV.delete(key)
-      else
-        ENV[key] = value
+    begin
+      vars.each do |key, value|
+        saved[key] = ENV.fetch(key, :__unset__)
+        if value.nil?
+          ENV.delete(key)
+        else
+          ENV[key] = value
+        end
       end
-    end
-    yield
-  ensure
-    saved.each do |key, value|
-      if value == :__unset__
-        ENV.delete(key)
-      else
-        ENV[key] = value
+      yield
+    ensure
+      saved.each do |key, value|
+        if value == :__unset__
+          ENV.delete(key)
+        else
+          ENV[key] = value
+        end
       end
     end
   end
 
+  # The COSMOS Core authentication environment: password only, no keycloak
+  def self.spec_with_password_auth(&block)
+    spec_with_env({ 'OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
+                    'OPENC3_API_PASSWORD' => 'password' }, &block)
+  end
+
   describe WebSocketApi do
-    describe "#read" do
+    # An api that already has a channel identifier, so specs can exercise
+    # subscribe/read/write without going through connect
+    shared_context "api with identifier" do
       let(:api) do
         api = WebSocketApi.new(
           url: "ws://test.com/cable",
@@ -101,11 +111,26 @@ module OpenC3
         api.instance_variable_set(:@identifier, { "channel" => "TestChannel" })
         api
       end
+    end
 
+    # ... backed by the fake stream, for specs that assert on what was written
+    shared_context "with fake stream" do
+      include_context "api with identifier"
+      let(:stream) { FakeWebSocketStream.new }
+      before { api.instance_variable_set(:@stream, stream) }
+    end
+
+    # ... backed by a bare double, for specs that script read() call by call
+    shared_context "with mock stream" do
+      include_context "api with identifier"
       let(:mock_stream) { double("stream") }
+      before { api.instance_variable_set(:@stream, mock_stream) }
+    end
+
+    describe "#read" do
+      include_context "with mock stream"
 
       before do
-        api.instance_variable_set(:@stream, mock_stream)
         api.instance_variable_set(:@subscribed, true)
       end
 
@@ -218,19 +243,9 @@ module OpenC3
     end
 
     describe "#subscribe" do
-      let(:api) do
-        api = WebSocketApi.new(
-          url: "ws://test.com/cable",
-          authentication: double("auth", token: "test_token")
-        )
-        api.instance_variable_set(:@identifier, { "channel" => "TestChannel" })
-        api
-      end
-
-      let(:mock_stream) { double("stream") }
+      include_context "with mock stream"
 
       before do
-        api.instance_variable_set(:@stream, mock_stream)
         # subscribe() now blocks until the server confirms the subscription
         allow(mock_stream).to receive(:read).and_return('{"type":"confirm_subscription"}')
       end
@@ -396,16 +411,7 @@ module OpenC3
     end
 
     describe "#disconnect" do
-      let(:api) do
-        api = WebSocketApi.new(url: "ws://test.com/cable", authentication: double("auth", token: "test_token"))
-        api.instance_variable_set(:@identifier, { "channel" => "TestChannel" })
-        api
-      end
-      let(:stream) { FakeWebSocketStream.new }
-
-      before do
-        api.instance_variable_set(:@stream, stream)
-      end
+      include_context "with fake stream"
 
       it "does nothing when not connected" do
         api.disconnect
@@ -434,16 +440,7 @@ module OpenC3
     end
 
     describe "#unsubscribe" do
-      let(:api) do
-        api = WebSocketApi.new(url: "ws://test.com/cable", authentication: double("auth", token: "test_token"))
-        api.instance_variable_set(:@identifier, { "channel" => "TestChannel" })
-        api
-      end
-      let(:stream) { FakeWebSocketStream.new }
-
-      before do
-        api.instance_variable_set(:@stream, stream)
-      end
+      include_context "with fake stream"
 
       it "writes nothing when never subscribed" do
         api.unsubscribe
@@ -462,15 +459,9 @@ module OpenC3
     # Public API for sending a raw frame. write_action no longer routes through
     # it (it writes the command frame directly), so cover it on its own.
     describe "#write" do
-      let(:api) do
-        api = WebSocketApi.new(url: "ws://test.com/cable", authentication: double("auth", token: "test_token"))
-        api.instance_variable_set(:@identifier, { "channel" => "TestChannel" })
-        api
-      end
-      let(:stream) { FakeWebSocketStream.new }
+      include_context "with fake stream"
 
       before do
-        api.instance_variable_set(:@stream, stream)
         stream.queue_read('{"type":"confirm_subscription"}')
       end
 
@@ -490,16 +481,7 @@ module OpenC3
     end
 
     describe "#wait_for_subscribed" do
-      let(:api) do
-        api = WebSocketApi.new(url: "ws://test.com/cable", authentication: double("auth", token: "test_token"))
-        api.instance_variable_set(:@identifier, { "channel" => "TestChannel" })
-        api
-      end
-      let(:stream) { FakeWebSocketStream.new }
-
-      before do
-        api.instance_variable_set(:@stream, stream)
-      end
+      include_context "with fake stream"
 
       it "returns once confirm_subscription arrives, skipping welcome and ping" do
         stream.queue_read('{"type":"welcome"}', '{"type":"ping"}', '{"type":"confirm_subscription"}')
@@ -537,16 +519,10 @@ module OpenC3
     end
 
     describe "#read cooperative stop" do
-      let(:api) do
-        api = WebSocketApi.new(url: "ws://test.com/cable", authentication: double("auth", token: "test_token"))
-        api.instance_variable_set(:@identifier, { "channel" => "TestChannel" })
-        api.instance_variable_set(:@subscribed, true)
-        api
-      end
-      let(:stream) { FakeWebSocketStream.new }
+      include_context "with fake stream"
 
       before do
-        api.instance_variable_set(:@stream, stream)
+        api.instance_variable_set(:@subscribed, true)
         # Script Runner defines RunningScript at the top level, but
         # api_shared_spec leaks an OpenC3::RunningScript that would otherwise
         # win lexical lookup inside module OpenC3 and shadow the stub below.
@@ -579,8 +555,7 @@ module OpenC3
       let(:api) { WebSocketApi.allocate }
 
       it "uses password authentication when only OPENC3_API_PASSWORD is set" do
-        OpenC3.spec_with_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
-                             'OPENC3_API_PASSWORD' => 'password') do
+        OpenC3.spec_with_password_auth do
           # Real OpenC3Authentication.new performs an HTTP token request
           expect(OpenC3Authentication).to receive(:new).and_return(:core_auth)
           expect(api.generate_auth).to eq(:core_auth)
@@ -909,15 +884,12 @@ module OpenC3
       stream.queue_read('{"type":"confirm_subscription"}')
     end
 
-    it "subscribes to StreamingChannel" do
-      expect(api.instance_variable_get(:@identifier)).to eq({ channel: 'StreamingChannel' })
-    end
-
-    describe "#add" do
-      it "sends the add action with items, scope and token" do
-        api.add(items: ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED'])
+    # #add and #remove build the same action frame apart from the action name
+    shared_examples "a streaming action" do |action|
+      it "sends the #{action} action with items, scope and token" do
+        api.public_send(action, items: ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED'])
         expect(action_data).to eq([{
-          'action' => 'add',
+          'action' => action.to_s,
           'items' => ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED'],
           'scope' => 'DEFAULT',
           'token' => 'test_token',
@@ -925,10 +897,23 @@ module OpenC3
       end
 
       it "sends packets when given" do
-        api.add(packets: ['DECOM__TLM__INST__HEALTH_STATUS__CONVERTED'])
+        api.public_send(action, packets: ['DECOM__TLM__INST__HEALTH_STATUS__CONVERTED'])
         expect(action_data.first['packets']).to eq(['DECOM__TLM__INST__HEALTH_STATUS__CONVERTED'])
         expect(action_data.first).not_to have_key('items')
       end
+
+      it "allows overriding the scope per action" do
+        api.public_send(action, items: ['ITEM'], scope: 'OTHER')
+        expect(action_data.first['scope']).to eq('OTHER')
+      end
+    end
+
+    it "subscribes to StreamingChannel" do
+      expect(api.instance_variable_get(:@identifier)).to eq({ channel: 'StreamingChannel' })
+    end
+
+    describe "#add" do
+      it_behaves_like "a streaming action", :add
 
       it "omits items and packets when neither is given (realtime all)" do
         api.add
@@ -956,11 +941,6 @@ module OpenC3
         expect(action_data.first).not_to have_key('end_time')
       end
 
-      it "allows overriding the scope per action" do
-        api.add(items: ['ITEM'], scope: 'OTHER')
-        expect(action_data.first['scope']).to eq('OTHER')
-      end
-
       it "subscribes before sending the action" do
         api.add(items: ['ITEM'])
         expect(stream.frames.map { |f| f['command'] }).to eq(['subscribe', 'message'])
@@ -968,26 +948,7 @@ module OpenC3
     end
 
     describe "#remove" do
-      it "sends the remove action with items, scope and token" do
-        api.remove(items: ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED'])
-        expect(action_data).to eq([{
-          'action' => 'remove',
-          'items' => ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED'],
-          'scope' => 'DEFAULT',
-          'token' => 'test_token',
-        }])
-      end
-
-      it "sends packets when given" do
-        api.remove(packets: ['DECOM__TLM__INST__HEALTH_STATUS__CONVERTED'])
-        expect(action_data.first['packets']).to eq(['DECOM__TLM__INST__HEALTH_STATUS__CONVERTED'])
-        expect(action_data.first).not_to have_key('items')
-      end
-
-      it "allows overriding the scope per action" do
-        api.remove(items: ['ITEM'], scope: 'OTHER')
-        expect(action_data.first['scope']).to eq('OTHER')
-      end
+      it_behaves_like "a streaming action", :remove
     end
 
     describe ".read_all" do
@@ -1010,8 +971,7 @@ module OpenC3
           '{"message":[]}',
           '{"message":[{"__time":4}]}' # must never be read
         )
-        OpenC3.spec_with_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
-                             'OPENC3_API_PASSWORD' => 'password') do
+        OpenC3.spec_with_password_auth do
           data = StreamingWebSocketApi.read_all(items: ['ITEM'], end_time: 2_000_000_000)
           expect(data).to eq([{ "__time" => 1 }, { "__time" => 2 }, { "__time" => 3 }])
         end
@@ -1019,13 +979,11 @@ module OpenC3
 
       it "sends the add action for the requested range" do
         stream.queue_read('{"type":"confirm_subscription"}', '{"message":[]}')
-        OpenC3.spec_with_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
-                             'OPENC3_API_PASSWORD' => 'password') do
+        OpenC3.spec_with_password_auth do
           StreamingWebSocketApi.read_all(items: ['ITEM'], start_time: 1, end_time: 2, scope: 'OTHER')
         end
-        data = stream.frames.select { |f| f['command'] == 'message' }.map { |f| JSON.parse(f['data']) }
-        expect(data.first).to include('action' => 'add', 'items' => ['ITEM'],
-                                      'start_time' => 1, 'end_time' => 2, 'scope' => 'OTHER')
+        expect(action_data.first).to include('action' => 'add', 'items' => ['ITEM'],
+                                             'start_time' => 1, 'end_time' => 2, 'scope' => 'OTHER')
       end
 
       # Guards against blocking forever on a stream whose end marker never comes
@@ -1035,8 +993,7 @@ module OpenC3
           '{"message":[{"__time":1}]}',
           '{"message":[{"__time":2}]}'
         )
-        OpenC3.spec_with_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
-                             'OPENC3_API_PASSWORD' => 'password') do
+        OpenC3.spec_with_password_auth do
           data = StreamingWebSocketApi.read_all(items: ['ITEM'], end_time: 2_000_000_000, timeout: 0.0)
           expect(data).to eq([{ "__time" => 1 }])
         end
@@ -1049,8 +1006,7 @@ module OpenC3
           '{"message":[{"__time":1}]}'
           # Socket closes without ever sending the empty-batch end marker
         )
-        OpenC3.spec_with_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
-                             'OPENC3_API_PASSWORD' => 'password') do
+        OpenC3.spec_with_password_auth do
           data = StreamingWebSocketApi.read_all(items: ['ITEM'], end_time: 2_000_000_000)
           expect(data).to eq([{ "__time" => 1 }])
         end
@@ -1058,8 +1014,7 @@ module OpenC3
 
       it "disconnects the stream when done" do
         stream.queue_read('{"type":"confirm_subscription"}', '{"message":[]}')
-        OpenC3.spec_with_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
-                             'OPENC3_API_PASSWORD' => 'password') do
+        OpenC3.spec_with_password_auth do
           StreamingWebSocketApi.read_all(items: ['ITEM'], end_time: 2_000_000_000)
         end
         expect(stream.disconnect_count).to eq(1)
