@@ -288,6 +288,20 @@ module OpenC3
         end
       end
 
+      # Subclasses forward **options, which would otherwise silently swallow a
+      # typo'd option name that explicit keyword arguments used to reject
+      it "rejects an unknown option" do
+        expect {
+          WebSocketApi.new(url: "ws://test.com/cable", authentication: auth, read_timout: 5.0)
+        }.to raise_error(ArgumentError, "unknown keyword: read_timout")
+      end
+
+      it "reports every unknown option" do
+        expect {
+          MessagesWebSocketApi.new(url: "ws://test.com/cable", authentication: auth, bogus: 1, other: 2)
+        }.to raise_error(ArgumentError, "unknown keywords: bogus, other")
+      end
+
       it "stores the timeouts for the stream" do
         api = WebSocketApi.new(url: "ws://test.com/cable", authentication: auth,
                                write_timeout: 1.0, read_timeout: 2.0, connect_timeout: 3.0)
@@ -442,6 +456,36 @@ module OpenC3
         api.unsubscribe
         api.unsubscribe
         expect(stream.frames.count { |f| f['command'] == 'unsubscribe' }).to eq(1)
+      end
+    end
+
+    # Public API for sending a raw frame. write_action no longer routes through
+    # it (it writes the command frame directly), so cover it on its own.
+    describe "#write" do
+      let(:api) do
+        api = WebSocketApi.new(url: "ws://test.com/cable", authentication: double("auth", token: "test_token"))
+        api.instance_variable_set(:@identifier, { "channel" => "TestChannel" })
+        api
+      end
+      let(:stream) { FakeWebSocketStream.new }
+
+      before do
+        api.instance_variable_set(:@stream, stream)
+        stream.queue_read('{"type":"confirm_subscription"}')
+      end
+
+      it "subscribes first, then writes the data verbatim" do
+        api.write('raw payload')
+        expect(stream.writes.length).to eq(2)
+        expect(JSON.parse(stream.writes.first)['command']).to eq('subscribe')
+        expect(stream.writes.last).to eq('raw payload')
+      end
+
+      it "does not re-subscribe on a second write" do
+        api.write('one')
+        api.write('two')
+        # subscribe frame, then the two raw payloads
+        expect(stream.writes).to eq([stream.writes.first, 'one', 'two'])
       end
     end
 

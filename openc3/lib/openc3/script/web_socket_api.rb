@@ -20,17 +20,50 @@ module OpenC3
   class WebSocketApi
     USER_AGENT = 'OpenC3 / v7 (ruby/openc3/lib/io/web_socket_api)'.freeze
 
+    # Options every websocket api accepts, and their defaults. Subclasses
+    # forward **options rather than restating these.
+    DEFAULT_OPTIONS = {
+      write_timeout: 10.0,
+      read_timeout: 10.0,
+      connect_timeout: 5.0,
+      authentication: nil,
+    }.freeze
+
+    # Build a cable URL from the standard OPENC3 environment variable quartet:
+    # <prefix>_SCHEMA, <prefix>_HOSTNAME, <prefix>_CABLE_PORT, <prefix>_PORT
+    def self.cable_url(env_prefix:, default_hostname:, default_port:, path:)
+      schema = ENV.fetch("#{env_prefix}_SCHEMA", 'http')
+      # Normalize to the websocket schemes (mirrors the Python client). The
+      # websocket gem accepts http/https too, but ws/wss is what the URL
+      # actually is and Python's websockets library rejects anything else.
+      schema = 'ws' if schema == 'http'
+      schema = 'wss' if schema == 'https'
+      hostname = ENV.fetch("#{env_prefix}_HOSTNAME", nil) || (ENV['OPENC3_DEVEL'] ? '127.0.0.1' : default_hostname)
+      port = (ENV.fetch("#{env_prefix}_CABLE_PORT", nil) || ENV.fetch("#{env_prefix}_PORT", default_port)).to_i
+      return "#{schema}://#{hostname}:#{port}#{path}"
+    end
+
     # Create the WebsocketApi object. If a block is given will automatically connect/disconnect
-    def initialize(url:, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope, &block)
+    #
+    # @param url [String] The cable URL to connect to
+    # @param scope [String] The scope to connect with
+    # @param options [Hash] See DEFAULT_OPTIONS
+    def initialize(url:, scope: $openc3_scope, **options, &block)
+      # Restore the arity checking that explicit keyword arguments used to give
+      # us, so a typo'd option is an error rather than a silently ignored value
+      unknown = options.keys - DEFAULT_OPTIONS.keys
+      raise ArgumentError, "unknown keyword#{'s' if unknown.length > 1}: #{unknown.join(', ')}" unless unknown.empty?
+
+      options = DEFAULT_OPTIONS.merge(options)
       # $openc3_scope is only set inside the Script Runner / microservice
       # environment. Fall back to OPENC3_SCOPE (mirrors the Python client) so a
       # bare `ruby script.rb` doesn't send a nil scope that the server rejects.
       @scope = scope || ENV.fetch('OPENC3_SCOPE', 'DEFAULT')
-      @authentication = authentication.nil? ? generate_auth() : authentication
+      @authentication = options[:authentication] || generate_auth()
       @url = url
-      @write_timeout = write_timeout
-      @read_timeout = read_timeout
-      @connect_timeout = connect_timeout
+      @write_timeout = options[:write_timeout]
+      @read_timeout = options[:read_timeout]
+      @connect_timeout = options[:connect_timeout]
       @subscribed = false
       if block_given?
         begin
@@ -59,7 +92,7 @@ module OpenC3
         return nil if message.nil? || message.empty?
 
         begin
-          json_hash = JSON.parse(message, allow_nan: true, create_additions: true)
+          json_hash = parse_message(message)
         rescue JSON::ParserError
           # Defense-in-depth: treat malformed frames as end-of-stream rather than crashing.
           return nil
@@ -67,14 +100,7 @@ module OpenC3
         if ignore_protocol_messages
           type = json_hash['type']
           if type # ping, welcome, confirm_subscription, reject_subscription, disconnect
-            if type == 'disconnect'
-              if json_hash['reason'] == 'unauthorized'
-                raise "Unauthorized"
-              end
-            end
-            if type == 'reject_subscription'
-              raise "Subscription Rejected"
-            end
+            check_protocol_frame(json_hash)
             if timeout
               end_time = Time.now
               if (end_time - start_time) > timeout
@@ -98,10 +124,7 @@ module OpenC3
         # ApplicationCable::Channel#authenticate_subscription! — ActionCable
         # ignores `data` on `subscribe` commands.
         @identifier['token'] = @authentication.token(include_bearer: false)
-        json_hash = {}
-        json_hash['command'] = 'subscribe'
-        json_hash['identifier'] = JSON.generate(@identifier, allow_nan: true)
-        @stream.write(JSON.generate(json_hash, allow_nan: true))
+        write_command('subscribe')
         @subscribed = true
         wait_for_subscribed()
       end
@@ -119,28 +142,19 @@ module OpenC3
         message = @stream.read
         raise "WebSocket closed before subscription was confirmed" if message.nil? || message.empty?
 
-        json_hash = JSON.parse(message, allow_nan: true, create_additions: true)
-        case json_hash['type']
-        when 'confirm_subscription'
-          return
-        when 'reject_subscription'
-          raise "Subscription Rejected"
-        when 'disconnect'
-          raise "Unauthorized" if json_hash['reason'] == 'unauthorized'
-        else
-          # Ignore welcome / ping and keep waiting for confirmation
-          next
-        end
+        # Unlike #read, a malformed frame here is left to raise: we cannot treat
+        # a failed handshake as end-of-stream and carry on.
+        json_hash = parse_message(message)
+        check_protocol_frame(json_hash)
+        # Ignore welcome / ping and keep waiting for confirmation
+        return if json_hash['type'] == 'confirm_subscription'
       end
     end
 
     # Will unsubscribe to the channel based on @identifier
     def unsubscribe
       if @subscribed
-        json_hash = {}
-        json_hash['command'] = 'unsubscribe'
-        json_hash['identifier'] = JSON.generate(@identifier, allow_nan: true)
-        @stream.write(JSON.generate(json_hash, allow_nan: true))
+        write_command('unsubscribe')
         @subscribed = false
       end
     end
@@ -154,11 +168,7 @@ module OpenC3
       # the subscription identifier (with token) and the server would silently
       # ignore the action.
       subscribe()
-      json_hash = {}
-      json_hash['command'] = 'message'
-      json_hash['identifier'] = JSON.generate(@identifier, allow_nan: true)
-      json_hash['data'] = JSON.generate(data_hash, allow_nan: true)
-      write(JSON.generate(json_hash, allow_nan: true))
+      write_command('message', data_hash)
     end
 
     # General write to the websocket
@@ -202,6 +212,34 @@ module OpenC3
 
     # private
 
+    # Write an ActionCable command frame for the current @identifier. Writes
+    # straight to the stream because the callers have already subscribed (and
+    # subscribe itself must not recurse through write).
+    def write_command(command, data_hash = nil)
+      json_hash = {}
+      json_hash['command'] = command
+      json_hash['identifier'] = JSON.generate(@identifier, allow_nan: true)
+      json_hash['data'] = JSON.generate(data_hash, allow_nan: true) if data_hash
+      @stream.write(JSON.generate(json_hash, allow_nan: true))
+    end
+
+    # Parse a server frame. Kept in one place so the JSON options cannot drift
+    # between the two readers.
+    def parse_message(message)
+      return JSON.parse(message, allow_nan: true, create_additions: true)
+    end
+
+    # Apply the protocol rules shared by #read and #wait_for_subscribed
+    def check_protocol_frame(json_hash)
+      case json_hash['type']
+      when 'reject_subscription'
+        raise "Subscription Rejected"
+      when 'disconnect'
+        # Any other disconnect reason is not fatal; the caller keeps reading
+        raise "Unauthorized" if json_hash['reason'] == 'unauthorized'
+      end
+    end
+
     # Generate the appropriate token for OpenC3
     def generate_auth
       if ENV['OPENC3_API_TOKEN'].nil? and ENV['OPENC3_API_USER'].nil?
@@ -216,54 +254,60 @@ module OpenC3
     end
   end
 
+  # Identifier for channels whose only parameter is the event history count.
+  # Including classes supply the channel name as a CHANNEL constant.
+  module HistoryCountIdentifier
+    def initialize(history_count: 0, **options)
+      @identifier = {
+        channel: self.class::CHANNEL,
+        history_count: history_count
+      }
+      super(**options)
+    end
+  end
+
   # Base class for cmd-tlm-api websockets - Do not use directly
   class CmdTlmWebSocketApi < WebSocketApi
-    def initialize(url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+    def initialize(url: nil, **options)
       url = generate_url() unless url
-      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
+      super(url: url, **options)
     end
 
     def generate_url
-      schema = ENV.fetch('OPENC3_API_SCHEMA', 'http')
-      # Normalize to the websocket schemes (mirrors the Python client). The
-      # websocket gem accepts http/https too, but ws/wss is what the URL
-      # actually is and Python's websockets library rejects anything else.
-      schema = 'ws' if schema == 'http'
-      schema = 'wss' if schema == 'https'
-      hostname = ENV.fetch('OPENC3_API_HOSTNAME', nil) || (ENV['OPENC3_DEVEL'] ? '127.0.0.1' : 'openc3-cosmos-cmd-tlm-api')
-      port = ENV.fetch('OPENC3_API_CABLE_PORT', nil) || ENV.fetch('OPENC3_API_PORT', '3901')
-      port = port.to_i
-      return "#{schema}://#{hostname}:#{port}/openc3-api/cable"
+      return WebSocketApi.cable_url(
+        env_prefix: 'OPENC3_API',
+        default_hostname: 'openc3-cosmos-cmd-tlm-api',
+        default_port: '3901',
+        path: '/openc3-api/cable'
+      )
     end
   end
 
   # Base class for script-runner-api websockets - Do not use directly
   class ScriptWebSocketApi < WebSocketApi
-    def initialize(url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+    def initialize(url: nil, **options)
       url = generate_url() unless url
-      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
+      super(url: url, **options)
     end
 
     def generate_url
-      schema = ENV.fetch('OPENC3_SCRIPT_API_SCHEMA', 'http')
-      # See CmdTlmWebSocketApi#generate_url for why these are normalized
-      schema = 'ws' if schema == 'http'
-      schema = 'wss' if schema == 'https'
-      hostname = ENV.fetch('OPENC3_SCRIPT_API_HOSTNAME', nil) || (ENV['OPENC3_DEVEL'] ? '127.0.0.1' : 'openc3-cosmos-script-runner-api')
-      port = ENV.fetch('OPENC3_SCRIPT_API_CABLE_PORT', nil) || ENV.fetch('OPENC3_SCRIPT_API_PORT', '3902')
-      port = port.to_i
-      return "#{schema}://#{hostname}:#{port}/script-api/cable"
+      return WebSocketApi.cable_url(
+        env_prefix: 'OPENC3_SCRIPT_API',
+        default_hostname: 'openc3-cosmos-script-runner-api',
+        default_port: '3902',
+        path: '/script-api/cable'
+      )
     end
   end
 
   # Running Script WebSocket
   class RunningScriptWebSocketApi < ScriptWebSocketApi
-    def initialize(id:, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+    def initialize(id:, **options)
       @identifier = {
         channel: "RunningScriptChannel",
         id: id
       }
-      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
+      super(**options)
     end
 
     # The backlog of script events is transmitted with the subscription
@@ -281,17 +325,17 @@ module OpenC3
 
   # All Scripts WebSocket
   class AllScriptsWebSocketApi < ScriptWebSocketApi
-    def initialize(url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+    def initialize(**options)
       @identifier = {
         channel: "AllScriptsChannel",
       }
-      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
+      super(**options)
     end
   end
 
   # Log Messages WebSocket
   class MessagesWebSocketApi < CmdTlmWebSocketApi
-    def initialize(history_count: 0, start_time: nil, end_time: nil, level: nil, types: nil, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+    def initialize(history_count: 0, start_time: nil, end_time: nil, level: nil, types: nil, **options)
       @identifier = {
         channel: "MessagesChannel",
         history_count: history_count
@@ -300,94 +344,59 @@ module OpenC3
       @identifier['end_time'] = end_time if end_time
       @identifier['level'] = level if level
       @identifier['types'] = types if types
-      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
+      super(**options)
     end
   end
 
   # Autonomic Events WebSocket (Enterprise Only)
   class AutonomicEventsWebSocketApi < CmdTlmWebSocketApi
-    def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
-      @identifier = {
-        channel: "AutonomicEventsChannel",
-        history_count: history_count
-      }
-      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
-    end
+    CHANNEL = 'AutonomicEventsChannel'.freeze
+    include HistoryCountIdentifier
   end
 
   # Calendar Events WebSocket (Enterprise Only)
   class CalendarEventsWebSocketApi < CmdTlmWebSocketApi
-    def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
-      @identifier = {
-        channel: "CalendarEventsChannel",
-        history_count: history_count
-      }
-      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
-    end
+    CHANNEL = 'CalendarEventsChannel'.freeze
+    include HistoryCountIdentifier
   end
 
   # Config Events WebSocket
   class ConfigEventsWebSocketApi < CmdTlmWebSocketApi
-    def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
-      @identifier = {
-        channel: "ConfigEventsChannel",
-        history_count: history_count
-      }
-      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
-    end
+    CHANNEL = 'ConfigEventsChannel'.freeze
+    include HistoryCountIdentifier
   end
 
   # Limits Events WebSocket
   class LimitsEventsWebSocketApi < CmdTlmWebSocketApi
-    def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
-      @identifier = {
-        channel: "LimitsEventsChannel",
-        history_count: history_count
-      }
-      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
-    end
+    CHANNEL = 'LimitsEventsChannel'.freeze
+    include HistoryCountIdentifier
   end
 
   # System Events WebSocket
   class SystemEventsWebSocketApi < CmdTlmWebSocketApi
-    def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
-      @identifier = {
-        channel: "SystemEventsChannel",
-        history_count: history_count
-      }
-      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
-    end
+    CHANNEL = 'SystemEventsChannel'.freeze
+    include HistoryCountIdentifier
   end
 
   # Timeline WebSocket
   class TimelineEventsWebSocketApi < CmdTlmWebSocketApi
-    def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
-      @identifier = {
-        channel: "TimelineEventsChannel",
-        history_count: history_count
-      }
-      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
-    end
+    CHANNEL = 'TimelineEventsChannel'.freeze
+    include HistoryCountIdentifier
   end
 
   # Queue WebSocket
   class QueueEventsWebSocketApi < CmdTlmWebSocketApi
-    def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
-      @identifier = {
-        channel: "QueueEventsChannel",
-        history_count: history_count
-      }
-      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
-    end
+    CHANNEL = 'QueueEventsChannel'.freeze
+    include HistoryCountIdentifier
   end
 
   # Streaming API WebSocket
   class StreamingWebSocketApi < CmdTlmWebSocketApi
-    def initialize(url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+    def initialize(**options)
       @identifier = {
         channel: "StreamingChannel"
       }
-      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
+      super(**options)
     end
 
     # Request to add data to the stream
@@ -413,26 +422,10 @@ module OpenC3
     #   VALUETYPE - RAW, CONVERTED, FORMATTED, or PURE (pure means all types as stored in log)
     #
     def add(items: nil, packets: nil, start_time: nil, end_time: nil, scope: nil)
-      scope ||= @scope
-      data_hash = {}
-      data_hash['action'] = 'add'
-      if start_time
-        if Time === start_time
-          start_time = start_time.to_nsec_from_epoch
-        end
-        data_hash['start_time'] = start_time
-      end
-      if end_time
-        if Time === end_time
-          end_time = end_time.to_nsec_from_epoch
-        end
-        data_hash['end_time'] = end_time
-      end
-      data_hash['items'] = items if items
-      data_hash['packets'] = packets if packets
-      data_hash['scope'] = scope
-      data_hash['token'] = @authentication.token(include_bearer: false)
-      write_action(data_hash)
+      times = {}
+      times['start_time'] = to_nsec(start_time) if start_time
+      times['end_time'] = to_nsec(end_time) if end_time
+      stream_action('add', items: items, packets: packets, scope: scope, extra: times)
     end
 
     # Request to remove data from the stream
@@ -455,14 +448,7 @@ module OpenC3
     #   VALUETYPE - RAW, CONVERTED, FORMATTED, or PURE (pure means all types as stored in log)
     #
     def remove(items: nil, packets: nil, scope: nil)
-      scope ||= @scope
-      data_hash = {}
-      data_hash['action'] = 'remove'
-      data_hash['items'] = items if items
-      data_hash['packets'] = packets if packets
-      data_hash['scope'] = scope
-      data_hash['token'] = @authentication.token(include_bearer: false)
-      write_action(data_hash)
+      stream_action('remove', items: items, packets: packets, scope: scope)
     end
 
     # Convenience method to read all data until end marker is received.
@@ -489,6 +475,26 @@ module OpenC3
           end
         end
       end
+    end
+
+    # private
+
+    # Accept either a Time or an already converted 64-bit nanosecond value
+    def to_nsec(value)
+      return Time === value ? value.to_nsec_from_epoch : value
+    end
+
+    # Build and write a StreamingChannel action. extra carries action specific
+    # keys (the times for 'add') and is merged first to preserve wire ordering.
+    def stream_action(action, items:, packets:, scope:, extra: {})
+      data_hash = {}
+      data_hash['action'] = action
+      data_hash.merge!(extra)
+      data_hash['items'] = items if items
+      data_hash['packets'] = packets if packets
+      data_hash['scope'] = scope || @scope
+      data_hash['token'] = @authentication.token(include_bearer: false)
+      write_action(data_hash)
     end
   end
 end

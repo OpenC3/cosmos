@@ -324,6 +324,16 @@ class TestWebSocketApiInit(unittest.TestCase):
             api = WebSocketApi(url="ws://test.com/cable")
             self.assertIsInstance(api.authentication, OpenC3KeycloakAuthentication)
 
+    # Subclasses forward **options, which would otherwise silently swallow a
+    # typo'd option name that explicit keyword arguments used to reject
+    def test_rejects_an_unknown_option(self):
+        with self.assertRaisesRegex(TypeError, "unexpected keyword argument\\(s\\): read_timout"):
+            WebSocketApi(url="ws://test.com/cable", authentication=mock_auth(), read_timout=5.0)
+
+    def test_reports_every_unknown_option(self):
+        with self.assertRaisesRegex(TypeError, "unexpected keyword argument\\(s\\): bogus, other"):
+            MessagesWebSocketApi(url="ws://test.com/cable", authentication=mock_auth(), bogus=1, other=2)
+
 
 class TestWebSocketApiContextManager(unittest.TestCase):
     @patch("openc3.script.web_socket_api.WebSocketClientStream")
@@ -532,6 +542,31 @@ class TestWebSocketApiRead(unittest.TestCase):
         api = self._make_api()
         api.stream.queue_read('{"type":"ping"}', '{"message":{"data":"quick_response"}}')
         self.assertEqual(api.read(timeout=5.0), {"data": "quick_response"})
+
+
+class TestWebSocketApiWrite(unittest.TestCase):
+    """Public API for sending a raw frame. write_action no longer routes through
+    it (it writes the command frame directly), so cover it on its own."""
+
+    def _make_api(self):
+        api = WebSocketApi(url="ws://test.com/cable", authentication=mock_auth())
+        api.identifier = {"channel": "TestChannel"}
+        api.stream = FakeWebSocketStream()
+        api.stream.queue_read('{"type":"confirm_subscription"}')
+        return api
+
+    def test_subscribes_first_then_writes_the_data_verbatim(self):
+        api = self._make_api()
+        api.write("raw payload")
+        self.assertEqual(len(api.stream.writes), 2)
+        self.assertEqual(json.loads(api.stream.writes[0])["command"], "subscribe")
+        self.assertEqual(api.stream.writes[1], "raw payload")
+
+    def test_does_not_resubscribe_on_a_second_write(self):
+        api = self._make_api()
+        api.write("one")
+        api.write("two")
+        self.assertEqual(api.stream.writes[1:], ["one", "two"])
 
 
 class TestWebSocketApiReadCooperativeStop(unittest.TestCase):
