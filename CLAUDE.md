@@ -207,7 +207,7 @@ PWDEBUG=1 pnpm test:parallel --headed     # Debug mode
 - **Ruff** - Python linter and formatter (fast Rust-based replacement for flake8/black)
 - **Vue.js 3 + Vuetify 3** - Frontend UI framework
 - **Vite** - Frontend build tool
-- **pnpm 10** - Frontend package management (monorepo workspace)
+- **pnpm 11** - Frontend package management (monorepo workspace)
 - **Node.js 24** - JavaScript runtime
 - **Docker Compose** - Container orchestration
 - **Valkey** - Caching, pub/sub, ephemeral state
@@ -277,6 +277,7 @@ Set `ENTERPRISE=1` environment variable for Enterprise features. Enterprise uses
 Use Angular commit message format. Keep messages concise and focused.
 
 **Format:**
+
 ```
 <type>(<scope>): <subject>
 
@@ -288,6 +289,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 **Guidelines:**
+
 - Subject line: imperative mood, lowercase, no period, max 72 chars
 - Body: explain what and why (not how), keep concise (2-4 lines max)
 - Scope: component/module affected

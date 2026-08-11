@@ -772,7 +772,7 @@ A recommended approach to avoid this is to not execute any code that could fail 
 <TabItem value="python" label="Python">
 
 ```python
-tlm_result = tlm("malformed-target-packet-item"): # tlm() throws a RuntimeError which is caught by instrumentation
+tlm_result = tlm("malformed-target-packet-item") # tlm() throws a RuntimeError which is caught by instrumentation
 if tlm_result:
   print("hello")
 ```

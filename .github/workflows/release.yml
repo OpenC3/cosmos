@@ -107,7 +107,7 @@ jobs:
         run: python -m build
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
-          version: 10
+          version: 11
       - name: Build pnpm Packages
         run: pnpm install --frozen-lockfile --ignore-scripts; pnpm build:common
         working-directory: openc3-cosmos-init/plugins
