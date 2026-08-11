@@ -546,7 +546,7 @@ export default {
           }
         },
         (error) => {
-          this.processCmdResponse(false, targetName, commandName, '', error)
+          this.processCmdError(targetName, commandName, error)
         },
       )
     },
@@ -600,22 +600,10 @@ export default {
         kwparams,
       ).then(
         (response) => {
-          this.processCmdResponse(
-            true,
-            lastTargetName,
-            lastCommandName,
-            cmd,
-            response,
-          )
+          this.processCmdSuccess(cmd, response)
         },
         (error) => {
-          this.processCmdResponse(
-            false,
-            lastTargetName,
-            lastCommandName,
-            cmd,
-            error,
-          )
+          this.processCmdError(lastTargetName, lastCommandName, error)
         },
       )
     },
@@ -626,84 +614,91 @@ export default {
       this.sendDisabled = false
     },
 
-    processCmdResponse(success, targetName, commandName, cmd_sent, response) {
-      if (success) {
-        let msg = `${cmd_sent}("${response['target_name']} ${response['cmd_name']}`
-        let keys = Object.keys(response['cmd_params'])
-        if (keys.length > 0) {
-          msg += ' with '
-          for (let i = 0; i < keys.length; i++) {
-            let key = keys[i]
-            let value = ''
-            if (response['obfuscated_items'].includes(key)) {
-              value = '*****'
-            } else {
-              value = this.convertToString(response['cmd_params'][key])
-            }
-            // If the response has unquoted string data we add quotes
-            if (
-              typeof response['cmd_params'][key] === 'string' &&
-              value.charAt(0) !== "'" &&
-              value.charAt(0) !== '"'
-            ) {
-              value = `'${value}'`
-            }
-            msg += key + ' ' + value
-            if (i < keys.length - 1) {
-              msg += ', '
-            }
-          }
-        }
-        // Build the closing part with optional parameters
-        const closingParams = []
-        if (this.lastQueueName !== null) {
-          const queue =
-            this.lastQueueName === false ? false : `"${this.lastQueueName}"`
-          closingParams.push(this.formatKeyword('queue', queue))
-        }
-        if (this.validateParameter !== null) {
-          closingParams.push(
-            this.formatKeyword('validate', this.validateParameter),
-          )
-        } else if (this.disableCommandValidation) {
-          closingParams.push(this.formatKeyword('validate', false))
-        }
-
-        if (closingParams.length > 0) {
-          msg += '", ' + closingParams.join(', ') + ')'
-        } else {
-          msg += '")'
-        }
-        if (!this.history.includes(msg)) {
-          let value = msg
-          if (this.history.length !== 0) {
-            value += `\n${this.history}`
-          }
-          this.editor.setValue(value)
-          this.editor.moveCursorTo(0, 0)
-        }
-        msg += ' sent.'
-        // Add the number of commands sent to the status message
-        if (this.status.includes(msg)) {
-          let parts = this.status.split('sent.')
-          if (parts[1].includes('(')) {
-            let num = Number.parseInt(
-              parts[1].substr(2, parts[1].indexOf(')') - 2),
-            )
-            msg = parts[0] + 'sent. (' + (num + 1) + ')'
+    processCmdSuccess(cmd_sent, response) {
+      let msg = `${cmd_sent}("${response['target_name']} ${response['cmd_name']}`
+      let keys = Object.keys(response['cmd_params'])
+      if (keys.length > 0) {
+        msg += ' with '
+        for (let i = 0; i < keys.length; i++) {
+          let key = keys[i]
+          let value = ''
+          if (response['obfuscated_items'].includes(key)) {
+            value = '*****'
           } else {
-            msg += ' (2)'
+            value = this.convertToString(response['cmd_params'][key])
+          }
+          // If the response has unquoted string data we add quotes
+          if (
+            typeof response['cmd_params'][key] === 'string' &&
+            value.charAt(0) !== "'" &&
+            value.charAt(0) !== '"'
+          ) {
+            value = `'${value}'`
+          }
+          msg += key + ' ' + value
+          if (i < keys.length - 1) {
+            msg += ', '
           }
         }
-        this.status = msg
-      } else {
-        // If it was sent from history it's all in targetName, see sendCmd for details
-        if (commandName === undefined) {
-          ;[targetName, commandName] = targetName.split(' ').slice(0, 2)
-        }
-        const context = 'sending ' + targetName + ' ' + commandName
-        this.displayError(context, response, true)
       }
+      // Build the closing part with optional parameters
+      const closingParams = []
+      if (this.lastQueueName !== null) {
+        const queue =
+          this.lastQueueName === false ? false : `"${this.lastQueueName}"`
+        closingParams.push(this.formatKeyword('queue', queue))
+      }
+      if (this.validateParameter !== null) {
+        closingParams.push(
+          this.formatKeyword('validate', this.validateParameter),
+        )
+      } else if (this.disableCommandValidation) {
+        closingParams.push(this.formatKeyword('validate', false))
+      }
+
+      if (closingParams.length > 0) {
+        msg += '", ' + closingParams.join(', ') + ')'
+      } else {
+        msg += '")'
+      }
+      if (!this.history.includes(msg)) {
+        let value = msg
+        if (this.history.length !== 0) {
+          value += `\n${this.history}`
+        }
+        this.editor.setValue(value)
+        this.editor.moveCursorTo(0, 0)
+      }
+      msg += ' sent.'
+      // Add the number of commands sent to the status message
+      if (this.status.includes(msg)) {
+        let parts = this.status.split('sent.')
+        if (parts[1].includes('(')) {
+          let num = Number.parseInt(
+            parts[1].substr(2, parts[1].indexOf(')') - 2),
+          )
+          msg = parts[0] + 'sent. (' + (num + 1) + ')'
+        } else {
+          msg += ' (2)'
+        }
+      }
+      this.status = msg
+
+      this.processCmdResponse()
+    },
+
+    processCmdError(targetName, commandName, response) {
+      // If it was sent from history it's all in targetName, see sendCmd for details
+      if (commandName === undefined) {
+        ;[targetName, commandName] = targetName.split(' ').slice(0, 2)
+      }
+      const context = 'sending ' + targetName + ' ' + commandName
+      this.displayError(context, response, true)
+
+      this.processCmdResponse()
+    },
+
+    processCmdResponse() {
       // Make a copy of the history
       this.history = this.editor.getValue()
       localStorage['command_sender__history'] = this.editor.getValue()
