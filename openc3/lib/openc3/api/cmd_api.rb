@@ -484,7 +484,7 @@ module OpenC3
       user = authorize(permission: 'cmd', target_name: target_name, packet_name: cmd_name, manual: manual, scope: scope, token: token)
       if user.nil?
         user = {}
-        user['username'] = ENV['OPENC3_MICROSERVICE_NAME']
+        user['username'] = ENV.fetch('OPENC3_MICROSERVICE_NAME', nil)
 
         # Get the caller stack trace to determine the point in the code where the command was called
         # This code works but ultimately we didn't want to overload 'username' and take a performance hit

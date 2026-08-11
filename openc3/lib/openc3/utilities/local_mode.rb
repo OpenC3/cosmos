@@ -582,7 +582,7 @@ module OpenC3
           # Both files exist - Handled earlier
         else
           # Local is missing remote file
-          if not ENV['OPENC3_LOCAL_MODE_SECONDARY'] and ENV['OPENC3_LOCAL_MODE_SYNC_REMOVE']
+          if not ENV.fetch('OPENC3_LOCAL_MODE_SECONDARY', nil) and ENV.fetch('OPENC3_LOCAL_MODE_SYNC_REMOVE', nil)
             delete_remote(bucket, key)
           else
             # Go ahead and copy down to get in sync

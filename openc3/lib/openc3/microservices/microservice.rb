@@ -43,7 +43,7 @@ module OpenC3
     attr_accessor :secrets
 
     def self.run(name = nil)
-      name = ENV['OPENC3_MICROSERVICE_NAME'] unless name
+      name = ENV.fetch('OPENC3_MICROSERVICE_NAME', nil) unless name
       microservice = self.new(name)
       thread = Thread.new do
         begin
@@ -150,7 +150,7 @@ module OpenC3
         cmd_array = @config["cmd"]
 
         # Get Microservice files from bucket storage
-        bucket = ENV['OPENC3_CONFIG_BUCKET']
+        bucket = ENV.fetch('OPENC3_CONFIG_BUCKET') { raise 'OPENC3_CONFIG_BUCKET environment variable is required' }
         client = Bucket.getClient()
 
         prefix = "#{@scope}/microservices/#{@name}/"
@@ -160,7 +160,7 @@ module OpenC3
         # unreachable while many microservices start at once. Rather than crash
         # and CrashLoopBackOff (which can outlast deploy timeouts), retry for a
         # bounded time before giving up.
-        startup_timeout = (ENV['OPENC3_MICROSERVICE_STARTUP_BUCKET_TIMEOUT'] || 60).to_f
+        startup_timeout = (ENV.fetch('OPENC3_MICROSERVICE_STARTUP_BUCKET_TIMEOUT', 60)).to_f
         startup_deadline = Time.now + startup_timeout
         begin
           file_count = 0

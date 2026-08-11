@@ -42,7 +42,7 @@ module OpenC3
 
     @@mutex = Mutex.new
     @@instance = nil
-    @@scope = ENV['OPENC3_SCOPE']
+    @@scope = ENV.fetch('OPENC3_SCOPE', 'DEFAULT')
 
     # DEBUG only prints DEBUG messages
     DEBUG = ::Logger::DEBUG
@@ -74,7 +74,7 @@ module OpenC3
       @detail_string = nil
       @container_name = Socket.gethostname
       @microservice_name = nil
-      @no_store = ENV['OPENC3_NO_STORE']
+      @no_store = ENV.fetch('OPENC3_NO_STORE', nil)
     end
 
     # Only set the microservice name once (to help with multi microservices)

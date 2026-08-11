@@ -30,9 +30,9 @@ $VERBOSE = saved_verbose
 # Add OpenC3 bin folder to PATH
 require 'openc3/core_ext/kernel'
 if Kernel.is_windows?
-  ENV['PATH'] = File.join(File.dirname(__FILE__), '../bin') + ';' + ENV['PATH']
+  ENV['PATH'] = File.join(File.dirname(__FILE__), '../bin') + ';' + ENV.fetch('PATH')
 else
-  ENV['PATH'] = File.join(File.dirname(__FILE__), '../bin') + ':' + ENV['PATH']
+  ENV['PATH'] = File.join(File.dirname(__FILE__), '../bin') + ':' + ENV.fetch('PATH')
 end
 require 'openc3/ext/platform' if RUBY_ENGINE == 'ruby' and !ENV['OPENC3_NO_EXT']
 require 'openc3/version'
