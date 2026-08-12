@@ -465,6 +465,7 @@ class TestWebSocketApiDisconnect(FakeStreamApiTest):
         api.stream.write = Mock(side_effect=OSError("closed stream"))
         api.disconnect()
         self.assertEqual(api.stream.disconnect_count, 1)
+        self.assertFalse(api.subscribed)
 
 
 class TestWebSocketApiUnsubscribe(FakeStreamApiTest):
@@ -510,12 +511,11 @@ class TestWebSocketApiRead(FakeStreamApiTest):
         self.assertEqual(api.read(), {"data": "test"})
         self.assertIsNone(api.read())
 
-    # Defense-in-depth: a non-empty but malformed frame should not crash a
-    # consumer -- surface it as end-of-stream.
-    def test_returns_none_on_a_malformed_frame(self):
+    def test_raises_on_a_malformed_frame(self):
         api = self._make_api()
         api.stream.queue_read("not json{")
-        self.assertIsNone(api.read())
+        with self.assertRaises(json.JSONDecodeError):
+            api.read()
 
     # A disconnect frame carrying no reason at all must not raise KeyError
     def test_ignores_a_disconnect_with_no_reason(self):
@@ -1019,15 +1019,38 @@ class TestStreamingWebSocketApiReadAll(unittest.TestCase):
         )
         self.assertEqual(data, [{"__time": 1}])
 
-    # Regression: this used to raise TypeError on len(None)
-    def test_returns_the_data_collected_so_far_when_the_socket_closes_early(self):
+    # A bounded query that never got its end marker returned a truncated result
+    # that looked complete
+    def test_raises_when_a_bounded_querys_socket_closes_before_the_end_marker(self):
         self.stream.queue_read(
             '{"type":"confirm_subscription"}',
             '{"message":[{"__time":1}]}',
             # Socket closes without ever sending the empty-batch end marker
         )
-        data = StreamingWebSocketApi.read_all(items=["ITEM"], end_time=datetime(2026, 1, 1, tzinfo=timezone.utc))
+        with self.assertRaisesRegex(RuntimeError, "WebSocket closed before end marker"):
+            StreamingWebSocketApi.read_all(items=["ITEM"], end_time=datetime(2026, 1, 1, tzinfo=timezone.utc))
+
+    # A realtime query is never sent an end marker, so a close is simply how it
+    # ends -- keep what was collected rather than throwing it away
+    def test_returns_the_data_collected_so_far_when_a_realtime_socket_closes(self):
+        self.stream.queue_read(
+            '{"type":"confirm_subscription"}',
+            '{"message":[{"__time":1}]}',
+        )
+        data = StreamingWebSocketApi.read_all(items=["ITEM"])
         self.assertEqual(data, [{"__time": 1}])
+
+    # Realtime and endless: the channel never sends an end marker, so the
+    # timeout is the only thing that ends the collection
+    def test_omits_end_time_when_none_is_given_and_stops_on_the_timeout(self):
+        self.stream.queue_read(
+            '{"type":"confirm_subscription"}',
+            '{"message":[{"__time":1}]}',
+            '{"message":[{"__time":2}]}',
+        )
+        data = StreamingWebSocketApi.read_all(items=["ITEM"], timeout=0.0)
+        self.assertEqual(data, [{"__time": 1}])
+        self.assertNotIn("end_time", action_data(self.stream)[0])
 
     def test_disconnects_the_stream_when_done(self):
         self.stream.queue_read('{"type":"confirm_subscription"}', '{"message":[]}')

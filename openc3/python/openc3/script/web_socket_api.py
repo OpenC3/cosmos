@@ -138,12 +138,7 @@ class WebSocketApi:
             if not message:
                 return None
 
-            try:
-                json_hash = json.loads(message)
-            except json.JSONDecodeError:
-                # Defense-in-depth: treat malformed frames as end-of-stream
-                # rather than crashing.
-                return None
+            json_hash = json.loads(message)
 
             if ignore_protocol_messages:
                 msg_type = json_hash.get("type")
@@ -181,10 +176,11 @@ class WebSocketApi:
         """
         while True:
             message = self.stream.read()
+            # Unlike read, end-of-stream is fatal here rather than a None
+            # return: a socket that closes mid-handshake leaves nothing to
+            # carry on with.
             if not message:
                 raise RuntimeError("WebSocket closed before subscription was confirmed")
-            # Unlike read, a malformed frame here is left to raise: we cannot
-            # treat a failed handshake as end-of-stream and carry on.
             json_hash = json.loads(message)
             self._check_protocol_frame(json_hash)
             # Ignore welcome / ping and keep waiting for confirmation
@@ -265,7 +261,12 @@ class WebSocketApi:
             # close itself must still happen or the socket leaks.
             with contextlib.suppress(Exception):
                 self.unsubscribe()
+            # unsubscribe only clears this after a successful write. The stream
+            # is being closed regardless, so it cannot remain subscribed.
+            self.subscribed = False
             self.stream.disconnect()
+        else:
+            self.subscribed = False
 
     def _generate_auth(self):
         """Generate the appropriate token for OpenC3"""
@@ -497,6 +498,9 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         """
         Convenience method to read all data until end marker is received.
 
+        Omitting end_time streams realtime and endlessly: no end marker is ever
+        sent, so a timeout is the only way the collection ends on its own.
+
         Warning: DATA IS STORED IN RAM. Do not use this with large queries
         """
         read_all_start_time = time.time()
@@ -511,13 +515,19 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
             )
             while True:
                 batch = api.read()
-                # An empty batch is the end marker. None means the socket closed
-                # before the end marker arrived (see read) -- return what we
-                # have rather than raising TypeError on len(None).
-                if not batch:
+                if batch is None:
+                    # A bounded query must receive its end marker; a truncated
+                    # result returned as if complete is worse than an error. A
+                    # realtime query never gets one, so a close is an ordinary
+                    # way for it to end.
+                    if end_time is not None:
+                        raise RuntimeError("WebSocket closed before end marker")
                     break
-                else:
-                    data += batch
+                # An empty batch is the explicit end marker sent after a
+                # historical query is complete.
+                if len(batch) == 0:
+                    break
+                data += batch
                 if timeout is not None and (time.time() - read_all_start_time) > timeout:
                     break
         return data

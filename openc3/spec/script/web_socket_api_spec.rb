@@ -166,12 +166,9 @@ module OpenC3
       end
 
       context "when receiving a malformed (non-empty) frame" do
-        # Defense-in-depth: a non-empty but malformed frame should not crash
-        # cli_script_monitor either — surface it as end-of-stream.
-        it "returns nil instead of raising JSON::ParserError" do
+        it "raises JSON::ParserError" do
           allow(mock_stream).to receive(:read).and_return("not json{")
-          expect { api.read }.not_to raise_error
-          expect(api.read).to be_nil
+          expect { api.read }.to raise_error(JSON::ParserError)
         end
       end
 
@@ -436,6 +433,7 @@ module OpenC3
         allow(stream).to receive(:write).and_raise(IOError, "closed stream")
         expect { api.disconnect }.not_to raise_error
         expect(stream.disconnect_count).to eq(1)
+        expect(api.instance_variable_get(:@subscribed)).to be false
       end
     end
 
@@ -999,17 +997,49 @@ module OpenC3
         end
       end
 
-      # Regression: this used to raise NoMethodError on nil.length
-      it "returns the data collected so far when the socket closes early" do
+      # A bounded query that never got its end marker returned a truncated
+      # result that looked complete
+      it "raises when a bounded query's socket closes before the end marker" do
         stream.queue_read(
           '{"type":"confirm_subscription"}',
           '{"message":[{"__time":1}]}'
           # Socket closes without ever sending the empty-batch end marker
         )
         OpenC3.spec_with_password_auth do
-          data = StreamingWebSocketApi.read_all(items: ['ITEM'], end_time: 2_000_000_000)
+          expect do
+            StreamingWebSocketApi.read_all(items: ['ITEM'], end_time: 2_000_000_000)
+          end.to raise_error(RuntimeError, "WebSocket closed before end marker")
+        end
+      end
+
+      # A realtime query is never sent an end marker, so a close is simply how
+      # it ends -- keep what was collected rather than throwing it away
+      it "returns the data collected so far when a realtime socket closes" do
+        stream.queue_read(
+          '{"type":"confirm_subscription"}',
+          '{"message":[{"__time":1}]}'
+        )
+        OpenC3.spec_with_password_auth do
+          data = StreamingWebSocketApi.read_all(items: ['ITEM'])
           expect(data).to eq([{ "__time" => 1 }])
         end
+      end
+
+      # Realtime and endless: the channel never sends an end marker, so the
+      # timeout is the only thing that ends the collection
+      it "omits end_time when none is given and stops on the timeout" do
+        stream.queue_read(
+          '{"type":"confirm_subscription"}',
+          '{"message":[{"__time":1}]}',
+          '{"message":[{"__time":2}]}'
+        )
+        OpenC3.spec_with_password_auth do
+          data = StreamingWebSocketApi.read_all(items: ['ITEM'], timeout: 0.0)
+          expect(data).to eq([{ "__time" => 1 }])
+        end
+        action = stream.frames.select { |f| f['command'] == 'message' }
+                       .map { |f| JSON.parse(f['data']) }.first
+        expect(action).not_to have_key('end_time')
       end
 
       it "disconnects the stream when done" do

@@ -91,12 +91,7 @@ module OpenC3
         # loops exit cleanly instead of hitting JSON::ParserError on JSON.parse("").
         return nil if message.nil? || message.empty?
 
-        begin
-          json_hash = parse_message(message)
-        rescue JSON::ParserError
-          # Defense-in-depth: treat malformed frames as end-of-stream rather than crashing.
-          return nil
-        end
+        json_hash = parse_message(message)
         if ignore_protocol_messages
           type = json_hash['type']
           if type # ping, welcome, confirm_subscription, reject_subscription, disconnect
@@ -140,10 +135,10 @@ module OpenC3
     def wait_for_subscribed
       while true
         message = @stream.read
+        # Unlike #read, end-of-stream is fatal here rather than a nil return:
+        # a socket that closes mid-handshake leaves nothing to carry on with.
         raise "WebSocket closed before subscription was confirmed" if message.nil? || message.empty?
 
-        # Unlike #read, a malformed frame here is left to raise: we cannot treat
-        # a failed handshake as end-of-stream and carry on.
         json_hash = parse_message(message)
         check_protocol_frame(json_hash)
         # Ignore welcome / ping and keep waiting for confirmation
@@ -206,7 +201,12 @@ module OpenC3
         rescue
           # Oh well, we tried
         end
+        # unsubscribe only clears this after a successful write. The stream is
+        # being closed regardless, so it cannot remain subscribed.
+        @subscribed = false
         @stream.disconnect
+      else
+        @subscribed = false
       end
     end
 
@@ -456,18 +456,27 @@ module OpenC3
     end
 
     # Convenience method to read all data until end marker is received.
+    # Omitting end_time streams realtime and endlessly: no end marker is ever
+    # sent, so a timeout is the only way the collection ends on its own.
     # Warning: DATA IS STORED IN RAM.  Do not use this with large queries
-    def self.read_all(items: nil, packets: nil, start_time: nil, end_time:, scope: nil, timeout: nil)
+    def self.read_all(items: nil, packets: nil, start_time: nil, end_time: nil, scope: nil, timeout: nil)
       read_all_start_time = Time.now
       data = []
       self.new do |api|
         api.add(items: items, packets: packets, start_time: start_time, end_time: end_time, scope: scope)
         while true
           batch = api.read
-          # An empty batch is the end marker. nil means the socket closed before
-          # the end marker arrived (see #read) -- return what we have rather
-          # than raising NoMethodError on nil.
-          if batch.nil? or batch.empty?
+          if batch.nil?
+            # A bounded query must receive its end marker; a truncated result
+            # returned as if complete is worse than an error. A realtime query
+            # never gets one, so a close is an ordinary way for it to end.
+            raise "WebSocket closed before end marker" if end_time
+
+            return data
+          end
+          # An empty batch is the explicit end marker sent after a historical
+          # query is complete.
+          if batch.empty?
             return data
           else
             data.concat(batch)
