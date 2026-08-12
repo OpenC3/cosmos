@@ -27,11 +27,7 @@
     :icon="false"
   >
     <span class="d-inline-flex align-center">
-      <v-icon
-        icon="mdi-play-circle-outline"
-        size="16"
-        class="mr-2"
-      />
+      <v-icon icon="mdi-play-circle-outline" size="16" class="mr-2" />
       Playback Mode
     </span>
   </v-alert>
