@@ -86,9 +86,31 @@ if [ -f "${GEM_PATH}/uv.lock" ] && [ -f "${GEM_PATH}/pyproject.toml" ]; then
     fi
 
     echo "Warning: uv sync --frozen failed (exit code ${RESULT}), falling back to uv pip install"
+
+# Path 2: pyproject.toml present but not uv.lock - use `uv sync`
+elif [ -f "${GEM_PATH}/pyproject.toml" ]; then
+    echo "Found pyproject.toml - using uv sync (not as reproducible as uv.lock)"
+
+    # Copy pyproject.toml into the venv base directory
+    cp "${GEM_PATH}/pyproject.toml" "${VENV_BASE}/pyproject.toml"
+
+    # Create venv and sync dependencies
+    cd "${VENV_BASE}"
+    uv venv "${VENV_DIR}" --allow-existing
+
+    # Offline sync first, online only on a cache miss (bounded by UV_HTTP_*)
+    uv_offline_then_online sync --no-dev --no-install-project ${UV_ARGS}
+    RESULT=$?
+
+    if [ $RESULT -eq 0 ]; then
+        echo "uv sync succeeded"
+        touch "${VENV_BASE}/.uv_managed"
+        exit 0
+    fi
+    echo "Warning: uv sync failed (exit code ${RESULT}), falling back to uv pip install"
 fi
 
-# Path 2: Fallback - use uv pip install for requirements.txt or pyproject.toml
+# Path 3: Fallback - use uv pip install for requirements.txt or pyproject.toml
 # Every install here is also offline-first (same reasoning as path 1), so an
 # unlocked plugin whose wheels happen to be cached installs without network too.
 uv venv "${VENV_DIR}" --allow-existing
