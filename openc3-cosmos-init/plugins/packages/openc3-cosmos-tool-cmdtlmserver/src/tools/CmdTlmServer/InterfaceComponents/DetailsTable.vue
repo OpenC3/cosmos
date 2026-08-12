@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -156,7 +156,7 @@ export default {
     },
     detailsItems() {
       if (!this.shownDetails) return []
-      const excluded = [
+      const excluded = new Set([
         'written_raw_data',
         'read_raw_data',
         'written_raw_data_time',
@@ -171,7 +171,7 @@ export default {
         'read_data_output_time',
         'write_data_input_time',
         'write_data_output_time',
-      ]
+      ])
       let data = null
       if (this.readProtocolIndex !== null) {
         data = this.shownDetails.read_protocols[this.readProtocolIndex]
@@ -182,7 +182,7 @@ export default {
       }
       return Object.entries(data)
         .filter(([key, _]) => {
-          return !excluded.includes(key)
+          return !excluded.has(key)
         })
         .map(([key, value]) => ({
           key: this.formatKey(key),
@@ -221,7 +221,7 @@ export default {
       }
     },
     formatKey(key) {
-      return key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+      return key.replaceAll('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())
     },
     formatValue(value) {
       if (value === null || value === undefined) {

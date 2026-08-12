@@ -270,11 +270,10 @@ export default {
     loadFile() {
       const fileReader = new FileReader()
       fileReader.readAsText(this.file)
-      const that = this
-      fileReader.onload = function () {
-        that.editor.setValue(fileReader.result)
-        that.editor.clearSelection()
-        that.file = null
+      fileReader.onload = () => {
+        this.editor.setValue(fileReader.result)
+        this.editor.clearSelection()
+        this.file = null
       }
     },
   },
