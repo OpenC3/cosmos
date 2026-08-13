@@ -3837,7 +3837,7 @@ id, packets = get_packets(id, block: nil, count: 1000)
 | block     | Number of seconds to block while waiting for packets from ANY stream, default nil / None (do not block) |
 | count     | Maximum number of packets to return from EACH packet stream                                             |
 
-:::note Packet Ordering
+:::note[Packet Ordering]
 Packets returned by `get_packets` are ordered within each subscribed packet stream (target/packet pair) but are NOT interleaved by time across streams. Packets from one stream are appended to the returned array, then packets from the next stream, and so on. If you require strict chronological order across packets from different streams, sort the returned array by the `time` (or `received_time`) field. Note that sorting only orders the current batch — packets across separate `get_packets` calls may still arrive out of order relative to each other, so subscribers needing global ordering must buffer and merge across calls.
 
 ```python
