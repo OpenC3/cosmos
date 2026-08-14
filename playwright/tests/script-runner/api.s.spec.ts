@@ -15,6 +15,7 @@
 import type { Page } from '@playwright/test'
 import { Utilities } from '../../utilities'
 import { test, expect } from './../fixture'
+import { ADMIN_STORAGE_STATE } from './../../playwright.config'
 
 test.use({
   toolPath: '/tools/scriptrunner',
@@ -207,11 +208,12 @@ test('test python stash apis', async ({ page, utils }) => {
   await runScript(page, utils, 'stash.py')
 })
 
-// Tagged @admin because the redis clear below hits POST /openc3-api/redis/exec,
-// which requires the 'admin' permission. The Enterprise fixture picks
-// credentials once at setup from the @admin tag or an 'admin' toolPath, and this
-// spec's toolPath is /tools/scriptrunner, so without the tag the session is the
-// operator and the clear comes back 403.
+// The redis clear below hits POST /openc3-api/redis/exec, which requires the
+// 'admin' permission (RedisController#execute_raw). The @admin tag alone is not
+// enough: the fixture only consults it inside `if (signin.isVisible())`, and the
+// project-level storageState is already a valid *operator* session, so no signin
+// appears and the tag never fires. That made the test pass only when the stored
+// token happened to be stale. The callers pin ADMIN_STORAGE_STATE instead.
 async function testMetadataApis(
   page: Page,
   utils: Utilities,
@@ -286,41 +288,52 @@ async function testMetadataApis(
   )
 }
 
-test('test ruby metadata apis', { tag: '@admin' }, async ({ page, utils }) => {
-  await testMetadataApis(page, utils, 'metadata.rb')
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"setkey" => 1',
+test.describe('metadata apis', () => {
+  // Start from the admin session so the redis clear in testMetadataApis is
+  // authorized deterministically. The @admin tag stays for the case where this
+  // session has expired and the fixture has to sign in again.
+  test.use({ storageState: ADMIN_STORAGE_STATE })
+
+  test(
+    'test ruby metadata apis',
+    { tag: '@admin' },
+    async ({ page, utils }) => {
+      await testMetadataApis(page, utils, 'metadata.rb')
+      await expect(page.locator('[data-test=output-messages]')).toContainText(
+        '"setkey" => 1',
+      )
+      await expect(page.locator('[data-test=output-messages]')).toContainText(
+        '"setkey" => 2',
+      )
+      await expect(page.locator('[data-test=output-messages]')).toContainText(
+        '"updatekey" => 3',
+      )
+      await expect(page.locator('[data-test=output-messages]')).toContainText(
+        '"inputkey_metadata.rb" => "inputvalue"',
+      )
+    },
   )
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"setkey" => 2',
-  )
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"updatekey" => 3',
-  )
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"inputkey_metadata.rb" => "inputvalue"',
+
+  test(
+    'test python metadata apis',
+    { tag: '@admin' },
+    async ({ page, utils }) => {
+      await testMetadataApis(page, utils, 'metadata.py')
+      await expect(page.locator('[data-test=output-messages]')).toContainText(
+        "'setkey': 1",
+      )
+      await expect(page.locator('[data-test=output-messages]')).toContainText(
+        "'setkey': 2",
+      )
+      await expect(page.locator('[data-test=output-messages]')).toContainText(
+        "'updatekey': 3",
+      )
+      await expect(page.locator('[data-test=output-messages]')).toContainText(
+        "'inputkey_metadata.py': 'inputvalue'",
+      )
+    },
   )
 })
-
-test(
-  'test python metadata apis',
-  { tag: '@admin' },
-  async ({ page, utils }) => {
-    await testMetadataApis(page, utils, 'metadata.py')
-    await expect(page.locator('[data-test=output-messages]')).toContainText(
-      "'setkey': 1",
-    )
-    await expect(page.locator('[data-test=output-messages]')).toContainText(
-      "'setkey': 2",
-    )
-    await expect(page.locator('[data-test=output-messages]')).toContainText(
-      "'updatekey': 3",
-    )
-    await expect(page.locator('[data-test=output-messages]')).toContainText(
-      "'inputkey_metadata.py': 'inputvalue'",
-    )
-  },
-)
 
 // The screen APIs were originally exercised by a single long script that
 // chained ~10 transient-state assertions. Each screen was only visible for a
