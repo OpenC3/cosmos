@@ -317,13 +317,14 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
     '/ DEFAULT /',
   )
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)
-  if (process.env.ENTERPRISE === '1') {
-    await expect(page.locator('tbody > tr').first()).toHaveText(/notebooks/)
-    await expect(page.locator('tbody > tr').last()).toHaveText(/\w+_logs/)
-  } else {
-    await expect(page.locator('tbody > tr').first()).toHaveText(/\w+_logs/)
-    await expect(page.locator('tbody > tr').last()).toHaveText(/\w+_logs/)
-  }
+  // Don't require the Enterprise 'notebooks' folder here: it is only created
+  // once a notebook is actually run (Notebook.run puts the running copy into
+  // OPENC3_LOGS_BUCKET), so it exists only if the enterprise notebooks spec
+  // already ran in this stack. Allow it, but don't depend on it.
+  await expect(page.locator('tbody > tr').first()).toHaveText(
+    /notebooks|\w+_logs/,
+  )
+  await expect(page.locator('tbody > tr').last()).toHaveText(/\w+_logs/)
   // Reload (also verifies we return to the same place) until the raw_logs
   // folder has been cut to the bucket - on a fresh instance it isn't there
   // until the first TLM_LOG_CYCLE_TIME elapses, and the listing only refreshes
