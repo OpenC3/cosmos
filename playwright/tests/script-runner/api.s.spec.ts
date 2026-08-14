@@ -151,7 +151,10 @@ test('runs a script', async ({ page, utils }) => {
       .map((item) => parseInt(item.name, 10))
     return Math.max(...ids).toString() // ids increase, so ours is the largest
   })
-  expect(scriptId, 'no running disconnect.rb script found via /script-api/running-script').toMatch(/^\d+$/)
+  expect(
+    scriptId,
+    'no running disconnect.rb script found via /script-api/running-script',
+  ).toMatch(/^\d+$/)
 
   await page.locator('[data-test="script-runner-script"]').click()
   await page.getByText('Execution Status').click()
@@ -204,6 +207,11 @@ test('test python stash apis', async ({ page, utils }) => {
   await runScript(page, utils, 'stash.py')
 })
 
+// Tagged @admin because the redis clear below hits POST /openc3-api/redis/exec,
+// which requires the 'admin' permission. The Enterprise fixture picks
+// credentials once at setup from the @admin tag or an 'admin' toolPath, and this
+// spec's toolPath is /tools/scriptrunner, so without the tag the session is the
+// operator and the clear comes back 403.
 async function testMetadataApis(
   page: Page,
   utils: Utilities,
@@ -278,7 +286,7 @@ async function testMetadataApis(
   )
 }
 
-test('test ruby metadata apis', async ({ page, utils }) => {
+test('test ruby metadata apis', { tag: '@admin' }, async ({ page, utils }) => {
   await testMetadataApis(page, utils, 'metadata.rb')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '"setkey" => 1',
@@ -294,21 +302,25 @@ test('test ruby metadata apis', async ({ page, utils }) => {
   )
 })
 
-test('test python metadata apis', async ({ page, utils }) => {
-  await testMetadataApis(page, utils, 'metadata.py')
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    "'setkey': 1",
-  )
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    "'setkey': 2",
-  )
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    "'updatekey': 3",
-  )
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    "'inputkey_metadata.py': 'inputvalue'",
-  )
-})
+test(
+  'test python metadata apis',
+  { tag: '@admin' },
+  async ({ page, utils }) => {
+    await testMetadataApis(page, utils, 'metadata.py')
+    await expect(page.locator('[data-test=output-messages]')).toContainText(
+      "'setkey': 1",
+    )
+    await expect(page.locator('[data-test=output-messages]')).toContainText(
+      "'setkey': 2",
+    )
+    await expect(page.locator('[data-test=output-messages]')).toContainText(
+      "'updatekey': 3",
+    )
+    await expect(page.locator('[data-test=output-messages]')).toContainText(
+      "'inputkey_metadata.py': 'inputvalue'",
+    )
+  },
+)
 
 // The screen APIs were originally exercised by a single long script that
 // chained ~10 transient-state assertions. Each screen was only visible for a
