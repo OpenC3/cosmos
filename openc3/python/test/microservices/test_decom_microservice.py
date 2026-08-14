@@ -29,7 +29,7 @@ from openc3.topics.limits_event_topic import LimitsEventTopic
 from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.topics.topic import Topic
 from openc3.utilities.store import Store
-from test.test_helper import capture_io, mock_redis, setup_system
+from test.test_helper import capture_io, mock_redis, setup_system, wait_for_first_topic_read
 
 
 class TestDecomMicroservice(unittest.TestCase):
@@ -75,7 +75,7 @@ class TestDecomMicroservice(unittest.TestCase):
         self.dm = DecomMicroservice("DEFAULT__DECOM__INST_INT")
         self.dm_thread = threading.Thread(target=self.dm.run)
         self.dm_thread.start()
-        time.sleep(0.01)  # Allow the thread to start
+        wait_for_first_topic_read(redis, self.dm_thread)  # Allow the thread to start reading
 
     def tearDown(self):
         self.dm.shutdown()
@@ -368,7 +368,7 @@ class TestDecomMicroservice(unittest.TestCase):
         for stdout in capture_io():
             TelemetryTopic.write_packet(packet, scope="DEFAULT")
             # Wait for async processing to complete with retries for CI reliability
-            for _ in range(20):
+            for _ in range(500):
                 time.sleep(0.01)
                 if "Bad response" in stdout.getvalue():
                     break
@@ -429,7 +429,7 @@ class TestDecomMicroserviceStoredLimitsMode(unittest.TestCase):
             self.dm = DecomMicroservice("DEFAULT__DECOM__INST_INT")
         self.dm_thread = threading.Thread(target=self.dm.run)
         self.dm_thread.start()
-        time.sleep(0.01)
+        wait_for_first_topic_read(redis, self.dm_thread)
 
     def tearDown(self):
         if hasattr(self, "dm"):
