@@ -116,7 +116,8 @@ def _iroh_error_detail(error):
             if detail:
                 return f"{type(error).__name__}: {detail}"
         except Exception:
-            pass
+            # Error-detail extraction is best effort; use str(error) below.
+            detail = None
     return f"{type(error).__name__}: {error}"
 
 
@@ -257,7 +258,7 @@ class HostInterfaceMicroservice:
             with contextlib.suppress(Exception):
                 result = endpoint.close()
                 if inspect.isawaitable(result):
-                    await result
+                    _ = await result
         Logger.info(f"{self.name}: shut down")
 
     def _set_desired(self, connected):
@@ -303,7 +304,7 @@ class HostInterfaceMicroservice:
                     with contextlib.suppress(Exception):
                         result = connection.close()
                         if inspect.isawaitable(result):
-                            await result
+                            _ = await result
             if not self.shutdown:
                 await asyncio.sleep(RECONNECT_DELAY)
 
@@ -435,7 +436,7 @@ class HostInterfaceMicroservice:
                     with contextlib.suppress(Exception):
                         result = connection.close()
                         if inspect.isawaitable(result):
-                            await result
+                            _ = await result
             # Never auto-reconnect (req 5). Park (clear the connect event) until
             # COSMOS issues a fresh connect over the control channel. This holds
             # whether the session ended from a requested disconnect, a dropped

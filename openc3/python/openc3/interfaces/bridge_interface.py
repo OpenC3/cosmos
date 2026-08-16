@@ -78,7 +78,8 @@ def _iroh_error_detail(error):
             if detail:
                 return f"{type(error).__name__}: {detail}"
         except Exception:
-            pass
+            # Error-detail extraction is best effort; use str(error) below.
+            detail = None
     return f"{type(error).__name__}: {error}"
 
 
@@ -164,22 +165,69 @@ class BridgeInterface(Interface):
         if not self._started:
             self._loop = asyncio.new_event_loop()
             self._thread = threading.Thread(target=self._run_loop, daemon=True)
-            self._thread.start()
-            asyncio.run_coroutine_threadsafe(self._startup(), self._loop).result(self.connect_timeout)
-            self._ctrl_task = asyncio.run_coroutine_threadsafe(self._start_control(), self._loop).result(5)
-            self._started = True
+            startup = None
+            control = None
+            try:
+                self._thread.start()
+                startup = asyncio.run_coroutine_threadsafe(self._startup(), self._loop)
+                startup.result(self.connect_timeout)
+                control = asyncio.run_coroutine_threadsafe(self._start_control(), self._loop)
+                self._ctrl_task = control.result(5)
+                self._started = True
+            except BaseException:
+                if startup is not None:
+                    startup.cancel()
+                if control is not None:
+                    control.cancel()
+                self._stop_failed_startup()
+                raise
         # Ask the host to (re)connect, then bring up the data tunnel. connect()
         # only returns once the host is up, paired, and ready (see the READY/GO
         # handshake in _establish_data); until then it raises so the normal
         # reconnect logic retries. The +5 lets the inner handshake timeout fire
         # (and clean up the tunnel) before this outer wait gives up.
         self._want_connected = True
+        # Reset before sending the command: desired=True status can arrive as soon
+        # as the host receives it and must not be erased by _establish_data().
+        self._host_attempt_seen = False
         self._send_command("connect")
         asyncio.run_coroutine_threadsafe(self._establish_data(), self._loop).result(self.connect_timeout + 5)
 
     def _run_loop(self):
         asyncio.set_event_loop(self._loop)
         self._loop.run_forever()
+
+    def _stop_failed_startup(self):
+        """Tear down a partially-started async runtime before connect retries."""
+        loop = self._loop
+        thread = self._thread
+        if loop is not None and loop.is_running():
+            with contextlib.suppress(Exception):
+                asyncio.run_coroutine_threadsafe(self._shutdown_runtime(), loop).result(5)
+            loop.call_soon_threadsafe(loop.stop)
+        if thread is not None and thread.is_alive():
+            thread.join(5)
+        if loop is not None and not loop.is_running():
+            with contextlib.suppress(Exception):
+                loop.close()
+        self._loop = None
+        self._thread = None
+        self._endpoint = None
+        self._ctrl_task = None
+        self._ctrl_send = None
+        self._started = False
+
+    async def _shutdown_runtime(self):
+        """Close resources created before startup completed."""
+        if self._ctrl_task is not None:
+            self._ctrl_task.cancel()
+            await asyncio.gather(self._ctrl_task, return_exceptions=True)
+        await self._close_data()
+        if self._endpoint is not None:
+            with contextlib.suppress(Exception):
+                result = self._endpoint.close()
+                if inspect.isawaitable(result):
+                    _ = await result
 
     async def _startup(self):
         """One-time setup on the loop: identity, registration, and the endpoint."""
@@ -209,9 +257,6 @@ class BridgeInterface(Interface):
         # host microservice serving the same stream. Raw device bytes only; this
         # flows transparently through bridge_microservice.
         alpn = f"stream/{self.name}".encode()
-        # Fresh data session: require the host to report it is trying (desired
-        # True) before a reported desired False counts as it dropping on its own.
-        self._host_attempt_seen = False
         try:
             self._connection = await self._endpoint.connect(addr, alpn)
             # bridge_microservice is the server: it opens+primes the bi-stream, so
@@ -325,7 +370,7 @@ class BridgeInterface(Interface):
                     with contextlib.suppress(Exception):
                         result = connection.close()
                         if inspect.isawaitable(result):
-                            await result
+                            _ = await result
             await asyncio.sleep(CTRL_RECONNECT_DELAY)
 
     async def _resolve_addr(self):
@@ -422,5 +467,5 @@ class BridgeInterface(Interface):
             if self._connection is not None:
                 result = self._connection.close()
                 if inspect.isawaitable(result):
-                    await result
+                    _ = await result
         self._connection = None
