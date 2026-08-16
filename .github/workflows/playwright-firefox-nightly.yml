@@ -46,7 +46,7 @@ jobs:
       - uses: ./.github/actions/build-cosmos
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
-          version: 10
+          version: 11
       - name: Install playwright dependencies
         run: ./playwright.sh install-playwright
         working-directory: playwright

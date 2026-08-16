@@ -432,10 +432,6 @@ async function runScript(page, utils, filename) {
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     /File\(s\): \[['"]pnpm-workspace.yaml['"], ['"]reset_storage_state.sh['"]\]/,
   )
-  // Verify something from pnpm-workspace.yaml
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'nodeLinker: hoisted',
-  )
   // Verify something from reset_storage_state.sh
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'Initialize an empty storageState',

@@ -6,3 +6,19 @@ strictDepBuilds: false
 minimumReleaseAge: 1440 # 1 day
 minimumReleaseAgeExclude:
   - ace-diff # we control this package
+
+# pnpm 11 defaults strictDepBuilds to true, which turns "ignored build scripts"
+# from a warning into an install failure. Note pnpm 11 replaced
+# onlyBuiltDependencies with allowBuilds.
+#
+# None of these need their build script:
+#   @parcel/watcher - postinstall only builds from source (node-gyp) when no
+#                     prebuild matches; the platform optional deps ship one
+#   esbuild         - postinstall only validates/downloads the binary that the
+#                     platform optional deps already provide
+#   vue-demi        - postinstall swaps lib/ between the Vue 2 and Vue 3 build;
+#                     the published default is already Vue 3, which is all we use
+allowBuilds:
+  '@parcel/watcher': false
+  esbuild: false
+  vue-demi: false

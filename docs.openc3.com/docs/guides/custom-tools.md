@@ -88,7 +88,7 @@ task :build do
 
   # Build the tool and gem using sh built into Rake:
   # https://rubydoc.info/gems/rake/FileUtils#sh-instance_method
-  sh('pnpm run build') do |ok, status|
+  sh('pnpm', 'run', 'build')
 
   # ...
 end

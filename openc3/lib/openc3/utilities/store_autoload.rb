@@ -116,8 +116,8 @@ module OpenC3
     end
 
     def initialize(pool_size = 10, db_shard: 0)
-      @redis_username = ENV['OPENC3_REDIS_USERNAME']
-      @redis_key = ENV['OPENC3_REDIS_PASSWORD']
+      @redis_username = ENV.fetch('OPENC3_REDIS_USERNAME', nil)
+      @redis_key = ENV.fetch('OPENC3_REDIS_PASSWORD', nil)
       hostname = ENV['OPENC3_REDIS_HOSTNAME'].to_s.gsub("SHARDNUM", db_shard.to_s)
       @redis_url = "redis://#{hostname}:#{ENV.fetch('OPENC3_REDIS_PORT', 6379)}"
       @redis_pool = StoreConnectionPool.new(size: pool_size) { build_redis() }
