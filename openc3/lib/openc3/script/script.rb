@@ -241,7 +241,7 @@ module OpenC3
     # script_run("INST/procedures/collect.rb")
     #
     def initialize_offline_access
-      keycloak_url = ENV['OPENC3_KEYCLOAK_URL']
+      keycloak_url = ENV.fetch('OPENC3_KEYCLOAK_URL', nil)
       if keycloak_url.nil? or keycloak_url.empty?
         raise "initialize_offline_access only valid in COSMOS Enterprise. OPENC3_KEYCLOAK_URL environment variable must be set."
       end

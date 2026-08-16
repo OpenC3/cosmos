@@ -67,7 +67,10 @@ class TestLimitsApi(unittest.TestCase):
         self.dm = DecomMicroservice("DEFAULT__DECOM__INST_INT")
         self.dm_thread = threading.Thread(target=self.dm.run)
         self.dm_thread.start()
-        time.sleep(0.001)  # Allow the threads to run
+        # Allow the run thread to start reading. Tests here call inject_tlm,
+        # which writes to the DECOMINTERFACE topic and waits 5s for an ack from
+        # this thread: anything written before its first read is skipped.
+        wait_for_first_topic_read(redis, self.dm_thread)
 
     def tearDown(self):
         self.dm.shutdown()

@@ -56,7 +56,7 @@ module OpenC3
     def self.verify(token, no_password: true, service_only: false)
       # Handle a service password - Generally only used by ScriptRunner
       # TODO: Replace this with temporary service tokens
-      service_password = ENV['OPENC3_SERVICE_PASSWORD']
+      service_password = ENV.fetch('OPENC3_SERVICE_PASSWORD', nil)
       return true if service_password and service_password == token
 
       return false if service_only

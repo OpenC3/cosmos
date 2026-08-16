@@ -36,7 +36,7 @@ require 'fileutils'
 
 if not defined? RAILS_ROOT
   if ENV['RAILS_ROOT']
-    RAILS_ROOT = ENV['RAILS_ROOT']
+    RAILS_ROOT = ENV.fetch('RAILS_ROOT')
   elsif defined? Rails
     RAILS_ROOT = Rails.root
   else
@@ -436,7 +436,7 @@ class RunningScript
     extension = File.extname(name).to_s.downcase
     script_engine = nil
     if extension == '.py'
-      process_name = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
+      process_name = ENV.fetch('OPENC3_PYTHON_BIN', '/openc3/python/.venv/bin/python')
       runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.py')
     elsif extension == '.rb'
       process_name = 'ruby'
@@ -449,7 +449,7 @@ class RunningScript
       if script_engine_model
         script_engine = script_engine_model.filename
         if File.extname(script_engine).to_s.downcase == '.py'
-          process_name = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
+          process_name = ENV.fetch('OPENC3_PYTHON_BIN', '/openc3/python/.venv/bin/python')
           runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.py')
         else
           process_name = 'ruby'
@@ -521,17 +521,17 @@ class RunningScript
 
       # Set proper secrets for running script
       process.environment['SECRET_KEY_BASE'] = nil
-      process.environment['OPENC3_REDIS_USERNAME'] = ENV['OPENC3_SR_REDIS_USERNAME']
-      process.environment['OPENC3_REDIS_PASSWORD'] = ENV['OPENC3_SR_REDIS_PASSWORD']
-      process.environment['OPENC3_BUCKET_USERNAME'] = ENV['OPENC3_SR_BUCKET_USERNAME']
-      process.environment['OPENC3_BUCKET_PASSWORD'] = ENV['OPENC3_SR_BUCKET_PASSWORD']
+      process.environment['OPENC3_REDIS_USERNAME'] = ENV.fetch('OPENC3_SR_REDIS_USERNAME', nil)
+      process.environment['OPENC3_REDIS_PASSWORD'] = ENV.fetch('OPENC3_SR_REDIS_PASSWORD', nil)
+      process.environment['OPENC3_BUCKET_USERNAME'] = ENV.fetch('OPENC3_SR_BUCKET_USERNAME', nil)
+      process.environment['OPENC3_BUCKET_PASSWORD'] = ENV.fetch('OPENC3_SR_BUCKET_PASSWORD', nil)
       process.environment['OPENC3_SR_REDIS_USERNAME'] = nil
       process.environment['OPENC3_SR_REDIS_PASSWORD'] = nil
       process.environment['OPENC3_SR_BUCKET_USERNAME'] = nil
       process.environment['OPENC3_SR_BUCKET_PASSWORD'] = nil
-      process.environment['OPENC3_API_CLIENT'] = ENV['OPENC3_API_CLIENT']
+      process.environment['OPENC3_API_CLIENT'] = ENV.fetch('OPENC3_API_CLIENT', nil)
       if model and model.offline_access_token
-        auth = OpenC3::OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
+        auth = OpenC3::OpenC3KeycloakAuthentication.new(ENV.fetch('OPENC3_KEYCLOAK_URL', nil))
         valid_token = auth.get_token_from_refresh_token(model.offline_access_token)
         if valid_token
           process.environment['OPENC3_API_TOKEN'] = model.offline_access_token
@@ -541,14 +541,14 @@ class RunningScript
           raise "offline_access token invalid for script"
         end
       else
-        process.environment['OPENC3_API_USER'] = ENV['OPENC3_API_USER']
+        process.environment['OPENC3_API_USER'] = ENV.fetch('OPENC3_API_USER', nil)
         if ENV['OPENC3_SERVICE_PASSWORD']
-          process.environment['OPENC3_API_PASSWORD'] = ENV['OPENC3_SERVICE_PASSWORD']
+          process.environment['OPENC3_API_PASSWORD'] = ENV.fetch('OPENC3_SERVICE_PASSWORD')
         else
           raise "No authentication available for script"
         end
       end
-      process.environment['GEM_HOME'] = ENV['GEM_HOME']
+      process.environment['GEM_HOME'] = ENV.fetch('GEM_HOME', nil)
 
       # Resolve the per-plugin Python venv for this script. For saved scripts
       # we look up which plugin owns the target and check whether that plugin
@@ -589,10 +589,10 @@ class RunningScript
           process.environment['PYTHONPATH'] = existing_pythonpath.empty? ? nil : existing_pythonpath
         end
       else
-        system_venv = File.dirname(ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python').chomp('/bin')
+        system_venv = File.dirname(ENV.fetch('OPENC3_PYTHON_BIN', '/openc3/python/.venv/bin/python')).chomp('/bin')
         process.environment['VIRTUAL_ENV'] = system_venv
-        process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE']
-        process.environment['PYTHONPATH'] = ENV['PYTHONPATH']
+        process.environment['PYTHONUSERBASE'] = ENV.fetch('PYTHONUSERBASE', nil)
+        process.environment['PYTHONPATH'] = ENV.fetch('PYTHONPATH', nil)
       end
 
       # Spawned process should not be controlled by same Bundler constraints as spawning process

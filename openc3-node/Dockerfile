@@ -8,7 +8,8 @@ USER root
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends nodejs npm && \
-    npm install --global --ignore-scripts pnpm@10.34.5 && \
+    npm install --global --ignore-scripts pnpm@11.21.0 && \
+    pnpm --version | grep -qx "11.21.0" && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 USER ${USER_ID}:${GROUP_ID}
