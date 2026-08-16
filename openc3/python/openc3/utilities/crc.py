@@ -296,30 +296,38 @@ class Crc:
         match self.__class__.__name__:
             case "Crc8":
                 self.bit_size = 8
-                pack = ">B"
                 filter_mask = 0xFF
+                right_shift = 0
             case "Crc16":
                 self.bit_size = 16
-                pack = ">H"
                 filter_mask = 0xFFFF
+                right_shift = 8
             case "Crc32":
                 self.bit_size = 32
-                pack = ">I"
                 filter_mask = 0xFFFFFFFF
+                right_shift = 24
             case "Crc64":
                 self.bit_size = 64
-                pack = ">Q"
                 filter_mask = 0xFFFFFFFFFFFFFFFF
-        for index in range(0, 256):
-            self.table.append(
-                int.from_bytes(
-                    struct.pack(
-                        pack,
-                        self.compute_table_entry(index, self.bit_size) & filter_mask,
-                    ),
-                    byteorder="big",
-                )
-            )
+                right_shift = 56
+        self.table = [self.compute_table_entry(index, self.bit_size) & filter_mask for index in range(256)]
+        self.filter_mask = filter_mask
+        self.right_shift = right_shift
+        self.bit_reverse = getattr(self, f"bit_reverse_{self.bit_size}")
+
+        # Reflected tables operate least-significant-bit first, avoiding a bit
+        # reversal for every input byte. CRC32 and CRC64 get three additional
+        # tables so their common reflected forms can process four bytes per loop.
+        self.reflected_tables = []
+        if self.reflect:
+            reflected_table = [self.bit_reverse(self.table[self.BIT_REVERSE_TABLE[index]]) for index in range(256)]
+            self.reflected_tables.append(reflected_table)
+            if self.bit_size >= 32:
+                for _ in range(3):
+                    previous_table = self.reflected_tables[-1]
+                    self.reflected_tables.append(
+                        [(value >> 8) ^ reflected_table[value & 0xFF] for value in previous_table]
+                    )
 
     # self.!method calc(data, seed = None)
     #   Calculates the CRC across the data buffer using the optional seed.
@@ -362,47 +370,45 @@ class Crc:
     def calc(self, data, seed=None):
         if seed is None:
             seed = self.seed
-        crc = seed
 
-        match self.bit_size:
-            case 8:
-                right_shift = 0
-                filter_mask = 0xFF
-                final_bit_reverse = self.bit_reverse_8
-            case 16:
-                right_shift = 8
-                filter_mask = 0xFFFF
-                final_bit_reverse = self.bit_reverse_16
-            case 32:
-                right_shift = 24
-                filter_mask = 0xFFFFFFFF
-                final_bit_reverse = self.bit_reverse_32
-            case 64:
-                right_shift = 56
-                filter_mask = 0xFFFFFFFFFFFFFFFF
-                final_bit_reverse = self.bit_reverse_64
+        if isinstance(data, str):
+            data = data.encode("latin-1")
 
         if self.reflect:
-            for byte in data:
-                if isinstance(byte, str):
-                    byte = ord(byte)
-                crc = (crc << 8 & filter_mask) ^ self.table[(crc >> right_shift) ^ self.bit_reverse_8(byte)]
+            crc = self.bit_reverse(seed)
+            reflected_table = self.reflected_tables[0]
+            index = 0
 
-            final_bit_reverse(crc ^ filter_mask)
-            if self.xor:
-                return final_bit_reverse(crc ^ filter_mask)
-            else:
-                return final_bit_reverse(crc)
+            if self.bit_size >= 32:
+                table1 = self.reflected_tables[1]
+                table2 = self.reflected_tables[2]
+                table3 = self.reflected_tables[3]
+                word_bytes = len(data) & ~0x03
+                for (word,) in struct.iter_unpack("<I", memoryview(data)[:word_bytes]):
+                    value = crc ^ word
+                    crc = (
+                        (value >> 32)
+                        ^ table3[value & 0xFF]
+                        ^ table2[(value >> 8) & 0xFF]
+                        ^ table1[(value >> 16) & 0xFF]
+                        ^ reflected_table[(value >> 24) & 0xFF]
+                    )
+                index = word_bytes
+
+            while index < len(data):
+                crc = (crc >> 8) ^ reflected_table[(crc ^ data[index]) & 0xFF]
+                index += 1
+
+            return crc ^ self.filter_mask if self.xor else crc
         else:
+            crc = seed
+            table = self.table
+            filter_mask = self.filter_mask
+            right_shift = self.right_shift
             for byte in data:
-                if isinstance(byte, str):
-                    byte = ord(byte)
-                crc = ((crc << 8) & filter_mask) ^ self.table[(crc >> right_shift) ^ byte]
+                crc = ((crc << 8) & filter_mask) ^ table[(crc >> right_shift) ^ byte]
 
-            if self.xor:
-                return crc ^ filter_mask
-            else:
-                return crc
+            return crc ^ filter_mask if self.xor else crc
 
     # Compute a single entry in the crc lookup table
     def compute_table_entry(self, index, digits):

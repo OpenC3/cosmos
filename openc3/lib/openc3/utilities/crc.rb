@@ -75,18 +75,22 @@ module OpenC3
         @bit_size = 8
         pack = 'C'
         filter_mask = 0xFF
+        right_shift = 0
       when 'OpenC3::Crc16'
         @bit_size = 16
         pack = 'S'
         filter_mask = 0xFFFF
+        right_shift = 8
       when 'OpenC3::Crc32'
         @bit_size = 32
         pack = 'I'
         filter_mask = 0xFFFFFFFF
+        right_shift = 24
       when 'OpenC3::Crc64'
         @bit_size = 64
         pack = 'Q'
         filter_mask = 0xFFFFFFFFFFFFFFFF
+        right_shift = 56
       end
       if RUBY_ENGINE == 'ruby' and !ENV['OPENC3_NO_EXT']
         (0..255).each do |index|
@@ -95,6 +99,29 @@ module OpenC3
       else
         (0..255).each do |index|
           @table << (compute_table_entry(index, @bit_size) & filter_mask)
+        end
+
+        @filter_mask = filter_mask
+        @right_shift = right_shift
+        @bit_reverse = method("bit_reverse_#{@bit_size}")
+
+        # A reflected (least-significant-bit first) table avoids reversing each
+        # input byte in calc. CRC32 and CRC64 get three additional tables so
+        # their common reflected forms can process four bytes per Ruby loop.
+        if @reflect
+          reflected_table = Array.new(256) do |index|
+            @bit_reverse.call(@table[BIT_REVERSE_TABLE[index]])
+          end
+          @reflected_tables = [reflected_table]
+          if @bit_size >= 32
+            3.times do
+              previous_table = @reflected_tables[-1]
+              @reflected_tables << Array.new(256) do |index|
+                value = previous_table[index]
+                (value >> 8) ^ reflected_table[value & 0xFF]
+              end
+            end
+          end
         end
       end
     end
@@ -140,47 +167,47 @@ module OpenC3
 
     if RUBY_ENGINE != 'ruby' or ENV['OPENC3_NO_EXT']
       def calc(data, seed = @seed)
-        crc = seed
-
-        case @bit_size
-        when 8
-          right_shift = 0
-          filter_mask = 0xFF
-          final_bit_reverse = method(:bit_reverse_8)
-        when 16
-          right_shift = 8
-          filter_mask = 0xFFFF
-          final_bit_reverse = method(:bit_reverse_16)
-        when 32
-          right_shift = 24
-          filter_mask = 0xFFFFFFFF
-          final_bit_reverse = method(:bit_reverse_32)
-        when 64
-          right_shift = 56
-          filter_mask = 0xFFFFFFFFFFFFFFFF
-          final_bit_reverse = method(:bit_reverse_64)
-        end
+        seed = @seed if seed.nil?
 
         if @reflect
-          data.each_byte do |byte|
-            crc = ((crc << 8) & filter_mask) ^ @table[(crc >> right_shift) ^ bit_reverse_8(byte)]
+          crc = @bit_reverse.call(seed)
+          reflected_table = @reflected_tables[0]
+          index = 0
+
+          if @bit_size >= 32
+            table1 = @reflected_tables[1]
+            table2 = @reflected_tables[2]
+            table3 = @reflected_tables[3]
+            word_count = data.bytesize / 4
+            unless word_count.zero?
+              data.unpack("V#{word_count}").each do |word|
+                value = crc ^ word
+                crc = (value >> 32) ^
+                      table3[value & 0xFF] ^
+                      table2[(value >> 8) & 0xFF] ^
+                      table1[(value >> 16) & 0xFF] ^
+                      reflected_table[(value >> 24) & 0xFF]
+              end
+              index = word_count * 4
+            end
           end
 
-          if @xor
-            return final_bit_reverse.call(crc ^ filter_mask)
-          else
-            return final_bit_reverse.call(crc)
+          while index < data.bytesize
+            crc = (crc >> 8) ^ reflected_table[(crc ^ data.getbyte(index)) & 0xFF]
+            index += 1
           end
+
+          return @xor ? crc ^ @filter_mask : crc
         else
+          crc = seed
+          table = @table
+          filter_mask = @filter_mask
+          right_shift = @right_shift
           data.each_byte do |byte|
-            crc = ((crc << 8) & filter_mask) ^ @table[(crc >> right_shift) ^ byte]
+            crc = ((crc << 8) & filter_mask) ^ table[(crc >> right_shift) ^ byte]
           end
 
-          if @xor
-            return crc ^ filter_mask
-          else
-            return crc
-          end
+          return @xor ? crc ^ filter_mask : crc
         end
       end
     end

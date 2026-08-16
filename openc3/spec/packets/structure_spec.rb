@@ -938,6 +938,24 @@ module OpenC3
         # Buffer is too short to contain the 32 bit LENGTH item, so LENGTH reads nil
         expect { s.buffer = "\x00\x01" }.to raise_error(/Length value LENGTH for item DATA is nil/)
       end
+
+      it "rejects a variable size that moves a trailing item outside the packet buffer" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("LENGTH", 32, :UINT)
+        item = s.append_item("DATA", 8, :UINT, 0)
+        item.variable_bit_size = {'length_item_name' => 'LENGTH', 'length_bits_per_count' => 8, 'length_value_bit_offset' => 0}
+        s.set_item(item)
+        s.append_item("TRAILER", 32, :UINT)
+        s.short_buffer_allowed = true
+
+        # This length would move TRAILER to bit offset 0x7FFFFFF8. Before the
+        # native bounds fix, reading it overflowed the ending-byte calculation.
+        crafted_buffer = [268_435_451, 0].pack("N2")
+        expect { s.buffer = crafted_buffer }.to raise_error(
+          ArgumentError,
+          /Variable bit size 2147483608 for item DATA exceeds the 32 bits available in the buffer/
+        )
+      end
     end
 
     describe "short_buffer_allowed" do

@@ -18,6 +18,7 @@
 */
 
 #include "ruby.h"
+#include "stdint.h"
 #include "stdio.h"
 
 #define TO_BIGNUM(x) (FIXNUM_P(x) ? rb_int2big(FIX2LONG(x)) : x)
@@ -418,16 +419,31 @@ static int even_bit_size(int bit_size)
 
 /* Calculate the bounds of the string to access the item based on the bit_offset and bit_size.
  * Also determine if the buffer size is sufficient. */
-static int check_bounds_and_buffer_size(int bit_offset, int bit_size, int buffer_length, VALUE endianness, VALUE data_type, int *lower_bound, int *upper_bound)
+static int check_bounds_and_buffer_size(int bit_offset, int bit_size, long buffer_length, VALUE endianness, VALUE data_type, int *lower_bound, int *upper_bound)
 {
   int result = 1; /* Assume ok */
+  int64_t calculated_lower_bound = 0;
+  int64_t calculated_upper_bound = 0;
 
-  /* Define bounds of string to access this item */
-  *lower_bound = bit_offset / 8;
-  *upper_bound = (bit_offset + bit_size - 1) / 8;
+  /* Calculate in 64 bits so attacker-controlled offsets and sizes cannot
+   * overflow before the buffer bounds are checked. */
+  calculated_lower_bound = ((int64_t)bit_offset) / 8;
+  calculated_upper_bound = (((int64_t)bit_offset) + ((int64_t)bit_size) - 1) / 8;
+  *lower_bound = (int)calculated_lower_bound;
+  *upper_bound = (int)calculated_upper_bound;
+
+  /* The read starts at lower_bound, so it must be checked independently of
+   * upper_bound. Also reject reversed bounds before considering the special
+   * little-endian bitfield case below. */
+  if ((calculated_lower_bound < 0) ||
+      (calculated_lower_bound >= buffer_length) ||
+      (calculated_upper_bound < calculated_lower_bound))
+  {
+    return 0;
+  }
 
   /* Sanity check buffer size */
-  if (*upper_bound >= buffer_length)
+  if (calculated_upper_bound >= buffer_length)
   {
     /* If it's not the special case of little endian bit field then we fail and return 0 */
     if (!((endianness == symbol_LITTLE_ENDIAN) &&
@@ -456,8 +472,8 @@ static int check_bounds_and_buffer_size(int bit_offset, int bit_size, int buffer
 static VALUE binary_accessor_read(VALUE self, VALUE param_bit_offset, VALUE param_bit_size, VALUE param_data_type, VALUE param_buffer, VALUE param_endianness)
 {
   /* Convert Parameters to C Data Types */
-  int bit_offset = FIX2INT(param_bit_offset);
-  int bit_size = FIX2INT(param_bit_size);
+  int bit_offset = NUM2INT(param_bit_offset);
+  int bit_size = NUM2INT(param_bit_size);
 
   /* Local Variables */
   int given_bit_offset = bit_offset;
@@ -513,7 +529,7 @@ static VALUE binary_accessor_read(VALUE self, VALUE param_bit_offset, VALUE para
     }
   }
 
-  if (!check_bounds_and_buffer_size(bit_offset, bit_size, (int)buffer_length, param_endianness, param_data_type, &lower_bound, &upper_bound))
+  if (!check_bounds_and_buffer_size(bit_offset, bit_size, buffer_length, param_endianness, param_data_type, &lower_bound, &upper_bound))
   {
     /* Return nil for out-of-bounds reads (supports undersized packets with ALLOW_SHORT) */
     return Qnil;
@@ -1008,7 +1024,7 @@ static VALUE binary_accessor_write(VALUE self, VALUE value, VALUE param_bit_offs
     bit_size = (int)RSTRING_LEN(value) * 8;
   }
 
-  if ((!check_bounds_and_buffer_size(bit_offset, bit_size, (int)buffer_length, param_endianness, param_data_type, &lower_bound, &upper_bound)) && (given_bit_size > 0))
+  if ((!check_bounds_and_buffer_size(bit_offset, bit_size, buffer_length, param_endianness, param_data_type, &lower_bound, &upper_bound)) && (given_bit_size > 0))
   {
     rb_funcall(self, id_method_raise_buffer_error, 5, symbol_write, param_buffer, param_data_type, param_bit_offset, param_bit_size);
   }

@@ -106,31 +106,42 @@ module OpenC3
     # Valid endianness
     ENDIANNESS = [:BIG_ENDIAN, :LITTLE_ENDIAN]
 
-    def handle_read_variable_bit_size(item, _buffer)
+    def handle_read_variable_bit_size(item, buffer)
       length_value = @packet.read(item.variable_bit_size['length_item_name'], :CONVERTED)
       # length_value can be nil when reading an undersized packet where the length
       # item falls outside the buffer bounds
       raise "Length value #{item.variable_bit_size['length_item_name']} for item #{item.name} is nil" if length_value.nil?
 
       if item.array_size
-        item.array_size = (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
+        array_size = (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
+        validate_variable_bit_size(item, array_size, buffer)
+        item.array_size = array_size
       else
         if item.data_type == :INT or item.data_type == :UINT
           # QUIC encoding is currently assumed for individual variable sized integers
           # see https://datatracker.ietf.org/doc/html/rfc9000#name-variable-length-integer-enc
           case length_value
           when 0
-            item.bit_size = 6
+            bit_size = 6
           when 1
-            item.bit_size = 14
+            bit_size = 14
           when 2
-            item.bit_size = 30
+            bit_size = 30
           else
-            item.bit_size = 62
+            bit_size = 62
           end
         else
-          item.bit_size = (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
+          bit_size = (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
         end
+        validate_variable_bit_size(item, bit_size, buffer)
+        item.bit_size = bit_size
+      end
+    end
+
+    def validate_variable_bit_size(item, bit_size, buffer)
+      available_bit_size = (buffer.length * 8) - item.bit_offset
+      if bit_size < 0 || available_bit_size < 0 || bit_size > available_bit_size
+        raise ArgumentError, "Variable bit size #{bit_size} for item #{item.name} exceeds the #{[available_bit_size, 0].max} bits available in the buffer"
       end
     end
 
@@ -799,6 +810,12 @@ module OpenC3
         # Define bounds of string to access this item
         lower_bound = bit_offset / 8
         upper_bound = (bit_offset + bit_size - 1) / 8
+
+        # The access starts at lower_bound, so validate it independently rather
+        # than relying on upper_bound to imply that it is safe.
+        if lower_bound < 0 || lower_bound >= buffer_length || upper_bound < lower_bound
+          return false, lower_bound, upper_bound
+        end
 
         # Sanity check buffer size
         if upper_bound >= buffer_length

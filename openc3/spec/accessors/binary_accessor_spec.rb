@@ -2591,6 +2591,18 @@ module OpenC3
         item = StructureItem.new("TEST", 16, 32, :UINT, :BIG_ENDIAN)
         expect(BinaryAccessor.read_item(item, buffer)).to be_nil
       end
+
+      it "returns nil when the ending byte calculation would overflow a 32-bit integer" do
+        buffer = "\x00\x01\x02\x03"
+        item = StructureItem.new("TEST", 0x7FFFFFF8, 32, :UINT, :BIG_ENDIAN)
+        expect(BinaryAccessor.read_item(item, buffer)).to be_nil
+      end
+
+      it "rejects bit offsets that cannot be represented by the native accessor" do
+        skip "only applies to the native accessor" if RUBY_ENGINE != 'ruby' || ENV['OPENC3_NO_EXT']
+
+        expect { BinaryAccessor.read(2**63, 32, :UINT, "\x00\x01\x02\x03", :BIG_ENDIAN) }.to raise_error(RangeError)
+      end
     end
   end # describe BinaryAccessor
 end
