@@ -534,6 +534,20 @@ class TestBinaryAccessorReadLittleEndian(unittest.TestCase):
             "LITTLE_ENDIAN",
         )
 
+    def test_returns_none_for_little_endian_bitfields_that_span_past_the_buffer(self):
+        # Little endian bitfields are accessed backwards from bit_offset, so this
+        # 20 bit field would need the byte before the start of the 2 byte buffer.
+        # It must be rejected before any memory is allocated for the value.
+        self.assertIsNone(BinaryAccessor.read(12, 20, "UINT", b"\x01\x02", "LITTLE_ENDIAN"))
+        self.assertIsNone(BinaryAccessor.read(12, 20, "INT", b"\x01\x02", "LITTLE_ENDIAN"))
+
+    def test_returns_none_for_little_endian_bitfields_with_a_huge_bit_size(self):
+        # A huge bit_size must not allocate bit_size / 8 bytes before the bounds
+        # are rejected
+        data = b"\xaa" * 9
+        self.assertIsNone(BinaryAccessor.read(69, 1727950384, "INT", data, "LITTLE_ENDIAN"))
+        self.assertIsNone(BinaryAccessor.read(69, 2147483647, "UINT", data, "LITTLE_ENDIAN"))
+
     def test_reads_1_bit_unsigned_integers(self):
         expected = [0x1, 0x0]
         bit_size = 1
@@ -1131,3 +1145,14 @@ class TestBinaryAccessorReadItemUndersizedBuffer(unittest.TestCase):
         self.assertIsNone(packet.read("item1_length"))
         with self.assertRaisesRegex(RuntimeError, "Length value item1_length for item ITEM1 is None"):
             packet.read("item1")
+
+
+class TestBinaryAccessorReadUndersizedBuffer(unittest.TestCase):
+    def test_rejects_a_negative_bit_size_that_would_overflow_a_32_bit_integer(self):
+        # The bit size is calculated as (buffer bits - bit_offset + bit_size) which
+        # underflows a 32 bit integer in the Ruby C extension. Python must agree
+        # that these are rejected rather than returning an empty string.
+        with self.assertRaisesRegex(ValueError, "0 byte buffer insufficient to read STRING at bit_offset 2147483640"):
+            BinaryAccessor.read(2147483640, -16, "STRING", b"", "LITTLE_ENDIAN")
+        with self.assertRaisesRegex(ValueError, "1 byte buffer insufficient to read BLOCK at bit_offset 2147483640"):
+            BinaryAccessor.read(2147483640, -21, "BLOCK", b"\x01", "BIG_ENDIAN")

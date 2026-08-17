@@ -401,11 +401,13 @@ static void check_bit_offset_and_size(VALUE self, VALUE type_param, VALUE bit_of
 
   if (bit_offset < 0)
   {
-    bit_offset = ((int)(RSTRING_LEN(buffer_param) * 8) + bit_offset);
-    if (bit_offset < 0)
+    /* Calculate in 64 bits since a large buffer times 8 does not fit in an int */
+    int64_t calculated_bit_offset = (((int64_t)RSTRING_LEN(buffer_param)) * 8) + bit_offset;
+    if ((calculated_bit_offset < 0) || (calculated_bit_offset > INT32_MAX))
     {
       rb_funcall(self, id_method_raise_buffer_error, 5, type_param, buffer_param, data_type_param, bit_offset_param, bit_size_param);
     }
+    bit_offset = (int)calculated_bit_offset;
   }
 
   *new_bit_offset = bit_offset;
@@ -451,6 +453,13 @@ static int check_bounds_and_buffer_size(int bit_offset, int bit_size, long buffe
           /* Not byte aligned with an even bit size */
           (!((BYTE_ALIGNED(bit_offset)) && (even_bit_size(bit_size)))) &&
           (*lower_bound < buffer_length)))
+    {
+      result = 0;
+    }
+    /* Little endian bitfields are accessed backwards from bit_offset, so the bytes
+     * they span must all be inside the buffer. Checking this here keeps a huge
+     * bit_size from allocating memory before it is rejected. */
+    else if ((calculated_lower_bound - ((((bit_offset % 8) + ((int64_t)bit_size) - 1) / 8) + 1) + 1) < 0)
     {
       result = 0;
     }
@@ -518,15 +527,17 @@ static VALUE binary_accessor_read(VALUE self, VALUE param_bit_offset, VALUE para
    * recalculate based on the buffer length */
   if ((bit_size <= 0) && ((param_data_type == symbol_STRING) || (param_data_type == symbol_BLOCK)))
   {
-    bit_size = (((int)buffer_length * 8) - bit_offset + bit_size);
-    if (bit_size == 0)
+    /* Calculate in 64 bits since a large buffer times 8 does not fit in an int */
+    int64_t calculated_bit_size = (((int64_t)buffer_length) * 8) - bit_offset + bit_size;
+    if (calculated_bit_size == 0)
     {
       return rb_str_new2("");
     }
-    else if (bit_size < 0)
+    else if ((calculated_bit_size < 0) || (calculated_bit_size > INT32_MAX))
     {
       rb_funcall(self, id_method_raise_buffer_error, 5, symbol_read, param_buffer, param_data_type, param_bit_offset, param_bit_size);
     }
+    bit_size = (int)calculated_bit_size;
   }
 
   if (!check_bounds_and_buffer_size(bit_offset, bit_size, buffer_length, param_endianness, param_data_type, &lower_bound, &upper_bound))
@@ -1020,6 +1031,11 @@ static VALUE binary_accessor_write(VALUE self, VALUE value, VALUE param_bit_offs
     if (!RB_TYPE_P(value, T_STRING))
     {
       value = rb_funcall(value, id_method_to_s, 0);
+    }
+    /* Calculate in 64 bits since a large value times 8 does not fit in an int */
+    if ((((int64_t)RSTRING_LEN(value)) * 8) > INT32_MAX)
+    {
+      rb_funcall(self, id_method_raise_buffer_error, 5, symbol_write, param_buffer, param_data_type, param_bit_offset, param_bit_size);
     }
     bit_size = (int)RSTRING_LEN(value) * 8;
   }
