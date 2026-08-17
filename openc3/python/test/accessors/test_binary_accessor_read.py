@@ -541,6 +541,17 @@ class TestBinaryAccessorReadLittleEndian(unittest.TestCase):
         self.assertIsNone(BinaryAccessor.read(12, 20, "UINT", b"\x01\x02", "LITTLE_ENDIAN"))
         self.assertIsNone(BinaryAccessor.read(12, 20, "INT", b"\x01\x02", "LITTLE_ENDIAN"))
 
+    def test_reads_little_endian_bitfields_whose_span_reaches_the_start_of_the_buffer(self):
+        # The accessed bytes run from bit_offset / 8 back num_bytes - 1 bytes where
+        # num_bytes = ((bit_offset % 8) + bit_size - 1) / 8 + 1. These all span
+        # bytes 0 through 1 of the 2 byte buffer, which is the last accepted span.
+        data = b"\x01\x02"
+        self.assertEqual(BinaryAccessor.read(8, 9, "UINT", data, "LITTLE_ENDIAN"), 4)
+        self.assertEqual(BinaryAccessor.read(12, 9, "UINT", data, "LITTLE_ENDIAN"), 64)
+        self.assertEqual(BinaryAccessor.read(12, 12, "UINT", data, "LITTLE_ENDIAN"), 513)
+        # One more bit needs byte -1 so it is rejected
+        self.assertIsNone(BinaryAccessor.read(12, 13, "UINT", data, "LITTLE_ENDIAN"))
+
     def test_returns_none_for_little_endian_bitfields_with_a_huge_bit_size(self):
         # A huge bit_size must not allocate bit_size / 8 bytes before the bounds
         # are rejected

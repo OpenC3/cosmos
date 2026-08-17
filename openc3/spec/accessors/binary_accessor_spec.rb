@@ -577,6 +577,18 @@ module OpenC3
           expect(BinaryAccessor.read(12, 20, :INT, "\x01\x02", :LITTLE_ENDIAN)).to be_nil
         end
 
+        it "reads little endian bitfields whose span exactly reaches the start of the buffer" do
+          # The accessed bytes run from bit_offset / 8 back num_bytes - 1 bytes where
+          # num_bytes = ((bit_offset % 8) + bit_size - 1) / 8 + 1. These all span
+          # bytes 0 through 1 of the 2 byte buffer, which is the last accepted span.
+          data = "\x01\x02"
+          expect(BinaryAccessor.read(8, 9, :UINT, data, :LITTLE_ENDIAN)).to eql(4)
+          expect(BinaryAccessor.read(12, 9, :UINT, data, :LITTLE_ENDIAN)).to eql(64)
+          expect(BinaryAccessor.read(12, 12, :UINT, data, :LITTLE_ENDIAN)).to eql(513)
+          # One more bit needs byte -1 so it is rejected
+          expect(BinaryAccessor.read(12, 13, :UINT, data, :LITTLE_ENDIAN)).to be_nil
+        end
+
         it "returns nil for little endian bitfields with a huge bit size" do
           # A bit_size near the native int limit must not allocate bit_size / 8
           # bytes before the bounds are rejected
