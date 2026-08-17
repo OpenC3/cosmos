@@ -164,11 +164,9 @@ module OpenC3
     def derived_size_negative?(item, buffer)
       available_bit_size = (buffer.length * 8) - item.bit_offset
       if item.array_size
-        return true if item.array_size <= 0 && (available_bit_size + item.array_size) < 0
-      elsif item.bit_size <= 0
-        return true if (available_bit_size + item.bit_size) < 0
+        return item.array_size <= 0 && (available_bit_size + item.array_size) < 0
       end
-      return false
+      return item.bit_size <= 0 && (available_bit_size + item.bit_size) < 0
     end
 
     def read_item(item, buffer)
@@ -854,11 +852,11 @@ module OpenC3
         # Sanity check buffer size
         if upper_bound >= buffer_length
           # If it's not the special case of little endian bit field then we fail and return false
+          # Note lower_bound is already known to be inside the buffer
           if !((endianness == :LITTLE_ENDIAN) &&
                  ((data_type == :INT) || (data_type == :UINT)) &&
                  # Not byte aligned with an even bit size
-                 (!((byte_aligned(bit_offset)) && (even_bit_size(bit_size)))) &&
-                 (lower_bound < buffer_length)
+                 (!((byte_aligned(bit_offset)) && (even_bit_size(bit_size))))
               )
             result = false
           # Little endian bitfields are accessed backwards from bit_offset, so the

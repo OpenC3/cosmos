@@ -448,11 +448,11 @@ static int check_bounds_and_buffer_size(int bit_offset, int bit_size, long buffe
   if (calculated_upper_bound >= buffer_length)
   {
     /* If it's not the special case of little endian bit field then we fail and return 0 */
+    /* Note lower_bound is already known to be inside the buffer */
     if (!((endianness == symbol_LITTLE_ENDIAN) &&
           ((data_type == symbol_INT) || (data_type == symbol_UINT)) &&
           /* Not byte aligned with an even bit size */
-          (!((BYTE_ALIGNED(bit_offset)) && (even_bit_size(bit_size)))) &&
-          (*lower_bound < buffer_length)))
+          (!((BYTE_ALIGNED(bit_offset)) && (even_bit_size(bit_size))))))
     {
       result = 0;
     }

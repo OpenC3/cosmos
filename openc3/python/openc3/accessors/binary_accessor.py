@@ -774,6 +774,7 @@ class BinaryAccessor(Accessor):
         # Sanity check buffer size
         # If it's not the special match of little endian bit field then we fail and return false
         if upper_bound >= buffer_length:
+            # Note lower_bound is already known to be inside the buffer
             little_endian_bitfield = (
                 (endianness == "LITTLE_ENDIAN")
                 and ((data_type == "INT") or (data_type == "UINT"))
@@ -781,7 +782,6 @@ class BinaryAccessor(Accessor):
                     # Not byte aligned with an even bit size
                     not ((cls.byte_aligned(bit_offset)) and (cls.even_bit_size(bit_size)))
                 )
-                and (lower_bound < buffer_length)
             )
             # Little endian bitfields are accessed backwards from bit_offset, so the
             # bytes they span must all be inside the buffer. Checking this here keeps

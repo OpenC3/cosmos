@@ -230,7 +230,7 @@ if ARGV.delete('--worker')
   warmup_seconds = Float(ENV.fetch('OPENC3_BENCHMARK_WARMUP', '0.25'))
   sample_seconds = Float(ENV.fetch('OPENC3_BENCHMARK_TIME', '0.5'))
   sample_count = Integer(ENV.fetch('OPENC3_BENCHMARK_SAMPLES', '5'))
-  filter = ENV['OPENC3_BENCHMARK_FILTER']
+  filter = ENV.fetch('OPENC3_BENCHMARK_FILTER', nil)
   cases.select! { |benchmark| benchmark.extension.include?(filter) || benchmark.name.include?(filter) } if filter
   raise "No benchmarks matched OPENC3_BENCHMARK_FILTER=#{filter.inspect}" if cases.empty?
 
