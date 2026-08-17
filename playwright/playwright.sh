@@ -2,7 +2,7 @@
 
 usage() {
   echo "Usage: $1 [install-playwright, build-plugin, reset-storage-state, run-chromium, run-aws]" >&2
-  echo "*  install-playwright: installs playwright and its dependencies" >&2
+  echo "*  install-playwright [--no-clean]: installs playwright and its dependencies" >&2
   echo "*  build-plugin: builds the plugin to be used in the playwright tests" >&2
   echo "*  reset-storage-state: clear out cached data" >&2
   echo "*  run-chromium: runs the playwright tests against a locally running version of Cosmos using Chrome" >&2
@@ -23,27 +23,36 @@ fi
 case $1 in
     install-playwright )
         if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
-            echo "Usage: $0 install-playwright"
+            echo "Usage: $0 install-playwright [--no-clean]"
             echo ""
             echo "Install Playwright and its dependencies."
             echo ""
             echo "This command:"
-            echo "  - Removes cached Playwright browser binaries"
-            echo "  - Removes node_modules directory"
+            echo "  - Removes cached Playwright browser binaries (unless --no-clean)"
+            echo "  - Removes node_modules directory (unless --no-clean)"
             echo "  - Runs pnpm install with frozen lockfile"
             echo "  - Installs Playwright browsers with dependencies"
             echo "  - Resets storage state"
             echo ""
             echo "Options:"
             echo "  -h, --help    Show this help message"
+            echo "  --no-clean    Keep the browser cache and node_modules. Used by CI,"
+            echo "                where those directories are restored from an"
+            echo "                actions/cache entry that a wipe would discard."
             exit 0
         fi
-        # Attempt to clean up downloaded browser binaries
-        #   https://playwright.dev/docs/ci#directories-to-cache
-        [[ -d $HOME/.cache/ms-playwright ]] && rm -rf $HOME/.cache/ms-playwright # linux
-        [[ -d $HOME/Library/Caches/ms-playwright ]] && rm -rf $HOME/Library/Caches/ms-playwright # mac
+        # The wipes give a clean slate on a developer machine, where stale browser
+        # binaries left over from an older @playwright/test produce "Executable
+        # doesn't exist" at run time. CI passes --no-clean because the runner
+        # starts fresh anyway and the directories come from a restored cache.
+        if [[ "$2" != "--no-clean" ]]; then
+            # Attempt to clean up downloaded browser binaries
+            #   https://playwright.dev/docs/ci#directories-to-cache
+            [[ -d $HOME/.cache/ms-playwright ]] && rm -rf $HOME/.cache/ms-playwright # linux
+            [[ -d $HOME/Library/Caches/ms-playwright ]] && rm -rf $HOME/Library/Caches/ms-playwright # mac
 
-        rm -rf node_modules
+            rm -rf node_modules
+        fi
 
         pnpm install --frozen-lockfile --ignore-scripts; pnpm exec playwright install --with-deps; pnpm playwright --version
 
