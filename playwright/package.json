@@ -8,7 +8,7 @@
     "test:parallel:root": "playwright test ./tests/*.p.spec.ts --project=chromium",
     "test:parallel:nested": "playwright test ./tests/**/*.p.spec.ts --project=chromium",
     "test:parallel": "pnpm test:parallel:root && pnpm test:parallel:nested",
-    "test:serial": "playwright test ./tests/**/*.s.spec.ts --project=chromium --workers=1",
+    "test:serial": "playwright test ./tests/*.s.spec.ts ./tests/**/*.s.spec.ts --project=chromium --workers=1",
     "test:enterprise": "pnpm test:enterprise:parallel && pnpm test:enterprise:serial",
     "test:enterprise:parallel": "ENTERPRISE=1 playwright test ./tests/enterprise/*.p.spec.ts --project=enterprise",
     "test:enterprise:serial": "ENTERPRISE=1 playwright test ./tests/enterprise/*.s.spec.ts --project=enterprise --workers=1",
