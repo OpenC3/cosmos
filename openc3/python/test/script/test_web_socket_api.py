@@ -1027,8 +1027,9 @@ class TestStreamingWebSocketApiReadAll(unittest.TestCase):
             '{"message":[{"__time":1}]}',
             # Socket closes without ever sending the empty-batch end marker
         )
+        end = datetime(2026, 1, 1, tzinfo=timezone.utc)
         with self.assertRaisesRegex(RuntimeError, "WebSocket closed before end marker"):
-            StreamingWebSocketApi.read_all(items=["ITEM"], end_time=datetime(2026, 1, 1, tzinfo=timezone.utc))
+            StreamingWebSocketApi.read_all(items=["ITEM"], end_time=end)
 
     # A realtime query is never sent an end marker, so a close is simply how it
     # ends -- keep what was collected rather than throwing it away
