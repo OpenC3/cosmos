@@ -327,17 +327,59 @@ When a user attempts an action, COSMOS Enterprise performs the following checks:
 
 COSMOS Enterprise Keycloak realm includes default test users:
 
-| Username | Password | Roles                                                                | Email               |
-| -------- | -------- | -------------------------------------------------------------------- | ------------------- |
-| admin    | admin    | ALLSCOPES\_\_admin, ALLSCOPES\_\_operator, ALLSCOPES\_\_approver      | admin@openc3.com    |
-| operator | operator | ALLSCOPES\_\_operator                                                 | operator@openc3.com |
-| approver | approver | ALLSCOPES\_\_approver                                                 | approver@openc3.com |
-| viewer   | viewer   | ALLSCOPES\_\_viewer (via default role)                                | viewer@openc3.com   |
+| Username | Password | COSMOS Roles                                                         | Grafana Role   | Email               |
+| -------- | -------- | -------------------------------------------------------------------- | -------------- | ------------------- |
+| admin    | admin    | ALLSCOPES\_\_admin, ALLSCOPES\_\_operator, ALLSCOPES\_\_approver     | grafana_admin  | admin@openc3.com    |
+| operator | operator | ALLSCOPES\_\_operator                                                | grafana_editor | operator@openc3.com |
+| approver | approver | ALLSCOPES\_\_approver                                                |                | approver@openc3.com |
+| viewer   | viewer   | ALLSCOPES\_\_viewer (via default role)                               |                | viewer@openc3.com   |
 
 The realm's default role (`default-roles-openc3`) includes `ALLSCOPES__viewer`, so every user — including newly created ones — receives viewer access across all scopes by default.
 
 :::warning[Default credentials]
 These are default development/testing accounts. In production deployments, you should configure proper authentication and remove or change these default credentials.
+:::
+
+## Grafana Roles (Enterprise)
+
+COSMOS Enterprise includes a Grafana instance for system monitoring and observability dashboards. Grafana uses **separate Keycloak realm roles** for access control, independent of COSMOS roles. This is important to understand when creating custom users or integrating with LDAP.
+
+### Grafana Role Requirements
+
+Grafana authenticates through Keycloak using OAuth and maps Keycloak realm roles to Grafana permissions:
+
+| Keycloak Realm Role | Grafana Permission | Description                                        |
+| ------------------- | ------------------ | -------------------------------------------------- |
+| `grafana_admin`     | Admin              | Full Grafana admin access (dashboards, data sources, users) |
+| `grafana_editor`    | Editor             | Can create and edit dashboards                     |
+| _(none)_            | Viewer             | Read-only access to dashboards                     |
+
+The role mapping is configured in Grafana's OAuth settings:
+
+```
+role_attribute_path = contains(realm_access.roles[*], 'grafana_admin') && 'Admin' || contains(realm_access.roles[*], 'grafana_editor') && 'Editor' || 'Viewer'
+```
+
+### Common Issue: "User sync failed"
+
+When users have COSMOS roles (like `ALLSCOPES__operator`) but no Grafana roles assigned, they may encounter a **"Login failed. User sync failed"** error when accessing Grafana. This commonly occurs when:
+
+- Creating custom users without assigning Grafana roles
+- Importing users or groups from LDAP without mapping Grafana roles
+- Assuming COSMOS roles automatically grant Grafana access
+
+### Assigning Grafana Roles
+
+To grant Grafana access to users or LDAP groups:
+
+1. Access the Keycloak admin console
+2. Navigate to **Users** (or **Groups** for LDAP-federated groups)
+3. Select the user or group
+4. Go to **Role Mappings**
+5. Assign `grafana_admin` or `grafana_editor` as needed
+
+:::tip[LDAP Integration]
+When using LDAP user federation, assign Grafana roles to LDAP groups rather than individual users. Map your LDAP admin group to `grafana_admin` and your operator group to `grafana_editor`. See [User Group Role from LDAP Federation](#user-group-role-from-ldap-federation) for enabling group-based role assignment.
 :::
 
 ## Best Practices
