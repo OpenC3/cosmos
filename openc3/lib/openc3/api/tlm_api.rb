@@ -250,7 +250,7 @@ module OpenC3
       items = packet["items"].reject { | item | item["hidden"] }
       items = items.map { | item | item['name'].upcase }
       cvt_items = items.map { | item | [target_name, packet_name, item, type] }
-      current_values = CvtModel.get_tlm_values(cvt_items, stale_time: stale_time, cache_timeout: cache_timeout, start_time: nil, end_time: nil, scope: scope)
+      current_values = CvtModel.get_tlm_values(cvt_items, stale_time: stale_time, cache_timeout: cache_timeout, scope: scope)
       items.zip(current_values).map { | item , values | [item, values[0], values[1]]}
     end
 
@@ -422,6 +422,9 @@ module OpenC3
     # @return [Hash] Telemetry packet item hash
     def get_item(*args, manual: false, scope: $openc3_scope, token: $openc3_token, cache_timeout: nil)
       target_name, packet_name, item_name = _extract_target_packet_item_names('get_item', *args)
+      if packet_name == 'LATEST'
+        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope)
+      end
       authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
     end
