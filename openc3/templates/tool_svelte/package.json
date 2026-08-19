@@ -11,7 +11,7 @@
     "smui-theme": "smui-theme compile build/smui.css -i src/theme"
   },
   "dependencies": {
-    "@astrouxds/astro-web-components": "^7.24.0",
+    "@astrouxds/astro-web-components": "^8.0.0",
     "@openc3/js-common": "7.3.0",
     "@smui/button": "^7.0.0",
     "@smui/common": "^7.0.0",
