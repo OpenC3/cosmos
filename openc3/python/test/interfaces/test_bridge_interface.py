@@ -9,6 +9,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import asyncio
+import sys
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -70,6 +72,49 @@ class TestBridgeInterface(unittest.TestCase):
 
         self.assertEqual(observed, [False])
         self.assertTrue(interface._host_attempt_seen)
+
+    def test_startup_configures_custom_relay(self):
+        interface = BridgeInterface("BRIDGE")
+        interface.name = "INTERFACE"
+        interface._scope = "DEFAULT"
+
+        class FakeKey:
+            @classmethod
+            def generate(cls):
+                return cls()
+
+            @classmethod
+            def from_bytes(cls, _value):
+                return cls()
+
+            def to_bytes(self):
+                return b"s" * 32
+
+            def public(self):
+                return self
+
+        class FakeEndpointOptions:
+            def __init__(self, **options):
+                self.options = options
+
+        endpoint = object()
+        fake_iroh = Mock()
+        fake_iroh.SecretKey = FakeKey
+        fake_iroh.EndpointOptions = FakeEndpointOptions
+        fake_iroh.Endpoint.bind = AsyncMock(return_value=endpoint)
+        fake_iroh.RelayMode.custom_from_urls.return_value = "custom-relay"
+
+        with (
+            patch.dict(sys.modules, {"iroh": fake_iroh}),
+            patch.dict("os.environ", {"OPENC3_BRIDGE_RELAY": "https://relay.example"}),
+            patch("openc3.interfaces.bridge_interface.BridgeInterfaceModel"),
+        ):
+            asyncio.run(interface._startup())
+
+        options = fake_iroh.Endpoint.bind.await_args.args[0].options
+        self.assertEqual(options["relay_mode"], "custom-relay")
+        fake_iroh.RelayMode.custom_from_urls.assert_called_once_with(["https://relay.example"])
+        self.assertIs(interface._endpoint, endpoint)
 
 
 if __name__ == "__main__":

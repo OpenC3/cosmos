@@ -79,7 +79,7 @@ def _iroh_error_detail(error):
                 return f"{type(error).__name__}: {detail}"
         except Exception:
             # Error-detail extraction is best effort; use str(error) below.
-            detail = None
+            pass
     return f"{type(error).__name__}: {error}"
 
 
@@ -240,9 +240,16 @@ class BridgeInterface(Interface):
         secret_key = iroh.SecretKey.from_bytes(bytes.fromhex(self._secret_key_hex))
         public_key = bytes(secret_key.public().to_bytes()).hex()
         BridgeInterfaceModel(name=self.name, scope=self._scope, public_key=public_key).create(force=True)
-        self._endpoint = await iroh.Endpoint.bind(
-            iroh.EndpointOptions(preset=iroh.preset_n0(), secret_key=bytes.fromhex(self._secret_key_hex))
-        )
+        relay = os.environ.get("OPENC3_BRIDGE_RELAY")
+        if relay:
+            options = {
+                "preset": iroh.preset_n0(),
+                "relay_mode": iroh.RelayMode.custom_from_urls([relay]),
+            }
+        else:
+            options = {"preset": iroh.preset_n0_disable_relay()}
+        options["secret_key"] = bytes.fromhex(self._secret_key_hex)
+        self._endpoint = await iroh.Endpoint.bind(iroh.EndpointOptions(**options))
 
     async def _start_control(self):
         """Launch the persistent control-channel task on the loop."""
