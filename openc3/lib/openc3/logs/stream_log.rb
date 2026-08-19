@@ -47,7 +47,7 @@ module OpenC3
       raise "log_type must be :READ or :WRITE" unless LOG_TYPES.include? log_type
 
       super(
-        "#{ENV['OPENC3_SCOPE']}/stream_logs/",
+        "#{ENV.fetch('OPENC3_SCOPE', 'DEFAULT')}/stream_logs/",
         true, # Start with logging enabled
         cycle_time,
         cycle_size,

@@ -33,7 +33,8 @@ module OpenC3
       end
       stored = inject_tlm_hash.fetch('stored', false)
       packet.stored = stored.to_s.downcase == 'true'
-      packet.received_time = Time.now.sys
+      received_time = inject_tlm_hash['received_time']
+      packet.received_time = received_time.nil? ? Time.now.sys : Time.from_nsec_from_epoch(received_time).sys
       packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope: @scope)
       TelemetryTopic.write_packet(packet, scope: @scope)
     end

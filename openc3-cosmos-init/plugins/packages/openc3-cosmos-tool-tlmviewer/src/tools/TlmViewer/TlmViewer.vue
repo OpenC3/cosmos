@@ -17,7 +17,20 @@
 
 <template>
   <top-bar :title="title" :menus="menus" />
-  <div v-if="playbackMode === 'playback'" class="playback">Playback Mode</div>
+  <v-alert
+    v-if="playbackMode === 'playback'"
+    class="playback text-overline mb-1 py-0 align-center justify-center flex-0-0"
+    type="warning"
+    variant="tonal"
+    density="compact"
+    border="start"
+    :icon="false"
+  >
+    <span class="d-inline-flex align-center">
+      <v-icon icon="mdi-play-circle-outline" size="16" class="mr-2" />
+      Playback Mode
+    </span>
+  </v-alert>
   <v-expansion-panels v-model="panel" class="mb-1">
     <v-expansion-panel>
       <v-expansion-panel-title class="pulse-i"></v-expansion-panel-title>
@@ -181,7 +194,7 @@
               suffix="secs"
               :step="1"
               data-test="playback-speed"
-              style="max-width: 120px"
+              style="max-width: 180px"
             />
             <v-number-input
               v-model="playbackSkip"
@@ -194,7 +207,7 @@
               suffix="secs"
               :step="1"
               data-test="skip"
-              style="max-width: 120px"
+              style="max-width: 180px"
             />
           </v-row>
         </div>
@@ -835,11 +848,9 @@ export default {
 </script>
 
 <style scoped>
-.playback {
-  text-align: center;
-  color: black;
-  font-weight: bold;
-  background-color: darkorange;
+.playback :deep(.v-alert__content) {
+  /* v-alert pads content to fit its default 28px icon; ours is 18px */
+  padding-block: 0;
 }
 .v-application {
   /* fix for playwright scrolling I guess? */

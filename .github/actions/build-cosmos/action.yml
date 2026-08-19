@@ -16,6 +16,15 @@ description: |
 
   Local developer builds via ./openc3.sh build are unaffected.
 
+  Enterprise checks core out at cosmos/, so its workflow uses this action as
+  ./cosmos/.github/actions/build-cosmos with working-directory: cosmos and
+  push-cache: false - the cache packages are written by core CI only. Note
+  that enterprise must also pin OPENC3_TAG to something other than "latest"
+  for the whole job: its own ./openc3.sh build calls build_core_images, which
+  re-runs `docker compose build` on every core image when the tag is "latest".
+  A pulled image does not seed the BuildKit layer cache, so that rebuild would
+  throw away everything this action just restored.
+
   The cleanup workflow at .github/workflows/cleanup-ghcr.yml prunes old
   cache entries nightly so the *-buildcache packages don't accumulate.
 
@@ -24,22 +33,59 @@ inputs:
     description: OPENC3_TAG to apply to the resulting docker.io/openc3inc/* tags.
     required: false
     default: latest
+  working-directory:
+    description: |
+      Directory holding compose.yaml, compose-build.yaml, .env and the image
+      build contexts. Must be inside a git checkout - the cache keys come from
+      `git ls-tree HEAD`.
+    required: false
+    default: .
+  push-cache:
+    description: |
+      Whether to push newly built images to the GHCR cache. Only the core repo
+      may write these packages: they are keyed on core's `git ls-tree HEAD`, so
+      an entry pushed from anywhere else could be built from a different core
+      tree than its hash claims. Consumers outside this repo (enterprise) pass
+      false and read the cache only.
+    required: false
+    default: "true"
+
+outputs:
+  images-file:
+    description: |
+      Path to a file of `<image>=<hash>` lines in topological order. A
+      downstream action that builds images FROM these can read it to chain
+      its own parent hashes.
+    value: ${{ steps.hashes.outputs.images-file }}
 
 runs:
   using: composite
   steps:
     - name: Compute per-image hashes
+      id: hashes
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        WORKDIR: ${{ inputs.working-directory }}
       # Spec rows are <name>|<context paths>|<parent images>, in topological
       # order (parents before children). Each image's hash chains its parents'
       # hashes so a base change cascades. 12 hex chars is plenty at our scale.
       run: |
         set -e
+        # Key the bookkeeping files on the working directory so a second
+        # invocation in the same job (enterprise builds core at cosmos/, then
+        # its own images at the workspace root) doesn't clobber the first.
+        slug=$(printf '%s' "$WORKDIR" | tr -c 'A-Za-z0-9' '-')
+        images_file="$RUNNER_TEMP/cosmos-images-${slug}.env"
+        misses_file="$RUNNER_TEMP/cosmos-misses-${slug}.txt"
+        echo "images-file=$images_file" >> "$GITHUB_OUTPUT"
+        echo "misses-file=$misses_file" >> "$GITHUB_OUTPUT"
+
         common=$(git ls-tree -r HEAD compose.yaml compose-build.yaml .env \
           | sha256sum | cut -c1-12)
 
         declare -A HASH
-        : > "$RUNNER_TEMP/cosmos-images.env"
+        : > "$images_file"
 
         while IFS='|' read -r name ctx_str parents_str; do
           [ -z "$name" ] && continue
@@ -59,7 +105,7 @@ runs:
           h=$(printf '%s %s %s' "$common" "$own" "$parent_hashes" \
             | sha256sum | cut -c1-12)
           HASH[$name]=$h
-          echo "${name}=${h}" >> "$RUNNER_TEMP/cosmos-images.env"
+          echo "${name}=${h}" >> "$images_file"
           echo "Hash[$name] = $h"
         done <<'EOF'
         openc3-ruby|openc3-ruby|
@@ -87,12 +133,14 @@ runs:
       shell: bash
       env:
         TAG: ${{ inputs.tag }}
+        IMAGES_FILE: ${{ steps.hashes.outputs.images-file }}
+        MISSES_FILE: ${{ steps.hashes.outputs.misses-file }}
       # For each image, attempt to pull its per-hash cache tag. On hit, retag
       # to docker.io/openc3inc/${name}:${TAG} so it serves as a local FROM
       # source for any downstream miss. Misses are recorded for the build step.
       run: |
         set -e
-        : > "$RUNNER_TEMP/cosmos-misses.txt"
+        : > "$MISSES_FILE"
         hits=0
         misses=0
         while IFS='=' read -r name hash; do
@@ -103,24 +151,26 @@ runs:
             hits=$((hits+1))
             echo "::notice::Cache HIT  ${name} (${hash})"
           else
-            echo "$name" >> "$RUNNER_TEMP/cosmos-misses.txt"
+            echo "$name" >> "$MISSES_FILE"
             misses=$((misses+1))
             echo "::notice::Cache MISS ${name} (${hash})"
           fi
-        done < "$RUNNER_TEMP/cosmos-images.env"
+        done < "$IMAGES_FILE"
         echo "::notice::Build cache: ${hits} hit, ${misses} miss"
 
     - name: Build missed images
       # script -q -e -c works around https://github.com/actions/runner/issues/241
       shell: 'script -q -e -c "bash {0}"'
+      working-directory: ${{ inputs.working-directory }}
       env:
         OPENC3_TAG: ${{ inputs.tag }}
+        MISSES_FILE: ${{ steps.hashes.outputs.misses-file }}
       # Misses are already in topological order (the hash step writes them
       # that way). Pulled parents are tagged locally as openc3inc/${name}:${TAG},
       # so a child-only miss resolves its FROM without rebuilding the parent.
       run: |
         set -e
-        if [ ! -s "$RUNNER_TEMP/cosmos-misses.txt" ]; then
+        if [ ! -s "$MISSES_FILE" ]; then
           echo "::notice::All images cached - skipping build"
           exit 0
         fi
@@ -132,17 +182,20 @@ runs:
           echo "::group::docker compose build ${name}"
           docker compose -f compose.yaml -f compose-build.yaml build "$name"
           echo "::endgroup::"
-        done < "$RUNNER_TEMP/cosmos-misses.txt"
+        done < "$MISSES_FILE"
 
     - name: Push built images to GHCR cache
+      if: ${{ inputs.push-cache == 'true' }}
       shell: bash
       env:
         TAG: ${{ inputs.tag }}
+        IMAGES_FILE: ${{ steps.hashes.outputs.images-file }}
+        MISSES_FILE: ${{ steps.hashes.outputs.misses-file }}
       # Best-effort: a push failure (e.g. fork PR with no packages:write) is
       # logged but does not fail the run.
       run: |
         set +e
-        if [ ! -s "$RUNNER_TEMP/cosmos-misses.txt" ]; then
+        if [ ! -s "$MISSES_FILE" ]; then
           echo "::notice::No images to push (all cached)"
           exit 0
         fi
@@ -150,7 +203,7 @@ runs:
         while IFS='=' read -r name hash; do
           [ -z "$name" ] && continue
           H[$name]=$hash
-        done < "$RUNNER_TEMP/cosmos-images.env"
+        done < "$IMAGES_FILE"
 
         while read -r name; do
           [ -z "$name" ] && continue
@@ -159,4 +212,4 @@ runs:
           if ! docker push "$dst"; then
             echo "::warning::Push failed for ${dst}"
           fi
-        done < "$RUNNER_TEMP/cosmos-misses.txt"
+        done < "$MISSES_FILE"

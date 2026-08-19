@@ -330,7 +330,7 @@ check_box("<Message>", "<checkbox text 1>", ...)
 
 ```python
 value = message_box("Select the sensor number", 'One', 'Two', informative="Smaller informative font")
-value = vertical_message_box("Select the sensor number", 'One', 'Two' details="Regular details")
+value = vertical_message_box("Select the sensor number", 'One', 'Two', details="Regular details")
 value = combo_box("Select the sensor number", 'One', 'Two')
 match value:
     case 'One':
@@ -2684,11 +2684,16 @@ check("<Target Name> <Packet Name> <Item Name> <Comparison - optional>")
 | Item Name   | Name of the telemetry item.                                                                                                                        |
 | Comparison  | A comparison to perform against the telemetry item. If a comparison is not given then the telemetry item will just be printed into the script log. |
 
+:::note[String Comparisons]
+When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). Unquoted values are interpreted as variable names.
+:::
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
 check("INST HEALTH_STATUS COLLECTS > 1")
+check("INST HEALTH_STATUS TYPE == 'NORMAL'")  # Strings must be quoted
 check_raw("INST HEALTH_STATUS COLLECTS > 1")
 check_formatted("INST HEALTH_STATUS COLLECTS > 1")
 # Python passes type as string
@@ -2701,6 +2706,7 @@ check("INST HEALTH_STATUS COLLECTS > 1", type='RAW')
 
 ```ruby
 check("INST HEALTH_STATUS COLLECTS > 1")
+check("INST HEALTH_STATUS TYPE == 'NORMAL'")  # Strings must be quoted
 check_raw("INST HEALTH_STATUS COLLECTS > 1")
 check_formatted("INST HEALTH_STATUS COLLECTS > 1")
 # Ruby passes type as symbol
@@ -3837,7 +3843,7 @@ id, packets = get_packets(id, block: nil, count: 1000)
 | block     | Number of seconds to block while waiting for packets from ANY stream, default nil / None (do not block) |
 | count     | Maximum number of packets to return from EACH packet stream                                             |
 
-:::note Packet Ordering
+:::note[Packet Ordering]
 Packets returned by `get_packets` are ordered within each subscribed packet stream (target/packet pair) but are NOT interleaved by time across streams. Packets from one stream are appended to the returned array, then packets from the next stream, and so on. If you require strict chronological order across packets from different streams, sort the returned array by the `time` (or `received_time`) field. Note that sorting only orders the current batch — packets across separate `get_packets` calls may still arrive out of order relative to each other, so subscribers needing global ordering must buffer and merge across calls.
 
 ```python
@@ -4137,6 +4143,10 @@ success = wait(
 | type         | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).       |
 | quiet        | Named parameter indicating whether to log the result. Defaults to false which means log the wait.              |
 
+:::note[String Comparisons]
+When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). Unquoted values are interpreted as variable names.
+:::
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
@@ -4144,6 +4154,7 @@ success = wait(
 elapsed = wait()
 elapsed = wait(5)
 success = wait("INST HEALTH_STATUS COLLECTS == 3", 10)
+success = wait("INST HEALTH_STATUS TYPE == 'NORMAL'", 10)  # Strings must be quoted
 success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type='RAW', quiet=True)
 ```
 
@@ -4155,6 +4166,7 @@ success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type='RAW', quiet=True)
 elapsed = wait
 elapsed = wait 5
 success = wait("INST HEALTH_STATUS COLLECTS == 3", 10)
+success = wait("INST HEALTH_STATUS TYPE == 'NORMAL'", 10)  # Strings must be quoted
 success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type: :RAW, quiet: true)
 ```
 
@@ -4412,11 +4424,16 @@ elapsed = wait_check(
 | Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                        |
 | type         | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).    |
 
+:::note String Comparisons
+When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). Unquoted values are interpreted as variable names.
+:::
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
 elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10)
+elapsed = wait_check("INST HEALTH_STATUS TYPE == 'NORMAL'", 10)  # Strings must be quoted
 elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type='RAW')
 ```
 
@@ -4426,6 +4443,7 @@ elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type='RAW')
 
 ```ruby
 elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10)
+elapsed = wait_check("INST HEALTH_STATUS TYPE == 'NORMAL'", 10)  # Strings must be quoted
 elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type: :RAW)
 ```
 
