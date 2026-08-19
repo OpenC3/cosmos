@@ -22,8 +22,10 @@ class AuthController < ApplicationController
   MAX_BAD_ATTEMPTS = ENV.fetch('OPENC3_AUTH_RATE_LIMIT_TO', '10').to_i
   BAD_ATTEMPTS_WINDOW = ENV.fetch('OPENC3_AUTH_RATE_LIMIT_WITHIN', '120').to_i
 
-  USER_BAD_ATTEMPTS_KEY = 'openc3__auth_bad_attempts__user'
-  SERVICE_BAD_ATTEMPTS_KEY = 'openc3__auth_bad_attempts__service'
+  # Bad attempt counters are scoped per requesting client (see client_id) so a
+  # malicious client can only lock itself out rather than every operator.
+  USER_BAD_ATTEMPTS_KEY_PREFIX = 'openc3__auth_bad_attempts__user'
+  SERVICE_BAD_ATTEMPTS_KEY_PREFIX = 'openc3__auth_bad_attempts__service'
 
   def token_exists
     result = OpenC3::AuthModel.set?
@@ -40,6 +42,7 @@ class AuthController < ApplicationController
 
     begin
       if OpenC3::AuthModel.verify_no_service(params[:password], mode: :password)
+        clear_user_bad_attempts
         render :plain => OpenC3::AuthModel.generate_session()
       else
         record_user_bad_attempt
@@ -59,6 +62,7 @@ class AuthController < ApplicationController
 
     begin
       if OpenC3::AuthModel.verify(params[:password], service_only: true)
+        clear_service_bad_attempts
         render :plain => OpenC3::AuthModel.generate_session()
       else
         record_service_bad_attempt
@@ -85,6 +89,7 @@ class AuthController < ApplicationController
     begin
       # Set throws an exception if it fails for any reason
       OpenC3::AuthModel.set(params[:password], params[:old_password])
+      clear_user_bad_attempts
       OpenC3::Logger.info("Password changed", user: username())
       render :plain => OpenC3::AuthModel.generate_session()
     rescue StandardError => e
@@ -98,45 +103,95 @@ class AuthController < ApplicationController
 
   private
 
-  # Checks to see if the user password has been rate limited due to bad attempts
+  # Identifies the client making the request so that bad attempt counters are
+  # scoped per client instead of globally. A global counter allows any
+  # unauthenticated client to lock out every operator by sending
+  # MAX_BAD_ATTEMPTS bad passwords, so everything that counts bad attempts must
+  # be namespaced by this value.
+  #
+  # This uses Rails request.remote_ip which honors X-Forwarded-For. COSMOS runs
+  # behind traefik, which discards any client supplied X-Forwarded-* headers and
+  # sets them from the real connection, so a client can't choose its own bucket.
+  # See the forwardedHeaders comments in openc3-traefik/traefik.yaml: if traefik
+  # is configured to trust a proxy that doesn't set X-Forwarded-For, every
+  # client collapses into that proxy's bucket.
+  def client_id
+    ip = begin
+      request.remote_ip
+    rescue StandardError
+      nil
+    end
+    ip ||= request.remote_addr
+    # Only allow ip address characters in the key and bound the length so the
+    # attacker controlled header can't be used to build arbitrary Redis keys
+    ip = ip.to_s.gsub(/[^0-9a-fA-F:.]/, '')[0, 45]
+    return ip.empty? ? 'unknown' : ip
+  end
+
+  def user_bad_attempts_key
+    "#{USER_BAD_ATTEMPTS_KEY_PREFIX}__#{client_id}"
+  end
+
+  def service_bad_attempts_key
+    "#{SERVICE_BAD_ATTEMPTS_KEY_PREFIX}__#{client_id}"
+  end
+
+  # Checks to see if this client has been rate limited due to bad user password attempts
   def user_rate_limited?
-    begin
-      count = OpenC3::EphemeralStore.get(USER_BAD_ATTEMPTS_KEY)
-      return count.to_i >= MAX_BAD_ATTEMPTS
-    rescue StandardError => error
-      OpenC3::Logger.error("Redis error checking user rate limit: #{error.message}")
-      return false
-    end
+    rate_limited?(user_bad_attempts_key, 'user')
   end
-  
-  # Initializes or increments the bad attempt counter for the user password
+
+  # Initializes or increments this client's bad attempt counter for the user password
   def record_user_bad_attempt
-    begin
-      count = OpenC3::EphemeralStore.incr(USER_BAD_ATTEMPTS_KEY)
-      OpenC3::EphemeralStore.expire(USER_BAD_ATTEMPTS_KEY, BAD_ATTEMPTS_WINDOW) if count == 1
-    rescue StandardError => error
-      OpenC3::Logger.error("Redis error recording user bad attempt: #{error.message}")
-    end
+    record_bad_attempt(user_bad_attempts_key, 'user')
   end
-  
-  # Checks to see if the service password has been rate limited due to bad attempts
+
+  # Clears this client's bad attempt counter after a successful user authentication
+  def clear_user_bad_attempts
+    clear_bad_attempts(user_bad_attempts_key, 'user')
+  end
+
+  # Checks to see if this client has been rate limited due to bad service password attempts
   def service_rate_limited?
+    rate_limited?(service_bad_attempts_key, 'service')
+  end
+
+  # Initializes or increments this client's bad attempt counter for the service password
+  def record_service_bad_attempt
+    record_bad_attempt(service_bad_attempts_key, 'service')
+  end
+
+  # Clears this client's bad attempt counter after a successful service authentication
+  def clear_service_bad_attempts
+    clear_bad_attempts(service_bad_attempts_key, 'service')
+  end
+
+  def rate_limited?(key, type)
     begin
-      count = OpenC3::EphemeralStore.get(SERVICE_BAD_ATTEMPTS_KEY)
+      count = OpenC3::EphemeralStore.get(key)
       return count.to_i >= MAX_BAD_ATTEMPTS
     rescue StandardError => error
-      OpenC3::Logger.error("Redis error checking service rate limit: #{error.message}")
+      OpenC3::Logger.error("Redis error checking #{type} rate limit: #{error.message}")
       return false
     end
   end
-  
-  # Initializes or increments the bad attempt counter for the service password
-  def record_service_bad_attempt
+
+  def record_bad_attempt(key, type)
     begin
-      count = OpenC3::EphemeralStore.incr(SERVICE_BAD_ATTEMPTS_KEY)
-      OpenC3::EphemeralStore.expire(SERVICE_BAD_ATTEMPTS_KEY, BAD_ATTEMPTS_WINDOW) if count == 1
+      OpenC3::EphemeralStore.incr(key)
+      # Refresh the TTL on every bad attempt so the window slides. This only
+      # extends the lockout of the client making the bad attempts.
+      OpenC3::EphemeralStore.expire(key, BAD_ATTEMPTS_WINDOW)
     rescue StandardError => error
-      OpenC3::Logger.error("Redis error recording service bad attempt: #{error.message}")
+      OpenC3::Logger.error("Redis error recording #{type} bad attempt: #{error.message}")
+    end
+  end
+
+  def clear_bad_attempts(key, type)
+    begin
+      OpenC3::EphemeralStore.del(key)
+    rescue StandardError => error
+      OpenC3::Logger.error("Redis error clearing #{type} bad attempts: #{error.message}")
     end
   end
 end
