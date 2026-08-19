@@ -22,6 +22,7 @@ require "openc3/models/microservice_model"
 require "openc3/models/setting_model"
 require "openc3/models/trigger_group_model"
 require "openc3/topics/system_events_topic"
+require "openc3/utilities/rubygems_url"
 
 begin
   require "openc3-enterprise/models/cmd_authority_model"
@@ -432,7 +433,7 @@ module OpenC3
       setting = SettingModel.get(name: "source_url")
       SettingModel.set({name: "source_url", data: "https://github.com/OpenC3/cosmos"}, scope: @scope) unless setting
       setting = SettingModel.get(name: "rubygems_url")
-      SettingModel.set({name: "rubygems_url", data: ENV["RUBYGEMS_URL"] || "https://rubygems.org"}, scope: @scope) unless setting
+      SettingModel.set({name: "rubygems_url", data: ENV["RUBYGEMS_URL"] || RubygemsUrl::DEFAULT}, scope: @scope) unless setting
       setting = SettingModel.get(name: "pypi_url")
       SettingModel.set({name: "pypi_url", data: ENV["PYPI_URL"] || "https://pypi.org"}, scope: @scope) unless setting
       # Set the news feed to true by default, don't bother checking if it's already set

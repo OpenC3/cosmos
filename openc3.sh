@@ -419,6 +419,9 @@ case $1 in
     CLI_SERVICE=openc3-cosmos-cmd-tlm-api
     case "$1" in
       initsettings ) CLI_SERVICE=openc3-cosmos-init ;;
+      # Every other subcommand (including an empty or unrecognized one, which
+      # openc3cli itself reports on) runs in the cmd-tlm-api container
+      * ) CLI_SERVICE=openc3-cosmos-cmd-tlm-api ;;
     esac
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
       ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps $CLI_SERVICE ruby /openc3/bin/openc3cli "$@"
