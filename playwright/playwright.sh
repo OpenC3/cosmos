@@ -127,8 +127,7 @@ case $1 in
         # they would only reach the last link (the coverage merge, which ignores
         # argv). Forwarding to each leaf individually keeps quoted args intact,
         # e.g. --grep='command sender'.
-        pnpm test:parallel:root --quiet "${@:2}" \
-          && pnpm test:parallel:nested --quiet "${@:2}" \
+        pnpm test:parallel --quiet "${@:2}" \
           && pnpm test:serial --quiet "${@:2}" \
           && pnpm coverage
         ;;
