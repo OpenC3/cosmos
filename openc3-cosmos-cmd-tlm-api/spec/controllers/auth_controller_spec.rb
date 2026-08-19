@@ -106,10 +106,122 @@ RSpec.describe AuthController, :type => :controller do
   end
 
   describe "rate limiting" do
-    # Actually testing that rate limiting is enforced is done in Playwright
-    # because the bad attempt counters in the controller are shared across
-    # all requests/tests. But we can ensure that the config is read and that
-    # successful attempts don't get rate limited.
+    # Sets the client ip for the next request. remote_ip memoizes so clear it.
+    def set_client_ip(ip)
+      request.remote_addr = ip
+      request.env.delete('action_dispatch.remote_ip')
+      request.instance_variable_set(:@remote_ip, nil)
+    end
+
+    it "rate limits bad password attempts from the same client" do
+      post :set, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+
+      set_client_ip('1.2.3.4')
+      10.times do
+        post :verify, params: { password: 'BAD' }
+        expect(response).to have_http_status(:unauthorized)
+      end
+      post :verify, params: { password: 'BAD' }
+      expect(response).to have_http_status(:too_many_requests)
+      # Even the correct password is rejected for this client
+      post :verify, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:too_many_requests)
+    end
+
+    it "does not rate limit other clients when one client sends bad passwords" do
+      post :set, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+
+      set_client_ip('1.2.3.4')
+      20.times do
+        post :verify, params: { password: 'BAD' }
+      end
+      expect(response).to have_http_status(:too_many_requests)
+
+      # A different client can still log in with the correct password
+      set_client_ip('5.6.7.8')
+      post :verify, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "rate limits based on X-Forwarded-For when behind a proxy" do
+      post :set, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+
+      # Simulate traefik forwarding two different browsers from the same proxy
+      request.remote_addr = '10.0.0.1'
+      request.headers['X-Forwarded-For'] = '1.2.3.4'
+      request.instance_variable_set(:@remote_ip, nil)
+      20.times do
+        post :verify, params: { password: 'BAD' }
+      end
+      expect(response).to have_http_status(:too_many_requests)
+
+      request.headers['X-Forwarded-For'] = '5.6.7.8'
+      request.instance_variable_set(:@remote_ip, nil)
+      post :verify, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "clears the bad attempt counter after a successful attempt" do
+      post :set, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+
+      set_client_ip('1.2.3.4')
+      9.times do
+        post :verify, params: { password: 'BAD' }
+        expect(response).to have_http_status(:unauthorized)
+      end
+      post :verify, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+
+      # Counter was reset so 9 more bad attempts don't trip the limit
+      9.times do
+        post :verify, params: { password: 'BAD' }
+        expect(response).to have_http_status(:unauthorized)
+      end
+      post :verify, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "refreshes the window on each bad attempt" do
+      post :set, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+
+      set_client_ip('1.2.3.4')
+      key = "openc3__auth_bad_attempts__user__1.2.3.4"
+      post :verify, params: { password: 'BAD' }
+      OpenC3::EphemeralStore.expire(key, 5)
+      post :verify, params: { password: 'BAD' }
+      expect(OpenC3::EphemeralStore.ttl(key)).to be > 5
+    end
+
+    it "gives the counter a window if it somehow has no expiration" do
+      post :set, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+
+      # Simulate incr succeeding but expire failing, which would otherwise lock
+      # this client out forever
+      key = "openc3__auth_bad_attempts__user__1.2.3.4"
+      OpenC3::EphemeralStore.set(key, 100)
+      set_client_ip('1.2.3.4')
+      post :verify, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:too_many_requests)
+      expect(OpenC3::EphemeralStore.ttl(key)).to be_between(1, 120)
+    end
+
+    it "rate limits bad service password attempts per client" do
+      set_client_ip('1.2.3.4')
+      20.times do
+        post :verify_service, params: { password: 'BAD' }
+      end
+      expect(response).to have_http_status(:too_many_requests)
+
+      set_client_ip('5.6.7.8')
+      post :verify_service, params: { password: 'openc3service' }
+      expect(response).to have_http_status(:ok)
+    end
 
     it "uses default rate limit values from environment" do
       expect(ENV['OPENC3_AUTH_RATE_LIMIT_TO']).to eq('10')
