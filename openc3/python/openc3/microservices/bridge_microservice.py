@@ -140,7 +140,7 @@ def _iroh_error_detail(error):
                 return f"{type(error).__name__}: {detail}"
         except Exception:
             # Error-detail extraction is best effort; use str(error) below.
-            detail = None
+            pass
     return f"{type(error).__name__}: {error}"
 
 
