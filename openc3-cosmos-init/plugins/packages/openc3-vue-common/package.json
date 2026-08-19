@@ -100,6 +100,6 @@
     "@vitejs/plugin-vue": "6.0.8",
     "prettier": "3.9.6",
     "rollup-plugin-sourcemaps2": "^0.5.8",
-    "vite": "7.3.6"
+    "vite": "8.2.1"
   }
 }
