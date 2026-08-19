@@ -17,6 +17,7 @@
 
 require 'json'
 require 'openc3/utilities/script'
+require 'openc3/utilities/config_overlay'
 require 'openc3/models/setting_model'
 require 'openc3/models/target_model'
 
@@ -171,6 +172,7 @@ class ScriptsController < ApplicationController
     return unless authorization('script_edit')
     scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
+    return unless authorize_overlay_write(name)
     if lifecycle_enabled?() and lifecycle_state(scope, name) == 'approved'
       render json: { status: 'error', message: 'Script is approved and cannot be modified. Move it back to review to edit.' }, status: :forbidden
       return
@@ -253,6 +255,7 @@ class ScriptsController < ApplicationController
     return unless authorization('script_edit')
     scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
+    return unless authorize_overlay_write(name)
     if lifecycle_enabled?() and lifecycle_state(scope, name) == 'approved'
       render json: { status: 'error', message: 'Script is approved and cannot be deleted. Move it back to review to delete.' }, status: :forbidden
       return
@@ -322,6 +325,22 @@ class ScriptsController < ApplicationController
   end
 
   private
+
+  # Gates the Script writers (create, destroy) that funnel through
+  # TargetFile.create/destroy into the targets_modified overlay. Script.all lists
+  # every target file with no path matchers, so the Script Runner editor can reach
+  # targets_modified/<TARGET>/cmd_tlm/..., which PacketConfig evaluates as code
+  # (GENERIC_*_CONVERSION eval) in the decom microservices. Writing that area
+  # therefore requires admin even though script editing only requires
+  # 'script_edit'. Mirrors tables_controller#authorize_overlay_write and
+  # storage_controller#non_admin_config_overlay_write?, the other two writers.
+  # `name` is the overlay-relative path (e.g. "<TARGET>/procedures/x.rb").
+  # Returns true if allowed; otherwise renders the 401/403 and returns false.
+  def authorize_overlay_write(name)
+    return true unless OpenC3::ConfigOverlay.cmd_tlm_overlay?(name)
+    return false unless authorization('admin')
+    true
+  end
 
   # Suite analysis executes the file, so it is gated at the script_run tier rather
   # than the read-only script_view / script_edit endpoints that call this. Returns
