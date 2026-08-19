@@ -9,7 +9,7 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
 
 1. After dozens of installed targets and interfaces, the CmdTlmServer logs indicate "unable to create thread". Microservices are crashing or not starting.
 
-   This is typically due to hard limits on processes or file handles imposed by Linux. If you're on Podman, ensure you've followed the directions from the [Podman](/docs/guides/podman) page and have increased the `pids_limit` in `/etc/containers/containers.conf`. Also check your `ulimit` variables by typing `ulimit -a` and increase your file descriptors (`ulimit -t 65536`).
+   This is typically due to hard limits on processes or file handles imposed by Linux. If you're on Podman, ensure you've followed the directions from the [Podman](/docs/guides/podman) page and have increased the `pids_limit` in `/etc/containers/containers.conf`. Also check your `ulimit` variables by typing `ulimit -a` and increase your file descriptors (`ulimit -n 1048576`).
 
 1. COSMOS becomes slow or unresponsive especially as additional plugins are added
 
@@ -27,7 +27,7 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
 
 1. You're getting "too many files open" errors
 
-   Check your `ulimit` variables by typing `ulimit -a` and increase your file descriptors `ulimit -t 65536`. Note that you may want to put this in your `.bashrc`, `.zshrc`, etc to make this permanent.
+   Check your `ulimit` variables by typing `ulimit -a` and increase your file descriptors `ulimit -n 1048576`. Note that you may want to put this in your `.bashrc`, `.zshrc`, etc to make this permanent.
 
 1. You get networking errors (without certificates)
 
