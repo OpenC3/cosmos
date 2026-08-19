@@ -5,11 +5,9 @@
 # Creates an isolated venv at /gems/plugin_venvs/<plugin_venv_name>/.venv
 # and installs Python dependencies from the plugin's gem_path.
 #
-# Three installation paths:
+# Two installation paths:
 #   1. If gem_path contains uv.lock: uses `uv sync --frozen` (reproducible)
-#   2. If gem_path has a PEP 621 pyproject.toml (a [project] table) and no
-#      requirements.txt: uses `uv sync` (resolves fresh, less reproducible)
-#   3. Otherwise: falls back to `uv pip install` for requirements.txt / pyproject.toml
+#   2. Otherwise: falls back to `uv pip install` for requirements.txt / pyproject.toml
 #
 # Network safety: uv's own HTTP controls (connect timeout, read timeout,
 # bounded retries) make a slow or unreachable index fail fast instead of
@@ -17,7 +15,7 @@
 # never completes and helm's --wait times out). These are idle/connect
 # timeouts, NOT a total-transfer cap, so a large but healthy download (e.g.
 # torch over a slow link) is never killed mid-stream as long as bytes keep
-# arriving. Every path tries OFFLINE first so a plugin whose wheels are already
+# arriving. Both paths try OFFLINE first so a plugin whose wheels are already
 # in the seeded UV cache installs deterministically without ever touching the
 # network.
 
@@ -45,8 +43,8 @@ export UV_HTTP_TIMEOUT="${UV_HTTP_TIMEOUT:-30}"
 export UV_HTTP_RETRIES="${UV_HTTP_RETRIES:-3}"
 
 # Run a uv command offline first (cache-only: instant, cannot hang, works in
-# air-gapped clusters) and only retry online on a cache miss. Every path below
-# uses this so a plugin whose wheels are already in the seeded UV cache never
+# air-gapped clusters) and only retry online on a cache miss. Both paths below
+# use this so a plugin whose wheels are already in the seeded UV cache never
 # touches the network.
 uv_offline_then_online() {
     if uv "$@" --offline; then
@@ -92,67 +90,18 @@ if [ -f "${GEM_PATH}/uv.lock" ] && [ -f "${GEM_PATH}/pyproject.toml" ]; then
     fi
 
     echo "Warning: uv sync --frozen failed (exit code ${RESULT}), falling back to uv pip install"
-
-# Path 2: PEP 621 pyproject.toml present but not uv.lock - use `uv sync`
-#
-# Gated on two extra conditions, both of which `uv sync` would otherwise turn
-# into a silent no-op that still exits 0 (and so would `touch .uv_managed` and
-# skip path 3 entirely, leaving an empty venv and a runtime ModuleNotFoundError):
-#   - A [project] table must exist. `uv sync --no-install-project` only reads
-#     PEP 621 metadata, so a poetry/pdm-style pyproject.toml (deps under
-#     [tool.poetry.dependencies]) resolves zero packages and reports success.
-#     Path 3's `uv pip install <path>` builds through that backend instead and
-#     does install the deps, so those plugins must fall through to it.
-#   - requirements.txt must be absent. A pyproject.toml carrying only tool
-#     config ([tool.ruff], [tool.pytest]) alongside a real requirements.txt
-#     would otherwise match here and the requirements.txt would never be read.
-elif [ -f "${GEM_PATH}/pyproject.toml" ] && \
-     [ ! -f "${GEM_PATH}/requirements.txt" ] && \
-     grep -q '^[[:space:]]*\[[[:space:]]*project[[:space:]]*\]' "${GEM_PATH}/pyproject.toml"; then
-    echo "Found pyproject.toml - using uv sync (not as reproducible as uv.lock)"
-
-    # Copy pyproject.toml into the venv base directory
-    cp "${GEM_PATH}/pyproject.toml" "${VENV_BASE}/pyproject.toml"
-
-    # Drop any uv.lock left in the venv base by a previous install of this
-    # plugin. `uv sync` (no --frozen) only re-resolves when the lock is
-    # *outdated*; a stale lock that still satisfies the new pyproject.toml is
-    # reused verbatim, so an upgrade that widens a pin to pick up a fix would
-    # silently reinstall the old pinned version.
-    rm -f "${VENV_BASE}/uv.lock"
-
-    # Create venv and sync dependencies
-    cd "${VENV_BASE}"
-    uv venv "${VENV_DIR}" --allow-existing
-
-    # Offline sync first, online only on a cache miss (bounded by UV_HTTP_*).
-    # --inexact keeps sync additive: without it sync makes the venv match the
-    # lock exactly and uninstalls anything else, including packages an admin
-    # uploaded into this plugin venv via PythonPackageModel.install (which uses
-    # the additive `pipinstall`).
-    uv_offline_then_online sync --inexact --no-dev --no-install-project ${UV_ARGS}
-    RESULT=$?
-
-    if [ $RESULT -eq 0 ]; then
-        echo "uv sync succeeded"
-        touch "${VENV_BASE}/.uv_managed"
-        exit 0
-    fi
-    echo "Warning: uv sync failed (exit code ${RESULT}), falling back to uv pip install"
 fi
 
-# Path 3: Fallback - use uv pip install for requirements.txt or pyproject.toml
+# Path 2: Fallback - use uv pip install for requirements.txt or pyproject.toml
 # Every install here is also offline-first (same reasoning as path 1), so an
 # unlocked plugin whose wheels happen to be cached installs without network too.
 uv venv "${VENV_DIR}" --allow-existing
 
 if [ -f "${GEM_PATH}/requirements.txt" ]; then
-    echo "Installing from requirements.txt via uv pip install"
     uv_offline_then_online pip install --python "${VENV_DIR}" ${UV_ARGS} -r "${GEM_PATH}/requirements.txt"
     RESULT=$?
 elif [ -f "${GEM_PATH}/pyproject.toml" ]; then
-    echo "Installing from pyproject.toml via uv pip install"
-    uv_offline_then_online pip install --python "${VENV_DIR}" ${UV_ARGS} "${GEM_PATH}"
+    uv_offline_then_online pip install --python "${VENV_DIR}" ${UV_ARGS} -r "${GEM_PATH}/pyproject.toml"
     RESULT=$?
 
     # `uv pip install <path>` builds the plugin as a package before installing
