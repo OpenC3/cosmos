@@ -13,6 +13,8 @@
 
 require 'spec_helper'
 require 'openc3/api/settings_api'
+require 'openc3/script/extract'
+require 'openc3/utilities/authorization'
 
 module OpenC3
   describe Api do
@@ -100,6 +102,28 @@ module OpenC3
         @api.set_setting('key2', 2)
         @api.set_setting('key3', 3)
         expect(@api.get_settings('key1','key3')).to eql ["string", 3]
+      end
+    end
+
+    describe "update_news" do
+      it "raises AuthError without writing the news feed" do
+        NewsModel.set('[]')
+        saved = $openc3_authorize
+        $openc3_authorize = true
+        begin
+          expect { @api.update_news(scope: 'DEFAULT', token: nil) }.to raise_error(AuthError, /Token is required/)
+        ensure
+          $openc3_authorize = saved
+        end
+        expect(NewsModel.all()).to eql '[]'
+      end
+
+      it "writes a news error if the feed can't be reached" do
+        allow_any_instance_of(Faraday::Connection).to receive(:get).and_raise(Faraday::ConnectionFailed.new('no route'))
+        @api.update_news(scope: 'DEFAULT')
+        news = JSON.parse(NewsModel.all())
+        expect(news[0]['title']).to eql 'News Error'
+        expect(news[0]['body']).to include 'no route'
       end
     end
   end
