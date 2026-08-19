@@ -118,6 +118,10 @@ PUMP_CHUNK_BYTES = 65536
 # How long a lone data-path peer waits for its partner before giving up.
 PAIR_TIMEOUT = 300
 
+# Bound control API requests, especially unauthenticated enrollment requests.
+REQUEST_TIMEOUT = 10
+MAX_REQUEST_BYTES = 1024 * 1024
+
 # How long a request/response handler waits for the client to finish reading and
 # close before tearing the connection down (avoids a close race that truncates
 # the response with "connection lost" over real networking).
@@ -135,6 +139,7 @@ def _iroh_error_detail(error):
             if detail:
                 return f"{type(error).__name__}: {detail}"
         except Exception:
+            # Error-detail extraction is best effort; use str(error) below.
             pass
     return f"{type(error).__name__}: {error}"
 
@@ -195,11 +200,11 @@ class BridgeMicroservice(Microservice):
                 streams.append(stream)
         return sorted(streams)
 
-    def _build_alpns(self):
+    def _build_alpns(self, streams=None):
         """Full ALPN set to advertise: a stream/host/ctrl/hostctrl quad per
         relayed stream, plus the fixed control-API ALPNs."""
         alpns = []
-        for s in self.streams:
+        for s in self.streams if streams is None else streams:
             alpns.append(f"{STREAM_ALPN_PREFIX}{s}".encode())
             alpns.append(f"{HOST_ALPN_PREFIX}{s}".encode())
             alpns.append(f"{CTRL_ALPN_PREFIX}{s}".encode())
@@ -244,7 +249,6 @@ class BridgeMicroservice(Microservice):
 
         model, private_key = self._ensure_keys(iroh)
         secret_key = bytes.fromhex(private_key)
-        port = self._ensure_port(model)
         # Advertise a stream/<name> ALPN quad for each relayed stream (data +
         # control paths) plus the fixed control API ALPNs (always available for
         # openc3-app). _stream_watcher re-advertises this set as streams change.
@@ -259,18 +263,16 @@ class BridgeMicroservice(Microservice):
             options = {
                 "preset": iroh.preset_n0(),
                 "relay_mode": iroh.RelayMode.custom_from_urls([relay]),
-                "bind_addr": f"0.0.0.0:{port}",
                 "alpns": alpns,
                 "secret_key": secret_key,
             }
         else:
             options = {
                 "preset": iroh.preset_n0_disable_relay(),
-                "bind_addr": f"0.0.0.0:{port}",
                 "alpns": alpns,
                 "secret_key": secret_key,
             }
-        endpoint = await iroh.Endpoint.bind(iroh.EndpointOptions(**options))
+        endpoint, port = await self._bind_endpoint(iroh, model, options)
         # Advertise a host-reachable local address: Docker publishes
         # 127.0.0.1:<port>/udp on the host straight through to this container port,
         # so a co-located host dials 127.0.0.1:<port> directly (the bind's own
@@ -327,7 +329,7 @@ class BridgeMicroservice(Microservice):
         with contextlib.suppress(Exception):
             result = endpoint.close()
             if inspect.isawaitable(result):
-                await result
+                _ = await result
 
     def _read_config_changes(self, topic, offset, timeout_ms):
         """Block (in an executor thread) until a config change is published on the
@@ -340,6 +342,21 @@ class BridgeMicroservice(Microservice):
             for _topic, msg_id, _msg_hash, _redis in Topic.read_topics([topic], [offset], timeout_ms):
                 ids.append(msg_id)
         return ids
+
+    def _refresh_alpns(self, endpoint, streams):
+        """Advertise a changed stream set, committing it only after success."""
+        if streams == self.streams:
+            return False
+        added = sorted(set(streams) - set(self.streams))
+        removed = sorted(set(self.streams) - set(streams))
+        try:
+            endpoint.set_alpns(self._build_alpns(streams))
+        except Exception as error:
+            self.logger.warn(f"Bridge '{self.bridge_name}': ALPN refresh error: {_iroh_error_detail(error)}")
+            return False
+        self.streams = streams
+        self.logger.info(f"Bridge '{self.bridge_name}': streams updated (added={added}, removed={removed})")
+        return True
 
     async def _stream_watcher(self, endpoint):
         """Keep the endpoint's advertised ALPNs in sync with the set of streams
@@ -372,14 +389,7 @@ class BridgeMicroservice(Microservice):
             except Exception as error:
                 self.logger.warn(f"Bridge '{self.bridge_name}': stream refresh error: {_iroh_error_detail(error)}")
                 continue
-            if streams == self.streams:
-                continue
-            added = sorted(set(streams) - set(self.streams))
-            removed = sorted(set(self.streams) - set(streams))
-            self.streams = streams
-            with contextlib.suppress(Exception):
-                endpoint.set_alpns(self._build_alpns())
-            self.logger.info(f"Bridge '{self.bridge_name}': streams updated (added={added}, removed={removed})")
+            self._refresh_alpns(endpoint, streams)
 
     async def _handle(self, incoming):
         """Accept one connection and dispatch it by negotiated ALPN."""
@@ -423,7 +433,7 @@ class BridgeMicroservice(Microservice):
                     self.logger.warn(f"Rejected unauthorized host data connection from {conn.remote_id()}")
                     await self._close(conn)
                     return
-                await self._rendezvous(alpn[len(HOST_ALPN_PREFIX) :], conn)
+                await self._rendezvous(alpn[len(HOST_ALPN_PREFIX) :], conn, is_host=True)
             elif alpn.startswith(STREAM_ALPN_PREFIX.encode()):
                 # COSMOS bridge_interface leg: verify its registered identity.
                 name = alpn[len(STREAM_ALPN_PREFIX) :]
@@ -455,19 +465,23 @@ class BridgeMicroservice(Microservice):
             self.logger.warn(f"Bridge handler error: {_iroh_error_detail(error)}")
             await self._close(conn)
 
+    async def _read_request_body(self, recv):
+        data = b""
+        while not self.cancel_thread:
+            chunk = await recv.read(PUMP_CHUNK_BYTES)
+            if not chunk:
+                break
+            if len(data) + len(chunk) > MAX_REQUEST_BYTES:
+                raise ValueError(f"request exceeds {MAX_REQUEST_BYTES} bytes")
+            data += bytes(chunk)
+        return data
+
     async def _read_request(self, recv):
         """Read a full request from a bi-stream until the peer finishes writing.
         A single `read()` can return only a partial payload (especially over a
-        relay, where data arrives in smaller chunks), so loop to EOF to avoid
-        truncated/undecodable JSON."""
-        data = b""
-        with contextlib.suppress(Exception):
-            while not self.cancel_thread:
-                chunk = await recv.read(PUMP_CHUNK_BYTES)
-                if not chunk:
-                    break
-                data += bytes(chunk)
-        return data
+        relay, where data arrives in smaller chunks). Bound both time and size so
+        a peer cannot hold a handler open or consume unbounded memory."""
+        return await asyncio.wait_for(self._read_request_body(recv), timeout=REQUEST_TIMEOUT)
 
     async def _serve_enroll(self, conn):
         """Redeem a one-time manual-enrollment code (Phase 2 remote pairing).
@@ -547,9 +561,29 @@ class BridgeMicroservice(Microservice):
         if channel.startswith(CTRL_CHANNEL_PREFIX):
             ctrl_name = channel[len(CTRL_CHANNEL_PREFIX) :].decode("utf-8", "replace")
 
-        partner = self._waiting.pop(channel, None)
+        partner = self._waiting.get(channel)
         if partner is not None:
-            p_send, p_recv, _p_conn, p_future, _p_is_host = partner
+            _p_send, _p_recv, _p_conn, p_future, p_is_host, p_closed = partner
+            if p_closed.done():
+                # The parked peer disconnected before its waiter got scheduled to
+                # remove the entry. Release it and treat this as a fresh arrival.
+                if self._waiting.get(channel) is partner:
+                    self._waiting.pop(channel)
+                if not p_future.done():
+                    p_future.set_result(False)
+                partner = None
+            elif p_is_host == is_host:
+                self.logger.warn(
+                    f"Duplicate {'host' if is_host else 'COSMOS'} leg for "
+                    f"{channel.decode('utf-8', 'replace')}; waiting for opposite side"
+                )
+                await self._close(conn)
+                return
+
+        if partner is not None:
+            if self._waiting.get(channel) is partner:
+                self._waiting.pop(channel)
+            p_send, p_recv, _p_conn, p_future, _p_is_host, _p_closed = partner
             self.logger.info(f"Paired {channel.decode('utf-8', 'replace')}")
             if ctrl_name is not None:
                 # Identify the host leg so we tap host->COSMOS (status) and pump
@@ -575,13 +609,20 @@ class BridgeMicroservice(Microservice):
                 await self._close(conn)
         else:
             future = asyncio.get_event_loop().create_future()
-            self._waiting[channel] = (send, recv, conn, future, is_host)
+            closed = asyncio.ensure_future(conn.closed())
+            entry = (send, recv, conn, future, is_host, closed)
+            self._waiting[channel] = entry
             try:
-                await asyncio.wait_for(future, timeout=PAIR_TIMEOUT)
-            except asyncio.TimeoutError:
-                self._waiting.pop(channel, None)
-                self.logger.warn(f"No partner for {channel.decode('utf-8', 'replace')} within timeout")
+                done, _pending = await asyncio.wait(
+                    {future, closed}, timeout=PAIR_TIMEOUT, return_when=asyncio.FIRST_COMPLETED
+                )
+                if not done:
+                    self.logger.warn(f"No partner for {channel.decode('utf-8', 'replace')} within timeout")
             finally:
+                if self._waiting.get(channel) is entry:
+                    self._waiting.pop(channel)
+                closed.cancel()
+                await asyncio.gather(closed, return_exceptions=True)
                 await self._close(conn)
 
     async def _pump(self, recv, send):
@@ -864,7 +905,7 @@ class BridgeMicroservice(Microservice):
         with contextlib.suppress(Exception):
             result = conn.close()
             if inspect.isawaitable(result):
-                await result
+                _ = await result
 
     async def _drain_close(self, conn):
         """Close a request/response connection only after the client has finished
@@ -901,16 +942,8 @@ class BridgeMicroservice(Microservice):
             self.logger.info(f"Generated Iroh keypair for bridge '{self.bridge_name}'")
         return model, private_key
 
-    def _ensure_port(self, model):
-        """Return this bridge's fixed UDP port, assigning one from the published
-        range if it doesn't have one yet. The port is persisted on the model and
-        reused across restarts so the host can always reach the hub at
-        127.0.0.1:<port>. Ports must be unique across every bridge sharing this
-        operator container, so the lowest port not claimed by any other bridge
-        (in any scope) is chosen and persisted immediately."""
-        if getattr(model, "port", None):
-            return int(model.port)
-
+    def _port_candidates(self, model):
+        """Return preferred ports without claiming one before it is bound."""
         used = set()
         for scope in ScopeModel.names():
             for name in BridgeModel.names(scope):
@@ -920,16 +953,45 @@ class BridgeMicroservice(Microservice):
                 if other and getattr(other, "port", None):
                     used.add(int(other.port))
 
-        for candidate in range(BRIDGE_PORT_BASE, BRIDGE_PORT_BASE + BRIDGE_PORT_COUNT):
-            if candidate not in used:
-                model.port = candidate
-                model.create(force=True)
-                return candidate
+        current = getattr(model, "port", None)
+        candidates = []
+        if current and int(current) not in used:
+            candidates.append(int(current))
+        candidates.extend(
+            candidate
+            for candidate in range(BRIDGE_PORT_BASE, BRIDGE_PORT_BASE + BRIDGE_PORT_COUNT)
+            if candidate not in used and candidate not in candidates
+        )
+        return candidates
 
-        raise RuntimeError(
+    @staticmethod
+    def _address_in_use(error):
+        detail = _iroh_error_detail(error).lower().replace(" ", "")
+        return "addressalreadyinuse" in detail or "addrinuse" in detail
+
+    async def _bind_endpoint(self, iroh, model, options):
+        """Bind before persisting a port, retrying candidates on address conflicts."""
+        last_error = None
+        for port in self._port_candidates(model):
+            bind_options = {**options, "bind_addr": f"0.0.0.0:{port}"}
+            try:
+                endpoint = await iroh.Endpoint.bind(iroh.EndpointOptions(**bind_options))
+            except Exception as error:
+                if not self._address_in_use(error):
+                    raise
+                last_error = error
+                continue
+            model.port = port
+            model.create(force=True)
+            return endpoint, port
+
+        error = RuntimeError(
             f"No free bridge port in {BRIDGE_PORT_BASE}-{BRIDGE_PORT_BASE + BRIDGE_PORT_COUNT - 1}; "
             "increase OPENC3_BRIDGE_PORT_COUNT and the published range in compose.yaml"
         )
+        if last_error is not None:
+            raise error from last_error
+        raise error
 
 
 if __name__ == "__main__":
