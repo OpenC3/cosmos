@@ -8,7 +8,7 @@
     "build": "vite build -c vite-HelloworldWidget.config.js && vite build -c vite-BigWidget.config.js && vite build -c vite-DataviewerquaternionWidget.config.js && vite build -c vite-DataviewertimeWidget.config.js"
   },
   "dependencies": {
-    "@astrouxds/astro-web-components": "7.27.0",
+    "@astrouxds/astro-web-components": "8.0.0",
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*"
   },
