@@ -106,9 +106,15 @@ RSpec.describe AuthController, :type => :controller do
   end
 
   describe "rate limiting" do
-    # Sets the client ip for the next request. remote_ip memoizes so clear it.
-    def set_client_ip(ip)
-      request.remote_addr = ip
+    # Sets the client ip for the next request, either as the connecting address
+    # or as the address a proxy forwarded. remote_ip memoizes in both the request
+    # instance and the rack env so clear both or later requests keep the old ip.
+    def set_client_ip(ip, forwarded: false)
+      if forwarded
+        request.headers['X-Forwarded-For'] = ip
+      else
+        request.remote_addr = ip
+      end
       request.env.delete('action_dispatch.remote_ip')
       request.instance_variable_set(:@remote_ip, nil)
     end
@@ -151,15 +157,13 @@ RSpec.describe AuthController, :type => :controller do
 
       # Simulate traefik forwarding two different browsers from the same proxy
       request.remote_addr = '10.0.0.1'
-      request.headers['X-Forwarded-For'] = '1.2.3.4'
-      request.instance_variable_set(:@remote_ip, nil)
+      set_client_ip('1.2.3.4', forwarded: true)
       20.times do
         post :verify, params: { password: 'BAD' }
       end
       expect(response).to have_http_status(:too_many_requests)
 
-      request.headers['X-Forwarded-For'] = '5.6.7.8'
-      request.instance_variable_set(:@remote_ip, nil)
+      set_client_ip('5.6.7.8', forwarded: true)
       post :verify, params: { password: 'PASSWORD' }
       expect(response).to have_http_status(:ok)
     end
