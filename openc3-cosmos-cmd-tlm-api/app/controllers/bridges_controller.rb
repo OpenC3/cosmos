@@ -24,9 +24,24 @@ require 'openc3/utilities/secrets'
 # creates/removes that microservice (and its identity) and mints one-time
 # enrollment tokens for pairing a remote openc3-app.
 class BridgesController < ModelController
+  before_action :canonicalize_id, only: [:show, :destroy, :token]
+
   def initialize
     super()
     @model_class = OpenC3::BridgeModel
+  end
+
+  def show
+    return unless authorization('system')
+    if params[:id] == 'ALL'
+      result = bridge_summaries()
+    else
+      result = bridge_summaries[params[:id]]
+    end
+    render json: result
+  rescue StandardError => error
+    render json: { status: 'error', message: error.message }, status: :internal_server_error
+    logger.error(error.formatted)
   end
 
   # POST /bridges — create a new bridge: deploy its bridge_microservice (the Iroh
@@ -48,7 +63,9 @@ class BridgesController < ModelController
       return
     end
     shard = OpenC3::ScopeModel.get_model(name: params[:scope])&.shard || 0
-    OpenC3::BridgeModel.build_microservice(bridge_name: name, scope: params[:scope], shard: shard).create
+    microservice = OpenC3::BridgeModel.build_microservice(bridge_name: name, scope: params[:scope], shard: shard)
+    microservice.create
+    microservice.deploy
     OpenC3::Logger.info("Bridge created: #{name}", scope: params[:scope], user: username())
     head :ok
   rescue StandardError => error
@@ -60,7 +77,7 @@ class BridgesController < ModelController
   # its identity record, and its stored private key.
   def destroy
     return unless authorization('admin')
-    name = params[:id].to_s.upcase
+    name = params[:id]
     scope = params[:scope]
     # Guard: refuse to delete a bridge that interfaces/routers still route
     # through (they dial the hub by name and would break).
@@ -81,8 +98,9 @@ class BridgesController < ModelController
     # Remove the stored private key (may not exist if the hub never started).
     begin
       OpenC3::Secrets.getClient.delete("BRIDGE_#{name}_PRIVATE_KEY", scope: scope)
-    rescue StandardError
+    rescue StandardError => e
       # ignore: nothing to delete
+      OpenC3::Logger.warn("Bridge secret: #{"BRIDGE_#{name}_PRIVATE_KEY"} not found for delete with error #{e.formatted}", scope: scope, user: username())
     end
     OpenC3::Logger.info("Bridge destroyed: #{name}", scope: scope, user: username())
     head :ok
@@ -111,6 +129,31 @@ class BridgesController < ModelController
   end
 
   private
+
+  def canonicalize_id
+    params[:id] = params[:id].to_s.upcase
+  end
+
+  # BridgeModel contains dial and enrollment capabilities and must never be
+  # serialized by this controller. MicroserviceModel is the source of truth for
+  # existence so a bridge remains visible/deletable even if its hub never
+  # starts and therefore never creates its BridgeModel record.
+  def bridge_summaries
+    scope = params[:scope]
+    prefix = "#{scope}__BRIDGE__"
+    bridge_models = @model_class.all(scope: scope).transform_keys { |name| name.to_s.upcase }
+    OpenC3::MicroserviceModel.names(scope: scope).each_with_object({}) do |microservice_name, result|
+      next unless microservice_name.start_with?(prefix)
+
+      name = microservice_name.delete_prefix(prefix)
+      bridge = bridge_models[name]
+      result[name] = {
+        'name' => name,
+        'app_public_key' => bridge && bridge['app_public_key'],
+        'reachable' => !bridge.nil? && !bridge['ticket'].nil?,
+      }
+    end
+  end
 
   # Names of the interfaces and routers (in `scope`) that route through the
   # bridge named `name` (compared case-insensitively, as bridge names are

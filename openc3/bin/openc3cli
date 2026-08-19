@@ -1287,15 +1287,20 @@ if not ARGV[0].nil? # argument(s) given
       puts "On success the bridge ticket is printed alone on stdout."
       exit 0
     end
-    bridge_name = ARGV[1]
+    bridge_name = ARGV[1].to_s.upcase
     app_public_key = ARGV[2]
     abort("APP_PUBLIC_KEY is required (see --help)") if app_public_key.nil? || app_public_key.empty?
+    unless app_public_key.match?(/\A[0-9a-f]{64}\z/i)
+      abort("APP_PUBLIC_KEY must be exactly 64 hexadecimal characters")
+    end
+    app_public_key = app_public_key.downcase
     scope = ARGV[3] || ENV['OPENC3_SCOPE'] || 'DEFAULT'
     model = OpenC3::BridgeModel.get_model(name: bridge_name, scope: scope)
     abort("Bridge '#{bridge_name}' not found in scope #{scope}. Is its bridge_microservice running?") unless model
     if model.ticket.nil? || model.ticket.empty?
       abort("Bridge '#{bridge_name}' has no ticket yet. Is its bridge_microservice running?")
     end
+    old_app_public_key = model.app_public_key
     model.app_public_key = app_public_key
     model.update
     # Print ONLY the ticket so openc3-app can capture it from stdout.

@@ -40,15 +40,27 @@
             <template v-if="bridge.app_public_key">
               ({{ bridge.app_public_key.slice(0, 12) }}…)
             </template>
-            , Reachable: {{ bridge.ticket ? 'Yes' : 'No' }}
+            , Reachable: {{ bridge.reachable ? 'Yes' : 'No' }}
           </v-list-item-subtitle>
           <template #append>
             <v-chip
-              :color="bridge.app_public_key ? 'green' : 'yellow'"
+              :color="
+                !bridge.reachable
+                  ? 'grey'
+                  : bridge.app_public_key
+                    ? 'green'
+                    : 'yellow'
+              "
               size="small"
               label
             >
-              {{ bridge.app_public_key ? 'ENROLLED' : 'UNPAIRED' }}
+              {{
+                !bridge.reachable
+                  ? 'STARTING/DOWN'
+                  : bridge.app_public_key
+                    ? 'ENROLLED'
+                    : 'UNPAIRED'
+              }}
             </v-chip>
             <v-tooltip text="Generate Enrollment Token" location="top">
               <template #activator="{ props }">
@@ -57,7 +69,7 @@
                   aria-label="Generate Enrollment Token"
                   icon="mdi-key-plus"
                   variant="text"
-                  :disabled="!bridge.ticket"
+                  :disabled="!bridge.reachable"
                   @click="generateToken(bridge.name)"
                 />
               </template>
@@ -80,8 +92,7 @@
       </div>
       <v-list-item v-if="bridges.length === 0">
         <v-list-item-subtitle>
-          No bridges found. A bridge appears here once its bridge_microservice
-          is running (deploy an interface with the BRIDGE keyword).
+          No bridges found. Create one to start its bridge hub.
         </v-list-item-subtitle>
       </v-list-item>
     </v-list>
@@ -96,8 +107,8 @@
         <v-card-text class="mt-4">
           <p class="mb-2">
             Paste this one-time token into openc3-app (on the remote host) to
-            pair it with this bridge. It authorizes that openc3-app's identity
-            and can only be redeemed once.
+            pair it with this bridge. It authorizes that openc3-app's identity,
+            expires after 10 minutes, and can only be redeemed once.
           </p>
           <v-textarea
             :model-value="token"
@@ -207,7 +218,7 @@ export default {
           this.showCreate = false
           this.newBridgeName = ''
           this.showTempAlert(
-            `Bridge ${name} created. It will appear once its hub starts.`,
+            `Bridge ${name} created. Its hub is starting.`,
           )
           this.update()
         })
