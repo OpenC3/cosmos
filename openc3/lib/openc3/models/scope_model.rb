@@ -420,26 +420,20 @@ module OpenC3
       target = TargetModel.get_model(name: "UNKNOWN", scope: @scope)
       target.destroy
 
-      model = MicroserviceModel.get_model(name: "#{@scope}__SCOPEMULTI__#{@scope}", scope: @scope)
-      model.destroy if model
-      model = MicroserviceModel.get_model(name: "#{@scope}__SCOPECLEANUP__#{@scope}", scope: @scope)
-      model.destroy if model
-      model = MicroserviceModel.get_model(name: "#{@scope}__OPENC3__LOG", scope: @scope)
-      model.destroy if model
-      model = MicroserviceModel.get_model(name: "#{@scope}__COMMANDLOG__UNKNOWN", scope: @scope)
-      model.destroy if model
-      model = MicroserviceModel.get_model(name: "#{@scope}__PACKETLOG__UNKNOWN", scope: @scope)
-      model.destroy if model
-      model = MicroserviceModel.get_model(name: "#{@scope}__PERIODIC__#{@scope}", scope: @scope)
-      model.destroy if model
-      model = MicroserviceModel.get_model(name: "#{@scope}__BRIDGE__DEFAULT", scope: @scope)
-      model.destroy if model
-      if ENTERPRISE
-        model = MicroserviceModel.get_model(name: "#{@scope}__TRIGGER_GROUP__DEFAULT", scope: @scope)
-        model.destroy if model
-        model = MicroserviceModel.get_model(name: "#{@scope}__CRITICALCMD__#{@scope}", scope: @scope)
-        model.destroy if model
+      # Destroy all microservices in this scope
+      microservices = MicroserviceModel.get_all_models(scope: @name)
+      microservices.each do |_microservice_name, microservice|
+        microservice.destroy
+      end
 
+      # Destroy all bridges in this scope
+      bridges = BridgeModel.get_all_models(scope: @name)
+      bridges.each do |_bridge_name, bridge|
+        bridge.destroy
+      end
+
+      # Cleanup Topics
+      if ENTERPRISE
         Topic.del("#{@scope}__openc3_autonomic")
         Topic.del("#{@scope}__TRIGGER__GROUP")
       end

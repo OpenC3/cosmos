@@ -287,10 +287,10 @@ SHARD:
 BRIDGE:
   summary: Name of the bridge to run this interface on
   description: Run this interface on a bridge host rather than within COSMOS. Note only python is supported.
-  since: 7.4.0
+  since: _Coming Soon_
   parameters:
     - name: Bridge Name
-      required: false
+      required: true
       description: Bridge Name - Typically DEFAULT
       values: .+
   example: |
@@ -302,7 +302,7 @@ BRIDGE_PROTOCOL:
     received by the interface while write acts on the data before it is sent out. READ_WRITE applies
     the protocol to both reading and writing.<br/><br/>
     For information on creating your own custom protocol please see [Protocols](../configuration/protocols.md)
-  since: 7.4.0
+  since: _Coming Soon_
   parameters:
     - name: Type
       required: true
@@ -318,13 +318,13 @@ BRIDGE_PROTOCOL:
   python_example: |
     INTERFACE DATA_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
       MAP_TARGET DATA
-      PROTOCOL READ openc3/interfaces/protocols/ignore_packet_protocol.py INST IMAGE # Drop all INST IMAGE packets
+      BRIDGE_PROTOCOL READ openc3/interfaces/protocols/ignore_packet_protocol.py INST IMAGE # Drop all INST IMAGE packets
 BRIDGE_OPTION:
-  summary: Set a parameter on an bridge interface
+  summary: Set a parameter on a bridged interface
   description:
     When an bridge option is set the bridge interface class calls the set_option method.
     Custom interfaces can override set_option to handle any additional options they want.
-  since: 7.4.0
+  since: _Coming Soon_
   parameters:
     - name: Name
       required: true
@@ -349,7 +349,7 @@ BRIDGE_SECRET:
   description:
     Defines a bridge secret for this bridge interface and optionally assigns its value to an option.
     For more information see [Admin Secrets](/docs/tools/admin#secrets).
-  since: 7.4.0
+  since: _Coming Soon_
   parameters:
     - name: Type
       required: true
@@ -378,5 +378,7 @@ BRIDGE_SECRET:
       description: Name of the secret store for stores with multipart keys
       values: .*
   example: |
-    BRIDGE_SECRET ENV USERNAME ENV_USERNAME USERNAME
-    BRIDGE_SECRET FILE KEY "/tmp/DATA/cert" KEY
+    INTERFACE SERIAL_INT serial_interface.rb COM1 COM1 115200 NONE 1 10.0 nil
+      BRIDGE DEFAULT
+      BRIDGE_SECRET ENV USERNAME ENV_USERNAME USERNAME
+      BRIDGE_SECRET FILE KEY "/tmp/DATA/cert" KEY

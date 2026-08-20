@@ -14,7 +14,7 @@ import json
 from openc3.models.model import Model
 
 
-class HostMicroserviceModel(Model):
+class HostInterfaceMicroserviceModel(Model):
     """Spawn spec for a COSMOS interface that runs on the host (outside Docker).
 
     Written by the Ruby InterfaceModel#deploy for bridged interfaces (the BRIDGE
@@ -29,7 +29,7 @@ class HostMicroserviceModel(Model):
     these host-only microservices.
     """
 
-    PRIMARY_KEY = "openc3_host_microservices"
+    PRIMARY_KEY = "openc3_host_interface_microservices"
 
     # NOTE: The following class methods are reimplemented so the base Model
     # class methods work with this scoped primary key.

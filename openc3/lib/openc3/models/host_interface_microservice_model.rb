@@ -26,8 +26,8 @@ module OpenC3
   # configured with the BRIDGE keyword) and read by openc3-app. It is deliberately
   # kept separate from MicroserviceModel so it is NOT run by the normal COSMOS
   # microservice operator.
-  class HostMicroserviceModel < Model
-    PRIMARY_KEY = 'openc3_host_microservices'
+  class HostInterfaceMicroserviceModel < Model
+    PRIMARY_KEY = 'openc3_host_interface_microservices'
 
     # The real interface class and its parameters, e.g. ['serial_interface.py', ...]
     attr_accessor :config_params
