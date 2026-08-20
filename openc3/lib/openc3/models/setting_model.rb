@@ -360,9 +360,11 @@ module OpenC3
 
       unless KNOWN_SETTINGS.key?(name)
         unless allow_unknown
-          message = "'#{name}' is not a known COSMOS setting"
+          # Period here, not on the suggestion - without a near match the
+          # sentence used to run straight into "Set OPENC3_SETTINGS_ALLOW_UNKNOWN"
+          message = "'#{name}' is not a known COSMOS setting."
           suggestion = KNOWN_SETTINGS.keys.find { |known| near_match?(known, name) }
-          message += ". Did you mean '#{suggestion}'?" if suggestion
+          message += " Did you mean '#{suggestion}'?" if suggestion
           message += " Set #{ALLOW_UNKNOWN_ENV_VAR} to apply it anyway."
           raise message
         end
