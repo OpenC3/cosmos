@@ -14,9 +14,14 @@ name: Playwright Tests
 # Only run on a push to main to avoid running for all the dependabot PRs
 on:
   push:
+    paths-ignore:
+      - "docs.openc3.com/**"
+      - "docs/**"
     branches:
       - main
   pull_request:
+    paths-ignore:
+      - "docs.openc3.com/**"
     branches:
       - "**"
 
