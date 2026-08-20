@@ -14,7 +14,7 @@ import json
 from openc3.models.model import Model
 
 
-class HostMicroserviceModel(Model):
+class HostInterfaceMicroserviceModel(Model):
     """Spawn spec for a COSMOS interface that runs on the host (outside Docker).
 
     Written by the Ruby InterfaceModel#deploy for bridged interfaces (the BRIDGE
@@ -29,7 +29,7 @@ class HostMicroserviceModel(Model):
     these host-only microservices.
     """
 
-    PRIMARY_KEY = "openc3_host_microservices"
+    PRIMARY_KEY = "openc3_host_interface_microservices"
 
     # NOTE: The following class methods are reimplemented so the base Model
     # class methods work with this scoped primary key.
@@ -47,26 +47,12 @@ class HostMicroserviceModel(Model):
 
     # END NOTE
 
-    @classmethod
-    def from_json(cls, json_data: str | dict, scope: str):
-        if isinstance(json_data, str):
-            json_data = json.loads(json_data)
-        if json_data is None:
-            raise RuntimeError("json data is nil")
-        json_data["scope"] = scope
-        return cls(**json_data)
-
-    @classmethod
-    def get_model(cls, name: str, scope: str):
-        json_data = cls.get(name, scope)
-        return cls.from_json(json_data, scope) if json_data else None
-
     def __init__(
         self,
         name: str,
         scope: str,
-        bridge_name: str = None,
-        stream: str = None,
+        bridge_name: str,
+        stream: str,
         config_params: list | None = None,
         work_dir: str = ".",
         env: dict | None = None,

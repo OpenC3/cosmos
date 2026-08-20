@@ -5,10 +5,8 @@
   "scripts": {
     "coverage": "node generate-coverage.mjs",
     "test": "pnpm test:parallel --quiet && pnpm test:serial --quiet && pnpm coverage",
-    "test:parallel:root": "playwright test ./tests/*.p.spec.ts --project=chromium",
-    "test:parallel:nested": "playwright test ./tests/**/*.p.spec.ts --project=chromium",
-    "test:parallel": "pnpm test:parallel:root && pnpm test:parallel:nested",
-    "test:serial": "playwright test ./tests/**/*.s.spec.ts --project=chromium --workers=1",
+    "test:parallel": "playwright test ./tests/*.p.spec.ts ./tests/**/*.p.spec.ts --project=chromium",
+    "test:serial": "playwright test ./tests/*.s.spec.ts ./tests/**/*.s.spec.ts --project=chromium --workers=1",
     "test:enterprise": "pnpm test:enterprise:parallel && pnpm test:enterprise:serial",
     "test:enterprise:parallel": "ENTERPRISE=1 playwright test ./tests/enterprise/*.p.spec.ts --project=enterprise",
     "test:enterprise:serial": "ENTERPRISE=1 playwright test ./tests/enterprise/*.s.spec.ts --project=enterprise --workers=1",
@@ -30,10 +28,5 @@
     "globals": "^17.9.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.66.0"
-  },
-  "pnpm": {
-    "overrides": {
-      "uuid": "^14.0.0"
-    }
   }
 }

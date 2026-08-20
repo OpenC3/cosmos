@@ -169,9 +169,7 @@ class InterfaceModel(Model):
     def build(self):
         if self.bridge_name:
             # A bridged interface runs the real interface on the host; here in
-            # COSMOS we build a BridgeInterface tunnel to the named bridge. The
-            # connection options/secret_options belong to the host interface and
-            # are omitted, but protocols and target mapping stay in COSMOS.
+            # COSMOS we build a BridgeInterface tunnel to the named bridge.
             from openc3.interfaces.bridge_interface import BridgeInterface
 
             interface_or_router = BridgeInterface(self.bridge_name)

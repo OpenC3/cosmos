@@ -1,7 +1,7 @@
 # Display the environment variables
 puts ENV.inspect
 # Print the TYPE env var which is set in the INST COMMANDING screen
-puts "ENV['TYPE']:#{ENV['TYPE']}"
+puts "ENV['TYPE']:#{ENV.fetch('TYPE', nil)}"
 
 # Test some of the various keyword arguments
 cmd("<%= target_name %> ABORT", timeout: 30)

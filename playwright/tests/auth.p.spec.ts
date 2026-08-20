@@ -12,10 +12,10 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Auth API', () => {
   test('verifies rate limiting is enforced', async ({ request }) => {
-    if (process.env.ENTERPRISE === '1') {
-      // Rate limiting handled by Keycloak in Enterprise
-      return
-    }
+    test.skip(
+      process.env.ENTERPRISE === '1',
+      'Rate limiting is handled by Keycloak in Enterprise',
+    )
 
     const maxRequests = Number.parseInt(process.env.OPENC3_AUTH_RATE_LIMIT_TO || '10')
 

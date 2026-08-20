@@ -8,12 +8,45 @@
 # See LICENSE.md for more details.
 */
 
+import { Page } from '@playwright/test'
 import { test, expect } from './fixture'
 
 test.use({
   toolPath: '/tools/bucketexplorer',
   toolName: 'Bucket Explorer',
 })
+
+// Script Runner's File menu button is teleported into the tool bar while the
+// tool is still fetching its file list and the user's roles. A click that lands
+// mid-mount is swallowed and the menu never opens, so the follow-up
+// `text=New File` waits out the whole action timeout. Retry the open, and only
+// click when the menu is actually closed so we never toggle it shut again.
+async function openScriptRunnerFileMenu(page: Page) {
+  await expect(async () => {
+    if (!(await page.locator('text=New File').isVisible())) {
+      await page.locator('[data-test=script-runner-file]').click()
+    }
+    await expect(page.locator('text=New File')).toBeVisible({ timeout: 2000 })
+  }).toPass()
+}
+
+// Run a trivial script so that config/DEFAULT/targets_modified/__TEMP__ exists
+// and has something in it for the bucket explorer tests below.
+async function runTempScript(page: Page) {
+  await page.goto('/tools/scriptrunner')
+  await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
+  await openScriptRunnerFileMenu(page)
+  await page.locator('text=New File').click()
+  await expect(page.locator('textarea')).toHaveText('')
+  await page.locator('textarea').fill(`print('hello world')`)
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 30000,
+    },
+  )
+}
 
 //
 // Test the basic functionality of the application
@@ -161,20 +194,7 @@ test('view file', async ({ page, utils }) => {
 
 test('upload and delete', async ({ page, utils }) => {
   // Create a file so we have something in __TEMP__
-  await page.goto('/tools/scriptrunner')
-  await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
-  await page.locator('[data-test=script-runner-file]').click()
-  await page.locator('text=New File').click()
-  await expect(page.locator('textarea')).toHaveText('')
-  await page.locator('textarea').fill(`print('hello world')`)
-  await page.locator('[data-test=script-runner-file]').click()
-  await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue(
-    'completed',
-    {
-      timeout: 30000,
-    },
-  )
+  await runTempScript(page)
 
   await page.goto('/tools/bucketexplorer')
   await page.getByText('config', { exact: true }).click()
@@ -297,13 +317,14 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
     '/ DEFAULT /',
   )
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)
-  if (process.env.ENTERPRISE === '1') {
-    await expect(page.locator('tbody > tr').first()).toHaveText(/notebooks/)
-    await expect(page.locator('tbody > tr').last()).toHaveText(/\w+_logs/)
-  } else {
-    await expect(page.locator('tbody > tr').first()).toHaveText(/\w+_logs/)
-    await expect(page.locator('tbody > tr').last()).toHaveText(/\w+_logs/)
-  }
+  // Don't require the Enterprise 'notebooks' folder here: it is only created
+  // once a notebook is actually run (Notebook.run puts the running copy into
+  // OPENC3_LOGS_BUCKET), so it exists only if the enterprise notebooks spec
+  // already ran in this stack. Allow it, but don't depend on it.
+  await expect(page.locator('tbody > tr').first()).toHaveText(
+    /notebooks|\w+_logs/,
+  )
+  await expect(page.locator('tbody > tr').last()).toHaveText(/\w+_logs/)
   // Reload (also verifies we return to the same place) until the raw_logs
   // folder has been cut to the bucket - on a fresh instance it isn't there
   // until the first TLM_LOG_CYCLE_TIME elapses, and the listing only refreshes
@@ -343,19 +364,7 @@ test('auto refreshes to update files', async ({ page, utils, context }) => {
   const identifier = Math.ceil(Math.random() * 1000)
   const filename = `refresh_package_${identifier}.json`
   // Create a file so we have something in __TEMP__
-  await page.goto('/tools/scriptrunner')
-  await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
-  await page.locator('[data-test=script-runner-file]').click()
-  await page.locator('text=New File').click()
-  await expect(page.locator('textarea')).toHaveText('')
-  await page.locator('textarea').fill(`print('hello world')`)
-  await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue(
-    'completed',
-    {
-      timeout: 30000,
-    },
-  )
+  await runTempScript(page)
 
   // Open another tab and navigate to the __TEMP__ dir
   const pageTwo = await context.newPage()

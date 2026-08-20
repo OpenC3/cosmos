@@ -188,7 +188,7 @@ module OpenC3
     end
 
     def self.get(name)
-      path = "#{ENV['PYTHONUSERBASE']}/cache"
+      path = "#{ENV.fetch('PYTHONUSERBASE', nil)}/cache"
       FileUtils.mkdir_p(path) unless Dir.exist?(path)
       result = Pathname.new(path).children.select { |c| c.file? and File.basename(c, File.extname(c)) == name }
       if result.length > 0
@@ -200,8 +200,8 @@ module OpenC3
     def self.put(package_file_path, package_install: true, scope:, plugin: nil)
       if File.file?(package_file_path)
         package_filename = File.basename(package_file_path)
-        FileUtils.mkdir_p("#{ENV['PYTHONUSERBASE']}/cache") unless Dir.exist?("#{ENV['PYTHONUSERBASE']}/cache")
-        cache_path = "#{ENV['PYTHONUSERBASE']}/cache/#{File.basename(package_file_path)}"
+        FileUtils.mkdir_p("#{ENV.fetch('PYTHONUSERBASE')}/cache") unless Dir.exist?("#{ENV.fetch('PYTHONUSERBASE')}/cache")
+        cache_path = "#{ENV.fetch('PYTHONUSERBASE')}/cache/#{File.basename(package_file_path)}"
         FileUtils.cp(package_file_path, cache_path)
 
         # Copy uploaded .whl files to the UV uploads directory so they appear
@@ -244,7 +244,7 @@ module OpenC3
       ensure
         if pypi_url.nil?
           # If Redis isn't running try the ENV, then simply pypi.org/simple
-          pypi_url = ENV['PYPI_URL']
+          pypi_url = ENV.fetch('PYPI_URL', nil)
           if pypi_url
             pypi_url += '/simple'
           end

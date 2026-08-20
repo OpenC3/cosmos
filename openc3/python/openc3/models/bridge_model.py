@@ -45,20 +45,6 @@ class BridgeModel(Model):
 
     # END NOTE
 
-    @classmethod
-    def from_json(cls, json_data: str | dict, scope: str):
-        if isinstance(json_data, str):
-            json_data = json.loads(json_data)
-        if json_data is None:
-            raise RuntimeError("json data is nil")
-        json_data["scope"] = scope
-        return cls(**json_data)
-
-    @classmethod
-    def get_model(cls, name: str, scope: str):
-        json_data = cls.get(name, scope)
-        return cls.from_json(json_data, scope) if json_data else None
-
     def __init__(
         self,
         name: str,

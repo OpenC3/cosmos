@@ -29,6 +29,7 @@
         :items="themeOptions"
         item-title="label"
         item-value="value"
+        :disabled="settingsLoading"
         data-test="theme-select"
       />
     </v-card-text>

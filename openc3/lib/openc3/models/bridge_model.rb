@@ -57,7 +57,7 @@ module OpenC3
         name: microservice_name,
         cmd: [bridge_python_bin, 'bridge_microservice.py', microservice_name],
         work_dir: BRIDGE_WORK_DIR,
-        options: [['BRIDGE_NAME', bridge_name.to_s]],
+        options: [['BRIDGE_NAME', bridge_name.to_s.upcase]],
         parent: parent,
         shard: shard.to_i,
         plugin: plugin,

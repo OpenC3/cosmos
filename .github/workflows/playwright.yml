@@ -14,9 +14,14 @@ name: Playwright Tests
 # Only run on a push to main to avoid running for all the dependabot PRs
 on:
   push:
+    paths-ignore:
+      - "docs.openc3.com/**"
+      - "docs/**"
     branches:
       - main
   pull_request:
+    paths-ignore:
+      - "docs.openc3.com/**"
     branches:
       - "**"
 
@@ -61,10 +66,8 @@ jobs:
       - uses: ./.github/actions/build-cosmos
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
-          version: 10
-      - name: Install playwright dependencies
-        run: ./playwright.sh install-playwright
-        working-directory: playwright
+          version: 11
+      - uses: ./.github/actions/setup-playwright
       - name: Check for test.only
         run: pnpm playwright test --list --forbid-only
         working-directory: playwright
@@ -93,8 +96,18 @@ jobs:
             echo "ERROR: One or more containers are unhealthy"
             exit 1
           fi
-        # Build a test plugin for playwright and a copy so we can 'upgrade'
+        # Build a test plugin for playwright and a copy so we can 'upgrade'.
+        # The gems are a pure function of the plugin/target templates and the
+        # generator, so cache them rather than paying ~1.5 min of container
+        # startup and `gem build` on every run.
+      - name: Cache test plugin gems
+        id: pw_test_plugin
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: playwright/openc3-cosmos-pw-test
+          key: pw-test-plugin-${{ hashFiles('openc3/templates/plugin/**', 'openc3/templates/target/**', 'openc3/lib/openc3/utilities/cli_generator.rb', 'playwright/playwright.sh') }}
       - name: Build plugin
+        if: steps.pw_test_plugin.outputs.cache-hit != 'true'
         shell: 'script -q -e -c "bash {0}"'
         run: ./playwright.sh build-plugin
         working-directory: playwright

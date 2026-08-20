@@ -1,5 +1,5 @@
 # TBL_FILENAME is set to the name of the table file to overwrite
-puts "file:#{ENV['TBL_FILENAME']}"
+puts "file:#{ENV.fetch('TBL_FILENAME', nil)}"
 # Download the file
 # Implement custom commanding logic to download the table
 # You probably want to do something like:
