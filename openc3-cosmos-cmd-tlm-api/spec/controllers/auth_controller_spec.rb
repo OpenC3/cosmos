@@ -105,6 +105,68 @@ RSpec.describe AuthController, :type => :controller do
     end
   end
 
+  describe "verify-token" do
+    it "requires a token" do
+      post :verify_token
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "validates a session token" do
+      post :set, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+      token = response.body
+
+      post :verify_token, params: { token: token }
+      expect(response).to have_http_status(:ok)
+
+      post :verify_token, params: { token: 'ses_bogus' }
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "does not accept the password" do
+      post :set, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+
+      post :verify_token, params: { token: 'PASSWORD' }
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "rejects tokens without the session prefix without hitting redis" do
+      # The endpoint is unauthenticated, so it must not let a caller make us
+      # HGETALL the entire session hash on every request. verify_no_service is
+      # where that read happens, so never reaching it is the invariant.
+      expect(OpenC3::AuthModel).not_to receive(:verify_no_service)
+      ['', 'PASSWORD', 'otp_something', 'nope'].each do |token|
+        post :verify_token, params: { token: token }
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    it "does not consume an OTP token" do
+      user = 'anonymous'
+      otp = OpenC3::Authorization.generate_otp(user)
+      post :verify_token, params: { token: otp }
+      expect(response).to have_http_status(:unauthorized)
+      # Still usable, i.e. verify_no_service never saw it
+      expect(OpenC3::AuthModel.verify_no_service(otp, mode: :token)).to be true
+    end
+
+    it "does not count a stale token as a bad password attempt" do
+      post :set, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+
+      # A stale token in localStorage must not eat into the password rate limit
+      20.times do
+        post :verify_token, params: { token: 'ses_stale' }
+        expect(response).to have_http_status(:unauthorized)
+      end
+      expect(OpenC3::EphemeralStore.get('openc3__auth_bad_attempts__user')).to be_nil
+
+      post :verify, params: { password: 'PASSWORD' }
+      expect(response).to have_http_status(:ok)
+    end
+  end
+
   describe "rate limiting" do
     # Sets the client ip for the next request, either as the connecting address
     # or as the address a proxy forwarded. remote_ip memoizes in both the request
