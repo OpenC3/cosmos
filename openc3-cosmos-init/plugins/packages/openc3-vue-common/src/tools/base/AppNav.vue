@@ -250,8 +250,14 @@ export default {
         this.timeZone = response
       }
     })
-    // Tools are global and are always installed into the DEFAULT scope
-    Api.get('/openc3-api/tools/all', { params: { scope: 'DEFAULT' } })
+    // Tools are global and are always installed into the DEFAULT scope.
+    // This endpoint requires no authorization and the nav has to render even
+    // when we have no token (the login page mounts it too), so don't let the
+    // auth guard block the request.
+    Api.get('/openc3-api/tools/all', {
+      params: { scope: 'DEFAULT' },
+      optionalAuth: true,
+    })
       .then((response) => {
         this.appNav = response.data
 
@@ -339,9 +345,10 @@ export default {
                 OpenC3Auth.setTokens()
               }
             })
-            // A rejection means we have no token and are being redirected to
-            // login, so there's nothing to do here
-            .catch(() => {})
+            // An AuthRequiredError means we have no token and are being
+            // redirected to login, so there's nothing to do here. Anything
+            // else (network, unexpected auth failure) still gets logged.
+            .catch(logUnlessAuthRequired)
         }, 60000)
       })
       .catch(logUnlessAuthRequired)

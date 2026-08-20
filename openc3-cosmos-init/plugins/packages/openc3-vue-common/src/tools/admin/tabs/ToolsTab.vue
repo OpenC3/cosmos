@@ -87,6 +87,17 @@ import Sortable from 'sortablejs'
 import { Api } from '@openc3/js-common/services'
 import { OutputDialog } from '@/components'
 
+// There's no response when the request never made it out, e.g. an
+// AuthRequiredError or the server being unreachable. Rails renders errors as
+// JSON, so response.data may be an object rather than a string.
+const errorMessage = function (error) {
+  const data = error?.response?.data
+  if (typeof data === 'string' && data) {
+    return data
+  }
+  return data?.message || data?.error || error?.message || 'Unknown error'
+}
+
 export default {
   components: { OutputDialog },
   data() {
@@ -159,9 +170,7 @@ export default {
         .catch((error) => {
           window.$cosmosNotify.serious({
             title: `Failed to add tool ${this.name}`,
-            // There's no response when the request never made it out, e.g. an
-            // AuthRequiredError or the server being unreachable
-            message: error?.response?.data || error?.message,
+            message: errorMessage(error),
           })
         })
     },

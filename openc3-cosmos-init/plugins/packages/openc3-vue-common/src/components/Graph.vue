@@ -321,7 +321,11 @@ import GraphEditDialog from './GraphEditDialog.vue'
 import GraphEditItemDialog from './GraphEditItemDialog.vue'
 import uPlot from 'uplot'
 import bs from 'binary-search'
-import { OpenC3Api, Cable } from '@openc3/js-common/services'
+import {
+  OpenC3Api,
+  Cable,
+  logUnlessAuthRequired,
+} from '@openc3/js-common/services'
 import { useStore } from '@/plugins/store'
 import { TimeFilters } from '@/util'
 import 'uplot/dist/uPlot.min.css'
@@ -1764,9 +1768,10 @@ export default {
               end_time: this.graphEndDateTime,
             })
           })
-          // A rejection means we have no token and are being redirected to
-          // login, so don't try to subscribe
-          .catch(() => {})
+          // An AuthRequiredError means we have no token and are being
+          // redirected to login, so don't try to subscribe. Anything else is
+          // unexpected and still gets logged.
+          .catch(logUnlessAuthRequired)
       }
     },
     clearAllData: function () {
