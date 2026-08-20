@@ -123,7 +123,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-demo
@@ -147,7 +147,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-admin
@@ -171,7 +171,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-bucketexplorer
@@ -195,7 +195,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdsender
@@ -219,7 +219,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdtlmserver
@@ -243,7 +243,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataextractor
@@ -267,7 +267,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataviewer
@@ -291,7 +291,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-handbooks
@@ -315,7 +315,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-iframe
@@ -339,7 +339,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-limitsmonitor
@@ -363,7 +363,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-packetviewer
@@ -387,7 +387,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-scriptrunner
@@ -411,7 +411,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tablemanager
@@ -435,7 +435,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmgrapher
@@ -459,7 +459,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmviewer
@@ -483,7 +483,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-js-common
@@ -507,7 +507,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-tool-base
@@ -531,14 +531,14 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common
       - name: Run ESLint
         run: pnpm lint --max-warnings 0
         working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common
-  
+
   playwright:
     needs: changes
     if: ${{ github.actor != 'dependabot[bot]' && needs.changes.outputs.playwright == 'true' }}
@@ -555,7 +555,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
         with:
-          version: 10
+          version: 11
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         working-directory: playwright

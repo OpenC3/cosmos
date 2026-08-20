@@ -104,6 +104,10 @@ BRIDGE_GO = b"\x02"
 # Max wait for COSMOS's GO after we send READY before giving up and parking.
 HANDSHAKE_TIMEOUT = 30.0
 
+# Device/plugin connect and disconnect methods are arbitrary synchronous code;
+# bound how long the async control loop waits for either operation.
+DEVICE_OPERATION_TIMEOUT = 30.0
+
 
 def _iroh_error_detail(error):
     """Human-readable detail for an exception. iroh's IrohError keeps its message
@@ -116,6 +120,7 @@ def _iroh_error_detail(error):
             if detail:
                 return f"{type(error).__name__}: {detail}"
         except Exception:
+            # Error-detail extraction is best effort; use str(error) below.
             pass
     return f"{type(error).__name__}: {error}"
 
@@ -257,7 +262,7 @@ class HostInterfaceMicroservice:
             with contextlib.suppress(Exception):
                 result = endpoint.close()
                 if inspect.isawaitable(result):
-                    await result
+                    _ = await result
         Logger.info(f"{self.name}: shut down")
 
     def _set_desired(self, connected):
@@ -303,7 +308,7 @@ class HostInterfaceMicroservice:
                     with contextlib.suppress(Exception):
                         result = connection.close()
                         if inspect.isawaitable(result):
-                            await result
+                            _ = await result
             if not self.shutdown:
                 await asyncio.sleep(RECONNECT_DELAY)
 
@@ -410,7 +415,7 @@ class HostInterfaceMicroservice:
 
                 # 4. Now connect the device and start pumping raw bytes.
                 interface = self.build_interface()
-                interface.connect()
+                await self._run_device_operation(interface.connect, "connect")
                 self._interface = interface
                 Logger.info(f"{self.name}: connected {interface.connection_string()}")
                 self._status_ping.set()  # report CONNECTED promptly
@@ -429,18 +434,33 @@ class HostInterfaceMicroservice:
             finally:
                 self._interface = None
                 if interface is not None:
-                    with contextlib.suppress(Exception):
-                        interface.disconnect()
+                    try:
+                        await self._run_device_operation(interface.disconnect, "disconnect")
+                    except Exception as error:
+                        Logger.warn(f"{self.name}: device disconnect failed: {_iroh_error_detail(error)}")
                 if connection is not None:
                     with contextlib.suppress(Exception):
                         result = connection.close()
                         if inspect.isawaitable(result):
-                            await result
+                            _ = await result
             # Never auto-reconnect (req 5). Park (clear the connect event) until
             # COSMOS issues a fresh connect over the control channel. This holds
             # whether the session ended from a requested disconnect, a dropped
             # tunnel, or a device error — COSMOS drives every (re)connection.
             self._set_desired(False)
+
+    async def _run_device_operation(self, operation, name):
+        """Run blocking device/plugin lifecycle code away from the event loop."""
+        loop = asyncio.get_running_loop()
+        try:
+            return await asyncio.wait_for(
+                loop.run_in_executor(None, operation),
+                timeout=DEVICE_OPERATION_TIMEOUT,
+            )
+        except asyncio.TimeoutError as error:
+            raise TimeoutError(
+                f"{self.name}: device {name} timed out after {DEVICE_OPERATION_TIMEOUT:g} seconds"
+            ) from error
 
     async def _read_exact(self, recv, n):
         """Read exactly n bytes from an Iroh recv stream (for the fixed-size

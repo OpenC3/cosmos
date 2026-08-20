@@ -29,6 +29,7 @@
           <v-text-field
             v-model="text"
             label="Text"
+            :disabled="settingsLoading"
             data-test="classification-banner-text"
           />
         </v-col>
@@ -40,6 +41,7 @@
             label="Background color"
             :items="colors"
             item-title="text"
+            :disabled="settingsLoading"
             data-test="classification-banner-background-color"
           >
             <template v-if="selectedBackgroundColor" #prepend-inner>
@@ -61,7 +63,7 @@
             v-model="customBackgroundColor"
             label="Custom background color"
             :hint="customColorHint"
-            :disabled="selectedBackgroundColor !== false"
+            :disabled="settingsLoading || selectedBackgroundColor !== false"
             :rules="[rules.customColor]"
             data-test="classification-banner-custom-background-color"
           >
@@ -81,6 +83,7 @@
             label="Font color"
             :items="colors"
             item-title="text"
+            :disabled="settingsLoading"
             data-test="classification-banner-font-color"
           >
             <template v-if="selectedFontColor" #prepend-inner>
@@ -104,7 +107,7 @@
             v-model="customFontColor"
             label="Custom font color"
             :hint="customColorHint"
-            :disabled="selectedFontColor !== false"
+            :disabled="settingsLoading || selectedFontColor !== false"
             :rules="[rules.customColor]"
             data-test="classification-banner-custom-font-color"
           >
@@ -122,6 +125,7 @@
             v-model="displayTopBanner"
             label="Display top banner"
             color="primary"
+            :disabled="settingsLoading"
             data-test="display-top-banner"
           />
         </v-col>
@@ -130,7 +134,7 @@
             v-model="topHeight"
             control-variant="stacked"
             label="Top height"
-            :disabled="!displayTopBanner"
+            :disabled="settingsLoading || !displayTopBanner"
             suffix="px"
             data-test="classification-banner-top-height"
           />
@@ -140,6 +144,7 @@
             v-model="displayBottomBanner"
             label="Display bottom banner"
             color="primary"
+            :disabled="settingsLoading"
             data-test="display-bottom-banner"
           />
         </v-col>
@@ -148,7 +153,7 @@
             v-model="bottomHeight"
             control-variant="stacked"
             label="Bottom height"
-            :disabled="!displayBottomBanner"
+            :disabled="settingsLoading || !displayBottomBanner"
             suffix="px"
             data-test="classification-banner-bottom-height"
           />

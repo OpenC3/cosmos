@@ -83,9 +83,9 @@ class MicroservicesController < ModelController
         shard = microservice['shard'] || 0
         if ENV['OPENC3_OPERATOR_HOSTNAME']
           if shard != 0
-            url = "http://#{ENV['OPENC3_OPERATOR_HOSTNAME']}-#{shard}:#{port}"
+            url = "http://#{ENV.fetch('OPENC3_OPERATOR_HOSTNAME')}-#{shard}:#{port}"
           else
-            url = "http://#{ENV['OPENC3_OPERATOR_HOSTNAME']}:#{port}"
+            url = "http://#{ENV.fetch('OPENC3_OPERATOR_HOSTNAME')}:#{port}"
           end
         else
           if ENV['KUBERNETES_SERVICE_HOST']

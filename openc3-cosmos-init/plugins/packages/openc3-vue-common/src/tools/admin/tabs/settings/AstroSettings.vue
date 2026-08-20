@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -24,7 +24,12 @@
       Saved! (Refresh the page to see changes)
     </v-alert>
     <v-card-text class="pb-0">
-      <v-switch v-model="hideClock" label="Hide Astro Clock" color="primary" />
+      <v-switch
+        v-model="hideClock"
+        label="Hide Astro Clock"
+        color="primary"
+        :disabled="settingsLoading"
+      />
     </v-card-text>
     <v-card-actions>
       <v-btn

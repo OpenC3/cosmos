@@ -3,7 +3,7 @@ require 'openc3/models/script_status_model'
 
 unless ENV['CI']
   # ScriptRunner has restarted so any running scripts are assumed killed by the restart
-  shard = ENV['OPENC3_SHARD'].to_i
+  shard = ENV.fetch('OPENC3_SHARD', nil).to_i
   scopes = OpenC3::ScopeModel.all
   scopes.each do |scope_name, scope|
     OpenC3::ScriptStatusModel.all(scope: scope_name, type: 'running').each do |script_status|

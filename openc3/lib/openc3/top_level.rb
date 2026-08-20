@@ -503,7 +503,7 @@ end
 # New plugins should only use openc3 paths and module OpenC3
 unless ENV['OPENC3_NO_COSMOS_COMPATIBILITY']
   Cosmos = OpenC3
-  ENV['COSMOS_SCOPE'] = ENV['OPENC3_SCOPE']
+  ENV['COSMOS_SCOPE'] = ENV.fetch('OPENC3_SCOPE', 'DEFAULT')
 
   # Don't apply the compatibility layer in test environments to avoid conflicts with RSpec
   unless defined?(RSpec) || ENV['RAILS_ENV'] == 'test' || ENV['RACK_ENV'] == 'test'

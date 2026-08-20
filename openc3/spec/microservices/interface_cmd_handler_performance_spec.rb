@@ -84,7 +84,7 @@ RSpec.describe OpenC3::InterfaceCmdHandlerThread, if: ENV['PERFORMANCE'] do
   end
 
   before(:all) do
-    @original_no_simplecov = ENV['OPENC3_NO_SIMPLECOV']
+    @original_no_simplecov = ENV.fetch('OPENC3_NO_SIMPLECOV', nil)
     ENV['OPENC3_NO_SIMPLECOV'] = 'true'
   end
 

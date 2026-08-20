@@ -30,6 +30,7 @@
       <v-text-field
         v-model="sourceUrl"
         label="Source URL"
+        :disabled="settingsLoading"
         data-test="source-url"
       />
     </v-card-text>

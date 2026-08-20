@@ -94,6 +94,7 @@ module OpenC3
     def as_json(*a)
       {
         'name' => @name,
+        'scope' => @scope,
         'bridge_name' => @bridge_name,
         'stream' => @stream,
         'config_params' => @config_params,

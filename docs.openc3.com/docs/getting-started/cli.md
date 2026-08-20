@@ -419,7 +419,7 @@ The password must be at least 8 characters. This command will fail if a password
 Password set successfully.
 ```
 
-:::note OPENC3_API_PASSWORD
+:::note[OPENC3_API_PASSWORD]
 The `OPENC3_API_PASSWORD` environment variable must be set (typically in your `.env` file). The password is read from this variable, not from a command line argument, to avoid exposing it in shell history.
 :::
 
