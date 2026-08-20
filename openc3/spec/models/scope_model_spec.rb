@@ -132,6 +132,52 @@ module OpenC3
       end
     end
 
+    describe "seed_database" do
+      before(:each) do
+        # apply_defaults reports what it did on stdout; keep the spec output clean
+        allow($stdout).to receive(:puts)
+      end
+
+      def deploy_default_scope
+        model = ScopeModel.new(name: "DEFAULT", updated_at: 12345)
+        model.create
+        model.deploy(File.join(SPEC_DIR, "install"), {})
+      end
+
+      it "defaults the settings it owns" do
+        deploy_default_scope()
+        expect(SettingModel.get(name: "news_feed")['data']).to be true
+        expect(SettingModel.get(name: "source_url")['data']).to eql "https://github.com/OpenC3/cosmos"
+        expect(SettingModel.get(name: "rubygems_url")['data']).to eql RubygemsUrl::DEFAULT
+      end
+
+      it "doesn't clobber settings seeded from the environment" do
+        # `openc3cli initsettings` runs before the first plugin load creates the
+        # scope, so seed_database must not discard what it wrote
+        SettingModel.apply_defaults(env: { 'OPENC3_SETTING_NEWS_FEED' => 'false',
+                                          'OPENC3_SETTING_SOURCE_URL' => 'https://git.example.com/cosmos' })
+        deploy_default_scope()
+        expect(SettingModel.get(name: "news_feed")['data']).to be false
+        expect(SettingModel.get(name: "source_url")['data']).to eql "https://git.example.com/cosmos"
+      end
+
+      it "leaves the seeded value in charge on later inits" do
+        # Without the guard the provenance record would disagree with Redis and
+        # every later init would report an Admin Console edit that never happened
+        SettingModel.apply_defaults(env: { 'OPENC3_SETTING_NEWS_FEED' => 'false' })
+        deploy_default_scope()
+        expect(SettingModel.apply_defaults(env: { 'OPENC3_SETTING_NEWS_FEED' => 'true' })).to eql ['news_feed']
+        expect(SettingModel.get(name: "news_feed")['data']).to be true
+      end
+
+      it "doesn't revert an Admin Console edit on a second deploy" do
+        deploy_default_scope()
+        SettingModel.set({ name: "news_feed", data: false }, scope: "DEFAULT")
+        ScopeModel.new(name: "OTHER").deploy(File.join(SPEC_DIR, "install"), {})
+        expect(SettingModel.get(name: "news_feed")['data']).to be false
+      end
+    end
+
     describe "destroy" do
       it "destroys the scope and all microservices" do
         s3 = instance_double("Aws::S3::Client")

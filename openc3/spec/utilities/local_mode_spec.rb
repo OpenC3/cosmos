@@ -18,6 +18,7 @@
 require "spec_helper"
 require "openc3/utilities/local_mode"
 require "openc3/models/scope_model"
+require "openc3/models/setting_model"
 require "openc3/models/gem_model"
 require "openc3/models/plugin_model"
 require "openc3/utilities/aws_bucket"
@@ -210,6 +211,8 @@ module OpenC3
 
         expect(ToolConfigModel).to receive(:save_config).with("telemetry-grapher", "temps", "[]", {:local_mode=>false, :scope=>"DEFAULT"})
         expect(ToolConfigModel).to receive(:save_config).with("tlm-viewer", "screens", "[]", {:local_mode=>false, :scope=>"DEFAULT"})
+        # classification_banner holds JSON *text* - the component JSON.parses it,
+        # so it must not be stored as a parsed object
         expect(SettingModel).to receive(:set).with({name: "classification_banner", data: "{\"text\":\"CLASS\"}"}, {:scope=>"DEFAULT"})
         expect(SettingModel).to receive(:set).with({name: "source_url", data: "https://github.com/openc3/cosmos"}, {:scope=>"DEFAULT"})
 
@@ -922,6 +925,149 @@ module OpenC3
         expect(JSON.parse(File.read("#{@tmp_dir}/DEFAULT/tool_config/tlm-viewer/temps.json"))).to eq(json)
         LocalMode.delete_tool_config('DEFAULT', 'tlm-viewer', 'temps')
         expect(File.exist?("#{@tmp_dir}/DEFAULT/tool_config/tlm-viewer/temps.json")).to be false
+      end
+    end
+
+    describe "sync_settings" do
+      # Write a settings file the way an operator would drop one into the
+      # local plugins folder
+      def write_setting(name, contents)
+        FileUtils.mkdir_p("#{@tmp_dir}/DEFAULT/settings")
+        File.write("#{@tmp_dir}/DEFAULT/settings/#{name}.json", contents)
+      end
+
+      before(:each) do
+        mock_redis()
+        ScopeModel.new(name: 'DEFAULT').create
+        ENV.delete('OPENC3_SETTINGS_OVERWRITE')
+        allow($stdout).to receive(:puts)
+      end
+
+      after(:each) do
+        ENV.delete('OPENC3_SETTINGS_OVERWRITE')
+      end
+
+      it "syncs a setting that doesn't exist yet" do
+        write_setting('time_zone', 'UTC')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('UTC')
+      end
+
+      it "stores a boolean as a boolean rather than the string" do
+        # "false" is truthy in the frontend, so the file has to round trip
+        write_setting('ai_chat', 'false')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'ai_chat', scope: 'DEFAULT')['data']).to be false
+      end
+
+      it "keeps a JSON text setting as text" do
+        # The component JSON.parses this, so a parsed Hash would throw
+        json = '{"text":"UNCLASSIFIED"}'
+        write_setting('classification_banner', json)
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'classification_banner', scope: 'DEFAULT')['data']).to eq(json)
+      end
+
+      it "leaves an unknown setting as the text given" do
+        write_setting('brand_new', 'true')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'brand_new', scope: 'DEFAULT')['data']).to eq('true')
+      end
+
+      it "applies the file over an existing setting" do
+        # The file is the source of truth in local mode. An Admin Console edit is
+        # mirrored into the file by set_setting, so this reverts nothing - while
+        # skipping would mean a file for a setting seed_database writes never
+        # applied at all
+        SettingModel.set({ name: 'time_zone', data: 'local' }, scope: 'DEFAULT')
+        write_setting('time_zone', 'UTC')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('UTC')
+      end
+
+      it "applies a file for a setting the scope already seeded" do
+        # localinit runs after the first plugin load, so seed_database has
+        # already written pypi_url by the time sync_settings sees the file
+        SettingModel.set({ name: 'pypi_url', data: 'https://pypi.org' }, scope: 'DEFAULT')
+        write_setting('pypi_url', 'https://mirror.example.com/pypi/web/')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'pypi_url', scope: 'DEFAULT')['data'])
+          .to eq('https://mirror.example.com/pypi/web/')
+      end
+
+      it "applies the file regardless of OPENC3_SETTINGS_OVERWRITE" do
+        # That flag governs OPENC3_SETTING_* env seeding, not these files
+        SettingModel.set({ name: 'time_zone', data: 'local' }, scope: 'DEFAULT')
+        write_setting('time_zone', 'UTC')
+        ENV['OPENC3_SETTINGS_OVERWRITE'] = '0'
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('UTC')
+      end
+
+      it "round trips every type through save_setting" do
+        # The Admin Console stores each setting with save_setting, so whatever it
+        # wrote has to come back out of the file as the same thing. The halves
+        # are tested apart from each other everywhere else, which is how the
+        # string "false" coming back for a boolean survived
+        values = {
+          'time_zone' => 'UTC',                                  # plain text
+          'ai_chat' => false,                                    # real boolean
+          'classification_banner' => '{"text":"UNCLASSIFIED"}',  # JSON kept as text
+          'ai_chat_config' => { 'provider' => 'anthropic' },     # JSON as an object
+        }
+        values.each { |name, data| LocalMode.save_setting('DEFAULT', name, data) }
+        LocalMode.sync_settings()
+        values.each do |name, data|
+          expect(SettingModel.get(name: name, scope: 'DEFAULT')['data']).to eql data
+        end
+      end
+
+      it "syncs the files of every scope that exists" do
+        # Settings are global despite the per-scope path, so this is about which
+        # folders are read, not about isolating values
+        ScopeModel.new(name: 'OTHER').create
+        write_setting('time_zone', 'UTC')
+        FileUtils.mkdir_p("#{@tmp_dir}/OTHER/settings")
+        File.write("#{@tmp_dir}/OTHER/settings/time_format.json", '24hr')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'time_zone')['data']).to eq('UTC')
+        expect(SettingModel.get(name: 'time_format')['data']).to eq('24hr')
+      end
+
+      it "ignores a settings folder for a scope that doesn't exist" do
+        # The loop is driven by ScopeModel.names, so a folder left behind by a
+        # destroyed scope doesn't resurrect its settings
+        FileUtils.mkdir_p("#{@tmp_dir}/GONE/settings")
+        File.write("#{@tmp_dir}/GONE/settings/time_zone.json", 'UTC')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'time_zone')).to be_nil
+      end
+
+      it "does nothing when there are no settings files" do
+        expect { LocalMode.sync_settings() }.to_not raise_error
+        expect(SettingModel.names()).to be_empty
+      end
+
+      it "reports a file that won't coerce and keeps syncing the rest" do
+        # One unparsable boolean file shouldn't stop the rest of localinit
+        write_setting('ai_chat', 'nope')
+        write_setting('time_zone', 'UTC')
+        expect($stdout).to receive(:puts).with(/ERROR:.*ai_chat\.json.*Invalid value "nope"/)
+        allow($stdout).to receive(:puts)
+        expect { LocalMode.sync_settings() }.to_not raise_error
+        expect(SettingModel.get(name: 'ai_chat', scope: 'DEFAULT')).to be_nil
+        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('UTC')
+      end
+
+      it "ignores a malformed OPENC3_SETTINGS_OVERWRITE" do
+        # sync_settings doesn't read the flag, so a bad value can't stop a file
+        # from applying or add a spurious error to localinit
+        write_setting('time_zone', 'UTC')
+        ENV['OPENC3_SETTINGS_OVERWRITE'] = 'maybe'
+        expect($stdout).to_not receive(:puts).with(/ERROR/)
+        allow($stdout).to receive(:puts)
+        expect { LocalMode.sync_settings() }.to_not raise_error
+        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('UTC')
       end
     end
 

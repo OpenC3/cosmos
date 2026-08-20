@@ -524,6 +524,41 @@ module OpenC3
       end
     end
 
+    describe "self.handle_true_false_strict" do
+      it "converts '1' and 'TRUE' in any case" do
+        ['1', 'TRUE', 'true', 'True', ' true '].each do |value|
+          expect(ConfigParser.handle_true_false_strict(value)).to be true
+        end
+      end
+
+      it "converts '0', 'FALSE' and empty in any case" do
+        ['0', 'FALSE', 'false', '', '  '].each do |value|
+          expect(ConfigParser.handle_true_false_strict(value)).to be false
+        end
+      end
+
+      it "returns the default for nil" do
+        expect(ConfigParser.handle_true_false_strict(nil)).to be false
+        expect(ConfigParser.handle_true_false_strict(nil, default: true)).to be true
+      end
+
+      it "handles a value that isn't a String" do
+        expect(ConfigParser.handle_true_false_strict(1)).to be true
+        expect(ConfigParser.handle_true_false_strict(0)).to be false
+      end
+
+      it "raises on a value it doesn't recognize" do
+        # Unlike handle_true_false, an unrecognized value is not passed through
+        expect { ConfigParser.handle_true_false_strict('yes') }
+          .to raise_error(ArgumentError, /Invalid value "yes" for value\. Must be one of: 1, TRUE, 0, FALSE, or empty/)
+      end
+
+      it "names the value in the error message" do
+        expect { ConfigParser.handle_true_false_strict('maybe', description: 'OPENC3_THING') }
+          .to raise_error(ArgumentError, /Invalid value "maybe" for OPENC3_THING/)
+      end
+    end
+
     describe "self.handle_true_false_nil" do
       it "converts 'NIL' and 'NULL' to nil" do
         expect(ConfigParser.handle_true_false_nil('NIL')).to be_nil

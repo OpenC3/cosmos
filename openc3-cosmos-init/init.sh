@@ -197,6 +197,10 @@ if [ -z "${OPENC3_NO_MIGRATE}" ]; then
 fi
 
 ruby /openc3/bin/openc3cli initbuckets || exit 1
+# Seed settings (time_zone, time_format, ai_chat, ...) from OPENC3_SETTING_<NAME>
+# env vars. An existing setting is left unchanged so Admin Console edits survive
+# a restart. No-op when no OPENC3_SETTING_* var is set.
+ruby /openc3/bin/openc3cli initsettings || exit 1
 ruby /openc3/bin/openc3cli removeenterprise || exit 1
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-base-*.gem || exit 1
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-iframe-*.gem || exit 1

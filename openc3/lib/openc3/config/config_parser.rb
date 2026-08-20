@@ -307,6 +307,38 @@ module OpenC3
       return value
     end
 
+    # Values handle_true_false_strict accepts. Deliberately NOT shared with
+    # handle_true_false, which passes unrecognized values through and so can't
+    # tell the number 1 from a boolean - TABLE_MANAGER item defaults rely on 1
+    # staying 1. Named and scoped so they can't be mistaken for a truth table
+    # the whole parser honors.
+    STRICT_TRUE_VALUES = ['1', 'TRUE']
+    STRICT_FALSE_VALUES = ['0', 'FALSE', '']
+    private_constant :STRICT_TRUE_VALUES, :STRICT_FALSE_VALUES
+
+    # Converts a String containing '1', 'TRUE', '0', 'FALSE' or '' to a true or
+    # false Ruby primitive. Unlike handle_true_false, which returns anything it
+    # doesn't recognize unchanged, an unrecognized value raises.
+    #
+    # Use this for a flag where guessing is worse than failing - notably an
+    # environment variable that is enabled by presence elsewhere in COSMOS, so
+    # that 'VAR=0' means off here rather than the surprising on.
+    #
+    # @param value [Object] value to convert, nil returns the default
+    # @param description [String] what the value is, used in the error message
+    # @param default [true|false] returned when value is nil
+    # @return [true|false]
+    def self.handle_true_false_strict(value, description: 'value', default: false)
+      return default if value.nil?
+      normalized = value.to_s.strip.upcase
+      return true if STRICT_TRUE_VALUES.include?(normalized)
+      return false if STRICT_FALSE_VALUES.include?(normalized)
+      # Name empty explicitly - it is accepted (as false) but isn't a value
+      # anyone can read off the list
+      raise ArgumentError, "Invalid value #{value.to_s.strip.inspect} for #{description}. " \
+                           "Must be one of: #{(STRICT_TRUE_VALUES + STRICT_FALSE_VALUES - ['']).join(', ')}, or empty"
+    end
+
     # Converts a String containing '', 'NIL', 'NULL', 'TRUE' or 'FALSE' to nil,
     # true or false Ruby primitives. All other values are simply returned.
     #

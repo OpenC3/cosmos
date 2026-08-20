@@ -468,16 +468,42 @@ module OpenC3
     end
 
     def self.sync_settings()
+      # The files are authoritative here, unlike the OPENC3_SETTING_* env var
+      # seeding done by `openc3cli initsettings`. An Admin Console edit is
+      # mirrored straight back into the file by set_setting, so the file is
+      # already the edited value and applying it reverts nothing. Skipping a
+      # setting that already exists would instead mean a file was never applied
+      # at all: localinit runs after the first plugin load creates the scope,
+      # and that seeds source_url, rubygems_url, pypi_url, news_feed and
+      # system_health, so those five always exist by the time this runs.
+      #
+      # Because initsettings runs before localinit, a local mode file wins over
+      # OPENC3_SETTING_<NAME> for the same setting.
+      #
+      # A file that won't coerce is reported and skipped rather than raising,
+      # for the same reason `initsettings` doesn't abort: one bad settings file
+      # shouldn't stop the rest of localinit.
+      problems = []
       scopes = ScopeModel.names()
       scopes.each do |scope|
         Dir["#{OPENC3_LOCAL_MODE_PATH}/#{scope}/settings/*.json"].each do |config|
           name = File.basename(config, ".json")
+          # save_setting writes a boolean as the JSON text "true"/"false", so
+          # convert it back rather than storing the file contents verbatim -
+          # the string "false" is truthy in the frontend. Settings that hold
+          # JSON text (classification_banner, astro) stay strings, which is
+          # what their components JSON.parse.
+          begin
+            data = SettingModel.coerce(name, File.read(config))
+          rescue StandardError => error
+            problems << "#{config}: #{error.message}"
+            next
+          end
           puts "Syncing setting #{name}"
-          # Anything can be stored in settings so read and set directly
-          data = File.read(config)
           SettingModel.set({ name: name, data: data }, scope: scope)
         end
       end
+      problems.each { |problem| puts "ERROR: #{problem}" }
     end
 
     def self.save_setting(scope, name, data)
