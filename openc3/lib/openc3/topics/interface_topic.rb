@@ -148,7 +148,7 @@ module OpenC3
       Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'protocol_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100, db_shard: db_shard)
     end
 
-    def self.inject_tlm(interface_name, target_name, packet_name, item_hash = nil, type: :CONVERTED, stored: false, timeout: nil, scope:)
+    def self.inject_tlm(interface_name, target_name, packet_name, item_hash = nil, type: :CONVERTED, stored: false, timeout: nil, received_time: nil, scope:)
       interface_name = interface_name.upcase
       db_shard = _db_shard_for_interface(interface_name, scope: scope)
 
@@ -162,6 +162,7 @@ module OpenC3
       data['item_hash'] = item_hash
       data['type'] = type
       data['stored'] = stored
+      data['received_time'] = received_time unless received_time.nil?
       cmd_id = Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'inject_tlm' => JSON.generate(data, allow_nan: true) }, '*', 100, db_shard: db_shard)
       time = Time.now
       while (Time.now - time) < timeout
