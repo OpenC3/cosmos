@@ -525,7 +525,18 @@ _openc3_cli() {
                 _describe 'options' options
             fi
             ;;
-        removebase|removeenterprise|localinit|initbuckets|initsettings)
+        initsettings)
+            if (( CURRENT == 2 )); then
+                local -a options
+                options=(
+                    '--dry-run:report what would be seeded without writing'
+                    '--help:show help message'
+                    '-h:show help message'
+                )
+                _describe 'options' options
+            fi
+            ;;
+        removebase|removeenterprise|localinit|initbuckets)
             if (( CURRENT == 2 )); then
                 local -a options
                 options=('--help:show help message' '-h:show help message')

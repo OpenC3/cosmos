@@ -550,7 +550,7 @@ module OpenC3
       it "raises on a value it doesn't recognize" do
         # Unlike handle_true_false, an unrecognized value is not passed through
         expect { ConfigParser.handle_true_false_strict('yes') }
-          .to raise_error(ArgumentError, /Invalid value "yes" for value. Must be one of: 1, TRUE, 0, FALSE/)
+          .to raise_error(ArgumentError, /Invalid value "yes" for value\. Must be one of: 1, TRUE, 0, FALSE, or empty/)
       end
 
       it "names the value in the error message" do

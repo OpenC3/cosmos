@@ -181,10 +181,21 @@
 #       # value: 1/true is on, 0/false/empty is off rather than the
 #       # surprising on.
 #       - OPENC3_SETTINGS_OVERWRITE=0
-#       # An unrecognized setting name aborts init, so a typo like
-#       # OPENC3_SETTING_TIME_ZONES fails loudly instead of silently doing
-#       # nothing. Set to 1/true to allow a name COSMOS doesn't know yet.
+#       # An unrecognized setting name is reported in the init logs and that
+#       # setting is skipped, so a typo like OPENC3_SETTING_TIME_ZONES says so
+#       # instead of silently doing nothing. Init still finishes and COSMOS uses
+#       # the default. Set to 1/true to allow a name COSMOS doesn't know yet.
 #       - OPENC3_SETTINGS_ALLOW_UNKNOWN=1
+#       # Nothing above fails init by default - a bad name or value is logged and
+#       # skipped, because a typo in a time zone shouldn't leave you with no
+#       # COSMOS at all (the init container restarts on failure, so it would
+#       # crash loop). Set this to 1/true if you would rather COSMOS not come up
+#       # than come up misconfigured.
+#       - OPENC3_SETTINGS_STRICT=1
+#       # To catch typos BEFORE starting COSMOS, without turning on STRICT:
+#       #   ./openc3.sh cli initsettings --dry-run
+#       # It checks every name and value, writes nothing, and exits non-zero if
+#       # anything would be skipped. Works before Redis is up.
 #
 #   # -----------------------------------------------------------------------
 #   # Traefik (reverse proxy)

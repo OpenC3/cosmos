@@ -107,7 +107,7 @@ module OpenC3
 
     describe "KNOWN_SETTINGS vs the Admin Console" do
       # KNOWN_SETTINGS is hand maintained, and a name missing from it is not a
-      # harmless omission: an unknown name aborts init, so a setting the Admin
+      # harmless omission: an unknown name is rejected, so a setting the Admin
       # Console offers but the table doesn't list can't be seeded at all. This
       # reads the setting names straight out of the Vue components so the two
       # can't drift. The path is repo-only, not shipped in the gem.
@@ -320,6 +320,7 @@ module OpenC3
         env = {
           SettingModel::OVERWRITE_ENV_VAR => '1',
           SettingModel::ALLOW_UNKNOWN_ENV_VAR => '1',
+          SettingModel::STRICT_ENV_VAR => '1',
         }
         expect(SettingModel.parse_defaults_env(env)).to eql({})
       end
@@ -380,6 +381,26 @@ module OpenC3
         expect { SettingModel.validate_setting!('big', ['x' * SettingModel::MAX_VALUE_BYTES], allow_unknown: true) }
           .to raise_error(/exceeds the #{SettingModel::MAX_VALUE_BYTES} byte limit/)
         expect { SettingModel.validate_setting!('small', { 'a' => 1 }, allow_unknown: true) }.to_not raise_error
+      end
+    end
+
+    describe "self.plan_setting" do
+      it "writes a setting that doesn't exist" do
+        expect(SettingModel.plan_setting('time_zone', 'UTC', nil, false).first).to eql :write
+      end
+
+      it "records rather than writes when OVERWRITE finds a matching value" do
+        existing = { 'data' => 'UTC' }
+        action, message = SettingModel.plan_setting('time_zone', 'UTC', existing, true)
+        expect(action).to eql :record
+        expect(message).to match(/already matches "UTC"/)
+      end
+
+      it "writes when OVERWRITE finds a different value" do
+        existing = { 'data' => 'local' }
+        action, message = SettingModel.plan_setting('time_zone', 'UTC', existing, true)
+        expect(action).to eql :write
+        expect(message).to match(/Overwriting setting 'time_zone': "local" -> "UTC"/)
       end
     end
 
@@ -533,23 +554,114 @@ module OpenC3
         end
       end
 
-      it "raises on an unparsable overwrite env var rather than guessing" do
+      it "reports an unparsable overwrite env var and treats it as off" do
+        # Off is the safe reading - the alternative is discarding an Admin
+        # Console edit on the strength of a value we couldn't parse
+        SettingModel.set({ name: 'time_format', data: 'ampm' }, scope: nil)
+        env = {
+          'OPENC3_SETTING_TIME_FORMAT' => '24hr',
+          'OPENC3_SETTINGS_OVERWRITE' => 'maybe',
+        }
+        expect($stdout).to receive(:puts)
+          .with(/ERROR: Invalid value "maybe" for OPENC3_SETTINGS_OVERWRITE.*treating OPENC3_SETTINGS_OVERWRITE as off/)
+        allow($stdout).to receive(:puts)
+        expect { SettingModel.apply_defaults(env: env) }.to_not raise_error
+        expect(SettingModel.get(name: 'time_format')['data']).to eql 'ampm'
+      end
+
+      it "reports an unparsable allow unknown env var and treats it as off" do
+        env = {
+          'OPENC3_SETTING_BRAND_NEW' => 'x',
+          'OPENC3_SETTINGS_ALLOW_UNKNOWN' => 'maybe',
+        }
+        expect($stdout).to receive(:puts)
+          .with(/ERROR: Invalid value "maybe" for OPENC3_SETTINGS_ALLOW_UNKNOWN/)
+        expect($stdout).to receive(:puts).with(/ERROR: 'brand_new' is not a known/)
+        allow($stdout).to receive(:puts)
+        expect(SettingModel.apply_defaults(env: env)).to eql []
+        expect(SettingModel.get(name: 'brand_new')).to be_nil
+      end
+
+      it "still seeds the good settings when a control variable is malformed" do
         env = {
           'OPENC3_SETTING_TIME_ZONE' => 'UTC',
           'OPENC3_SETTINGS_OVERWRITE' => 'maybe',
         }
-        expect { SettingModel.apply_defaults(env: env) }
-          .to raise_error(ArgumentError, /Invalid value "maybe" for OPENC3_SETTINGS_OVERWRITE/)
-        expect(SettingModel.get(name: 'time_zone')).to be_nil
+        expect(SettingModel.apply_defaults(env: env)).to eql ['time_zone']
+        expect(SettingModel.get(name: 'time_zone')['data']).to eql 'UTC'
       end
 
-      it "raises on an unparsable allow unknown env var" do
-        env = {
-          'OPENC3_SETTING_TIME_ZONE' => 'UTC',
-          'OPENC3_SETTINGS_ALLOW_UNKNOWN' => 'maybe',
-        }
-        expect { SettingModel.apply_defaults(env: env) }
-          .to raise_error(ArgumentError, /Invalid value "maybe" for OPENC3_SETTINGS_ALLOW_UNKNOWN/)
+      it "reports an uncoercible boolean value instead of aborting" do
+        # OPENC3_SETTING_AI_CHAT=nope used to escape as an ArgumentError from
+        # coerce, taking init down with it
+        env = { 'OPENC3_SETTING_AI_CHAT' => 'nope', 'OPENC3_SETTING_TIME_ZONE' => 'UTC' }
+        expect($stdout).to receive(:puts).with(/ERROR: Invalid value "nope" for setting 'ai_chat'/)
+        allow($stdout).to receive(:puts)
+        expect(SettingModel.apply_defaults(env: env)).to eql ['time_zone']
+        expect(SettingModel.get(name: 'ai_chat')).to be_nil
+        expect(SettingModel.get(name: 'time_zone')['data']).to eql 'UTC'
+      end
+
+      context "OPENC3_SETTINGS_STRICT" do
+        it "fails when a setting is rejected" do
+          env = { 'OPENC3_SETTING_TIME_ZONE' => 'Mars', 'OPENC3_SETTINGS_STRICT' => '1' }
+          expect { SettingModel.apply_defaults(env: env) }
+            .to raise_error(/1 OPENC3_SETTING_\* configuration problem\(s\).*Invalid value "Mars"/)
+        end
+
+        it "fails on an unknown name" do
+          env = { 'OPENC3_SETTING_TIME_ZONES' => 'UTC', 'OPENC3_SETTINGS_STRICT' => 'true' }
+          expect { SettingModel.apply_defaults(env: env) }
+            .to raise_error(/'time_zones' is not a known COSMOS setting/)
+        end
+
+        it "still writes the settings that were fine before failing" do
+          env = { 'OPENC3_SETTING_TIME_ZONE' => 'Mars', 'OPENC3_SETTING_TIME_FORMAT' => 'ampm',
+                  'OPENC3_SETTINGS_STRICT' => '1' }
+          expect { SettingModel.apply_defaults(env: env) }.to raise_error(/configuration problem\(s\)/)
+          expect(SettingModel.get(name: 'time_format')['data']).to eql 'ampm'
+        end
+
+        it "doesn't fail when nothing is wrong" do
+          env = { 'OPENC3_SETTING_TIME_ZONE' => 'UTC', 'OPENC3_SETTINGS_STRICT' => '1' }
+          expect(SettingModel.apply_defaults(env: env)).to eql ['time_zone']
+        end
+
+        it "is off by default" do
+          env = { 'OPENC3_SETTING_TIME_ZONE' => 'Mars' }
+          expect { SettingModel.apply_defaults(env: env) }.to_not raise_error
+        end
+
+        it "is off for 0, false and empty" do
+          ['0', 'false', ''].each do |value|
+            env = { 'OPENC3_SETTING_TIME_ZONE' => 'Mars', 'OPENC3_SETTINGS_STRICT' => value }
+            expect { SettingModel.apply_defaults(env: env) }.to_not raise_error
+          end
+        end
+
+        it "honors an explicit strict argument over the env var" do
+          env = { 'OPENC3_SETTING_TIME_ZONE' => 'Mars', 'OPENC3_SETTINGS_STRICT' => '0' }
+          expect { SettingModel.apply_defaults(env: env, strict: true) }
+            .to raise_error(/configuration problem\(s\)/)
+        end
+
+        it "reports an unparsable value and stays off" do
+          env = { 'OPENC3_SETTING_TIME_ZONE' => 'UTC', 'OPENC3_SETTINGS_STRICT' => 'maybe' }
+          expect($stdout).to receive(:puts)
+            .with(/ERROR: Invalid value "maybe" for OPENC3_SETTINGS_STRICT.*treating OPENC3_SETTINGS_STRICT as off/)
+          allow($stdout).to receive(:puts)
+          expect { SettingModel.apply_defaults(env: env) }.to_not raise_error
+        end
+
+        it "isn't mistaken for a setting by the prefix scan" do
+          expect(SettingModel.parse_defaults_env({ SettingModel::STRICT_ENV_VAR => '1' })).to eql({})
+        end
+      end
+
+      it "tells the operator how to make errors fail init" do
+        expect($stdout).to receive(:puts).with(/Set OPENC3_SETTINGS_STRICT to fail init on these/)
+        allow($stdout).to receive(:puts)
+        SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_ZONE' => 'Mars' })
       end
 
       it "honors an explicit overwrite argument over the env var" do
@@ -586,7 +698,7 @@ module OpenC3
         env = { 'OPENC3_SETTING_TIME_ZONE' => 'Mars', 'OPENC3_SETTING_TIME_ZONES' => 'UTC' }
         expect($stdout).to receive(:puts).with(/ERROR: Invalid value "Mars"/)
         expect($stdout).to receive(:puts).with(/ERROR: 'time_zones' is not a known/)
-        expect($stdout).to receive(:puts).with(/2 setting\(s\) were skipped due to errors/)
+        expect($stdout).to receive(:puts).with(/2 OPENC3_SETTING_\* configuration problem\(s\)/)
         allow($stdout).to receive(:puts)
         SettingModel.apply_defaults(env: env)
       end
@@ -594,7 +706,7 @@ module OpenC3
       it "fails only in a dry run, so a preflight check can gate on it" do
         env = { 'OPENC3_SETTING_TIME_ZONE' => 'Mars' }
         expect { SettingModel.apply_defaults(env: env, dry_run: true) }
-          .to raise_error(/1 setting\(s\) would be skipped/)
+          .to raise_error(/1 OPENC3_SETTING_\* configuration problem\(s\)/)
       end
 
       it "writes nothing in a dry run" do
@@ -618,7 +730,29 @@ module OpenC3
         SettingModel.apply_defaults(env: env)
         expect($stdout).to receive(:puts).with(/Setting 'time_zone' already matches "UTC"/)
         allow($stdout).to receive(:puts)
-        SettingModel.apply_defaults(env: env)
+        # Nothing to write, so nothing is reported as written - rewriting the same
+        # value would bump updated_at on every init
+        expect(SettingModel.apply_defaults(env: env)).to eql []
+      end
+
+      it "records provenance when OVERWRITE finds the value already correct" do
+        # The upgrade path where the operator had already set the value by hand
+        # to what the env says: OVERWRITE has nothing to write but must still
+        # take ownership, or the env stays locked out on the next run
+        SettingModel.set({ name: 'time_format', data: 'ampm' }, scope: nil)
+        expect(SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => 'ampm',
+                                                 'OPENC3_SETTINGS_OVERWRITE' => '1' })).to eql []
+        expect(SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => '24hr' }))
+          .to eql ['time_format']
+        expect(SettingModel.get(name: 'time_format')['data']).to eql '24hr'
+      end
+
+      it "doesn't record provenance for a dry run" do
+        SettingModel.set({ name: 'time_format', data: 'ampm' }, scope: nil)
+        SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => 'ampm',
+                                          'OPENC3_SETTINGS_OVERWRITE' => '1' }, dry_run: true)
+        expect(SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => '24hr' })).to eql []
+        expect(SettingModel.get(name: 'time_format')['data']).to eql 'ampm'
       end
 
       it "falls back to name and value checks when Redis is unreachable" do
@@ -635,7 +769,7 @@ module OpenC3
       end
 
       it "reads from ENV by default" do
-        expect(SettingModel).to receive(:parse_defaults_env).with(ENV).and_return({})
+        expect(SettingModel).to receive(:parse_defaults_env).with(ENV, anything).and_return({})
         SettingModel.apply_defaults()
       end
     end

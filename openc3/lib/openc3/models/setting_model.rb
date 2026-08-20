@@ -44,17 +44,28 @@ module OpenC3
     # can't mistake it for a setting named 'overwrite'.
     OVERWRITE_ENV_VAR = 'OPENC3_SETTINGS_OVERWRITE'
 
-    # Set to 1/true/yes/on to allow setting names that are not in
-    # KNOWN_SETTINGS. Needed for a setting added by a newer tool than this
-    # library knows about; without it a misspelled name aborts init.
+    # Set to 1/true to allow setting names that are not in KNOWN_SETTINGS.
+    # Needed for a setting added by a newer tool than this library knows about;
+    # without it a misspelled name is reported and skipped.
     ALLOW_UNKNOWN_ENV_VAR = 'OPENC3_SETTINGS_ALLOW_UNKNOWN'
+
+    # Set to 1/true to make a rejected setting fail init instead of being
+    # reported and skipped. Off by default: the init container restarts on
+    # failure, so a typo in a cosmetic setting would otherwise crash loop COSMOS
+    # with the cause buried in restarting container logs, and the operator ends
+    # up with no COSMOS rather than COSMOS with one default time zone. Turn it on
+    # for a deployment that would rather not come up than come up misconfigured.
+    #
+    # `initsettings --dry-run` fails regardless - a preflight check exists to.
+    STRICT_ENV_VAR = 'OPENC3_SETTINGS_STRICT'
 
 
     # Every setting that can be seeded from the environment.
     #
-    # An unknown name is rejected rather than written: nothing reads it, so the
-    # result of a typo is a dead Redis key plus a setting the operator believes
-    # they configured and did not. ALLOW_UNKNOWN_ENV_VAR opts out.
+    # An unknown name is reported and skipped rather than written: nothing reads
+    # it, so the result of a typo is a dead Redis key plus a setting the
+    # operator believes they configured and did not. Init still continues -
+    # ALLOW_UNKNOWN_ENV_VAR opts out of the check entirely.
     #
     # TO ADD A SETTING, add a row here. The name is the string the Admin
     # Console component passes to loadSetting/saveSetting - find it in
@@ -122,78 +133,123 @@ module OpenC3
     # value changed in the Admin Console survives a container restart. Set
     # OPENC3_SETTINGS_OVERWRITE to write on every run instead.
     #
+    # Nothing here aborts init by default. A bad setting name, a bad value, or a
+    # malformed control variable is reported on stdout and that one setting is
+    # skipped, leaving COSMOS on its built-in default. Set STRICT_ENV_VAR to
+    # fail init instead; --dry-run always fails.
+    #
     # @param env [Hash] environment to read from, defaults to ENV
     # @param overwrite [Boolean, nil] nil reads OVERWRITE_ENV_VAR from env
-    # @return [Array<String>] names of the settings that were written
+    # @param strict [Boolean, nil] nil reads STRICT_ENV_VAR from env
     # @param dry_run [Boolean] report what would happen and write nothing.
     #   Reports every problem rather than aborting on the first, and works
     #   before Redis is up so it can be run ahead of starting COSMOS.
-    def self.apply_defaults(env: ENV, overwrite: nil, dry_run: false)
-      overwrite = truthy_env?(env, OVERWRITE_ENV_VAR) if overwrite.nil?
-      allow_unknown = truthy_env?(env, ALLOW_UNKNOWN_ENV_VAR)
-      settings = parse_defaults_env(env)
-      if settings.empty?
-        puts "No #{SETTING_ENV_PREFIX}* environment variables set - nothing to seed" if dry_run
-        return []
-      end
+    # @return [Array<String>] names of the settings that were written
+    def self.apply_defaults(env: ENV, overwrite: nil, dry_run: false, strict: nil)
+      problems = []
+      strict = read_control_flag(env, STRICT_ENV_VAR, problems) if strict.nil?
+      overwrite = read_control_flag(env, OVERWRITE_ENV_VAR, problems) if overwrite.nil?
+      allow_unknown = read_control_flag(env, ALLOW_UNKNOWN_ENV_VAR, problems)
+      # Collects a value that can't be coerced, so OPENC3_SETTING_AI_CHAT=nope is
+      # reported like any other bad value rather than escaping as an exception
+      settings = parse_defaults_env(env, problems)
 
       prefix = dry_run ? '[dry run] ' : ''
-      # A dry run is most useful before `openc3.sh start`, when there is no
-      # Redis to compare against. Names and values can still be checked.
-      comparable = dry_run ? redis_available? : true
-      puts "#{prefix}Redis is not reachable - checking names and values only" unless comparable
-
-      problems = []
       written = []
-      settings.each do |name, value|
-        begin
-          validate_setting!(name, value, allow_unknown: allow_unknown)
-        rescue StandardError => error
-          # Collect rather than abort. The init container restarts on failure
-          # (compose restart: on-failure, Kubernetes restartPolicy OnFailure),
-          # so raising here puts COSMOS in a crash loop over a cosmetic
-          # setting, with the cause buried in restarting container logs.
-          # Skipping leaves the setting at its default, which is the same
-          # outcome as not setting it, and the error is reported below.
-          problems << error.message
-          next
+      if settings.empty?
+        puts "#{prefix}No #{SETTING_ENV_PREFIX}* environment variables set - nothing to seed"
+      else
+        # A dry run is most useful before `openc3.sh start`, when there is no
+        # Redis to compare against. Names and values can still be checked.
+        comparable = dry_run ? redis_available? : true
+        puts "#{prefix}Redis is not reachable - checking names and values only" unless comparable
+
+        settings.each do |name, value|
+          begin
+            validate_setting!(name, value, allow_unknown: allow_unknown)
+          rescue StandardError => error
+            # Collect rather than abort. The init container restarts on failure
+            # (compose restart: on-failure, Kubernetes restartPolicy OnFailure),
+            # so raising here puts COSMOS in a crash loop over a cosmetic
+            # setting, with the cause buried in restarting container logs.
+            # Skipping leaves the setting at its default, which is the same
+            # outcome as not setting it, and the error is reported below.
+            problems << error.message
+            next
+          end
+
+          existing = comparable ? get(name: name) : nil
+          action, message = plan_setting(name, value, existing, overwrite)
+          message += ' (current value unknown)' unless comparable
+          puts "#{prefix}#{message}"
+          next if action == :skip
+
+          # :record leaves the setting alone and only refreshes provenance, so it
+          # is not reported as written
+          written << name if action == :write
+          next if dry_run
+          set({ name: name, data: value }, scope: nil) if action == :write
+          record_seeded(name, value)
         end
-
-        existing = comparable ? get(name: name) : nil
-        action, message = plan_setting(name, value, existing, overwrite)
-        message += ' (current value unknown)' unless comparable
-        puts "#{prefix}#{message}"
-        next if action == :skip
-
-        written << name
-        next if dry_run
-        set({ name: name, data: value }, scope: nil)
-        record_seeded(name, value)
       end
 
-      unless problems.empty?
-        problems.each { |problem| puts "#{prefix}ERROR: #{problem}" }
-        summary = "#{problems.length} setting(s) #{dry_run ? 'would be' : 'were'} skipped due to errors"
-        puts "#{prefix}#{summary} - COSMOS will use the default for #{problems.length == 1 ? 'it' : 'them'}"
-        # Only --dry-run fails the process. It is a preflight check, so a
-        # non-zero exit is the whole point; the real run has to leave COSMOS
-        # running rather than restart forever.
-        $stdout.flush
-        raise "#{summary}: #{problems.join('; ')}" if dry_run
-      end
+      report_problems(problems, prefix: prefix, dry_run: dry_run, strict: strict)
       written
+    end
+
+    # Print every problem and decide whether it should end the process.
+    #
+    # A typo in a cosmetic setting must not put the init container in a restart
+    # loop with the cause buried in restarting container logs, so the default is
+    # report-and-continue. Two things opt into failing: --dry-run, which exists
+    # to be a preflight gate, and STRICT_ENV_VAR, for a deployment that would
+    # rather not come up at all than come up misconfigured.
+    def self.report_problems(problems, prefix:, dry_run:, strict:)
+      return if problems.empty?
+      problems.each { |problem| puts "#{prefix}ERROR: #{problem}" }
+      # "problem" rather than "setting" - a malformed control variable is
+      # reported here too, and it isn't a setting that got skipped
+      summary = "#{problems.length} #{SETTING_ENV_PREFIX}* configuration problem(s)"
+      if dry_run or strict
+        puts "#{prefix}#{summary}"
+      else
+        puts "#{prefix}#{summary} - the affected setting(s) were skipped and COSMOS will use the default"
+        puts "#{prefix}Set #{STRICT_ENV_VAR} to fail init on these instead of continuing"
+      end
+      $stdout.flush
+      raise "#{summary}: #{problems.join('; ')}" if dry_run or strict
+    end
+
+    # Read a boolean control variable, reporting an unparsable value rather than
+    # letting it abort init. Off is the safe reading of all three: OVERWRITE off
+    # doesn't discard an Admin Console edit, ALLOW_UNKNOWN off doesn't write a
+    # name nothing reads, and STRICT off doesn't fail init.
+    #
+    # @param problems [Array<String>] collects the message when the value is bad
+    # @return [Boolean]
+    def self.read_control_flag(env, name, problems)
+      truthy_env?(env, name)
+    rescue StandardError => error
+      problems << "#{error.message} - treating #{name} as off"
+      false
     end
 
     # What apply_defaults will do with one setting. Single-sourced so a dry run
     # cannot report one thing and the real run do another.
     #
-    # @return [Array(Symbol, String)] :write or :skip, and the line to log
+    # @return [Array(Symbol, String)] :write, :record or :skip, and the line to
+    #   log. :record means the stored value is already correct but provenance
+    #   still needs writing, so the setting itself is left untouched.
     def self.plan_setting(name, value, existing, overwrite)
       if existing.nil?
         [:write, "Set default setting '#{name}' to: #{value.inspect}"]
       elsif overwrite
         if existing['data'] == value
-          [:write, "Setting '#{name}' already matches #{value.inspect}"]
+          # Rewriting the same value would bump updated_at on every init and
+          # report a write that changed nothing. Provenance is still recorded,
+          # so the next run without OVERWRITE can tell this value came from the
+          # environment rather than from an Admin Console edit.
+          [:record, "Setting '#{name}' already matches #{value.inspect}"]
         else
           # Overwrite discards an Admin Console edit, so say what was lost -
           # otherwise the log reads identically to a first-time seed
@@ -246,15 +302,22 @@ module OpenC3
     # Collect every OPENC3_SETTING_<NAME> variable into a name => value hash.
     #
     # @param env [Hash] environment to read from
+    # @param problems [Array<String>] collects a value that can't be coerced, so
+    #   OPENC3_SETTING_AI_CHAT=nope is reported and skipped alongside every other
+    #   bad value rather than escaping as an exception and aborting init
     # @return [Hash] setting name => coerced value
-    def self.parse_defaults_env(env)
+    def self.parse_defaults_env(env, problems = [])
       settings = {}
       env.each do |key, value|
         key = to_str(key)
         next unless key.start_with?(SETTING_ENV_PREFIX)
         name = key[SETTING_ENV_PREFIX.length..-1].downcase
         next if name.empty?
-        settings[name] = coerce(name, to_str(value))
+        begin
+          settings[name] = coerce(name, to_str(value))
+        rescue StandardError => error
+          problems << error.message
+        end
       end
       settings
     end
@@ -283,9 +346,13 @@ module OpenC3
     # real limit - the biggest real setting is a few hundred bytes.
     MAX_VALUE_BYTES = 64 * 1024
 
-    # Fail loudly on anything we can prove is wrong. The init container exits
-    # non-zero and restarts, which is far easier to diagnose than a tool
-    # silently falling back to its built-in default.
+    # Raise on anything we can prove is wrong, so the operator is told rather
+    # than left with a tool silently falling back to its built-in default.
+    #
+    # Raising here does NOT abort init: apply_defaults collects the message,
+    # skips that one setting and keeps going, because crash-looping the init
+    # container over a cosmetic setting would be worse than using the default.
+    # `initsettings --dry-run` is the mode that exits non-zero.
     def self.validate_setting!(name, value, allow_unknown: false)
       unless name =~ /\A[a-z0-9_]+\z/
         raise "Invalid setting name #{name.inspect}. Names must be lowercase letters, numbers and underscores"

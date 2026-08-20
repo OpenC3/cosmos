@@ -472,7 +472,12 @@ module OpenC3
       # that already exists is left alone so a value changed in the Admin
       # Console isn't reverted by the file on every restart. Set
       # OPENC3_SETTINGS_OVERWRITE to make the files authoritative.
-      overwrite = SettingModel.truthy_env?(ENV, SettingModel::OVERWRITE_ENV_VAR)
+      #
+      # A malformed flag or a file that won't coerce is reported and skipped
+      # rather than raising, for the same reason `initsettings` doesn't abort:
+      # one bad settings file shouldn't stop the rest of localinit.
+      problems = []
+      overwrite = SettingModel.read_control_flag(ENV, SettingModel::OVERWRITE_ENV_VAR, problems)
       scopes = ScopeModel.names()
       scopes.each do |scope|
         Dir["#{OPENC3_LOCAL_MODE_PATH}/#{scope}/settings/*.json"].each do |config|
@@ -481,16 +486,22 @@ module OpenC3
             puts "Setting #{name} already exists - leaving unchanged"
             next
           end
-          puts "Syncing setting #{name}"
           # save_setting writes a boolean as the JSON text "true"/"false", so
           # convert it back rather than storing the file contents verbatim -
           # the string "false" is truthy in the frontend. Settings that hold
           # JSON text (classification_banner, astro) stay strings, which is
           # what their components JSON.parse.
-          data = SettingModel.coerce(name, File.read(config))
+          begin
+            data = SettingModel.coerce(name, File.read(config))
+          rescue StandardError => error
+            problems << "#{config}: #{error.message}"
+            next
+          end
+          puts "Syncing setting #{name}"
           SettingModel.set({ name: name, data: data }, scope: scope)
         end
       end
+      problems.each { |problem| puts "ERROR: #{problem}" }
     end
 
     def self.save_setting(scope, name, data)

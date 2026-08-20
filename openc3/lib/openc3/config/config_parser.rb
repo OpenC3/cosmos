@@ -307,12 +307,14 @@ module OpenC3
       return value
     end
 
-    # Values handle_true_false_strict accepts, in addition to 'TRUE'/'FALSE'.
-    # '1' and '0' are here rather than in handle_true_false because that method
-    # passes unrecognized values through, so it can't tell the number 1 from a
-    # boolean - TABLE_MANAGER item defaults rely on 1 staying 1.
-    TRUE_VALUES = ['1', 'TRUE']
-    FALSE_VALUES = ['0', 'FALSE', '']
+    # Values handle_true_false_strict accepts. Deliberately NOT shared with
+    # handle_true_false, which passes unrecognized values through and so can't
+    # tell the number 1 from a boolean - TABLE_MANAGER item defaults rely on 1
+    # staying 1. Named and scoped so they can't be mistaken for a truth table
+    # the whole parser honors.
+    STRICT_TRUE_VALUES = ['1', 'TRUE']
+    STRICT_FALSE_VALUES = ['0', 'FALSE', '']
+    private_constant :STRICT_TRUE_VALUES, :STRICT_FALSE_VALUES
 
     # Converts a String containing '1', 'TRUE', '0', 'FALSE' or '' to a true or
     # false Ruby primitive. Unlike handle_true_false, which returns anything it
@@ -329,10 +331,12 @@ module OpenC3
     def self.handle_true_false_strict(value, description: 'value', default: false)
       return default if value.nil?
       normalized = value.to_s.strip.upcase
-      return true if TRUE_VALUES.include?(normalized)
-      return false if FALSE_VALUES.include?(normalized)
+      return true if STRICT_TRUE_VALUES.include?(normalized)
+      return false if STRICT_FALSE_VALUES.include?(normalized)
+      # Name empty explicitly - it is accepted (as false) but isn't a value
+      # anyone can read off the list
       raise ArgumentError, "Invalid value #{value.to_s.strip.inspect} for #{description}. " \
-                           "Must be one of: #{(TRUE_VALUES + FALSE_VALUES - ['']).join(', ')}"
+                           "Must be one of: #{(STRICT_TRUE_VALUES + STRICT_FALSE_VALUES - ['']).join(', ')}, or empty"
     end
 
     # Converts a String containing '', 'NIL', 'NULL', 'TRUE' or 'FALSE' to nil,

@@ -436,8 +436,12 @@ module OpenC3
       SettingModel.set({name: "rubygems_url", data: ENV["RUBYGEMS_URL"] || RubygemsUrl::DEFAULT}, scope: @scope) unless setting
       setting = SettingModel.get(name: "pypi_url")
       SettingModel.set({name: "pypi_url", data: ENV["PYPI_URL"] || "https://pypi.org"}, scope: @scope) unless setting
-      # Set the news feed to true by default, don't bother checking if it's already set
-      SettingModel.set({name: "news_feed", data: true}, scope: @scope)
+      # Default the news feed on, but only if nothing has set it yet. `openc3cli
+      # initsettings` runs before the first plugin load creates this scope, so an
+      # unconditional set here would discard OPENC3_SETTING_NEWS_FEED=false and
+      # leave the seeded provenance record disagreeing with Redis forever.
+      setting = SettingModel.get(name: "news_feed")
+      SettingModel.set({name: "news_feed", data: true}, scope: @scope) unless setting
 
       setting = SettingModel.get(name: "system_health")
       # Settings are stored as JSON strings

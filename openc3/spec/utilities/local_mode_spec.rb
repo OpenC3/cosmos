@@ -993,6 +993,27 @@ module OpenC3
         expect { LocalMode.sync_settings() }.to_not raise_error
         expect(SettingModel.names()).to be_empty
       end
+
+      it "reports a file that won't coerce and keeps syncing the rest" do
+        # One unparsable boolean file shouldn't stop the rest of localinit
+        write_setting('ai_chat', 'nope')
+        write_setting('time_zone', 'UTC')
+        expect($stdout).to receive(:puts).with(/ERROR:.*ai_chat\.json.*Invalid value "nope"/)
+        allow($stdout).to receive(:puts)
+        expect { LocalMode.sync_settings() }.to_not raise_error
+        expect(SettingModel.get(name: 'ai_chat', scope: 'DEFAULT')).to be_nil
+        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('UTC')
+      end
+
+      it "reports a malformed OPENC3_SETTINGS_OVERWRITE and treats it as off" do
+        SettingModel.set({ name: 'time_zone', data: 'local' }, scope: 'DEFAULT')
+        write_setting('time_zone', 'UTC')
+        ENV['OPENC3_SETTINGS_OVERWRITE'] = 'maybe'
+        expect($stdout).to receive(:puts).with(/ERROR: Invalid value "maybe" for OPENC3_SETTINGS_OVERWRITE/)
+        allow($stdout).to receive(:puts)
+        expect { LocalMode.sync_settings() }.to_not raise_error
+        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('local')
+      end
     end
 
     describe "save_setting" do
