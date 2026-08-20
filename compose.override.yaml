@@ -145,6 +145,10 @@
 #       # To change a seeded value: edit it in the Admin Console, or set
 #       # OPENC3_SETTINGS_OVERWRITE=1 below to make this file authoritative.
 #       #
+#       # In Local Mode a plugins/<SCOPE>/settings/<name>.json file wins over
+#       # the variable for that setting - the files are applied after these are,
+#       # and the Admin Console writes every edit back into them.
+#       #
 #       # Reference - name, then accepted values. Booleans take 1/true/0/false;
 #       # "JSON text" values are stored verbatim, so quote them in YAML or the
 #       # colon ends the scalar. `./openc3.sh cli initsettings --help` prints

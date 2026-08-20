@@ -31,9 +31,9 @@ module OpenC3
     # escaping, and one variable per setting reads the same in all three.
     SETTING_ENV_PREFIX = 'OPENC3_SETTING_'
 
-    # Set to 1/true/yes/on to write the values on every init rather than only
-    # when the setting is missing. Use when the environment is the source of
-    # truth and Admin Console edits should not survive a restart.
+    # Set to 1/true to write the values on every init rather than only when the
+    # setting is missing. Use when the environment is the source of truth and
+    # Admin Console edits should not survive a restart.
     #
     # Unlike the OPENC3_NO_* install flags, this is NOT enabled by presence:
     # it discards whatever an operator configured in the Admin Console, so
@@ -309,7 +309,12 @@ module OpenC3
                    "#{value.inspect} (#{OVERWRITE_ENV_VAR} is set)"]
         end
       elsif !seeded_value?(name, existing['data'])
-        [:skip, "Setting '#{name}' was changed from the seeded value - leaving as #{existing['data'].inspect}"]
+        # Says what is known - that this value didn't come from here - rather
+        # than claiming it was edited. An unrecorded setting is the normal case
+        # on a deployment upgrading into this feature: nobody changed it, it was
+        # written by seed_database or by a release before provenance existed.
+        [:skip, "Setting '#{name}' holds a value initsettings didn't write - leaving as " \
+                "#{existing['data'].inspect} (set #{OVERWRITE_ENV_VAR} to replace it)"]
       elsif existing['data'] == value
         [:skip, "Setting '#{name}' already matches #{value.inspect} - leaving unchanged"]
       else

@@ -856,7 +856,8 @@ module OpenC3
         SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => '24hr' })
         SettingModel.set({ name: 'time_zone', data: 'local' }, scope: nil)
         expect($stdout).to receive(:puts).with(/\[dry run\] Updating unedited setting 'time_format'/)
-        expect($stdout).to receive(:puts).with(/\[dry run\] Setting 'time_zone' was changed from the seeded value/)
+        expect($stdout).to receive(:puts)
+          .with(/\[dry run\] Setting 'time_zone' holds a value initsettings didn't write/)
         allow($stdout).to receive(:puts)
         SettingModel.apply_defaults(env: { 'OPENC3_SETTING_TIME_FORMAT' => 'ampm',
                                            'OPENC3_SETTING_TIME_ZONE' => 'UTC' }, dry_run: true)

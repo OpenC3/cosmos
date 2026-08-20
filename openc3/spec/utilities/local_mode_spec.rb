@@ -974,17 +974,32 @@ module OpenC3
         expect(SettingModel.get(name: 'brand_new', scope: 'DEFAULT')['data']).to eq('true')
       end
 
-      it "leaves an existing setting unchanged so Admin Console edits survive" do
+      it "applies the file over an existing setting" do
+        # The file is the source of truth in local mode. An Admin Console edit is
+        # mirrored into the file by set_setting, so this reverts nothing - while
+        # skipping would mean a file for a setting seed_database writes never
+        # applied at all
         SettingModel.set({ name: 'time_zone', data: 'local' }, scope: 'DEFAULT')
         write_setting('time_zone', 'UTC')
         LocalMode.sync_settings()
-        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('local')
+        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('UTC')
       end
 
-      it "overwrites an existing setting when OPENC3_SETTINGS_OVERWRITE is set" do
+      it "applies a file for a setting the scope already seeded" do
+        # localinit runs after the first plugin load, so seed_database has
+        # already written pypi_url by the time sync_settings sees the file
+        SettingModel.set({ name: 'pypi_url', data: 'https://pypi.org' }, scope: 'DEFAULT')
+        write_setting('pypi_url', 'https://mirror.example.com/pypi/web/')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'pypi_url', scope: 'DEFAULT')['data'])
+          .to eq('https://mirror.example.com/pypi/web/')
+      end
+
+      it "applies the file regardless of OPENC3_SETTINGS_OVERWRITE" do
+        # That flag governs OPENC3_SETTING_* env seeding, not these files
         SettingModel.set({ name: 'time_zone', data: 'local' }, scope: 'DEFAULT')
         write_setting('time_zone', 'UTC')
-        ENV['OPENC3_SETTINGS_OVERWRITE'] = '1'
+        ENV['OPENC3_SETTINGS_OVERWRITE'] = '0'
         LocalMode.sync_settings()
         expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('UTC')
       end
@@ -1005,14 +1020,15 @@ module OpenC3
         expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('UTC')
       end
 
-      it "reports a malformed OPENC3_SETTINGS_OVERWRITE and treats it as off" do
-        SettingModel.set({ name: 'time_zone', data: 'local' }, scope: 'DEFAULT')
+      it "ignores a malformed OPENC3_SETTINGS_OVERWRITE" do
+        # sync_settings doesn't read the flag, so a bad value can't stop a file
+        # from applying or add a spurious error to localinit
         write_setting('time_zone', 'UTC')
         ENV['OPENC3_SETTINGS_OVERWRITE'] = 'maybe'
-        expect($stdout).to receive(:puts).with(/ERROR: Invalid value "maybe" for OPENC3_SETTINGS_OVERWRITE/)
+        expect($stdout).to_not receive(:puts).with(/ERROR/)
         allow($stdout).to receive(:puts)
         expect { LocalMode.sync_settings() }.to_not raise_error
-        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('local')
+        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('UTC')
       end
     end
 

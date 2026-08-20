@@ -468,24 +468,26 @@ module OpenC3
     end
 
     def self.sync_settings()
-      # Matches the env var seeding done by `openc3cli initsettings`: a setting
-      # that already exists is left alone so a value changed in the Admin
-      # Console isn't reverted by the file on every restart. Set
-      # OPENC3_SETTINGS_OVERWRITE to make the files authoritative.
+      # The files are authoritative here, unlike the OPENC3_SETTING_* env var
+      # seeding done by `openc3cli initsettings`. An Admin Console edit is
+      # mirrored straight back into the file by set_setting, so the file is
+      # already the edited value and applying it reverts nothing. Skipping a
+      # setting that already exists would instead mean a file was never applied
+      # at all: localinit runs after the first plugin load creates the scope,
+      # and that seeds source_url, rubygems_url, pypi_url, news_feed and
+      # system_health, so those five always exist by the time this runs.
       #
-      # A malformed flag or a file that won't coerce is reported and skipped
-      # rather than raising, for the same reason `initsettings` doesn't abort:
-      # one bad settings file shouldn't stop the rest of localinit.
+      # Because initsettings runs before localinit, a local mode file wins over
+      # OPENC3_SETTING_<NAME> for the same setting.
+      #
+      # A file that won't coerce is reported and skipped rather than raising,
+      # for the same reason `initsettings` doesn't abort: one bad settings file
+      # shouldn't stop the rest of localinit.
       problems = []
-      overwrite = SettingModel.read_control_flag(ENV, SettingModel::OVERWRITE_ENV_VAR, problems)
       scopes = ScopeModel.names()
       scopes.each do |scope|
         Dir["#{OPENC3_LOCAL_MODE_PATH}/#{scope}/settings/*.json"].each do |config|
           name = File.basename(config, ".json")
-          if !overwrite and SettingModel.get(name: name, scope: scope)
-            puts "Setting #{name} already exists - leaving unchanged"
-            next
-          end
           # save_setting writes a boolean as the JSON text "true"/"false", so
           # convert it back rather than storing the file contents verbatim -
           # the string "false" is truthy in the frontend. Settings that hold
