@@ -12,9 +12,29 @@
 */
 
 import Api from './api'
+// NOTE: AuthRequiredError itself is deliberately not exported. It's matched by
+// name, not by identity, so callers use isAuthRequiredError instead - exporting
+// the class would invite instanceof checks that break across editions.
+import {
+  isAuthRequiredError,
+  isUnauthorizedError,
+  logUnlessAuthRequired,
+  refreshToken,
+} from './authGuard'
 import axios from './axios'
 import Cable from './cable'
 import { ConfigParserError, ConfigParserService } from './configParser'
 import OpenC3Api from './openc3Api'
 
-export { Api, axios, Cable, ConfigParserError, ConfigParserService, OpenC3Api }
+export {
+  Api,
+  axios,
+  Cable,
+  ConfigParserError,
+  ConfigParserService,
+  isAuthRequiredError,
+  isUnauthorizedError,
+  logUnlessAuthRequired,
+  OpenC3Api,
+  refreshToken,
+}

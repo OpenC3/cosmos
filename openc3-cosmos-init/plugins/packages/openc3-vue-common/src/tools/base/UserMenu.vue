@@ -116,9 +116,10 @@
 </template>
 
 <script>
-import { Api } from '@openc3/js-common/services'
+import { Api, logUnlessAuthRequired } from '@openc3/js-common/services'
 import { OpenC3Api } from '@openc3/js-common/services'
 import { UpgradeToEnterpriseDialog } from '@/components'
+import { getCachedSetting } from '@/util'
 import DOMPurify from 'dompurify'
 
 export default {
@@ -172,14 +173,13 @@ export default {
                 this.activeUsers = ['None']
               }
             })
-            .catch(console.error)
+            .catch(logUnlessAuthRequired)
         }
       }
     },
   },
   created: function () {
-    this.api
-      .get_setting('news_feed')
+    getCachedSetting('news_feed')
       .then((response) => {
         if (response) {
           this.newsFeed = response
@@ -226,11 +226,13 @@ export default {
             })
           }
         })
-        .catch(console.error)
+        .catch(logUnlessAuthRequired)
     },
     logout: function () {
       OpenC3Auth.logout()
-      Api.put(`/openc3-api/users/logout/${this.username}`).catch(console.error)
+      Api.put(`/openc3-api/users/logout/${this.username}`).catch(
+        logUnlessAuthRequired,
+      )
     },
     login: function () {
       OpenC3Auth.login(location.href)

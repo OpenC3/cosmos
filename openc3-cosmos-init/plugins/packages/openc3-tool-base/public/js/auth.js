@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -17,11 +17,28 @@ const emptyPromise = function (resolution = null) {
     resolve(resolution)
   })
 }
+// Signals that there is no usable token and the browser is being redirected to
+// the login page. Callers must abandon the request they were about to make:
+// sending it can only 401, which does nothing but log a server side error.
+// Identified by name rather than by class so code shared with enterprise (which
+// has its own Auth implementation) doesn't have to import this file.
+class AuthRequiredError extends Error {
+  constructor(message = 'Authentication required') {
+    super(message)
+    this.name = 'AuthRequiredError'
+  }
+}
+
 class Auth {
+  // @param value [Number] unused in core, minimum token validity in seconds
+  // @param from_401 [Boolean] whether a request just came back unauthorized
+  // @return [Promise<Boolean>] whether the token was refreshed, or a rejection
+  //   with an AuthRequiredError if we're redirecting to login instead
   updateToken(value, from_401 = false) {
     if (!localStorage.openc3Token || from_401) {
       this.clearTokens()
       this.login(location.href)
+      return Promise.reject(new AuthRequiredError())
     }
     return emptyPromise()
   }

@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -16,7 +16,7 @@
 -->
 
 <script>
-import { OpenC3Api } from '@openc3/js-common/services'
+import { getCachedSetting } from '@/util'
 
 export default {
   data: function () {
@@ -45,9 +45,7 @@ export default {
     },
   },
   created: function () {
-    const api = new OpenC3Api()
-    api
-      .get_setting('classification_banner')
+    getCachedSetting('classification_banner')
       .then((response) => {
         if (response) {
           this.classification = JSON.parse(response)

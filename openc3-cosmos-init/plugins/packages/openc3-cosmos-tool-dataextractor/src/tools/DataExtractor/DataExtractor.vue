@@ -832,8 +832,8 @@ export default {
         this.keyMap[indexString] = key
         items.push([key, indexString])
       })
-      OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-        (refreshed) => {
+      OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity)
+        .then((refreshed) => {
           if (refreshed) {
             OpenC3Auth.setTokens()
           }
@@ -844,8 +844,10 @@ export default {
             start_time: this.startDateTime,
             end_time: this.endDateTime,
           })
-        },
-      )
+        })
+        // A rejection means we have no token and are being redirected to login,
+        // so don't try to subscribe
+        .catch(() => {})
     },
     received: function (data) {
       this.cable.recordPing()
