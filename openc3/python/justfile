@@ -87,20 +87,20 @@ lint-unsafe:
 # Type check and write GitHub-viewable reports (ty.sarif for code scanning, ty.md summary)
 typecheck-report:
     uv run --frozen ty check --exit-zero --output-format=gitlab openc3 ../../openc3-cosmos-script-runner-api/scripts > ty.json
-    uv run --script tools/ty_report.py --input ty.json --sarif ty.sarif --markdown ty.md \
+    uv run --script --locked tools/ty_report.py --input ty.json --sarif ty.sarif --markdown ty.md \
         --ty-version "$(uv run --frozen ty --version | awk '{print $2}')"
 
 # Regenerate .pyi stubs for the singleton-metaclass classes (Logger, Store, ...)
 stubs:
-    uv run --script tools/generate_singleton_stubs.py
+    uv run --script --locked tools/generate_singleton_stubs.py
 
 # Fail if a committed stub is out of date with its source (for CI)
 stubs-check:
-    uv run --script tools/generate_singleton_stubs.py --check
+    uv run --script --locked tools/generate_singleton_stubs.py --check
 
 # Show what regenerating would change, including hand-refined types it would drop
 stubs-diff:
-    uv run --script tools/generate_singleton_stubs.py --diff
+    uv run --script --locked tools/generate_singleton_stubs.py --diff
 
 # Type check with ty (advisory - ty is early development, doesn't fail on issues)
 typecheck:

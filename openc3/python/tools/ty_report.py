@@ -37,7 +37,9 @@ Usage:
 
 import argparse
 import json
+import os
 import sys
+import tempfile
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -55,6 +57,53 @@ RULE_DOCS = "https://docs.astral.sh/ty/rules/#"
 
 # Code scanning rejects uploads above this many results
 SARIF_RESULT_LIMIT = 25_000
+
+
+def allowed_roots(repo_root: Path) -> list[Path]:
+    """Directories this script may read from or write to.
+
+    The report paths come from the command line, so they are confined to the
+    repository, the working directory, the temp directory, and whatever
+    locations the CI runner asked us to write to (GITHUB_STEP_SUMMARY lives
+    outside the checkout). Anything else is rejected rather than followed.
+    """
+    roots = [repo_root, Path.cwd(), Path(tempfile.gettempdir())]
+    for variable in ("GITHUB_STEP_SUMMARY", "GITHUB_OUTPUT", "GITHUB_ENV", "RUNNER_TEMP"):
+        value = os.environ.get(variable)
+        if value:
+            candidate = Path(value)
+            roots.append(candidate if candidate.is_dir() else candidate.parent)
+    resolved = []
+    for root in roots:
+        try:
+            resolved.append(root.resolve(strict=True))
+        except OSError:
+            continue
+    return resolved
+
+
+def checked_path(path: Path, roots: list[Path], *, must_exist: bool) -> Path:
+    """Resolve path and confirm it stays inside one of roots.
+
+    Guards against a traversing or symlinked argument (--sarif ../../etc/foo)
+    reaching the file system.
+    """
+    try:
+        resolved = path.resolve(strict=must_exist)
+    except OSError as error:
+        raise SystemExit(f"cannot resolve {path}: {error}") from error
+
+    if not must_exist and not resolved.parent.is_dir():
+        raise SystemExit(f"refusing to write {path}: {resolved.parent} is not an existing directory")
+    if resolved.is_symlink():
+        raise SystemExit(f"refusing to follow symlink {path}")
+    if resolved.is_dir():
+        raise SystemExit(f"refusing to use directory {path} as a file")
+
+    if not any(resolved == root or root in resolved.parents for root in roots):
+        listed = ", ".join(str(root) for root in roots)
+        raise SystemExit(f"refusing to access {resolved}: outside the permitted directories ({listed})")
+    return resolved
 
 
 def to_repo_relative(path: str, repo_root: Path, cwd: Path) -> str:
@@ -187,15 +236,20 @@ def main() -> int:
     if not args.sarif and not args.markdown:
         parser.error("nothing to do: pass --sarif and/or --markdown")
 
-    raw = args.input.read_text() if args.input else sys.stdin.read()
-    diagnostics = json.loads(raw) if raw.strip() else []
-
     repo_root = args.repo_root.resolve()
     cwd = args.cwd.resolve()
+    roots = allowed_roots(repo_root)
+
+    input_path = checked_path(args.input, roots, must_exist=True) if args.input else None
+    sarif_path = checked_path(args.sarif, roots, must_exist=False) if args.sarif else None
+    markdown_path = checked_path(args.markdown, roots, must_exist=False) if args.markdown else None
+
+    raw = input_path.read_text() if input_path else sys.stdin.read()
+    diagnostics = json.loads(raw) if raw.strip() else []
     for diagnostic in diagnostics:
         diagnostic["location"]["path"] = to_repo_relative(diagnostic["location"]["path"], repo_root, cwd)
 
-    if args.sarif:
+    if sarif_path:
         if len(diagnostics) > SARIF_RESULT_LIMIT:
             print(
                 f"warning: {len(diagnostics)} results exceeds the code scanning limit of "
@@ -203,12 +257,12 @@ def main() -> int:
                 file=sys.stderr,
             )
             diagnostics = diagnostics[:SARIF_RESULT_LIMIT]
-        args.sarif.write_text(json.dumps(build_sarif(diagnostics, args.ty_version), indent=2) + "\n")
-        print(f"wrote {args.sarif} ({len(diagnostics)} results)")
+        sarif_path.write_text(json.dumps(build_sarif(diagnostics, args.ty_version), indent=2) + "\n")
+        print(f"wrote {sarif_path} ({len(diagnostics)} results)")
 
-    if args.markdown:
-        args.markdown.write_text(build_markdown(diagnostics))
-        print(f"wrote {args.markdown}")
+    if markdown_path:
+        markdown_path.write_text(build_markdown(diagnostics))
+        print(f"wrote {markdown_path}")
 
     return 0
 

@@ -72,9 +72,11 @@ jobs:
         run: uv sync --frozen --no-install-project --no-build
         working-directory: openc3/python
 
-      # Deterministic, so this one is allowed to fail the build
+      # --locked pins the scripts' own dependencies to tools/*.py.lock, so a
+      # new mypy or ruff release cannot change what runs here. Deterministic,
+      # so this one is allowed to fail the build
       - name: Verify singleton stubs are up to date
-        run: uv run --script --no-build tools/generate_singleton_stubs.py --check
+        run: uv run --script --locked --no-build tools/generate_singleton_stubs.py --check
         working-directory: openc3/python
 
       - name: Run ty
@@ -90,7 +92,7 @@ jobs:
       - name: Convert results to SARIF
         working-directory: openc3/python
         run: |
-          uv run --script --no-build tools/ty_report.py \
+          uv run --script --locked --no-build tools/ty_report.py \
             --input ty.json \
             --sarif ty.sarif \
             --markdown "$GITHUB_STEP_SUMMARY" \
