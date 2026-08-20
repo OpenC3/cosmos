@@ -293,11 +293,11 @@ In the unrolled version above, the COSMOS “Start script at selected line” fe
 
 ## Script Organization
 
-All scripts must be part of a [Plugin](../configuration/plugins.md). You can create a simple plugin called SCRIPTS or PROCEDURES that only contains lib and procedures directories to store scripts. If COSMOS detects a plugin without defined cmd/tlm it will not spawn microservices for telemetry processing.
+All scripts must be part of a [Target](../configuration/target.md) in a [Plugin](../configuration/plugins.md). You can create a simple plugin with a target called SCRIPTS or PROCEDURES that only contains lib and procedures directories to store scripts. If COSMOS detects a plugin without defined cmd/tlm it will not spawn microservices for telemetry processing.
 
 ### Organizing Your Scripts into a Plugin
 
-As your scripts become large with many methods, it makes sense to break them up into multiple files within a plugin. Here is a recommended organization for your plugin's scripts/procedures.
+As your scripts become large with many methods, it makes sense to break them up into multiple files and folders within a plugin. Here is a recommended organization for your plugin's scripts/procedures.
 
 | Folder                         | Description                                                               |
 | ------------------------------ | ------------------------------------------------------------------------- |

@@ -46,7 +46,7 @@ module OpenC3
       raise "Timeout of #{timeout}s waiting for cmd ack. Does target '#{target_name}' exist?"
     end
 
-    def self.inject_tlm(target_name, packet_name, item_hash = nil, type: :CONVERTED, stored: false, timeout: 5, scope:)
+    def self.inject_tlm(target_name, packet_name, item_hash = nil, type: :CONVERTED, stored: false, timeout: 5, received_time: nil, scope:)
       data = {}
       data['target_name'] = target_name.to_s.upcase
       data['packet_name'] = packet_name.to_s.upcase
@@ -55,6 +55,7 @@ module OpenC3
 
       db_shard = Store.db_shard_for_target(target_name, scope: scope)
       data['stored'] = stored
+      data['received_time'] = received_time unless received_time.nil?
       ack_topic = "{#{scope}__ACKCMD}TARGET__#{target_name}"
       Topic.update_topic_offsets([ack_topic], db_shard: db_shard)
       decom_id = Topic.write_topic("#{scope}__DECOMINTERFACE__{#{target_name}}",
