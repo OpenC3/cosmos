@@ -52,7 +52,7 @@
 # that is needed - no entry in this file is required. See .env for details.
 # ---------------------------------------------------------------------------
 
-#services:
+# services:
 #   # -----------------------------------------------------------------------
 #   # Command / Telemetry API
 #   # -----------------------------------------------------------------------
@@ -193,7 +193,7 @@
 #       # sticky - both are re-read on every init.
 #       - OPENC3_SETTING_TIME_ZONE=local
 #       - OPENC3_SETTING_TIME_FORMAT=ampm
-#       - OPENC3_SETTING_PYPI_URL=https://mirrors.sustech.edu.cn/pypi/web/
+#       - OPENC3_SETTING_PYPI_URL=https://pypi.org
 #       - OPENC3_SETTING_THEME=cosmosDarkSlate
 #       # Rewrite every OPENC3_SETTING_* value on every init, discarding
 #       # Admin Console edits. Unlike the OPENC3_NO_* flags this one reads its
