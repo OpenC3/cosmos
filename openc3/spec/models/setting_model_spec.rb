@@ -77,6 +77,14 @@ module OpenC3
           .to raise_error(ArgumentError, /Invalid value "nope" for setting 'ai_chat'/)
       end
 
+      it "strips whitespace for a boolean but keeps it for text" do
+        # handle_true_false_strict strips, so ' true ' from a compose file still
+        # reads as on. Text is stored exactly as given - trimming a subtitle or
+        # a URL would be guessing at what the operator meant
+        expect(SettingModel.coerce('ai_chat', ' true ')).to be true
+        expect(SettingModel.coerce('subtitle', ' Ops ')).to eql ' Ops '
+      end
+
       it "leaves a string setting as the text given" do
         expect(SettingModel.coerce('time_zone', 'UTC')).to eql 'UTC'
         expect(SettingModel.coerce('time_format', '24hr')).to eql '24hr'
@@ -226,6 +234,20 @@ module OpenC3
         SettingModel.names().each { |name| SettingModel.get(name: name) }
         reseeded = SettingModel.parse_defaults_env(env)
         expect(reseeded).to eql stored
+      end
+
+      it "survives YAML for text that would otherwise break the line" do
+        # The round trip above only feeds each row's declared example, so the
+        # escaping of a comment marker, a quote, a backslash and a trailing
+        # space is only exercised here
+        hostile = {
+          'subtitle' => 'Bay #3 "hot" c:\\logs',
+          'source_url' => ' https://example.com/a#b ',
+        }
+        hostile.each { |name, data| SettingModel.set({ name: name, data: data }, scope: nil) }
+        env = YAML.load("e:\n" + SettingModel.export_lines.map { |line| "  #{line}" }.join("\n"))['e']
+                  .to_h { |entry| entry.split('=', 2) }
+        expect(SettingModel.parse_defaults_env(env)).to eql hostile
       end
     end
 
@@ -434,6 +456,12 @@ module OpenC3
       it "doesn't match when the length differs by more than one" do
         expect(SettingModel.near_match?('time_zone', 'time')).to be false
       end
+
+      it "doesn't match a transposition" do
+        # Documented limit of the one-character check: a swap reads as two
+        # substitutions, so no suggestion is offered rather than a wrong one
+        expect(SettingModel.near_match?('time_zone', 'tiem_zone')).to be false
+      end
     end
 
     describe "self.parse_defaults_env" do
@@ -469,6 +497,12 @@ module OpenC3
       it "handles non-String keys and values" do
         env = { :OPENC3_SETTING_TIME_ZONE => :UTC }
         expect(SettingModel.parse_defaults_env(env)).to eql({ 'time_zone' => 'UTC' })
+      end
+
+      it "ignores a lowercase prefix" do
+        # The scan is case sensitive. Nothing reads a lowercase variable, so
+        # pinning it here says the silence is deliberate
+        expect(SettingModel.parse_defaults_env({ 'openc3_setting_time_zone' => 'UTC' })).to eql({})
       end
     end
 
@@ -513,6 +547,18 @@ module OpenC3
         expect { SettingModel.validate_setting!('whatever', 'x', allow_unknown: true) }.to_not raise_error
       end
 
+      it "accepts a value exactly at the size limit" do
+        expect { SettingModel.validate_setting!('big', 'x' * SettingModel::MAX_VALUE_BYTES, allow_unknown: true) }
+          .to_not raise_error
+      end
+
+      it "doesn't trim whitespace from a string value" do
+        # A stray space from `- OPENC3_SETTING_TIME_ZONE= UTC` is rejected rather
+        # than guessed at, and the error shows the space
+        expect { SettingModel.validate_setting!('time_zone', SettingModel.coerce('time_zone', ' UTC')) }
+          .to raise_error(/Invalid value " UTC"/)
+      end
+
       it "rejects a value over the size limit" do
         expect { SettingModel.validate_setting!('big', 'x' * (SettingModel::MAX_VALUE_BYTES + 1), allow_unknown: true) }
           .to raise_error(/exceeds the #{SettingModel::MAX_VALUE_BYTES} byte limit/)
@@ -542,6 +588,22 @@ module OpenC3
         action, message = SettingModel.plan_setting('time_zone', 'UTC', existing, true)
         expect(action).to eql :write
         expect(message).to match(/Overwriting setting 'time_zone': "local" -> "UTC"/)
+      end
+
+      it "skips a value this seeder didn't write, without claiming it changed" do
+        # No provenance record is the normal state on a deployment upgrading into
+        # this feature, so the message can't assert an operator edited anything
+        action, message = SettingModel.plan_setting('time_zone', 'UTC', { 'data' => 'local' }, false)
+        expect(action).to eql :skip
+        expect(message).to match(/holds a value initsettings didn't write - leaving as "local"/)
+        expect(message).to match(/set #{SettingModel::OVERWRITE_ENV_VAR} to replace it/)
+      end
+
+      it "skips a seeded setting that already matches" do
+        SettingModel.record_seeded('time_zone', 'UTC')
+        action, message = SettingModel.plan_setting('time_zone', 'UTC', { 'data' => 'UTC' }, false)
+        expect(action).to eql :skip
+        expect(message).to match(/already matches "UTC" - leaving unchanged/)
       end
     end
 

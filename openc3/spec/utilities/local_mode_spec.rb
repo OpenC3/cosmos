@@ -1004,6 +1004,45 @@ module OpenC3
         expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('UTC')
       end
 
+      it "round trips every type through save_setting" do
+        # The Admin Console stores each setting with save_setting, so whatever it
+        # wrote has to come back out of the file as the same thing. The halves
+        # are tested apart from each other everywhere else, which is how the
+        # string "false" coming back for a boolean survived
+        values = {
+          'time_zone' => 'UTC',                                  # plain text
+          'ai_chat' => false,                                    # real boolean
+          'classification_banner' => '{"text":"UNCLASSIFIED"}',  # JSON kept as text
+          'ai_chat_config' => { 'provider' => 'anthropic' },     # JSON as an object
+        }
+        values.each { |name, data| LocalMode.save_setting('DEFAULT', name, data) }
+        LocalMode.sync_settings()
+        values.each do |name, data|
+          expect(SettingModel.get(name: name, scope: 'DEFAULT')['data']).to eql data
+        end
+      end
+
+      it "syncs the files of every scope that exists" do
+        # Settings are global despite the per-scope path, so this is about which
+        # folders are read, not about isolating values
+        ScopeModel.new(name: 'OTHER').create
+        write_setting('time_zone', 'UTC')
+        FileUtils.mkdir_p("#{@tmp_dir}/OTHER/settings")
+        File.write("#{@tmp_dir}/OTHER/settings/time_format.json", '24hr')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'time_zone')['data']).to eq('UTC')
+        expect(SettingModel.get(name: 'time_format')['data']).to eq('24hr')
+      end
+
+      it "ignores a settings folder for a scope that doesn't exist" do
+        # The loop is driven by ScopeModel.names, so a folder left behind by a
+        # destroyed scope doesn't resurrect its settings
+        FileUtils.mkdir_p("#{@tmp_dir}/GONE/settings")
+        File.write("#{@tmp_dir}/GONE/settings/time_zone.json", 'UTC')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'time_zone')).to be_nil
+      end
+
       it "does nothing when there are no settings files" do
         expect { LocalMode.sync_settings() }.to_not raise_error
         expect(SettingModel.names()).to be_empty
