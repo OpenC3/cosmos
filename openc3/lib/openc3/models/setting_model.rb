@@ -73,13 +73,25 @@ module OpenC3
     # tabs/settings/<Name>Settings.vue, e.g. TimeZoneSettings.vue has
     # `const settingName = 'time_zone'`. Then:
     #
-    #   type:   :string or :boolean, matching what the component SAVES, not
-    #           what it displays. A component that calls JSON.stringify before
-    #           saveSetting and JSON.parse in parseSetting stores JSON *text*,
-    #           so its type is :string - storing a parsed object instead would
-    #           make its JSON.parse throw. See 'astro' below.
-    #   values: the allowed values, or nil for free text (a URL, a subtitle).
+    #   type:   what the reader SAVES and expects back, not what a control
+    #           displays. Storing the wrong shape is silent - the reader either
+    #           throws or ignores the value:
+    #             :string     plain text (a URL, a subtitle)
+    #             :boolean    real true/false; the frontend treats the string
+    #                         "false" as truthy, so these must not be text
+    #             :json_text  JSON kept as a String. A component that calls
+    #                         JSON.stringify before saveSetting and JSON.parse
+    #                         in parseSetting is this - handing it a parsed
+    #                         object makes its own JSON.parse throw
+    #             :json       JSON parsed into an object before storing, for a
+    #                         reader that checks the shape. AiChatConfig.load
+    #                         does `raw['data'].is_a?(Hash) ? ... : {}`, so text
+    #                         would be silently discarded
+    #   values: the allowed values, or nil for free text.
     #           Copy them from the component's v-select items.
+    #   require_keys: for :json/:json_text, top-level keys the blob must have.
+    #           Use when a partial blob would break the reader rather than just
+    #           fall back to a default. See 'system_health' below.
     #
     # Example, for a hypothetical LogLevelSettings.vue holding 'log_level':
     #
@@ -106,10 +118,30 @@ module OpenC3
       'pypi_url' => { type: :string, values: nil },
       # JSON *text*: these components JSON.stringify before saving and
       # JSON.parse on load, so the stored value is a String, not an object
-      'astro' => { type: :string, values: nil },
-      'classification_banner' => { type: :string, values: nil },
-      'context_tag' => { type: :string, values: nil },
+      'astro' => { type: :json_text, values: nil },
+      'classification_banner' => { type: :json_text, values: nil },
+      'context_tag' => { type: :json_text, values: nil },
+      # Settings with no Admin Console tab of their own - see NO_ADMIN_TAB below
+      #
+      # Written as JSON text by ScopeModel#seed_database and re-read by the
+      # Enterprise metrics microservices. require_keys because a partial blob
+      # doesn't degrade gracefully: log_thresholds does
+      # data['global']['enableAlerts'] and passes data[metric_name] straight to
+      # check_persistent_threshold, so a blob missing either key raises rather
+      # than falling back, silently ending CPU/memory/disk alerting.
+      'system_health' => { type: :json_text, values: nil,
+                           require_keys: ['cpu', 'memory', 'disk', 'global'] },
+      # Enterprise AI chat provider/model config. :json, not :json_text -
+      # AiChatConfig.load ignores a String and falls back to {}
+      'ai_chat_config' => { type: :json, values: nil },
     }
+
+    # Settings that KNOWN_SETTINGS lists on purpose despite having no
+    # *Settings.vue tab in this repo. The drift specs compare KNOWN_SETTINGS
+    # against those components, so without this list adding either of these
+    # would fail the "doesn't list a setting the Admin Console no longer has"
+    # check. Both are real settings that code reads.
+    NO_ADMIN_TAB = ['system_health', 'ai_chat_config']
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -337,8 +369,43 @@ module OpenC3
     # @return [Object] value in the form the frontend expects
     def self.coerce(name, value)
       return value unless value.is_a?(String)
-      return value unless KNOWN_SETTINGS.dig(name, :type) == :boolean
-      ConfigParser.handle_true_false_strict(value, description: "setting '#{name}'")
+      case KNOWN_SETTINGS.dig(name, :type)
+      when :boolean
+        ConfigParser.handle_true_false_strict(value, description: "setting '#{name}'")
+      when :json
+        # Parsed, because this setting's reader checks for an object and
+        # discards text. Validated here so a malformed blob is reported at seed
+        # time rather than read back as a default nobody asked for.
+        parse_json!(name, value)
+      when :json_text
+        # Kept as text, but parsed anyway to prove it is valid - the component
+        # that JSON.parses it has no way to report a failure
+        parse_json!(name, value)
+        value
+      else
+        value
+      end
+    end
+
+    # @return [Object] the parsed blob
+    # @raise [RuntimeError] when the value isn't a JSON object with the keys the
+    #   setting's reader requires
+    def self.parse_json!(name, value)
+      parsed = JSON.parse(value)
+      unless parsed.is_a?(Hash)
+        raise "Value for setting '#{name}' must be a JSON object, got #{parsed.class}"
+      end
+      required = KNOWN_SETTINGS.dig(name, :require_keys)
+      if required
+        missing = required - parsed.keys
+        unless missing.empty?
+          raise "Value for setting '#{name}' is missing required key(s): #{missing.join(', ')}. " \
+                "Seed the whole object - a partial one breaks the code that reads it"
+        end
+      end
+      parsed
+    rescue JSON::ParserError => error
+      raise "Value for setting '#{name}' is not valid JSON: #{error.message}"
     end
 
     # Largest value we will write. Settings are read into every browser tab, so
@@ -390,10 +457,14 @@ module OpenC3
       KNOWN_SETTINGS.map do |name, details|
         allowed = if details[:values]
                     details[:values].join(', ')
-                  elsif details[:type] == :boolean
-                    '1, true, 0, false'
                   else
-                    'any text'
+                    case details[:type]
+                    when :boolean then '1, true, 0, false'
+                    when :json, :json_text
+                      keys = details[:require_keys]
+                      keys ? "JSON object with keys: #{keys.join(', ')}" : 'JSON object'
+                    else 'any text'
+                    end
                   end
         "#{name}: #{allowed}"
       end
