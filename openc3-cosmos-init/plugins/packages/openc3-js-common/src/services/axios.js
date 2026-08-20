@@ -16,6 +16,7 @@
 */
 
 import axios from 'axios'
+import { logUnlessAuthRequired } from './authGuard'
 
 const axiosInstance = axios.create({
   baseURL: location.origin,
@@ -57,7 +58,8 @@ axiosInstance.interceptors.response.use(
               OpenC3Auth.setTokens()
             }
           })
-          .catch(() => {})
+          // Only the redirect is expected here; log anything else
+          .catch(logUnlessAuthRequired)
         return Promise.reject(error)
       }
       // HazardousError (409) and CriticalCmdError (428) are command control

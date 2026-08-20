@@ -225,7 +225,12 @@
 </template>
 
 <script>
-import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
+import {
+  Api,
+  Cable,
+  OpenC3Api,
+  logUnlessAuthRequired,
+} from '@openc3/js-common/services'
 import {
   Config,
   OpenC3TimePicker,
@@ -550,9 +555,10 @@ export default {
               ...this.startEndTime,
             })
           })
-          // A rejection means we have no token and are being redirected to
-          // login, so don't try to subscribe
-          .catch(() => {})
+          // An AuthRequiredError means we have no token and are being
+          // redirected to login, so don't try to subscribe. Anything else is
+          // unexpected and still gets logged.
+          .catch(logUnlessAuthRequired)
       }
 
       if (packetBased.length > 0) {
@@ -583,9 +589,10 @@ export default {
               })
             })
           })
-          // A rejection means we have no token and are being redirected to
-          // login, so don't try to subscribe
-          .catch(() => {})
+          // An AuthRequiredError means we have no token and are being
+          // redirected to login, so don't try to subscribe. Anything else is
+          // unexpected and still gets logged.
+          .catch(logUnlessAuthRequired)
       }
     },
     removeFromSubscription: function (packets) {

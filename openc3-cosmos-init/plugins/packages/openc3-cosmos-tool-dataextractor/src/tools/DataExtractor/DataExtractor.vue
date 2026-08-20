@@ -306,7 +306,12 @@
 // Putting large data into Vue data section causes lots of overhead
 let dataExtractorRawData = []
 
-import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
+import {
+  Api,
+  Cable,
+  OpenC3Api,
+  logUnlessAuthRequired,
+} from '@openc3/js-common/services'
 import {
   Config,
   OpenC3TimePicker,
@@ -845,9 +850,10 @@ export default {
             end_time: this.endDateTime,
           })
         })
-        // A rejection means we have no token and are being redirected to login,
-        // so don't try to subscribe
-        .catch(() => {})
+        // An AuthRequiredError means we have no token and are being redirected
+        // to login, so don't try to subscribe. Anything else is unexpected and
+        // still gets logged.
+        .catch(logUnlessAuthRequired)
     },
     received: function (data) {
       this.cable.recordPing()
