@@ -22,6 +22,17 @@ module OpenC3
       allow($stdout).to receive(:puts)
     end
 
+    # A valid env var value for a KNOWN_SETTINGS row, derived only from the row
+    # itself so a newly added setting needs no test change
+    def example_value(details)
+      case details[:type]
+      when :boolean then 'true'
+      when :json, :json_text
+        JSON.generate((details[:require_keys] || ['key']).to_h { |key| [key, {}] })
+      else details[:values] ? details[:values].first : 'x'
+      end
+    end
+
     describe "self.get / self.set" do
       it "round trips a setting" do
         SettingModel.set({ name: 'time_zone', data: 'UTC' }, scope: nil)
@@ -85,6 +96,40 @@ module OpenC3
         expect(SettingModel.coerce('context_tag', '{"text":"DEV"}')).to eql '{"text":"DEV"}'
       end
 
+      it "parses a :json setting into an object" do
+        # AiChatConfig.load ignores a String, so text would be silently dropped
+        expect(SettingModel.coerce('ai_chat_config', '{"provider":"openai"}'))
+          .to eql({ 'provider' => 'openai' })
+      end
+
+      it "raises on a :json setting that isn't valid JSON" do
+        expect { SettingModel.coerce('ai_chat_config', 'provider=openai') }
+          .to raise_error(/Value for setting 'ai_chat_config' is not valid JSON/)
+      end
+
+      it "raises on a :json setting that isn't an object" do
+        expect { SettingModel.coerce('ai_chat_config', '["openai"]') }
+          .to raise_error(/must be a JSON object, got Array/)
+      end
+
+      it "raises on malformed JSON text rather than storing it" do
+        # The component that JSON.parses this has no way to report a failure
+        expect { SettingModel.coerce('classification_banner', '{"text":') }
+          .to raise_error(/Value for setting 'classification_banner' is not valid JSON/)
+      end
+
+      it "keeps a require_keys setting as text once every key is present" do
+        blob = JSON.generate({ 'cpu' => {}, 'memory' => {}, 'disk' => {}, 'global' => {} })
+        expect(SettingModel.coerce('system_health', blob)).to eql blob
+      end
+
+      it "raises on a require_keys setting missing a key" do
+        # log_thresholds does data['global']['enableAlerts'] and passes
+        # data[metric_name] on unchecked, so a partial blob raises there instead
+        expect { SettingModel.coerce('system_health', '{"global":{"enableAlerts":false}}') }
+          .to raise_error(/missing required key\(s\): cpu, memory, disk/)
+      end
+
       it "leaves an unknown setting as the text given" do
         expect(SettingModel.coerce('brand_new', 'true')).to eql 'true'
       end
@@ -102,6 +147,85 @@ module OpenC3
         expect(lines).to include('time_zone: local, UTC')
         expect(lines).to include('ai_chat: 1, true, 0, false')
         expect(lines).to include('subtitle: any text')
+        expect(lines).to include('ai_chat_config: JSON object')
+        expect(lines).to include('system_health: JSON object with keys: cpu, memory, disk, global')
+      end
+    end
+
+    describe "self.describe_json_settings" do
+      it "gives an example for every JSON setting" do
+        json_names = SettingModel::KNOWN_SETTINGS.select { |_n, d|
+          [:json, :json_text].include?(d[:type])
+        }.keys
+        described = SettingModel.describe_json_settings.to_h
+        expect(described.keys).to match_array(json_names)
+        # Without an example an operator has no way to learn the shape short of
+        # reading the component source
+        expect(described.values).to all(be_a(String))
+      end
+
+      it "gives an example that actually validates" do
+        SettingModel.describe_json_settings.each do |name, example|
+          expect { SettingModel.coerce(name, example) }
+            .to_not raise_error, "#{name}'s example is not a valid value"
+        end
+      end
+    end
+
+    describe "self.export_lines" do
+      it "is empty when nothing is stored" do
+        expect(SettingModel.export_lines).to eql []
+      end
+
+      it "reports Redis being unreachable through redis_available?" do
+        # openc3cli gates --export on this so a stopped COSMOS produces an
+        # actionable message instead of "Bad file descriptor (redis://...)"
+        expect(SettingModel.redis_available?).to be true
+        allow(SettingModel).to receive(:names).and_raise(Errno::EBADF)
+        expect(SettingModel.redis_available?).to be false
+      end
+
+      it "emits a paste-ready line per stored setting" do
+        SettingModel.set({ name: 'time_zone', data: 'UTC' }, scope: nil)
+        expect(SettingModel.export_lines).to eql ['- OPENC3_SETTING_TIME_ZONE=UTC']
+      end
+
+      it "skips a setting with no value stored" do
+        SettingModel.set({ name: 'time_zone', data: 'UTC' }, scope: nil)
+        expect(SettingModel.export_lines.length).to eql 1
+      end
+
+      it "quotes JSON so YAML doesn't read it as a mapping" do
+        json = '{"hideClock":false}'
+        SettingModel.set({ name: 'astro', data: json }, scope: nil)
+        expect(SettingModel.export_lines)
+          .to eql ['- "OPENC3_SETTING_ASTRO={\\"hideClock\\":false}"']
+      end
+
+      it "serializes a :json setting stored as an object" do
+        SettingModel.set({ name: 'ai_chat_config', data: { 'provider' => 'openai' } }, scope: nil)
+        expect(SettingModel.export_lines)
+          .to eql ['- "OPENC3_SETTING_AI_CHAT_CONFIG={\\"provider\\":\\"openai\\"}"']
+      end
+
+      it "emits a boolean unquoted" do
+        SettingModel.set({ name: 'ai_chat', data: false }, scope: nil)
+        expect(SettingModel.export_lines).to eql ['- OPENC3_SETTING_AI_CHAT=false']
+      end
+
+      it "round trips every setting back through the seeder" do
+        # The point of --export is that pasting the output seeds the same values
+        stored = SettingModel::KNOWN_SETTINGS.to_h do |name, details|
+          value = SettingModel.coerce(name, example_value(details))
+          SettingModel.set({ name: name, data: value }, scope: nil)
+          [name, value]
+        end
+        env = YAML.load("e:\n" + SettingModel.export_lines.map { |l| "  #{l}" }.join("\n"))['e']
+                  .to_h { |entry| entry.split('=', 2) }
+        expect(env.length).to eql SettingModel::KNOWN_SETTINGS.length
+        SettingModel.names().each { |name| SettingModel.get(name: name) }
+        reseeded = SettingModel.parse_defaults_env(env)
+        expect(reseeded).to eql stored
       end
     end
 
@@ -150,7 +274,7 @@ module OpenC3
       # What the component passes to saveSetting, which is what ends up in
       # Redis - the declared type has to match this, not what the control
       # displays. Three shapes appear in these files:
-      #   saveSetting(NAME, JSON.stringify({...}))  -> JSON text, so :string
+      #   saveSetting(NAME, JSON.stringify({...}))  -> JSON text, so :json_text
       #   saveSetting(NAME, this.saveObj)           -> ditto, via a method
       #   saveSetting(NAME, this.someFlag)          -> the data() initial value
       # Anything else yields nil and is not asserted on.
@@ -158,11 +282,12 @@ module OpenC3
         index = source =~ /saveSetting\(\s*#{Regexp.escape(token)}\s*,/
         return nil unless index
         argument = call_args(source, source.index('(', index))[1].to_s.strip
-        return :string if argument.include?('JSON.stringify')
+        # JSON.stringify is the signal that the component stores JSON *text*
+        return :json_text if argument.include?('JSON.stringify')
         prop = argument[/this\.(\w+)/, 1]
         return nil unless prop
         body = prop_source[/#{prop}:\s*function[^\n]*\n(.*?)\n\s{4}\},/m, 1]
-        return :string if body&.include?('JSON.stringify')
+        return :json_text if body&.include?('JSON.stringify')
         case prop_source[/^\s+#{prop}:\s*(.+?),?\s*$/, 1]
         when 'true', 'false' then :boolean
         when /\A'.*'\z/, /\A".*"\z/ then :string
@@ -196,7 +321,9 @@ module OpenC3
 
       it "doesn't list a setting the Admin Console no longer has" do
         skip "Vue sources not present" unless Dir.exist?(SETTINGS_VUE_DIR)
-        stale = SettingModel::KNOWN_SETTINGS.keys - admin_console_setting_names
+        # NO_ADMIN_TAB settings are read by code rather than an Admin Console
+        # tab, so they are legitimately absent from the Vue components
+        stale = SettingModel::KNOWN_SETTINGS.keys - admin_console_setting_names - SettingModel::NO_ADMIN_TAB
         expect(stale).to be_empty, "KNOWN_SETTINGS lists settings no component uses: #{stale.join(', ')}"
       end
 
@@ -221,17 +348,31 @@ module OpenC3
     describe "KNOWN_SETTINGS" do
       it "declares a valid type for every setting" do
         SettingModel::KNOWN_SETTINGS.each do |name, details|
-          expect([:string, :boolean]).to include(details[:type]), "#{name} has an invalid type"
+          expect([:string, :boolean, :json, :json_text]).to include(details[:type]),
+                                                            "#{name} has an invalid type"
           expect(name).to match(/\A[a-z0-9_]+\z/)
         end
       end
 
       it "only lists allowed values for string settings" do
-        # A boolean's allowed values are fixed, so a values list would be dead
+        # A boolean's or a JSON blob's allowed values aren't an enumerable list,
+        # so a values list would be dead
         SettingModel::KNOWN_SETTINGS.each do |name, details|
-          next unless details[:type] == :boolean
-          expect(details[:values]).to be_nil, "#{name} is a boolean and shouldn't list values"
+          next if details[:type] == :string
+          expect(details[:values]).to be_nil, "#{name} is #{details[:type]} and shouldn't list values"
         end
+      end
+
+      it "only requires keys on a JSON setting" do
+        SettingModel::KNOWN_SETTINGS.each do |name, details|
+          next unless details[:require_keys]
+          expect([:json, :json_text]).to include(details[:type]),
+                                        "#{name} requires keys but isn't JSON"
+        end
+      end
+
+      it "declares NO_ADMIN_TAB settings it actually lists" do
+        expect(SettingModel::NO_ADMIN_TAB - SettingModel::KNOWN_SETTINGS.keys).to be_empty
       end
     end
 
@@ -429,16 +570,12 @@ module OpenC3
         expect(SettingModel.get(name: 'classification_banner')['data']).to eql json
       end
 
-      it "seeds every setting the Admin Console exposes" do
+      it "seeds every setting" do
+        # Every declared setting must be seedable with a value built purely from
+        # its own row - if a new type needs special handling to be settable,
+        # that is worth failing on here
         env = SettingModel::KNOWN_SETTINGS.to_h do |name, details|
-          value = if details[:values]
-                    details[:values].first
-                  elsif details[:type] == :boolean
-                    'true'
-                  else
-                    'x'
-                  end
-          ["OPENC3_SETTING_#{name.upcase}", value]
+          ["OPENC3_SETTING_#{name.upcase}", example_value(details)]
         end
         expect(SettingModel.apply_defaults(env: env)).to match_array(SettingModel::KNOWN_SETTINGS.keys)
       end
@@ -766,6 +903,14 @@ module OpenC3
       it "says so when nothing is set" do
         expect($stdout).to receive(:puts).with(/No OPENC3_SETTING_\* environment variables set/)
         expect(SettingModel.apply_defaults(env: {}, dry_run: true)).to eql []
+      end
+
+      it "doesn't claim nothing was set when every value failed to coerce" do
+        # settings ends up empty either way, but the operator did set one
+        expect($stdout).to_not receive(:puts).with(/No OPENC3_SETTING_\* environment variables set/)
+        allow($stdout).to receive(:puts)
+        expect { SettingModel.apply_defaults(env: { 'OPENC3_SETTING_AI_CHAT' => 'nope' }) }
+          .to_not raise_error
       end
 
       it "reads from ENV by default" do

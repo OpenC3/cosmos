@@ -92,6 +92,10 @@ module OpenC3
     #   require_keys: for :json/:json_text, top-level keys the blob must have.
     #           Use when a partial blob would break the reader rather than just
     #           fall back to a default. See 'system_health' below.
+    #   example: for :json/:json_text, a valid value. There is no other way for
+    #           an operator to discover the shape of a blob short of reading the
+    #           component source, so every JSON setting needs one. Copy it from
+    #           the JSON.stringify({...}) in the component's save method.
     #
     # Example, for a hypothetical LogLevelSettings.vue holding 'log_level':
     #
@@ -118,9 +122,13 @@ module OpenC3
       'pypi_url' => { type: :string, values: nil },
       # JSON *text*: these components JSON.stringify before saving and
       # JSON.parse on load, so the stored value is a String, not an object
-      'astro' => { type: :json_text, values: nil },
-      'classification_banner' => { type: :json_text, values: nil },
-      'context_tag' => { type: :json_text, values: nil },
+      'astro' => { type: :json_text, values: nil,
+                   example: '{"hideClock":false}' },
+      'classification_banner' => { type: :json_text, values: nil,
+                                   example: '{"text":"UNCLASSIFIED","fontColor":"#ffffff",' \
+                                            '"backgroundColor":"#00cc00","topHeight":20,"bottomHeight":0}' },
+      'context_tag' => { type: :json_text, values: nil,
+                         example: '{"text":"DEV","fontColor":"#ffffff","backgroundColor":"#ff0000"}' },
       # Settings with no Admin Console tab of their own - see NO_ADMIN_TAB below
       #
       # Written as JSON text by ScopeModel#seed_database and re-read by the
@@ -130,10 +138,17 @@ module OpenC3
       # check_persistent_threshold, so a blob missing either key raises rather
       # than falling back, silently ending CPU/memory/disk alerting.
       'system_health' => { type: :json_text, values: nil,
-                           require_keys: ['cpu', 'memory', 'disk', 'global'] },
+                           require_keys: ['cpu', 'memory', 'disk', 'global'],
+                           example: '{"cpu":{"redThreshold":90.0,"yellowThreshold":80.0,"snoozeMinutes":15,' \
+                                    '"sustainedSeconds":15},"memory":{"redThreshold":90.0,' \
+                                    '"yellowThreshold":80.0,"snoozeMinutes":15,"sustainedSeconds":15},' \
+                                    '"disk":{"redThreshold":90.0,"yellowThreshold":80.0,' \
+                                    '"snoozeMinutes":720,"sustainedSeconds":60},' \
+                                    '"global":{"enableAlerts":true}}' },
       # Enterprise AI chat provider/model config. :json, not :json_text -
       # AiChatConfig.load ignores a String and falls back to {}
-      'ai_chat_config' => { type: :json, values: nil },
+      'ai_chat_config' => { type: :json, values: nil,
+                            example: '{"provider":"anthropic","model":"claude-opus-4-7","base_url":""}' },
     }
 
     # Settings that KNOWN_SETTINGS lists on purpose despite having no
@@ -189,7 +204,12 @@ module OpenC3
       prefix = dry_run ? '[dry run] ' : ''
       written = []
       if settings.empty?
-        puts "#{prefix}No #{SETTING_ENV_PREFIX}* environment variables set - nothing to seed"
+        # Only when nothing matched the prefix. If every matching variable failed
+        # to coerce, settings is empty too, and claiming none were set is a lie -
+        # the errors reported below are the explanation
+        if problems.empty?
+          puts "#{prefix}No #{SETTING_ENV_PREFIX}* environment variables set - nothing to seed"
+        end
       else
         # A dry run is most useful before `openc3.sh start`, when there is no
         # Redis to compare against. Names and values can still be checked.
@@ -449,6 +469,34 @@ module OpenC3
       raise "Invalid value #{value.inspect} for setting '#{name}'. Must be one of: #{allowed.map(&:inspect).join(', ')}"
     end
 
+    # The stored settings as paste-ready OPENC3_SETTING_* lines, for
+    # `cli initsettings --export`.
+    #
+    # This is the answer to "what do I put in a JSON setting" - configure it in
+    # the Admin Console, run --export, paste the line. Reading the shape out of
+    # a running system can't drift from the code the way a documented example
+    # can, and it captures the values an operator already tuned by hand.
+    #
+    # @param env_only [Boolean] skip settings that have no value stored
+    # @return [Array<String>] one compose "environment:" list item per setting
+    def self.export_lines
+      KNOWN_SETTINGS.keys.filter_map do |name|
+        setting = get(name: name)
+        next if setting.nil?
+        "- #{yaml_env_item(name, setting['data'])}"
+      end
+    end
+
+    # One "KEY=value" env entry, quoted when YAML would otherwise mangle it.
+    # JSON always contains '":', which YAML reads as a mapping, so those always
+    # need quoting - the exact trap the compose.override.yaml comments warn about.
+    def self.yaml_env_item(name, data)
+      value = data.is_a?(String) ? data : JSON.generate(data)
+      entry = "#{SETTING_ENV_PREFIX}#{name.upcase}=#{value}"
+      return entry unless entry =~ /[:#"'\\]|\A\s|\s\z/
+      %("#{entry.gsub('\\', '\\\\\\\\').gsub('"', '\\\\"')}")
+    end
+
     # Every setting that can be seeded, with its allowed values, for the
     # `cli initsettings --help` listing.
     #
@@ -467,6 +515,18 @@ module OpenC3
                     end
                   end
         "#{name}: #{allowed}"
+      end
+    end
+
+    # The JSON settings with a valid example value, for `--help`. Kept separate
+    # from describe_settings because a blob is far too long for that one-line
+    # "name: allowed values" format.
+    #
+    # @return [Array<Array(String, String)>] name and example, in table order
+    def self.describe_json_settings
+      KNOWN_SETTINGS.filter_map do |name, details|
+        next unless [:json, :json_text].include?(details[:type])
+        [name, details[:example]]
       end
     end
 

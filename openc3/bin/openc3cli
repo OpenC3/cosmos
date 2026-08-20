@@ -1495,7 +1495,7 @@ if not ARGV[0].nil? # argument(s) given
 
   when 'initsettings'
     if ARGV[1] == '--help' || ARGV[1] == '-h'
-      puts "Usage: cli initsettings [--dry-run]"
+      puts "Usage: cli initsettings [--dry-run | --export]"
       puts ""
       puts "Seed COSMOS settings from the environment. A setting changed in the Admin"
       puts "Console is left alone, so those edits survive a restart."
@@ -1525,23 +1525,63 @@ if not ARGV[0].nil? # argument(s) given
       puts "Every other setting is stored as the text given, including the settings"
       puts "whose text is JSON (astro, classification_banner, context_tag)."
       puts ""
+      puts "JSON settings - shape of each blob:"
+      OpenC3::SettingModel.describe_json_settings.each do |name, example|
+        puts "  #{name}"
+        puts "    #{example}"
+      end
+      puts ""
+      puts "Rather than hand-writing one of those, configure it in Admin -> Settings"
+      puts "and run 'cli initsettings --export' to print the current values as lines"
+      puts "you can paste straight into compose.override.yaml."
+      puts ""
       puts "Options:"
       puts "      --dry-run     Report what would be seeded and exit without writing."
       puts "                    Lists every problem rather than stopping at the first,"
       puts "                    and works before Redis is up so it can be run ahead of"
       puts "                    starting COSMOS. Exits non-zero if anything would fail,"
       puts "                    regardless of OPENC3_SETTINGS_STRICT"
+      puts "      --export      Print the settings currently stored as compose"
+      puts "                    'environment:' lines, quoted so the JSON ones parse."
+      puts "                    Configure in Admin -> Settings, then export and paste."
+      puts "                    Reads Redis, so COSMOS must be running - unlike"
+      puts "                    --dry-run, which works while it is down"
       puts "  -h, --help        Show this help message"
       exit 0
     end
     dry_run = ARGV[1] == '--dry-run'
-    if ARGV[1] and !dry_run
+    export = ARGV[1] == '--export'
+    if ARGV[1] and !dry_run and !export
       abort "Unknown option #{ARGV[1]}. See 'cli initsettings --help'"
     end
-    begin
-      OpenC3::SettingModel.apply_defaults(dry_run: dry_run)
-    rescue => e
-      abort "Error applying default settings: #{e.message}"
+    if export
+      # --export reads the stored values, so it needs a reachable Redis. Say so
+      # plainly - the raw connection error is something like
+      # "Bad file descriptor (redis://openc3-redis:6379)", which doesn't hint
+      # that the answer is to start COSMOS.
+      unless OpenC3::SettingModel.redis_available?
+        abort "Cannot reach Redis at #{ENV['OPENC3_REDIS_HOSTNAME']}:#{ENV['OPENC3_REDIS_PORT']}.\n" \
+              "--export reads the settings currently stored, so COSMOS has to be running.\n" \
+              "Start it with './openc3.sh run', or use --dry-run, which works while COSMOS is down."
+      end
+      begin
+        lines = OpenC3::SettingModel.export_lines
+      rescue => e
+        abort "Error reading settings: #{e.message}"
+      end
+      if lines.empty?
+        puts "# No settings are stored yet - configure them in Admin -> Settings first"
+      else
+        puts "# Paste under the openc3-cosmos-init service's \"environment:\" key in"
+        puts "# compose.override.yaml, keeping this indentation."
+        lines.each { |line| puts "      #{line}" }
+      end
+    else
+      begin
+        OpenC3::SettingModel.apply_defaults(dry_run: dry_run)
+      rescue => e
+        abort "Error applying default settings: #{e.message}"
+      end
     end
 
   when 'runmigrations'

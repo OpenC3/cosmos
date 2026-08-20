@@ -530,6 +530,7 @@ _openc3_cli() {
                 local -a options
                 options=(
                     '--dry-run:report what would be seeded without writing'
+                    '--export:print stored settings as compose environment lines'
                     '--help:show help message'
                     '-h:show help message'
                 )

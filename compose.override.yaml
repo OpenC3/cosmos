@@ -100,8 +100,8 @@
 #   # -----------------------------------------------------------------------
 #   # Init container (installs plugins / tools on startup)
 #   # -----------------------------------------------------------------------
-#  openc3-cosmos-init:
-#    environment:
+#   openc3-cosmos-init:
+#     environment:
 #       # Disable install of the Demo (empty = off, see note above; NOT 0).
 #       - OPENC3_DEMO=
 #       # Enable a default queue for ALL commands. Commands can only opt out by
@@ -148,7 +148,14 @@
 #       # Reference - name, then accepted values. Booleans take 1/true/0/false;
 #       # "JSON text" values are stored verbatim, so quote them in YAML or the
 #       # colon ends the scalar. `./openc3.sh cli initsettings --help` prints
-#       # this list from the running version.
+#       # this list, plus the shape of each JSON blob, from the running version.
+#       #
+#       # Easiest way to fill in a JSON setting: configure it in
+#       # Admin -> Settings, then run
+#       #   ./openc3.sh cli initsettings --export
+#       # which prints every stored setting as a line you can paste below,
+#       # already quoted so the JSON ones survive YAML. It reads the stored
+#       # values, so COSMOS has to be running for it.
 #       #
 #       #   TIME_ZONE                local | UTC
 #       #   TIME_FORMAT              ampm | 24hr
@@ -166,6 +173,18 @@
 #       #   ASTRO                    JSON text
 #       #   CONTEXT_TAG              JSON text
 #       #   CLASSIFICATION_BANNER    JSON text
+#       #   SYSTEM_HEALTH            JSON text - must contain all four of cpu,
+#       #                            memory, disk, global. A partial object is
+#       #                            rejected because the alerting code reads
+#       #                            every one of them without a fallback.
+#       #                            COSMOS also writes snooze timestamps back
+#       #                            into this setting, so after the first alert
+#       #                            it counts as operator-edited and a changed
+#       #                            env value needs OPENC3_SETTINGS_OVERWRITE
+#       #   AI_CHAT_CONFIG           JSON object (Enterprise) - provider, model,
+#       #                            base_url. The API key is NOT here; it lives
+#       #                            in OpenC3 Secrets, so don't put it in this
+#       #                            file
 #       #
 #       # Add a line per setting you want, filling in the value yourself:
 #       #   - OPENC3_SETTING_TIME_ZONE=UTC
