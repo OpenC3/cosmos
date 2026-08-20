@@ -282,10 +282,24 @@ module OpenC3
               response = JsonRpcSuccessResponse.new(result, request.id)
             end
           rescue Exception => e
-            # Filter out the framework stack trace (rails, rack, puma etc)
-            lines = e.formatted.split("\n")
-            i = lines.find_index { |row| row.include?('actionpack') || row.include?('activesupport') }
-            Logger.error lines[0...i].join("\n")
+            if AuthError === e or ForbiddenError === e
+              # Auth failures are expected (e.g. browser requests before login or with an
+              # expired session token) so log a single line without the stack trace
+              Logger.warn "#{e.class.name.split('::')[-1]} : #{e.message} calling #{request.method.downcase()}"
+            elsif HazardousError === e or CriticalCmdError === e
+              # Not errors at all: these are the signal that the UI should raise an
+              # operator confirmation dialog, and the user retries with the hazardous
+              # or critical flag set. A stack trace per prompt is pure noise. Note
+              # HazardousError#formatted is the formatted command, not a backtrace,
+              # so the else branch below logged the command with no context anyway.
+              detail = e.message == e.class.name ? '' : " : #{e.message}"
+              Logger.info "#{e.class.name.split('::')[-1]}#{detail} calling #{request.method.downcase()}"
+            else
+              # Filter out the framework stack trace (rails, rack, puma etc)
+              lines = e.formatted.split("\n")
+              i = lines.find_index { |row| row.include?('actionpack') || row.include?('activesupport') }
+              Logger.error lines[0...i].join("\n")
+            end
 
             if request.id
               if NoMethodError === e
