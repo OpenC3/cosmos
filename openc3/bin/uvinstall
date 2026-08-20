@@ -98,10 +98,15 @@ fi
 uv venv "${VENV_DIR}" --allow-existing
 
 if [ -f "${GEM_PATH}/requirements.txt" ]; then
+    echo "Installing from requirements.txt via uv pip install"
     uv_offline_then_online pip install --python "${VENV_DIR}" ${UV_ARGS} -r "${GEM_PATH}/requirements.txt"
     RESULT=$?
 elif [ -f "${GEM_PATH}/pyproject.toml" ]; then
-    uv_offline_then_online pip install --python "${VENV_DIR}" ${UV_ARGS} -r "${GEM_PATH}/pyproject.toml"
+    echo "Installing from pyproject.toml via uv pip install"
+    # --python: The Python interpreter into which packages should be installed.
+    # --project: Discover a project (i.e. pyproject.toml) in the given directory.
+    # -r: Install the packages listed in the given files.
+    uv_offline_then_online pip install --python "${VENV_DIR}" --project "${GEM_PATH}" ${UV_ARGS} -r "${GEM_PATH}/pyproject.toml"
     RESULT=$?
 
     # `uv pip install <path>` builds the plugin as a package before installing
