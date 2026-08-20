@@ -49,12 +49,6 @@ async function setQuiet(browser, baseURL, state) {
     page,
     `cmd("INST QUIET with STATE ${state}")\ncmd("INST2 QUIET with STATE ${state}")`,
   )
-  // // Setting QUIET means show alerts and QUIET false means hide alerts
-  // if (state === 'FALSE') {
-  //   await setSetting(page, 'show-alerts', true)
-  // } else {
-  //   await setSetting(page, 'show-alerts', false)
-  // }
 
   // Wait for the command script to finish so the QUIET cmds are actually sent
   // before tearing down the context.

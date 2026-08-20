@@ -8,10 +8,12 @@
 # See LICENSE.md for more details.
 */
 
+import { writeFile } from 'node:fs/promises'
 import { expect, test as base } from '@playwright/test'
 import { Utilities } from '../utilities'
 import { CoverageReport } from 'monocart-coverage-reports'
 import coverageOptions from '../coverage.config.mjs'
+import { ADMIN_STORAGE_STATE, STORAGE_STATE } from '../playwright.config'
 
 // V8 coverage is Chromium-only and only collected when COVERAGE=1,
 // so normal runs pay no profiler overhead. Requires bundles built with
@@ -42,6 +44,25 @@ const stopCoverage = async (page: any) => {
   }
 }
 
+// localStorage keys the fixture or a spec injects to drive UI preferences
+// rather than authentication. These must never reach the shared storage state
+// files: every context is created from those files, so a persisted notoast
+// silently disables alert toasts for the whole run (Notifications.vue reads
+// localStorage.notoast on load) and a persisted toastPosition changes where the
+// toaster renders.
+const UI_PREF_KEYS = new Set(['notoast', 'toastPosition'])
+
+// Persist just the signed-in session, dropping the UI preference keys above.
+const saveAuthState = async (context: any, path: string) => {
+  const state = await context.storageState()
+  for (const origin of state.origins || []) {
+    origin.localStorage = (origin.localStorage || []).filter(
+      (item: { name: string }) => !UI_PREF_KEYS.has(item.name),
+    )
+  }
+  await writeFile(path, JSON.stringify(state))
+}
+
 // Extend the page fixture to goto the OpenC3 tool and wait for potential
 // redirect to authentication login (Enterprise only).
 // Login and click the hamburger nav icon to close the navigation drawer.
@@ -68,22 +89,27 @@ export const test = base.extend<{
       // profile those too or their bundles are missing from the report.
       context.on('page', startCoverage)
     }
-    // Disable alert toast popups before the first navigation so the
+    // Set the alert toast preference before the first navigation so the
     // Notifications component reads it on load (localStorage.notoast === 'true'
     // means "don't toast"). Runs on every page in the context, so it survives
-    // reloads too.
-    if (disableToasts) {
-      await context.addInitScript(() => {
-        // Runs in every frame, including sandboxed iframes (e.g. the screen
-        // ButtonWidget command sandbox) whose opaque origin has no localStorage
-        // access - guard so we don't throw a SecurityError there.
-        try {
+    // reloads too. Always write the value rather than only setting it when
+    // disabling: contexts start from storageState.json, which can already carry
+    // a notoast from a previous test, and a spec that opts out (notifications)
+    // needs it actually removed.
+    await context.addInitScript((disable: boolean) => {
+      // Runs in every frame, including sandboxed iframes (e.g. the screen
+      // ButtonWidget command sandbox) whose opaque origin has no localStorage
+      // access - guard so we don't throw a SecurityError there.
+      try {
+        if (disable) {
           window.localStorage.setItem('notoast', 'true')
-        } catch {
-          // Sandboxed/cross-origin frame: nothing to disable here.
+        } else {
+          window.localStorage.removeItem('notoast')
         }
-      })
-    }
+      } catch {
+        // Sandboxed/cross-origin frame: nothing to set here.
+      }
+    }, disableToasts)
     await page.goto(`${baseURL}${toolPath}`, { waitUntil: 'domcontentloaded' })
     let utils = new Utilities(page)
     if (process.env.ENTERPRISE === '1') {
@@ -115,12 +141,10 @@ export const test = base.extend<{
           page.waitForURL(`${baseURL}${toolPath}`),
           page.locator('button:has-text("Sign In")').click(),
         ])
-        await page.context().storageState({
-          path:
-            username === 'admin'
-              ? 'adminStorageState.json'
-              : 'storageState.json',
-        })
+        await saveAuthState(
+          page.context(),
+          username === 'admin' ? ADMIN_STORAGE_STATE : STORAGE_STATE,
+        )
       }
     }
     await expect(page.locator('.v-app-bar')).toContainText(toolName, {
