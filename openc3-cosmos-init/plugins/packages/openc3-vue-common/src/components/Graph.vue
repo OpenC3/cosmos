@@ -1957,8 +1957,8 @@ export default {
       if (this.subscription) {
         this.subscribeTime = performance.now()
         this.emptyDataNotified = false
-        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-          (refreshed) => {
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity)
+          .then((refreshed) => {
             if (refreshed) {
               OpenC3Auth.setTokens()
             }
@@ -1972,8 +1972,10 @@ export default {
               start_time: theStartTime,
               end_time: this.graphEndDateTime,
             })
-          },
-        )
+          })
+          // A rejection means we have no token and are being redirected to
+          // login, so don't try to subscribe
+          .catch(() => {})
       }
     },
     clearAllData: function () {

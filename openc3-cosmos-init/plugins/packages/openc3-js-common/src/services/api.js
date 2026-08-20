@@ -16,6 +16,7 @@
 */
 
 import axios from './axios'
+import { refreshToken } from './authGuard'
 
 const request = async function (
   method,
@@ -31,16 +32,9 @@ const request = async function (
   } = {},
 ) {
   if (!noAuth) {
-    try {
-      let refreshed = await OpenC3Auth.updateToken(
-        OpenC3Auth.defaultMinValidity,
-      )
-      if (refreshed) {
-        OpenC3Auth.setTokens()
-      }
-    } catch (error) {
-      OpenC3Auth.login()
-    }
+    // Throws an AuthRequiredError if we have no token, in which case we're
+    // being redirected to login and must not send the request
+    await refreshToken()
     headers['Authorization'] = localStorage.openc3Token
   }
   // Everything from the front-end is manual by default

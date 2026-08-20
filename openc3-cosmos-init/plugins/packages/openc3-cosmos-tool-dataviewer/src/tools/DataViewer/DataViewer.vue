@@ -538,8 +538,8 @@ export default {
 
       if (itemBased.length > 0) {
         // Add the items to the subscription
-        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-          (refreshed) => {
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity)
+          .then((refreshed) => {
             if (refreshed) {
               OpenC3Auth.setTokens()
             }
@@ -549,8 +549,10 @@ export default {
               items: itemBased.map(this.itemSubscriptionKey),
               ...this.startEndTime,
             })
-          },
-        )
+          })
+          // A rejection means we have no token and are being redirected to
+          // login, so don't try to subscribe
+          .catch(() => {})
       }
 
       if (packetBased.length > 0) {
@@ -567,8 +569,8 @@ export default {
           // This eliminates duplicates by converted to Set and back to Array
           modeGroups[mode] = [...new Set(modeGroups[mode])]
         })
-        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-          (refreshed) => {
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity)
+          .then((refreshed) => {
             if (refreshed) {
               OpenC3Auth.setTokens()
             }
@@ -580,8 +582,10 @@ export default {
                 ...this.startEndTime,
               })
             })
-          },
-        )
+          })
+          // A rejection means we have no token and are being redirected to
+          // login, so don't try to subscribe
+          .catch(() => {})
       }
     },
     removeFromSubscription: function (packets) {

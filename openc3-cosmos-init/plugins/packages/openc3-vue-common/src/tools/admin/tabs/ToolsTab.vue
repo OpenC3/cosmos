@@ -159,7 +159,9 @@ export default {
         .catch((error) => {
           window.$cosmosNotify.serious({
             title: `Failed to add tool ${this.name}`,
-            message: error.response.data,
+            // There's no response when the request never made it out, e.g. an
+            // AuthRequiredError or the server being unreachable
+            message: error?.response?.data || error?.message,
           })
         })
     },

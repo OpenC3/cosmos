@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -27,15 +27,6 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      if (error.response.status === 401) {
-        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity, true).then(
-          function (refreshed) {
-            if (refreshed) {
-              OpenC3Auth.setTokens()
-            }
-          },
-        )
-      }
       // Individual tools can set 'Ignore-Errors' to an error code
       // they potentially expect, e.g. '500', in which case we ignore it
       // For example in CommandSender.vue:
@@ -44,12 +35,29 @@ axiosInstance.interceptors.response.use(
       //     'Ignore-Errors': '404',
       //   },
       // })
+      // NOTE: This must come before the 401 handling below so that callers who
+      // expect a 401 (the login page checking a session token, or checking a
+      // password) opt out of clearing tokens and redirecting to login. Clearing
+      // tokens there would delete the session another tab is still using.
       if (
         error.response.config.headers['Ignore-Errors'] &&
         error.response.config.headers['Ignore-Errors'].includes(
           error.response.status.toString(),
         )
       ) {
+        return Promise.reject(error)
+      }
+      if (error.response.status === 401) {
+        // updateToken rejects with an AuthRequiredError when it gives up and
+        // redirects to login. Nothing to do about it here, and no banner: the
+        // page is on its way to /login.
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity, true)
+          .then(function (refreshed) {
+            if (refreshed) {
+              OpenC3Auth.setTokens()
+            }
+          })
+          .catch(() => {})
         return Promise.reject(error)
       }
       // HazardousError (409) and CriticalCmdError (428) are command control
