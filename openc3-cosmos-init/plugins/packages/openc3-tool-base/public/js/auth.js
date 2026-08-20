@@ -46,15 +46,23 @@ class Auth {
   clearTokens() {
     delete localStorage.openc3Token
   }
+  // Navigating to login is idempotent: a page load with no token calls
+  // updateToken once per request, and each of those would otherwise schedule
+  // its own redirect. Only the first one that actually navigates counts - the
+  // flag is set inside the branch so an already-on-login call doesn't block a
+  // later user initiated login.
   login(redirect) {
+    if (this.redirectingToLogin) return
     let url = new URL(redirect)
     let result = url.pathname
     if (url.search) {
       result = result + url.search
     }
     // redirect to login if we're not already there
-    if (!/^\/login/.test(location.pathname))
+    if (!/^\/login/.test(location.pathname)) {
+      this.redirectingToLogin = true
       location = `/login?redirect=${encodeURI(result)}`
+    }
   }
   logout() {
     this.clearTokens()

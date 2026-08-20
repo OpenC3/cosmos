@@ -228,11 +228,17 @@ export default {
         })
         .catch(logUnlessAuthRequired)
     },
-    logout: function () {
-      OpenC3Auth.logout()
-      Api.put(`/openc3-api/users/logout/${this.username}`).catch(
-        logUnlessAuthRequired,
-      )
+    logout: async function () {
+      // Terminating the server side session requires the current token, and
+      // OpenC3Auth.logout() clears it (and reloads the page), so this request
+      // has to go out first.
+      try {
+        await Api.put(`/openc3-api/users/logout/${this.username}`)
+      } catch (error) {
+        logUnlessAuthRequired(error)
+      } finally {
+        OpenC3Auth.logout()
+      }
     },
     login: function () {
       OpenC3Auth.login(location.href)
