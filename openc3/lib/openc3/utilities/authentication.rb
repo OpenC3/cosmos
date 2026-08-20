@@ -28,7 +28,7 @@ module OpenC3
   # OpenC3 COSMOS Core authentication code
   class OpenC3Authentication
     def initialize()
-      password = ENV['OPENC3_API_PASSWORD']
+      password = ENV.fetch('OPENC3_API_PASSWORD', nil)
       if password.nil?
         raise OpenC3AuthenticationError, "Authentication requires environment variable OPENC3_API_PASSWORD"
       end
@@ -172,8 +172,8 @@ module OpenC3
       if ENV['OPENC3_API_USER'] and ENV['OPENC3_API_PASSWORD']
         # Username and password
         data = {
-          'username' => ENV['OPENC3_API_USER'],
-          'password' => ENV['OPENC3_API_PASSWORD'],
+          'username' => ENV.fetch('OPENC3_API_USER', nil),
+          'password' => ENV.fetch('OPENC3_API_PASSWORD', nil),
           'client_id' => client_id,
           'grant_type' => 'password',
           'scope' => openid_scope
@@ -189,7 +189,7 @@ module OpenC3
         @refresh_expires_at = current_time + oath['refresh_expires_in'] - REFRESH_OFFSET_SECONDS
       else
         # Offline Access Token
-        @refresh_token ||= ENV['OPENC3_API_TOKEN']
+        @refresh_token ||= ENV.fetch('OPENC3_API_TOKEN', nil)
         _refresh_token(current_time)
       end
     end

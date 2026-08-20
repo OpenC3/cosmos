@@ -6,26 +6,40 @@ Finds "Ruby Example:\n\n```ruby\n" blocks and replaces them with just the code c
 
 import re
 import sys
+from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def validated_markdown_path(filename):
+    """Return an existing Markdown path contained by this repository."""
+    path = Path(filename).resolve(strict=True)
+    if not path.is_relative_to(REPO_ROOT) or path.suffix.lower() != ".md":
+        raise ValueError(f"Markdown file must be inside {REPO_ROOT}: {filename}")
+    return path
+
 
 def process_file(filename):
     """Process a file to replace Ruby code blocks with just their content."""
     try:
-        with open(filename, 'r', encoding='utf-8') as file:
+        path = validated_markdown_path(filename)
+        with path.open("r", encoding="utf-8") as file:
             content = file.read()
     except FileNotFoundError:
         print(f"Error: File '{filename}' not found.")
         return False
-    except Exception as e:
+    except (OSError, ValueError) as e:
         print(f"Error reading file '{filename}': {e}")
         return False
 
     # Patterns to match Ruby and Python examples
-    r_ex_pattern = r'Ruby Example:\n\n```(ruby|python)?\n(.*?)\n```'
-    p_ex_pattern = r'Python Example:\n\n```(ruby|python)?\n(.*?)\n```'
-    b_ex_pattern = r'Ruby / Python Example:\n\n```(ruby|python)?\n(.*?)\n```'
-    b_syn_pattern = r'Ruby / Python Syntax:\n\n```(ruby|python)?\n(.*?)\n```'
-    r_syn_pattern = r'Ruby Syntax:\n\n```(ruby|python)?\n(.*?)\n```'
-    p_syn_pattern = r'Python Syntax:\n\n```(ruby|python)?\n(.*?)\n```'
+    r_ex_pattern = r"Ruby Example:\n\n```(ruby|python)?\n(.*?)\n```"
+    p_ex_pattern = r"Python Example:\n\n```(ruby|python)?\n(.*?)\n```"
+    b_ex_pattern = r"Ruby / Python Example:\n\n```(ruby|python)?\n(.*?)\n```"
+    b_syn_pattern = r"Ruby / Python Syntax:\n\n```(ruby|python)?\n(.*?)\n```"
+    r_syn_pattern = r"Ruby Syntax:\n\n```(ruby|python)?\n(.*?)\n```"
+    p_syn_pattern = r"Python Syntax:\n\n```(ruby|python)?\n(.*?)\n```"
 
     def ex_ruby_replacement(match):
         # Wrap the Ruby code content in TabItem tags
@@ -33,7 +47,9 @@ def process_file(filename):
 
     def ex_python_replacement(match):
         # Wrap the Python code content in TabItem tags
-        return f'<TabItem value="python" label="Python Example">\n\n```python\n{match.group(2)}\n```\n</TabItem>\n</Tabs>'
+        return (
+            f'<TabItem value="python" label="Python Example">\n\n```python\n{match.group(2)}\n```\n</TabItem>\n</Tabs>'
+        )
 
     def ex_both_replacement(match):
         # Wrap the Python code content in TabItem tags
@@ -45,7 +61,9 @@ def process_file(filename):
 
     def syn_python_replacement(match):
         # Wrap the Python code content in TabItem tags
-        return f'<TabItem value="python" label="Python Syntax">\n\n```python\n{match.group(2)}\n```\n</TabItem>\n</Tabs>'
+        return (
+            f'<TabItem value="python" label="Python Syntax">\n\n```python\n{match.group(2)}\n```\n</TabItem>\n</Tabs>'
+        )
 
     def syn_both_replacement(match):
         # Wrap the Python code content in TabItem tags
@@ -65,13 +83,14 @@ def process_file(filename):
         return True
 
     try:
-        with open(filename, 'w', encoding='utf-8') as file:
+        with path.open("w", encoding="utf-8") as file:
             file.write(new_content)
         print(f"Successfully processed '{filename}'")
         return True
-    except Exception as e:
+    except OSError as e:
         print(f"Error writing to file '{filename}': {e}")
         return False
+
 
 def main():
     """Main function to handle command line arguments."""
@@ -84,6 +103,7 @@ def main():
 
     if not success:
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

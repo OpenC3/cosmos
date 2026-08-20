@@ -185,6 +185,7 @@ class InterfaceTopic(Topic):
         stored=False,
         timeout=None,
         scope=OPENC3_SCOPE,
+        received_time=None,
     ):
         interface_name = interface_name.upper()
         db_shard = cls._db_shard_for_interface(interface_name, scope)
@@ -200,6 +201,8 @@ class InterfaceTopic(Topic):
         data["item_hash"] = item_hash
         data["type"] = type
         data["stored"] = stored
+        if received_time is not None:
+            data["received_time"] = received_time
         cmd_id = Topic.write_topic(
             f"{{{scope}__CMD}}INTERFACE__{interface_name}",
             {"inject_tlm": json.dumps(data)},

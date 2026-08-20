@@ -170,7 +170,6 @@ onConnect((params) => {
   edges.value.forEach((edge) => {
     if (edge.id === id) {
       found = true
-      return
     }
   })
   if (found) {
@@ -353,12 +352,11 @@ onEdgesChange((changes) => {
                   cmd_or_tlm === 'cmd',
                   cmd_or_tlm === 'tlm',
                 )
-                .then((response) => {
+                .then(() => {
                   applyEdgeChanges([change])
                   edges.value.forEach((edge, index) => {
                     if (edge.id === change.id) {
                       edges.value.splice(index, 1)
-                      return
                     }
                   })
                 })
@@ -370,12 +368,11 @@ onEdgesChange((changes) => {
                   cmd_or_tlm === 'cmd',
                   cmd_or_tlm === 'tlm',
                 )
-                .then((response) => {
+                .then(() => {
                   applyEdgeChanges([change])
                   edges.value.forEach((edge, index) => {
                     if (edge.id === change.id) {
                       edges.value.splice(index, 1)
-                      return
                     }
                   })
                 })
@@ -394,7 +391,6 @@ onEdgesChange((changes) => {
                   edges.value.forEach((edge, index) => {
                     if (edge.id === change.id) {
                       edges.value.splice(index, 1)
-                      return
                     }
                   })
                 })
@@ -411,7 +407,6 @@ onEdgesChange((changes) => {
                   edges.value.forEach((edge, index) => {
                     if (edge.id === change.id) {
                       edges.value.splice(index, 1)
-                      return
                     }
                   })
                 })

@@ -652,9 +652,8 @@ export default {
         await this.addGraph(false) // Don't check existing graphs
       }
       await this.$nextTick()
-      const that = this
-      graphs.forEach(function (graph, i) {
-        let vueGraph = that.$refs[`graph${i}`][0]
+      graphs.forEach((graph, i) => {
+        let vueGraph = this.$refs[`graph${i}`][0]
         vueGraph.title = graph.title
         vueGraph.fullWidth = graph.fullWidth
         vueGraph.fullHeight = graph.fullHeight

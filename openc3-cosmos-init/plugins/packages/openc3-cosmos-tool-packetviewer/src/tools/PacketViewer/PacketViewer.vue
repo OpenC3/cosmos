@@ -232,7 +232,6 @@ import {
 } from '@openc3/vue-common/components'
 import { ValueWidget } from '@openc3/vue-common/widgets'
 import { useContainerHeight } from '@openc3/vue-common/composables'
-import { useTemplateRef } from 'vue'
 
 // Used in the menu and openConfiguration lookup
 const valueTypeToRadioGroup = {

@@ -46,6 +46,7 @@
         unlock. Disable to allow multiple users to edit the same script
         concurrently (last save wins)."
         color="primary"
+        :disabled="settingsLoading"
         data-test="script-locking-enabled"
       />
       <template v-if="isEnterprise">
@@ -61,7 +62,7 @@
         </v-alert>
         <v-switch
           v-model="lifecycleEnabled"
-          :disabled="!gitHistoryEnabled"
+          :disabled="settingsLoading || !gitHistoryEnabled"
           label="Script Lifecycle - When enabled, scripts are tracked through
           In Development, In Review, and Approved states. Users with the script_edit permission
           can move scripts to In Review, and users with the script_approver permission may approve scripts.

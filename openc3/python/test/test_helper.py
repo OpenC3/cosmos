@@ -23,6 +23,8 @@ import io
 import json
 import queue
 import sys
+import threading
+import time
 
 import fakeredis
 
@@ -119,6 +121,27 @@ def setup_system(targets=None):
             pass
 
 
+class XreadTracker:
+    """Wraps xread to record which threads have issued a read.
+
+    Topic offsets are tracked per thread (see StoreImplementation.read_topics),
+    so a microservice run thread only receives messages written after its own
+    first read. Tests use wait_for_first_topic_read to wait for that read rather
+    than sleeping a fixed amount.
+    """
+
+    def __init__(self, xread):
+        self.xread = xread
+        self.thread_ids = set()
+
+    def __call__(self, *args, **kwargs):
+        # Record before delegating: read_topics has already snapshotted the
+        # topic offsets by the time it calls xread, so anything written from
+        # here on is guaranteed to be delivered to this thread.
+        self.thread_ids.add(threading.get_native_id())
+        return self.xread(*args, **kwargs)
+
+
 def mock_redis(self):
     """Ensure the store builds a new instance of valkey and doesn't
     reuse the existing instance which results in a reused FakeValkey.
@@ -131,6 +154,11 @@ def mock_redis(self):
     """
     redis = fakeredis.FakeValkey()
     redis.flushall()
+    # Track reads by thread so tests can wait for a microservice run thread to
+    # start reading. Tests that replace redis.xread themselves wrap this
+    # tracker, so it still sees every read.
+    redis.openc3_xread_tracker = XreadTracker(redis.xread)
+    redis.xread = redis.openc3_xread_tracker
     patcher = patch("valkey.Valkey", return_value=redis)
     patcher.start()
     self.addCleanup(patcher.stop)
@@ -175,6 +203,30 @@ class BucketMock:
     def data(self, key):
         data = self.objs[key]
         return zlib.decompress(data)
+
+
+def wait_for_first_topic_read(redis, thread, timeout=5):
+    """Block until the given thread has issued its first xread.
+
+    Call this after starting a microservice run thread, instead of sleeping.
+
+    Topic offsets are tracked per thread (see StoreImplementation.read_topics),
+    so the offsets recorded by Topic.update_topic_offsets when a microservice is
+    constructed on the main thread do not apply to its run thread. That thread
+    records its own start offset on its first read_topics call, which is the
+    current end of the stream, so anything written before then is skipped and
+    never processed. Sleeping a fixed amount after Thread.start() is racy: on a
+    loaded CI runner the run thread can reach its first read after the test has
+    already written to the topic.
+    """
+    tracker = redis.openc3_xread_tracker
+    start = time.time()
+    while (time.time() - start) < timeout:
+        # native_id is only assigned once the thread is actually running
+        if thread.native_id is not None and thread.native_id in tracker.thread_ids:
+            return
+        time.sleep(0.001)
+    raise RuntimeError(f"Thread {thread.name} never read from its topics")
 
 
 def capture_io():

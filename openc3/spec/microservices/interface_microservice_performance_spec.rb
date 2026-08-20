@@ -181,7 +181,7 @@ RSpec.describe OpenC3::InterfaceMicroservice, if: ENV['PERFORMANCE'] do
 
   # Minimal mocking setup for performance testing
   before(:all) do
-    @original_no_simplecov = ENV['OPENC3_NO_SIMPLECOV']
+    @original_no_simplecov = ENV.fetch('OPENC3_NO_SIMPLECOV', nil)
     # Disable simplecov during performance tests to avoid overhead
     ENV['OPENC3_NO_SIMPLECOV'] = 'true'
   end

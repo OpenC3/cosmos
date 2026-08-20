@@ -12,7 +12,7 @@
 */
 
 const prependBasePath = function (route) {
-  if (!route.name !== 'NotFound') {
+  if (route.name !== 'NotFound') {
     route.path = `${__BASE_URL__}/${route.path.replace(/^\//, '')}`
   }
   route.children?.forEach(prependBasePath)
