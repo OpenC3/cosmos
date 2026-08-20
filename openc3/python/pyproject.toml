@@ -64,6 +64,7 @@ dev = [
     "pytest>=9.0,<10",
     "pytest-profiling>=1.8,<2",
     "ruff>=0.15,<0.17",
+    "ty>=0.0.73,<0.1",
 ]
 
 [build-system]
@@ -155,6 +156,14 @@ indent-style = "space"
 line-ending = "auto"
 # Enable auto-formatting of docstrings
 docstring-code-format = true
+
+[tool.ty.environment]
+# Match the minimum supported version so type errors that only appear on older
+# Pythons are still caught (same rationale as ruff's target-version = py310)
+python-version = "3.10"
+
+[tool.ty.src]
+exclude = [".venv", "build", "dist", "node_modules"]
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
