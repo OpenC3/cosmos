@@ -70,5 +70,12 @@ module OpenC3
       extra = @documented - @ruby_interfaces - @python_interfaces - IGNORED_INTERFACES - PLUGIN_INTERFACES
       expect(extra).to be_empty, "Documented in interfaces.md but not in source: #{extra}"
     end
+
+    it "should have Ruby / Python parity" do
+      ruby_not_python = @ruby_interfaces - @python_interfaces - PYTHON_TODO_INTERFACES
+      expect(ruby_not_python).to be_empty, "Interfaces found in Ruby but not Python: #{ruby_not_python}"
+      python_not_ruby = @python_interfaces - @ruby_interfaces - %w(__init__ bridge_interface)
+      expect(python_not_ruby).to be_empty, "Interfaces found in Python but not Ruby: #{python_not_ruby}"
+    end
   end
 end

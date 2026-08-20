@@ -360,7 +360,7 @@ module OpenC3
           options: [["FLOW_CONTROL", "NONE"]],
           bridge_options: [["FLOW_CONTROL", "NONE"]],
           bridge_protocols: [["READ", "length_protocol.py"]],
-          bridge_name: "mybridge"
+          bridge_name: "MYBRIDGE"
         )
         model.create
         model.deploy(Dir.pwd, {})
@@ -375,18 +375,18 @@ module OpenC3
 
         # The shared relay is left untouched by interface deploy: no per-interface
         # STREAM option is pushed onto it (that would respawn the relay). It
-        # discovers this interface's stream by querying the HostMicroserviceModels.
+        # discovers this interface's stream by querying the HostInterfaceMicroserviceModels.
         relay = MicroserviceModel.get_model(name: "DEFAULT__BRIDGE__MYBRIDGE", scope: "DEFAULT")
         expect(relay).to_not be_nil
         expect(relay.cmd[1]).to eql "bridge_microservice.py"
-        expect(relay.options).to include(["BRIDGE_NAME", "mybridge"])
+        expect(relay.options).to include(["BRIDGE_NAME", "MYBRIDGE"])
         expect(relay.options).to_not include(["STREAM", "SERIAL_INT"])
 
         # Host spawn spec for openc3-app: the real interface + bridge connection
         # options and BRIDGE_PROTOCOLs that run on the host next to the device.
-        host = HostMicroserviceModel.get_model(name: "SERIAL_INT", scope: "DEFAULT")
+        host = HostInterfaceMicroserviceModel.get_model(name: "SERIAL_INT", scope: "DEFAULT")
         expect(host).to_not be_nil
-        expect(host.bridge_name).to eql "mybridge"
+        expect(host.bridge_name).to eql "MYBRIDGE"
         expect(host.stream).to eql "SERIAL_INT"
         expect(host.config_params[0]).to eql "serial_interface.py"
         expect(host.config_params).to include("115200")
@@ -398,35 +398,35 @@ module OpenC3
         BridgeModel.build_microservice(bridge_name: "shared", scope: "DEFAULT").create
 
         a = InterfaceModel.new(name: "IFACE1", scope: "DEFAULT", plugin: "PLUG",
-                               config_params: ["serial_interface.py"], bridge_name: "shared")
+                               config_params: ["serial_interface.py"], bridge_name: "SHARED")
         a.create
         a.deploy(Dir.pwd, {})
         b = InterfaceModel.new(name: "IFACE2", scope: "DEFAULT", plugin: "PLUG",
-                               config_params: ["serial_interface.py"], bridge_name: "shared")
+                               config_params: ["serial_interface.py"], bridge_name: "SHARED")
         b.create
         b.deploy(Dir.pwd, {})
 
         # The relay is never mutated with per-interface STREAM options; both host
         # models exist and the relay discovers the streams by querying them.
         relay = MicroserviceModel.get_model(name: "DEFAULT__BRIDGE__SHARED", scope: "DEFAULT")
-        expect(relay.options).to eql([["BRIDGE_NAME", "shared"]])
-        expect(HostMicroserviceModel.get_model(name: "IFACE1", scope: "DEFAULT")).to_not be_nil
-        expect(HostMicroserviceModel.get_model(name: "IFACE2", scope: "DEFAULT")).to_not be_nil
+        expect(relay.options).to eql([["BRIDGE_NAME", "SHARED"]])
+        expect(HostInterfaceMicroserviceModel.get_model(name: "IFACE1", scope: "DEFAULT")).to_not be_nil
+        expect(HostInterfaceMicroserviceModel.get_model(name: "IFACE2", scope: "DEFAULT")).to_not be_nil
 
         # Undeploying one interface removes only its host model; the relay is left
         # completely untouched (unchanged options, so the operator won't respawn it).
         a.undeploy
         relay = MicroserviceModel.get_model(name: "DEFAULT__BRIDGE__SHARED", scope: "DEFAULT")
         expect(relay).to_not be_nil
-        expect(relay.options).to eql([["BRIDGE_NAME", "shared"]])
-        expect(HostMicroserviceModel.get_model(name: "IFACE1", scope: "DEFAULT")).to be_nil
-        expect(HostMicroserviceModel.get_model(name: "IFACE2", scope: "DEFAULT")).to_not be_nil
+        expect(relay.options).to eql([["BRIDGE_NAME", "SHARED"]])
+        expect(HostInterfaceMicroserviceModel.get_model(name: "IFACE1", scope: "DEFAULT")).to be_nil
+        expect(HostInterfaceMicroserviceModel.get_model(name: "IFACE2", scope: "DEFAULT")).to_not be_nil
 
         # Undeploying the last interface still leaves the relay: it is only ever
         # destroyed by deleting the bridge from the admin tool, never automatically.
         b.undeploy
         expect(MicroserviceModel.get_model(name: "DEFAULT__BRIDGE__SHARED", scope: "DEFAULT")).to_not be_nil
-        expect(HostMicroserviceModel.get_model(name: "IFACE2", scope: "DEFAULT")).to be_nil
+        expect(HostInterfaceMicroserviceModel.get_model(name: "IFACE2", scope: "DEFAULT")).to be_nil
       end
     end
 

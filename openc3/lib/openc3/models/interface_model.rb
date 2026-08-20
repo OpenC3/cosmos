@@ -193,7 +193,7 @@ module OpenC3
       @prefix = prefix
       @shard = shard.to_i # to_i to handle nil
       @db_shard = db_shard.to_i # to_i to handle nil
-      @bridge_name = bridge_name
+      @bridge_name = bridge_name.to_s.upcase
       @secrets = secrets
     end
 
@@ -295,6 +295,8 @@ module OpenC3
 
     # Handles Interface/Router specific configuration keywords
     def handle_config(parser, keyword, parameters)
+      type = self.class._get_type
+
       case keyword
       when 'MAP_TARGET'
         usage = "#{keyword} <Target Name> <ENABLED/DISABLED>"
@@ -353,8 +355,12 @@ module OpenC3
         @options << parameters.dup
 
       when 'BRIDGE_OPTION'
-        parser.verify_num_parameters(2, nil, "#{keyword} <Option Name> <Option Value 1> <Option Value 2 (optional)> <etc>")
-        @bridge_options << parameters.dup
+        if type == 'INTERFACE'
+          parser.verify_num_parameters(2, nil, "#{keyword} <Option Name> <Option Value 1> <Option Value 2 (optional)> <etc>")
+          @bridge_options << parameters.dup
+        else
+          raise ConfigParser::Error.new(parser, "BRIDGE_OPTION not supported for Router: #{keyword} #{parameters.join(" ")}")
+        end
 
       when 'PROTOCOL'
         usage = "#{keyword} <READ WRITE READ_WRITE> <protocol filename or classname> <Protocol specific parameters>"
@@ -366,13 +372,17 @@ module OpenC3
         @protocols << parameters.dup
 
       when 'BRIDGE_PROTOCOL'
-        usage = "#{keyword} <READ WRITE READ_WRITE> <protocol filename or classname> <Protocol specific parameters>"
-        parser.verify_num_parameters(2, nil, usage)
-        unless %w(READ WRITE READ_WRITE).include? parameters[0].upcase
-          raise parser.error("Invalid protocol type: #{parameters[0]}", usage)
-        end
+        if type == 'INTERFACE'
+          usage = "#{keyword} <READ WRITE READ_WRITE> <protocol filename or classname> <Protocol specific parameters>"
+          parser.verify_num_parameters(2, nil, usage)
+          unless %w(READ WRITE READ_WRITE).include? parameters[0].upcase
+            raise parser.error("Invalid protocol type: #{parameters[0]}", usage)
+          end
 
-        @bridge_protocols << parameters.dup
+          @bridge_protocols << parameters.dup
+        else
+          raise ConfigParser::Error.new(parser, "BRIDGE_PROTOCOL not supported for Router: #{keyword} #{parameters.join(" ")}")
+        end
 
       when 'DONT_LOG'
         Logger.warn "DONT_LOG is deprecated and does nothing."
@@ -391,13 +401,17 @@ module OpenC3
         @secrets[-1] << ConfigParser.handle_nil(parameters[4])
 
       when 'BRIDGE_SECRET'
-        parser.verify_num_parameters(3, 5, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path> <Option Name (Optional)> <Secret Store Name (Optional)>")
-        @secrets << parameters[0..2]
-        if ConfigParser.handle_nil(parameters[3])
-          # Option Name, Secret Name
-          @bridge_secret_options << [parameters[3], parameters[1]]
+        if type == 'INTERFACE'
+          parser.verify_num_parameters(3, 5, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path> <Option Name (Optional)> <Secret Store Name (Optional)>")
+          @secrets << parameters[0..2]
+          if ConfigParser.handle_nil(parameters[3])
+            # Option Name, Secret Name
+            @bridge_secret_options << [parameters[3], parameters[1]]
+          end
+          @secrets[-1] << ConfigParser.handle_nil(parameters[4])
+        else
+          raise ConfigParser::Error.new(parser, "BRIDGE_SECRET not supported for Router: #{keyword} #{parameters.join(" ")}")
         end
-        @secrets[-1] << ConfigParser.handle_nil(parameters[4])
 
       when 'ENV'
         parser.verify_num_parameters(2, 2, "#{keyword} <Key> <Value>")
@@ -448,8 +462,12 @@ module OpenC3
         @db_shard = Integer(parameters[0])
 
       when 'BRIDGE'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Bridge Name>")
-        @bridge_name = parameters[0]
+        if type == 'INTERFACE'
+          parser.verify_num_parameters(1, 1, "#{keyword} <Bridge Name>")
+          @bridge_name = parameters[0].to_s.upcase
+        else
+          raise ConfigParser::Error.new(parser, "BRIDGE not supported for Router: #{keyword} #{parameters.join(" ")}")
+        end
 
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Interface/Router: #{keyword} #{parameters.join(" ")}")
@@ -502,7 +520,7 @@ module OpenC3
     #      set) and connects to the named bridge_microservice relay.
     #   2. A shared bridge_microservice relay (one per bridge_name) that this
     #      interface's stream (ALPN stream/<name>) is added to.
-    #   3. A HostMicroserviceModel holding the real interface's spawn info for
+    #   3. A HostInterfaceMicroserviceModel holding the real interface's spawn info for
     #      openc3-app to run the interface on the host.
     def deploy_bridge(gem_path, variables, microservice_name, type, validate_only: false)
       # The COSMOS side runs the Python interface_microservice which builds a
@@ -527,10 +545,10 @@ module OpenC3
       )
       unless validate_only
         @target_names.each { |target_name| ensure_target_exists(target_name) }
+        check_bridge_relay()
         microservice.create
         microservice.deploy(gem_path, variables)
-        deploy_bridge_relay
-        deploy_host_microservice
+        create_host_interface_microservice()
         ConfigTopic.write({ kind: 'created', type: type.downcase, name: @name, plugin: @plugin }, scope: @scope)
         Logger.info "Configured bridged #{type.downcase} microservice #{microservice_name} (bridge #{@bridge_name})"
       end
@@ -539,18 +557,18 @@ module OpenC3
 
     # Name of the shared bridge_microservice relay for a given bridge name.
     def bridge_relay_name
-      "#{@scope}__BRIDGE__#{@bridge_name.to_s.upcase}"
+      "#{@scope}__BRIDGE__#{@bridge_name}"
     end
 
     # Verify the shared bridge_microservice relay for @bridge_name exists.
     # Multiple bridged interfaces sharing a bridge name all route through the
     # same relay. The relay discovers which streams to advertise by querying the
-    # HostMicroserviceModels for its bridge (see bridge_microservice.py), so we
+    # HostInterfaceMicroserviceModels for its bridge (see bridge_microservice.py), so we
     # deliberately do NOT push this interface's stream onto the relay as an
     # OPTION: mutating (updating) the relay's MicroserviceModel would make the
     # operator respawn the relay every time a bridged interface is added or
     # removed. Leaving the model untouched lets the relay adapt live instead.
-    def deploy_bridge_relay
+    def check_bridge_relay
       relay = MicroserviceModel.get_model(name: bridge_relay_name, scope: @scope)
       raise "Bridge #{@bridge_name} does not exist" unless relay
       relay
@@ -559,8 +577,8 @@ module OpenC3
     # Capture the real interface's spawn info for openc3-app. The host side does
     # raw data transfer only, so protocols and target definitions are omitted;
     # the connection options and secrets needed to open the device are included.
-    def deploy_host_microservice
-      host = HostMicroserviceModel.new(
+    def create_host_interface_microservice
+      host = HostInterfaceMicroserviceModel.new(
         name: @name,
         bridge_name: @bridge_name,
         stream: @name,
@@ -603,22 +621,26 @@ module OpenC3
           status_model = RouterStatusModel.get_model(name: @name, scope: @scope)
         end
         status_model.destroy if status_model
-
-        undeploy_bridge if @bridge_name
       rescue Exception => error
         Logger.error("Error destroying #{type&.downcase || 'unknown'} status model #{@name} in scope #{@scope} due to #{error}")
+      ensure
+        undeploy_bridge if @bridge_name
       end
     end
 
     # Clean up the host-side pieces of a bridged interface by destroying its
-    # HostMicroserviceModel. The shared bridge_microservice relay is left
-    # untouched: it discovers its streams by querying the HostMicroserviceModels,
+    # HostInterfaceMicroserviceModel. The shared bridge_microservice relay is left
+    # untouched: it discovers its streams by querying the HostInterfaceMicroserviceModels,
     # so removing this one makes the relay drop the stream's ALPN on its own.
     # (Mutating the relay's MicroserviceModel here would respawn it.) The relay
     # itself is destroyed with its BridgeModel, not per-interface.
     def undeploy_bridge
-      host = HostMicroserviceModel.get_model(name: @name, scope: @scope)
-      host.destroy if host
+      begin
+        host = HostInterfaceMicroserviceModel.get_model(name: @name, scope: @scope)
+        host.destroy if host
+      rescue Exception => error
+        Logger.error("Error destroying HostInterfaceMicroservice model #{@name} in scope #{@scope} due to #{error}")
+      end
     end
 
     def unmap_target(target_name, cmd_only: false, tlm_only: false)
