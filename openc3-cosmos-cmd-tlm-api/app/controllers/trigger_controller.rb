@@ -144,6 +144,10 @@ class TriggerController < ApplicationController
       model.operator = hash['operator'] if hash['operator']
       model.right = hash['right'] if hash['right']
       model.label = hash['label'] if hash.key?('label')
+      # Validate items here rather than in TriggerModel#update because we notify
+      # instead of updating directly. Without this the microservice would reject the
+      # update asynchronously, long after this request returned success.
+      model.validate_trigger_items()
       # Update the timestamp before notifying so the event has the current time
       model.updated_at = Time.now.to_nsec_from_epoch
       # Notify the TriggerGroupMicroservice to update the TriggerModel

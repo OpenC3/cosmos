@@ -24,6 +24,12 @@ RSpec.describe TriggerController, type: :controller do
 
   before(:each) do
     mock_redis
+    # Seed the INST target so item operands reference telemetry that actually exists
+    setup_system()
+    target = OpenC3::TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+    target.create
+    dir = File.join(__dir__, "..", "..", "..", "openc3", "spec", "install", "config", "targets")
+    target.update_store(OpenC3::System.new(["INST"], dir))
     model = OpenC3::TriggerGroupModel.new(name: GROUP, scope: "DEFAULT")
     model.create
   end
@@ -148,6 +154,28 @@ RSpec.describe TriggerController, type: :controller do
       expect(response).to have_http_status(:bad_request)
     end
 
+    it "returns 400 when the item does not exist" do
+      hash = generate_trigger_hash
+      hash[:left][:item] = "NONEXISTENT"
+      post :create, params: hash.merge({scope: "DEFAULT"})
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["status"]).to eql("error")
+      expect(json["message"]).to match(/invalid operand.*NONEXISTENT.*does not exist/)
+      expect(response).to have_http_status(:bad_request)
+      # The invalid trigger must not have been persisted
+      expect(OpenC3::TriggerModel.names(group: GROUP, scope: "DEFAULT")).to eql([])
+    end
+
+    it "returns 400 with an invalid valueType" do
+      hash = generate_trigger_hash
+      hash[:left][:valueType] = "NOPE"
+      post :create, params: hash.merge({scope: "DEFAULT"})
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["status"]).to eql("error")
+      expect(json["message"]).to match(/invalid operand, valueType 'NOPE' must be one of/)
+      expect(response).to have_http_status(:bad_request)
+    end
+
     it "returns 418 when a TriggerError occurs" do
       hash = generate_trigger_hash
       allow_any_instance_of(OpenC3::TriggerModel).to receive(:create).and_raise(OpenC3::TriggerError.new("Trigger processing error"))
@@ -201,6 +229,32 @@ RSpec.describe TriggerController, type: :controller do
       expect(json["left"]["item"]).to eql("POSY")
       expect(json["operator"]).to eql("<")
       expect(json["right"]["float"]).to eql("20.0")
+    end
+
+    it "returns 400 when updating to an item that does not exist" do
+      update_hash = {
+        left: {
+          type: "item",
+          target: "INST",
+          packet: "ADCS",
+          item: "NONEXISTENT",
+          valueType: "RAW"
+        },
+        operator: "<",
+        right: {
+          type: "float",
+          float: 20.0
+        }
+      }
+
+      patch :update, params: update_hash.merge({scope: "DEFAULT", group: GROUP, name: @trigger_name})
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["status"]).to eql("error")
+      expect(json["message"]).to match(/invalid operand.*NONEXISTENT.*does not exist/)
+      expect(response).to have_http_status(:bad_request)
+      # The stored trigger must still have the original item
+      model = OpenC3::TriggerModel.get(name: @trigger_name, group: GROUP, scope: "DEFAULT")
+      expect(model.left["item"]).to eql("POSX")
     end
 
     it "returns 404 when the trigger is not found" do
