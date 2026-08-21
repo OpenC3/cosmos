@@ -56,6 +56,11 @@ SARIF_LEVEL = {
 
 RULE_DOCS = "https://docs.astral.sh/ty/rules/#"
 
+# Code scanning shows the rule id in its Rule filter, so namespace ours the way
+# CodeQL does (rb/path-injection, go/incomplete-hostname-regexp). Without this,
+# a bare "unresolved-attribute" is indistinguishable from another tool's rules.
+RULE_PREFIX = "ty/"
+
 # Code scanning rejects uploads above this many results
 SARIF_RESULT_LIMIT = 25_000
 
@@ -234,9 +239,14 @@ def to_repo_relative(path: str, repo_root: Path, cwd: Path) -> str:
         return absolute.resolve().as_posix()
 
 
+def rule_id(rule: str) -> str:
+    """Namespaced identifier, which is what code scanning filters on."""
+    return f"{RULE_PREFIX}{rule}"
+
+
 def build_sarif(diagnostics: list[dict], version: str) -> dict:
-    rule_ids = sorted({d["rule"] for d in diagnostics})
-    rule_index = {name: i for i, name in enumerate(rule_ids)}
+    rule_names = sorted({d["rule"] for d in diagnostics})
+    rule_index = {name: i for i, name in enumerate(rule_names)}
     documented = {d["rule"] for d in diagnostics if d["rule_documented"]}
 
     results = []
@@ -249,7 +259,7 @@ def build_sarif(diagnostics: list[dict], version: str) -> dict:
             message = message[len(prefix) :]
 
         result = {
-            "ruleId": rule,
+            "ruleId": rule_id(rule),
             "ruleIndex": rule_index[rule],
             "level": SARIF_LEVEL.get(diagnostic["severity"], "warning"),
             "message": {"text": message or "(no description)"},
@@ -274,14 +284,15 @@ def build_sarif(diagnostics: list[dict], version: str) -> dict:
         results.append(result)
 
     rules = []
-    for name in rule_ids:
+    for name in rule_names:
         rule_entry = {
-            "id": name,
-            "name": name,
+            "id": rule_id(name),
+            "name": rule_id(name),
             "shortDescription": {"text": name.replace("-", " ")},
             "properties": {"tags": ["type-check"]},
         }
         if name in documented:
+            # The docs anchor is the bare rule name, not the namespaced id
             rule_entry["helpUri"] = f"{RULE_DOCS}{name}"
         rules.append(rule_entry)
 
@@ -324,7 +335,7 @@ def build_markdown(diagnostics: list[dict]) -> str:
         "| --- | --: |",
     ]
     for rule, count in by_rule.most_common():
-        cell = escape_markdown_cell(rule)
+        cell = escape_markdown_cell(rule_id(rule))
         label = f"[`{cell}`]({RULE_DOCS}{rule})" if rule in documented else f"`{cell}`"
         lines.append(f"| {label} | {count} |")
 
