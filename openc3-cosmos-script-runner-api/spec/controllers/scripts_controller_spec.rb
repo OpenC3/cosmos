@@ -346,6 +346,45 @@ RSpec.describe ScriptsController, type: :controller do
       expect(response).to have_http_status(:ok)
     end
 
+    it "passes a valid suiteRunner through to Script.run" do
+      suite_runner = {"suite" => "MySuite", "group" => "MyGroup", "script" => "test_foo", "method" => "start"}
+      expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.rb", suite_runner, false, nil, "Anonymous", "anonymous", 1, nil, nil).and_return(1)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb", suiteRunner: suite_runner}
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "rejects a suiteRunner suite that isn't an identifier" do
+      expect(Script).not_to receive(:run)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb",
+                          suiteRunner: {"suite" => "MySuite) rescue nil; File.write('/tmp/x', 'y'); x=(1", "method" => "start"}}
+      expect(response).to have_http_status(:bad_request)
+      expect(response.body).to include("Invalid Suite name")
+    end
+
+    it "rejects a suiteRunner group that isn't an identifier" do
+      expect(Script).not_to receive(:run)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb",
+                          suiteRunner: {"suite" => "MySuite", "group" => "MyGroup) ; system('id') ; x=(1"}}
+      expect(response).to have_http_status(:bad_request)
+      expect(response.body).to include("Invalid Group name")
+    end
+
+    it "rejects a suiteRunner script that isn't an identifier" do
+      expect(Script).not_to receive(:run)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb",
+                          suiteRunner: {"suite" => "MySuite", "group" => "MyGroup", "script" => "test'); system('id'); ('"}}
+      expect(response).to have_http_status(:bad_request)
+      expect(response.body).to include("Invalid Script name")
+    end
+
+    it "rejects a suiteRunner method that isn't a SuiteRunner entry point" do
+      expect(Script).not_to receive(:run)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb",
+                          suiteRunner: {"suite" => "MySuite", "method" => "instance_eval"}}
+      expect(response).to have_http_status(:bad_request)
+      expect(response.body).to include("Invalid method")
+    end
+
     it "passes pythonVenv parameter through to Script.run" do
       expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.py", nil, false, nil, "Anonymous", "anonymous", 1, nil, "/gems/plugin_venvs/demo/.venv").and_return(1)
       post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.py", pythonVenv: "/gems/plugin_venvs/demo/.venv"}
