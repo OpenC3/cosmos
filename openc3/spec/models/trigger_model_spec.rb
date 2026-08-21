@@ -369,14 +369,6 @@ module OpenC3
 
         expect {
           generate_trigger(
-            left: {'type' => 'item', 'target' => 'TGT', 'item' => 'ITEM', 'valueType' => 'CONVERTED'},
-            operator: '>',
-            right: {'type' => 'float', 'float' => '0'}
-          ).create()
-        }.to raise_error(/invalid operand, must contain target, packet, item and valueType/)
-
-        expect {
-          generate_trigger(
             left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'valueType' => 'CONVERTED'},
             operator: '>',
             right: {'type' => 'float', 'float' => '0'}

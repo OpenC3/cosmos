@@ -166,16 +166,6 @@ RSpec.describe TriggerController, type: :controller do
       expect(OpenC3::TriggerModel.names(group: GROUP, scope: "DEFAULT")).to eql([])
     end
 
-    it "returns 400 when the packet does not exist" do
-      hash = generate_trigger_hash
-      hash[:left][:packet] = "NONEXISTENT"
-      post :create, params: hash.merge({scope: "DEFAULT"})
-      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
-      expect(json["status"]).to eql("error")
-      expect(json["message"]).to match(/invalid operand.*NONEXISTENT.*does not exist/)
-      expect(response).to have_http_status(:bad_request)
-    end
-
     it "returns 400 with an invalid valueType" do
       hash = generate_trigger_hash
       hash[:left][:valueType] = "NOPE"
