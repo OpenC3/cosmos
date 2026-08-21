@@ -19,9 +19,8 @@
 # Types shown as Incomplete are unannotated in the source. Hand-refining them
 # improves checking; use --diff before regenerating to see what would be lost.
 
-from enum import IntEnum
-
 from _typeshed import Incomplete
+from enum import IntEnum
 
 from openc3.environment import *
 from openc3.utilities.store_queued import EphemeralStoreQueued as EphemeralStoreQueued

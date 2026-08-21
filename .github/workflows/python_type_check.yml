@@ -83,9 +83,9 @@ jobs:
         working-directory: openc3/python
         run: |
           uv run --no-sync --no-build ty check --exit-zero --output-format=gitlab \
-            openc3 ../../openc3-cosmos-script-runner-api/scripts > ty.json
+            openc3 tools ../../openc3-cosmos-script-runner-api/scripts > ty.json
           uv run --no-sync --no-build ty check --exit-zero --output-format=concise \
-            openc3 ../../openc3-cosmos-script-runner-api/scripts | tail -1
+            openc3 tools ../../openc3-cosmos-script-runner-api/scripts | tail -1
 
       # ty cannot emit SARIF, so convert its GitLab JSON. This also rewrites
       # paths to be repo-root relative, which is what GitHub matches against.

@@ -86,7 +86,7 @@ lint-unsafe:
 
 # Type check and write GitHub-viewable reports (ty.sarif for code scanning, ty.md summary)
 typecheck-report:
-    uv run --frozen ty check --exit-zero --output-format=gitlab openc3 ../../openc3-cosmos-script-runner-api/scripts > ty.json
+    uv run --frozen ty check --exit-zero --output-format=gitlab openc3 tools ../../openc3-cosmos-script-runner-api/scripts > ty.json
     uv run --script --locked tools/ty_report.py --input ty.json --sarif ty.sarif --markdown ty.md \
         --ty-version "$(uv run --frozen ty --version | awk '{print $2}')"
 
@@ -104,11 +104,11 @@ stubs-diff:
 
 # Type check with ty (advisory - ty is early development, doesn't fail on issues)
 typecheck:
-    -uv run ty check openc3 ../../openc3-cosmos-script-runner-api/scripts
+    -uv run ty check openc3 tools ../../openc3-cosmos-script-runner-api/scripts
 
 # Type check and fail on any diagnostic (matches a future blocking CI job)
 typecheck-strict:
-    uv run ty check openc3 ../../openc3-cosmos-script-runner-api/scripts
+    uv run ty check openc3 tools ../../openc3-cosmos-script-runner-api/scripts
 
 # Run all tests, or a specific file/pattern: `just test test/path/to/test.py`
 test *ARGS:

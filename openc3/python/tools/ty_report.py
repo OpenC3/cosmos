@@ -38,6 +38,7 @@ Usage:
 import argparse
 import json
 import os
+import re
 import sys
 import tempfile
 from collections import Counter, defaultdict
@@ -57,6 +58,122 @@ RULE_DOCS = "https://docs.astral.sh/ty/rules/#"
 
 # Code scanning rejects uploads above this many results
 SARIF_RESULT_LIMIT = 25_000
+
+# The report is built from JSON supplied on the command line, so nothing in it
+# is trusted. Every field is constrained before it reaches the SARIF, which
+# GitHub ingests, or the markdown, which is rendered in the job summary.
+#
+# ty rule names are kebab-case identifiers; anything else is not a rule name
+RULE_NAME = re.compile(r"^[a-z][a-z0-9-]{0,63}$")
+# ty fingerprints are short hex digests
+FINGERPRINT = re.compile(r"^[0-9a-f]{1,64}$", re.IGNORECASE)
+MAX_MESSAGE_CHARS = 1_000
+MAX_PATH_CHARS = 1_024
+# SARIF regions are 1-based; cap at a signed 32-bit int
+MAX_POSITION = 2**31 - 1
+UNKNOWN_RULE = "unknown-rule"
+
+
+def clean_text(value: object, limit: int = MAX_MESSAGE_CHARS) -> str:
+    """Render an untrusted value as a single-line, length-capped string."""
+    text = value if isinstance(value, str) else str(value)
+    text = "".join(char if char.isprintable() else " " for char in text)
+    return text[:limit].strip()
+
+
+def clean_position(value: object) -> int:
+    """Coerce an untrusted line or column into a valid 1-based SARIF position."""
+    if not isinstance(value, int | str):
+        return 1
+    try:
+        number = int(value)
+    except ValueError:
+        return 1
+    return max(1, min(number, MAX_POSITION))
+
+
+def escape_markdown_cell(value: str) -> str:
+    """Neutralize a value interpolated into a markdown table cell.
+
+    A crafted rule name such as `x) [click](http://evil)` would otherwise
+    close the link this is interpolated into and inject arbitrary markdown
+    into the job summary.
+    """
+    return re.sub(r"[|\[\]()`\\]", "-", value)
+
+
+def parse_diagnostics(raw: str, repo_root: Path, cwd: Path) -> tuple[list[dict], list[str]]:
+    """Validate and normalize ty's JSON into records the builders can trust.
+
+    Returns the accepted records and a list of human-readable reasons for the
+    ones that were dropped.
+    """
+    if not raw.strip():
+        return [], []
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as error:
+        raise SystemExit(f"input is not valid JSON: {error}") from error
+    if not isinstance(parsed, list):
+        raise SystemExit(f"expected a JSON array of diagnostics, got {type(parsed).__name__}")
+
+    accepted: list[dict] = []
+    dropped: list[str] = []
+    for index, entry in enumerate(parsed):
+        if len(accepted) >= SARIF_RESULT_LIMIT:
+            dropped.append(f"{len(parsed) - index} entries beyond the {SARIF_RESULT_LIMIT} result limit")
+            break
+        if not isinstance(entry, dict):
+            dropped.append(f"entry {index} is {type(entry).__name__}, not an object")
+            continue
+
+        location = entry.get("location")
+        if not isinstance(location, dict):
+            dropped.append(f"entry {index} has no location object")
+            continue
+        positions = location.get("positions")
+        if not isinstance(positions, dict):
+            dropped.append(f"entry {index} has no location.positions object")
+            continue
+        begin = positions.get("begin")
+        if not isinstance(begin, dict):
+            dropped.append(f"entry {index} has no location.positions.begin object")
+            continue
+        end = positions.get("end")
+        if not isinstance(end, dict):
+            end = begin
+
+        path = clean_text(location.get("path", ""), MAX_PATH_CHARS)
+        if not path:
+            dropped.append(f"entry {index} has no location.path")
+            continue
+        relative = to_repo_relative(path, repo_root, cwd)
+        if Path(relative).is_absolute() or relative.startswith(".."):
+            # Outside the repository: GitHub cannot annotate it, and emitting
+            # the resolved path would leak the runner's filesystem layout
+            dropped.append(f"entry {index} resolves outside the repository")
+            continue
+
+        raw_rule = clean_text(entry.get("check_name", ""), 64)
+        valid_rule = bool(RULE_NAME.match(raw_rule))
+        fingerprint = clean_text(entry.get("fingerprint", ""), 64)
+
+        accepted.append(
+            {
+                "rule": raw_rule if valid_rule else UNKNOWN_RULE,
+                # Only link to the docs for a name that really is a rule name
+                "rule_documented": valid_rule,
+                "message": clean_text(entry.get("description", "")),
+                "severity": clean_text(entry.get("severity", ""), 16).lower(),
+                "path": relative,
+                "start_line": clean_position(begin.get("line")),
+                "start_column": clean_position(begin.get("column")),
+                "end_line": clean_position(end.get("line")),
+                "end_column": clean_position(end.get("column")),
+                "fingerprint": fingerprint if FINGERPRINT.match(fingerprint) else None,
+            }
+        )
+    return accepted, dropped
 
 
 def allowed_roots(repo_root: Path) -> list[Path]:
@@ -118,44 +235,55 @@ def to_repo_relative(path: str, repo_root: Path, cwd: Path) -> str:
 
 
 def build_sarif(diagnostics: list[dict], version: str) -> dict:
-    rule_ids = sorted({d["check_name"] for d in diagnostics})
+    rule_ids = sorted({d["rule"] for d in diagnostics})
     rule_index = {name: i for i, name in enumerate(rule_ids)}
+    documented = {d["rule"] for d in diagnostics if d["rule_documented"]}
 
     results = []
     for diagnostic in diagnostics:
-        rule = diagnostic["check_name"]
-        begin = diagnostic["location"]["positions"]["begin"]
-        end = diagnostic["location"]["positions"].get("end", begin)
-        message = diagnostic["description"]
+        rule = diagnostic["rule"]
+        message = diagnostic["message"]
         # ty prefixes the rule name onto the description; drop the duplicate
         prefix = f"{rule}: "
         if message.startswith(prefix):
             message = message[len(prefix) :]
 
-        results.append(
-            {
-                "ruleId": rule,
-                "ruleIndex": rule_index[rule],
-                "level": SARIF_LEVEL.get(diagnostic["severity"], "warning"),
-                "message": {"text": message},
-                "locations": [
-                    {
-                        "physicalLocation": {
-                            "artifactLocation": {"uri": diagnostic["location"]["path"]},
-                            "region": {
-                                "startLine": begin["line"],
-                                "startColumn": begin["column"],
-                                "endLine": end["line"],
-                                "endColumn": end["column"],
-                            },
-                        }
+        result = {
+            "ruleId": rule,
+            "ruleIndex": rule_index[rule],
+            "level": SARIF_LEVEL.get(diagnostic["severity"], "warning"),
+            "message": {"text": message or "(no description)"},
+            "locations": [
+                {
+                    "physicalLocation": {
+                        "artifactLocation": {"uri": diagnostic["path"]},
+                        "region": {
+                            "startLine": diagnostic["start_line"],
+                            "startColumn": diagnostic["start_column"],
+                            "endLine": max(diagnostic["end_line"], diagnostic["start_line"]),
+                            "endColumn": diagnostic["end_column"],
+                        },
                     }
-                ],
-                # ty's own hash, so a result keeps its identity across runs and
-                # code scanning can track / dismiss it
-                "partialFingerprints": {"tyFingerprint/v1": diagnostic["fingerprint"]},
-            }
-        )
+                }
+            ],
+        }
+        if diagnostic["fingerprint"]:
+            # ty's own hash, so a result keeps its identity across runs and
+            # code scanning can track / dismiss it
+            result["partialFingerprints"] = {"tyFingerprint/v1": diagnostic["fingerprint"]}
+        results.append(result)
+
+    rules = []
+    for name in rule_ids:
+        rule_entry = {
+            "id": name,
+            "name": name,
+            "shortDescription": {"text": name.replace("-", " ")},
+            "properties": {"tags": ["type-check"]},
+        }
+        if name in documented:
+            rule_entry["helpUri"] = f"{RULE_DOCS}{name}"
+        rules.append(rule_entry)
 
     return {
         "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
@@ -165,18 +293,9 @@ def build_sarif(diagnostics: list[dict], version: str) -> dict:
                 "tool": {
                     "driver": {
                         "name": "ty",
-                        "version": version,
+                        "version": clean_text(version, 32) or "unknown",
                         "informationUri": "https://github.com/astral-sh/ty",
-                        "rules": [
-                            {
-                                "id": name,
-                                "name": name,
-                                "shortDescription": {"text": name.replace("-", " ")},
-                                "helpUri": f"{RULE_DOCS}{name}",
-                                "properties": {"tags": ["type-check"]},
-                            }
-                            for name in rule_ids
-                        ],
+                        "rules": rules,
                     }
                 },
                 "results": results,
@@ -189,10 +308,11 @@ def build_markdown(diagnostics: list[dict]) -> str:
     if not diagnostics:
         return "## ty type check\n\nNo diagnostics.\n"
 
-    by_rule = Counter(d["check_name"] for d in diagnostics)
-    by_file: defaultdict[str, Counter] = defaultdict(Counter)
+    by_rule = Counter(d["rule"] for d in diagnostics)
+    documented = {d["rule"] for d in diagnostics if d["rule_documented"]}
+    by_file: defaultdict[str, int] = defaultdict(int)
     for diagnostic in diagnostics:
-        by_file[diagnostic["location"]["path"]][diagnostic["check_name"]] += 1
+        by_file[diagnostic["path"]] += 1
 
     lines = [
         "## ty type check",
@@ -203,7 +323,10 @@ def build_markdown(diagnostics: list[dict]) -> str:
         "| rule | count |",
         "| --- | --: |",
     ]
-    lines += [f"| [`{rule}`]({RULE_DOCS}{rule}) | {count} |" for rule, count in by_rule.most_common()]
+    for rule, count in by_rule.most_common():
+        cell = escape_markdown_cell(rule)
+        label = f"[`{cell}`]({RULE_DOCS}{rule})" if rule in documented else f"`{cell}`"
+        lines.append(f"| {label} | {count} |")
 
     lines += [
         "",
@@ -212,8 +335,8 @@ def build_markdown(diagnostics: list[dict]) -> str:
         "| file | count |",
         "| --- | --: |",
     ]
-    ranked = sorted(by_file.items(), key=lambda item: sum(item[1].values()), reverse=True)
-    lines += [f"| `{path}` | {sum(counts.values())} |" for path, counts in ranked[:25]]
+    ranked = sorted(by_file.items(), key=lambda item: item[1], reverse=True)
+    lines += [f"| `{escape_markdown_cell(path)}` | {count} |" for path, count in ranked[:25]]
     lines += ["", "</details>", ""]
     return "\n".join(lines)
 
@@ -245,18 +368,11 @@ def main() -> int:
     markdown_path = checked_path(args.markdown, roots, must_exist=False) if args.markdown else None
 
     raw = input_path.read_text() if input_path else sys.stdin.read()
-    diagnostics = json.loads(raw) if raw.strip() else []
-    for diagnostic in diagnostics:
-        diagnostic["location"]["path"] = to_repo_relative(diagnostic["location"]["path"], repo_root, cwd)
+    diagnostics, dropped = parse_diagnostics(raw, repo_root, cwd)
+    for reason in dropped:
+        print(f"warning: skipped {reason}", file=sys.stderr)
 
     if sarif_path:
-        if len(diagnostics) > SARIF_RESULT_LIMIT:
-            print(
-                f"warning: {len(diagnostics)} results exceeds the code scanning limit of "
-                f"{SARIF_RESULT_LIMIT}; truncating",
-                file=sys.stderr,
-            )
-            diagnostics = diagnostics[:SARIF_RESULT_LIMIT]
         sarif_path.write_text(json.dumps(build_sarif(diagnostics, args.ty_version), indent=2) + "\n")
         print(f"wrote {sarif_path} ({len(diagnostics)} results)")
 

@@ -144,6 +144,9 @@ convention = "google"
 [tool.ruff.lint.isort]
 # Group imports: standard library, third-party, first-party
 known-first-party = ["openc3"]
+# _typeshed ships with typeshed and only exists at type-check time; group it
+# with the standard library instead of leaving it alone in third-party
+extra-standard-library = ["_typeshed"]
 # Add blank line between import groups
 lines-after-imports = 2
 

@@ -19,10 +19,9 @@
 # Types shown as Incomplete are unannotated in the source. Hand-refining them
 # improves checking; use --diff before regenerating to see what would be lost.
 
+from _typeshed import Incomplete
 from collections.abc import Generator
 from contextlib import contextmanager
-
-from _typeshed import Incomplete
 
 from openc3.environment import *
 from openc3.utilities.connection_pool import ConnectionPool as ConnectionPool
