@@ -39,6 +39,7 @@ import re
 import sys
 from pathlib import Path
 from typing import NamedTuple
+from urllib.parse import urlparse
 
 import requests
 
@@ -127,7 +128,8 @@ def fetch_json(url: str) -> dict:
     headers = {"User-Agent": "openc3-tool-version-check"}
     # GitHub's unauthenticated rate limit is low; use the workflow token if present
     token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
-    if token and "api.github.com" in url:
+    host = urlparse(url).hostname
+    if token and host == "api.github.com":
         headers["Authorization"] = f"Bearer {token}"
     response = requests.get(url, headers=headers, timeout=TIMEOUT)
     response.raise_for_status()
