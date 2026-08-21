@@ -44,20 +44,35 @@ const stopCoverage = async (page: any) => {
   }
 }
 
-// localStorage keys the fixture or a spec injects to drive UI preferences
-// rather than authentication. These must never reach the shared storage state
-// files: every context is created from those files, so a persisted notoast
-// silently disables alert toasts for the whole run (Notifications.vue reads
-// localStorage.notoast on load) and a persisted toastPosition changes where the
-// toaster renders.
-const UI_PREF_KEYS = new Set(['notoast', 'toastPosition'])
+// The only localStorage keys worth carrying in the shared storage state files.
+// Allowlisted rather than denylisted: every context is created from those files,
+// so anything else that gets captured silently changes app behavior for the rest
+// of the run - a persisted notoast disables alert toasts (Notifications.vue
+// reads it on load), and notificationStreamOffset / lastReadNotification /
+// ackedAlerts make alerts come back already read. A missing key here breaks
+// every spec loudly, which is the failure mode we want.
+const AUTH_STATE_KEYS = new Set([
+  // Session: openc3Token is core's whole auth story, the rest are Enterprise
+  // (see the two public/js/auth.js copies).
+  'openc3Token',
+  'openc3RefreshToken',
+  'openc3OfflineToken',
+  'openc3LoginMode',
+  // Keycloak client config, written at boot by Enterprise auth.js.
+  'keycloakUrl',
+  'keycloakRealm',
+  'keycloakClientId',
+  // Enterprise tool-base main.js reads this at boot to set window.openc3Scope.
+  'openc3Scope',
+])
 
-// Persist just the signed-in session, dropping the UI preference keys above.
+// Persist just the signed-in session, dropping everything else (UI preferences,
+// notification read state, keycloak kc-callback-* redirect leftovers).
 const saveAuthState = async (context: any, path: string) => {
   const state = await context.storageState()
   for (const origin of state.origins || []) {
     origin.localStorage = (origin.localStorage || []).filter(
-      (item: { name: string }) => !UI_PREF_KEYS.has(item.name),
+      (item: { name: string }) => AUTH_STATE_KEYS.has(item.name),
     )
   }
   await writeFile(path, JSON.stringify(state))
