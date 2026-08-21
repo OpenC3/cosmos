@@ -110,10 +110,6 @@ class TriggerController < ApplicationController
         name = @model_class.create_unique_name(group: hash['group'], scope: params[:scope])
       end
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
-      # Validate items here rather than in TriggerModel#update because we notify
-      # instead of updating directly. Without this the microservice would reject the
-      # update asynchronously, long after this request returned success.
-      model.validate_items()
       model.create() # Create sends a notification
       render json: model.as_json(), status: :created
     rescue OpenC3::TriggerInputError => e
@@ -143,11 +139,16 @@ class TriggerController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
+      
       hash = params.permit(:operator, :label, left: {}, right: {}).to_h
       model.left = hash['left'] if hash['left']
       model.operator = hash['operator'] if hash['operator']
       model.right = hash['right'] if hash['right']
       model.label = hash['label'] if hash.key?('label')
+      # Validate items here rather than in TriggerModel#update because we notify
+      # instead of updating directly. Without this the microservice would reject the
+      # update asynchronously, long after this request returned success.
+      model.validate_trigger_items()
       # Update the timestamp before notifying so the event has the current time
       model.updated_at = Time.now.to_nsec_from_epoch
       # Notify the TriggerGroupMicroservice to update the TriggerModel

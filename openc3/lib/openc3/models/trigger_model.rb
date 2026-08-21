@@ -185,7 +185,7 @@ module OpenC3
     # which actually exist. Only called on create and update, never from initialize.
     # Anything which can reject an already persisted trigger must live here rather than
     # in validate_operand, because validate_operand runs on every from_json
-    def validate_items
+    def validate_trigger_items
       [@left, @right].each do |operand|
         next unless operand.is_a?(Hash) and operand['type'] == ITEM_TYPE
         unless ITEM_VALUE_TYPES.include?(operand['valueType'])
@@ -226,7 +226,7 @@ module OpenC3
       unless Store.hget(@primary_key, @name).nil?
         raise TriggerInputError.new "existing trigger found: '#{@name}'"
       end
-      validate_items()
+      validate_trigger_items()
       models = validate_roots()
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json, allow_nan: true))
