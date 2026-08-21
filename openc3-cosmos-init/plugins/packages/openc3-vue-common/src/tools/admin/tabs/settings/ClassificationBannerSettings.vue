@@ -261,22 +261,10 @@ export default {
   },
   watch: {
     displayTopBanner: function (val) {
-      if (val) {
-        if (!this.topHeight) {
-          this.topHeight = 20
-        }
-      } else {
-        this.topHeight = 0
-      }
+      this.topHeight = val ? this.topHeight || 20 : 0
     },
     displayBottomBanner: function (val) {
-      if (val) {
-        if (!this.bottomHeight) {
-          this.bottomHeight = 20
-        }
-      } else {
-        this.bottomHeight = 0
-      }
+      this.bottomHeight = val ? this.bottomHeight || 20 : 0
     },
     customFontColor: function (val) {
       if (val && val.length && !val.startsWith('#')) {
