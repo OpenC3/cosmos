@@ -129,6 +129,11 @@ module OpenC3
         # Ensure scope_model creates the UNKNOWN target and streams
         target = TargetModel.get(name: "UNKNOWN", scope: "DEFAULT")
         expect(target["name"]).to eql "UNKNOWN"
+        # Every scope gets a DEFAULT bridge_microservice (the Iroh hub)
+        bridge = MicroserviceModel.get_model(name: "DEFAULT__BRIDGE__DEFAULT", scope: "DEFAULT")
+        expect(bridge).to_not be_nil
+        expect(bridge.cmd[1]).to eql "bridge_microservice.py"
+        expect(bridge.options).to include(["BRIDGE_NAME", "DEFAULT"])
       end
     end
 

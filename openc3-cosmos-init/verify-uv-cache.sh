@@ -42,7 +42,7 @@ trap 'rm -rf "${WORK}"' EXIT
 CHECKED=0
 UNVERIFIED=""
 for GEM in "${GEMS_DIR}"/*.gem; do
-    [ -f "${GEM}" ] || continue
+    [[ -f "${GEM}" ]] || continue
     NAME=$(basename "${GEM}" .gem)
     DEST="${WORK}/${NAME}"
     mkdir -p "${DEST}"
@@ -55,8 +55,8 @@ for GEM in "${GEMS_DIR}"/*.gem; do
     # assert against. A gem declaring Python dependencies some other way still
     # installs at runtime, just online, so call it out rather than dropping it
     # in with the plugins that have no Python dependencies at all.
-    if [ -z "${SRC}" ] || [ ! -f "${SRC}/uv.lock" ] || [ ! -f "${SRC}/pyproject.toml" ]; then
-        if [ -n "${SRC}" ] && { [ -f "${SRC}/requirements.txt" ] || [ -f "${SRC}/pyproject.toml" ]; }; then
+    if [[ -z "${SRC}" ]] || [[ ! -f "${SRC}/uv.lock" ]] || [[ ! -f "${SRC}/pyproject.toml" ]]; then
+        if [[ -n "${SRC}" ]] && { [[ -f "${SRC}/requirements.txt" ]] || [[ -f "${SRC}/pyproject.toml" ]]; }; then
             UNVERIFIED="${UNVERIFIED} ${NAME}"
         fi
         rm -rf "${DEST}"
@@ -70,7 +70,12 @@ for GEM in "${GEMS_DIR}"/*.gem; do
     # --no-build matches docker-package-build.sh so no setup.py runs during the
     # image build, and asserts the cache holds real wheels rather than sdists
     # this step would have to build.
+    # UV_COMPILE_BYTECODE=0 overrides the base image's UV_COMPILE_BYTECODE=1:
+    # this step only asserts the wheels INSTALL offline from the cache, and byte-
+    # compilation would try to write a temp script into ${CACHE_DIR}, which is the
+    # root-owned, read-only baked seed (the openc3 user we run as can't write it).
     if ! (cd "${SRC}" && UV_CACHE_DIR="${CACHE_DIR}" UV_PYTHON_DOWNLOADS=never \
+            UV_COMPILE_BYTECODE=0 \
             uv sync --frozen --no-dev --no-install-project --offline --no-build); then
         {
             echo "ERROR: ${NAME} cannot install its Python dependencies from the baked UV cache."
@@ -83,7 +88,7 @@ for GEM in "${GEMS_DIR}"/*.gem; do
     rm -rf "${DEST}"
 done
 
-if [ -n "${UNVERIFIED}" ]; then
+if [[ -n "${UNVERIFIED}" ]]; then
     # Not a build failure: these plugins install fine on a networked cluster,
     # and failing here would break a build for a gap that predates this check.
     echo "WARNING: UNVERIFIED (no uv.lock - not warmed, will install online):${UNVERIFIED}" >&2
@@ -93,7 +98,7 @@ fi
 # so treat it as a failure: it means GEMS_DIR moved, the gem glob stopped
 # matching, or the last uv.lock plugin left the image. Every build ships at
 # least openc3-cosmos-demo, which declares uv.lock + pyproject.toml.
-if [ "${CHECKED}" -eq 0 ]; then
+if [[ "${CHECKED}" -eq 0 ]]; then
     {
         echo "ERROR: no plugin gem with uv.lock was verified - expected at least one."
         echo "       Checked ${GEMS_DIR}/*.gem; confirm that path still holds the shipped gems."
