@@ -139,7 +139,6 @@ class TriggerController < ApplicationController
         render json: { status: 'error', message: NOT_FOUND }, status: :not_found
         return
       end
-      
       hash = params.permit(:operator, :label, left: {}, right: {}).to_h
       model.left = hash['left'] if hash['left']
       model.operator = hash['operator'] if hash['operator']
