@@ -31,6 +31,14 @@ class BridgesController < ModelController
     @model_class = OpenC3::BridgeModel
   end
 
+  def index
+    return unless authorization('system')
+    render json: bridge_summaries.keys
+  rescue StandardError => error
+    render json: { status: 'error', message: error.message }, status: :internal_server_error
+    logger.error(error.formatted)
+  end
+
   def show
     return unless authorization('system')
     if params[:id] == 'ALL'
