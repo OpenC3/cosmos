@@ -20,6 +20,19 @@ updates:
     schedule:
       interval: weekly
     groups:
+      # Majors get their own pull request. Excluding them entirely is how
+      # setup-uv silently sat on v8 while upstream reached v10, but bundling
+      # them with the routine bumps is worse: one group is one PR, so a single
+      # breaking upgrade among ~27 actions blocks all of them, and Actions
+      # treats a renamed input as a warning rather than an error, so a green
+      # run does not prove a major was harmless.
+      #
+      # Order matters here: a dependency joins the first group it matches.
+      github-actions-major:
+        patterns:
+          - "*"
+        update-types:
+          - major
       github-actions:
         patterns:
           - "*"
@@ -34,6 +47,17 @@ updates:
     ignore:
       - dependency-name: openc3
     groups:
+      # Majors deliberately excluded. This pattern covers the runtime
+      # dependencies of the published openc3 package, every one of which has a
+      # deliberate upper cap (boto3 <2, lxml <7, psycopg <4, valkey <7, ...).
+      # A major bump means raising that cap, which changes what downstream
+      # users resolve, so it should be a maintainer decision rather than a
+      # weekly automated PR.
+      #
+      # ruff and ty lose nothing here: both are pre-1.0, so their breaking
+      # releases arrive as minors today. .github/workflows/tool_version_check.yml
+      # watches them, uv and mypy against upstream and files a tracking issue,
+      # which is the notification this exclusion would otherwise cost.
       uv:
         patterns:
           - "*"

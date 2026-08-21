@@ -154,16 +154,11 @@ jobs:
         # Only needed for SonarQube Scan
         # with:
         #   fetch-depth: 0
-      - name: Install uv
-        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v7
+      - name: Set up uv and Python ${{ matrix.python-version }}
+        uses: ./.github/actions/setup-uv-python
         with:
-          enable-cache: true
+          python-version: ${{ matrix.python-version }}
           cache-suffix: ${{ matrix.python-version }}
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: uv sync --frozen
-        working-directory: openc3/python
       - name: Run unit tests
         run: |
           uv run --frozen coverage run -m pytest ../../openc3-cosmos-script-runner-api/test/

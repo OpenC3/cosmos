@@ -54,23 +54,17 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Install uv
-        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
-        with:
-          enable-cache: true
-          working-directory: openc3/python
-      - name: Set up Python
-        run: uv python install
-        working-directory: openc3/python
       # --no-build refuses to build any source distribution, so no third-party
       # build backend gets to execute code in CI. Every locked dependency ships
       # a wheel, so nothing needs building. --no-install-project skips the
       # editable install of openc3 itself, which is the only thing here that
       # would require a build; ty resolves first-party imports from the source
       # tree, so the results are identical without it.
-      - name: Install dependencies
-        run: uv sync --frozen --no-install-project --no-build
-        working-directory: openc3/python
+      - name: Set up uv and Python
+        uses: ./.github/actions/setup-uv-python
+        with:
+          no-install-project: "true"
+          no-build: "true"
 
       # --locked pins the scripts' own dependencies to tools/*.py.lock, so a
       # new mypy or ruff release cannot change what runs here. Deterministic,
