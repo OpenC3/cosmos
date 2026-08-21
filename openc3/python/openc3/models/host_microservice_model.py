@@ -9,8 +9,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import json
-
 from openc3.models.model import Model
 
 
