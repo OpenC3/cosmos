@@ -30,6 +30,12 @@ module OpenC3
     # the values stay consistent in one place.
     DEFAULT_METHOD = 'start'
     DEFAULT_OPTIONS = ['continueAfterError'].freeze
+    # The only SuiteRunner entry points a client may request
+    ALLOWED_METHODS = ['start', 'setup', 'teardown'].freeze
+    # Suite and Group are Ruby constant (class) names, optionally namespaced
+    CLASS_NAME_REGEX = /\A[A-Z][A-Za-z0-9_]*(::[A-Z][A-Za-z0-9_]*)*\z/
+    # Script is a Ruby method name on the Group
+    METHOD_NAME_REGEX = /\A[a-z_][A-Za-z0-9_]*[?!]?\z/
 
     @@suites = []
     @@settings = {}
@@ -55,12 +61,38 @@ module OpenC3
       raise ArgumentError, "Script #{script} requires a Group" if script and not group
     end
 
+    # Validate that the raw (client supplied) suite_runner values are plain
+    # identifiers. These values are interpolated into the Ruby snippet the
+    # running script evaluates, so anything other than a bare class / method
+    # name must be rejected before it reaches the interpreter.
+    def self.validate_identifiers(suite:, group: nil, script: nil, method: nil)
+      unless suite.is_a?(String) and CLASS_NAME_REGEX.match?(suite)
+        raise ArgumentError, "Invalid Suite name: #{suite.inspect}"
+      end
+      if group
+        unless group.is_a?(String) and CLASS_NAME_REGEX.match?(group)
+          raise ArgumentError, "Invalid Group name: #{group.inspect}"
+        end
+      end
+      if script
+        unless script.is_a?(String) and METHOD_NAME_REGEX.match?(script)
+          raise ArgumentError, "Invalid Script name: #{script.inspect}"
+        end
+      end
+      if method
+        unless ALLOWED_METHODS.include?(method.to_s)
+          raise ArgumentError, "Invalid method: #{method.inspect}"
+        end
+      end
+    end
+
     # Build the canonical, validated suite_runner hash from raw values,
     # applying defaults. Shared by openc3cli (constructing from CLI flags) and
     # the running script (normalizing a received hash before dispatch) so the
     # hash shape, defaults, and validation live in one place.
     def self.build_options(suite:, group: nil, script: nil, method: nil, options: nil)
       validate_options(group: group, script: script)
+      validate_identifiers(suite: suite, group: group, script: script, method: method)
       suite_runner = { 'suite' => suite }
       if group
         suite_runner['group'] = group
