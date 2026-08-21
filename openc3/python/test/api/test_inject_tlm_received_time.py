@@ -21,9 +21,7 @@ class TestInjectTlmReceivedTime(unittest.TestCase):
     @patch("openc3.api.tlm_api.InterfaceModel.all", return_value={})
     @patch("openc3.api.tlm_api.TargetModel.packet")
     @patch("openc3.api.tlm_api.authorize")
-    def test_api_passes_received_time_without_interface(
-        self, _authorize, _packet, _interfaces, decom_inject
-    ):
+    def test_api_passes_received_time_without_interface(self, _authorize, _packet, _interfaces, decom_inject):
         received_time = 1_609_459_200_123_456_000
 
         inject_tlm("INST", "HEALTH_STATUS", received_time=received_time)
@@ -50,9 +48,7 @@ class TestInjectTlmReceivedTime(unittest.TestCase):
     )
     @patch("openc3.api.tlm_api.TargetModel.packet")
     @patch("openc3.api.tlm_api.authorize")
-    def test_api_passes_received_time_with_interface(
-        self, _authorize, _packet, _interfaces, interface_inject
-    ):
+    def test_api_passes_received_time_with_interface(self, _authorize, _packet, _interfaces, interface_inject):
         received_time = 1_609_459_200_123_456_000
 
         inject_tlm("INST", "HEALTH_STATUS", received_time=received_time)

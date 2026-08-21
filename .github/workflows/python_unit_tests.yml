@@ -48,20 +48,15 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Install uv
-        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v7
+      - name: Set up uv and Python ${{ matrix.python-version }}
+        uses: ./.github/actions/setup-uv-python
         with:
-          version: "0.10.4"
-          enable-cache: true
-          cache-suffix: ${{ matrix.python-version }}
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: uv sync --frozen
-        working-directory: openc3/python
+          cache-suffix: ${{ matrix.python-version }}
       - name: Run unit tests
         run: |
-          uv run --frozen coverage run -m pytest ./test/
-          uv run --frozen coverage xml -i
+          uv run --no-sync --no-build coverage run -m pytest ./test/
+          uv run --no-sync --no-build coverage xml -i
         working-directory: openc3/python
       - name: Prune uv cache
         run: uv cache prune --ci

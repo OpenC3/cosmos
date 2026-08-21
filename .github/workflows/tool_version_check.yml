@@ -1,0 +1,110 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+# Watches the tool pins that dependabot cannot see, and files them as a single
+# tracking issue that is updated in place rather than reopened each week:
+#
+#   * versions inside an Actions input (setup-uv's `version`) or a Dockerfile
+#     ARG consumed by pip -- dependabot parses neither
+#   * major releases, since every group in dependabot.yml is limited to
+#     update-types: [minor, patch]
+#   * PEP 723 script lockfiles (openc3/python/tools/*.py.lock)
+#
+# See .github/scripts/check_tool_versions.py for the list of watched pins.
+
+name: Tool Version Check
+
+on:
+  schedule:
+    - cron: "0 7 * * 1" # Mondays at 07:00 UTC, after dependabot's weekly run
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/scripts/check_tool_versions.py"
+      - ".github/scripts/check_tool_versions.py.lock"
+      - ".github/workflows/tool_version_check.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Needed to open or update the tracking issue
+      issues: write
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The checker is a PEP 723 script, so it needs uv. sync: "false" because
+      # it does not use openc3's dependencies -- its own are in its lockfile.
+      - name: Set up uv and Python
+        uses: ./.github/actions/setup-uv-python
+        with:
+          sync: "false"
+
+      # Exits 1 when a pin is behind; capture that without failing the step so
+      # the report can still be published
+      - name: Check pinned tool versions
+        id: check
+        run: |
+          if uv run --script --locked --no-build .github/scripts/check_tool_versions.py > report.md; then
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+
+      # On a pull request, report in the summary only: opening issues from a PR
+      # would file one per push, and fork PRs have no write token
+      - name: Open or update the tracking issue
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TITLE: "Pinned tool versions are behind upstream"
+          STALE: ${{ steps.check.outputs.stale }}
+        run: |
+          set -euo pipefail
+          existing=$(gh issue list --state open --search "$TITLE in:title" \
+            --json number,title --jq "[.[] | select(.title == env.TITLE)] | first | .number // empty")
+
+          if [ "$STALE" = "false" ]; then
+            if [ -n "$existing" ]; then
+              gh issue comment "$existing" --body "All watched pins are current as of $GITHUB_SHA. Closing."
+              gh issue close "$existing"
+            fi
+            echo "Nothing behind upstream."
+            exit 0
+          fi
+
+          {
+            echo "Pins that dependabot does not raise have fallen behind."
+            echo
+            cat report.md
+            echo
+            echo "Updated by [\`tool_version_check\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})."
+          } > issue.md
+
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --body-file issue.md
+          else
+            gh issue create --title "$TITLE" --body-file issue.md
+          fi

@@ -1,0 +1,109 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+name: Python Type Check
+
+on:
+  pull_request:
+    branches-ignore:
+      - "dependabot/**"
+    types:
+      - opened
+      - reopened
+      - synchronize
+    paths:
+      - "openc3/python/**/*.py"
+      - "openc3/python/**/*.pyi"
+      - "openc3-cosmos-script-runner-api/scripts/**/*.py"
+      - "openc3-cosmos-script-runner-api/test/**/*.py"
+      - "openc3/python/pyproject.toml"
+      - "openc3/python/uv.lock"
+      - "openc3/python/tools/**"
+      - ".github/workflows/python_type_check.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ty is in early development and the codebase is not fully annotated yet, so
+  # the type check itself is advisory: results are published to code scanning
+  # but never fail the build. Remove --exit-zero to make it blocking.
+  ty:
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required to publish results to Security > Code scanning
+      security-events: write
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # --no-build refuses to build any source distribution, so no third-party
+      # build backend gets to execute code in CI. Every locked dependency ships
+      # a wheel, so nothing needs building. --no-install-project skips the
+      # editable install of openc3 itself, which is the only thing here that
+      # would require a build; ty resolves first-party imports from the source
+      # tree, so the results are identical without it.
+      - name: Set up uv and Python
+        uses: ./.github/actions/setup-uv-python
+        with:
+          no-install-project: "true"
+          no-build: "true"
+
+      # --locked pins the scripts' own dependencies to tools/*.py.lock, so a
+      # new mypy or ruff release cannot change what runs here. Deterministic,
+      # so this one is allowed to fail the build
+      - name: Verify singleton stubs are up to date
+        run: uv run --script --locked --no-build tools/generate_singleton_stubs.py --check
+        working-directory: openc3/python
+
+      - name: Run ty
+        working-directory: openc3/python
+        run: |
+          uv run --no-sync --no-build ty check --exit-zero --output-format=gitlab \
+            openc3 tools ../../openc3-cosmos-script-runner-api/scripts > ty.json
+          uv run --no-sync --no-build ty check --exit-zero --output-format=concise \
+            openc3 tools ../../openc3-cosmos-script-runner-api/scripts | tail -1
+
+      # ty cannot emit SARIF, so convert its GitLab JSON. This also rewrites
+      # paths to be repo-root relative, which is what GitHub matches against.
+      - name: Convert results to SARIF
+        working-directory: openc3/python
+        run: |
+          uv run --script --locked --no-build tools/ty_report.py \
+            --input ty.json \
+            --sarif ty.sarif \
+            --markdown "$GITHUB_STEP_SUMMARY" \
+            --ty-version "$(uv run --no-sync ty --version | awk '{print $2}')"
+
+      - name: Upload SARIF to code scanning
+        # Pull requests from forks get a read-only token, so the upload is
+        # expected to fail there; the summary and artifact still work
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
+        with:
+          sarif_file: openc3/python/ty.sarif
+          category: ty
+
+      - name: Upload SARIF as an artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ty-sarif
+          path: openc3/python/ty.sarif
+          retention-days: 14
