@@ -217,9 +217,7 @@ export default {
         .then(() => {
           this.showCreate = false
           this.newBridgeName = ''
-          this.showTempAlert(
-            `Bridge ${name} created. Its hub is starting.`,
-          )
+          this.showTempAlert(`Bridge ${name} created. Its hub is starting.`)
           this.update()
         })
         .catch((error) => {
