@@ -18,7 +18,7 @@
 require 'spec_helper'
 require 'openc3/models/interface_model'
 require 'openc3/models/bridge_model'
-require 'openc3/models/host_microservice_model'
+require 'openc3/models/host_interface_microservice_model'
 require 'openc3/models/interface_status_model'
 require 'openc3/models/router_model'
 require 'openc3/models/router_status_model'
