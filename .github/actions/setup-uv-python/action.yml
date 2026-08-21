@@ -90,9 +90,11 @@ runs:
       run: uv python install $PYTHON_VERSION
 
     # --frozen is not optional: it is what makes the install reproducible, so
-    # it is hardcoded rather than exposed as a caller-supplied argument string
-    # that could omit it or add --upgrade. The remaining flags are booleans for
-    # the same reason -- nothing here interpolates into the shell.
+    # it is passed literally on the uv sync line rather than accumulated into a
+    # variable, where neither a reader nor a scanner can see that the lockfile
+    # is honored. The optional flags are booleans rather than a caller-supplied
+    # argument string that could omit --frozen or add --upgrade, and they reach
+    # bash through env so nothing interpolates into the shell.
     - name: Install dependencies
       if: ${{ inputs.sync == 'true' }}
       shell: bash
@@ -101,9 +103,9 @@ runs:
         NO_INSTALL_PROJECT: ${{ inputs.no-install-project }}
         NO_BUILD: ${{ inputs.no-build }}
       run: |
-        args=(--frozen)
+        extra=()
         if [ "$NO_INSTALL_PROJECT" = "true" ]; then
-          args+=(--no-install-project)
+          extra+=(--no-install-project)
         fi
         if [ "$NO_BUILD" = "true" ]; then
           if [ "$NO_INSTALL_PROJECT" != "true" ]; then
@@ -113,7 +115,7 @@ runs:
             echo "::error::no-build requires no-install-project" >&2
             exit 1
           fi
-          args+=(--no-build)
+          extra+=(--no-build)
         fi
-        echo "uv sync ${args[*]}"
-        uv sync "${args[@]}"
+        echo "uv sync --frozen ${extra[*]}"
+        uv sync --frozen "${extra[@]}"
