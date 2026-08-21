@@ -16,6 +16,7 @@
 */
 
 import axios from './axios'
+import { isAuthRequiredError, refreshToken } from './authGuard'
 
 const request = async function (
   method,
@@ -25,23 +26,34 @@ const request = async function (
     params = {},
     headers,
     noAuth = false,
+    optionalAuth = false,
     noScope = false,
     onUploadProgress = false,
     responseType,
   } = {},
 ) {
   if (!noAuth) {
-    try {
-      let refreshed = await OpenC3Auth.updateToken(
-        OpenC3Auth.defaultMinValidity,
-      )
-      if (refreshed) {
-        OpenC3Auth.setTokens()
+    if (optionalAuth) {
+      // Public bootstrap endpoints (e.g. tools/all, which AppNav needs to
+      // render the login page itself) must still be sent with no token.
+      // Refresh if we can and send whatever token we end up with, but never
+      // let a missing one block the request.
+      try {
+        await refreshToken()
+      } catch (error) {
+        if (!isAuthRequiredError(error)) {
+          throw error
+        }
       }
-    } catch (error) {
-      OpenC3Auth.login()
+      if (localStorage.openc3Token) {
+        headers['Authorization'] = localStorage.openc3Token
+      }
+    } else {
+      // Throws an AuthRequiredError if we have no token, in which case we're
+      // being redirected to login and must not send the request
+      await refreshToken()
+      headers['Authorization'] = localStorage.openc3Token
     }
-    headers['Authorization'] = localStorage.openc3Token
   }
   // Everything from the front-end is manual by default
   // The various api methods decide whether to pass the manual
@@ -78,6 +90,7 @@ export default {
       headers = acceptOnlyDefaultHeaders,
       noScope,
       noAuth,
+      optionalAuth,
       onUploadProgress,
       responseType,
     } = {},
@@ -87,6 +100,7 @@ export default {
       headers,
       noScope,
       noAuth,
+      optionalAuth,
       onUploadProgress,
       responseType,
     })

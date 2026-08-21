@@ -321,7 +321,11 @@ import GraphEditDialog from './GraphEditDialog.vue'
 import GraphEditItemDialog from './GraphEditItemDialog.vue'
 import uPlot from 'uplot'
 import bs from 'binary-search'
-import { OpenC3Api, Cable } from '@openc3/js-common/services'
+import {
+  OpenC3Api,
+  Cable,
+  logUnlessAuthRequired,
+} from '@openc3/js-common/services'
 import { useStore } from '@/plugins/store'
 import { TimeFilters } from '@/util'
 import 'uplot/dist/uPlot.min.css'
@@ -1748,8 +1752,8 @@ export default {
       if (this.subscription) {
         this.subscribeTime = performance.now()
         this.emptyDataNotified = false
-        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-          (refreshed) => {
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity)
+          .then((refreshed) => {
             if (refreshed) {
               OpenC3Auth.setTokens()
             }
@@ -1763,8 +1767,11 @@ export default {
               start_time: theStartTime,
               end_time: this.graphEndDateTime,
             })
-          },
-        )
+          })
+          // An AuthRequiredError means we have no token and are being
+          // redirected to login, so don't try to subscribe. Anything else is
+          // unexpected and still gets logged.
+          .catch(logUnlessAuthRequired)
       }
     },
     clearAllData: function () {

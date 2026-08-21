@@ -62,7 +62,7 @@
               size="large"
               color="success"
               :disabled="!formValid"
-              @click.prevent="() => verify()"
+              @click.prevent="verify"
             >
               Login
             </v-btn>
@@ -81,7 +81,7 @@
 </template>
 
 <script>
-import { Api } from '@openc3/js-common/services'
+import { Api, isUnauthorizedError } from '@openc3/js-common/services'
 
 export default {
   data() {
@@ -101,6 +101,19 @@ export default {
       return {
         noAuth: true,
         noScope: true, // lol
+        // 401 and 429 are normal, expected answers on this page: the session
+        // token we are checking may be stale, the password may be wrong, or we
+        // may be rate limited. Every one of them is already reported in the
+        // form's own alert, so opt out of the axios interceptor to avoid a
+        // duplicate error banner. For 401 this also stops the interceptor from
+        // clearing tokens (shared with every other tab on this origin) and
+        // bouncing us through a login redirect while we're already on the login
+        // page.
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'Ignore-Errors': '401,429',
+        },
       }
     },
     rules: function () {
@@ -137,15 +150,49 @@ export default {
   },
   mounted: function () {
     if (localStorage.openc3Token) {
-      this.verify(localStorage.openc3Token, true)
+      this.verifyToken()
     }
   },
   methods: {
     showReset: function () {
       this.reset = true
     },
+    // Skip the login form if the session token we already have is still good.
+    // Note this must not go to /auth/verify: that endpoint only checks
+    // passwords, so a session token always failed there and was recorded as a
+    // bad password attempt against the rate limit.
+    verifyToken: function () {
+      const token = localStorage.openc3Token
+      Api.post('/openc3-api/auth/verify-token', {
+        data: {
+          token,
+        },
+        ...this.options,
+      })
+        .then(() => {
+          this.redirect()
+        })
+        .catch((error) => {
+          // Only a 401 means the token is actually stale. Anything else (server
+          // down, 500) says nothing about the token, and throwing it away would
+          // needlessly force the user to retype their password.
+          if (!isUnauthorizedError(error)) {
+            return
+          }
+          // Stale token - drop it and let the user log in normally. Only if it's
+          // still the token we checked: the user can finish logging in while
+          // this request is in flight, and deleting the new token would send
+          // them straight back to the login form.
+          if (localStorage.openc3Token === token) {
+            delete localStorage.openc3Token
+          }
+        })
+    },
     login: function (response) {
       localStorage.openc3Token = response.data
+      this.redirect()
+    },
+    redirect: function () {
       const redirect = new URLSearchParams(window.location.search).get(
         'redirect',
       )
@@ -156,12 +203,11 @@ export default {
         window.location = '/'
       }
     },
-    verify: function (password, noAlert) {
-      password ||= this.password
+    verify: function () {
       this.showAlert = false
       Api.post('/openc3-api/auth/verify', {
         data: {
-          password,
+          password: this.password,
         },
         ...this.options,
       })
@@ -169,9 +215,9 @@ export default {
           this.login(response)
         })
         .catch((error) => {
-          if (error?.status === 401) {
+          if (isUnauthorizedError(error)) {
             this.alert = 'Incorrect password'
-          } else if (error?.status === 429) {
+          } else if (error?.status === 429 || error?.response?.status === 429) {
             this.alert = 'Please try again later'
           } else if (
             error?.response?.data?.message === 'invalid password hash'
@@ -182,7 +228,7 @@ export default {
             this.alert = error.message || 'Something went wrong...'
           }
           this.alertType = 'warning'
-          this.showAlert = !noAlert
+          this.showAlert = true
         })
     },
     setPassword: function () {
@@ -198,7 +244,11 @@ export default {
           this.login(response)
         })
         .catch((error) => {
-          this.alert = `Invalid password: ${error.response.data.message}`
+          // No response at all means the server is unreachable, not a bad
+          // password, so don't blow up dereferencing it
+          this.alert = `Invalid password: ${
+            error?.response?.data?.message || error?.message || 'unknown error'
+          }`
           this.alertType = 'warning'
           this.showAlert = true
         })
