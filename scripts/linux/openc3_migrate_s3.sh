@@ -305,7 +305,7 @@ start_temp_minio() {
     # Wait for MINIO to be ready
     log_info "Waiting for MINIO to be ready..."
     local retries=0
-    while [ $retries -lt 30 ]; do
+    while [[ $retries -lt 30 ]]; do
         # Check if container is running and MINIO is responding
         # Use mc admin info which works reliably across MINIO versions
         if docker run --rm --network "$DOCKER_NETWORK" --entrypoint "" \
