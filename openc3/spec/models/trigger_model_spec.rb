@@ -16,6 +16,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
+require 'openc3/models/target_model'
 require 'openc3/models/trigger_group_model'
 require 'openc3/models/trigger_model'
 
@@ -60,6 +61,11 @@ module OpenC3
 
     before(:each) do
       mock_redis()
+      # Seed the INST target so item operands reference telemetry that actually exists
+      setup_system()
+      target = TargetModel.new(folder_name: 'INST', name: 'INST', scope: $openc3_scope)
+      target.create
+      target.update_store(System.new(['INST'], File.join(SPEC_DIR, 'install', 'config', 'targets')))
       generate_trigger_group_model().create()
     end
 
@@ -279,14 +285,14 @@ module OpenC3
       it "allows nil right when operator is CHANGE oriented" do
         generate_trigger(
           name: 'TRIG1',
-          left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM', 'valueType' => 'CONVERTED'},
+          left: {'type' => 'item', 'target' => 'INST', 'packet' => 'HEALTH_STATUS', 'item' => 'TEMP1', 'valueType' => 'CONVERTED'},
           operator: 'CHANGES',
           right: nil,
         ).create()
 
         generate_trigger(
           name: 'TRIG2',
-          left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM', 'valueType' => 'CONVERTED'},
+          left: {'type' => 'item', 'target' => 'INST', 'packet' => 'HEALTH_STATUS', 'item' => 'TEMP1', 'valueType' => 'CONVERTED'},
           operator: 'DOES NOT CHANGE',
           right: nil,
         ).create()
@@ -296,7 +302,7 @@ module OpenC3
         # Simulates strong params filtering nil right from controller payload
         json = {
           'group' => TMO_GROUP,
-          'left' => {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM', 'valueType' => 'CONVERTED'},
+          'left' => {'type' => 'item', 'target' => 'INST', 'packet' => 'HEALTH_STATUS', 'item' => 'TEMP1', 'valueType' => 'CONVERTED'},
           'operator' => 'DOES NOT CHANGE',
           'label' => nil,
         }
@@ -385,6 +391,94 @@ module OpenC3
           ).create()
         }.to raise_error(/invalid operand, must contain target, packet, item and valueType/)
       end
+
+      it "raises with an invalid valueType" do
+        expect {
+          generate_trigger(
+            left: {'type' => 'item', 'target' => 'INST', 'packet' => 'HEALTH_STATUS', 'item' => 'TEMP1', 'valueType' => 'NOPE'},
+            operator: '>',
+            right: {'type' => 'float', 'float' => '0'}
+          ).create()
+        }.to raise_error(TriggerInputError, /invalid operand, valueType 'NOPE' must be one of/)
+      end
+
+      it "allows all the supported valueTypes" do
+        TriggerModel::ITEM_VALUE_TYPES.each_with_index do |value_type, index|
+          generate_trigger(
+            name: "TRIG#{index}",
+            left: {'type' => 'item', 'target' => 'INST', 'packet' => 'HEALTH_STATUS', 'item' => 'TEMP1', 'valueType' => value_type},
+            operator: '>',
+            right: {'type' => 'float', 'float' => '0'}
+          ).create()
+        end
+      end
+
+      it "raises when the item does not exist" do
+        expect {
+          generate_trigger(
+            left: {'type' => 'item', 'target' => 'INST', 'packet' => 'HEALTH_STATUS', 'item' => 'NONEXISTENT', 'valueType' => 'CONVERTED'},
+            operator: '>',
+            right: {'type' => 'float', 'float' => '0'}
+          ).create()
+        }.to raise_error(TriggerInputError, /invalid operand.*NONEXISTENT.*does not exist/)
+      end
+
+      it "raises when the packet does not exist" do
+        expect {
+          generate_trigger(
+            left: {'type' => 'item', 'target' => 'INST', 'packet' => 'NONEXISTENT', 'item' => 'TEMP1', 'valueType' => 'CONVERTED'},
+            operator: '>',
+            right: {'type' => 'float', 'float' => '0'}
+          ).create()
+        }.to raise_error(TriggerInputError, /invalid operand.*NONEXISTENT.*does not exist/)
+      end
+
+      it "raises when the target does not exist" do
+        expect {
+          generate_trigger(
+            left: {'type' => 'item', 'target' => 'NOPE', 'packet' => 'HEALTH_STATUS', 'item' => 'TEMP1', 'valueType' => 'CONVERTED'},
+            operator: '>',
+            right: {'type' => 'float', 'float' => '0'}
+          ).create()
+        }.to raise_error(TriggerInputError, /invalid operand/)
+      end
+
+      it "raises when the right item operand does not exist" do
+        expect {
+          generate_trigger(
+            left: {'type' => 'item', 'target' => 'INST', 'packet' => 'HEALTH_STATUS', 'item' => 'TEMP1', 'valueType' => 'CONVERTED'},
+            operator: '>',
+            right: {'type' => 'item', 'target' => 'INST', 'packet' => 'HEALTH_STATUS', 'item' => 'NONEXISTENT', 'valueType' => 'CONVERTED'}
+          ).create()
+        }.to raise_error(TriggerInputError, /invalid operand.*NONEXISTENT.*does not exist/)
+      end
+
+      it "does not raise on from_json when a referenced item no longer exists" do
+        # An existing trigger must still deserialize if its target is removed, otherwise
+        # the TriggerGroupMicroservice fails to load every trigger in the group
+        json = {
+          'group' => TMO_GROUP,
+          'left' => {'type' => 'item', 'target' => 'GONE', 'packet' => 'GONE', 'item' => 'GONE', 'valueType' => 'CONVERTED'},
+          'operator' => '>',
+          'right' => {'type' => 'float', 'float' => '0'},
+        }
+        expect { TriggerModel.from_json(json, name: 'TRIG1', scope: $openc3_scope) }.to_not raise_error
+      end
+
+      it "does not raise on from_json when valueType was never constrained" do
+        # valueType was unvalidated before, so already persisted triggers may hold
+        # anything. Deserializing them must not take down the whole trigger group.
+        json = {
+          'group' => TMO_GROUP,
+          'left' => {'type' => 'item', 'target' => 'INST', 'packet' => 'HEALTH_STATUS', 'item' => 'TEMP1', 'valueType' => 'raw'},
+          'operator' => '>',
+          'right' => {'type' => 'float', 'float' => '0'},
+        }
+        model = nil
+        expect { model = TriggerModel.from_json(json, name: 'TRIG1', scope: $openc3_scope) }.to_not raise_error
+        # But it is rejected if the user tries to save it
+        expect { model.create() }.to raise_error(TriggerInputError, /invalid operand, valueType 'raw' must be one of/)
+      end
     end
 
     describe "trigger operator validation" do
@@ -463,22 +557,22 @@ module OpenC3
     describe "generate_topics" do
       it "generates single topic for items in the same packet" do
         model = generate_trigger(
-          left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM1', 'valueType' => 'CONVERTED'},
+          left: {'type' => 'item', 'target' => 'INST', 'packet' => 'HEALTH_STATUS', 'item' => 'TEMP1', 'valueType' => 'CONVERTED'},
           operator: '==',
-          right: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM2', 'valueType' => 'CONVERTED'},
+          right: {'type' => 'item', 'target' => 'INST', 'packet' => 'HEALTH_STATUS', 'item' => 'TEMP2', 'valueType' => 'CONVERTED'},
         )
         model.create
-        expect(model.generate_topics).to eql(["#{$openc3_scope}__DECOM__{TGT}__PKT"])
+        expect(model.generate_topics).to eql(["#{$openc3_scope}__DECOM__{INST}__HEALTH_STATUS"])
       end
 
       it "generates two topics for different target packets" do
         model = generate_trigger(
-          left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT1', 'item' => 'ITEM1', 'valueType' => 'CONVERTED'},
+          left: {'type' => 'item', 'target' => 'INST', 'packet' => 'HEALTH_STATUS', 'item' => 'TEMP1', 'valueType' => 'CONVERTED'},
           operator: '==',
-          right: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT2', 'item' => 'ITEM2', 'valueType' => 'CONVERTED'},
+          right: {'type' => 'item', 'target' => 'INST', 'packet' => 'ADCS', 'item' => 'POSX', 'valueType' => 'CONVERTED'},
         )
         model.create
-        expect(model.generate_topics).to eql(["#{$openc3_scope}__DECOM__{TGT}__PKT1", "#{$openc3_scope}__DECOM__{TGT}__PKT2"])
+        expect(model.generate_topics).to eql(["#{$openc3_scope}__DECOM__{INST}__HEALTH_STATUS", "#{$openc3_scope}__DECOM__{INST}__ADCS"])
       end
     end
   end
