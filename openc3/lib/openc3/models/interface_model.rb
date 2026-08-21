@@ -18,7 +18,7 @@
 require 'openc3/models/model'
 require 'openc3/models/microservice_model'
 require 'openc3/models/bridge_model'
-require 'openc3/models/host_microservice_model'
+require 'openc3/models/host_interface_microservice_model'
 require 'openc3/models/target_model'
 
 module OpenC3
