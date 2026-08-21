@@ -57,11 +57,8 @@ export default defineConfig({
     actionTimeout: 30 * 1000,
     // Base URL to use in actions like `await page.goto('/')`
     baseURL: 'http://localhost:2900',
-    // Keep the trace of every failed attempt, not just retries: with
-    // 'on-first-retry' a test that fails then passes leaves a trace of the
-    // *passing* run, which is the one that needs no diagnosing.
-    // See https://playwright.dev/docs/trace-viewer
-    trace: process.env.CI ? 'retain-on-failure' : 'on',
+    // Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer
+    trace: process.env.CI ? 'on-first-retry' : 'on',
     screenshot: 'only-on-failure',
     viewport: { width: 1600, height: 1200 },
   },
