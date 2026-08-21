@@ -193,7 +193,7 @@ module OpenC3
       @prefix = prefix
       @shard = shard.to_i # to_i to handle nil
       @db_shard = db_shard.to_i # to_i to handle nil
-      @bridge_name = bridge_name.to_s.upcase
+      @bridge_name = bridge_name&.to_s&.upcase
       @secrets = secrets
     end
 
