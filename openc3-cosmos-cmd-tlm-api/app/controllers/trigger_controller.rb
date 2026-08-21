@@ -110,10 +110,10 @@ class TriggerController < ApplicationController
         name = @model_class.create_unique_name(group: hash['group'], scope: params[:scope])
       end
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
-      # Validate item operands here rather than in TriggerModel#update because we notify
+      # Validate items here rather than in TriggerModel#update because we notify
       # instead of updating directly. Without this the microservice would reject the
       # update asynchronously, long after this request returned success.
-      model.validate_item_operands()
+      model.validate_items()
       model.create() # Create sends a notification
       render json: model.as_json(), status: :created
     rescue OpenC3::TriggerInputError => e
