@@ -63,8 +63,13 @@ dev = [
     "fakeredis>=2.31,<3",
     "pytest>=9.0,<10",
     "pytest-profiling>=1.8,<2",
-    "ruff>=0.15,<0.17",
-    "ty>=0.0.73,<0.1",
+    # Pinned exactly, not ranged: ruff's formatter output decides whether the
+    # generated .pyi stubs match (just stubs-check), and every ty 0.0.x release
+    # can change which diagnostics are reported. Both must move deliberately,
+    # via a dependabot PR that can be reviewed, not silently on re-resolution.
+    # Keep ruff in step with tools/generate_singleton_stubs.py.lock.
+    "ruff==0.16.4",
+    "ty==0.0.73",
 ]
 
 [build-system]
