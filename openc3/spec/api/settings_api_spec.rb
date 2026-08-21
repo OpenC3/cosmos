@@ -15,6 +15,7 @@ require 'spec_helper'
 require 'openc3/api/settings_api'
 require 'openc3/script/extract'
 require 'openc3/utilities/authorization'
+require 'openc3/utilities/local_mode'
 
 module OpenC3
   describe Api do
