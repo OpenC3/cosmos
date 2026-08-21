@@ -336,6 +336,10 @@ services:
       - GEM_HOME=/gems
       - PYTHONUSERBASE=/gems/python_packages
       - OPENC3_USE_UV=true
+      # If your microservices do heavy BLAS / linear algebra work,
+      # raise these or unset to restore threading.
+      - OPENBLAS_NUM_THREADS=1
+      - OMP_NUM_THREADS=1
       # Redis
       - OPENC3_REDIS_HOSTNAME=${OPENC3_REDIS_HOSTNAME}
       - OPENC3_REDIS_PORT=${OPENC3_REDIS_PORT}
