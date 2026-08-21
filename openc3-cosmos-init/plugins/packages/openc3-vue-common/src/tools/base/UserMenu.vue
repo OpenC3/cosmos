@@ -78,6 +78,8 @@
                 color="primary"
                 density="compact"
                 block
+                :disabled="!isAdmin"
+                data-test="refresh-news"
                 @click="refreshNews"
               >
                 Refresh
@@ -144,6 +146,8 @@ export default {
       activeUsers: ['None'],
       newsFeed: false,
       news: [],
+      // update_news requires the admin permission
+      isAdmin: (OpenC3Auth.userroles() || []).includes('admin'),
     }
   },
   computed: {
