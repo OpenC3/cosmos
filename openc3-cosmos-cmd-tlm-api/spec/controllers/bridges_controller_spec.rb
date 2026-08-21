@@ -30,8 +30,8 @@ RSpec.describe BridgesController, type: :controller do
   end
 
   describe "GET show" do
-    it "requires admin authorization and returns only safe bridge summaries" do
-      expect(controller).to receive(:authorization).with("admin").and_return(true)
+    it "requires system authorization and returns only safe bridge summaries" do
+      expect(controller).to receive(:authorization).with("system").and_return(true)
 
       get :show, params: { id: "all", scope: "DEFAULT" }
 
@@ -64,8 +64,8 @@ RSpec.describe BridgesController, type: :controller do
   end
 
   describe "GET index" do
-    it "requires admin authorization and includes bridges whose hubs have not started" do
-      expect(controller).to receive(:authorization).with("admin").and_return(true)
+    it "requires system authorization and includes bridges whose hubs have not started" do
+      expect(controller).to receive(:authorization).with("system").and_return(true)
 
       get :index, params: { scope: "DEFAULT" }
 
