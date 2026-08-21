@@ -25,6 +25,7 @@ class BridgeModel(Model):
     """
 
     PRIMARY_KEY = "openc3_bridges"
+    ENROLLMENT_CODE_TTL_SECONDS = 10 * 60
 
     # NOTE: The following class methods are reimplemented so the base Model
     # class methods work with this scoped primary key.
@@ -50,6 +51,7 @@ class BridgeModel(Model):
         ticket: str = None,
         app_public_key: str = None,
         enroll_code: str = None,
+        enroll_code_generated_at: int = None,
         port: int = None,
         updated_at: int = None,
         plugin: str = None,
@@ -73,6 +75,9 @@ class BridgeModel(Model):
         # Pending one-time manual-enrollment code (set when a manual enrollment
         # token is generated; cleared once redeemed over the api/enroll ALPN).
         self.enroll_code = enroll_code
+        # Unix timestamp set when the one-time code is generated. Codes from
+        # records predating this field intentionally fail closed.
+        self.enroll_code_generated_at = enroll_code_generated_at
         # Fixed UDP port this bridge's hub binds inside the container. Assigned
         # once from the published range (see compose.yaml) and reused across
         # restarts so the host can always reach the hub at 127.0.0.1:<port>.
@@ -88,5 +93,14 @@ class BridgeModel(Model):
             "ticket": self.ticket,
             "app_public_key": self.app_public_key,
             "enroll_code": self.enroll_code,
+            "enroll_code_generated_at": self.enroll_code_generated_at,
             "port": self.port,
         }
+
+    def enrollment_code_valid(self, code: str, now: float) -> bool:
+        if not self.enroll_code or not code or code != self.enroll_code:
+            return False
+        if self.enroll_code_generated_at is None:
+            return False
+        age = now - self.enroll_code_generated_at
+        return 0 <= age <= self.ENROLLMENT_CODE_TTL_SECONDS

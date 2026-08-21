@@ -21,8 +21,12 @@ test('creates a secret', async ({ page, utils }) => {
   await page.getByLabel('Secret Value', { exact: true }).fill('something')
   await page.locator('[data-test="secretUpload"]').click()
   await expect(page.locator('[data-test="secretList"]')).toContainText('HIDDEN')
+  // Scope to the HIDDEN secret's own row: the list may contain other secrets
+  // (e.g. a bridge's private key), so filtering the whole list and grabbing a
+  // button matches multiple. The per-row v-list-item isolates this secret.
   await page
     .locator('[data-test="secretList"]')
+    .locator('.v-list-item')
     .filter({ hasText: 'HIDDEN' })
     .getByRole('button')
     .click()
@@ -30,6 +34,7 @@ test('creates a secret', async ({ page, utils }) => {
   await expect(page.locator('[data-test="secretList"]')).toContainText('HIDDEN')
   await page
     .locator('[data-test="secretList"]')
+    .locator('.v-list-item')
     .filter({ hasText: 'HIDDEN' })
     .getByRole('button')
     .click()

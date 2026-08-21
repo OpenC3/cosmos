@@ -31,11 +31,13 @@ module OpenC3
   # same records the Python BridgeMicroservice maintains.
   class BridgeModel < Model
     PRIMARY_KEY = 'openc3_bridges'
+    ENROLLMENT_CODE_TTL_SECONDS = 10 * 60
 
     attr_accessor :public_key
     attr_accessor :ticket
     attr_accessor :app_public_key
     attr_accessor :enroll_code
+    attr_accessor :enroll_code_generated_at
     attr_accessor :port
 
     # The bridge stack (bridge_microservice.py) is Python and runs from the core
@@ -55,7 +57,7 @@ module OpenC3
         name: microservice_name,
         cmd: [bridge_python_bin, 'bridge_microservice.py', microservice_name],
         work_dir: BRIDGE_WORK_DIR,
-        options: [['BRIDGE_NAME', bridge_name.to_s]],
+        options: [['BRIDGE_NAME', bridge_name.to_s.upcase]],
         parent: parent,
         shard: shard.to_i,
         plugin: plugin,
@@ -85,6 +87,7 @@ module OpenC3
       ticket: nil,
       app_public_key: nil,
       enroll_code: nil,
+      enroll_code_generated_at: nil,
       port: nil,
       updated_at: nil,
       plugin: nil
@@ -94,6 +97,7 @@ module OpenC3
       @ticket = ticket
       @app_public_key = app_public_key
       @enroll_code = enroll_code
+      @enroll_code_generated_at = enroll_code_generated_at
       @port = port
     end
 
@@ -107,6 +111,7 @@ module OpenC3
         'ticket' => @ticket,
         'app_public_key' => @app_public_key,
         'enroll_code' => @enroll_code,
+        'enroll_code_generated_at' => @enroll_code_generated_at,
         'port' => @port
       }
     end
@@ -119,6 +124,7 @@ module OpenC3
       raise "Bridge '#{@name}' has no ticket yet; is its bridge_microservice running?" if @ticket.nil? || @ticket.empty?
 
       @enroll_code = SecureRandom.hex(16)
+      @enroll_code_generated_at = Time.now.to_i
       update()
       payload = { 'v' => 1, 'bridge' => @name, 'ticket' => @ticket, 'code' => @enroll_code }
       Base64.urlsafe_encode64(JSON.generate(payload), padding: false)

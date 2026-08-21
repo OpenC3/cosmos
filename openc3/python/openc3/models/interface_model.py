@@ -75,6 +75,9 @@ class InterfaceModel(Model):
         options: list | None = None,
         secret_options: list | None = None,
         protocols: list | None = None,
+        bridge_options: list | None = None,
+        bridge_secret_options: list | None = None,
+        bridge_protocols: list | None = None,
         log_stream=None,
         updated_at: float | None = None,
         plugin: str | None = None,
@@ -88,6 +91,7 @@ class InterfaceModel(Model):
         prefix=None,
         shard=0,
         db_shard=0,
+        bridge_name=None,
         scope: str = OPENC3_SCOPE,
     ):
         type = self.__class__._get_type()
@@ -128,6 +132,9 @@ class InterfaceModel(Model):
         self.options = [] if options is None else options
         self.secret_options = [] if secret_options is None else secret_options
         self.protocols = [] if protocols is None else protocols
+        self.bridge_options = [] if bridge_options is None else bridge_options
+        self.bridge_secret_options = [] if bridge_secret_options is None else bridge_secret_options
+        self.bridge_protocols = [] if bridge_protocols is None else bridge_protocols
         self.log_stream = log_stream
         self.needs_dependencies = needs_dependencies
         self.cmd = cmd
@@ -153,20 +160,28 @@ class InterfaceModel(Model):
         self.db_shard = db_shard
         if self.db_shard is None:
             self.db_shard = 0
+        self.bridge_name = bridge_name
         self.secrets = [] if secrets is None else secrets
 
     # Called by InterfaceMicroservice to instantiate the Interface defined
     # by the model configuration. Must be called after get_model which
     # calls from_json to instantiate the class and populate the attributes.
     def build(self):
-        klass = get_class_from_module(
-            filename_to_module(self.config_params[0]),
-            filename_to_class_name(self.config_params[0]),
-        )
-        if len(self.config_params) > 1:
-            interface_or_router = klass(*self.config_params[1:])
+        if self.bridge_name:
+            # A bridged interface runs the real interface on the host; here in
+            # COSMOS we build a BridgeInterface tunnel to the named bridge.
+            from openc3.interfaces.bridge_interface import BridgeInterface
+
+            interface_or_router = BridgeInterface(self.bridge_name)
         else:
-            interface_or_router = klass()
+            klass = get_class_from_module(
+                filename_to_module(self.config_params[0]),
+                filename_to_class_name(self.config_params[0]),
+            )
+            if len(self.config_params) > 1:
+                interface_or_router = klass(*self.config_params[1:])
+            else:
+                interface_or_router = klass()
         interface_or_router.secrets.setup(self.secrets)
         interface_or_router.target_names = self.target_names[:]
         interface_or_router.cmd_target_names = self.cmd_target_names[:]
@@ -210,6 +225,9 @@ class InterfaceModel(Model):
             "options": self.options,
             "secret_options": self.secret_options,
             "protocols": self.protocols,
+            "bridge_options": self.bridge_options,
+            "bridge_secret_options": self.bridge_secret_options,
+            "bridge_protocols": self.bridge_protocols,
             "log_stream": self.log_stream,
             "plugin": self.plugin,
             "needs_dependencies": self.needs_dependencies,
@@ -222,6 +240,7 @@ class InterfaceModel(Model):
             "prefix": self.prefix,
             "shard": self.shard,
             "db_shard": self.db_shard,
+            "bridge_name": self.bridge_name,
             "updated_at": self.updated_at,
         }
 
