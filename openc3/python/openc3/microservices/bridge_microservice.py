@@ -26,7 +26,7 @@ Two kinds of ALPN are served:
   (no framing). openc3-app is NOT in this data path.
 * ``api/*`` — control APIs that openc3-app (the host launcher) dials:
   * ``api/host_microservices`` returns the JSON list of host microservices this
-    bridge should run (from HostMicroserviceModel); openc3-app polls it.
+    bridge should run (from HostInterfaceMicroserviceModel); openc3-app polls it.
   * ``api/log`` receives host microservice stdout lines from openc3-app and
     re-emits them through the real COSMOS Logger.
 
@@ -50,7 +50,7 @@ import traceback
 from openc3.microservices.microservice import Microservice
 from openc3.models.bridge_interface_model import BridgeInterfaceModel
 from openc3.models.bridge_model import BridgeModel
-from openc3.models.host_microservice_model import HostMicroserviceModel
+from openc3.models.host_interface_microservice_model import HostInterfaceMicroserviceModel
 from openc3.models.model import Model
 from openc3.models.scope_model import ScopeModel
 from openc3.topics.config_topic import ConfigTopic
@@ -94,7 +94,7 @@ GEM_HOME = os.environ.get("GEM_HOME") or "/gems"
 # the authorized app identity — this is how that identity gets established).
 API_ENROLL = b"api/enroll"
 
-# How often the relay re-queries its streams (from the HostMicroserviceModels)
+# How often the relay re-queries its streams (from the HostInterfaceMicroserviceModels)
 # and re-advertises ALPNs, so newly-deployed bridged interfaces are picked up
 # without the operator having to respawn the relay.
 STREAM_REFRESH_INTERVAL = 5.0
@@ -158,7 +158,7 @@ class BridgeMicroservice(Microservice):
         super().__init__(name)
         self.bridge_name = self._bridge_name()
         # Interface/stream names this bridge relays, discovered live by querying
-        # the HostMicroserviceModels for this bridge (NOT passed as static
+        # the HostInterfaceMicroserviceModels for this bridge (NOT passed as static
         # OPTIONs). Their stream/<name> ALPNs are advertised so the QUIC handshake
         # accepts data-path connections for them; _stream_watcher re-advertises as
         # the set changes so new interfaces are picked up without a relay restart.
@@ -184,13 +184,13 @@ class BridgeMicroservice(Microservice):
 
     def _streams(self):
         """The stream (interface) names this bridge relays, from the
-        HostMicroserviceModels whose bridge_name matches ours. Queried live (not
+        HostInterfaceMicroserviceModels whose bridge_name matches ours. Queried live (not
         read from static OPTIONs) so adding/removing a bridged interface does not
         change this relay's MicroserviceModel — which would make the operator
         respawn it. Sorted so an unchanged set never looks changed to
         _stream_watcher."""
         streams = []
-        for _name, data in HostMicroserviceModel.all(self.scope).items():
+        for _name, data in HostInterfaceMicroserviceModel.all(self.scope).items():
             if isinstance(data, str):
                 data = json.loads(data)
             if data.get("bridge_name") != self.bridge_name:
@@ -361,7 +361,7 @@ class BridgeMicroservice(Microservice):
     async def _stream_watcher(self, endpoint):
         """Keep the endpoint's advertised ALPNs in sync with the set of streams
         this bridge relays. Because the relay discovers streams by querying the
-        HostMicroserviceModels (not static OPTIONs), a newly-deployed or removed
+        HostInterfaceMicroserviceModels (not static OPTIONs), a newly-deployed or removed
         bridged interface never mutates this relay's MicroserviceModel — so the
         operator does not respawn it; instead we adapt the live ALPN set here,
         keeping the same identity/ticket.
@@ -695,7 +695,7 @@ class BridgeMicroservice(Microservice):
         """Build the JSON spawn list for this bridge, resolving secret_options
         into concrete options (the host has no COSMOS secrets access)."""
         entries = []
-        for _name, data in HostMicroserviceModel.all(self.scope).items():
+        for _name, data in HostInterfaceMicroserviceModel.all(self.scope).items():
             if isinstance(data, str):
                 data = json.loads(data)
             if data.get("bridge_name") != self.bridge_name:
