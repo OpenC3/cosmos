@@ -262,14 +262,18 @@ export default {
   watch: {
     displayTopBanner: function (val) {
       if (val) {
-        this.topHeight = 20
+        if (!this.topHeight) {
+          this.topHeight = 20
+        }
       } else {
         this.topHeight = 0
       }
     },
     displayBottomBanner: function (val) {
       if (val) {
-        this.bottomHeight = 20
+        if (!this.bottomHeight) {
+          this.bottomHeight = 20
+        }
       } else {
         this.bottomHeight = 0
       }
@@ -296,10 +300,10 @@ export default {
       if (response) {
         const parsed = JSON.parse(response)
         this.text = parsed.text
-        this.topHeight = parsed.topHeight
-        this.bottomHeight = parsed.bottomHeight
-        this.displayTopBanner = parsed.topHeight !== 0
-        this.displayBottomBanner = parsed.bottomHeight !== 0
+        this.topHeight = parsed.topHeight || 0
+        this.bottomHeight = parsed.bottomHeight || 0
+        this.displayTopBanner = this.topHeight !== 0
+        this.displayBottomBanner = this.bottomHeight !== 0
         if (parsed.backgroundColor && parsed.backgroundColor.startsWith('#')) {
           this.customBackgroundColor = parsed.backgroundColor
           this.selectedBackgroundColor = false
