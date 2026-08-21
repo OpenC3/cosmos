@@ -322,7 +322,7 @@ BRIDGE_PROTOCOL:
 BRIDGE_OPTION:
   summary: Set a parameter on a bridged interface
   description:
-    When an bridge option is set the bridge interface class calls the set_option method.
+    When a bridge option is set the bridge interface class calls the set_option method.
     Custom interfaces can override set_option to handle any additional options they want.
   since: _Coming Soon_
   parameters:
