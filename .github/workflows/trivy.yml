@@ -11,14 +11,8 @@
 
 name: Trivy Scan
 
-# Only run on a push to main to avoid running for all the dependabot PRs
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - "**"
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
