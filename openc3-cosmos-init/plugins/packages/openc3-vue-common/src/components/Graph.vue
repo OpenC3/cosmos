@@ -477,6 +477,9 @@ export default {
       needToUpdate: false,
       pendingData: [],
       processingRAF: null,
+      scrollingRAF: null,
+      realtimeXAxisAnchor: null,
+      realtimeXAxisAnchorTime: null,
       lastRenderTime: 0,
       subscribeTime: null,
       emptyDataNotified: false,
@@ -615,9 +618,13 @@ export default {
           // If we were paused we do nothing ... see the data function
           if (oldState === 'stop') {
             this.startGraph()
+          } else {
+            this.startRealtimeScrolling()
           }
           break
-        // case 'pause': Nothing to do ... see the data function
+        case 'pause':
+          this.stopRealtimeScrolling()
+          break
         case 'stop':
           this.stopGraph()
           break
@@ -731,6 +738,11 @@ export default {
         this.graphEndDateTime = null
         this.needToUpdate = true
       }
+      if (this.graphEndDateTime) {
+        this.stopRealtimeScrolling()
+      } else {
+        this.startRealtimeScrolling()
+      }
     },
     actualXAxisItem: function (newVal, oldVal) {
       let clonedItems = JSON.parse(JSON.stringify(this.items))
@@ -753,6 +765,7 @@ export default {
         )
       }
       this.addItems(clonedItems)
+      this.startRealtimeScrolling()
       // Don't need to $emit('edit') because addItems() does that
     },
     refreshIntervalMs: function (val) {
@@ -1108,8 +1121,10 @@ export default {
       this.interval = setInterval(() => {
         this.updateGraphData()
       }, this.refreshIntervalMs)
+      this.startRealtimeScrolling()
     },
     stopGraph: function () {
+      this.stopRealtimeScrolling()
       if (this.processingRAF !== null) {
         cancelAnimationFrame(this.processingRAF)
         this.processingRAF = null
@@ -1122,6 +1137,112 @@ export default {
       if (this.interval) {
         clearInterval(this.interval)
         this.interval = null
+      }
+    },
+    shouldScrollRealtime: function () {
+      return (
+        this.playbackMode !== 'playback' &&
+        this.state === 'start' &&
+        this.xAxisIsTime &&
+        !this.graphEndDateTime &&
+        this.graph !== null
+      )
+    },
+    startRealtimeScrolling: function () {
+      if (this.scrollingRAF === null && this.shouldScrollRealtime()) {
+        this.scrollingRAF = requestAnimationFrame(() =>
+          this.scrollRealtimeGraph(),
+        )
+      }
+    },
+    stopRealtimeScrolling: function () {
+      if (this.scrollingRAF !== null) {
+        cancelAnimationFrame(this.scrollingRAF)
+        this.scrollingRAF = null
+      }
+    },
+    scrollRealtimeGraph: function () {
+      this.scrollingRAF = null
+      if (!this.shouldScrollRealtime()) {
+        return
+      }
+
+      // processDataBatch mutates the arrays already held by uPlot. Commit a
+      // completed batch before setScale causes a redraw, otherwise uPlot can
+      // briefly draw a new point using the previous cached line path.
+      if (this.dataChanged) {
+        if (this.pendingData.length > 0 || this.processingRAF !== null) {
+          this.scrollingRAF = requestAnimationFrame(() =>
+            this.scrollRealtimeGraph(),
+          )
+          return
+        }
+        this.updateGraphData()
+      } else {
+        this.setXAxisScale(this.getRealtimeXAxisMax())
+      }
+      this.scrollingRAF = requestAnimationFrame(() =>
+        this.scrollRealtimeGraph(),
+      )
+    },
+    getRealtimeXAxisMax: function () {
+      if (
+        this.realtimeXAxisAnchor !== null &&
+        this.realtimeXAxisAnchorTime !== null
+      ) {
+        return (
+          this.realtimeXAxisAnchor +
+          (performance.now() - this.realtimeXAxisAnchorTime) / 1000
+        )
+      }
+      return Date.now() / 1000
+    },
+    initializeRealtimeXAxisAnchor: function (latestXAxisValue) {
+      // Establish the relationship between telemetry time and the browser's
+      // monotonic clock once. Re-anchoring for every sample makes network
+      // jitter move the entire plot horizontally when a point arrives.
+      if (
+        this.realtimeXAxisAnchor === null ||
+        this.realtimeXAxisAnchorTime === null
+      ) {
+        this.realtimeXAxisAnchor = latestXAxisValue
+        this.realtimeXAxisAnchorTime = performance.now()
+      }
+    },
+    setXAxisScale: function (realtimeMax = null) {
+      const xAxisData = this.data[0]
+      if (xAxisData && xAxisData.length) {
+        let max = realtimeMax === null ? xAxisData.at(-1) : realtimeMax
+        // Do not show history from before the first received point. The right
+        // edge can advance into empty space, but the left edge should only
+        // begin scrolling once the configured time/point window is full.
+        const possibleMinValues = [xAxisData.at(0)]
+        if (this.pointsGraphed <= xAxisData.length) {
+          possibleMinValues.push(xAxisData.at(-this.pointsGraphed))
+        }
+        if (this.xAxisIsTime) {
+          possibleMinValues.push(max - this.secondsGraphed)
+        }
+        const min = Math.max(...possibleMinValues)
+        if (min === max) {
+          max += 1
+        }
+        if (this.overview && realtimeMax !== null) {
+          this.overview.setScale('x', { min: xAxisData.at(0), max })
+        }
+        this.graph.setScale('x', { min, max })
+      } else if (this.graphStartDateTime) {
+        const min = this.graphStartDateTime / 1_000_000_000
+        const max = this.graphEndDateTime
+          ? this.graphEndDateTime / 1_000_000_000
+          : realtimeMax || Date.now() / 1000
+        this.graph.setScale('x', { min, max })
+      } else if (realtimeMax !== null) {
+        const duration = this.secondsGraphed > 0 ? this.secondsGraphed : 3600
+        this.graph.setScale('x', {
+          min: realtimeMax - duration,
+          max: realtimeMax,
+        })
       }
     },
     updateGraphData: function () {
@@ -1155,34 +1276,16 @@ export default {
           return
         }
       }
+      const realtimeMax = this.shouldScrollRealtime()
+        ? this.getRealtimeXAxisMax()
+        : null
       this.graph.setData(this.data)
       if (this.overview) {
         this.overview.setData(this.data)
       }
       this.lastRenderTime = performance.now()
 
-      const xAxisData = this.data[0]
-      if (xAxisData && xAxisData.length) {
-        let max = xAxisData.at(-1)
-        const possibleMinValues = [xAxisData.at(0)]
-        if (this.pointsGraphed <= xAxisData.length) {
-          possibleMinValues.push(xAxisData.at(-this.pointsGraphed))
-        }
-        if (this.xAxisIsTime) {
-          possibleMinValues.push(max - this.secondsGraphed)
-        }
-        const min = Math.max(...possibleMinValues)
-        if (min === max) {
-          max += 1
-        }
-        this.graph.setScale('x', { min, max })
-      } else if (this.graphStartDateTime) {
-        const min = this.graphStartDateTime / 1_000_000_000
-        const max = this.graphEndDateTime
-          ? this.graphEndDateTime / 1_000_000_000
-          : Date.now() / 1000
-        this.graph.setScale('x', { min, max })
-      }
+      this.setXAxisScale(realtimeMax)
 
       this.dataChanged = false
     },
@@ -1768,6 +1871,8 @@ export default {
       }
     },
     clearAllData: function () {
+      this.realtimeXAxisAnchor = null
+      this.realtimeXAxisAnchorTime = null
       // Clear all data so delete the time data as well
       this.data[0] = []
       this.clearData(this.items)
@@ -1931,6 +2036,13 @@ export default {
       if (this.startTime == null && this.data[0][0]) {
         let newStartTime = this.data[0][0] * 1_000_000_000
         this.$emit('started', newStartTime)
+      }
+      if (
+        this.playbackMode !== 'playback' &&
+        this.xAxisIsTime &&
+        this.data[0].length > 0
+      ) {
+        this.initializeRealtimeXAxisAnchor(this.data[0].at(-1))
       }
       this.dataChanged = true
     },
