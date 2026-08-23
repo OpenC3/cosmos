@@ -35,6 +35,8 @@ module OpenC3
     # @param ttl [Integer] Time To Live for outgoing multicast packets
     # @param read_multicast [Boolean] Whether or not to try to read from the external address as multicast
     # @param write_multicast [Boolean] Whether or not to write to the external address as multicast
+    # @param connect_socket [Boolean] Whether to connect the socket to the external address. If false,
+    #   writes use sendmsg_nonblock so reads can accept datagrams from any source.
     def initialize(
       bind_port = 0,
       bind_address = HOST_0_0_0_0,
@@ -43,10 +45,14 @@ module OpenC3
       multicast_interface_address = nil,
       ttl = 1,
       read_multicast = true,
-      write_multicast = true
+      write_multicast = true,
+      connect_socket = true
     )
 
       @socket = UDPSocket.new
+      @external_address = external_address
+      @external_port = external_port
+      @connect_socket = connect_socket
 
       # Basic setup to reuse address
       @socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_REUSEADDR, 1)
@@ -55,10 +61,10 @@ module OpenC3
       @socket.bind(bind_address, bind_port) if bind_address and bind_port
 
       # Default send to the specified address and port
-      @socket.connect(external_address, external_port) if external_address and external_port
+      @socket.connect(external_address, external_port) if connect_socket and external_address and external_port
 
       # Handle multicast
-      if UdpReadWriteSocket.multicast?(external_address, external_port)
+      if UdpReadWriteSocket.multicast?(external_address)
         if write_multicast
           # Basic setup set time to live
           @socket.setsockopt(Socket::IPPROTO_IP, Socket::IP_MULTICAST_TTL, ttl.to_i)
@@ -90,7 +96,12 @@ module OpenC3
 
       loop do
         begin
-          bytes_sent = @socket.write_nonblock(data_to_send)
+          if @connect_socket
+            bytes_sent = @socket.write_nonblock(data_to_send)
+          else
+            destination = Socket.sockaddr_in(@external_port, @external_address)
+            bytes_sent = @socket.sendmsg_nonblock(data_to_send, 0, destination)
+          end
         rescue Errno::EAGAIN, Errno::EWOULDBLOCK
           result = IO.fast_select(nil, [@socket], nil, write_timeout)
           if result
@@ -131,10 +142,10 @@ module OpenC3
     # @param host [String] Machine name or IP address
     # @param port [String] Port
     # @return [Boolean] Whether the hostname is multicast
-    def self.multicast?(host, port)
-      return false if host.nil? || port.nil?
+    def self.multicast?(host, port = nil)
+      return false if host.nil?
 
-      Addrinfo.udp(host, port).ipv4_multicast?
+      Addrinfo.udp(host, port || 0).ipv4_multicast?
     end
   end
 

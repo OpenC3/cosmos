@@ -53,10 +53,10 @@ module OpenC3
     describe "connection_string" do
       it "builds a human readable connection string" do
         i = UdpInterface.new('123.4.5.6', '8888', '8889', '8890', '456.7.8.9', '64', '5', '5', '1.2.3.4')
-        expect(i.connection_string).to eql "123.4.5.6:8888 (write dest port) 8890 (write src port) 123.4.5.6:8889 (read) 456.7.8.9 (interface addr) 1.2.3.4 (bind addr)"
+        expect(i.connection_string).to eql "123.4.5.6:8888 (write dest port) 8890 (write src port) 1.2.3.4:8889 (read) 456.7.8.9 (interface addr) 1.2.3.4 (bind addr)"
 
         i = UdpInterface.new('localhost', 'nil', '8889')
-        expect(i.connection_string).to eql "127.0.0.1:8889 (read)"
+        expect(i.connection_string).to eql "0.0.0.0:8889 (read)"
 
         i = UdpInterface.new('localhost', '8888', 'nil')
         expect(i.connection_string).to eql "127.0.0.1:8888 (write dest port)"
@@ -115,6 +115,32 @@ module OpenC3
         expect(i.connected?).to be false
         expect(i.instance_variable_get(:@write_socket)).to be_nil
         expect(i.instance_variable_get(:@read_socket)).to be_nil
+      end
+
+      it "receives from a different source port on a shared read and write socket" do
+        destination = UdpReadSocket.new(4003)
+        sender = UdpWriteSocket.new('127.0.0.1', 4002, 4004)
+        i = UdpInterface.new('127.0.0.1', 4003, 4002, 4002)
+        i.connect
+
+        sender.write("telemetry")
+        expect(i.instance_variable_get(:@read_socket).read(1.0)).to eql "telemetry"
+        i.instance_variable_get(:@write_socket).write("command")
+        expect(destination.read(1.0)).to eql "command"
+        expect(i.instance_variable_get(:@write_socket).local_address.ip_port).to eql 4002
+
+        i.disconnect
+        OpenC3.close_socket(sender)
+        OpenC3.close_socket(destination)
+      end
+
+      it "creates a read socket for port zero" do
+        i = UdpInterface.new('127.0.0.1', nil, 0)
+        i.connect
+        read_socket = i.instance_variable_get(:@read_socket)
+        expect(read_socket).to_not be_nil
+        expect(read_socket.local_address.ip_port).to be > 0
+        i.disconnect
       end
     end
 

@@ -71,11 +71,11 @@ class TestUdpInterface(unittest.TestCase):
         i = UdpInterface("123.4.5.6", "8888", "8889", "8890", "456.7.8.9", "64", "5", "5", "1.2.3.4")
         self.assertEqual(
             i.connection_string(),
-            "123.4.5.6:8888 (write dest port) 8890 (write src port) 123.4.5.6:8889 (read) 456.7.8.9 (interface addr) 1.2.3.4 (bind addr)",
+            "123.4.5.6:8888 (write dest port) 8890 (write src port) 1.2.3.4:8889 (read) 456.7.8.9 (interface addr) 1.2.3.4 (bind addr)",
         )
 
         i = UdpInterface("localhost", "None", "8889")
-        self.assertEqual(i.connection_string(), "127.0.0.1:8889 (read)")
+        self.assertEqual(i.connection_string(), "0.0.0.0:8889 (read)")
 
         i = UdpInterface("localhost", "8888", "None")
         self.assertEqual(i.connection_string(), "127.0.0.1:8888 (write dest port)")
@@ -128,6 +128,29 @@ class TestUdpInterface(unittest.TestCase):
         self.assertFalse(i.connected())
         self.assertIsNone(i.write_socket)
         self.assertIsNone(i.read_socket)
+
+    def test_shared_socket_receives_from_a_different_source_port(self):
+        destination = UdpReadSocket(4003)
+        sender = UdpWriteSocket("127.0.0.1", 4002, 4004)
+        i = UdpInterface("127.0.0.1", 4003, 4002, 4002)
+        i.connect()
+
+        sender.write(b"telemetry")
+        self.assertEqual(i.read_socket.read(1.0), b"telemetry")
+        i.write_socket.write(b"command")
+        self.assertEqual(destination.read(1.0), b"command")
+        self.assertEqual(i.write_socket.getsockname()[1], 4002)
+
+        i.disconnect()
+        close_socket(sender)
+        close_socket(destination)
+
+    def test_creates_a_read_socket_for_port_zero(self):
+        i = UdpInterface("127.0.0.1", None, 0)
+        i.connect()
+        self.assertIsNotNone(i.read_socket)
+        self.assertGreater(i.read_socket.getsockname()[1], 0)
+        i.disconnect()
 
     @patch("socket.socket")
     def test_stops_the_read_thread_if_there_is_an_ioerror(self, mock_socket):

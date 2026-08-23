@@ -59,7 +59,7 @@ module OpenC3
     describe "multicast" do
       it "determines if a host is multicast" do
         expect(UdpWriteSocket.multicast?(nil, 80)).to be false
-        expect(UdpWriteSocket.multicast?('224.0.1.1', nil)).to be false
+        expect(UdpWriteSocket.multicast?('224.0.1.1', nil)).to be true
         expect(UdpWriteSocket.multicast?('127.0.0.1', 80)).to be false
         expect(UdpWriteSocket.multicast?('224.0.1.1', 80)).to be true
       end
@@ -78,6 +78,26 @@ module OpenC3
           expect(IPAddr.new_ntoh(udp.getsockopt(Socket::IPPROTO_IP, Socket::IP_MULTICAST_IF).data).to_s).to eql "0.0.0.0"
           udp.close
         end
+      end
+
+      it "binds port zero to an ephemeral port" do
+        udp = UdpReadSocket.new(0)
+        expect(udp.local_address.ip_port).to be > 0
+        udp.close
+      end
+
+      it "joins the multicast group" do
+        skip "UDP multicast does not work in JRuby" unless RUBY_ENGINE == 'ruby'
+
+        calls = []
+        allow_any_instance_of(UDPSocket).to receive(:setsockopt).and_wrap_original do |method, *args|
+          calls << args
+          method.call(*args)
+        end
+        udp = UdpReadSocket.new(8888, '224.0.1.1')
+        membership = IPAddr.new('224.0.1.1').hton + IPAddr.new('0.0.0.0').hton
+        expect(calls).to include([Socket::IPPROTO_IP, Socket::IP_ADD_MEMBERSHIP, membership])
+        udp.close
       end
     end
 

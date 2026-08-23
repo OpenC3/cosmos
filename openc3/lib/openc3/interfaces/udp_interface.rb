@@ -91,7 +91,7 @@ module OpenC3
       result = ''
       result += " #{@hostname}:#{@write_dest_port} (write dest port)" if @write_dest_port
       result += " #{@write_src_port} (write src port)" if @write_src_port
-      result += " #{@hostname}:#{@read_port} (read)" if @read_port
+      result += " #{@bind_address}:#{@read_port} (read)" if @read_port
       result += " #{@interface_address} (interface addr)" if @interface_address
       result += " #{@bind_address} (bind addr)" if @bind_address != '0.0.0.0'
       return result.strip
@@ -108,7 +108,10 @@ module OpenC3
           @write_dest_port,
           @hostname,
           @interface_address,
-          @ttl
+          @ttl,
+          true,
+          true,
+          false
         )
         @write_socket = @read_socket
       else

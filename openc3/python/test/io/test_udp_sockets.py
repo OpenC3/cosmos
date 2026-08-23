@@ -51,7 +51,7 @@ class TestUdpWriteSocket(unittest.TestCase):
 
     def test_determines_if_a_host_is_multicast(self):
         self.assertFalse(UdpWriteSocket.multicast(None, 80))
-        self.assertFalse(UdpWriteSocket.multicast("224.0.1.1", None))
+        self.assertTrue(UdpWriteSocket.multicast("224.0.1.1", None))
         self.assertFalse(UdpWriteSocket.multicast("127.0.0.1", 80))
         self.assertTrue(UdpWriteSocket.multicast("224.0.1.1", 80))
 
@@ -65,6 +65,17 @@ class TestUdpReadSocket(unittest.TestCase):
         udp = UdpReadSocket(8888, "224.0.1.1")
         _bytes = struct.pack("<I", udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF))
         self.assertEqual(socket.inet_ntoa(_bytes), "0.0.0.0")
+        udp.close()
+
+    @patch("socket.socket")
+    def test_joins_the_multicast_group(self, mock_socket):
+        UdpReadSocket(8888, "224.0.1.1", "127.0.0.1")
+        membership = socket.inet_aton("224.0.1.1") + socket.inet_aton("127.0.0.1")
+        mock_socket.return_value.setsockopt.assert_any_call(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, membership)
+
+    def test_binds_port_zero_to_an_ephemeral_port(self):
+        udp = UdpReadSocket(0)
+        self.assertGreater(udp.getsockname()[1], 0)
         udp.close()
 
     def test_reads_data(self):
