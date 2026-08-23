@@ -794,6 +794,10 @@ const START = 'Start'
 const GO = 'Go'
 const PAUSE = 'Pause'
 const RETRY = 'Retry'
+// State/control events remain responsive at the 100 ms receive interval, but
+// rebuilding a 200-row Vuetify table that often adds no visible value at that
+// rate is expensive during output-heavy scripts.
+const OUTPUT_FLUSH_INTERVAL_MS = 500
 // Matches is_complete in script_status_model
 const TERMINAL_STATES = new Set([
   'completed',
@@ -1608,6 +1612,20 @@ export default {
     // Deliberately NOT in data(): nothing renders from it, and reactive
     // proxying would tax the hottest data path (per line event)
     this.receivedEvents = []
+    // Output does not need strict ordering with control events and is capped in
+    // the UI. Keep it out of the unbounded control queue so a print-heavy loop
+    // cannot delay prompts, state changes, or completion processing.
+    this.receivedOutputEvents = new Array(this.maxArrayLength)
+    this.receivedOutputEventCount = 0
+    this.receivedOutputEventIndex = 0
+    this.pendingOutputLines = []
+    this.lastOutputFlush = 0
+    // Track the execution marker outside Vue reactivity. Tight loops often
+    // report the same handful of lines repeatedly; repainting an unchanged
+    // marker still makes Ace scan markers, render, and scroll the editor.
+    this.highlightedLine = null
+    this.highlightedState = null
+    this.highlightedFilename = null
     // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
     this.api.ensure_offline_access()
@@ -1922,6 +1940,7 @@ export default {
         this.subscription = null
       }
       this.receivedEvents.length = 0 // Clear any unprocessed events
+      this.clearReceivedOutputEvents()
     },
     showMetadata() {
       Api.get('/openc3-api/metadata')
@@ -1968,12 +1987,22 @@ export default {
     // Replace all fullLine markers with a single `${clazz}Marker` on lineNo
     // (1-based) and scroll to it
     markLine(lineNo, clazz) {
+      if (
+        lineNo === this.highlightedLine &&
+        clazz === this.highlightedState &&
+        this.currentFilename === this.highlightedFilename
+      ) {
+        return
+      }
       this.removeAllMarkers()
       this.editor.session.addMarker(
         new this.Range(lineNo - 1, 0, lineNo - 1, 1),
         `${clazz}Marker`,
         'fullLine',
       )
+      this.highlightedLine = lineNo
+      this.highlightedState = clazz
+      this.highlightedFilename = this.currentFilename
       this.editor.gotoLine(lineNo)
     },
     tryLoadRunningScript: function (id) {
@@ -2269,6 +2298,7 @@ export default {
         return
       }
       this.receivedEvents.length = 0 // Drop any events not yet processed
+      this.clearReceivedOutputEvents()
       // Reset prompt tracking so the first prompt re-published on this fresh
       // subscription is always processed and displayed. Without this, attaching
       // to a running script (which reuses the component) could carry over a
@@ -2349,6 +2379,10 @@ export default {
       }
     },
     async scriptComplete() {
+      // Completion can also be reached through status refreshes or failed run
+      // requests rather than a queued 'complete' event.
+      this.queueReceivedOutputLines()
+      this.flushOutputLines(true)
       // Supersede any scriptStart still awaiting its subscription. Must
       // happen before our unsubscribe below: a start resolving mid-complete
       // would otherwise install a fresh subscription after we tore ours
@@ -2360,6 +2394,7 @@ export default {
         this.subscription = null
       }
       this.receivedEvents.length = 0 // Clear any unprocessed events
+      this.clearReceivedOutputEvents()
       // Close any prompt dialogs a killed/stopped script left open;
       // answering them would POST to a script that no longer exists
       this.closePromptDialogs()
@@ -2626,15 +2661,37 @@ export default {
       }
     },
     processReceived() {
-      if (this.receivedEvents.length === 0) {
+      if (
+        this.receivedEvents.length === 0 &&
+        this.receivedOutputEventCount === 0
+      ) {
+        // Output is rendered less frequently than control events. Keep polling
+        // so the final partial batch is displayed even after output goes quiet.
+        this.flushOutputLines()
         return
       }
-      let count = 0
-      const outputLines = []
+      // Detach the current batch instead of splicing a potentially large hot
+      // queue after processing it. Events received during a future turn go
+      // into the new array and are handled by the next interval.
       const events = this.receivedEvents
+      this.receivedEvents = []
+      // Only the newest maxArrayLength messages can survive the UI cap. Scan
+      // backward so older output events and lines are never converted into
+      // short-lived objects merely to be discarded below.
+      this.queueReceivedOutputLines()
+      // Highlight only the newest line in the whole batch. Looking only at
+      // consecutive line events is insufficient because script output is
+      // commonly interleaved between them, causing every line in a tight loop
+      // to remove/add an Ace marker before the browser can paint any of them.
+      let lastLineIndex = -1
+      for (let i = events.length - 1; i >= 0; i--) {
+        if (events[i].type === 'line') {
+          lastLineIndex = i
+          break
+        }
+      }
       for (let i = 0; i < events.length; i++) {
         const data = events[i]
-        count += 1
         // console.log(data) // Uncomment for debugging
         switch (data.type) {
           case 'file':
@@ -2646,34 +2703,10 @@ export default {
             break
           case 'line':
             // Every 'line' event runs the state machine (buttons, phase,
-            // lineNo bookkeeping), but the Ace marker/scroll work is only
-            // done for the last consecutive 'line' event in this drain --
-            // intermediate ones would be overdrawn before the next paint.
-            // (We can't skip events entirely: the final batch of a script
-            // ends with a line_number 0 stopped event, and dropping the
-            // preceding events would lose the final-line highlight.)
-            this.processLine(data, events[i + 1]?.type !== 'line')
-            break
-          case 'output':
-            // data.line can consist of multiple lines split by newlines,
-            // thus we split and only output if the content is not empty.
-            // We also need to ensure it's properly serialized as a string.
-            let dataLine = data.line
-            if (dataLine === null || dataLine === undefined) {
-              dataLine = ''
-            } else if (typeof dataLine === 'object') {
-              dataLine = JSON.stringify(dataLine)
-            } else {
-              dataLine = String(dataLine)
-            }
-            // Accumulate and apply once after the loop: per-line reactive
-            // unshift/pop through a 200-element array is O(lines * 200)
-            // and triggers watchers per line instead of once per batch
-            for (const line of dataLine.split('\n')) {
-              if (line) {
-                outputLines.push({ message: line })
-              }
-            }
+            // lineNo bookkeeping), but only the newest event in the entire
+            // drain does Ace marker/scroll work. Intermediate states still
+            // matter, but their highlights could never become visible.
+            this.processLine(data, i === lastLineIndex)
             break
           case 'script':
             this.handleScript(data)
@@ -2684,6 +2717,9 @@ export default {
             this.results.show = true
             break
           case 'complete':
+            // Do not leave the tail of the log waiting for the output throttle
+            // when the script has already completed.
+            this.flushOutputLines(true)
             if (data.report) {
               this.results.text = data.report
               this.results.show = true
@@ -2745,24 +2781,114 @@ export default {
         }
       }
 
-      if (outputLines.length > 0) {
-        if (this.messagesNewestOnTop) {
-          this.messages = outputLines
-            .reverse()
-            .concat(this.messages)
-            .slice(0, this.maxArrayLength)
+      this.flushOutputLines()
+    },
+    collectRecentOutputLines(outputEvents) {
+      const newestFirst = []
+      for (
+        let i = outputEvents.length - 1;
+        i >= 0 && newestFirst.length < this.maxArrayLength;
+        i--
+      ) {
+        let text = outputEvents[i]
+        if (text === null || text === undefined) {
+          continue
+        } else if (typeof text === 'object') {
+          text = JSON.stringify(text)
         } else {
-          this.messages = this.messages
-            .concat(outputLines)
-            .slice(0, this.maxArrayLength)
+          text = String(text)
+        }
+
+        // Walk backward without split(), which avoids allocating an array for
+        // a very large multi-line output event when only its tail is visible.
+        let end = text.length
+        while (end >= 0 && newestFirst.length < this.maxArrayLength) {
+          const newline = text.lastIndexOf('\n', end - 1)
+          const line = text.slice(newline + 1, end)
+          if (line) {
+            newestFirst.push({ message: line })
+          }
+          if (newline === -1) {
+            break
+          }
+          end = newline
         }
       }
-      // Remove all the events we processed
-      this.receivedEvents.splice(0, count)
+      return newestFirst.reverse()
+    },
+    queueReceivedOutputLines() {
+      if (this.receivedOutputEventCount === 0) {
+        return
+      }
+      const outputEvents = []
+      const start =
+        (this.receivedOutputEventIndex -
+          this.receivedOutputEventCount +
+          this.maxArrayLength) %
+        this.maxArrayLength
+      for (let i = 0; i < this.receivedOutputEventCount; i++) {
+        outputEvents.push(
+          this.receivedOutputEvents[(start + i) % this.maxArrayLength],
+        )
+      }
+      this.clearReceivedOutputEvents()
+      this.queueOutputLines(this.collectRecentOutputLines(outputEvents))
+    },
+    clearReceivedOutputEvents() {
+      this.receivedOutputEvents.fill(undefined)
+      this.receivedOutputEventCount = 0
+      this.receivedOutputEventIndex = 0
+    },
+    queueOutputLines(lines) {
+      if (lines.length > 0) {
+        this.pendingOutputLines = this.pendingOutputLines
+          .concat(lines)
+          .slice(-this.maxArrayLength)
+      }
+    },
+    flushOutputLines(force = false) {
+      if (this.pendingOutputLines.length === 0) {
+        return
+      }
+      const now = Date.now()
+      if (!force && now - this.lastOutputFlush < OUTPUT_FLUSH_INTERVAL_MS) {
+        return
+      }
+
+      const outputLines = this.pendingOutputLines
+      this.pendingOutputLines = []
+      this.lastOutputFlush = now
+      if (this.messagesNewestOnTop) {
+        this.messages = outputLines
+          .slice()
+          .reverse()
+          .concat(this.messages)
+          .slice(0, this.maxArrayLength)
+      } else {
+        this.messages = this.messages
+          .concat(outputLines)
+          .slice(-this.maxArrayLength)
+      }
     },
     received(data) {
       this.cable.recordPing()
-      this.receivedEvents.push(data)
+      // RunningScriptChannel sends bounded arrays to avoid one ActionCable
+      // frame per script event. Also accept an individual event so the UI can
+      // connect to an older backend during a rolling upgrade.
+      const events = Array.isArray(data) ? data : [data]
+      for (const event of events) {
+        if (event.type === 'output') {
+          this.receivedOutputEvents[this.receivedOutputEventIndex] = event.line
+          this.receivedOutputEventIndex =
+            (this.receivedOutputEventIndex + 1) % this.maxArrayLength
+          this.receivedOutputEventCount = Math.min(
+            this.receivedOutputEventCount + 1,
+            this.maxArrayLength,
+          )
+        } else {
+          this.receivedEvents.push(event)
+        }
+      }
     },
     // All prompt responses share the running-script prompt endpoint and
     // the active prompt id; payload carries the method-specific fields
@@ -3509,6 +3635,9 @@ export default {
       Object.keys(allMarkers)
         .filter((key) => allMarkers[key].type === 'fullLine')
         .forEach((marker) => this.editor.session.removeMarker(marker))
+      this.highlightedLine = null
+      this.highlightedState = null
+      this.highlightedFilename = null
     },
     confirmLocalUnlock: function () {
       this.$dialog

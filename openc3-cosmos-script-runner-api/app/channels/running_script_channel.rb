@@ -30,6 +30,7 @@ class RunningScriptChannel < ApplicationCable::Channel
   def subscribed
     # Defensive: if the auth before_subscribe callback rejected us, skip work.
     return if subscription_rejected?
+
     # The running script mirrors its per-script events into a short-lived Redis
     # stream so a client that subscribes after the script has already produced
     # output/state still receives what it missed (the raw anycable broadcast is
@@ -53,15 +54,22 @@ class RunningScriptChannel < ApplicationCable::Channel
     topic = "running-script-channel:#{params[:id]}:replay"
     last_offset = '0-0'
     complete = false
+    events = []
     begin
       OpenC3::Topic.xrange(topic, '-', '+').each do |msg_id, msg_hash|
         last_offset = msg_id
         data = msg_hash['data']
         next unless data
+
         event = JSON.parse(data)
-        transmit(event)
+        events << event
+        if events.length >= RunningScriptReplayThread::MAX_BATCH_SIZE
+          transmit(events)
+          events = []
+        end
         complete = true if event['type'] == 'complete'
       end
+      transmit(events) unless events.empty?
     rescue StandardError => e
       # Best-effort: a replay failure must not break the subscription.
       OpenC3::Logger.warn("running_script replay backlog failed: #{e.message}") rescue nil

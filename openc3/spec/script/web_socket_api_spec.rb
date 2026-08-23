@@ -591,6 +591,36 @@ module OpenC3
         end
       end
     end
+
+    describe "#read" do
+      let(:api) do
+        RunningScriptWebSocketApi.new(
+          id: "spec-script-1",
+          url: "ws://test.com/script-api/cable",
+          authentication: double("auth", token: "test_token")
+        )
+      end
+      let(:stream) { FakeWebSocketStream.new }
+
+      before do
+        api.instance_variable_set(:@stream, stream)
+        api.instance_variable_set(:@subscribed, true)
+      end
+
+      it "returns batched channel events one at a time without another socket read" do
+        stream.queue_read(
+          '{"message":[{"type":"line","line_no":1},{"type":"output","line":"hi"}]}'
+        )
+
+        expect(api.read).to eq({ "type" => "line", "line_no" => 1 })
+        expect(api.read).to eq({ "type" => "output", "line" => "hi" })
+      end
+
+      it "continues to accept an individual event from an older backend" do
+        stream.queue_read('{"message":{"type":"complete"}}')
+        expect(api.read).to eq({ "type" => "complete" })
+      end
+    end
   end
 
   describe RunningScriptWebSocketApi do

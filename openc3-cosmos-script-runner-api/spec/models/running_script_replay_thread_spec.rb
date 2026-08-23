@@ -103,7 +103,7 @@ RSpec.describe RunningScriptReplayThread, type: :model do
   end
 
   describe '#start' do
-    it 'streams from the given offset and broadcasts each event to the subscription' do
+    it 'streams from the given offset and broadcasts events together to the subscription' do
       broadcasts = []
       allow(ActionCable.server).to receive(:broadcast) { |key, event| broadcasts << [key, event] }
       line_event = { 'type' => 'line', 'line_no' => 1 }
@@ -121,10 +121,8 @@ RSpec.describe RunningScriptReplayThread, type: :model do
       # even when the client disconnects abruptly and unsubscribed never fires)
       expect(thread.instance_variable_get(:@thread).join(2)).not_to be_nil
       expect(offsets_seen).to eq(['100-0'])
-      expect(broadcasts).to eq([
-        [subscription_key, line_event],
-        [subscription_key, complete_event],
-      ])
+      expected = [subscription_key, [line_event, complete_event]]
+      expect(broadcasts).to eq([expected])
     end
 
     it 'skips entries with no data and keeps streaming' do
@@ -138,7 +136,26 @@ RSpec.describe RunningScriptReplayThread, type: :model do
 
       thread = start_thread
       expect(thread.instance_variable_get(:@thread).join(2)).not_to be_nil
-      expect(broadcasts).to eq([[subscription_key, event]])
+      expect(broadcasts).to eq([[subscription_key, [event]]])
+    end
+
+    it 'caps batches and flushes the terminal partial batch in order' do
+      broadcasts = []
+      allow(ActionCable.server).to receive(:broadcast) { |_key, events| broadcasts << events }
+      events = (1..RunningScriptReplayThread::MAX_BATCH_SIZE).map do |line_no|
+        { 'type' => 'line', 'line_no' => line_no }
+      end
+      events << { 'type' => 'complete' }
+      allow(OpenC3::Topic).to receive(:read_topics) do |_topics, _offsets, &block|
+        events.each_with_index do |event, index|
+          block.call(topic, "#{index + 1}-0", { 'data' => event.to_json }, nil)
+        end
+      end
+
+      thread = start_thread
+      expect(thread.instance_variable_get(:@thread).join(2)).not_to be_nil
+      expect(broadcasts.map(&:length)).to eq([RunningScriptReplayThread::MAX_BATCH_SIZE, 1])
+      expect(broadcasts.flatten).to eq(events)
     end
   end
 end
