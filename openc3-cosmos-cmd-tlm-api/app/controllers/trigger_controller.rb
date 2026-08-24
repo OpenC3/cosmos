@@ -110,6 +110,7 @@ class TriggerController < ApplicationController
         name = @model_class.create_unique_name(group: hash['group'], scope: params[:scope])
       end
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
+      model.validate_trigger_items()
       model.create() # Create sends a notification
       render json: model.as_json(), status: :created
     rescue OpenC3::TriggerInputError => e
