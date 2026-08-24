@@ -12,14 +12,16 @@
 # All Rights Reserved
 */
 
-import { test, expect } from './fixture'
+import type { Page } from '@playwright/test'
+import type { Utilities } from '../utilities'
+import { expect, test } from './fixture'
 
 test.use({
   toolPath: '/tools/tablemanager',
   toolName: 'Table Manager',
 })
 
-async function openFile(page, utils, filename) {
+async function openFile(page: Page, _utils: Utilities, filename: string) {
   await expect(page.locator('.v-dialog')).toBeVisible()
   await expect(page.getByRole('progressbar')).not.toBeVisible()
   await expect(page.getByText('TEMPLATED')).not.toBeVisible()
