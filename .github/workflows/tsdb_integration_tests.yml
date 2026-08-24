@@ -78,14 +78,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v7
+      # sync: false -- the dependency sync has to happen after the gem build
+      # below, so it stays as its own step further down
+      - name: Set up uv and Python
+        uses: ./.github/actions/setup-uv-python
         with:
-          enable-cache: true
-
-      - name: Set up Python
-        run: uv python install
-        working-directory: openc3/python
+          sync: "false"
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0

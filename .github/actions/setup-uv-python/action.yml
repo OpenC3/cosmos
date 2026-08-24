@@ -1,0 +1,121 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+name: Setup uv and Python
+description: |
+  Install uv, provision the Python interpreter, and sync openc3/python's
+  locked dependencies.
+
+  This exists to keep one uv version across every workflow. Before it, the
+  five workflows that use uv ran three different versions -- 0.10.4, 0.12.5,
+  and "whatever released most recently" for the three that pinned nothing --
+  and three of them omitted setup-uv's working-directory, so cache discovery
+  ran from the repo root where there is no uv.lock and produced a weaker key.
+
+  The uv version lives in the uv-version default below. That is the single
+  place to bump it, and .github/workflows/tool_version_check.yml watches it
+  against upstream because dependabot cannot see versions inside an Actions
+  input.
+
+inputs:
+  uv-version:
+    description: |
+      uv release to install. The default is the version this repository
+      standardizes on; override only to test a candidate.
+    required: false
+    default: "0.12.5"
+  working-directory:
+    description: |
+      Directory holding pyproject.toml and uv.lock. Also given to setup-uv so
+      the dependency cache is keyed on that uv.lock.
+    required: false
+    default: openc3/python
+  python-version:
+    description: |
+      Python to install, for matrix builds. Empty means use the version in
+      .python-version.
+    required: false
+    default: ""
+  cache-suffix:
+    description: Appended to the cache key, so matrix legs do not share a cache.
+    required: false
+    default: ""
+  sync:
+    description: |
+      Whether to run uv sync. Set false when the workflow needs other setup
+      (a gem build, say) to happen between installing uv and syncing.
+    required: false
+    default: "true"
+  no-install-project:
+    description: |
+      Skip the editable install of openc3 itself. Set true for jobs that only
+      read the source tree, which also lets --no-build apply, since that
+      editable install is the only thing here that requires a build.
+    required: false
+    default: "false"
+  no-build:
+    description: |
+      Refuse to build any source distribution, so no third-party build backend
+      executes in CI. Requires no-install-project.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Install uv
+      uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      with:
+        version: ${{ inputs.uv-version }}
+        enable-cache: true
+        cache-suffix: ${{ inputs.cache-suffix }}
+        python-version: ${{ inputs.python-version }}
+        working-directory: ${{ inputs.working-directory }}
+
+    - name: Set up Python
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        PYTHON_VERSION: ${{ inputs.python-version }}
+      # With no python-version this reads .python-version; with one it installs
+      # exactly that. setup-uv has already exported UV_PYTHON in the latter case
+      run: uv python install $PYTHON_VERSION
+
+    # --frozen is not optional: it is what makes the install reproducible, so
+    # it is passed literally on the uv sync line rather than accumulated into a
+    # variable, where neither a reader nor a scanner can see that the lockfile
+    # is honored. The optional flags are booleans rather than a caller-supplied
+    # argument string that could omit --frozen or add --upgrade, and they reach
+    # bash through env so nothing interpolates into the shell.
+    - name: Install dependencies
+      if: ${{ inputs.sync == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        NO_INSTALL_PROJECT: ${{ inputs.no-install-project }}
+        NO_BUILD: ${{ inputs.no-build }}
+      run: |
+        extra=()
+        if [ "$NO_INSTALL_PROJECT" = "true" ]; then
+          extra+=(--no-install-project)
+        fi
+        if [ "$NO_BUILD" = "true" ]; then
+          if [ "$NO_INSTALL_PROJECT" != "true" ]; then
+            # openc3 is an editable install, so it is the one distribution here
+            # that has to be built; --no-build without --no-install-project
+            # fails deep inside uv with a confusing resolver error
+            echo "::error::no-build requires no-install-project" >&2
+            exit 1
+          fi
+          extra+=(--no-build)
+        fi
+        echo "uv sync --frozen ${extra[*]}"
+        uv sync --frozen "${extra[@]}"

@@ -44,26 +44,25 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Install uv
-        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      # ruff parses files and never imports them, so this job has no use for
+      # openc3 being installed. Skipping that editable install lets the sync
+      # run --no-build, so no third-party build backend executes here. The run
+      # steps below then need --no-sync: with --frozen, uv re-evaluates whether
+      # the skipped project could be installed and rejects it under --no-build.
+      - name: Set up uv and Python
+        uses: ./.github/actions/setup-uv-python
         with:
-          enable-cache: true
-          working-directory: openc3/python
-      - name: Set up Python
-        run: uv python install
-        working-directory: openc3/python
-      - name: Install dependencies
-        run: uv sync --frozen
-        working-directory: openc3/python
+          no-install-project: "true"
+          no-build: "true"
       - name: Run ruff check on openc3/python
-        run: uv run --frozen ruff check --output-format=github openc3
+        run: uv run --no-sync --no-build ruff check --output-format=github openc3
         working-directory: openc3/python
       - name: Run ruff format check on openc3/python
-        run: uv run --frozen ruff format --check openc3
+        run: uv run --no-sync --no-build ruff format --check openc3
         working-directory: openc3/python
       - name: Run ruff check on script-runner-api scripts
-        run: uv run --frozen ruff check --output-format=github ../../openc3-cosmos-script-runner-api/scripts
+        run: uv run --no-sync --no-build ruff check --output-format=github ../../openc3-cosmos-script-runner-api/scripts
         working-directory: openc3/python
       - name: Run ruff format check on script-runner-api scripts
-        run: uv run --frozen ruff format --check ../../openc3-cosmos-script-runner-api/scripts
+        run: uv run --no-sync --no-build ruff format --check ../../openc3-cosmos-script-runner-api/scripts
         working-directory: openc3/python
