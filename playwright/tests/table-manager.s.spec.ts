@@ -256,8 +256,7 @@ test('opens and searches file', async ({ page, utils }) => {
   await expect.poll(() => page.locator('tr').count()).toBe(12)
 })
 
-test('downloads binary, definition, report', async ({ page, utils }) => {
-  test.setTimeout(60 * 1000) // 1 minute
+test('downloads binary and definition and report', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
   await openFile(page, utils, 'configtables.bin')
