@@ -282,7 +282,7 @@ test('downloads binary and definition and report', async ({ page, utils }) => {
     page,
     '[data-test="PPS_SELECTION"] [data-test=download-table-binary]',
     function (contents) {
-      expect(contents.length).toBe(2)
+      expect(contents).toHaveLength(2)
     },
     'binary',
   )
