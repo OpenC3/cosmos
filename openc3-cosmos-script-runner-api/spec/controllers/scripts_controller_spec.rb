@@ -185,6 +185,24 @@ RSpec.describe ScriptsController, type: :controller do
       expect(response).to have_http_status(:ok)
     end
 
+    it "passes the selected plugin venv when analyzing a temporary Python suite" do
+      name = "__TEMP__/suite.py"
+      text = "class TestSuite(Suite):\n  pass\n"
+      python_venv = "DEFAULT__demo__0"
+      suites_data = '{"suites":[]}'
+      allow(Script).to receive(:create)
+      expect(Script).to receive(:process_suite).with(
+        name, text, username: "anonymous", scope: "DEFAULT", python_venv: python_venv
+      ).and_return([suites_data, "", true])
+
+      post :create, params: {
+        scope: "DEFAULT", name: name, text: text, pythonVenv: python_venv
+      }
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)["suites"]).to eq(suites_data)
+    end
+
     context "with the script lifecycle feature enabled" do
       before(:each) do
         OpenC3::SettingModel.set({name: 'script_runner_lifecycle', data: true}, scope: 'DEFAULT')
@@ -398,7 +416,7 @@ RSpec.describe ScriptsController, type: :controller do
       expect(Script).to receive(:locked?).with("DEFAULT", "INST/procedures/test.rb").and_return(false)
       expect(Script).to receive(:lock).with("DEFAULT", "INST/procedures/test.rb", "anonymous")
       expect(Script).to receive(:get_breakpoints).with("DEFAULT", "INST/procedures/test.rb").and_return(breakpoints)
-      expect(Script).to receive(:process_suite).with("INST/procedures/test.rb", script_content, username: "anonymous", scope: "DEFAULT").and_return([suites_data, nil, true])
+      expect(Script).to receive(:process_suite).with("INST/procedures/test.rb", script_content, username: "anonymous", scope: "DEFAULT", python_venv: nil).and_return([suites_data, nil, true])
 
       get :body, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
 
@@ -418,9 +436,9 @@ RSpec.describe ScriptsController, type: :controller do
       expect(Script).to receive(:locked?).with("DEFAULT", "INST/procedures/test.py").and_return(false)
       expect(Script).to receive(:lock).with("DEFAULT", "INST/procedures/test.py", "anonymous")
       expect(Script).to receive(:get_breakpoints).with("DEFAULT", "INST/procedures/test.py").and_return(breakpoints)
-      expect(Script).to receive(:process_suite).with("INST/procedures/test.py", script_content, username: "anonymous", scope: "DEFAULT").and_return([suites_data, nil, true])
+      expect(Script).to receive(:process_suite).with("INST/procedures/test.py", script_content, username: "anonymous", scope: "DEFAULT", python_venv: "DEFAULT__demo__0").and_return([suites_data, nil, true])
 
-      get :body, params: {scope: "DEFAULT", name: "INST/procedures/test.py"}
+      get :body, params: {scope: "DEFAULT", name: "INST/procedures/test.py", pythonVenv: "DEFAULT__demo__0"}
 
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)

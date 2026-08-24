@@ -95,7 +95,7 @@ class ScriptsController < ApplicationController
       }
       # Viewers without script_run still get the file contents, just no suite chrome.
       if suite_with_run_permission?(name, file)
-        results_suites, results_error, success = Script.process_suite(name, file, username: username(), scope: scope)
+        results_suites, results_error, success = Script.process_suite(name, file, username: username(), scope: scope, python_venv: params[:pythonVenv])
         results['suites'] = results_suites
         results['error'] = results_error
         results['success'] = success
@@ -189,7 +189,7 @@ class ScriptsController < ApplicationController
     end
     # The file is still saved above; only the suite chrome is omitted when the editor lacks script_run.
     if suite_with_run_permission?(name, params[:text])
-      results_suites, results_error, success = Script.process_suite(name, params[:text], username: username(), scope: scope)
+      results_suites, results_error, success = Script.process_suite(name, params[:text], username: username(), scope: scope, python_venv: params[:pythonVenv])
       results['suites'] = results_suites
       results['error'] = results_error
       results['success'] = success
