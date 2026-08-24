@@ -18,6 +18,7 @@
 require 'openc3'
 require 'openc3/models/microservice_model'
 require 'openc3/operators/operator'
+require 'openc3/utilities/python_venv'
 require 'openc3/utilities/secrets'
 require 'redis'
 require 'open3'
@@ -56,26 +57,11 @@ module OpenC3
         plugin_venv_dir = nil
         if plugin_name
           scope = microservice_name.split("__")[0]
-          sanitized_name = "#{scope}__#{plugin_name}".tr('^a-zA-Z0-9_-', '_')
-          candidate = "/gems/plugin_venvs/#{sanitized_name}/.venv"
-          plugin_venv_dir = candidate if File.directory?(candidate)
+          plugin_venv_dir = PythonVenv.plugin_venv_path(scope: scope, plugin_name: plugin_name)
         end
 
         if plugin_venv_dir
-          env['VIRTUAL_ENV'] = plugin_venv_dir
-          env['PATH'] = "#{plugin_venv_dir}/bin:#{ENV.fetch('PATH', '')}"
-          env['PYTHONUSERBASE'] = plugin_venv_dir
-          # Add the plugin venv's site-packages to PYTHONPATH so the base venv's
-          # Python binary can find plugin-specific packages. We keep the base binary
-          # because it has openc3 core installed; PYTHONPATH is always respected by
-          # CPython regardless of venv activation state.
-          site_packages = Dir.glob("#{plugin_venv_dir}/lib/python*/site-packages").first
-          existing_pythonpath = ENV.fetch('PYTHONPATH', '')
-          if site_packages
-            env['PYTHONPATH'] = existing_pythonpath.empty? ? site_packages : "#{site_packages}:#{existing_pythonpath}"
-          else
-            env['PYTHONPATH'] = existing_pythonpath.empty? ? nil : existing_pythonpath
-          end
+          PythonVenv.configure_environment(env, plugin_venv_dir)
         else
           env['PYTHONUSERBASE'] = '/gems/python_packages'
           env['PYTHONPATH'] = ENV.fetch('PYTHONPATH', nil)

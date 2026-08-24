@@ -17,6 +17,7 @@
 
 require 'tempfile'
 require 'openc3/utilities/target_file'
+require 'openc3/utilities/python_venv'
 require 'openc3/utilities/running_script'
 require 'openc3/script/suite'
 require 'openc3/script/suite_runner'
@@ -163,37 +164,9 @@ class Script < OpenC3::TargetFile
       # itself is started. Give that process the same plugin venv visibility as
       # RunningScript so imports used while defining a suite can be resolved.
       if python
-        python_venv_dir = nil
-        begin
-          target_name = name.split('/')[0].to_s.upcase
-          if target_name == OpenC3::TargetFile::TEMP_FOLDER && python_venv
-            # The UI passes a venv name for temp scripts. File.basename keeps
-            # the value confined to PLUGIN_VENVS_DIR.
-            safe_name = File.basename(python_venv.to_s)
-            candidate = "/gems/plugin_venvs/#{safe_name}/.venv"
-            python_venv_dir = candidate if File.directory?(candidate)
-          else
-            target_info = OpenC3::TargetModel.get(name: target_name, scope: scope)
-            if target_info && target_info['plugin']
-              sanitized_name = "#{scope}__#{target_info['plugin']}".tr('^a-zA-Z0-9_-', '_')
-              candidate = "/gems/plugin_venvs/#{sanitized_name}/.venv"
-              python_venv_dir = candidate if File.directory?(candidate)
-            end
-          end
-        rescue => e
-          OpenC3::Logger.debug("Could not resolve plugin venv for suite '#{name}': #{e.message}")
-        end
-
-        if python_venv_dir
-          process.environment['VIRTUAL_ENV'] = python_venv_dir
-          process.environment['PATH'] = "#{python_venv_dir}/bin:#{ENV.fetch('PATH', '')}"
-          process.environment['PYTHONUSERBASE'] = python_venv_dir
-          site_packages = Dir.glob("#{python_venv_dir}/lib/python*/site-packages").first
-          if site_packages
-            existing_pythonpath = ENV.fetch('PYTHONPATH', '')
-            process.environment['PYTHONPATH'] = existing_pythonpath.empty? ? site_packages : "#{site_packages}:#{existing_pythonpath}"
-          end
-        end
+        OpenC3::PythonVenv.configure_for_script(
+          process.environment, name: name, scope: scope, python_venv: python_venv
+        )
       end
 
       # Spawned process should not be controlled by same Bundler constraints as spawning process
