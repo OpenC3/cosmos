@@ -17,6 +17,7 @@
 
 require "openc3/version"
 require "openc3/models/model"
+require "openc3/models/bridge_model"
 require "openc3/models/plugin_model"
 require "openc3/models/microservice_model"
 require "openc3/models/setting_model"
@@ -212,6 +213,24 @@ module OpenC3
        "shard" => @shard}
     end
 
+    # Every scope gets a DEFAULT bridge_microservice: the Iroh hub that lets
+    # openc3-app run COSMOS interfaces on the host. It idles (no data streams,
+    # no enrolled app) until an interface is bridged / openc3-app enrolls.
+    #
+    # It is a top-level microservice (spawned directly by the operator), NOT a
+    # child of SCOPEMULTI: that runs its Ruby children in-process, and the bridge
+    # is Python.
+    def deploy_bridge_microservice(gem_path, variables)
+      microservice = BridgeModel.build_microservice(
+        bridge_name: "DEFAULT",
+        scope: @scope,
+        shard: @shard
+      )
+      microservice.create
+      microservice.deploy(gem_path, variables)
+      Logger.info "Configured microservice #{microservice.name}"
+    end
+
     def deploy_openc3_log_messages_microservice(gem_path, variables, parent)
       microservice_name = "#{@scope}__OPENC3__LOG"
       topics = ["#{@scope}__openc3_log_messages"]
@@ -389,6 +408,9 @@ module OpenC3
         deploy_critical_cmd_microservice(gem_path, variables, @parent)
       end
 
+      # DEFAULT bridge_microservice (Iroh hub for host interfaces)
+      deploy_bridge_microservice(gem_path, variables)
+
       # Multi Microservice to parent other scope microservices
       deploy_scopemulti_microservice(gem_path, variables)
     end
@@ -398,24 +420,20 @@ module OpenC3
       target = TargetModel.get_model(name: "UNKNOWN", scope: @scope)
       target.destroy
 
-      model = MicroserviceModel.get_model(name: "#{@scope}__SCOPEMULTI__#{@scope}", scope: @scope)
-      model.destroy if model
-      model = MicroserviceModel.get_model(name: "#{@scope}__SCOPECLEANUP__#{@scope}", scope: @scope)
-      model.destroy if model
-      model = MicroserviceModel.get_model(name: "#{@scope}__OPENC3__LOG", scope: @scope)
-      model.destroy if model
-      model = MicroserviceModel.get_model(name: "#{@scope}__COMMANDLOG__UNKNOWN", scope: @scope)
-      model.destroy if model
-      model = MicroserviceModel.get_model(name: "#{@scope}__PACKETLOG__UNKNOWN", scope: @scope)
-      model.destroy if model
-      model = MicroserviceModel.get_model(name: "#{@scope}__PERIODIC__#{@scope}", scope: @scope)
-      model.destroy if model
-      if ENTERPRISE
-        model = MicroserviceModel.get_model(name: "#{@scope}__TRIGGER_GROUP__DEFAULT", scope: @scope)
-        model.destroy if model
-        model = MicroserviceModel.get_model(name: "#{@scope}__CRITICALCMD__#{@scope}", scope: @scope)
-        model.destroy if model
+      # Destroy all microservices in this scope
+      microservices = MicroserviceModel.get_all_models(scope: @name)
+      microservices.each do |_microservice_name, microservice|
+        microservice.destroy
+      end
 
+      # Destroy all bridges in this scope
+      bridges = BridgeModel.get_all_models(scope: @name)
+      bridges.each do |_bridge_name, bridge|
+        bridge.destroy
+      end
+
+      # Cleanup Topics
+      if ENTERPRISE
         Topic.del("#{@scope}__openc3_autonomic")
         Topic.del("#{@scope}__TRIGGER__GROUP")
       end
