@@ -262,6 +262,11 @@ test('downloads binary and definition and report', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
   await openFile(page, utils, 'configtables.bin')
+  // The definition filename is only populated once the tables/load request
+  // returns. Downloading before then posts an empty definition which errors.
+  await expect(
+    page.locator('[data-test=definition-filename] input'),
+  ).toHaveValue('INST/tables/config/ConfigTables_def.txt')
   await utils.download(page, '[data-test=download-file-binary]')
   await utils.download(
     page,
