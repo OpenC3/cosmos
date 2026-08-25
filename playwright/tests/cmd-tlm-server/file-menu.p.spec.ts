@@ -45,13 +45,23 @@ test.skip('changes the polling rate', async ({ page, utils }) => {
 })
 
 test('stops posting to the api after closing', async ({ page, utils }) => {
+  // Only count the Interfaces tab's polling requests. Counting every request
+  // the page makes is flaky because unrelated periodic traffic (auth token
+  // refresh, notifications, cable reconnects) can fire at any time.
   let requestCount = 0
-  page.on('request', () => {
-    requestCount++
+  page.on('request', (request) => {
+    if (
+      request.url().includes('/openc3-api/api') &&
+      request.postData()?.includes('"get_all_interface_info"')
+    ) {
+      requestCount++
+    }
   })
   await utils.sleep(2000)
-  // Commenting out the next two lines causes the test to fail
-  await page.goto('/tools/tablemanager') // No API requests
+  // Sanity check that we were actually polling before navigating away
+  expect(requestCount).toBeGreaterThan(0)
+  // Navigating away must tear down the polling interval
+  await page.goto('/tools/tablemanager') // No get_all_interface_info requests
   await expect(page.locator('.v-app-bar')).toContainText('Table Manager')
   const count = requestCount
   await utils.sleep(2000) // Allow potential API requests to happen
