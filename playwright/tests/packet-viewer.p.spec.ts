@@ -146,22 +146,24 @@ test('gets details with right click', async ({ page, utils }) => {
 })
 
 test('stops posting to the api after closing', async ({ page, utils }) => {
-  await page.goto('/tools/packetviewer/INST/ADCS/')
   // Only count Packet Viewer's polling requests. Counting every request the
   // page makes is flaky because unrelated periodic traffic (auth token
   // refresh, notifications, cable reconnects) can fire at any time.
+  const isPoll = (url: string, postData: string | null) =>
+    url.includes('/openc3-api/api') && !!postData?.includes('"get_tlm_packet"')
   let requestCount = 0
   page.on('request', (request) => {
-    if (
-      request.url().includes('/openc3-api/api') &&
-      request.postData()?.includes('"get_tlm_packet"')
-    ) {
+    if (isPoll(request.url(), request.postData())) {
       requestCount++
     }
   })
-  await utils.sleep(2000)
-  // Sanity check that we were actually polling before navigating away
-  expect(requestCount).toBeGreaterThan(0)
+  await page.goto('/tools/packetviewer/INST/ADCS/')
+  // Wait for polling to actually start rather than assuming it has after a
+  // fixed sleep. App boot can take longer than that on a loaded CI runner,
+  // which made this test fail with zero requests counted.
+  await page.waitForRequest((request) =>
+    isPoll(request.url(), request.postData()),
+  )
   // Navigating away must tear down the polling interval
   await page.goto('/tools/tablemanager') // No get_tlm_packet requests
   await expect(page.locator('.v-app-bar')).toContainText('Table Manager')
