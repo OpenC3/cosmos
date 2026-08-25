@@ -284,9 +284,7 @@ export default {
         .then((response) => {
           // Convert hash of microservices to array of microservices
           let microservices = []
-          for (const [_microservice_name, microservice] of Object.entries(
-            response.data,
-          )) {
+          for (const microservice of Object.values(response.data)) {
             microservices.push(microservice)
           }
           microservices.sort((a, b) => a.name.localeCompare(b.name))
