@@ -163,15 +163,18 @@ test('yellow limit changes never toast, only show in the menu', async ({
   await expect(yellowToast).toHaveCount(0)
 })
 
-// Reload and wait for the tool to come back. In Enterprise every page load
-// bounces through Keycloak (redirect, token exchange, full app boot) before the
-// message stream resubscribes and replays history - roughly 4s of the budget
-// before any toast can appear. Waiting for the app bar keeps that cost out of
-// the toast assertions below.
+// Reload and wait for the tool to come back before asserting on anything the
+// reloaded app produces. In Enterprise a reload bounces through Keycloak
+// (redirect, token exchange, full app boot) and only then does the message
+// stream resubscribe and replay history. reload() resolves on the load event of
+// the pre-redirect document, so the Keycloak round trip runs *after* it - on a
+// loaded CI runner that round trip alone has taken 20s+ (a locator waiting
+// through it reports "waiting for navigation to finish" and then dies with the
+// element never found). Absorbing it here keeps it out of the toast timeouts.
 async function reloadAndWaitForApp(page) {
-  await page.reload()
+  await page.reload({ waitUntil: 'domcontentloaded' })
   await expect(page.locator('.v-app-bar')).toContainText('Script Runner', {
-    timeout: 30000,
+    timeout: 60000,
   })
 }
 
@@ -299,8 +302,9 @@ test('un-acked alerts survive a page reload (must-ack persists)', async ({
   // Emit, reload (Keycloak round trip plus app boot) and then wait on a stream
   // replay: more sequential waiting than the 60s default allows for, and
   // blowing that cap reports an opaque test timeout instead of naming the
-  // assertion that failed.
-  test.setTimeout(120000)
+  // assertion that failed. Budgeted for the worst case each step is allowed:
+  // 20s emit + 60s reload + 30s replay.
+  test.setTimeout(180000)
   const alertText = 'Playwright reload persist test'
   await runLog(
     page,
@@ -313,6 +317,16 @@ test('un-acked alerts survive a page reload (must-ack persists)', async ({
   // offset past the un-acked alert, otherwise the reload below would drop it.
   await page.locator('[data-test=notifications]').click()
   await page.keyboard.press('Escape')
+
+  // The re-toast only happens if the un-acked alert lowered the persisted
+  // reconnect offset (Notifications.vue persistStreamOffset), so the reloaded
+  // app resubscribes from before it. Check that here: otherwise a regression
+  // in the offset bookkeeping - or a malformed "<ms>-<seq>" id, which makes the
+  // server-side XREAD fail and the stream deliver nothing at all - surfaces
+  // only as a missing toast 30s after the reload.
+  await expect
+    .poll(() => page.evaluate(() => localStorage.notificationStreamOffset))
+    .toMatch(/^\d+-\d+$/)
 
   // After reload the un-acked alert is re-fetched and toasts again. This waits
   // on a stream replay rather than a freshly emitted message, so it gets a
@@ -329,7 +343,7 @@ test('acked alerts stay acked across a reload (no re-toast)', async ({
 }) => {
   // Same reload cost as the test above, plus a second emit-and-toast for the
   // sentinel.
-  test.setTimeout(120000)
+  test.setTimeout(180000)
   const alertText = 'Playwright reload acked test'
   await runLog(
     page,
