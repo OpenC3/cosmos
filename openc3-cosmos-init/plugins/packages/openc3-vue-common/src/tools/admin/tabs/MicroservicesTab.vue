@@ -385,18 +385,18 @@ export default {
           okText: 'Restart',
           cancelText: 'Cancel',
         })
-          microserviceNames.forEach((name) => {
-            const microservice = this.allMicroservices.find(
-              (ms) => ms.name === name,
-            )
-            const currentEnabled = microservice?.enabled !== false
-            const initialUpdatedAt = this.microservice_status[name]?.updated_at
-            this.microserviceOperations[name] = {
-              operation: 'restarting',
-              enabled_states: [currentEnabled],
-              initial_updated_at: initialUpdatedAt,
-              time_started: Date.now(),
-            }
+        microserviceNames.forEach((name) => {
+          const microservice = this.allMicroservices.find(
+            (ms) => ms.name === name,
+          )
+          const currentEnabled = microservice?.enabled !== false
+          const initialUpdatedAt = this.microservice_status[name]?.updated_at
+          this.microserviceOperations[name] = {
+            operation: 'restarting',
+            enabled_states: [currentEnabled],
+            initial_updated_at: initialUpdatedAt,
+            time_started: Date.now(),
+          }
           this.startService(name)
         })
       } catch {
@@ -408,12 +408,12 @@ export default {
         await Api.post(`/openc3-api/microservices/${name}/stop`)
       } catch (error) {
         this.alert = `Stop command failed for ${name}: ${error}`
-                this.alertType = 'error'
-                this.showAlert = true
-                setTimeout(() => {
-                  this.showAlert = false
-                }, 5000)
-                delete this.microserviceOperations[name]
+        this.alertType = 'error'
+        this.showAlert = true
+        setTimeout(() => {
+          this.showAlert = false
+        }, 5000)
+        delete this.microserviceOperations[name]
       }
     },
     bulkStopServices: async function () {
@@ -426,31 +426,7 @@ export default {
           okText: 'Stop',
           cancelText: 'Cancel',
         })
-          microserviceNames.forEach((name) => {
-            const microservice = this.allMicroservices.find(
-              (ms) => ms.name === name,
-            )
-            const currentEnabled = microservice?.enabled !== false
-            this.microserviceOperations[name] = {
-              operation: 'stopping',
-              enabled_states: [currentEnabled],
-              time_started: Date.now(),
-            }
-          this.stopService(name)
-          })
-      } catch {
-          // User cancelled
-      }
-    },
-    stopMicroservice: async function (name) {
-      try {
-        await this.$dialog.confirm(
-          `Are you sure you want to stop microservice: ${name}?`,
-          {
-          okText: 'Stop',
-          cancelText: 'Cancel',
-          },
-        )
+        microserviceNames.forEach((name) => {
           const microservice = this.allMicroservices.find(
             (ms) => ms.name === name,
           )
@@ -460,6 +436,30 @@ export default {
             enabled_states: [currentEnabled],
             time_started: Date.now(),
           }
+          this.stopService(name)
+        })
+      } catch {
+        // User cancelled
+      }
+    },
+    stopMicroservice: async function (name) {
+      try {
+        await this.$dialog.confirm(
+          `Are you sure you want to stop microservice: ${name}?`,
+          {
+            okText: 'Stop',
+            cancelText: 'Cancel',
+          },
+        )
+        const microservice = this.allMicroservices.find(
+          (ms) => ms.name === name,
+        )
+        const currentEnabled = microservice?.enabled !== false
+        this.microserviceOperations[name] = {
+          operation: 'stopping',
+          enabled_states: [currentEnabled],
+          time_started: Date.now(),
+        }
         this.stopService(name)
       } catch {
         // User cancelled
@@ -470,20 +470,20 @@ export default {
         await this.$dialog.confirm(
           `Are you sure you want to restart microservice: ${name}?`,
           {
-          okText: 'Restart',
-          cancelText: 'Cancel',
+            okText: 'Restart',
+            cancelText: 'Cancel',
           },
         )
-          const microservice = this.allMicroservices.find(
-            (ms) => ms.name === name,
-          )
-          const currentEnabled = microservice?.enabled !== false
-          this.microserviceOperations[name] = {
-            operation: 'restarting',
-            enabled_states: [currentEnabled],
-            initial_updated_at: this.microservice_status[name]?.updated_at,
-            time_started: Date.now(),
-          }
+        const microservice = this.allMicroservices.find(
+          (ms) => ms.name === name,
+        )
+        const currentEnabled = microservice?.enabled !== false
+        this.microserviceOperations[name] = {
+          operation: 'restarting',
+          enabled_states: [currentEnabled],
+          initial_updated_at: this.microservice_status[name]?.updated_at,
+          time_started: Date.now(),
+        }
         this.startService(name)
       } catch {
         // User cancelled
