@@ -16,7 +16,7 @@
     "@rushstack/eslint-patch": "1.16.1",
     "@vitejs/plugin-vue": "6.0.8",
     "prettier": "3.9.6",
-    "sass": "1.102.0",
+    "sass": "1.103.1",
     "vite": "7.3.6",
     "vite-plugin-style-inject": "0.0.1",
     "vue": "3.5.40"
