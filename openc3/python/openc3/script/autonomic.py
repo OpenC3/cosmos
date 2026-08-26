@@ -155,7 +155,7 @@ def autonomic_trigger_create(left, operator, right, group="DEFAULT", scope=None)
                 parsed = json.loads(response.text)
                 raise RuntimeError(f"autonomic_trigger_create error: {parsed.get('message', 'Unknown error')}")
             else:
-                raise RuntimeError("autonomic_trigger_create failed here")
+                raise RuntimeError("autonomic_trigger_create failed")
         return json.loads(response.text)
     except Exception as error:
         raise RuntimeError(f"autonomic_trigger_create failed due to {error}") from error
