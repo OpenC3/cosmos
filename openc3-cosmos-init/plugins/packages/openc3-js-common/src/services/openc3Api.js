@@ -26,7 +26,7 @@ export function customNumberParser(value) {
   if (isInteger(value) && !isSafeNumber(value)) {
     return BigInt(value)
   } else {
-    return parseFloat(value)
+    return Number.parseFloat(value)
   }
 }
 export default class OpenC3Api {
