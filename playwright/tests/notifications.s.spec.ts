@@ -8,8 +8,9 @@
 # See LICENSE.md for more details.
 */
 
-import { test, expect } from './fixture'
+import type { Browser, Page } from '@playwright/test'
 import { STORAGE_STATE } from './../playwright.config'
+import { expect, test } from './fixture'
 
 // Run inside Script Runner so we can emit log messages from a script. The
 // Notifications toolbar (which shows the toast) is present in every tool.
@@ -22,7 +23,7 @@ test.use({
 })
 
 // Emit a single log message from a running script.
-async function runLog(page, ruby) {
+async function runLog(page: Page, ruby: string) {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=New File').click()
   // Wait for the Ace editor to mount before filling so its async init doesn't
@@ -36,7 +37,7 @@ async function runLog(page, ruby) {
 // own out-of-limits telemetry (which would raise unrelated limit alerts and
 // pollute the toasts these tests assert on). Runs in its own authenticated
 // context since before/afterAll have no test-scoped page.
-async function setQuiet(browser, baseURL, state) {
+async function setQuiet(browser: Browser, baseURL: string | undefined, state: string) {
   const context = await browser.newContext({ storageState: STORAGE_STATE })
   const page = await context.newPage()
   await page.goto(`${baseURL}/tools/scriptrunner`, {
@@ -69,7 +70,7 @@ test.afterAll(async ({ browser, baseURL }) => {
 
 // Open Notification settings and set a switch to the desired state (only
 // clicking if it isn't already there), then close the dialog.
-async function setSetting(page, dataTest, enable) {
+async function setSetting(page: Page, dataTest: string, enable: boolean) {
   await page.locator('[data-test=notifications]').click()
   await page.locator('[data-test=notification-settings]').click()
   const input = page.locator(`[data-test=${dataTest}] input`)
@@ -87,7 +88,7 @@ async function setSetting(page, dataTest, enable) {
 
 // Open Notification settings and choose the alert popup position ('top' or
 // 'bottom') via its radio group, then close the dialog.
-async function setToastPosition(page, position) {
+async function setToastPosition(page: Page, position: 'top' | 'bottom') {
   await page.locator('[data-test=notifications]').click()
   await page.locator('[data-test=notification-settings]').click()
   const label = position === 'bottom' ? 'Bottom' : 'Top'
@@ -171,7 +172,7 @@ test('yellow limit changes never toast, only show in the menu', async ({
 // loaded CI runner that round trip alone has taken 20s+ (a locator waiting
 // through it reports "waiting for navigation to finish" and then dies with the
 // element never found). Absorbing it here keeps it out of the toast timeouts.
-async function reloadAndWaitForApp(page) {
+async function reloadAndWaitForApp(page: Page) {
   await page.reload({ waitUntil: 'domcontentloaded' })
   await expect(page.locator('.v-app-bar')).toContainText('Script Runner', {
     timeout: 60000,
@@ -179,7 +180,7 @@ async function reloadAndWaitForApp(page) {
 }
 
 // A menu row (v-list-item) for the alert carrying the given text.
-function menuRow(page, text) {
+function menuRow(page: Page, text: string) {
   return page.locator('[data-test=notification-list] .v-list-item', {
     hasText: text,
   })
