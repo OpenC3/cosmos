@@ -48,7 +48,7 @@ export default class OpenC3Api {
       if (refreshed) {
         OpenC3Auth.setTokens()
       }
-    } catch (error) {
+    } catch {
       OpenC3Auth.login()
     }
     this.id = this.id + 1

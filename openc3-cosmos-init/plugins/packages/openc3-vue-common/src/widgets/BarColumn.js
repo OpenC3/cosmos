@@ -183,10 +183,6 @@ export default {
       if (this.minValue && this.minValue == limitsSettings[0]) {
         lowValue = limitsSettings[0]
       }
-      let highValue = limitsSettings[3] - 10 * this.scale
-      if (this.maxValue && this.maxValue == limitsSettings[3]) {
-        highValue = limitsSettings[3]
-      }
 
       if (value.raw) {
         if (value.raw === '-Infinity') {
