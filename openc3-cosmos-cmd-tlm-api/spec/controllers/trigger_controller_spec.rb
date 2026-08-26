@@ -160,7 +160,7 @@ RSpec.describe TriggerController, type: :controller do
       post :create, params: hash.merge({scope: "DEFAULT"})
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
-      expect(json["message"]).to match(/invalid operand.*NONEXISTENT.*does not exist/)
+      expect(json["message"]).to match(/invalid left trigger.*NONEXISTENT.*does not exist/)
       expect(response).to have_http_status(:bad_request)
       # The invalid trigger must not have been persisted
       expect(OpenC3::TriggerModel.names(group: GROUP, scope: "DEFAULT")).to eql([])
@@ -172,7 +172,7 @@ RSpec.describe TriggerController, type: :controller do
       post :create, params: hash.merge({scope: "DEFAULT"})
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
-      expect(json["message"]).to match(/invalid operand, valueType 'NOPE' must be one of/)
+      expect(json["message"]).to match(/invalid left operand, valueType 'NOPE' must be one of/)
       expect(response).to have_http_status(:bad_request)
     end
 
@@ -250,7 +250,7 @@ RSpec.describe TriggerController, type: :controller do
       patch :update, params: update_hash.merge({scope: "DEFAULT", group: GROUP, name: @trigger_name})
       json = JSON.parse(response.body, allow_nan: true, create_additions: true)
       expect(json["status"]).to eql("error")
-      expect(json["message"]).to match(/invalid operand.*NONEXISTENT.*does not exist/)
+      expect(json["message"]).to match(/invalid left trigger.*NONEXISTENT.*does not exist/)
       expect(response).to have_http_status(:bad_request)
       # The stored trigger must still have the original item
       model = OpenC3::TriggerModel.get(name: @trigger_name, group: GROUP, scope: "DEFAULT")
