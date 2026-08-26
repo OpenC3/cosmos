@@ -186,15 +186,15 @@ module OpenC3
     # Anything which can reject an already persisted trigger must live here rather than
     # in validate_operand, because validate_operand runs on every from_json
     def validate_trigger_items
-      [@left, @right].each do |operand|
+      {'left' => @left, 'right' => @right}.each do |side, operand|
         next unless operand.is_a?(Hash) and operand['type'] == ITEM_TYPE
         unless ITEM_VALUE_TYPES.include?(operand['valueType'])
-          raise TriggerInputError.new "invalid operand, valueType '#{operand['valueType']}' must be one of #{ITEM_VALUE_TYPES}"
+          raise TriggerInputError.new "invalid #{side} operand, valueType '#{operand['valueType']}' must be one of #{ITEM_VALUE_TYPES}"
         end
         begin
           TargetModel.packet_item(operand['target'], operand['packet'], operand['item'], scope: @scope)
         rescue StandardError => e
-          raise TriggerInputError.new "invalid operand: #{e.message}"
+          raise TriggerInputError.new "invalid #{side} trigger: #{e.message}"
         end
       end
     end

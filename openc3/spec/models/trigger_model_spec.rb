@@ -384,10 +384,10 @@ module OpenC3
 
       # Value checks which only run on create/update via validate_item_operands
       [
-        ['the item does not exist',   {item: 'NONEXISTENT'},   /invalid operand.*NONEXISTENT.*does not exist/],
-        ['the packet does not exist', {packet: 'NONEXISTENT'}, /invalid operand.*NONEXISTENT.*does not exist/],
-        ['the target does not exist', {target: 'NOPE'},        /invalid operand/],
-        ['valueType is invalid',      {value_type: 'NOPE'},    /invalid operand, valueType 'NOPE' must be one of/],
+        ['the item does not exist',   {item: 'NONEXISTENT'},   /invalid left trigger.*NONEXISTENT.*does not exist/],
+        ['the packet does not exist', {packet: 'NONEXISTENT'}, /invalid left trigger.*NONEXISTENT.*does not exist/],
+        ['the target does not exist', {target: 'NOPE'},        /invalid left trigger.*does not exist/],
+        ['valueType is invalid',      {value_type: 'NOPE'},    /invalid left operand, valueType 'NOPE' must be one of/],
       ].each do |description, overrides, message|
         it "raises when #{description}" do
           expect {
@@ -414,7 +414,7 @@ module OpenC3
             operator: '>',
             right: item_operand(item: 'NONEXISTENT')
           ).create()
-        }.to raise_error(TriggerInputError, /invalid operand.*NONEXISTENT.*does not exist/)
+        }.to raise_error(TriggerInputError, /invalid right trigger.*NONEXISTENT.*does not exist/)
       end
 
       it "does not raise on from_json when a referenced item no longer exists" do
@@ -441,7 +441,7 @@ module OpenC3
         model = nil
         expect { model = TriggerModel.from_json(json, name: 'TRIG1', scope: $openc3_scope) }.to_not raise_error
         # But it is rejected if the user tries to save it
-        expect { model.create() }.to raise_error(TriggerInputError, /invalid operand, valueType 'raw' must be one of/)
+        expect { model.create() }.to raise_error(TriggerInputError, /invalid left operand, valueType 'raw' must be one of/)
       end
     end
 
