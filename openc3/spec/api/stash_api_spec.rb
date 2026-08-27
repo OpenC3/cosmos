@@ -13,6 +13,8 @@
 
 require 'spec_helper'
 require 'openc3/api/stash_api'
+require 'openc3/script/extract'
+require 'openc3/utilities/authorization'
 
 module OpenC3
   describe Api do
