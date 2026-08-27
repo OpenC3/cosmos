@@ -33,9 +33,9 @@ module OpenC3
     # The only SuiteRunner entry points a client may request
     ALLOWED_METHODS = ['start', 'setup', 'teardown'].freeze
     # Suite and Group are Ruby constant (class) names, optionally namespaced
-    CLASS_NAME_REGEX = /\A[A-Z][A-Za-z0-9_]*(::[A-Z][A-Za-z0-9_]*)*\z/
+    CLASS_NAME_REGEX = /\A[A-Z]\w*(::[A-Z]\w*)*\z/
     # Script is a Ruby method name on the Group
-    METHOD_NAME_REGEX = /\A[a-z_][A-Za-z0-9_]*[?!]?\z/
+    METHOD_NAME_REGEX = /\A[a-z_]\w*[?!]?\z/
 
     @@suites = []
     @@settings = {}
@@ -69,20 +69,14 @@ module OpenC3
       unless suite.is_a?(String) and CLASS_NAME_REGEX.match?(suite)
         raise ArgumentError, "Invalid Suite name: #{suite.inspect}"
       end
-      if group
-        unless group.is_a?(String) and CLASS_NAME_REGEX.match?(group)
-          raise ArgumentError, "Invalid Group name: #{group.inspect}"
-        end
+      if group && !(group.is_a?(String) and CLASS_NAME_REGEX.match?(group))
+        raise ArgumentError, "Invalid Group name: #{group.inspect}"
       end
-      if script
-        unless script.is_a?(String) and METHOD_NAME_REGEX.match?(script)
-          raise ArgumentError, "Invalid Script name: #{script.inspect}"
-        end
+      if script && !(script.is_a?(String) and METHOD_NAME_REGEX.match?(script))
+        raise ArgumentError, "Invalid Script name: #{script.inspect}"
       end
-      if method
-        unless ALLOWED_METHODS.include?(method.to_s)
-          raise ArgumentError, "Invalid method: #{method.inspect}"
-        end
+      if method && !ALLOWED_METHODS.include?(method.to_s)
+        raise ArgumentError, "Invalid method: #{method.inspect}"
       end
     end
 

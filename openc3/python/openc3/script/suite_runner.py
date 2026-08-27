@@ -33,9 +33,9 @@ class SuiteRunner:
     # The only SuiteRunner entry points a client may request
     ALLOWED_METHODS = ["start", "setup", "teardown"]
     # Suite and Group are Python class names, optionally module qualified
-    CLASS_NAME_REGEX = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$")
+    CLASS_NAME_REGEX = re.compile(r"^[A-Za-z_]\w*(\.[A-Za-z_]\w*)*$")
     # Script is a Python method name on the Group
-    METHOD_NAME_REGEX = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+    METHOD_NAME_REGEX = re.compile(r"^[A-Za-z_]\w*$")
 
     suites = []
     settings = {}
