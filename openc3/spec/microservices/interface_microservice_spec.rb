@@ -282,7 +282,10 @@ module OpenC3
         # queue_username is the original author (shown as "Queued By"), passed
         # by the queue microservice when a command is released from a queue
         @api.cmd("INST", "ABORT", queue_username: "DEFAULT__MULTI__INST",
-          extra: { 'flow_uuid' => '1234-5678', 'username' => 'untrusted' })
+          extra: {
+            'flow_uuid' => '1234-5678', 'username' => 'untrusted',
+            'queue_username' => 'untrusted', 'approver' => 'untrusted'
+          })
         sleep 0.01
         im.shutdown
 
@@ -292,6 +295,7 @@ module OpenC3
         expect(captured.extra['flow_uuid']).to eql('1234-5678')
         expect(captured.extra['username']).to_not eql('untrusted')
         expect(captured.extra['queue_username']).to eql("DEFAULT__MULTI__INST")
+        expect(captured.extra).not_to have_key('approver')
       end
 
       it "handles obfuscated params" do
