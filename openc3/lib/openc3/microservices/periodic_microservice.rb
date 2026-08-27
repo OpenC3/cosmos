@@ -46,8 +46,8 @@ module OpenC3
           NewsModel.news_error("Error contacting OpenC3 news feed (status: #{response.status})")
         end
       end
-    rescue Exception => e
-      NewsModel.news_error("Error contacting OpenC3 news feed. #{e.message})")
+    rescue StandardError => e
+      NewsModel.news_error("Error contacting OpenC3 news feed. #{e.message}")
     end
 
     def run
