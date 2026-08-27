@@ -61,6 +61,10 @@ module OpenC3
           _queue_name, command_data, _timestamp = Store.bzpopmin("#{@scope}:#{@name}", timeout: 0.2)
           if command_data
             command = JSON.parse(command_data)
+            extra = command['extra']
+            if extra.is_a?(String)
+              extra = JSON.parse(extra, allow_nan: true, create_additions: true)
+            end
             # It's important to set queue: false here to avoid infinite recursion when
             # OPENC3_DEFAULT_QUEUE is set because commands would be re-queued to the default queue
             # NOTE: cmd() via script rescues hazardous errors and calls prompt_for_hazardous()
@@ -78,12 +82,12 @@ module OpenC3
               timeout = command['timeout']
               # Pass queue_username so Command History is attributed to the original
               # author rather than the queue microservice name
-              cmd(command['target_name'], command['cmd_name'], cmd_params, queue: false, validate: validate, timeout: timeout, queue_username: command['username'], extra: command['extra'], scope: @scope)
+              cmd(command['target_name'], command['cmd_name'], cmd_params, queue: false, validate: validate, timeout: timeout, queue_username: command['username'], extra: extra, scope: @scope)
             elsif command['value']
               # Legacy format: use single string parameter for backwards compatibility
               validate = command.key?('validate') ? command['validate'] : true
               timeout = command['timeout']
-              cmd(command['value'], queue: false, validate: validate, timeout: timeout, queue_username: command['username'], extra: command['extra'], scope: @scope)
+              cmd(command['value'], queue: false, validate: validate, timeout: timeout, queue_username: command['username'], extra: extra, scope: @scope)
             else
               @logger.error "QueueProcessor: Invalid command format, missing required fields"
             end

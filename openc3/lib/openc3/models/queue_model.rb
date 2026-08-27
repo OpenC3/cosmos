@@ -74,7 +74,7 @@ module OpenC3
       end
       command_data[:validate] = validate unless validate.nil?
       command_data[:timeout] = timeout unless timeout.nil?
-      command_data[:extra] = extra unless extra.nil?
+      command_data[:extra] = JSON.generate(extra.as_json, allow_nan: true) unless extra.nil?
       command_data
     end
 

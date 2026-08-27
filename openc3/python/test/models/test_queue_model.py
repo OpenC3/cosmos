@@ -15,6 +15,7 @@ from unittest.mock import Mock, patch
 
 from openc3.models.queue_model import QueueError, QueueModel
 from openc3.topics.queue_topic import QueueTopic
+from openc3.utilities.json import JsonDecoder
 from test.test_helper import mock_redis
 
 
@@ -109,11 +110,14 @@ class TestQueueModel(unittest.TestCase):
                 command="CMD",
                 username="user",
                 scope="DEFAULT",
-                extra={"flow_uuid": "1234-5678"},
+                extra={"flow_uuid": "1234-5678", "data": b"\xff"},
             )
 
         queued = json.loads(next(iter(mock_store.zadd.call_args.args[1])))
-        self.assertEqual(queued["extra"], {"flow_uuid": "1234-5678"})
+        self.assertEqual(
+            json.loads(queued["extra"], cls=JsonDecoder),
+            {"flow_uuid": "1234-5678", "data": b"\xff"},
+        )
 
     @patch("openc3.models.queue_model.Store")
     @patch("openc3.models.queue_model.QueueModel.get_model")

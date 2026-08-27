@@ -526,7 +526,14 @@ class TestInterfaceMicroservice(unittest.TestCase):
             b"hazardous_check": b"TRUE",
             b"cmd_string": b"cmd('INST ABORT')",
             b"username": b"test_user",
-            b"extra": json.dumps({"flow_uuid": "1234-5678", "username": "untrusted"}).encode(),
+            b"extra": json.dumps(
+                {
+                    "flow_uuid": "1234-5678",
+                    "username": "untrusted",
+                    "queue_username": "untrusted",
+                    "approver": "untrusted",
+                }
+            ).encode(),
             b"queue_username": b"DEFAULT__MULTI__INST",
             b"validate": b"TRUE",
             b"manual": b"FALSE",
@@ -541,6 +548,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
         self.assertEqual(command.extra["flow_uuid"], "1234-5678")
         self.assertEqual(command.extra["username"], "test_user")
         self.assertEqual(command.extra.get("queue_username"), "DEFAULT__MULTI__INST")
+        self.assertNotIn("approver", command.extra)
 
         # Minimal msg_hash — only required fields; optional fields use .get() defaults
         minimal_msg_hash = {

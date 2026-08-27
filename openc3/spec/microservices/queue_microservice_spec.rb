@@ -88,7 +88,7 @@ module OpenC3
       let(:command2) { { 'username' => 'test_user', 'value' => 'cmd("TARGET", "COMMAND2", {"PARAM": 2})' } }
       let(:command3_new_format) do
         { 'username' => 'test_user', 'target_name' => 'TARGET', 'cmd_name' => 'COMMAND3',
-          'cmd_params' => JSON.generate({ 'PARAM' => 3 }), 'extra' => { 'flow_uuid' => '1234-5678' } }
+          'cmd_params' => JSON.generate({ 'PARAM' => 3 }), 'extra' => JSON.generate({ 'flow_uuid' => '1234-5678' }) }
       end
       let(:command4_new_format) { { 'username' => 'test_user', 'target_name' => 'TARGET', 'cmd_name' => 'COMMAND4' } }
 

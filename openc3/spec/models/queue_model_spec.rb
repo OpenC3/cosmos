@@ -152,8 +152,9 @@ module OpenC3
         model.create
         allow(QueueTopic).to receive(:write_notification)
 
+        extra = { "flow_uuid" => "1234-5678", "data" => "\xFF".b }
         QueueModel.queue_command("TEST", target_name: "INST", cmd_name: "COLLECT", cmd_params: { "TYPE" => "NORMAL" },
-          extra: { "flow_uuid" => "1234-5678" }, username: 'test_user', scope: "DEFAULT")
+          extra: extra, username: 'test_user', scope: "DEFAULT")
 
         commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
         expect(commands).to contain_exactly({
@@ -161,7 +162,7 @@ module OpenC3
           "target_name" => "INST",
           "cmd_name" => "COLLECT",
           "cmd_params" => "{\"TYPE\":\"NORMAL\"}",
-          "extra" => { "flow_uuid" => "1234-5678" },
+          "extra" => JSON.generate(extra.as_json, allow_nan: true),
           "validate" => true,
           "timestamp" => anything
         })
