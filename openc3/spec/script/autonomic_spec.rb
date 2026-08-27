@@ -102,7 +102,7 @@ module OpenC3
         else
           # Unknown endpoint or method - return 404
           resp.status = 404
-          resp.body = '{"error":"Not found"}'
+          resp.body = '{"status":"error","message":"Not found"}'
         end
         resp
       end
@@ -143,7 +143,7 @@ module OpenC3
       end
 
       it "raises error on failed group list" do
-        @api.set_response('/openc3-api/autonomic/group', 'get', 500, '{"error":"Internal error"}')
+        @api.set_response('/openc3-api/autonomic/group', 'get', 500, '{"status":"error","message":"Internal error"}')
         expect { autonomic_group_list() }.to raise_error(RuntimeError, /Unexpected response/)
       end
 
@@ -153,12 +153,12 @@ module OpenC3
       end
 
       it "raises error on failed group show" do
-        @api.set_response('/openc3-api/autonomic/group/TEST', 'get', 404, '{"error":"Group not found"}')
+        @api.set_response('/openc3-api/autonomic/group/TEST', 'get', 404, '{"status":"error","message":"Group not found"}')
         expect { autonomic_group_show("TEST") }.to raise_error(RuntimeError, /Unexpected response/)
       end
 
       it "raises error on failed group destroy" do
-        @api.set_response('/openc3-api/autonomic/group/TEST', 'delete', 404, '{"error":"Group not found"}')
+        @api.set_response('/openc3-api/autonomic/group/TEST', 'delete', 404, '{"status":"error","message":"Group not found"}')
         expect { autonomic_group_destroy("TEST") }.to raise_error(RuntimeError, /autonomic_group_destroy error: Group not found/)
       end
     end
@@ -200,37 +200,37 @@ module OpenC3
       end
 
       it "raises error on failed trigger list" do
-        @api.set_response('/openc3-api/autonomic/DEFAULT/trigger', 'get', 500, '{"error":"Internal error"}')
+        @api.set_response('/openc3-api/autonomic/DEFAULT/trigger', 'get', 500, '{"status":"error","message":"Internal error"}')
         expect { autonomic_trigger_list() }.to raise_error(RuntimeError, /Unexpected response/)
       end
 
       it "raises error on failed trigger create" do
-        @api.set_response('/openc3-api/autonomic/DEFAULT/trigger', 'post', 400, '{"error":"Invalid parameters"}')
+        @api.set_response('/openc3-api/autonomic/DEFAULT/trigger', 'post', 400, '{"status":"error","message":"Invalid parameters"}')
         expect { autonomic_trigger_create(left: "INST HEALTH_STATUS TEMP1", operator: ">", right: "80") }.to raise_error(RuntimeError, /autonomic_trigger_create error: Invalid parameters/)
       end
 
       it "raises error on failed trigger show" do
-        @api.set_response('/openc3-api/autonomic/DEFAULT/trigger/TEMP1_HIGH', 'get', 404, '{"error":"Trigger not found"}')
+        @api.set_response('/openc3-api/autonomic/DEFAULT/trigger/TEMP1_HIGH', 'get', 404, '{"status":"error","message":"Trigger not found"}')
         expect { autonomic_trigger_show("TEMP1_HIGH") }.to raise_error(RuntimeError, /Unexpected response/)
       end
 
       it "raises error on failed trigger enable" do
-        @api.set_response('/openc3-api/autonomic/DEFAULT/trigger/TEMP1_HIGH/enable', 'post', 404, '{"error":"Trigger not found"}')
+        @api.set_response('/openc3-api/autonomic/DEFAULT/trigger/TEMP1_HIGH/enable', 'post', 404, '{"status":"error","message":"Trigger not found"}')
         expect { autonomic_trigger_enable("TEMP1_HIGH") }.to raise_error(RuntimeError, /autonomic_trigger_enable error: Trigger not found/)
       end
 
       it "raises error on failed trigger disable" do
-        @api.set_response('/openc3-api/autonomic/DEFAULT/trigger/TEMP1_HIGH/disable', 'post', 404, '{"error":"Trigger not found"}')
+        @api.set_response('/openc3-api/autonomic/DEFAULT/trigger/TEMP1_HIGH/disable', 'post', 404, '{"status":"error","message":"Trigger not found"}')
         expect { autonomic_trigger_disable("TEMP1_HIGH") }.to raise_error(RuntimeError, /autonomic_trigger_disable error: Trigger not found/)
       end
 
       it "raises error on failed trigger update" do
-        @api.set_response('/openc3-api/autonomic/DEFAULT/trigger/TEMP1_HIGH', 'put', 400, '{"error":"Invalid parameters"}')
+        @api.set_response('/openc3-api/autonomic/DEFAULT/trigger/TEMP1_HIGH', 'put', 400, '{"status":"error","message":"Invalid parameters"}')
         expect { autonomic_trigger_update("TEMP1_HIGH", right: "90") }.to raise_error(RuntimeError, /autonomic_trigger_update error: Invalid parameters/)
       end
 
       it "raises error on failed trigger destroy" do
-        @api.set_response('/openc3-api/autonomic/DEFAULT/trigger/TEMP1_HIGH', 'delete', 404, '{"error":"Trigger not found"}')
+        @api.set_response('/openc3-api/autonomic/DEFAULT/trigger/TEMP1_HIGH', 'delete', 404, '{"status":"error","message":"Trigger not found"}')
         expect { autonomic_trigger_destroy("TEMP1_HIGH") }.to raise_error(RuntimeError, /autonomic_trigger_destroy error: Trigger not found/)
       end
     end
@@ -277,42 +277,42 @@ module OpenC3
       end
 
       it "raises error on failed reaction list" do
-        @api.set_response('/openc3-api/autonomic/reaction', 'get', 500, '{"error":"Internal error"}')
+        @api.set_response('/openc3-api/autonomic/reaction', 'get', 500, '{"status":"error","message":"Internal error"}')
         expect { autonomic_reaction_list() }.to raise_error(RuntimeError, /Unexpected response/)
       end
 
       it "raises error on failed reaction create" do
-        @api.set_response('/openc3-api/autonomic/reaction', 'post', 400, '{"error":"Invalid parameters"}')
+        @api.set_response('/openc3-api/autonomic/reaction', 'post', 400, '{"status":"error","message":"Invalid parameters"}')
         expect { autonomic_reaction_create(triggers: ["TEMP1_HIGH"], actions: [{"type" => "command", "value" => "INST CLEAR"}]) }.to raise_error(RuntimeError, /autonomic_reaction_create error: Invalid parameters/)
       end
 
       it "raises error on failed reaction show" do
-        @api.set_response('/openc3-api/autonomic/reaction/TEMP1_REACTION', 'get', 404, '{"error":"Reaction not found"}')
+        @api.set_response('/openc3-api/autonomic/reaction/TEMP1_REACTION', 'get', 404, '{"status":"error","message":"Reaction not found"}')
         expect { autonomic_reaction_show("TEMP1_REACTION") }.to raise_error(RuntimeError, /Unexpected response/)
       end
 
       it "raises error on failed reaction enable" do
-        @api.set_response('/openc3-api/autonomic/reaction/TEMP1_REACTION/enable', 'post', 404, '{"error":"Reaction not found"}')
+        @api.set_response('/openc3-api/autonomic/reaction/TEMP1_REACTION/enable', 'post', 404, '{"status":"error","message":"Reaction not found"}')
         expect { autonomic_reaction_enable("TEMP1_REACTION") }.to raise_error(RuntimeError, /autonomic_reaction_enable error: Reaction not found/)
       end
 
       it "raises error on failed reaction disable" do
-        @api.set_response('/openc3-api/autonomic/reaction/TEMP1_REACTION/disable', 'post', 404, '{"error":"Reaction not found"}')
+        @api.set_response('/openc3-api/autonomic/reaction/TEMP1_REACTION/disable', 'post', 404, '{"status":"error","message":"Reaction not found"}')
         expect { autonomic_reaction_disable("TEMP1_REACTION") }.to raise_error(RuntimeError, /autonomic_reaction_disable error: Reaction not found/)
       end
 
       it "raises error on failed reaction execute" do
-        @api.set_response('/openc3-api/autonomic/reaction/TEMP1_REACTION/execute', 'post', 404, '{"error":"Reaction not found"}')
+        @api.set_response('/openc3-api/autonomic/reaction/TEMP1_REACTION/execute', 'post', 404, '{"status":"error","message":"Reaction not found"}')
         expect { autonomic_reaction_execute("TEMP1_REACTION") }.to raise_error(RuntimeError, /autonomic_reaction_execute error: Reaction not found/)
       end
 
       it "raises error on failed reaction update" do
-        @api.set_response('/openc3-api/autonomic/reaction/TEMP1_REACTION', 'put', 400, '{"error":"Invalid parameters"}')
+        @api.set_response('/openc3-api/autonomic/reaction/TEMP1_REACTION', 'put', 400, '{"status":"error","message":"Invalid parameters"}')
         expect { autonomic_reaction_update("TEMP1_REACTION", trigger_level: "LEVEL") }.to raise_error(RuntimeError, /autonomic_reaction_update error: Invalid parameters/)
       end
 
       it "raises error on failed reaction destroy" do
-        @api.set_response('/openc3-api/autonomic/reaction/TEMP1_REACTION', 'delete', 404, '{"error":"Reaction not found"}')
+        @api.set_response('/openc3-api/autonomic/reaction/TEMP1_REACTION', 'delete', 404, '{"status":"error","message":"Reaction not found"}')
         expect { autonomic_reaction_destroy("TEMP1_REACTION") }.to raise_error(RuntimeError, /autonomic_reaction_destroy error: Reaction not found/)
       end
     end
