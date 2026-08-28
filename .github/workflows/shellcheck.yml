@@ -1,0 +1,63 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+name: ShellCheck
+
+on:
+  pull_request:
+    branches-ignore:
+      - "dependabot/**"
+    types:
+      - opened
+      - reopened
+      - synchronize
+    paths:
+      - "**/*.sh"
+      - ".github/workflows/shellcheck.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # ShellCheck ships in the GitHub ubuntu runner image, so there is no
+      # action to pin here. The fallback covers the image dropping it.
+      - name: Verify ShellCheck is available
+        run: shellcheck --version || { sudo apt-get update && sudo apt-get install -y shellcheck; }
+      # Fails the build on error and warning. Notes (mostly SC2086 quoting) are
+      # reported by the advisory step below without gating - there are hundreds
+      # of them across the release and setup scripts.
+      #
+      # A shebang on line 1 is what tells ShellCheck which dialect to apply, so
+      # a /bin/sh script gets the POSIX rules (the SC3xxx family) that catch a
+      # bashism in a script Alpine runs with busybox ash. SC2148 (no shebang)
+      # and SC1128 (shebang not on line 1) are errors here for that reason -
+      # without them a script is checked as bash no matter what runs it.
+      - name: Run ShellCheck
+        run: git ls-files -z '*.sh' | xargs -0 -r shellcheck --severity=warning --format=gcc
+      # Informational only: the note-level findings that the gate above skips.
+      # Run it even when the gate failed so one push shows the whole picture.
+      - name: Report note-level findings (advisory)
+        if: ${{ !cancelled() }}
+        run: git ls-files -z '*.sh' | xargs -0 -r shellcheck --severity=style --format=gcc || true
