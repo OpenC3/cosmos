@@ -283,12 +283,9 @@ export default {
       Api.get('/openc3-api/microservices/all')
         .then((response) => {
           // Convert hash of microservices to array of microservices
-          let microservices = []
-          for (const microservice of Object.values(response.data)) {
-            microservices.push(microservice)
-          }
-          microservices.sort((a, b) => a.name.localeCompare(b.name))
-          this.allMicroservices = microservices
+          this.allMicroservices = Object.values(response.data).sort((a, b) =>
+            a.name.localeCompare(b.name),
+          )
           this.applyServiceFilter()
         })
         .catch(console.error)
