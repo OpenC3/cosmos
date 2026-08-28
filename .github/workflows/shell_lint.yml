@@ -41,6 +41,10 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # This job only reads the tree - `git ls-files` needs no token, and
+          # nothing here pushes - so don't leave one in .git/config.
+          persist-credentials: false
       # ShellCheck ships in the GitHub ubuntu runner image, so there is no
       # action to pin here. The fallback covers the image dropping it.
       - name: Verify ShellCheck is available
