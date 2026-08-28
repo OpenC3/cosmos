@@ -602,6 +602,32 @@ class TestInterfaceMicroservice(unittest.TestCase):
         self.assertNotEqual(handler.process_cmd(topic, msg_id, {b"protocol_cmd": b"{}"}, None), "SUCCESS")
         self.assertNotEqual(handler.process_cmd(topic, msg_id, {b"inject_tlm": b"not valid"}, None), "SUCCESS")
 
+    def test_process_cmd_interface_details_error_does_not_kill_the_thread(self):
+        """A custom interface whose details() raises must not take down the microservice.
+        The error is returned as the ack so the caller sees it instead of timing out."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        handler = im.handler_thread
+        topic = "{DEFAULT__CMD}INTERFACE__INST_INT"
+        msg_id = f"{int(time.time() * 1000)}-0"
+
+        # A common mistake in a custom interface is shadowing the num_clients method
+        # with an attribute, which makes as_json raise TypeError
+        im.interface.num_clients = 0
+        result = handler.process_cmd(topic, msg_id, {b"interface_details": b"1"}, None)
+        self.assertIn("not callable", result)
+
+        # A details() that returns something JSON cannot encode is also reported
+        del im.interface.num_clients  # restore the class method
+        im.interface.options["BAD"] = object()
+        result = handler.process_cmd(topic, msg_id, {b"interface_details": b"1"}, None)
+        self.assertIn("not JSON serializable", result)
+
+        # The handler still works for other directives afterwards
+        del im.interface.options["BAD"]
+        result = handler.process_cmd(topic, msg_id, {b"interface_details": b"1"}, None)
+        self.assertEqual(json.loads(result)["name"], "INST_INT")
+
     def test_process_cmd_connected_interface_directives(self):
         """Raw write and stream logging directives against a connected interface."""
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
