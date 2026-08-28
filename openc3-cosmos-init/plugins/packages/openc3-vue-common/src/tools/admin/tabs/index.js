@@ -47,6 +47,12 @@ const TabsList = [
     component: () => import('./MicroservicesTab.vue'),
   },
   {
+    displayName: 'Bridges',
+    name: 'BridgesTab',
+    path: 'bridges',
+    component: () => import('./BridgesTab.vue'),
+  },
+  {
     displayName: 'Packages',
     name: 'PackagesTab',
     path: 'packages',

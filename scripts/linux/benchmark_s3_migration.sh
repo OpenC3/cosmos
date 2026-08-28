@@ -295,7 +295,7 @@ check_prerequisites() {
     fi
 
     # Validate FILE_SIZE_MB
-    if ! [[ "$FILE_SIZE_MB" =~ ^[0-9]+$ ]] || [ "$FILE_SIZE_MB" -lt 1 ]; then
+    if ! [[ "$FILE_SIZE_MB" =~ ^[0-9]+$ ]] || [[ "$FILE_SIZE_MB" -lt 1 ]]; then
         echo "${RED}Error: --file-size must be a positive integer${NC}"
         exit 1
     fi

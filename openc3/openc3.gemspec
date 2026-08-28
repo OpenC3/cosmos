@@ -84,7 +84,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'rack',      '~> 3.1'
   s.add_runtime_dependency 'rackup',    '~> 2.1'
   s.add_runtime_dependency 'rake',      '~> 13.0'
-  s.add_runtime_dependency 'rdoc',      '~> 7.0'
+  s.add_runtime_dependency 'rdoc',      '>= 7', '< 9'
   s.add_runtime_dependency 'redis',     '~> 5.4'
   s.add_runtime_dependency 'rubyzip',   '~> 3.0'
   s.add_runtime_dependency 'uuidtools', '~> 3.0'
@@ -117,6 +117,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'listen', '~> 3.9'
 
   # Development Dependencies
+  s.add_development_dependency 'benchmark', '~> 0.5'
   s.add_development_dependency 'benchmark-ips', '~> 2.9'
   s.add_development_dependency 'faraday-follow_redirects', '~> 0.3'
   s.add_development_dependency 'flay', '~> 2.12'
@@ -129,11 +130,9 @@ spec = Gem::Specification.new do |s|
   s.add_development_dependency 'rspec-rails', '~> 8.0'
   s.add_development_dependency 'rspec_junit_formatter', '~> 0.4'
   s.add_development_dependency 'ruby-prof', '~> 2.0' if RUBY_ENGINE == 'ruby' # MRI Only
-  s.add_development_dependency 'simplecov', '~> 0.22'
+  s.add_development_dependency 'simplecov', '~> 1.1'
   s.add_development_dependency 'rexml', '3.4.4' # 3.4.2 throws an error. See https://github.com/ruby/rexml/issues/287
-  s.add_development_dependency 'simplecov-cobertura', '~> 3.0'
-  # simplecov_json_formatter formatter supports SonarQube
-  # s.add_development_dependency 'simplecov_json_formatter', '~> 0.1'
+  s.add_development_dependency 'simplecov-cobertura', '~> 4.0'
 
   s.post_install_message = "Thanks for installing OpenC3!\n"
   s.metadata['rubygems_mfa_required'] = 'true'

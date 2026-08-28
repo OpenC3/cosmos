@@ -63,7 +63,7 @@
               dense
               color="primary"
               class="mr-3"
-              :disabled="filename == ''"
+              :disabled="filename == '' || definitionFilename == ''"
               data-test="download-file-binary"
               @click="downloadBinary(null)"
             >
@@ -74,7 +74,7 @@
               dense
               color="primary"
               class="mr-3"
-              :disabled="filename == ''"
+              :disabled="filename == '' || definitionFilename == ''"
               data-test="download-file-definition"
               @click="downloadDefinition(null)"
             >
@@ -84,7 +84,7 @@
             <v-btn
               dense
               color="primary"
-              :disabled="filename == ''"
+              :disabled="filename == '' || definitionFilename == ''"
               data-test="download-file-report"
               @click="downloadReport(null)"
             >
@@ -182,7 +182,7 @@
                   dense
                   color="primary"
                   class="mr-3"
-                  :disabled="filename == ''"
+                  :disabled="filename == '' || definitionFilename == ''"
                   data-test="download-table-binary"
                   @click="downloadBinary(table.name)"
                 >
@@ -193,7 +193,7 @@
                   dense
                   color="primary"
                   class="mr-3"
-                  :disabled="filename == ''"
+                  :disabled="filename == '' || definitionFilename == ''"
                   data-test="download-table-definition"
                   @click="downloadDefinition(table.name)"
                 >
@@ -203,7 +203,7 @@
                 <v-btn
                   dense
                   color="primary"
-                  :disabled="filename == ''"
+                  :disabled="filename == '' || definitionFilename == ''"
                   data-test="download-table-report"
                   @click="downloadReport(table.name)"
                 >

@@ -111,6 +111,21 @@ test('sets a classification banner', async ({ page, utils }) => {
       `--classification-text:\\s?"${bannerText}"; --classification-font-color:\\s?${bannerTextColor.toLowerCase()}; --classification-background-color:\\s?#${bannerBackgroundColor}; --classification-height-top:\\s?${bannerHeight}px; --classification-height-bottom:\\s?0px;`,
     ),
   )
+  // The saved height must repopulate the form, not reset to the 20px default
+  await expect(
+    page
+      .locator('[data-test=classification-banner-top-height]')
+      .locator('input'),
+  ).toHaveValue(bannerHeight)
+  // Saving an unrelated change must not clobber the stored height
+  await page.locator('[data-test="classification-banner-font-color"]').click()
+  await page.locator('.v-list-item-title:has-text("Green")').click()
+  await page.locator('[data-test=save-classification-banner]').click()
+  await page.reload()
+  await expect(page.locator('#app')).toHaveAttribute(
+    'style',
+    new RegExp(`--classification-height-top:\\s?${bannerHeight}px;`),
+  )
   // Disable the classification banner
   await page.uncheck('text=Display top banner')
   await page.locator('[data-test=save-classification-banner]').click()

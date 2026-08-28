@@ -49,12 +49,6 @@ async function setQuiet(browser, baseURL, state) {
     page,
     `cmd("INST QUIET with STATE ${state}")\ncmd("INST2 QUIET with STATE ${state}")`,
   )
-  // // Setting QUIET means show alerts and QUIET false means hide alerts
-  // if (state === 'FALSE') {
-  //   await setSetting(page, 'show-alerts', true)
-  // } else {
-  //   await setSetting(page, 'show-alerts', false)
-  // }
 
   // Wait for the command script to finish so the QUIET cmds are actually sent
   // before tearing down the context.
@@ -168,6 +162,18 @@ test('yellow limit changes never toast, only show in the menu', async ({
   )
   await expect(yellowToast).toHaveCount(0)
 })
+
+// Reload and wait for the tool to come back. In Enterprise every page load
+// bounces through Keycloak (redirect, token exchange, full app boot) before the
+// message stream resubscribes and replays history - roughly 4s of the budget
+// before any toast can appear. Waiting for the app bar keeps that cost out of
+// the toast assertions below.
+async function reloadAndWaitForApp(page) {
+  await page.reload()
+  await expect(page.locator('.v-app-bar')).toContainText('Script Runner', {
+    timeout: 30000,
+  })
+}
 
 // A menu row (v-list-item) for the alert carrying the given text.
 function menuRow(page, text) {
@@ -290,6 +296,11 @@ test('un-acked alerts survive a page reload (must-ack persists)', async ({
   page,
   utils,
 }) => {
+  // Emit, reload (Keycloak round trip plus app boot) and then wait on a stream
+  // replay: more sequential waiting than the 60s default allows for, and
+  // blowing that cap reports an opaque test timeout instead of naming the
+  // assertion that failed.
+  test.setTimeout(120000)
   const alertText = 'Playwright reload persist test'
   await runLog(
     page,
@@ -303,9 +314,11 @@ test('un-acked alerts survive a page reload (must-ack persists)', async ({
   await page.locator('[data-test=notifications]').click()
   await page.keyboard.press('Escape')
 
-  // After reload the un-acked alert is re-fetched and toasts again.
-  await page.reload()
-  await expect(toast).toBeVisible({ timeout: 20000 })
+  // After reload the un-acked alert is re-fetched and toasts again. This waits
+  // on a stream replay rather than a freshly emitted message, so it gets a
+  // longer timeout than the emit-then-assert cases above.
+  await reloadAndWaitForApp(page)
+  await expect(toast).toBeVisible({ timeout: 30000 })
   await toast.getByRole('button', { name: 'Acknowledge' }).click()
   await expect(toast).toBeHidden()
 })
@@ -314,6 +327,9 @@ test('acked alerts stay acked across a reload (no re-toast)', async ({
   page,
   utils,
 }) => {
+  // Same reload cost as the test above, plus a second emit-and-toast for the
+  // sentinel.
+  test.setTimeout(120000)
   const alertText = 'Playwright reload acked test'
   await runLog(
     page,
@@ -327,7 +343,7 @@ test('acked alerts stay acked across a reload (no re-toast)', async ({
   await toast.getByRole('button', { name: 'Acknowledge' }).click()
   await expect(toast).toBeHidden()
 
-  await page.reload()
+  await reloadAndWaitForApp(page)
 
   // Emit a fresh sentinel alert after the reload. Once its toast appears we
   // know the stream reconnected and replayed history, so the acked alert has

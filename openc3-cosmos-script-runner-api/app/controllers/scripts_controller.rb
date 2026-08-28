@@ -32,6 +32,13 @@ class ScriptsController < ApplicationController
   PYTHON_SUITE_REGEX = /^\s*class\s+\w+\s*\(\s*(Suite|TestSuite)\s*\)/
   MAX_LIFECYCLE_COMMENT_LENGTH = 1000
 
+  # These are also enforced in OpenC3::SuiteRunner.validate_identifiers.
+  # Suite / Group are class names (Ruby '::' or Python '.' qualified),
+  # script is a method name, method is one of the SuiteRunner entry points.
+  SUITE_RUNNER_CLASS_REGEX = /\A[A-Za-z_][A-Za-z0-9_]*((::|\.)[A-Za-z_][A-Za-z0-9_]*)*\z/
+  SUITE_RUNNER_SCRIPT_REGEX = /\A[A-Za-z_][A-Za-z0-9_]*[?!]?\z/
+  SUITE_RUNNER_METHODS = ['start', 'setup', 'teardown'].freeze
+
   def ping
     render plain: 'OK'
   end
@@ -217,6 +224,16 @@ class ScriptsController < ApplicationController
     end
     # TODO 7.0: Should suiteRunner be snake case?
     suite_runner = params[:suiteRunner] ? params[:suiteRunner].as_json() : nil
+    # The suite / group / script / method values are interpolated into the code
+    # snippet the running script evaluates, so reject anything that isn't a
+    # bare identifier here (defense in depth, also validated in SuiteRunner).
+    if suite_runner
+      error = validate_suite_runner(suite_runner)
+      if error
+        render json: { status: 'error', message: error }, status: :bad_request
+        return
+      end
+    end
     disconnect = params[:disconnect] == 'disconnect'
     environment = params[:environment]
     python_venv = params[:pythonVenv]
@@ -335,6 +352,27 @@ class ScriptsController < ApplicationController
     is_suite && authorized?('script_run', target_name: name.split('/')[0])
   end
   
+  # Returns an error message if any suiteRunner value isn't a bare identifier,
+  # else nil. suite is required; group / script / method are optional.
+  def validate_suite_runner(suite_runner)
+    return "suiteRunner must be a Hash" unless suite_runner.is_a?(Hash)
+    suite = suite_runner['suite']
+    return "Invalid Suite name: #{suite.inspect}" unless suite.is_a?(String) and SUITE_RUNNER_CLASS_REGEX.match?(suite)
+    group = suite_runner['group']
+    if group and !(group.is_a?(String) and SUITE_RUNNER_CLASS_REGEX.match?(group))
+      return "Invalid Group name: #{group.inspect}"
+    end
+    script = suite_runner['script']
+    if script and !(script.is_a?(String) and SUITE_RUNNER_SCRIPT_REGEX.match?(script))
+      return "Invalid Script name: #{script.inspect}"
+    end
+    method = suite_runner['method']
+    if method and !SUITE_RUNNER_METHODS.include?(method.to_s)
+      return "Invalid method: #{method.inspect}"
+    end
+    nil
+  end
+
   # Whether the Script Lifecycle feature is active: the Admin/Settings flag is
   # on AND the git-backed version store is available (Enterprise). Both are
   # required since the lifecycle is tracked as git commits/tags.
