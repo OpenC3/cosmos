@@ -173,17 +173,17 @@ export default {
           this.redirect()
         })
         .catch((error) => {
-          // Only a 401 means the token is actually stale. Anything else (server
-          // down, 500) says nothing about the token, and throwing it away would
-          // needlessly force the user to retype their password.
-          if (!isUnauthorizedError(error)) {
-            return
-          }
-          // Stale token - drop it and let the user log in normally. Only if it's
-          // still the token we checked: the user can finish logging in while
-          // this request is in flight, and deleting the new token would send
-          // them straight back to the login form.
-          if (localStorage.openc3Token === token) {
+          // Only a 401 means the token is actually stale, so drop it and let the
+          // user log in normally. Anything else (server down, 500) says nothing
+          // about the token, and throwing it away would needlessly force the
+          // user to retype their password. Also require that it's still the
+          // token we checked: the user can finish logging in while this request
+          // is in flight, and deleting the new token would send them straight
+          // back to the login form.
+          if (
+            isUnauthorizedError(error) &&
+            localStorage.openc3Token === token
+          ) {
             delete localStorage.openc3Token
           }
         })

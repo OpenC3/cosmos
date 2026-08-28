@@ -50,7 +50,10 @@ export function logUnlessAuthRequired(error) {
   }
 }
 
-export class AuthRequiredError extends Error {
+// NOTE: AuthRequiredError itself is deliberately not exported. It's matched by
+// name, not by identity, so callers use isAuthRequiredError instead - exporting
+// the class would invite instanceof checks that break across editions.
+class AuthRequiredError extends Error {
   constructor(message = 'Authentication required') {
     super(message)
     this.name = 'AuthRequiredError'

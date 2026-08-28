@@ -30,10 +30,12 @@ class AuthRequiredError extends Error {
 }
 
 class Auth {
-  // @param value [Number] unused in core, minimum token validity in seconds
-  // @param from_401 [Boolean] whether a request just came back unauthorized
-  // @return [Promise<Boolean>] whether the token was refreshed, or a rejection
-  //   with an AuthRequiredError if we're redirecting to login instead
+  /**
+   * @param value {number} unused in core, minimum token validity in seconds
+   * @param from_401 {boolean} whether a request just came back unauthorized
+   * @return {Promise<boolean>} whether the token was refreshed, or a rejection
+   *   with an AuthRequiredError if we're redirecting to login instead
+   */
   updateToken(value, from_401 = false) {
     if (!localStorage.openc3Token || from_401) {
       this.clearTokens()
