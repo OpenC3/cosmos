@@ -8,7 +8,8 @@
 # Only OPENC3_DEMO uses this so far - the OPENC3_NO_* flags below are still
 # presence-only, where "VAR=0" and "VAR=false" mean ON.
 flag_enabled() {
-    case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+    local value="$1"
+    case "$(printf '%s' "${value}" | tr '[:upper:]' '[:lower:]')" in
         '' | 0 | false) return 1 ;;
         *) return 0 ;;
     esac
