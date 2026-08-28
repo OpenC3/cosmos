@@ -11,17 +11,11 @@
 
 name: Trivy Scan
 
-# Only run on a push to main to avoid running for all the dependabot PRs
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - "**"
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 # Workaround for https://github.com/aquasecurity/trivy-action/issues/389
@@ -31,7 +25,6 @@ env:
 
 jobs:
   openc3-scan:
-    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

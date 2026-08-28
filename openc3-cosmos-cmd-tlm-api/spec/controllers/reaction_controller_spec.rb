@@ -28,6 +28,16 @@ RSpec.describe ReactionController, type: :controller do
     model.create
     model = OpenC3::TriggerGroupModel.new(name: "TEST", scope: "TEST")
     model.create
+    setup_system()
+    # Seed INST into both scopes so item operands reference telemetry that actually
+    # exists. TriggerModel validates items against the trigger's own scope, and the
+    # "two reactions on different scopes" spec builds a trigger in TEST as well.
+    dir = File.join(__dir__, "..", "..", "..", "openc3", "spec", "install", "config", "targets")
+    ["DEFAULT", "TEST"].each do |scope|
+      target = OpenC3::TargetModel.new(folder_name: "INST", name: "INST", scope: scope)
+      target.create
+      target.update_store(OpenC3::System.new(["INST"], dir))
+    end
   end
 
   def generate_trigger(

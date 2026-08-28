@@ -80,6 +80,13 @@
 #     # compose.yaml. env_file also works for adding (but NOT overriding)
 #     # variables that compose.yaml does not already list.
 #     - MY_CUSTOM_SETTING=value
+#     # Iroh relay for openc3-app bridges. Without it, a bridge is only reachable by a
+#     # co-located openc3-app (same machine, direct). To pair a REMOTE openc3-app
+#     # (across the internet/NAT), uncomment this so the bridge hub advertises a relay
+#     # in its ticket, and set the SAME value in openc3-app's environment on the host.
+#     # The value below is an n0 public relay; use a nearer n0 region or a self-hosted
+#     # relay URL if you prefer. See openc3-app/docs/bridge-architecture.md.
+#     - OPENC3_BRIDGE_RELAY=https://use1-1.relay.n0.iroh.link
 #   # Expose an interface/router port to the host
 #   ports:
 #     - "127.0.0.1:7779:7779"

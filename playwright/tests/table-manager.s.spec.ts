@@ -12,16 +12,19 @@
 # All Rights Reserved
 */
 
-import { test, expect } from './fixture'
+import type { Page } from '@playwright/test'
+import type { Utilities } from '../utilities'
+import { expect, test } from './fixture'
 
 test.use({
   toolPath: '/tools/tablemanager',
   toolName: 'Table Manager',
 })
 
-async function openFile(page, utils, filename) {
+async function openFile(page: Page, utils: Utilities, filename: string) {
   let openDialog = page.locator('.v-dialog').locator('text=File Open')
   await expect(openDialog).toBeVisible()
+  await expect(page.getByText('TEMPLATED')).not.toBeVisible()
   await page.locator('[data-test=file-open-save-search] input').fill(filename)
   await utils.sleep(100) // Allow search to complete
   await page.locator(`text=${filename} >> nth=0`).click()
@@ -255,11 +258,11 @@ test('opens and searches file', async ({ page, utils }) => {
   await expect.poll(() => page.locator('tr').count()).toBe(12)
 })
 
-test('downloads binary, definition, report', async ({ page, utils }) => {
-  test.setTimeout(60 * 1000) // 1 minute
+test('downloads binary and definition and report', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
   await openFile(page, utils, 'configtables.bin')
+<<<<<<< HEAD
   if (await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()) {
     await page.locator('[data-test=confirm-dialog-overwrite]').click()
   }
@@ -269,6 +272,13 @@ test('downloads binary, definition, report', async ({ page, utils }) => {
     page.locator('[data-test=table-item-text-field] input').first(),
   ).toBeVisible()
 
+=======
+  // The definition filename is only populated once the tables/load request
+  // returns. Downloading before then posts an empty definition which errors.
+  await expect(
+    page.locator('[data-test=definition-filename] input'),
+  ).toHaveValue('INST/tables/config/ConfigTables_def.txt')
+>>>>>>> main
   await utils.download(page, '[data-test=download-file-binary]')
   await utils.download(
     page,
@@ -289,7 +299,7 @@ test('downloads binary, definition, report', async ({ page, utils }) => {
     page,
     '[data-test="PPS_SELECTION"] [data-test=download-table-binary]',
     function (contents) {
-      expect(contents.length).toBe(2)
+      expect(contents).toHaveLength(2)
     },
     'binary',
   )
