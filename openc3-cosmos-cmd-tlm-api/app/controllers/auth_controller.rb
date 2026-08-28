@@ -62,9 +62,10 @@ class AuthController < ApplicationController
   # 128 bits of randomness, so there is nothing here to brute force.
   def verify_token
     # Reject anything that isn't shaped like a session token before touching
-    # Redis. Without this, an unauthenticated caller can make us HGETALL the
-    # entire session hash on every request. session_token? checks the full
-    # shape, not just the prefix, so a caller that knows the prefix still can't
+    # Redis. Verification is an HGET, so it's O(1), but this endpoint is
+    # unauthenticated: the invariant is that garbage does no Redis work at all.
+    # session_token? checks the full shape, not just the prefix, so a caller
+    # that knows the prefix still can't
     # fall through with a token generate_session could never have produced. The
     # login page only ever holds a real token, so this costs us nothing. Note
     # this also keeps an OTP token out of verify_no_service, which would consume
