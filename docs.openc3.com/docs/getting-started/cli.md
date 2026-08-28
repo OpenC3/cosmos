@@ -423,6 +423,97 @@ Password set successfully.
 The `OPENC3_API_PASSWORD` environment variable must be set (typically in your `.env` file). The password is read from this variable, not from a command line argument, to avoid exposing it in shell history.
 :::
 
+## Initsettings
+
+<span class="badge badge--secondary since-heading">Since 7.3.1</span>
+
+Seeds the [Admin Settings](/docs/tools/admin#settings) from `OPENC3_SETTING_<NAME>` environment variables. This lets you configure the default time zone, time format, theme, package URLs and the other server-side settings at deploy time, instead of clicking through the Admin Console after each fresh install.
+
+The init container runs this automatically on every start, so normally you only add the variables and start COSMOS. Add them to the `openc3-cosmos-init` service in `compose.override.yaml`:
+
+```yaml
+services:
+  openc3-cosmos-init:
+    environment:
+      - OPENC3_SETTING_TIME_ZONE=UTC
+      - OPENC3_SETTING_TIME_FORMAT=24hr
+      - OPENC3_SETTING_THEME=cosmosDarkSlate
+      - OPENC3_SETTING_PYPI_URL=https://pypi.org
+```
+
+The variable name is `OPENC3_SETTING_` plus the setting name in upper case, so `OPENC3_SETTING_TIME_ZONE` sets `time_zone`. These variables are not listed in `compose.yaml` - adding them to an override is what makes them reach the container, so no `compose.yaml` edit is needed to add a setting.
+
+Run `openc3.sh cli initsettings --help` to list every setting that can be seeded, its allowed values, and the shape of each JSON setting. The list comes from the running version, so it can't drift from what your COSMOS actually accepts.
+
+:::note[Not every control on the Settings tab is a server-side setting]
+Only settings stored server-side (in Redis) can be seeded, and `--help` lists exactly those. Some controls on the Admin Settings tab write to the browser's local storage instead, so they are per-browser and cannot be set from the environment:
+
+- **Code Editor Settings** - Vim mode and the default scripting language are browser-local. The Script File Locking and Script Lifecycle switches on that same card are server-side (`script_runner_locking`, `script_runner_lifecycle`) and can be seeded.
+- **Suppressed Warnings** and **Default Configs** - entirely browser-local.
+:::
+
+### Existing settings are left alone
+
+A setting is written on the first init that sees it and is then left alone, so a value changed in the Admin Console survives a container restart. Two consequences worth knowing:
+
+- Commenting out a variable does not revert the setting
+- Changing a variable's value does nothing once the setting has been seeded
+
+To change an already seeded value, either edit it in the Admin Console or set `OPENC3_SETTINGS_OVERWRITE=true` to make the environment authoritative.
+
+:::note[Upgrading from a version before this command existed]
+Settings written by an earlier release carry no record of having been seeded, so they all count as operator-edited and are left alone no matter what the environment says. On such an upgrade, run one init with `OPENC3_SETTINGS_OVERWRITE=true` to adopt the environment values, then turn it back off.
+:::
+
+### Typos are reported, not fatal
+
+An unrecognized setting name, an invalid value, or malformed JSON is reported in the init logs and that one setting is skipped - init still finishes and COSMOS uses the default. Nothing reads a misspelled key, so `OPENC3_SETTING_TIME_ZONES=UTC` would otherwise leave you believing you configured a setting you did not.
+
+```bash
+% openc3.sh cli initsettings
+ERROR: 'time_zones' is not a known COSMOS setting. Did you mean 'time_zone'?
+```
+
+| Variable | Effect |
+| --- | --- |
+| `OPENC3_SETTINGS_OVERWRITE` | Rewrite every setting on every init, discarding Admin Console edits |
+| `OPENC3_SETTINGS_ALLOW_UNKNOWN` | Allow a setting name this version doesn't recognize, for one added by a newer tool |
+| `OPENC3_SETTINGS_STRICT` | Fail init when a setting is rejected, rather than skipping it |
+
+All three accept `true`/`false` (`1`/`0` also work). They are re-read on every init rather than being sticky like the settings themselves.
+
+`OPENC3_SETTINGS_STRICT` is off by default because the init container restarts on failure, so a typo in a cosmetic setting would crash loop COSMOS with the cause buried in restarting container logs. Turn it on for a deployment that would rather not come up than come up misconfigured.
+
+### Checking before you start COSMOS
+
+`--dry-run` validates every name and value, writes nothing, and exits non-zero if anything would be skipped. It works before Redis is up, so it can gate a CI job:
+
+```bash
+% openc3.sh cli initsettings --dry-run
+[dry run] Set default setting 'time_zone' to: "UTC"
+[dry run] ERROR: Invalid value "Pacific" for setting 'time_zone'. Must be one of: "local", "UTC"
+```
+
+### Exporting what is already configured
+
+`--export` prints every stored setting as a line you can paste into `compose.override.yaml`, already quoted so the JSON settings survive YAML. Configure a setting in the Admin Console, export it, and commit the result - this is far easier than hand-writing a JSON blob like `classification_banner` or `system_health`.
+
+```bash
+% openc3.sh cli initsettings --export
+# Paste under the openc3-cosmos-init service's "environment:" key in
+# compose.override.yaml, keeping this indentation.
+      - OPENC3_SETTING_NEWS_FEED=true
+      - OPENC3_SETTING_TIME_FORMAT=ampm
+      - OPENC3_SETTING_THEME=cosmosDarkSlate
+      - "OPENC3_SETTING_SOURCE_URL=https://github.com/OpenC3/cosmos"
+```
+
+It reads the stored values, so COSMOS has to be running for it.
+
+:::note[Local Mode]
+In [Local Mode](/docs/guides/local-mode) a `plugins/<SCOPE>/settings/<name>.json` file wins over the environment variable for that setting. The files are applied after the variables are, and the Admin Console writes every edit back into them.
+:::
+
 ## Migrate to UV
 
 Migrates an installed plugin from the shared Python virtual environment to a per-plugin UV virtual environment. This creates an isolated Python environment for the plugin with its own dependencies, preventing version conflicts between plugins.
