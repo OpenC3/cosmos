@@ -312,17 +312,17 @@ module OpenC3
     # tell the number 1 from a boolean - TABLE_MANAGER item defaults rely on 1
     # staying 1. Named and scoped so they can't be mistaken for a truth table
     # the whole parser honors.
-    STRICT_TRUE_VALUES = ['1', 'TRUE']
-    STRICT_FALSE_VALUES = ['0', 'FALSE', '']
+    STRICT_TRUE_VALUES = ['TRUE', '1']
+    STRICT_FALSE_VALUES = ['FALSE', '0', '']
     private_constant :STRICT_TRUE_VALUES, :STRICT_FALSE_VALUES
 
-    # Converts a String containing '1', 'TRUE', '0', 'FALSE' or '' to a true or
+    # Converts a String containing 'TRUE', '1', 'FALSE', '0' or '' to a true or
     # false Ruby primitive. Unlike handle_true_false, which returns anything it
     # doesn't recognize unchanged, an unrecognized value raises.
     #
     # Use this for a flag where guessing is worse than failing - notably an
     # environment variable that is enabled by presence elsewhere in COSMOS, so
-    # that 'VAR=0' means off here rather than the surprising on.
+    # that 'VAR=false' (or 'VAR=0') means off here rather than the surprising on.
     #
     # @param value [Object] value to convert, nil returns the default
     # @param description [String] what the value is, used in the error message

@@ -188,6 +188,7 @@ jobs:
           grep -F "time_zone: local, UTC" help.txt
           grep -F "system_health: JSON object with keys: cpu, memory, disk, global" help.txt
           grep -F "ai_chat_config" help.txt
+          grep -F "OPENC3_SETTINGS_OVERWRITE=true" help.txt
           # An unrecognized option is reported and exits non-zero through the
           # wrapper - 'openc3.sh cli' propagates the CLI's status, so a
           # --dry-run or OPENC3_SETTINGS_STRICT failure can gate a CI job
@@ -234,7 +235,7 @@ jobs:
           # seed_database wrote source_url, so it is left alone by default
           initsettings "" -e OPENC3_SETTING_SOURCE_URL=https://example.com | tee /dev/tty | grep -F "holds a value initsettings didn't write"
           # OPENC3_SETTINGS_OVERWRITE takes it anyway and says what was replaced
-          initsettings "" -e OPENC3_SETTING_SOURCE_URL=https://example.com -e OPENC3_SETTINGS_OVERWRITE=1 | tee /dev/tty | grep -F "Overwriting setting 'source_url'"
+          initsettings "" -e OPENC3_SETTING_SOURCE_URL=https://example.com -e OPENC3_SETTINGS_OVERWRITE=true | tee /dev/tty | grep -F "Overwriting setting 'source_url'"
           ./openc3.sh cli initsettings --export | tee /dev/tty | grep -F "OPENC3_SETTING_SOURCE_URL=https://example.com"
           ### BAD CONFIGURATION IS REPORTED, NOT FATAL ###
           # A typo in the name is skipped with a suggestion, and init continues
@@ -246,7 +247,7 @@ jobs:
           # Malformed JSON is caught at seed time rather than read back later
           initsettings "" -e OPENC3_SETTING_ASTRO=notjson | tee /dev/tty | grep -F "is not valid JSON"
           # OPENC3_SETTINGS_STRICT turns the same problem into a failed init
-          ! initsettings "" -e OPENC3_SETTING_TIME_ZONES=UTC -e OPENC3_SETTINGS_STRICT=1 > strict.txt 2>&1
+          ! initsettings "" -e OPENC3_SETTING_TIME_ZONES=UTC -e OPENC3_SETTINGS_STRICT=true > strict.txt 2>&1
           tee /dev/tty < strict.txt | grep -F "configuration problem(s)"
           ### DRY RUN ###
           # A dry run reports and exits non-zero without writing anything
@@ -256,7 +257,7 @@ jobs:
           ./openc3.sh cli initsettings --export | tee /dev/tty > after_dry.txt
           ! grep -F "OPENC3_SETTING_SUBTITLE" after_dry.txt
           # An unknown name is allowed through explicitly
-          initsettings "" -e OPENC3_SETTING_NOT_A_SETTING=1 -e OPENC3_SETTINGS_ALLOW_UNKNOWN=1 | tee /dev/tty | grep -F "ALLOW_UNKNOWN is set, applying anyway"
+          initsettings "" -e OPENC3_SETTING_NOT_A_SETTING=1 -e OPENC3_SETTINGS_ALLOW_UNKNOWN=true | tee /dev/tty | grep -F "ALLOW_UNKNOWN is set, applying anyway"
       # Removing due to write tmp/.docker_temp_3200699358: no space left on device
       # - name: openc3.sh util save,load
       #   shell: 'script -q -e -c "bash {0}"'

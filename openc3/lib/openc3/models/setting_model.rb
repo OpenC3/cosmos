@@ -31,25 +31,25 @@ module OpenC3
     # escaping, and one variable per setting reads the same in all three.
     SETTING_ENV_PREFIX = 'OPENC3_SETTING_'
 
-    # Set to 1/true to write the values on every init rather than only when the
+    # Set to true to write the values on every init rather than only when the
     # setting is missing. Use when the environment is the source of truth and
     # Admin Console edits should not survive a restart.
     #
     # Unlike the OPENC3_NO_* install flags, this is NOT enabled by presence:
     # it discards whatever an operator configured in the Admin Console, so
-    # OPENC3_SETTINGS_OVERWRITE=0 and =false mean off, as they read. An
+    # OPENC3_SETTINGS_OVERWRITE=false and =0 mean off, as they read. An
     # unrecognized value is an error rather than a silent guess.
     #
     # Note this does not start with SETTING_ENV_PREFIX, so the prefix scan
     # can't mistake it for a setting named 'overwrite'.
     OVERWRITE_ENV_VAR = 'OPENC3_SETTINGS_OVERWRITE'
 
-    # Set to 1/true to allow setting names that are not in KNOWN_SETTINGS.
+    # Set to true to allow setting names that are not in KNOWN_SETTINGS.
     # Needed for a setting added by a newer tool than this library knows about;
     # without it a misspelled name is reported and skipped.
     ALLOW_UNKNOWN_ENV_VAR = 'OPENC3_SETTINGS_ALLOW_UNKNOWN'
 
-    # Set to 1/true to make a rejected setting fail init instead of being
+    # Set to true to make a rejected setting fail init instead of being
     # reported and skipped. Off by default: the init container restarts on
     # failure, so a typo in a cosmetic setting would otherwise crash loop COSMOS
     # with the cause buried in restarting container logs, and the operator ends
@@ -343,7 +343,10 @@ module OpenC3
     # Console, by seed_database, or by a release before this tracking existed,
     # and overwriting it is the silent clobber this mechanism exists to
     # prevent. The cost is that a deployment upgrading into this feature needs
-    # one run with OVERWRITE_ENV_VAR before env changes take effect again.
+    # one run with OVERWRITE_ENV_VAR before env changes take effect again. That
+    # cost is documented for operators too - compose.override.yaml under
+    # OPENC3_SETTINGS_OVERWRITE and `cli initsettings --help` both say it -
+    # so keep those in sync with this behavior.
     def self.seeded_value?(name, current)
       recorded = Store.hget(SEEDED_PRIMARY_KEY, name)
       return false if recorded.nil?
@@ -512,7 +515,7 @@ module OpenC3
                     details[:values].join(', ')
                   else
                     case details[:type]
-                    when :boolean then '1, true, 0, false'
+                    when :boolean then 'true, false (1, 0 also work)'
                     when :json, :json_text
                       keys = details[:require_keys]
                       keys ? "JSON object with keys: #{keys.join(', ')}" : 'JSON object'

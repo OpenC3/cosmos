@@ -153,7 +153,7 @@ module OpenC3
         lines = SettingModel.describe_settings
         expect(lines.length).to eql SettingModel::KNOWN_SETTINGS.length
         expect(lines).to include('time_zone: local, UTC')
-        expect(lines).to include('ai_chat: 1, true, 0, false')
+        expect(lines).to include('ai_chat: true, false (1, 0 also work)')
         expect(lines).to include('subtitle: any text')
         expect(lines).to include('ai_chat_config: JSON object')
         expect(lines).to include('system_health: JSON object with keys: cpu, memory, disk, global')

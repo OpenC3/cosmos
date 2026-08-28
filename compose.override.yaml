@@ -33,10 +33,10 @@
 # A value set in an override's "environment:" block WINS over the base value
 # (and wins over any env_file), so this is the way to override values now.
 #
-# Flags that init.sh / the core enable "by presence" (OPENC3_DEMO, the
-# OPENC3_NO_* flags, OPENC3_FORCE_INSTALL, ...) are turned OFF with an EMPTY
-# value ("VAR=") and ON with any non-empty value. Do NOT use 0 to disable -
-# "VAR=0" is non-empty and counts as ON.
+# Flags that init.sh / the core enable "by presence" (the OPENC3_NO_* flags,
+# OPENC3_FORCE_INSTALL, ...) are turned OFF with an EMPTY value ("VAR=") and ON
+# with any non-empty value. Do NOT use 0 to disable - "VAR=0" is non-empty and
+# counts as ON. OPENC3_DEMO is the exception: it also accepts 0 and false.
 #
 # You can also add brand-new services, volumes, ports, or bind mounts. Only
 # the keys you specify are changed; everything else is inherited from
@@ -102,8 +102,9 @@
 #   # -----------------------------------------------------------------------
 #   openc3-cosmos-init:
 #     environment:
-#       # Disable install of the Demo (empty = off, see note above; NOT 0).
-#       - OPENC3_DEMO=
+#       # Disable install of the Demo. Unlike the OPENC3_NO_* flags below,
+#       # this one reads its value: false, 0 and empty are all off.
+#       - OPENC3_DEMO=false
 #       # Enable a default queue for ALL commands. Commands can only opt out by
 #       # specifying a specific queue with the 'queue' parameter.
 #       # Need here as well as in openc3-cosmos-cmd-tlm-api because init creates the queue
@@ -143,16 +144,17 @@
 #       #   - Re-commenting a line does NOT revert the value
 #       #   - Editing a value here does nothing once it has been seeded
 #       # To change a seeded value: edit it in the Admin Console, or set
-#       # OPENC3_SETTINGS_OVERWRITE=1 below to make this file authoritative.
+#       # OPENC3_SETTINGS_OVERWRITE=true below to make this file authoritative.
 #       #
 #       # In Local Mode a plugins/<SCOPE>/settings/<name>.json file wins over
 #       # the variable for that setting - the files are applied after these are,
 #       # and the Admin Console writes every edit back into them.
 #       #
-#       # Reference - name, then accepted values. Booleans take 1/true/0/false;
-#       # "JSON text" values are stored verbatim, so quote them in YAML or the
-#       # colon ends the scalar. `./openc3.sh cli initsettings --help` prints
-#       # this list, plus the shape of each JSON blob, from the running version.
+#       # Reference - name, then accepted values. Booleans take true/false (1/0
+#       # also work); "JSON text" values are stored verbatim, so quote them in
+#       # YAML or the colon ends the scalar. `./openc3.sh cli initsettings --help`
+#       # prints this list, plus the shape of each JSON blob, from the running
+#       # version.
 #       #
 #       # Easiest way to fill in a JSON setting: configure it in
 #       # Admin -> Settings, then run
@@ -201,20 +203,26 @@
 #       - OPENC3_SETTING_THEME=cosmosDarkSlate
 #       # Rewrite every OPENC3_SETTING_* value on every init, discarding
 #       # Admin Console edits. Unlike the OPENC3_NO_* flags this one reads its
-#       # value: 1/true is on, 0/false/empty is off rather than the
-#       # surprising on.
-#       - OPENC3_SETTINGS_OVERWRITE=0
+#       # value: true is on, false/empty is off rather than the surprising on
+#       # (1/0 also work).
+#       #
+#       # Needed ONCE when upgrading from a release without this feature. A
+#       # setting already in Redis has no record of having been seeded, so it
+#       # counts as operator-edited and is left alone no matter what these
+#       # variables say. One init with OPENC3_SETTINGS_OVERWRITE=true adopts
+#       # the values below; after that the sticky behavior above resumes.
+#       - OPENC3_SETTINGS_OVERWRITE=false
 #       # An unrecognized setting name is reported in the init logs and that
 #       # setting is skipped, so a typo like OPENC3_SETTING_TIME_ZONES says so
 #       # instead of silently doing nothing. Init still finishes and COSMOS uses
-#       # the default. Set to 1/true to allow a name COSMOS doesn't know yet.
-#       - OPENC3_SETTINGS_ALLOW_UNKNOWN=1
+#       # the default. Set to true to allow a name COSMOS doesn't know yet.
+#       - OPENC3_SETTINGS_ALLOW_UNKNOWN=true
 #       # Nothing above fails init by default - a bad name or value is logged and
 #       # skipped, because a typo in a time zone shouldn't leave you with no
 #       # COSMOS at all (the init container restarts on failure, so it would
-#       # crash loop). Set this to 1/true if you would rather COSMOS not come up
+#       # crash loop). Set this to true if you would rather COSMOS not come up
 #       # than come up misconfigured.
-#       - OPENC3_SETTINGS_STRICT=1
+#       - OPENC3_SETTINGS_STRICT=true
 #       # To catch typos BEFORE starting COSMOS, without turning on STRICT:
 #       #   ./openc3.sh cli initsettings --dry-run
 #       # It checks every name and value, writes nothing, and exits non-zero if
