@@ -63,11 +63,13 @@ class AuthController < ApplicationController
   def verify_token
     # Reject anything that isn't shaped like a session token before touching
     # Redis. Without this, an unauthenticated caller can make us HGETALL the
-    # entire session hash on every request. The login page only ever holds a
-    # token from generate_session, so requiring the prefix costs us nothing.
-    # Note this also keeps an OTP token out of verify_no_service, which would
-    # consume it.
-    unless params[:token].to_s.start_with?(OpenC3::AuthModel::SESSION_PREFIX)
+    # entire session hash on every request. session_token? checks the full
+    # shape, not just the prefix, so a caller that knows the prefix still can't
+    # fall through with a token generate_session could never have produced. The
+    # login page only ever holds a real token, so this costs us nothing. Note
+    # this also keeps an OTP token out of verify_no_service, which would consume
+    # it.
+    unless OpenC3::AuthModel.session_token?(params[:token])
       head :unauthorized
       return
     end
