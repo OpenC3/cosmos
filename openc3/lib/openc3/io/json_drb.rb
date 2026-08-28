@@ -298,7 +298,7 @@ module OpenC3
               # Filter out the framework stack trace (rails, rack, puma etc)
               lines = e.formatted.split("\n")
               i = lines.find_index { |row| row.include?('actionpack') || row.include?('activesupport') }
-              Logger.error lines[0...i].join("\n")
+              Logger.error lines[0...(i || lines.length)].join("\n")
             end
 
             if request.id
