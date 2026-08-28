@@ -44,16 +44,32 @@ test.skip('changes the polling rate', async ({ page, utils }) => {
   await page.locator('.v-dialog').press('Escape')
 })
 
-test('stops posting to the api after closing', async ({ page, utils }) => {
+test('stops polling after switching tabs', async ({ page, utils }) => {
+  // Only count the Interfaces tab's polling call. Counting every request the
+  // page makes would also pick up unrelated periodic traffic (auth token
+  // refresh, notifications, cable reconnects) firing at any time.
+  const isPoll = (url: string, postData: string | null) =>
+    url.includes('/openc3-api/api') &&
+    !!postData?.includes('"get_all_interface_info"')
   let requestCount = 0
-  page.on('request', () => {
-    requestCount++
+  page.on('request', (request) => {
+    if (isPoll(request.url(), request.postData())) {
+      requestCount++
+    }
   })
-  await utils.sleep(2000)
-  // Commenting out the next two lines causes the test to fail
-  await page.goto('/tools/tablemanager') // No API requests
-  await expect(page.locator('.v-app-bar')).toContainText('Table Manager')
+  // Wait for polling to actually start rather than assuming it has after a
+  // fixed sleep. App boot can take several seconds on a loaded CI runner.
+  await page.waitForRequest((request) =>
+    isPoll(request.url(), request.postData()),
+  )
+  // The tabs are vue-router children of one app, so switching unmounts the
+  // Interfaces tab and its Updater mixin has to clear the interval. Note this
+  // can't be tested by navigating to another tool with page.goto: that tears
+  // down the whole JS context, which kills the interval no matter what the
+  // tool does, and the test would pass regardless.
+  await page.getByRole('tab', { name: 'Targets' }).click()
+  await expect(page.locator('[data-test=targets-table]')).toBeVisible()
   const count = requestCount
-  await utils.sleep(2000) // Allow potential API requests to happen
-  expect(requestCount).toBe(count) // no change
+  await utils.sleep(2000) // Allow a leaked interval time to fire
+  expect(requestCount).toBe(count) // no change, so the interval was cleared
 })

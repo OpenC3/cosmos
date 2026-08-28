@@ -11,17 +11,11 @@
 
 name: ClamAV Scan
 
-# Only run on a push to main to avoid running for all the dependabot PRs
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - "**"
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -29,7 +23,6 @@ permissions:
 
 jobs:
   openc3-clamav-scan:
-    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
