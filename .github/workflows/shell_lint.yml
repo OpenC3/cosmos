@@ -9,7 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-name: ShellCheck
+name: Shell Lint
 
 on:
   pull_request:
@@ -21,7 +21,7 @@ on:
       - synchronize
     paths:
       - "**/*.sh"
-      - ".github/workflows/shellcheck.yml"
+      - ".github/workflows/shell_lint.yml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
