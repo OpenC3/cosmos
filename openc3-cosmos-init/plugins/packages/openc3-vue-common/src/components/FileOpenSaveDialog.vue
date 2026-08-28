@@ -283,7 +283,12 @@ export default {
         this.selectedFile = null
       } else {
         // Search through items to find the item with id
-        this.selectedFile = this.findItem(this.items, file.id)
+        let path = this.findItem(this.items, file.id)
+        if (this.type === 'save' && path) {
+          // Strip the '*' which only indicates the file is modified on the server
+          path = path.replace(/\*$/, '')
+        }
+        this.selectedFile = path
         // Select the Submit button so return opens the file
         setTimeout(() => {
           this.$refs.submitBtn.$el.focus()
