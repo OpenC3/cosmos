@@ -12,7 +12,7 @@
 # All Rights Reserved
 */
 
-import { Page, expect } from '@playwright/test'
+import { type Page, expect } from '@playwright/test'
 import * as fs from 'node:fs'
 export class Utilities {
   readonly page: Page
@@ -119,8 +119,8 @@ export class Utilities {
   }
 
   async download(
-    page: any,
-    locator: any,
+    page: Page,
+    locator: string,
     validator?: { (contents: any) },
     encoding: string = 'utf-8',
   ) {
@@ -132,7 +132,7 @@ export class Utilities {
     ])
     // Wait for the download process to complete
     const path = await download.path()
-    const contents = await fs.readFileSync(path, {
+    const contents = fs.readFileSync(path, {
       encoding: encoding,
     })
     if (validator) {
@@ -140,7 +140,7 @@ export class Utilities {
     }
   }
 
-  async inputValue(page, locator, regex) {
+  async inputValue(page: Page, locator: string, regex: RegExp) {
     // Poll since inputValue is immediate
     await expect
       .poll(async () => {
@@ -149,7 +149,7 @@ export class Utilities {
       .toMatch(regex)
   }
 
-  async dropdownSelectedValue(page, locator, regex) {
+  async dropdownSelectedValue(page: Page, locator: string, regex: RegExp) {
     await expect
       .poll(async () => {
         return await page
