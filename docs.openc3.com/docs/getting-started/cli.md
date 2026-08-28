@@ -441,7 +441,7 @@ services:
       - OPENC3_SETTING_PYPI_URL=https://pypi.org
 ```
 
-The variable name is `OPENC3_SETTING_` plus the setting name in upper case, so `OPENC3_SETTING_TIME_ZONE` sets `time_zone`. These variables are not listed in `compose.yaml` - adding them to an override is what makes them reach the container, so no `compose.yaml` edit is needed to add a setting.
+The variable name is `OPENC3_SETTING_` plus the setting name in upper case, so `OPENC3_SETTING_TIME_ZONE` sets `time_zone`. These variables are not listed in `compose.yaml` - adding them to an override is what makes them reach the container, so no `compose.yaml` edit is needed to add a setting. See [Docker Compose](../configuration/compose.md) for how the two compose files merge, and [Environment Variables](../configuration/environment.md) for where a given value belongs.
 
 Run `openc3.sh cli initsettings --help` to list every setting that can be seeded, its allowed values, and the shape of each JSON setting. The list comes from the running version, so it can't drift from what your COSMOS actually accepts.
 
@@ -474,15 +474,28 @@ An unrecognized setting name, an invalid value, or malformed JSON is reported in
 ERROR: 'time_zones' is not a known COSMOS setting. Did you mean 'time_zone'?
 ```
 
-| Variable | Effect |
-| --- | --- |
-| `OPENC3_SETTINGS_OVERWRITE` | Rewrite every setting on every init, discarding Admin Console edits |
-| `OPENC3_SETTINGS_ALLOW_UNKNOWN` | Allow a setting name this version doesn't recognize, for one added by a newer tool |
-| `OPENC3_SETTINGS_STRICT` | Fail init when a setting is rejected, rather than skipping it |
+`OPENC3_SETTINGS_STRICT=true` turns the same problem into a failed init instead. It is off by default because the init container restarts on failure, so a typo in a cosmetic setting would crash loop COSMOS with the cause buried in restarting container logs. Turn it on for a deployment that would rather not come up than come up misconfigured.
 
-All three accept `true`/`false` (`1`/`0` also work). They are re-read on every init rather than being sticky like the settings themselves.
+### Controlling how the settings are applied
 
-`OPENC3_SETTINGS_STRICT` is off by default because the init container restarts on failure, so a typo in a cosmetic setting would crash loop COSMOS with the cause buried in restarting container logs. Turn it on for a deployment that would rather not come up than come up misconfigured.
+Three variables on the init container control the behavior above rather than setting a value. Unlike the settings themselves, none of them is sticky - all three are re-read on every init.
+
+| Variable | Default | Effect when true |
+| --- | --- | --- |
+| `OPENC3_SETTINGS_OVERWRITE` | off | Rewrite every `OPENC3_SETTING_*` value on every init, discarding Admin Console edits |
+| `OPENC3_SETTINGS_ALLOW_UNKNOWN` | off | Accept a setting name this COSMOS version doesn't recognize, for one added by a newer tool |
+| `OPENC3_SETTINGS_STRICT` | off | Exit non-zero when a setting is rejected, failing init, rather than skipping that setting |
+
+```yaml
+services:
+  openc3-cosmos-init:
+    environment:
+      - OPENC3_SETTING_TIME_ZONE=UTC
+      # Make this file authoritative: revert Admin Console edits on every init
+      - OPENC3_SETTINGS_OVERWRITE=true
+```
+
+All three accept `true`/`false`, and `1`/`0` also work. They read their value rather than being enabled by presence, so `OPENC3_SETTINGS_OVERWRITE=false` means off, as it reads - unlike the `OPENC3_NO_*` install flags, where any non-empty value including `0` means on.
 
 ### Checking before you start COSMOS
 
