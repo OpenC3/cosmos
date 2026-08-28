@@ -132,9 +132,9 @@ RSpec.describe AuthController, :type => :controller do
     end
 
     it "rejects tokens that aren't shaped like a session token without hitting redis" do
-      # The endpoint is unauthenticated, so it must not let a caller make us
-      # HGETALL the entire session hash on every request. verify_no_service is
-      # where that read happens, so never reaching it is the invariant. Knowing
+      # The endpoint is unauthenticated, so an obviously invalid token must do
+      # no Redis work at all. verify_no_service is where the HGET happens, so
+      # never reaching it is the invariant. Knowing
       # the session prefix must not be enough to get through, so the full shape
       # is checked rather than just the prefix.
       expect(OpenC3::AuthModel).not_to receive(:verify_no_service)

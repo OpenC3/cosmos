@@ -129,8 +129,10 @@ module OpenC3
         @redis.hdel(AuthModel::SESSIONS_KEY, token)
         expect(AuthModel.verify(token)).to eq(true)
 
-        # Past SESSION_CACHE_TIMEOUT the cache is dropped and the token is gone
-        allow(Time).to receive(:now).and_return(Time.now + AuthModel::SESSION_CACHE_TIMEOUT + 1)
+        # Past SESSION_CACHE_TIMEOUT the cache is dropped and the token is gone.
+        # Compute the future time before stubbing so Time.now isn't stubbed yet.
+        future = Time.now + AuthModel::SESSION_CACHE_TIMEOUT + 1
+        allow(Time).to receive(:now).and_return(future)
         expect(AuthModel.verify(token)).to eq(false)
       end
 
