@@ -14,6 +14,17 @@
 entrypoints:
   web:
     address: ":2900"
+    # Login rate limiting in the cmd-tlm-api is scoped by client ip, which comes
+    # from X-Forwarded-For. Leaving forwardedHeaders unset is what makes that
+    # safe: traefik then discards any client supplied X-Forwarded-* headers and
+    # sets them from the real connection, so a client can't choose which rate
+    # limit bucket it lands in. Never set forwardedHeaders.insecure here.
+    # If you run your own proxy or load balancer in front of traefik, list its
+    # addresses in trustedIPs so the client ip it forwards is preserved,
+    # otherwise every client shares the proxy's bucket.
+    # forwardedHeaders:
+    #   trustedIPs:
+    #     - "10.0.0.1/32" # address of the proxy in front of traefik
     http:
       encodedCharacters:
         # Allow encoded slashes (%2F) in URL paths
