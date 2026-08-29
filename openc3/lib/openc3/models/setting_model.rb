@@ -124,7 +124,13 @@ module OpenC3
       # JSON.parse on load, so the stored value is a String, not an object
       'astro' => { type: :json_text, values: nil,
                    example: '{"hideClock":false}' },
+      # require_keys because the Admin Console writes all five together and both
+      # readers assume that: a missing height reaches the stylesheet as
+      # "height: undefinedpx", which is invalid CSS, so the banner renders at
+      # auto height top AND bottom instead of staying hidden.
       'classification_banner' => { type: :json_text, values: nil,
+                                   require_keys: ['text', 'fontColor', 'backgroundColor',
+                                                  'topHeight', 'bottomHeight'],
                                    example: '{"text":"UNCLASSIFIED","fontColor":"#ffffff",' \
                                             '"backgroundColor":"#00cc00","topHeight":20,"bottomHeight":0}' },
       'context_tag' => { type: :json_text, values: nil,

@@ -97,8 +97,9 @@ module OpenC3
       end
 
       it "keeps a JSON text setting as text" do
-        # These components JSON.parse the value, so a parsed Hash would throw
-        json = '{"text":"UNCLASSIFIED"}'
+        # These components JSON.parse the value, so a parsed Hash would throw.
+        # classification_banner declares require_keys, so the whole object.
+        json = '{"text":"UNCLASSIFIED","fontColor":"#ffffff","backgroundColor":"#00cc00","topHeight":20,"bottomHeight":0}'
         expect(SettingModel.coerce('classification_banner', json)).to eql json
         expect(SettingModel.coerce('astro', '{"hideClock":true}')).to eql '{"hideClock":true}'
         expect(SettingModel.coerce('context_tag', '{"text":"DEV"}')).to eql '{"text":"DEV"}'
@@ -627,7 +628,7 @@ module OpenC3
       end
 
       it "stores a JSON text setting as the text given" do
-        json = '{"text":"UNCLASSIFIED","topHeight":20}'
+        json = '{"text":"UNCLASSIFIED","fontColor":"#ffffff","backgroundColor":"#00cc00","topHeight":20,"bottomHeight":0}'
         SettingModel.apply_defaults(env: { 'OPENC3_SETTING_CLASSIFICATION_BANNER' => json })
         expect(SettingModel.get(name: 'classification_banner')['data']).to eql json
       end

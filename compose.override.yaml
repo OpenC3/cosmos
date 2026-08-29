@@ -164,6 +164,16 @@
 #       # prints this list, plus the shape of each JSON blob, from the running
 #       # version.
 #       #
+#       # Quote the WHOLE list item, name included, because YAML quotes a whole
+#       # scalar and the scalar here is the entire NAME=value string:
+#       #   - "OPENC3_SETTING_CONTEXT_TAG={\"text\":\"DEV\"}"     correct
+#       #   - OPENC3_SETTING_CONTEXT_TAG="{\"text\":\"DEV\"}"     WRONG
+#       # The second quotes nothing as far as YAML is concerned - the value
+#       # keeps the literal " and \ characters, so COSMOS reads a JSON string
+#       # instead of an object and rejects it. Single quotes work too and need
+#       # no backslashes ('OPENC3_SETTING_CONTEXT_TAG={"text":"DEV"}'), but
+#       # --export writes the double-quoted form shown above.
+#       #
 #       # Easiest way to fill in a JSON setting: configure it in
 #       # Admin -> Settings, then run
 #       #   ./openc3.sh cli initsettings --export
@@ -186,7 +196,14 @@
 #       #   PYPI_URL                 free text
 #       #   ASTRO                    JSON text
 #       #   CONTEXT_TAG              JSON text
-#       #   CLASSIFICATION_BANNER    JSON text
+#       #   CLASSIFICATION_BANNER    JSON text - must contain all five of text,
+#       #                            fontColor, backgroundColor, topHeight,
+#       #                            bottomHeight. A partial object is rejected
+#       #                            because both readers assume every key is
+#       #                            there: a missing height reaches the
+#       #                            stylesheet as "height: undefinedpx", which
+#       #                            is invalid CSS, so the banner draws at auto
+#       #                            height top AND bottom instead of hiding
 #       #   SYSTEM_HEALTH            JSON text - must contain all four of cpu,
 #       #                            memory, disk, global. A partial object is
 #       #                            rejected because the alerting code reads
@@ -202,13 +219,16 @@
 #       #
 #       # Add a line per setting you want, filling in the value yourself:
 #       #   - OPENC3_SETTING_TIME_ZONE=UTC
-#       #   - "OPENC3_SETTING_CLASSIFICATION_BANNER={\"text\":\"UNCLASSIFIED\"}"
-#       # These two control HOW the settings above are applied. Neither is
-#       # sticky - both are re-read on every init.
+#       #   - "OPENC3_SETTING_CLASSIFICATION_BANNER={\"text\":\"UNCLASSIFIED\",\"fontColor\":\"#ffffff\",\"backgroundColor\":\"#00cc00\",\"topHeight\":20,\"bottomHeight\":20}"
 #       - OPENC3_SETTING_TIME_ZONE=local
 #       - OPENC3_SETTING_TIME_FORMAT=ampm
 #       - OPENC3_SETTING_PYPI_URL=https://pypi.org
 #       - OPENC3_SETTING_THEME=cosmosDarkSlate
+#       #
+#       # The next three variables control HOW the settings above are applied
+#       # rather than setting a value of their own. None of them is sticky -
+#       # all three are re-read on every init.
+#       #
 #       # Rewrite every OPENC3_SETTING_* value on every init, discarding
 #       # Admin Console edits. Unlike the OPENC3_NO_* flags this one reads its
 #       # value: true is on, false/empty is off rather than the surprising on

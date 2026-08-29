@@ -49,6 +49,13 @@ module OpenC3
       FileUtils.rm_rf @tmp_dir if @tmp_dir
     end
 
+    # The Admin Console writes all five keys together and classification_banner
+    # declares require_keys, so a fixture has to seed the whole object
+    def banner_json
+      JSON.generate({ text: 'CLASS', fontColor: '#ffffff', backgroundColor: '#00cc00',
+                      topHeight: 20, bottomHeight: 0 })
+    end
+
     def setup_sync_test
       rubys3_client = double()
 
@@ -111,7 +118,7 @@ module OpenC3
       key = "DEFAULT/settings/classification_banner.json"
       full_path = "#{@tmp_dir}/#{key}"
       FileUtils.mkdir_p(File.dirname(full_path))
-      File.open(full_path, 'wb') {|file| file.write(JSON.generate({text: 'CLASS'}, allow_nan: true))}
+      File.open(full_path, 'wb') {|file| file.write(banner_json)}
       expect(File.exist?(full_path)).to be true
 
       # Setup remote catalog
@@ -213,7 +220,7 @@ module OpenC3
         expect(ToolConfigModel).to receive(:save_config).with("tlm-viewer", "screens", "[]", {:local_mode=>false, :scope=>"DEFAULT"})
         # classification_banner holds JSON *text* - the component JSON.parses it,
         # so it must not be stored as a parsed object
-        expect(SettingModel).to receive(:set).with({name: "classification_banner", data: "{\"text\":\"CLASS\"}"}, {:scope=>"DEFAULT"})
+        expect(SettingModel).to receive(:set).with({name: "classification_banner", data: banner_json}, {:scope=>"DEFAULT"})
         expect(SettingModel).to receive(:set).with({name: "source_url", data: "https://github.com/openc3/cosmos"}, {:scope=>"DEFAULT"})
 
         $load_plugin_plugin_file_path = []
@@ -961,8 +968,9 @@ module OpenC3
       end
 
       it "keeps a JSON text setting as text" do
-        # The component JSON.parses this, so a parsed Hash would throw
-        json = '{"text":"UNCLASSIFIED"}'
+        # The component JSON.parses this, so a parsed Hash would throw.
+        # classification_banner declares require_keys, so the whole object.
+        json = '{"text":"UNCLASSIFIED","fontColor":"#ffffff","backgroundColor":"#00cc00","topHeight":20,"bottomHeight":0}'
         write_setting('classification_banner', json)
         LocalMode.sync_settings()
         expect(SettingModel.get(name: 'classification_banner', scope: 'DEFAULT')['data']).to eq(json)
@@ -1012,7 +1020,7 @@ module OpenC3
         values = {
           'time_zone' => 'UTC',                                  # plain text
           'ai_chat' => false,                                    # real boolean
-          'classification_banner' => '{"text":"UNCLASSIFIED"}',  # JSON kept as text
+          'classification_banner' => '{"text":"UNCLASSIFIED","fontColor":"#ffffff","backgroundColor":"#00cc00","topHeight":20,"bottomHeight":0}', # JSON kept as text
           'ai_chat_config' => { 'provider' => 'anthropic' },     # JSON as an object
         }
         values.each { |name, data| LocalMode.save_setting('DEFAULT', name, data) }
