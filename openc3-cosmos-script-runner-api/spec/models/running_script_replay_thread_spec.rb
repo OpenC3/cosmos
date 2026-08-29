@@ -157,5 +157,22 @@ RSpec.describe RunningScriptReplayThread, type: :model do
       expect(broadcasts.map(&:length)).to eq([RunningScriptReplayThread::MAX_BATCH_SIZE, 1])
       expect(broadcasts.flatten).to eq(events)
     end
+
+    it 'broadcasts the batch parsed before a bad entry rather than losing it' do
+      broadcasts = []
+      allow(ActionCable.server).to receive(:broadcast) { |_key, events| broadcasts << events }
+      event = { 'type' => 'line', 'line_no' => 1 }
+      allow(OpenC3::Topic).to receive(:read_topics) do |_topics, _offsets, &block|
+        block.call(topic, '101-0', { 'data' => event.to_json }, nil)
+        block.call(topic, '102-0', { 'data' => 'not json' }, nil)
+      end
+
+      # The bad entry still kills the thread, but the events it already parsed
+      # must reach the client -- batching must not turn one corrupt entry into
+      # a lost batch.
+      thread = start_thread
+      expect(thread.instance_variable_get(:@thread).join(2)).not_to be_nil
+      expect(broadcasts).to eq([[event]])
+    end
   end
 end

@@ -69,10 +69,18 @@ class RunningScriptChannel < ApplicationCable::Channel
         end
         complete = true if event['type'] == 'complete'
       end
-      transmit(events) unless events.empty?
     rescue StandardError => e
       # Best-effort: a replay failure must not break the subscription.
       OpenC3::Logger.warn("running_script replay backlog failed: #{e.message}") rescue nil
+    ensure
+      # Flush in ensure: because events are batched, a single corrupt entry
+      # partway through would otherwise discard every event parsed before it,
+      # leaving the client with no state for a script that already ran.
+      begin
+        transmit(events) unless events.empty?
+      rescue StandardError
+        # Nothing better to do than the warn above
+      end
     end
     # Script already finished -- the backlog held the terminal 'complete', so
     # there is nothing left to stream.

@@ -84,6 +84,18 @@ RSpec.describe RunningScriptChannel, type: :channel do
       expect(transmissions.flatten).to eq(events)
     end
 
+    it 'transmits the batch parsed before a bad backlog entry rather than losing it' do
+      backlog({ 'type' => 'line', 'line_no' => 1 })
+      OpenC3::Topic.write_topic("running-script-channel:42:replay", { 'data' => 'not json' }, '102-0')
+
+      subscribe id: '42'
+
+      # Batching must not let one corrupt entry discard the whole preceding
+      # backlog and leave the client with no state for a script that already ran
+      expect(subscription).to be_confirmed
+      expect(transmissions).to eq([[{ 'type' => 'line', 'line_no' => 1 }]])
+    end
+
     it 'stops a leftover broadcaster for the same connection before starting a new one' do
       old_broadcaster = instance_double(RunningScriptReplayThread, stop: nil)
       RunningScriptChannel.class_variable_set(:@@broadcasters, { subscription_key => old_broadcaster })

@@ -1940,7 +1940,7 @@ export default {
         this.subscription = null
       }
       this.receivedEvents.length = 0 // Clear any unprocessed events
-      this.clearReceivedOutputEvents()
+      this.discardPendingOutput()
     },
     showMetadata() {
       Api.get('/openc3-api/metadata')
@@ -1979,30 +1979,42 @@ export default {
     fileNameChanged(filename) {
       // Split off the '*' which indicates modified
       filename = filename.split('*')[0]
-      this.editor.setValue(this.files[filename].content)
+      this.setEditorContent(this.files[filename].content)
       this.restoreBreakpoints(filename)
-      this.editor.clearSelection()
       this.markLine(this.files[filename].lineNo, this.state)
+    },
+    // Install new editor content. setValue resets the scroll and invalidates
+    // any existing execution marker, so drop the markLine cache to force the
+    // next markLine to repaint and rescroll.
+    setEditorContent(content) {
+      this.editor.setValue(content)
+      this.editor.clearSelection()
+      this.highlightedLine = null
+      this.highlightedState = null
+      this.highlightedFilename = null
     },
     // Replace all fullLine markers with a single `${clazz}Marker` on lineNo
     // (1-based) and scroll to it
     markLine(lineNo, clazz) {
+      // Only the marker work is cached. gotoLine always runs: markLine is also
+      // how the editor scrolls to the current line, so a cache hit right after
+      // a setValue (which resets the scroll to the top) would leave the user
+      // staring at line 1 of a script stopped far below.
       if (
-        lineNo === this.highlightedLine &&
-        clazz === this.highlightedState &&
-        this.currentFilename === this.highlightedFilename
+        lineNo !== this.highlightedLine ||
+        clazz !== this.highlightedState ||
+        this.currentFilename !== this.highlightedFilename
       ) {
-        return
+        this.removeAllMarkers()
+        this.editor.session.addMarker(
+          new this.Range(lineNo - 1, 0, lineNo - 1, 1),
+          `${clazz}Marker`,
+          'fullLine',
+        )
+        this.highlightedLine = lineNo
+        this.highlightedState = clazz
+        this.highlightedFilename = this.currentFilename
       }
-      this.removeAllMarkers()
-      this.editor.session.addMarker(
-        new this.Range(lineNo - 1, 0, lineNo - 1, 1),
-        `${clazz}Marker`,
-        'fullLine',
-      )
-      this.highlightedLine = lineNo
-      this.highlightedState = clazz
-      this.highlightedFilename = this.currentFilename
       this.editor.gotoLine(lineNo)
     },
     tryLoadRunningScript: function (id) {
@@ -2298,7 +2310,7 @@ export default {
         return
       }
       this.receivedEvents.length = 0 // Drop any events not yet processed
-      this.clearReceivedOutputEvents()
+      this.discardPendingOutput()
       // Reset prompt tracking so the first prompt re-published on this fresh
       // subscription is always processed and displayed. Without this, attaching
       // to a running script (which reuses the component) could carry over a
@@ -2394,7 +2406,7 @@ export default {
         this.subscription = null
       }
       this.receivedEvents.length = 0 // Clear any unprocessed events
-      this.clearReceivedOutputEvents()
+      this.discardPendingOutput()
       // Close any prompt dialogs a killed/stopped script left open;
       // answering them would POST to a script that no longer exists
       this.closePromptDialogs()
@@ -2547,10 +2559,21 @@ export default {
     // visible). State handling always runs.
     processLine(data, display = true) {
       if (data.filename && data.filename !== this.currentFilename) {
-        if (!this.files[data.filename]) {
+        const cached = this.files[data.filename]
+        if (cached && !cached.pending) {
+          this.currentFilename = data.filename
+          this.setEditorContent(cached.content)
+          this.restoreBreakpoints(data.filename)
+        } else if (!cached) {
           // We don't have the contents of the running file (probably because connected to running script)
-          // Set the contents initially to an empty string so we don't start slamming the API
-          this.files[data.filename] = { content: '', lineNo: 0 }
+          // Set the contents initially to an empty string so we don't start slamming the API.
+          // pending distinguishes this placeholder from real content: attaching
+          // twice (Connect to Running Script re-enters scriptStart, which is
+          // expected) would otherwise let the second attach take the branch
+          // above, install '' in the editor and set currentFilename -- after
+          // which every later event skips the content load and the script stays
+          // blank forever.
+          this.files[data.filename] = { content: '', lineNo: 0, pending: true }
 
           // Request the script we need
           const epoch = this.sessionEpoch
@@ -2559,7 +2582,12 @@ export default {
               if (epoch !== this.sessionEpoch) {
                 // A newer file source took over while this fetch was in
                 // flight (script completed / new file loaded) - drop it
-                // rather than clobber the current breakpoints and content
+                // rather than clobber the current breakpoints and content.
+                // Clear the pending placeholder as the catch below does:
+                // nothing else will land, so leaving it in place would make
+                // every later event wait on a fetch that never completes
+                // instead of retrying it.
+                this.files[data.filename] = null
                 return
               }
               // Success - Save the script text and mark the currentFilename as null
@@ -2579,12 +2607,11 @@ export default {
               // Error - Restore the file contents to null so we'll try the API again on the next line
               this.files[data.filename] = null
             })
-        } else {
-          this.currentFilename = data.filename
-          this.editor.setValue(this.files[data.filename].content)
-          this.restoreBreakpoints(data.filename)
-          this.editor.clearSelection()
         }
+        // else: a fetch is already in flight for this file. Leave the editor and
+        // currentFilename alone so a later event installs the content once it
+        // lands, or retries if the fetch is dropped or fails -- both clear the
+        // cache entry.
       }
       this.state = data.state
       switch (this.state) {
@@ -2690,94 +2717,114 @@ export default {
           break
         }
       }
+      let terminated = false
       for (let i = 0; i < events.length; i++) {
         const data = events[i]
         // console.log(data) // Uncomment for debugging
-        switch (data.type) {
-          case 'file':
-            this.files[data.filename] = { content: data.text, lineNo: 0 }
-            this.breakpoints[data.filename] = data.breakpoints
-            if (this.currentFilename === data.filename) {
-              this.restoreBreakpoints(data.filename)
-            }
-            break
-          case 'line':
-            // Every 'line' event runs the state machine (buttons, phase,
-            // lineNo bookkeeping), but only the newest event in the entire
-            // drain does Ace marker/scroll work. Intermediate states still
-            // matter, but their highlights could never become visible.
-            this.processLine(data, i === lastLineIndex)
-            break
-          case 'script':
-            this.handleScript(data)
-            break
-          // DEPRECATED because the 'complete' message now includes the report
-          case 'report':
-            this.results.text = data.report
-            this.results.show = true
-            break
-          case 'complete':
-            // Do not leave the tail of the log waiting for the output throttle
-            // when the script has already completed.
-            this.flushOutputLines(true)
-            if (data.report) {
+        try {
+          switch (data.type) {
+            case 'file':
+              this.files[data.filename] = { content: data.text, lineNo: 0 }
+              this.breakpoints[data.filename] = data.breakpoints
+              if (this.currentFilename === data.filename) {
+                this.restoreBreakpoints(data.filename)
+              }
+              break
+            case 'line':
+              // Every 'line' event runs the state machine (buttons, phase,
+              // lineNo bookkeeping), but only the newest event in the entire
+              // drain does Ace marker/scroll work. Intermediate states still
+              // matter, but their highlights could never become visible.
+              this.processLine(data, i === lastLineIndex)
+              break
+            case 'script':
+              this.handleScript(data)
+              break
+            // DEPRECATED because the 'complete' message now includes the report
+            case 'report':
               this.results.text = data.report
               this.results.show = true
+              break
+            case 'complete':
+              // Do not leave the tail of the log waiting for the output throttle
+              // when the script has already completed.
+              this.flushOutputLines(true)
+              if (data.report) {
+                this.results.text = data.report
+                this.results.show = true
+              }
+              // Set before the teardown below: 'complete' is terminal even if
+              // scriptComplete() throws, and the catch would otherwise let the
+              // loop run on against a half-torn-down session.
+              terminated = true
+              this.removeAllMarkers()
+              this.scriptComplete()
+              break
+            case 'step':
+              this.showDebug = true
+              break
+            case 'screen': {
+              const screenIndex = this.screens.findIndex(
+                (s) =>
+                  s.target == data.target_name && s.screen == data.screen_name,
+              )
+              const definition =
+                screenIndex === -1 ? {} : this.screens[screenIndex]
+              definition.target = data.target_name
+              definition.screen = data.screen_name
+              definition.definition = data.definition
+              definition.left = data.x || 0
+              definition.top = data.y || 0
+              definition.count = this.updateCounter++
+              if (screenIndex === -1) {
+                definition.id = this.idCounter++
+                this.screens.push(definition)
+              } else {
+                this.screens[screenIndex] = definition
+              }
+              break
             }
-            this.removeAllMarkers()
-            this.scriptComplete()
-            break
-          case 'step':
-            this.showDebug = true
-            break
-          case 'screen': {
-            const screenIndex = this.screens.findIndex(
-              (s) =>
-                s.target == data.target_name && s.screen == data.screen_name,
-            )
-            const definition =
-              screenIndex === -1 ? {} : this.screens[screenIndex]
-            definition.target = data.target_name
-            definition.screen = data.screen_name
-            definition.definition = data.definition
-            definition.left = data.x || 0
-            definition.top = data.y || 0
-            definition.count = this.updateCounter++
-            if (screenIndex === -1) {
-              definition.id = this.idCounter++
-              this.screens.push(definition)
-            } else {
-              this.screens[screenIndex] = definition
+            case 'clearscreen': {
+              const screenIndex = this.screens.findIndex(
+                (s) =>
+                  s.target == data.target_name && s.screen == data.screen_name,
+              )
+              if (screenIndex !== -1) {
+                this.screens.splice(screenIndex, 1)
+              }
+              break
             }
-            break
+            case 'clearallscreens':
+              this.screens = []
+              break
+            case 'downloadfile':
+              // Make a link and then 'click' on it to start the download
+              const link = document.createElement('a')
+              link.href = window.location.origin + data.url
+              link.setAttribute('download', data.filename)
+              link.click()
+              break
+            case 'opentab':
+              window.open(data.url, '_blank')
+              break
+            default:
+              // console.log('Unexpected ActionCable message')
+              // console.log(data)
+              break
           }
-          case 'clearscreen': {
-            const screenIndex = this.screens.findIndex(
-              (s) =>
-                s.target == data.target_name && s.screen == data.screen_name,
-            )
-            if (screenIndex !== -1) {
-              this.screens.splice(screenIndex, 1)
-            }
-            break
-          }
-          case 'clearallscreens':
-            this.screens = []
-            break
-          case 'downloadfile':
-            // Make a link and then 'click' on it to start the download
-            const link = document.createElement('a')
-            link.href = window.location.origin + data.url
-            link.setAttribute('download', data.filename)
-            link.click()
-            break
-          case 'opentab':
-            window.open(data.url, '_blank')
-            break
-          default:
-            // console.log('Unexpected ActionCable message')
-            // console.log(data)
-            break
+        } catch (error) {
+          // Isolate each event: the batch was detached from receivedEvents
+          // above, so throwing out of this loop would permanently drop every
+          // event after this one -- the receive interval has nothing left to
+          // retry. Log and keep draining instead.
+          console.error('ScriptRunner failed to process event', data, error)
+        }
+        // 'complete' is terminal and scriptComplete() tore the session down.
+        // Anything after it in this batch would be processed against a dead
+        // session -- a duplicate 'complete' reloading the file again, or a
+        // replayed 'line' pushing state back to running.
+        if (terminated) {
+          break
         }
       }
 
@@ -2802,7 +2849,10 @@ export default {
         // Walk backward without split(), which avoids allocating an array for
         // a very large multi-line output event when only its tail is visible.
         let end = text.length
-        while (end >= 0 && newestFirst.length < this.maxArrayLength) {
+        // end > 0, not end >= 0: lastIndexOf clamps a negative fromIndex to 0,
+        // so text starting with '\n' would return 0 rather than -1 and spin
+        // here forever. Nothing is left to collect at end === 0 anyway.
+        while (end > 0 && newestFirst.length < this.maxArrayLength) {
           const newline = text.lastIndexOf('\n', end - 1)
           const line = text.slice(newline + 1, end)
           if (line) {
@@ -2838,6 +2888,15 @@ export default {
       this.receivedOutputEvents.fill(undefined)
       this.receivedOutputEventCount = 0
       this.receivedOutputEventIndex = 0
+    },
+    // Drop every output event and line that has not been rendered yet. Unlike
+    // clearReceivedOutputEvents (which queueReceivedOutputLines uses to rotate
+    // the ring buffer) this also drops lines already waiting on the flush
+    // throttle, so a restart inside the throttle window cannot spill the old
+    // run's output into the new run's log.
+    discardPendingOutput() {
+      this.clearReceivedOutputEvents()
+      this.pendingOutputLines = []
     },
     queueOutputLines(lines) {
       if (lines.length > 0) {
