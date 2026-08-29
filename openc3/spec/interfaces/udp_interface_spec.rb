@@ -48,6 +48,11 @@ module OpenC3
         expect(i.write_raw_allowed?).to be true
         expect(i.read_allowed?).to be false
       end
+
+      it "defaults a nil write_timeout to 10 seconds" do
+        i = UdpInterface.new('localhost', '8888', 'nil', 'nil', 'nil', '64', 'nil')
+        expect(i.instance_variable_get(:@write_timeout)).to eql 10.0
+      end
     end
 
     describe "connection_string" do
@@ -60,6 +65,10 @@ module OpenC3
 
         i = UdpInterface.new('localhost', '8888', 'nil')
         expect(i.connection_string).to eql "127.0.0.1:8888 (write dest port)"
+
+        # nil bind_address means all local addresses
+        i = UdpInterface.new('localhost', 'nil', '8889', 'nil', 'nil', '64', '5', '5', 'nil')
+        expect(i.connection_string).to eql "0.0.0.0:8889 (read)"
       end
     end
 
@@ -118,29 +127,74 @@ module OpenC3
       end
 
       it "receives from a different source port on a shared read and write socket" do
-        destination = UdpReadSocket.new(4003)
-        sender = UdpWriteSocket.new('127.0.0.1', 4002, 4004)
-        i = UdpInterface.new('127.0.0.1', 4003, 4002, 4002)
-        i.connect
+        # Bind the receiving sockets first so the ports are known, then let the
+        # sender pick an ephemeral source port
+        destination = UdpReadSocket.new(0)
+        dest_port = destination.local_address.ip_port
+        shared_port = UdpReadSocket.new(0)
+        read_port = shared_port.local_address.ip_port
+        OpenC3.close_socket(shared_port)
 
-        sender.write("telemetry")
-        expect(i.instance_variable_get(:@read_socket).read(1.0)).to eql "telemetry"
-        i.instance_variable_get(:@write_socket).write("command")
-        expect(destination.read(1.0)).to eql "command"
-        expect(i.instance_variable_get(:@write_socket).local_address.ip_port).to eql 4002
+        sender = nil
+        i = nil
+        begin
+          sender = UdpWriteSocket.new('127.0.0.1', read_port)
+          i = UdpInterface.new('127.0.0.1', dest_port, read_port, read_port)
+          i.connect
 
-        i.disconnect
-        OpenC3.close_socket(sender)
-        OpenC3.close_socket(destination)
+          sender.write("telemetry")
+          expect(i.instance_variable_get(:@read_socket).read(1.0)).to eql "telemetry"
+          i.instance_variable_get(:@write_socket).write("command")
+          expect(destination.read(1.0)).to eql "command"
+          expect(i.instance_variable_get(:@write_socket).local_address.ip_port).to eql read_port
+        ensure
+          i.disconnect if i
+          OpenC3.close_socket(sender) if sender
+          OpenC3.close_socket(destination)
+        end
+      end
+
+      it "does not join the multicast group it writes to on a shared socket" do
+        skip "UDP multicast does not work in JRuby" unless RUBY_ENGINE == 'ruby'
+
+        calls = []
+        allow_any_instance_of(UDPSocket).to receive(:setsockopt).and_wrap_original do |method, *args|
+          calls << args
+          method.call(*args)
+        end
+        i = UdpInterface.new('224.0.1.1', 8889, 8889, 8889)
+        begin
+          i.connect
+          # Joining the group we transmit to would loop our own commands back as telemetry
+          membership = IPAddr.new('224.0.1.1').hton + IPAddr.new('0.0.0.0').hton
+          expect(calls).to_not include([Socket::IPPROTO_IP, Socket::IP_ADD_MEMBERSHIP, membership])
+          # Multicast writes are still set up
+          expect(calls).to include([Socket::IPPROTO_IP, Socket::IP_MULTICAST_TTL, 128])
+        ensure
+          i.disconnect
+        end
+      end
+
+      it "creates a read only socket with an unresolvable hostname" do
+        i = UdpInterface.new('this-host-does-not-exist.invalid', nil, 0)
+        begin
+          i.connect
+          expect(i.instance_variable_get(:@read_socket)).to_not be_nil
+        ensure
+          i.disconnect
+        end
       end
 
       it "creates a read socket for port zero" do
         i = UdpInterface.new('127.0.0.1', nil, 0)
-        i.connect
-        read_socket = i.instance_variable_get(:@read_socket)
-        expect(read_socket).to_not be_nil
-        expect(read_socket.local_address.ip_port).to be > 0
-        i.disconnect
+        begin
+          i.connect
+          read_socket = i.instance_variable_get(:@read_socket)
+          expect(read_socket).to_not be_nil
+          expect(read_socket.local_address.ip_port).to be > 0
+        ensure
+          i.disconnect
+        end
       end
     end
 

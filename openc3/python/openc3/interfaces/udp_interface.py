@@ -76,8 +76,12 @@ class UdpInterface(Interface):
         if self.read_timeout is not None:
             self.read_timeout = float(read_timeout)
         self.bind_address = ConfigParser.handle_none(bind_address)
-        if self.bind_address and self.bind_address.upper() == "LOCALHOST":
-            self.bind_address = "127.0.0.1"
+        if self.bind_address:
+            if self.bind_address.upper() == "LOCALHOST":
+                self.bind_address = "127.0.0.1"
+        else:
+            # None means all local addresses which is what 0.0.0.0 means
+            self.bind_address = "0.0.0.0"
         self.write_socket = None
         self.read_socket = None
         if self.read_port is None:
@@ -111,6 +115,10 @@ class UdpInterface(Interface):
             and self.write_src_port is not None
             and self.read_port == self.write_src_port
         ):
+            # read_multicast is False because this socket is not connected and thus
+            # doesn't filter by peer address. Joining the multicast group we write to
+            # would deliver our own commands back to us as telemetry (multicast
+            # loopback is enabled by default).
             self.read_socket = UdpReadWriteSocket(
                 bind_port=self.read_port,
                 bind_address=self.bind_address,
@@ -118,6 +126,7 @@ class UdpInterface(Interface):
                 external_address=self.hostname,
                 multicast_interface_address=self.interface_address,
                 ttl=self.ttl,
+                read_multicast=False,
                 connect_socket=False,
             )
             self.write_socket = self.read_socket

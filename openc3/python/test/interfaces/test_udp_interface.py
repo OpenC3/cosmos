@@ -80,6 +80,10 @@ class TestUdpInterface(unittest.TestCase):
         i = UdpInterface("localhost", "8888", "None")
         self.assertEqual(i.connection_string(), "127.0.0.1:8888 (write dest port)")
 
+        # None bind_address means all local addresses
+        i = UdpInterface("localhost", "None", "8889", "None", "None", "64", "5", "5", "None")
+        self.assertEqual(i.connection_string(), "0.0.0.0:8889 (read)")
+
     def test_creates_a_udpwritesocket_and_udpreadsocket_if_both_given(self):
         i = UdpInterface("localhost", "8888", "8889")
         self.assertFalse(i.connected())
@@ -130,27 +134,59 @@ class TestUdpInterface(unittest.TestCase):
         self.assertIsNone(i.read_socket)
 
     def test_shared_socket_receives_from_a_different_source_port(self):
-        destination = UdpReadSocket(4003)
-        sender = UdpWriteSocket("127.0.0.1", 4002, 4004)
-        i = UdpInterface("127.0.0.1", 4003, 4002, 4002)
+        # Bind the receiving sockets first so the ports are known, then let the
+        # sender pick an ephemeral source port
+        destination = UdpReadSocket(0)
+        self.addCleanup(close_socket, destination)
+        dest_port = destination.getsockname()[1]
+        shared_port = UdpReadSocket(0)
+        read_port = shared_port.getsockname()[1]
+        close_socket(shared_port)
+
+        sender = UdpWriteSocket("127.0.0.1", read_port)
+        self.addCleanup(close_socket, sender)
+        i = UdpInterface("127.0.0.1", dest_port, read_port, read_port)
+        self.addCleanup(i.disconnect)
         i.connect()
 
         sender.write(b"telemetry")
         self.assertEqual(i.read_socket.read(1.0), b"telemetry")
         i.write_socket.write(b"command")
         self.assertEqual(destination.read(1.0), b"command")
-        self.assertEqual(i.write_socket.getsockname()[1], 4002)
+        self.assertEqual(i.write_socket.getsockname()[1], read_port)
 
-        i.disconnect()
-        close_socket(sender)
-        close_socket(destination)
+    def test_clamps_a_ttl_below_one(self):
+        i = UdpInterface("localhost", "8888", "None", "None", "None", "0")
+        self.assertEqual(i.ttl, 1)
+
+    def test_defaults_a_none_write_timeout_to_ten_seconds(self):
+        i = UdpInterface("localhost", "8888", "None", "None", "None", "64", "None")
+        self.assertEqual(i.write_timeout, 10.0)
+
+    @patch("socket.socket")
+    def test_does_not_join_the_multicast_group_it_writes_to_on_a_shared_socket(self, mock_socket):
+        i = UdpInterface("224.0.1.1", 8889, 8889, 8889)
+        self.addCleanup(i.disconnect)
+        i.connect()
+        # Joining the group we transmit to would loop our own commands back as telemetry
+        membership = socket.inet_aton("224.0.1.1") + socket.inet_aton("0.0.0.0")
+        for call in mock_socket.return_value.setsockopt.call_args_list:
+            self.assertNotEqual(call.args, (socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, membership))
+        # Multicast writes are still set up
+        mock_socket.return_value.setsockopt.assert_any_call(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 128)
+
+    def test_creates_a_read_only_socket_with_an_unresolvable_hostname(self):
+        i = UdpInterface("this-host-does-not-exist.invalid", None, 0)
+        self.addCleanup(i.disconnect)
+        i.connect()
+        self.assertIsNotNone(i.read_socket)
 
     def test_creates_a_read_socket_for_port_zero(self):
         i = UdpInterface("127.0.0.1", None, 0)
+        self.addCleanup(i.disconnect)
         i.connect()
         self.assertIsNotNone(i.read_socket)
         self.assertGreater(i.read_socket.getsockname()[1], 0)
-        i.disconnect()
 
     @patch("socket.socket")
     def test_stops_the_read_thread_if_there_is_an_ioerror(self, mock_socket):

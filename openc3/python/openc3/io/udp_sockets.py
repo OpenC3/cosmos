@@ -28,7 +28,8 @@ class UdpReadWriteSocket:
     # @param read_multicast [Boolean] Whether or not to try to read from the external address as multicast
     # @param write_multicast [Boolean] Whether or not to write to the external address as multicast
     # @param connect_socket [Boolean] Whether to connect the socket to the external address. If false,
-    #   writes use sendto so reads can accept datagrams from any source.
+    #   writes use sendto so reads can accept datagrams from any source. The destination is resolved
+    #   once at creation time so writes don't pay for a name lookup on every datagram.
     def __init__(
         self,
         bind_port=0,
@@ -46,6 +47,11 @@ class UdpReadWriteSocket:
         self.external_address = external_address
         self.external_port = external_port
         self.connect_socket = connect_socket
+        # Resolve the destination once at creation time so writes don't pay for a
+        # (potentially blocking) name lookup on every datagram
+        self.external_destination = None
+        if not connect_socket and external_address and external_port is not None:
+            self.external_destination = (socket.gethostbyname(external_address), external_port)
 
         # Basic setup to reuse address
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -89,15 +95,19 @@ class UdpReadWriteSocket:
 
         while True:
             try:
-                if self.connect_socket:
-                    bytes_sent = self.socket.send(data_to_send)
+                if self.external_destination:
+                    bytes_sent = self.socket.sendto(data_to_send, self.external_destination)
                 else:
-                    bytes_sent = self.socket.sendto(data_to_send, (self.external_address, self.external_port))
+                    bytes_sent = self.socket.send(data_to_send)
             except OSError as e:
                 if e.args[0] == socket.EAGAIN or e.args[0] == socket.EWOULDBLOCK:
                     result = select.select([], [self.socket], [], write_timeout)
                     if len(result[0]) == 0 and len(result[1]) == 0 and len(result[2]) == 0:
                         raise TimeoutError from e
+                    continue
+                # Anything else (ENETUNREACH, EINVAL, ...) is not retryable. Raise
+                # rather than looping forever on a send that can never succeed.
+                raise
             total_bytes_sent += bytes_sent
             if total_bytes_sent >= num_bytes_to_send:
                 break
@@ -129,13 +139,18 @@ class UdpReadWriteSocket:
         return method
 
     # @param host [String] Machine name or IP address
-    # @param port [String] Port
+    # @param port [String] Port (unused, kept for backwards compatibility)
     # @return [Boolean] Whether the hostname is multicast
     @classmethod
     def multicast(cls, host, port=None):
         if host is None:
             return False
-        host_ip = socket.gethostbyname(host)
+        try:
+            host_ip = socket.gethostbyname(host)
+        except OSError:
+            # Hostname isn't resolvable so it can't be a multicast address we handle.
+            # Reads don't need the hostname at all so don't fail creating the socket.
+            return False
         # "224.0.0.0/4 is the CIDR notation for the range of IPv4 multicast addresses,
         # which includes all addresses from 224.0.0.0 to 239.255.255.255.
         return ipaddress.ip_address(host_ip) in ipaddress.ip_network("224.0.0.0/4")
