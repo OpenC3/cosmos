@@ -7,8 +7,33 @@ const crypto_orig_createHash = crypto.createHash;
 crypto.createHash = (algorithm) => crypto_orig_createHash("sha256");
 
 const { themes } = require("prism-react-renderer");
-const lightCodeTheme = themes.nightOwlLight;
-const darkCodeTheme = themes.nightOwl;
+
+// The nightOwl themes have no style for the "atrule" token type, which is what
+// Prism's YAML grammar tags mapping keys as (and CSS uses for @rules). Without
+// it, every YAML key renders in the plain foreground color and the block looks
+// unhighlighted. "important" (YAML null and merge keys) is likewise unstyled.
+// Add both, reusing each theme's existing keyword and boolean colors.
+function withYamlKeys(theme, keyColor, importantColor) {
+  return {
+    ...theme,
+    styles: [
+      ...theme.styles,
+      { types: ["atrule", "key"], style: { color: keyColor } },
+      { types: ["important"], style: { color: importantColor } },
+    ],
+  };
+}
+
+const lightCodeTheme = withYamlKeys(
+  themes.nightOwlLight,
+  "rgb(12, 150, 155)",
+  "rgb(188, 84, 84)",
+);
+const darkCodeTheme = withYamlKeys(
+  themes.nightOwl,
+  "rgb(127, 219, 202)",
+  "rgb(255, 88, 116)",
+);
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -283,7 +308,18 @@ const config = {
       prism: {
         theme: lightCodeTheme,
         darkTheme: darkCodeTheme,
-        additionalLanguages: ["ruby", "python", "bash", "diff", "json"],
+        additionalLanguages: [
+          "ruby",
+          "python",
+          "bash",
+          "diff",
+          "json",
+          "yaml",
+          "docker",
+          "batch",
+          "sql",
+          "c",
+        ],
       },
       colorMode: {
         defaultMode: "dark",

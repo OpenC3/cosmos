@@ -61,6 +61,12 @@ In both cases, secrets need to be available to the user account starting COSMOS.
 
 Most standard containers for databases like VersityGW are set up to receive secrets through environment variables. For a thorough discussion of secrets in Docker, see the [official thread](https://github.com/moby/moby/issues/13490).
 
+### Infrastructure Secrets vs. Plugin Secrets
+
+The variables documented on this page are COSMOS's own infrastructure credentials: Redis/Valkey passwords, bucket keys, and `SECRET_KEY_BASE`. They are configured through the environment because the services need them before COSMOS is running.
+
+Credentials that your **plugins** need — a device password, an API token, a client certificate — should not be put in `.env.local` or `compose.override.yaml`. Use the COSMOS Secrets system instead: store the value once (Admin tool, API, or a Kubernetes Secret) and reference it by name with the `SECRET` keyword in `plugin.txt`. COSMOS then injects it into just the interface or microservice that declared it, rather than into every container. See the [Secrets guide](../guides/secrets.md), which also covers Kubernetes and integrating HashiCorp Vault or AWS Secrets Manager.
+
 ## Credentials
 
 The `.env` file contains environment variables that configure COSMOS. The password-related variables fall into several categories.
