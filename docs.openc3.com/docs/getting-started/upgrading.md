@@ -311,6 +311,8 @@ You will notice CmdTlmServer log messages indicating that the Decom log files ar
 
 At this point you should be able to use any COSMOS applications that access the streaming API to ensure the data has been migrated. Open Telemetry Grapher or Data Extractor and either graph or extract historical data and verify the contents.
 
+If you change a command or telemetry definition after migrating, see [Packet Structure Changes](/docs/guides/packet-structure-changes) for how COSMOS reconciles the TSDB table schema and what happens to the data already stored.
+
 Once the data has been verified you can remove the imported data using Bucket Explorer. Navigate to the `logs` bucket and remove the `processed`, `reduced_minute_logs`, `reduced_hour_logs`, `reduced_day_logs` directories using the Trash icon.
 
 ![Bucket Explorer](/img/upgrading/bucket_explorer.png)
