@@ -64,7 +64,7 @@ This is the hook to use for scripted provisioning: a CI job or a startup script 
 
 Secrets are requested with the [SECRET](../configuration/plugins.md#secret) keyword under an `INTERFACE`, `ROUTER`, or `MICROSERVICE`:
 
-```bash
+```cosmos
 SECRET <ENV or FILE> <Secret Name> <Env Var Name or File Path> <Option Name (interfaces only)> <Secret Store Name>
 ```
 
@@ -170,7 +170,7 @@ This means, with the `kubernetes` backend:
 
 - **Secret Store Name is required.** It names the Kubernetes Secret resource, and the Secret Name is the key within it. A `SECRET` line without a store name has nothing to resolve against.
 - **The Admin / Secrets tab does not work.** Creating, listing, and deleting are not implemented for this backend; use `kubectl`, Helm, or a secrets operator instead.
-- **The Secret must be in the same namespace** as the COSMOS deployment (`OPENC3_KUBERNETES_NAMESPACE`, `default` if unset). A Secret in another namespace cannot be mounted.
+- **The Secret must be in the same namespace** as the COSMOS deployment. The Helm chart sets `OPENC3_KUBERNETES_NAMESPACE` to the release namespace (`default` if unset). A Secret in another namespace cannot be mounted.
 
 ### Creating the Kubernetes Secret
 

@@ -8,11 +8,12 @@ crypto.createHash = (algorithm) => crypto_orig_createHash("sha256");
 
 const { themes } = require("prism-react-renderer");
 
-// The nightOwl themes have no style for the "atrule" token type, which is what
-// Prism's YAML grammar tags mapping keys as (and CSS uses for @rules). Without
-// it, every YAML key renders in the plain foreground color and the block looks
-// unhighlighted. "important" (YAML null and merge keys) is likewise unstyled.
-// Add both, reusing each theme's existing keyword and boolean colors.
+// Prism's YAML grammar tags mapping keys as "atrule" (the same token type CSS
+// uses for @rules) and YAML nulls and merge keys as "important". The nightOwl
+// themes style neither, so every YAML key renders in the plain foreground color
+// and the block looks unhighlighted. Add styles for both. The colors passed in
+// below are copied from each theme's keyword and boolean styles so YAML matches
+// the rest of the highlighting; update them if the themes change.
 function withYamlKeys(theme, keyColor, importantColor) {
   return {
     ...theme,
