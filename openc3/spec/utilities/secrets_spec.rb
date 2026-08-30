@@ -74,47 +74,16 @@ module OpenC3
         expect { Secrets.validate_file_path('/tmp/') }.to raise_error(ArgumentError, /must be under/)
       end
 
-      it "rejects a symlink pointing outside the secret file dir" do
+      # NOTE: validate_file_path is deliberately lexical and does not resolve
+      # symlinks, so that a path validates identically at plugin install time and
+      # at write time, which happen in separate containers. The operator resolves
+      # symlinks before writing a secret, see microservice_operator_spec.
+      it "does not resolve symlinks" do
         link = "/tmp/openc3_secrets_spec_link_#{Process.pid}"
         FileUtils.rm_f(link)
         File.symlink('/etc/passwd', link)
         begin
-          expect { Secrets.validate_file_path(link) }.to raise_error(ArgumentError, /must be under/)
-        ensure
-          FileUtils.rm_f(link)
-        end
-      end
-
-      it "rejects a symlinked directory pointing outside the secret file dir" do
-        link = "/tmp/openc3_secrets_spec_dir_#{Process.pid}"
-        FileUtils.rm_f(link)
-        File.symlink('/etc', link)
-        begin
-          expect { Secrets.validate_file_path("#{link}/passwd") }.to raise_error(ArgumentError, /must be under/)
-        ensure
-          FileUtils.rm_f(link)
-        end
-      end
-
-      it "rejects a dangling symlink pointing outside the secret file dir" do
-        # The operator opens the path for writing, which follows a dangling
-        # symlink and creates the file it points at
-        link = "/tmp/openc3_secrets_spec_dangling_#{Process.pid}"
-        FileUtils.rm_f(link)
-        File.symlink('/etc/openc3_secrets_spec_does_not_exist', link)
-        begin
-          expect { Secrets.validate_file_path(link) }.to raise_error(ArgumentError, /broken or circular symlink/)
-        ensure
-          FileUtils.rm_f(link)
-        end
-      end
-
-      it "rejects a dangling symlink in the middle of the path" do
-        link = "/tmp/openc3_secrets_spec_dangling_dir_#{Process.pid}"
-        FileUtils.rm_f(link)
-        File.symlink('/etc/openc3_secrets_spec_does_not_exist', link)
-        begin
-          expect { Secrets.validate_file_path("#{link}/cert") }.to raise_error(ArgumentError, /broken or circular symlink/)
+          expect(Secrets.validate_file_path(link)).to eql link
         ensure
           FileUtils.rm_f(link)
         end
@@ -122,6 +91,10 @@ module OpenC3
 
       it "allows a not yet created file in a not yet created directory" do
         expect(Secrets.validate_file_path('/tmp/openc3_secrets_spec_no_such_dir/cert')).to eql '/tmp/openc3_secrets_spec_no_such_dir/cert'
+      end
+
+      it "expands ~ and rejects it when outside the secret file dir" do
+        expect { Secrets.validate_file_path('~/.ssh/id_rsa') }.to raise_error(ArgumentError, /must be under/)
       end
 
       it "rejects blank, non String, and null byte paths" do

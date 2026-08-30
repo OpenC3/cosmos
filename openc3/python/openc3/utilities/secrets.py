@@ -36,11 +36,10 @@ class Secrets:
 
     @classmethod
     def validate_file_path(cls, path):
-        """Validates a FILE type secret path. The path must resolve (after expanding
-        '..' and following symlinks) to a location strictly inside secret_file_dir().
-        This prevents a plugin configuration such as 'SECRET FILE KEY /root/.ssh/id_rsa'
-        or 'SECRET FILE KEY /tmp/../etc/shadow' from reading arbitrary files as the
-        OpenC3 process user.
+        """Validates a FILE type secret path. The path must expand to a location
+        strictly inside secret_file_dir(). This prevents a plugin configuration such
+        as 'SECRET FILE KEY /root/.ssh/id_rsa' or 'SECRET FILE KEY /tmp/../etc/shadow'
+        from reading arbitrary files as the OpenC3 process user.
 
         Returns the validated absolute path.
         """
@@ -51,22 +50,17 @@ class Secrets:
         if "\x00" in path:
             raise ValueError("Secret file path must not contain a null byte")
 
-        base = os.path.realpath(os.path.abspath(cls.secret_file_dir()))
-        absolute = os.path.abspath(path)
-        # realpath resolves symlinks in the existing portion of the path and
-        # leaves any not yet created trailing components alone
-        resolved = os.path.realpath(absolute)
-
-        if not cls.path_contained(base, resolved):
+        # abspath collapses '..' and '.' and makes a relative path absolute, so the
+        # comparison below can't be walked out of. This is deliberately a purely
+        # lexical check: it does not touch the filesystem, so a path validates
+        # identically at plugin install time and at write time, which happen in
+        # separate containers. Symlinks are rejected by the operator when it writes
+        # the secret. expanduser matches Ruby's File.expand_path handling of '~'.
+        base = os.path.abspath(os.path.expanduser(cls.secret_file_dir()))
+        absolute = os.path.abspath(os.path.expanduser(path))
+        if not absolute.startswith(base + os.sep):
             raise ValueError(f"Secret file path '{path}' must be under '{base}'")
         return absolute
-
-    @classmethod
-    def path_contained(cls, base, path):
-        """Returns True if path is strictly inside base"""
-        if not base.endswith(os.sep):
-            base += os.sep
-        return path.startswith(base) and path != base
 
     @classmethod
     def get_client(cls):

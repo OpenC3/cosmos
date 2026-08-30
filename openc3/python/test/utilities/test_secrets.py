@@ -63,40 +63,17 @@ class TestSecrets(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "must be under"):
                 Secrets.validate_file_path(path)
 
-    def test_rejects_a_symlink_pointing_outside_the_secret_file_dir(self):
+    # NOTE: validate_file_path is deliberately lexical and does not resolve
+    # symlinks, so that a path validates identically at plugin install time and at
+    # write time, which happen in separate containers. The operator resolves
+    # symlinks before writing a secret.
+    def test_does_not_resolve_symlinks(self):
         link = f"/tmp/openc3_secrets_test_link_{os.getpid()}"
         if os.path.lexists(link):
             os.unlink(link)
         os.symlink("/etc/passwd", link)
         try:
-            with self.assertRaisesRegex(ValueError, "must be under"):
-                Secrets.validate_file_path(link)
-        finally:
-            os.unlink(link)
-
-    def test_rejects_a_symlinked_directory_pointing_outside_the_secret_file_dir(self):
-        link = f"/tmp/openc3_secrets_test_dir_{os.getpid()}"
-        if os.path.lexists(link):
-            os.unlink(link)
-        os.symlink("/etc", link)
-        try:
-            with self.assertRaisesRegex(ValueError, "must be under"):
-                Secrets.validate_file_path(f"{link}/passwd")
-        finally:
-            os.unlink(link)
-
-    def test_rejects_a_dangling_symlink_pointing_outside_the_secret_file_dir(self):
-        # The operator opens the path for writing, which follows a dangling
-        # symlink and creates the file it points at
-        link = f"/tmp/openc3_secrets_test_dangling_{os.getpid()}"
-        if os.path.lexists(link):
-            os.unlink(link)
-        os.symlink("/etc/openc3_secrets_test_does_not_exist", link)
-        try:
-            with self.assertRaisesRegex(ValueError, "must be under"):
-                Secrets.validate_file_path(link)
-            with self.assertRaisesRegex(ValueError, "must be under"):
-                Secrets.validate_file_path(f"{link}/cert")
+            self.assertEqual(Secrets.validate_file_path(link), link)
         finally:
             os.unlink(link)
 
@@ -105,6 +82,10 @@ class TestSecrets(unittest.TestCase):
             Secrets.validate_file_path("/tmp/openc3_secrets_test_no_such_dir/cert"),
             "/tmp/openc3_secrets_test_no_such_dir/cert",
         )
+
+    def test_expands_tilde_and_rejects_it_when_outside_the_secret_file_dir(self):
+        with self.assertRaisesRegex(ValueError, "must be under"):
+            Secrets.validate_file_path("~/.ssh/id_rsa")
 
     def test_rejects_blank_non_str_and_null_byte_paths(self):
         with self.assertRaisesRegex(ValueError, "blank"):
@@ -119,8 +100,7 @@ class TestSecrets(unittest.TestCase):
     def test_honors_openc3_secret_file_dir(self):
         with tempfile.TemporaryDirectory() as dir:
             os.environ["OPENC3_SECRET_FILE_DIR"] = dir
-            real = os.path.realpath(dir)
-            self.assertEqual(Secrets.validate_file_path(f"{real}/cert"), f"{real}/cert")
+            self.assertEqual(Secrets.validate_file_path(f"{dir}/cert"), f"{dir}/cert")
             with self.assertRaisesRegex(ValueError, "must be under"):
                 Secrets.validate_file_path("/tmp/DATA/cert")
 

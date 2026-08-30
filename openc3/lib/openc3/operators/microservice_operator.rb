@@ -104,7 +104,18 @@ module OpenC3
                 Logger.error("Microservice #{microservice_name} secret #{secret_name} has an invalid file path: #{error.message}")
                 next
               end
+              # validate_file_path is lexical, so a symlink under the secret file
+              # directory could still redirect the write outside of it. Resolve
+              # symlinks here, where the filesystem being written to is the one
+              # being checked. File.symlink? uses lstat and so does not follow the
+              # link, unlike the File.open below.
               FileUtils.mkdir_p(File.dirname(path))
+              real_dir = File.realpath(File.dirname(path))
+              real_base = File.realpath(Secrets.secret_file_dir)
+              if File.symlink?(path) or !Secrets.path_contained?(real_base, real_dir)
+                Logger.error("Microservice #{microservice_name} secret #{secret_name} file path resolves outside of #{real_base}: #{path}")
+                next
+              end
               File.open(path, 'wb') do |file|
                 file.write(secret_value)
               end

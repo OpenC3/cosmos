@@ -11,8 +11,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'pathname'
-
 ENV['OPENC3_SECRET_BACKEND'] ||= 'redis'
 
 module OpenC3
@@ -34,11 +32,11 @@ module OpenC3
       dir
     end
 
-    # Validates a FILE type secret path. The path must resolve (after expanding
-    # '..' and following symlinks) to a location strictly inside
-    # Secrets.secret_file_dir. This prevents a plugin configuration such as
-    # 'SECRET FILE KEY /root/.ssh/id_rsa' or 'SECRET FILE KEY /tmp/../etc/shadow'
-    # from reading or overwriting arbitrary files as the OpenC3 process user.
+    # Validates a FILE type secret path. The path must expand to a location
+    # strictly inside Secrets.secret_file_dir. This prevents a plugin
+    # configuration such as 'SECRET FILE KEY /root/.ssh/id_rsa' or
+    # 'SECRET FILE KEY /tmp/../etc/shadow' from reading or overwriting arbitrary
+    # files as the OpenC3 process user.
     #
     # @param path [String] Path from a SECRET FILE definition
     # @return [String] The validated absolute path
@@ -47,34 +45,23 @@ module OpenC3
       raise ArgumentError, "Secret file path must not be blank" if path.strip.empty?
       raise ArgumentError, "Secret file path must not contain a null byte" if path.include?("\x00")
 
-      base = Pathname.new(File.expand_path(secret_file_dir))
-      base = base.realpath if base.exist?
-      absolute = Pathname.new(File.expand_path(path))
-
-      # realpath requires the path to exist, but the secret file and its parent
-      # directories aren't created until the operator writes the secret. So find
-      # the deepest ancestor that does exist (ascend yields the path itself, then
-      # each parent, ending at '/') and re-attach the remainder to its realpath.
-      # symlink? is checked separately because exist? is false for a symlink
-      # pointing at a missing file, which would otherwise resolve to the symlink
-      # rather than to its target.
-      existing = absolute.ascend.find { |ancestor| ancestor.symlink? or ancestor.exist? }
-      begin
-        resolved = existing.realpath + absolute.relative_path_from(existing)
-      rescue Errno::ENOENT, Errno::ELOOP
-        raise ArgumentError, "Secret file path '#{path}' contains a broken or circular symlink"
-      end
-
-      unless path_contained?(base.to_s, resolved.to_s)
+      # expand_path collapses '..' and '.', expands '~', and makes a relative path
+      # absolute, so the comparison below can't be walked out of. This is
+      # deliberately a purely lexical check: it does not touch the filesystem, so
+      # a path validates identically at plugin install time (cmd-tlm-api) and at
+      # write time (openc3-operator), which are separate containers. Symlinks are
+      # rejected by the operator when it writes the secret.
+      base = File.expand_path(secret_file_dir)
+      absolute = File.expand_path(path)
+      unless absolute.start_with?(base + File::SEPARATOR)
         raise ArgumentError, "Secret file path '#{path}' must be under '#{base}'"
       end
-      absolute.to_s
+      absolute
     end
 
-    # @return true if path is strictly inside base
+    # @return true if path is inside base, or is base itself
     def self.path_contained?(base, path)
-      base += File::SEPARATOR unless base.end_with?(File::SEPARATOR)
-      path.start_with?(base) and path != base
+      path == base or path.start_with?(base.end_with?(File::SEPARATOR) ? base : base + File::SEPARATOR)
     end
 
     def self.getClient
