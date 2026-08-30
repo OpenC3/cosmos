@@ -2,14 +2,14 @@
 
 ## Supported Versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+We encourage users to be on the latest version of COSMOS and only backport security features for
+several months as users transition to the latest version.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 5   | :x: |
-| 6   | :x:                |
-| 7   | :white_check_mark: |
+| 5       | :x:                |
+| 6       | :x:                |
+| 7       | :white_check_mark: |
 
 ## Reporting a Vulnerability
 
