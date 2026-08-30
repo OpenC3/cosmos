@@ -85,6 +85,27 @@ class TestSecrets(unittest.TestCase):
         finally:
             os.unlink(link)
 
+    def test_rejects_a_dangling_symlink_pointing_outside_the_secret_file_dir(self):
+        # The operator opens the path for writing, which follows a dangling
+        # symlink and creates the file it points at
+        link = f"/tmp/openc3_secrets_test_dangling_{os.getpid()}"
+        if os.path.lexists(link):
+            os.unlink(link)
+        os.symlink("/etc/openc3_secrets_test_does_not_exist", link)
+        try:
+            with self.assertRaisesRegex(ValueError, "must be under"):
+                Secrets.validate_file_path(link)
+            with self.assertRaisesRegex(ValueError, "must be under"):
+                Secrets.validate_file_path(f"{link}/cert")
+        finally:
+            os.unlink(link)
+
+    def test_allows_a_not_yet_created_file_in_a_not_yet_created_directory(self):
+        self.assertEqual(
+            Secrets.validate_file_path("/tmp/openc3_secrets_test_no_such_dir/cert"),
+            "/tmp/openc3_secrets_test_no_such_dir/cert",
+        )
+
     def test_rejects_blank_non_str_and_null_byte_paths(self):
         with self.assertRaisesRegex(ValueError, "blank"):
             Secrets.validate_file_path("")

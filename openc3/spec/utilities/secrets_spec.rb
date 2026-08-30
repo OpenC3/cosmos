@@ -96,6 +96,34 @@ module OpenC3
         end
       end
 
+      it "rejects a dangling symlink pointing outside the secret file dir" do
+        # The operator opens the path for writing, which follows a dangling
+        # symlink and creates the file it points at
+        link = "/tmp/openc3_secrets_spec_dangling_#{Process.pid}"
+        FileUtils.rm_f(link)
+        File.symlink('/etc/openc3_secrets_spec_does_not_exist', link)
+        begin
+          expect { Secrets.validate_file_path(link) }.to raise_error(ArgumentError, /broken or circular symlink/)
+        ensure
+          FileUtils.rm_f(link)
+        end
+      end
+
+      it "rejects a dangling symlink in the middle of the path" do
+        link = "/tmp/openc3_secrets_spec_dangling_dir_#{Process.pid}"
+        FileUtils.rm_f(link)
+        File.symlink('/etc/openc3_secrets_spec_does_not_exist', link)
+        begin
+          expect { Secrets.validate_file_path("#{link}/cert") }.to raise_error(ArgumentError, /broken or circular symlink/)
+        ensure
+          FileUtils.rm_f(link)
+        end
+      end
+
+      it "allows a not yet created file in a not yet created directory" do
+        expect(Secrets.validate_file_path('/tmp/openc3_secrets_spec_no_such_dir/cert')).to eql '/tmp/openc3_secrets_spec_no_such_dir/cert'
+      end
+
       it "rejects blank, non String, and null byte paths" do
         expect { Secrets.validate_file_path('') }.to raise_error(ArgumentError, /blank/)
         expect { Secrets.validate_file_path('   ') }.to raise_error(ArgumentError, /blank/)
