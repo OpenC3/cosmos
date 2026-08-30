@@ -187,6 +187,61 @@ module OpenC3
         expect(json['log_stream']).to eq []
         tf.unlink
       end
+
+      it "parses SECRET and BRIDGE_SECRET" do
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts 'SECRET ENV USERNAME ENV_USERNAME USERNAME'
+        tf.puts 'SECRET FILE KEY "/tmp/DATA/cert" KEY'
+        tf.puts 'BRIDGE_SECRET FILE KEY2 "/tmp/DATA/cert2" KEY2'
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+        end
+        expect(model.secrets).to include(['ENV', 'USERNAME', 'ENV_USERNAME', nil],
+                                        ['FILE', 'KEY', '/tmp/DATA/cert', nil],
+                                        ['FILE', 'KEY2', '/tmp/DATA/cert2', nil])
+        tf.unlink
+      end
+
+      it "rejects SECRET FILE paths outside the secret file dir" do
+        ['/etc/passwd', '/tmp/../etc/passwd', '../../config/secrets.yml'].each do |path|
+          model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
+          parser = ConfigParser.new
+          tf = Tempfile.new
+          tf.puts "SECRET FILE KEY \"#{path}\" KEY"
+          tf.close
+          parser.parse_file(tf.path) do |keyword, params|
+            expect { model.handle_config(parser, keyword, params) }.to raise_error(ConfigParser::Error, /must be under/)
+          end
+          tf.unlink
+        end
+      end
+
+      it "rejects BRIDGE_SECRET FILE paths outside the secret file dir" do
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts 'BRIDGE_SECRET FILE KEY "/root/.ssh/id_rsa" KEY'
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          expect { model.handle_config(parser, keyword, params) }.to raise_error(ConfigParser::Error, /must be under/)
+        end
+        tf.unlink
+      end
+
+      it "rejects unknown SECRET types" do
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts 'SECRET OTHER KEY DATA'
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          expect { model.handle_config(parser, keyword, params) }.to raise_error(ConfigParser::Error, /Unknown secret type/)
+        end
+        tf.unlink
+      end
     end
 
     describe "build" do

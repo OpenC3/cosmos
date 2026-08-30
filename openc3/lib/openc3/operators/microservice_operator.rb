@@ -98,8 +98,14 @@ module OpenC3
             if type == 'ENV'
               env[env_name_or_path] = secret_value
             elsif type == 'FILE'
-              FileUtils.mkdir_p(File.dirname(env_name_or_path))
-              File.open(env_name_or_path, 'wb') do |file|
+              begin
+                path = Secrets.validate_file_path(env_name_or_path)
+              rescue ArgumentError => error
+                Logger.error("Microservice #{microservice_name} secret #{secret_name} has an invalid file path: #{error.message}")
+                next
+              end
+              FileUtils.mkdir_p(File.dirname(path))
+              File.open(path, 'wb') do |file|
                 file.write(secret_value)
               end
             end

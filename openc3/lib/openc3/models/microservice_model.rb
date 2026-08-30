@@ -20,6 +20,7 @@ require 'openc3/models/model'
 require 'openc3/models/metric_model'
 require 'openc3/topics/config_topic'
 require 'openc3/utilities/bucket'
+require 'openc3/utilities/secrets'
 
 module OpenC3
   class MicroserviceModel < Model
@@ -244,6 +245,7 @@ module OpenC3
         @container = parameters[0]
       when 'SECRET'
         parser.verify_num_parameters(3, 4, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path> <Secret Store Name (Optional)>")
+        validate_secret(parser, keyword, parameters)
         if ConfigParser.handle_nil(parameters[3])
           @secrets << parameters.dup
         else
@@ -271,6 +273,22 @@ module OpenC3
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Microservice: #{keyword} #{parameters.join(" ")}")
       end
       return nil
+    end
+
+    # Validate a SECRET definition. FILE type paths are restricted to
+    # Secrets.secret_file_dir to prevent reading or overwriting arbitrary files.
+    def validate_secret(parser, keyword, parameters)
+      type = parameters[0].to_s.upcase
+      unless ['ENV', 'FILE'].include?(type)
+        raise ConfigParser::Error.new(parser, "Unknown secret type '#{parameters[0]}' for #{keyword}. Must be ENV or FILE.")
+      end
+      if type == 'FILE'
+        begin
+          Secrets.validate_file_path(parameters[2])
+        rescue ArgumentError => error
+          raise ConfigParser::Error.new(parser, "#{keyword} #{error.message}")
+        end
+      end
     end
 
     def deploy(gem_path, variables, validate_only: false)
