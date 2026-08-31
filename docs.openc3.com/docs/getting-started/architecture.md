@@ -169,6 +169,10 @@ These sentinels allow special float values to be stored and retrieved without da
 - Arrays are always stored as JSON-serialized strings for consistency
 - 64-bit integer values are sent as strings via ILP; QuestDB casts them to DECIMAL
 
+#### Packet Structure Changes
+
+QuestDB table schemas are reconciled against the current packet definitions each time the `tsdb` microservice starts (plugin install or COSMOS restart). New items become new columns, changed item types become `ALTER COLUMN ... TYPE` statements, and removed items leave their existing column in place. Some type changes silently NULL existing values. See [Packet Structure Changes](/docs/guides/packet-structure-changes) for the full behavior and the recommended workflow.
+
 #### Historical Data Migration
 
 COSMOS provides a [migration plugin](https://store.openc3.com/cosmos_plugins/21) for ingesting historical decommutated telemetry and command data from binary log files into QuestDB. The plugin reads COSMOS binary packet log files (`.bin` and `.bin.gz`) from S3-compatible storage and batch-ingests the data into QuestDB. It processes files in reverse chronological order (newest first) and rate-limits ingestion to avoid overwhelming operational systems.
