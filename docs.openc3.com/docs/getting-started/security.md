@@ -43,6 +43,33 @@ By default, COSMOS only listens on localhost (127.0.0.1). This configuration kee
 
 For production use, it is recommended to configure COSMOS to listen on a network interface (not just localhost) so that users can access the web interface from their own workstations rather than directly on the host computer. This means users connect via their web browsers over the local network instead of needing access to the host machine itself, which reduces exposure of the host and allows it to be more tightly secured. See [SSL/TLS](../configuration/ssl-tls) for configuring HTTPS.
 
+### Content Security Policy
+
+COSMOS sets a [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) (CSP) header via Traefik to mitigate cross-site scripting (XSS) and other code-injection attacks. The default policy is strict: inline scripts and `eval()` are forbidden, and scripts may only be loaded from the same origin and trusted sources.
+
+Two environment variables relax the policy for deployments that need it:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `OPENC3_ALLOW_HTTP` | _(unset)_ | When set (e.g. `1`), broadens the CSP to allow resources over plain HTTP in addition to HTTPS. Useful for development or air-gapped networks without TLS. |
+| `OPENC3_ALLOW_UNSAFE_EVAL` | _(unset)_ | When set (e.g. `1`), adds `'unsafe-eval'` to the CSP `script-src` directive, allowing `eval()`, `new Function()`, and similar dynamic code execution. Required by some third-party plugins (e.g. Open MCT) that bundle libraries which evaluate code at runtime. |
+
+WebAssembly (`'wasm-unsafe-eval'`) is allowed by default and does not require either flag.
+
+To enable either flag, add it to `.env.local` (recommended) or `compose.override.yaml` under the `openc3-traefik` service, then recreate the Traefik container:
+
+```bash
+# .env.local
+OPENC3_ALLOW_UNSAFE_EVAL=1
+```
+
+```bash
+./openc3.sh stop
+./openc3.sh run
+```
+
+These are runtime settings evaluated by Traefik at container startup -- no image rebuild is needed.
+
 ### Network Security
 
 Between any external network and the private network containing the host computer should be a firewall that prevents unauthorized access.
