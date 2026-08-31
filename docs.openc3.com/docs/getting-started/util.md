@@ -16,7 +16,7 @@ The utility script automatically detects and uses either Docker or Podman. If Do
 
 To see all the available commands, type the following:
 
-```zsh
+```bash
 ❯ ./openc3.sh util
 Usage: scripts/linux/openc3_util.sh [encode, hash, save, load, tag, push, clean, hostsetup]
 *  encode: encode a string to base64
@@ -34,7 +34,7 @@ Usage: scripts/linux/openc3_util.sh [encode, hash, save, load, tag, push, clean,
 
 Encode a string to base64. This is useful for encoding credentials or configuration values.
 
-```zsh
+```bash
 ❯ ./openc3.sh util encode foo
 Zm9v
 ```
@@ -48,7 +48,7 @@ Parameters:
 
 Hash a string using SHA-256. This is useful for generating checksums or verifying data integrity.
 
-```zsh
+```bash
 ❯ ./openc3.sh util hash foo
 2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae
 ```
@@ -62,7 +62,7 @@ Parameters:
 
 Save images to tar file. This command pulls all COSMOS Docker images from the specified repository and saves them as tar files in the `tmp/` directory.
 
-```zsh
+```bash
 ❯ ./openc3.sh util save docker.io openc3inc 5.19.0
 + docker pull docker.io/openc3inc/openc3-ruby:5.19.0
 + docker pull docker.io/openc3inc/openc3-node:5.19.0
@@ -83,7 +83,7 @@ Parameters:
 
 Load images from tar files in the `tmp/` directory. This command loads all COSMOS Docker images from previously saved tar files.
 
-```zsh
+```bash
 ❯ ./openc3.sh util load 5.19.0
 + docker load -i tmp/openc3-ruby-5.19.0.tar
 + docker load -i tmp/openc3-node-5.19.0.tar
@@ -97,7 +97,7 @@ Parameters:
 - `SUFFIX`: (Optional) Image name suffix for custom builds
 
 Example loading latest:
-```zsh
+```bash
 ❯ ./openc3.sh util load
 + docker load -i tmp/openc3-ruby-latest.tar
 ...
@@ -107,7 +107,7 @@ Example loading latest:
 
 Tag images from one repository/namespace to another. This is useful for pushing images to a local registry or retagging for different deployments.
 
-```zsh
+```bash
 ❯ ./openc3.sh util tag docker.io localhost:12345 openc3inc latest
 + docker tag docker.io/openc3inc/openc3-ruby:latest localhost:12345/openc3inc/openc3-ruby:latest
 + docker tag docker.io/openc3inc/openc3-node:latest localhost:12345/openc3inc/openc3-node:latest
@@ -126,7 +126,7 @@ Parameters:
 - `SUFFIX`: (Optional) Image name suffix for custom builds
 
 Example with different namespace and tag:
-```zsh
+```bash
 ❯ ./openc3.sh util tag docker.io localhost:12345 openc3inc latest mycompany 1.0.0
 ```
 
@@ -134,7 +134,7 @@ Example with different namespace and tag:
 
 Push all COSMOS Docker images to a remote repository.
 
-```zsh
+```bash
 ❯ ./openc3.sh util push localhost:12345 openc3inc latest
 + docker push localhost:12345/openc3inc/openc3-ruby:latest
 + docker push localhost:12345/openc3inc/openc3-node:latest
@@ -159,7 +159,7 @@ What gets cleaned:
 - All `pnpm-lock.yaml` files (prompts for confirmation)
 - All `Gemfile.lock` files (prompts for confirmation)
 
-```zsh
+```bash
 ❯ ./openc3.sh util clean
 Removing ./openc3/node_modules
 Removing ./openc3-cosmos-init/plugins/node_modules
@@ -179,7 +179,7 @@ This command configures:
 - Disables transparent huge pages (THP)
 - Sets `vm.max_map_count` to 262144
 
-```zsh
+```bash
 ❯ ./openc3.sh util hostsetup docker.io openc3inc latest
 ```
 
@@ -196,7 +196,7 @@ Parameters:
 
 Open a shell into the Docker/Podman host VM. This is useful for debugging and inspecting the host environment.
 
-```zsh
+```bash
 ❯ ./openc3.sh util hostenter
 Unable to find image 'alpine:3.21.4' locally
 3.21.4: Pulling from library/alpine
