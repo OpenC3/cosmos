@@ -149,17 +149,17 @@ class Table < OpenC3::TargetFile
   end
 
   def self.lock(scope, name, user)
-    name = name.split('*')[0] # Split '*' that indicates modified
+    name = strip_modified(name) # Remove '*' that indicates modified
     OpenC3::Store.hset("#{scope}__table-locks", name, user)
   end
 
   def self.unlock(scope, name)
-    name = name.split('*')[0] # Split '*' that indicates modified
+    name = strip_modified(name) # Remove '*' that indicates modified
     OpenC3::Store.hdel("#{scope}__table-locks", name)
   end
 
   def self.locked?(scope, name)
-    name = name.split('*')[0] # Split '*' that indicates modified
+    name = strip_modified(name) # Remove '*' that indicates modified
     locked_by = OpenC3::Store.hget("#{scope}__table-locks", name)
     locked_by ||= false
     locked_by
