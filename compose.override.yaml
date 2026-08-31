@@ -135,6 +135,9 @@
 #   environment:
 #     # Allow HTTP connections in the Content Security Policy (less secure).
 #     - OPENC3_ALLOW_HTTP=1
+#     # Allow 'unsafe-eval' in Content Security Policy for plugins that need
+#     # eval() or new Function() (e.g. OpenMCT, Vue runtime template compilation).
+#     - OPENC3_ALLOW_UNSAFE_EVAL=1
 
 # -------------------------------------------------------------------------
 # Log to stderr on any service
