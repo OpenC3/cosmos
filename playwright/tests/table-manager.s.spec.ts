@@ -232,6 +232,58 @@ test('edits a binary file', async ({ page, utils }) => {
   )
 })
 
+// Table Manager is the tool where a leaked modified marker actually corrupts data:
+// saveAsFilename passes the field straight to PUT /openc3-api/tables/.../save-as,
+// and nothing on that path (sanitize_params, Table.save_as, TargetFile.create)
+// strips a trailing '*'. The result is a literal '*' object in the bucket which
+// TargetFile.body then resolves back to the unmarked file, so the saved table is
+// written and immediately unreachable.
+test('strips the modified marker on Save As', async ({ page, utils }) => {
+  const binary = 'INST/tables/bin/ConfigTables.bin'
+
+  await page.locator('[data-test=table-manager-file]').click()
+  await page.locator('text=Open File').click()
+  await openFile(page, utils, 'configtables.bin')
+  // The definition filename only lands once tables/load returns, and Save File
+  // posts it, so wait for it rather than saving an empty definition.
+  await expect(
+    page.locator('[data-test=definition-filename] input'),
+  ).toHaveValue('INST/tables/config/ConfigTables_def.txt')
+
+  // Save so the binary exists in both targets/ and targets_modified/, the only
+  // state that makes the listing append the marker. Done here rather than
+  // relying on the earlier edit test so this test stands on its own.
+  await page.locator('[data-test=table-manager-file]').click()
+  await page.locator('text=Save File').click()
+  await utils.sleep(5000) // Saving takes some time
+
+  await page.locator('[data-test=table-manager-file]').click()
+  await page.locator('text=Save As').click()
+  await expect(page.locator('.v-dialog')).toBeVisible()
+  await expect(page.getByRole('progressbar')).not.toBeVisible()
+  await expect(page.getByText('TEMPLATED')).not.toBeVisible()
+  await page
+    .locator('[data-test=file-open-save-search] input')
+    .fill('configtables.bin')
+
+  // Precondition: without the marker actually present in the tree this test
+  // would pass no matter what the dialog does with it. Only INST is edited by
+  // this spec, so INST2's copy of the same filename stays unmarked.
+  const marked = page.getByText('ConfigTables.bin*', { exact: true })
+  await expect(marked).toBeVisible()
+
+  // toHaveValue is an exact match, so a trailing '*' fails here
+  await marked.click()
+  await expect(
+    page.locator('[data-test=file-open-save-filename] input'),
+  ).toHaveValue(binary)
+
+  await page.locator('[data-test=file-open-save-cancel-btn]').click()
+  await expect(
+    page.getByRole('dialog').filter({ hasText: 'File Save As...' }),
+  ).not.toBeVisible()
+})
+
 test('opens and searches file', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
