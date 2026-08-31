@@ -45,22 +45,22 @@ For production use, it is recommended to configure COSMOS to listen on a network
 
 ### Content Security Policy
 
-COSMOS sets a [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) (CSP) header via Traefik to mitigate cross-site scripting (XSS) and other code-injection attacks. The default policy is strict: inline scripts and `eval()` are forbidden, and scripts may only be loaded from the same origin and trusted sources.
+COSMOS sets a [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) (CSP) header via Traefik to mitigate cross-site scripting (XSS) and other code-injection attacks. The default policy forbids inline scripts but allows `eval()` for third-party plugin compatibility. Scripts may only be loaded from the same origin and trusted sources.
 
-Two environment variables relax the policy for deployments that need it:
+The following environment variables control the CSP:
 
 | Variable | Default | Description |
 | --- | --- | --- |
 | `OPENC3_ALLOW_HTTP` | _(unset)_ | When set (e.g. `1`), broadens the CSP to allow resources over plain HTTP in addition to HTTPS. Useful for development or air-gapped networks without TLS. |
-| `OPENC3_ALLOW_UNSAFE_EVAL` | _(unset)_ | When set (e.g. `1`), adds `'unsafe-eval'` to the CSP `script-src` directive, allowing `eval()`, `new Function()`, and similar dynamic code execution. Required by some third-party plugins (e.g. Open MCT) that bundle libraries which evaluate code at runtime. |
+| `OPENC3_NO_EVAL` | _(unset)_ | When set (e.g. `1`), removes `'unsafe-eval'` from the CSP `script-src` directive, blocking `eval()`, `new Function()`, and similar dynamic code execution. Only set this if no installed plugins require runtime code evaluation (e.g. Open MCT and other tools that bundle Vue's runtime template compiler will break). |
 
-WebAssembly (`'wasm-unsafe-eval'`) is allowed by default and does not require either flag.
+By default `'unsafe-eval'` is **allowed** for third-party plugin compatibility. WebAssembly (`'wasm-unsafe-eval'`) is always allowed regardless of these flags.
 
-To enable either flag, add it to `.env.local` (recommended) or `compose.override.yaml` under the `openc3-traefik` service, then recreate the Traefik container:
+To harden the CSP on a deployment that does not use plugins requiring eval, add `OPENC3_NO_EVAL` to `.env.local` (recommended) or `compose.override.yaml` under the `openc3-traefik` service, then recreate the Traefik container:
 
 ```bash
 # .env.local
-OPENC3_ALLOW_UNSAFE_EVAL=1
+OPENC3_NO_EVAL=1
 ```
 
 ```bash

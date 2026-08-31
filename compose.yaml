@@ -378,7 +378,7 @@ services:
     volumes:
       - "./cacert.pem:/devel/cacert.pem:z"
       - "./openc3-traefik/traefik.yaml:/etc/traefik/traefik.yaml:z"
-      # See compose.override.yaml for OPENC3_ALLOW_HTTP and OPENC3_ALLOW_UNSAFE_EVAL
+      # See compose.override.yaml for OPENC3_ALLOW_HTTP and OPENC3_NO_EVAL
       # - "./openc3-traefik/traefik-ssl.yaml:/etc/traefik/traefik.yaml:z"
       # - "./openc3-traefik/traefik-letsencrypt.yaml:/etc/traefik/traefik.yaml:z"
       # - "./openc3-traefik/cert.key:/etc/traefik/cert.key:z"
@@ -402,7 +402,7 @@ services:
       OPENC3_TOOLS_BUCKET: "${OPENC3_TOOLS_BUCKET}"
       OPENC3_BUCKET_URL: "${OPENC3_BUCKET_URL}"
       OPENC3_ALLOW_HTTP: "${OPENC3_ALLOW_HTTP:-}"
-      OPENC3_ALLOW_UNSAFE_EVAL: "${OPENC3_ALLOW_UNSAFE_EVAL:-}"
+      OPENC3_NO_EVAL: "${OPENC3_NO_EVAL:-}"
       SSL_CERT_FILE: "/devel/cacert.pem"
       CURL_CA_BUNDLE: "/devel/cacert.pem"
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
