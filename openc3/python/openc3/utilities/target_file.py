@@ -15,9 +15,20 @@ from openc3.utilities.local_mode import LocalMode
 
 
 class TargetFile:
+    # The file listing appends '*' to a name to mark it as modified on the server
+    # (see TargetFile.all in the Ruby library). The marker is display-only, so
+    # every read strips it.
+    #
+    # Strip only '*' at the end of a file name. '*' is a legal S3 object key character
+    # and is allowed by FileOpenSaveDialog's filename charset, so files named that
+    # way exist in the field and have to stay addressable.
+    @classmethod
+    def strip_modified(cls, name):
+        return name[:-1] if name.endswith("*") else name
+
     @classmethod
     def body(cls, scope, name):
-        name = name.split("*")[0]  # Split '*' that indicates modified
+        name = cls.strip_modified(name) # Remove '*' that indicates modified
         # First try opening a potentially modified version by looking for the modified target
         if OPENC3_LOCAL_MODE:
             local_file = LocalMode.open_local_file(name, scope=scope)

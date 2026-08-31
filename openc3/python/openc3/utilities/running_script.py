@@ -731,8 +731,8 @@ class RunningScript:
     @classmethod
     def script_get_breakpoints(cls, scope, name):
         breakpoints = Store.hget(
-            f"{scope}__script-breakpoints", name.split("*")[0]
-        )  # Split '*' that indicates modified
+            f"{scope}__script-breakpoints", TargetFile.strip_modified(name)
+        ) # Remove '*' that indicates modified
         if breakpoints:
             return json.loads(breakpoints)
         return []
