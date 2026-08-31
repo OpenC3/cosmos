@@ -1958,8 +1958,8 @@ export default {
     // This only gets called when the user changes the filename dropdown
     // Or when a user hits Go
     fileNameChanged(filename) {
-      // Split off the '*' which indicates modified
-      filename = filename.split('*')[0]
+      // Strip the '*' which indicates modified
+      filename = filename ? filename.replace(/\*$/, '') : filename
       this.editor.setValue(this.files[filename].content)
       this.restoreBreakpoints(filename)
       this.editor.clearSelection()
@@ -3166,8 +3166,8 @@ export default {
       // since we're installing fresh content
       this.saveAllowed = true
       this.files = {} // Clear the cached file list
-      // Split off the ' *' which indicates a file is modified on the server
-      let newFilename = file.name.split('*')[0]
+      // Strip the '*' which indicates a file is modified on the server
+      let newFilename = file.name ? file.name.replace(/\*$/, '') : file.name
       if (local === false) {
         // We only need to unlock if the file is different
         if (this.filename !== newFilename) {
@@ -3366,7 +3366,7 @@ export default {
       this.showSaveAs = true
     },
     async saveAsFilename(filename) {
-      this.filename = filename.split('*')[0]
+      this.filename = filename ? filename.replace(/\*$/, '') : filename
       this.currentFilename = null
       // The lifecycle state belongs to the file, not the editor contents,
       // so clear it before saving under the new name. The server still
