@@ -19,7 +19,7 @@
     "vuetify": "3.13.0"
   },
   "devDependencies": {
-    "@babel/plugin-transform-modules-systemjs": "7.29.8",
+    "@babel/plugin-transform-modules-systemjs": "8.0.1",
     "@types/systemjs": "6.15.4",
     "@vitejs/plugin-vue": "6.0.8",
     "prettier": "3.9.6",
