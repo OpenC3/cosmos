@@ -15,6 +15,7 @@ import time
 
 from openc3.models.model import Model
 from openc3.topics.queue_topic import QueueTopic
+from openc3.utilities.json import JsonEncoder
 from openc3.utilities.store import Store
 
 
@@ -48,7 +49,14 @@ class QueueModel(Model):
     # However we need a lot of methods to enable cls.get_model and model.notify
     @classmethod
     def queue_command(
-        cls, name: str, command: str, username: str, scope: str, validate: bool = True, timeout: float = None
+        cls,
+        name: str,
+        command: str,
+        username: str,
+        scope: str,
+        validate: bool = True,
+        timeout: float = None,
+        extra: dict | None = None,
     ):
         model = cls.get_model(name=name, scope=scope)
         if not model:
@@ -68,6 +76,8 @@ class QueueModel(Model):
                 "timeout": timeout,
                 "timestamp": time.time_ns(),
             }
+            if extra is not None:
+                command_data["extra"] = json.dumps(extra, cls=JsonEncoder)
             Store.zadd(f"{scope}:{name}", {json.dumps(command_data): index})
             model.notify(kind="command")
         else:
