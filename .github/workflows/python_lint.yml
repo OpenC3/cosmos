@@ -20,6 +20,7 @@ on:
       - reopened
       - synchronize
     paths:
+      - ".github/workflows/python_lint.yml"
       - "openc3/python/**/*.py"
       - "openc3-cosmos-script-runner-api/scripts/**/*.py"
       - "openc3-cosmos-script-runner-api/test/**/*.py"
