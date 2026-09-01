@@ -7943,7 +7943,7 @@ goto("TARGET/procedures/other_script.py", 12)
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Reads in a script file that contains useful subroutines for use in your test procedure. Unlike [start](#start), load_utility disables instrumentation so the loaded file's lines are **not** highlighted in Script Runner during execution. This is the recommended way to load shared library code. If you want the loaded file's lines to be highlighted during execution (e.g. for debugging), use [start](#start) instead.
+Reads in a script file that contains useful subroutines for use in your test procedure. The file is instrumented, but instrumentation is disabled while load_utility is loading it so lines are not highlighted during the initial load. Afterwards, any functions defined in the loaded file will be highlighted when called. If you want to import subroutines but do not want their lines to be highlighted at all in Script Runner, use the standard Ruby `load` or `require` statement or Python `import` statement instead.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
