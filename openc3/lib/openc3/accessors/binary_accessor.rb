@@ -105,33 +105,68 @@ module OpenC3
     HOST_ENDIANNESS = get_host_endianness()
     # Valid endianness
     ENDIANNESS = [:BIG_ENDIAN, :LITTLE_ENDIAN]
+    NATIVE_INT_MIN = -(2**31)
+    NATIVE_INT_MAX = (2**31) - 1
 
-    def handle_read_variable_bit_size(item, _buffer)
+    def handle_read_variable_bit_size(item, buffer)
       length_value = @packet.read(item.variable_bit_size['length_item_name'], :CONVERTED)
       # length_value can be nil when reading an undersized packet where the length
       # item falls outside the buffer bounds
       raise "Length value #{item.variable_bit_size['length_item_name']} for item #{item.name} is nil" if length_value.nil?
 
       if item.array_size
-        item.array_size = (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
+        array_size = (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
+        validate_variable_bit_size(item, array_size, buffer)
+        item.array_size = array_size
       else
         if item.data_type == :INT or item.data_type == :UINT
           # QUIC encoding is currently assumed for individual variable sized integers
           # see https://datatracker.ietf.org/doc/html/rfc9000#name-variable-length-integer-enc
           case length_value
           when 0
-            item.bit_size = 6
+            bit_size = 6
           when 1
-            item.bit_size = 14
+            bit_size = 14
           when 2
-            item.bit_size = 30
+            bit_size = 30
           else
-            item.bit_size = 62
+            bit_size = 62
           end
         else
-          item.bit_size = (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
+          bit_size = (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
         end
+        validate_variable_bit_size(item, bit_size, buffer)
+        item.bit_size = bit_size
       end
+    end
+
+    # A negative bit size is always invalid. A bit size larger than the buffer is
+    # only an error when the packet does not allow short buffers, otherwise the
+    # oversized item simply reads as nil (ALLOW_SHORT).
+    def validate_variable_bit_size(item, bit_size, buffer)
+      available_bit_size = (buffer.length * 8) - item.bit_offset
+      if bit_size < 0 || (!@packet.short_buffer_allowed && (available_bit_size < 0 || bit_size > available_bit_size))
+        raise ArgumentError, "Variable bit size #{bit_size} for item #{item.name} exceeds the #{[available_bit_size, 0].max} bits available in the buffer"
+      end
+    end
+
+    # The native accessor takes C ints, so values outside that range must be
+    # rejected here rather than raising RangeError out of the extension.
+    def native_value_out_of_range?(item)
+      [item.bit_offset, item.bit_size, item.array_size].compact.any? do |value|
+        value < NATIVE_INT_MIN || value > NATIVE_INT_MAX
+      end
+    end
+
+    # Items that derive their size from the buffer (0 or negative bit_size or
+    # array_size) calculate a negative size when the buffer ends before the item
+    # starts. Such an item is simply not present in a short buffer.
+    def derived_size_negative?(item, buffer)
+      available_bit_size = (buffer.length * 8) - item.bit_offset
+      if item.array_size
+        return item.array_size <= 0 && (available_bit_size + item.array_size) < 0
+      end
+      return item.bit_size <= 0 && (available_bit_size + item.bit_size) < 0
     end
 
     def read_item(item, buffer)
@@ -145,6 +180,9 @@ module OpenC3
         structure.read(item.key, :RAW, structure_buffer)
       else
         handle_read_variable_bit_size(item, buffer) if item.variable_bit_size
+        if @packet.short_buffer_allowed && (native_value_out_of_range?(item) || derived_size_negative?(item, buffer))
+          return nil
+        end
         self.class.read_item(item, buffer)
       end
     end
@@ -288,6 +326,11 @@ module OpenC3
         self.class.write_item(parent_item, structure_buffer, buffer)
       else
         handle_write_variable_bit_size(item, value, buffer) if item.variable_bit_size
+        # Raise the normal buffer error rather than letting the native accessor
+        # raise RangeError when converting the offset or size to a C int
+        if native_value_out_of_range?(item)
+          self.class.raise_buffer_error(:write, buffer, item.data_type, item.bit_offset, item.bit_size)
+        end
         self.class.write_item(item, value, buffer)
       end
     end
@@ -800,15 +843,26 @@ module OpenC3
         lower_bound = bit_offset / 8
         upper_bound = (bit_offset + bit_size - 1) / 8
 
+        # The access starts at lower_bound, so validate it independently rather
+        # than relying on upper_bound to imply that it is safe.
+        if lower_bound < 0 || lower_bound >= buffer_length || upper_bound < lower_bound
+          return false, lower_bound, upper_bound
+        end
+
         # Sanity check buffer size
         if upper_bound >= buffer_length
           # If it's not the special case of little endian bit field then we fail and return false
+          # Note lower_bound is already known to be inside the buffer
           if !((endianness == :LITTLE_ENDIAN) &&
                  ((data_type == :INT) || (data_type == :UINT)) &&
                  # Not byte aligned with an even bit size
-                 (!((byte_aligned(bit_offset)) && (even_bit_size(bit_size)))) &&
-                 (lower_bound < buffer_length)
+                 (!((byte_aligned(bit_offset)) && (even_bit_size(bit_size))))
               )
+            result = false
+          # Little endian bitfields are accessed backwards from bit_offset, so the
+          # bytes they span must all be inside the buffer. Checking this here keeps
+          # a huge bit_size from allocating memory before it is rejected.
+          elsif (lower_bound - ((((bit_offset % 8) + bit_size - 1) / 8) + 1) + 1) < 0
             result = false
           end
         end
