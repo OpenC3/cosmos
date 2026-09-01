@@ -68,10 +68,12 @@ http:
         regex: "^(.*)$"
         replacement: "$1.html"
     # Set Content-Security-Policy header based on OPENC3_ALLOW_HTTP flag
+    # By default 'unsafe-eval' is allowed for third-party plugin compatibility.
+    # Set OPENC3_NO_EVAL to remove 'unsafe-eval' from script-src (stricter CSP).
     contentSecurityPolicy:
       headers:
         contentSecurityPolicy: >-
-          {{ if env "OPENC3_ALLOW_HTTP" }}default-src 'self' blob: data: http: https:; script-src 'self' http: https: blob:; connect-src blob: http: https: wss: ws:; style-src 'unsafe-inline' http: https:; object-src 'none'; base-uri 'self'; frame-ancestors 'self';{{ else }}default-src 'self' blob: data: https: http://localhost:* http://host.docker.internal:* http://*.local:*; script-src 'self' https: blob: http://localhost:* http://host.docker.internal:* http://*.local:*; connect-src blob: https: wss: http://localhost:* http://host.docker.internal:* http://*.local:* ws://localhost:* ws://host.docker.internal:* ws://*.local:*; style-src 'unsafe-inline' https: http://localhost:* http://host.docker.internal:* http://*.local:*; object-src 'none'; base-uri 'self'; frame-ancestors 'self';{{ end }}
+          {{ if env "OPENC3_ALLOW_HTTP" }}default-src 'self' blob: data: http: https:; script-src 'self' 'wasm-unsafe-eval'{{ if not (env "OPENC3_NO_EVAL") }} 'unsafe-eval'{{ end }} http: https: blob:; connect-src blob: http: https: wss: ws:; style-src 'unsafe-inline' http: https:; object-src 'none'; base-uri 'self'; frame-ancestors 'self';{{ else }}default-src 'self' blob: data: https: http://localhost:* http://host.docker.internal:* http://*.local:*; script-src 'self' 'wasm-unsafe-eval'{{ if not (env "OPENC3_NO_EVAL") }} 'unsafe-eval'{{ end }} https: blob: http://localhost:* http://host.docker.internal:* http://*.local:*; connect-src blob: https: wss: http://localhost:* http://host.docker.internal:* http://*.local:* ws://localhost:* ws://host.docker.internal:* ws://*.local:*; style-src 'unsafe-inline' https: http://localhost:* http://host.docker.internal:* http://*.local:*; object-src 'none'; base-uri 'self'; frame-ancestors 'self';{{ end }}
   routers:
     # Note: Priorities control router check order with highest priority evaluated first
     # Serve the BUTTON widget sandbox document WITHOUT the app Content-Security-Policy

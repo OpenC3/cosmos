@@ -135,6 +135,9 @@
 #   environment:
 #     # Allow HTTP connections in the Content Security Policy (less secure).
 #     - OPENC3_ALLOW_HTTP=1
+#     # Remove 'unsafe-eval' from Content Security Policy script-src (stricter).
+#     # Only set this if no plugins need eval() or new Function().
+#     - OPENC3_NO_EVAL=1
 
 # -------------------------------------------------------------------------
 # Log to stderr on any service
