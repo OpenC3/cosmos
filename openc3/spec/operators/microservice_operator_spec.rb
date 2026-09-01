@@ -176,7 +176,7 @@ module OpenC3
           FileUtils.rm_f([link, target])
           File.symlink(target, link)
           begin
-            expect(Logger).to receive(:error).with(/resolves outside of/)
+            expect(Logger).to receive(:error).with(/is a symlink which is not allowed/)
             convert(link)
             expect(File.exist?(target)).to be false
           ensure
@@ -198,9 +198,29 @@ module OpenC3
           FileUtils.mkdir_p(ENV['OPENC3_SECRET_FILE_DIR'])
           File.symlink(dir, "#{ENV['OPENC3_SECRET_FILE_DIR']}/sub")
           begin
-            expect(Logger).to receive(:error).with(/resolves outside of/)
+            expect(Logger).to receive(:error).with(/contains a symlinked directory/)
             convert("#{ENV['OPENC3_SECRET_FILE_DIR']}/sub/cert")
             expect(File.exist?("#{dir}/cert")).to be false
+          ensure
+            FileUtils.rm_rf([dir, ENV['OPENC3_SECRET_FILE_DIR']])
+            ENV['OPENC3_SECRET_FILE_DIR'] = saved
+          end
+        end
+
+        it "does not create directories outside the secret file dir through a symlink" do
+          dir = "/tmp/openc3_operator_spec_outside_#{Process.pid}"
+          FileUtils.rm_rf(dir)
+          FileUtils.mkdir_p(dir)
+          saved = ENV['OPENC3_SECRET_FILE_DIR']
+          ENV['OPENC3_SECRET_FILE_DIR'] = "/tmp/openc3_operator_spec_base_#{Process.pid}"
+          FileUtils.mkdir_p(ENV['OPENC3_SECRET_FILE_DIR'])
+          File.symlink(dir, "#{ENV['OPENC3_SECRET_FILE_DIR']}/sub")
+          begin
+            expect(Logger).to receive(:error).with(/contains a symlinked directory/)
+            # The 'deep' directory does not exist yet so mkdir_p would create it
+            # under the symlink target if the containment check ran afterwards
+            convert("#{ENV['OPENC3_SECRET_FILE_DIR']}/sub/deep/cert")
+            expect(File.exist?("#{dir}/deep")).to be false
           ensure
             FileUtils.rm_rf([dir, ENV['OPENC3_SECRET_FILE_DIR']])
             ENV['OPENC3_SECRET_FILE_DIR'] = saved

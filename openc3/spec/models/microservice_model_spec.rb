@@ -254,6 +254,21 @@ module OpenC3
         end
       end
 
+      it "normalizes the secret type and file path" do
+        model = MicroserviceModel.new(folder_name: "TEST", name: "DEFAULT__TYPE__NAME", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts 'SECRET env USERNAME ENV_USERNAME'
+        tf.puts 'SECRET file KEY "/tmp/DATA/../DATA/cert"'
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+        end
+        expect(model.as_json()['secrets']).to include(['ENV', 'USERNAME', 'ENV_USERNAME'],
+                                                     ['FILE', 'KEY', '/tmp/DATA/cert'])
+        tf.unlink
+      end
+
       it "rejects unknown SECRET types" do
         model = MicroserviceModel.new(folder_name: "TEST", name: "DEFAULT__TYPE__NAME", scope: "DEFAULT")
         parser = ConfigParser.new

@@ -98,27 +98,7 @@ module OpenC3
             if type == 'ENV'
               env[env_name_or_path] = secret_value
             elsif type == 'FILE'
-              begin
-                path = Secrets.validate_file_path(env_name_or_path)
-              rescue ArgumentError => error
-                Logger.error("Microservice #{microservice_name} secret #{secret_name} has an invalid file path: #{error.message}")
-                next
-              end
-              # validate_file_path is lexical, so a symlink under the secret file
-              # directory could still redirect the write outside of it. Resolve
-              # symlinks here, where the filesystem being written to is the one
-              # being checked. File.symlink? uses lstat and so does not follow the
-              # link, unlike the File.open below.
-              FileUtils.mkdir_p(File.dirname(path))
-              real_dir = File.realpath(File.dirname(path))
-              real_base = File.realpath(Secrets.secret_file_dir)
-              if File.symlink?(path) or !Secrets.path_contained?(real_base, real_dir)
-                Logger.error("Microservice #{microservice_name} secret #{secret_name} file path resolves outside of #{real_base}: #{path}")
-                next
-              end
-              File.open(path, 'wb') do |file|
-                file.write(secret_value)
-              end
+              write_secret_file(microservice_name, secret_name, env_name_or_path, secret_value)
             end
           else
             Logger.error("Microservice #{microservice_name} references unknown secret: #{secret_name}")
@@ -127,6 +107,65 @@ module OpenC3
       end
 
       return process_definition, work_dir, env, scope, container
+    end
+
+    # Writes a FILE type secret to disk. The path is first validated lexically
+    # (see Secrets.validate_file_path) and then checked against the filesystem to
+    # make sure no symlink redirects the write outside of Secrets.secret_file_dir.
+    # Both checks happen before any directory is created so that mkdir_p can
+    # never create directories outside of the base.
+    def write_secret_file(microservice_name, secret_name, env_name_or_path, secret_value)
+      begin
+        path = Secrets.validate_file_path(env_name_or_path)
+      rescue ArgumentError => error
+        Logger.error("Microservice #{microservice_name} secret #{secret_name} has an invalid file path: #{error.message}")
+        return
+      end
+
+      # validate_file_path is purely lexical, so a symlink under the secret file
+      # directory could still redirect the write outside of it. Resolve symlinks
+      # here, where the filesystem being written to is the one being checked.
+      begin
+        real_base = File.realpath(Secrets.secret_file_dir)
+      rescue SystemCallError => error
+        Logger.error("Microservice #{microservice_name} secret #{secret_name} secret file directory is unusable: #{error.message}")
+        return
+      end
+
+      # Check the deepest directory that already exists before creating anything.
+      # If an existing component is a symlink out of the base, mkdir_p would
+      # otherwise create the remaining directories outside of it.
+      dir = File.dirname(path)
+      existing = dir
+      existing = File.dirname(existing) until File.directory?(existing) or existing == File.dirname(existing)
+      begin
+        real_existing = File.realpath(existing)
+      rescue SystemCallError => error
+        Logger.error("Microservice #{microservice_name} secret #{secret_name} file path is unusable: #{error.message}")
+        return
+      end
+      unless Secrets.path_contained?(real_base, real_existing)
+        Logger.error("Microservice #{microservice_name} secret #{secret_name} file path contains a symlinked directory which resolves outside of #{real_base}: #{path}")
+        return
+      end
+
+      FileUtils.mkdir_p(dir)
+      # Re-check after creating the directories in case one was created through a
+      # symlink or the tree changed underneath us.
+      real_dir = File.realpath(dir)
+      unless Secrets.path_contained?(real_base, real_dir)
+        Logger.error("Microservice #{microservice_name} secret #{secret_name} file path resolves outside of #{real_base}: #{path}")
+        return
+      end
+      # File.symlink? uses lstat and so does not follow the link, unlike the
+      # File.open below which would write through it.
+      if File.symlink?(path)
+        Logger.error("Microservice #{microservice_name} secret #{secret_name} file path is a symlink which is not allowed: #{path}")
+        return
+      end
+      File.open(path, 'wb') do |file|
+        file.write(secret_value)
+      end
     end
 
     # Handle the detection of a new microservice model

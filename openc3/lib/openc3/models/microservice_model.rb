@@ -282,9 +282,13 @@ module OpenC3
       unless ['ENV', 'FILE'].include?(type)
         raise ConfigParser::Error.new(parser, "Unknown secret type '#{parameters[0]}' for #{keyword}. Must be ENV or FILE.")
       end
+      # Normalize in place so the stored secret matches what the operator and
+      # Secrets.setup match on, both of which compare against 'ENV' / 'FILE' and
+      # use the path exactly as given.
+      parameters[0] = type
       if type == 'FILE'
         begin
-          Secrets.validate_file_path(parameters[2])
+          parameters[2] = Secrets.validate_file_path(parameters[2])
         rescue ArgumentError => error
           raise ConfigParser::Error.new(parser, "#{keyword} #{error.message}")
         end

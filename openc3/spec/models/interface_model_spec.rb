@@ -231,6 +231,23 @@ module OpenC3
         tf.unlink
       end
 
+      it "normalizes the secret type and file path" do
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts 'SECRET env USERNAME ENV_USERNAME USERNAME'
+        tf.puts 'SECRET file KEY "/tmp/DATA/../DATA/cert" KEY'
+        tf.puts 'BRIDGE_SECRET file KEY2 "/tmp/DATA/./cert2" KEY2'
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+        end
+        expect(model.secrets).to include(['ENV', 'USERNAME', 'ENV_USERNAME', nil],
+                                        ['FILE', 'KEY', '/tmp/DATA/cert', nil],
+                                        ['FILE', 'KEY2', '/tmp/DATA/cert2', nil])
+        tf.unlink
+      end
+
       it "rejects unknown SECRET types" do
         model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
         parser = ConfigParser.new
