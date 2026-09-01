@@ -38,7 +38,7 @@ class Screen < OpenC3::TargetFile
   end
 
   def self.find(scope, target, screen)
-    name = strip_modified(screen).downcase # Filenames are lowercase
+    name = strip_modified(screen).downcase # Remove '*' that indicates modified - Filenames are lowercase
     body(scope, "#{target}/screens/#{name}.txt")
   end
 

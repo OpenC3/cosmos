@@ -28,7 +28,7 @@ class TargetFile:
 
     @classmethod
     def body(cls, scope, name):
-        name = cls.strip_modified(name) # Remove '*' that indicates modified
+        name = cls.strip_modified(name)  # Remove '*' that indicates modified
         # First try opening a potentially modified version by looking for the modified target
         if OPENC3_LOCAL_MODE:
             local_file = LocalMode.open_local_file(name, scope=scope)
