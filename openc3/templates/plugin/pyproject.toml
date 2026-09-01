@@ -1,23 +1,22 @@
 [project]
-name = "openc3-cosmos-demo"
+name = "<%= plugin_name %>"
 version = "0.0.0"
-description = "OpenC3 COSMOS Demo Plugin Python Dependencies"
-authors = [
-  {name = "OpenC3, Inc.", email = "support@openc3.com"}
-]
+description = "OpenC3 <%= plugin_name %> plugin Python dependencies"
+readme = "README.md"
 requires-python = ">=3.11"
-dependencies = [
-    "numpy>=2.4.6,<3.0",
-]
+# Add your plugin's Python dependencies here, then run `uv lock` and commit the
+# resulting uv.lock so COSMOS installs the same versions every time.
+dependencies = []
 
 [dependency-groups]
 # Development and test only. COSMOS installs plugin dependencies with --no-dev,
 # so nothing here reaches a deployed plugin. Left unpinned on purpose: a bound
-# committed here holds anyone who copies this plugin on stale tooling. The
-# committed uv.lock is what makes versions reproducible; add a pin only if you
-# need a specific one.
+# written into this template would still be here whenever you generated this
+# plugin, holding you on stale tooling. Commit the uv.lock for reproducible
+# versions, and add a pin here only if you need a specific one.
 dev = [
     "openc3",
+    "pytest",
     "ruff",
     "ty",
 ]
@@ -30,7 +29,7 @@ package = false
 
 # Keep the dev group out of a plain `uv sync` so a local install matches what
 # COSMOS installs (it passes --no-dev). Use `uv sync --group dev` while
-# developing, or `uv run --group dev ruff check .`.
+# developing, or `uv run --group dev pytest`.
 default-groups = []
 
 # Uncomment to install dependencies from a private PyPI repository.
@@ -70,7 +69,7 @@ default-groups = []
 extra-paths = ["lib"]
 
 [tool.ty.rules]
-# These are artifacts of how COSMOS ships its Python API, not mistakes in the
+# These are artifacts of how COSMOS ships its Python API, not mistakes in your
 # plugin, so they are off rather than "warn": ty exits non-zero on a warning, so
 # "warn" would fail the check just as an error does. Delete a line to opt back
 # in, or silence a single case with `# ty: ignore[rule-name]`.
@@ -90,29 +89,20 @@ unknown-argument = "ignore"
 [tool.ruff]
 line-length = 120
 # target-version is intentionally absent: ruff infers it from the project's
-# requires-python, so there is one place to bump the minimum. ty does the same.
+# requires-python above, so there is one place to bump the minimum. ty does the
+# same, which is why [tool.ty.environment] sets no python-version either.
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "W", "C4", "SIM"]
 ignore = [
     "E402",   # Module level import not at top of file
-    "E501",   # Line too long (handled by formatter)
+    "E501",   # Line too long (handled by the formatter)
     "F402",   # Import shadowed by loop var
-    "F403",   # Star imports used
+    "F403",   # Star imports used - the documented way to import the COSMOS API
     "F405",   # Name may be undefined due to star import
     "N815",   # Mixed case variable in class scope
-    "SIM108", # Use ternary operator
 ]
-fixable = ["ALL"]
-
-[tool.ruff.lint.pycodestyle]
-max-line-length = 120
 
 [tool.ruff.lint.isort]
 known-first-party = ["openc3"]
 lines-after-imports = 2
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-line-ending = "auto"

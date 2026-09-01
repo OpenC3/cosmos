@@ -373,6 +373,7 @@ module OpenC3
         @temp_dir = Dir.mktmpdir
         allow(ENV).to receive(:[]).and_call_original
         allow(ENV).to receive(:[]).with('PYTHONUSERBASE').and_return(@temp_dir)
+        allow(ENV).to receive(:[]).with('UV_ALLOW_INSECURE_HOST').and_return(nil)
         allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
         allow(ENV).to receive(:fetch).and_call_original
         allow(ENV).to receive(:fetch).with('PYPI_URL', nil).and_return(nil)
@@ -427,7 +428,7 @@ module OpenC3
         allow(PythonPackageModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return("https://custom.pypi.example.com")
 
         expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **_kw|
-          expect(cmd).to include("-i")
+          expect(cmd).to include("--default-index")
           expect(cmd).to include("https://custom.pypi.example.com/simple")
           process_double
         end

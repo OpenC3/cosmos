@@ -604,11 +604,12 @@ module OpenC3
       PypiUrl.validate(pypi_url)
     end
 
-    # Build the argv array for pypi index and trusted-host arguments.
+    # Build the argv array of pypi index arguments. Kept as a delegate so
+    # callers that already reference PluginModel keep working; the logic lives
+    # in PypiUrl because PythonPackageModel needs it too and must not have to
+    # require this file.
     def self.build_pypi_args(pypi_url)
-      args = ["-i", pypi_url]
-      args += ["--trusted-host", URI.parse(pypi_url).host] unless ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
-      args
+      PypiUrl.build_args(pypi_url)
     end
 
     # Build a sanitized venv directory name from scope and plugin name.

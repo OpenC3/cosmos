@@ -22,6 +22,12 @@
 PLUGIN_VENV_NAME="$1"
 GEM_PATH="$2"
 shift 2
+# Index arguments built by PypiUrl.build_args: --default-index (the PyPI URL
+# from Admin Console -> Settings) and, when the deployment opts in,
+# --allow-insecure-host. Only --allow-insecure-host is load bearing on the
+# `uv sync --frozen` path below: a frozen sync never resolves, so uv installs
+# from the registry and wheel URLs already recorded in uv.lock and the default
+# index is unused. On the `uv pip` fallback paths both matter.
 UV_ARGS="$@"
 
 if [ -z "$PLUGIN_VENV_NAME" ] || [ -z "$GEM_PATH" ]; then

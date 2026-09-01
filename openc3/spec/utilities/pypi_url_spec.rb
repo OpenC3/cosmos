@@ -69,6 +69,46 @@ module OpenC3
       end
     end
 
+    describe "self.build_args" do
+      before(:each) do
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with(PypiUrl::INSECURE_HOST_ENV).and_return(nil)
+        allow(ENV).to receive(:[]).with(PypiUrl::DEPRECATED_INSECURE_HOST_ENV).and_return(nil)
+      end
+
+      # uv deprecated -i/--index-url in favor of --default-index on both
+      # `uv sync` and `uv pip install`, and every COSMOS install path runs uv
+      # (openc3/bin/pipinstall is a uv pip install wrapper).
+      it "uses the non deprecated uv index option" do
+        expect(PypiUrl.build_args("https://pypi.org/simple")).to eql ["--default-index", "https://pypi.org/simple"]
+      end
+
+      it "does not allow an insecure host by default" do
+        expect(PypiUrl.build_args("https://private.example.com/simple")).to_not include "--allow-insecure-host"
+      end
+
+      # --trusted-host is only an undocumented uv alias, so the real uv option
+      # is used instead.
+      it "allows an insecure host when opted in" do
+        allow(ENV).to receive(:[]).with(PypiUrl::INSECURE_HOST_ENV).and_return('1')
+        expect(PypiUrl.build_args("https://private.example.com/simple")).to eql \
+          ["--default-index", "https://private.example.com/simple", "--allow-insecure-host", "private.example.com"]
+      end
+
+      # The variable was named for pip's --trusted-host before every install
+      # path moved to uv. Existing helm values and compose files still set it.
+      it "honors the deprecated environment variable name" do
+        allow(ENV).to receive(:[]).with(PypiUrl::DEPRECATED_INSECURE_HOST_ENV).and_return('1')
+        expect(PypiUrl.build_args("https://private.example.com/simple")).to include "--allow-insecure-host"
+      end
+
+      it "passes the host without the port or path" do
+        allow(ENV).to receive(:[]).with(PypiUrl::INSECURE_HOST_ENV).and_return('1')
+        args = PypiUrl.build_args("https://private.example.com:8443/simple")
+        expect(args.last).to eql "private.example.com"
+      end
+    end
+
     describe "DEFAULT" do
       it "is the public pypi simple index" do
         expect(PypiUrl::DEFAULT).to eql "https://pypi.org/simple"
