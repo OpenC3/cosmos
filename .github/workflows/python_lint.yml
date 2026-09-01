@@ -56,6 +56,37 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
         working-directory: openc3/python
+      - name: Audit fixable Python vulnerabilities
+        shell: bash
+        run: |
+          audit_status=0
+          uv audit \
+            --frozen \
+            --output-format json \
+            --preview-features audit-command \
+            --preview-features json-output \
+            > uv-audit.json || audit_status=$?
+
+          # Exit 1 means vulnerabilities were found. Higher exit codes indicate
+          # that the audit itself failed, such as a network or configuration error.
+          if (( audit_status > 1 )); then
+            exit "$audit_status"
+          fi
+
+          jq '
+            .vulnerabilities |= map(select(.fix_versions | length > 0))
+            | .summary.vulnerabilities = (.vulnerabilities | length)
+            | .adverse_statuses = []
+            | .summary.adverse_statuses = 0
+          ' uv-audit.json > uv-audit-fixable.json
+
+          cat uv-audit-fixable.json
+
+          if jq -e '.vulnerabilities | length > 0' uv-audit-fixable.json > /dev/null; then
+            echo "::error::Dependencies with fixable vulnerabilities were found"
+            exit 1
+          fi
+        working-directory: openc3/python
       - name: Run ruff check on openc3/python
         run: uv run --frozen ruff check --output-format=github openc3
         working-directory: openc3/python
