@@ -492,7 +492,7 @@ export default {
     saveAsFilename: function (filename) {
       Api.put(`/openc3-api/tables/${this.filename}/save-as/${filename}`).then(
         (response) => {
-          this.filename = filename
+          this.filename = filename.replace(/\*$/, '')
           this.getDefinition(this.definitionFilename)
         },
       )
