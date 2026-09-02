@@ -17,16 +17,12 @@ import unittest
 from io import StringIO
 from unittest.mock import patch
 
-import openc3.utilities.logger
 from openc3.utilities.logger import Logger, default_level
 
 
 class TestDefaultLevel(unittest.TestCase):
-    def setUp(self):
-        openc3.utilities.logger.warned_bad_level = False
-
     def set_env_level(self, value):
-        return patch.object(openc3.utilities.logger, "OPENC3_LOG_LEVEL", value)
+        return patch("openc3.utilities.logger.OPENC3_LOG_LEVEL", value)
 
     def test_returns_info_if_not_set(self):
         with self.set_env_level(""):
@@ -53,7 +49,8 @@ class TestDefaultLevel(unittest.TestCase):
         orig = sys.stderr
         sys.stderr = StringIO()
         try:
-            with self.set_env_level("WARNING"):
+            # patch restores warned_bad_level, so this test can't leak into others
+            with patch("openc3.utilities.logger.warned_bad_level", False), self.set_env_level("WARNING"):
                 self.assertEqual(default_level(), Logger.INFO)
                 self.assertEqual(default_level(), Logger.INFO)
             stderr = sys.stderr.getvalue()
@@ -68,11 +65,11 @@ class TestLogger(unittest.TestCase):
         Logger.stdout = True
 
     def test_initializes_the_level_to_info(self):
-        with patch.object(openc3.utilities.logger, "OPENC3_LOG_LEVEL", ""):
+        with patch("openc3.utilities.logger.OPENC3_LOG_LEVEL", ""):
             self.assertEqual(Logger().level, Logger.INFO)
 
     def test_initializes_the_level_from_openc3_log_level(self):
-        with patch.object(openc3.utilities.logger, "OPENC3_LOG_LEVEL", "DEBUG"):
+        with patch("openc3.utilities.logger.OPENC3_LOG_LEVEL", "DEBUG"):
             self.assertEqual(Logger().level, Logger.DEBUG)
 
     def test_gets_and_set_the_level(self):
