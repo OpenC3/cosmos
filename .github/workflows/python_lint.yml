@@ -38,6 +38,10 @@ jobs:
   ruff:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required to publish to Security > Code scanning
+      security-events: write
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -57,37 +61,45 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
         working-directory: openc3/python
-      - name: Audit fixable Python vulnerabilities
+      # uv emits SARIF directly, so this needs no converter, and its
+      # artifactLocation is already repo-relative to uv.lock. Everything found
+      # is published, including advisories with no fix yet, so the Security tab
+      # shows the whole picture; only the fixable ones gate the build.
+      - name: Audit Python dependencies
         shell: bash
         run: |
           audit_status=0
           uv audit \
             --frozen \
-            --output-format json \
+            --output-format sarif \
             --preview-features audit-command \
-            --preview-features json-output \
-            > uv-audit.json || audit_status=$?
+            > uv-audit.sarif || audit_status=$?
 
-          # Exit 1 means vulnerabilities were found. Higher exit codes indicate
-          # that the audit itself failed, such as a network or configuration error.
+          # Exit 1 means vulnerabilities were found, which the gate step below
+          # decides on. Higher exit codes mean the audit itself failed, such as
+          # a network or configuration error, and must not look like a pass.
           if (( audit_status > 1 )); then
             exit "$audit_status"
           fi
-
-          jq '
-            .vulnerabilities |= map(select(.fix_versions | length > 0))
-            | .summary.vulnerabilities = (.vulnerabilities | length)
-            | .adverse_statuses = []
-            | .summary.adverse_statuses = 0
-          ' uv-audit.json > uv-audit-fixable.json
-
-          cat uv-audit-fixable.json
-
-          if jq -e '.vulnerabilities | length > 0' uv-audit-fixable.json > /dev/null; then
-            echo "::error::Dependencies with fixable vulnerabilities were found"
-            exit 1
-          fi
         working-directory: openc3/python
+
+      - name: Upload audit SARIF to code scanning
+        # A pull request from a fork gets a read-only token and cannot write
+        # security-events, so tolerate the upload failing there rather than
+        # failing the job for every outside contributor
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
+        with:
+          sarif_file: openc3/python/uv-audit.sarif
+          category: uv-audit
+
+      - name: Upload audit SARIF as an artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: uv-audit-sarif
+          path: openc3/python/uv-audit.sarif
+          retention-days: 14
+
       - name: Run ruff check on openc3/python
         run: uv run --frozen ruff check --output-format=github openc3
         working-directory: openc3/python
@@ -99,4 +111,25 @@ jobs:
         working-directory: openc3/python
       - name: Run ruff format check on script-runner-api scripts
         run: uv run --frozen ruff format --check ../../openc3-cosmos-script-runner-api/scripts
+        working-directory: openc3/python
+
+      # Last so a vulnerable dependency does not stop ruff from reporting in
+      # the same run. Only advisories with a fix version fail the build: there
+      # is nothing to do about the rest, and failing on them would mean the job
+      # stays red no matter what this repository changes.
+      - name: Fail on fixable vulnerabilities
+        shell: bash
+        run: |
+          fixable=$(jq -r '
+            .runs[0].results[]?
+            | select(.properties["uv/fixVersions"] | length > 0)
+            | "\(.properties["uv/package"]) \(.properties["uv/version"])  \(.properties["uv/displayId"])  fix=\(.properties["uv/fixVersions"] | join(","))"
+          ' uv-audit.sarif)
+
+          if [ -n "$fixable" ]; then
+            echo "$fixable"
+            echo "::error::Dependencies with fixable vulnerabilities were found"
+            exit 1
+          fi
+          echo "No fixable vulnerabilities found"
         working-directory: openc3/python
