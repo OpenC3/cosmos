@@ -166,15 +166,15 @@ module OpenC3
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
-    def self.get(name:, scope: nil)
+    def self.get(name:, scope: nil) # NOSONAR - scope: is part of the caller-facing signature
       super(PRIMARY_KEY, name: name)
     end
 
-    def self.names(scope: nil)
+    def self.names(scope: nil) # NOSONAR - scope: is part of the caller-facing signature
       super(PRIMARY_KEY)
     end
 
-    def self.all(scope: nil)
+    def self.all(scope: nil) # NOSONAR - scope: is part of the caller-facing signature
       super(PRIMARY_KEY)
     end
     # END NOTE

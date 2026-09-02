@@ -436,7 +436,7 @@ module OpenC3
 
     describe "scan_plugin_dir" do
       it "should scan a plugin dir" do
-        test_gems, _ = setup_plugin_test()
+        test_gems = setup_plugin_test().first
         full_path = File.dirname(test_gems[0])
         gems, plugin_instance = LocalMode.scan_plugin_dir(full_path)
         expect(gems.length).to be 1

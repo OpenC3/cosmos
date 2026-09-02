@@ -380,7 +380,7 @@ module OpenC3
 
         ConfigParser.message_callback = msg_callback
         ConfigParser.progress_callback = done_callback
-        @cp.parse_file(tf.path) { |k, p| }
+        @cp.parse_file(tf.path) { |_keyword, _params| }
         tf.unlink
       end
     end

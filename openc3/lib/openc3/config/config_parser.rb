@@ -353,6 +353,8 @@ module OpenC3
           return false
         when '', 'NIL', 'NULL'
           return nil
+        else
+          # All other strings are returned unmodified below
         end
       end
       return value
@@ -410,11 +412,12 @@ module OpenC3
           return Float::INFINITY
         when 'NEG_INFINITY'
           return -Float::INFINITY
+        else
+          # NOTE: The else case does not raise because of the following scenario:
+          # If the value type is a UINT but they have a WRITE_CONVERSION that takes a string
+          # then the default value will be a string. In that case we just want to return the string.
+          # For example, the IP_ADDRESS parameter in the TIME_OFFSET command in the Demo plugin.
         end
-        # NOTE: No else case because of the following scenario:
-        # If the value type is a UINT but they have a WRITE_CONVERSION that takes a string
-        # then the default value will be a string. In that case we just want to return the string.
-        # For example, the IP_ADDRESS parameter in the TIME_OFFSET command in the Demo plugin.
       end
       return value
     end
@@ -526,8 +529,8 @@ module OpenC3
         while true
           @line_number += 1
 
-          if @@progress_callback && ((@line_number % 10) == 0)
-            @@progress_callback.call(io.pos / size) if size > 0.0
+          if @@progress_callback && ((@line_number % 10) == 0) && size > 0.0
+            @@progress_callback.call(io.pos / size)
           end
 
           begin
@@ -618,10 +621,9 @@ module OpenC3
               # KEYWORD PARAM #This is a comment
               # But still process Ruby string interpolations such as:
               # KEYWORD PARAM #{var}
-              if (string.length > 0) && (string[0] == '#')
-                if !((string.length > 1) && (string[1] == '{'))
-                  break
-                end
+              if (string.length > 0) && (string[0] == '#') &&
+                 !((string.length > 1) && (string[1] == '{'))
+                break
               end
 
               if remove_quotes

@@ -99,7 +99,7 @@ module OpenC3
 
       Dir.each_child(path) do |filename|
         full_path = "#{path}/#{filename}"
-        if not File.directory?(full_path)
+        unless File.directory?(full_path)
           if File.extname(filename) == '.gem'
             gems << full_path
           elsif filename == 'plugin_instance.json'
@@ -283,7 +283,7 @@ module OpenC3
       return if DEFAULT_PLUGINS.include?(gem_name)
       puts "Updating local plugin files: #{full_folder_path}"
       FileUtils.mkdir_p(full_folder_path)
-      gems, _ = scan_plugin_dir(full_folder_path)
+      gems = scan_plugin_dir(full_folder_path).first
       gems.each do |gem|
         File.delete(gem)
       end
@@ -377,7 +377,7 @@ module OpenC3
       end
     end
 
-    def self.put_target_file(path, io_or_string, scope:)
+    def self.put_target_file(path, io_or_string, scope:) # NOSONAR - scope: is part of the caller-facing signature
       full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{path}"
       return unless File.expand_path(full_folder_path).start_with?(OPENC3_LOCAL_MODE_PATH)
       FileUtils.mkdir_p(File.dirname(full_folder_path))
