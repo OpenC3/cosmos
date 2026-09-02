@@ -1978,7 +1978,7 @@ export default {
     // Or when a user hits Go
     fileNameChanged(filename) {
       // Strip the '*' which indicates modified
-      filename = filename ? filename.replace(/\*$/, '') : filename
+      filename = filename.replace(/\*$/, '')
       this.editor.setValue(this.files[filename].content)
       this.restoreBreakpoints(filename)
       this.markLine(this.files[filename].lineNo, this.state)
@@ -3352,7 +3352,7 @@ export default {
       this.saveAllowed = true
       this.files = {} // Clear the cached file list
       // Strip the '*' which indicates a file is modified on the server
-      let newFilename = file.name ? file.name.replace(/\*$/, '') : file.name
+      let newFilename = file.name.replace(/\*$/, '')
       if (local === false) {
         // We only need to unlock if the file is different
         if (this.filename !== newFilename) {
@@ -3551,7 +3551,7 @@ export default {
       this.showSaveAs = true
     },
     async saveAsFilename(filename) {
-      this.filename = filename ? filename.replace(/\*$/, '') : filename
+      this.filename = filename.replace(/\*$/, '')
       this.currentFilename = null
       // The lifecycle state belongs to the file, not the editor contents,
       // so clear it before saving under the new name. The server still

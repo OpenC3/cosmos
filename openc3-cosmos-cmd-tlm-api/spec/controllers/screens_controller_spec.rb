@@ -96,23 +96,13 @@ RSpec.describe ScreensController, :type => :controller do
 
   describe "show" do
     it "returns 404 if not found" do
-      class Screen < OpenC3::TargetFile
-        def self.find(scope, target, screen)
-          # Override Screen.find to return nothing
-          nil
-        end
-      end
+      allow(Screen).to receive(:find).and_return(nil)
       get :show, params: { scope: 'DEFAULT', target: 'INST', screen: 'TEST' }
       expect(response).to have_http_status(:not_found)
     end
 
     it "returns the screen" do
-      class Screen < OpenC3::TargetFile
-        def self.find(scope, target, screen)
-          # Override Screen.find to return a screen
-          "SCREEN"
-        end
-      end
+      allow(Screen).to receive(:find).and_return("SCREEN")
       get :show, params: { scope: 'DEFAULT', target: 'INST', screen: 'TEST' }
       expect(response).to have_http_status(:ok)
       expect(response.body).to eql 'SCREEN'
@@ -121,22 +111,13 @@ RSpec.describe ScreensController, :type => :controller do
 
   describe "destroy" do
     it "returns ok" do
-      class Screen < OpenC3::TargetFile
-        def self.destroy(scope, target, screen)
-          # Override Screen.destroy to do nothing
-        end
-      end
+      allow(Screen).to receive(:destroy).and_return(nil)
       delete :destroy, params: { scope: 'DEFAULT', target: 'INST', screen: 'TEST' }
       expect(response).to have_http_status(:ok)
     end
 
     it "handles exceptions" do
-      class Screen < OpenC3::TargetFile
-        def self.destroy(scope, target, screen)
-          # Override Screen.destroy to raise an exception
-          raise 'whoops'
-        end
-      end
+      allow(Screen).to receive(:destroy).and_raise('whoops')
       delete :destroy, params: { scope: 'DEFAULT', target: 'INST', screen: 'TEST' }
       expect(response).to have_http_status(:error)
       ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
