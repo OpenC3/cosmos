@@ -17,7 +17,50 @@ import unittest
 from io import StringIO
 from unittest.mock import patch
 
-from openc3.utilities.logger import Logger
+import openc3.utilities.logger
+from openc3.utilities.logger import Logger, default_level
+
+
+class TestDefaultLevel(unittest.TestCase):
+    def setUp(self):
+        openc3.utilities.logger.warned_bad_level = False
+
+    def set_env_level(self, value):
+        return patch.object(openc3.utilities.logger, "OPENC3_LOG_LEVEL", value)
+
+    def test_returns_info_if_not_set(self):
+        with self.set_env_level(""):
+            self.assertEqual(default_level(), Logger.INFO)
+
+    def test_accepts_every_level_name(self):
+        for name, level in [
+            ("DEBUG", Logger.DEBUG),
+            ("INFO", Logger.INFO),
+            ("WARN", Logger.WARN),
+            ("ERROR", Logger.ERROR),
+            ("FATAL", Logger.FATAL),
+        ]:
+            with self.set_env_level(name):
+                self.assertEqual(default_level(), level)
+
+    def test_ignores_case_and_surrounding_whitespace(self):
+        with self.set_env_level("debug"):
+            self.assertEqual(default_level(), Logger.DEBUG)
+        with self.set_env_level(" warn "):
+            self.assertEqual(default_level(), Logger.WARN)
+
+    def test_warns_once_and_returns_info_for_an_unknown_level(self):
+        orig = sys.stderr
+        sys.stderr = StringIO()
+        try:
+            with self.set_env_level("WARNING"):
+                self.assertEqual(default_level(), Logger.INFO)
+                self.assertEqual(default_level(), Logger.INFO)
+            stderr = sys.stderr.getvalue()
+        finally:
+            sys.stderr = orig
+        self.assertEqual(stderr.count("OPENC3_LOG_LEVEL 'WARNING'"), 1)
+        self.assertIn("DEBUG, INFO, WARN, ERROR, FATAL", stderr)
 
 
 class TestLogger(unittest.TestCase):
@@ -25,7 +68,12 @@ class TestLogger(unittest.TestCase):
         Logger.stdout = True
 
     def test_initializes_the_level_to_info(self):
-        self.assertEqual(Logger().level, Logger.INFO)
+        with patch.object(openc3.utilities.logger, "OPENC3_LOG_LEVEL", ""):
+            self.assertEqual(Logger().level, Logger.INFO)
+
+    def test_initializes_the_level_from_openc3_log_level(self):
+        with patch.object(openc3.utilities.logger, "OPENC3_LOG_LEVEL", "DEBUG"):
+            self.assertEqual(Logger().level, Logger.DEBUG)
 
     def test_gets_and_set_the_level(self):
         Logger.level = Logger.DEBUG
