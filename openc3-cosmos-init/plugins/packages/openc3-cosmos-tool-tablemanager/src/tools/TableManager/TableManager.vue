@@ -447,7 +447,7 @@ export default {
       } else {
         this.unlockFile() // first unlock what was just being edited
         // Strip the '*' which indicates a file is modified on the server
-        this.filename = file.name ? file.name.replace(/\*$/, '') : file.name
+        this.filename = file.name.replace(/\*$/, '')
         this.fileModified = ''
         this.lockedBy = locked
         this.getDefinition()

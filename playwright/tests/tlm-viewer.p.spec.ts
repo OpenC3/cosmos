@@ -253,6 +253,12 @@ test('creates new blank screen', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).toContainText(
     'Screen ADCS already exists!',
   )
+  // Check a name ending in '*' is rejected since '*' marks a modified file
+  await page.locator('[data-test="new-screen-name"] input').fill('adcs2*')
+  await expect(page.locator('.v-dialog')).toContainText(
+    "adcs2* is not a valid filename. Must not end in '*'.",
+  )
+  await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled()
   // Create the screen name as upcase because OpenC3 upcases the name
   const screen = 'SCREEN' + Math.floor(Math.random() * 10000)
   await page.locator('[data-test="new-screen-name"] input').fill(screen)
