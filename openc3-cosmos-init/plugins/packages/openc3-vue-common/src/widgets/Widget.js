@@ -177,6 +177,54 @@ export default {
     }
   },
   methods: {
+    // Build an error for something wrong with the screen definition. Callers
+    // throw it: Openc3Screen's errorCaptured hook catches the throw and records
+    // it against the screen definition line that created this widget.
+    screenError(keyword, message, usage = '') {
+      return new ConfigParserError(
+        {
+          line: this.line,
+          lineNumber: this.lineNumber,
+          keyword: keyword,
+          parameters: this.parameters,
+        },
+        message,
+        usage,
+        'https://docs.openc3.com/docs/configuration',
+      )
+    },
+    // Report an error that happens after the widget is built, i.e. from a
+    // websocket callback or a promise. These can't throw: errorCaptured only
+    // sees throws made from Vue's own call stack, so anything thrown from an
+    // async callback is lost (or worse, tears down an unrelated caller).
+    // Emit instead - the listener bubbles up through the layout widgets, which
+    // pass it down with v-bind="listeners", to Openc3Screen.
+    emitScreenError(message, options = {}) {
+      // Deliberately not called 'error': undeclared on* listeners get bound to
+      // the root DOM element, and a DOM error event (a broken img, say) would
+      // otherwise be reported as a screen error.
+      this.$emit('screen-error', {
+        type: options.type || 'error',
+        message: message,
+        line: this.line,
+        lineNumber: this.lineNumber,
+        // Transient errors are cleared the next time the screen successfully
+        // talks to the backend rather than sticking around forever
+        transient: options.transient || false,
+        time: new Date().getTime(),
+      })
+    },
+    // Ask the screen to check these TARGET__PACKET__ITEM__TYPE ids actually
+    // exist. Widgets that emit 'addItem' get this for free because the screen
+    // polls them, but ones that stream their own data (the graphs) never told
+    // anybody about their items, so a typo'd item just silently never plotted.
+    checkScreenItems(valueIds) {
+      this.$emit('screen-check-items', {
+        valueIds: valueIds,
+        line: this.line,
+        lineNumber: this.lineNumber,
+      })
+    },
     applyStyleSetting(setting) {
       switch (setting[0]) {
         case 'TEXTALIGN':
@@ -233,33 +281,24 @@ export default {
       }
     },
     verifyNumParams(keyword, min_num_params, max_num_params, usage = '') {
-      let parser = {
-        line: this.line,
-        lineNumber: this.lineNumber,
-        keyword: keyword,
-        parameters: this.parameters,
-      }
-
       // This syntax works with 0 because each doesn't return any values
       // for a backwards range
       for (let index = 1; index <= min_num_params; index++) {
         // If the parameter is nil (0 based) then we have a problem
         if (this.parameters[index - 1] === undefined) {
-          throw new ConfigParserError(
-            parser,
+          throw this.screenError(
+            keyword,
             `Not enough parameters for ${keyword}.`,
             usage,
-            'https://docs.openc3.com/docs/configuration',
           )
         }
       }
       // If they pass null for max_params we don't check for a maximum number
       if (max_num_params !== null && this.parameters.length > max_num_params) {
-        throw new ConfigParserError(
-          parser,
+        throw this.screenError(
+          keyword,
           `Too many parameters for ${keyword}.`,
           usage,
-          'https://docs.openc3.com/docs/configuration',
         )
       }
     },
