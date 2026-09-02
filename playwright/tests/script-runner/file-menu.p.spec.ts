@@ -210,6 +210,75 @@ test('handles File Save overwrite', async ({ page, utils }) => {
   await page.locator('button:has-text("Delete")').click()
 })
 
+// TargetFile.all marks a file with a trailing '*' when a targets_modified copy
+// exists alongside the plugin's original. The marker is display-only -- the
+// server strips it back off in TargetFile.body -- so it must never reach the
+// Filename field. TargetFile.create does NOT strip it, so a marker that gets
+// submitted writes a literal '*' object into the bucket that body() then
+// resolves to the unmarked file, silently hiding the saved data.
+test('strips the modified marker on Save As', async ({ page, utils }) => {
+  const original = 'INST/procedures/throughput_test.rb'
+
+  // throughput_test.rb is used by no other spec, and deleting it at the end
+  // removes only the targets_modified copy, restoring the plugin's original.
+  await page.goto(`/tools/scriptrunner?file=${original}`, {
+    waitUntil: 'domcontentloaded',
+  })
+  await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
+  await expect(page.locator('#sr-controls')).toContainText(original)
+
+  // Write a comment to mark the file as modified, then save it so the marker appears in the listing.
+  await page.locator('textarea').fill('# comment2')
+  if (process.platform === 'darwin') {
+    await page.locator('textarea').press('Meta+S') // Ctrl-S save
+  } else {
+    await page.locator('textarea').press('Control+S') // Ctrl-S save
+  }
+  // Wait for save to complete before continuing
+  await expect(page.getByText('Saving...')).not.toBeVisible()
+
+  await page.locator('[data-test=script-runner-file]').click()
+  await page.locator('text=Save As...').click()
+  // The dialog builds its tree from the listing on created(), so wait for every
+  // target to finish loading before reading the field or the tree.
+  await expect(page.getByRole('progressbar')).not.toBeVisible()
+  await expect(
+    page.locator('[data-test=file-open-save-filename] input'),
+  ).toHaveValue(original)
+
+  await page
+    .locator('[data-test=file-open-save-search] input')
+    .fill('throughput_test.rb')
+  // Precondition: without the marker actually present in the tree this test
+  // would pass no matter what the dialog does with it.
+  const marked = page.getByText('throughput_test.rb*', { exact: true })
+  await expect(marked).toBeVisible()
+
+  // Selecting the marked file must fill in the clean path. toHaveValue is an
+  // exact match, so a trailing '*' fails here.
+  await marked.click()
+  await expect(
+    page.locator('[data-test=file-open-save-filename] input'),
+  ).toHaveValue(original)
+
+  // And the overwrite confirmation quotes the clean path, not the marked one
+  await page.locator('[data-test=file-open-save-submit-btn]').click()
+  await expect(page.getByText(`overwrite: ${original}`)).toBeVisible()
+  await page.locator('button:has-text("Overwrite")').click()
+
+  await expect(
+    page.getByRole('dialog').filter({ hasText: 'File Save As...' }),
+  ).not.toBeVisible()
+  await expect(page.getByText('Saving...')).not.toBeVisible()
+  await expect(page.locator('#sr-controls')).toContainText(original)
+
+  // Delete the targets_modified copy so the plugin's original is restored
+  await page.locator('[data-test=script-runner-file]').click()
+  await page.locator('text=Delete File').click()
+  await expect(page.locator('text=Permanently delete file')).toBeVisible()
+  await page.locator('button:has-text("Delete")').click()
+})
+
 test('handles Download', async ({ page, utils }) => {
   await page.locator('textarea').fill('download this')
   await page.locator('[data-test=script-runner-file]').click()
