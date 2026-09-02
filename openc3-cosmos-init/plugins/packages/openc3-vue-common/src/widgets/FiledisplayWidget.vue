@@ -40,7 +40,6 @@ import 'ace-builds/src-min-noconflict/mode-ruby'
 import 'ace-builds/src-min-noconflict/mode-python'
 import 'ace-builds/src-min-noconflict/mode-text'
 import 'ace-builds/src-min-noconflict/theme-twilight'
-import { Api } from '@openc3/js-common/services'
 import Widget from './Widget'
 
 export default {
@@ -124,31 +123,7 @@ export default {
       }
       this.loading = true
       try {
-        const scope = window.openc3Scope || 'DEFAULT'
-        // Try targets_modified first, then fall back to targets
-        // Use Ignore-Errors header to suppress toast for expected 404/500
-        let objectPath = `${scope}/targets_modified/${this.filePath}`
-        let response = await Api.get(
-          `/openc3-api/storage/download_file/${encodeURIComponent(objectPath)}`,
-          {
-            params: { bucket: 'OPENC3_CONFIG_BUCKET' },
-            headers: { 'Ignore-Errors': '404,500' },
-          },
-        ).catch(() => null)
-
-        if (!response || response.status === 404) {
-          objectPath = `${scope}/targets/${this.filePath}`
-          response = await Api.get(
-            `/openc3-api/storage/download_file/${encodeURIComponent(objectPath)}`,
-            { params: { bucket: 'OPENC3_CONFIG_BUCKET' } },
-          )
-        }
-
-        if (response?.data?.contents) {
-          this.fileContent = atob(response.data.contents)
-        } else {
-          this.fileContent = 'Error: Could not load file'
-        }
+        this.fileContent = await this.fetchTargetFile(this.filePath)
       } catch (error) {
         this.fileContent = `Error: ${error.message || error}`
       } finally {

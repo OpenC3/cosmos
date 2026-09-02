@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -16,8 +16,10 @@
 */
 
 import { Api } from '@openc3/js-common/services'
+import TargetFiles from './TargetFiles'
 
 export default {
+  mixins: [TargetFiles],
   props: {
     target: {
       type: String,
@@ -26,27 +28,14 @@ export default {
   },
   methods: {
     getPresignedUrl: async function (fileName) {
-      let targets = 'targets_modified'
-      await Api.get(
-        `/openc3-api/storage/exists/${encodeURIComponent(
-          `${window.openc3Scope}/${targets}/${this.target}/public/${fileName}`,
-        )}?bucket=OPENC3_CONFIG_BUCKET`,
-        {
-          headers: {
-            Accept: 'application/json',
-            // Since we're just checking for existence, 404 is possible so ignore it
-            'Ignore-Errors': '404',
-          },
-        },
-      ).catch((error) => {
-        // If response fails then 'targets_modified' doesn't exist
-        // so switch to 'targets' and then just try to get the URL
-        // If the file doesn't exist it will throw a 404 when it is actually retrieved
-        targets = 'targets'
-      })
-      let response = await Api.get(
+      // targetFileRoot tells us where the image lives without probing for it.
+      // If the file doesn't exist at all we get a 404 when actually retrieving
+      // it, which is a real error worth seeing in the console.
+      const filePath = `${this.target}/public/${fileName}`
+      const targets = await this.targetFileRoot(filePath)
+      const response = await Api.get(
         `/openc3-api/storage/download/${encodeURIComponent(
-          `${window.openc3Scope}/${targets}/${this.target}/public/${fileName}`,
+          `${window.openc3Scope}/${targets}/${filePath}`,
         )}?bucket=OPENC3_CONFIG_BUCKET`,
       )
       return response.data.url
