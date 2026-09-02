@@ -20,7 +20,8 @@ on:
       - reopened
       - synchronize
     paths:
-      - "openc3-cosmos-init/plugins/packages/**"
+      - "openc3-cosmos-init/plugins/**"
+      - "playwright/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -31,534 +32,110 @@ permissions:
   contents: read
 
 jobs:
-  changes:
+  eslint:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
-    outputs:
-      plugins: ${{ steps.filter.outputs.plugins }}
-      demo: ${{ steps.filter.outputs.demo }}
-      admin: ${{ steps.filter.outputs.admin }}
-      bucketexplorer: ${{ steps.filter.outputs.bucketexplorer }}
-      cmdsender: ${{ steps.filter.outputs.cmdsender }}
-      cmdtlmserver: ${{ steps.filter.outputs.cmdtlmserver }}
-      dataextractor: ${{ steps.filter.outputs.dataextractor }}
-      dataviewer: ${{ steps.filter.outputs.dataviewer }}
-      handbooks: ${{ steps.filter.outputs.handbooks }}
-      iframe: ${{ steps.filter.outputs.iframe }}
-      limitsmonitor: ${{ steps.filter.outputs.limitsmonitor }}
-      packetviewer: ${{ steps.filter.outputs.packetviewer }}
-      scriptrunner: ${{ steps.filter.outputs.scriptrunner }}
-      tablemanager: ${{ steps.filter.outputs.tablemanager }}
-      tlmgrapher: ${{ steps.filter.outputs.tlmgrapher }}
-      tlmviewer: ${{ steps.filter.outputs.tlmviewer }}
-      jscommon: ${{ steps.filter.outputs.jscommon }}
-      toolbase: ${{ steps.filter.outputs.toolbase }}
-      vuecommon: ${{ steps.filter.outputs.vuecommon }}
-      playwright: ${{ steps.filter.outputs.playwright }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706
         id: filter
         with:
+          list-files: json
           filters: |
             plugins:
               - 'openc3-cosmos-init/plugins/package.json'
               - 'openc3-cosmos-init/plugins/pnpm-lock.yaml'
+              - 'openc3-cosmos-init/plugins/pnpm-workspace.yaml'
               - 'openc3-cosmos-init/plugins/eslint.config.mjs'
-            demo:
-              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/**'
-            admin:
-              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-admin/**'
-            bucketexplorer:
-              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-bucketexplorer/**'
-            cmdsender:
-              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdsender/**'
-            cmdtlmserver:
-              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdtlmserver/**'
-            dataextractor:
-              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataextractor/**'
-            dataviewer:
-              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataviewer/**'
-            handbooks:
-              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-handbooks/**'
-            iframe:
-              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-iframe/**'
-            limitsmonitor:
-              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-limitsmonitor/**'
-            packetviewer:
-              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-packetviewer/**'
-            scriptrunner:
-              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-scriptrunner/**'
-            tablemanager:
-              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tablemanager/**'
-            tlmgrapher:
-              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmgrapher/**'
-            tlmviewer:
-              - 'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmviewer/**'
-            jscommon:
-              - 'openc3-cosmos-init/plugins/packages/openc3-js-common/**'
-            toolbase:
-              - 'openc3-cosmos-init/plugins/packages/openc3-tool-base/**'
-            vuecommon:
-              - 'openc3-cosmos-init/plugins/packages/openc3-vue-common/**'
+            packages:
+              - 'openc3-cosmos-init/plugins/packages/**'
             playwright:
               - 'playwright/**'
 
-  demo:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.demo == 'true' || needs.changes.outputs.plugins == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
+      # Any change to the shared plugin config lints every package, otherwise
+      # only the packages containing changed files are linted.
+      - name: Determine packages to lint
+        id: targets
+        env:
+          ALL_PLUGINS: ${{ steps.filter.outputs.plugins }}
+          PACKAGE_FILES: ${{ steps.filter.outputs.packages_files }}
+        run: |
+          set -euo pipefail
+          if [ "$ALL_PLUGINS" = "true" ]; then
+            dirs=$(find openc3-cosmos-init/plugins/packages -mindepth 1 -maxdepth 1 -type d | sort)
+          else
+            dirs=$(jq -r '.[]' <<< "$PACKAGE_FILES" | cut -d/ -f1-4 | sort -u)
+          fi
+          # Drop deleted packages, keep the ones with a lint script, and flag
+          # any package that has source to lint but no lint script to run it
+          keep=""
+          missing=""
+          for dir in $dirs; do
+            [ -f "$dir/package.json" ] || continue
+            if jq -e '.scripts.lint' "$dir/package.json" > /dev/null; then
+              keep="$keep $dir"
+            elif [ -d "$dir/src" ]; then
+              missing="$missing $dir"
+              echo "::error file=$dir/package.json::$dir has a src directory but no lint script"
+            fi
+          done
+          keep=$(echo $keep)
+          echo "packages=$keep" >> "$GITHUB_OUTPUT"
+          # Reported by the final step so the rest of the linting still runs
+          echo "missing=$(echo $missing)" >> "$GITHUB_OUTPUT"
+          echo "Linting:${keep:+ }${keep:-(none)}"
 
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: ${{ steps.targets.outputs.packages != '' || steps.filter.outputs.playwright == 'true' }}
         with:
           node-version: 24
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
+        if: ${{ steps.targets.outputs.packages != '' || steps.filter.outputs.playwright == 'true' }}
         with:
           version: 11
-      - name: Install dependencies
+
+      # One install covers the whole plugins pnpm workspace
+      - name: Install plugin dependencies
+        if: ${{ steps.targets.outputs.packages != '' }}
         run: pnpm i --frozen-lockfile
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-demo
-      - name: Run ESLint
-        run: pnpm lint --max-warnings 0
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-demo
+        working-directory: openc3-cosmos-init/plugins
 
-  admin:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.admin == 'true' || needs.changes.outputs.plugins == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
+      - name: Run ESLint on changed packages
+        if: ${{ steps.targets.outputs.packages != '' }}
+        env:
+          PACKAGES: ${{ steps.targets.outputs.packages }}
+        run: |
+          set -euo pipefail
+          status=0
+          for dir in $PACKAGES; do
+            echo "::group::eslint $dir"
+            pnpm --dir "$dir" run lint --max-warnings 0 || status=1
+            echo "::endgroup::"
+          done
+          exit $status
 
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-        with:
-          version: 11
-      - name: Install dependencies
-        run: pnpm i --frozen-lockfile
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-admin
-      - name: Run ESLint
-        run: pnpm lint --max-warnings 0
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-admin
-
-  bucketexplorer:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.bucketexplorer == 'true' || needs.changes.outputs.plugins == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-        with:
-          version: 11
-      - name: Install dependencies
-        run: pnpm i --frozen-lockfile
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-bucketexplorer
-      - name: Run ESLint
-        run: pnpm lint --max-warnings 0
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-bucketexplorer
-
-  cmdsender:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.cmdsender == 'true' || needs.changes.outputs.plugins == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-        with:
-          version: 11
-      - name: Install dependencies
-        run: pnpm i --frozen-lockfile
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdsender
-      - name: Run ESLint
-        run: pnpm lint --max-warnings 0
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdsender
-
-  cmdtlmserver:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.cmdtlmserver == 'true' || needs.changes.outputs.plugins == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-        with:
-          version: 11
-      - name: Install dependencies
-        run: pnpm i --frozen-lockfile
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdtlmserver
-      - name: Run ESLint
-        run: pnpm lint --max-warnings 0
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdtlmserver
-
-  dataextractor:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.dataextractor == 'true' || needs.changes.outputs.plugins == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-        with:
-          version: 11
-      - name: Install dependencies
-        run: pnpm i --frozen-lockfile
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataextractor
-      - name: Run ESLint
-        run: pnpm lint --max-warnings 0
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataextractor
-
-  dataviewer:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.dataviewer == 'true' || needs.changes.outputs.plugins == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-        with:
-          version: 11
-      - name: Install dependencies
-        run: pnpm i --frozen-lockfile
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataviewer
-      - name: Run ESLint
-        run: pnpm lint --max-warnings 0
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataviewer
-
-  handbooks:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.handbooks == 'true' || needs.changes.outputs.plugins == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-        with:
-          version: 11
-      - name: Install dependencies
-        run: pnpm i --frozen-lockfile
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-handbooks
-      - name: Run ESLint
-        run: pnpm lint --max-warnings 0
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-handbooks
-
-  iframe:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.iframe == 'true' || needs.changes.outputs.plugins == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-        with:
-          version: 11
-      - name: Install dependencies
-        run: pnpm i --frozen-lockfile
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-iframe
-      - name: Run ESLint
-        run: pnpm lint --max-warnings 0
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-iframe
-
-  limitsmonitor:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.limitsmonitor == 'true' || needs.changes.outputs.plugins == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-        with:
-          version: 11
-      - name: Install dependencies
-        run: pnpm i --frozen-lockfile
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-limitsmonitor
-      - name: Run ESLint
-        run: pnpm lint --max-warnings 0
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-limitsmonitor
-
-  packetviewer:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.packetviewer == 'true' || needs.changes.outputs.plugins == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-        with:
-          version: 11
-      - name: Install dependencies
-        run: pnpm i --frozen-lockfile
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-packetviewer
-      - name: Run ESLint
-        run: pnpm lint --max-warnings 0
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-packetviewer
-
-  scriptrunner:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.scriptrunner == 'true' || needs.changes.outputs.plugins == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-        with:
-          version: 11
-      - name: Install dependencies
-        run: pnpm i --frozen-lockfile
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-scriptrunner
-      - name: Run ESLint
-        run: pnpm lint --max-warnings 0
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-scriptrunner
-
-  tablemanager:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.tablemanager == 'true' || needs.changes.outputs.plugins == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-        with:
-          version: 11
-      - name: Install dependencies
-        run: pnpm i --frozen-lockfile
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tablemanager
-      - name: Run ESLint
-        run: pnpm lint --max-warnings 0
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tablemanager
-
-  tlmgrapher:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.tlmgrapher == 'true' || needs.changes.outputs.plugins == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-        with:
-          version: 11
-      - name: Install dependencies
-        run: pnpm i --frozen-lockfile
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmgrapher
-      - name: Run ESLint
-        run: pnpm lint --max-warnings 0
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmgrapher
-
-  tlmviewer:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.tlmviewer == 'true' || needs.changes.outputs.plugins == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-        with:
-          version: 11
-      - name: Install dependencies
-        run: pnpm i --frozen-lockfile
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmviewer
-      - name: Run ESLint
-        run: pnpm lint --max-warnings 0
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmviewer
-
-  jscommon:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.jscommon == 'true' || needs.changes.outputs.plugins == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-        with:
-          version: 11
-      - name: Install dependencies
-        run: pnpm i --frozen-lockfile
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-js-common
-      - name: Run ESLint
-        run: pnpm lint --max-warnings 0
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-js-common
-
-  toolbase:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.toolbase == 'true' || needs.changes.outputs.plugins == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-        with:
-          version: 11
-      - name: Install dependencies
-        run: pnpm i --frozen-lockfile
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-tool-base
-      - name: Run ESLint
-        run: pnpm lint --max-warnings 0
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-tool-base
-
-  vuecommon:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && (needs.changes.outputs.vuecommon == 'true' || needs.changes.outputs.plugins == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-        with:
-          version: 11
-      - name: Install dependencies
-        run: pnpm i --frozen-lockfile
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common
-      - name: Run ESLint
-        run: pnpm lint --max-warnings 0
-        working-directory: openc3-cosmos-init/plugins/packages/openc3-vue-common
-
-  playwright:
-    needs: changes
-    if: ${{ github.actor != 'dependabot[bot]' && needs.changes.outputs.playwright == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 24
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-        with:
-          version: 11
-      - name: Install dependencies
+      # Playwright is a separate workspace, so lint it even if the plugin
+      # packages failed to lint
+      - name: Install playwright dependencies
+        if: ${{ !cancelled() && steps.filter.outputs.playwright == 'true' }}
         run: pnpm i --frozen-lockfile
         working-directory: playwright
-      - name: Run ESLint
+
+      - name: Run ESLint on playwright
+        if: ${{ !cancelled() && steps.filter.outputs.playwright == 'true' }}
         run: pnpm lint --max-warnings 0
         working-directory: playwright
+
+      - name: Fail on packages missing a lint script
+        if: ${{ !cancelled() && steps.targets.outputs.missing != '' }}
+        env:
+          MISSING: ${{ steps.targets.outputs.missing }}
+        run: |
+          echo "Add a lint script to: $MISSING"
+          exit 1

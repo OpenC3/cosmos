@@ -15,6 +15,7 @@ ARG APT_URL=http://deb.debian.org
 ARG PYTHON_VERSION=3.13
 ARG RUBYGEMS_URL
 ARG PYPI_URL=https://pypi.org
+# Update Dockerfile-ubi and the python .github/workflow actions to match this version
 ARG UV_VERSION=0.11.33
 
 ENV APT_URL=${APT_URL}

@@ -1,4 +1,4 @@
-# Copyright 2025 OpenC3, Incx.
+# Copyright 2025 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,

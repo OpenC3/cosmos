@@ -43,6 +43,33 @@ By default, COSMOS only listens on localhost (127.0.0.1). This configuration kee
 
 For production use, it is recommended to configure COSMOS to listen on a network interface (not just localhost) so that users can access the web interface from their own workstations rather than directly on the host computer. This means users connect via their web browsers over the local network instead of needing access to the host machine itself, which reduces exposure of the host and allows it to be more tightly secured. See [SSL/TLS](../configuration/ssl-tls) for configuring HTTPS.
 
+### Content Security Policy
+
+COSMOS sets a [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) (CSP) header via Traefik to mitigate cross-site scripting (XSS) and other code-injection attacks. The default policy forbids inline scripts but allows `eval()` for third-party plugin compatibility. Scripts may only be loaded from the same origin and trusted sources.
+
+The following environment variables control the CSP:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `OPENC3_ALLOW_HTTP` | _(unset)_ | When set (e.g. `1`), broadens the CSP to allow resources over plain HTTP in addition to HTTPS. Useful for development or air-gapped networks without TLS. |
+| `OPENC3_NO_EVAL` | _(unset)_ | When set (e.g. `1`), removes `'unsafe-eval'` from the CSP `script-src` directive, blocking `eval()`, `new Function()`, and similar dynamic code execution. Only set this if no installed plugins require runtime code evaluation (e.g. Open MCT and other tools that bundle Vue's runtime template compiler will break). |
+
+By default `'unsafe-eval'` is **allowed** for third-party plugin compatibility. WebAssembly (`'wasm-unsafe-eval'`) is always allowed regardless of these flags.
+
+To harden the CSP on a deployment that does not use plugins requiring eval, add `OPENC3_NO_EVAL` to `.env.local` (recommended) or `compose.override.yaml` under the `openc3-traefik` service, then recreate the Traefik container:
+
+```bash
+# .env.local
+OPENC3_NO_EVAL=1
+```
+
+```bash
+./openc3.sh stop
+./openc3.sh run
+```
+
+These are runtime settings evaluated by Traefik at container startup -- no image rebuild is needed.
+
 ### Network Security
 
 Between any external network and the private network containing the host computer should be a firewall that prevents unauthorized access.
@@ -60,6 +87,12 @@ The `.env` file ships the upstream COSMOS defaults and is tracked by git, so edi
 In both cases, secrets need to be available to the user account starting COSMOS. This account must have sufficient trust to control container lifecycles and all data within the containers.
 
 Most standard containers for databases like VersityGW are set up to receive secrets through environment variables. For a thorough discussion of secrets in Docker, see the [official thread](https://github.com/moby/moby/issues/13490).
+
+### Infrastructure Secrets vs. Plugin Secrets
+
+The variables documented on this page are COSMOS's own infrastructure credentials: Redis/Valkey passwords, bucket keys, and `SECRET_KEY_BASE`. They are configured through the environment because the services need them before COSMOS is running.
+
+Credentials that your **plugins** need — a device password, an API token, a client certificate — should not be put in `.env.local` or `compose.override.yaml`. Use the COSMOS Secrets system instead: store the value once (Admin tool, API, or a Kubernetes Secret) and reference it by name with the `SECRET` keyword in `plugin.txt`. COSMOS then injects it into just the interface or microservice that declared it, rather than into every container. See the [Secrets guide](../guides/secrets.md), which also covers Kubernetes and integrating HashiCorp Vault or AWS Secrets Manager.
 
 ## Credentials
 
