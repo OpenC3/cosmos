@@ -380,7 +380,7 @@ module OpenC3
 
         ConfigParser.message_callback = msg_callback
         ConfigParser.progress_callback = done_callback
-        @cp.parse_file(tf.path) { |k, p| }
+        @cp.parse_file(tf.path) { |_keyword, _params| }
         tf.unlink
       end
     end
@@ -521,6 +521,41 @@ module OpenC3
       it "returns values that don't convert" do
         expect(ConfigParser.handle_true_false("HI")).to eql "HI"
         expect(ConfigParser.handle_true_false(5.0)).to eql 5.0
+      end
+    end
+
+    describe "self.handle_true_false_strict" do
+      it "converts '1' and 'TRUE' in any case" do
+        ['1', 'TRUE', 'true', 'True', ' true '].each do |value|
+          expect(ConfigParser.handle_true_false_strict(value)).to be true
+        end
+      end
+
+      it "converts '0', 'FALSE' and empty in any case" do
+        ['0', 'FALSE', 'false', '', '  '].each do |value|
+          expect(ConfigParser.handle_true_false_strict(value)).to be false
+        end
+      end
+
+      it "returns the default for nil" do
+        expect(ConfigParser.handle_true_false_strict(nil)).to be false
+        expect(ConfigParser.handle_true_false_strict(nil, default: true)).to be true
+      end
+
+      it "handles a value that isn't a String" do
+        expect(ConfigParser.handle_true_false_strict(1)).to be true
+        expect(ConfigParser.handle_true_false_strict(0)).to be false
+      end
+
+      it "raises on a value it doesn't recognize" do
+        # Unlike handle_true_false, an unrecognized value is not passed through
+        expect { ConfigParser.handle_true_false_strict('yes') }
+          .to raise_error(ArgumentError, /Invalid value "yes" for value\. Must be one of: TRUE, 1, FALSE, 0, or empty/)
+      end
+
+      it "names the value in the error message" do
+        expect { ConfigParser.handle_true_false_strict('maybe', description: 'OPENC3_THING') }
+          .to raise_error(ArgumentError, /Invalid value "maybe" for OPENC3_THING/)
       end
     end
 

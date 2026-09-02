@@ -23,6 +23,7 @@ require "openc3/models/microservice_model"
 require "openc3/models/setting_model"
 require "openc3/models/trigger_group_model"
 require "openc3/topics/system_events_topic"
+require "openc3/utilities/rubygems_url"
 
 begin
   require "openc3-enterprise/models/cmd_authority_model"
@@ -91,25 +92,25 @@ module OpenC3
     #
     # The scope keyword is given to support the ModelController method signature
     # even though it is not used
-    def self.get(name:, scope: nil)
+    def self.get(name:, scope: nil) # NOSONAR - scope: is part of the caller-facing signature
       super(PRIMARY_KEY, name: name)
     end
 
-    def self.names(scope: nil)
+    def self.names(scope: nil) # NOSONAR - scope: is part of the caller-facing signature
       super(PRIMARY_KEY)
     end
 
-    def self.all(scope: nil)
+    def self.all(scope: nil) # NOSONAR - scope: is part of the caller-facing signature
       super(PRIMARY_KEY)
     end
 
-    def self.from_json(json, scope: nil)
+    def self.from_json(json, scope: nil) # NOSONAR - scope: is part of the caller-facing signature
       json = JSON.parse(json, allow_nan: true, create_additions: true) if String === json
       raise "json data is nil" if json.nil?
       new(**json.transform_keys(&:to_sym))
     end
 
-    def self.get_model(name:, scope: nil)
+    def self.get_model(name:, scope: nil) # NOSONAR - scope: is part of the caller-facing signature
       json = get(name: name)
       if json
         from_json(json)
@@ -144,7 +145,7 @@ module OpenC3
       @command_authority = command_authority
       @critical_commanding = critical_commanding.to_s.upcase
       @critical_commanding = "OFF" if @critical_commanding.length == 0
-      if !["OFF", "NORMAL", "ALL"].include?(@critical_commanding)
+      unless ["OFF", "NORMAL", "ALL"].include?(@critical_commanding)
         raise "Invalid value for critical_commanding: #{@critical_commanding}"
       end
       @shard = shard.to_i # to_i to handle nil
@@ -450,11 +451,15 @@ module OpenC3
       setting = SettingModel.get(name: "source_url")
       SettingModel.set({name: "source_url", data: "https://github.com/OpenC3/cosmos"}, scope: @scope) unless setting
       setting = SettingModel.get(name: "rubygems_url")
-      SettingModel.set({name: "rubygems_url", data: ENV["RUBYGEMS_URL"] || "https://rubygems.org"}, scope: @scope) unless setting
+      SettingModel.set({name: "rubygems_url", data: ENV["RUBYGEMS_URL"] || RubygemsUrl::DEFAULT}, scope: @scope) unless setting
       setting = SettingModel.get(name: "pypi_url")
       SettingModel.set({name: "pypi_url", data: ENV["PYPI_URL"] || "https://pypi.org"}, scope: @scope) unless setting
-      # Set the news feed to true by default, don't bother checking if it's already set
-      SettingModel.set({name: "news_feed", data: true}, scope: @scope)
+      # Default the news feed on, but only if nothing has set it yet. `openc3cli
+      # initsettings` runs before the first plugin load creates this scope, so an
+      # unconditional set here would discard OPENC3_SETTING_NEWS_FEED=false and
+      # leave the seeded provenance record disagreeing with Redis forever.
+      setting = SettingModel.get(name: "news_feed")
+      SettingModel.set({name: "news_feed", data: true}, scope: @scope) unless setting
 
       setting = SettingModel.get(name: "system_health")
       # Settings are stored as JSON strings

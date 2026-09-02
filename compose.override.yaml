@@ -16,6 +16,16 @@
 # so no other changes are needed. See:
 #   https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/
 #
+# UNCOMMENT "services:" TOO
+# ---------------------------------------------------------------------------
+# Every service below nests under the top-level "services:" key, so uncomment
+# that line as well as the block you want. Compose only allows services,
+# networks, volumes, configs and secrets at the top level; a service key left
+# at column 0 fails with:
+#   additional properties 'openc3-cosmos-init' not allowed
+# Keep the indentation as shown - service at 2 spaces, its keys at 4, list
+# items at 6.
+#
 # HOW OVERRIDING VALUES WORKS
 # ---------------------------------------------------------------------------
 # compose.yaml lists each variable a container needs under "environment:".
@@ -23,10 +33,10 @@
 # A value set in an override's "environment:" block WINS over the base value
 # (and wins over any env_file), so this is the way to override values now.
 #
-# Flags that init.sh / the core enable "by presence" (OPENC3_DEMO, the
-# OPENC3_NO_* flags, OPENC3_FORCE_INSTALL, ...) are turned OFF with an EMPTY
-# value ("VAR=") and ON with any non-empty value. Do NOT use 0 to disable -
-# "VAR=0" is non-empty and counts as ON.
+# Flags that init.sh / the core enable "by presence" (the OPENC3_NO_* flags,
+# OPENC3_FORCE_INSTALL, ...) are turned OFF with an EMPTY value ("VAR=") and ON
+# with any non-empty value. Do NOT use 0 to disable - "VAR=0" is non-empty and
+# counts as ON. OPENC3_DEMO is the exception: it also accepts 0 and false.
 #
 # You can also add brand-new services, volumes, ports, or bind mounts. Only
 # the keys you specify are changed; everything else is inherited from
@@ -43,110 +53,229 @@
 # ---------------------------------------------------------------------------
 
 # services:
-# -------------------------------------------------------------------------
-# Command / Telemetry API
-# -------------------------------------------------------------------------
-# openc3-cosmos-cmd-tlm-api:
-#   environment:
-#     # Number of Puma workers (processes). compose.yaml ships a default;
-#     # set this to roughly the number of CPU cores you want the API to use.
-#     - WEB_CONCURRENCY=16
-#     # Enable a default queue for ALL commands. Commands can only opt out by
-#     # specifying a specific queue with the 'queue' parameter.
-#     # Need here as well as in openc3-cosmos-init because init creates the queue
-#     - OPENC3_DEFAULT_QUEUE=DEFAULT
-#     # Rate limiting for authentication endpoints (defaults shown). Prevents
-#     # more than 10 failed password attempts within 120 seconds. In COSMOS
-#     # Enterprise, use Keycloak to configure this instead.
-#     - OPENC3_AUTH_RATE_LIMIT_TO=10
-#     - OPENC3_AUTH_RATE_LIMIT_WITHIN=120
-#     # Default language used by the generators (`openc3.sh cli generate`).
-#     - OPENC3_LANGUAGE=python
-
-# -------------------------------------------------------------------------
-# Script Runner API
-# -------------------------------------------------------------------------
-# openc3-cosmos-script-runner-api:
-#   environment:
-#     # Raise if you run many scripts concurrently.
-#     - WEB_CONCURRENCY=4
-
-# -------------------------------------------------------------------------
-# Operator (runs interfaces / targets / microservices)
-# -------------------------------------------------------------------------
-# openc3-operator:
-#   environment:
-#     # Add a variable your custom targets/interfaces read that is not in
-#     # compose.yaml. env_file also works for adding (but NOT overriding)
-#     # variables that compose.yaml does not already list.
-#     - MY_CUSTOM_SETTING=value
-#     # Iroh relay for openc3-app bridges. Without it, a bridge is only reachable by a
-#     # co-located openc3-app (same machine, direct). To pair a REMOTE openc3-app
-#     # (across the internet/NAT), uncomment this so the bridge hub advertises a relay
-#     # in its ticket, and set the SAME value in openc3-app's environment on the host.
-#     # The value below is an n0 public relay; use a nearer n0 region or a self-hosted
-#     # relay URL if you prefer. See openc3-app/docs/bridge-architecture.md.
-#     - OPENC3_BRIDGE_RELAY=https://use1-1.relay.n0.iroh.link
-#   # Expose an interface/router port to the host
-#   ports:
-#     - "127.0.0.1:7779:7779"
-#   # Mount a host directory for a FileInterface dropbox
-#   volumes:
-#     - "/path/on/host/dropbox:/dropbox"
-
-# -------------------------------------------------------------------------
-# Init container (installs plugins / tools on startup)
-# -------------------------------------------------------------------------
-# openc3-cosmos-init:
-#   environment:
-#     # Disable install of the Demo (empty = off, see note above; NOT 0).
-#     - OPENC3_DEMO=
-#     # Enable a default queue for ALL commands. Commands can only opt out by
-#     # specifying a specific queue with the 'queue' parameter.
-#     # Need here as well as in openc3-cosmos-cmd-tlm-api because init creates the queue
-#     - OPENC3_DEFAULT_QUEUE=DEFAULT
-#     # Force the init container to reinstall all plugins even if the same
-#     # version exists. Use to recover from a failed/interrupted init, then
-#     # remove after a successful init.
-#     - OPENC3_FORCE_INSTALL=1
-#     # Don't automatically make the tools bucket public read.
-#     - OPENC3_NO_BUCKET_POLICY=1
-#     # Prevent specific default tools from being installed (empty = install,
-#     # any non-empty value = skip).
-#     - OPENC3_NO_CMDTLMSERVER=1
-#     - OPENC3_NO_LIMITSMONITOR=1
-#     - OPENC3_NO_CMDSENDER=1
-#     - OPENC3_NO_SCRIPTRUNNER=1
-#     - OPENC3_NO_PACKETVIEWER=1
-#     - OPENC3_NO_TLMVIEWER=1
-#     - OPENC3_NO_TLMGRAPHER=1
-#     - OPENC3_NO_DATAEXTRACTOR=1
-#     - OPENC3_NO_DATAVIEWER=1
-#     - OPENC3_NO_HANDBOOKS=1
-#     - OPENC3_NO_TABLEMANAGER=1
-#     - OPENC3_NO_TOOLADMIN=1
-#     - OPENC3_NO_BUCKETEXPLORER=1
-#     - OPENC3_NO_DOCS=1
-
-# -------------------------------------------------------------------------
-# Traefik (reverse proxy)
-# -------------------------------------------------------------------------
-# openc3-traefik:
-#   environment:
-#     # Allow HTTP connections in the Content Security Policy (less secure).
-#     - OPENC3_ALLOW_HTTP=1
-#     # Remove 'unsafe-eval' from Content Security Policy script-src (stricter).
-#     # Only set this if no plugins need eval() or new Function().
-#     - OPENC3_NO_EVAL=1
-
-# -------------------------------------------------------------------------
-# Log to stderr on any service
-# -------------------------------------------------------------------------
-# OPENC3_LOG_STDERR logs warnings and higher to stderr instead of stdout.
-# It is read by every container - add it under whichever service(s) you want:
-# openc3-operator:
-#   environment:
-#     - OPENC3_LOG_STDERR=1
+#   # -----------------------------------------------------------------------
+#   # Command / Telemetry API
+#   # -----------------------------------------------------------------------
+#   openc3-cosmos-cmd-tlm-api:
+#     environment:
+#       # Number of Puma workers (processes). compose.yaml ships a default;
+#       # set this to roughly the number of CPU cores you want the API to use.
+#       - WEB_CONCURRENCY=16
+#       # Enable a default queue for ALL commands. Commands can only opt out by
+#       # specifying a specific queue with the 'queue' parameter.
+#       # Need here as well as in openc3-cosmos-init because init creates the queue
+#       - OPENC3_DEFAULT_QUEUE=DEFAULT
+#       # Rate limiting for authentication endpoints (defaults shown). Prevents
+#       # more than 10 failed password attempts within 120 seconds. In COSMOS
+#       # Enterprise, use Keycloak to configure this instead.
+#       - OPENC3_AUTH_RATE_LIMIT_TO=10
+#       - OPENC3_AUTH_RATE_LIMIT_WITHIN=120
+#       # Default language used by the generators (`openc3.sh cli generate`).
+#       - OPENC3_LANGUAGE=python
+#
+#   # -----------------------------------------------------------------------
+#   # Script Runner API
+#   # -----------------------------------------------------------------------
+#   openc3-cosmos-script-runner-api:
+#     environment:
+#       # Raise if you run many scripts concurrently.
+#       - WEB_CONCURRENCY=4
+#
+#   # -----------------------------------------------------------------------
+#   # Operator (runs interfaces / targets / microservices)
+#   # -----------------------------------------------------------------------
+#   openc3-operator:
+#     environment:
+#       # Add a variable your custom targets/interfaces read that is not in
+#       # compose.yaml. env_file also works for adding (but NOT overriding)
+#       # variables that compose.yaml does not already list.
+#       - MY_CUSTOM_SETTING=value
+#       # Iroh relay for openc3-app bridges. Without it, a bridge is only
+#       # reachable by a co-located openc3-app (same machine, direct). To pair
+#       # a REMOTE openc3-app (across the internet/NAT), uncomment this so the
+#       # bridge hub advertises a relay in its ticket, and set the SAME value
+#       # in openc3-app's environment on the host. The value below is an n0
+#       # public relay; use a nearer n0 region or a self-hosted relay URL if
+#       # you prefer. See openc3-app/docs/bridge-architecture.md.
+#       - OPENC3_BRIDGE_RELAY=https://use1-1.relay.n0.iroh.link
+#     # Expose an interface/router port to the host
+#     ports:
+#       - "127.0.0.1:7779:7779"
+#     # Mount a host directory for a FileInterface dropbox
+#     volumes:
+#       - "/path/on/host/dropbox:/dropbox"
+#
+#   # -----------------------------------------------------------------------
+#   # Init container (installs plugins / tools on startup)
+#   # -----------------------------------------------------------------------
+#   openc3-cosmos-init:
+#     environment:
+#       # Disable install of the Demo. Unlike the OPENC3_NO_* flags below,
+#       # this one reads its value: false, 0 and empty are all off.
+#       - OPENC3_DEMO=false
+#       # Enable a default queue for ALL commands. Commands can only opt out by
+#       # specifying a specific queue with the 'queue' parameter.
+#       # Need here as well as in openc3-cosmos-cmd-tlm-api because init creates the queue
+#       - OPENC3_DEFAULT_QUEUE=DEFAULT
+#       # Force the init container to reinstall all plugins even if the same
+#       # version exists. Use to recover from a failed/interrupted init, then
+#       # remove after a successful init.
+#       - OPENC3_FORCE_INSTALL=1
+#       # Don't automatically make the tools bucket public read.
+#       - OPENC3_NO_BUCKET_POLICY=1
+#       # Prevent specific default tools from being installed (empty = install,
+#       # any non-empty value = skip).
+#       - OPENC3_NO_CMDTLMSERVER=1
+#       - OPENC3_NO_LIMITSMONITOR=1
+#       - OPENC3_NO_CMDSENDER=1
+#       - OPENC3_NO_SCRIPTRUNNER=1
+#       - OPENC3_NO_PACKETVIEWER=1
+#       - OPENC3_NO_TLMVIEWER=1
+#       - OPENC3_NO_TLMGRAPHER=1
+#       - OPENC3_NO_DATAEXTRACTOR=1
+#       - OPENC3_NO_DATAVIEWER=1
+#       - OPENC3_NO_HANDBOOKS=1
+#       - OPENC3_NO_TABLEMANAGER=1
+#       - OPENC3_NO_TOOLADMIN=1
+#       - OPENC3_NO_BUCKETEXPLORER=1
+#       - OPENC3_NO_DOCS=1
+#       # ---------------------------------------------------------------
+#       # Admin Console settings
+#       # ---------------------------------------------------------------
+#       # One variable per setting, named OPENC3_SETTING_<NAME>. These are
+#       # NOT listed in compose.yaml - adding them here is what makes them
+#       # reach the container, so no compose.yaml edit is ever needed.
+#       #
+#       # STICKY, unlike the OPENC3_NO_* flags above. A setting is written to
+#       # Redis by the first init that sees it and is then left alone, so
+#       # Admin Console edits survive a restart. Consequences:
+#       #   - Re-commenting a line does NOT revert the value
+#       #   - Editing a value here does nothing once it has been seeded
+#       # To change a seeded value: edit it in the Admin Console, or set
+#       # OPENC3_SETTINGS_OVERWRITE=true below to make this file authoritative.
+#       #
+#       # In Local Mode a plugins/<SCOPE>/settings/<name>.json file wins over
+#       # the variable for that setting - the files are applied after these are,
+#       # and the Admin Console writes every edit back into them.
+#       #
+#       # Reference - name, then accepted values. Booleans take true/false (1/0
+#       # also work); "JSON text" values are stored verbatim, so quote them in
+#       # YAML or the colon ends the scalar. `./openc3.sh cli initsettings --help`
+#       # prints this list, plus the shape of each JSON blob, from the running
+#       # version.
+#       #
+#       # Quote the WHOLE list item, name included, because YAML quotes a whole
+#       # scalar and the scalar here is the entire NAME=value string:
+#       #   - "OPENC3_SETTING_CONTEXT_TAG={\"text\":\"DEV\"}"     correct
+#       #   - OPENC3_SETTING_CONTEXT_TAG="{\"text\":\"DEV\"}"     WRONG
+#       # The second quotes nothing as far as YAML is concerned - the value
+#       # keeps the literal " and \ characters, so COSMOS reads a JSON string
+#       # instead of an object and rejects it. Single quotes work too and need
+#       # no backslashes ('OPENC3_SETTING_CONTEXT_TAG={"text":"DEV"}'), but
+#       # --export writes the double-quoted form shown above.
+#       #
+#       # Easiest way to fill in a JSON setting: configure it in
+#       # Admin -> Settings, then run
+#       #   ./openc3.sh cli initsettings --export
+#       # which prints every stored setting as a line you can paste below,
+#       # already quoted so the JSON ones survive YAML. It reads the stored
+#       # values, so COSMOS has to be running for it.
+#       #
+#       #   TIME_ZONE                local | UTC
+#       #   TIME_FORMAT              ampm | 24hr
+#       #   THEME                    cosmosDark | cosmosDarkCobalt |
+#       #                            cosmosDarkIndigo | cosmosDarkSlate |
+#       #                            cosmosDarkEmerald
+#       #   AI_CHAT                  boolean
+#       #   NEWS_FEED                boolean
+#       #   SCRIPT_RUNNER_LOCKING    boolean
+#       #   SCRIPT_RUNNER_LIFECYCLE  boolean (Enterprise only)
+#       #   SUBTITLE                 free text
+#       #   SOURCE_URL               free text
+#       #   RUBYGEMS_URL             free text
+#       #   PYPI_URL                 free text
+#       #   ASTRO                    JSON text
+#       #   CONTEXT_TAG              JSON text
+#       #   CLASSIFICATION_BANNER    JSON text - must contain all five of text,
+#       #                            fontColor, backgroundColor, topHeight,
+#       #                            bottomHeight. A partial object is rejected
+#       #                            because both readers assume every key is
+#       #                            there: a missing height reaches the
+#       #                            stylesheet as "height: undefinedpx", which
+#       #                            is invalid CSS, so the banner draws at auto
+#       #                            height top AND bottom instead of hiding
+#       #   SYSTEM_HEALTH            JSON text - must contain all four of cpu,
+#       #                            memory, disk, global. A partial object is
+#       #                            rejected because the alerting code reads
+#       #                            every one of them without a fallback.
+#       #                            COSMOS also writes snooze timestamps back
+#       #                            into this setting, so after the first alert
+#       #                            it counts as operator-edited and a changed
+#       #                            env value needs OPENC3_SETTINGS_OVERWRITE
+#       #   AI_CHAT_CONFIG           JSON object (Enterprise) - provider, model,
+#       #                            base_url. The API key is NOT here; it lives
+#       #                            in OpenC3 Secrets, so don't put it in this
+#       #                            file
+#       #
+#       # Add a line per setting you want, filling in the value yourself:
+#       #   - OPENC3_SETTING_TIME_ZONE=UTC
+#       #   - "OPENC3_SETTING_CLASSIFICATION_BANNER={\"text\":\"UNCLASSIFIED\",\"fontColor\":\"#ffffff\",\"backgroundColor\":\"#00cc00\",\"topHeight\":20,\"bottomHeight\":20}"
+#       - OPENC3_SETTING_TIME_ZONE=local
+#       - OPENC3_SETTING_TIME_FORMAT=ampm
+#       - OPENC3_SETTING_PYPI_URL=https://pypi.org
+#       - OPENC3_SETTING_THEME=cosmosDarkSlate
+#       #
+#       # The next three variables control HOW the settings above are applied
+#       # rather than setting a value of their own. None of them is sticky -
+#       # all three are re-read on every init.
+#       #
+#       # Rewrite every OPENC3_SETTING_* value on every init, discarding
+#       # Admin Console edits. Unlike the OPENC3_NO_* flags this one reads its
+#       # value: true is on, false/empty is off rather than the surprising on
+#       # (1/0 also work).
+#       #
+#       # Needed ONCE when upgrading from a release without this feature. A
+#       # setting already in Redis has no record of having been seeded, so it
+#       # counts as operator-edited and is left alone no matter what these
+#       # variables say. One init with OPENC3_SETTINGS_OVERWRITE=true adopts
+#       # the values below; after that the sticky behavior above resumes.
+#       - OPENC3_SETTINGS_OVERWRITE=false
+#       # An unrecognized setting name is reported in the init logs and that
+#       # setting is skipped, so a typo like OPENC3_SETTING_TIME_ZONES says so
+#       # instead of silently doing nothing. Init still finishes and COSMOS uses
+#       # the default. Set to true to allow a name COSMOS doesn't know yet.
+#       - OPENC3_SETTINGS_ALLOW_UNKNOWN=true
+#       # Nothing above fails init by default - a bad name or value is logged and
+#       # skipped, because a typo in a time zone shouldn't leave you with no
+#       # COSMOS at all (the init container restarts on failure, so it would
+#       # crash loop). Set this to true if you would rather COSMOS not come up
+#       # than come up misconfigured.
+#       - OPENC3_SETTINGS_STRICT=true
+#       # To catch typos BEFORE starting COSMOS, without turning on STRICT:
+#       #   ./openc3.sh cli initsettings --dry-run
+#       # It checks every name and value, writes nothing, and exits non-zero if
+#       # anything would be skipped. Works before Redis is up.
+#
+#   # -----------------------------------------------------------------------
+#   # Traefik (reverse proxy)
+#   # -----------------------------------------------------------------------
+#   openc3-traefik:
+#     environment:
+#       # Allow HTTP connections in the Content Security Policy (less secure).
+#       - OPENC3_ALLOW_HTTP=1
+#       # Remove 'unsafe-eval' from Content Security Policy script-src (stricter).
+#       # Only set this if no plugins need eval() or new Function().
+#       - OPENC3_NO_EVAL=1
+#
+#   # -----------------------------------------------------------------------
+#   # Log to stderr on any service
+#   # -----------------------------------------------------------------------
+#   # OPENC3_LOG_STDERR logs warnings and higher to stderr instead of stdout.
+#   # Every container reads it. Add the line below to the "environment:" of a
+#   # service block above rather than declaring that service a second time -
+#   # YAML keeps only the last of two identical keys, so a repeated
+#   # "openc3-operator:" would silently discard the first one's ports/volumes.
+#   #   - OPENC3_LOG_STDERR=1
 
 # ---------------------------------------------------------------------------
 # Adding extra buckets / volumes

@@ -437,6 +437,13 @@ services:
         max-file: "3"
     # Values are interpolated from .env by compose; only the vars this
     # container actually reads at runtime are passed in (was env_file: .env).
+    #
+    # Admin Console settings (time zone, time format, theme, package URLs,
+    # ...) can be seeded here at deploy time with OPENC3_SETTING_<NAME>
+    # variables. They are deliberately NOT listed below: an override's
+    # environment: block ADDS variables, so a setting added by a later
+    # release needs no edit to this file. Put them in compose.override.yaml.
+    # See https://docs.openc3.com/docs/getting-started/cli#initsettings
     environment:
       # CI is set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
       # List syntax passes through host CI only if set, omits it otherwise

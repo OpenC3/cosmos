@@ -1,6 +1,20 @@
 #!/bin/sh
 # set -x
 
+# Is an install-time flag on? These flags are enabled by presence, so any value
+# counts as on EXCEPT the ones that read as off: empty, 0 and false (any case).
+# Spelled out because "OPENC3_DEMO=false" turning the demo ON surprises everyone
+# who writes it. An unrecognized value stays on, matching the old behavior.
+# Only OPENC3_DEMO uses this so far - the OPENC3_NO_* flags below are still
+# presence-only, where "VAR=0" and "VAR=false" mean ON.
+flag_enabled() {
+    local value="$1"
+    case "$(printf '%s' "${value}" | tr '[:upper:]' '[:lower:]')" in
+        '' | 0 | false) return 1 ;;
+        *) return 0 ;;
+    esac
+}
+
 # Seed the UV wheel cache from the Docker image into the runtime volume
 # so plugins can reuse system wheels without re-downloading (critical for airgapped environments)
 if [ -d "/openc3/uv_cache" ]; then
@@ -197,6 +211,10 @@ if [ -z "${OPENC3_NO_MIGRATE}" ]; then
 fi
 
 ruby /openc3/bin/openc3cli initbuckets || exit 1
+# Seed settings (time_zone, time_format, ai_chat, ...) from OPENC3_SETTING_<NAME>
+# env vars. An existing setting is left unchanged so Admin Console edits survive
+# a restart. No-op when no OPENC3_SETTING_* var is set.
+ruby /openc3/bin/openc3cli initsettings || exit 1
 ruby /openc3/bin/openc3cli removeenterprise || exit 1
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-base-*.gem || exit 1
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-iframe-*.gem || exit 1
@@ -211,7 +229,7 @@ if [ ! -z $OPENC3_LOCAL_MODE ]; then
     # Continue if local init fails - User will have to fix manually
     ruby /openc3/bin/openc3cli localinit || true
 fi
-if [ ! -z $OPENC3_DEMO ]; then
+if flag_enabled "$OPENC3_DEMO"; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-demo-*.gem || exit 1
 fi
 if [ -z $OPENC3_NO_CMDTLMSERVER ]; then

@@ -178,6 +178,86 @@ jobs:
           ./openc3.sh cli script run INST2/procedures/my_script_suite.py --suite MySuite --group ExampleGroup --method teardown | tee /dev/tty | grep "script complete"
           # run a script
           ./openc3.sh cli script run INST/procedures/my_script_suite.rb --suite MySuite --group ExampleGroup --script script_2 | tee /dev/tty | grep "script complete"
+      - name: openc3.sh cli initsettings help, export
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          set -e
+          # --help lists the usage, every seedable setting and the JSON examples
+          ./openc3.sh cli initsettings --help | tee /dev/tty > help.txt
+          grep -F "Usage: cli initsettings [--dry-run | --export]" help.txt
+          grep -F "time_zone: local, UTC" help.txt
+          grep -F "system_health: JSON object with keys: cpu, memory, disk, global" help.txt
+          grep -F "ai_chat_config" help.txt
+          grep -F "OPENC3_SETTINGS_OVERWRITE=true" help.txt
+          # An unrecognized option is reported and exits non-zero through the
+          # wrapper - 'openc3.sh cli' propagates the CLI's status, so a
+          # --dry-run or OPENC3_SETTINGS_STRICT failure can gate a CI job
+          ! ./openc3.sh cli initsettings --bogus > bogus.txt 2>&1
+          tee /dev/tty < bogus.txt | grep -F "Unknown option --bogus"
+          # No OPENC3_SETTING_* variables are set on the init container by
+          # default, so the real run and the dry run both have nothing to do
+          # and both exit 0 (set -e catches a wrapper that always exits non-zero)
+          ./openc3.sh cli initsettings | tee /dev/tty | grep -F "nothing to seed"
+          ./openc3.sh cli initsettings --dry-run | tee /dev/tty | grep -F "[dry run] No"
+          # --export prints what ScopeModel#seed_database wrote on first start as
+          # paste-ready compose 'environment:' lines, quoted where YAML needs it
+          ./openc3.sh cli initsettings --export | tee /dev/tty > export.txt
+          grep -F 'OPENC3_SETTING_SOURCE_URL=https://github.com/OpenC3/cosmos' export.txt
+          grep -F "OPENC3_SETTING_NEWS_FEED=true" export.txt
+      - name: openc3.sh cli initsettings seeding
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          set -e
+          # 'openc3.sh cli' can't inject OPENC3_SETTING_* variables, so drive the
+          # init container directly with the same compose files openc3.sh uses.
+          # First arg is the initsettings option ('' for none), the rest are
+          # docker compose run arguments.
+          initsettings() {
+            local opt="$1"
+            shift
+            docker compose --env-file .env -f compose.yaml -f compose.override.yaml \
+              run --rm --no-deps "$@" \
+              openc3-cosmos-init ruby /openc3/bin/openc3cli initsettings $opt
+          }
+          ### SEED ###
+          # A setting with nothing stored is written
+          initsettings "" -e OPENC3_SETTING_TIME_ZONE=UTC | tee /dev/tty | grep -F "Set default setting 'time_zone' to: \"UTC\""
+          ./openc3.sh cli initsettings --export | tee /dev/tty | grep -F "OPENC3_SETTING_TIME_ZONE=UTC"
+          # Seeding the same value again writes nothing
+          initsettings "" -e OPENC3_SETTING_TIME_ZONE=UTC | tee /dev/tty | grep -F "already matches \"UTC\" - leaving unchanged"
+          # A new value replaces one that initsettings itself wrote
+          initsettings "" -e OPENC3_SETTING_TIME_ZONE=local | tee /dev/tty | grep -F "Updating unedited setting 'time_zone': \"UTC\" -> \"local\""
+          ### JSON SETTINGS ###
+          initsettings "" -e 'OPENC3_SETTING_CONTEXT_TAG={"text":"CI","fontColor":"#ffffff","backgroundColor":"#ff0000"}' | tee /dev/tty | grep -F "Set default setting 'context_tag'"
+          # The export quotes the JSON so it can be pasted back into compose
+          ./openc3.sh cli initsettings --export | tee /dev/tty | grep -F '"OPENC3_SETTING_CONTEXT_TAG={\"text\":\"CI\"'
+          ### VALUES INITSETTINGS DIDN'T WRITE ###
+          # seed_database wrote source_url, so it is left alone by default
+          initsettings "" -e OPENC3_SETTING_SOURCE_URL=https://example.com | tee /dev/tty | grep -F "holds a value initsettings didn't write"
+          # OPENC3_SETTINGS_OVERWRITE takes it anyway and says what was replaced
+          initsettings "" -e OPENC3_SETTING_SOURCE_URL=https://example.com -e OPENC3_SETTINGS_OVERWRITE=true | tee /dev/tty | grep -F "Overwriting setting 'source_url'"
+          ./openc3.sh cli initsettings --export | tee /dev/tty | grep -F "OPENC3_SETTING_SOURCE_URL=https://example.com"
+          ### BAD CONFIGURATION IS REPORTED, NOT FATAL ###
+          # A typo in the name is skipped with a suggestion, and init continues
+          initsettings "" -e OPENC3_SETTING_TIME_ZONES=UTC > unknown.txt 2>&1
+          tee /dev/tty < unknown.txt | grep -F "'time_zones' is not a known COSMOS setting. Did you mean 'time_zone'?"
+          grep -F "the affected setting(s) were skipped" unknown.txt
+          # An invalid value for a known setting is reported the same way
+          initsettings "" -e OPENC3_SETTING_TIME_ZONE=Pacific | tee /dev/tty | grep -F "Invalid value \"Pacific\" for setting 'time_zone'"
+          # Malformed JSON is caught at seed time rather than read back later
+          initsettings "" -e OPENC3_SETTING_ASTRO=notjson | tee /dev/tty | grep -F "is not valid JSON"
+          # OPENC3_SETTINGS_STRICT turns the same problem into a failed init
+          ! initsettings "" -e OPENC3_SETTING_TIME_ZONES=UTC -e OPENC3_SETTINGS_STRICT=true > strict.txt 2>&1
+          tee /dev/tty < strict.txt | grep -F "configuration problem(s)"
+          ### DRY RUN ###
+          # A dry run reports and exits non-zero without writing anything
+          ! initsettings --dry-run -e OPENC3_SETTING_TIME_ZONE=Pacific -e OPENC3_SETTING_SUBTITLE=cli-test > dry.txt 2>&1
+          tee /dev/tty < dry.txt | grep -F "[dry run] Set default setting 'subtitle' to: \"cli-test\""
+          grep -F "[dry run] ERROR: Invalid value \"Pacific\"" dry.txt
+          ./openc3.sh cli initsettings --export | tee /dev/tty > after_dry.txt
+          ! grep -F "OPENC3_SETTING_SUBTITLE" after_dry.txt
+          # An unknown name is allowed through explicitly
+          initsettings "" -e OPENC3_SETTING_NOT_A_SETTING=1 -e OPENC3_SETTINGS_ALLOW_UNKNOWN=true | tee /dev/tty | grep -F "ALLOW_UNKNOWN is set, applying anyway"
       # Removing due to write tmp/.docker_temp_3200699358: no space left on device
       # - name: openc3.sh util save,load
       #   shell: 'script -q -e -c "bash {0}"'

@@ -50,7 +50,26 @@ export default {
       .get_setting('classification_banner')
       .then((response) => {
         if (response) {
-          this.classification = JSON.parse(response)
+          try {
+            // Merge rather than replace: a stored blob that omits a key (a
+            // hand-written OPENC3_SETTING_CLASSIFICATION_BANNER value, say)
+            // would otherwise put undefined into the CSS variables below, and
+            // "height: undefinedpx" is an invalid declaration - the banner then
+            // falls back to auto height and shows top AND bottom instead of
+            // staying hidden at the default height of 0.
+            this.classification = {
+              ...this.classification,
+              ...JSON.parse(response),
+            }
+          } catch (error) {
+            // Keep the defaults on a malformed value. Logged rather than
+            // silent because this component renders on every page, so a bad
+            // setting would otherwise just look like the banner not working.
+            console.error(
+              'classification_banner setting is not valid JSON',
+              error,
+            )
+          }
         }
       })
       .catch((error) => {
