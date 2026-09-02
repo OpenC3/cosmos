@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -48,15 +48,11 @@ export default {
       if (values) {
         return values
       } else {
-        // See errorCaptured in Openc3Screen.vue for how this is parsed
-        throw {
-          line: this.line,
-          lineNumber: this.lineNumber,
-          keyword: 'LIMITSBAR',
-          parameters: this.parameters,
-          message: 'Item has no limits settings',
-          usage: 'Only items with limits',
-        }
+        throw this.screenError(
+          'LIMITSBAR',
+          'Item has no limits settings',
+          'Only items with limits',
+        )
       }
     },
     mergedStyle() {

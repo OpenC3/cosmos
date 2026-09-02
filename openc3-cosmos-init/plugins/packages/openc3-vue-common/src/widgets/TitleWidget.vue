@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license 
@@ -32,9 +32,10 @@ export default {
     },
   },
   created() {
-    if (this.parameters.length < 1) {
-      throw new Error('Not enough parameters for TITLE.')
-    }
+    // Breaking change: COSMOS 4 took TITLE <Text> <Font> <Size> <Weight>
+    // <Italics> and those were silently ignored here for years. Style with
+    // SETTING instead, i.e. SETTING RAW font-family Courier.
+    this.verifyNumParams('TITLE', 1, 1, 'TITLE <Text>')
   },
 }
 </script>
