@@ -220,7 +220,7 @@ export function runButtonScript(options) {
       // Anything with a real origin cannot be our frame.
       if (event.origin !== 'null' && event.origin !== '') return
       // Authoritative source check. Opaque-origin frames all report
-      // event.origin === 'null', so reference equality is the only reliable way 
+      // event.origin === 'null', so reference equality is the only reliable way
       // to know a message came from our frame.
       if (event.source !== iframe.contentWindow) return
       const message = event.data
