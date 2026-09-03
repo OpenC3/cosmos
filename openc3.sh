@@ -45,12 +45,7 @@ detect_compose_cmd() {
 # We intentionally do NOT login automatically: forcing a login would require
 # credentials for public registries (e.g. docker.io) and break air-gapped builds.
 suggest_registry_login() {
-  local env_file="$(dirname -- "$0")/${ENV_FILE:-.env}"
-  if [[ -f "$env_file" ]]; then
-    set -a
-    . "$env_file"
-    set +a
-  fi
+  source_env_files
 
   echo "" >&2
   echo "A container image pull was denied (403 / authentication required)." >&2
@@ -78,6 +73,48 @@ run_with_registry_check() {
   fi
   rm -f "$tmp"
   return $status
+}
+
+# Source the env files into the shell environment, exporting every value.
+# .env ships the upstream defaults (tracked); .env.local (if present) is
+# sourced last so its values override .env. This mirrors the --env-file
+# ordering in COMPOSE_FILE_ARGS below. Sourcing only .env would export its
+# values as real shell variables, which outrank Compose's --env-file
+# interpolation and silently discard .env.local overrides.
+# See https://github.com/OpenC3/cosmos/issues/3710
+#
+# Variables already present in the shell environment win over both files, to
+# match the documented precedence (shell env > .env.local > .env). Sourcing
+# alone would clobber them, so their values are saved first and restored
+# afterwards.
+source_env_files() {
+  local dir="$(dirname -- "$0")"
+  local -a env_files=()
+  local file key
+  if [[ -f "$dir/${ENV_FILE:-.env}" ]]; then
+    env_files+=("$dir/${ENV_FILE:-.env}")
+  fi
+  if [[ -f "$dir/.env.local" ]]; then
+    env_files+=("$dir/.env.local")
+  fi
+
+  local -a preset=()
+  for file in "${env_files[@]}"; do
+    while IFS= read -r key; do
+      if [[ -n "${!key+x}" ]]; then
+        preset+=("$key=${!key}")
+      fi
+    done < <(sed -nE 's/^[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)=.*/\2/p' "$file")
+  done
+
+  set -a
+  for file in "${env_files[@]}"; do
+    . "$file"
+  done
+  for key in "${preset[@]}"; do
+    export "$key"
+  done
+  set +a
 }
 
 # Helper function to find script - checks PATH first, then falls back to script location
@@ -333,15 +370,22 @@ check_root() {
   fi
 }
 
-# Resolve OPENC3_TAG, reading from the env file if not already set.
+# Resolve OPENC3_TAG, reading from the env files if not already set.
+# .env.local is checked first so its override wins over the .env default.
 resolve_openc3_tag() {
   if [[ -n "$OPENC3_TAG" ]]; then
     return
   fi
-  local env_file="$(dirname -- "$0")/${ENV_FILE:-.env}"
-  if [[ -f "$env_file" ]]; then
-    OPENC3_TAG=$(grep -E '^OPENC3_TAG=' "$env_file" 2>/dev/null | head -1 | cut -d= -f2)
-  fi
+  local dir="$(dirname -- "$0")"
+  local env_file
+  for env_file in "$dir/.env.local" "$dir/${ENV_FILE:-.env}"; do
+    if [[ -f "$env_file" ]]; then
+      OPENC3_TAG=$(grep -E '^OPENC3_TAG=' "$env_file" 2>/dev/null | head -1 | cut -d= -f2)
+      if [[ -n "$OPENC3_TAG" ]]; then
+        break
+      fi
+    fi
+  done
   OPENC3_TAG="${OPENC3_TAG:-latest}"
 }
 
@@ -402,10 +446,9 @@ case $1 in
       echo "  --wrapper-help    (same as --help)"
       exit 0
     fi
-    # Source the environment file to setup environment variables
-    # Use ENV_FILE if set, otherwise default to .env
-    set -a
-    . "$(dirname -- "$0")/${ENV_FILE:-.env}"
+    # Source the environment files (.env then .env.local) to setup
+    # environment variables. Use ENV_FILE if set, otherwise default to .env
+    source_env_files
     # Start (and remove when done --rm) the cmd-tlm-api container with the current working directory
     # mapped as volume (-v) /openc3/local and container working directory (-w) also set to /openc3/local.
     # This allows tools running in the container to have a consistent path to the current working directory.
@@ -417,7 +460,6 @@ case $1 in
     else
       ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     fi
-    set +a
     ;;
   cliroot )
     if [[ "$2" == "--wrapper-help" ]] || [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -454,10 +496,9 @@ case $1 in
       echo "  --wrapper-help    (same as --help)"
       exit 0
     fi
-    # Source the environment file to setup environment variables
-    # Use ENV_FILE if set, otherwise default to .env
-    set -a
-    . "$(dirname -- "$0")/${ENV_FILE:-.env}"
+    # Source the environment files (.env then .env.local) to setup
+    # environment variables. Use ENV_FILE if set, otherwise default to .env
+    source_env_files
     # Same as cli but run as root user
     # Note: The service name is always openc3-cosmos-cmd-tlm-api; compose.yaml pulls the correct image
     # (enterprise or non-enterprise) based on environment variables.
@@ -468,7 +509,6 @@ case $1 in
     else
       ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm --user=root -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     fi
-    set +a
     ;;
   start )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -843,8 +883,7 @@ case $1 in
     fi
     # Change to cosmos directory since scripts use relative paths
     cd "$(dirname -- "$0")"
-    set -a
-    . "$(dirname -- "$0")/${ENV_FILE:-.env}"
+    source_env_files
     if [[ -f /etc/ssl/certs/ca-bundle.crt ]]
     then
       cp /etc/ssl/certs/ca-bundle.crt "$(dirname -- "$0")/cacert.pem"
@@ -852,7 +891,6 @@ case $1 in
     "$(find_script openc3_setup.sh)"
     # Pass through any additional arguments (image names) to openc3_build_ubi.sh
     "$(find_script openc3_build_ubi.sh)" "${@:2}"
-    set +a
     ;;
   run )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -995,10 +1033,8 @@ case $1 in
       echo "  -h, --help                  Show this help message"
       exit 0
     fi
-    set -a
-    . "$(dirname -- "$0")/${ENV_FILE:-.env}"
+    source_env_files
     "$(find_script openc3_util.sh)" "${@:2}"
-    set +a
     ;;
   * )
     usage $0
