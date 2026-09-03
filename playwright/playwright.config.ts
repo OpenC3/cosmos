@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
-import path from 'path'
+import path from 'node:path'
 
 // Create constants mapping to our storage files
 export const STORAGE_STATE = path.join(__dirname, 'storageState.json')

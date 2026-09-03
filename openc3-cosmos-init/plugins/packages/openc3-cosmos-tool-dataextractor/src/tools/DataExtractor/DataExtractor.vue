@@ -735,8 +735,8 @@ export default {
       } catch (e) {
         return
       }
-      this.startDateTime = startTemp.getTime() * 1000000 // TODO: eslint parser doesn't like 1_000_000
-      this.endDateTime = endTemp.getTime() * 1000000
+      this.startDateTime = startTemp.getTime() * 1_000_000
+      this.endDateTime = endTemp.getTime() * 1_000_000
     },
     processItems: function () {
       // Check for a process in progress
@@ -765,12 +765,12 @@ export default {
         return
       }
       // Check for a future End Time
-      if (new Date(this.endDateTime / 1000000) > Date.now()) {
+      if (new Date(this.endDateTime / 1_000_000) > Date.now()) {
         this.$notify.caution({
           title: 'Note',
           body: `End date/time is greater than current date/time. Data will
             continue to stream in real-time until
-            ${new Date(this.endDateTime / 1000000).toISOString()} is reached.`,
+            ${new Date(this.endDateTime / 1_000_000).toISOString()} is reached.`,
         })
       }
 
