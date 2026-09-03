@@ -333,6 +333,23 @@ const DEFAULT_X_AXIS_ITEM = '__time'
 // A good rule of thumb is to stay within roughly half the frame budget, so 8–10ms.
 // This leaves the other ~7–8ms for the browser to do layout, paint, compositing, and GC.
 const MAX_PROCESSING_MS = 10
+// Deadband (seconds) applied when comparing the projected realtime x-axis max
+// against the newest received x-axis value. Small enough that a real offset is
+// corrected immediately, large enough that normal packet arrival jitter does
+// not re-anchor (and thus horizontally shift) the plot on every sample.
+const REALTIME_ANCHOR_TOLERANCE = 0.25
+// Minimum on screen movement (CSS pixels) of the right edge required to bother
+// applying a new realtime x scale. With a wide window a single animation frame
+// can move the axis a small fraction of a pixel, and every applied scale costs
+// a full uPlot redraw.
+const MIN_SCROLL_PIXELS = 0.5
+// How far past the newest point the realtime right edge may scroll, as a
+// fraction of secondsGraphed, before it stops advancing. Without this the axis
+// scrolls forever when data stops arriving (interface down, reduced streaming
+// with no producer) and the data eventually leaves the window entirely, so the
+// graph goes blank. At 0.5 the newest data is still visible in the left half of
+// the window when scrolling stops.
+const MAX_EMPTY_WINDOW_FRACTION = 0.5
 
 export default {
   components: {
@@ -477,6 +494,12 @@ export default {
       needToUpdate: false,
       pendingData: [],
       processingRAF: null,
+      scrollingRAF: null,
+      realtimeXAxisAnchor: null,
+      realtimeXAxisAnchorTime: null,
+      lastScrolledMax: null,
+      lastOverviewScaleTime: 0,
+      lastOverviewSelectTime: 0,
       lastRenderTime: 0,
       subscribeTime: null,
       emptyDataNotified: false,
@@ -615,9 +638,13 @@ export default {
           // If we were paused we do nothing ... see the data function
           if (oldState === 'stop') {
             this.startGraph()
+          } else {
+            this.startRealtimeScrolling()
           }
           break
-        // case 'pause': Nothing to do ... see the data function
+        case 'pause':
+          this.stopRealtimeScrolling()
+          break
         case 'stop':
           this.stopGraph()
           break
@@ -731,6 +758,11 @@ export default {
         this.graphEndDateTime = null
         this.needToUpdate = true
       }
+      if (this.graphEndDateTime) {
+        this.stopRealtimeScrolling()
+      } else {
+        this.startRealtimeScrolling()
+      }
     },
     actualXAxisItem: function (newVal, oldVal) {
       let clonedItems = JSON.parse(JSON.stringify(this.items))
@@ -753,6 +785,7 @@ export default {
         )
       }
       this.addItems(clonedItems)
+      this.startRealtimeScrolling()
       // Don't need to $emit('edit') because addItems() does that
     },
     refreshIntervalMs: function (val) {
@@ -941,7 +974,12 @@ export default {
         hooks: {
           setScale: [
             (chart, key) => {
-              if (key === 'x' && !this.zoomOverview && this.overview) {
+              if (
+                key === 'x' &&
+                !this.zoomOverview &&
+                this.overview &&
+                this.overviewSyncDue('lastOverviewSelectTime')
+              ) {
                 this.zoomChart = true
                 let left = Math.round(
                   this.overview.valToPos(chart.scales.x.min, 'x'),
@@ -1108,8 +1146,10 @@ export default {
       this.interval = setInterval(() => {
         this.updateGraphData()
       }, this.refreshIntervalMs)
+      this.startRealtimeScrolling()
     },
     stopGraph: function () {
+      this.stopRealtimeScrolling()
       if (this.processingRAF !== null) {
         cancelAnimationFrame(this.processingRAF)
         this.processingRAF = null
@@ -1122,6 +1162,193 @@ export default {
       if (this.interval) {
         clearInterval(this.interval)
         this.interval = null
+      }
+    },
+    shouldScrollRealtime: function () {
+      return (
+        this.playbackMode !== 'playback' &&
+        this.state === 'start' &&
+        this.xAxisIsTime &&
+        !this.graphEndDateTime &&
+        this.graph !== null
+      )
+    },
+    startRealtimeScrolling: function () {
+      if (this.scrollingRAF === null && this.shouldScrollRealtime()) {
+        this.scrollingRAF = requestAnimationFrame(() =>
+          this.scrollRealtimeGraph(),
+        )
+      }
+    },
+    stopRealtimeScrolling: function () {
+      if (this.scrollingRAF !== null) {
+        cancelAnimationFrame(this.scrollingRAF)
+        this.scrollingRAF = null
+      }
+    },
+    scrollRealtimeGraph: function () {
+      this.scrollingRAF = null
+      if (!this.shouldScrollRealtime()) {
+        return
+      }
+
+      if (this.pendingData.length > 0 || this.processingRAF !== null) {
+        // Data is still being buffered or processed. updateGraphData() throttles
+        // renders during bursts and processDataBatch mutates the arrays uPlot
+        // holds, so leave both the data and the scale alone this frame.
+      } else if (this.dataChanged) {
+        // processDataBatch mutates the arrays already held by uPlot. Commit the
+        // batch before setScale causes a redraw, otherwise uPlot can briefly
+        // draw a new point using the previous cached line path. setData(_, false)
+        // nulls those cached paths without redrawing or autoscaling, so
+        // setXAxisScale below is the only redraw this frame. dataChanged is
+        // deliberately left set: the refreshIntervalMs interval still runs
+        // updateGraphData(), which is what clears it and refreshes the overview.
+        this.graph.setData(this.data, false)
+        this.setXAxisScale(this.getRealtimeXAxisMax())
+      } else {
+        const realtimeMax = this.getRealtimeXAxisMax()
+        if (this.xAxisPixelsMoved(realtimeMax) >= MIN_SCROLL_PIXELS) {
+          this.setXAxisScale(realtimeMax)
+        }
+      }
+      this.scrollingRAF = requestAnimationFrame(() =>
+        this.scrollRealtimeGraph(),
+      )
+    },
+    xAxisPixelsMoved: function (realtimeMax) {
+      // valToPos() uses the currently applied scale, so this is how far the
+      // right edge would move on screen if realtimeMax were applied.
+      if (this.lastScrolledMax === null) {
+        return Infinity
+      }
+      return Math.abs(
+        this.graph.valToPos(realtimeMax, 'x') -
+          this.graph.valToPos(this.lastScrolledMax, 'x'),
+      )
+    },
+    overviewSyncDue: function (stampKey) {
+      // Realtime scrolling changes the x scale every animation frame. Syncing
+      // the overview that often is wasted work: each sync redraws the overview,
+      // and it only gains new points at refreshIntervalMs anyway. User driven
+      // scale changes (zoom, pan) are never throttled.
+      if (this.scrollingRAF === null) {
+        return true
+      }
+      const now = performance.now()
+      if (now - this[stampKey] < this.refreshIntervalMs) {
+        return false
+      }
+      this[stampKey] = now
+      return true
+    },
+    getRealtimeXAxisMax: function () {
+      if (
+        this.realtimeXAxisAnchor === null ||
+        this.realtimeXAxisAnchorTime === null
+      ) {
+        return Date.now() / 1000
+      }
+      const projected =
+        this.realtimeXAxisAnchor +
+        (performance.now() - this.realtimeXAxisAnchorTime) / 1000
+      // The anchor is taken from the first batch we receive, which is historical
+      // whenever we subscribe with a start time. In that case the anchor starts
+      // an entire replay behind the live data and, without correction, the right
+      // edge would stay that far behind forever. Re-anchor whenever the newest
+      // point has passed the projection so the right edge can never clip live
+      // data. Only correct forwards: a point arriving late leaves the newest
+      // value behind the projection, and re-anchoring on that would drag the
+      // plot leftwards. It also keeps the axis scrolling through data outages,
+      // which is the whole point of the animation frame loop.
+      const latest = this.data[0]?.at(-1)
+      if (
+        latest !== undefined &&
+        latest - projected > REALTIME_ANCHOR_TOLERANCE
+      ) {
+        this.realtimeXAxisAnchor = latest
+        this.realtimeXAxisAnchorTime = performance.now()
+        return latest
+      }
+      // Stop advancing the right edge once it has run far enough past the newest
+      // point that the data is about to scroll out of the window. The anchor is
+      // deliberately left running so that the projection is still correct when
+      // data resumes and the right edge can snap straight back to live.
+      if (latest !== undefined && this.secondsGraphed > 0) {
+        const limit = latest + this.secondsGraphed * MAX_EMPTY_WINDOW_FRACTION
+        if (projected > limit) {
+          return limit
+        }
+      }
+      return projected
+    },
+    initializeRealtimeXAxisAnchor: function (latestXAxisValue) {
+      // Establish the relationship between telemetry time and the browser's
+      // monotonic clock once. Re-anchoring for every sample makes network
+      // jitter move the entire plot horizontally when a point arrives.
+      // getRealtimeXAxisMax() re-anchors later if the data outruns the
+      // projection, which is how a historical first batch gets corrected.
+      if (
+        this.realtimeXAxisAnchor === null ||
+        this.realtimeXAxisAnchorTime === null
+      ) {
+        this.realtimeXAxisAnchor = latestXAxisValue
+        this.realtimeXAxisAnchorTime = performance.now()
+      }
+    },
+    setXAxisScale: function (realtimeMax = null) {
+      const xAxisData = this.data[0]
+      if (xAxisData && xAxisData.length) {
+        let max = realtimeMax === null ? xAxisData.at(-1) : realtimeMax
+        // Do not show history from before the first received point. The right
+        // edge can advance into empty space, but the left edge should only
+        // begin scrolling once the configured time/point window is full.
+        const possibleMinValues = [xAxisData.at(0)]
+        if (this.pointsGraphed <= xAxisData.length) {
+          // Apply pointsGraphed as the duration spanned by that many points
+          // rather than as the timestamp of the point itself. A raw timestamp
+          // can only move when a point arrives, which makes the left edge step
+          // one sample at a time while the right edge scrolls smoothly.
+          // Measuring the duration and hanging it off max keeps both edges in
+          // sync. When max is the newest point (no realtime scrolling) this
+          // reduces exactly to that timestamp.
+          const pointsDuration =
+            xAxisData.at(-1) - xAxisData.at(-this.pointsGraphed)
+          possibleMinValues.push(max - pointsDuration)
+        }
+        if (this.xAxisIsTime) {
+          possibleMinValues.push(max - this.secondsGraphed)
+        }
+        const min = Math.max(...possibleMinValues)
+        // realtimeMax is decoupled from the data, so min can reach or pass it
+        // (e.g. pointsSaved trimming drops every point older than realtimeMax).
+        // uPlot needs min < max.
+        if (min >= max) {
+          max = min + 1
+        }
+        if (
+          this.overview &&
+          realtimeMax !== null &&
+          this.overviewSyncDue('lastOverviewScaleTime')
+        ) {
+          this.overview.setScale('x', { min: xAxisData.at(0), max })
+        }
+        this.graph.setScale('x', { min, max })
+      } else if (this.graphStartDateTime) {
+        const min = this.graphStartDateTime / 1_000_000_000
+        const max = this.graphEndDateTime
+          ? this.graphEndDateTime / 1_000_000_000
+          : realtimeMax || Date.now() / 1000
+        this.graph.setScale('x', { min, max })
+      } else if (realtimeMax !== null) {
+        const duration = this.secondsGraphed > 0 ? this.secondsGraphed : 3600
+        this.graph.setScale('x', {
+          min: realtimeMax - duration,
+          max: realtimeMax,
+        })
+      }
+      if (realtimeMax !== null) {
+        this.lastScrolledMax = realtimeMax
       }
     },
     updateGraphData: function () {
@@ -1155,34 +1382,16 @@ export default {
           return
         }
       }
+      const realtimeMax = this.shouldScrollRealtime()
+        ? this.getRealtimeXAxisMax()
+        : null
       this.graph.setData(this.data)
       if (this.overview) {
         this.overview.setData(this.data)
       }
       this.lastRenderTime = performance.now()
 
-      const xAxisData = this.data[0]
-      if (xAxisData && xAxisData.length) {
-        let max = xAxisData.at(-1)
-        const possibleMinValues = [xAxisData.at(0)]
-        if (this.pointsGraphed <= xAxisData.length) {
-          possibleMinValues.push(xAxisData.at(-this.pointsGraphed))
-        }
-        if (this.xAxisIsTime) {
-          possibleMinValues.push(max - this.secondsGraphed)
-        }
-        const min = Math.max(...possibleMinValues)
-        if (min === max) {
-          max += 1
-        }
-        this.graph.setScale('x', { min, max })
-      } else if (this.graphStartDateTime) {
-        const min = this.graphStartDateTime / 1_000_000_000
-        const max = this.graphEndDateTime
-          ? this.graphEndDateTime / 1_000_000_000
-          : Date.now() / 1000
-        this.graph.setScale('x', { min, max })
-      }
+      this.setXAxisScale(realtimeMax)
 
       this.dataChanged = false
     },
@@ -1768,6 +1977,9 @@ export default {
       }
     },
     clearAllData: function () {
+      this.realtimeXAxisAnchor = null
+      this.realtimeXAxisAnchorTime = null
+      this.lastScrolledMax = null
       // Clear all data so delete the time data as well
       this.data[0] = []
       this.clearData(this.items)
@@ -1931,6 +2143,13 @@ export default {
       if (this.startTime == null && this.data[0][0]) {
         let newStartTime = this.data[0][0] * 1_000_000_000
         this.$emit('started', newStartTime)
+      }
+      if (
+        this.playbackMode !== 'playback' &&
+        this.xAxisIsTime &&
+        this.data[0].length > 0
+      ) {
+        this.initializeRealtimeXAxisAnchor(this.data[0].at(-1))
       }
       this.dataChanged = true
     },
