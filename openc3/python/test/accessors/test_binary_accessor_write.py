@@ -1264,6 +1264,23 @@ class TestBinaryAccessorWriteLittleEndian(unittest.TestCase):
             "ERROR",
         )
 
+    def test_complains_about_little_endian_bitfields_that_span_past_the_buffer(self):
+        # Little endian bitfields are accessed backwards from bit_offset, so this
+        # 20 bit field would need the byte before the start of the 2 byte buffer.
+        # It must be rejected before any memory is allocated for the value.
+        with self.assertRaisesRegex(
+            ValueError, "2 byte buffer insufficient to write UINT at bit_offset 12 with bit_size 20"
+        ):
+            BinaryAccessor.write(0x1, 12, 20, "UINT", bytearray(b"\x01\x02"), "LITTLE_ENDIAN", "ERROR")
+
+    def test_complains_about_little_endian_bitfields_with_a_huge_bit_size(self):
+        # A huge bit_size must not allocate bit_size / 8 bytes before the bounds
+        # are rejected
+        with self.assertRaisesRegex(
+            ValueError, "9 byte buffer insufficient to write INT at bit_offset 69 with bit_size 1727950384"
+        ):
+            BinaryAccessor.write(0x1, 69, 1727950384, "INT", bytearray(b"\xaa" * 9), "LITTLE_ENDIAN", "ERROR")
+
     def test_writes_1_bit_unsigned_integers(self):
         self.data[1:2] = b"\x55"
         BinaryAccessor.write(0x1, 8, 1, "UINT", self.data, "LITTLE_ENDIAN", "ERROR")

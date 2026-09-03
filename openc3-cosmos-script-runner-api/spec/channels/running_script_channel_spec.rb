@@ -46,10 +46,11 @@ RSpec.describe RunningScriptChannel, type: :channel do
       backlog({ 'type' => 'line', 'line_no' => 1 }, { 'type' => 'output', 'line' => 'hi' })
       subscribe id: '42'
       expect(subscription).to be_confirmed
-      expect(transmissions).to eq([
+      expected = [
         { 'type' => 'line', 'line_no' => 1 },
         { 'type' => 'output', 'line' => 'hi' },
-      ])
+      ]
+      expect(transmissions).to eq([expected])
       # Streaming must start strictly after the transmitted backlog (no gap, no
       # duplicates) and stay unarmed for up to ARM_TIMEOUT unless the
       # client performs 'ready'
@@ -63,8 +64,36 @@ RSpec.describe RunningScriptChannel, type: :channel do
       backlog({ 'type' => 'line', 'line_no' => 1 }, { 'type' => 'complete' })
       subscribe id: '42'
       expect(subscription).to be_confirmed
-      expect(transmissions.last).to eq({ 'type' => 'complete' })
+      expected = [
+        { 'type' => 'line', 'line_no' => 1 },
+        { 'type' => 'complete' },
+      ]
+      expect(transmissions.last).to eq(expected)
       expect(RunningScriptReplayThread).not_to have_received(:new)
+    end
+
+    it 'transmits a large backlog in bounded, ordered batches' do
+      events = (1..(RunningScriptReplayThread::MAX_BATCH_SIZE + 1)).map do |line_no|
+        { 'type' => 'line', 'line_no' => line_no }
+      end
+      backlog(*events)
+
+      subscribe id: '42'
+
+      expect(transmissions.map(&:length)).to eq([RunningScriptReplayThread::MAX_BATCH_SIZE, 1])
+      expect(transmissions.flatten).to eq(events)
+    end
+
+    it 'transmits the batch parsed before a bad backlog entry rather than losing it' do
+      backlog({ 'type' => 'line', 'line_no' => 1 })
+      OpenC3::Topic.write_topic("running-script-channel:42:replay", { 'data' => 'not json' }, '102-0')
+
+      subscribe id: '42'
+
+      # Batching must not let one corrupt entry discard the whole preceding
+      # backlog and leave the client with no state for a script that already ran
+      expect(subscription).to be_confirmed
+      expect(transmissions).to eq([[{ 'type' => 'line', 'line_no' => 1 }]])
     end
 
     it 'stops a leftover broadcaster for the same connection before starting a new one' do
