@@ -224,6 +224,62 @@ module OpenC3
         end
         tf.unlink
       end
+
+      it "parses SECRET" do
+        model = MicroserviceModel.new(folder_name: "TEST", name: "DEFAULT__TYPE__NAME", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts 'SECRET ENV USERNAME ENV_USERNAME'
+        tf.puts 'SECRET FILE KEY "/tmp/DATA/cert"'
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+        end
+        expect(model.as_json()['secrets']).to include(['ENV', 'USERNAME', 'ENV_USERNAME'],
+                                                     ['FILE', 'KEY', '/tmp/DATA/cert'])
+        tf.unlink
+      end
+
+      it "rejects SECRET FILE paths outside the secret file dir" do
+        ['/etc/passwd', '/tmp/../etc/passwd', '/openc3/lib/openc3.rb'].each do |path|
+          model = MicroserviceModel.new(folder_name: "TEST", name: "DEFAULT__TYPE__NAME", scope: "DEFAULT")
+          parser = ConfigParser.new
+          tf = Tempfile.new
+          tf.puts "SECRET FILE KEY \"#{path}\""
+          tf.close
+          parser.parse_file(tf.path) do |keyword, params|
+            expect { model.handle_config(parser, keyword, params) }.to raise_error(ConfigParser::Error, /must be under/)
+          end
+          tf.unlink
+        end
+      end
+
+      it "normalizes the secret type and file path" do
+        model = MicroserviceModel.new(folder_name: "TEST", name: "DEFAULT__TYPE__NAME", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts 'SECRET env USERNAME ENV_USERNAME'
+        tf.puts 'SECRET file KEY "/tmp/DATA/../DATA/cert"'
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+        end
+        expect(model.as_json()['secrets']).to include(['ENV', 'USERNAME', 'ENV_USERNAME'],
+                                                     ['FILE', 'KEY', '/tmp/DATA/cert'])
+        tf.unlink
+      end
+
+      it "rejects unknown SECRET types" do
+        model = MicroserviceModel.new(folder_name: "TEST", name: "DEFAULT__TYPE__NAME", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts 'SECRET OTHER KEY DATA'
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          expect { model.handle_config(parser, keyword, params) }.to raise_error(ConfigParser::Error, /Unknown secret type/)
+        end
+        tf.unlink
+      end
     end
 
     describe "deploy" do

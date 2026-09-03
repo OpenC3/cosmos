@@ -143,6 +143,90 @@ module OpenC3
 
         expect(env['PYTHONPATH']).to eq('/some/python/path')
       end
+
+      describe "FILE secrets" do
+        before(:each) do
+          allow(@operator.instance_variable_get(:@secrets)).to receive(:get).and_return('secret value')
+        end
+
+        def convert(path)
+          config = { "env" => {}, "secrets" => [['FILE', 'KEY', path, nil]] }
+          @operator.convert_microservice_to_process_definition("DEFAULT__TYPE__NAME", config)
+        end
+
+        it "writes the secret value to a path under the secret file dir" do
+          path = "/tmp/openc3_operator_spec_#{Process.pid}/cert"
+          begin
+            convert(path)
+            expect(File.read(path)).to eql 'secret value'
+          ensure
+            FileUtils.rm_rf(File.dirname(path))
+          end
+        end
+
+        it "does not write a secret outside the secret file dir" do
+          expect(Logger).to receive(:error).with(/invalid file path/)
+          expect(File).to_not receive(:open)
+          convert('/etc/openc3_operator_spec_should_not_exist')
+        end
+
+        it "does not follow a symlink pointing outside the secret file dir" do
+          link = "/tmp/openc3_operator_spec_link_#{Process.pid}"
+          target = "/tmp/openc3_operator_spec_target_#{Process.pid}"
+          FileUtils.rm_f([link, target])
+          File.symlink(target, link)
+          begin
+            expect(Logger).to receive(:error).with(/is a symlink which is not allowed/)
+            convert(link)
+            expect(File.exist?(target)).to be false
+          ensure
+            FileUtils.rm_f([link, target])
+          end
+        end
+
+        it "does not write through a symlinked directory pointing outside the secret file dir" do
+          dir = "/tmp/openc3_operator_spec_outside_#{Process.pid}"
+          link = "/tmp/openc3_operator_spec_dirlink_#{Process.pid}"
+          FileUtils.rm_rf(dir)
+          FileUtils.rm_f(link)
+          FileUtils.mkdir_p(dir)
+          # A symlink whose target is outside the secret file dir. /tmp is used as
+          # the target's parent so the spec doesn't need write access elsewhere,
+          # with OPENC3_SECRET_FILE_DIR narrowed to make it 'outside'.
+          saved = ENV['OPENC3_SECRET_FILE_DIR']
+          ENV['OPENC3_SECRET_FILE_DIR'] = "/tmp/openc3_operator_spec_base_#{Process.pid}"
+          FileUtils.mkdir_p(ENV['OPENC3_SECRET_FILE_DIR'])
+          File.symlink(dir, "#{ENV['OPENC3_SECRET_FILE_DIR']}/sub")
+          begin
+            expect(Logger).to receive(:error).with(/contains a symlinked directory/)
+            convert("#{ENV['OPENC3_SECRET_FILE_DIR']}/sub/cert")
+            expect(File.exist?("#{dir}/cert")).to be false
+          ensure
+            FileUtils.rm_rf([dir, ENV['OPENC3_SECRET_FILE_DIR']])
+            ENV['OPENC3_SECRET_FILE_DIR'] = saved
+          end
+        end
+
+        it "does not create directories outside the secret file dir through a symlink" do
+          dir = "/tmp/openc3_operator_spec_outside_#{Process.pid}"
+          FileUtils.rm_rf(dir)
+          FileUtils.mkdir_p(dir)
+          saved = ENV['OPENC3_SECRET_FILE_DIR']
+          ENV['OPENC3_SECRET_FILE_DIR'] = "/tmp/openc3_operator_spec_base_#{Process.pid}"
+          FileUtils.mkdir_p(ENV['OPENC3_SECRET_FILE_DIR'])
+          File.symlink(dir, "#{ENV['OPENC3_SECRET_FILE_DIR']}/sub")
+          begin
+            expect(Logger).to receive(:error).with(/contains a symlinked directory/)
+            # The 'deep' directory does not exist yet so mkdir_p would create it
+            # under the symlink target if the containment check ran afterwards
+            convert("#{ENV['OPENC3_SECRET_FILE_DIR']}/sub/deep/cert")
+            expect(File.exist?("#{dir}/deep")).to be false
+          ensure
+            FileUtils.rm_rf([dir, ENV['OPENC3_SECRET_FILE_DIR']])
+            ENV['OPENC3_SECRET_FILE_DIR'] = saved
+          end
+        end
+      end
     end
 
     describe "start_new" do

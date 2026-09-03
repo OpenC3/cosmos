@@ -148,6 +148,32 @@
 #   environment:
 #     - OPENC3_LOG_STDERR=1
 
+# -------------------------------------------------------------------------
+# Secret file directory
+# -------------------------------------------------------------------------
+# OPENC3_SECRET_FILE_DIR sets the base directory that SECRET FILE paths must
+# reside under (default /tmp). Paths outside of it are rejected when the
+# plugin is installed. It is read by cmd-tlm-api and init (which validate the
+# path) and by the operator (which writes the secret files) - set it to the
+# SAME value on all of them, plus script-runner-api if scripts read FILE
+# secrets. The directory must be writable in each container, so a value other
+# than /tmp also needs a volume mount because the containers are read_only:
+#
+# services:
+#   openc3-operator:
+#     environment:
+#       - OPENC3_SECRET_FILE_DIR=/secrets
+#     volumes:
+#       - "openc3-secrets-v:/secrets"
+#   openc3-cosmos-cmd-tlm-api:
+#     environment:
+#       - OPENC3_SECRET_FILE_DIR=/secrets
+#   openc3-cosmos-init:
+#     environment:
+#       - OPENC3_SECRET_FILE_DIR=/secrets
+# volumes:
+#   openc3-secrets-v: {}
+
 # ---------------------------------------------------------------------------
 # Adding extra buckets / volumes
 # ---------------------------------------------------------------------------

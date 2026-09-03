@@ -227,6 +227,8 @@ services:
       - OPENC3_AUTH_RATE_LIMIT_TO
       - OPENC3_AUTH_RATE_LIMIT_WITHIN
       - OPENC3_LOG_STDERR
+      # Base directory SECRET FILE paths must reside under (default /tmp)
+      - OPENC3_SECRET_FILE_DIR
     extra_hosts:
       - host.docker.internal:host-gateway
 
@@ -294,6 +296,8 @@ services:
       - OPENC3_SERVICE_PASSWORD=${OPENC3_SERVICE_PASSWORD}
       # Optional: bare pass-through (only forwarded if set in host env or .env)
       - OPENC3_LOG_STDERR
+      # Base directory SECRET FILE paths must reside under (default /tmp)
+      - OPENC3_SECRET_FILE_DIR
 
   openc3-operator:
     read_only: true
@@ -368,6 +372,8 @@ services:
       - OPENC3_SERVICE_PASSWORD=${OPENC3_SERVICE_PASSWORD}
       # Optional: bare pass-through (only forwarded if set in host env or .env)
       - OPENC3_LOG_STDERR
+      # Base directory SECRET FILE paths must reside under (default /tmp)
+      - OPENC3_SECRET_FILE_DIR
     extra_hosts:
       - host.docker.internal:host-gateway
 
@@ -483,6 +489,9 @@ services:
       - OPENC3_INIT_WAIT_TIMEOUT
       - OPENC3_ISTIO_ENABLED
       - OPENC3_LOG_STDERR
+      # Base directory SECRET FILE paths must reside under (default /tmp).
+      # Plugin install validates SECRET FILE paths against it.
+      - OPENC3_SECRET_FILE_DIR
       # Per-tool install opt-outs
       - OPENC3_NO_CMDTLMSERVER
       - OPENC3_NO_LIMITSMONITOR

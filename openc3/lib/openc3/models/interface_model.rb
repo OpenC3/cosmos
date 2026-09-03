@@ -20,6 +20,7 @@ require 'openc3/models/microservice_model'
 require 'openc3/models/bridge_model'
 require 'openc3/models/host_interface_microservice_model'
 require 'openc3/models/target_model'
+require 'openc3/utilities/secrets'
 
 module OpenC3
   class InterfaceModel < Model
@@ -393,6 +394,7 @@ module OpenC3
 
       when 'SECRET'
         parser.verify_num_parameters(3, 5, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path> <Option Name (Optional)> <Secret Store Name (Optional)>")
+        validate_secret(parser, keyword, parameters)
         @secrets << parameters[0..2]
         if ConfigParser.handle_nil(parameters[3])
           # Option Name, Secret Name
@@ -403,6 +405,7 @@ module OpenC3
       when 'BRIDGE_SECRET'
         if type == 'INTERFACE'
           parser.verify_num_parameters(3, 5, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path> <Option Name (Optional)> <Secret Store Name (Optional)>")
+          validate_secret(parser, keyword, parameters)
           @secrets << parameters[0..2]
           if ConfigParser.handle_nil(parameters[3])
             # Option Name, Secret Name
@@ -475,6 +478,26 @@ module OpenC3
       end
 
       return nil
+    end
+
+    # Validate a SECRET / BRIDGE_SECRET definition. FILE type paths are restricted
+    # to Secrets.secret_file_dir to prevent reading or overwriting arbitrary files.
+    def validate_secret(parser, keyword, parameters)
+      type = parameters[0].to_s.upcase
+      unless ['ENV', 'FILE'].include?(type)
+        raise ConfigParser::Error.new(parser, "Unknown secret type '#{parameters[0]}' for #{keyword}. Must be ENV or FILE.")
+      end
+      # Normalize in place so the stored secret matches what the operator and
+      # Secrets.setup match on, both of which compare against 'ENV' / 'FILE' and
+      # use the path exactly as given.
+      parameters[0] = type
+      if type == 'FILE'
+        begin
+          parameters[2] = Secrets.validate_file_path(parameters[2])
+        rescue ArgumentError => error
+          raise ConfigParser::Error.new(parser, "#{keyword} #{error.message}")
+        end
+      end
     end
 
     # Creates a MicroserviceModel to deploy the Interface/Router

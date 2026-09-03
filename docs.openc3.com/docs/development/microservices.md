@@ -400,8 +400,13 @@ Access secrets defined in plugin.txt with the [SECRET](/docs/configuration/plugi
 
 ```ruby
 SECRET ENV MY_API_KEY API_KEY_ENV
-SECRET FILE MY_CERT /path/to/cert.pem
+SECRET FILE MY_CERT /tmp/MY_MICROSERVICE/cert.pem
 ```
+
+FILE secret paths must be under `/tmp` (or the directory named by the
+`OPENC3_SECRET_FILE_DIR` environment variable). The path is where COSMOS writes the
+secret value, not an existing file to read, so paths outside that directory are
+rejected when the plugin is installed.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
