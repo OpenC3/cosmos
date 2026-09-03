@@ -836,4 +836,66 @@ RSpec.describe ScriptsController, type: :controller do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+
+  # Script.all lists every target file with no path matchers, so the Script Runner
+  # editor can address targets_modified/<TARGET>/cmd_tlm/..., which PacketConfig
+  # evaluates as code (GENERIC_*_CONVERSION eval) in the decom microservices.
+  # Writing that overlay must require admin, not just script_edit.
+  describe "cmd_tlm overlay gate" do
+    context "when the caller is non-admin (script_edit but not admin)" do
+      before do
+        allow(controller).to receive(:authorization).with('script_edit').and_return(true)
+        allow(controller).to receive(:authorization).with('admin').and_return(false)
+      end
+
+      it "blocks create into the cmd_tlm overlay" do
+        expect(Script).not_to receive(:create)
+
+        post :create, params: {scope: "DEFAULT", name: "INST/cmd_tlm/poc.txt", text: "TELEMETRY INST POC BIG_ENDIAN"}
+      end
+
+      it "blocks destroy of the cmd_tlm overlay" do
+        expect(Script).not_to receive(:destroy)
+
+        delete :destroy, params: {scope: "DEFAULT", name: "INST/cmd_tlm/tlm.txt"}
+      end
+
+      it "blocks non-canonical names that normalize into the cmd_tlm overlay" do
+        expect(Script).not_to receive(:create)
+
+        post :create, params: {scope: "DEFAULT", name: "INST//cmd_tlm/poc.txt", text: "text"}
+      end
+
+      it "still allows procedures, screens, and temp writes" do
+        expect(Script).to receive(:create)
+        allow(OpenC3::Logger).to receive(:info)
+
+        post :create, params: {scope: "DEFAULT", name: "INST/procedures/ok.rb", text: "text"}
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context "when the caller is admin" do
+      before do
+        allow(controller).to receive(:authorization).with('script_edit').and_return(true)
+        allow(controller).to receive(:authorization).with('admin').and_return(true)
+      end
+
+      it "allows create into the cmd_tlm overlay" do
+        expect(Script).to receive(:create)
+        allow(OpenC3::Logger).to receive(:info)
+
+        post :create, params: {scope: "DEFAULT", name: "INST/cmd_tlm/tlm.txt", text: "TELEMETRY INST POC BIG_ENDIAN"}
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "allows destroy of the cmd_tlm overlay" do
+        expect(Script).to receive(:destroy).with("DEFAULT", "INST/cmd_tlm/tlm.txt")
+        allow(OpenC3::Logger).to receive(:info)
+
+        delete :destroy, params: {scope: "DEFAULT", name: "INST/cmd_tlm/tlm.txt"}
+        expect(response).to have_http_status(:ok)
+      end
+    end
+  end
 end
