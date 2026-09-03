@@ -148,11 +148,11 @@ detect_compose_cmd
 # without editing it. See:
 # https://github.com/OpenC3/cosmos/issues/3024
 # https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/
-COMPOSE_FILE_ARGS=(--env-file "$(dirname -- "$0")/${ENV_FILE:-.env}")
+COMPOSE_ENV_FILE_ARGS=(--env-file "$(dirname -- "$0")/${ENV_FILE:-.env}")
 if [[ -f "$(dirname -- "$0")/.env.local" ]]; then
-  COMPOSE_FILE_ARGS+=(--env-file "$(dirname -- "$0")/.env.local")
+  COMPOSE_ENV_FILE_ARGS+=(--env-file "$(dirname -- "$0")/.env.local")
 fi
-COMPOSE_FILE_ARGS+=(-f "$(dirname -- "$0")/compose.yaml")
+COMPOSE_FILE_ARGS=("${COMPOSE_ENV_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose.yaml")
 if [[ -f "$(dirname -- "$0")/compose.override.yaml" ]]; then
   COMPOSE_FILE_ARGS+=(-f "$(dirname -- "$0")/compose.override.yaml")
 fi
@@ -673,7 +673,7 @@ case $1 in
     # Get the list of image repositories defined in the compose configuration
     # Strip the docker.io/ prefix that compose adds (docker CLI doesn't recognize it)
     # and strip the :tag suffix so we match all tags for each repository
-    REPOS=$(${DOCKER_COMPOSE_COMMAND} $COMPOSE_FILES config --images 2>/dev/null | sed 's|^docker\.io/||; s|:.*||' | sort -u)
+    REPOS=$(${DOCKER_COMPOSE_COMMAND} "${COMPOSE_ENV_FILE_ARGS[@]}" $COMPOSE_FILES config --images 2>/dev/null | sed 's|^docker\.io/||; s|:.*||' | sort -u)
     if [[ -z "$REPOS" ]]; then
       echo "No $COSMOS_NAME images found in compose configuration."
       exit 0
@@ -681,7 +681,7 @@ case $1 in
     # Build filter args for each repository that has at least one local image
     FILTER_ARGS=""
     for repo in $REPOS; do
-      if docker images -q "$repo" 2>/dev/null | grep -q .; then
+      if $CONTAINER_CMD images -q "$repo" 2>/dev/null | grep -q .; then
         FILTER_ARGS="$FILTER_ARGS --filter reference=$repo"
       fi
     done
@@ -689,7 +689,7 @@ case $1 in
       echo "No $COSMOS_NAME images found locally."
       exit 0
     fi
-    docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" $FILTER_ARGS
+    $CONTAINER_CMD images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" $FILTER_ARGS
     ;;
   status )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -704,7 +704,7 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" ps
+    ${DOCKER_COMPOSE_COMMAND} "${COMPOSE_FILE_ARGS[@]}" ps
     ;;
   destroy )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -737,7 +737,7 @@ case $1 in
     fi
     # Get the list of images defined in the compose configuration
     # Strip the docker.io/ prefix that compose adds, since docker CLI doesn't recognize it
-    IMAGES=$(${DOCKER_COMPOSE_COMMAND} $COMPOSE_FILES config --images 2>/dev/null | sed 's|^docker\.io/||' | sort -u)
+    IMAGES=$(${DOCKER_COMPOSE_COMMAND} "${COMPOSE_ENV_FILE_ARGS[@]}" $COMPOSE_FILES config --images 2>/dev/null | sed 's|^docker\.io/||' | sort -u)
     if [[ -z "$IMAGES" ]]; then
       echo "No $COSMOS_NAME images found in compose configuration."
       exit 0
@@ -745,7 +745,7 @@ case $1 in
     # Filter to only images that actually exist locally
     EXISTING_IMAGES=""
     for img in $IMAGES; do
-      if docker image inspect "$img" &>/dev/null; then
+      if $CONTAINER_CMD image inspect "$img" &>/dev/null; then
         EXISTING_IMAGES="$EXISTING_IMAGES $img"
       fi
     done
@@ -761,12 +761,12 @@ case $1 in
     done
     echo ""
     if [[ "$2" == "force" ]]; then
-      docker rmi $EXISTING_IMAGES
+      $CONTAINER_CMD rmi $EXISTING_IMAGES
     else
       echo "Are you sure you want to remove these $COSMOS_NAME images? (1-Yes / 2-No)"
       select yn in "Yes" "No"; do
         case $yn in
-          Yes ) docker rmi $EXISTING_IMAGES; break;;
+          Yes ) $CONTAINER_CMD rmi $EXISTING_IMAGES; break;;
           No ) exit;;
           * ) echo "Please select 1 for Yes or 2 for No.";;
         esac
@@ -774,7 +774,7 @@ case $1 in
     fi
     echo ""
     echo "Pruning dangling images..."
-    docker image prune -f
+    $CONTAINER_CMD image prune -f
     ;;
   build )
     if [[ "$OPENC3_DEVEL" -eq 0 ]]; then

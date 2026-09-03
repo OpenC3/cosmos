@@ -77,6 +77,16 @@ if exist "%~dp0.env.local" (
   set COMPOSE_ENV_FILES=!COMPOSE_ENV_FILES! --env-file "%~dp0.env.local"
 )
 
+REM Load the env files now, with delayed expansion DISABLED, so values that
+REM contain '!' (common in the passwords .env.local is meant to hold) are
+REM stored literally instead of being eaten by delayed expansion. Delayed
+REM expansion is re-enabled immediately afterwards for the rest of the script;
+REM variables set in the outer scope are inherited by the inner one and both
+REM scopes are popped when the script exits.
+setlocal DisableDelayedExpansion
+CALL :load_env
+setlocal EnableDelayedExpansion
+
 if "%1" == "" (
   GOTO usage
 )
@@ -87,7 +97,6 @@ if "%1" == "-h" (
   GOTO usage
 )
 if "%1" == "cli" (
-  CALL :load_env
   set params=%*
   call set params=%%params:*%1=%%
   REM Start (and remove when done --rm) the cmd-tlm-api container with the current working directory
@@ -104,7 +113,6 @@ if "%1" == "cli" (
   GOTO :EOF
 )
 if "%1" == "cliroot" (
-  CALL :load_env
   set params=%*
   call set params=%%params:*%1=%%
   REM Note: The service name is always openc3-cosmos-cmd-tlm-api; compose.yaml pulls the correct image
@@ -147,7 +155,6 @@ if "%1" == "upgrade" (
   GOTO upgrade
 )
 if "%1" == "util" (
-  CALL :load_env
   GOTO util
 )
 
@@ -186,13 +193,13 @@ GOTO :EOF
   REM Get image repositories from compose config
   REM Strip docker.io/ prefix and :tag suffix so we match all tags per repository
   set "FILTER_ARGS="
-  for /f "delims=" %%i in ('docker compose !COMPOSE_FILES! config --images 2^>nul') do (
+  for /f "delims=" %%i in ('!CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! !COMPOSE_FILES! config --images 2^>nul') do (
     set "IMG=%%i"
     set "IMG=!IMG:docker.io/=!"
     REM Strip :tag suffix by splitting on colon
     for /f "tokens=1 delims=:" %%r in ("!IMG!") do set "REPO=%%r"
     REM Check if any local images exist for this repository
-    for /f %%q in ('docker images -q "!REPO!" 2^>nul') do (
+    for /f %%q in ('!CONTAINER_CMD! images -q "!REPO!" 2^>nul') do (
       set "FILTER_ARGS=!FILTER_ARGS! --filter reference=!REPO!"
     )
   )
@@ -200,12 +207,12 @@ GOTO :EOF
     @echo No %COSMOS_NAME% images found locally.
     GOTO :EOF
   )
-  docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" !FILTER_ARGS!
+  !CONTAINER_CMD! images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" !FILTER_ARGS!
   @echo off
 GOTO :EOF
 
 :status
-  docker compose -f %~dp0compose.yaml ps
+  !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! -f %~dp0compose.yaml !COMPOSE_OVERRIDE! ps
   @echo off
 GOTO :EOF
 
@@ -326,14 +333,15 @@ REM Load the env files into the environment, .env first then .env.local so
 REM .env.local overrides .env. findstr /V = print lines that don't match,
 REM /B beginning of line, /L literal search string, /C:# match #
 :load_env
-  FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# "%~dp0.env"') do SET %%i
+  if exist "%~dp0.env" (
+    FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# "%~dp0.env"') do SET %%i
+  )
   if exist "%~dp0.env.local" (
     FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# "%~dp0.env.local"') do SET %%i
   )
   GOTO :EOF
 
 :suggest_registry_login
-  CALL :load_env
   @echo. 1>&2
   @echo The command failed. If this was a registry authentication error (403), 1>&2
   @echo login to the registry and retry the command: 1>&2
