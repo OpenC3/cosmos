@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-We encourage users to be on the latest version of COSMOS and only backport security features for
+We encourage users to be on the latest version of COSMOS and only backport security fixes for
 several months as users transition to the latest version.
 
 | Version | Supported          |
