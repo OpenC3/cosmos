@@ -124,7 +124,7 @@ module OpenC3
         end
       end
 
-      it "allows absolute paths to ERB partials" do
+      it "rejects absolute paths to ERB partials" do
         Dir.mktmpdir("partial_dir") do |dir|
           tf2 = Tempfile.new('_partial.txt', dir)
           tf2.puts "ABSOLUTE"
@@ -133,12 +133,27 @@ module OpenC3
           tf.puts "<%= render '#{tf2.path}' %>"
           tf.close
 
-          @cp.parse_file(tf.path) do |keyword, _params|
-            expect(keyword).to eql "ABSOLUTE"
-          end
+          expect { @cp.parse_file(tf.path) }.to raise_error(ConfigParser::Error, /Absolute paths are not allowed/)
           tf.unlink
           tf2.unlink
         end
+      end
+
+      it "rejects ERB partials which traverse out of the config directory" do
+        tf = Tempfile.new('unittest')
+        tf.puts "<%= render '../../../../etc/_passwd' %>"
+        tf.close
+
+        expect { @cp.parse_file(tf.path) }.to raise_error(ConfigParser::Error, /Path traversal is not allowed/)
+        tf.unlink
+      end
+
+      it "rejects read_file with an absolute path" do
+        expect { @cp.read_file('/etc/passwd') }.to raise_error(ConfigParser::Error, /Absolute paths are not allowed/)
+      end
+
+      it "rejects read_file with path traversal" do
+        expect { @cp.read_file('../../../../etc/passwd') }.to raise_error(ConfigParser::Error, /Path traversal is not allowed/)
       end
 
       it "supports ERB partials via render" do

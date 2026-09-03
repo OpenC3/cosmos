@@ -166,17 +166,44 @@ module OpenC3
       return ERB.new(read_file(template_name).comment_erb(), trim_mode: "-").result(b)
     end
 
-    # Can be called during parsing to read a referenced file
+    # Can be called during parsing to read a referenced file. The filename must
+    # be relative to the configuration file being parsed and must resolve to a
+    # location inside that file's directory.
     def read_file(filename)
-      # Assume the file is there. If not we raise a pretty obvious error
-      if File.expand_path(filename) == filename # absolute path
-        path = filename
-      else # relative to the current @filename
-        path = File.join(File.dirname(@filename), filename)
-      end
+      path = resolve_config_path(filename)
       OpenC3.set_working_dir(File.dirname(path)) do
         return File.read(path).force_encoding("UTF-8")
       end
+    end
+
+    # Resolves a filename referenced by a configuration file (TEMPLATE_FILE, ERB
+    # render, etc) into an absolute path contained by the directory of the file
+    # being parsed. Absolute paths and paths containing '..' are rejected so a
+    # configuration file can not read arbitrary files on the filesystem.
+    #
+    # @param filename [String] Relative path from the configuration file
+    # @return [String] Absolute path to the referenced file
+    private def resolve_config_path(filename)
+      filename = filename.to_s
+      raise Error.new(self, "Filename must be given") if filename.strip.empty?
+
+      if File.absolute_path?(filename) or File.expand_path(filename) == filename
+        raise Error.new(self, "Absolute paths are not allowed: #{filename}")
+      end
+      if filename.include?('..')
+        raise Error.new(self, "Path traversal is not allowed: #{filename}")
+      end
+      if @filename.nil? or @filename.to_s.empty?
+        raise Error.new(self, "No configuration file is being parsed, can not resolve: #{filename}")
+      end
+
+      base = File.expand_path(File.dirname(@filename))
+      path = File.expand_path(File.join(base, filename))
+      # Final containment check in case the OS or Ruby normalizes something unexpected
+      unless path.start_with?(base + File::SEPARATOR)
+        raise Error.new(self, "Path is outside the configuration directory: #{filename}")
+      end
+      path
     end
 
     # Processes a file and yields |config| to the given block
