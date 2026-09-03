@@ -168,7 +168,7 @@ SECRET:
   summary: Define a secret needed by this interface
   description:
     Defines a secret for this interface and optionally assigns its value to an option.
-    For more information see [Admin Secrets](/docs/tools/admin#secrets).
+    For more information see the [Secrets guide](/docs/guides/secrets) and [Admin Secrets](/docs/tools/admin#secrets).
   since: 5.3.0
   parameters:
     - name: Type
