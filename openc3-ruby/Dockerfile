@@ -120,6 +120,10 @@ RUN apt-get update && \
 ENV UV_LINK_MODE=copy
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_PYTHON_DOWNLOADS=never
+# Route uv at the configured PyPI mirror (no-op at the default pypi.org). Matches
+# the runtime pip -i <pypi_url>/simple convention so air-gapped builds resolve
+# Python deps from the same mirror the runtime plugin installs use.
+ENV UV_DEFAULT_INDEX=${PYPI_URL}/simple
 # Use the Debian system Python instead of the project's .python-version pin
 # (which targets 3.12 for host development) since UV_PYTHON_DOWNLOADS is never.
 ENV UV_PYTHON=python${PYTHON_VERSION}
