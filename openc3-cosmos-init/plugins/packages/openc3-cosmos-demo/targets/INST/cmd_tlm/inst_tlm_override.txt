@@ -10,3 +10,9 @@ SELECT_TELEMETRY <%= target_name %> MECH
     LIMITS DEFAULT 1 ENABLED -190.0 -180.0 180.0 190.0
   # Delete an item so it doesn't appear in the packet
   DELETE_ITEM EXTRA
+
+LIMITS_GROUP <%= target_name %>_TEMPS
+  LIMITS_GROUP_ITEM <%= target_name %> HEALTH_STATUS TEMP1
+  LIMITS_GROUP_ITEM <%= target_name %> HEALTH_STATUS TEMP2
+  LIMITS_GROUP_ITEM <%= target_name %> HEALTH_STATUS TEMP3
+  LIMITS_GROUP_ITEM <%= target_name %> HEALTH_STATUS TEMP4
