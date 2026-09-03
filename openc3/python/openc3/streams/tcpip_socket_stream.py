@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import contextlib
+import errno
 import select
 import socket
 import threading
@@ -67,19 +68,37 @@ class TcpipSocketStream(Stream):
             # if there is no data available
             except OSError as error:
                 if error.errno == socket.EAGAIN or error.errno == socket.EWOULDBLOCK:
-                    # If select returns something it means the socket is now available for
-                    # reading so retry the read. If it returns empty list it means we timed out.
-                    # If the pipe is present that means we closed the socket
-                    readable, _, _ = select.select(
-                        [self.read_socket, self.pipe_reader],
-                        [],
-                        [],
-                        self.read_timeout,
-                    )
-                    if readable and self.pipe_reader in readable:
+                    # Wait for the socket to be ready for reading or for the timeout
+                    try:
+                        readable, _, _ = select.select(
+                            [self.read_socket, self.pipe_reader],
+                            [],
+                            [],
+                            self.read_timeout,
+                        )
+                    # These can happen with the socket being closed while waiting on
+                    # select. Python sets fileno() to -1 once closed, which raises
+                    # ValueError rather than OSError.
+                    except ValueError:
                         data = ""
+                        break
+                    except OSError as select_error:
+                        if select_error.errno in (errno.EBADF, errno.ENOTSOCK):
+                            data = ""
+                            break
+                        # Anything else is an unexpected system failure, not a
+                        # closed socket - don't hide it behind a clean EOF
+                        raise
+                    # If select returns something it means the socket is now available for
+                    # reading so retry the read. If it returns an empty list it means we
+                    # timed out. If the pipe is present that means we closed the socket.
+                    if readable:
+                        if self.pipe_reader in readable:
+                            data = ""
+                        else:
+                            continue
                     else:
-                        continue
+                        raise TimeoutError("Read Timeout") from error
             break
         return data
 

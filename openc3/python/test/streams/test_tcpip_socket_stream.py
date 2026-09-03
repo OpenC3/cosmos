@@ -22,6 +22,11 @@ from openc3.top_level import close_socket
 from test.test_helper import capture_io, mock_redis
 
 
+class ReusableTCPServer(socketserver.TCPServer):
+    # Avoid "Address already in use" when a previous test left the port in TIME_WAIT
+    allow_reuse_address = True
+
+
 class TestTcpipSocketStream(unittest.TestCase):
     def setUp(self):
         mock_redis(self)
@@ -56,7 +61,7 @@ class TestTcpipSocketStream(unittest.TestCase):
                 self.request.send(b"test")
                 self.request.close()
 
-        server = socketserver.TCPServer(("localhost", 20000), MyTCPHandler)
+        server = ReusableTCPServer(("localhost", 20000), MyTCPHandler)
         threading.Thread(target=server.handle_request).start()
         rs = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         rs.connect(("localhost", 20000))
@@ -67,21 +72,104 @@ class TestTcpipSocketStream(unittest.TestCase):
         server.server_close()
         time.sleep(0.1)
 
-    #     def test_handles_socket_timeouts(self):
-    #         server = TCPServer(2000) # Server bound to port 2000
-    #         thread = Thread() do
-    #           client = server.accept # Wait for a client to connect
-    #           sleep 0.2
-    #           client.close
-    #         socket = TCPSocket('127.0.0.1', 2000)
-    #         ss = TcpipSocketStream(None, socket, 10.0, 0.1)
-    #         { ss.read }.to raise_error(Timeout='E'rror)
-    #         thread.join()
-    #         sleep 0.2
-    #         OpenC3.close_socket(socket)
-    #         OpenC3.close_socket(server)
-    #         ss.disconnect
-    #         sleep 0.1
+    def test_handles_socket_read_timeouts(self):
+        # Regression test for read_timeout being ignored on a socket which stays
+        # open but stops sending data. select returns ([], [], []) on timeout.
+        read = Mock()
+        error = OSError()
+        error.errno = errno.EWOULDBLOCK
+        read.recv.side_effect = error
+        ss = TcpipSocketStream(None, read, 10.0, 0.1)
+        ss.connect()
+        with patch("openc3.streams.tcpip_socket_stream.select.select") as mock_select:
+            mock_select.return_value = ([], [], [])
+            with self.assertRaisesRegex(TimeoutError, "Read Timeout"):
+                ss.read()
+        ss.disconnect()
+
+    def test_retries_the_read_when_the_socket_becomes_readable(self):
+        read = Mock()
+        error = OSError()
+        error.errno = errno.EWOULDBLOCK
+        # Raise EWOULDBLOCK on the first recv, return data on the second
+        read.recv.side_effect = [error, b"test"]
+        ss = TcpipSocketStream(None, read, 10.0, 0.1)
+        ss.connect()
+        with patch("openc3.streams.tcpip_socket_stream.select.select") as mock_select:
+            mock_select.return_value = ([read], [], [])
+            self.assertEqual(ss.read(), b"test")
+        self.assertEqual(read.recv.call_count, 2)
+        ss.disconnect()
+
+    def test_returns_empty_data_when_disconnected_while_reading(self):
+        read = Mock()
+        error = OSError()
+        error.errno = errno.EWOULDBLOCK
+        read.recv.side_effect = error
+        ss = TcpipSocketStream(None, read, 10.0, None)
+        ss.connect()
+        with patch("openc3.streams.tcpip_socket_stream.select.select") as mock_select:
+            mock_select.return_value = ([ss.pipe_reader], [], [])
+            self.assertEqual(ss.read(), "")
+        ss.disconnect()
+
+    def test_returns_empty_data_when_select_sees_a_closed_socket(self):
+        read = Mock()
+        error = OSError()
+        error.errno = errno.EWOULDBLOCK
+        read.recv.side_effect = error
+        ss = TcpipSocketStream(None, read, 10.0, None)
+        ss.connect()
+        for select_errno in (errno.EBADF, errno.ENOTSOCK):
+            select_error = OSError()
+            select_error.errno = select_errno
+            with patch("openc3.streams.tcpip_socket_stream.select.select") as mock_select:
+                mock_select.side_effect = select_error
+                self.assertEqual(ss.read(), "")
+        # Python sets fileno() to -1 once the socket is closed
+        with patch("openc3.streams.tcpip_socket_stream.select.select") as mock_select:
+            mock_select.side_effect = ValueError("file descriptor cannot be a negative integer (-1)")
+            self.assertEqual(ss.read(), "")
+        ss.disconnect()
+
+    def test_reraises_unexpected_select_errors(self):
+        # An unexpected system failure must not be hidden behind a clean EOF
+        read = Mock()
+        error = OSError()
+        error.errno = errno.EWOULDBLOCK
+        read.recv.side_effect = error
+        ss = TcpipSocketStream(None, read, 10.0, None)
+        ss.connect()
+        select_error = OSError()
+        select_error.errno = errno.ENOMEM
+        with patch("openc3.streams.tcpip_socket_stream.select.select") as mock_select:
+            mock_select.side_effect = select_error
+            with self.assertRaises(OSError) as context:
+                ss.read()
+            self.assertEqual(context.exception.errno, errno.ENOMEM)
+        ss.disconnect()
+
+    def test_times_out_reading_from_a_silent_socket(self):
+        class MyTCPHandler(socketserver.BaseRequestHandler):
+            def handle(self):
+                # Accept the connection and then send nothing, keeping it open
+                time.sleep(0.5)
+
+        server = ReusableTCPServer(("localhost", 20004), MyTCPHandler)
+        threading.Thread(target=server.handle_request).start()
+        rs = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+        rs.connect(("localhost", 20004))
+        # Match how the interfaces create their sockets. MSG_DONTWAIT does not
+        # exist on Windows so a blocking socket would sit in recv instead of
+        # returning EWOULDBLOCK and reaching the select timeout.
+        rs.setblocking(False)
+        ss = TcpipSocketStream(None, rs, 10.0, 0.1)
+        ss.connect()
+        with self.assertRaisesRegex(TimeoutError, "Read Timeout"):
+            ss.read()
+        ss.disconnect()
+        server.server_close()
+        time.sleep(0.1)
 
     def test_handles_socket_connection_reset_exceptions(self):
         class MyTCPHandler(socketserver.BaseRequestHandler):
@@ -89,7 +177,7 @@ class TestTcpipSocketStream(unittest.TestCase):
                 time.sleep(0.2)
                 self.request.close()
 
-        server = socketserver.TCPServer(("localhost", 20002), MyTCPHandler)
+        server = ReusableTCPServer(("localhost", 20002), MyTCPHandler)
         threading.Thread(target=server.handle_request).start()
         rs = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         rs.connect(("localhost", 20002))
