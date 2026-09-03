@@ -679,8 +679,6 @@ END
 ### FILEDISPLAY
 <span class="badge badge--secondary since-right">Since 6.10.3</span>**Displays the contents of a target file with syntax highlighting**
 
-Files are read from the COSMOS bucket, either the target's installed files or the modified copy under targets_modified. In local mode a file created only on the local filesystem (plugins/SCOPE/targets_modified) is not in the bucket and cannot be read.
-
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | File path | Path to the file relative to the target folder (e.g. "INST/procedures/file.rb") | True |
@@ -694,8 +692,6 @@ FILEDISPLAY "INST/data/sample.json" 400 200
 
 ### FILECHECKSUM
 <span class="badge badge--secondary since-right">Since 6.10.3</span>**Displays SHA-256 checksum of one or more files, with comparison if multiple**
-
-Files are read from the COSMOS bucket, either the target's installed files or the modified copy under targets_modified. In local mode a file created only on the local filesystem (plugins/SCOPE/targets_modified) is not in the bucket and cannot be read.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
