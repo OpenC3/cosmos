@@ -144,7 +144,7 @@ from openc3.script.exceptions import CheckError, SkipScriptError, StopScriptErro
 from openc3.script.suite import Group
 from openc3.tools.test_runner.test import SkipTestCase
 from openc3.top_level import kill_thread
-from openc3.utilities.logger import Logger
+from openc3.utilities.logger import Logger, default_level
 from openc3.utilities.message_log import MessageLog
 from openc3.utilities.script_instrumentor import ScriptInstrumentor
 from openc3.utilities.sleeper import Sleeper
@@ -1270,7 +1270,7 @@ class RunningScript:
         sys.stdout = Stdout.instance()
         sys.stderr = Stderr.instance()
         Logger.stdout = True
-        Logger.level = Logger.INFO
+        Logger.level = default_level()
 
     def output_thread_body(self):
         RunningScript.cancel_output = False
