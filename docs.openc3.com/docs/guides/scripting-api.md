@@ -7844,7 +7844,7 @@ These methods allow the user to control Script Runner scripts.
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Starts execution of another high level test procedure. Script Runner will load the file and immediately start executing it before jumping back to the calling procedure. Parameters are not directly given to high level test procedures, though they can use environment variables. If parameters are necessary, consider using a subroutine.
+Starts execution of another high level test procedure. Script Runner will load the file and immediately start executing it (with line-by-line highlighting in Script Runner) before jumping back to the calling procedure. Parameters are not directly given to high level test procedures, though they can use environment variables. If parameters are necessary, consider using a subroutine.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -7864,15 +7864,15 @@ start("<Procedure Filename>")
 </TabItem>
 </Tabs>
 
-| Parameter          | Description                                                                                                                                                                 |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Procedure Filename | Name of the test procedure file. These files are normally in the procedures folder but may be anywhere in the Ruby search path. Additionally, absolute paths are supported. |
+| Parameter          | Description                                                                                                                                                     |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Procedure Filename | Name of the test procedure file. These are target-relative paths, e.g. `TARGET/procedures/proc.rb`. The file is retrieved from the COSMOS configuration bucket. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
-start("test1.rb")
+start("INST/procedures/test1.py")
 ```
 
 </TabItem>
@@ -7880,7 +7880,7 @@ start("test1.rb")
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-start("test1.rb")
+start("INST/procedures/test1.rb")
 ```
 
 </TabItem>
@@ -7943,7 +7943,7 @@ goto("TARGET/procedures/other_script.py", 12)
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Reads in a script file that contains useful subroutines for use in your test procedure. When these subroutines run in ScriptRunner or TestRunner, their lines will be highlighted. If you want to import subroutines but do not want their lines to be highlighted in ScriptRunner or TestRunner, use the standard Ruby 'load' or 'require' statement or Python 'import' statement.
+Reads in a script file that contains useful subroutines for use in your test procedure. The file is instrumented, but instrumentation is disabled while load_utility is loading it so lines are not highlighted during the initial load. Afterwards, any functions defined in the loaded file will be highlighted when called. If you want to import subroutines but do not want their lines to be highlighted at all in Script Runner, use the standard Ruby `load` or `require` statement or Python `import` statement instead.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -7963,16 +7963,16 @@ load_utility("TARGET/lib/<Utility Filename>")
 </TabItem>
 </Tabs>
 
-| Parameter        | Description                                                                                                                                                        |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Utility Filename | Name of the script file containing subroutines including the .rb or .py extension. You need to include the full target name and path such as TARGET/lib/utility.rb |
+| Parameter        | Description                                                                                                                                                                                                           |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Utility Filename | Name of the script file containing subroutines. Include the full target name and path such as `TARGET/lib/utility.rb`. The file extension (`.rb` or `.py`) is optional and will be appended automatically if omitted. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
-load_utility("TARGET/lib/mode_changes.rb") # Ruby
-load_utility("TARGET/lib/mode_changes.py") # Python
+load_utility("INST/lib/mode_changes.py")
+load_utility("INST/lib/mode_changes") # .py extension is added automatically
 ```
 
 </TabItem>
@@ -7980,8 +7980,8 @@ load_utility("TARGET/lib/mode_changes.py") # Python
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-load_utility("TARGET/lib/mode_changes.rb") # Ruby
-load_utility("TARGET/lib/mode_changes.py") # Python
+load_utility("INST/lib/mode_changes.rb")
+load_utility("INST/lib/mode_changes") # .rb extension is added automatically
 ```
 
 </TabItem>
