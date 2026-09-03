@@ -292,11 +292,10 @@ module OpenC3
             when HazardousError, CriticalCmdError
               # Not errors at all: these are the signal that the UI should raise an
               # operator confirmation dialog, and the user retries with the hazardous
-              # or critical flag set. A stack trace per prompt is pure noise. Note
-              # HazardousError#formatted is the formatted command, not a backtrace,
-              # so the else branch below logged the command with no context anyway.
-              detail = e.message == e.class.name ? '' : " : #{e.message}"
-              Logger.info "#{error_name}#{detail} calling #{method_name}"
+              # or critical flag set. A stack trace per prompt is pure noise, and
+              # HazardousError#to_s embeds the formatted command with a newline,
+              # so log just the error name and the method that raised it.
+              Logger.info "#{error_name} calling #{method_name}"
             else
               # Filter out the framework stack trace (rails, rack, puma etc)
               lines = e.formatted.split("\n")
