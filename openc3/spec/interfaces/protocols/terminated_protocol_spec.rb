@@ -47,6 +47,30 @@ module OpenC3
       end
     end
 
+    describe "max buffer size" do
+      it "raises rather than buffering forever when no terminator ever arrives" do
+        ENV['OPENC3_PROTOCOL_MAX_BUFFER_SIZE'] = '1000'
+        begin
+          @interface.instance_variable_set(:@stream, TerminatedStream.new)
+          @interface.add_protocol(TerminatedProtocol, ['0xABCD', '0xABCD'], :READ_WRITE)
+          protocol = @interface.read_protocols[0]
+          # A peer which never sends the terminator grows @data without bound
+          expect { 11.times { protocol.read_data("\x00" * 100) } }.to \
+            raise_error(RuntimeError, /Protocol buffer of 1100 bytes exceeds maximum of 1000 bytes/)
+          # The buffer is released so the memory is not held until reconnect
+          expect(protocol.instance_variable_get(:@data).length).to eq 0
+        ensure
+          ENV.delete('OPENC3_PROTOCOL_MAX_BUFFER_SIZE')
+        end
+      end
+
+      it "defaults to DEFAULT_MAX_BUFFER_SIZE" do
+        @interface.add_protocol(TerminatedProtocol, ['0xABCD', '0xABCD'], :READ_WRITE)
+        expect(@interface.read_protocols[0].instance_variable_get(:@max_buffer_size)).to \
+          eq BurstProtocol::DEFAULT_MAX_BUFFER_SIZE
+      end
+    end
+
     describe "read" do
       it "handles multiple reads" do
         $index = 0

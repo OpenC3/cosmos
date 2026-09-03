@@ -23,6 +23,14 @@ module OpenC3
   # Reads all data available on the interface and creates a packet
   # with that data.
   class BurstProtocol < Protocol
+    # Maximum number of bytes which will be buffered while waiting for a
+    # complete packet. This bounds the memory a peer can cause the interface
+    # to allocate by declaring an enormous packet length (LENGTH, PREIDENTIFIED)
+    # or by never sending a terminator (TERMINATED). Deliberately much larger
+    # than any realistic packet so it does not affect existing configurations.
+    # Override with the OPENC3_PROTOCOL_MAX_BUFFER_SIZE environment variable.
+    DEFAULT_MAX_BUFFER_SIZE = 100_000_000
+
     # @param discard_leading_bytes [Integer] The number of bytes to discard
     #   from the binary data after reading. Note that this is often
     #   used to remove a sync pattern from the final packet data.
@@ -37,6 +45,7 @@ module OpenC3
       @sync_pattern = ConfigParser.handle_nil(sync_pattern)
       @sync_pattern = @sync_pattern.hex_to_byte_string if @sync_pattern
       @fill_fields = ConfigParser.handle_true_false(fill_fields)
+      @max_buffer_size = Integer(ENV.fetch('OPENC3_PROTOCOL_MAX_BUFFER_SIZE', DEFAULT_MAX_BUFFER_SIZE))
     end
 
     def reset
@@ -60,6 +69,7 @@ module OpenC3
       # @return [String|nil] Data for a packet consisting of the bytes read
       def read_data(data, extra = nil)
         @data << data
+        check_buffer_size()
         @extra = extra unless (data.length == 0 and extra.nil?) # Maintain extra from last read read_data
 
         while true
@@ -192,6 +202,21 @@ module OpenC3
       return super(data, extra)
     end
 
+    # Raises if the accumulation buffer has grown past @max_buffer_size. Called
+    # from read_data by both the Ruby and the C implementations. Raising causes
+    # Interface#read to log the error and disconnect, which drops the offending
+    # peer and resets this protocol.
+    def check_buffer_size
+      length = @data.length
+      return if length <= @max_buffer_size
+
+      # Release the buffer and clear any partially reduced state now rather than
+      # waiting for the interface to disconnect and reset() us
+      reset()
+      raise "#{@interface ? @interface.name : ""}: Protocol buffer of #{length} bytes exceeds maximum of #{@max_buffer_size} bytes. " \
+            "Set MAX_LENGTH on the protocol or increase OPENC3_PROTOCOL_MAX_BUFFER_SIZE."
+    end
+
     def log_discard(length, found)
       Logger.error("#{@interface ? @interface.name : ""}: Sync #{'not ' unless found}found. Discarding #{length} bytes of data.")
       if @data.length >= 0
@@ -210,6 +235,7 @@ module OpenC3
       result['discard_leading_bytes'] = @discard_leading_bytes
       result['sync_pattern'] = @sync_pattern.inspect
       result['fill_fields'] = @fill_fields
+      result['max_buffer_size'] = @max_buffer_size
       return result
     end
 
@@ -218,6 +244,7 @@ module OpenC3
       result['discard_leading_bytes'] = @discard_leading_bytes
       result['sync_pattern'] = @sync_pattern.inspect
       result['fill_fields'] = @fill_fields
+      result['max_buffer_size'] = @max_buffer_size
       return result
     end
   end
