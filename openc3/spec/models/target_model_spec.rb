@@ -149,6 +149,33 @@ module OpenC3
         mods = TargetModel.modified_files('TEST', scope: "DEFAULT")
         expect(mods).to match_array([]) # return empty array when none modified
       end
+
+      it "returns bucket files as scope relative names" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        Bucket.getClient().put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'],
+          key: "DEFAULT/targets_modified/TEST/procedures/new.rb", body: "puts 'hi'")
+        mods = TargetModel.modified_files('TEST', scope: "DEFAULT")
+        expect(mods).to match_array(["TEST/procedures/new.rb"])
+      end
+
+      it "combines local mode files with bucket only files" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        Bucket.getClient().put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'],
+          key: "DEFAULT/targets_modified/TEST/target.txt", body: "IGNORE_PARAMETER CCSDSVER")
+        # LocalMode reports target relative paths and only knows about files
+        # COSMOS wrote locally, not one placed directly in the bucket
+        expect(LocalMode).to receive(:modified_files).with('TEST', scope: "DEFAULT")
+          .and_return(["screens/blah.txt"])
+        ENV['OPENC3_LOCAL_MODE'] = '1'
+        begin
+          mods = TargetModel.modified_files('TEST', scope: "DEFAULT")
+        ensure
+          ENV.delete('OPENC3_LOCAL_MODE')
+        end
+        expect(mods).to match_array(["TEST/screens/blah.txt", "TEST/target.txt"])
+      end
     end
 
     describe "self.delete_modified" do

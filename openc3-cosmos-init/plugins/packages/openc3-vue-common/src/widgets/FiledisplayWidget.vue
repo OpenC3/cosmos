@@ -123,6 +123,7 @@ export default {
       }
       this.loading = true
       try {
+        this.clearTargetFileCache()
         this.fileContent = await this.fetchTargetFile(this.filePath)
       } catch (error) {
         this.fileContent = `Error: ${error.message || error}`
