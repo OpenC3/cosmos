@@ -253,6 +253,9 @@ module OpenC3
 
     def connect
       Logger.info "Connecting to #{@interface.name}..."
+      # Interface connect implementations typically overwrite their stream / socket
+      # so cleanly close any existing connection rather than leaking it
+      @interface.disconnect if @interface.connected?
       @interface.connect
       if @connection_success_callback
         @connection_success_callback.call
