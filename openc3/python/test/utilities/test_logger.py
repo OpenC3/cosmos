@@ -14,6 +14,7 @@ import os
 import sys
 import time
 import unittest
+from contextlib import redirect_stderr
 from io import StringIO
 from unittest.mock import patch
 
@@ -46,16 +47,16 @@ class TestDefaultLevel(unittest.TestCase):
             self.assertEqual(default_level(), Logger.WARN)
 
     def test_warns_once_and_returns_info_for_an_unknown_level(self):
-        orig = sys.stderr
-        sys.stderr = StringIO()
-        try:
-            # patch restores warned_bad_level, so this test can't leak into others
-            with patch("openc3.utilities.logger.warned_bad_level", False), self.set_env_level("WARNING"):
-                self.assertEqual(default_level(), Logger.INFO)
-                self.assertEqual(default_level(), Logger.INFO)
-            stderr = sys.stderr.getvalue()
-        finally:
-            sys.stderr = orig
+        capture = StringIO()
+        # patch restores warned_bad_level, so this test can't leak into others
+        with (
+            redirect_stderr(capture),
+            patch("openc3.utilities.logger.warned_bad_level", False),
+            self.set_env_level("WARNING"),
+        ):
+            self.assertEqual(default_level(), Logger.INFO)
+            self.assertEqual(default_level(), Logger.INFO)
+        stderr = capture.getvalue()
         self.assertEqual(stderr.count("OPENC3_LOG_LEVEL 'WARNING'"), 1)
         self.assertIn("DEBUG, INFO, WARN, ERROR, FATAL", stderr)
 

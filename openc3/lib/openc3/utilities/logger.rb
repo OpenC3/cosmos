@@ -76,13 +76,14 @@ module OpenC3
     # @return [Integer] Level named by the OPENC3_LOG_LEVEL env var.
     #   INFO if the var is unset or isn't a level name.
     def self.default_level
-      name = ENV['OPENC3_LOG_LEVEL'].to_s.strip.upcase
+      level = ENV.fetch('OPENC3_LOG_LEVEL', '')
+      name = level.to_s.strip.upcase
       return INFO if name.empty?
 
       LEVELS.fetch(name) do
         unless @warned_bad_level
           @warned_bad_level = true
-          $stderr.puts "OPENC3_LOG_LEVEL '#{ENV['OPENC3_LOG_LEVEL']}' is not one of #{LEVELS.keys.join(', ')}, using INFO"
+          $stderr.puts "OPENC3_LOG_LEVEL '#{level}' is not one of #{LEVELS.keys.join(', ')}, using INFO"
         end
         INFO
       end
