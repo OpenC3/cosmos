@@ -33,6 +33,9 @@ class WriteRejectError(RuntimeError):
 class Interface:
     """Defines all the attributes and methods common to all interface classes used by OpenC3."""
 
+    # Matches the Ruby Time#iso8601(6) output format so details() is identical in both languages
+    DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+
     # Initialize default attribute values
     def __init__(self):
         self.state = "DISCONNECTED"
@@ -530,11 +533,11 @@ class Interface:
         result["read_raw_data"] = self.read_raw_data
         result["written_raw_data"] = self.written_raw_data
         if self.read_raw_data_time is not None:
-            result["read_raw_data_time"] = self.read_raw_data_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            result["read_raw_data_time"] = self.read_raw_data_time.strftime(self.DATETIME_FORMAT)
         else:
             result["read_raw_data_time"] = None
         if self.written_raw_data_time is not None:
-            result["written_raw_data_time"] = self.written_raw_data_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            result["written_raw_data_time"] = self.written_raw_data_time.strftime(self.DATETIME_FORMAT)
         else:
             result["written_raw_data_time"] = None
 

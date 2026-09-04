@@ -79,7 +79,7 @@ class InterfaceCmdHandlerThread:
             self.metric.set(name="interface_cmd_total", value=self.count, type="counter")
 
     def start(self):
-        self.thread = threading.Thread(target=self.run, daemon=True)
+        self.thread = threading.Thread(target=self.run_thread_body, daemon=True)
         self.thread.start()
         ThreadManager.instance().register(self.thread, stop_object=self)
         return self.thread
@@ -90,6 +90,15 @@ class InterfaceCmdHandlerThread:
     def graceful_kill(self):
         InterfaceTopic.shutdown(self.interface, scope=self.scope)
         time.sleep(0.001)  # Allow other threads to run
+
+    # Log why the thread died before letting the exception take down the microservice.
+    # ThreadManager treats a dead handler thread as fatal so the exception is re-raised.
+    def run_thread_body(self):
+        try:
+            self.run()
+        except Exception:
+            self.logger.error(f"{self.interface.name}: Command handler thread died: {traceback.format_exc()}")
+            raise
 
     def run(self):
         # receive_commands does a while True and does not return
@@ -264,7 +273,13 @@ class InterfaceCmdHandlerThread:
                     return str(e)
                 return "SUCCESS"
             if msg_hash.get(b"interface_details"):
-                return json.dumps(self.interface.details(), cls=JsonEncoder)
+                try:
+                    return json.dumps(self.interface.details(), cls=JsonEncoder)
+                except Exception as e:
+                    self.logger.error(
+                        f"{self.interface.name}: interface_details: {''.join(traceback.format_exception(e))}"
+                    )
+                    return str(e)
 
         target_name = msg_hash[b"target_name"].decode()
         if target_name and not self.interface.cmd_target_enabled.get(target_name, False):
@@ -444,7 +459,7 @@ class RouterTlmHandlerThread:
             self.metric.set(name="router_tlm_total", value=self.count, type="counter")
 
     def start(self):
-        self.thread = threading.Thread(target=self.run, daemon=True)
+        self.thread = threading.Thread(target=self.run_thread_body, daemon=True)
         self.thread.start()
         ThreadManager.instance().register(self.thread, stop_object=self)
         return self.thread
@@ -455,6 +470,15 @@ class RouterTlmHandlerThread:
     def graceful_kill(self):
         RouterTopic.shutdown(self.router, scope=self.scope)
         time.sleep(0.001)  # Allow other threads to run
+
+    # Log why the thread died before letting the exception take down the microservice.
+    # ThreadManager treats a dead handler thread as fatal so the exception is re-raised.
+    def run_thread_body(self):
+        try:
+            self.run()
+        except Exception:
+            self.logger.error(f"{self.router.name}: Telemetry handler thread died: {traceback.format_exc()}")
+            raise
 
     def run(self):
         generator = RouterTopic.receive_telemetry(self.router, scope=self.scope, db_shard=self.db_shard)
@@ -569,7 +593,13 @@ class RouterTlmHandlerThread:
                         )
                         result = str(e)
                 elif msg_hash.get(b"router_details"):
-                    result = json.dumps(self.router.details(), cls=JsonEncoder)
+                    try:
+                        result = json.dumps(self.router.details(), cls=JsonEncoder)
+                    except Exception as e:
+                        self.logger.error(
+                            f"{self.router.name}: router_details: {''.join(traceback.format_exception(e))}"
+                        )
+                        result = str(e)
                 else:
                     result = "SUCCESS"
 
