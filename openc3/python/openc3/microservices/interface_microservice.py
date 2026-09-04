@@ -685,6 +685,23 @@ class InterfaceMicroservice(Microservice):
     # rebuilt the interface/router. Once we set the state to 'ATTEMPTING' the
     # run method handles the actual connection.
     def attempting(self, *params):
+        # Connecting an interface/router which is already CONNECTED is a no-op.
+        # Without this the existing (working) connection would be torn down and
+        # rebuilt which can take up to the read_timeout to detect. Callers who want
+        # to force a reconnect should disconnect first or pass new parameters.
+        if len(params) == 0 and self.interface.state == "CONNECTED" and self.interface.connected():
+            self.logger.info(f"{self.interface.name}: Connect ignored, already connected")
+            return self.interface
+
+        return self.attempt_connection(*params)
+
+    # Sets the state to 'ATTEMPTING', first rebuilding the interface/router if
+    # parameters are given, so the run method performs the actual connection.
+    # Unlike attempting() this always transitions. The reconnect path in
+    # disconnect() requires that, since interface.disconnect() may have raised or
+    # left connected() True, which would make attempting() ignore the request and
+    # leave the interface stuck in 'CONNECTED' with no way back to a connection.
+    def attempt_connection(self, *params):
         try:
             if len(params) != 0:
                 self.interface.disconnect()
@@ -900,6 +917,14 @@ class InterfaceMicroservice(Microservice):
     def connect(self):
         self.logger.info(f"{self.interface.name}: Connect {self.interface.connection_string()}")
 
+        # Interface connect implementations typically overwrite their stream / socket
+        # so cleanly close any existing connection rather than leaking it
+        if self.interface.connected():
+            try:
+                self.interface.disconnect()
+            except Exception:
+                self.logger.error(f"Disconnect: {self.interface.name}: {traceback.format_exc()}")
+
         try:
             self.interface.connect()
             self.interface.post_connect()
@@ -917,38 +942,50 @@ class InterfaceMicroservice(Microservice):
         self.logger.info(f"{self.interface.name}: Connection Success")
 
     def disconnect(self, allow_reconnect=True):
-        if self.interface.state == "DISCONNECTED" and self.interface.connected() is False:
-            return
+        reconnect = False
 
-        # Synchronize the calls to @interface.disconnect since it takes an unknown
-        # amount of time. If two calls to disconnect stack up, the if statement
-        # should avoid multiple calls to disconnect.
+        # Two threads reach here for a single connection loss: the cmd handler
+        # thread servicing a disconnect directive, and the run thread coming back
+        # out of read (or out of the connection maintenance sleep). The redundant
+        # check below and the state change that records the disconnect must be in
+        # the same critical section, otherwise the second thread reads the state
+        # before the first has updated it and disconnects the interface twice.
         with self.mutex:
+            # A disconnect has already been performed so there is nothing left to do
+            if self.interface.state == "DISCONNECTED" and self.interface.connected() is False:
+                return
+
+            # Call disconnect without consulting connected() so any resources the
+            # interface is still holding are cleaned up. It takes an unknown amount
+            # of time which is the other reason for the mutex.
             try:
-                if self.interface.connected():
-                    self.interface.disconnect()
+                self.interface.disconnect()
             except Exception:
                 self.logger.error(f"Disconnect: {self.interface.name}: {traceback.format_exc()}")
 
-        # If the interface is set to auto_reconnect then delay so the thread
-        # can come back around and allow the interface a chance to reconnect.
-        # Skip reconnect if stop() has been called to avoid re-creating the status model
-        if (
-            allow_reconnect
-            and self.interface.auto_reconnect
-            and self.interface.state != "DISCONNECTED"
-            and not self.cancel_thread
-        ):
-            self.attempting()
-            if not self.cancel_thread:
-                self.interface_thread_sleeper.sleep(self.interface.reconnect_delay)
-        else:
-            self.interface.state = "DISCONNECTED"
-            if not self.cancel_thread:
-                if self.interface_or_router == "INTERFACE":
-                    InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
-                else:
-                    RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+            # If the interface is set to auto_reconnect then delay so the thread
+            # can come back around and allow the interface a chance to reconnect.
+            # Skip reconnect if stop() has been called to avoid re-creating the status model
+            reconnect = (
+                allow_reconnect
+                and self.interface.auto_reconnect
+                and self.interface.state != "DISCONNECTED"
+                and not self.cancel_thread
+            )
+            if reconnect:
+                self.attempt_connection()
+            else:
+                self.interface.state = "DISCONNECTED"
+                if not self.cancel_thread:
+                    if self.interface_or_router == "INTERFACE":
+                        InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+                    else:
+                        RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+
+        # Sleep outside the mutex so stop() and connect() are not blocked for the
+        # whole reconnect delay
+        if reconnect and not self.cancel_thread:
+            self.interface_thread_sleeper.sleep(self.interface.reconnect_delay)
 
     # Disconnect from the interface and stop the thread
     def stop(self):

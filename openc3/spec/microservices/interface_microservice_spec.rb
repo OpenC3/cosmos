@@ -352,6 +352,108 @@ module OpenC3
       end
     end
 
+    describe "already connected" do
+      it "ignores connect_interface on a CONNECTED interface" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        sleep 0.01
+        interface = im.instance_variable_get(:@interface)
+        interface.reconnect_delay = 0.01 # Override the reconnect delay to be quick
+
+        capture_io do |stdout|
+          Thread.new { im.run }
+          sleep 0.01 # Allow to start
+          all = InterfaceStatusModel.all(scope: "DEFAULT")
+          expect(all["INST_INT"]["state"]).to eql "CONNECTED"
+
+          @api.connect_interface("INST_INT")
+          sleep 0.2 # Allow the connect request to be processed
+          expect(stdout.string).to include("Connect ignored, already connected")
+          # The existing connection is left alone
+          expect(stdout.string).not_to include("Connection Lost")
+          expect($disconnect_count).to eql 0
+          all = InterfaceStatusModel.all(scope: "DEFAULT")
+          expect(all["INST_INT"]["state"]).to eql "CONNECTED"
+
+          im.shutdown
+        end
+      end
+
+      it "connects if the state is CONNECTED but the interface is not" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        interface = im.instance_variable_get(:@interface)
+        interface.state = 'CONNECTED'
+        interface.instance_variable_set(:@connected, false)
+        im.attempting()
+        expect(interface.state).to eql 'ATTEMPTING'
+        im.shutdown
+      end
+
+      it "cleanly disconnects an existing connection before connecting" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        interface = im.instance_variable_get(:@interface)
+        interface.state = 'ATTEMPTING'
+        interface.instance_variable_set(:@connected, true)
+        im.connect()
+        # The old connection was closed rather than being abandoned
+        expect($disconnect_count).to eql 1
+        expect(interface.state).to eql 'CONNECTED'
+        im.shutdown
+      end
+
+      it "disconnects even if the interface reports it is not connected" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        interface = im.instance_variable_get(:@interface)
+        interface.state = 'CONNECTED'
+        interface.instance_variable_set(:@connected, false)
+        im.disconnect(false)
+        expect($disconnect_count).to eql 1
+        expect(interface.state).to eql 'DISCONNECTED'
+        im.shutdown
+      end
+
+      # The no-op check in attempting() must not block the reconnect path in
+      # disconnect() or a failed cleanup leaves the interface stuck in CONNECTED
+      it "still reconnects if the interface disconnect raises" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        interface = im.instance_variable_get(:@interface)
+        interface.reconnect_delay = 0.01 # Override the reconnect delay to be quick
+        interface.state = 'CONNECTED'
+        interface.instance_variable_set(:@connected, true)
+        allow(interface).to receive(:disconnect).and_raise('test-error')
+
+        capture_io do |stdout|
+          im.disconnect()
+          expect(stdout.string).to include("Disconnect: INST_INT")
+          expect(stdout.string).not_to include("Connect ignored, already connected")
+        end
+        expect(interface.state).to eql 'ATTEMPTING'
+
+        allow(interface).to receive(:disconnect).and_call_original # Allow a clean shutdown
+        im.shutdown
+      end
+
+      it "still reconnects if the interface disconnect leaves it connected" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        interface = im.instance_variable_get(:@interface)
+        interface.reconnect_delay = 0.01 # Override the reconnect delay to be quick
+        interface.state = 'CONNECTED'
+        interface.instance_variable_set(:@connected, true)
+        # Disconnect does nothing so connected? still reports true afterwards
+        allow(interface).to receive(:disconnect)
+
+        capture_io do |stdout|
+          im.disconnect()
+          expect(stdout.string).not_to include("Connect ignored, already connected")
+        end
+        expect(interface).to have_received(:disconnect)
+        expect(interface.connected?).to be true
+        expect(interface.state).to eql 'ATTEMPTING'
+
+        allow(interface).to receive(:disconnect).and_call_original # Allow a clean shutdown
+        im.shutdown
+      end
+    end
+
     it "handles exceptions in monitor thread" do
       $read_allowed_raise = true
       im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
