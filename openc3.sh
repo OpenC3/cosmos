@@ -45,12 +45,7 @@ detect_compose_cmd() {
 # We intentionally do NOT login automatically: forcing a login would require
 # credentials for public registries (e.g. docker.io) and break air-gapped builds.
 suggest_registry_login() {
-  local env_file="$(dirname -- "$0")/${ENV_FILE:-.env}"
-  if [[ -f "$env_file" ]]; then
-    set -a
-    . "$env_file"
-    set +a
-  fi
+  source_env_files
 
   echo "" >&2
   echo "A container image pull was denied (403 / authentication required)." >&2
@@ -78,6 +73,48 @@ run_with_registry_check() {
   fi
   rm -f "$tmp"
   return $status
+}
+
+# Source the env files into the shell environment, exporting every value.
+# .env ships the upstream defaults (tracked); .env.local (if present) is
+# sourced last so its values override .env. This mirrors the --env-file
+# ordering in COMPOSE_FILE_ARGS below. Sourcing only .env would export its
+# values as real shell variables, which outrank Compose's --env-file
+# interpolation and silently discard .env.local overrides.
+# See https://github.com/OpenC3/cosmos/issues/3710
+#
+# Variables already present in the shell environment win over both files, to
+# match the documented precedence (shell env > .env.local > .env). Sourcing
+# alone would clobber them, so their values are saved first and restored
+# afterwards.
+source_env_files() {
+  local dir="$(dirname -- "$0")"
+  local -a env_files=()
+  local file key
+  if [[ -f "$dir/${ENV_FILE:-.env}" ]]; then
+    env_files+=("$dir/${ENV_FILE:-.env}")
+  fi
+  if [[ -f "$dir/.env.local" ]]; then
+    env_files+=("$dir/.env.local")
+  fi
+
+  local -a preset=()
+  for file in "${env_files[@]}"; do
+    while IFS= read -r key; do
+      if [[ -n "${!key+x}" ]]; then
+        preset+=("$key=${!key}")
+      fi
+    done < <(sed -nE 's/^[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)=.*/\2/p' "$file")
+  done
+
+  set -a
+  for file in "${env_files[@]}"; do
+    . "$file"
+  done
+  for key in "${preset[@]}"; do
+    export "$key"
+  done
+  set +a
 }
 
 # Helper function to find script - checks PATH first, then falls back to script location
@@ -111,11 +148,11 @@ detect_compose_cmd
 # without editing it. See:
 # https://github.com/OpenC3/cosmos/issues/3024
 # https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/
-COMPOSE_FILE_ARGS=(--env-file "$(dirname -- "$0")/${ENV_FILE:-.env}")
+COMPOSE_ENV_FILE_ARGS=(--env-file "$(dirname -- "$0")/${ENV_FILE:-.env}")
 if [[ -f "$(dirname -- "$0")/.env.local" ]]; then
-  COMPOSE_FILE_ARGS+=(--env-file "$(dirname -- "$0")/.env.local")
+  COMPOSE_ENV_FILE_ARGS+=(--env-file "$(dirname -- "$0")/.env.local")
 fi
-COMPOSE_FILE_ARGS+=(-f "$(dirname -- "$0")/compose.yaml")
+COMPOSE_FILE_ARGS=("${COMPOSE_ENV_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose.yaml")
 if [[ -f "$(dirname -- "$0")/compose.override.yaml" ]]; then
   COMPOSE_FILE_ARGS+=(-f "$(dirname -- "$0")/compose.override.yaml")
 fi
@@ -333,15 +370,22 @@ check_root() {
   fi
 }
 
-# Resolve OPENC3_TAG, reading from the env file if not already set.
+# Resolve OPENC3_TAG, reading from the env files if not already set.
+# .env.local is checked first so its override wins over the .env default.
 resolve_openc3_tag() {
   if [[ -n "$OPENC3_TAG" ]]; then
     return
   fi
-  local env_file="$(dirname -- "$0")/${ENV_FILE:-.env}"
-  if [[ -f "$env_file" ]]; then
-    OPENC3_TAG=$(grep -E '^OPENC3_TAG=' "$env_file" 2>/dev/null | head -1 | cut -d= -f2)
-  fi
+  local dir="$(dirname -- "$0")"
+  local env_file
+  for env_file in "$dir/.env.local" "$dir/${ENV_FILE:-.env}"; do
+    if [[ -f "$env_file" ]]; then
+      OPENC3_TAG=$(grep -E '^OPENC3_TAG=' "$env_file" 2>/dev/null | head -1 | cut -d= -f2)
+      if [[ -n "$OPENC3_TAG" ]]; then
+        break
+      fi
+    fi
+  done
   OPENC3_TAG="${OPENC3_TAG:-latest}"
 }
 
@@ -402,10 +446,9 @@ case $1 in
       echo "  --wrapper-help    (same as --help)"
       exit 0
     fi
-    # Source the environment file to setup environment variables
-    # Use ENV_FILE if set, otherwise default to .env
-    set -a
-    . "$(dirname -- "$0")/${ENV_FILE:-.env}"
+    # Source the environment files (.env then .env.local) to setup
+    # environment variables. Use ENV_FILE if set, otherwise default to .env
+    source_env_files
     # Start (and remove when done --rm) the cmd-tlm-api container with the current working directory
     # mapped as volume (-v) /openc3/local and container working directory (-w) also set to /openc3/local.
     # This allows tools running in the container to have a consistent path to the current working directory.
@@ -417,7 +460,6 @@ case $1 in
     else
       ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     fi
-    set +a
     ;;
   cliroot )
     if [[ "$2" == "--wrapper-help" ]] || [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -454,10 +496,9 @@ case $1 in
       echo "  --wrapper-help    (same as --help)"
       exit 0
     fi
-    # Source the environment file to setup environment variables
-    # Use ENV_FILE if set, otherwise default to .env
-    set -a
-    . "$(dirname -- "$0")/${ENV_FILE:-.env}"
+    # Source the environment files (.env then .env.local) to setup
+    # environment variables. Use ENV_FILE if set, otherwise default to .env
+    source_env_files
     # Same as cli but run as root user
     # Note: The service name is always openc3-cosmos-cmd-tlm-api; compose.yaml pulls the correct image
     # (enterprise or non-enterprise) based on environment variables.
@@ -468,7 +509,6 @@ case $1 in
     else
       ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm --user=root -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     fi
-    set +a
     ;;
   start )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -633,7 +673,7 @@ case $1 in
     # Get the list of image repositories defined in the compose configuration
     # Strip the docker.io/ prefix that compose adds (docker CLI doesn't recognize it)
     # and strip the :tag suffix so we match all tags for each repository
-    REPOS=$(${DOCKER_COMPOSE_COMMAND} $COMPOSE_FILES config --images 2>/dev/null | sed 's|^docker\.io/||; s|:.*||' | sort -u)
+    REPOS=$(${DOCKER_COMPOSE_COMMAND} "${COMPOSE_ENV_FILE_ARGS[@]}" $COMPOSE_FILES config --images 2>/dev/null | sed 's|^docker\.io/||; s|:.*||' | sort -u)
     if [[ -z "$REPOS" ]]; then
       echo "No $COSMOS_NAME images found in compose configuration."
       exit 0
@@ -641,7 +681,7 @@ case $1 in
     # Build filter args for each repository that has at least one local image
     FILTER_ARGS=""
     for repo in $REPOS; do
-      if docker images -q "$repo" 2>/dev/null | grep -q .; then
+      if $CONTAINER_CMD images -q "$repo" 2>/dev/null | grep -q .; then
         FILTER_ARGS="$FILTER_ARGS --filter reference=$repo"
       fi
     done
@@ -649,7 +689,7 @@ case $1 in
       echo "No $COSMOS_NAME images found locally."
       exit 0
     fi
-    docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" $FILTER_ARGS
+    $CONTAINER_CMD images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" $FILTER_ARGS
     ;;
   status )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -664,7 +704,7 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" ps
+    ${DOCKER_COMPOSE_COMMAND} "${COMPOSE_FILE_ARGS[@]}" ps
     ;;
   destroy )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -697,7 +737,7 @@ case $1 in
     fi
     # Get the list of images defined in the compose configuration
     # Strip the docker.io/ prefix that compose adds, since docker CLI doesn't recognize it
-    IMAGES=$(${DOCKER_COMPOSE_COMMAND} $COMPOSE_FILES config --images 2>/dev/null | sed 's|^docker\.io/||' | sort -u)
+    IMAGES=$(${DOCKER_COMPOSE_COMMAND} "${COMPOSE_ENV_FILE_ARGS[@]}" $COMPOSE_FILES config --images 2>/dev/null | sed 's|^docker\.io/||' | sort -u)
     if [[ -z "$IMAGES" ]]; then
       echo "No $COSMOS_NAME images found in compose configuration."
       exit 0
@@ -705,7 +745,7 @@ case $1 in
     # Filter to only images that actually exist locally
     EXISTING_IMAGES=""
     for img in $IMAGES; do
-      if docker image inspect "$img" &>/dev/null; then
+      if $CONTAINER_CMD image inspect "$img" &>/dev/null; then
         EXISTING_IMAGES="$EXISTING_IMAGES $img"
       fi
     done
@@ -721,12 +761,12 @@ case $1 in
     done
     echo ""
     if [[ "$2" == "force" ]]; then
-      docker rmi $EXISTING_IMAGES
+      $CONTAINER_CMD rmi $EXISTING_IMAGES
     else
       echo "Are you sure you want to remove these $COSMOS_NAME images? (1-Yes / 2-No)"
       select yn in "Yes" "No"; do
         case $yn in
-          Yes ) docker rmi $EXISTING_IMAGES; break;;
+          Yes ) $CONTAINER_CMD rmi $EXISTING_IMAGES; break;;
           No ) exit;;
           * ) echo "Please select 1 for Yes or 2 for No.";;
         esac
@@ -734,7 +774,7 @@ case $1 in
     fi
     echo ""
     echo "Pruning dangling images..."
-    docker image prune -f
+    $CONTAINER_CMD image prune -f
     ;;
   build )
     if [[ "$OPENC3_DEVEL" -eq 0 ]]; then
@@ -843,8 +883,7 @@ case $1 in
     fi
     # Change to cosmos directory since scripts use relative paths
     cd "$(dirname -- "$0")"
-    set -a
-    . "$(dirname -- "$0")/${ENV_FILE:-.env}"
+    source_env_files
     if [[ -f /etc/ssl/certs/ca-bundle.crt ]]
     then
       cp /etc/ssl/certs/ca-bundle.crt "$(dirname -- "$0")/cacert.pem"
@@ -852,7 +891,6 @@ case $1 in
     "$(find_script openc3_setup.sh)"
     # Pass through any additional arguments (image names) to openc3_build_ubi.sh
     "$(find_script openc3_build_ubi.sh)" "${@:2}"
-    set +a
     ;;
   run )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -995,10 +1033,8 @@ case $1 in
       echo "  -h, --help                  Show this help message"
       exit 0
     fi
-    set -a
-    . "$(dirname -- "$0")/${ENV_FILE:-.env}"
+    source_env_files
     "$(find_script openc3_util.sh)" "${@:2}"
-    set +a
     ;;
   * )
     usage $0
