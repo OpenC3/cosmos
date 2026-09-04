@@ -237,6 +237,47 @@ module OpenC3
         expect { @interface.read }.to raise_error(RuntimeError, "Length value received larger than max_length: 65535 > 50")
       end
 
+      it "rejects a declared packet length larger than the max buffer size" do
+        @interface.instance_variable_set(:@stream, LengthStream.new)
+        @interface.add_protocol(LengthProtocol, [
+                                  0,  # bit offset
+                                  32, # bit size
+                                  0,  # length offset
+                                  1,  # bytes per count
+                                  'BIG_ENDIAN',
+                                  0,  # discard
+                                  nil, # sync
+                                  nil # max_length not set
+                                ], :READ_WRITE)
+        # Declare a 4GB packet with only 5 bytes actually sent. Without the buffer
+        # limit the protocol would happily buffer until the microservice ran out of memory.
+        $buffer = "\xFF\xFF\xFF\xFF\x00"
+        expect { @interface.read }.to raise_error(RuntimeError, /Calculated packet length of 4294967295 bytes exceeds maximum buffer size of 100000000 bytes/)
+      end
+
+      it "honors OPENC3_PROTOCOL_MAX_BUFFER_SIZE" do
+        ENV['OPENC3_PROTOCOL_MAX_BUFFER_SIZE'] = '5000000000'
+        begin
+          @interface.instance_variable_set(:@stream, LengthStream.new)
+          @interface.add_protocol(LengthProtocol, [
+                                    0,  # bit offset
+                                    32, # bit size
+                                    0,  # length offset
+                                    1,  # bytes per count
+                                    'BIG_ENDIAN',
+                                    0,  # discard
+                                    nil, # sync
+                                    nil # max_length not set
+                                  ], :READ_WRITE)
+          expect(@interface.read_protocols[0].instance_variable_get(:@max_buffer_size)).to eq 5_000_000_000
+          # 4GB is now under the limit so the protocol waits for more data instead of raising
+          $buffer = "\xFF\xFF\xFF\xFF\x00"
+          expect(@interface.read_protocols[0].read_data($buffer)[0]).to eq :STOP
+        ensure
+          ENV.delete('OPENC3_PROTOCOL_MAX_BUFFER_SIZE')
+        end
+      end
+
       it "handles a sync value in the packet" do
         @interface.instance_variable_set(:@stream, LengthStream.new)
         @interface.add_protocol(LengthProtocol, [
