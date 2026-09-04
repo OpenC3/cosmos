@@ -348,7 +348,7 @@ class TcpipServerInterface(StreamInterface):
                 + "wait 1 minute and try again."
             ) from e
 
-        listen_socket.setblocking(0)
+        listen_socket.setblocking(False)
         listen_socket.listen(5)
         self.listen_sockets.append(listen_socket)
 
