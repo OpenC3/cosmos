@@ -194,14 +194,17 @@ test('ignores forged sandbox bridge messages', async ({ page, utils }) => {
         '*',
       )
     })
-    // Give the bridge time to (incorrectly) act before asserting that it didn't
-    await page.waitForTimeout(1000)
-    await expect(page.locator('.v-toolbar:has-text("INST HS")')).toHaveCount(0)
-    expect(dialogCount).toBe(0)
+    // Cancelling resolves the paused run, so the sandbox finishes and the
+    // parent tears the iframe down. A window delivers messages
+    // FIFO, so the bridge has provably already handled (and rejected) them by
+    // the time the iframe leaves the DOM.
     await page
       .getByRole('dialog')
       .getByRole('button', { name: 'Cancel' })
       .click()
+    await expect(page.locator('iframe[src="/sandbox.html"]')).toHaveCount(0)
+    await expect(page.locator('.v-toolbar:has-text("INST HS")')).toHaveCount(0)
+    expect(dialogCount).toBe(0)
   })
 })
 
