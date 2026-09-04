@@ -28,6 +28,7 @@ require 'openc3/utilities/script'
 require 'openc3/utilities/store'
 require 'openc3/utilities/store_queued'
 require 'openc3/utilities/bucket_require'
+require 'openc3/utilities/python_venv'
 require 'openc3/models/offline_access_model'
 require 'openc3/models/environment_model'
 require 'openc3/models/script_engine_model'
@@ -550,45 +551,10 @@ class RunningScript
       end
       process.environment['GEM_HOME'] = ENV.fetch('GEM_HOME', nil)
 
-      # Resolve the per-plugin Python venv for this script. For saved scripts
-      # we look up which plugin owns the target and check whether that plugin
-      # has an isolated UV venv. For temp scripts the frontend can pass a
-      # python_venv name directly, skipping the target lookup entirely.
-      python_venv_dir = nil
-      begin
-        target_name = name.split('/')[0].to_s.upcase
-        if target_name == '__TEMP__' && python_venv
-          # File.basename prevents path traversal (strips directory components)
-          safe_name = File.basename(python_venv.to_s)
-          candidate = "/gems/plugin_venvs/#{safe_name}/.venv"
-          python_venv_dir = candidate if File.directory?(candidate)
-        else
-          target_info = OpenC3::TargetModel.get(name: target_name, scope: scope)
-          if target_info && target_info['plugin']
-            sanitized_name = "#{scope}__#{target_info['plugin']}".tr('^a-zA-Z0-9_-', '_')
-            candidate = "/gems/plugin_venvs/#{sanitized_name}/.venv"
-            python_venv_dir = candidate if File.directory?(candidate)
-          end
-        end
-      rescue => e
-        OpenC3::Logger.debug("Could not resolve plugin venv for script '#{name}': #{e.message}")
-      end
-
-      if python_venv_dir
-        process.environment['VIRTUAL_ENV'] = python_venv_dir
-        process.environment['PATH'] = "#{python_venv_dir}/bin:#{ENV.fetch('PATH', '')}"
-        process.environment['PYTHONUSERBASE'] = python_venv_dir
-        # Add plugin venv site-packages to PYTHONPATH so the base venv's Python
-        # binary can find plugin-specific packages. PYTHONPATH is always respected
-        # by CPython regardless of venv activation state.
-        site_packages = Dir.glob("#{python_venv_dir}/lib/python*/site-packages").first
-        existing_pythonpath = ENV.fetch('PYTHONPATH', '')
-        if site_packages
-          process.environment['PYTHONPATH'] = existing_pythonpath.empty? ? site_packages : "#{site_packages}:#{existing_pythonpath}"
-        else
-          process.environment['PYTHONPATH'] = existing_pythonpath.empty? ? nil : existing_pythonpath
-        end
-      else
+      python_venv_dir = OpenC3::PythonVenv.configure_for_script(
+        process.environment, name: name, scope: scope, python_venv: python_venv
+      )
+      unless python_venv_dir
         system_venv = File.dirname(ENV.fetch('OPENC3_PYTHON_BIN', '/openc3/python/.venv/bin/python')).chomp('/bin')
         process.environment['VIRTUAL_ENV'] = system_venv
         process.environment['PYTHONUSERBASE'] = ENV.fetch('PYTHONUSERBASE', nil)
