@@ -172,7 +172,7 @@ module OpenC3
       if packet_length > @max_buffer_size
         reset() # Drop the partial frame rather than holding it until disconnect
         raise "Calculated packet length of #{packet_length} bytes exceeds maximum buffer size of #{@max_buffer_size} bytes. " \
-              "Set MAX_LENGTH on the protocol or increase OPENC3_PROTOCOL_MAX_BUFFER_SIZE."
+              "Increase OPENC3_PROTOCOL_MAX_BUFFER_SIZE."
       end
 
       # Ensure the calculated packet length is long enough to support the location of the length field

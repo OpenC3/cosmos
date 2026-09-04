@@ -289,7 +289,6 @@ class TestLengthProtocol(unittest.TestCase):
             self.interface.read()
 
     def test_rejects_declared_length_larger_than_max_buffer_size(self):
-        self.interface.stream = TestLengthProtocol.LengthStream()
         self.interface.add_protocol(
             LengthProtocol,
             [
@@ -304,13 +303,13 @@ class TestLengthProtocol(unittest.TestCase):
             ],
             "READ_WRITE",
         )
+        protocol = self.interface.read_protocols[0]
         # Declare a 4GB packet with only 5 bytes actually sent. Without the buffer
         # limit the protocol would buffer until the microservice ran out of memory.
-        TestLengthProtocol.buffer = b"\xff\xff\xff\xff\x00"
         with self.assertRaisesRegex(
             ValueError, "Calculated packet length of 4294967295 bytes exceeds maximum buffer size of 100000000 bytes"
         ):
-            self.interface.read()
+            protocol.read_data(b"\xff\xff\xff\xff\x00")
 
     @patch.dict(os.environ, {"OPENC3_PROTOCOL_MAX_BUFFER_SIZE": "5000000000"})
     def test_honors_openc3_protocol_max_buffer_size(self):

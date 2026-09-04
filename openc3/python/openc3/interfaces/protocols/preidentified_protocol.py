@@ -113,8 +113,7 @@ class PreidentifiedProtocol(BurstProtocol):
                     self.reset()  # Drop the partial frame rather than holding it until disconnect
                     raise RuntimeError(
                         f"Length value received of {string_length} bytes exceeds maximum buffer size of "
-                        f"{self.max_buffer_size} bytes. Set MAX_LENGTH on the protocol or increase "
-                        "OPENC3_PROTOCOL_MAX_BUFFER_SIZE."
+                        f"{self.max_buffer_size} bytes. Increase OPENC3_PROTOCOL_MAX_BUFFER_SIZE."
                     )
             case _:
                 raise RuntimeError(

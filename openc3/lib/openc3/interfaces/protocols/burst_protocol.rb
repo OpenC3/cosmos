@@ -214,7 +214,7 @@ module OpenC3
       # waiting for the interface to disconnect and reset() us
       reset()
       raise "#{@interface ? @interface.name : ""}: Protocol buffer of #{length} bytes exceeds maximum of #{@max_buffer_size} bytes. " \
-            "Set MAX_LENGTH on the protocol or increase OPENC3_PROTOCOL_MAX_BUFFER_SIZE."
+            "Increase OPENC3_PROTOCOL_MAX_BUFFER_SIZE."
     end
 
     def log_discard(length, found)

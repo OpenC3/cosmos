@@ -52,7 +52,7 @@ Protocols which delineate packets have to accumulate bytes until a complete pack
 
 COSMOS bounds this with a maximum buffer size, which defaults to 100,000,000 bytes (100 MB). This is far larger than any realistic packet, so it does not affect normal configurations. When the limit is hit the interface logs an error and disconnects, which drops the offending peer and clears the buffer. The Length and Preidentified protocols additionally reject a declared length larger than the limit immediately, without buffering the declared number of bytes first.
 
-Set the `OPENC3_PROTOCOL_MAX_BUFFER_SIZE` environment variable to change the limit for all protocols. This is a backstop, not a substitute for configuration: set Max Length on each Length and Preidentified protocol to the largest packet that interface can legitimately receive. Max Length is checked first and gives a far tighter bound than the global default.
+Set the `OPENC3_PROTOCOL_MAX_BUFFER_SIZE` environment variable to change the limit for all protocols. Note that the Length and Preidentified protocols also take a Max Length parameter which bounds the value of the length field itself. Max Length is checked before the buffer size and gives a tighter, per-interface bound, so it is worth setting on those protocols in addition to the global limit.
 
 ### COBS Protocol
 

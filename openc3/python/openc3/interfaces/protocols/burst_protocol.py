@@ -210,7 +210,7 @@ class BurstProtocol(Protocol):
         name = self.interface.name if self.interface else ""
         raise RuntimeError(
             f"{name}: Protocol buffer of {length} bytes exceeds maximum of {self.max_buffer_size} bytes. "
-            "Set MAX_LENGTH on the protocol or increase OPENC3_PROTOCOL_MAX_BUFFER_SIZE."
+            "Increase OPENC3_PROTOCOL_MAX_BUFFER_SIZE."
         )
 
     def log_discard(self, length, found):
