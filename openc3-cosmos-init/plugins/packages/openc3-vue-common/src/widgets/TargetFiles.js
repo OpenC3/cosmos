@@ -48,7 +48,13 @@ export default {
           // modified_files reports target relative paths, the same shape we
           // were given. If we can't tell, assume the installed file.
           .then((response) => new Set(response.data))
-          .catch(() => new Set())
+          .catch(() => {
+            // Don't let a failed listing stick. Cached, it would downgrade
+            // every remaining file of this target to the installed copy for
+            // the life of the widget, and nothing here ever retries.
+            delete this.modifiedTargetFiles[targetName]
+            return new Set()
+          })
       }
       const modified = await this.modifiedTargetFiles[targetName]
       return modified.has(filePath) ? 'targets_modified' : 'targets'
