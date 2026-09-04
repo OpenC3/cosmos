@@ -315,8 +315,9 @@ def extract_operand(operand):
         raise RuntimeError(
             f"ERROR: String interpolation is not supported in an operand: {operand}. Interpolate in the script itself"
         )
-    # A bare word is almost always a string the user forgot to quote
-    if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", operand):
+    # A bare word is almost always a string the user forgot to quote. re.ASCII keeps \w to
+    # [A-Za-z0-9_] so this matches the same words as the Ruby implementation.
+    if re.match(r"^[A-Za-z_]\w*$", operand, re.ASCII):
         raise NameError(f"Uninitialized constant {operand}. Did you mean '{operand}' as a string?")
     raise RuntimeError(f"ERROR: Unable to parse operand: {operand}")
 

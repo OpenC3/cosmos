@@ -844,19 +844,19 @@ def _comparison_implementation(comparison_to_eval):
 def _tolerance_implementation(expected_value, tolerance):
     """Builds a callable which checks a telemetry value is within the given tolerance"""
 
-    def comparison(value):
+    def _comparison(value):
         try:
             return (expected_value - abs(tolerance)) <= value <= (expected_value + abs(tolerance))
         except TypeError:
             return False
 
-    return comparison
+    return _comparison
 
 
 def _array_tolerance_implementation(array_size, expected_value, tolerance):
     """Builds a callable which checks every telemetry value is within the given tolerance"""
 
-    def comparison(values):
+    def _comparison(values):
         try:
             if not isinstance(values, list) or len(values) != array_size:
                 return False
@@ -867,7 +867,7 @@ def _array_tolerance_implementation(array_size, expected_value, tolerance):
         except TypeError:
             return False
 
-    return comparison
+    return _comparison
 
 
 # Wait for a converted telemetry item to pass a comparison

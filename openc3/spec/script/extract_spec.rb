@@ -334,6 +334,38 @@ module OpenC3
         expect { extract_operator_and_operand_from_comparison(%q(== "\x")) }.to raise_error(/Invalid escape sequence/)
       end
 
+      it "should accept the same unicode codepoints as Ruby" do
+        # Ruby allows an empty codepoint list and it produces an empty string
+        expect(extract_operator_and_operand_from_comparison(%q(== "\u{}"))).to eql(["==", ""])
+        expect(extract_operator_and_operand_from_comparison(%q(== "\u{ }"))).to eql(["==", ""])
+        # Up to six hex digits per codepoint, so leading zeros are allowed
+        expect(extract_operator_and_operand_from_comparison(%q(== "\u{000048}"))).to eql(["==", "H"])
+        expect(extract_operator_and_operand_from_comparison(%q(== "\u{48 000049}"))).to eql(["==", "HI"])
+        # The largest character Unicode defines
+        expect(extract_operator_and_operand_from_comparison(%q(== "\u{10FFFF}"))).to eql(["==", "\u{10FFFF}"])
+      end
+
+      it "should reject unicode codepoints which are not valid characters" do
+        # Ruby rejects all of these at parse time. Packing them would silently produce an
+        # invalid UTF-8 string which could never match a telemetry value.
+        # Above the largest character Unicode defines
+        expect { extract_operator_and_operand_from_comparison(%q(== "\u{110000}")) }.to \
+          raise_error(/Invalid Unicode codepoint/)
+        # The UTF-16 surrogate range is not a character on its own
+        expect { extract_operator_and_operand_from_comparison(%q(== "\u{D800}")) }.to \
+          raise_error(/Invalid Unicode codepoint/)
+        expect { extract_operator_and_operand_from_comparison(%q(== "\uD800")) }.to \
+          raise_error(/Invalid Unicode codepoint/)
+        expect { extract_operator_and_operand_from_comparison(%q(== "\uDFFF")) }.to \
+          raise_error(/Invalid Unicode codepoint/)
+        # More than six hex digits
+        expect { extract_operator_and_operand_from_comparison(%q(== "\u{0000048}")) }.to \
+          raise_error(/Invalid Unicode codepoint/)
+        # A bad codepoint anywhere in the list is an error, not a partial string
+        expect { extract_operator_and_operand_from_comparison(%q(== "\u{48 110000}")) }.to \
+          raise_error(/Invalid Unicode codepoint/)
+      end
+
       it "should reject unescaped string interpolation" do
         # The eval based implementation interpolated this. Interpolating is code execution so
         # it is now an error rather than a silent comparison against the uninterpolated text.

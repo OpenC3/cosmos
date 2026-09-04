@@ -2693,7 +2693,7 @@ Compound expressions, e.g. `TIMEUS & 0x0001 == 0x0000`, are not supported - use
 :::
 
 :::note[String Comparisons]
-When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). An unquoted value is rejected with `Uninitialized constant ON. Did you mean 'ON' as a string?`. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself, e.g. `check("INST HEALTH_STATUS TYPE == '#{expected}'")`.
+When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). An unquoted value is rejected with `Uninitialized constant ON. Did you mean 'ON' as a string?`. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself instead: Ruby `check("INST HEALTH_STATUS TYPE == '#{expected}'")` or Python `check(f"INST HEALTH_STATUS TYPE == '{expected}'")`.
 :::
 
 <Tabs groupId="script-language">
@@ -4160,7 +4160,7 @@ Compound expressions, e.g. `TIMEUS & 0x0001 == 0x0000`, are not supported - use
 :::
 
 :::note[String Comparisons]
-When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). An unquoted value is rejected with `Uninitialized constant ON. Did you mean 'ON' as a string?`. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself, e.g. `check("INST HEALTH_STATUS TYPE == '#{expected}'")`.
+When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). An unquoted value is rejected with `Uninitialized constant ON. Did you mean 'ON' as a string?`. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself instead: Ruby `wait("INST HEALTH_STATUS TYPE == '#{expected}'", 10)` or Python `wait(f"INST HEALTH_STATUS TYPE == '{expected}'", 10)`.
 :::
 
 <Tabs groupId="script-language">
@@ -4448,8 +4448,8 @@ Compound expressions, e.g. `TIMEUS & 0x0001 == 0x0000`, are not supported - use
 [wait_check_expression](#wait_check_expression) instead.
 :::
 
-:::note String Comparisons
-When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). An unquoted value is rejected with `Uninitialized constant ON. Did you mean 'ON' as a string?`. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself, e.g. `check("INST HEALTH_STATUS TYPE == '#{expected}'")`.
+:::note[String Comparisons]
+When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). An unquoted value is rejected with `Uninitialized constant ON. Did you mean 'ON' as a string?`. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself instead: Ruby `wait_check("INST HEALTH_STATUS TYPE == '#{expected}'", 10)` or Python `wait_check(f"INST HEALTH_STATUS TYPE == '{expected}'", 10)`.
 :::
 
 <Tabs groupId="script-language">

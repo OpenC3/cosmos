@@ -737,13 +737,12 @@ module OpenC3
     # The comparison is a callable which takes the telemetry value and returns true or false.
     # A block passed by the user takes precedence over the comparison.
     def _openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, timeout, polling_rate, comparison, scope: $openc3_scope, token: $openc3_token, &block)
-      comparison = block if block
+      condition = block || comparison
       end_time = Time.now.sys + timeout
-      value = nil
       while true
         work_start = Time.now.sys
         value = tlm(target_name, packet_name, item_name, type: value_type, scope: scope, token: token)
-        return true, value if comparison and comparison.call(value)
+        return true, value if condition and condition.call(value)
         break if Time.now.sys >= end_time
 
         delta = Time.now.sys - work_start
@@ -755,7 +754,7 @@ module OpenC3
 
         if canceled
           value = tlm(target_name, packet_name, item_name, type: value_type, scope: scope, token: token)
-          if comparison and comparison.call(value)
+          if condition and condition.call(value)
             return true, value
           else
             return false, value

@@ -50,6 +50,13 @@ module OpenC3
     # rejected rather than silently compared against the uninterpolated text.
     INTERPOLATION_REGEX = /\A\#[{@$]/
 
+    # Limits Ruby enforces on a \u escape. A codepoint is written with at most six hex digits,
+    # the largest character Unicode defines is 0x10FFFF, and the surrogate range is reserved
+    # for UTF-16 pairs so it is not a character on its own.
+    MAX_UNICODE_DIGITS = 6
+    MAX_UNICODE_CODEPOINT = 0x10FFFF
+    UNICODE_SURROGATE_RANGE = (0xD800..0xDFFF)
+
     private
 
     # Pulls all string keyword arguments into the args array. Raises on any symbol keyword arguments.
@@ -233,6 +240,8 @@ module OpenC3
         return -Float::INFINITY
       when 'NAN', '+NAN', '-NAN'
         return Float::NAN
+      else
+        # Not an infinity or NaN keyword so fall through to the formats below
       end
 
       # Arrays are parsed recursively so their elements follow exactly the same rules as a
@@ -283,9 +292,9 @@ module OpenC3
             token
           elsif token.start_with?('\u{')
             # \u{1F600} or \u{48 49} which is one or more whitespace separated codepoints
-            token[3..-2].split.map { |codepoint| [codepoint.hex].pack('U') }.join
+            token[3..-2].split.map { |codepoint| pack_unicode_codepoint(codepoint, token) }.join
           elsif token.length == 6 and token.start_with?('\u')
-            [token[2..-1].hex].pack('U')
+            pack_unicode_codepoint(token[2..-1], token)
           elsif token.length > 2 and token.start_with?('\x')
             [token[2..-1].hex].pack('C')
           elsif token.match?(/\A\\[0-7]/)
@@ -301,6 +310,18 @@ module OpenC3
         result << (binary ? replacement.b : replacement)
       end
       return result
+    end
+
+    # Packs a single codepoint of a \u escape into a UTF-8 character. Ruby rejects a codepoint
+    # which is too long, above the largest Unicode character or in the UTF-16 surrogate range,
+    # so those raise here rather than silently packing into an invalid UTF-8 string.
+    def pack_unicode_codepoint(codepoint, token)
+      value = codepoint.hex
+      if codepoint.length > MAX_UNICODE_DIGITS or value > MAX_UNICODE_CODEPOINT or
+         UNICODE_SURROGATE_RANGE.include?(value)
+        raise "ERROR: Invalid Unicode codepoint in operand: #{token}"
+      end
+      return [value].pack('U')
     end
 
     # Splits the contents of a bracketed operand list on the top level commas.
