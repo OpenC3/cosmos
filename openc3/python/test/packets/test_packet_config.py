@@ -13,6 +13,7 @@
 # See https://github.com/OpenC3/cosmos/pull/1953
 
 import os
+import shutil
 import tempfile
 import unittest
 
@@ -859,9 +860,11 @@ class TestPacketConfig(unittest.TestCase):
         )
 
     def test_sets_the_template_via_file(self):
-        with open("unittest.txt", "w+") as data_file:
-            data_file.write("File data")
         with tempfile.NamedTemporaryFile(mode="w") as tf:
+            subdir = os.path.join(os.path.dirname(tf.name), "templates")
+            os.makedirs(subdir, exist_ok=True)
+            with open(os.path.join(subdir, "unittest.txt"), "w+") as data_file:
+                data_file.write("File data")
             filename = "datafile2.txt"
             with open(os.path.dirname(tf.name) + "/" + filename, "wb") as fp:
                 data = {
@@ -876,7 +879,7 @@ class TestPacketConfig(unittest.TestCase):
                 }
                 dump(data, fp)
             tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
-            tf.write(f"TEMPLATE_FILE {os.path.join(os.getcwd(), 'unittest.txt')}\n")
+            tf.write("TEMPLATE_FILE templates/unittest.txt\n")
             tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
             tf.write("ACCESSOR openc3/accessors/cbor_accessor.py\n")
             tf.write(f"TEMPLATE_FILE {filename}\n")
@@ -931,7 +934,23 @@ class TestPacketConfig(unittest.TestCase):
                 },
             },
         )
-        os.remove(os.path.join(os.getcwd(), "unittest.txt"))
+        shutil.rmtree(subdir)
+
+    def test_rejects_absolute_template_files(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+            tf.write(f"TEMPLATE_FILE {os.path.join(os.getcwd(), 'unittest.txt')}\n")
+            tf.seek(0)
+            with self.assertRaisesRegex(ConfigParser.Error, "Absolute paths are not allowed"):
+                self.pc.process_file(tf.name, "TGT1")
+
+    def test_rejects_template_files_outside_the_config_directory(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+            tf.write("TEMPLATE_FILE ../../../../etc/passwd\n")
+            tf.seek(0)
+            with self.assertRaisesRegex(ConfigParser.Error, "Path traversal is not allowed"):
+                self.pc.process_file(tf.name, "TGT1")
 
     def test_handles_bad_template_files(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:
