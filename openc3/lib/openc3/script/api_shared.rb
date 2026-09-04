@@ -530,7 +530,7 @@ module OpenC3
 
       value = yield(target_name, packet_name, item_name)
       if comparison_to_eval
-        _check_eval(target_name, packet_name, item_name, comparison_to_eval, value)
+        _check_comparison(target_name, packet_name, item_name, comparison_to_eval, value)
       else
         puts "CHECK: #{_upcase(target_name, packet_name, item_name)} == #{value.nil? ? 'nil' : value.inspect}"
       end
@@ -733,28 +733,17 @@ module OpenC3
       return [target_name, packet_name, item_name, comparison_to_eval, timeout, polling_rate]
     end
 
-    def _openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, timeout, polling_rate, exp_to_eval, scope: $openc3_scope, token: $openc3_token, &block)
+    # Waits for the comparison to be true or the timeout to expire.
+    # The comparison is a callable which takes the telemetry value and returns true or false.
+    # A block passed by the user takes precedence over the comparison.
+    def _openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, timeout, polling_rate, comparison, scope: $openc3_scope, token: $openc3_token, &block)
+      comparison = block if block
       end_time = Time.now.sys + timeout
-      if exp_to_eval and !exp_to_eval.is_printable?
-        raise "ERROR: Invalid comparison to non-ascii value"
-      end
+      value = nil
       while true
         work_start = Time.now.sys
         value = tlm(target_name, packet_name, item_name, type: value_type, scope: scope, token: token)
-        if not block.nil?
-          if block.call(value)
-            return true, value
-          end
-        else
-          begin
-            if eval(exp_to_eval)
-              return true, value
-            end
-          # NoMethodError is raised when the tlm() returns nil and we try to eval the expression
-          # In this case we just continue and see if eventually we get a good value from tlm()
-          rescue NoMethodError
-          end
-        end
+        return true, value if comparison and comparison.call(value)
         break if Time.now.sys >= end_time
 
         delta = Time.now.sys - work_start
@@ -766,58 +755,62 @@ module OpenC3
 
         if canceled
           value = tlm(target_name, packet_name, item_name, type: value_type, scope: scope, token: token)
-          if not block.nil?
-            if block.call(value)
-              return true, value
-            else
-              return false, value
-            end
+          if comparison and comparison.call(value)
+            return true, value
           else
-            begin
-              if eval(exp_to_eval)
-                return true, value
-              else
-                return false, value
-              end
-            # NoMethodError is raised when the tlm() returns nil and we try to eval the expression
-            rescue NoMethodError
-              return false, value
-            end
+            return false, value
           end
         end
       end
 
       return false, value
-    rescue NameError => e
-      if e.message =~ /uninitialized constant OpenC3::ApiShared::(\w+)/
-        new_error = NameError.new("Uninitialized constant #{$1}. Did you mean '#{$1}' as a string?")
-        new_error.set_backtrace(e.backtrace)
-        raise new_error
-      else
-        raise e
-      end
+    end
+
+    # Builds a callable which compares a telemetry value against the given comparison string,
+    # e.g. "> 1". Returns nil if there is no comparison, e.g. a block based wait_check().
+    # Raises if the comparison is invalid, e.g. an unsupported operator or unparsable operand.
+    def _comparison_implementation(comparison_to_eval)
+      return nil unless comparison_to_eval
+
+      operator, operand = extract_operator_and_operand_from_comparison(comparison_to_eval)
+      return nil unless operator
+      lambda { |value| compare_values(value, operator, operand) }
     end
 
     # Wait for a converted telemetry item to pass a comparison
     def _openc3_script_wait_implementation_comparison(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate = DEFAULT_TLM_POLLING_RATE, scope: $openc3_scope, token: $openc3_token, &block)
-      if comparison_to_eval
-        exp_to_eval = "value " + comparison_to_eval
-      else
-        exp_to_eval = nil
+      # The comparison text is logged whether or not it is parsed so it is always validated
+      if comparison_to_eval and !comparison_to_eval.is_printable?
+        raise "ERROR: Invalid comparison to non-ascii value"
       end
-      _openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, timeout, polling_rate, exp_to_eval, scope: scope, token: token, &block)
+      # A user supplied block is the condition so the comparison text is never parsed
+      comparison = block ? nil : _comparison_implementation(comparison_to_eval)
+      _openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, timeout, polling_rate, comparison, scope: scope, token: token, &block)
     end
 
     def _openc3_script_wait_implementation_tolerance(target_name, packet_name, item_name, value_type, expected_value, tolerance, timeout, polling_rate = DEFAULT_TLM_POLLING_RATE, scope: $openc3_scope, token: $openc3_token, &block)
-      exp_to_eval = "((#{expected_value} - #{tolerance})..(#{expected_value} + #{tolerance})).include? value"
-      _openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, timeout, polling_rate, exp_to_eval, scope: scope, token: token, &block)
+      comparison = lambda do |value|
+        begin
+          value >= (expected_value - tolerance) and value <= (expected_value + tolerance)
+        rescue ArgumentError, NoMethodError, TypeError
+          false
+        end
+      end
+      _openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, timeout, polling_rate, comparison, scope: scope, token: token, &block)
     end
 
     def _openc3_script_wait_implementation_array_tolerance(array_size, target_name, packet_name, item_name, value_type, expected_value, tolerance, timeout, polling_rate = DEFAULT_TLM_POLLING_RATE, scope: $openc3_scope, token: $openc3_token, &block)
-      statements = []
-      array_size.times { |i| statements << "(((#{expected_value[i]} - #{tolerance[i]})..(#{expected_value[i]} + #{tolerance[i]})).include? value[#{i}])" }
-      exp_to_eval = statements.join(" && ")
-      _openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, timeout, polling_rate, exp_to_eval, scope: scope, token: token, &block)
+      comparison = lambda do |values|
+        begin
+          next false unless values.is_a?(Array) and values.length == array_size
+          array_size.times.all? do |i|
+            values[i] >= (expected_value[i] - tolerance[i]) and values[i] <= (expected_value[i] + tolerance[i])
+          end
+        rescue ArgumentError, NoMethodError, TypeError
+          false
+        end
+      end
+      _openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, timeout, polling_rate, comparison, scope: scope, token: token, &block)
     end
 
     # Wait on an expression to be true.
@@ -859,17 +852,15 @@ module OpenC3
       end
     end
 
-    def _check_eval(target_name, packet_name, item_name, comparison_to_eval, value)
-      string = "value " + comparison_to_eval
+    def _check_comparison(target_name, packet_name, item_name, comparison_to_eval, value)
       check_str = "CHECK: #{_upcase(target_name, packet_name, item_name)} #{comparison_to_eval}"
       # Show user the check against a quoted string
-      # Note: We have to preserve the original 'value' variable because we're going to eval against it
       value_str = value.is_a?(String) ? "'#{value}'" : value
       value_str = 'nil' if value.nil? # Show user nil value as 'nil'
       with_value = "with value == #{value_str}"
 
-      eval_is_valid = _check_eval_validity(value, comparison_to_eval)
-      unless eval_is_valid
+      operator, operand = extract_operator_and_operand_from_comparison(comparison_to_eval)
+      unless _valid_comparison?(value, operator, operand)
         message = "Invalid comparison for types"
         if $disconnect
           puts "ERROR: #{message}"
@@ -878,7 +869,7 @@ module OpenC3
         end
       end
 
-      if eval_is_valid && eval(string)
+      if compare_values(value, operator, operand)
         puts "#{check_str} success #{with_value}"
       else
         message = "#{check_str} failed #{with_value}"
@@ -888,35 +879,19 @@ module OpenC3
           raise CheckError, message
         end
       end
-    rescue NameError => e
-      if e.message =~ /uninitialized constant OpenC3::ApiShared::(\w+)/
-        new_error = NameError.new("Uninitialized constant #{$1}. Did you mean '#{$1}' as a string?")
-        new_error.set_backtrace(e.backtrace)
-        raise new_error
-      else
-        raise e
-      end
     end
 
-    def _check_eval_validity(value, comparison)
-      return true if comparison.nil? || comparison.empty?
-
-      begin
-        operator, operand = extract_operator_and_operand_from_comparison(comparison)
-      rescue RuntimeError => e
-        if e.message.include?("Unable to parse operand")
-          # If we can't parse the operand, let the eval happen anyway
-          # It will raise an appropriate error (like NameError for undefined constants)
-          return true
-        end
-        raise # Re-raise invalid operator errors
-      rescue JSON::ParserError
-        return true
-      end
+    # Returns whether the value and operand can be meaningfully compared with the operator.
+    # Note this is only used by check() because wait() polls until the value changes.
+    def _valid_comparison?(value, operator, operand)
+      return true if operator.nil?
 
       if [">=", "<=", ">", "<"].include?(operator)
-        return false if value.nil? || operand.nil? || value.is_a?(Array) || operand.is_a?(Array)
+        return false if value.nil? or operand.nil?
+        return false if value.is_a?(Array) or operand.is_a?(Array)
+        return false if value.is_a?(String) != operand.is_a?(String)
       end
+      # Note 'in' does not need a check here because the parser already requires a list operand
 
       return true
     end

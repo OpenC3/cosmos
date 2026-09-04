@@ -2684,8 +2684,16 @@ check("<Target Name> <Packet Name> <Item Name> <Comparison - optional>")
 | Item Name   | Name of the telemetry item.                                                                                                                        |
 | Comparison  | A comparison to perform against the telemetry item. If a comparison is not given then the telemetry item will just be printed into the script log. |
 
+:::note[Supported Comparisons]
+A comparison is a single operator followed by a literal value. The supported operators are
+`==`, `!=`, `>`, `>=`, `<`, `<=` and `in`. `in` requires a list operand, e.g. `in [1, 2, 3]`,
+whose elements follow the same rules as any other value, e.g. `in ['ON', 'OFF']`.
+Compound expressions, e.g. `TIMEUS & 0x0001 == 0x0000`, are not supported - use
+[check_expression](#check_expression) instead.
+:::
+
 :::note[String Comparisons]
-When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). Unquoted values are interpreted as variable names.
+When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). An unquoted value is rejected with `Uninitialized constant ON. Did you mean 'ON' as a string?`. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself, e.g. `check("INST HEALTH_STATUS TYPE == '#{expected}'")`.
 :::
 
 <Tabs groupId="script-language">
@@ -4143,8 +4151,16 @@ success = wait(
 | type         | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).       |
 | quiet        | Named parameter indicating whether to log the result. Defaults to false which means log the wait.              |
 
+:::note[Supported Comparisons]
+A comparison is a single operator followed by a literal value. The supported operators are
+`==`, `!=`, `>`, `>=`, `<`, `<=` and `in`. `in` requires a list operand, e.g. `in [1, 2, 3]`,
+whose elements follow the same rules as any other value, e.g. `in ['ON', 'OFF']`.
+Compound expressions, e.g. `TIMEUS & 0x0001 == 0x0000`, are not supported - use
+[wait_expression](#wait_expression) instead.
+:::
+
 :::note[String Comparisons]
-When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). Unquoted values are interpreted as variable names.
+When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). An unquoted value is rejected with `Uninitialized constant ON. Did you mean 'ON' as a string?`. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself, e.g. `check("INST HEALTH_STATUS TYPE == '#{expected}'")`.
 :::
 
 <Tabs groupId="script-language">
@@ -4424,8 +4440,16 @@ elapsed = wait_check(
 | Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                        |
 | type         | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).    |
 
+:::note[Supported Comparisons]
+A comparison is a single operator followed by a literal value. The supported operators are
+`==`, `!=`, `>`, `>=`, `<`, `<=` and `in`. `in` requires a list operand, e.g. `in [1, 2, 3]`,
+whose elements follow the same rules as any other value, e.g. `in ['ON', 'OFF']`.
+Compound expressions, e.g. `TIMEUS & 0x0001 == 0x0000`, are not supported - use
+[wait_check_expression](#wait_check_expression) instead.
+:::
+
 :::note String Comparisons
-When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). Unquoted values are interpreted as variable names.
+When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). An unquoted value is rejected with `Uninitialized constant ON. Did you mean 'ON' as a string?`. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself, e.g. `check("INST HEALTH_STATUS TYPE == '#{expected}'")`.
 :::
 
 <Tabs groupId="script-language">
