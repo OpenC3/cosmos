@@ -20,16 +20,22 @@ export default {
     return {
       id: Math.floor(Math.random() * 100000000000), // Unique-ish
       state: 'start',
-      items: [
-        {
-          targetName: this.parameters[0],
-          packetName: this.parameters[1],
-          itemName: this.parameters[2],
-          valueType: this.parameters[3] || 'CONVERTED',
-          reduced: this.parameters[4] || 'DECOM',
-          reducedType: this.parameters[5] || null,
-        },
-      ],
+      // LINEGRAPH names its item as parameters, ARRAYPLOT takes none and adds
+      // them all with SETTING ITEM. Only seed an item if we were given one,
+      // otherwise we subscribe to undefined/undefined/undefined and plot an
+      // empty series for it.
+      items: this.parameters[0]
+        ? [
+            {
+              targetName: this.parameters[0],
+              packetName: this.parameters[1],
+              itemName: this.parameters[2],
+              valueType: this.parameters[3] || 'CONVERTED',
+              reduced: this.parameters[4] || 'DECOM',
+              reducedType: this.parameters[5] || null,
+            },
+          ]
+        : [],
       startTime: null,
       // 1hr of data by default
       secondsGraphed: 3600,
@@ -125,5 +131,14 @@ export default {
       // and manage their own playback requests
       return item
     })
+    // We still want to know if any of them don't exist. Streaming just never
+    // sends data for a bad item, so without this the screen looks fine and the
+    // series stays empty.
+    this.checkScreenItems(
+      this.items.map(
+        (item) =>
+          `${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`,
+      ),
+    )
   },
 }

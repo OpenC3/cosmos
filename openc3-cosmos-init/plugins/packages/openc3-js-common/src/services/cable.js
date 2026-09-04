@@ -92,10 +92,17 @@ class ResilientSubscription {
       {
         ...this._callbacks,
         disconnected: (data) => {
+          // We tore this subscription down ourselves (unsubscribe, or the
+          // whole cable disconnecting because the component unmounted). The
+          // caller isn't interested and may already be half destroyed, so
+          // don't report it as a connection problem.
+          if (this._unsubscribed) {
+            return
+          }
           // allowReconnect false means the client has given up on this
-          // subscription: either we unsubscribed it (nothing to do) or the
-          // subscribe failed unrecoverably and the consumer needs rebuilding.
-          if (!this._unsubscribed && data?.allowReconnect === false) {
+          // subscription: the subscribe failed unrecoverably and the consumer
+          // needs rebuilding.
+          if (data?.allowReconnect === false) {
             this._cable._scheduleRecovery()
           }
           this._callbacks.disconnected?.(data)

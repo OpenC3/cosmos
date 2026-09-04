@@ -120,7 +120,14 @@ export default {
           (a, b) => a.lineNumber - b.lineNumber,
         )
         for (const error of sortedErrors) {
-          let msg = `At ${error.lineNumber}: (${error.line}) ${error.message}.`
+          if (messages.has(error.message)) {
+            continue
+          }
+          // Runtime errors (a lost connection, say) aren't tied to a line in
+          // the definition, so only prefix the location when we have one
+          let msg = error.lineNumber
+            ? `At ${error.lineNumber}: (${error.line}) ${error.message}.`
+            : `${error.message}.`
           if (error.usage) {
             msg += ` Usage: ${error.usage}`
           }
