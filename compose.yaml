@@ -190,6 +190,12 @@ services:
     environment:
       - RAILS_ENV=production
       - GEM_HOME=/gems
+      # Seed the per-scope rubygems_url/pypi_url settings (scope_model) so plugin
+      # gem installs (gem_model) and python package installs (python_package_model)
+      # fetch dependencies from the configured mirrors. The api Gemfiles pin a
+      # constant source, so RUBYGEMS_URL never rewrites Gemfile.lock.
+      - RUBYGEMS_URL=${RUBYGEMS_URL}
+      - PYPI_URL=${PYPI_URL}
       - PYTHONUSERBASE=/gems/python_packages
       - ANYCABLE_REDIS_URL=redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}
       - SECRET_KEY_BASE=${SECRET_KEY_BASE}
@@ -255,6 +261,12 @@ services:
     environment:
       - RAILS_ENV=production
       - GEM_HOME=/gems
+      # Seed the per-scope rubygems_url/pypi_url settings (scope_model) so plugin
+      # gem installs (gem_model) and python package installs (python_package_model)
+      # fetch dependencies from the configured mirrors. The api Gemfiles pin a
+      # constant source, so RUBYGEMS_URL never rewrites Gemfile.lock.
+      - RUBYGEMS_URL=${RUBYGEMS_URL}
+      - PYPI_URL=${PYPI_URL}
       - PYTHONUSERBASE=/gems/python_packages
       - OPENC3_USE_UV=true
       - ANYCABLE_REDIS_URL=redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}
@@ -336,6 +348,12 @@ services:
       # List syntax passes through host CI only if set, omits it otherwise
       - CI
       - GEM_HOME=/gems
+      # Seed the per-scope rubygems_url/pypi_url settings (scope_model) so plugin
+      # gem installs (gem_model) and python package installs (python_package_model)
+      # fetch dependencies from the configured mirrors. The api Gemfiles pin a
+      # constant source, so RUBYGEMS_URL never rewrites Gemfile.lock.
+      - RUBYGEMS_URL=${RUBYGEMS_URL}
+      - PYPI_URL=${PYPI_URL}
       - PYTHONUSERBASE=/gems/python_packages
       - OPENC3_USE_UV=true
       # If your microservices do heavy BLAS / linear algebra work,
@@ -445,6 +463,12 @@ services:
       # List syntax passes through host CI only if set, omits it otherwise
       - CI
       - GEM_HOME=/gems
+      # Seed the per-scope rubygems_url/pypi_url settings (scope_model) so plugin
+      # gem installs (gem_model) and python package installs (python_package_model)
+      # fetch dependencies from the configured mirrors. The api Gemfiles pin a
+      # constant source, so RUBYGEMS_URL never rewrites Gemfile.lock.
+      - RUBYGEMS_URL=${RUBYGEMS_URL}
+      - PYPI_URL=${PYPI_URL}
       - PYTHONUSERBASE=/gems/python_packages
       - OPENC3_USE_UV=true
       # Redis
