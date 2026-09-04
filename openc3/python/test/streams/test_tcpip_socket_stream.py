@@ -61,10 +61,11 @@ class TestTcpipSocketStream(unittest.TestCase):
                 self.request.send(b"test")
                 self.request.close()
 
-        server = ReusableTCPServer(("localhost", 20000), MyTCPHandler)
+        # Bind to an ephemeral port so concurrent runs can't collide
+        server = ReusableTCPServer(("localhost", 0), MyTCPHandler)
         threading.Thread(target=server.handle_request).start()
         rs = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-        rs.connect(("localhost", 20000))
+        rs.connect(server.server_address)
         ss = TcpipSocketStream(None, rs, 10.0, None)
         self.assertEqual(ss.read(), b"test")
         close_socket(rs)
@@ -127,9 +128,26 @@ class TestTcpipSocketStream(unittest.TestCase):
                 mock_select.side_effect = select_error
                 self.assertEqual(ss.read(), "")
         # Python sets fileno() to -1 once the socket is closed
+        read.fileno.return_value = -1
         with patch("openc3.streams.tcpip_socket_stream.select.select") as mock_select:
             mock_select.side_effect = ValueError("file descriptor cannot be a negative integer (-1)")
             self.assertEqual(ss.read(), "")
+        ss.disconnect()
+
+    def test_reraises_value_errors_unrelated_to_a_closed_socket(self):
+        # A ValueError from a bad timeout or an out of range fd is a real error
+        # and must not be reported as a clean EOF
+        read = Mock()
+        error = OSError()
+        error.errno = errno.EWOULDBLOCK
+        read.recv.side_effect = error
+        read.fileno.return_value = 5
+        ss = TcpipSocketStream(None, read, 10.0, -1.0)
+        ss.connect()
+        with patch("openc3.streams.tcpip_socket_stream.select.select") as mock_select:
+            mock_select.side_effect = ValueError("timeout must be non-negative")
+            with self.assertRaisesRegex(ValueError, "timeout must be non-negative"):
+                ss.read()
         ss.disconnect()
 
     def test_reraises_unexpected_select_errors(self):
@@ -155,10 +173,10 @@ class TestTcpipSocketStream(unittest.TestCase):
                 # Accept the connection and then send nothing, keeping it open
                 time.sleep(0.5)
 
-        server = ReusableTCPServer(("localhost", 20004), MyTCPHandler)
+        server = ReusableTCPServer(("localhost", 0), MyTCPHandler)
         threading.Thread(target=server.handle_request).start()
         rs = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-        rs.connect(("localhost", 20004))
+        rs.connect(server.server_address)
         # Match how the interfaces create their sockets. MSG_DONTWAIT does not
         # exist on Windows so a blocking socket would sit in recv instead of
         # returning EWOULDBLOCK and reaching the select timeout.
@@ -177,10 +195,10 @@ class TestTcpipSocketStream(unittest.TestCase):
                 time.sleep(0.2)
                 self.request.close()
 
-        server = ReusableTCPServer(("localhost", 20002), MyTCPHandler)
+        server = ReusableTCPServer(("localhost", 0), MyTCPHandler)
         threading.Thread(target=server.handle_request).start()
         rs = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-        rs.connect(("localhost", 20002))
+        rs.connect(server.server_address)
         ss = TcpipSocketStream(None, rs, 10.0, 5.0)
         time.sleep(0.1)  # allow the server thread to accept
         # close the socket before trying to read from it

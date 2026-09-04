@@ -76,12 +76,15 @@ class TcpipSocketStream(Stream):
                             [],
                             self.read_timeout,
                         )
-                    # These can happen with the socket being closed while waiting on
-                    # select. Python sets fileno() to -1 once closed, which raises
-                    # ValueError rather than OSError.
+                    # Python sets fileno() to -1 once a socket is closed and select
+                    # raises ValueError rather than OSError for a negative fd. Only
+                    # that case is a disconnect. Other ValueErrors (a negative
+                    # timeout, an fd over FD_SETSIZE) are real errors so re-raise.
                     except ValueError:
-                        data = ""
-                        break
+                        if self._any_socket_closed():
+                            data = ""
+                            break
+                        raise
                     except OSError as select_error:
                         if select_error.errno in (errno.EBADF, errno.ENOTSOCK):
                             data = ""
@@ -101,6 +104,17 @@ class TcpipSocketStream(Stream):
                         raise TimeoutError("Read Timeout") from error
             break
         return data
+
+    # self.return [Boolean] Whether either socket passed to select has been closed
+    def _any_socket_closed(self):
+        for sock in (self.read_socket, self.pipe_reader):
+            try:
+                if sock.fileno() < 0:
+                    return True
+            # fileno() raises on an already released socket object
+            except OSError:
+                return True
+        return False
 
     # self.param data [String] A binary string of data to write to the socket
     def write(self, data):
