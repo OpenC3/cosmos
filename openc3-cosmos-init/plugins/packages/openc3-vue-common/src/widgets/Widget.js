@@ -16,11 +16,12 @@
 */
 
 import { ConfigParserError } from '@openc3/js-common/services'
+import TargetFiles from './TargetFiles'
 import WidgetComponents from './WidgetComponents'
 import { useStore } from '@/plugins/store'
 
 export default {
-  mixins: [WidgetComponents],
+  mixins: [TargetFiles, WidgetComponents],
   props: {
     widgetIndex: {
       type: Number,

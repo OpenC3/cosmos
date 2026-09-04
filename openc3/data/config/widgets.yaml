@@ -206,6 +206,9 @@ Decoration Widgets:
         END
     FILEDISPLAY:
       summary: Displays the contents of a target file with syntax highlighting
+      description: Files are read from the COSMOS bucket, either the target's installed files or the modified
+        copy under targets_modified. In local mode a file created only on the local filesystem
+        (plugins/SCOPE/targets_modified) is not in the bucket and cannot be read.
       since: 6.10.3
       parameters:
         - name: File path
@@ -224,6 +227,9 @@ Decoration Widgets:
         FILEDISPLAY "INST/data/sample.json" 400 200
     FILECHECKSUM:
       summary: Displays SHA-256 checksum of one or more files, with comparison if multiple
+      description: Files are read from the COSMOS bucket, either the target's installed files or the modified
+        copy under targets_modified. In local mode a file created only on the local filesystem
+        (plugins/SCOPE/targets_modified) is not in the bucket and cannot be read.
       since: 6.10.3
       parameters:
         - name: File path
