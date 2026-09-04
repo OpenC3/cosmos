@@ -93,6 +93,49 @@ module OpenC3
         expect(AuthModel.verify(token)).to eq(false)
       end
 
+      it "verifies a brand new session token immediately after a failed check" do
+        # This is the login page sequence: the stale token in localStorage is
+        # checked (fails), the user types the password, and the token that comes
+        # back is checked on the next page load. A cached negative result would
+        # 401 that check and bounce the user straight back to the login form.
+        stale = "#{AuthModel::SESSION_PREFIX}#{'A' * 22}"
+        expect(AuthModel.verify(stale)).to eq(false)
+
+        token = AuthModel.generate_session
+        expect(AuthModel.verify(token)).to eq(true)
+        expect(AuthModel.verify(stale)).to eq(false)
+      end
+
+      it "never reads the entire session hash" do
+        # verify_token is unauthenticated, so a caller must not be able to make
+        # us pull every session ever created on every request. Nothing prunes
+        # the sessions hash short of a logout, so it only grows.
+        expect(Store).not_to receive(:hgetall)
+
+        token = AuthModel.generate_session
+        expect(AuthModel.verify(token)).to eq(true) # reads just this token
+        expect(AuthModel.verify(token)).to eq(true) # served from the cache
+        10.times do
+          bogus = "#{AuthModel::SESSION_PREFIX}#{SecureRandom.urlsafe_base64(nil, false)}"
+          expect(AuthModel.verify(bogus)).to eq(false)
+        end
+      end
+
+      it "stops using a cached session token once the cache expires" do
+        token = AuthModel.generate_session
+        expect(AuthModel.verify(token)).to eq(true)
+
+        # Delete it behind the cache's back, the way another process would
+        @redis.hdel(AuthModel::SESSIONS_KEY, token)
+        expect(AuthModel.verify(token)).to eq(true)
+
+        # Past SESSION_CACHE_TIMEOUT the cache is dropped and the token is gone.
+        # Compute the future time before stubbing so Time.now isn't stubbed yet.
+        future = Time.now + AuthModel::SESSION_CACHE_TIMEOUT + 1
+        allow(Time).to receive(:now).and_return(future)
+        expect(AuthModel.verify(token)).to eq(false)
+      end
+
       it "raises when stored password hash is SHA256" do
         @redis.set(PW_HASH_PRIMARY_KEY, Digest::SHA256.hexdigest(AUTH_INITIAL_PASSWORD))
         expect{ AuthModel.verify_no_service(AUTH_INITIAL_PASSWORD, mode: :any) }.to \
