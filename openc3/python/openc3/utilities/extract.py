@@ -14,7 +14,6 @@
 # if purchased from OpenC3, Inc.
 
 import ast
-import json
 import re
 
 
@@ -30,6 +29,20 @@ SCANNING_REGULAR_EXPRESSION = re.compile(
     """,
     re.VERBOSE,
 )
+
+# Operators supported by check(), wait() and wait_check() comparisons
+COMPARISON_OPERATORS = ["==", "!=", ">=", "<=", ">", "<", "in"]
+
+# Matches Infinity and NaN which literal_eval rejects but float() accepts
+INFINITY_NAN_REGEX = re.compile(r"^[+-]?(inf(inity)?|nan)$", re.IGNORECASE)
+
+# Matches an f-string prefix. Interpolation would be code execution so it is rejected.
+INTERPOLATION_REGEX = re.compile(r"^(?:[fF][rRbB]?|[rRbB][fF])['\"]")
+
+# Matches repr() of a bytearray, e.g. bytearray(b'\\x00'). tlm() returns BLOCK items as a
+# bytearray so this is the natural way to write the operand, but it is a constructor call
+# rather than a literal so literal_eval rejects it.
+BYTEARRAY_REGEX = re.compile(r"^bytearray\((.*)\)$", re.DOTALL)
 
 SPLIT_WITH_REGEX = re.compile(r"\s+with\s+", re.IGNORECASE)
 SPLIT_WITH_OPTIONAL_WHITESPACE_REGEX = re.compile(r"\s*with\s*", re.IGNORECASE)
@@ -250,8 +263,6 @@ def extract_fields_from_check_text(text):
 
 # Splits `check()` comparison expressions, e.g. "== 'foo bar'" becomes ["==", "foo bar"]
 def extract_operator_and_operand_from_comparison(comparison):
-    valid_operators = ["==", "!=", ">=", "<=", ">", "<", "in"]
-
     parts = comparison.split(None, 1)  # Python: second split arg is max number of splits
     operator = parts[0] if len(parts) >= 1 else None
     operand = parts[1] if len(parts) >= 2 else None
@@ -261,27 +272,77 @@ def extract_operator_and_operand_from_comparison(comparison):
             raise RuntimeError(f"ERROR: Invalid comparison, must specify an operand: {comparison}")
         return [None, None]
 
-    if operator not in valid_operators:
+    if operator not in COMPARISON_OPERATORS:
         raise RuntimeError(f"ERROR: Invalid operator: '{operator}'")
 
-    # Handle string operand: remove surrounding double/single quotes
-    quote_match = re.match(
-        r"^(['\"])(.*)\1$", operand, re.DOTALL
-    )  # Starts with single or double quote, and ends with matching quote
-    if quote_match:
-        operand = quote_match.group(2)
-        return operator, operand
+    operand = extract_operand(operand)
+    # 'in' is containment against a list of values in both Ruby and Python.
+    # Enforced here so check(), wait() and wait_check() all reject the same thing.
+    if operator == "in" and not isinstance(operand, list):
+        raise RuntimeError(f"ERROR: The 'in' operator requires a list operand: {operand!r}")
 
-    # Handle other operand types
-    if operand == "None":
-        operand = None
-    elif operand == "False":
-        operand = False
-    elif operand == "True":
-        operand = True
-    else:
-        try:
-            operand = json.loads(operand)
-        except json.JSONDecodeError as err:
-            raise RuntimeError(f"ERROR: Unable to parse operand: {operand}") from err
     return operator, operand
+
+
+# Converts the operand of a `check()` comparison expression into a Python value.
+# Note this deliberately does not eval the operand so only literal values are supported.
+def extract_operand(operand):
+    # A bytearray is spelled as a constructor call around a literal. Only this one wrapper is
+    # recognized and its contents still go through extract_operand, so nothing is executed.
+    bytearray_match = BYTEARRAY_REGEX.match(operand)
+    if bytearray_match:
+        contents = bytearray_match.group(1).strip()
+        if not contents:
+            return bytearray()
+        value = extract_operand(contents)
+        if not isinstance(value, bytes | bytearray | list):
+            raise RuntimeError(f"ERROR: Unable to parse operand: {operand}")
+        return bytearray(value)
+
+    # literal_eval only parses Python literals, e.g. numbers, strings, bytes, lists and dicts,
+    # so unlike eval it can not execute arbitrary code. It processes string escape sequences
+    # and requires a single complete literal, so "== 'a' garbage 'b'" is a syntax error.
+    try:
+        return ast.literal_eval(operand)
+    except (ValueError, SyntaxError, MemoryError, RecursionError):
+        pass  # Fall through to the formats literal_eval does not support
+    if INFINITY_NAN_REGEX.match(operand):
+        return float(operand)
+
+    # An f-string is interpolation which would be code execution. literal_eval already rejects
+    # it but the generic error does not say why.
+    if INTERPOLATION_REGEX.match(operand):
+        raise RuntimeError(
+            f"ERROR: String interpolation is not supported in an operand: {operand}. Interpolate in the script itself"
+        )
+    # A bare word is almost always a string the user forgot to quote. re.ASCII keeps \w to
+    # [A-Za-z0-9_] so this matches the same words as the Ruby implementation.
+    if re.match(r"^[A-Za-z_]\w*$", operand, re.ASCII):
+        raise NameError(f"Uninitialized constant {operand}. Did you mean '{operand}' as a string?")
+    raise RuntimeError(f"ERROR: Unable to parse operand: {operand}")
+
+
+# Compares a telemetry value against an operand using the given operator.
+# Returns False rather than raising if the two values can not be compared.
+def compare_values(value, operator, operand):
+    try:
+        if operator == "==":
+            return value == operand
+        elif operator == "!=":
+            return value != operand
+        elif operator == ">":
+            return value > operand
+        elif operator == ">=":
+            return value >= operand
+        elif operator == "<":
+            return value < operand
+        elif operator == "<=":
+            return value <= operand
+        elif operator == "in":
+            # 'in' is containment against a list of values, matching Ruby
+            return isinstance(operand, list) and value in operand
+        else:
+            raise RuntimeError(f"ERROR: Invalid operator: '{operator}'")
+    except TypeError:
+        # Comparing incompatible types, e.g. None > 1, is simply not a match
+        return False
