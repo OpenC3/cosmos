@@ -3,9 +3,20 @@
 
 plugins_dir := "openc3-cosmos-init/plugins/packages"
 
+# Component command namespaces
+mod playwright 'playwright/justfile'
+mod python 'openc3/python/justfile'
+mod ruby 'openc3/justfile'
+
 # Default recipe - show available commands
 default:
     @just --list
+
+# Run checks for all components
+check: lint-all
+    just ruby::check
+    just python::check
+    just playwright::check
 
 # ---------------------------------------------------------------------------
 # Shared dependency builds

@@ -63,6 +63,9 @@ check-running:
 test: check-running
     pnpm test:parallel --quiet && pnpm test:serial --quiet
 
+# Check end-to-end tests
+check: test
+
 # Run only parallel tests
 test-parallel *ARGS: check-running
     pnpm test:parallel {{ ARGS }}

@@ -45,6 +45,9 @@ ruby-verify:
     bundle exec rspec
     @echo "All Ruby specs passed!"
 
+# Check code without making changes
+check: ruby-verify
+
 # Build the gem
 ruby-gem:
     bundle exec rake gems
