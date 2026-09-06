@@ -19,6 +19,7 @@
 */
 
 import axios from './axios.js'
+import { refreshToken } from './authGuard.js'
 import { parse, stringify, isInteger, isSafeNumber } from 'lossless-json'
 
 // parse huge integer values into a bigint, and use a regular number otherwise
@@ -41,16 +42,9 @@ export default class OpenC3Api {
     headerOptions = {},
     timeout = 60000,
   ) {
-    try {
-      let refreshed = await OpenC3Auth.updateToken(
-        OpenC3Auth.defaultMinValidity,
-      )
-      if (refreshed) {
-        OpenC3Auth.setTokens()
-      }
-    } catch (error) {
-      OpenC3Auth.login()
-    }
+    // Throws an AuthRequiredError if we have no token, in which case we're
+    // being redirected to login and must not send the request
+    await refreshToken()
     this.id = this.id + 1
     try {
       kwparams['scope'] = window.openc3Scope

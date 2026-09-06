@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-source ENV['RUBYGEMS_URL'] || "https://rubygems.org"
+source "https://rubygems.org"
 
 gemspec :name => 'openc3'
 

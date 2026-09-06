@@ -233,7 +233,7 @@ module OpenC3
     PROCESS_SHUTDOWN_SECONDS = 5.0
 
     def initialize
-      Logger.level = Logger::INFO
+      Logger.level = Logger.default_level
       Logger.microservice_name = 'MicroserviceOperator'
 
       OperatorProcess.setup()

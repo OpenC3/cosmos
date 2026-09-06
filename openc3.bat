@@ -63,6 +63,30 @@ if exist "%~dp0compose.override.yaml" (
   set COMPOSE_OVERRIDE=-f "%~dp0compose.override.yaml"
 )
 
+REM Env files: .env ships the upstream defaults (tracked). .env.local (if
+REM present) is loaded last so its values override .env. .env.local is
+REM gitignored, so it is the place to put SECRET overrides (passwords, keys)
+REM that must NOT be checked in. Compose interpolation precedence is:
+REM   shell env  >  last --env-file  >  earlier --env-file
+REM so a value in .env.local wins over the same value in .env. Once we pass
+REM --env-file explicitly, Compose stops auto-loading .env from the cwd,
+REM which is why .env must be listed explicitly here.
+REM See https://github.com/OpenC3/cosmos/issues/3710
+set COMPOSE_ENV_FILES=--env-file "%~dp0.env"
+if exist "%~dp0.env.local" (
+  set COMPOSE_ENV_FILES=!COMPOSE_ENV_FILES! --env-file "%~dp0.env.local"
+)
+
+REM Load the env files now, with delayed expansion DISABLED, so values that
+REM contain '!' (common in the passwords .env.local is meant to hold) are
+REM stored literally instead of being eaten by delayed expansion. Delayed
+REM expansion is re-enabled immediately afterwards for the rest of the script;
+REM variables set in the outer scope are inherited by the inner one and both
+REM scopes are popped when the script exits.
+setlocal DisableDelayedExpansion
+CALL :load_env
+setlocal EnableDelayedExpansion
+
 if "%1" == "" (
   GOTO usage
 )
@@ -73,9 +97,6 @@ if "%1" == "-h" (
   GOTO usage
 )
 if "%1" == "cli" (
-  REM tokens=* means process the full line
-  REM findstr /V = print lines that don't match, /B beginning of line, /L literal search string, /C:# match #
-  FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# %~dp0.env') do SET %%i
   set params=%*
   call set params=%%params:*%1=%%
   REM Start (and remove when done --rm) the cmd-tlm-api container with the current working directory
@@ -85,22 +106,21 @@ if "%1" == "cli" (
   REM Note: The service name is always openc3-cosmos-cmd-tlm-api; compose.yaml pulls the correct image
   REM (enterprise or non-enterprise) based on environment variables.
   if "%OPENC3_ENTERPRISE%" == "1" (
-    !CONTAINER_COMPOSE_CMD! -f %~dp0compose.yaml !COMPOSE_OVERRIDE! run -it --rm -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_USER=!OPENC3_API_USER! -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+    !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! -f %~dp0compose.yaml !COMPOSE_OVERRIDE! run -it --rm -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_USER=!OPENC3_API_USER! -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
   ) else (
-    !CONTAINER_COMPOSE_CMD! -f %~dp0compose.yaml !COMPOSE_OVERRIDE! run -it --rm -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+    !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! -f %~dp0compose.yaml !COMPOSE_OVERRIDE! run -it --rm -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
   )
   GOTO :EOF
 )
 if "%1" == "cliroot" (
-  FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# %~dp0.env') do SET %%i
   set params=%*
   call set params=%%params:*%1=%%
   REM Note: The service name is always openc3-cosmos-cmd-tlm-api; compose.yaml pulls the correct image
   REM (enterprise or non-enterprise) based on environment variables.
   if "%OPENC3_ENTERPRISE%" == "1" (
-    !CONTAINER_COMPOSE_CMD! -f %~dp0compose.yaml !COMPOSE_OVERRIDE! run -it --rm --user=root -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_USER=!OPENC3_API_USER! -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+    !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! -f %~dp0compose.yaml !COMPOSE_OVERRIDE! run -it --rm --user=root -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_USER=!OPENC3_API_USER! -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
   ) else (
-    !CONTAINER_COMPOSE_CMD! -f %~dp0compose.yaml !COMPOSE_OVERRIDE! run -it --rm --user=root -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
+    !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! -f %~dp0compose.yaml !COMPOSE_OVERRIDE! run -it --rm --user=root -v %cd%:/openc3/local -w /openc3/local -e OPENC3_API_PASSWORD=!OPENC3_API_PASSWORD! --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli !params!
   )
   GOTO :EOF
 )
@@ -135,7 +155,6 @@ if "%1" == "upgrade" (
   GOTO upgrade
 )
 if "%1" == "util" (
-  FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# %~dp0.env') do SET %%i
   GOTO util
 )
 
@@ -144,22 +163,22 @@ GOTO usage
 :startup
   if "%OPENC3_DEVEL%" == "1" (
     CALL openc3 build || exit /b
-    !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! up -d
+    !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! -f compose.yaml !COMPOSE_OVERRIDE! up -d
   ) else (
-    !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! up -d
+    !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! -f compose.yaml !COMPOSE_OVERRIDE! up -d
   )
   @echo off
 GOTO :EOF
 
 :stop
-  !CONTAINER_COMPOSE_CMD! stop openc3-operator
-  !CONTAINER_COMPOSE_CMD! stop openc3-cosmos-script-runner-api
-  !CONTAINER_COMPOSE_CMD! stop openc3-cosmos-cmd-tlm-api
+  !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! stop openc3-operator
+  !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! stop openc3-cosmos-script-runner-api
+  !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! stop openc3-cosmos-cmd-tlm-api
   if "%OPENC3_ENTERPRISE%" == "1" (
-    !CONTAINER_COMPOSE_CMD! stop openc3-metrics
+    !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! stop openc3-metrics
   )
   timeout /t 5 /nobreak
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! down -t 30
+  !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! -f compose.yaml !COMPOSE_OVERRIDE! down -t 30
   @echo off
 GOTO :EOF
 
@@ -174,13 +193,13 @@ GOTO :EOF
   REM Get image repositories from compose config
   REM Strip docker.io/ prefix and :tag suffix so we match all tags per repository
   set "FILTER_ARGS="
-  for /f "delims=" %%i in ('docker compose !COMPOSE_FILES! config --images 2^>nul') do (
+  for /f "delims=" %%i in ('!CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! !COMPOSE_FILES! config --images 2^>nul') do (
     set "IMG=%%i"
     set "IMG=!IMG:docker.io/=!"
     REM Strip :tag suffix by splitting on colon
     for /f "tokens=1 delims=:" %%r in ("!IMG!") do set "REPO=%%r"
     REM Check if any local images exist for this repository
-    for /f %%q in ('docker images -q "!REPO!" 2^>nul') do (
+    for /f %%q in ('!CONTAINER_CMD! images -q "!REPO!" 2^>nul') do (
       set "FILTER_ARGS=!FILTER_ARGS! --filter reference=!REPO!"
     )
   )
@@ -188,12 +207,12 @@ GOTO :EOF
     @echo No %COSMOS_NAME% images found locally.
     GOTO :EOF
   )
-  docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" !FILTER_ARGS!
+  !CONTAINER_CMD! images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" !FILTER_ARGS!
   @echo off
 GOTO :EOF
 
 :status
-  docker compose -f %~dp0compose.yaml ps
+  !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! -f %~dp0compose.yaml !COMPOSE_OVERRIDE! ps
   @echo off
 GOTO :EOF
 
@@ -212,7 +231,7 @@ GOTO :EOF
 goto :try_cleanup
 
 :cleanup_y
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! down -t 30 -v
+  !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! -f compose.yaml !COMPOSE_OVERRIDE! down -t 30 -v
 
   if "%2" == "local" (
     FOR /d %%a IN (%~dp0plugins\DEFAULT\*) DO RD /S /Q "%%a"
@@ -231,30 +250,30 @@ GOTO :EOF
   if "%OPENC3_ENTERPRISE%" == "1" (
     REM Enterprise: build core images first when OPENC3_TAG=latest, then enterprise
     CALL :build_core_images
-    !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-build.yaml build openc3-enterprise-gem || GOTO :pull_failed
+    !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-build.yaml build openc3-enterprise-gem || GOTO :pull_failed
   ) else (
-    !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-build.yaml build openc3-ruby || GOTO :pull_failed
-    !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-build.yaml build openc3-base || GOTO :pull_failed
-    !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-build.yaml build openc3-node || GOTO :pull_failed
+    !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-build.yaml build openc3-ruby || GOTO :pull_failed
+    !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-build.yaml build openc3-base || GOTO :pull_failed
+    !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-build.yaml build openc3-node || GOTO :pull_failed
   )
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-build.yaml build || GOTO :pull_failed
+  !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-build.yaml build || GOTO :pull_failed
   @echo off
 GOTO :EOF
 
 :run
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! up -d || GOTO :pull_failed
+  !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! -f compose.yaml !COMPOSE_OVERRIDE! up -d || GOTO :pull_failed
   @echo off
 GOTO :EOF
 
 :dev
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-dev.yaml up -d
+  !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-dev.yaml up -d
   @echo off
 GOTO :EOF
 
 :test
   REM Building COSMOS
   CALL scripts\windows\openc3_setup || exit /b
-  !CONTAINER_COMPOSE_CMD! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-build.yaml build
+  !CONTAINER_COMPOSE_CMD! !COMPOSE_ENV_FILES! -f compose.yaml !COMPOSE_OVERRIDE! -f compose-build.yaml build
   set args=%*
   call set args=%%args:*%1=%%
   REM Running tests
@@ -283,7 +302,9 @@ GOTO :EOF
 GOTO :EOF
 
 :resolve_openc3_tag
-  REM Resolve OPENC3_TAG from the env file if not already set.
+  REM Resolve OPENC3_TAG from the env files if not already set.
+  REM .env.local is checked first so its override wins over the .env default.
+  if not defined OPENC3_TAG if exist "%~dp0.env.local" FOR /F "tokens=1,* delims==" %%a in ('findstr /B /C:"OPENC3_TAG=" "%~dp0.env.local" 2^>nul') do set "OPENC3_TAG=%%b"
   if not defined OPENC3_TAG FOR /F "tokens=1,* delims==" %%a in ('findstr /B /C:"OPENC3_TAG=" "%~dp0.env" 2^>nul') do set "OPENC3_TAG=%%b"
   if not defined OPENC3_TAG set "OPENC3_TAG=latest"
   exit /b 0
@@ -308,8 +329,19 @@ REM docker.io) and break air-gapped builds. Instead suggest logging in.
   CALL :suggest_registry_login
   exit /b 1
 
+REM Load the env files into the environment, .env first then .env.local so
+REM .env.local overrides .env. findstr /V = print lines that don't match,
+REM /B beginning of line, /L literal search string, /C:# match #
+:load_env
+  if exist "%~dp0.env" (
+    FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# "%~dp0.env"') do SET %%i
+  )
+  if exist "%~dp0.env.local" (
+    FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# "%~dp0.env.local"') do SET %%i
+  )
+  GOTO :EOF
+
 :suggest_registry_login
-  FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# %~dp0.env') do SET %%i
   @echo. 1>&2
   @echo The command failed. If this was a registry authentication error (403), 1>&2
   @echo login to the registry and retry the command: 1>&2

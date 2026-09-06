@@ -37,12 +37,6 @@ class Script < OpenC3::TargetFile
     super(scope, nil, target: target) # No path matchers
   end
 
-  # Split off the '*' that indicates a file is modified on the server
-  def self.strip_modified(name)
-    name.split('*')[0]
-  end
-  private_class_method :strip_modified
-
   def self.lock(scope, name, username)
     OpenC3::Store.hset("#{scope}__script-locks", strip_modified(name), username)
   end

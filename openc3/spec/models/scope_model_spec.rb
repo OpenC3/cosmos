@@ -95,6 +95,29 @@ module OpenC3
       end
     end
 
+    describe "create" do
+      it "raises on invalid characters in the scope name" do
+        model = ScopeModel.new(name: "INVALID:SCOPE")
+        expect { model.create() }.to raise_error(/Invalid scope name: INVALID:SCOPE/)
+      end
+
+      it "raises on double underscores in the scope name" do
+        model = ScopeModel.new(name: "BAD__SCOPE")
+        expect { model.create() }.to raise_error(/Invalid scope name: BAD__SCOPE \(double underscore not allowed\)/)
+      end
+
+      it "raises on a trailing double underscore in the scope name" do
+        model = ScopeModel.new(name: "SCOPE__")
+        expect { model.create() }.to raise_error(/double underscore not allowed/)
+      end
+
+      it "allows a single underscore in the scope name" do
+        model = ScopeModel.new(name: "GOOD_SCOPE")
+        expect { model.create() }.to_not raise_error
+        expect(ScopeModel.names()).to include("GOOD_SCOPE")
+      end
+    end
+
     describe "update" do
       it "updates command_authority and works in core" do
         model = ScopeModel.new(name: "DEFAULT", command_authority: true, critical_commanding: "ALL", updated_at: 12345)

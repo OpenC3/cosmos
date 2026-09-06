@@ -699,6 +699,35 @@ module OpenC3
       end
     end
 
+    describe "as_json" do
+      it "returns the interface status" do
+        i = Interface.new
+        i.name = "TEST_INT"
+        json = i.as_json
+        expect(json['name']).to eql "TEST_INT"
+        expect(json['state']).to eql "DISCONNECTED"
+        expect(json['clients']).to eql 0
+        expect(json['txsize']).to eql 0
+        expect(json['rxsize']).to eql 0
+        expect(json['txbytes']).to eql 0
+        expect(json['rxbytes']).to eql 0
+        expect(json['txcnt']).to eql 0
+        expect(json['rxcnt']).to eql 0
+      end
+
+      it "calls the queue size and client methods so subclasses can override" do
+        klass = Class.new(Interface) do
+          def num_clients; 3; end
+          def write_queue_size; 5; end
+          def read_queue_size; 7; end
+        end
+        json = klass.new.as_json
+        expect(json['clients']).to eql 3
+        expect(json['txsize']).to eql 5
+        expect(json['rxsize']).to eql 7
+      end
+    end
+
     describe "details" do
       it "returns detailed interface information" do
         i = Interface.new

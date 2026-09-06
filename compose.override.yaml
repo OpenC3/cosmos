@@ -140,6 +140,16 @@
 #     - OPENC3_NO_EVAL=1
 
 # -------------------------------------------------------------------------
+# Log level on any service
+# -------------------------------------------------------------------------
+# OPENC3_LOG_LEVEL sets the minimum level logged: DEBUG, INFO (default),
+# WARN, ERROR, or FATAL. It is read by every container - add it under
+# whichever service(s) you want, or set it in .env for all of them:
+# openc3-operator:
+#   environment:
+#     - OPENC3_LOG_LEVEL=DEBUG
+
+# -------------------------------------------------------------------------
 # Log to stderr on any service
 # -------------------------------------------------------------------------
 # OPENC3_LOG_STDERR logs warnings and higher to stderr instead of stdout.

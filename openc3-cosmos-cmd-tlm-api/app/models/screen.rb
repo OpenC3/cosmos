@@ -27,7 +27,7 @@ class Screen < OpenC3::TargetFile
     installed_targets = OpenC3::TargetModel.names(scope: scope)
     screens = []
     result.each do |path|
-      filename = path.split('*')[0] # Don't differentiate modified - TODO: Should we?
+      filename = strip_modified(path) # Don't differentiate modified - TODO: Should we?
       next unless File.extname(filename) == ".txt"
       next if File.basename(filename, ".txt")[0] == '_' # underscore filenames are partials
       target = filename.split('/')[0]
@@ -38,7 +38,7 @@ class Screen < OpenC3::TargetFile
   end
 
   def self.find(scope, target, screen)
-    name = screen.split('*')[0].downcase # Split '*' that indicates modified - Filenames are lowercase
+    name = strip_modified(screen).downcase # Remove '*' that indicates modified - Filenames are lowercase
     body(scope, "#{target}/screens/#{name}.txt")
   end
 

@@ -68,7 +68,7 @@ module OpenC3
     end
 
     def run
-      Logger.level = Logger::INFO
+      Logger.level = Logger.default_level
       Thread.abort_on_exception = true
 
       # This state probably won't even display because we immediately
