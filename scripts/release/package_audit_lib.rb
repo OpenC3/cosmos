@@ -449,7 +449,7 @@ def check_debian(client)
   roadmap_path = File.join(ROOT_DIR, 'docs.openc3.com/docs/development/roadmap.md')
   if File.exist?(roadmap_path)
     roadmap = File.read(roadmap_path)
-    unless roadmap.downcase.include?("debian #{release}") || roadmap.downcase.include?("debian-#{release}")
+    unless roadmap.include?("Debian release is [#{release}]")
       puts "WARN: roadmap.md does not mention Debian #{release}. Update the base OS version in docs.openc3.com/docs/development/roadmap.md"
     end
   else
