@@ -103,7 +103,7 @@ jobs:
 
       - name: Install Python dependencies
         working-directory: openc3/python
-        run: uv sync --frozen
+        run: uv sync --frozen --no-build
 
       - name: Install Ruby dependencies
         working-directory: openc3/test/integration/tsdb/ruby
@@ -126,7 +126,7 @@ jobs:
       - name: Run Python integration tests
         working-directory: openc3/python
         run: |
-          uv run --frozen pytest ../test/integration/tsdb/python/ -v --tb=short
+          uv run --frozen --no-build pytest ../test/integration/tsdb/python/ -v --tb=short
 
       - name: Run Ruby CvtModel integration tests
         working-directory: openc3/test/integration/tsdb/ruby

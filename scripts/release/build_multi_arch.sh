@@ -73,7 +73,7 @@ fi
 
 # Setup cacert.pem
 echo "Downloading cert from curl"
-curl -q -L https://curl.se/ca/cacert.pem --output ./cacert.pem
+curl -q -L --proto "=https" https://curl.se/ca/cacert.pem --output ./cacert.pem
 if [[ $? -ne 0 ]]; then
   echo "ERROR: Problem downloading cacert.pem file from https://curl.se/ca/cacert.pem" 1>&2
   echo "openc3_setup FAILED" 1>&2

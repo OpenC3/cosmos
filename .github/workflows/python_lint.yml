@@ -54,17 +54,17 @@ jobs:
         run: uv python install
         working-directory: openc3/python
       - name: Install dependencies
-        run: uv sync --frozen
+        run: uv sync --frozen --no-build
         working-directory: openc3/python
       - name: Run ruff check on openc3/python
-        run: uv run --frozen ruff check --output-format=github openc3
+        run: uv run --frozen --no-build ruff check --output-format=github openc3
         working-directory: openc3/python
       - name: Run ruff format check on openc3/python
-        run: uv run --frozen ruff format --check openc3
+        run: uv run --frozen --no-build ruff format --check openc3
         working-directory: openc3/python
       - name: Run ruff check on script-runner-api scripts
-        run: uv run --frozen ruff check --output-format=github ../../openc3-cosmos-script-runner-api/scripts
+        run: uv run --frozen --no-build ruff check --output-format=github ../../openc3-cosmos-script-runner-api/scripts
         working-directory: openc3/python
       - name: Run ruff format check on script-runner-api scripts
-        run: uv run --frozen ruff format --check ../../openc3-cosmos-script-runner-api/scripts
+        run: uv run --frozen --no-build ruff format --check ../../openc3-cosmos-script-runner-api/scripts
         working-directory: openc3/python

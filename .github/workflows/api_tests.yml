@@ -163,12 +163,12 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
       - name: Install dependencies
-        run: uv sync --frozen
+        run: uv sync --frozen --no-build
         working-directory: openc3/python
       - name: Run unit tests
         run: |
-          uv run --frozen coverage run -m pytest ../../openc3-cosmos-script-runner-api/test/
-          uv run --frozen coverage xml -i
+          uv run --frozen --no-build coverage run -m pytest ../../openc3-cosmos-script-runner-api/test/
+          uv run --frozen --no-build coverage xml -i
         working-directory: openc3/python
       - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
