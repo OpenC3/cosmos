@@ -221,7 +221,12 @@ module OpenC3
               next 'SUCCESS'
             end
             if msg_hash.key?('interface_details')
-              next @interface.details.as_json.to_json(allow_nan: true)
+              begin
+                next @interface.details.as_json.to_json(allow_nan: true)
+              rescue => e
+                @logger.error "#{@interface.name}: interface_details: #{e.formatted}"
+                next e.message
+              end
             end
           end
 
@@ -508,7 +513,12 @@ module OpenC3
             next 'SUCCESS'
           end
           if msg_hash.key?('router_details')
-            next @router.details.as_json.to_json(allow_nan: true)
+            begin
+              next @router.details.as_json.to_json(allow_nan: true)
+            rescue => e
+              @logger.error "#{@router.name}: router_details: #{e.formatted}"
+              next e.message
+            end
           end
           next 'SUCCESS'
         end

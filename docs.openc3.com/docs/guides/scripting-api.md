@@ -6380,7 +6380,7 @@ interface_target_disable("INST_INT", "INST", tlm_only: true)
 
 <span class="badge badge--secondary since-heading">Since 6.9.0</span>
 
-Get details on the interface and its protocols.
+Get details on the interface and its protocols. Unlike [get_interface](#get_interface), which returns the stored interface model, `interface_details` queries the running interface microservice and returns its live runtime state, including the most recent raw data read and written and the state of every read and write protocol.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -6408,7 +6408,24 @@ interface_details("<Interface Name>")
 <TabItem value="python" label="Python Example">
 
 ```python
-interface_details("INST_INT")
+details = interface_details("INST_INT")
+print(details["state"])
+# CONNECTED
+print(details["cmd_target_enabled"])
+# {'INST': True}
+print(details["hostname"], details["write_port"], details["read_port"])
+# host.docker.internal 8080 8081
+print([protocol["name"] for protocol in details["read_protocols"]])
+# ['BurstProtocol']
+print(details["read_protocols"][0]["discard_leading_bytes"])
+# 0
+
+# Raw data arrives as a json_class dict when it is not printable text
+raw = details["read_raw_data"]
+if isinstance(raw, dict):
+    raw = bytes(raw["raw"])
+print(raw)
+# b'\x00\x01\x02\x03'
 ```
 
 </TabItem>
@@ -6416,11 +6433,222 @@ interface_details("INST_INT")
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-interface_details("INST_INT")
+details = interface_details("INST_INT")
+puts details['state']
+# CONNECTED
+puts details['cmd_target_enabled']
+# {"INST"=>true}
+puts "#{details['hostname']} #{details['write_port']} #{details['read_port']}"
+# host.docker.internal 8080 8081
+puts details['read_protocols'].map { |protocol| protocol['name'] }
+# BurstProtocol
+puts details['read_protocols'][0]['discard_leading_bytes']
+# 0
+puts details['read_raw_data'].formatted
+# 00000000: 00 01 02 03
 ```
 
 </TabItem>
 </Tabs>
+
+**Return Value**
+
+Returns a hash / dict of the interface state. The following keys are always present for every interface type.
+
+<Tabs groupId="common">
+<TabItem value="Status">
+| Key     | Type    | Description                                                       |
+| ------- | ------- | ----------------------------------------------------------------- |
+| name    | String  | Interface name, e.g. "INST_INT"                                   |
+| state   | String  | "CONNECTED", "ATTEMPTING", or "DISCONNECTED"                      |
+| clients | Integer | Number of connected clients (server interfaces only, otherwise 0) |
+| txsize  | Integer | Number of packets currently queued to be written                  |
+| rxsize  | Integer | Number of packets currently queued to be read                     |
+| txbytes | Integer | Running total of bytes written to the interface                   |
+| rxbytes | Integer | Running total of bytes read from the interface                    |
+| txcnt   | Integer | Running total of packets written to the interface                 |
+| rxcnt   | Integer | Running total of packets read from the interface                  |
+</TabItem>
+<TabItem value="Configuration">
+| Key                | Type    | Description                                                                     |
+| ------------------ | ------- | ------------------------------------------------------------------------------- |
+| cmd_target_names   | Array   | Names of the targets mapped to this interface for commanding                    |
+| tlm_target_names   | Array   | Names of the targets mapped to this interface for telemetry                     |
+| cmd_target_enabled | Hash    | Target name to boolean, see [interface_target_enable](#interface_target_enable) |
+| tlm_target_enabled | Hash    | Target name to boolean, see [interface_target_enable](#interface_target_enable) |
+| connect_on_startup | Boolean | Whether the interface connects when the microservice starts                     |
+| auto_reconnect     | Boolean | Whether the interface reconnects after a disconnect                             |
+| reconnect_delay    | Float   | Seconds to wait between reconnect attempts                                      |
+| disable_disconnect | Boolean | Whether the Disconnect button is disabled in CmdTlmServer                       |
+| read_allowed       | Boolean | Whether reading telemetry is allowed                                            |
+| write_allowed      | Boolean | Whether writing commands is allowed                                             |
+| write_raw_allowed  | Boolean | Whether writing raw data is allowed                                             |
+| options            | Hash    | Uppercased option name to option values, as set by the OPTION keyword           |
+| stream_log         | Boolean | Whether stream (raw) logging is currently enabled                               |
+</TabItem>
+<TabItem value="Raw data">
+| Key                   | Type          | Description                                                         |
+| --------------------- | ------------- | ------------------------------------------------------------------- |
+| read_raw_data         | String        | Most recent data read from the interface                            |
+| read_raw_data_time    | String or nil | Timestamp of the most recent read, nil if nothing has been read     |
+| written_raw_data      | String        | Most recent data written to the interface                           |
+| written_raw_data_time | String or nil | Timestamp of the most recent write, nil if nothing has been written |
+</TabItem>
+<TabItem value="Protocol">
+| Key             | Type  | Description                                                              |
+| --------------- | ----- | ------------------------------------------------------------------------ |
+| read_protocols  | Array | One hash / dict per read protocol, in the order data flows through them  |
+| write_protocols | Array | One hash / dict per write protocol, in the order data flows through them |
+
+
+Every entry in `read_protocols` and `write_protocols` contains the protocol class name plus the data flowing into and out of that protocol. Entries in `read_protocols` use the `read_` prefixed keys, entries in `write_protocols` use the `write_` prefixed keys.
+
+| Key                    | Type          | Description                               |
+| ---------------------- | ------------- | ----------------------------------------- |
+| name                   | String        | Protocol class name, e.g. "BurstProtocol" |
+| read_data_input        | String        | Data passed into the read protocol        |
+| read_data_input_time   | String or nil | Timestamp the read input was captured     |
+| read_data_output       | String        | Data returned by the read protocol        |
+| read_data_output_time  | String or nil | Timestamp the read output was captured    |
+| write_data_input       | String        | Data passed into the write protocol       |
+| write_data_input_time  | String or nil | Timestamp the write input was captured    |
+| write_data_output      | String        | Data returned by the write protocol       |
+| write_data_output_time | String or nil | Timestamp the write output was captured   |
+
+Each protocol also adds keys for its own configuration. Protocols inherit their parent protocol's keys, so for example a `LengthProtocol` entry contains the `BurstProtocol` keys as well.
+
+| Protocol              | Inherits   | Additional read keys                                                                                                                                                                           | Additional write keys                                                                                                                                                                          |
+| --------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| BurstProtocol         | —          | discard_leading_bytes, sync_pattern, fill_fields                                                                                                                                               | discard_leading_bytes, sync_pattern, fill_fields                                                                                                                                               |
+| CrcProtocol           | —          | strip_crc, bad_strategy, endianness, bit_offset, bit_size                                                                                                                                      | write_item_name, endianness, bit_offset, bit_size                                                                                                                                              |
+| CmdResponseProtocol   | —          | response_packet, response_timeout, response_polling_period, raise_exceptions                                                                                                                   | response_packet, response_timeout, response_polling_period, raise_exceptions                                                                                                                   |
+| IgnorePacketProtocol  | —          | target_name, packet_name                                                                                                                                                                       | target_name, packet_name                                                                                                                                                                       |
+| FixedProtocol         | Burst      | min_id_size, telemetry, unknown_raise                                                                                                                                                          | min_id_size, telemetry, unknown_raise                                                                                                                                                          |
+| LengthProtocol        | Burst      | length_bit_offset, length_bit_size, length_value_offset, length_bytes_per_count, length_endianness, length_bytes_needed, max_length                                                            | length_bit_offset, length_bit_size, length_value_offset, length_bytes_per_count, length_endianness, length_bytes_needed, max_length                                                            |
+| PreidentifiedProtocol | Burst      | max_length, reduction_state                                                                                                                                                                    | max_length                                                                                                                                                                                     |
+| TerminatedProtocol    | Burst      | read_termination_characters, strip_read_termination                                                                                                                                            | write_termination_characters                                                                                                                                                                   |
+| SlipProtocol          | Terminated | start_char, end_char, esc_char, esc_end_char, esc_esc_char, read_strip_characters, read_enable_escaping                                                                                        | start_char, end_char, esc_char, esc_end_char, esc_esc_char, write_enable_escaping                                                                                                              |
+| TemplateProtocol      | Terminated | response_template, response_packet, response_target_name, response_lines, response_timeout, response_polling_period, ignore_lines, initial_read_delay, connect_complete_time, raise_exceptions | response_template, response_packet, response_target_name, response_lines, response_timeout, response_polling_period, ignore_lines, initial_read_delay, connect_complete_time, raise_exceptions |
+</TabItem>
+</Tabs>
+
+Each interface type adds its own keys on top of the common keys above. The values mirror the interface's configuration parameters documented in the [Interfaces](/docs/configuration/interfaces.md) guide.
+
+<Tabs groupId="interfaces">
+<TabItem value="TcpipClientInterface">
+| Key           | Type    | Description                                    |
+| ------------- | ------- | ---------------------------------------------- |
+| hostname      | String  | Host the interface connects to                 |
+| write_port    | Integer | Port used to write commands                    |
+| read_port     | Integer | Port used to read telemetry                    |
+| write_timeout | Float   | Seconds to wait for a write                    |
+| read_timeout  | Float   | Seconds to wait for a read, nil for no timeout |
+</TabItem>
+<TabItem value="TcpipServerInterface">
+| Key            | Type    | Description                                    |
+| -------------- | ------- | ---------------------------------------------- |
+| write_port     | Integer | Port clients connect to for commands           |
+| read_port      | Integer | Port clients connect to for telemetry          |
+| write_timeout  | Float   | Seconds to wait for a write                    |
+| read_timeout   | Float   | Seconds to wait for a read, nil for no timeout |
+| listen_address | String  | Address the server binds to                    |
+</TabItem>
+<TabItem value="UdpInterface">
+| Key               | Type    | Description                                    |
+| ----------------- | ------- | ---------------------------------------------- |
+| hostname          | String  | Host to write to                               |
+| write_dest_port   | Integer | Destination port for writes                    |
+| read_port         | Integer | Port to read from                              |
+| write_src_port    | Integer | Source port for writes                         |
+| interface_address | String  | Multicast interface address                    |
+| ttl               | Integer | Time to live for multicast writes              |
+| write_timeout     | Float   | Seconds to wait for a write                    |
+| read_timeout      | Float   | Seconds to wait for a read, nil for no timeout |
+| bind_address      | String  | Address to bind the read socket to             |
+</TabItem>
+<TabItem value="SerialInterface">
+| Key             | Type    | Description                                    |
+| --------------- | ------- | ---------------------------------------------- |
+| write_port_name | String  | Serial port used to write, nil if write only   |
+| read_port_name  | String  | Serial port used to read, nil if read only     |
+| baud_rate       | Integer | Baud rate                                      |
+| parity          | String  | "NONE", "EVEN", or "ODD"                       |
+| stop_bits       | Integer | Number of stop bits                            |
+| data_bits       | Integer | Number of data bits                            |
+| flow_control    | String  | "NONE" or "RTSCTS"                             |
+| write_timeout   | Float   | Seconds to wait for a write                    |
+| read_timeout    | Float   | Seconds to wait for a read, nil for no timeout |
+</TabItem>
+<TabItem value="FileInterface">
+| Key                       | Type    | Description                                             |
+| ------------------------- | ------- | ------------------------------------------------------- |
+| command_write_folder      | String  | Folder commands are written to                          |
+| telemetry_read_folder     | String  | Folder telemetry files are read from                    |
+| telemetry_archive_folder  | String  | Folder read files are moved to, "DELETE" to delete them |
+| file_read_size            | Integer | Bytes read from the file at a time                      |
+| stored                    | Boolean | Whether packets are marked as stored                    |
+| filename                  | String  | File currently being read, empty if none                |
+| extension                 | String  | Extension of files to read                              |
+| label                     | String  | Label prefix applied to written command files           |
+| queue_length              | Integer | Number of files queued to be read                       |
+| polling                   | Boolean | Whether the folder is polled instead of watched         |
+| recursive                 | Boolean | Whether the read folder is searched recursively         |
+| throttle                  | Integer | Bytes per second read throttle, nil for unthrottled     |
+| discard_file_header_bytes | Integer | Bytes discarded from the front of each file             |
+</TabItem>
+<TabItem value="MqttInterface">
+| Key                   | Type    | Description                                                   |
+| --------------------- | ------- | ------------------------------------------------------------- |
+| hostname              | String  | MQTT broker host                                              |
+| port                  | Integer | MQTT broker port                                              |
+| ssl                   | Boolean | Whether TLS is used                                           |
+| ack_timeout           | Float   | Seconds to wait for a broker acknowledgement                  |
+| username              | String  | Username, nil if unauthenticated                              |
+| password              | String  | "Set" if a password is configured, otherwise absent           |
+| cert                  | String  | "Set" if a client certificate is configured, otherwise absent |
+| key                   | String  | "Set" if a client key is configured, otherwise absent         |
+| ca_file               | String  | "Set" if a CA file is configured, otherwise absent            |
+| read_packets_by_topic | Hash    | MQTT topic to the target and packet name it maps to           |
+</TabItem>
+<TabItem value="MqttStreamInterface">
+Same as MqttInterface except `read_packets_by_topic` is replaced by:
+
+| Key         | Type   | Description                     |
+| ----------- | ------ | ------------------------------- |
+| write_topic | String | Topic commands are published to |
+| read_topic  | String | Topic telemetry is read from    |
+</TabItem>
+<TabItem value="HttpClientInterface">
+| Key                         | Type    | Description                                            |
+| --------------------------- | ------- | ------------------------------------------------------ |
+| url                         | String  | Base URL requests are sent to                          |
+| write_timeout               | Float   | Seconds to wait for a write                            |
+| read_timeout                | Float   | Seconds to wait for a read, nil for no timeout         |
+| connect_timeout             | Float   | Seconds to wait for the connection                     |
+| include_request_in_response | Boolean | Whether the request is included in the response packet |
+| response_queue_length       | Integer | Number of responses queued to be read                  |
+</TabItem>
+<TabItem value="HttpServerInterface">
+| Key                  | Type    | Description                          |
+| -------------------- | ------- | ------------------------------------ |
+| listen_address       | String  | Address the server binds to          |
+| port                 | Integer | Port the server listens on           |
+| request_queue_length | Integer | Number of requests queued to be read |
+</TabItem>
+</Tabs>
+
+
+:::note[Timestamp Formats]
+All timestamp strings are ISO 8601 in UTC with microsecond precision, e.g. `2026-08-26T16:15:30.123456Z`. The format is the same whether the interface is implemented in Ruby or Python.
+:::
+
+:::note[Binary Data]
+The raw data and protocol data values hold the actual bytes that crossed the interface. Data which is not printable text is encoded on the wire as `{"json_class": "String", "raw": [<byte values>]}`. Ruby scripts receive this decoded back into a binary String. Python scripts receive the dict as-is, so convert it with `bytes(value["raw"])` before using it.
+:::
+
+:::note[Disconnect Mode]
+`interface_details` is not on the read-only allowlist used by [disconnect_script](#disconnect_script), so it returns `None` (Python) or `nil` (Ruby) when running in disconnect mode.
+:::
 
 ## Routers
 

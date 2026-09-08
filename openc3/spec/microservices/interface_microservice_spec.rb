@@ -192,6 +192,42 @@ module OpenC3
       end
     end
 
+    describe "interface_details directive" do
+      # Drive the command handler block directly. receive_commands is stubbed so
+      # the block runs once with a crafted message and its return value (which
+      # becomes the ack payload) is captured.
+      def handle_interface_details(interface)
+        handler = InterfaceCmdHandlerThread.new(interface, double("tlm").as_null_object, scope: "DEFAULT")
+        result = nil
+        allow(InterfaceTopic).to receive(:receive_commands) do |*_args, **_kwargs, &block|
+          result = block.call("{DEFAULT__CMD}INTERFACE__INST_INT",
+                              "#{(Time.now.to_f * 1000).to_i}-0",
+                              { 'interface_details' => 'true' }, nil)
+        end
+        handler.run
+        result
+      end
+
+      it "returns the interface details as JSON" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        interface = im.instance_variable_get(:@interface)
+        expect(JSON.parse(handle_interface_details(interface))['name']).to eql "INST_INT"
+        im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+
+      it "returns the error message instead of raising if details raises" do
+        # A custom interface with a broken details implementation must not take
+        # down the microservice, so the error is returned as the ack instead.
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        interface = im.instance_variable_get(:@interface)
+        allow(interface).to receive(:details).and_raise('boom')
+        expect(handle_interface_details(interface)).to eql 'boom'
+        im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+    end
+
     describe "handle_packet" do
       it "does not write the status model after cancel_thread is set" do
         # A packet already buffered can be returned from read() after stop()

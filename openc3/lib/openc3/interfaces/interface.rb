@@ -677,12 +677,12 @@ module OpenC3
       result['read_raw_data'] = @read_raw_data
       result['written_raw_data'] = @written_raw_data
       if @read_raw_data_time
-        result['read_raw_data_time'] = @read_raw_data_time.iso8601
+        result['read_raw_data_time'] = @read_raw_data_time.getutc.iso8601(6)
       else
         result['read_raw_data_time'] = nil
       end
       if @written_raw_data_time
-        result['written_raw_data_time'] = @written_raw_data_time.iso8601
+        result['written_raw_data_time'] = @written_raw_data_time.getutc.iso8601(6)
       else
         result['written_raw_data_time'] = nil
       end

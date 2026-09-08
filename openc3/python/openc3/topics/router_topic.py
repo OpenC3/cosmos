@@ -200,5 +200,10 @@ class RouterTopic(Topic):
         while (time.time() - start_time) < timeout:
             for _, _, msg_hash, _ in Topic.read_topics([ack_topic], db_shard=db_shard):
                 if msg_hash[b"id"] == cmd_id:
-                    return json.loads(msg_hash[b"result"].decode(), cls=JsonDecoder)
+                    result = msg_hash[b"result"].decode()
+                    try:
+                        return json.loads(result, cls=JsonDecoder)
+                    except json.JSONDecodeError:
+                        # The microservice returns a plain error message rather than JSON if details raises
+                        raise RuntimeError(f"router_details failed: {result}") from None
         raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack")
