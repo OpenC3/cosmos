@@ -43,15 +43,20 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock p
 # Seed UV cache to /openc3/uv_cache/ so system wheels are baked into the
 # image. At runtime, the operator copies this into /gems/uv/ (the volume)
 # so plugins can reuse these wheels without re-downloading.
-RUN --mount=type=cache,target=/root/.cache/uv \
-    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project
+#
+# Deliberately no --mount=type=cache on these uv steps. UV_CACHE_DIR has to
+# point at a real layer so the seed ships in the image, and a cache mount never
+# lands in one - so a mount here is dead weight (uv writes only to
+# UV_CACHE_DIR). Routing the sync through a mount and copying it into the seed
+# afterwards would bake wheels from unrelated past builds into the image, which
+# is exactly what verify-uv-cache.sh exists to prevent.
+RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project
 
 # Copy application code (excluding .venv from source)
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 
 # Install the application itself with dependencies already present
-RUN --mount=type=cache,target=/root/.cache/uv \
-    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev
+RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev
 
 WORKDIR /openc3/
 
