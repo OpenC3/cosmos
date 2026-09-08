@@ -100,6 +100,7 @@
 <script>
 import 'sprintf-js'
 import { OpenC3Api } from '@openc3/js-common/services'
+import { findKey } from 'lodash'
 import TargetPacketItemChooser from './TargetPacketItemChooser.vue'
 import CommandParameterEditor from './CommandParameterEditor.vue'
 import DetailsDialog from './DetailsDialog.vue'
@@ -363,12 +364,13 @@ export default {
         if (row.val !== null && row.val !== undefined && row.val !== '') {
           if (row.states) {
             // If states exist, find the state name for the value
-            const stateEntry = Object.entries(row.states).find(
-              ([, state]) => state.value === row.val,
+            const stateKey = findKey(
+              row.states,
+              (state) => state.value === row.val,
             )
-            if (stateEntry) {
+            if (stateKey) {
               // Although not always necessary, always quote states
-              cmd += ` ${row.parameter_name} '${stateEntry[0]}',`
+              cmd += ` ${row.parameter_name} '${stateKey}',`
               continue
             }
           }
