@@ -10,6 +10,8 @@
 # if purchased from OpenC3, Inc.
 
 
+from functools import total_ordering
+
 from openc3.conversions.conversion import Conversion
 
 
@@ -19,6 +21,7 @@ class SegmentedPolynomialConversion(Conversion):
     # A polynomial conversion segment which applies the conversion from the
     # lower bound (inclusive) until another segment's lower bound is
     # encountered.
+    @total_ordering
     class Segment:
         # Creates a polynomial conversion segment. Multiple Segments are used to
         # implement a {SegmentedPolynomialConversion}.
