@@ -149,6 +149,10 @@ verify-changed:
 
     echo "✅ Changed files verified!"
 
+# Check lint and formatting only, no tests (used by the root `just check`)
+lint-check: format-check lint-strict
+    @echo "✅ Lint and format checks passed!"
+
 # Check code without making changes (for CI - fails on any issues)
 check: format-check lint-strict test
     @echo "✅ All checks passed!"

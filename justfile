@@ -3,6 +3,9 @@
 
 plugins_dir := "openc3-cosmos-init/plugins/packages"
 
+# The root Gemfile reads its source from RUBYGEMS_URL (see .env)
+rubygems_url := env("RUBYGEMS_URL", "https://rubygems.org")
+
 # Component command namespaces
 mod playwright 'playwright/justfile'
 mod python 'openc3/python/justfile'
@@ -12,11 +15,11 @@ mod ruby 'openc3/justfile'
 default:
     @just --list
 
-# Run checks for all components
+# Run every linter/formatter check in the repo (no tests)
 check: lint-all
-    just ruby::check
-    just python::check
-    just playwright::check
+    just lint-ruby
+    just python::lint-check
+    just playwright::lint-check
 
 # ---------------------------------------------------------------------------
 # Shared dependency builds
@@ -153,6 +156,28 @@ lint package:
 # Lint and auto-fix a specific package
 lint-fix package:
     cd {{ plugins_dir }}/{{ package }} && pnpm lint --fix
+
+# Install the RuboCop gems declared in the root Gemfile
+lint-ruby-install:
+    RUBYGEMS_URL={{ rubygems_url }} bundle install
+
+# Lint Ruby with RuboCop: just lint-ruby openc3/lib
+lint-ruby *ARGS:
+    RUBYGEMS_URL={{ rubygems_url }} bundle exec rubocop {{ ARGS }}
+
+# Never use -A/--autocorrect-all here: unsafe corrections can undo a SonarQube
+# fix. The unsafe cops also have AutoCorrect: false set in .rubocop.yml.
+# Auto-fix Ruby with RuboCop, safe corrections only
+lint-ruby-fix *ARGS:
+    RUBYGEMS_URL={{ rubygems_url }} bundle exec rubocop --autocorrect {{ ARGS }}
+
+# Show RuboCop offense counts by cop
+lint-ruby-stats:
+    RUBYGEMS_URL={{ rubygems_url }} bundle exec rubocop --format offenses
+
+# Write a RuboCop JSON report for SonarQube (sonar.ruby.rubocop.reportPaths)
+lint-ruby-report:
+    RUBYGEMS_URL={{ rubygems_url }} bundle exec rubocop --format json --out rubocop-report.json
 
 # Lint all packages that have a lint script
 lint-all:

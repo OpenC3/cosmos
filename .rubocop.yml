@@ -45,3 +45,33 @@ Lint/RedundantStringCoercion:
 # This rule interferes with a lot of unit tests as well as json_accessor.rb
 Lint/ConstantDefinitionInBlock:
   Enabled: false
+
+# ---------------------------------------------------------------------------
+# SonarQube coexistence
+#
+# SonarQube owns behavior, security, and complexity findings; RuboCop owns
+# layout and naming. The cops below are RuboCop's "unsafe correctable" set -
+# their autocorrections can change semantics, which means `rubocop -A` could
+# silently undo a hand-written fix for a SonarQube issue. Autocorrect is
+# disabled on them so they report only and a human decides. Safe corrections
+# are semantics-preserving by RuboCop's own contract and stay enabled.
+# ---------------------------------------------------------------------------
+Lint/AmbiguousRange:
+  AutoCorrect: false
+Lint/AssignmentInCondition:
+  AutoCorrect: false
+Lint/DuplicateRequire:
+  AutoCorrect: false
+Lint/IncompatibleIoSelectWithFiberScheduler:
+  AutoCorrect: false
+Lint/InterpolationCheck:
+  AutoCorrect: false
+Lint/Loop:
+  AutoCorrect: false
+# Sonar flags the same TOCTOU race; let Sonar's fix stand
+Lint/NonAtomicFileOperation:
+  AutoCorrect: false
+Lint/RedundantDirGlobSort:
+  AutoCorrect: false
+Lint/UselessMethodDefinition:
+  AutoCorrect: false

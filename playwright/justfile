@@ -63,8 +63,20 @@ check-running:
 test: check-running
     pnpm test:parallel --quiet && pnpm test:serial --quiet
 
-# Check end-to-end tests
-check: test
+# Lint test files with ESLint
+lint:
+    pnpm lint --max-warnings 0
+
+# Lint and auto-fix test files
+lint-fix:
+    pnpm lint --fix
+
+# Check formatting without making changes
+format-check:
+    pnpm exec prettier --check ./
+
+# Check lint and formatting only, no tests (used by the root `just check`)
+lint-check: lint format-check
 
 # Run only parallel tests
 test-parallel *ARGS: check-running
