@@ -50,13 +50,13 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock p
 # UV_CACHE_DIR). Routing the sync through a mount and copying it into the seed
 # afterwards would bake wheels from unrelated past builds into the image, which
 # is exactly what verify-uv-cache.sh exists to prevent.
-RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project
+RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --no-build --frozen --no-dev --no-install-project
 
 # Copy application code (excluding .venv from source)
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 
 # Install the application itself with dependencies already present
-RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev
+RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --no-build --frozen --no-dev
 
 WORKDIR /openc3/
 
