@@ -18,6 +18,13 @@ module OpenC3
   module PythonVenv
     PLUGIN_VENVS_DIR = '/gems/plugin_venvs'
 
+    # Shared user site-packages directory used by plugins that predate the
+    # per-plugin UV venvs. Every caller that falls back off a plugin venv points
+    # PYTHONUSERBASE here, so keep it in one place rather than repeating the
+    # literal in script.rb, running_script.rb, microservice_operator.rb and
+    # microservice_model.rb.
+    DEFAULT_PYTHONUSERBASE = '/gems/python_packages'
+
     # Resolve a script's plugin venv and expose its packages to a child process.
     # Returns the venv path when configured, or nil when the system environment
     # should be used.
@@ -35,7 +42,10 @@ module OpenC3
       environment['PYTHONUSERBASE'] = venv_dir
 
       site_packages = Dir.glob("#{venv_dir}/lib/python*/site-packages").first
-      existing_pythonpath = ENV.fetch('PYTHONPATH', '')
+      # Prefer a PYTHONPATH the caller already seeded on `environment` over the
+      # ambient one. Script.process_suite sets it to ENV['PYTHONPATH'] || '.'
+      # before calling here, and reading ENV directly would drop that value.
+      existing_pythonpath = environment['PYTHONPATH'] || ENV.fetch('PYTHONPATH', '')
       if site_packages
         environment['PYTHONPATH'] = existing_pythonpath.empty? ? site_packages : "#{site_packages}:#{existing_pythonpath}"
       else
@@ -56,6 +66,12 @@ module OpenC3
       if target_name == TargetFile::TEMP_FOLDER && python_venv
         # File.basename prevents path traversal by stripping directory components.
         safe_name = File.basename(python_venv.to_s)
+        # The venv name is client-supplied, so it must also be confined to the
+        # caller's scope. Venv directories are named "<scope>__<plugin>" by
+        # PluginModel.plugin_venv_name; without this check a user in one scope
+        # could name another scope's venv and run against its packages.
+        return nil unless safe_name.start_with?("#{scope}__".tr('^a-zA-Z0-9_-', '_'))
+
         candidate = File.join(PLUGIN_VENVS_DIR, safe_name, '.venv')
         return candidate if File.directory?(candidate)
       else

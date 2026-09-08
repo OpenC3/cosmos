@@ -20,6 +20,7 @@ require 'openc3/models/model'
 require 'openc3/models/metric_model'
 require 'openc3/topics/config_topic'
 require 'openc3/utilities/bucket'
+require 'openc3/utilities/python_venv'
 
 module OpenC3
   class MicroserviceModel < Model
@@ -146,16 +147,15 @@ module OpenC3
       python_bin = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
       result = { 'OPENC3_PYTHON_BIN' => python_bin }
       if @needs_dependencies && @plugin
-        sanitized_name = "#{@scope}__#{@plugin}".tr('^a-zA-Z0-9_-', '_')
-        candidate = "/gems/plugin_venvs/#{sanitized_name}/.venv"
-        if File.directory?(candidate)
+        candidate = PythonVenv.plugin_venv_path(scope: @scope, plugin_name: @plugin)
+        if candidate
           result['VIRTUAL_ENV'] = candidate
           result['PYTHONUSERBASE'] = candidate
           site_packages = Dir.glob("#{candidate}/lib/python*/site-packages").first
           result['PYTHONPATH'] = site_packages
         else
           result['VIRTUAL_ENV'] = nil
-          result['PYTHONUSERBASE'] = '/gems/python_packages'
+          result['PYTHONUSERBASE'] = PythonVenv::DEFAULT_PYTHONUSERBASE
         end
       end
       result

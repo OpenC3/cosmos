@@ -557,7 +557,10 @@ class RunningScript
       unless python_venv_dir
         system_venv = File.dirname(ENV.fetch('OPENC3_PYTHON_BIN', '/openc3/python/.venv/bin/python')).chomp('/bin')
         process.environment['VIRTUAL_ENV'] = system_venv
-        process.environment['PYTHONUSERBASE'] = ENV.fetch('PYTHONUSERBASE', nil)
+        process.environment['PYTHONUSERBASE'] = ENV.fetch('PYTHONUSERBASE', OpenC3::PythonVenv::DEFAULT_PYTHONUSERBASE)
+        # Deliberately nil when PYTHONPATH is unset rather than defaulting to
+        # something like '.', which would put the script's own working directory
+        # on the import path and let a local file shadow a real module.
         process.environment['PYTHONPATH'] = ENV.fetch('PYTHONPATH', nil)
       end
 

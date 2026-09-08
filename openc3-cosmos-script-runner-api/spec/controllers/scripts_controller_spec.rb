@@ -249,25 +249,36 @@ RSpec.describe ScriptsController, type: :controller do
   describe "plugin_python_venvs" do
     it "returns list of plugin venvs with .uv_managed and .venv" do
       allow(File).to receive(:directory?).with('/gems/plugin_venvs').and_return(true)
-      allow(Dir).to receive(:glob).with('/gems/plugin_venvs/*/').and_return(
-        ['/gems/plugin_venvs/demo/', '/gems/plugin_venvs/other/']
+      allow(Dir).to receive(:glob).with('/gems/plugin_venvs/DEFAULT__*/').and_return(
+        ['/gems/plugin_venvs/DEFAULT__demo/', '/gems/plugin_venvs/DEFAULT__other/']
       )
       # demo has both .uv_managed and .venv
-      allow(File).to receive(:exist?).with('/gems/plugin_venvs/demo/.uv_managed').and_return(true)
-      allow(File).to receive(:directory?).with('/gems/plugin_venvs/demo/.venv').and_return(true)
+      allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__demo/.uv_managed').and_return(true)
+      allow(File).to receive(:directory?).with('/gems/plugin_venvs/DEFAULT__demo/.venv').and_return(true)
       # other has both .uv_managed and .venv
-      allow(File).to receive(:exist?).with('/gems/plugin_venvs/other/.uv_managed').and_return(true)
-      allow(File).to receive(:directory?).with('/gems/plugin_venvs/other/.venv').and_return(true)
+      allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__other/.uv_managed').and_return(true)
+      allow(File).to receive(:directory?).with('/gems/plugin_venvs/DEFAULT__other/.venv').and_return(true)
 
       get :plugin_python_venvs, params: {scope: "DEFAULT"}
 
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
       expect(json.length).to eq(2)
-      expect(json[0]["name"]).to eq("demo")
-      expect(json[0]["venv"]).to eq("/gems/plugin_venvs/demo/.venv")
-      expect(json[1]["name"]).to eq("other")
-      expect(json[1]["venv"]).to eq("/gems/plugin_venvs/other/.venv")
+      expect(json[0]["name"]).to eq("DEFAULT__demo")
+      expect(json[0]["venv"]).to eq("/gems/plugin_venvs/DEFAULT__demo/.venv")
+      expect(json[1]["name"]).to eq("DEFAULT__other")
+      expect(json[1]["venv"]).to eq("/gems/plugin_venvs/DEFAULT__other/.venv")
+    end
+
+    it "only globs venvs belonging to the requested scope" do
+      allow(File).to receive(:directory?).with('/gems/plugin_venvs').and_return(true)
+      # A venv owned by another scope is never even a glob candidate
+      expect(Dir).to receive(:glob).with('/gems/plugin_venvs/OTHER__*/').and_return([])
+
+      get :plugin_python_venvs, params: {scope: "OTHER"}
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to eq([])
     end
 
     it "returns empty array when plugin_venvs directory does not exist" do
@@ -282,10 +293,10 @@ RSpec.describe ScriptsController, type: :controller do
 
     it "skips plugin directories missing .uv_managed marker" do
       allow(File).to receive(:directory?).with('/gems/plugin_venvs').and_return(true)
-      allow(Dir).to receive(:glob).with('/gems/plugin_venvs/*/').and_return(
-        ['/gems/plugin_venvs/no_marker/']
+      allow(Dir).to receive(:glob).with('/gems/plugin_venvs/DEFAULT__*/').and_return(
+        ['/gems/plugin_venvs/DEFAULT__no_marker/']
       )
-      allow(File).to receive(:exist?).with('/gems/plugin_venvs/no_marker/.uv_managed').and_return(false)
+      allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__no_marker/.uv_managed').and_return(false)
 
       get :plugin_python_venvs, params: {scope: "DEFAULT"}
 
@@ -296,11 +307,11 @@ RSpec.describe ScriptsController, type: :controller do
 
     it "skips plugin directories missing .venv subdirectory" do
       allow(File).to receive(:directory?).with('/gems/plugin_venvs').and_return(true)
-      allow(Dir).to receive(:glob).with('/gems/plugin_venvs/*/').and_return(
-        ['/gems/plugin_venvs/no_venv/']
+      allow(Dir).to receive(:glob).with('/gems/plugin_venvs/DEFAULT__*/').and_return(
+        ['/gems/plugin_venvs/DEFAULT__no_venv/']
       )
-      allow(File).to receive(:exist?).with('/gems/plugin_venvs/no_venv/.uv_managed').and_return(true)
-      allow(File).to receive(:directory?).with('/gems/plugin_venvs/no_venv/.venv').and_return(false)
+      allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__no_venv/.uv_managed').and_return(true)
+      allow(File).to receive(:directory?).with('/gems/plugin_venvs/DEFAULT__no_venv/.venv').and_return(false)
 
       get :plugin_python_venvs, params: {scope: "DEFAULT"}
 

@@ -63,7 +63,7 @@ module OpenC3
         if plugin_venv_dir
           PythonVenv.configure_environment(env, plugin_venv_dir)
         else
-          env['PYTHONUSERBASE'] = '/gems/python_packages'
+          env['PYTHONUSERBASE'] = PythonVenv::DEFAULT_PYTHONUSERBASE
           env['PYTHONPATH'] = ENV.fetch('PYTHONPATH', nil)
         end
       else

@@ -156,7 +156,7 @@ class Script < OpenC3::TargetFile
         end
       end
       process.environment['GEM_HOME'] = ENV['GEM_HOME'] || '/gems'
-      process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE'] || '/gems/python_packages'
+      process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE'] || OpenC3::PythonVenv::DEFAULT_PYTHONUSERBASE
       # Preserve PYTHONPATH to ensure Python can find both UV venv and user packages
       process.environment['PYTHONPATH'] = ENV['PYTHONPATH'] || '.'
 

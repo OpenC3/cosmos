@@ -80,13 +80,37 @@ module OpenC3
       end
 
       it "returns nil when a temporary script venv does not exist" do
-        allow(File).to receive(:directory?).with("/gems/plugin_venvs/missing/.venv").and_return(false)
+        allow(File).to receive(:directory?).with("/gems/plugin_venvs/DEFAULT__missing/.venv").and_return(false)
 
         result = PythonVenv.configure_for_script(
           {},
           name: "__TEMP__/test.py",
           scope: "DEFAULT",
-          python_venv: "missing"
+          python_venv: "DEFAULT__missing"
+        )
+
+        expect(result).to be_nil
+      end
+
+      it "rejects a temporary script venv belonging to another scope" do
+        expect(File).not_to receive(:directory?)
+
+        result = PythonVenv.configure_for_script(
+          {},
+          name: "__TEMP__/test.py",
+          scope: "DEFAULT",
+          python_venv: "OTHER__demo"
+        )
+
+        expect(result).to be_nil
+      end
+
+      it "rejects a temporary script venv whose name only prefixes the scope" do
+        result = PythonVenv.configure_for_script(
+          {},
+          name: "__TEMP__/test.py",
+          scope: "DEFAULT",
+          python_venv: "DEFAULTISH__demo"
         )
 
         expect(result).to be_nil
@@ -149,13 +173,35 @@ module OpenC3
       end
 
       it "clears Python path when site-packages and an existing path are absent" do
-        environment = {"PYTHONPATH" => "stale"}
+        environment = {}
         allow(ENV).to receive(:fetch).with("PYTHONPATH", "").and_return("")
         allow(Dir).to receive(:glob).with("/venv/lib/python*/site-packages").and_return([])
 
         PythonVenv.configure_environment(environment, "/venv")
 
         expect(environment["PYTHONPATH"]).to be_nil
+      end
+
+      it "prefers a Python path seeded on the environment over the ambient one" do
+        environment = {"PYTHONPATH" => "/seeded"}
+        allow(ENV).to receive(:fetch).with("PYTHONPATH", "").and_return("/ambient")
+        allow(Dir).to receive(:glob).with("/venv/lib/python*/site-packages").and_return(
+          ["/venv/lib/python3.12/site-packages"]
+        )
+
+        PythonVenv.configure_environment(environment, "/venv")
+
+        expect(environment["PYTHONPATH"]).to eq("/venv/lib/python3.12/site-packages:/seeded")
+      end
+
+      it "keeps a seeded Python path when site-packages is absent" do
+        environment = {"PYTHONPATH" => "."}
+        allow(ENV).to receive(:fetch).with("PYTHONPATH", "").and_return("")
+        allow(Dir).to receive(:glob).with("/venv/lib/python*/site-packages").and_return([])
+
+        PythonVenv.configure_environment(environment, "/venv")
+
+        expect(environment["PYTHONPATH"]).to eq(".")
       end
 
       it "preserves an existing Python path when site-packages is absent" do
