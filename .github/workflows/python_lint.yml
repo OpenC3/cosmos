@@ -53,18 +53,34 @@ jobs:
       - name: Set up Python
         run: uv python install
         working-directory: openc3/python
+      # ruff is a standalone binary and never imports our code, so this job installs
+      # the locked dependencies without the openc3 project itself (--no-install-project)
+      # and forbids building any source distribution (--no-build). The ruff steps then
+      # use --no-sync so they run against exactly what was installed here instead of
+      # re-syncing (a re-sync would try to build the skipped project and fail).
+      #
+      # Every package in uv.lock currently ships a wheel, so --no-build is a no-op that
+      # doubles as a tripwire: if a future dependency ever resolves to an sdist-only
+      # package, this step fails with "can't be installed because it is marked as
+      # --no-build but has no binary distribution" instead of silently executing that
+      # package's setup.py in CI. To fix, review that package's build scripts and either
+      # pin to a version that publishes a wheel or drop --no-build here.
+      #
+      # The other Python workflows deliberately do NOT use --no-build: they import and
+      # execute these same dependencies under pytest, so blocking build scripts there
+      # is not a security boundary. uv.lock is hash-pinned and --frozen is the control.
       - name: Install dependencies
-        run: uv sync --frozen
+        run: uv sync --frozen --no-build --no-install-project
         working-directory: openc3/python
       - name: Run ruff check on openc3/python
-        run: uv run --frozen ruff check --output-format=github openc3
+        run: uv run --no-sync ruff check --output-format=github openc3
         working-directory: openc3/python
       - name: Run ruff format check on openc3/python
-        run: uv run --frozen ruff format --check openc3
+        run: uv run --no-sync ruff format --check openc3
         working-directory: openc3/python
       - name: Run ruff check on script-runner-api scripts
-        run: uv run --frozen ruff check --output-format=github ../../openc3-cosmos-script-runner-api/scripts
+        run: uv run --no-sync ruff check --output-format=github ../../openc3-cosmos-script-runner-api/scripts
         working-directory: openc3/python
       - name: Run ruff format check on script-runner-api scripts
-        run: uv run --frozen ruff format --check ../../openc3-cosmos-script-runner-api/scripts
+        run: uv run --no-sync ruff format --check ../../openc3-cosmos-script-runner-api/scripts
         working-directory: openc3/python
