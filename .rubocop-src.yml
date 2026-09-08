@@ -1,0 +1,26 @@
+# RuboCop config for source-only runs: everything in .rubocop.yml, minus test code.
+#
+# Test code accounts for roughly 60% of the repo's offenses and is mostly noise
+# for source-quality work (long example blocks, throwaway constants, deliberate
+# edge-case code). Use `just lint-ruby-src` when you want to see only what the
+# shipped library and API code reports; `just lint-ruby` still covers
+# everything.
+#
+# Both a directory rule and a filename rule are needed: most specs live under a
+# spec/ or test/ directory, but some sit elsewhere (for example
+# openc3/test/integration/tsdb/ruby/cvt_model_tsdb_spec.rb). Demo and example
+# procedures named *_test.rb are shipped source, not test code, so they are
+# deliberately not excluded.
+inherit_from: .rubocop.yml
+
+# Without this, AllCops/Exclude below would replace the inherited list rather
+# than add to it, and the node_modules/.venv excludes would come back.
+inherit_mode:
+  merge:
+    - Exclude
+
+AllCops:
+  Exclude:
+    - '**/spec/**/*'
+    - '**/test/**/*'
+    - '**/*_spec.rb'

@@ -1,6 +1,21 @@
 AllCops:
   NewCops: enable
   TargetRubyVersion: 3.4
+  # RuboCop's built-in excludes (node_modules, vendor, tmp, .git) are anchored at
+  # the config directory, so they only cover the repo root. This is a monorepo
+  # with node_modules, vendor and build output nested several levels deep, and
+  # pnpm's node_modules/.pnpm is a symlink graph - walking it enumerates a
+  # combinatorial number of paths and exhausts memory before any file is parsed.
+  # Re-state the excludes with a '**/' prefix so they match at any depth.
+  Exclude:
+    - '**/node_modules/**/*'
+    - '**/vendor/**/*'
+    - '**/tmp/**/*'
+    - '**/.git/**/*'
+    - '**/.venv/**/*'
+    - '**/coverage/**/*'
+    - '**/dist/**/*'
+    - '**/.yardoc/**/*'
 
 # Layout
 Layout/LineLength:
