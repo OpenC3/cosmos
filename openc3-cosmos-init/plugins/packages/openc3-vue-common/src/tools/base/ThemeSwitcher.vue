@@ -11,7 +11,7 @@
 -->
 
 <script>
-import { OpenC3Api } from '@openc3/js-common/services'
+import { getCachedSetting } from '@/util'
 
 const VALID_THEMES = new Set([
   'cosmosDark',
@@ -23,9 +23,7 @@ const VALID_THEMES = new Set([
 
 export default {
   created: function () {
-    const api = new OpenC3Api()
-    api
-      .get_setting('theme')
+    getCachedSetting('theme')
       .then((response) => {
         if (!VALID_THEMES.has(response)) return
         switch (response) {

@@ -433,8 +433,8 @@ module OpenC3
       config['name'] = @name
       config['state'] = @state
       config['clients'] = self.num_clients
-      config['txsize'] = @write_queue_size
-      config['rxsize'] = @read_queue_size
+      config['txsize'] = self.write_queue_size
+      config['rxsize'] = self.read_queue_size
       config['txbytes'] = @bytes_written
       config['rxbytes'] = @bytes_read
       config['txcnt'] = @write_count
@@ -677,12 +677,12 @@ module OpenC3
       result['read_raw_data'] = @read_raw_data
       result['written_raw_data'] = @written_raw_data
       if @read_raw_data_time
-        result['read_raw_data_time'] = @read_raw_data_time.iso8601
+        result['read_raw_data_time'] = @read_raw_data_time.getutc.iso8601(6)
       else
         result['read_raw_data_time'] = nil
       end
       if @written_raw_data_time
-        result['written_raw_data_time'] = @written_raw_data_time.iso8601
+        result['written_raw_data_time'] = @written_raw_data_time.getutc.iso8601(6)
       else
         result['written_raw_data_time'] = nil
       end

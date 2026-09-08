@@ -185,7 +185,7 @@
 
 <script>
 import { formatDistanceToNow } from 'date-fns'
-import { Api, Cable } from '@openc3/js-common/services'
+import { Api, Cable, logUnlessAuthRequired } from '@openc3/js-common/services'
 import { AstroStatusColors, UnknownToAstroStatus } from '@/icons'
 import { AstroStatus } from '@/util'
 
@@ -324,7 +324,7 @@ export default {
       .then((response) => {
         this.numScripts = response.data.total
       })
-      .catch(console.error)
+      .catch(logUnlessAuthRequired)
   },
   unmounted: function () {
     window.removeEventListener('openc3-ack-alert', this.onAckAlert)

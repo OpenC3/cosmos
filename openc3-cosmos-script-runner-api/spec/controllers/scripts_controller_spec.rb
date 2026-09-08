@@ -375,6 +375,45 @@ RSpec.describe ScriptsController, type: :controller do
       expect(response).to have_http_status(:ok)
     end
 
+    it "passes a valid suiteRunner through to Script.run" do
+      suite_runner = {"suite" => "MySuite", "group" => "MyGroup", "script" => "test_foo", "method" => "start"}
+      expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.rb", suite_runner, false, nil, "Anonymous", "anonymous", 1, nil, nil).and_return(1)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb", suiteRunner: suite_runner}
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "rejects a suiteRunner suite that isn't an identifier" do
+      expect(Script).not_to receive(:run)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb",
+                          suiteRunner: {"suite" => "MySuite) rescue nil; File.write('/tmp/x', 'y'); x=(1", "method" => "start"}}
+      expect(response).to have_http_status(:bad_request)
+      expect(response.body).to include("Invalid Suite name")
+    end
+
+    it "rejects a suiteRunner group that isn't an identifier" do
+      expect(Script).not_to receive(:run)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb",
+                          suiteRunner: {"suite" => "MySuite", "group" => "MyGroup) ; system('id') ; x=(1"}}
+      expect(response).to have_http_status(:bad_request)
+      expect(response.body).to include("Invalid Group name")
+    end
+
+    it "rejects a suiteRunner script that isn't an identifier" do
+      expect(Script).not_to receive(:run)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb",
+                          suiteRunner: {"suite" => "MySuite", "group" => "MyGroup", "script" => "test'); system('id'); ('"}}
+      expect(response).to have_http_status(:bad_request)
+      expect(response.body).to include("Invalid Script name")
+    end
+
+    it "rejects a suiteRunner method that isn't a SuiteRunner entry point" do
+      expect(Script).not_to receive(:run)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb",
+                          suiteRunner: {"suite" => "MySuite", "method" => "instance_eval"}}
+      expect(response).to have_http_status(:bad_request)
+      expect(response.body).to include("Invalid method")
+    end
+
     it "passes pythonVenv parameter through to Script.run" do
       expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.py", nil, false, nil, "Anonymous", "anonymous", 1, nil, "/gems/plugin_venvs/demo/.venv").and_return(1)
       post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.py", pythonVenv: "/gems/plugin_venvs/demo/.venv"}
@@ -824,6 +863,68 @@ RSpec.describe ScriptsController, type: :controller do
       post :instrumented, params: {name: "script.rb"}
 
       expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  # Script.all lists every target file with no path matchers, so the Script Runner
+  # editor can address targets_modified/<TARGET>/cmd_tlm/..., which PacketConfig
+  # evaluates as code (GENERIC_*_CONVERSION eval) in the decom microservices.
+  # Writing that overlay must require admin, not just script_edit.
+  describe "cmd_tlm overlay gate" do
+    context "when the caller is non-admin (script_edit but not admin)" do
+      before do
+        allow(controller).to receive(:authorization).with('script_edit').and_return(true)
+        allow(controller).to receive(:authorization).with('admin').and_return(false)
+      end
+
+      it "blocks create into the cmd_tlm overlay" do
+        expect(Script).not_to receive(:create)
+
+        post :create, params: {scope: "DEFAULT", name: "INST/cmd_tlm/poc.txt", text: "TELEMETRY INST POC BIG_ENDIAN"}
+      end
+
+      it "blocks destroy of the cmd_tlm overlay" do
+        expect(Script).not_to receive(:destroy)
+
+        delete :destroy, params: {scope: "DEFAULT", name: "INST/cmd_tlm/tlm.txt"}
+      end
+
+      it "blocks non-canonical names that normalize into the cmd_tlm overlay" do
+        expect(Script).not_to receive(:create)
+
+        post :create, params: {scope: "DEFAULT", name: "INST//cmd_tlm/poc.txt", text: "text"}
+      end
+
+      it "still allows procedures, screens, and temp writes" do
+        expect(Script).to receive(:create)
+        allow(OpenC3::Logger).to receive(:info)
+
+        post :create, params: {scope: "DEFAULT", name: "INST/procedures/ok.rb", text: "text"}
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context "when the caller is admin" do
+      before do
+        allow(controller).to receive(:authorization).with('script_edit').and_return(true)
+        allow(controller).to receive(:authorization).with('admin').and_return(true)
+      end
+
+      it "allows create into the cmd_tlm overlay" do
+        expect(Script).to receive(:create)
+        allow(OpenC3::Logger).to receive(:info)
+
+        post :create, params: {scope: "DEFAULT", name: "INST/cmd_tlm/tlm.txt", text: "TELEMETRY INST POC BIG_ENDIAN"}
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "allows destroy of the cmd_tlm overlay" do
+        expect(Script).to receive(:destroy).with("DEFAULT", "INST/cmd_tlm/tlm.txt")
+        allow(OpenC3::Logger).to receive(:info)
+
+        delete :destroy, params: {scope: "DEFAULT", name: "INST/cmd_tlm/tlm.txt"}
+        expect(response).to have_http_status(:ok)
+      end
     end
   end
 end

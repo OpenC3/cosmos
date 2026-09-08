@@ -79,6 +79,7 @@ def print_usage
   puts "  cli xtce_converter                # Convert to and from the XTCE format. Run with --help for more info."
   puts "  cli cstol_converter               # Converts CSTOL files (.prc) to COSMOS. Run with --help for more info."
   puts "  cli setpassword                   # Set the initial password from OPENC3_API_PASSWORD env var"
+  puts "  cli initsettings                  # Seed settings from OPENC3_SETTING_* env vars"
   puts "  cli migratetouv PLUGIN_NAME SCOPE # Migrate plugin to per-plugin UV virtual environment"
   puts ""
 end
@@ -1528,6 +1529,106 @@ if not ARGV[0].nil? # argument(s) given
     end
     # Always ensure the scriptrunner policy is in place since it is required for script execution
     client.ensure_scriptrunner_policy(ENV['OPENC3_CONFIG_BUCKET'], ENV['OPENC3_LOGS_BUCKET'])
+
+  when 'initsettings'
+    if ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli initsettings [--dry-run | --export]"
+      puts ""
+      puts "Seed COSMOS settings from the environment. A setting changed in the Admin"
+      puts "Console is left alone, so those edits survive a restart."
+      puts ""
+      puts "Environment:"
+      puts "  OPENC3_SETTING_<NAME>          One variable per setting, e.g."
+      puts "                                 OPENC3_SETTING_TIME_ZONE=UTC sets 'time_zone'"
+      puts "  OPENC3_SETTINGS_OVERWRITE      true to overwrite existing settings on every"
+      puts "                                 run. false/unset leaves them alone"
+      puts "  OPENC3_SETTINGS_ALLOW_UNKNOWN  true to allow setting names COSMOS doesn't"
+      puts "                                 recognize. Without it an unknown name is"
+      puts "                                 reported and skipped, so a typo can't"
+      puts "                                 silently do nothing"
+      puts "  OPENC3_SETTINGS_STRICT         true to exit non-zero when a setting is"
+      puts "                                 rejected. Off by default"
+      puts ""
+      puts "These three accept true/false (1/0 also work)."
+      puts ""
+      puts "A setting that already exists is left alone because an operator may have"
+      puts "edited it in the Admin Console. Settings written by a release before this"
+      puts "command existed carry no record of having been seeded, so they all count as"
+      puts "edited: on such an upgrade run one init with OPENC3_SETTINGS_OVERWRITE=true"
+      puts "to adopt the environment values, then turn it back off."
+      puts ""
+      puts "An unrecognized name, an invalid value, or a malformed one of the variables"
+      puts "above is reported on stdout and that one setting is skipped; init continues"
+      puts "and COSMOS uses the default. Nothing here fails init unless"
+      puts "OPENC3_SETTINGS_STRICT is set. Use --dry-run to check the same things before"
+      puts "starting COSMOS, where a non-zero exit is what you want."
+      puts ""
+      puts "Settings that can be seeded:"
+      OpenC3::SettingModel.describe_settings.each { |line| puts "  #{line}" }
+      puts ""
+      puts "Boolean settings accept true/false (1/0 also work) and are stored as real"
+      puts "booleans."
+      puts "Every other setting is stored as the text given, including the settings"
+      puts "whose text is JSON (astro, classification_banner, context_tag)."
+      puts ""
+      puts "JSON settings - shape of each blob:"
+      OpenC3::SettingModel.describe_json_settings.each do |name, example|
+        puts "  #{name}"
+        puts "    #{example}"
+      end
+      puts ""
+      puts "Rather than hand-writing one of those, configure it in Admin -> Settings"
+      puts "and run 'cli initsettings --export' to print the current values as lines"
+      puts "you can paste straight into compose.override.yaml."
+      puts ""
+      puts "Options:"
+      puts "      --dry-run     Report what would be seeded and exit without writing."
+      puts "                    Lists every problem rather than stopping at the first,"
+      puts "                    and works before Redis is up so it can be run ahead of"
+      puts "                    starting COSMOS. Exits non-zero if anything would fail,"
+      puts "                    regardless of OPENC3_SETTINGS_STRICT"
+      puts "      --export      Print the settings currently stored as compose"
+      puts "                    'environment:' lines, quoted so the JSON ones parse."
+      puts "                    Configure in Admin -> Settings, then export and paste."
+      puts "                    Reads Redis, so COSMOS must be running - unlike"
+      puts "                    --dry-run, which works while it is down"
+      puts "  -h, --help        Show this help message"
+      exit 0
+    end
+    dry_run = ARGV[1] == '--dry-run'
+    export = ARGV[1] == '--export'
+    if ARGV[1] and !dry_run and !export
+      abort "Unknown option #{ARGV[1]}. See 'cli initsettings --help'"
+    end
+    if export
+      # --export reads the stored values, so it needs a reachable Redis. Say so
+      # plainly - the raw connection error is something like
+      # "Bad file descriptor (redis://openc3-redis:6379)", which doesn't hint
+      # that the answer is to start COSMOS.
+      unless OpenC3::SettingModel.redis_available?
+        abort "Cannot reach Redis at #{ENV['OPENC3_REDIS_HOSTNAME']}:#{ENV['OPENC3_REDIS_PORT']}.\n" \
+              "--export reads the settings currently stored, so COSMOS has to be running.\n" \
+              "Start it with './openc3.sh run', or use --dry-run, which works while COSMOS is down."
+      end
+      begin
+        lines = OpenC3::SettingModel.export_lines
+      rescue => e
+        abort "Error reading settings: #{e.message}"
+      end
+      if lines.empty?
+        puts "# No settings are stored yet - configure them in Admin -> Settings first"
+      else
+        puts "# Paste under the openc3-cosmos-init service's \"environment:\" key in"
+        puts "# compose.override.yaml, keeping this indentation."
+        lines.each { |line| puts "      #{line}" }
+      end
+    else
+      begin
+        OpenC3::SettingModel.apply_defaults(dry_run: dry_run)
+      rescue => e
+        abort "Error applying default settings: #{e.message}"
+      end
+    end
 
   when 'runmigrations'
     if ARGV[1] == '--help' || ARGV[1] == '-h'

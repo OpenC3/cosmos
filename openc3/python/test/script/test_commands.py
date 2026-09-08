@@ -220,7 +220,10 @@ class TestCommands(unittest.TestCase):
         cmd_time = get_cmd_time("INST", "CLEAR")
         self.assertEqual(cmd_time[0], "INST")
         self.assertEqual(cmd_time[1], "CLEAR")
-        self.assertEqual(f"{cmd_time[2].timestamp():.3f}", f"{gTime:.3f}")
+        # The mock truncates gTime to whole microseconds and datetime rounds
+        # to the nearest microsecond, so compare with a small tolerance
+        # instead of rounded strings which flake on rounding boundaries
+        self.assertAlmostEqual(cmd_time[2].timestamp(), gTime, delta=1e-5)
 
     def test_handles_obfuscation(self):
         global gArgs

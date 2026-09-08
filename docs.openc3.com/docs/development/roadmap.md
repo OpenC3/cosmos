@@ -11,7 +11,7 @@ Our roadmap is captured via Github [Milestones](https://github.com/OpenC3/cosmos
 
 ## Monthly Releases
 
-We are dedicated to monthly releases that update dependencies and close CVEs. This ensures that COSMOS stays current with the latest security patches and library updates.
+We are dedicated to monthly releases that incorporate bug fixes, add new features, update dependencies, and close CVEs. This ensures that COSMOS stays current with the latest security patches and library updates while continuously delivering new functionality.
 
 ## Long Term Support (LTS)
 

@@ -95,6 +95,29 @@ module OpenC3
       end
     end
 
+    describe "create" do
+      it "raises on invalid characters in the scope name" do
+        model = ScopeModel.new(name: "INVALID:SCOPE")
+        expect { model.create() }.to raise_error(/Invalid scope name: INVALID:SCOPE/)
+      end
+
+      it "raises on double underscores in the scope name" do
+        model = ScopeModel.new(name: "BAD__SCOPE")
+        expect { model.create() }.to raise_error(/Invalid scope name: BAD__SCOPE \(double underscore not allowed\)/)
+      end
+
+      it "raises on a trailing double underscore in the scope name" do
+        model = ScopeModel.new(name: "SCOPE__")
+        expect { model.create() }.to raise_error(/double underscore not allowed/)
+      end
+
+      it "allows a single underscore in the scope name" do
+        model = ScopeModel.new(name: "GOOD_SCOPE")
+        expect { model.create() }.to_not raise_error
+        expect(ScopeModel.names()).to include("GOOD_SCOPE")
+      end
+    end
+
     describe "update" do
       it "updates command_authority and works in core" do
         model = ScopeModel.new(name: "DEFAULT", command_authority: true, critical_commanding: "ALL", updated_at: 12345)
@@ -134,6 +157,52 @@ module OpenC3
         expect(bridge).to_not be_nil
         expect(bridge.cmd[1]).to eql "bridge_microservice.py"
         expect(bridge.options).to include(["BRIDGE_NAME", "DEFAULT"])
+      end
+    end
+
+    describe "seed_database" do
+      before(:each) do
+        # apply_defaults reports what it did on stdout; keep the spec output clean
+        allow($stdout).to receive(:puts)
+      end
+
+      def deploy_default_scope
+        model = ScopeModel.new(name: "DEFAULT", updated_at: 12345)
+        model.create
+        model.deploy(File.join(SPEC_DIR, "install"), {})
+      end
+
+      it "defaults the settings it owns" do
+        deploy_default_scope()
+        expect(SettingModel.get(name: "news_feed")['data']).to be true
+        expect(SettingModel.get(name: "source_url")['data']).to eql "https://github.com/OpenC3/cosmos"
+        expect(SettingModel.get(name: "rubygems_url")['data']).to eql RubygemsUrl::DEFAULT
+      end
+
+      it "doesn't clobber settings seeded from the environment" do
+        # `openc3cli initsettings` runs before the first plugin load creates the
+        # scope, so seed_database must not discard what it wrote
+        SettingModel.apply_defaults(env: { 'OPENC3_SETTING_NEWS_FEED' => 'false',
+                                          'OPENC3_SETTING_SOURCE_URL' => 'https://git.example.com/cosmos' })
+        deploy_default_scope()
+        expect(SettingModel.get(name: "news_feed")['data']).to be false
+        expect(SettingModel.get(name: "source_url")['data']).to eql "https://git.example.com/cosmos"
+      end
+
+      it "leaves the seeded value in charge on later inits" do
+        # Without the guard the provenance record would disagree with Redis and
+        # every later init would report an Admin Console edit that never happened
+        SettingModel.apply_defaults(env: { 'OPENC3_SETTING_NEWS_FEED' => 'false' })
+        deploy_default_scope()
+        expect(SettingModel.apply_defaults(env: { 'OPENC3_SETTING_NEWS_FEED' => 'true' })).to eql ['news_feed']
+        expect(SettingModel.get(name: "news_feed")['data']).to be true
+      end
+
+      it "doesn't revert an Admin Console edit on a second deploy" do
+        deploy_default_scope()
+        SettingModel.set({ name: "news_feed", data: false }, scope: "DEFAULT")
+        ScopeModel.new(name: "OTHER").deploy(File.join(SPEC_DIR, "install"), {})
+        expect(SettingModel.get(name: "news_feed")['data']).to be false
       end
     end
 

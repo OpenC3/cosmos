@@ -17,6 +17,7 @@ require 'openc3/packets/limits_response'
 require 'openc3/models/metric_model'
 require 'openc3/topics/telemetry_topic'
 require 'openc3/topics/limits_event_topic'
+require 'openc3/script/extract'
 
 module OpenC3
   describe DecomMicroservice do

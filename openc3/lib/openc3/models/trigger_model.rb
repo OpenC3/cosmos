@@ -50,6 +50,7 @@ module OpenC3
     STRING_TYPE = 'string'.freeze
     REGEX_TYPE = 'regex'.freeze
     TRIGGER_TYPE = 'trigger'.freeze
+    ITEM_VALUE_TYPES = ['RAW', 'CONVERTED', 'FORMATTED', 'WITH_UNITS'].freeze
 
     def self.create_unique_name(group:, scope:)
       trigger_names = self.names(group: group, scope: scope)
@@ -180,6 +181,24 @@ module OpenC3
       end
     end
 
+    # Validate the items hold a legal valueType and reference telemetry items
+    # which actually exist. Only called on create and update, never from initialize.
+    # Anything which can reject an already persisted trigger must live here rather than
+    # in validate_operand, because validate_operand runs on every from_json
+    def validate_trigger_items
+      {'left' => @left, 'right' => @right}.each do |side, operand|
+        next unless operand.is_a?(Hash) and operand['type'] == ITEM_TYPE
+        unless ITEM_VALUE_TYPES.include?(operand['valueType'])
+          raise TriggerInputError.new "invalid #{side} operand, valueType '#{operand['valueType']}' must be one of #{ITEM_VALUE_TYPES}"
+        end
+        begin
+          TargetModel.packet_item(operand['target'], operand['packet'], operand['item'], scope: @scope)
+        rescue StandardError => e
+          raise TriggerInputError.new "invalid #{side} trigger: #{e.message}"
+        end
+      end
+    end
+
     # Validate that all root triggers exist, but do not persist dependent changes yet.
     # Returns the list of root trigger models that need updating.
     def validate_roots
@@ -207,6 +226,7 @@ module OpenC3
       unless Store.hget(@primary_key, @name).nil?
         raise TriggerInputError.new "existing trigger found: '#{@name}'"
       end
+      validate_trigger_items()
       models = validate_roots()
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json, allow_nan: true))

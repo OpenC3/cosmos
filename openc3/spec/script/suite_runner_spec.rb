@@ -155,6 +155,38 @@ module OpenC3
         expect(result['options']).to_not be_frozen
         expect(result['options']).to_not equal(SuiteRunner::DEFAULT_OPTIONS)
       end
+
+      it "rejects a suite that isn't a class name" do
+        expect { SuiteRunner.build_options(suite: "MySuite) rescue nil; File.write('/tmp/x', 'y'); x=(1") }
+          .to raise_error(ArgumentError, /Invalid Suite name/)
+        expect { SuiteRunner.build_options(suite: 'my_suite') }
+          .to raise_error(ArgumentError, /Invalid Suite name/)
+        expect { SuiteRunner.build_options(suite: nil) }
+          .to raise_error(ArgumentError, /Invalid Suite name/)
+        expect { SuiteRunner.build_options(suite: 'MySuite; puts 1') }
+          .to raise_error(ArgumentError, /Invalid Suite name/)
+      end
+
+      it "allows a namespaced suite and group" do
+        expect(SuiteRunner.build_options(suite: 'My::Suite', group: 'My::Group')['suite']).to eq('My::Suite')
+      end
+
+      it "rejects a group that isn't a class name" do
+        expect { SuiteRunner.build_options(suite: 'MySuite', group: 'MyGroup) ; system("id") ; x=(1') }
+          .to raise_error(ArgumentError, /Invalid Group name/)
+      end
+
+      it "rejects a script that isn't a method name" do
+        expect { SuiteRunner.build_options(suite: 'MySuite', group: 'MyGroup', script: "test'); system('id'); ('") }
+          .to raise_error(ArgumentError, /Invalid Script name/)
+      end
+
+      it "rejects a method that isn't a SuiteRunner entry point" do
+        expect { SuiteRunner.build_options(suite: 'MySuite', method: 'instance_eval') }
+          .to raise_error(ArgumentError, /Invalid method/)
+        expect { SuiteRunner.build_options(suite: 'MySuite', method: 'start(1) ; system("id") ; start') }
+          .to raise_error(ArgumentError, /Invalid method/)
+      end
     end
   end
 end

@@ -208,7 +208,7 @@ Partition names use the format `YYYY-MM-DD` for daily partitions (e.g., `2026-04
    ```
 
 :::info[Schema Compatibility]
-A detached partition must be reattached to a table whose schema is compatible with the partition's schema at detach time. If columns were added, removed, or had their type changed via [ALTER TYPE](https://questdb.com/docs/reference/sql/alter-table-alter-column-type/) since detachment, the attach may fail or only attach a subset of columns. Detach and reattach against the same major QuestDB version where possible.
+A detached partition must be reattached to a table whose schema is compatible with the partition's schema at detach time. If columns were added, removed, or had their type changed via [ALTER TYPE](https://questdb.com/docs/reference/sql/alter-table-alter-column-type/) since detachment, the attach may fail or only attach a subset of columns. Detach and reattach against the same major QuestDB version where possible. See [Packet Structure Changes](/docs/guides/packet-structure-changes) for how COSMOS alters table schemas when packet definitions change.
 :::
 
 ## COSMOS 6

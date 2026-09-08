@@ -306,7 +306,12 @@
 // Putting large data into Vue data section causes lots of overhead
 let dataExtractorRawData = []
 
-import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
+import {
+  Api,
+  Cable,
+  OpenC3Api,
+  logUnlessAuthRequired,
+} from '@openc3/js-common/services'
 import {
   Config,
   OpenC3TimePicker,
@@ -832,8 +837,8 @@ export default {
         this.keyMap[indexString] = key
         items.push([key, indexString])
       })
-      OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-        (refreshed) => {
+      OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity)
+        .then((refreshed) => {
           if (refreshed) {
             OpenC3Auth.setTokens()
           }
@@ -844,8 +849,11 @@ export default {
             start_time: this.startDateTime,
             end_time: this.endDateTime,
           })
-        },
-      )
+        })
+        // An AuthRequiredError means we have no token and are being redirected
+        // to login, so don't try to subscribe. Anything else is unexpected and
+        // still gets logged.
+        .catch(logUnlessAuthRequired)
     },
     received: function (data) {
       this.cable.recordPing()

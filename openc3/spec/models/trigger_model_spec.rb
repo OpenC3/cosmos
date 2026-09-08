@@ -16,6 +16,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
+require 'openc3/models/target_model'
 require 'openc3/models/trigger_group_model'
 require 'openc3/models/trigger_model'
 
@@ -58,8 +59,22 @@ module OpenC3
       return TriggerGroupModel.new(name: name, scope: $openc3_scope)
     end
 
+    # Defaults to a real item in the INST target seeded below, so tests only have
+    # to spell out the field they are actually exercising
+    def item_operand(target: 'INST', packet: 'HEALTH_STATUS', item: 'TEMP1', value_type: 'CONVERTED')
+      return {'type' => 'item', 'target' => target, 'packet' => packet, 'item' => item, 'valueType' => value_type}
+    end
+
+    # Throwaway right operand for tests which only care about the left one
+    FLOAT_ZERO = {'type' => 'float', 'float' => '0'}.freeze
+
     before(:each) do
       mock_redis()
+      # Seed the INST target so item operands reference telemetry that actually exists
+      setup_system()
+      target = TargetModel.new(folder_name: 'INST', name: 'INST', scope: $openc3_scope)
+      target.create
+      target.update_store(System.new(['INST'], File.join(SPEC_DIR, 'install', 'config', 'targets')))
       generate_trigger_group_model().create()
     end
 
@@ -277,26 +292,21 @@ module OpenC3
 
     describe "trigger operand validation" do
       it "allows nil right when operator is CHANGE oriented" do
-        generate_trigger(
-          name: 'TRIG1',
-          left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM', 'valueType' => 'CONVERTED'},
-          operator: 'CHANGES',
-          right: nil,
-        ).create()
-
-        generate_trigger(
-          name: 'TRIG2',
-          left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM', 'valueType' => 'CONVERTED'},
-          operator: 'DOES NOT CHANGE',
-          right: nil,
-        ).create()
+        ['CHANGES', 'DOES NOT CHANGE'].each_with_index do |operator, index|
+          generate_trigger(
+            name: "TRIG#{index}",
+            left: item_operand,
+            operator: operator,
+            right: nil,
+          ).create()
+        end
       end
 
       it "allows omitting right entirely when operator is CHANGE oriented" do
         # Simulates strong params filtering nil right from controller payload
         json = {
           'group' => TMO_GROUP,
-          'left' => {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM', 'valueType' => 'CONVERTED'},
+          'left' => item_operand,
           'operator' => 'DOES NOT CHANGE',
           'label' => nil,
         }
@@ -352,38 +362,86 @@ module OpenC3
         }.to raise_error(/invalid operand, type 'right' must be/)
       end
 
-      it "raises when operand has invalid ITEM" do
-        expect {
-          generate_trigger(
-            left: {'type' => 'item', 'packet' => 'PKT', 'item' => 'ITEM', 'valueType' => 'CONVERTED'},
-            operator: '>',
-            right: {'type' => 'float', 'float' => '0'}
-          ).create()
-        }.to raise_error(/invalid operand, must contain target, packet, item and valueType/)
+      # Structural checks which run in initialize. These intentionally use a target
+      # that does not exist: they must fail before any item lookup is attempted.
+      [
+        ['target is missing',
+         {'type' => 'item', 'packet' => 'PKT', 'item' => 'ITEM', 'valueType' => 'CONVERTED'},
+         /invalid operand, must contain target, packet, item and valueType/],
+        ['item is missing',
+         {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'valueType' => 'CONVERTED'},
+         /invalid operand, type value 'item' must be a key/],
+        ['valueType is missing',
+         {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM'},
+         /invalid operand, must contain target, packet, item and valueType/],
+      ].each do |description, left, message|
+        it "raises when the ITEM operand #{description}" do
+          expect {
+            generate_trigger(left: left, operator: '>', right: FLOAT_ZERO).create()
+          }.to raise_error(TriggerInputError, message)
+        end
+      end
 
-        expect {
-          generate_trigger(
-            left: {'type' => 'item', 'target' => 'TGT', 'item' => 'ITEM', 'valueType' => 'CONVERTED'},
-            operator: '>',
-            right: {'type' => 'float', 'float' => '0'}
-          ).create()
-        }.to raise_error(/invalid operand, must contain target, packet, item and valueType/)
+      # Value checks which only run on create/update via validate_item_operands
+      [
+        ['the item does not exist',   {item: 'NONEXISTENT'},   /invalid left trigger.*NONEXISTENT.*does not exist/],
+        ['the packet does not exist', {packet: 'NONEXISTENT'}, /invalid left trigger.*NONEXISTENT.*does not exist/],
+        ['the target does not exist', {target: 'NOPE'},        /invalid left trigger.*does not exist/],
+        ['valueType is invalid',      {value_type: 'NOPE'},    /invalid left operand, valueType 'NOPE' must be one of/],
+      ].each do |description, overrides, message|
+        it "raises when #{description}" do
+          expect {
+            generate_trigger(left: item_operand(**overrides), operator: '>', right: FLOAT_ZERO).create()
+          }.to raise_error(TriggerInputError, message)
+        end
+      end
 
-        expect {
+      it "allows all the supported valueTypes" do
+        TriggerModel::ITEM_VALUE_TYPES.each_with_index do |value_type, index|
           generate_trigger(
-            left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'valueType' => 'CONVERTED'},
+            name: "TRIG#{index}",
+            left: item_operand(value_type: value_type),
             operator: '>',
-            right: {'type' => 'float', 'float' => '0'}
+            right: FLOAT_ZERO
           ).create()
-        }.to raise_error(/invalid operand, type value 'item' must be a key/)
+        end
+      end
 
+      it "raises when the right item operand does not exist" do
         expect {
           generate_trigger(
-            left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM'},
+            left: item_operand,
             operator: '>',
-            right: {'type' => 'float', 'float' => '0'}
+            right: item_operand(item: 'NONEXISTENT')
           ).create()
-        }.to raise_error(/invalid operand, must contain target, packet, item and valueType/)
+        }.to raise_error(TriggerInputError, /invalid right trigger.*NONEXISTENT.*does not exist/)
+      end
+
+      it "does not raise on from_json when a referenced item no longer exists" do
+        # An existing trigger must still deserialize if its target is removed, otherwise
+        # the TriggerGroupMicroservice fails to load every trigger in the group
+        json = {
+          'group' => TMO_GROUP,
+          'left' => item_operand(target: 'GONE', packet: 'GONE', item: 'GONE'),
+          'operator' => '>',
+          'right' => FLOAT_ZERO,
+        }
+        expect { TriggerModel.from_json(json, name: 'TRIG1', scope: $openc3_scope) }.to_not raise_error
+      end
+
+      it "does not raise on from_json when valueType was never constrained" do
+        # valueType was unvalidated before, so already persisted triggers may hold
+        # anything. Deserializing them must not take down the whole trigger group.
+        json = {
+          'group' => TMO_GROUP,
+          'left' => item_operand(value_type: 'raw'),
+          'operator' => '>',
+          'right' => FLOAT_ZERO,
+        }
+        model = nil
+        expect { model = TriggerModel.from_json(json, name: 'TRIG1', scope: $openc3_scope) }.to_not raise_error
+        # But it is rejected if the user tries to save it
+        expect { model.create() }.to raise_error(TriggerInputError, /invalid left operand, valueType 'raw' must be one of/)
       end
     end
 
@@ -463,22 +521,22 @@ module OpenC3
     describe "generate_topics" do
       it "generates single topic for items in the same packet" do
         model = generate_trigger(
-          left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM1', 'valueType' => 'CONVERTED'},
+          left: item_operand(item: 'TEMP1'),
           operator: '==',
-          right: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM2', 'valueType' => 'CONVERTED'},
+          right: item_operand(item: 'TEMP2'),
         )
         model.create
-        expect(model.generate_topics).to eql(["#{$openc3_scope}__DECOM__{TGT}__PKT"])
+        expect(model.generate_topics).to eql(["#{$openc3_scope}__DECOM__{INST}__HEALTH_STATUS"])
       end
 
       it "generates two topics for different target packets" do
         model = generate_trigger(
-          left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT1', 'item' => 'ITEM1', 'valueType' => 'CONVERTED'},
+          left: item_operand(packet: 'HEALTH_STATUS', item: 'TEMP1'),
           operator: '==',
-          right: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT2', 'item' => 'ITEM2', 'valueType' => 'CONVERTED'},
+          right: item_operand(packet: 'ADCS', item: 'POSX'),
         )
         model.create
-        expect(model.generate_topics).to eql(["#{$openc3_scope}__DECOM__{TGT}__PKT1", "#{$openc3_scope}__DECOM__{TGT}__PKT2"])
+        expect(model.generate_topics).to eql(["#{$openc3_scope}__DECOM__{INST}__HEALTH_STATUS", "#{$openc3_scope}__DECOM__{INST}__ADCS"])
       end
     end
   end

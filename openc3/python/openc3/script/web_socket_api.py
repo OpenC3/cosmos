@@ -14,6 +14,7 @@ import json
 import os
 import sys
 import time
+from collections import deque
 from datetime import datetime
 
 from openc3.environment import OPENC3_SCOPE
@@ -332,6 +333,7 @@ class RunningScriptWebSocketApi(ScriptWebSocketApi):
     """Running Script WebSocket"""
 
     def __init__(self, id, **options):
+        self.pending_events = deque()
         self.identifier = {"channel": "RunningScriptChannel", "id": id}
         super().__init__(**options)
 
@@ -347,6 +349,31 @@ class RunningScriptWebSocketApi(ScriptWebSocketApi):
         super().subscribe()
         if not was_subscribed:
             self.write_action({"action": "ready"})
+
+    def read(self, ignore_protocol_messages=True, timeout=None):
+        """Return one event at a time while accepting channel event batches."""
+        if self.pending_events:
+            return self.pending_events.popleft()
+
+        while True:
+            message = super().read(ignore_protocol_messages=ignore_protocol_messages, timeout=timeout)
+            if not isinstance(message, list):
+                return message
+            self.pending_events.extend(message)
+            if self.pending_events:
+                return self.pending_events.popleft()
+
+    def connect(self):
+        self.pending_events.clear()
+        return super().connect()
+
+    def unsubscribe(self):
+        self.pending_events.clear()
+        return super().unsubscribe()
+
+    def disconnect(self):
+        self.pending_events.clear()
+        return super().disconnect()
 
 
 class AllScriptsWebSocketApi(ScriptWebSocketApi):
