@@ -37,7 +37,7 @@ ENV IMAGE_GROUP=openc3
 ENV USER_ID=1001
 ENV GROUP_ID=1001
 
-COPY --chown=1001:1001 --chmod=755 docker-entrypoint.sh /usr/bin/
+COPY --chown=root:root --chmod=755 docker-entrypoint.sh /usr/bin/
 RUN apt-get update && \
     apt-get -y upgrade && \
     # nc (busybox provided this on Alpine); netcat-openbsd supplies /usr/bin/nc

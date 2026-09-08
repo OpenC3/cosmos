@@ -13,3 +13,9 @@ test/
 # Keep the directories but no contents
 log/*
 tmp/*
+# Never bake secrets into the image (gitignore does not apply to the build context)
+config/master.key
+.env
+.env.*
+*.pem
+*.key

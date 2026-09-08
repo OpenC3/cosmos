@@ -37,4 +37,4 @@ RUN if [[ $OPENC3_DEPENDENCY_REGISTRY == 'docker.io' ]]; then \
 
 # Switch to user
 USER ${USER_ID}
-COPY --chown=1001:1001  --chmod=755 ./entrypoint.sh /entrypoint.sh
+COPY --chown=root:root --chmod=755 ./entrypoint.sh /entrypoint.sh

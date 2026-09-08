@@ -26,7 +26,7 @@ ENV CURL_CA_BUNDLE=/devel/cacert.pem
 ENV REQUESTS_CA_BUNDLE=/devel/cacert.pem
 ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 
-COPY --chown=1001:1001 --chmod=755 docker-entrypoint.sh /usr/bin/
+COPY --chown=root:root --chmod=755 docker-entrypoint.sh /usr/bin/
 
 RUN microdnf update -y && \
     microdnf clean all && \
