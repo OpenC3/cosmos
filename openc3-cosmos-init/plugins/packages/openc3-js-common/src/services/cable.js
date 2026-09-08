@@ -16,6 +16,7 @@
 */
 
 import { createConsumer } from '@anycable/web'
+import { isAuthRequiredError } from './authGuard'
 
 // How long to wait before rebuilding a consumer whose subscribe failed
 // unrecoverably. Long enough to not spin when the backend is unreachable, short
@@ -153,16 +154,23 @@ export default class Cable {
       finalUrl.searchParams.set('scope', subscription._scope)
       this._cable = createConsumer(finalUrl.href)
     }
-    return OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-      (refreshed) => {
+    return OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity)
+      .then((refreshed) => {
         if (refreshed) {
           OpenC3Auth.setTokens()
         }
         if (this._cable) {
           subscription._subscribe(this._cable)
         }
-      },
-    )
+      })
+      .catch((error) => {
+        // No token means we're being redirected to login. Resolve without
+        // subscribing rather than rejecting: callers treat a rejected
+        // createSubscription as a tool error, and this isn't one.
+        if (!isAuthRequiredError(error)) {
+          throw error
+        }
+      })
   }
   // Replace the consumer and re-subscribe everything on it. Dropping the old
   // consumer is what clears the leaked pending subscription (see

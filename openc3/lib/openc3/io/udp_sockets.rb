@@ -27,6 +27,9 @@ module OpenC3
   class UdpReadWriteSocket
     HOST_0_0_0_0 = '0.0.0.0'
 
+    # MSG_DONTWAIT is not defined on Windows where sends are left blocking
+    WRITE_FLAGS = Socket.const_defined?('MSG_DONTWAIT') ? Socket::MSG_DONTWAIT : 0
+
     # @param bind_port [Integer[ Port to write data out from and receive data on (0 = randomly assigned)
     # @param bind_address [String] Local address to bind to (0.0.0.0 = All local addresses)
     # @param external_port [Integer] External port to write to
@@ -35,6 +38,8 @@ module OpenC3
     # @param ttl [Integer] Time To Live for outgoing multicast packets
     # @param read_multicast [Boolean] Whether or not to try to read from the external address as multicast
     # @param write_multicast [Boolean] Whether or not to write to the external address as multicast
+    # @param connect_socket [Boolean] Whether to connect the socket to the external address. If false,
+    #   writes explicitly address each datagram so reads can accept datagrams from any source.
     def initialize(
       bind_port = 0,
       bind_address = HOST_0_0_0_0,
@@ -43,10 +48,23 @@ module OpenC3
       multicast_interface_address = nil,
       ttl = 1,
       read_multicast = true,
-      write_multicast = true
+      write_multicast = true,
+      connect_socket = true
     )
 
       @socket = UDPSocket.new
+      @external_address = external_address
+      @external_port = external_port
+      @connect_socket = connect_socket
+      # Resolve the destination once at creation time so writes don't pay for a
+      # (potentially blocking) name lookup on every datagram
+      @external_sockaddr = nil
+      if !connect_socket and external_address and external_port
+        # Explicitly resolve IPv4 because UDPSocket is an AF_INET socket and
+        # sockaddr_in would otherwise hand back an IPv6 address for names like localhost
+        ip_address = Socket.getaddrinfo(external_address, nil, Socket::AF_INET, Socket::SOCK_DGRAM)[0][3]
+        @external_sockaddr = Socket.sockaddr_in(external_port, ip_address)
+      end
 
       # Basic setup to reuse address
       @socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_REUSEADDR, 1)
@@ -55,10 +73,10 @@ module OpenC3
       @socket.bind(bind_address, bind_port) if bind_address and bind_port
 
       # Default send to the specified address and port
-      @socket.connect(external_address, external_port) if external_address and external_port
+      @socket.connect(external_address, external_port) if connect_socket and external_address and external_port
 
       # Handle multicast
-      if UdpReadWriteSocket.multicast?(external_address, external_port)
+      if UdpReadWriteSocket.multicast?(external_address)
         if write_multicast
           # Basic setup set time to live
           @socket.setsockopt(Socket::IPPROTO_IP, Socket::IP_MULTICAST_TTL, ttl.to_i)
@@ -90,7 +108,13 @@ module OpenC3
 
       loop do
         begin
-          bytes_sent = @socket.write_nonblock(data_to_send)
+          if @external_sockaddr
+            # send is used rather than sendmsg_nonblock because sendmsg is not
+            # implemented on Windows
+            bytes_sent = @socket.send(data_to_send, WRITE_FLAGS, @external_sockaddr)
+          else
+            bytes_sent = @socket.write_nonblock(data_to_send)
+          end
         rescue Errno::EAGAIN, Errno::EWOULDBLOCK
           result = IO.fast_select(nil, [@socket], nil, write_timeout)
           if result
@@ -129,12 +153,18 @@ module OpenC3
     end
 
     # @param host [String] Machine name or IP address
-    # @param port [String] Port
+    # @param port [String] Port (unused, kept for backwards compatibility)
     # @return [Boolean] Whether the hostname is multicast
-    def self.multicast?(host, port)
-      return false if host.nil? || port.nil?
+    def self.multicast?(host, port = nil)
+      return false if host.nil?
 
-      Addrinfo.udp(host, port).ipv4_multicast?
+      begin
+        Addrinfo.udp(host, 0).ipv4_multicast?
+      rescue SocketError, ArgumentError
+        # Hostname isn't resolvable so it can't be a multicast address we handle.
+        # Reads don't need the hostname at all so don't fail creating the socket.
+        false
+      end
     end
   end
 

@@ -157,8 +157,9 @@
 
 <script>
 import { navigateToUrl, registerApplication, start } from 'single-spa'
-import { Api, OpenC3Api } from '@openc3/js-common/services'
+import { Api, logUnlessAuthRequired } from '@openc3/js-common/services'
 import { UpgradeToEnterpriseDialog } from '@/components'
+import { getCachedSetting } from '@/util'
 import Notifications from './Notifications.vue'
 import ScopeSelector from './ScopeSelector.vue'
 import UserMenu from './UserMenu.vue'
@@ -180,7 +181,6 @@ export default {
   },
   data() {
     return {
-      api: new OpenC3Api(),
       timeZone: 'local',
       subtitle: null,
       // Update AstroSettings.vue when changing this
@@ -229,8 +229,8 @@ export default {
     const urlParams = new URLSearchParams(window.location.search)
     this.chromeless = urlParams.get('chromeless')
 
-    this.api
-      .get_setting('astro')
+    // These three go out as a single batched get_settings request
+    getCachedSetting('astro')
       .then((response) => {
         if (response) {
           // The response is an object with settings
@@ -238,30 +238,26 @@ export default {
         }
       })
       .catch((error) => {
-        // Do nothing
+        // Do nothing - malformed setting, keep the defaults
       })
-    this.api
-      .get_setting('subtitle')
-      .then((response) => {
-        if (response) {
-          this.subtitle = response
-        }
-      })
-      .catch((error) => {
-        // Do nothing
-      })
-    this.api
-      .get_setting('time_zone')
-      .then((response) => {
-        if (response) {
-          this.timeZone = response
-        }
-      })
-      .catch((error) => {
-        // Do nothing
-      })
-    // Tools are global and are always installed into the DEFAULT scope
-    Api.get('/openc3-api/tools/all', { params: { scope: 'DEFAULT' } })
+    getCachedSetting('subtitle').then((response) => {
+      if (response) {
+        this.subtitle = response
+      }
+    })
+    getCachedSetting('time_zone').then((response) => {
+      if (response) {
+        this.timeZone = response
+      }
+    })
+    // Tools are global and are always installed into the DEFAULT scope.
+    // This endpoint requires no authorization and the nav has to render even
+    // when we have no token (the login page mounts it too), so don't let the
+    // auth guard block the request.
+    Api.get('/openc3-api/tools/all', {
+      params: { scope: 'DEFAULT' },
+      optionalAuth: true,
+    })
       .then((response) => {
         this.appNav = response.data
 
@@ -343,14 +339,19 @@ export default {
 
         // Check every minute if we need to update our token
         setInterval(() => {
-          OpenC3Auth.updateToken(120).then(function (refreshed) {
-            if (refreshed) {
-              OpenC3Auth.setTokens()
-            }
-          })
+          OpenC3Auth.updateToken(120)
+            .then(function (refreshed) {
+              if (refreshed) {
+                OpenC3Auth.setTokens()
+              }
+            })
+            // An AuthRequiredError means we have no token and are being
+            // redirected to login, so there's nothing to do here. Anything
+            // else (network, unexpected auth failure) still gets logged.
+            .catch(logUnlessAuthRequired)
         }, 60000)
       })
-      .catch(console.error)
+      .catch(logUnlessAuthRequired)
   },
   mounted() {
     globalThis.addEventListener(

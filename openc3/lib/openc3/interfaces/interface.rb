@@ -433,8 +433,8 @@ module OpenC3
       config['name'] = @name
       config['state'] = @state
       config['clients'] = self.num_clients
-      config['txsize'] = @write_queue_size
-      config['rxsize'] = @read_queue_size
+      config['txsize'] = self.write_queue_size
+      config['rxsize'] = self.read_queue_size
       config['txbytes'] = @bytes_written
       config['rxbytes'] = @bytes_read
       config['txcnt'] = @write_count

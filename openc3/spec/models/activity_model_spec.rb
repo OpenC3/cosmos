@@ -497,14 +497,14 @@ module OpenC3
 
     describe "self.range_destroy" do
       it "removes multiple members form of the timeline" do
-        activity = generate_activity(name: name, scope: scope, start: 0.5)
-        activity.create()
-        activity = generate_activity(name: name, scope: scope, start: 2.0)
-        activity.create()
-        dt = DateTime.now.new_offset(0)
-        min_score = (dt + (0.5 / 24.0)).strftime("%s").to_i
-        max_score = (dt + (3.0 / 24.0)).strftime("%s").to_i
-        ret = ActivityModel.range_destroy(name: name, scope: scope, min: min_score, max: max_score)
+        activity1 = generate_activity(name: name, scope: scope, start: 0.5)
+        activity1.create()
+        activity2 = generate_activity(name: name, scope: scope, start: 2.0)
+        activity2.create()
+        # Derive the range from the created activities. Recomputing DateTime.now
+        # here can tick a second past activity1's start, putting it outside the
+        # range and making this spec flaky.
+        ret = ActivityModel.range_destroy(name: name, scope: scope, min: activity1.start, max: activity2.start)
         expect(ret).to eql(2)
         count = ActivityModel.count(name: name, scope: scope)
         expect(count).to eql(0)

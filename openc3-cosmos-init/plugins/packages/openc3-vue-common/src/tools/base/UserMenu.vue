@@ -118,9 +118,10 @@
 </template>
 
 <script>
-import { Api } from '@openc3/js-common/services'
+import { Api, logUnlessAuthRequired } from '@openc3/js-common/services'
 import { OpenC3Api } from '@openc3/js-common/services'
 import { UpgradeToEnterpriseDialog } from '@/components'
+import { getCachedSetting } from '@/util'
 import DOMPurify from 'dompurify'
 
 export default {
@@ -176,14 +177,13 @@ export default {
                 this.activeUsers = ['None']
               }
             })
-            .catch(console.error)
+            .catch(logUnlessAuthRequired)
         }
       }
     },
   },
   created: function () {
-    this.api
-      .get_setting('news_feed')
+    getCachedSetting('news_feed')
       .then((response) => {
         if (response) {
           this.newsFeed = response
@@ -230,11 +230,19 @@ export default {
             })
           }
         })
-        .catch(console.error)
+        .catch(logUnlessAuthRequired)
     },
-    logout: function () {
-      OpenC3Auth.logout()
-      Api.put(`/openc3-api/users/logout/${this.username}`).catch(console.error)
+    logout: async function () {
+      // Terminating the server side session requires the current token, and
+      // OpenC3Auth.logout() clears it (and reloads the page), so this request
+      // has to go out first.
+      try {
+        await Api.put(`/openc3-api/users/logout/${this.username}`)
+      } catch (error) {
+        logUnlessAuthRequired(error)
+      } finally {
+        OpenC3Auth.logout()
+      }
     },
     login: function () {
       OpenC3Auth.login(location.href)

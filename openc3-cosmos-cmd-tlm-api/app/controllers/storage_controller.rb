@@ -17,6 +17,7 @@
 
 require 'openc3/utilities/local_mode'
 require 'openc3/utilities/bucket'
+require 'openc3/utilities/config_overlay'
 require 'openc3/utilities/bucket_utilities'
 require 'openc3/utilities/ctrf'
 require 'openc3/utilities/process_manager'
@@ -618,24 +619,14 @@ class StorageController < ApplicationController
   # to write. Non-admins may write config/SCOPE/targets_modified/... and
   # config/SCOPE/tmp/..., but NOT the cmd_tlm overlay
   # (config/SCOPE/targets_modified/TARGET/cmd_tlm/...), which is loaded and
-  # executed as code by PacketConfig (ERB rendering + GENERIC_*_CONVERSION eval).
+  # executed as code by PacketConfig (GENERIC_*_CONVERSION eval).
   #
-  # The key must be canonical: a positional segment check (parts[1], parts[3])
-  # can otherwise be bypassed by a key the object store normalizes differently,
-  # so empty '//' segments, '.'/'..' segments, and leading/trailing slashes are
-  # rejected here (forcing the admin path). sanitize_path already rejects '..'.
+  # The canonical-key and cmd_tlm rules live in OpenC3::ConfigOverlay so every
+  # writer that can reach the overlay (this presigned upload, tables_controller,
+  # scripts_controller) enforces exactly the same thing.
   def non_admin_config_overlay_write?(bucket_param, path)
     return false unless bucket_param == 'OPENC3_CONFIG_BUCKET'
-    return false if path.nil? || path.empty?
-    return false if path.start_with?('/') || path.end_with?('/')
-    parts = path.split('/')
-    return false if parts.any? { |p| p.empty? || p == '.' || p == '..' }
-    # parts: SCOPE / <area> / TARGET / <subdir> / ...
-    area = parts[1]
-    return false unless area == 'targets_modified' || area == 'tmp'
-    # cmd_tlm overlay (parts[3]) is code-execution territory; require admin.
-    return false if area == 'targets_modified' && parts[3] == 'cmd_tlm'
-    true
+    OpenC3::ConfigOverlay.non_admin_writable_key?(path)
   end
 
   def sanitize_path(path)

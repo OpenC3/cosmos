@@ -319,6 +319,33 @@ class TestRunningScriptWebSocketApiReady(unittest.TestCase):
         )
         self.assertEqual(json.loads(frames[-1]["data"]), {"action": "ready"})
 
+    def test_read_returns_batched_events_one_at_a_time(self):
+        api = RunningScriptWebSocketApi(
+            id="spec-script-1",
+            url="ws://test.com/script-api/cable",
+            authentication=mock_auth(),
+        )
+        api.stream = FakeWebSocketStream()
+        api.subscribed = True
+        api.stream.queue_read(
+            '{"message":[{"type":"line","line_no":1},{"type":"output","line":"hi"}]}'
+        )
+
+        self.assertEqual(api.read(), {"type": "line", "line_no": 1})
+        self.assertEqual(api.read(), {"type": "output", "line": "hi"})
+
+    def test_read_accepts_an_individual_event_from_an_older_backend(self):
+        api = RunningScriptWebSocketApi(
+            id="spec-script-1",
+            url="ws://test.com/script-api/cable",
+            authentication=mock_auth(),
+        )
+        api.stream = FakeWebSocketStream()
+        api.subscribed = True
+        api.stream.queue_read('{"message":{"type":"complete"}}')
+
+        self.assertEqual(api.read(), {"type": "complete"})
+
 
 class TestWebSocketApiInit(unittest.TestCase):
     def test_stores_the_timeouts_for_the_stream(self):
