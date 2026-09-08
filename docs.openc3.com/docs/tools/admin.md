@@ -97,6 +97,8 @@ The Secrets tab allows you to create secrets that can be used by Interfaces or M
 
 ![Secrets](/img/admin/secrets.png)
 
+See the [Secrets guide](../guides/secrets.md) for the full picture: the REST API equivalents, rotation, Kubernetes deployments \(where this tab is not used and secrets come from Kubernetes Secrets instead\), and integrating external managers like HashiCorp Vault.
+
 ### Settings
 
 The Settings tab contains various settings used throughout COSMOS. These including clearing saved tool configuration, hiding the Astro Clock, changing the system time zone, adding a top and bottom banner, creating a subtitle in the navigation bar, changing the theme, and changing the URLs of the various package libraries.

@@ -349,7 +349,7 @@ ROUTER SERIAL_ROUTER tcpip_server_interface.rb 2950 2950 10.0 nil BURST
 ### SECRET
 <span class="badge badge--secondary since-right">Since 5.3.0</span>**Define a secret needed by this interface**
 
-Defines a secret for this interface and optionally assigns its value to an option. For more information see [Admin Secrets](/docs/tools/admin#secrets).
+Defines a secret for this interface and optionally assigns its value to an option. For more information see the [Secrets guide](/docs/guides/secrets) and [Admin Secrets](/docs/tools/admin#secrets).
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -464,6 +464,80 @@ Operator Shard. Only used if running multiple operator containers typically in K
 Example Usage:
 ```cosmos
 SHARD 0
+```
+
+### BRIDGE
+<span class="badge badge--secondary since-right">Since _Coming Soon_</span>**Name of the bridge to run this interface on**
+
+Run this interface on a bridge host rather than within COSMOS. Note only python is supported.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Bridge Name | Bridge Name - Typically DEFAULT | True |
+
+Example Usage:
+```cosmos
+BRIDGE DEFAULT
+```
+
+### BRIDGE_PROTOCOL
+<span class="badge badge--secondary since-right">Since _Coming Soon_</span>**Bridge Protocols modify the bridge interface by processing the data**
+
+Protocols can be either READ, WRITE, or READ_WRITE. READ protocols act on the data received by the interface while write acts on the data before it is sent out. READ_WRITE applies the protocol to both reading and writing.<br/><br/> For information on creating your own custom protocol please see [Protocols](../configuration/protocols.md)
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Type | Whether to apply the protocol on incoming data, outgoing data, or both<br/><br/>Valid Values: <span class="values">READ, WRITE, READ_WRITE</span> | True |
+| Protocol Filename or Classname | Ruby or Python filename or class name which implements the protocol | True |
+| Protocol specific parameters | Additional parameters used by the protocol | False |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+```cosmos
+INTERFACE DATA_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
+  MAP_TARGET DATA
+  BRIDGE_PROTOCOL READ openc3/interfaces/protocols/ignore_packet_protocol.py INST IMAGE # Drop all INST IMAGE packets
+```
+</TabItem>
+</Tabs>
+
+### BRIDGE_OPTION
+<span class="badge badge--secondary since-right">Since _Coming Soon_</span>**Set a parameter on a bridged interface**
+
+When a bridge option is set the bridge interface class calls the set_option method. Custom interfaces can override set_option to handle any additional options they want.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Name | The option to set. OpenC3 defines several options on the core provided interfaces. The SerialInterface defines FLOW_CONTROL which can be NONE (default) or RTSCTS and DATA_BITS which changes the data bits of the serial interface. The TcpipServerInterface and HttpServerInterface define LISTEN_ADDRESS which is the IP address to accept connections on (default 0.0.0.0). | True |
+| Parameters | Parameters to pass to the option | False |
+
+Example Usage:
+```cosmos
+INTERFACE SERIAL_INT serial_interface.rb COM1 COM1 115200 NONE 1 10.0 nil
+  BRIDGE DEFAULT
+  BRIDGE_OPTION FLOW_CONTROL RTSCTS
+  BRIDGE_OPTION DATA_BITS 8
+```
+
+### BRIDGE_SECRET
+<span class="badge badge--secondary since-right">Since _Coming Soon_</span>**Define a bridge secret needed by this bridge interface**
+
+Defines a bridge secret for this bridge interface and optionally assigns its value to an option. For more information see [Admin Secrets](/docs/tools/admin#secrets).
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Type | ENV or FILE.  ENV will mount the secret into an environment variable. FILE mounts the secret into a file. | True |
+| Secret Name | The name of the secret to retrieve from the Admin / Secrets tab. For more information see [Admin Secrets](/docs/tools/admin#secrets). | True |
+| Environment Variable or File Path | Environment variable name or file path to store secret. Note that if you use the Option Name to set an option to the secret value, this value doesn't really matter as long as it is unique. | True |
+| Option Name | Interface option to pass the secret value. This is the primary way to pass secrets to interfaces. | False |
+| Secret Store Name | Name of the secret store for stores with multipart keys | False |
+
+Example Usage:
+```cosmos
+INTERFACE SERIAL_INT serial_interface.rb COM1 COM1 115200 NONE 1 10.0 nil
+  BRIDGE DEFAULT
+  BRIDGE_SECRET ENV USERNAME ENV_USERNAME USERNAME
+  BRIDGE_SECRET FILE KEY "/tmp/DATA/cert" KEY
 ```
 
 ## ROUTER
@@ -798,7 +872,7 @@ Container to execute and run the microservice in. Only used in COSMOS Enterprise
 ### SECRET
 <span class="badge badge--secondary since-right">Since 5.3.0</span>**Define a secret needed by this microservice**
 
-Defines a secret for this microservice. For more information see [Admin Secrets](/docs/tools/admin#secrets). Note that unlike the INTERFACE SECRET, the microservice SECRET does not take an Option Name parameter, because the secret value is injected directly into the microservice process as an environment variable (Type ENV) or written to a file (Type FILE).
+Defines a secret for this microservice. For more information see the [Secrets guide](/docs/guides/secrets) and [Admin Secrets](/docs/tools/admin#secrets). Note that unlike the INTERFACE SECRET, the microservice SECRET does not take an Option Name parameter, because the secret value is injected directly into the microservice process as an environment variable (Type ENV) or written to a file (Type FILE).
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|

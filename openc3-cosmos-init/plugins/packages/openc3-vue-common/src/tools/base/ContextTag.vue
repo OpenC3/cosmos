@@ -25,13 +25,12 @@
 </template>
 
 <script>
-import { OpenC3Api } from '@openc3/js-common/services'
+import { getCachedSetting, invalidateCachedSetting } from '@/util'
 
 export default {
   name: 'ContextTag',
   data() {
     return {
-      api: new OpenC3Api(),
       contextTag: {
         text: null,
         fontColor: null,
@@ -51,24 +50,32 @@ export default {
     this.stopContextTagAutoRefresh()
   },
   methods: {
+    // The first read joins the batched get_settings the rest of the base
+    // components issue on page load. getCachedSetting never rejects - it falls
+    // back on failure - so there's nothing here to catch.
     getContextTagSettings() {
-      return this.api
-        .get_setting('context_tag')
-        .then((response) => {
-          if (response) {
-            const parsed = JSON.parse(response)
-            this.contextTag = {
-              text: parsed.text,
-              fontColor: parsed.fontColor,
-              backgroundColor: parsed.backgroundColor,
-            }
+      return getCachedSetting('context_tag').then((response) => {
+        if (!response) return
+        try {
+          const parsed = JSON.parse(response)
+          this.contextTag = {
+            text: parsed.text,
+            fontColor: parsed.fontColor,
+            backgroundColor: parsed.backgroundColor,
           }
-        })
-        .catch(console.error)
+        } catch (error) {
+          // Malformed setting, keep whatever we're already showing. Still a real
+          // problem worth reporting, unlike the auth errors this used to log.
+          console.error(error)
+        }
+      })
     },
     startContextTagAutoRefresh() {
       this.stopContextTagAutoRefresh()
       this.contextTagRefreshInterval = setInterval(() => {
+        // The cache is write-once per session, so drop our entry first or every
+        // refresh after the first would be served the same stale value
+        invalidateCachedSetting('context_tag')
         this.getContextTagSettings()
       }, 60000)
     },

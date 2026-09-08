@@ -23,6 +23,7 @@ module OpenC3
   # Base class for interfaces that send and receive messages over UDP
   class UdpInterface < Interface
     HOST_127_0_0_1 = '127.0.0.1'
+    HOST_0_0_0_0 = '0.0.0.0'
 
     # @param hostname [String] Machine to connect to
     # @param write_dest_port [Integer] Port to write commands to
@@ -77,8 +78,11 @@ module OpenC3
       @read_timeout = ConfigParser.handle_nil(read_timeout)
       @read_timeout = @read_timeout.to_f if @read_timeout
       @bind_address = ConfigParser.handle_nil(bind_address)
-      if @bind_address && @bind_address.casecmp('LOCALHOST').zero?
-        @bind_address = HOST_127_0_0_1
+      if @bind_address
+        @bind_address = HOST_127_0_0_1 if @bind_address.casecmp('LOCALHOST').zero?
+      else
+        # nil means all local addresses which is what 0.0.0.0 means
+        @bind_address = HOST_0_0_0_0
       end
       @write_socket = nil
       @read_socket = nil
@@ -91,9 +95,9 @@ module OpenC3
       result = ''
       result += " #{@hostname}:#{@write_dest_port} (write dest port)" if @write_dest_port
       result += " #{@write_src_port} (write src port)" if @write_src_port
-      result += " #{@hostname}:#{@read_port} (read)" if @read_port
+      result += " #{@bind_address}:#{@read_port} (read)" if @read_port
       result += " #{@interface_address} (interface addr)" if @interface_address
-      result += " #{@bind_address} (bind addr)" if @bind_address != '0.0.0.0'
+      result += " #{@bind_address} (bind addr)" if @bind_address != HOST_0_0_0_0
       return result.strip
     end
 
@@ -102,13 +106,20 @@ module OpenC3
     # the constructor.
     def connect
       if @read_port and @write_dest_port and @write_src_port and (@read_port == @write_src_port)
+        # read_multicast is false because this socket is not connected and thus
+        # doesn't filter by peer address. Joining the multicast group we write to
+        # would deliver our own commands back to us as telemetry (multicast
+        # loopback is enabled by default).
         @read_socket = UdpReadWriteSocket.new(
           @read_port,
           @bind_address,
           @write_dest_port,
           @hostname,
           @interface_address,
-          @ttl
+          @ttl,
+          false, # read_multicast
+          true,  # write_multicast
+          false  # connect_socket
         )
         @write_socket = @read_socket
       else

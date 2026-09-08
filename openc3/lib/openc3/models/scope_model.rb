@@ -154,6 +154,8 @@ module OpenC3
     def create(update: false, force: false, queued: false)
       # Ensure there are no "." in the scope name - prevents gems accidentally becoming scope names
       raise "Invalid scope name: #{@name}" if !/^[a-zA-Z0-9_-]+$/.match?(@name)
+      # Double underscore is the COSMOS separator used to build microservice and topic names
+      raise "Invalid scope name: #{@name} (double underscore not allowed)" if @name.include?("__")
       @name = @name.upcase
       @scope = @name # Ensure @scope matches @name
       # Ensure the various cycle and retain times are integers

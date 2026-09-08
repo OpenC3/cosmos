@@ -81,19 +81,40 @@ class ConfigParser:
             url = self.url
         return self.Error(self, message, usage, url)
 
-    # Can be called during parsing to read a referenced file
+    # Can be called during parsing to read a referenced file. The filename must
+    # be relative to the configuration file being parsed and must resolve to a
+    # location inside that file's directory.
     def read_file(self, filename: str) -> bytes:
-        # Assume the file is there. If not we raise a pretty obvious error
-        if os.path.abspath(filename) == filename:  # absolute path
-            path = filename
-        else:  # relative to the current @filename
-            if not self.filename:
-                raise ValueError(f"Cannot resolve relative path '{filename}' - no current file context")
-            path = os.path.join(os.path.dirname(self.filename), filename)
+        path = self._resolve_config_path(filename)
         data: bytes = b""
         with open(path, "rb") as file:
             data = file.read()
         return data
+
+    # Resolves a filename referenced by a configuration file (TEMPLATE_FILE, etc)
+    # into an absolute path contained by the directory of the file being parsed.
+    # Absolute paths and paths containing '..' are rejected so a configuration
+    # file can not read arbitrary files on the filesystem.
+    #
+    # self.param filename [String] Relative path from the configuration file
+    # self.return [String] Absolute path to the referenced file
+    def _resolve_config_path(self, filename: str) -> str:
+        filename = str(filename)
+        if not filename.strip():
+            raise self.error("Filename must be given")
+        if os.path.isabs(filename) or os.path.abspath(filename) == filename:
+            raise self.error(f"Absolute paths are not allowed: {filename}")
+        if ".." in filename:
+            raise self.error(f"Path traversal is not allowed: {filename}")
+        if not self.filename:
+            raise self.error(f"No configuration file is being parsed, can not resolve: {filename}")
+
+        base = os.path.abspath(os.path.dirname(self.filename))
+        path = os.path.abspath(os.path.join(base, filename))
+        # Final containment check in case the OS normalizes something unexpected
+        if not path.startswith(base + os.sep):
+            raise self.error(f"Path is outside the configuration directory: {filename}")
+        return path
 
     def parse_file(
         self,

@@ -2170,5 +2170,53 @@ module OpenC3
         expect(packet.read("CBOR.ITEM5")).to eql []
       end
     end
+
+    describe "short_buffer_allowed" do
+      before(:each) do
+        @packet = Packet.new("TGT", "PKT")
+        @packet.append_item("ID", 16, :UINT)
+        item = @packet.append_item("VAL", 16, :UINT)
+        item.read_conversion = GenericConversion.new("value * 2")
+        item.states = { "GOOD" => 1 }
+        item.units = "V"
+        item.format_string = "%0.1f"
+        item.limits.values = { :DEFAULT => [1, 2, 4, 5] }
+        item.limits.enabled = true
+        @packet.short_buffer_allowed = true
+        @packet.buffer = "\x00\x01"
+      end
+
+      it "returns nil for all value types of an item outside the buffer" do
+        expect(@packet.read("ID")).to eq(1)
+        # Conversions, states, format strings and units must not be applied to nil
+        expect(@packet.read("VAL", :RAW)).to be_nil
+        expect(@packet.read("VAL", :CONVERTED)).to be_nil
+        expect(@packet.read("VAL", :FORMATTED)).to be_nil
+        expect(@packet.read("VAL", :WITH_UNITS)).to be_nil
+      end
+
+      it "reads all items with limits states without raising" do
+        expect(@packet.read_all(:CONVERTED)).to eq([["ID", 1], ["VAL", nil]])
+        expect(@packet.read_all_with_limits_states(:CONVERTED)).to eq([["ID", 1, nil], ["VAL", nil, nil]])
+      end
+
+      it "checks limits without raising and leaves the item state nil" do
+        @packet.check_limits
+        expect(@packet.get_item("VAL").limits.state).to be_nil
+      end
+
+      it "does not identify a packet whose id item is outside the buffer" do
+        packet = Packet.new("TGT", "PKT")
+        packet.append_item("ID1", 16, :UINT)
+        item = packet.append_item("ID2", 16, :UINT)
+        item.id_value = 5
+        packet.update_id_items(item)
+        packet.short_buffer_allowed = true
+
+        expect(packet.identify?("\x00\x01")).to be false
+        expect(packet.identify?("\x00\x01\x00\x05")).to be true
+        expect(packet.identify?("\x00\x01\x00\x06")).to be false
+      end
+    end
   end
 end

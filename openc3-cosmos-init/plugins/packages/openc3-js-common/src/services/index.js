@@ -1,5 +1,5 @@
 /*
-# Copyright 2024, OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -16,5 +16,12 @@ import axios from './axios'
 import Cable from './cable'
 import { ConfigParserError, ConfigParserService } from './configParser'
 import OpenC3Api from './openc3Api'
+
+export {
+  isAuthRequiredError,
+  isUnauthorizedError,
+  logUnlessAuthRequired,
+  refreshToken,
+} from './authGuard'
 
 export { Api, axios, Cable, ConfigParserError, ConfigParserService, OpenC3Api }

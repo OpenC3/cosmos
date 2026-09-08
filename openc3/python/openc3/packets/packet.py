@@ -560,6 +560,10 @@ class Packet(Structure):
             value = copy.copy(given_raw)
         else:
             value = super().read_item(item, "RAW", buffer)
+        # An item beyond the end of a short buffer reads as None (ALLOW_SHORT).
+        # Conversions, states and format strings can't be applied to a None value.
+        if value is None and self.short_buffer_allowed and item.data_type != "DERIVED":
+            return None
         derived_raw = False
         if item.data_type == "DERIVED" and value_type == "RAW":
             value_type = "CONVERTED"

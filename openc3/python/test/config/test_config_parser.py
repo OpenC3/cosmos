@@ -48,14 +48,22 @@ class TestConfigParser(unittest.TestCase):
         self.assertEqual(results["KEYWORD2"], ["PARAM1"])
         tf.close()
 
-    def test_parse_file_reads_an_absolute_file(self):
-        tf = tempfile.NamedTemporaryFile(mode="w+t")
-        tf.writelines("EXAMPLE DATA")
-        tf.seek(0)
+    def test_read_file_rejects_an_absolute_file(self):
+        with tempfile.NamedTemporaryFile(mode="w+t") as tf:
+            tf.writelines("EXAMPLE DATA")
+            tf.seek(0)
 
-        data = self.cp.read_file(tf.name)
-        self.assertEqual(data, b"EXAMPLE DATA")
-        tf.close()
+            with self.assertRaisesRegex(ConfigParser.Error, "Absolute paths are not allowed"):
+                self.cp.read_file(tf.name)
+
+    def test_read_file_rejects_path_traversal(self):
+        with tempfile.NamedTemporaryFile(mode="w+t") as tf:
+            tf.writelines("EXAMPLE DATA")
+            tf.seek(0)
+            self.cp.filename = tf.name
+
+            with self.assertRaisesRegex(ConfigParser.Error, "Path traversal is not allowed"):
+                self.cp.read_file("../../../../etc/passwd")
 
     def test_parse_file_reads_a_relative_file(self):
         tf = tempfile.NamedTemporaryFile(mode="w+b")

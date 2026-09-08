@@ -118,15 +118,19 @@ class ClientHandler:
             rate_update_task.cancel()
             stream_task.cancel()
 
-            try:
-                await rate_update_task
-            except asyncio.CancelledError:
-                pass
-
-            try:
-                await stream_task
-            except asyncio.CancelledError:
-                pass
+            # gather() with return_exceptions=True absorbs the CancelledError
+            # raised by the tasks we just cancelled, without swallowing a
+            # CancelledError targeting this task (which must propagate).
+            results = await asyncio.gather(
+                rate_update_task, stream_task, return_exceptions=True
+            )
+            for result in results:
+                if isinstance(result, BaseException) and not isinstance(
+                    result, asyncio.CancelledError
+                ):
+                    logger.error(
+                        f"[{self.port_name}] Background task failed: {result}"
+                    )
 
             self.writer.close()
             try:
@@ -402,10 +406,10 @@ class ThroughputServer:
 
         try:
             await stop_event.wait()
-        except asyncio.CancelledError:
-            pass
-
-        await self.stop()
+        finally:
+            # Runs on normal shutdown and on cancellation; a CancelledError
+            # propagates after cleanup instead of being swallowed.
+            await self.stop()
 
 
 def main():
