@@ -192,7 +192,9 @@ _openc3_cli() {
             'destroyscope:destroy a scope'
             'localinit:initialize local mode'
             'initbuckets:initialize buckets'
+            'initsettings:seed settings from OPENC3_SETTING_* env vars'
             'runmigrations:run database migrations'
+            'reingest:reingest log files for a job (spawned internally)'
             'setpassword:set initial password from OPENC3_API_PASSWORD'
             'migratepassword:migrate password hash to argon2'
             'migratetouv:migrate plugin to per-plugin UV virtual environment'
@@ -508,10 +510,30 @@ _openc3_cli() {
                 _message 'SCOPE (default: DEFAULT)'
             fi
             ;;
+        reingest)
+            # Both arguments are required - unlike most commands, SCOPE has no default
+            if (( CURRENT == 2 )); then
+                _message 'JOB_ID'
+            elif (( CURRENT == 3 )); then
+                _message 'SCOPE'
+            fi
+            ;;
         setpassword|migratepassword)
             if (( CURRENT == 2 )); then
                 local -a options
                 options=('--help:show help message' '-h:show help message')
+                _describe 'options' options
+            fi
+            ;;
+        initsettings)
+            if (( CURRENT == 2 )); then
+                local -a options
+                options=(
+                    '--dry-run:report what would be seeded without writing'
+                    '--export:print stored settings as compose environment lines'
+                    '--help:show help message'
+                    '-h:show help message'
+                )
                 _describe 'options' options
             fi
             ;;

@@ -106,6 +106,10 @@ The Settings tab contains various settings used throughout COSMOS. These includi
 ![Settings1](/img/admin/settings1.png)
 ![Settings2](/img/admin/settings2.png)
 
+Most settings on this tab can also be configured at deploy time with an `OPENC3_SETTING_<NAME>` environment variable, so a fresh install comes up already configured instead of requiring a pass through this tab. A setting changed here is then left alone on restart. See [cli initsettings](../getting-started/cli.md#initsettings) for the list of settings that can be seeded, and [Docker Compose](../configuration/compose.md#configuring-admin-settings-at-deploy-time) for where the variables go.
+
+The exceptions are the controls stored in your browser's local storage rather than server-side, which are per-browser and cannot be set from the environment: Suppressed Warnings, Default Configs, and the Vim mode and default scripting language on the Code Editor Settings card. The Script File Locking and Script Lifecycle switches on that same card are server-side and can be seeded.
+
 #### Theme
 
 COSMOS includes several built-in color themes that change the look and feel of the entire application. To change the theme, select one from the Theme dropdown and click Save. Refresh the page to see the changes.
