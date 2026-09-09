@@ -64,16 +64,17 @@ module OpenC3
 
       it "deletes" do
         # delete_config only touches a file when local mode is on and the local
-        # mode path exists, so set both up here. Without this the test only
-        # passed in the container, where OPENC3_LOCAL_MODE is set and /plugins
-        # exists; anywhere else delete_tool_config returned nil early.
-        config_path = "#{@local_mode_dir}/DEFAULT/tool_config/toolie/namely.json"
-        FileUtils.mkdir_p(File.dirname(config_path))
-        File.write(config_path, '{}')
+        # mode path exists, which the before(:each) hook sets up. Without that
+        # this test only passed in the container, where OPENC3_LOCAL_MODE is set
+        # and /plugins exists; anywhere else delete_tool_config returned nil early.
+        ToolConfigModel.save_config('toolie', 'namely', '{}', local_mode: true, scope: 'DEFAULT')
+        config_path = File.join(@local_mode_dir, 'DEFAULT', 'tool_config', 'toolie', 'namely.json')
+        expect(File.exist?(config_path)).to be true
 
         names = ToolConfigModel.delete_config('toolie', 'namely', local_mode: true, scope: 'DEFAULT')
         expect(names[0]).to match(/.*\/DEFAULT\/tool_config\/toolie\/namely.json.*/)
         expect(File.exist?(config_path)).to be false
+        expect(ToolConfigModel.load_config('toolie', 'namely', scope: 'DEFAULT')).to be_nil
       end
 
       it "deletes without local mode" do

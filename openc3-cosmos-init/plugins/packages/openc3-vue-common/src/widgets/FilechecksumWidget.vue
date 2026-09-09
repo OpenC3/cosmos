@@ -70,7 +70,6 @@
 </template>
 
 <script>
-import { Api } from '@openc3/js-common/services'
 import Widget from './Widget'
 
 export default {
@@ -127,30 +126,6 @@ export default {
       const hashArray = Array.from(new Uint8Array(hashBuffer))
       return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
     },
-    async fetchFile(filePath) {
-      const scope = window.openc3Scope || 'DEFAULT'
-      let objectPath = `${scope}/targets_modified/${filePath}`
-      let response = await Api.get(
-        `/openc3-api/storage/download_file/${encodeURIComponent(objectPath)}`,
-        {
-          params: { bucket: 'OPENC3_CONFIG_BUCKET' },
-          headers: { 'Ignore-Errors': '404,500' },
-        },
-      ).catch(() => null)
-
-      if (!response || response.status === 404) {
-        objectPath = `${scope}/targets/${filePath}`
-        response = await Api.get(
-          `/openc3-api/storage/download_file/${encodeURIComponent(objectPath)}`,
-          { params: { bucket: 'OPENC3_CONFIG_BUCKET' } },
-        )
-      }
-
-      if (response?.data?.contents) {
-        return atob(response.data.contents)
-      }
-      throw new Error('File not found')
-    },
     async copyChecksum(file) {
       if (!file.checksum) return
       try {
@@ -163,6 +138,9 @@ export default {
     },
     async fetchChecksums() {
       this.loading = true
+      // The refresh button exists to pick up a file that changed since we last
+      // looked, which includes it having become modified
+      this.clearTargetFileCache()
       this.files.forEach((f) => {
         f.checksum = null
         f.error = null
@@ -170,7 +148,7 @@ export default {
 
       const results = await Promise.all(
         this.files.map((file) =>
-          this.fetchFile(file.path)
+          this.fetchTargetFile(file.path)
             .then((content) => this.computeChecksum(content))
             .catch((err) => ({ error: err.message || 'File not found' })),
         ),
