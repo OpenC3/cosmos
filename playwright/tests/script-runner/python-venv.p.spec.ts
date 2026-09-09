@@ -18,16 +18,13 @@ test.use({
   toolName: 'Script Runner',
 })
 
-// These specs depend on the PW_TEST plugin shipping a pyproject.toml (see
-// playwright/fixtures/pw-test-pyproject.toml), which makes PluginModel build a
-// per-plugin venv containing cowsay. With no plugin venv on disk the
-// plugin_python_venvs endpoint returns an empty list and the selector never
-// renders, so a missing fixture shows up as "selector not visible" below.
-
-// cowsay is in the plugin venv only, never the openc3 base venv, so which
-// interpreter environment ran the script is visible in the output.
-const IMPORT_COWSAY = `import cowsay
-print(cowsay.get_output_string('cow', 'venv ok'))`
+// Global setup waits for the demo plugin, which declares numpy in its
+// pyproject.toml. PW_TEST is installed and removed by the admin plugin tests,
+// so it cannot serve as a fixture for this independently scheduled spec.
+// Both environments have numpy; its source path proves which copy was loaded.
+const IMPORT_NUMPY = `import numpy
+print('numpy source: ' + numpy.__file__)`
+const DEMO_VENV = /__openc3-cosmos-demo-.*_gem__/
 
 // Spawning a fresh Python interpreter and resolving the venv takes noticeably
 // longer than a Ruby script start, especially under CI load.
@@ -57,41 +54,39 @@ test('offers the plugin venv alongside the system venv', async ({
 }) => {
   // detectLanguage() sees the import and treats the untitled buffer as Python,
   // which is what makes showPythonVenv true.
-  await page.locator('textarea').fill(IMPORT_COWSAY)
+  await page.locator('textarea').fill(IMPORT_NUMPY)
   await expect(page.locator('[data-test=python-venv-select]')).toBeVisible()
 
   const labels = await venvOptions(page)
   expect(labels).toContain('system')
-  // Everything else in the list comes from /gems/plugin_venvs, so at least one
-  // non-system entry proves the fixture plugin's venv was built and listed.
-  expect(labels.filter((label) => label !== 'system').length).toBeGreaterThan(0)
+  expect(labels.some((label) => DEMO_VENV.test(label))).toBe(true)
 })
 
 test('runs a script against the selected plugin venv', async ({
   page,
   utils,
 }) => {
-  await page.locator('textarea').fill(IMPORT_COWSAY)
+  await page.locator('textarea').fill(IMPORT_NUMPY)
   await expect(page.locator('[data-test=python-venv-select]')).toBeVisible()
 
-  const pluginVenv = (await venvOptions(page)).find(
-    (label) => label !== 'system',
+  const pluginVenv = (await venvOptions(page)).find((label) =>
+    DEMO_VENV.test(label),
   )
   expect(pluginVenv).toBeTruthy()
   await selectVenv(page, pluginVenv as string)
 
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'venv ok',
+    `numpy source: /gems/plugin_venvs/${pluginVenv}/.venv/`,
     { timeout: RUN_TIMEOUT },
   )
 })
 
-test('cannot import a plugin package under the system venv', async ({
+test('loads the system package under the system venv', async ({
   page,
   utils,
 }) => {
-  await page.locator('textarea').fill(IMPORT_COWSAY)
+  await page.locator('textarea').fill(IMPORT_NUMPY)
   await expect(page.locator('[data-test=python-venv-select]')).toBeVisible()
 
   // 'system' is the default, but select it explicitly so the test states its
@@ -99,11 +94,9 @@ test('cannot import a plugin package under the system venv', async ({
   await selectVenv(page, 'system')
 
   await page.locator('[data-test=start-button]').click()
-  // The base venv has no cowsay, so the import is what fails - this is the
-  // negative half that proves the previous test used the plugin venv and not
-  // simply a package that happened to be available everywhere.
+  // Selecting system must load the base copy, not the demo plugin's copy.
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'ModuleNotFoundError',
+    'numpy source: /openc3/python/.venv/',
     { timeout: RUN_TIMEOUT },
   )
 })
