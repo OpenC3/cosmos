@@ -17,13 +17,15 @@
 
 require 'openc3/top_level'
 require 'openc3/models/model'
+require 'openc3/models/config_keyword_model'
 require 'openc3/models/metric_model'
 require 'openc3/topics/config_topic'
 require 'openc3/utilities/bucket'
-require 'openc3/utilities/secrets'
 
 module OpenC3
   class MicroserviceModel < Model
+    include ConfigKeywordModel
+
     PRIMARY_KEY = 'openc3_microservices'
 
     attr_accessor :cmd
@@ -197,24 +199,7 @@ module OpenC3
         parser.verify_num_parameters(1, 1, "#{keyword} <Dir>")
         @work_dir = parameters[0]
       when 'PORT'
-        usage = "PORT <Number> <Protocol (Optional)"
-        parser.verify_num_parameters(1, 2, usage)
-        begin
-          @ports << [Integer(parameters[0])]
-        rescue # In case Integer fails
-          raise ConfigParser::Error.new(parser, "Port must be an integer: #{parameters[0]}", usage)
-        end
-        protocol = ConfigParser.handle_nil(parameters[1])
-        if protocol
-          # Per https://kubernetes.io/docs/concepts/services-networking/service/#protocol-support
-          if %w(TCP UDP SCTP).include?(protocol.upcase)
-            @ports[-1] << protocol.upcase
-          else
-            raise ConfigParser::Error.new(parser, "Unknown port protocol: #{parameters[1]}", usage)
-          end
-        else
-          @ports[-1] << 'TCP'
-        end
+        parse_port(parser, keyword, parameters)
       when 'TOPIC'
         parser.verify_num_parameters(1, 1, "#{keyword} <Topic Name>")
         @topics << parameters[0]
@@ -273,26 +258,6 @@ module OpenC3
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Microservice: #{keyword} #{parameters.join(" ")}")
       end
       return nil
-    end
-
-    # Validate a SECRET definition. FILE type paths are restricted to
-    # Secrets.secret_file_dir to prevent reading or overwriting arbitrary files.
-    def validate_secret(parser, keyword, parameters)
-      type = parameters[0].to_s.upcase
-      unless ['ENV', 'FILE'].include?(type)
-        raise ConfigParser::Error.new(parser, "Unknown secret type '#{parameters[0]}' for #{keyword}. Must be ENV or FILE.")
-      end
-      # Normalize in place so the stored secret matches what the operator and
-      # Secrets.setup match on, both of which compare against 'ENV' / 'FILE' and
-      # use the path exactly as given.
-      parameters[0] = type
-      if type == 'FILE'
-        begin
-          parameters[2] = Secrets.validate_file_path(parameters[2])
-        rescue ArgumentError => error
-          raise ConfigParser::Error.new(parser, "#{keyword} #{error.message}")
-        end
-      end
     end
 
     def deploy(gem_path, variables, validate_only: false)

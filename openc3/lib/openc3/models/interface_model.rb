@@ -16,14 +16,16 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/model'
+require 'openc3/models/config_keyword_model'
 require 'openc3/models/microservice_model'
 require 'openc3/models/bridge_model'
 require 'openc3/models/host_interface_microservice_model'
 require 'openc3/models/target_model'
-require 'openc3/utilities/secrets'
 
 module OpenC3
   class InterfaceModel < Model
+    include ConfigKeywordModel
+
     INTERFACES_PRIMARY_KEY = 'openc3_interfaces'
     ROUTERS_PRIMARY_KEY = 'openc3_routers'
 
@@ -421,24 +423,7 @@ module OpenC3
         @env[parameters[0]] = parameters[1]
 
       when 'PORT'
-        usage = "PORT <Number> <Protocol (Optional)"
-        parser.verify_num_parameters(1, 2, usage)
-        begin
-          @ports << [Integer(parameters[0])]
-        rescue # In case Integer fails
-          raise ConfigParser::Error.new(parser, "Port must be an integer: #{parameters[0]}", usage)
-        end
-        protocol = ConfigParser.handle_nil(parameters[1])
-        if protocol
-          # Per https://kubernetes.io/docs/concepts/services-networking/service/#protocol-support
-          if %w(TCP UDP SCTP).include?(protocol.upcase)
-            @ports[-1] << protocol.upcase
-          else
-            raise ConfigParser::Error.new(parser, "Unknown port protocol: #{parameters[1]}", usage)
-          end
-        else
-          @ports[-1] << 'TCP'
-        end
+        parse_port(parser, keyword, parameters)
 
       when 'WORK_DIR'
         parser.verify_num_parameters(1, 1, "#{keyword} <Dir>")
@@ -461,7 +446,7 @@ module OpenC3
         @shard = Integer(parameters[0])
 
       when 'DB_SHARD'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Shard Number Starting from 0>")
+        parser.verify_num_parameters(1, 1, "#{keyword} <DB_Shard Number Starting from 0>")
         @db_shard = Integer(parameters[0])
 
       when 'BRIDGE'
@@ -478,26 +463,6 @@ module OpenC3
       end
 
       return nil
-    end
-
-    # Validate a SECRET / BRIDGE_SECRET definition. FILE type paths are restricted
-    # to Secrets.secret_file_dir to prevent reading or overwriting arbitrary files.
-    def validate_secret(parser, keyword, parameters)
-      type = parameters[0].to_s.upcase
-      unless ['ENV', 'FILE'].include?(type)
-        raise ConfigParser::Error.new(parser, "Unknown secret type '#{parameters[0]}' for #{keyword}. Must be ENV or FILE.")
-      end
-      # Normalize in place so the stored secret matches what the operator and
-      # Secrets.setup match on, both of which compare against 'ENV' / 'FILE' and
-      # use the path exactly as given.
-      parameters[0] = type
-      if type == 'FILE'
-        begin
-          parameters[2] = Secrets.validate_file_path(parameters[2])
-        rescue ArgumentError => error
-          raise ConfigParser::Error.new(parser, "#{keyword} #{error.message}")
-        end
-      end
     end
 
     # Creates a MicroserviceModel to deploy the Interface/Router
