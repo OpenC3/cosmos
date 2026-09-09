@@ -255,6 +255,27 @@ module OpenC3
       end
     end
 
+    describe "max buffer size" do
+      it "rejects a declared length larger than the max buffer size" do
+        @interface.instance_variable_set(:@stream, PreStream.new)
+        @interface.add_protocol(PreidentifiedProtocol, [], :READ_WRITE) # no max_length
+        protocol = @interface.read_protocols[0]
+        # Walk the reducer up to the packet data length field, then declare a 4GB packet
+        data = "\x00" # flags
+        data << "\x00\x00\x00\x01" # time seconds
+        data << "\x00\x00\x00\x02" # time microseconds
+        data << "\x04TGT1" # target name
+        data << "\x03PKT" # packet name
+        data << "\xFF\xFF\xFF\xFF" # packet data length
+        expect { protocol.read_data(data) }.to \
+          raise_error(RuntimeError, /Length value received of 4294967295 bytes exceeds maximum buffer size of 100000000 bytes/)
+        # reset() must clear the multi-stage reducer, not just the buffer, so a
+        # caller which keeps reading does not resume mid-field on fresh data
+        expect(protocol.instance_variable_get(:@data).length).to eq 0
+        expect(protocol.instance_variable_get(:@reduction_state)).to eq :START
+      end
+    end
+
     describe "read" do
       it "handles a sync pattern" do
         @interface.instance_variable_set(:@stream, PreStream.new)

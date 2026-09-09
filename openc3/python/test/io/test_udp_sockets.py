@@ -9,10 +9,11 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import errno
 import select
 import struct
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from openc3.io.udp_sockets import UdpReadSocket, UdpReadWriteSocket, UdpWriteSocket, socket
 
@@ -49,11 +50,56 @@ class TestUdpWriteSocket(unittest.TestCase):
             udp_write.write(b"\x01\x02", 2.0)
         udp_write.close()
 
+    def test_retries_the_send_after_the_socket_becomes_writable(self):
+        udp_read = UdpReadSocket(8888)
+        self.addCleanup(udp_read.close)
+        udp_write = UdpWriteSocket("127.0.0.1", 8888)
+        self.addCleanup(udp_write.close)
+        real_send = udp_write.socket.send
+        calls = []
+
+        def send(*args):
+            calls.append(args)
+            if len(calls) == 1:
+                raise OSError(errno.EAGAIN, "would block")
+            return real_send(*args)
+
+        with patch.object(udp_write, "socket", wraps=udp_write.socket) as mock:
+            mock.send = send
+            udp_write.write(b"\x01\x02", 2.0)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(udp_read.read(), b"\x01\x02")
+
+    def test_raises_on_a_non_retryable_send_error(self):
+        udp = UdpReadWriteSocket(0, "0.0.0.0", 8888, "127.0.0.1", connect_socket=False)
+        real_socket = udp.socket
+        self.addCleanup(real_socket.close)
+        # Non EAGAIN errors are not retryable and must not spin the write loop
+        udp.socket = Mock()
+        udp.socket.sendto.side_effect = OSError(errno.ENETUNREACH, "unreachable")
+        with self.assertRaises(OSError):
+            udp.write(b"\x01\x02", 2.0)
+
+    def test_writes_to_an_unconnected_socket_using_the_address_resolved_at_creation(self):
+        udp_read = UdpReadSocket(8888)
+        self.addCleanup(udp_read.close)
+        # connect_socket False means every write must explicitly address the datagram
+        udp_write = UdpReadWriteSocket(0, "0.0.0.0", 8888, "localhost", connect_socket=False)
+        self.addCleanup(udp_write.close)
+        self.assertEqual(udp_write.external_destination, ("127.0.0.1", 8888))
+        # The destination is resolved once at creation, not on every write
+        with patch("socket.gethostbyname", side_effect=AssertionError("resolved on write")):
+            udp_write.write(b"\x01\x02", 2.0)
+        self.assertEqual(udp_read.read(), b"\x01\x02")
+
     def test_determines_if_a_host_is_multicast(self):
         self.assertFalse(UdpWriteSocket.multicast(None, 80))
-        self.assertFalse(UdpWriteSocket.multicast("224.0.1.1", None))
+        self.assertTrue(UdpWriteSocket.multicast("224.0.1.1", None))
         self.assertFalse(UdpWriteSocket.multicast("127.0.0.1", 80))
         self.assertTrue(UdpWriteSocket.multicast("224.0.1.1", 80))
+
+    def test_returns_false_for_an_unresolvable_host(self):
+        self.assertFalse(UdpWriteSocket.multicast("this-host-does-not-exist.invalid"))
 
 
 class TestUdpReadSocket(unittest.TestCase):
@@ -66,6 +112,17 @@ class TestUdpReadSocket(unittest.TestCase):
         _bytes = struct.pack("<I", udp.getsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF))
         self.assertEqual(socket.inet_ntoa(_bytes), "0.0.0.0")
         udp.close()
+
+    @patch("socket.socket")
+    def test_joins_the_multicast_group(self, mock_socket):
+        UdpReadSocket(8888, "224.0.1.1", "127.0.0.1")
+        membership = socket.inet_aton("224.0.1.1") + socket.inet_aton("127.0.0.1")
+        mock_socket.return_value.setsockopt.assert_any_call(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, membership)
+
+    def test_binds_port_zero_to_an_ephemeral_port(self):
+        udp = UdpReadSocket(0)
+        self.addCleanup(udp.close)
+        self.assertGreater(udp.getsockname()[1], 0)
 
     def test_reads_data(self):
         udp_read = UdpReadSocket(8888)

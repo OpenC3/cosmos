@@ -23,15 +23,26 @@ module OpenC3
     before(:each) do
       mock_redis()
       setup_system()
+      # LocalMode reads OPENC3_LOCAL_MODE_PATH into a constant at load time, so
+      # point it at a temp dir the same way local_mode_spec does rather than
+      # depending on /plugins existing
+      # nil is meaningful: it records that the variable was unset, so the
+      # assignment in after(:each) deletes the key again rather than setting it
+      @saved_local_mode = ENV.fetch('OPENC3_LOCAL_MODE', nil)
+      @saved_local_mode_path = LocalMode::OPENC3_LOCAL_MODE_PATH
+      ENV['OPENC3_LOCAL_MODE'] = '1'
+      @local_mode_dir = Dir.mktmpdir
+      saved_verbose = $VERBOSE; $VERBOSE = nil
+      LocalMode.const_set(:OPENC3_LOCAL_MODE_PATH, @local_mode_dir)
+      $VERBOSE = saved_verbose
     end
 
-    # LocalMode captures its path in a constant at load time, so point it at a
-    # temp dir without the redefinition warning
-    def set_local_mode_path(path)
-      saved_verbose = $VERBOSE
-      $VERBOSE = nil
-      LocalMode.const_set(:OPENC3_LOCAL_MODE_PATH, path)
+    after(:each) do
+      ENV['OPENC3_LOCAL_MODE'] = @saved_local_mode
+      saved_verbose = $VERBOSE; $VERBOSE = nil
+      LocalMode.const_set(:OPENC3_LOCAL_MODE_PATH, @saved_local_mode_path)
       $VERBOSE = saved_verbose
+      FileUtils.rm_rf(@local_mode_dir) if @local_mode_dir
     end
 
     describe "self.tool_config" do
@@ -52,25 +63,23 @@ module OpenC3
       end
 
       it "deletes" do
-        # delete_config only writes to the filesystem in local mode, so enable
-        # it against a temp dir rather than depending on the container /plugins
-        ENV['OPENC3_LOCAL_MODE'] = '1'
-        tmp_dir = Dir.mktmpdir
-        original_path = LocalMode::OPENC3_LOCAL_MODE_PATH
-        set_local_mode_path(tmp_dir)
-        begin
-          ToolConfigModel.save_config('toolie', 'namely', '{}', local_mode: true, scope: 'DEFAULT')
-          config_path = File.join(tmp_dir, 'DEFAULT', 'tool_config', 'toolie', 'namely.json')
-          expect(File.exist?(config_path)).to be true
-          names = ToolConfigModel.delete_config('toolie', 'namely', local_mode: true, scope: 'DEFAULT')
-          expect(names[0]).to match(/.*\/DEFAULT\/tool_config\/toolie\/namely.json.*/)
-          expect(File.exist?(config_path)).to be false
-          expect(ToolConfigModel.load_config('toolie', 'namely', scope: 'DEFAULT')).to be_nil
-        ensure
-          set_local_mode_path(original_path)
-          ENV.delete('OPENC3_LOCAL_MODE')
-          FileUtils.rm_rf(tmp_dir)
-        end
+        # delete_config only touches a file when local mode is on and the local
+        # mode path exists, which the before(:each) hook sets up. Without that
+        # this test only passed in the container, where OPENC3_LOCAL_MODE is set
+        # and /plugins exists; anywhere else delete_tool_config returned nil early.
+        ToolConfigModel.save_config('toolie', 'namely', '{}', local_mode: true, scope: 'DEFAULT')
+        config_path = File.join(@local_mode_dir, 'DEFAULT', 'tool_config', 'toolie', 'namely.json')
+        expect(File.exist?(config_path)).to be true
+
+        names = ToolConfigModel.delete_config('toolie', 'namely', local_mode: true, scope: 'DEFAULT')
+        expect(names[0]).to match(/.*\/DEFAULT\/tool_config\/toolie\/namely.json.*/)
+        expect(File.exist?(config_path)).to be false
+        expect(ToolConfigModel.load_config('toolie', 'namely', scope: 'DEFAULT')).to be_nil
+      end
+
+      it "deletes without local mode" do
+        ENV.delete('OPENC3_LOCAL_MODE')
+        expect(ToolConfigModel.delete_config('toolie', 'namely', local_mode: true, scope: 'DEFAULT')).to be_nil
       end
 
       it "allows valid tool and config names" do

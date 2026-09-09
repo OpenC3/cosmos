@@ -12,6 +12,7 @@
 import unittest
 from unittest.mock import *
 
+from openc3.interfaces.protocols.burst_protocol import BurstProtocol
 from openc3.interfaces.protocols.terminated_protocol import TerminatedProtocol
 from openc3.interfaces.stream_interface import StreamInterface
 from openc3.packets.packet import Packet
@@ -45,6 +46,22 @@ class TestTerminatedProtocol(unittest.TestCase):
     def setUp(self):
         TestTerminatedProtocol.buffer = b""
         self.interface = TestTerminatedProtocol.MyInterface()
+
+    @patch.dict(os.environ, {"OPENC3_PROTOCOL_MAX_BUFFER_SIZE": "1000"})
+    def test_raises_rather_than_buffering_forever_without_a_terminator(self):
+        self.interface.stream = TestTerminatedProtocol.TerminatedStream()
+        self.interface.add_protocol(TerminatedProtocol, ["0xABCD", "0xABCD"], "READ_WRITE")
+        protocol = self.interface.read_protocols[0]
+        # A peer which never sends the terminator grows self.data without bound
+        with self.assertRaisesRegex(RuntimeError, "Protocol buffer of 1100 bytes exceeds maximum of 1000 bytes"):
+            for _ in range(11):
+                protocol.read_data(b"\x00" * 100)
+        # The buffer is released so the memory is not held until reconnect
+        self.assertEqual(len(protocol.data), 0)
+
+    def test_defaults_to_default_max_buffer_size(self):
+        self.interface.add_protocol(TerminatedProtocol, ["0xABCD", "0xABCD"], "READ_WRITE")
+        self.assertEqual(self.interface.read_protocols[0].max_buffer_size, BurstProtocol.DEFAULT_MAX_BUFFER_SIZE)
 
     def test_initializes_attributes(self):
         self.interface.add_protocol(TerminatedProtocol, ["0xABCD", "0xABCD"], "READ_WRITE")

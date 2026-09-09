@@ -284,6 +284,8 @@ TEMPLATE_FILE:
     - name: Template File Path
       required: true
       description: The relative path to the template file. Filename should generally start with an underscore.
+        Absolute paths and paths containing '..' are not allowed. The file must be inside the directory
+        containing the definition file.
       values: .+
   since: 5.0.10
 RESPONSE:

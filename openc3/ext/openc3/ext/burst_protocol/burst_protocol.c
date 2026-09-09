@@ -23,6 +23,7 @@ static ID id_method_reduce_to_single_packet = 0;
 static ID id_method_replace = 0;
 static ID id_method_clone = 0;
 static ID id_method_log_discard = 0;
+static ID id_method_check_buffer_size = 0;
 
 static ID id_ivar_data = 0;
 static ID id_ivar_extra = 0;
@@ -76,6 +77,10 @@ static VALUE burst_protocol_read_data(int argc, VALUE *argv, VALUE self)
   };
 
   rb_str_concat(rb_ivar_get(self, id_ivar_data), data);
+
+  /* Bound the memory a peer can make us buffer. Raises if @data has grown
+   * past @max_buffer_size, which makes Interface#read disconnect the peer. */
+  rb_funcall(self, id_method_check_buffer_size, 0);
 
   /* Maintain extra from last read read_data */
   if (!((RSTRING_LEN(data) == 0) && (!(RTEST(extra))))) {
@@ -301,6 +306,7 @@ void Init_burst_protocol(void)
   id_method_replace = rb_intern("replace");
   id_method_clone = rb_intern("clone");
   id_method_log_discard = rb_intern("log_discard");
+  id_method_check_buffer_size = rb_intern("check_buffer_size");
 
   id_ivar_data = rb_intern("@data");
   id_ivar_extra = rb_intern("@extra");

@@ -1556,7 +1556,7 @@ class RunningScript
     $stdout = OpenC3::Stdout.instance
     $stderr = OpenC3::Stderr.instance
     OpenC3::Logger.stdout = true
-    OpenC3::Logger.level = OpenC3::Logger::INFO
+    OpenC3::Logger.level = OpenC3::Logger.default_level
   end
 
   def output_thread

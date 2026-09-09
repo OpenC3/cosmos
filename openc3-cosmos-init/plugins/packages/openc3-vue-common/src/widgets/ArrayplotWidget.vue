@@ -18,7 +18,7 @@
 <script>
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
-import { Cable } from '@openc3/js-common/services'
+import { Cable, logUnlessAuthRequired } from '@openc3/js-common/services'
 import GraphWidget from './GraphWidget'
 
 export default {
@@ -225,8 +225,8 @@ export default {
     },
     addItemsToSubscription: function (itemArray = this.items) {
       if (this.subscription) {
-        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-          (refreshed) => {
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity)
+          .then((refreshed) => {
             if (refreshed) {
               OpenC3Auth.setTokens()
             }
@@ -240,8 +240,11 @@ export default {
               start_time: null,
               end_time: null,
             })
-          },
-        )
+          })
+          // An AuthRequiredError means we have no token and are being
+          // redirected to login, so don't try to subscribe. Anything else is
+          // unexpected and still gets logged.
+          .catch(logUnlessAuthRequired)
       }
     },
     itemName: function (item) {

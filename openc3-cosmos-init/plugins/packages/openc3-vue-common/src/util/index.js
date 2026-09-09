@@ -17,6 +17,7 @@ export { default as TimeFilters } from './timeFilters'
 export { default as CmdUtilities } from './cmdUtilities'
 export {
   getCachedSetting,
+  invalidateCachedSetting,
   peekCachedSetting,
   resetSettingsCache,
 } from './settingsCache'
