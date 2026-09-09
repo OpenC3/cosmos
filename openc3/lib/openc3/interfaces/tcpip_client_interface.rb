@@ -76,6 +76,8 @@ module OpenC3
     # Connects the {TcpipClientStream} by passing the
     # initialization parameters to the {TcpipClientStream}.
     def connect
+      # Cleanly close any existing stream rather than leaving it open
+      @stream.disconnect if @stream
       @stream = TcpipClientStream.new(
         @hostname,
         @write_port,

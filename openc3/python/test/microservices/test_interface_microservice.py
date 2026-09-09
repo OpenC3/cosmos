@@ -283,6 +283,85 @@ class TestInterfaceMicroservice(unittest.TestCase):
 
             self.assertEqual(im.interface.port, 54321)
 
+    def test_ignores_connect_interface_on_a_connected_interface(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        im.interface.reconnect_delay = 0.1  # Override the reconnect delay to be quick
+
+        for stdout in capture_io():
+            self.start_microservice(im)
+            all_interfaces = self.wait_for_state("CONNECTED")
+            self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
+            self.assertEqual(im.interface.connect_count, 1)
+
+            InterfaceTopic.connect_interface("INST_INT", scope="DEFAULT")
+            self.wait_for_output(stdout, "Connect ignored, already connected")
+            time.sleep(0.1)
+            # The existing connection is left alone
+            self.assertNotIn("Connection Lost", stdout.getvalue())
+            self.assertEqual(im.interface.disconnect_count, 0)
+            self.assertEqual(im.interface.connect_count, 1)
+            all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+            self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
+
+    def test_connects_if_the_state_is_connected_but_the_interface_is_not(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        im.interface.state = "CONNECTED"
+        im.interface._connected = False
+        im.attempting()
+        self.assertEqual(im.interface.state, "ATTEMPTING")
+
+    def test_cleanly_disconnects_an_existing_connection_before_connecting(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        im.interface.state = "ATTEMPTING"
+        im.interface._connected = True
+        im.connect()
+        # The old connection was closed rather than being abandoned
+        self.assertEqual(im.interface.disconnect_count, 1)
+        self.assertEqual(im.interface.state, "CONNECTED")
+
+    def test_disconnects_even_if_the_interface_reports_it_is_not_connected(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        im.interface.state = "CONNECTED"
+        im.interface._connected = False
+        im.disconnect(False)
+        self.assertEqual(im.interface.disconnect_count, 1)
+        self.assertEqual(im.interface.state, "DISCONNECTED")
+
+    # The no-op check in attempting() must not block the reconnect path in
+    # disconnect() or a failed cleanup leaves the interface stuck in CONNECTED
+    def test_still_reconnects_if_the_interface_disconnect_raises(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        im.interface.reconnect_delay = 0.01  # Override the reconnect delay to be quick
+        im.interface.state = "CONNECTED"
+        im.interface._connected = True
+
+        for stdout in capture_io():
+            with patch.object(im.interface, "disconnect", side_effect=RuntimeError("test-error")):
+                im.disconnect()
+            self.assertIn("Disconnect: INST_INT", stdout.getvalue())
+            self.assertNotIn("Connect ignored, already connected", stdout.getvalue())
+        self.assertEqual(im.interface.state, "ATTEMPTING")
+
+    def test_still_reconnects_if_the_interface_disconnect_leaves_it_connected(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        im.interface.reconnect_delay = 0.01  # Override the reconnect delay to be quick
+        im.interface.state = "CONNECTED"
+        im.interface._connected = True
+
+        for stdout in capture_io():
+            # Disconnect does nothing so connected() still reports True afterwards
+            with patch.object(im.interface, "disconnect") as mock_disconnect:
+                im.disconnect()
+                mock_disconnect.assert_called_once()
+            self.assertNotIn("Connect ignored, already connected", stdout.getvalue())
+        self.assertTrue(im.interface.connected())
+        self.assertEqual(im.interface.state, "ATTEMPTING")
+
     # def test_handles_exceptions_in_monitor_thread(self):
     #     im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
     #     all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")

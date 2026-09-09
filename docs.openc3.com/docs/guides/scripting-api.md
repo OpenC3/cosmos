@@ -5850,6 +5850,11 @@ interface_names = get_interface_names() # => ['INST_INT', 'INST2_INT', 'EXAMPLE_
 
 Connects to targets associated with a COSMOS interface.
 
+If the interface is already connected and no interface parameters are given, this
+method is a no-op and the existing connection is left untouched. To force a
+reconnect, call [disconnect_interface](#disconnect_interface) first, or pass
+interface parameters which always rebuild the interface.
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
 
@@ -5897,7 +5902,10 @@ connect_interface("INT1", hostname, port)
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Disconnects from targets associated with a COSMOS interface.
+Disconnects from targets associated with a COSMOS interface. If the interface has
+already been disconnected this is a no-op. Otherwise the interface is asked to
+disconnect regardless of whether it reports being connected, so any resources it
+is still holding are released.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
