@@ -166,6 +166,10 @@ export default {
         .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => {
+            // We're back, so drop the disconnect error we reported below.
+            // Nothing else clears it: a screen of nothing but graphs never
+            // polls the REST API.
+            this.clearScreenErrors()
             this.addItemsToSubscription(this.items)
           },
           disconnected: (data) => {

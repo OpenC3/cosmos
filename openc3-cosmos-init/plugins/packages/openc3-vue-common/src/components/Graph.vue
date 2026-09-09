@@ -420,6 +420,7 @@ export default {
     'error',
     'min-max-graph',
     'pause',
+    'recovered',
     'resize',
     'start',
     'started',
@@ -1354,6 +1355,10 @@ export default {
         .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => {
+            // The connection is back, so drop the disconnect we reported below
+            // and tell whoever embedded us (LINEGRAPH) to do the same
+            this.errors = this.errors.filter((error) => !error.transient)
+            this.$emit('recovered')
             const itemsToAdd = [...this.items]
             if (!this.xAxisIsDefault && !this.xAxisIsAlsoGraphedItem) {
               itemsToAdd.push(this.actualXAxisItem)
@@ -1367,6 +1372,8 @@ export default {
               this.addError({
                 type: 'disconnected',
                 message: 'OpenC3 backend connection disconnected',
+                // Cleared when 'connected' fires again, not left on the screen
+                transient: true,
               })
             }
           },

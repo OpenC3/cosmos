@@ -35,6 +35,7 @@
     @pause="() => (state = 'pause')"
     @start="() => (state = 'start')"
     @error="(error) => emitScreenError(error.message, error)"
+    @recovered="() => clearScreenErrors()"
   />
 </template>
 

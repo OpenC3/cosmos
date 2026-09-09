@@ -154,6 +154,7 @@
             @close-all="closeAll"
             @screen-error="addError"
             @screen-check-items="checkItems"
+            @screen-errors-cleared="clearErrorSource"
           />
         </div>
       </v-expand-transition>
@@ -192,6 +193,7 @@
         @close-all="closeAll"
         @screen-error="addError"
         @screen-check-items="checkItems"
+        @screen-errors-cleared="clearErrorSource"
       />
     </div>
 
@@ -243,6 +245,8 @@ import WidgetComponents from '@/widgets/WidgetComponents'
 import EditScreenDialog from './EditScreenDialog.vue'
 
 const MAX_ERRORS = 20
+// Identifies our own get_tlm_values poll as the source of a transient error
+const POLL_ERROR_SOURCE = 'screen:get_tlm_values'
 
 export default {
   components: {
@@ -524,6 +528,15 @@ export default {
     },
     clearErrors: function () {
       this.errors = []
+    },
+    // A transient error belongs to whatever produced it and is cleared when
+    // that recovers, so this only drops the errors from one source. Clearing
+    // every transient error on any success would let a screen that both polls
+    // and streams hide a stream that is still disconnected.
+    clearErrorSource: function ({ source }) {
+      this.errors = this.errors.filter(
+        (error) => !error.transient || error.source !== source,
+      )
     },
     // Single entry point for every screen error: errorCaptured for widgets that
     // throw while building, and the 'screen-error' event (emitScreenError in
@@ -1097,8 +1110,10 @@ export default {
           .then((data) => {
             if (data && data.length > 0) {
               this.updateValues(data)
-              // Clear transient request errors on successful fetch
-              this.errors = this.errors.filter((error) => !error.transient)
+              // Clear the errors from this poll on a successful fetch, but not
+              // errors from anything else: a streaming widget's disconnect has
+              // nothing to do with whether the REST API answered.
+              this.clearErrorSource({ source: POLL_ERROR_SOURCE })
             }
           })
           .catch((error) => {
@@ -1108,6 +1123,7 @@ export default {
             this.addError({
               message: error.message || JSON.stringify(error, null, 2),
               transient: true,
+              source: POLL_ERROR_SOURCE,
             })
           })
       }
@@ -1210,9 +1226,16 @@ export default {
       if (!valueIds?.length) {
         return
       }
+      // rerender() clears the errors and installs a different definition, so a
+      // response that arrives after it would report the previous screen's line
+      // text and number against the new screen
+      const requestedKey = this.screenKey
       this.api
         .get_tlm_available(valueIds, {}, { 'Ignore-Errors': '403' })
         .then((available) => {
+          if (this.screenKey !== requestedKey) {
+            return
+          }
           available.forEach((item, index) => {
             if (item !== null) {
               return

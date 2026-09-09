@@ -115,6 +115,11 @@ export default {
         },
       }
     },
+    // Identifies this widget as the source of a transient screen error. The
+    // definition line is unique per widget, which is all this has to be.
+    errorSource: function () {
+      return `widget:${this.lineNumber}`
+    },
     listeners: function () {
       // Vue 3 deprecated $listeners, which was used to bubble up events to the Openc3Screen component. The new way is
       // to use v-bind="$attrs", but that also passes the `style` DOM attribute to children, which makes widgets
@@ -208,10 +213,22 @@ export default {
         message: message,
         line: this.line,
         lineNumber: this.lineNumber,
-        // Transient errors are cleared the next time the screen successfully
-        // talks to the backend rather than sticking around forever
+        // Transient errors are cleared when their source recovers (see
+        // clearScreenErrors) rather than sticking around forever
         transient: options.transient || false,
+        // A transient error is cleared by whatever produced it recovering, so
+        // it has to say what that was. Default to this widget so one graph
+        // reconnecting doesn't clear another graph's disconnect.
+        source: options.source || this.errorSource,
         time: new Date().getTime(),
+      })
+    },
+    // The counterpart to a transient emitScreenError: the thing that failed is
+    // working again, so drop the errors it reported. Errors from other sources
+    // and non-transient errors are left alone.
+    clearScreenErrors(source = null) {
+      this.$emit('screen-errors-cleared', {
+        source: source || this.errorSource,
       })
     },
     // Ask the screen to check these TARGET__PACKET__ITEM__TYPE ids actually

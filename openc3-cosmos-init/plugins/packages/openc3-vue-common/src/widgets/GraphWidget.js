@@ -116,6 +116,7 @@ export default {
           break
       }
     })
+    const validationIds = []
     this.items = this.items.map((item) => {
       const parsed = this.parseItemName(item.itemName)
       if (parsed.arrayIndex !== null) {
@@ -127,6 +128,12 @@ export default {
         // a no-op for plain names.
         item.itemName = parsed.name
       }
+      // Validate the base name, not the streaming name: ARY[0] is a valid
+      // thing to stream but the packet only has an item called ARY, so
+      // get_tlm_available would report every array element as nonexistent.
+      validationIds.push(
+        `${item.targetName}__${item.packetName}__${parsed.name}__${item.valueType}`,
+      )
       // We don't emit 'addItem' because graphWidgets use streams in realtime
       // and manage their own playback requests
       return item
@@ -134,11 +141,6 @@ export default {
     // We still want to know if any of them don't exist. Streaming just never
     // sends data for a bad item, so without this the screen looks fine and the
     // series stays empty.
-    this.checkScreenItems(
-      this.items.map(
-        (item) =>
-          `${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`,
-      ),
-    )
+    this.checkScreenItems(validationIds)
   },
 }
