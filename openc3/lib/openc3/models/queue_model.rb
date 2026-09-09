@@ -74,7 +74,10 @@ module OpenC3
       end
       command_data[:validate] = validate unless validate.nil?
       command_data[:timeout] = timeout unless timeout.nil?
-      command_data[:extra] = JSON.generate(extra.as_json, allow_nan: true) unless extra.nil?
+      unless extra.nil?
+        # extra is already a JSON string when carried forward from an existing queue entry
+        command_data[:extra] = extra.is_a?(String) ? extra : JSON.generate(extra.as_json, allow_nan: true)
+      end
       command_data
     end
 
@@ -145,6 +148,10 @@ module OpenC3
       if existing.empty?
         raise QueueError, "No command found at id #{id} in queue '#{@name}'"
       end
+
+      # Carry forward the caller metadata attached by cmd(extra: ...) when the update
+      # doesn't supply its own. Editing a queued command shouldn't silently drop it.
+      extra = JSON.parse(existing[0])['extra'] if extra.nil?
 
       Store.zremrangebyscore("#{@scope}:#{@name}", id, id)
       command_data = self.class.build_command_data(username: username, command: command, target_name: target_name,
