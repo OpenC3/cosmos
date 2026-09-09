@@ -313,15 +313,20 @@ module OpenC3
           if @data_format == :CBOR
             extra_encoded = extra.as_json.to_cbor
           else
-            extra_encoded = JSON.generate(extra.as_json, allow_nan: true)
+            # Force binary: JSON.generate returns UTF-8 and appending that to the
+            # binary entry raises Encoding::CompatibilityError once the entry holds
+            # a byte >= 0x80, which silently drops the packet from the log
+            extra_encoded = JSON.generate(extra.as_json, allow_nan: true).b
           end
-          length += extra_encoded.length
+          # Count bytes, not characters, so a non-ASCII value in extra can't produce
+          # a short entry length
+          length += extra_encoded.bytesize
         end
         length += OPENC3_PACKET_SECONDARY_FIXED_SIZE + data.length
         @entry.clear
         @entry << [length, flags, packet_index, time_nsec_since_epoch].pack(OPENC3_PACKET_PACK_DIRECTIVE)
         @entry << [received_time_nsec_since_epoch].pack(OPENC3_RECEIVED_TIME_PACK_DIRECTIVE) if received_time_nsec_since_epoch
-        @entry << [extra_encoded.length].pack(OPENC3_EXTRA_LENGTH_PACK_DIRECTIVE) << extra_encoded if extra_encoded
+        @entry << [extra_encoded.bytesize].pack(OPENC3_EXTRA_LENGTH_PACK_DIRECTIVE) << extra_encoded if extra_encoded
         @entry << data.force_encoding('ASCII-8BIT')
         @first_time = time_nsec_since_epoch if !@first_time or time_nsec_since_epoch < @first_time
         @last_time = time_nsec_since_epoch if !@last_time or time_nsec_since_epoch > @last_time

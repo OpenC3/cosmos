@@ -160,6 +160,26 @@ module OpenC3
         expect($buffer[offset..-1]).to eql pkt.buffer
       end
 
+      it "writes a byte accurate length for non-ASCII extra" do
+        @interface.instance_variable_set(:@stream, PreStream.new)
+        @interface.add_protocol(PreidentifiedProtocol, [nil, 5], :READ_WRITE)
+        pkt = System.telemetry.packet("SYSTEM", "META").clone
+        pkt.received_time = Time.new(2020, 1, 31, 12, 15, 30.5)
+        pkt.stored = false
+        # Multi-byte UTF-8 makes String#length differ from String#bytesize. The
+        # length field counts bytes, so a character count would desync the receiver.
+        extra_data = { "note" => "café" }
+        pkt.extra = extra_data
+        @interface.write(pkt)
+
+        json_extra = extra_data.as_json().to_json(allow_nan: true)
+        expect(json_extra.bytesize).to_not eql json_extra.length
+        offset = 1 # flags
+        expect($buffer[offset..(offset + 3)].unpack('N')[0]).to eql json_extra.bytesize
+        offset += 4
+        expect($buffer[offset...(offset + json_extra.bytesize)]).to eql json_extra.b
+      end
+
       it "creates a packet header with stored and extra" do
         @interface.instance_variable_set(:@stream, PreStream.new)
         @interface.add_protocol(PreidentifiedProtocol, [nil, 5], :READ_WRITE)
