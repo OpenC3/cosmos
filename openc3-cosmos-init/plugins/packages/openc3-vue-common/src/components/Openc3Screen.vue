@@ -607,17 +607,19 @@ export default {
       }
       // This can happen if there is a typo in a layout widget with a corresponding END
       if (typeof this.layoutStack[0] === 'undefined') {
-        let names = []
-        let lines = []
-        for (const widget of this.dynamicWidgets) {
-          names.push(widget.name)
-          lines.push(widget.lineNumber)
-        }
         // Warn about any of the Dynamic widgets we found .. they could be typos
+        const names = this.dynamicWidgets.map(
+          (widget) => `${widget.name} (line ${widget.lineNumber})`,
+        )
+        // lineNumber must stay numeric so the errors sort and format correctly,
+        // so anchor the error on the first suspect and name the rest in the
+        // message
+        const suspect = this.dynamicWidgets[0]
         this.addError({
           type: 'usage',
-          message: `Unknown widget! Are these widgets: ${names.join(',')}?`,
-          lineNumber: lines.join(','),
+          message: `Unknown widget! Are these widgets: ${names.join(', ')}?`,
+          line: suspect?.line,
+          lineNumber: suspect?.lineNumber,
         })
         // Create a simple VerticalWidget to replace the bad widget so
         // the layout stack can successfully unwind
@@ -1129,6 +1131,15 @@ export default {
         }
       }
     },
+    // The screen can be re-parsed while a get_tlm_available call is in flight.
+    // The response describes the items we asked for, so it only applies if the
+    // screen still has exactly those items in the same order.
+    sameScreenItems: function (items) {
+      return (
+        items.length === this.screenItems.length &&
+        items.every((item, index) => item === this.screenItems[index])
+      )
+    },
     debouncedUpdateTlmAvailable: function () {
       // Skip API calls when frozen - we're using saved values
       if (this.frozen) {
@@ -1138,13 +1149,11 @@ export default {
         clearTimeout(this.tlmAvailableTimeout)
       }
       this.tlmAvailableTimeout = setTimeout(() => {
-        // The screen can be re-parsed while this is in flight, which leaves the
-        // response describing items we no longer have
         const requestedItems = [...this.screenItems]
         this.api
           .get_tlm_available(requestedItems, {}, { 'Ignore-Errors': '403' })
           .then((data) => {
-            if (requestedItems.length !== this.screenItems.length) {
+            if (!this.sameScreenItems(requestedItems)) {
               return
             }
             this.actualScreenItems = data
@@ -1187,7 +1196,7 @@ export default {
           })
           .catch((error) => {
             console.error('Error getting tlm available', error)
-            if (requestedItems.length === this.screenItems.length) {
+            if (this.sameScreenItems(requestedItems)) {
               this.actualScreenItems = [...this.screenItems]
             }
           })
