@@ -18,6 +18,7 @@
 require 'spec_helper'
 require 'openc3/interfaces/protocols/preidentified_protocol'
 require 'openc3/interfaces/interface'
+require 'openc3/interfaces/stream_interface'
 require 'openc3/streams/stream'
 
 module OpenC3
