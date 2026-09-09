@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import json
+import math
 import threading
 import time
 import unittest
@@ -579,6 +580,93 @@ class TestInterfaceMicroservice(unittest.TestCase):
         handler.interface.cmd_target_enabled["INST"] = False
         result = handler.process_cmd(topic, msg_id, full_msg_hash, None)
         self.assertIsNone(result)
+
+    def test_process_cmd_decodes_ruby_encoded_special_floats_in_extra(self):
+        """A command queued from Ruby (or released by the Ruby queue microservice) has
+        its extra encoded by Ruby's Float#as_json, which writes non-finite floats as
+        {"json_class": "Float", "raw": "NaN"|"Infinity"|"-Infinity"}. Those must arrive
+        at a Python interface as floats, not as dicts."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        thread = threading.Thread(target=im.run)
+        thread.start()
+        self.addCleanup(thread.join, 5)
+        self.addCleanup(im.shutdown)
+        time.sleep(0.1)
+
+        handler = im.handler_thread
+        # Byte for byte what Ruby's JSON.generate(extra.as_json, allow_nan: true) emits
+        ruby_extra = (
+            b'{"nan":{"json_class":"Float","raw":"NaN"},'
+            b'"inf":{"json_class":"Float","raw":"Infinity"},'
+            b'"ninf":{"json_class":"Float","raw":"-Infinity"},'
+            b'"normal":1.5}'
+        )
+        msg_hash = {
+            b"target_name": b"INST",
+            b"cmd_name": b"ABORT",
+            b"cmd_params": json.dumps({}).encode(),
+            b"cmd_string": b"cmd('INST ABORT')",
+            b"username": b"test_user",
+            b"extra": ruby_extra,
+        }
+        with patch("openc3.microservices.interface_microservice.CommandDecomTopic.write_packet") as mock_write:
+            result = handler.process_cmd("{DEFAULT__CMD}TARGET__INST", "1-0", msg_hash, None)
+        self.assertEqual(result, "SUCCESS")
+
+        command = mock_write.call_args[0][0]
+        self.assertTrue(math.isnan(command.extra["nan"]))
+        self.assertEqual(command.extra["inf"], float("inf"))
+        self.assertEqual(command.extra["ninf"], float("-inf"))
+        self.assertEqual(command.extra["normal"], 1.5)
+
+    def test_process_cmd_does_not_let_caller_metadata_override_accessor_extra(self):
+        """Accessors write into packet.extra while build_cmd sets the command
+        parameters. HttpAccessor puts HTTP_PATH / HTTP_METHOD / HTTP_HEADERS /
+        HTTP_QUERIES there and HttpClientInterface builds the outgoing request from
+        them, so caller metadata must never win over these."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        thread = threading.Thread(target=im.run)
+        thread.start()
+        self.addCleanup(thread.join, 5)
+        self.addCleanup(im.shutdown)
+        time.sleep(0.1)
+
+        handler = im.handler_thread
+        original_build_cmd = System.commands.build_cmd
+
+        def build_cmd_with_accessor_extra(*args, **kwargs):
+            command = original_build_cmd(*args, **kwargs)
+            command.extra = {"HTTP_PATH": "/defined", "HTTP_METHOD": "get"}
+            return command
+
+        msg_hash = {
+            b"target_name": b"INST",
+            b"cmd_name": b"ABORT",
+            b"cmd_params": json.dumps({}).encode(),
+            b"cmd_string": b"cmd('INST ABORT')",
+            b"username": b"test_user",
+            b"extra": json.dumps(
+                {
+                    "HTTP_PATH": "/attacker",
+                    "HTTP_METHOD": "delete",
+                    "HTTP_HEADERS": {"authorization": "stolen"},
+                    "flow_uuid": "1234-5678",
+                }
+            ).encode(),
+        }
+        with (
+            patch.object(System.commands, "build_cmd", side_effect=build_cmd_with_accessor_extra),
+            patch("openc3.microservices.interface_microservice.CommandDecomTopic.write_packet") as mock_write,
+        ):
+            result = handler.process_cmd("{DEFAULT__CMD}TARGET__INST", "1-0", msg_hash, None)
+        self.assertEqual(result, "SUCCESS")
+
+        command = mock_write.call_args[0][0]
+        self.assertEqual(command.extra["HTTP_PATH"], "/defined")
+        self.assertEqual(command.extra["HTTP_METHOD"], "get")
+        # Keys the accessor didn't set still come through so the feature works
+        self.assertEqual(command.extra["HTTP_HEADERS"], {"authorization": "stolen"})
+        self.assertEqual(command.extra["flow_uuid"], "1234-5678")
 
     def test_process_cmd_supports_interface_directives(self):
         """Directive messages on the CMD}INTERFACE topic: interface_details and
