@@ -326,6 +326,8 @@ class InterfaceCmdHandlerThread:
             # These fields are populated from COSMOS workflow state below.
             command.extra.pop("queue_username", None)
             command.extra.pop("approver", None)
+            command.extra.pop("cmd_success", None)
+            command.extra.pop("cmd_reason", None)
             command.extra["cmd_string"] = msg_hash.get(b"cmd_string", b"").decode()
             command.extra["username"] = msg_hash.get(b"username", b"").decode()
             command.extra["interface_name"] = self.interface.name

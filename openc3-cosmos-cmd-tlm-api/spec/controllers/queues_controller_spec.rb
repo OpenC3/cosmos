@@ -550,6 +550,7 @@ RSpec.describe QueuesController, type: :controller do
       command_data = {
         "username" => "user1",
         "value" => "TEST COMMAND",
+        "extra" => JSON.generate({ "flow_uuid" => "1234-5678", "data" => "\xFF".b }.as_json, allow_nan: true),
         "timestamp" => 1000,
         "id" => 1.0
       }
@@ -561,6 +562,7 @@ RSpec.describe QueuesController, type: :controller do
           validate: true,
           timeout: nil,
           queue_username: "user1",
+          extra: { "flow_uuid" => "1234-5678", "data" => "\xFF".b },
           scope: "DEFAULT",
           token: anything
         }
@@ -591,6 +593,7 @@ RSpec.describe QueuesController, type: :controller do
           validate: true,
           timeout: nil,
           queue_username: "user2",
+          extra: nil,
           scope: "DEFAULT",
           token: anything
         }
@@ -658,6 +661,7 @@ RSpec.describe QueuesController, type: :controller do
           validate: true,
           timeout: nil,
           queue_username: "user3",
+          extra: nil,
           scope: "DEFAULT",
           token: anything
         }
@@ -687,6 +691,7 @@ RSpec.describe QueuesController, type: :controller do
           validate: true,
           timeout: 0,
           queue_username: "user4",
+          extra: nil,
           scope: "DEFAULT",
           token: anything
         }

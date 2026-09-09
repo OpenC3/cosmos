@@ -290,6 +290,8 @@ module OpenC3
             # These fields are populated from COSMOS workflow state below.
             command.extra.delete('queue_username')
             command.extra.delete('approver')
+            command.extra.delete('cmd_success')
+            command.extra.delete('cmd_reason')
             command.extra['cmd_string'] = msg_hash['cmd_string']
             command.extra['username'] = msg_hash['username']
             command.extra['interface_name'] = @interface.name

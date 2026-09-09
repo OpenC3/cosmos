@@ -28,6 +28,7 @@ from openc3.system.system import System
 from openc3.topics.interface_topic import InterfaceTopic
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.topics.topic import Topic
+from openc3.utilities.json import JsonEncoder
 from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued
 from openc3.utilities.time import from_nsec_from_epoch
 from test.test_helper import *
@@ -532,7 +533,11 @@ class TestInterfaceMicroservice(unittest.TestCase):
                     "username": "untrusted",
                     "queue_username": "untrusted",
                     "approver": "untrusted",
-                }
+                    "cmd_success": False,
+                    "cmd_reason": "untrusted",
+                    "data": b"\xff",
+                },
+                cls=JsonEncoder,
             ).encode(),
             b"queue_username": b"DEFAULT__MULTI__INST",
             b"validate": b"TRUE",
@@ -549,6 +554,9 @@ class TestInterfaceMicroservice(unittest.TestCase):
         self.assertEqual(command.extra["username"], "test_user")
         self.assertEqual(command.extra.get("queue_username"), "DEFAULT__MULTI__INST")
         self.assertNotIn("approver", command.extra)
+        self.assertNotIn("cmd_success", command.extra)
+        self.assertNotIn("cmd_reason", command.extra)
+        self.assertEqual(command.extra["data"], b"\xff")
 
         # Minimal msg_hash — only required fields; optional fields use .get() defaults
         minimal_msg_hash = {

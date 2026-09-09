@@ -842,6 +842,10 @@ cmd("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Par
 | validate       | Optional named parameter to enable/disable validation (default is True)                              |
 | extra          | Optional metadata Hash/dict carried with the command packet to the interface                          |
 
+The `extra` keys `cmd_string`, `username`, `interface_name`, `queue_username`, `approver`,
+`cmd_success`, and `cmd_reason` are reserved for COSMOS audit data. Caller-supplied values for
+these keys are discarded or replaced by authoritative values as the command is processed.
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 

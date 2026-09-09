@@ -36,7 +36,7 @@ class CommandTopic(Topic):
             "buffer": bytes(packet.buffer_no_copy()),
         }
         if packet.extra:
-            msg_hash["extra"] = json.dumps(packet.extra)
+            msg_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
         db_shard = Store.db_shard_for_target(packet.target_name, scope=scope)
         EphemeralStoreQueued.instance(db_shard=db_shard).write_topic(topic, msg_hash)
 

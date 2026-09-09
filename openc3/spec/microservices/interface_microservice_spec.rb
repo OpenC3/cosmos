@@ -284,7 +284,8 @@ module OpenC3
         @api.cmd("INST", "ABORT", queue_username: "DEFAULT__MULTI__INST",
           extra: {
             'flow_uuid' => '1234-5678', 'username' => 'untrusted',
-            'queue_username' => 'untrusted', 'approver' => 'untrusted'
+            'queue_username' => 'untrusted', 'approver' => 'untrusted',
+            'cmd_success' => false, 'cmd_reason' => 'untrusted'
           })
         sleep 0.01
         im.shutdown
@@ -296,6 +297,8 @@ module OpenC3
         expect(captured.extra['username']).to_not eql('untrusted')
         expect(captured.extra['queue_username']).to eql("DEFAULT__MULTI__INST")
         expect(captured.extra).not_to have_key('approver')
+        expect(captured.extra).not_to have_key('cmd_success')
+        expect(captured.extra).not_to have_key('cmd_reason')
       end
 
       it "handles obfuscated params" do
