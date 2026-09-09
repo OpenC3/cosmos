@@ -64,8 +64,12 @@ module OpenC3
     def self.resolve_script_venv(name:, scope:, python_venv: nil)
       target_name = name.split('/')[0].to_s.upcase
       if target_name == TargetFile::TEMP_FOLDER && python_venv
-        # File.basename prevents path traversal by stripping directory components.
-        safe_name = File.basename(python_venv.to_s)
+        # File.basename strips directory components; the tr() then whitelists the
+        # name down to the character set PluginModel.plugin_venv_name builds it
+        # from. That leaves no path separators and no glob metacharacters, so
+        # the value cannot escape PLUGIN_VENVS_DIR or widen the Dir.glob in
+        # configure_environment.
+        safe_name = File.basename(python_venv.to_s).tr('^a-zA-Z0-9_-', '_')
         # The venv name is client-supplied, so it must also be confined to the
         # caller's scope. Venv directories are named "<scope>__<plugin>" by
         # PluginModel.plugin_venv_name; without this check a user in one scope

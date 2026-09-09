@@ -92,6 +92,21 @@ module OpenC3
         expect(result).to be_nil
       end
 
+      it "strips glob metacharacters from a temporary script venv" do
+        # "DEFAULT__*" clears File.basename and the scope prefix check, so the
+        # tr() is what keeps it from reaching Dir.glob in configure_environment.
+        allow(File).to receive(:directory?).with("/gems/plugin_venvs/DEFAULT___/.venv").and_return(false)
+
+        result = PythonVenv.configure_for_script(
+          {},
+          name: "__TEMP__/test.py",
+          scope: "DEFAULT",
+          python_venv: "DEFAULT__*"
+        )
+
+        expect(result).to be_nil
+      end
+
       it "rejects a temporary script venv belonging to another scope" do
         expect(File).not_to receive(:directory?)
 
