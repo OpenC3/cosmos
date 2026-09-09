@@ -16,6 +16,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
+require 'openc3/interfaces'
 require 'openc3/models/interface_model'
 require 'openc3/models/bridge_model'
 require 'openc3/models/host_interface_microservice_model'

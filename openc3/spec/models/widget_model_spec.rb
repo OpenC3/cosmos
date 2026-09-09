@@ -13,6 +13,7 @@
 
 require 'spec_helper'
 require 'openc3/config/config_parser'
+require 'openc3/models/scope_model'
 require 'openc3/models/widget_model'
 require 'openc3/utilities/s3_autoload'
 
