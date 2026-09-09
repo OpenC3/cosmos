@@ -85,6 +85,9 @@ class SerialInterface(StreamInterface):
 
     def connect(self):
         """Creates a new SerialStream using the parameters passed in the constructor"""
+        # Cleanly close any existing stream rather than leaving it open
+        if self.stream:
+            self.stream.disconnect()
         self.stream = SerialStream(
             write_port_name=self.write_port_name,
             read_port_name=self.read_port_name,

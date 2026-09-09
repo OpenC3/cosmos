@@ -63,17 +63,17 @@ if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_PLATFORMS=linux/amd64
   DOCKERFILE='Dockerfile-ubi'
   SUFFIX='-ubi'
-  OPENC3_VERSITYGW_VERSION=v1.7.0
+  OPENC3_VERSITYGW_VERSION=v1.8.0
 else
   OPENC3_PLATFORMS=linux/amd64,linux/arm64
   DOCKERFILE='Dockerfile'
   SUFFIX=''
-  OPENC3_VERSITYGW_VERSION=v1.7.0
+  OPENC3_VERSITYGW_VERSION=v1.8.0
 fi
 
 # Setup cacert.pem
 echo "Downloading cert from curl"
-curl -q -L https://curl.se/ca/cacert.pem --output ./cacert.pem
+curl -q -L --proto "=https" https://curl.se/ca/cacert.pem --output ./cacert.pem
 if [[ $? -ne 0 ]]; then
   echo "ERROR: Problem downloading cacert.pem file from https://curl.se/ca/cacert.pem" 1>&2
   echo "openc3_setup FAILED" 1>&2
@@ -355,9 +355,9 @@ fi
 # Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
 if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik
-  OPENC3_TRAEFIK_RELEASE=v3.7.10
+  OPENC3_TRAEFIK_RELEASE=v3.7.12
 else
-  OPENC3_TRAEFIK_RELEASE=v3.7.10
+  OPENC3_TRAEFIK_RELEASE=v3.7.12
 fi
 cd ../openc3-traefik
 retry_build \

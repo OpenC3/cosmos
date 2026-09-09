@@ -19,6 +19,7 @@ from openc3.config.config_parser import ConfigParser
 # Base class for all OpenC3 protocols which defines a framework which must be
 # implemented by a subclass.
 class Protocol:
+    # Matches the Ruby Time#iso8601(6) output format so details() is identical in both languages
     DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
     # self.param allow_empty_data [True/False/None] Whether or not this protocol will allow an empty string

@@ -693,7 +693,7 @@ Generally the template file is formatted in JSON or HTML and then values are fil
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Template File Path | The relative path to the template file. Filename should generally start with an underscore. | True |
+| Template File Path | The relative path to the template file. Filename should generally start with an underscore. Absolute paths and paths containing '..' are not allowed. The file must be inside the directory containing the definition file. | True |
 
 ### RESPONSE
 <span class="badge badge--secondary since-right">Since 5.14.0</span>**Indicates the expected telemetry packet response to this command**

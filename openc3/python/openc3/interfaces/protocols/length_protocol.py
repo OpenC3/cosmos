@@ -149,6 +149,14 @@ class LengthProtocol(BurstProtocol):
             raise ValueError(f"Length value received larger than max_length= {length} > {self.max_length}")
 
         packet_length = (length * self.length_bytes_per_count) + self.length_value_offset
+        # Reject up front rather than buffering the declared number of bytes first
+        if packet_length > self.max_buffer_size:
+            self.reset()  # Drop the partial frame rather than holding it until disconnect
+            raise ValueError(
+                f"Calculated packet length of {packet_length} bytes exceeds maximum buffer size of "
+                f"{self.max_buffer_size} bytes. Increase OPENC3_PROTOCOL_MAX_BUFFER_SIZE."
+            )
+
         # Ensure the calculated packet length is long enough to support the location of the length field
         # without overlap into the next packet
         if (packet_length * 8) < (self.length_bit_offset + self.length_bit_size):

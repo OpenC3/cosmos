@@ -73,6 +73,9 @@ class TcpipClientInterface(StreamInterface):
     # Connects the {TcpipClientStream} by passing the
     # initialization parameters to the {TcpipClientStream}.
     def connect(self):
+        # Cleanly close any existing stream rather than leaving it open
+        if self.stream:
+            self.stream.disconnect()
         self.stream = TcpipClientStream(
             self.hostname,
             self.write_port,

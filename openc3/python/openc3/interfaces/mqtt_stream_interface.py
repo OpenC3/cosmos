@@ -60,6 +60,9 @@ class MqttStreamInterface(StreamInterface):
 
     # Creates a new {SerialStream} using the parameters passed in the constructor
     def connect(self):
+        # Cleanly close any existing stream rather than leaving it open
+        if self.stream:
+            self.stream.disconnect()
         self.stream = MqttStream(
             self.hostname,
             self.port,

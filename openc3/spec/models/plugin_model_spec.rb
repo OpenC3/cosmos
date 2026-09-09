@@ -707,6 +707,35 @@ module OpenC3
           expect(plugin_model['needs_dependencies']).to eql true
         end
 
+        it "sanitizes an invalid pypi_url setting before invoking uvinstall" do
+          expect(GemModel).to receive(:get).and_return("my_plugin.gem")
+          gem = double("gem")
+          expect(gem).to receive(:extract_files) do |path|
+            File.open("#{path}/plugin.txt", 'w') { |f| f.puts "" }
+            File.open("#{path}/pyproject.toml", 'w') { |f| f.puts "[project]" }
+          end
+          expect(Gem::Package).to receive(:new).and_return(gem)
+          allow(gem).to receive(:spec).and_return(spec_double)
+          expect(GemModel).to receive(:install).and_return(nil)
+
+          allow(ENV).to receive(:[]).and_call_original
+          allow(ENV).to receive(:[]).with('OPENC3_USE_UV').and_return(nil)
+          allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
+          allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
+
+          # A user-writable setting must never put shell metacharacters on the uvinstall argv
+          allow(OpenC3::Logger).to receive(:error)
+          payload = "https://pypi.org ; id > /tmp/PWNED ; #"
+          allow(PluginModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return(payload)
+
+          allow(PluginModel).to receive(:system).with('which uv > /dev/null 2>&1').and_return(true)
+          success_status = double("status", success?: true)
+          expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "-i", PypiUrl::DEFAULT).and_return(["ok", success_status])
+
+          plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
+          expect(plugin_model['needs_dependencies']).to eql true
+        end
+
         it "falls back to pipinstall when uv is not on PATH" do
           expect(GemModel).to receive(:get).and_return("my_plugin.gem")
           gem = double("gem")
@@ -733,6 +762,69 @@ module OpenC3
           plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
           expect(plugin_model['needs_dependencies']).to eql true
         end
+      end
+    end
+
+    describe "self.resolve_pypi_url" do
+      before(:each) do
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('PYPI_URL', nil).and_return(nil)
+      end
+
+      it "appends /simple to the pypi_url setting" do
+        allow(PluginModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return("https://custom.pypi.example.com")
+        expect(PluginModel.resolve_pypi_url(scope: "DEFAULT")).to eql "https://custom.pypi.example.com/simple"
+      end
+
+      it "falls back to ENV PYPI_URL when the setting is nil" do
+        allow(PluginModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return(nil)
+        allow(ENV).to receive(:fetch).with('PYPI_URL', nil).and_return("https://env.pypi.example.com")
+        expect(PluginModel.resolve_pypi_url(scope: "DEFAULT")).to eql "https://env.pypi.example.com/simple"
+      end
+
+      it "falls back to the default when the setting and ENV are nil" do
+        allow(PluginModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return(nil)
+        expect(PluginModel.resolve_pypi_url(scope: "DEFAULT")).to eql PypiUrl::DEFAULT
+      end
+
+      it "logs and falls back to ENV PYPI_URL when get_setting raises" do
+        allow(OpenC3::Logger).to receive(:error)
+        allow(PluginModel).to receive(:get_setting).and_raise("no redis")
+        allow(ENV).to receive(:fetch).with('PYPI_URL', nil).and_return("https://env.pypi.example.com")
+        expect(PluginModel.resolve_pypi_url(scope: "DEFAULT")).to eql "https://env.pypi.example.com/simple"
+        expect(OpenC3::Logger).to have_received(:error).with(/Failed to retrieve pypi_url/)
+      end
+
+      it "replaces a value containing shell metacharacters with the default" do
+        allow(OpenC3::Logger).to receive(:error)
+        payload = "https://pypi.org ; id > /tmp/PWNED ; #"
+        allow(PluginModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return(payload)
+        expect(PluginModel.resolve_pypi_url(scope: "DEFAULT")).to eql PypiUrl::DEFAULT
+        expect(OpenC3::Logger).to have_received(:error).with(/Invalid pypi_url/)
+      end
+
+      it "replaces a non-http scheme with the default" do
+        allow(OpenC3::Logger).to receive(:error)
+        allow(PluginModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return("file:///etc")
+        expect(PluginModel.resolve_pypi_url(scope: "DEFAULT")).to eql PypiUrl::DEFAULT
+      end
+    end
+
+    describe "self.build_pypi_args" do
+      before(:each) do
+        allow(ENV).to receive(:[]).and_call_original
+      end
+
+      it "returns index args without trusted-host by default" do
+        allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
+        expect(PluginModel.build_pypi_args("https://custom.pypi.example.com/simple")).to \
+          eql ["-i", "https://custom.pypi.example.com/simple"]
+      end
+
+      it "adds the trusted-host derived from the url when PIP_ENABLE_TRUSTED_HOST is set" do
+        allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return('1')
+        expect(PluginModel.build_pypi_args("https://custom.pypi.example.com/simple")).to \
+          eql ["-i", "https://custom.pypi.example.com/simple", "--trusted-host", "custom.pypi.example.com"]
       end
     end
 

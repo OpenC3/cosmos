@@ -9,6 +9,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import os
+
 from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.protocol import Protocol
@@ -20,6 +22,14 @@ from openc3.utilities.logger import Logger
 # Reads all data available on the interface and creates a packet
 # with that data.
 class BurstProtocol(Protocol):
+    # Maximum number of bytes which will be buffered while waiting for a
+    # complete packet. This bounds the memory a peer can cause the interface
+    # to allocate by declaring an enormous packet length (LENGTH, PREIDENTIFIED)
+    # or by never sending a terminator (TERMINATED). Deliberately much larger
+    # than any realistic packet so it does not affect existing configurations.
+    # Override with the OPENC3_PROTOCOL_MAX_BUFFER_SIZE environment variable.
+    DEFAULT_MAX_BUFFER_SIZE = 100_000_000
+
     # self.param discard_leading_bytes [Integer] The number of bytes to discard
     #   from the binary data after reading. Note that this is often
     #   used to remove a sync pattern from the final packet data.
@@ -41,6 +51,9 @@ class BurstProtocol(Protocol):
         if self.sync_pattern:
             self.sync_pattern = hex_to_byte_string(self.sync_pattern)
         self.fill_fields = ConfigParser.handle_true_false(fill_fields)
+        self.max_buffer_size = int(
+            os.environ.get("OPENC3_PROTOCOL_MAX_BUFFER_SIZE", BurstProtocol.DEFAULT_MAX_BUFFER_SIZE)
+        )
 
     def reset(self):
         super().reset()
@@ -59,6 +72,7 @@ class BurstProtocol(Protocol):
     # self.return [String|None] Data for a packet consisting of the bytes read
     def read_data(self, data, extra=None):
         self.data += data
+        self.check_buffer_size()
         if not (len(data) == 0 and extra is None):
             # Maintain extra from last read read_data
             self.extra = extra
@@ -183,6 +197,22 @@ class BurstProtocol(Protocol):
                     return "STOP"
         return None
 
+    # Raises if the accumulation buffer has grown past max_buffer_size. Raising
+    # causes Interface.read to log the error and disconnect, which drops the
+    # offending peer and resets this protocol.
+    def check_buffer_size(self):
+        if len(self.data) <= self.max_buffer_size:
+            return
+        length = len(self.data)
+        # Release the buffer and clear any partially reduced state now rather than
+        # waiting for the interface to disconnect and reset() us
+        self.reset()
+        name = self.interface.name if self.interface else ""
+        raise RuntimeError(
+            f"{name}: Protocol buffer of {length} bytes exceeds maximum of {self.max_buffer_size} bytes. "
+            "Increase OPENC3_PROTOCOL_MAX_BUFFER_SIZE."
+        )
+
     def log_discard(self, length, found):
         name = ""
         if self.interface:
@@ -211,6 +241,7 @@ class BurstProtocol(Protocol):
         result["discard_leading_bytes"] = self.discard_leading_bytes
         result["sync_pattern"] = repr(self.sync_pattern)
         result["fill_fields"] = self.fill_fields
+        result["max_buffer_size"] = self.max_buffer_size
         return result
 
     def read_details(self):
@@ -218,4 +249,5 @@ class BurstProtocol(Protocol):
         result["discard_leading_bytes"] = self.discard_leading_bytes
         result["sync_pattern"] = repr(self.sync_pattern)
         result["fill_fields"] = self.fill_fields
+        result["max_buffer_size"] = self.max_buffer_size
         return result

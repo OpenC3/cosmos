@@ -288,6 +288,51 @@ class TestLengthProtocol(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Length value received larger than max_length= 65535 > 50"):
             self.interface.read()
 
+    def test_rejects_declared_length_larger_than_max_buffer_size(self):
+        self.interface.add_protocol(
+            LengthProtocol,
+            [
+                0,  # bit offset
+                32,  # bit size
+                0,  # length offset
+                1,  # bytes per count
+                "BIG_ENDIAN",
+                0,  # discard
+                None,  # sync
+                None,  # max_length not set
+            ],
+            "READ_WRITE",
+        )
+        protocol = self.interface.read_protocols[0]
+        # Declare a 4GB packet with only 5 bytes actually sent. Without the buffer
+        # limit the protocol would buffer until the microservice ran out of memory.
+        with self.assertRaisesRegex(
+            ValueError, "Calculated packet length of 4294967295 bytes exceeds maximum buffer size of 100000000 bytes"
+        ):
+            protocol.read_data(b"\xff\xff\xff\xff\x00")
+
+    @patch.dict(os.environ, {"OPENC3_PROTOCOL_MAX_BUFFER_SIZE": "5000000000"})
+    def test_honors_openc3_protocol_max_buffer_size(self):
+        self.interface.stream = TestLengthProtocol.LengthStream()
+        self.interface.add_protocol(
+            LengthProtocol,
+            [
+                0,  # bit offset
+                32,  # bit size
+                0,  # length offset
+                1,  # bytes per count
+                "BIG_ENDIAN",
+                0,  # discard
+                None,  # sync
+                None,  # max_length not set
+            ],
+            "READ_WRITE",
+        )
+        protocol = self.interface.read_protocols[0]
+        self.assertEqual(protocol.max_buffer_size, 5000000000)
+        # 4GB is now under the limit so the protocol waits for more data instead of raising
+        self.assertEqual(protocol.read_data(b"\xff\xff\xff\xff\x00")[0], "STOP")
+
     def test_handles_a_sync_value_in_the_packet(self):
         self.interface.stream = TestLengthProtocol.LengthStream()
         self.interface.add_protocol(

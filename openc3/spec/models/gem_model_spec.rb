@@ -82,6 +82,56 @@ module OpenC3
         expect { GemModel.install("openc3-test3.gem", scope: 'DEFAULT') }.to \
           raise_error(RuntimeError, /Gem 'openc3-test3.gem' not found/)
       end
+
+      context "rubygems_url resolution" do
+        # The gem itself is invalid so install always raises, but Gem.sources is
+        # set before that happens which is what we're verifying
+        def install_test_gem
+          expect { GemModel.install("openc3-test1.gem", scope: 'DEFAULT') }.to \
+            raise_error(Gem::Package::FormatError)
+        end
+
+        it "uses the rubygems_url setting" do
+          allow(GemModel).to receive(:get_setting).with('rubygems_url', scope: 'DEFAULT')
+            .and_return("https://gems.example.com")
+          expect(Gem).to receive(:sources=).with(["https://gems.example.com"])
+          install_test_gem()
+        end
+
+        it "replaces an invalid rubygems_url setting with the default" do
+          allow(GemModel).to receive(:get_setting).with('rubygems_url', scope: 'DEFAULT')
+            .and_return("https://rubygems.org ; id > /tmp/PWNED ; #")
+          allow(Logger).to receive(:error)
+          expect(Gem).to receive(:sources=).with([RubygemsUrl::DEFAULT])
+          install_test_gem()
+          expect(Logger).to have_received(:error).with(/Invalid rubygems_url/)
+        end
+
+        it "doesn't set sources when the setting is nil" do
+          allow(GemModel).to receive(:get_setting).with('rubygems_url', scope: 'DEFAULT').and_return(nil)
+          expect(Gem).to_not receive(:sources=)
+          install_test_gem()
+        end
+
+        it "falls back to ENV RUBYGEMS_URL when get_setting raises" do
+          allow(GemModel).to receive(:get_setting).with('rubygems_url', scope: 'DEFAULT')
+            .and_raise(RuntimeError.new("no redis"))
+          allow(ENV).to receive(:fetch).and_call_original
+          allow(ENV).to receive(:fetch).with('RUBYGEMS_URL', RubygemsUrl::DEFAULT)
+            .and_return("https://env.gems.example.com")
+          expect(Gem).to receive(:sources=).with(["https://env.gems.example.com"])
+          install_test_gem()
+        end
+
+        it "falls back to the default when get_setting raises and ENV is unset" do
+          allow(GemModel).to receive(:get_setting).with('rubygems_url', scope: 'DEFAULT')
+            .and_raise(RuntimeError.new("no redis"))
+          allow(ENV).to receive(:fetch).and_call_original
+          allow(ENV).to receive(:fetch).with('RUBYGEMS_URL', RubygemsUrl::DEFAULT).and_return(RubygemsUrl::DEFAULT)
+          expect(Gem).to receive(:sources=).with([RubygemsUrl::DEFAULT])
+          install_test_gem()
+        end
+      end
     end
 
     describe "self.destroy" do
