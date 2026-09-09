@@ -16,7 +16,7 @@
 -->
 
 <template>
-  <v-dialog v-model="show" width="700">
+  <v-dialog v-model="show" scrollable width="700">
     <v-card>
       <v-toolbar :height="24">
         <v-spacer />
@@ -28,7 +28,7 @@
         {{ targetName }} {{ packetName }} {{ itemName }}
       </v-card-title>
       <v-card-subtitle>{{ details.description }}</v-card-subtitle>
-      <v-card-text>
+      <v-card-text style="max-height: 70vh; overflow-y: auto">
         <v-container fluid>
           <v-row v-if="type === 'tlm'" no-gutters>
             <v-col cols="5" class="label">Item Values</v-col>
