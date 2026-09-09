@@ -34,14 +34,13 @@ print(cowsay.get_output_string('cow', 'venv ok'))`
 const RUN_TIMEOUT = 30000
 
 // Open the venv dropdown and return the option labels it offers.
-// getByRole('option') rather than a class selector: Vuetify reuses
-// .v-list-item-title for the navigation drawer tree, which stays in the DOM
-// behind the tool, so a class match picks up "CmdTlmServer" and friends.
+// Read only titles: each option also has a subtitle containing its venv path.
+// Scope titles to options to exclude the navigation drawer's list item titles.
 async function venvOptions(page): Promise<string[]> {
   await page.locator('[data-test=python-venv-select]').click()
   const options = page.getByRole('option')
   await expect(options.first()).toBeVisible()
-  const labels = await options.allTextContents()
+  const labels = await options.locator('.v-list-item-title').allTextContents()
   await page.keyboard.press('Escape')
   await expect(options).toHaveCount(0)
   return labels.map((label: string) => label.trim())
@@ -49,7 +48,7 @@ async function venvOptions(page): Promise<string[]> {
 
 async function selectVenv(page, name: string) {
   await page.locator('[data-test=python-venv-select]').click()
-  await page.getByRole('option', { name, exact: true }).click()
+  await page.getByRole('option').getByText(name, { exact: true }).click()
 }
 
 test('offers the plugin venv alongside the system venv', async ({
