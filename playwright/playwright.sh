@@ -79,6 +79,20 @@ case $1 in
         ../openc3.sh cli generate plugin PW_TEST --ruby
         cd openc3-cosmos-pw-test
         ../../openc3.sh cli generate target PW_TEST --ruby
+        # Give the plugin Python dependencies so PluginModel runs uvinstall and
+        # creates a per-plugin venv. Without one, Script Runner's Python venv
+        # selector never renders and python-venv.p.spec.ts has nothing to test.
+        cp ../fixtures/pw-test-pyproject.toml pyproject.toml
+        # The generated gemspec's s.files does not list pyproject.toml, so the
+        # file would be dropped from the gem and PluginModel would never see it.
+        # Add it, then fail loudly if it still is not packaged - a silent miss
+        # here looks like "the venv feature is broken", not "the fixture is".
+        sed -i.bak 's/plugin\.txt)/plugin.txt pyproject.toml)/' openc3-cosmos-pw-test.gemspec
+        rm -f openc3-cosmos-pw-test.gemspec.bak
+        grep -q 'pyproject.toml' openc3-cosmos-pw-test.gemspec || {
+            echo "ERROR: failed to add pyproject.toml to the PW_TEST gemspec" >&2
+            exit 1
+        }
         ../../openc3.sh cli rake build VERSION=1.0.0
         cp openc3-cosmos-pw-test-1.0.0.gem openc3-cosmos-pw-test-1.0.1.gem
         ../../openc3.sh cli validate openc3-cosmos-pw-test-1.0.0.gem

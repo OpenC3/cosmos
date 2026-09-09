@@ -42,6 +42,10 @@ build-plugin:
     ../openc3.sh cli generate plugin PW_TEST --ruby
     cd openc3-cosmos-pw-test && \
         ../../openc3.sh cli generate target PW_TEST --ruby && \
+        cp ../fixtures/pw-test-pyproject.toml pyproject.toml && \
+        sed -i.bak 's/plugin\.txt)/plugin.txt pyproject.toml)/' openc3-cosmos-pw-test.gemspec && \
+        rm -f openc3-cosmos-pw-test.gemspec.bak && \
+        grep -q 'pyproject.toml' openc3-cosmos-pw-test.gemspec && \
         ../../openc3.sh cli rake build VERSION=1.0.0 && \
         cp openc3-cosmos-pw-test-1.0.0.gem openc3-cosmos-pw-test-1.0.1.gem && \
         ../../openc3.sh cli validate openc3-cosmos-pw-test-1.0.0.gem
