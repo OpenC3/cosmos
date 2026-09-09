@@ -16,6 +16,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/win32/win32'
+require 'openc3/io/serial_driver'
 require 'timeout' # For Timeout::Error
 
 module OpenC3

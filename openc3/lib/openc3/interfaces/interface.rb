@@ -15,6 +15,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'openc3/packets/packet'
 require 'openc3/api/api'
 require 'openc3/logs/stream_log_pair'
 require 'openc3/utilities/secrets'

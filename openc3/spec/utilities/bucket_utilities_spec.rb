@@ -12,6 +12,7 @@
 # if purchased from OpenC3, Inc.
 
 require "spec_helper"
+require "ostruct"
 require "openc3/utilities/bucket_utilities"
 
 module OpenC3
