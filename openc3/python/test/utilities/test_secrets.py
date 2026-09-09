@@ -12,30 +12,30 @@
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from openc3.utilities.secrets import Secrets
 
 
 class TestSecrets(unittest.TestCase):
     def setUp(self):
-        self.saved_dir = os.environ.pop("OPENC3_SECRET_FILE_DIR", None)
-
-    def tearDown(self):
-        if self.saved_dir is None:
-            os.environ.pop("OPENC3_SECRET_FILE_DIR", None)
-        else:
-            os.environ["OPENC3_SECRET_FILE_DIR"] = self.saved_dir
+        # patch.dict snapshots os.environ and restores it on stop, so tests are
+        # free to add or remove variables without leaking into other tests.
+        patcher = patch.dict(os.environ)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        os.environ.pop("OPENC3_SECRET_FILE_DIR", None)
 
     def test_secret_file_dir_defaults_to_tmp(self):
         self.assertEqual(Secrets.secret_file_dir(), "/tmp")
 
     def test_secret_file_dir_uses_env(self):
-        os.environ["OPENC3_SECRET_FILE_DIR"] = "/var/secrets"
-        self.assertEqual(Secrets.secret_file_dir(), "/var/secrets")
+        with patch.dict(os.environ, {"OPENC3_SECRET_FILE_DIR": "/var/secrets"}):
+            self.assertEqual(Secrets.secret_file_dir(), "/var/secrets")
 
     def test_secret_file_dir_ignores_blank_env(self):
-        os.environ["OPENC3_SECRET_FILE_DIR"] = ""
-        self.assertEqual(Secrets.secret_file_dir(), "/tmp")
+        with patch.dict(os.environ, {"OPENC3_SECRET_FILE_DIR": ""}):
+            self.assertEqual(Secrets.secret_file_dir(), "/tmp")
 
     def test_allows_paths_under_the_secret_file_dir(self):
         self.assertEqual(Secrets.validate_file_path("/tmp/DATA/cert"), "/tmp/DATA/cert")
@@ -98,28 +98,29 @@ class TestSecrets(unittest.TestCase):
             Secrets.validate_file_path("/tmp/cert\x00/etc/passwd")
 
     def test_honors_openc3_secret_file_dir(self):
-        with tempfile.TemporaryDirectory() as dir:
-            os.environ["OPENC3_SECRET_FILE_DIR"] = dir
+        with (
+            tempfile.TemporaryDirectory() as dir,
+            patch.dict(os.environ, {"OPENC3_SECRET_FILE_DIR": dir}),
+        ):
             self.assertEqual(Secrets.validate_file_path(f"{dir}/cert"), f"{dir}/cert")
             with self.assertRaisesRegex(ValueError, "must be under"):
                 Secrets.validate_file_path("/tmp/DATA/cert")
 
     def test_setup_requires_at_least_3_items(self):
+        secrets = Secrets()
         with self.assertRaisesRegex(ValueError, "at least 3 items"):
-            Secrets().setup([["ENV", "KEY"]])
+            secrets.setup([["ENV", "KEY"]])
 
     def test_setup_raises_on_unknown_types(self):
+        secrets = Secrets()
         with self.assertRaisesRegex(RuntimeError, "Unknown secret type"):
-            Secrets().setup([["OTHER", "KEY", "DATA"]])
+            secrets.setup([["OTHER", "KEY", "DATA"]])
 
     def test_setup_reads_env_secrets(self):
-        os.environ["OPENC3_SECRETS_TEST"] = "value"
-        try:
+        with patch.dict(os.environ, {"OPENC3_SECRETS_TEST": "value"}):
             secrets = Secrets()
             secrets.setup([["ENV", "KEY", "OPENC3_SECRETS_TEST"]])
             self.assertEqual(secrets.get("KEY", scope="DEFAULT"), "value")
-        finally:
-            del os.environ["OPENC3_SECRETS_TEST"]
 
     def test_setup_reads_file_secrets_under_the_secret_file_dir(self):
         path = f"/tmp/openc3_secrets_test_{os.getpid()}"
@@ -133,6 +134,7 @@ class TestSecrets(unittest.TestCase):
             os.unlink(path)
 
     def test_setup_does_not_read_file_secrets_outside_the_secret_file_dir(self):
+        secrets = Secrets()
         for path in ["/etc/passwd", "/tmp/../etc/passwd"]:
             with self.assertRaisesRegex(ValueError, "must be under"):
-                Secrets().setup([["FILE", "KEY", path]])
+                secrets.setup([["FILE", "KEY", path]])

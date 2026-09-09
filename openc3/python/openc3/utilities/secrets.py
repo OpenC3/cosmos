@@ -23,8 +23,13 @@ class Secrets:
     # Default base directory that FILE type secret paths must reside under.
     # FILE type secrets are written by the operator (or mounted by Kubernetes)
     # and then read back by the microservice, so the path is a destination we
-    # control, not an arbitrary file on the host.
-    DEFAULT_SECRET_FILE_DIR = "/tmp"
+    # control, not an arbitrary file on the host. Every COSMOS container runs
+    # with its own private /tmp, the secret file is only ever written by the
+    # operator (which rejects symlinks and re-checks the resolved path against
+    # this directory), and validate_file_path below rejects any path that
+    # escapes it. Deployments that want a dedicated volume instead set
+    # OPENC3_SECRET_FILE_DIR (see compose.override.yaml).
+    DEFAULT_SECRET_FILE_DIR = "/tmp"  # NOSONAR - see above; container-private /tmp, writes are symlink-checked
 
     def __init__(self):
         self.local_secrets = {}

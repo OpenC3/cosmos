@@ -27,7 +27,7 @@ module OpenC3
 
     # Base directory that FILE type secret paths must reside under
     def self.secret_file_dir
-      dir = ENV['OPENC3_SECRET_FILE_DIR']
+      dir = ENV.fetch('OPENC3_SECRET_FILE_DIR', nil)
       dir = DEFAULT_SECRET_FILE_DIR if dir.nil? or dir.empty?
       dir
     end
