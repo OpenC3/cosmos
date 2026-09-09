@@ -52,7 +52,10 @@ async function selectVenv(page, name: string) {
   await page.getByRole('option', { name, exact: true }).click()
 }
 
-test('offers the plugin venv alongside the system venv', async ({ page }) => {
+test('offers the plugin venv alongside the system venv', async ({
+  page,
+  utils,
+}) => {
   // detectLanguage() sees the import and treats the untitled buffer as Python,
   // which is what makes showPythonVenv true.
   await page.locator('textarea').fill(IMPORT_COWSAY)
@@ -65,7 +68,10 @@ test('offers the plugin venv alongside the system venv', async ({ page }) => {
   expect(labels.filter((label) => label !== 'system').length).toBeGreaterThan(0)
 })
 
-test('runs a script against the selected plugin venv', async ({ page }) => {
+test('runs a script against the selected plugin venv', async ({
+  page,
+  utils,
+}) => {
   await page.locator('textarea').fill(IMPORT_COWSAY)
   await expect(page.locator('[data-test=python-venv-select]')).toBeVisible()
 
@@ -84,6 +90,7 @@ test('runs a script against the selected plugin venv', async ({ page }) => {
 
 test('cannot import a plugin package under the system venv', async ({
   page,
+  utils,
 }) => {
   await page.locator('textarea').fill(IMPORT_COWSAY)
   await expect(page.locator('[data-test=python-venv-select]')).toBeVisible()
