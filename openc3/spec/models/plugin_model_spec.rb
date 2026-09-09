@@ -627,50 +627,50 @@ module OpenC3
           allow(PluginModel).to receive(:get_setting).and_return(nil)
         end
 
-        it "uses uvinstall for python packages when UV is available" do
+        let(:success_status) { double("status", success?: true) }
+        let(:failure_status) { double("status", success?: false) }
+
+        # Every example here installs the same plugin gem and differs only in
+        # which Python dependency file it ships and what OPENC3_USE_UV is set
+        # to, so the shared doubles live here and each example is left with the
+        # behavior it actually asserts.
+        def stub_plugin_gem(dep_file: 'pyproject.toml', dep_body: '[project]', use_uv: nil)
           expect(GemModel).to receive(:get).and_return("my_plugin.gem")
           gem = double("gem")
           expect(gem).to receive(:extract_files) do |path|
             File.open("#{path}/plugin.txt", 'w') { |f| f.puts "" }
-            File.open("#{path}/pyproject.toml", 'w') { |f| f.puts "[project]" }
+            File.open("#{path}/#{dep_file}", 'w') { |f| f.puts dep_body }
           end
           expect(Gem::Package).to receive(:new).and_return(gem)
           allow(gem).to receive(:spec).and_return(spec_double)
           expect(GemModel).to receive(:install).and_return(nil)
 
           allow(ENV).to receive(:[]).and_call_original
-          allow(ENV).to receive(:[]).with('OPENC3_USE_UV').and_return(nil)
+          allow(ENV).to receive(:[]).with('OPENC3_USE_UV').and_return(use_uv)
           allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
           allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
+        end
 
-          # system('which uv') returns true; uvinstall succeeds
-          allow(PluginModel).to receive(:system).with('which uv > /dev/null 2>&1').and_return(true)
-          success_status = double("status", success?: true)
+        def stub_uv_on_path(available)
+          allow(PluginModel).to receive(:system).with('which uv > /dev/null 2>&1').and_return(available)
+        end
+
+        def install_plugin
+          PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
+        end
+
+        it "uses uvinstall for python packages when UV is available" do
+          stub_plugin_gem
+          stub_uv_on_path(true)
           expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "-i", anything).and_return(["ok", success_status])
           allow(PythonVenv).to receive(:purge_reserved_packages).and_return([])
 
-          plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
-          expect(plugin_model['needs_dependencies']).to eql true
+          expect(install_plugin['needs_dependencies']).to eql true
         end
 
         it "purges a plugin-supplied openc3 from the venv after uvinstall succeeds" do
-          expect(GemModel).to receive(:get).and_return("my_plugin.gem")
-          gem = double("gem")
-          expect(gem).to receive(:extract_files) do |path|
-            File.open("#{path}/plugin.txt", 'w') { |f| f.puts "" }
-            File.open("#{path}/pyproject.toml", 'w') { |f| f.puts "[project]" }
-          end
-          expect(Gem::Package).to receive(:new).and_return(gem)
-          allow(gem).to receive(:spec).and_return(spec_double)
-          expect(GemModel).to receive(:install).and_return(nil)
-
-          allow(ENV).to receive(:[]).and_call_original
-          allow(ENV).to receive(:[]).with('OPENC3_USE_UV').and_return(nil)
-          allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
-          allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
-
-          allow(PluginModel).to receive(:system).with('which uv > /dev/null 2>&1').and_return(true)
-          success_status = double("status", success?: true)
+          stub_plugin_gem
+          stub_uv_on_path(true)
           expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "-i", anything).and_return(["ok", success_status])
 
           # The venv is named "<scope>__<plugin>" so this is where a plugin's
@@ -678,146 +678,67 @@ module OpenC3
           expect(PythonVenv).to receive(:purge_reserved_packages)
             .with("/gems/plugin_venvs/DEFAULT__name__0/.venv").and_return(['openc3'])
 
-          PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
+          install_plugin
         end
 
         it "does not purge the venv when uvinstall fails" do
-          expect(GemModel).to receive(:get).and_return("my_plugin.gem")
-          gem = double("gem")
-          expect(gem).to receive(:extract_files) do |path|
-            File.open("#{path}/plugin.txt", 'w') { |f| f.puts "" }
-            File.open("#{path}/pyproject.toml", 'w') { |f| f.puts "[project]" }
-          end
-          expect(Gem::Package).to receive(:new).and_return(gem)
-          allow(gem).to receive(:spec).and_return(spec_double)
-          expect(GemModel).to receive(:install).and_return(nil)
-
-          allow(ENV).to receive(:[]).and_call_original
-          allow(ENV).to receive(:[]).with('OPENC3_USE_UV').and_return(nil)
-          allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
-          allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
-
-          allow(PluginModel).to receive(:system).with('which uv > /dev/null 2>&1').and_return(true)
-          failure_status = double("status", success?: false)
-          success_status = double("status", success?: true)
+          stub_plugin_gem
+          stub_uv_on_path(true)
           expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "-i", anything).and_return(["uv failed", failure_status])
           expect(Open3).to receive(:capture2e).with("/openc3/bin/pipinstall", "-i", anything, anything).and_return(["pip ok", success_status])
 
           expect(PythonVenv).not_to receive(:purge_reserved_packages)
 
-          PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
+          install_plugin
         end
 
         it "falls back to pipinstall when uvinstall fails" do
-          expect(GemModel).to receive(:get).and_return("my_plugin.gem")
-          gem = double("gem")
-          expect(gem).to receive(:extract_files) do |path|
-            File.open("#{path}/plugin.txt", 'w') { |f| f.puts "" }
-            File.open("#{path}/pyproject.toml", 'w') { |f| f.puts "[project]" }
-          end
-          expect(Gem::Package).to receive(:new).and_return(gem)
-          allow(gem).to receive(:spec).and_return(spec_double)
-          expect(GemModel).to receive(:install).and_return(nil)
-
-          allow(ENV).to receive(:[]).and_call_original
-          allow(ENV).to receive(:[]).with('OPENC3_USE_UV').and_return(nil)
-          allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
-          allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
-
-          allow(PluginModel).to receive(:system).with('which uv > /dev/null 2>&1').and_return(true)
+          stub_plugin_gem
+          stub_uv_on_path(true)
+          allow(PythonVenv).to receive(:purge_reserved_packages).and_return([])
 
           # uvinstall fails, then pipinstall succeeds
-          failure_status = double("status", success?: false)
-          success_status = double("status", success?: true)
           expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "-i", anything).and_return(["uv failed", failure_status])
           expect(Open3).to receive(:capture2e).with("/openc3/bin/pipinstall", "-i", anything, anything).and_return(["pip ok", success_status])
 
-          plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
-          expect(plugin_model['needs_dependencies']).to eql true
+          expect(install_plugin['needs_dependencies']).to eql true
         end
 
         it "skips UV and uses pipinstall when OPENC3_USE_UV is 'false'" do
-          expect(GemModel).to receive(:get).and_return("my_plugin.gem")
-          gem = double("gem")
-          expect(gem).to receive(:extract_files) do |path|
-            File.open("#{path}/plugin.txt", 'w') { |f| f.puts "" }
-            File.open("#{path}/requirements.txt", 'w') { |f| f.puts "requests" }
-          end
-          expect(Gem::Package).to receive(:new).and_return(gem)
-          allow(gem).to receive(:spec).and_return(spec_double)
-          expect(GemModel).to receive(:install).and_return(nil)
-
-          allow(ENV).to receive(:[]).and_call_original
-          allow(ENV).to receive(:[]).with('OPENC3_USE_UV').and_return('false')
-          allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
-          allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
+          stub_plugin_gem(dep_file: 'requirements.txt', dep_body: 'requests', use_uv: 'false')
 
           # Should NOT call system for uv check
           expect(PluginModel).not_to receive(:system)
 
           # Should go straight to pipinstall
-          success_status = double("status", success?: true)
           expect(Open3).to receive(:capture2e).with("/openc3/bin/pipinstall", "-i", anything, "-r", anything).and_return(["pip ok", success_status])
 
-          plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
-          expect(plugin_model['needs_dependencies']).to eql true
+          expect(install_plugin['needs_dependencies']).to eql true
         end
 
         it "sanitizes an invalid pypi_url setting before invoking uvinstall" do
-          expect(GemModel).to receive(:get).and_return("my_plugin.gem")
-          gem = double("gem")
-          expect(gem).to receive(:extract_files) do |path|
-            File.open("#{path}/plugin.txt", 'w') { |f| f.puts "" }
-            File.open("#{path}/pyproject.toml", 'w') { |f| f.puts "[project]" }
-          end
-          expect(Gem::Package).to receive(:new).and_return(gem)
-          allow(gem).to receive(:spec).and_return(spec_double)
-          expect(GemModel).to receive(:install).and_return(nil)
-
-          allow(ENV).to receive(:[]).and_call_original
-          allow(ENV).to receive(:[]).with('OPENC3_USE_UV').and_return(nil)
-          allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
-          allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
+          stub_plugin_gem
+          stub_uv_on_path(true)
 
           # A user-writable setting must never put shell metacharacters on the uvinstall argv
           allow(OpenC3::Logger).to receive(:error)
           payload = "https://pypi.org ; id > /tmp/PWNED ; #"
           allow(PluginModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return(payload)
 
-          allow(PluginModel).to receive(:system).with('which uv > /dev/null 2>&1').and_return(true)
-          success_status = double("status", success?: true)
           expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "-i", PypiUrl::DEFAULT).and_return(["ok", success_status])
           allow(PythonVenv).to receive(:purge_reserved_packages).and_return([])
 
-          plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
-          expect(plugin_model['needs_dependencies']).to eql true
+          expect(install_plugin['needs_dependencies']).to eql true
         end
 
         it "falls back to pipinstall when uv is not on PATH" do
-          expect(GemModel).to receive(:get).and_return("my_plugin.gem")
-          gem = double("gem")
-          expect(gem).to receive(:extract_files) do |path|
-            File.open("#{path}/plugin.txt", 'w') { |f| f.puts "" }
-            File.open("#{path}/pyproject.toml", 'w') { |f| f.puts "[project]" }
-          end
-          expect(Gem::Package).to receive(:new).and_return(gem)
-          allow(gem).to receive(:spec).and_return(spec_double)
-          expect(GemModel).to receive(:install).and_return(nil)
-
-          allow(ENV).to receive(:[]).and_call_original
-          allow(ENV).to receive(:[]).with('OPENC3_USE_UV').and_return(nil)
-          allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
-          allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
-
-          # system('which uv') returns false
-          allow(PluginModel).to receive(:system).with('which uv > /dev/null 2>&1').and_return(false)
+          stub_plugin_gem
+          stub_uv_on_path(false)
 
           # Should fall back to pipinstall
-          success_status = double("status", success?: true)
           expect(Open3).to receive(:capture2e).with("/openc3/bin/pipinstall", "-i", anything, anything).and_return(["pip ok", success_status])
 
-          plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
-          expect(plugin_model['needs_dependencies']).to eql true
+          expect(install_plugin['needs_dependencies']).to eql true
         end
       end
     end
