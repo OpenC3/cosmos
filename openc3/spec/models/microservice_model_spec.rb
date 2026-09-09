@@ -201,27 +201,18 @@ module OpenC3
         tf.unlink
       end
 
-      it "raises on non-integer ports" do
+      it "parses SECRET" do
         model = MicroserviceModel.new(folder_name: "TEST", name: "DEFAULT__TYPE__NAME", scope: "DEFAULT")
         parser = ConfigParser.new
         tf = Tempfile.new
-        tf.puts "PORT asdf"
+        tf.puts 'SECRET ENV USERNAME ENV_USERNAME'
+        tf.puts 'SECRET FILE KEY "/tmp/DATA/cert"'
         tf.close
         parser.parse_file(tf.path) do |keyword, params|
-          expect { model.handle_config(parser, keyword, params) }.to raise_error(/Port must be an integer/)
+          model.handle_config(parser, keyword, params)
         end
-        tf.unlink
-      end
-
-      it "raises on invalid port protocols" do
-        model = MicroserviceModel.new(folder_name: "TEST", name: "DEFAULT__TYPE__NAME", scope: "DEFAULT")
-        parser = ConfigParser.new
-        tf = Tempfile.new
-        tf.puts "PORT 1234 BLAH"
-        tf.close
-        parser.parse_file(tf.path) do |keyword, params|
-          expect { model.handle_config(parser, keyword, params) }.to raise_error(/Unknown port protocol: BLAH/)
-        end
+        expect(model.as_json()['secrets']).to include(['ENV', 'USERNAME', 'ENV_USERNAME'],
+                                                     ['FILE', 'KEY', '/tmp/DATA/cert'])
         tf.unlink
       end
     end

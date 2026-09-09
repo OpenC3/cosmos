@@ -186,6 +186,8 @@ SECRET:
     - name: Environment Variable or File Path
       required: true
       description: Environment variable name or file path to store secret.
+        FILE paths must be under /tmp (or the directory set by the
+        OPENC3_SECRET_FILE_DIR environment variable); paths outside of it are rejected.
         Note that if you use the Option Name to set an option to the secret value,
         this value doesn't really matter as long as it is unique.
       values: .*
@@ -366,6 +368,8 @@ BRIDGE_SECRET:
     - name: Environment Variable or File Path
       required: true
       description: Environment variable name or file path to store secret.
+        FILE paths must be under /tmp (or the directory set by the
+        OPENC3_SECRET_FILE_DIR environment variable); paths outside of it are rejected.
         Note that if you use the Option Name to set an option to the secret value,
         this value doesn't really matter as long as it is unique.
       values: .*

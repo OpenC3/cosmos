@@ -16,6 +16,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
+require 'openc3/interfaces'
 require 'openc3/models/interface_model'
 require 'openc3/models/bridge_model'
 require 'openc3/models/host_interface_microservice_model'
@@ -185,6 +186,50 @@ module OpenC3
         expect(json['options']).to include(["NAME1", "VALUE1"], ["NAME2", "VALUE2"])
         expect(json['protocols']).to include(["READ", "ReadProtocol", "1", "2", "3"], ["WRITE", "WriteProtocol"])
         expect(json['log_stream']).to eq []
+        tf.unlink
+      end
+
+      it "parses SECRET and BRIDGE_SECRET" do
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts 'SECRET ENV USERNAME ENV_USERNAME USERNAME'
+        tf.puts 'SECRET FILE KEY "/tmp/DATA/cert" KEY'
+        tf.puts 'BRIDGE_SECRET FILE KEY2 "/tmp/DATA/cert2" KEY2'
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+        end
+        expect(model.secrets).to include(['ENV', 'USERNAME', 'ENV_USERNAME', nil],
+                                        ['FILE', 'KEY', '/tmp/DATA/cert', nil],
+                                        ['FILE', 'KEY2', '/tmp/DATA/cert2', nil])
+        tf.unlink
+      end
+
+      it "rejects BRIDGE_SECRET FILE paths outside the secret file dir" do
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts 'BRIDGE_SECRET FILE KEY "/root/.ssh/id_rsa" KEY'
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          expect { model.handle_config(parser, keyword, params) }.to raise_error(ConfigParser::Error, /must be under/)
+        end
+        tf.unlink
+      end
+
+      it "normalizes the BRIDGE_SECRET type and file path" do
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts 'BRIDGE_SECRET env USERNAME ENV_USERNAME USERNAME'
+        tf.puts 'BRIDGE_SECRET file KEY2 "/tmp/DATA/./cert2" KEY2'
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+        end
+        expect(model.secrets).to include(['ENV', 'USERNAME', 'ENV_USERNAME', nil],
+                                        ['FILE', 'KEY2', '/tmp/DATA/cert2', nil])
         tf.unlink
       end
     end
