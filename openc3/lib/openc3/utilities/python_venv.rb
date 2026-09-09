@@ -11,6 +11,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'open3'
 require 'openc3/models/target_model'
 require 'openc3/utilities/target_file'
 
@@ -24,6 +25,16 @@ module OpenC3
     # literal in script.rb, running_script.rb, microservice_operator.rb and
     # microservice_model.rb.
     DEFAULT_PYTHONUSERBASE = '/gems/python_packages'
+
+    # Packages a plugin venv must never supply itself. The scripts and
+    # microservices that use a plugin venv still run the base venv's Python
+    # binary, and CPython searches every PYTHONPATH entry ahead of the running
+    # venv's own site-packages. A plugin that declares openc3 as a dependency
+    # would therefore shadow the system library with its own copy, silently
+    # swapping the API client the script talks to COSMOS with. Reordering
+    # PYTHONPATH cannot fix this - the whole variable outranks the base venv -
+    # so the copy is removed at install time instead.
+    RESERVED_PACKAGES = ['openc3'].freeze
 
     # Resolve a script's plugin venv and expose its packages to a child process.
     # Returns the venv path when configured, or nil when the system environment
@@ -54,6 +65,36 @@ module OpenC3
 
       environment
     end
+
+    # Remove any RESERVED_PACKAGES a plugin installed into its own venv.
+    # Returns the names that were removed so callers can report them.
+    def self.purge_reserved_packages(venv_dir)
+      return [] if venv_dir.nil? || venv_dir.empty?
+
+      purged = []
+      RESERVED_PACKAGES.each do |package|
+        next unless package_installed?(venv_dir, package)
+
+        Logger.warn("Plugin venv #{venv_dir} declares '#{package}', which would shadow the " \
+                    "system library. Removing it; the plugin will use the system #{package}.")
+        _output, status = Open3.capture2e('uv', 'pip', 'uninstall', '--python', venv_dir, package)
+        if status.success?
+          purged << package
+        else
+          Logger.error("Failed to remove '#{package}' from plugin venv #{venv_dir}")
+        end
+      end
+      purged
+    rescue => e
+      Logger.error("Could not purge reserved packages from #{venv_dir}: #{e.message}")
+      []
+    end
+
+    def self.package_installed?(venv_dir, package)
+      _output, status = Open3.capture2e('uv', 'pip', 'show', '--python', venv_dir, package)
+      status.success?
+    end
+    private_class_method :package_installed?
 
     def self.plugin_venv_path(scope:, plugin_name:)
       sanitized_name = "#{scope}__#{plugin_name}".tr('^a-zA-Z0-9_-', '_')

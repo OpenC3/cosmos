@@ -19,6 +19,7 @@ require 'rubygems'
 require 'rubygems/package'
 require 'openc3'
 require 'openc3/utilities/bucket'
+require 'openc3/utilities/python_venv'
 require 'openc3/utilities/store'
 require 'openc3/config/config_parser'
 require 'openc3/models/model'
@@ -291,7 +292,12 @@ module OpenC3
               uv_args = [plugin_venv_name, gem_path] + pypi_args
               output, status = Open3.capture2e("/openc3/bin/uvinstall", *uv_args)
               puts output
-              unless status.success?
+              if status.success?
+                # A plugin that declares openc3 itself would shadow the system
+                # library once its site-packages goes on PYTHONPATH, so drop it
+                # here rather than let the wrong client reach a running script.
+                PythonVenv.purge_reserved_packages(File.join('/gems', 'plugin_venvs', plugin_venv_name, '.venv'))
+              else
                 Logger.warn "UV per-plugin install failed, falling back to shared pipinstall"
                 uv_installed = false
               end

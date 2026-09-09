@@ -230,6 +230,55 @@ module OpenC3
       end
     end
 
+    describe ".purge_reserved_packages" do
+      let(:venv) { "/gems/plugin_venvs/DEFAULT__demo/.venv" }
+      let(:ok) { instance_double(Process::Status, success?: true) }
+      let(:fail_status) { instance_double(Process::Status, success?: false) }
+
+      it "removes openc3 when a plugin installed its own copy" do
+        expect(Open3).to receive(:capture2e).with('uv', 'pip', 'show', '--python', venv, 'openc3')
+          .and_return(["openc3 9.9.9", ok])
+        expect(Open3).to receive(:capture2e).with('uv', 'pip', 'uninstall', '--python', venv, 'openc3')
+          .and_return(["", ok])
+        expect(Logger).to receive(:warn).with(/would shadow the system library/)
+
+        expect(PythonVenv.purge_reserved_packages(venv)).to eq(['openc3'])
+      end
+
+      it "does nothing when the plugin venv has no reserved package" do
+        expect(Open3).to receive(:capture2e).with('uv', 'pip', 'show', '--python', venv, 'openc3')
+          .and_return(["", fail_status])
+        expect(Open3).not_to receive(:capture2e).with('uv', 'pip', 'uninstall', any_args)
+
+        expect(PythonVenv.purge_reserved_packages(venv)).to eq([])
+      end
+
+      it "reports the package as not purged when the uninstall fails" do
+        allow(Open3).to receive(:capture2e).with('uv', 'pip', 'show', '--python', venv, 'openc3')
+          .and_return(["openc3 9.9.9", ok])
+        allow(Open3).to receive(:capture2e).with('uv', 'pip', 'uninstall', '--python', venv, 'openc3')
+          .and_return(["boom", fail_status])
+        allow(Logger).to receive(:warn)
+        expect(Logger).to receive(:error).with(/Failed to remove 'openc3'/)
+
+        expect(PythonVenv.purge_reserved_packages(venv)).to eq([])
+      end
+
+      it "returns an empty list for a nil or blank venv" do
+        expect(Open3).not_to receive(:capture2e)
+
+        expect(PythonVenv.purge_reserved_packages(nil)).to eq([])
+        expect(PythonVenv.purge_reserved_packages("")).to eq([])
+      end
+
+      it "logs and returns empty when uv is unavailable" do
+        allow(Open3).to receive(:capture2e).and_raise(Errno::ENOENT.new('uv'))
+        expect(Logger).to receive(:error).with(/Could not purge reserved packages/)
+
+        expect(PythonVenv.purge_reserved_packages(venv)).to eq([])
+      end
+    end
+
     describe ".plugin_venv_path" do
       it "sanitizes the scope and plugin name" do
         expected_path = "/gems/plugin_venvs/MY_SCOPE__demo_plugin_1_0/.venv"
