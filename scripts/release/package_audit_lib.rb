@@ -769,6 +769,13 @@ def check_anycable(client, container_name)
   new_version
 end
 
+# Packages whose only vendored browser artifact is a stylesheet in public/css
+# rather than a script in public/js. The key is the package.json name (scoped
+# names included), the value is the basename used on disk and in index.html.
+CSS_ONLY_PKGS = {
+  '@astrouxds/astro-web-components' => 'astro-web-components',
+}
+
 def check_tool_base(path, base_pkgs, force: false)
   Dir.chdir(path) do
     # List the remote tags and sort reverse order (latest on top)
@@ -791,16 +798,15 @@ def check_tool_base(path, base_pkgs, force: false)
       `curl https://cdnjs.cloudflare.com/ajax/libs/MaterialDesign-Webfont/#{latest}/fonts/materialdesignicons-webfont.woff2 --output public/fonts/materialdesignicons-webfont.woff2`
       FileUtils.rm(existing)
 
-      # Now update the files with references to materialdesignicons
-      files = ["public/index.html"]
-      # The base also has to update index.html in openc3-tool-base
-      files << "../packages/openc3-tool-base/public/index.html" unless path.include?('enterprise')
-      files.each do |filename|
-        html = File.read(filename)
-        html.gsub!(/materialdesignicons-.+\.min\.css/, "materialdesignicons-#{latest}.min.css")
-        html.gsub!(/woff2\?v=.+/, "woff2?v=#{latest}")
-        File.open(filename, 'w') {|file| file.puts html }
-      end
+      # Now update the index.html references to materialdesignicons. Both core
+      # and enterprise have exactly one, at public/index.html relative to the
+      # tool-base this was called with.
+      html = File.read("public/index.html")
+      html.gsub!(/materialdesignicons-.+\.min\.css/, "materialdesignicons-#{latest}.min.css")
+      # Stop at the closing quote: `.+` is greedy to end of line and ate it,
+      # leaving an unterminated href attribute.
+      html.gsub!(/woff2\?v=[^"]+/, "woff2?v=#{latest}")
+      File.open("public/index.html", 'w') {|file| file.puts html }
     end
 
     # Ensure various js files match their package.json versions
@@ -822,16 +828,20 @@ def check_tool_base(path, base_pkgs, force: false)
         alt_package = 'vue.runtime.global.prod'
       elsif package == 'vuetify'
         alt_package = 'vuetify-labs'
+      elsif CSS_ONLY_PKGS[package]
+        alt_package = CSS_ONLY_PKGS[package]
       end
+      # css-only packages live in public/css, everything else in public/js
+      dir = CSS_ONLY_PKGS[package] ? 'css' : 'js'
       # Ensure we're only matching package names followed by numbers
       # This prevents vue- from matching vue-router-
-      existing = Dir["public/js/#{alt_package}-[0-9]*"][0]
+      existing = Dir["public/#{dir}/#{alt_package}-[0-9]*"][0]
       if !latest
         puts "ERROR: Could not find latest version for #{package} in #{Dir.pwd}/package.json"
         next
       end
       if !existing && !force
-        puts "ERROR: Could not find existing package #{alt_package} in #{Dir.pwd}/public/js (use FORCE=1 to download it fresh)"
+        puts "ERROR: Could not find existing package #{alt_package} in #{Dir.pwd}/public/#{dir} (use FORCE=1 to download it fresh)"
         next
       end
       existing_version = existing.to_s[/(\d+\.\d+\.\d+)/, 1]
@@ -898,6 +908,17 @@ def check_tool_base(path, base_pkgs, force: false)
           outfile = "public/js/#{package}-#{latest}.min.js"
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.prod.js --output #{outfile}`
           validate_outfile(outfile, package, latest)
+        when '@astrouxds/astro-web-components'
+          # Only the global stylesheet (design tokens, .rux-* utility classes and
+          # the :not(:defined) pre-hydration rules) has to be vendored. The
+          # per-component styles ride along in the shadow DOM from the npm
+          # package that main.js loads via defineCustomElements(), so nothing
+          # here validates this file against package.json -- a stale copy drifts
+          # silently, which is why the audit keeps it in sync. Stencil publishes
+          # it unminified, so there is no .min in the filename.
+          outfile = "public/css/#{alt_package}-#{latest}.css"
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{alt_package}/#{alt_package}.css --output #{outfile}`
+          validate_outfile(outfile, package, latest)
         else
           outfile = "public/js/#{package}-#{latest}.min.js"
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.min.js --output #{outfile}`
@@ -906,8 +927,12 @@ def check_tool_base(path, base_pkgs, force: false)
         FileUtils.rm_f existing if existing && !version_matches
         # Now update the public/index.html with references to <package>-<version>.min.js
         html = File.read("public/index.html")
-        html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")
-        html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.css/, "#{alt_package}-#{latest}.min.css")
+        if CSS_ONLY_PKGS[package]
+          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.css/, "#{alt_package}-#{latest}.css")
+        else
+          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")
+          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.css/, "#{alt_package}-#{latest}.min.css")
+        end
         File.open("public/index.html", 'w') {|file| file.puts html }
         if package == 'keycloak-js'
           html = File.read('public/js/auth.js')
