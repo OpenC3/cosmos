@@ -242,6 +242,72 @@ RSpec.describe MessageFileReader, type: :model do
     end
   end
 
+  describe "#close" do
+    let(:reader) { MessageFileReader.new(start_time: start_time, end_time: end_time, scope: scope) }
+
+    # next_log_entry only unreserves a file once its reader runs out of entries.
+    # Anything that ends the read early leaves the rest reserved, and a
+    # reservation that is never released also blocks BucketFileCache from
+    # aging the file out, so it stays on disk for the life of the process.
+    it "releases files that are still open" do
+      reader1 = double("reader1")
+      reader2 = double("reader2")
+      bucket_file1 = double("bucket_file1")
+      bucket_file2 = double("bucket_file2")
+      allow(reader1).to receive(:bucket_file).and_return(bucket_file1)
+      allow(reader2).to receive(:bucket_file).and_return(bucket_file2)
+      reader.instance_variable_set(:@open_readers, [reader1, reader2])
+
+      expect(reader1).to receive(:close)
+      expect(reader2).to receive(:close)
+      expect(@bucket_file_cache).to receive(:unreserve).with(bucket_file1)
+      expect(@bucket_file_cache).to receive(:unreserve).with(bucket_file2)
+
+      reader.close
+
+      expect(reader.instance_variable_get(:@open_readers)).to be_empty
+    end
+
+    it "does nothing when no files are open" do
+      reader.instance_variable_set(:@open_readers, [])
+      expect(@bucket_file_cache).to_not receive(:unreserve)
+      expect { reader.close }.to_not raise_error
+    end
+
+    it "releases open files when each stops at the end time" do
+      reader1 = double("reader1", close: nil)
+      bucket_file1 = double("bucket_file1")
+      allow(reader1).to receive(:bucket_file).and_return(bucket_file1)
+      # Sits past @end_time so each returns on the first entry, before this
+      # reader ever runs out and gets unreserved the normal way
+      allow(reader1).to receive(:next_entry_time).and_return(end_time + 1)
+      allow(reader1).to receive(:read).and_return({"time" => (end_time + 1).to_s})
+      allow(reader).to receive(:open_current_files)
+      reader.instance_variable_set(:@open_readers, [reader1])
+
+      expect(@bucket_file_cache).to receive(:unreserve).with(bucket_file1)
+
+      expect(reader.each { |_entry| }).to be true
+      expect(reader.instance_variable_get(:@open_readers)).to be_empty
+    end
+
+    it "releases open files when the caller breaks out of each" do
+      reader1 = double("reader1", close: nil)
+      bucket_file1 = double("bucket_file1")
+      allow(reader1).to receive(:bucket_file).and_return(bucket_file1)
+      allow(reader1).to receive(:next_entry_time).and_return(start_time + 1)
+      allow(reader1).to receive(:read).and_return({"time" => (start_time + 1).to_s})
+      allow(reader).to receive(:open_current_files)
+      reader.instance_variable_set(:@open_readers, [reader1])
+
+      expect(@bucket_file_cache).to receive(:unreserve).with(bucket_file1)
+
+      reader.each { |_entry| break } # How a cancelled stream unwinds
+
+      expect(reader.instance_variable_get(:@open_readers)).to be_empty
+    end
+  end
+
   describe "#build_file_list" do
     let(:reader) { MessageFileReader.new(start_time: start_time, end_time: end_time, scope: scope) }
 
