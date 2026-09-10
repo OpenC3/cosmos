@@ -12,7 +12,7 @@
 # All Rights Reserved
 */
 
-import { type Page, expect } from '@playwright/test'
+import { type Page, type Response, expect } from '@playwright/test'
 import * as fs from 'node:fs'
 export class Utilities {
   readonly page: Page
@@ -157,5 +157,55 @@ export class Utilities {
           .innerText()
       })
       .toMatch(regex)
+  }
+
+  // Press the editor's save shortcut (Cmd-S on macOS, Ctrl-S elsewhere).
+  // Pair with saveComplete() -- the keypress only fires the request.
+  async ctrlS() {
+    await this.page
+      .locator('textarea')
+      .press(process.platform === 'darwin' ? 'Meta+S' : 'Control+S')
+  }
+
+  // Resolves once the server has accepted the save of `filename`.
+  //
+  // Register it BEFORE the action that triggers the save and await it after,
+  // so the listener exists before the response can land:
+  //
+  //   const saved = utils.saveComplete(file)
+  //   await utils.ctrlS()
+  //   await saved
+  //
+  // The "Saving..." snackbar cannot serve as this gate: ScriptRunner sets
+  // showSave *after* issuing the POST and leaves it up for 2s after success,
+  // so `expect(getByText('Saving...')).not.toBeVisible()` passes vacuously on
+  // a starved runner and lets the next step race the in-flight save. That
+  // matters most before opening a file dialog, which builds its tree from a
+  // one-shot listing fetch and never refreshes it.
+  saveComplete(filename: string): Promise<Response> {
+    return this.scriptApiResponse(filename, 'POST')
+  }
+
+  // Resolves once ScriptRunner's reloadFile() fetch of `filename` has
+  // returned, i.e. the contents are about to be installed in the editor.
+  fileLoaded(filename: string): Promise<Response> {
+    return this.scriptApiResponse(filename, 'GET')
+  }
+
+  // Match the pathname exactly rather than by substring: the '/delete',
+  // '/lock' and '/syntax' endpoints all sit under the script's own path and
+  // would otherwise resolve the wrong wait. Requiring 200 means a missing
+  // file fails the wait instead of quietly letting the test continue.
+  private scriptApiResponse(
+    filename: string,
+    method: 'GET' | 'POST',
+  ): Promise<Response> {
+    return this.page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname ===
+          `/script-api/scripts/${filename}` &&
+        response.request().method() === method &&
+        response.status() === 200,
+    )
   }
 }
