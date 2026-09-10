@@ -26,8 +26,10 @@ describe BucketFileCache do
 
   before(:each) do
     @downloads = []
+    @download_buckets = []
     @client = double("getClient").as_null_object
     allow(@client).to receive(:get_object) do |bucket:, key:, path:|
+      @download_buckets << bucket
       @downloads << key
       FileUtils.mkdir_p(File.dirname(path))
       if File.extname(key) == '.gz'
@@ -137,6 +139,7 @@ describe BucketFileCache do
         expect(File.read(bucket_file.local_path)).to eql contents
         expect(bucket_file.size).to eql file_size
         expect(@downloads).to eql [bucket_path]
+        expect(@download_buckets).to eql [ENV['OPENC3_LOGS_BUCKET']]
       end
 
       it "returns false and doesn't re-download an existing local file" do
