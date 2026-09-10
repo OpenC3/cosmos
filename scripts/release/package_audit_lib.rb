@@ -776,6 +776,22 @@ CSS_ONLY_PKGS = {
   '@astrouxds/astro-web-components' => 'astro-web-components',
 }
 
+# The basename a package is vendored under in public/js or public/css. vue and
+# vuetify don't ship the build we want under their own name, and the css-only
+# packages drop their npm scope. Every place that has to build or match a
+# vendored filename goes through here so index.html, importmap.json and the
+# downloader can't disagree about what the file is called.
+def tool_base_asset_name(package)
+  case package
+  when 'vue'
+    'vue.runtime.global.prod'
+  when 'vuetify'
+    'vuetify-labs'
+  else
+    CSS_ONLY_PKGS[package] || package
+  end
+end
+
 def check_tool_base(path, base_pkgs, force: false)
   Dir.chdir(path) do
     # List the remote tags and sort reverse order (latest on top)
@@ -823,14 +839,7 @@ def check_tool_base(path, base_pkgs, force: false)
     end
     packages.each do |package, latest|
       # vue and vuetify are special cases due to the package names
-      alt_package = package
-      if package == 'vue'
-        alt_package = 'vue.runtime.global.prod'
-      elsif package == 'vuetify'
-        alt_package = 'vuetify-labs'
-      elsif CSS_ONLY_PKGS[package]
-        alt_package = CSS_ONLY_PKGS[package]
-      end
+      alt_package = tool_base_asset_name(package)
       # css-only packages live in public/css, everything else in public/js
       dir = CSS_ONLY_PKGS[package] ? 'css' : 'js'
       # Ensure we're only matching package names followed by numbers
@@ -941,11 +950,67 @@ def check_tool_base(path, base_pkgs, force: false)
         end
       end
     end
-    # The SystemJS import map is a separate file from index.html so it has to be
-    # updated as well. Sync it unconditionally (not just on an accepted prompt)
+    # index.html, auth.js and the SystemJS import map are all separate from the
+    # downloaded files, so a run that was interrupted (or declined) between the
+    # download and the rewrite leaves them pointing at a version that is no
+    # longer on disk -- which the browser only reports as a SystemJS Error#3 at
+    # runtime. Sync all three unconditionally, not just on an accepted prompt,
     # so a previously missed update is repaired on the next run.
+    sync_versioned_refs(packages)
+    sync_versioned_refs(packages, path: 'public/js/auth.js')
     sync_importmap(packages)
+    verify_tool_base_refs
   end
+end
+
+# Rewrite the hardcoded <package>-<version> filenames in an html/js file so
+# they match the versions in package.json. The download loop already does this
+# for a package it just downloaded; running it unconditionally repairs a file
+# that was left behind because an earlier run died (or was Ctrl-C'd) after the
+# download but before the rewrite.
+# packages is a Hash of package name => version (from package.json)
+def sync_versioned_refs(packages, path: 'public/index.html')
+  return unless File.exist?(path)
+  html = File.read(path)
+  changed = false
+  packages.each do |package, latest|
+    next unless latest
+    asset = tool_base_asset_name(package)
+    # Only rewrite once the file the new reference points at is actually on
+    # disk, otherwise a failed download would swap a working reference for a
+    # 404. Each package uses exactly one of these shapes, and vuetify uses two
+    # (the labs js and its stylesheet).
+    [['js', '.min.js'], ['css', '.min.css'], ['css', '.css']].each do |dir, ext|
+      target = "#{asset}-#{latest}#{ext}"
+      next unless File.exist?(File.join('public', dir, target))
+      updated = html.gsub(/#{Regexp.escape(asset)}-\d+\.\d+\.\d+#{Regexp.escape(ext)}/, target)
+      next if updated == html
+      html = updated
+      changed = true
+      puts "  Updated #{path}: #{package} => #{target}"
+    end
+  end
+  File.write(path, html) if changed
+end
+
+# Last line of defense: every /js/... and /css/... reference in the tool-base
+# entry points has to resolve to a file we actually vendored. A dangling one is
+# invisible until the browser fails to boot, so fail loudly here instead.
+# Returns the list of errors so callers can decide whether to keep going.
+def verify_tool_base_refs(paths: ['public/index.html', 'public/js/importmap.json', 'public/js/auth.js'])
+  errors = []
+  paths.each do |path|
+    next unless File.exist?(path)
+    # Only local absolute references in quotes -- skips CDN urls and anything
+    # with a cache-busting query string (the font files).
+    File.read(path).scan(%r{["'](/(?:js|css)/[^"'?]+)["']}).flatten.uniq.each do |ref|
+      local = File.join('public', ref.sub(%r{\A/}, ''))
+      errors << "ERROR: #{Dir.pwd}/#{path} references #{ref} but #{local} doesn't exist" unless File.exist?(local)
+    end
+  end
+  errors.each { |error| puts error }
+  puts "ERROR: tool-base references are broken, the browser will fail to load" unless errors.empty?
+  errors
 end
 
 # Update public/js/importmap.json so every import points at the versioned file
