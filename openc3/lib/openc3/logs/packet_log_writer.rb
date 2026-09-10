@@ -311,6 +311,11 @@ module OpenC3
           extra = JSON.parse(extra, allow_nan: true, create_additions: true) if String === extra
           length += OPENC3_EXTRA_LENGTH_FIXED_SIZE
           if @data_format == :CBOR
+            # The reader uses this same flag to pick the extra decoder, so it
+            # must be set here as well as in the JSON_PACKET data branch above.
+            # RAW_PACKET entries never reach that branch and would otherwise
+            # write CBOR extra that the reader tries to JSON.parse.
+            flags |= OPENC3_CBOR_FLAG_MASK
             extra_encoded = extra.as_json.to_cbor
           else
             extra_encoded = JSON.generate(extra.as_json, allow_nan: true)
