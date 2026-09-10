@@ -219,6 +219,117 @@ module OpenC3
         FileUtils.rm_f 'test_log.bin'
       end
 
+      %i[CBOR JSON].each do |data_format|
+        it "round trips RAW_PACKET extra using #{data_format}" do
+          time = Time.now.to_nsec_from_epoch
+          timestamp = Time.from_nsec_from_epoch(time).to_timestamp
+          label = 'extra'
+          plw = PacketLogWriter.new(@log_dir, label)
+          plw.data_format = data_format
+          extra = { 'username' => 'test', 'count' => 5 }
+          plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', time, false, "\x01\x02", nil, '0-0', extra: extra)
+          # A second packet without extra to prove a stale extra isn't carried over
+          plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', time, false, "\x03\x04", nil, '0-0')
+          threads = plw.shutdown
+          threads.each { |t| t.join }
+
+          bin = @files["#{timestamp}__#{timestamp}__#{label}.bin.gz"]
+          gz = Zlib::GzipReader.new(StringIO.new(bin))
+          File.open('test_log.bin', 'wb') { |file| file.write gz.read }
+          reader = PacketLogReader.new
+          reader.open('test_log.bin')
+          # The extra must decode without raising regardless of data_format,
+          # which requires the writer to flag CBOR encoded extra
+          pkt = reader.read
+          expect(pkt.target_name).to eq 'TGT1'
+          expect(pkt.packet_name).to eq 'PKT1'
+          expect(pkt.buffer).to eq "\x01\x02"
+          expect(pkt.extra).to eq extra
+          pkt = reader.read
+          expect(pkt.buffer).to eq "\x03\x04"
+          expect(pkt.extra).to be_nil
+          reader.close()
+          FileUtils.rm_f 'test_log.bin'
+        end
+
+        it "clears a stale RAW_PACKET extra on a defined packet using #{data_format}" do
+          time = Time.now.to_nsec_from_epoch
+          timestamp = Time.from_nsec_from_epoch(time).to_timestamp
+          label = 'stale'
+          # INST HEALTH_STATUS is defined, so the reader identifies and defines
+          # it and hands back the shared System packet on every read
+          buffer = System.telemetry.packet('INST', 'HEALTH_STATUS').buffer
+          plw = PacketLogWriter.new(@log_dir, label)
+          plw.data_format = data_format
+          extra = { 'username' => 'test' }
+          plw.write(:RAW_PACKET, :TLM, 'INST', 'HEALTH_STATUS', time, false, buffer, nil, '0-0', extra: extra)
+          plw.write(:RAW_PACKET, :TLM, 'INST', 'HEALTH_STATUS', time, false, buffer, nil, '0-0')
+          threads = plw.shutdown
+          threads.each { |t| t.join }
+
+          bin = @files["#{timestamp}__#{timestamp}__#{label}.bin.gz"]
+          gz = Zlib::GzipReader.new(StringIO.new(bin))
+          File.open('test_log.bin', 'wb') { |file| file.write gz.read }
+          reader = PacketLogReader.new
+          reader.open('test_log.bin')
+          pkt = reader.read
+          expect(pkt.extra).to eq extra
+          pkt = reader.read
+          expect(pkt.extra).to be_nil
+          reader.close()
+          FileUtils.rm_f 'test_log.bin'
+        end
+      end
+
+      it "reads a pre-7.3.1 RAW_PACKET extra written as CBOR without the CBOR flag" do
+        time = Time.now.to_nsec_from_epoch
+        timestamp = Time.from_nsec_from_epoch(time).to_timestamp
+        label = 'legacy'
+        extra = { 'username' => 'test', 'count' => 5 }
+        plw = PacketLogWriter.new(@log_dir, label)
+        plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', time, false, "\x01\x02", nil, '0-0', extra: extra)
+        threads = plw.shutdown
+        threads.each { |t| t.join }
+
+        bin = @files["#{timestamp}__#{timestamp}__#{label}.bin.gz"]
+        gz = Zlib::GzipReader.new(StringIO.new(bin))
+        bin = gz.read
+        # Turn the file into what the pre-7.3.1 writer produced by clearing
+        # PacketLogConstants::OPENC3_CBOR_FLAG_MASK on the RAW_PACKET entries, leaving the extra
+        # CBOR encoded while the flag claims JSON
+        offset = PacketLogConstants::OPENC3_HEADER_LENGTH
+        cleared = 0
+        while offset < bin.length
+          length = bin[offset, 4].unpack1('N')
+          flags = bin[(offset + 4), 2].unpack1('n')
+          if flags & PacketLogConstants::OPENC3_ENTRY_TYPE_MASK == PacketLogConstants::OPENC3_RAW_PACKET_ENTRY_TYPE_MASK
+            expect(flags & PacketLogConstants::OPENC3_CBOR_FLAG_MASK).to eq PacketLogConstants::OPENC3_CBOR_FLAG_MASK
+            bin[(offset + 4), 2] = [flags & ~PacketLogConstants::OPENC3_CBOR_FLAG_MASK].pack('n')
+            cleared += 1
+          end
+          offset += 4 + length
+        end
+        expect(cleared).to eq 1
+
+        File.open('test_log.bin', 'wb') { |file| file.write bin }
+        reader = PacketLogReader.new
+        reader.open('test_log.bin')
+        pkt = reader.read
+        expect(pkt.buffer).to eq "\x01\x02"
+        expect(pkt.extra).to eq extra
+        reader.close()
+        FileUtils.rm_f 'test_log.bin'
+      end
+
+      it "raises the JSON error when a JSON flagged extra is neither JSON nor CBOR" do
+        reader = PacketLogReader.new
+        garbage = "\xff\xfe\xfd"
+        entry = "\x00" * 12 + [garbage.length].pack('N') + garbage
+        expect {
+          reader.send(:handle_received_time_extra_and_data, entry, 0, false, true, false)
+        }.to raise_error(JSON::ParserError)
+      end
+
       it "correctly writes multiple files in a row" do
         first_time = Time.now.to_nsec_from_epoch
         last_time = first_time += 1_000_000_000
