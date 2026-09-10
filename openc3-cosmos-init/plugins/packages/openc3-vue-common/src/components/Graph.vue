@@ -438,8 +438,10 @@ export default {
     'click',
     'close-graph',
     'edit',
+    'error',
     'min-max-graph',
     'pause',
+    'recovered',
     'resize',
     'start',
     'started',
@@ -1460,6 +1462,14 @@ export default {
     clearErrors: function () {
       this.errors = []
     },
+    // Our own error list is only reachable through the toolbar, which is hidden
+    // when we're embedded in a screen (LINEGRAPH), so also emit so the screen
+    // can show it. See emitScreenError in Widget.js.
+    addError: function (error) {
+      const entry = { time: new Date().getTime(), ...error }
+      this.errors.push(entry)
+      this.$emit('error', entry)
+    },
     editGraphClose: function (graph) {
       this.editGraph = false
       this.title = graph.title
@@ -1558,6 +1568,10 @@ export default {
         .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => {
+            // The connection is back, so drop the disconnect we reported below
+            // and tell whoever embedded us (LINEGRAPH) to do the same
+            this.errors = this.errors.filter((error) => !error.transient)
+            this.$emit('recovered')
             const itemsToAdd = [...this.items]
             if (!this.xAxisIsDefault && !this.xAxisIsAlsoGraphedItem) {
               itemsToAdd.push(this.actualXAxisItem)
@@ -1568,18 +1582,18 @@ export default {
             // If allowReconnect is true it means we got a disconnect due to connection lost or server disconnect
             // If allowReconnect is false this is a normal server close or client close
             if (data.allowReconnect) {
-              this.errors.push({
+              this.addError({
                 type: 'disconnected',
                 message: 'OpenC3 backend connection disconnected',
-                time: new Date().getTime(),
+                // Cleared when 'connected' fires again, not left on the screen
+                transient: true,
               })
             }
           },
           rejected: () => {
-            this.errors.push({
+            this.addError({
               type: 'rejected',
               message: 'OpenC3 backend connection rejected',
-              time: new Date().getTime(),
             })
           },
         })

@@ -120,12 +120,23 @@ export default {
           (a, b) => a.lineNumber - b.lineNumber,
         )
         for (const error of sortedErrors) {
-          let msg = `At ${error.lineNumber}: (${error.line}) ${error.message}.`
+          // Dedupe on the line as well as the message: the same message on two
+          // different lines is two different things to go fix, and addError
+          // keeps both for that reason
+          const key = `${error.lineNumber}:${error.message}`
+          if (messages.has(key)) {
+            continue
+          }
+          // Runtime errors (a lost connection, say) aren't tied to a line in
+          // the definition, so only prefix the location when we have one
+          let msg = error.lineNumber
+            ? `At ${error.lineNumber}: (${error.line}) ${error.message}.`
+            : `${error.message}.`
           if (error.usage) {
             msg += ` Usage: ${error.usage}`
           }
           result.push(msg)
-          messages.add(error.message)
+          messages.add(key)
         }
         return result
       }
