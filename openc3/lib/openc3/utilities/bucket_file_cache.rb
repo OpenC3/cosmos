@@ -244,18 +244,26 @@ class BucketFileCache
   # @param bucket_file_or_path [BucketFile|String] BucketFile or its bucket path
   def unreserve(bucket_file_or_path)
     if bucket_file_or_path.is_a?(BucketFile)
-      bucket_path = bucket_file_or_path.bucket_path
+      released = bucket_file_or_path
+      bucket_path = released.bucket_path
     else
+      released = nil
       bucket_path = bucket_file_or_path
     end
     @@mutex.synchronize do
       bucket_file = @bucket_file_hash[bucket_path]
-      if bucket_file
-        bucket_file.unreserve
-        if bucket_file.reservation_count <= 0 and !@queued_path_hash[bucket_path]
-          @current_disk_usage -= bucket_file.size
-          @bucket_file_hash.delete(bucket_path)
-        end
+      return if bucket_file.nil?
+      # Releasing to zero drops the entry, so the next reserve of the same path
+      # builds a new BucketFile. A BucketFile that is no longer the entry for
+      # its path was therefore already released, and releasing it again would
+      # decrement its replacement and delete a local file another reader still
+      # has open. Only the current owner of the path may release it.
+      return unless released.nil? or released.equal?(bucket_file)
+
+      bucket_file.unreserve
+      if bucket_file.reservation_count <= 0 and !@queued_path_hash[bucket_path]
+        @current_disk_usage -= bucket_file.size
+        @bucket_file_hash.delete(bucket_path)
       end
     end
   end

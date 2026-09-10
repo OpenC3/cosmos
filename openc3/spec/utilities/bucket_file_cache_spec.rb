@@ -316,6 +316,24 @@ describe BucketFileCache do
       expect(disk_usage(cache)).to eql 0
     end
 
+    # Releasing to zero drops the entry, so a later reserve of the same path
+    # builds a different BucketFile. A duplicate close of the old object must
+    # not reach through the path to that replacement.
+    it "ignores a stale BucketFile that no longer owns its path" do
+      cache = build_cache()
+      stale = BucketFileCache.reserve(bucket_path)
+      BucketFileCache.unreserve(stale)
+      current = BucketFileCache.reserve(bucket_path)
+      expect(current).to_not be stale
+
+      BucketFileCache.unreserve(stale)
+
+      expect(current.reservation_count).to eql 1
+      expect(File.exist?(current.local_path)).to be true
+      expect(hash(cache)[bucket_path]).to be current
+      expect(disk_usage(cache)).to eql file_size
+    end
+
     it "ignores paths that aren't cached" do
       cache = build_cache()
       expect { BucketFileCache.unreserve("#{prefix}/not_cached.bin") }.to_not raise_error
