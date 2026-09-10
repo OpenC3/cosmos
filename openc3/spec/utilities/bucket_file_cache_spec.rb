@@ -85,6 +85,20 @@ describe BucketFileCache do
     cache.instance_variable_get(:@current_disk_usage)
   end
 
+  # Count linear scans of the download queue Array performed by the block.
+  # Queue membership is checked once per file close in unreserve() and once per
+  # cache entry in age_out_files(), so an Array#include? there is O(cache size)
+  # on a hot path -- it has to be an O(1) lookup instead.
+  def count_queue_scans(cache)
+    scans = 0
+    queue(cache).define_singleton_method(:include?) do |item|
+      scans += 1
+      super(item)
+    end
+    yield
+    scans
+  end
+
   # Poll rather than sleep a fixed amount so thread tests aren't slower than
   # they need to be. Returns whether the block came true before timing out.
   def wait_until(timeout = 5)
@@ -307,15 +321,17 @@ describe BucketFileCache do
 
     it "leaves still-queued files in the cache" do
       cache = build_cache()
-      # hint() queues the file; reserve() dequeues it, so re-queue by hand to
-      # model the window where the download thread hasn't picked it up yet
-      bucket_file = BucketFileCache.reserve(bucket_path)
-      queue(cache) << bucket_file
+      # hint() queues both; reserving the first dequeues only that one, so the
+      # second is still waiting on the download thread
+      BucketFileCache.hint([bucket_path, bucket_path2])
+      BucketFileCache.reserve(bucket_path)
+      queued = hash(cache)[bucket_path2]
 
-      BucketFileCache.unreserve(bucket_file)
+      BucketFileCache.unreserve(queued)
 
-      expect(hash(cache).length).to eql 1
-      expect(disk_usage(cache)).to eql file_size
+      # Dropping it here would orphan the size the download thread is about to add
+      expect(hash(cache)).to have_key bucket_path2
+      expect(queue(cache)).to eql [queued]
     end
 
     # The headline symptom: @current_disk_usage ratchets up until it passes
@@ -373,6 +389,48 @@ describe BucketFileCache do
 
       expect(hash(cache).length).to eql 1
       expect(queue(cache).length).to eql 1
+    end
+  end
+
+  describe "queue membership cost" do
+    # A historical query hints its whole file list, so both the queue and the
+    # cache hold one entry per log file in the requested range
+    it "does not rescan the download queue for every cache entry when aging out" do
+      stub_const("BucketFile::MAX_AGE_SECONDS", 0)
+      cache = build_cache()
+      paths = (0...20).map { |i| "#{prefix}/scan_#{i}__DEFAULT__INST__HEALTH_STATUS__rt__decom.bin" }
+      BucketFileCache.hint(paths)
+      # Reserve the first half, which dequeues them, then drop the reservations
+      # so the sweep is free to take them
+      swept = paths[0...10]
+      swept.each do |path|
+        BucketFileCache.reserve(path).instance_variable_set(:@reservation_count, 0)
+      end
+
+      scans = count_queue_scans(cache) { cache.age_out_files }
+
+      expect(scans).to eql 0
+      expect(hash(cache).keys).to match_array paths[10..]
+      expect(queue(cache).length).to eql 10
+    end
+
+    it "does not scan the download queue on unreserve" do
+      cache = build_cache()
+      BucketFileCache.hint((0...20).map { |i| "#{prefix}/queued_#{i}__DEFAULT__INST__HEALTH_STATUS__rt__decom.bin" })
+      bucket_file = BucketFileCache.reserve(bucket_path)
+
+      scans = count_queue_scans(cache) { BucketFileCache.unreserve(bucket_file) }
+
+      expect(scans).to eql 0
+      expect(hash(cache)).to_not have_key bucket_path
+    end
+
+    it "keeps the queue index in step with the queue itself" do
+      cache = build_cache(run_thread: true)
+      BucketFileCache.hint([bucket_path, bucket_path2])
+      expect(wait_until { queue(cache).empty? }).to be true
+      # The download thread dequeued both, so neither is queued any longer
+      expect(cache.instance_variable_get(:@queued_path_hash)).to be_empty
     end
   end
 

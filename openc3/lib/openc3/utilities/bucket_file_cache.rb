@@ -163,6 +163,10 @@ class BucketFileCache
 
     @current_disk_usage = 0
     @queued_bucket_files = []
+    # Mirrors @queued_bucket_files as bucket_path => true. Membership is checked
+    # once per file close in unreserve() and once per entry in age_out_files(),
+    # both of which are O(cache size) linear scans against the bare Array.
+    @queued_path_hash = {}
     @bucket_file_hash = {}
     bucket_file = nil
 
@@ -176,6 +180,7 @@ class BucketFileCache
         if @queued_bucket_files.length > 0 and @current_disk_usage < MAX_DISK_USAGE
           @@mutex.synchronize do
             bucket_file = @queued_bucket_files.shift
+            @queued_path_hash.delete(bucket_file.bucket_path) if bucket_file
           end
           begin
             retrieved = bucket_file.retrieve(client)
@@ -229,6 +234,7 @@ class BucketFileCache
       retrieved = bucket_file.reserve
       @current_disk_usage += bucket_file.size if retrieved
       @queued_bucket_files.delete(bucket_file)
+      @queued_path_hash.delete(bucket_path)
       return bucket_file
     end
   end
@@ -246,7 +252,7 @@ class BucketFileCache
       bucket_file = @bucket_file_hash[bucket_path]
       if bucket_file
         bucket_file.unreserve
-        if bucket_file.reservation_count <= 0 and !@queued_bucket_files.include?(bucket_file)
+        if bucket_file.reservation_count <= 0 and !@queued_path_hash[bucket_path]
           @current_disk_usage -= bucket_file.size
           @bucket_file_hash.delete(bucket_path)
         end
@@ -261,8 +267,8 @@ class BucketFileCache
   # thread would re-add their size to @current_disk_usage after removal.
   def age_out_files
     @@mutex.synchronize do
-      @bucket_file_hash.delete_if do |_bucket_path, bucket_file|
-        next false if @queued_bucket_files.include?(bucket_file)
+      @bucket_file_hash.delete_if do |bucket_path, bucket_file|
+        next false if @queued_path_hash[bucket_path]
         if bucket_file.age_check
           @current_disk_usage -= bucket_file.size
           true
@@ -278,6 +284,7 @@ class BucketFileCache
     unless bucket_file
       bucket_file = BucketFile.new(bucket_path)
       @queued_bucket_files << bucket_file
+      @queued_path_hash[bucket_path] = true
       @bucket_file_hash[bucket_path] = bucket_file
     end
     return bucket_file
