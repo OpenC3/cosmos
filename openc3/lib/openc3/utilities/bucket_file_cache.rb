@@ -166,10 +166,13 @@ class BucketFileCache
     @bucket_file_hash = {}
     bucket_file = nil
 
+    # NOTE: check_time must be initialized outside the loop or it is pushed
+    # forward on every iteration and the age out check below never fires
+    check_time = Time.now + CHECK_TIME_SECONDS # Check for aged out files periodically
+
     @thread = Thread.new do
       client = OpenC3::Bucket.getClient()
       while true
-        check_time = Time.now + CHECK_TIME_SECONDS # Check for aged out files periodically
         if @queued_bucket_files.length > 0 and @current_disk_usage < MAX_DISK_USAGE
           @@mutex.synchronize do
             bucket_file = @queued_bucket_files.shift
@@ -187,18 +190,7 @@ class BucketFileCache
           # Nothing to do or disk full
           if Time.now > check_time
             check_time = Time.now + CHECK_TIME_SECONDS
-            # Delete any files that aren't reserved and are old
-            removed_files = []
-            @bucket_file_hash.each do |bucket_path, bucket_file|
-              deleted = bucket_file.age_check
-              if deleted
-                removed_files << bucket_path
-                @current_disk_usage -= bucket_file.size
-              end
-            end
-            removed_files.each do |bucket_path|
-              @bucket_file_hash.delete(bucket_path)
-            end
+            age_out_files()
           end
           sleep(1)
         end
@@ -216,8 +208,9 @@ class BucketFileCache
     return instance().reserve(bucket_path)
   end
 
-  def self.unreserve(bucket_path)
-    return instance().unreserve(bucket_path)
+  # @param bucket_file_or_path [BucketFile|String] BucketFile or its bucket path
+  def self.unreserve(bucket_file_or_path)
+    return instance().unreserve(bucket_file_or_path)
   end
 
   def hint(bucket_paths)
@@ -240,20 +233,45 @@ class BucketFileCache
     end
   end
 
-  def unreserve(bucket_path)
+  # Callers hold the BucketFile returned by reserve() but the cache is keyed by
+  # bucket path, so accept either and normalize to the path.
+  # @param bucket_file_or_path [BucketFile|String] BucketFile or its bucket path
+  def unreserve(bucket_file_or_path)
+    if bucket_file_or_path.is_a?(BucketFile)
+      bucket_path = bucket_file_or_path.bucket_path
+    else
+      bucket_path = bucket_file_or_path
+    end
     @@mutex.synchronize do
       bucket_file = @bucket_file_hash[bucket_path]
       if bucket_file
         bucket_file.unreserve
         if bucket_file.reservation_count <= 0 and !@queued_bucket_files.include?(bucket_file)
           @current_disk_usage -= bucket_file.size
-          @bucket_file_hash.delete(bucket_file)
+          @bucket_file_hash.delete(bucket_path)
         end
       end
     end
   end
 
   # Private
+
+  # Delete the local copy of any file that is old and no longer reserved.
+  # Files still waiting in the download queue are skipped because the download
+  # thread would re-add their size to @current_disk_usage after removal.
+  def age_out_files
+    @@mutex.synchronize do
+      @bucket_file_hash.delete_if do |_bucket_path, bucket_file|
+        next false if @queued_bucket_files.include?(bucket_file)
+        if bucket_file.age_check
+          @current_disk_usage -= bucket_file.size
+          true
+        else
+          false
+        end
+      end
+    end
+  end
 
   def create_bucket_file(bucket_path)
     bucket_file = @bucket_file_hash[bucket_path]
