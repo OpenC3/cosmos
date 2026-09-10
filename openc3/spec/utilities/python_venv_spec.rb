@@ -1,0 +1,301 @@
+# encoding: ascii-8bit
+
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+require "spec_helper"
+require "openc3/utilities/python_venv"
+
+module OpenC3
+  describe PythonVenv do
+    describe ".configure_for_script" do
+      it "returns nil without changing the environment when no venv is configured" do
+        environment = {"EXISTING" => "value"}
+        allow(TargetModel).to receive(:get).with(name: "INST", scope: "DEFAULT").and_return(nil)
+
+        expect(PythonVenv.configure_for_script(environment, name: "INST/procedures/test.py", scope: "DEFAULT")).to be_nil
+        expect(environment).to eq({"EXISTING" => "value"})
+      end
+
+      it "configures and returns the resolved venv" do
+        environment = {}
+        target_info = {"plugin" => "demo-plugin"}
+        allow(TargetModel).to receive(:get).with(name: "INST", scope: "DEFAULT").and_return(target_info)
+        allow(File).to receive(:directory?).with("/gems/plugin_venvs/DEFAULT__demo-plugin/.venv").and_return(true)
+        expect(PythonVenv).to receive(:configure_environment).with(
+          environment,
+          "/gems/plugin_venvs/DEFAULT__demo-plugin/.venv"
+        ).and_return(environment)
+
+        result = PythonVenv.configure_for_script(environment, name: "inst/procedures/test.py", scope: "DEFAULT")
+
+        expect(result).to eq("/gems/plugin_venvs/DEFAULT__demo-plugin/.venv")
+      end
+
+      it "returns nil when target metadata has no plugin" do
+        allow(TargetModel).to receive(:get).with(name: "INST", scope: "DEFAULT").and_return({})
+
+        result = PythonVenv.configure_for_script({}, name: "INST/test.py", scope: "DEFAULT")
+
+        expect(result).to be_nil
+      end
+
+      it "uses the supplied venv for a temporary script" do
+        environment = {}
+        expect(TargetModel).not_to receive(:get)
+        allow(File).to receive(:directory?).with("/gems/plugin_venvs/DEFAULT__demo/.venv").and_return(true)
+        allow(PythonVenv).to receive(:configure_environment).and_return(environment)
+
+        result = PythonVenv.configure_for_script(
+          environment,
+          name: "__TEMP__/test.py",
+          scope: "DEFAULT",
+          python_venv: "DEFAULT__demo"
+        )
+
+        expect(result).to eq("/gems/plugin_venvs/DEFAULT__demo/.venv")
+      end
+
+      it "strips directory components from a temporary script venv" do
+        environment = {}
+        allow(File).to receive(:directory?).with("/gems/plugin_venvs/DEFAULT__demo/.venv").and_return(true)
+        allow(PythonVenv).to receive(:configure_environment).and_return(environment)
+
+        result = PythonVenv.configure_for_script(
+          environment,
+          name: "__TEMP__/test.py",
+          scope: "DEFAULT",
+          python_venv: "../../DEFAULT__demo"
+        )
+
+        expect(result).to eq("/gems/plugin_venvs/DEFAULT__demo/.venv")
+      end
+
+      it "returns nil when a temporary script venv does not exist" do
+        allow(File).to receive(:directory?).with("/gems/plugin_venvs/DEFAULT__missing/.venv").and_return(false)
+
+        result = PythonVenv.configure_for_script(
+          {},
+          name: "__TEMP__/test.py",
+          scope: "DEFAULT",
+          python_venv: "DEFAULT__missing"
+        )
+
+        expect(result).to be_nil
+      end
+
+      it "strips glob metacharacters from a temporary script venv" do
+        # "DEFAULT__*" clears File.basename and the scope prefix check, so the
+        # tr() is what keeps it from reaching Dir.glob in configure_environment.
+        allow(File).to receive(:directory?).with("/gems/plugin_venvs/DEFAULT___/.venv").and_return(false)
+
+        result = PythonVenv.configure_for_script(
+          {},
+          name: "__TEMP__/test.py",
+          scope: "DEFAULT",
+          python_venv: "DEFAULT__*"
+        )
+
+        expect(result).to be_nil
+      end
+
+      it "rejects a temporary script venv belonging to another scope" do
+        expect(File).not_to receive(:directory?)
+
+        result = PythonVenv.configure_for_script(
+          {},
+          name: "__TEMP__/test.py",
+          scope: "DEFAULT",
+          python_venv: "OTHER__demo"
+        )
+
+        expect(result).to be_nil
+      end
+
+      it "rejects a temporary script venv whose name only prefixes the scope" do
+        result = PythonVenv.configure_for_script(
+          {},
+          name: "__TEMP__/test.py",
+          scope: "DEFAULT",
+          python_venv: "DEFAULTISH__demo"
+        )
+
+        expect(result).to be_nil
+      end
+
+      it "checks target metadata when a temporary script has no supplied venv" do
+        allow(TargetModel).to receive(:get).with(name: "__TEMP__", scope: "DEFAULT").and_return(nil)
+
+        result = PythonVenv.configure_for_script({}, name: "__TEMP__/test.py", scope: "DEFAULT")
+
+        expect(result).to be_nil
+      end
+
+      it "logs resolution errors and falls back to the system environment" do
+        allow(TargetModel).to receive(:get).and_raise("metadata unavailable")
+        expect(Logger).to receive(:debug).with(
+          "Could not resolve plugin venv for script 'INST/test.py': metadata unavailable"
+        )
+
+        result = PythonVenv.configure_for_script({}, name: "INST/test.py", scope: "DEFAULT")
+
+        expect(result).to be_nil
+      end
+    end
+
+    describe ".configure_environment" do
+      before(:each) do
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with("PATH", "").and_return("/usr/bin")
+      end
+
+      it "sets the venv variables and site-packages path" do
+        environment = {}
+        allow(ENV).to receive(:fetch).with("PYTHONPATH", "").and_return("")
+        allow(Dir).to receive(:glob).with("/venv/lib/python*/site-packages").and_return(
+          ["/venv/lib/python3.12/site-packages"]
+        )
+
+        result = PythonVenv.configure_environment(environment, "/venv")
+
+        expect(result).to equal(environment)
+        expect(environment).to eq(
+          "VIRTUAL_ENV" => "/venv",
+          "PATH" => "/venv/bin:/usr/bin",
+          "PYTHONUSERBASE" => "/venv",
+          "PYTHONPATH" => "/venv/lib/python3.12/site-packages"
+        )
+      end
+
+      it "prepends site-packages to an existing Python path" do
+        environment = {}
+        allow(ENV).to receive(:fetch).with("PYTHONPATH", "").and_return("/shared/python")
+        allow(Dir).to receive(:glob).with("/venv/lib/python*/site-packages").and_return(
+          ["/venv/lib/python3.12/site-packages"]
+        )
+
+        PythonVenv.configure_environment(environment, "/venv")
+
+        expect(environment["PYTHONPATH"]).to eq("/venv/lib/python3.12/site-packages:/shared/python")
+      end
+
+      it "clears Python path when site-packages and an existing path are absent" do
+        environment = {}
+        allow(ENV).to receive(:fetch).with("PYTHONPATH", "").and_return("")
+        allow(Dir).to receive(:glob).with("/venv/lib/python*/site-packages").and_return([])
+
+        PythonVenv.configure_environment(environment, "/venv")
+
+        expect(environment["PYTHONPATH"]).to be_nil
+      end
+
+      it "prefers a Python path seeded on the environment over the ambient one" do
+        environment = {"PYTHONPATH" => "/seeded"}
+        allow(ENV).to receive(:fetch).with("PYTHONPATH", "").and_return("/ambient")
+        allow(Dir).to receive(:glob).with("/venv/lib/python*/site-packages").and_return(
+          ["/venv/lib/python3.12/site-packages"]
+        )
+
+        PythonVenv.configure_environment(environment, "/venv")
+
+        expect(environment["PYTHONPATH"]).to eq("/venv/lib/python3.12/site-packages:/seeded")
+      end
+
+      it "keeps a seeded Python path when site-packages is absent" do
+        environment = {"PYTHONPATH" => "."}
+        allow(ENV).to receive(:fetch).with("PYTHONPATH", "").and_return("")
+        allow(Dir).to receive(:glob).with("/venv/lib/python*/site-packages").and_return([])
+
+        PythonVenv.configure_environment(environment, "/venv")
+
+        expect(environment["PYTHONPATH"]).to eq(".")
+      end
+
+      it "preserves an existing Python path when site-packages is absent" do
+        environment = {}
+        allow(ENV).to receive(:fetch).with("PYTHONPATH", "").and_return("/shared/python")
+        allow(Dir).to receive(:glob).with("/venv/lib/python*/site-packages").and_return([])
+
+        PythonVenv.configure_environment(environment, "/venv")
+
+        expect(environment["PYTHONPATH"]).to eq("/shared/python")
+      end
+    end
+
+    describe ".purge_reserved_packages" do
+      let(:venv) { "/gems/plugin_venvs/DEFAULT__demo/.venv" }
+      let(:ok) { instance_double(Process::Status, success?: true) }
+      let(:fail_status) { instance_double(Process::Status, success?: false) }
+
+      it "removes openc3 when a plugin installed its own copy" do
+        expect(Open3).to receive(:capture2e).with('uv', 'pip', 'show', '--python', venv, 'openc3')
+          .and_return(["openc3 9.9.9", ok])
+        expect(Open3).to receive(:capture2e).with('uv', 'pip', 'uninstall', '--python', venv, 'openc3')
+          .and_return(["", ok])
+        expect(Logger).to receive(:warn).with(/would shadow the system library/)
+
+        expect(PythonVenv.purge_reserved_packages(venv)).to eq(['openc3'])
+      end
+
+      it "does nothing when the plugin venv has no reserved package" do
+        expect(Open3).to receive(:capture2e).with('uv', 'pip', 'show', '--python', venv, 'openc3')
+          .and_return(["", fail_status])
+        expect(Open3).not_to receive(:capture2e).with('uv', 'pip', 'uninstall', any_args)
+
+        expect(PythonVenv.purge_reserved_packages(venv)).to eq([])
+      end
+
+      it "reports the package as not purged when the uninstall fails" do
+        allow(Open3).to receive(:capture2e).with('uv', 'pip', 'show', '--python', venv, 'openc3')
+          .and_return(["openc3 9.9.9", ok])
+        allow(Open3).to receive(:capture2e).with('uv', 'pip', 'uninstall', '--python', venv, 'openc3')
+          .and_return(["boom", fail_status])
+        allow(Logger).to receive(:warn)
+        expect(Logger).to receive(:error).with(/Failed to remove 'openc3'/)
+
+        expect(PythonVenv.purge_reserved_packages(venv)).to eq([])
+      end
+
+      it "returns an empty list for a nil or blank venv" do
+        expect(Open3).not_to receive(:capture2e)
+
+        expect(PythonVenv.purge_reserved_packages(nil)).to eq([])
+        expect(PythonVenv.purge_reserved_packages("")).to eq([])
+      end
+
+      it "logs and returns empty when uv is unavailable" do
+        allow(Open3).to receive(:capture2e).and_raise(Errno::ENOENT.new('uv'))
+        expect(Logger).to receive(:error).with(/Could not purge reserved packages/)
+
+        expect(PythonVenv.purge_reserved_packages(venv)).to eq([])
+      end
+    end
+
+    describe ".plugin_venv_path" do
+      it "sanitizes the scope and plugin name" do
+        expected_path = "/gems/plugin_venvs/MY_SCOPE__demo_plugin_1_0/.venv"
+        allow(File).to receive(:directory?).with(expected_path).and_return(true)
+
+        result = PythonVenv.plugin_venv_path(scope: "MY SCOPE", plugin_name: "demo/plugin@1.0")
+
+        expect(result).to eq(expected_path)
+      end
+
+      it "returns nil when the plugin venv does not exist" do
+        allow(File).to receive(:directory?).with("/gems/plugin_venvs/DEFAULT__missing/.venv").and_return(false)
+
+        result = PythonVenv.plugin_venv_path(scope: "DEFAULT", plugin_name: "missing")
+
+        expect(result).to be_nil
+      end
+    end
+  end
+end

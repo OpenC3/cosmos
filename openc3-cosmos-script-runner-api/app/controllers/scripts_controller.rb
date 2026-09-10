@@ -55,10 +55,18 @@ class ScriptsController < ApplicationController
 
   def plugin_python_venvs
     return unless authorization('script_view')
-    venvs_dir = '/gems/plugin_venvs'
+    scope = sanitize_params([:scope])
+    return unless scope
+    scope = scope[0]
+    venvs_dir = OpenC3::PythonVenv::PLUGIN_VENVS_DIR
     result = []
     if File.directory?(venvs_dir)
-      Dir.glob("#{venvs_dir}/*/").each do |plugin_dir|
+      # Venv directories are named "<scope>__<plugin>" by
+      # PluginModel.plugin_venv_name, so match that prefix to keep each scope's
+      # venvs private to it. The same tr() the name is built with is applied
+      # here, which also leaves no glob metacharacters in the pattern.
+      prefix = "#{scope}__".tr('^a-zA-Z0-9_-', '_')
+      Dir.glob("#{venvs_dir}/#{prefix}*/").each do |plugin_dir|
         name = File.basename(plugin_dir)
         next unless File.exist?(File.join(plugin_dir, '.uv_managed'))
         next unless File.directory?(File.join(plugin_dir, '.venv'))
@@ -103,7 +111,7 @@ class ScriptsController < ApplicationController
       }
       # Viewers without script_run still get the file contents, just no suite chrome.
       if suite_with_run_permission?(name, file)
-        results_suites, results_error, success = Script.process_suite(name, file, username: username(), scope: scope)
+        results_suites, results_error, success = Script.process_suite(name, file, username: username(), scope: scope, python_venv: params[:pythonVenv])
         results['suites'] = results_suites
         results['error'] = results_error
         results['success'] = success
@@ -198,7 +206,7 @@ class ScriptsController < ApplicationController
     end
     # The file is still saved above; only the suite chrome is omitted when the editor lacks script_run.
     if suite_with_run_permission?(name, params[:text])
-      results_suites, results_error, success = Script.process_suite(name, params[:text], username: username(), scope: scope)
+      results_suites, results_error, success = Script.process_suite(name, params[:text], username: username(), scope: scope, python_venv: params[:pythonVenv])
       results['suites'] = results_suites
       results['error'] = results_error
       results['success'] = success
