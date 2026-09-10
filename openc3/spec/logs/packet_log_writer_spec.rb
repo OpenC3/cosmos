@@ -219,6 +219,41 @@ module OpenC3
         FileUtils.rm_f 'test_log.bin'
       end
 
+      it "round trips non-ASCII extra" do
+        # JSON.generate returns UTF-8. Appending that to the binary log entry raises
+        # Encoding::CompatibilityError once the entry holds a byte >= 0x80 (the packet
+        # time nearly always does), which silently dropped the packet from the log.
+        # The extra length field also has to count bytes rather than characters.
+        now = Time.now.to_nsec_from_epoch
+        extra = { 'note' => 'café', 'flow_uuid' => '1234-5678' }
+        encoded = JSON.generate(extra.as_json, allow_nan: true)
+        expect(encoded.bytesize).to_not eq encoded.length
+
+        plw = PacketLogWriter.new(@log_dir, 'test')
+        # JSON format so extra goes through JSON.generate. to_cbor already returns a
+        # binary string where length == bytesize.
+        plw.data_format = :JSON
+        plw.write(:RAW_PACKET, :CMD, 'TGT1', 'PKT1', now, false, "\x01\x02", nil, '0-0', extra: extra)
+        plw.write(:RAW_PACKET, :CMD, 'TGT2', 'PKT2', now, false, "\x03\x04", nil, '0-0')
+        threads = plw.shutdown
+        threads.each { |t| t.join }
+
+        expect(@files.keys.length).to eq 1
+        bin = Zlib::GzipReader.new(StringIO.new(@files.values.first)).read
+        File.open('test_log.bin', 'wb') { |file| file.write bin }
+        reader = PacketLogReader.new
+        reader.open('test_log.bin')
+        got = []
+        while (pkt = reader.read)
+          got << [pkt.target_name, pkt.buffer]
+        end
+        # The packet carrying extra must be present, and the one after it must still
+        # be readable, which only happens if the entry length counted bytes
+        expect(got).to eql [['TGT1', "\x01\x02"], ['TGT2', "\x03\x04"]]
+        reader.close()
+        FileUtils.rm_f 'test_log.bin'
+      end
+
       it "correctly writes multiple files in a row" do
         first_time = Time.now.to_nsec_from_epoch
         last_time = first_time += 1_000_000_000

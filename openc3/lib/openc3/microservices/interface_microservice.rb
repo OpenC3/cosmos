@@ -289,6 +289,21 @@ module OpenC3
             end
 
             command.extra ||= {}
+            if msg_hash['extra']
+              # Caller metadata is the base layer. Values already in command.extra were
+              # written by the packet's accessor during build_cmd (e.g. HttpAccessor sets
+              # HTTP_PATH, HTTP_METHOD, HTTP_HEADERS, HTTP_QUERIES from the command
+              # definition) and are authoritative, so they overwrite caller values rather
+              # than the other way around. Otherwise a caller could redirect the request
+              # an interface makes on their behalf.
+              caller_extra = JSON.parse(msg_hash['extra'], allow_nan: true, create_additions: true)
+              command.extra = caller_extra.merge(command.extra)
+            end
+            # These fields are populated from COSMOS workflow state below.
+            command.extra.delete('queue_username')
+            command.extra.delete('approver')
+            command.extra.delete('cmd_success')
+            command.extra.delete('cmd_reason')
             command.extra['cmd_string'] = msg_hash['cmd_string']
             command.extra['username'] = msg_hash['username']
             command.extra['interface_name'] = @interface.name

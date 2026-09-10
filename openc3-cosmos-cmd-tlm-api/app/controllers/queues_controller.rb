@@ -164,15 +164,18 @@ class QueuesController < ApplicationController
         end
       end
       id = params[:id]&.to_f
+      extra = extra_param()
       # If id is nil this means insert at the end
       if target_name && cmd_name
         model.insert_command(id: id, username: username(), target_name: target_name, cmd_name: cmd_name,
-                             cmd_params: params[:cmd_params], validate: params[:validate], timeout: params[:timeout])
+                             cmd_params: params[:cmd_params], extra: extra, validate: params[:validate], timeout: params[:timeout])
       else
-        model.insert_command(id: id, username: username(), command: command,
+        model.insert_command(id: id, username: username(), command: command, extra: extra,
                              validate: params[:validate], timeout: params[:timeout])
       end
       render json: { status: 'success', message: 'Command added to queue' }
+    rescue ArgumentError => e
+      render json: { status: 'error', message: e.message, type: e.class.to_s }, status: :bad_request
     rescue StandardError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class.to_s, backtrace: e.backtrace }, status: :internal_server_error
@@ -237,13 +240,16 @@ class QueuesController < ApplicationController
       # validate should be true or false, default to true if not given
       validate = params[:validate].nil? ? true : params[:validate]
       # timeout can be nil which means use system default timeout
+      extra = extra_param()
       if target_name && cmd_name
         model.update_command(id: id, username: username(), target_name: target_name, cmd_name: cmd_name,
-                             cmd_params: params[:cmd_params], validate: validate, timeout: params[:timeout])
+                             cmd_params: params[:cmd_params], extra: extra, validate: validate, timeout: params[:timeout])
       else
-        model.update_command(id: id, username: username(), command: command, validate: validate, timeout: params[:timeout])
+        model.update_command(id: id, username: username(), command: command, extra: extra, validate: validate, timeout: params[:timeout])
       end
       render json: { status: 'success', message: 'Command updated' }
+    rescue ArgumentError => e
+      render json: { status: 'error', message: e.message, type: e.class.to_s }, status: :bad_request
     rescue OpenC3::QueueError => e
       log_error(e)
       render json: { status: 'error', message: e.message, type: e.class.to_s }, status: :bad_request
@@ -270,6 +276,8 @@ class QueuesController < ApplicationController
           # Support both new format (target_name, cmd_name, cmd_params) and legacy format (value)
           validate = command_data.key?('validate') ? command_data['validate'] : true
           timeout = command_data['timeout'] # Default is nil which means use system default timeout
+          extra = command_data['extra']
+          extra = JSON.parse(extra, allow_nan: true, create_additions: true) if extra.is_a?(String)
           if command_data['target_name'] && command_data['cmd_name']
             # New format: use 3-parameter cmd() method
             if command_data['cmd_params']
@@ -278,16 +286,16 @@ class QueuesController < ApplicationController
               cmd_params = {}
             end
             if hazardous
-              cmd_no_hazardous_check(command_data['target_name'], command_data['cmd_name'], cmd_params, queue: false, validate: validate, timeout: timeout, queue_username: command_data['username'], scope: params[:scope], token: token)
+              cmd_no_hazardous_check(command_data['target_name'], command_data['cmd_name'], cmd_params, queue: false, validate: validate, timeout: timeout, queue_username: command_data['username'], extra: extra, scope: params[:scope], token: token)
             else
-              cmd(command_data['target_name'], command_data['cmd_name'], cmd_params, queue: false, validate: validate, timeout: timeout, queue_username: command_data['username'], scope: params[:scope], token: token)
+              cmd(command_data['target_name'], command_data['cmd_name'], cmd_params, queue: false, validate: validate, timeout: timeout, queue_username: command_data['username'], extra: extra, scope: params[:scope], token: token)
             end
           elsif command_data['value']
             # Legacy format: use single string parameter
             if hazardous
-              cmd_no_hazardous_check(command_data['value'], queue: false, validate: validate, timeout: timeout, queue_username: command_data['username'], scope: params[:scope], token: token)
+              cmd_no_hazardous_check(command_data['value'], queue: false, validate: validate, timeout: timeout, queue_username: command_data['username'], extra: extra, scope: params[:scope], token: token)
             else
-              cmd(command_data['value'], queue: false, validate: validate, timeout: timeout, queue_username: command_data['username'], scope: params[:scope], token: token)
+              cmd(command_data['value'], queue: false, validate: validate, timeout: timeout, queue_username: command_data['username'], extra: extra, scope: params[:scope], token: token)
             end
           else
             log_error("Invalid command format in queue: #{command_data}")
@@ -329,6 +337,19 @@ class QueuesController < ApplicationController
   end
 
   private
+
+  # Caller metadata attached to a queued command. Rails wraps nested params in
+  # ActionController::Parameters so convert back to a plain Hash before it is
+  # JSON encoded into the queue entry.
+  def extra_param
+    extra = params[:extra]
+    return nil if extra.nil?
+
+    extra = extra.to_unsafe_h if extra.respond_to?(:to_unsafe_h)
+    raise ArgumentError, "Invalid extra parameter: #{extra}. Must be a Hash." unless extra.is_a?(Hash)
+
+    extra
+  end
 
   def change_state(params, state)
     return unless authorization('cmd')

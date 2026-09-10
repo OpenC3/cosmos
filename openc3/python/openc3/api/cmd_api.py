@@ -610,6 +610,9 @@ def _cmd_implementation(
         manual=manual,
     )
     queue_username = kwargs.get("queue_username")
+    extra = kwargs.get("extra")
+    if extra is not None and not isinstance(extra, dict):
+        raise RuntimeError(f"Invalid extra parameter: {extra}. Must be a dict.")
     if not user:
         user = {}
         user["username"] = os.environ.get("OPENC3_MICROSERVICE_NAME")
@@ -689,6 +692,8 @@ def _cmd_implementation(
         "log_message": str(log_message),
         "obfuscated_items": json.dumps(packet.get("obfuscated_items", [])),
     }
+    if extra is not None:
+        command["extra"] = extra
     # Record the original queuing user (author) separately from 'username' (the
     # user or process that actually executed the command). Command History shows
     # 'username' as "Executed By" and queue_username as "Queued By".
@@ -704,7 +709,7 @@ def _cmd_implementation(
         # Pull the command out of the script string, e.g. cmd("INST ABORT")
         queued = cmd_string.split('("')[1].split('")')[0]
         QueueModel.queue_command(
-            queue, command=queued, username=username, scope=scope, validate=validate, timeout=timeout
+            queue, command=queued, username=username, scope=scope, validate=validate, timeout=timeout, extra=extra
         )
     else:
         CommandTopic.send_command(command, timeout=timeout, scope=scope)

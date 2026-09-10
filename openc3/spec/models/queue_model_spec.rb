@@ -152,7 +152,9 @@ module OpenC3
         model.create
         allow(QueueTopic).to receive(:write_notification)
 
-        QueueModel.queue_command("TEST", target_name: "INST", cmd_name: "COLLECT", cmd_params: { "TYPE" => "NORMAL" }, username: 'test_user', scope: "DEFAULT")
+        extra = { "flow_uuid" => "1234-5678", "data" => "\xFF".b }
+        QueueModel.queue_command("TEST", target_name: "INST", cmd_name: "COLLECT", cmd_params: { "TYPE" => "NORMAL" },
+          extra: extra, username: 'test_user', scope: "DEFAULT")
 
         commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
         expect(commands).to contain_exactly({
@@ -160,6 +162,7 @@ module OpenC3
           "target_name" => "INST",
           "cmd_name" => "COLLECT",
           "cmd_params" => "{\"TYPE\":\"NORMAL\"}",
+          "extra" => JSON.generate(extra.as_json, allow_nan: true),
           "validate" => true,
           "timestamp" => anything
         })
@@ -418,6 +421,17 @@ module OpenC3
         decoded = result["DATA"]["raw"].pack('C*')
         expect(decoded).to eq(binary_data)
       end
+
+      it "stores extra when inserting" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+
+        extra = { "flow_uuid" => "1234-5678", "data" => "\xFF".b }
+        model.insert_command(id: 1, username: "test_user", command: "TGT CMD", extra: extra)
+
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(JSON.parse(commands[0]["extra"], allow_nan: true, create_additions: true)).to eql(extra)
+      end
     end
 
     describe "update_command" do
@@ -485,6 +499,32 @@ module OpenC3
         expect {
           model.update_command(id: 1.0, command: "TGT CMD2", username: "user2")
         }.to raise_error(QueueError, "Queue 'TEST' is disabled. Command at id 1.0 not updated.")
+      end
+
+      it "carries forward existing extra when the update does not supply it" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+
+        extra = { "flow_uuid" => "1234-5678", "data" => "\xFF".b }
+        model.insert_command(id: 1.0, username: "user1", command: "TGT CMD1", extra: extra)
+        # The queue edit APIs have no way to express extra, so an update that omits
+        # it must not silently drop the metadata attached by cmd(extra: ...)
+        model.update_command(id: 1.0, command: "TGT CMD2", username: "user2")
+
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands[0]["value"]).to eq("TGT CMD2")
+        expect(JSON.parse(commands[0]["extra"], allow_nan: true, create_additions: true)).to eql(extra)
+      end
+
+      it "replaces existing extra when the update supplies it" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+
+        model.insert_command(id: 1.0, username: "user1", command: "TGT CMD1", extra: { "flow_uuid" => "old" })
+        model.update_command(id: 1.0, command: "TGT CMD1", username: "user2", extra: { "flow_uuid" => "new" })
+
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(JSON.parse(commands[0]["extra"])).to eql({ "flow_uuid" => "new" })
       end
     end
 
