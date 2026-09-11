@@ -183,8 +183,8 @@ push() {
 }
 
 clean_files() {
-  find . -type d -name "node_modules" -exec sh -c 'echo "Removing {}"; rm -rf "{}"' \;
-  find . -type d -name "coverage" -exec sh -c 'echo "Removing {}"; rm -rf "{}"' \;
+  find . -type d -name "node_modules" -exec sh -c 'echo "Removing $1"; rm -rf -- "$1"' sh {} \;
+  find . -type d -name "coverage" -exec sh -c 'echo "Removing $1"; rm -rf -- "$1"' sh {} \;
   # Prompt for removing pnpm-lock.yaml files
   find . -type f -name "pnpm-lock.yaml" -exec rm -i {} \;
   # Prompt for removing Gemfile.lock files

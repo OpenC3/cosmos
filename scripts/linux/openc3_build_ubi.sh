@@ -58,8 +58,16 @@ fi
 
 set -e
 
-# Save the script's starting directory for use in helper functions
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# Match individual array entries exactly, including arguments containing spaces.
+contains_image() {
+  local requested="$1"
+  local image
+  shift
+  for image in "$@"; do
+    [[ "$image" == "$requested" ]] && return 0
+  done
+  return 1
+}
 
 # Parse command line arguments to separate build flags from image names
 BUILD_FLAGS=()
@@ -81,7 +89,7 @@ else
   # Validate provided image names
   for arg in "${REMAINING_ARGS[@]}"; do
     # Check if the image is in the available list
-    if [[ " ${AVAILABLE_IMAGES[@]} " =~ " ${arg} " ]]; then
+    if contains_image "$arg" "${AVAILABLE_IMAGES[@]}"; then
       IMAGES_TO_BUILD+=("$arg")
     else
       echo "Error: Unknown image '${arg}'" >&2
@@ -92,7 +100,7 @@ else
       exit 1
     fi
   done
-  echo "Building specified images: ${IMAGES_TO_BUILD[@]}"
+  echo "Building specified images: ${IMAGES_TO_BUILD[*]}"
 fi
 
 # Detect container runtime
@@ -101,7 +109,7 @@ then
   if command -v podman &> /dev/null
   then
     function docker() {
-      podman $@
+      podman "$@"
     }
   else
     echo "Neither docker nor podman found!!!"
@@ -164,8 +172,7 @@ chmod -R +r . 2>/dev/null || echo "Warning: Could not set all files readable (th
 # Helper function to check if an image should be built
 should_build() {
   local image_name="$1"
-  [[ " ${IMAGES_TO_BUILD[@]} " =~ " ${image_name} " ]]
-  return $?
+  contains_image "$image_name" "${IMAGES_TO_BUILD[@]}"
 }
 
 # Helper function to format duration in human-readable format

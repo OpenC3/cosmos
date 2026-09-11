@@ -27,7 +27,7 @@ cd ../..
 while IFS='=' read -r key value; do
   [[ -z "$key" || "$key" == \#* ]] && continue
   printf -v "$key" '%s' "${!key:-$value}"
-  export "$key"
+  export "${key?}"
 done < .env
 # OPENC3_REGISTRY=localhost:5000 # Uncomment for local builds
 # OPENC3_ENTERPRISE_REGISTRY=localhost:5000 # Uncomment for local builds

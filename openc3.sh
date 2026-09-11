@@ -88,7 +88,8 @@ run_with_registry_check() {
 # alone would clobber them, so their values are saved first and restored
 # afterwards.
 source_env_files() {
-  local dir="$(dirname -- "$0")"
+  local dir
+  dir="$(dirname -- "$0")"
   local -a env_files=()
   local file key
   if [[ -f "$dir/${ENV_FILE:-.env}" ]]; then
@@ -109,10 +110,12 @@ source_env_files() {
 
   set -a
   for file in "${env_files[@]}"; do
+    # Env files are selected at runtime and may be outside the repository.
+    # shellcheck source=/dev/null
     . "$file"
   done
   for key in "${preset[@]}"; do
-    export "$key"
+    export "${key?}"
   done
   set +a
 }
@@ -160,8 +163,9 @@ fi
 $CONTAINER_CMD info | grep -e "rootless$" -e "rootless: true"
 if [[ "$?" -ne 0 ]]; then
   export OPENC3_ROOTFUL=1
-  export OPENC3_USER_ID=`id -u`
-  export OPENC3_GROUP_ID=`id -g`
+  OPENC3_USER_ID=$(id -u)
+  OPENC3_GROUP_ID=$(id -g)
+  export OPENC3_USER_ID OPENC3_GROUP_ID
 else
   export OPENC3_ROOTLESS=1
   export OPENC3_USER_ID=0
@@ -376,7 +380,8 @@ resolve_openc3_tag() {
   if [[ -n "$OPENC3_TAG" ]]; then
     return
   fi
-  local dir="$(dirname -- "$0")"
+  local dir
+  dir="$(dirname -- "$0")"
   local env_file
   for env_file in "$dir/.env.local" "$dir/${ENV_FILE:-.env}"; do
     if [[ -f "$env_file" ]]; then
@@ -399,7 +404,8 @@ build_core_images() {
   if [[ "$OPENC3_TAG" != "latest" ]]; then
     return
   fi
-  local core_dir="$(dirname -- "$0")/../cosmos"
+  local core_dir
+  core_dir="$(dirname -- "$0")/../cosmos"
   if [[ -f "$core_dir/compose-build.yaml" ]]; then
     echo "Building core images from $core_dir ..."
     ${DOCKER_COMPOSE_COMMAND} --project-directory "$core_dir" \
@@ -467,9 +473,9 @@ case $1 in
       * ) CLI_SERVICE=openc3-cosmos-cmd-tlm-api ;;
     esac
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps $CLI_SERVICE ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v "$PWD:/openc3/local:z" -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps $CLI_SERVICE ruby /openc3/bin/openc3cli "$@"
     else
-      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps $CLI_SERVICE ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v "$PWD:/openc3/local:z" -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps $CLI_SERVICE ruby /openc3/bin/openc3cli "$@"
     fi
     ;;
   cliroot )
@@ -516,9 +522,9 @@ case $1 in
     # Shift off the first argument (script name) to get CLI args
     shift
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm --user=root -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm --user=root -v "$PWD:/openc3/local:z" -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     else
-      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm --user=root -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm --user=root -v "$PWD:/openc3/local:z" -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     fi
     ;;
   start )
@@ -658,9 +664,14 @@ case $1 in
     fi
     if [[ "$2" == "local" ]]
     then
-      cd "$(dirname -- "$0")/plugins/DEFAULT"
-      ls | grep -xv "README.md" | xargs rm -r
-      cd ../..
+      (
+        cd "$(dirname -- "$0")/plugins/DEFAULT" || exit 1
+        for entry in *; do
+          [[ "$entry" == "README.md" ]] && continue
+          [[ -e "$entry" || -L "$entry" ]] || continue
+          rm -r -- "$entry"
+        done
+      )
     fi
     ;;
   list )
@@ -831,16 +842,16 @@ case $1 in
     umask 0022
     chmod -R +r "$(dirname -- "$0")"
     # Collect any additional build flags from arguments (skip first arg which is "build")
-    BUILD_FLAGS="${@:2}"
+    BUILD_FLAGS=("${@:2}")
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      build_core_images $BUILD_FLAGS
-      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-enterprise-gem
+      build_core_images "${BUILD_FLAGS[@]}"
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build "${BUILD_FLAGS[@]}" openc3-enterprise-gem
     else
-      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-ruby
-      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-base
-      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-node
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build "${BUILD_FLAGS[@]}" openc3-ruby
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build "${BUILD_FLAGS[@]}" openc3-base
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build "${BUILD_FLAGS[@]}" openc3-node
     fi
-    run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS
+    run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build "${BUILD_FLAGS[@]}"
     ;;
   build-ubi )
     if [[ "$OPENC3_DEVEL" -eq 0 ]]; then

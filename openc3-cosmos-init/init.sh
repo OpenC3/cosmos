@@ -7,13 +7,14 @@
 # who writes it. An unrecognized value stays on, matching the old behavior.
 # Only OPENC3_DEMO uses this so far - the OPENC3_NO_* flags below are still
 # presence-only, where "VAR=0" and "VAR=false" mean ON.
-flag_enabled() {
-    local value="$1"
-    case "$(printf '%s' "${value}" | tr '[:upper:]' '[:lower:]')" in
+# Use a subshell to keep value local without the non-POSIX local keyword.
+flag_enabled() (
+    value="$1"
+    case "$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')" in
         '' | 0 | false) return 1 ;;
         *) return 0 ;;
     esac
-}
+)
 
 # Seed the UV wheel cache from the Docker image into the runtime volume
 # so plugins can reuse system wheels without re-downloading (critical for airgapped environments)
@@ -144,7 +145,7 @@ if [ "${OPENC3_CLOUD}" = "local" ]; then
                 probe_conn "${bhost}" "${bport}"
             fi
         fi
-        if [ $(date +%s) -ge $deadline ]; then
+        if [ "$(date +%s)" -ge "$deadline" ]; then
             echo "${T} ERROR: timed out after ${OPENC3_INIT_WAIT_TIMEOUT}s waiting for buckets ${OPENC3_BUCKET_URL}; exiting to restart init"
             exit 1
         fi
@@ -168,7 +169,7 @@ while [ $RC -gt 0 ]; do
             probe_conn "${hostname}" "${OPENC3_REDIS_PORT}"
         fi
     fi
-    if [ $(date +%s) -ge $deadline ]; then
+    if [ "$(date +%s)" -ge "$deadline" ]; then
         echo "${T} ERROR: timed out after ${OPENC3_INIT_WAIT_TIMEOUT}s waiting for Redis ${hostname}:${OPENC3_REDIS_PORT}; exiting to restart init"
         exit 1
     fi
@@ -190,7 +191,7 @@ while [ $RC -gt 0 ]; do
             probe_conn "${hostname}" "${OPENC3_REDIS_EPHEMERAL_PORT}"
         fi
     fi
-    if [ $(date +%s) -ge $deadline ]; then
+    if [ "$(date +%s)" -ge "$deadline" ]; then
         echo "${T} ERROR: timed out after ${OPENC3_INIT_WAIT_TIMEOUT}s waiting for Redis Ephemeral ${hostname}:${OPENC3_REDIS_EPHEMERAL_PORT}; exiting to restart init"
         exit 1
     fi

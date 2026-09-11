@@ -31,7 +31,7 @@ then
   if command -v podman &> /dev/null
   then
     function docker() {
-      podman $@
+      podman "$@"
     }
   else
     echo "Neither docker nor podman found!!!"
