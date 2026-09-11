@@ -344,6 +344,7 @@ export default {
             legendPosition: vueGraph.legendPosition,
             lines: vueGraph.lines,
             xAxisItem: vueGraph.xAxisItem,
+            drawStyle: vueGraph.drawStyle,
           }
           // Only add the start and end time if we have both
           // This prevents adding just the start time and having the graph
@@ -662,6 +663,9 @@ export default {
         vueGraph.graphStartDateTime = graph.graphStartDateTime
         vueGraph.graphEndDateTime = graph.graphEndDateTime
         vueGraph.moveLegend(graph.legendPosition)
+        if (graph.drawStyle) {
+          vueGraph.drawStyle = graph.drawStyle
+        }
         vueGraph.addItems([...graph.items])
         vueGraph.lines = graph.lines
         vueGraph.xAxisItem = graph.xAxisItem
