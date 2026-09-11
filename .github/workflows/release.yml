@@ -195,9 +195,11 @@ jobs:
       # (Auto Build Docs) or people can push to the release branch. Rebase so
       # the next version commit is a fast forward. main is protected and
       # rejects force pushes, so a diverged branch fails the release.
-      - name: Rebase onto current ${{ github.ref_name }}
+      - name: Rebase onto the current release branch
+        env:
+          RELEASE_BRANCH: ${{ github.ref_name }}
         run: |
-          git fetch origin ${{ github.ref_name }}
+          git fetch origin "$RELEASE_BRANCH"
           git rebase --autostash FETCH_HEAD
       - name: Update version to next
         run: ruby openc3_set_versions.rb
