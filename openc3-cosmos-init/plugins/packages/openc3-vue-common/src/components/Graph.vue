@@ -163,17 +163,21 @@
       v-if="editGraph"
       v-model="editGraph"
       v-model:x-axis-item="xAxisItem"
+      v-model:draw-style="drawStyle"
       :title="title"
       :legend-position="legendPosition"
       :items="items"
       :graph-min-y="graphMinY"
       :graph-max-y="graphMaxY"
+      :graph-min-x="graphMinX"
+      :graph-max-x="graphMaxX"
       :lines="lines"
       :colors="colors"
       :start-date-time="graphStartDateTime"
       :end-date-time="graphEndDateTime"
       :time-zone="timeZone"
       :x-axis-item-packet="allowableXAxisItemPacket"
+      :x-axis-is-time="xAxisIsTime"
       @remove="removeItems([$event])"
       @ok="editGraphClose"
       @cancel="editGraph = false"
@@ -484,9 +488,12 @@ export default {
       interval: null,
       graphMinY: null,
       graphMaxY: null,
+      graphMinX: null,
+      graphMaxX: null,
       graphStartDateTime: null,
       graphEndDateTime: null,
       xAxisItem: this.initialXAxisItem, // '__time' or something like 'DECOM__TLM__INST__ADCS__RECEIVED_COUNT__CONVERTED'
+      drawStyle: 'lines', // 'lines' or 'points'
       indexes: {},
       items: this.initialItems,
       graphItems: [],
@@ -739,6 +746,20 @@ export default {
       }
       this.setGraphRange()
     },
+    graphMinX: function (newVal) {
+      let val = Number.parseFloat(newVal)
+      if (Number.isFinite(val)) {
+        this.graphMinX = val
+      }
+      this.setGraphRange()
+    },
+    graphMaxX: function (newVal) {
+      let val = Number.parseFloat(newVal)
+      if (Number.isFinite(val)) {
+        this.graphMaxX = val
+      }
+      this.setGraphRange()
+    },
     graphStartDateTime: function (newVal, oldVal) {
       if (newVal && typeof newVal === 'string') {
         this.graphStartDateTime =
@@ -771,28 +792,10 @@ export default {
       }
     },
     actualXAxisItem: function (newVal, oldVal) {
-      let clonedItems = JSON.parse(JSON.stringify(this.items))
-      this.removeItems(clonedItems)
-      this.graph.destroy()
-      this.chartOpts.series[0].label = this.xAxisLabel
-      this.chartOpts.scales.x.time = this.xAxisIsTime
-      this.graph = new uPlot(
-        this.chartOpts,
-        this.data,
-        document.getElementById(`chart${this.id}`),
-      )
-      if (!this.hideOverview) {
-        this.overview.destroy()
-        this.overviewOpts.scales.x.time = this.xAxisIsTime
-        this.overview = new uPlot(
-          this.overviewOpts,
-          this.data,
-          document.getElementById(`overview${this.id}`),
-        )
-      }
-      this.addItems(clonedItems)
-      this.startRealtimeScrolling()
-      // Don't need to $emit('edit') because addItems() does that
+      this.rebuildChart()
+    },
+    drawStyle: function (newVal, oldVal) {
+      this.rebuildChart()
     },
     refreshIntervalMs: function (val) {
       if (this.interval) {
@@ -863,28 +866,8 @@ export default {
     // NOTE: These are just initial settings ... actual series are added by this.graph.addSeries
     const { chartSeries, overviewSeries } = this.items.reduce(
       (seriesObj, item) => {
-        const commonProps = {
-          spanGaps: true,
-        }
-        seriesObj.chartSeries.push({
-          ...commonProps,
-          item: item,
-          label: this.formatLabel(item),
-          stroke: (u, seriesIdx) => {
-            return this.items[seriesIdx - 1].color
-          },
-          width: 2,
-          value: (self, rawValue) => {
-            if (typeof rawValue === 'string' || Number.isNaN(rawValue)) {
-              return 'NaN'
-            } else {
-              return rawValue == null ? '--' : rawValue.toFixed(3)
-            }
-          },
-        })
-        seriesObj.overviewSeries.push({
-          ...commonProps,
-        })
+        seriesObj.chartSeries.push(this.createSeriesConfig(item))
+        seriesObj.overviewSeries.push(this.createOverviewSeriesConfig())
         return seriesObj
       },
       { chartSeries: [], overviewSeries: [] },
@@ -1146,6 +1129,30 @@ export default {
           )
         }
       })
+    },
+    rebuildChart: function () {
+      let clonedItems = JSON.parse(JSON.stringify(this.items))
+      this.removeItems(clonedItems)
+      this.graph.destroy()
+      this.chartOpts.series[0].label = this.xAxisLabel
+      this.chartOpts.scales.x.time = this.xAxisIsTime
+      this.graph = new uPlot(
+        this.chartOpts,
+        this.data,
+        document.getElementById(`chart${this.id}`),
+      )
+      if (!this.hideOverview) {
+        this.overview.destroy()
+        this.overviewOpts.scales.x.time = this.xAxisIsTime
+        this.overview = new uPlot(
+          this.overviewOpts,
+          this.data,
+          document.getElementById(`overview${this.id}`),
+        )
+      }
+      this.addItems(clonedItems)
+      this.startRealtimeScrolling()
+      // Don't need to $emit('edit') because addItems() does that
     },
     startGraph: function () {
       this.subscribe()
@@ -1477,6 +1484,8 @@ export default {
       this.legendPosition = graph.legendPosition
       this.graphMinY = graph.graphMinY
       this.graphMaxY = graph.graphMaxY
+      this.graphMinX = graph.graphMinX
+      this.graphMaxX = graph.graphMaxX
       this.lines = [...graph.lines]
       this.graphStartDateTime = graph.startDateTime
       this.graphEndDateTime = graph.endDateTime
@@ -1542,14 +1551,14 @@ export default {
       this.$emit('min-max-graph', this.id)
     },
     setGraphRange: function () {
-      let pad = 0.1
+      let yPad = 0.1
       if (
         this.graphMinY ||
         this.graphMinY === 0 ||
         this.graphMaxY ||
         this.graphMaxY === 0
       ) {
-        pad = 0
+        yPad = 0
       }
       this.graph.scales.y.range = (u, dataMin, dataMax) => {
         let min = dataMin
@@ -1560,7 +1569,20 @@ export default {
         if (this.graphMaxY || this.graphMaxY === 0) {
           max = this.graphMaxY
         }
-        return uPlot.rangeNum(min, max, pad, true)
+        return uPlot.rangeNum(min, max, yPad, true)
+      }
+      if (!this.xAxisIsTime) {
+        this.graph.scales.x.range = (u, dataMin, dataMax) => {
+          let min = dataMin ?? 0
+          let max = dataMax ?? 1
+          if (this.graphMinX || this.graphMinX === 0) {
+            min = this.graphMinX
+          }
+          if (this.graphMaxX || this.graphMaxX === 0) {
+            max = this.graphMaxX
+          }
+          return [min, max]
+        }
       }
     },
     subscribe: function () {
@@ -1682,7 +1704,25 @@ export default {
                 }
                 return [0, 1]
               }
-              return [dataMin, dataMax]
+              let min = dataMin
+              let max = dataMax
+              if (!this.xAxisIsTime) {
+                if (
+                  this.graphMinX !== null &&
+                  this.graphMinX !== undefined &&
+                  Number.isFinite(this.graphMinX)
+                ) {
+                  min = this.graphMinX
+                }
+                if (
+                  this.graphMaxX !== null &&
+                  this.graphMaxX !== undefined &&
+                  Number.isFinite(this.graphMaxX)
+                ) {
+                  max = this.graphMaxX
+                }
+              }
+              return [min, max]
             },
             time: this.xAxisIsTime,
           },
@@ -1919,12 +1959,16 @@ export default {
       this.$emit('edit')
     },
     createSeriesConfig: function (item) {
-      return {
+      const config = {
         spanGaps: true,
         item: item,
         label: this.formatLabel(item),
         stroke: (u, seriesIdx) => this.items[seriesIdx - 1].color,
-        width: 2,
+        fill:
+          this.drawStyle === 'points'
+            ? (u, seriesIdx) => this.items[seriesIdx - 1].color
+            : undefined,
+        width: this.drawStyle === 'points' ? 0 : 2,
         value: (self, rawValue) => {
           if (typeof rawValue === 'string' || Number.isNaN(rawValue)) {
             return 'NaN'
@@ -1940,6 +1984,12 @@ export default {
           }
         },
       }
+      if (this.drawStyle === 'points') {
+        config.paths = (u, seriesIdx, idx0, idx1) =>
+          this.scatterPointsPaths(u, seriesIdx, idx0, idx1)
+        config.points = { show: false }
+      }
+      return config
     },
     createOverviewSeriesConfig: function () {
       return {
@@ -2213,6 +2263,31 @@ export default {
             array[index] = value
           }
         }
+      }
+    },
+    scatterPointsPaths: function (u, seriesIdx, idx0, idx1) {
+      const xData = u.data[0]
+      const yData = u.data[seriesIdx]
+      const radius = 3
+
+      const p = new Path2D()
+      for (let i = idx0; i <= idx1; i++) {
+        const xVal = xData[i]
+        const yVal = yData[i]
+        if (xVal == null || yVal == null) continue
+        const cx = u.valToPos(xVal, 'x', true)
+        const cy = u.valToPos(yVal, u.series[seriesIdx].scale || 'y', true)
+        p.moveTo(cx + radius, cy)
+        p.arc(cx, cy, radius, 0, Math.PI * 2)
+      }
+
+      return {
+        stroke: p,
+        fill: p,
+        clip: undefined,
+        band: undefined,
+        gaps: null,
+        flags: 0x1, // skip default line stroke
       }
     },
     subscriptionKey: function (item) {

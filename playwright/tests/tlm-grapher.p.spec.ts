@@ -238,3 +238,39 @@ test('custom x-axis item with RECEIVED_COUNT', async ({ page, utils }) => {
   await page.getByRole('button', { name: 'Ok' }).click()
   await expect(page.locator('#chart0')).toContainText('RECEIVED_COUNT')
 })
+
+test('XY plot with scatter draw style', async ({ page, utils }) => {
+  // Add a Y-axis item
+  await utils.selectTargetPacketItem('INST', 'ADCS', 'POSY')
+  await page.locator('[data-test="add-item"]').click()
+  await expect(page.locator('#chart0')).toContainText('POSY')
+  await utils.sleep(2000)
+
+  // Open edit dialog and configure XY plot
+  await page.locator('[data-test=edit-graph-icon]').click()
+  await expect(page.locator('.v-dialog')).toContainText('Edit Graph')
+  await page.getByRole('tab', { name: 'Scale / Lines' }).click()
+
+  // Change draw style to Points
+  await page.locator('[data-test=draw-style-select]').click()
+  await page.getByRole('option', { name: 'Points' }).click()
+
+  // Enable custom X axis and set POSX as the X axis item
+  await page.getByLabel('Custom X axis item').check()
+  await page.locator('.v-dialog [data-test=select-item] i').click()
+  await page.locator('.v-dialog').getByLabel('Select Item').fill('POSX')
+  await page.getByRole('option', { name: 'POSX' }).click()
+  await page.getByRole('button', { name: 'Set' }).click()
+
+  // Verify min/max X fields appear for non-time X axis
+  await expect(page.getByLabel('Min X Axis (Optional)')).toBeVisible()
+  await expect(page.getByLabel('Max X Axis (Optional)')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Ok' }).click()
+
+  // Verify the graph now shows the custom X axis label
+  await expect(page.locator('#chart0')).toContainText('POSX')
+  await utils.sleep(3000)
+})
+
+
