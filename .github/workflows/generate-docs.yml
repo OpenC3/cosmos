@@ -24,7 +24,11 @@ concurrency:
 
 jobs:
   build-and-commit:
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    # Skip the release workflow's own version bump commits. They touch
+    # docs.openc3.com, and the docs commit this job pushes lands on main while
+    # the release is still building, leaving the release branch diverged and
+    # unable to push its next version commit.
+    if: ${{ github.actor != 'dependabot[bot]' && !startsWith(github.event.head_commit.message, '[Github Action] Update version to') }}
     runs-on: ubuntu-latest
 
     permissions:
