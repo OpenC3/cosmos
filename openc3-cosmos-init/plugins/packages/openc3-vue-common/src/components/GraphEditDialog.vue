@@ -162,6 +162,20 @@
             </v-row>
           </div>
           <div class="edit-box">
+            <v-card-text class="pa-0"> Draw style for data series </v-card-text>
+            <v-select
+              v-model="selectedDrawStyle"
+              label="Draw Style"
+              hide-details
+              :items="drawStyles"
+              item-title="title"
+              item-value="value"
+              style="max-width: 280px"
+              data-test="draw-style-select"
+              @update:model-value="drawStyleChanged"
+            />
+          </div>
+          <div class="edit-box">
             <v-list density="compact" class="horizontal-lines">
               <v-list-item>
                 <span style="padding-top: 5px">
@@ -203,15 +217,10 @@
           </div>
           <div class="edit-box">
             <v-card-text class="pa-0 text-medium-emphasis">
-              Choose a different item to use for the graph's X axis. If
-              unchecked, the graph will use the packet's PACKET_TIMESECONDS item
-              if it exists, otherwise it will use RECEIVED_TIMESECONDS.
-              <br />
-              <span class="font-italic">
-                Note that the graph may not work correctly if you choose an item
-                that does not strictly increase in value. It is recommended to
-                use a counter or timestamp.
-              </span>
+              Choose a different item to use for the graph's X axis to create an
+              X-Y plot. If unchecked, the graph will use the packet's
+              PACKET_TIMESECONDS item if it exists, otherwise it will use
+              RECEIVED_TIMESECONDS.
             </v-card-text>
             <v-checkbox
               v-model="customXAxisEnabled"
@@ -219,6 +228,7 @@
               label="Custom X axis item"
               density="compact"
               hide-details
+              data-test="custom-x-axis-checkbox"
               @update:model-value="customXAxisToggled"
             />
             <v-card-text
@@ -240,6 +250,29 @@
               @on-set="xAxisItemChanged"
               @add-item="xAxisItemSelected"
             />
+          </div>
+          <div v-if="!xAxisIsTime" class="edit-box">
+            <v-card-text class="pa-0">
+              Set a min or max X value to override automatic scaling
+            </v-card-text>
+            <v-row dense>
+              <v-col class="px-2">
+                <v-number-input
+                  v-model="graph.graphMinX"
+                  control-variant="stacked"
+                  hide-details
+                  label="Min X Axis (Optional)"
+                />
+              </v-col>
+              <v-col class="px-2">
+                <v-number-input
+                  v-model="graph.graphMaxX"
+                  control-variant="stacked"
+                  hide-details
+                  label="Max X Axis (Optional)"
+                />
+              </v-col>
+            </v-row>
           </div>
         </v-tabs-window-item>
         <v-tabs-window-item value="2" eager>
@@ -340,16 +373,44 @@ export default {
       type: String,
       default: '__time',
     },
+    xAxisIsTime: {
+      type: Boolean,
+      default: true,
+    },
+    drawStyle: {
+      type: String,
+      default: 'lines',
+    },
+    graphMinX: {
+      type: Number,
+      default: null,
+    },
+    graphMaxX: {
+      type: Number,
+      default: null,
+    },
   },
-  emits: ['cancel', 'ok', 'remove', 'update:modelValue', 'update:xAxisItem'],
+  emits: [
+    'cancel',
+    'ok',
+    'remove',
+    'update:modelValue',
+    'update:xAxisItem',
+    'update:drawStyle',
+  ],
   data: function () {
     return {
       tab: 0,
       graph: {},
       customXAxisEnabled: false,
       selectedXAxisItem: null,
+      selectedDrawStyle: 'lines',
       pendingXAxisSelection: null,
       legendPositions: ['top', 'bottom', 'left', 'right'],
+      drawStyles: [
+        { title: 'Lines', value: 'lines' },
+        { title: 'Points', value: 'points' },
+      ],
       startDate: null,
       startTime: null,
       endDate: null,
@@ -443,8 +504,11 @@ export default {
       items: this.items,
       graphMinY: this.graphMinY,
       graphMaxY: this.graphMaxY,
+      graphMinX: this.graphMinX,
+      graphMaxX: this.graphMaxX,
       lines: [...this.lines],
     }
+    this.selectedDrawStyle = this.drawStyle
     this.customXAxisEnabled = this.xAxisItem && this.xAxisItem !== '__time'
     this.selectedXAxisItem = this.xAxisItem
     // Set the date and time if they pass a dateTime or set a default
@@ -503,6 +567,9 @@ export default {
     removeLine(dline) {
       let i = this.graph.lines.indexOf(dline)
       this.graph.lines.splice(i, 1)
+    },
+    drawStyleChanged(value) {
+      this.$emit('update:drawStyle', value)
     },
     customXAxisToggled(enabled) {
       if (!enabled) {
