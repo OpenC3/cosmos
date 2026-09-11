@@ -289,7 +289,7 @@ SHARD:
 BRIDGE:
   summary: Name of the bridge to run this interface on
   description: Run this interface on a bridge host rather than within COSMOS. Note only python is supported.
-  since: _Coming Soon_
+  since: 7.4.0
   parameters:
     - name: Bridge Name
       required: true
@@ -304,7 +304,7 @@ BRIDGE_PROTOCOL:
     received by the interface while write acts on the data before it is sent out. READ_WRITE applies
     the protocol to both reading and writing.<br/><br/>
     For information on creating your own custom protocol please see [Protocols](../configuration/protocols.md)
-  since: _Coming Soon_
+  since: 7.4.0
   parameters:
     - name: Type
       required: true
@@ -326,7 +326,7 @@ BRIDGE_OPTION:
   description:
     When a bridge option is set the bridge interface class calls the set_option method.
     Custom interfaces can override set_option to handle any additional options they want.
-  since: _Coming Soon_
+  since: 7.4.0
   parameters:
     - name: Name
       required: true
@@ -351,7 +351,7 @@ BRIDGE_SECRET:
   description:
     Defines a bridge secret for this bridge interface and optionally assigns its value to an option.
     For more information see [Admin Secrets](/docs/tools/admin#secrets).
-  since: _Coming Soon_
+  since: 7.4.0
   parameters:
     - name: Type
       required: true
