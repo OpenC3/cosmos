@@ -48,6 +48,23 @@ class StreamingObjectFileReader
       end
     end
     return false
+  ensure
+    close()
+  end
+
+  # Release every file still open. next_packet_and_topic only unreserves a file
+  # once its reader runs out of packets, so returning early -- reaching
+  # @end_time, or the caller breaking out of each to cancel -- would otherwise
+  # leak those reservations for the life of the process, keeping the files on
+  # disk and out of reach of BucketFileCache's age out sweep.
+  # Offsets are deliberately not applied here: the stream is over in both cases,
+  # and the handoff to realtime only uses offsets from readers that finished.
+  def close
+    @open_readers.each do |reader|
+      reader.close
+      BucketFileCache.unreserve(reader.bucket_file)
+    end
+    @open_readers = []
   end
 
   def read
