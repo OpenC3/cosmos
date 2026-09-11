@@ -73,10 +73,6 @@ check_build_files(
   get_docker_version('openc3-traefik/Dockerfile')
 )
 
-base_pkgs = %w(import-map-overrides pinia single-spa systemjs vue vue-router vuetify)
-# FORCE=1 re-downloads the tool-base js/css even when it already matches
-# package.json (and downloads fresh when the existing file was deleted).
-check_tool_base('openc3-cosmos-init/plugins/packages/openc3-tool-base', base_pkgs, force: ENV['FORCE'] == '1')
 puts "\n*** If you update a container version re-run to ensure there aren't additional updates! ***\n\n"
 
 # Per-language outdated dependency prompts. Each helper enumerates outdated
@@ -95,6 +91,16 @@ update_outdated_requirements_txt(
   update_outdated_pnpm(File.join(__dir__, '..', '..', dir), client)
 end
 
+# The externalized (import map / <link>) copies of these packages live in
+# openc3-tool-base/public and are referenced by hardcoded filenames in
+# index.html, so nothing in the build validates them against package.json.
+# This has to run AFTER update_outdated_pnpm so it reads the versions that
+# were just accepted rather than the ones package.json had on entry.
+base_pkgs = %w(@astrouxds/astro-web-components import-map-overrides pinia single-spa systemjs vue vue-router vuetify)
+# FORCE=1 re-downloads the tool-base js/css even when it already matches
+# package.json (and downloads fresh when the existing file was deleted).
+check_tool_base('openc3-cosmos-init/plugins/packages/openc3-tool-base', base_pkgs, force: ENV['FORCE'] == '1')
+
 File.open("openc3_package_report.txt", "w") do |file|
   file.write(summary_report)
   file.write(report)
@@ -107,5 +113,3 @@ end
 # puts "cd openc3/templates/tool_react; pnpm install; pnpm update --interactive --latest; cd ../../.."
 # puts "cd openc3/templates/tool_angular; pnpm install; pnpm update --interactive --latest; cd ../../.."
 # puts "cd openc3/templates/tool_svelte; pnpm install; pnpm update --interactive --latest; cd ../../.."
-
-puts "\n\n*** If you update #{base_pkgs.join(', ')} then re-run! ***\n\n"

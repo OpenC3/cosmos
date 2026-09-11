@@ -769,6 +769,29 @@ def check_anycable(client, container_name)
   new_version
 end
 
+# Packages whose only vendored browser artifact is a stylesheet in public/css
+# rather than a script in public/js. The key is the package.json name (scoped
+# names included), the value is the basename used on disk and in index.html.
+CSS_ONLY_PKGS = {
+  '@astrouxds/astro-web-components' => 'astro-web-components',
+}
+
+# The basename a package is vendored under in public/js or public/css. vue and
+# vuetify don't ship the build we want under their own name, and the css-only
+# packages drop their npm scope. Every place that has to build or match a
+# vendored filename goes through here so index.html, importmap.json and the
+# downloader can't disagree about what the file is called.
+def tool_base_asset_name(package)
+  case package
+  when 'vue'
+    'vue.runtime.global.prod'
+  when 'vuetify'
+    'vuetify-labs'
+  else
+    CSS_ONLY_PKGS[package] || package
+  end
+end
+
 def check_tool_base(path, base_pkgs, force: false)
   Dir.chdir(path) do
     # List the remote tags and sort reverse order (latest on top)
@@ -791,16 +814,15 @@ def check_tool_base(path, base_pkgs, force: false)
       `curl https://cdnjs.cloudflare.com/ajax/libs/MaterialDesign-Webfont/#{latest}/fonts/materialdesignicons-webfont.woff2 --output public/fonts/materialdesignicons-webfont.woff2`
       FileUtils.rm(existing)
 
-      # Now update the files with references to materialdesignicons
-      files = ["public/index.html"]
-      # The base also has to update index.html in openc3-tool-base
-      files << "../packages/openc3-tool-base/public/index.html" unless path.include?('enterprise')
-      files.each do |filename|
-        html = File.read(filename)
-        html.gsub!(/materialdesignicons-.+\.min\.css/, "materialdesignicons-#{latest}.min.css")
-        html.gsub!(/woff2\?v=.+/, "woff2?v=#{latest}")
-        File.open(filename, 'w') {|file| file.puts html }
-      end
+      # Now update the index.html references to materialdesignicons. Both core
+      # and enterprise have exactly one, at public/index.html relative to the
+      # tool-base this was called with.
+      html = File.read("public/index.html")
+      html.gsub!(/materialdesignicons-.+\.min\.css/, "materialdesignicons-#{latest}.min.css")
+      # Stop at the closing quote: `.+` is greedy to end of line and ate it,
+      # leaving an unterminated href attribute.
+      html.gsub!(/woff2\?v=[^"]+/, "woff2?v=#{latest}")
+      File.open("public/index.html", 'w') {|file| file.puts html }
     end
 
     # Ensure various js files match their package.json versions
@@ -817,21 +839,18 @@ def check_tool_base(path, base_pkgs, force: false)
     end
     packages.each do |package, latest|
       # vue and vuetify are special cases due to the package names
-      alt_package = package
-      if package == 'vue'
-        alt_package = 'vue.runtime.global.prod'
-      elsif package == 'vuetify'
-        alt_package = 'vuetify-labs'
-      end
+      alt_package = tool_base_asset_name(package)
+      # css-only packages live in public/css, everything else in public/js
+      dir = CSS_ONLY_PKGS[package] ? 'css' : 'js'
       # Ensure we're only matching package names followed by numbers
       # This prevents vue- from matching vue-router-
-      existing = Dir["public/js/#{alt_package}-[0-9]*"][0]
+      existing = Dir["public/#{dir}/#{alt_package}-[0-9]*"][0]
       if !latest
         puts "ERROR: Could not find latest version for #{package} in #{Dir.pwd}/package.json"
         next
       end
       if !existing && !force
-        puts "ERROR: Could not find existing package #{alt_package} in #{Dir.pwd}/public/js (use FORCE=1 to download it fresh)"
+        puts "ERROR: Could not find existing package #{alt_package} in #{Dir.pwd}/public/#{dir} (use FORCE=1 to download it fresh)"
         next
       end
       existing_version = existing.to_s[/(\d+\.\d+\.\d+)/, 1]
@@ -898,6 +917,17 @@ def check_tool_base(path, base_pkgs, force: false)
           outfile = "public/js/#{package}-#{latest}.min.js"
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.prod.js --output #{outfile}`
           validate_outfile(outfile, package, latest)
+        when '@astrouxds/astro-web-components'
+          # Only the global stylesheet (design tokens, .rux-* utility classes and
+          # the :not(:defined) pre-hydration rules) has to be vendored. The
+          # per-component styles ride along in the shadow DOM from the npm
+          # package that main.js loads via defineCustomElements(), so nothing
+          # here validates this file against package.json -- a stale copy drifts
+          # silently, which is why the audit keeps it in sync. Stencil publishes
+          # it unminified, so there is no .min in the filename.
+          outfile = "public/css/#{alt_package}-#{latest}.css"
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{alt_package}/#{alt_package}.css --output #{outfile}`
+          validate_outfile(outfile, package, latest)
         else
           outfile = "public/js/#{package}-#{latest}.min.js"
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.min.js --output #{outfile}`
@@ -906,8 +936,12 @@ def check_tool_base(path, base_pkgs, force: false)
         FileUtils.rm_f existing if existing && !version_matches
         # Now update the public/index.html with references to <package>-<version>.min.js
         html = File.read("public/index.html")
-        html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")
-        html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.css/, "#{alt_package}-#{latest}.min.css")
+        if CSS_ONLY_PKGS[package]
+          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.css/, "#{alt_package}-#{latest}.css")
+        else
+          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")
+          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.css/, "#{alt_package}-#{latest}.min.css")
+        end
         File.open("public/index.html", 'w') {|file| file.puts html }
         if package == 'keycloak-js'
           html = File.read('public/js/auth.js')
@@ -916,11 +950,67 @@ def check_tool_base(path, base_pkgs, force: false)
         end
       end
     end
-    # The SystemJS import map is a separate file from index.html so it has to be
-    # updated as well. Sync it unconditionally (not just on an accepted prompt)
+    # index.html, auth.js and the SystemJS import map are all separate from the
+    # downloaded files, so a run that was interrupted (or declined) between the
+    # download and the rewrite leaves them pointing at a version that is no
+    # longer on disk -- which the browser only reports as a SystemJS Error#3 at
+    # runtime. Sync all three unconditionally, not just on an accepted prompt,
     # so a previously missed update is repaired on the next run.
+    sync_versioned_refs(packages)
+    sync_versioned_refs(packages, path: 'public/js/auth.js')
     sync_importmap(packages)
+    verify_tool_base_refs
   end
+end
+
+# Rewrite the hardcoded <package>-<version> filenames in an html/js file so
+# they match the versions in package.json. The download loop already does this
+# for a package it just downloaded; running it unconditionally repairs a file
+# that was left behind because an earlier run died (or was Ctrl-C'd) after the
+# download but before the rewrite.
+# packages is a Hash of package name => version (from package.json)
+def sync_versioned_refs(packages, path: 'public/index.html')
+  return unless File.exist?(path)
+  html = File.read(path)
+  changed = false
+  packages.each do |package, latest|
+    next unless latest
+    asset = tool_base_asset_name(package)
+    # Only rewrite once the file the new reference points at is actually on
+    # disk, otherwise a failed download would swap a working reference for a
+    # 404. Each package uses exactly one of these shapes, and vuetify uses two
+    # (the labs js and its stylesheet).
+    [['js', '.min.js'], ['css', '.min.css'], ['css', '.css']].each do |dir, ext|
+      target = "#{asset}-#{latest}#{ext}"
+      next unless File.exist?(File.join('public', dir, target))
+      updated = html.gsub(/#{Regexp.escape(asset)}-\d+\.\d+\.\d+#{Regexp.escape(ext)}/, target)
+      next if updated == html
+      html = updated
+      changed = true
+      puts "  Updated #{path}: #{package} => #{target}"
+    end
+  end
+  File.write(path, html) if changed
+end
+
+# Last line of defense: every /js/... and /css/... reference in the tool-base
+# entry points has to resolve to a file we actually vendored. A dangling one is
+# invisible until the browser fails to boot, so fail loudly here instead.
+# Returns the list of errors so callers can decide whether to keep going.
+def verify_tool_base_refs(paths: ['public/index.html', 'public/js/importmap.json', 'public/js/auth.js'])
+  errors = []
+  paths.each do |path|
+    next unless File.exist?(path)
+    # Only local absolute references in quotes -- skips CDN urls and anything
+    # with a cache-busting query string (the font files).
+    File.read(path).scan(%r{["'](/(?:js|css)/[^"'?]+)["']}).flatten.uniq.each do |ref|
+      local = File.join('public', ref.sub(%r{\A/}, ''))
+      errors << "ERROR: #{Dir.pwd}/#{path} references #{ref} but #{local} doesn't exist" unless File.exist?(local)
+    end
+  end
+  errors.each { |error| puts error }
+  puts "ERROR: tool-base references are broken, the browser will fail to load" unless errors.empty?
+  errors
 end
 
 # Update public/js/importmap.json so every import points at the versioned file
