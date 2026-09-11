@@ -355,7 +355,7 @@ Defines a secret for this interface and optionally assigns its value to an optio
 |-----------|-------------|----------|
 | Type | ENV or FILE.  ENV will mount the secret into an environment variable. FILE mounts the secret into a file. | True |
 | Secret Name | The name of the secret to retrieve from the Admin / Secrets tab. For more information see [Admin Secrets](/docs/tools/admin#secrets). | True |
-| Environment Variable or File Path | Environment variable name or file path to store secret. Note that if you use the Option Name to set an option to the secret value, this value doesn't really matter as long as it is unique. | True |
+| Environment Variable or File Path | Environment variable name or file path to store secret. FILE paths must be under /tmp (or the directory set by the OPENC3_SECRET_FILE_DIR environment variable); paths outside of it are rejected. Note that if you use the Option Name to set an option to the secret value, this value doesn't really matter as long as it is unique. | True |
 | Option Name | Interface option to pass the secret value. This is the primary way to pass secrets to interfaces. | False |
 | Secret Store Name | Name of the secret store for stores with multipart keys | False |
 
@@ -528,7 +528,7 @@ Defines a bridge secret for this bridge interface and optionally assigns its val
 |-----------|-------------|----------|
 | Type | ENV or FILE.  ENV will mount the secret into an environment variable. FILE mounts the secret into a file. | True |
 | Secret Name | The name of the secret to retrieve from the Admin / Secrets tab. For more information see [Admin Secrets](/docs/tools/admin#secrets). | True |
-| Environment Variable or File Path | Environment variable name or file path to store secret. Note that if you use the Option Name to set an option to the secret value, this value doesn't really matter as long as it is unique. | True |
+| Environment Variable or File Path | Environment variable name or file path to store secret. FILE paths must be under /tmp (or the directory set by the OPENC3_SECRET_FILE_DIR environment variable); paths outside of it are rejected. Note that if you use the Option Name to set an option to the secret value, this value doesn't really matter as long as it is unique. | True |
 | Option Name | Interface option to pass the secret value. This is the primary way to pass secrets to interfaces. | False |
 | Secret Store Name | Name of the secret store for stores with multipart keys | False |
 
@@ -878,7 +878,7 @@ Defines a secret for this microservice. For more information see the [Secrets gu
 |-----------|-------------|----------|
 | Type | ENV or FILE.  ENV will mount the secret into an environment variable. FILE mounts the secret into a file. | True |
 | Secret Name | The name of the secret to retrieve from the Admin / Secrets tab. For more information see [Admin Secrets](/docs/tools/admin#secrets). | True |
-| Environment Variable or File Path | Environment variable name or file path to store secret | True |
+| Environment Variable or File Path | Environment variable name or file path to store secret. FILE paths must be under /tmp (or the directory set by the OPENC3_SECRET_FILE_DIR environment variable); paths outside of it are rejected. | True |
 | Secret Store Name | Name of the secret store for stores with multipart keys | False |
 
 Example Usage:
