@@ -664,6 +664,96 @@ module OpenC3
       end
     end
 
+    # check(), wait() and wait_check() all parse the same comparison syntax
+    # so they must all accept and reject exactly the same expressions
+    describe "check, wait, wait_check consistency" do
+      it "rejects operators which are not supported" do
+        # Bitwise and boolean operators are not part of the comparison syntax
+        ["&", "|", "^", "and", "or", "==="].each do |operator|
+          expect { check("INST HEALTH_STATUS TEMP1 #{operator} 1") }.to raise_error(RuntimeError, /ERROR: Invalid operator: '#{Regexp.escape(operator)}'/)
+          expect { wait("INST HEALTH_STATUS TEMP1 #{operator} 1", 0.01) }.to raise_error(RuntimeError, /ERROR: Invalid operator: '#{Regexp.escape(operator)}'/)
+          expect { wait_check("INST HEALTH_STATUS TEMP1 #{operator} 1", 0.01) }.to raise_error(RuntimeError, /ERROR: Invalid operator: '#{Regexp.escape(operator)}'/)
+        end
+      end
+
+      it "rejects compound expressions" do
+        # https://github.com/OpenC3/cosmos/issues/3802
+        expression = "INST HEALTH_STATUS TIMEUS & 0x0001 == 0x0000"
+        expect { check(expression) }.to raise_error(RuntimeError, /ERROR: Invalid operator: '&'/)
+        expect { wait(expression, 0.01) }.to raise_error(RuntimeError, /ERROR: Invalid operator: '&'/)
+        expect { wait_check(expression, 0.01) }.to raise_error(RuntimeError, /ERROR: Invalid operator: '&'/)
+      end
+
+      it "rejects operators without an operand" do
+        expect { check("INST HEALTH_STATUS TEMP1 >") }.to raise_error(RuntimeError, /must specify an operand/)
+        expect { wait("INST HEALTH_STATUS TEMP1 >", 0.01) }.to raise_error(RuntimeError, /must specify an operand/)
+        expect { wait_check("INST HEALTH_STATUS TEMP1 >", 0.01) }.to raise_error(RuntimeError, /must specify an operand/)
+      end
+
+      it "suggests a string when comparing against a bare word" do
+        error = "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?"
+        expect { check("INST HEALTH_STATUS CCSDSSHF == FALSE") }.to raise_error(NameError, error)
+        expect { wait("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01) }.to raise_error(NameError, error)
+        expect { wait_check("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01) }.to raise_error(NameError, error)
+      end
+
+      it "accepts hex operands" do
+        capture_io do |stdout|
+          check("INST HEALTH_STATUS TEMP1 == 0x0A") # TEMP1 is 10
+          expect(stdout.string).to include('CHECK: INST HEALTH_STATUS TEMP1 == 0x0A success with value == 10')
+          expect(wait("INST HEALTH_STATUS TEMP1 == 0x0A", 0.01)).to be true
+          expect(wait_check("INST HEALTH_STATUS TEMP1 == 0x0A", 0.01)).to be_a Float
+        end
+      end
+
+      it "rejects ambiguous leading zero integers" do
+        # Ruby reads 010 as octal 8 while Python rejects it outright so require 0o10 or 10
+        expect { check("INST HEALTH_STATUS TEMP1 == 010") }.to raise_error(/ERROR: Unable to parse operand: 010/)
+        expect { wait("INST HEALTH_STATUS TEMP1 == 010", 0.01) }.to raise_error(/ERROR: Unable to parse operand: 010/)
+        expect { wait_check("INST HEALTH_STATUS TEMP1 == 010", 0.01) }.to raise_error(/ERROR: Unable to parse operand: 010/)
+      end
+
+      it "rejects a comparison which is not a single complete quoted literal" do
+        comparison = "INST HEALTH_STATUS CCSDSSHF == 'a' garbage 'b'"
+        expect { check(comparison) }.to raise_error(/ERROR: Unable to parse operand/)
+        expect { wait(comparison, 0.01) }.to raise_error(/ERROR: Unable to parse operand/)
+        expect { wait_check(comparison, 0.01) }.to raise_error(/ERROR: Unable to parse operand/)
+      end
+
+      it "requires a list operand for the in operator" do
+        error = /ERROR: The 'in' operator requires a list operand/
+        expect { check("INST HEALTH_STATUS TEMP1 in 'abc'") }.to raise_error(error)
+        expect { wait("INST HEALTH_STATUS TEMP1 in 'abc'", 0.01) }.to raise_error(error)
+        expect { wait_check("INST HEALTH_STATUS TEMP1 in 'abc'", 0.01) }.to raise_error(error)
+
+        capture_io do |stdout|
+          check("INST HEALTH_STATUS TEMP1 in [1, 10]") # TEMP1 is 10
+          expect(stdout.string).to include('CHECK: INST HEALTH_STATUS TEMP1 in [1, 10] success with value == 10')
+          expect(wait("INST HEALTH_STATUS TEMP1 in [1, 10]", 0.01)).to be true
+          expect(wait_check("INST HEALTH_STATUS TEMP1 in [1, 10]", 0.01)).to be_a Float
+        end
+      end
+
+      it "ignores the comparison when wait_check is given a block" do
+        # The block is the condition so the text after the item name is never parsed
+        capture_io do |stdout|
+          result = wait_check("INST HEALTH_STATUS TEMP1 & 0x1", 0.01) do |value|
+            value == 10
+          end
+          expect(result).to be_a Float
+          expect(stdout.string).to include('CHECK: INST HEALTH_STATUS TEMP1 & 0x1 success with value == 10')
+        end
+      end
+
+      it "still rejects non-ascii comparison text when wait_check is given a block" do
+        # The comparison text is logged even when a block is the condition
+        data = "\xFF" * 10
+        expect {
+          wait_check("INST HEALTH_STATUS BLOCKTEST == '#{data}'", 0.01) { |_value| true }
+        }.to raise_error(RuntimeError, "ERROR: Invalid comparison to non-ascii value")
+      end
+    end
+
     describe "wait_check_tolerance" do
       it "raises with :FORMATTED or :WITH_UNITS" do
         expect { wait_check_tolerance("INST HEALTH_STATUS TEMP2 == 10.5", 0.1, 0.01, type: :FORMATTED) }.to raise_error("Invalid type 'FORMATTED' for wait_check_tolerance")
