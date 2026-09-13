@@ -772,6 +772,11 @@ class QuestDBClient:
             Array of [value, limits_state] pairs per row, or {} if no results.
             Single-row results return a flat array; multi-row results return array of arrays.
         """
+        # Every item is a placeholder for an item which doesn't exist, so there's
+        # nothing to query. Return a single row of None values, one per item.
+        if all(item[2] is None for item in items):
+            return [[None, None] for _ in items]
+
         tables = {}
         names = []
         nil_count = 0

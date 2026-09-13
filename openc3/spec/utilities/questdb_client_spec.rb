@@ -16,6 +16,20 @@ require "openc3/utilities/questdb_client"
 
 module OpenC3
   describe QuestDBClient, no_ext: true do
+    describe "tsdb_lookup" do
+      it "returns a row of nils when every item is a placeholder" do
+        # get_tlm_available returns nil for items which don't exist, which arrive
+        # here as [nil, nil, nil, nil, nil]. There's no table to query so the values
+        # come back nil rather than building a query with no FROM clause.
+        items = Array.new(3) { Array.new(5) }
+        expect(QuestDBClient.tsdb_lookup(items, start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z")).to eq([[nil, nil], [nil, nil], [nil, nil]])
+      end
+
+      it "returns a row of nils for a placeholder without an end_time" do
+        expect(QuestDBClient.tsdb_lookup([Array.new(5)], start_time: "2026-09-13T00:00:00Z")).to eq([[nil, nil]])
+      end
+    end
+
     describe "numeric_column_type?" do
       it "returns true for aggregatable numeric types (case-insensitive)" do
         ['BYTE', 'SHORT', 'INT', 'LONG', 'FLOAT', 'DOUBLE', 'double', 'float'].each do |type|
