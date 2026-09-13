@@ -14,6 +14,24 @@ import unittest
 from openc3.utilities.questdb_client import QuestDBClient
 
 
+class TestTsdbLookup(unittest.TestCase):
+    def test_returns_a_row_of_nones_when_every_item_is_a_placeholder(self):
+        # get_tlm_available returns None for items which don't exist, which arrive
+        # here as [None, None, None, None, None]. There's no table to query so the
+        # values come back None rather than building a query with no FROM clause.
+        items = [[None] * 5, [None] * 5, [None] * 5]
+        self.assertEqual(
+            QuestDBClient.tsdb_lookup(items, start_time="2026-09-13T00:00:00Z", end_time="2026-09-13T01:00:00Z"),
+            [[None, None], [None, None], [None, None]],
+        )
+
+    def test_returns_a_row_of_nones_for_a_placeholder_without_an_end_time(self):
+        self.assertEqual(
+            QuestDBClient.tsdb_lookup([[None] * 5], start_time="2026-09-13T00:00:00Z"),
+            [[None, None]],
+        )
+
+
 class TestBuildAggregationSelects(unittest.TestCase):
     def test_aggregates_raw_column_for_raw_value_type(self):
         selects, mapping = QuestDBClient.build_aggregation_selects("TEMP1", "RAW")

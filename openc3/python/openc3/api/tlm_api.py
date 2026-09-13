@@ -393,19 +393,30 @@ def get_tlm_values(
     end_time=None,
     scope=OPENC3_SCOPE,
 ):
-    if not isinstance(items, list) or len(items) == 0 or not isinstance(items[0], str):
+    if not isinstance(items, list) or len(items) == 0:
         raise TypeError("items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]")
     packets = []
     cvt_items = []
     for item in items:
-        try:
-            target_name, packet_name, item_name, value_type = item.upper().split("__")
-        except ValueError:
-            raise ValueError("items must be formatted as TGT__PKT__ITEM__TYPE") from None
+        # get_tlm_available returns None for items which don't exist and its result is
+        # passed directly here, so None is a placeholder which returns a None value
+        if item is None:
+            cvt_items.append([None, None, None, None, None])
+            continue
+        if not isinstance(item, str):
+            raise TypeError("items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]")
+        # get_tlm_available tacks on __LIMITS to indicate a limits value is available
+        # so accept both TGT__PKT__ITEM__TYPE and TGT__PKT__ITEM__TYPE__LIMITS
+        parts = item.upper().split("__")
+        if len(parts) < 4 or len(parts) > 5:
+            raise ValueError("items must be formatted as TGT__PKT__ITEM__TYPE")
+        target_name, packet_name, item_name, value_type = parts[0:4]
+        limits = parts[4] if len(parts) == 5 else None
         if packet_name == "LATEST":
             packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout, scope)
         # Change packet_name in case of LATEST and ensure upcase
-        cvt_items.append([target_name, packet_name, item_name, value_type])
+        # NOTE: limits is required by the historical (start_time) QuestDB lookup
+        cvt_items.append([target_name, packet_name, item_name, value_type, limits])
         packets.append([target_name, packet_name])
     # Make the array of arrays unique
     packets = [list(x) for x in {tuple(x) for x in packets}]
