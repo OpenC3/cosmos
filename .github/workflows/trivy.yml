@@ -209,6 +209,7 @@ jobs:
           output: "dependency-results.sbom.json"
           image-ref: "."
           github-pat: ${{ secrets.GITHUB_TOKEN }}
+          skip-setup-trivy: true
       # - uses: anchore/scan-action/download-grype@v3
       #   id: grype
       # - name: Run grype on the image ruby
