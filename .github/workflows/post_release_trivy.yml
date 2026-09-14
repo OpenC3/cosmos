@@ -72,7 +72,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-ruby:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-ruby.json"
-          ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
@@ -89,7 +88,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-node:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-node.json"
-          ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
@@ -106,7 +104,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-base:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-base.json"
-          ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
@@ -123,7 +120,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-cosmos-init:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-cosmos-init.json"
-          ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
@@ -140,7 +136,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-redis:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-redis.json"
-          ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
@@ -157,7 +152,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-buckets:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-buckets.json"
-          ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
@@ -174,7 +168,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-tsdb:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-tsdb.json"
-          ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
@@ -191,7 +184,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-operator:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-operator.json"
-          ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
@@ -208,7 +200,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-cosmos-cmd-tlm-api.json"
-          ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
@@ -225,7 +216,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-cosmos-script-runner-api.json"
-          ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
@@ -242,7 +232,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-traefik:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-traefik.json"
-          ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
