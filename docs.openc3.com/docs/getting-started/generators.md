@@ -61,7 +61,7 @@ This creates the following files:
 :::note[Python Dependency Management]
 Python plugins can declare dependencies using either `pyproject.toml` (recommended) or `requirements.txt`. When a plugin is installed, COSMOS creates an isolated UV virtual environment for it, so each plugin's dependencies are fully isolated from other plugins.
 
-If you use `pyproject.toml`, you can include a `uv.lock` file alongside it to enable reproducible installs via `uv sync --frozen`. This ensures the exact same package versions are installed every time.
+If you use `pyproject.toml`, you can include a `uv.lock` file alongside it to enable reproducible installs via `uv sync --locked`. This ensures the exact same package versions are installed every time.
 
 **Managing dependencies during development:**
 

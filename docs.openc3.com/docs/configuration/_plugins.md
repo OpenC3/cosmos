@@ -62,7 +62,7 @@ Once variables are set, COSMOS registers the plugin model in Redis and installs 
 
 COSMOS supports two formats for declaring Python dependencies:
 
-- **`pyproject.toml`** (recommended) — When paired with a `uv.lock` file, enables reproducible installs via `uv sync --frozen`. COSMOS uses `uv sync` for `pyproject.toml`-based plugins.
+- **`pyproject.toml`** (recommended) — When paired with a `uv.lock` file, enables reproducible installs via `uv sync --locked`. COSMOS uses `uv sync` for `pyproject.toml`-based plugins.
 - **`requirements.txt`** — COSMOS uses `uv pip install -r requirements.txt` for requirements-based plugins.
 
 System Python packages (those shipped in the COSMOS Docker image) are pre-seeded into the UV download cache, so plugins that depend on those packages reuse them without re-downloading. If the UV install fails for any reason, COSMOS falls back to a shared pip install and logs a warning.
