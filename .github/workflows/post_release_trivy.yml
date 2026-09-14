@@ -40,6 +40,20 @@ jobs:
         with:
           egress-policy: audit
 
+      - name: Verify release exists
+        id: check_release
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const tag = `v${process.env.VERSION}`;
+            // Fail fast rather than scanning every image and only discovering
+            // at upload time that there is no release to attach the results to.
+            await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag
+            });
+            console.log("found release for tag", tag);
       - name: Manual Trivy Setup
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
         with:
