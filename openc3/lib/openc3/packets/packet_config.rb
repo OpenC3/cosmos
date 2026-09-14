@@ -145,7 +145,12 @@ module OpenC3
       # Handle .xtce files
       extension = File.extname(filename).to_s.downcase
       if extension == ".xtce" or extension == ".xml"
-        XtceParser.process(@commands, @telemetry, @warnings, filename, process_target_name)
+        target_name = XtceParser.process(@commands, @telemetry, @warnings, filename, process_target_name)
+        # XtceParser adds packets straight into @commands / @telemetry without
+        # going through finish_packet, so the ID lookup metadata finish_packet
+        # builds has to be built here instead. Without it Telemetry#identify
+        # and Commands#identify find no hash for the target and raise on nil.
+        build_xtce_id_metadata(target_name)
         return
       end
 
@@ -429,6 +434,36 @@ module OpenC3
     end
 
     protected
+
+    # Build the ID lookup metadata for every packet an XTCE file just added to
+    # the given target. Packets are walked in the order XtceParser left them in,
+    # which is the order the rest of COSMOS sees them, so duplicate ID values
+    # resolve the same way here as they do everywhere else.
+    #
+    # @param target_name [String] Target the XTCE file defined, or nil if the
+    #   file defined no target
+    def build_xtce_id_metadata(target_name)
+      return unless target_name
+
+      @commands[target_name]&.each_value do |packet|
+        next if packet.virtual
+
+        if packet.subpacket
+          build_id_metadata(packet, @cmd_subpacket_id_value_hash, @cmd_subpacket_id_signature, @cmd_subpacket_unique_id_mode)
+        else
+          build_id_metadata(packet, @cmd_id_value_hash, @cmd_id_signature, @cmd_unique_id_mode)
+        end
+      end
+      @telemetry[target_name]&.each_value do |packet|
+        next if packet.virtual
+
+        if packet.subpacket
+          build_id_metadata(packet, @tlm_subpacket_id_value_hash, @tlm_subpacket_id_signature, @tlm_subpacket_unique_id_mode)
+        else
+          build_id_metadata(packet, @tlm_id_value_hash, @tlm_id_signature, @tlm_unique_id_mode)
+        end
+      end
+    end
 
     def build_id_metadata(packet, id_value_hash, id_signature_hash, unique_id_mode_hash)
       target_id_value_hash = id_value_hash[packet.target_name]
