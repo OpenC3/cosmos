@@ -18,6 +18,8 @@ on:
         description: "Release version"
         required: true
         type: string
+  release:
+    types: [published]
 
 # Workaround for https://github.com/aquasecurity/trivy-action/issues/389
 env:
@@ -33,12 +35,24 @@ jobs:
     permissions:
       contents: write # Need write permission to upload release asset
     env:
-      VERSION: ${{ github.event.inputs.version }}
+      # workflow_dispatch passes a bare version (6.10.0), the release event
+      # passes a tag (v6.10.0). Normalized to a bare version by the step below.
+      RAW_VERSION: ${{ github.event.inputs.version || github.event.release.tag_name }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           egress-policy: audit
+
+      # Expressions have no string replace, so strip the leading "v" in shell.
+      - name: Determine version
+        run: |
+          version="${RAW_VERSION#v}"
+          if [ -z "$version" ]; then
+            echo "Could not determine the release version to scan" >&2
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
 
       - name: Verify release exists
         id: check_release
