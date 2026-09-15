@@ -933,12 +933,27 @@ def check_anycable(client, container_name)
   anycable = `docker run --rm #{container_name} /usr/bin/anycable-go --version`.strip
   puts "Raw anycable-go version: #{anycable}"
   any_cable_version = anycable.split('version:')[-1].split('-')[0].strip
+  # A fourth version component means this is one of our own anycable-go builds,
+  # never an upstream release: every anycable/anycable release back to v0.5.0 is
+  # three-part. 1.6.16.1 is built from anycable/anycable#334 while that PR is
+  # unmerged. Audit such a build against the release it was cut from.
+  #
+  # Without this the pin is simply invisible to the audit: validate_versions
+  # returns [] for a current version missing from the tag list, so it reports
+  # the intentional pin as a missing image AND never offers an upgrade - not
+  # even once a later release lands, because the check that bails is on the
+  # CURRENT version. Its candidate regex would also read ".1" as the suffix and
+  # carry it into every candidate (v1.6.17.1 and friends, which do not exist).
+  audit_version = any_cable_version.sub(/\A(\d+\.\d+\.\d+)\.\d+\z/, '\\1')
+  if audit_version != any_cable_version
+    puts "  anycable-go #{any_cable_version} is a custom OpenC3 build; auditing against v#{audit_version}"
+  end
   # The anycable-go binaries ship as release assets on the anycable/anycable repo
   # (the anycable-go repo's own tags lag behind).
   resp = client.get('https://api.github.com/repos/anycable/anycable/releases?per_page=30').body
   releases = JSON.parse(resp)
   versions = releases.map { |r| r['tag_name'] }.compact.reject { |v| v.include?('-') }
-  candidates = validate_versions(versions, "v#{any_cable_version}", 'anycable-go')
+  candidates = validate_versions(versions, "v#{audit_version}", 'anycable-go')
   new_version = prompt_for_upgrade('anycable-go (will download binaries)', "v#{any_cable_version}", candidates)
   return nil unless new_version
   ver = new_version.sub(/^v/, '')
