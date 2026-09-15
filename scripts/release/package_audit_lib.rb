@@ -804,7 +804,11 @@ def download_ubi_ruby(version, release)
     return false
   end
   puts "  Downloading #{release[:url]}"
-  unless system("curl -fSL #{release[:url]} -o #{path}")
+  # Argument form, not a command string: the URL comes out of the downloaded
+  # index and this runs BEFORE the sha256 check below, so a compromised or
+  # malformed index must not be able to reach a shell. Matches the argument
+  # form used for the npm tarball download above.
+  unless system('curl', '-fSL', release[:url], '-o', path)
     puts "ERROR: failed to download #{release[:url]}"
     FileUtils.rm_f(path)
     return false

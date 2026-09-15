@@ -64,7 +64,11 @@ check_container_version(client, containers, 'traefik')
 check_container_version(client, containers, 'redis') # valkey base image
 new_versitygw = check_versitygw(client, versitygw_version)
 check_tsdb(client, tsdb_version)
-check_ubi_ruby(client, ruby_version)
+# Re-read RUBY_VERSION rather than using the local captured at startup:
+# check_debian above may have accepted a Ruby minor bump, and update_debian_files
+# writes the new value back into ENV. Using the stale local would audit
+# Dockerfile-ubi against the old minor line and leave it behind the Debian image.
+check_ubi_ruby(client, ENV.fetch('RUBY_VERSION', ruby_version))
 ruby_container = containers.find { |c| c[:name].include?('openc3-ruby') }
 check_anycable(client, ruby_container[:name]) if ruby_container
 
