@@ -20,6 +20,7 @@ require 'tmpdir'
 require 'json'
 require 'yaml'
 require 'time'
+require 'digest'
 
 $overall_apk = []
 $overall_apt = []
@@ -735,6 +736,96 @@ def check_tsdb(client, tsdb_version)
   return nil unless new_version
   update_key_value(File.join(ROOT_DIR, 'openc3-tsdb/Dockerfile'), 'OPENC3_TSDB_VERSION', new_version)
   new_version
+end
+
+# The Debian image floats on ruby:${RUBY_VERSION}-slim and picks up patch
+# releases for free, but the UBI image compiles Ruby from a source tarball
+# committed to openc3-ruby/, so its patch version only moves when someone bumps
+# it here. Stay on the RUBY_VERSION minor line: moving off it is a deliberate decision,
+# not an audit-time one.
+def check_ubi_ruby(client, ruby_version)
+  dockerfile = File.join(ROOT_DIR, 'openc3-ruby/Dockerfile-ubi')
+  return puts("WARN: openc3-ruby/Dockerfile-ubi does not exist") unless File.exist?(dockerfile)
+  current = File.read(dockerfile)[/ruby-(\d+\.\d+\.\d+)\.tar\.gz/, 1]
+  return puts("WARN: ruby-<version>.tar.gz not found in openc3-ruby/Dockerfile-ubi") if current.nil?
+  puts "Checking ubi ruby against version: #{current}"
+  releases = ruby_releases(client, ruby_version)
+  return nil if releases.nil?
+  newest = releases.keys.max_by { |v| Gem::Version.new(v) }
+  return puts("WARN: no ruby #{ruby_version}.x releases found in index.txt") if newest.nil?
+  if Gem::Version.new(newest) <= Gem::Version.new(current)
+    puts "ubi ruby is up to date with #{current}"
+    return nil
+  end
+  puts "NOTE: ruby #{ruby_version}.x has a newer release: #{newest}, Current Version: #{current}"
+  return nil unless prompt_update?("Update ubi ruby from #{current} to #{newest}?", current, newest)
+  return nil unless download_ubi_ruby(newest, releases[newest])
+  # COPY *.tar.gz ships the whole directory but the build untars an exact
+  # filename, so the Dockerfile and the tarball have to move together. The
+  # negative lookahead keeps a 3.4.1 -> 3.4.2 bump from also rewriting a
+  # "ruby-3.4.10" that happens to be in the file.
+  content = File.read(dockerfile)
+  File.write(dockerfile, content.gsub(/ruby-#{Regexp.escape(current)}(?!\d)/, "ruby-#{newest}"))
+  puts "  Updated ruby-#{current} -> ruby-#{newest} in openc3-ruby/Dockerfile-ubi"
+  puts "  NOTE: openc3-ruby/.gitignore ignores *.tar.gz, so commit the new tarball with:"
+  puts "        git add -f openc3-ruby/ruby-#{newest}.tar.gz"
+  newest
+end
+
+# index.txt is the canonical machine readable release list, one tab separated
+# row per artifact: name, url, sha1, sha256, sha512. Returns only the .tar.gz
+# rows on the pinned minor line, keyed by version.
+def ruby_releases(client, ruby_version)
+  resp = client.get('https://cache.ruby-lang.org/pub/ruby/index.txt')
+  unless resp.status == 200
+    puts "WARN: Could not read https://cache.ruby-lang.org/pub/ruby/index.txt"
+    return nil
+  end
+  releases = {}
+  resp.body.each_line do |line|
+    name, url, _sha1, sha256, _sha512 = line.split("\t")
+    next unless url.to_s.strip.end_with?('.tar.gz')
+    version = name.to_s[/\Aruby-(\d+\.\d+\.\d+)\z/, 1]
+    next if version.nil? || !version.start_with?("#{ruby_version}.")
+    releases[version] = { url: url.strip, sha256: sha256.to_s.strip }
+  end
+  releases
+end
+
+# Fetch the Ruby source tarball into openc3-ruby/ and verify it against the
+# sha256 from index.txt before it is allowed to replace the committed one. On
+# any failure the partial download is removed and the existing tarball is left
+# alone so the build still has a working source.
+def download_ubi_ruby(version, release)
+  ruby_dir = File.join(ROOT_DIR, 'openc3-ruby')
+  path = File.join(ruby_dir, "ruby-#{version}.tar.gz")
+  if release[:sha256].empty?
+    puts "ERROR: index.txt has no sha256 for ruby-#{version}"
+    return false
+  end
+  puts "  Downloading #{release[:url]}"
+  unless system("curl -fSL #{release[:url]} -o #{path}")
+    puts "ERROR: failed to download #{release[:url]}"
+    FileUtils.rm_f(path)
+    return false
+  end
+  actual = Digest::SHA256.file(path).hexdigest
+  unless actual == release[:sha256]
+    puts "ERROR: sha256 mismatch for ruby-#{version}.tar.gz"
+    puts "  expected #{release[:sha256]}"
+    puts "  actual   #{actual}"
+    FileUtils.rm_f(path)
+    return false
+  end
+  puts "  Verified sha256 #{actual}"
+  # Only one ruby tarball can remain: COPY *.tar.gz would otherwise ship both
+  # and leave the old vulnerable source in the build context.
+  Dir.glob(File.join(ruby_dir, 'ruby-*.tar.gz')).each do |other|
+    next if other == path
+    FileUtils.rm_f(other)
+    puts "  Removed #{File.basename(other)}"
+  end
+  true
 end
 
 # Sync the traefik/versitygw versions referenced from the build scripts with
