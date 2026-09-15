@@ -136,10 +136,16 @@ jobs:
           # poison every later build. The other workflows on this PR populate
           # the same hashes anyway, so this costs no build time.
           push-cache: false
+      # No Actions cache here, deliberately. The cache is scoped by github.ref,
+      # and on an issue_comment run that is the default branch - so a cache
+      # written while this job is executing PR-controlled code would land in
+      # main's scope and be served to later runs on main (CodeQL
+      # actions/cache-poisoning). Re-downloading the ~50MB binary costs
+      # seconds against a ~20 minute image build.
       - name: Manual Trivy Setup
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
         with:
-          cache: true
+          cache: false
           version: v0.69.3
       - name: Run Trivy on image ruby
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -331,15 +337,17 @@ jobs:
   # because submitting needs contents: write, which the scan job must not get.
   # scan-type: fs only parses manifests, so no PR code runs here.
   sbom:
-    needs: authorize
     if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write # required by the Dependency Snapshot submission API
     steps:
+      # No ref: and no dependency on authorize. This job only ever runs on
+      # workflow_dispatch, where the commit to scan is just the dispatched
+      # ref, so nothing here is derived from PR-controlled input and this
+      # write-scoped job never checks out a PR.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.authorize.outputs.sha }}
           persist-credentials: false
       - name: Run Trivy in GitHub SBOM mode and submit results to Dependency Snapshots
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
