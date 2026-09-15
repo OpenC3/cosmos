@@ -18,6 +18,8 @@ on:
         description: "Release version"
         required: true
         type: string
+  release:
+    types: [published]
 
 # Workaround for https://github.com/aquasecurity/trivy-action/issues/389
 env:
@@ -33,13 +35,44 @@ jobs:
     permissions:
       contents: write # Need write permission to upload release asset
     env:
-      VERSION: ${{ github.event.inputs.version }}
+      # workflow_dispatch passes a bare version (6.10.0), the release event
+      # passes a tag (v6.10.0). Normalized to a bare version by the step below.
+      RAW_VERSION: ${{ github.event.inputs.version || github.event.release.tag_name }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           egress-policy: audit
 
+      # Expressions have no string replace, so strip the leading "v" in shell.
+      - name: Determine version
+        run: |
+          version="${RAW_VERSION#v}"
+          if [ -z "$version" ]; then
+            echo "Could not determine the release version to scan" >&2
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Verify release exists
+        id: check_release
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const tag = `v${process.env.VERSION}`;
+            // Fail fast rather than scanning every image and only discovering
+            // at upload time that there is no release to attach the results to.
+            await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag
+            });
+            console.log("found release for tag", tag);
+      - name: Manual Trivy Setup
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
+        with:
+          cache: true
+          version: v0.69.3
       - name: Create trivy output folder
         run: mkdir trivy_results
       - name: Create sbom folder
@@ -47,171 +80,226 @@ jobs:
       - name: Get current date
         id: date
         run: echo "date=$(date -u '+%m_%d_%y_%H_%M_%S')" >> "$GITHUB_OUTPUT"
-      - name: Run Trivy on image ruby
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
-        with:
-          image-ref: "docker.io/openc3inc/openc3-ruby:${{ env.VERSION }}"
-          format: "json"
-          output: "trivy_results/openc3-ruby.json"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-      - name: Run Trivy on image ruby in SBOM mode
+      - name: Generate SBOM for image openc3-ruby
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-ruby:${{ env.VERSION }}"
           format: "cyclonedx"
           output: "sbom/openc3-ruby.sbom.json"
-      - name: Run Trivy on image node
+          skip-setup-trivy: true
+      # Scan the SBOM we just generated rather than pulling and analyzing the
+      # image a second time. Keeps the vulnerability report and the published
+      # SBOM describing exactly the same set of packages.
+      - name: Run Trivy on SBOM for image openc3-ruby
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
-          image-ref: "docker.io/openc3inc/openc3-node:${{ env.VERSION }}"
+          scan-type: "sbom"
+          scan-ref: "sbom/openc3-ruby.sbom.json"
           format: "json"
-          output: "trivy_results/openc3-node.json"
-          ignore-unfixed: true
+          output: "trivy_results/openc3-ruby.json"
           vuln-type: "os,library"
           scanners: "vuln"
-      - name: Run Trivy on image node in SBOM mode
+          skip-setup-trivy: true
+      - name: Generate SBOM for image openc3-node
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-node:${{ env.VERSION }}"
           format: "cyclonedx"
           output: "sbom/openc3-node.sbom.json"
-      - name: Run Trivy on image base
+          skip-setup-trivy: true
+      # Scan the SBOM we just generated rather than pulling and analyzing the
+      # image a second time. Keeps the vulnerability report and the published
+      # SBOM describing exactly the same set of packages.
+      - name: Run Trivy on SBOM for image openc3-node
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
-          image-ref: "docker.io/openc3inc/openc3-base:${{ env.VERSION }}"
+          scan-type: "sbom"
+          scan-ref: "sbom/openc3-node.sbom.json"
           format: "json"
-          output: "trivy_results/openc3-base.json"
-          ignore-unfixed: true
+          output: "trivy_results/openc3-node.json"
           vuln-type: "os,library"
           scanners: "vuln"
-      - name: Run Trivy on image base in SBOM mode
+          skip-setup-trivy: true
+      - name: Generate SBOM for image openc3-base
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-base:${{ env.VERSION }}"
           format: "cyclonedx"
           output: "sbom/openc3-base.sbom.json"
-      - name: Run Trivy on image cosmos-init
+          skip-setup-trivy: true
+      # Scan the SBOM we just generated rather than pulling and analyzing the
+      # image a second time. Keeps the vulnerability report and the published
+      # SBOM describing exactly the same set of packages.
+      - name: Run Trivy on SBOM for image openc3-base
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
-          image-ref: "docker.io/openc3inc/openc3-cosmos-init:${{ env.VERSION }}"
+          scan-type: "sbom"
+          scan-ref: "sbom/openc3-base.sbom.json"
           format: "json"
-          output: "trivy_results/openc3-cosmos-init.json"
-          ignore-unfixed: true
+          output: "trivy_results/openc3-base.json"
           vuln-type: "os,library"
           scanners: "vuln"
-      - name: Run Trivy on image cosmos-init in SBOM mode
+          skip-setup-trivy: true
+      - name: Generate SBOM for image openc3-cosmos-init
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-init:${{ env.VERSION }}"
           format: "cyclonedx"
           output: "sbom/openc3-cosmos-init.sbom.json"
-      - name: Run Trivy on image redis
+          skip-setup-trivy: true
+      # Scan the SBOM we just generated rather than pulling and analyzing the
+      # image a second time. Keeps the vulnerability report and the published
+      # SBOM describing exactly the same set of packages.
+      - name: Run Trivy on SBOM for image openc3-cosmos-init
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
-          image-ref: "docker.io/openc3inc/openc3-redis:${{ env.VERSION }}"
+          scan-type: "sbom"
+          scan-ref: "sbom/openc3-cosmos-init.sbom.json"
           format: "json"
-          output: "trivy_results/openc3-redis.json"
-          ignore-unfixed: true
+          output: "trivy_results/openc3-cosmos-init.json"
           vuln-type: "os,library"
           scanners: "vuln"
-      - name: Run Trivy on image redis in SBOM mode
+          skip-setup-trivy: true
+      - name: Generate SBOM for image openc3-redis
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-redis:${{ env.VERSION }}"
           format: "cyclonedx"
           output: "sbom/openc3-redis.sbom.json"
-      - name: Run Trivy on image bucket
+          skip-setup-trivy: true
+      # Scan the SBOM we just generated rather than pulling and analyzing the
+      # image a second time. Keeps the vulnerability report and the published
+      # SBOM describing exactly the same set of packages.
+      - name: Run Trivy on SBOM for image openc3-redis
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
-          image-ref: "docker.io/openc3inc/openc3-buckets:${{ env.VERSION }}"
+          scan-type: "sbom"
+          scan-ref: "sbom/openc3-redis.sbom.json"
           format: "json"
-          output: "trivy_results/openc3-buckets.json"
-          ignore-unfixed: true
+          output: "trivy_results/openc3-redis.json"
           vuln-type: "os,library"
           scanners: "vuln"
-      - name: Run Trivy on image bucket in SBOM mode
+          skip-setup-trivy: true
+      - name: Generate SBOM for image openc3-buckets
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-buckets:${{ env.VERSION }}"
           format: "cyclonedx"
           output: "sbom/openc3-buckets.sbom.json"
-      - name: Run Trivy on image tsdb
+          skip-setup-trivy: true
+      # Scan the SBOM we just generated rather than pulling and analyzing the
+      # image a second time. Keeps the vulnerability report and the published
+      # SBOM describing exactly the same set of packages.
+      - name: Run Trivy on SBOM for image openc3-buckets
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
-          image-ref: "docker.io/openc3inc/openc3-tsdb:${{ env.VERSION }}"
+          scan-type: "sbom"
+          scan-ref: "sbom/openc3-buckets.sbom.json"
           format: "json"
-          output: "trivy_results/openc3-tsdb.json"
-          ignore-unfixed: true
+          output: "trivy_results/openc3-buckets.json"
           vuln-type: "os,library"
           scanners: "vuln"
-      - name: Run Trivy on image tsdb in SBOM mode
+          skip-setup-trivy: true
+      - name: Generate SBOM for image openc3-tsdb
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-tsdb:${{ env.VERSION }}"
           format: "cyclonedx"
           output: "sbom/openc3-tsdb.sbom.json"
-      - name: Run Trivy on image operator
+          skip-setup-trivy: true
+      # Scan the SBOM we just generated rather than pulling and analyzing the
+      # image a second time. Keeps the vulnerability report and the published
+      # SBOM describing exactly the same set of packages.
+      - name: Run Trivy on SBOM for image openc3-tsdb
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
-          image-ref: "docker.io/openc3inc/openc3-operator:${{ env.VERSION }}"
+          scan-type: "sbom"
+          scan-ref: "sbom/openc3-tsdb.sbom.json"
           format: "json"
-          output: "trivy_results/openc3-operator.json"
-          ignore-unfixed: true
+          output: "trivy_results/openc3-tsdb.json"
           vuln-type: "os,library"
           scanners: "vuln"
-      - name: Run Trivy on image operator in SBOM mode
+          skip-setup-trivy: true
+      - name: Generate SBOM for image openc3-operator
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-operator:${{ env.VERSION }}"
           format: "cyclonedx"
           output: "sbom/openc3-operator.sbom.json"
-      - name: Run Trivy on image cmd-tlm-api
+          skip-setup-trivy: true
+      # Scan the SBOM we just generated rather than pulling and analyzing the
+      # image a second time. Keeps the vulnerability report and the published
+      # SBOM describing exactly the same set of packages.
+      - name: Run Trivy on SBOM for image openc3-operator
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
-          image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ env.VERSION }}"
+          scan-type: "sbom"
+          scan-ref: "sbom/openc3-operator.sbom.json"
           format: "json"
-          output: "trivy_results/openc3-cosmos-cmd-tlm-api.json"
-          ignore-unfixed: true
+          output: "trivy_results/openc3-operator.json"
           vuln-type: "os,library"
           scanners: "vuln"
-      - name: Run Trivy on image cosmos-cmd-tlm-api in SBOM mode
+          skip-setup-trivy: true
+      - name: Generate SBOM for image openc3-cosmos-cmd-tlm-api
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ env.VERSION }}"
           format: "cyclonedx"
           output: "sbom/openc3-cosmos-cmd-tlm-api.sbom.json"
-      - name: Run Trivy on image script-runner-api
+          skip-setup-trivy: true
+      # Scan the SBOM we just generated rather than pulling and analyzing the
+      # image a second time. Keeps the vulnerability report and the published
+      # SBOM describing exactly the same set of packages.
+      - name: Run Trivy on SBOM for image openc3-cosmos-cmd-tlm-api
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
-          image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ env.VERSION }}"
+          scan-type: "sbom"
+          scan-ref: "sbom/openc3-cosmos-cmd-tlm-api.sbom.json"
           format: "json"
-          output: "trivy_results/openc3-cosmos-script-runner-api.json"
-          ignore-unfixed: true
+          output: "trivy_results/openc3-cosmos-cmd-tlm-api.json"
           vuln-type: "os,library"
           scanners: "vuln"
-      - name: Run Trivy on image cosmos-script-runner-api in SBOM mode
+          skip-setup-trivy: true
+      - name: Generate SBOM for image openc3-cosmos-script-runner-api
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ env.VERSION }}"
           format: "cyclonedx"
           output: "sbom/openc3-cosmos-script-runner-api.sbom.json"
-      - name: Run Trivy on image traefik
+          skip-setup-trivy: true
+      # Scan the SBOM we just generated rather than pulling and analyzing the
+      # image a second time. Keeps the vulnerability report and the published
+      # SBOM describing exactly the same set of packages.
+      - name: Run Trivy on SBOM for image openc3-cosmos-script-runner-api
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
-          image-ref: "docker.io/openc3inc/openc3-traefik:${{ env.VERSION }}"
+          scan-type: "sbom"
+          scan-ref: "sbom/openc3-cosmos-script-runner-api.sbom.json"
           format: "json"
-          output: "trivy_results/openc3-traefik.json"
-          ignore-unfixed: true
+          output: "trivy_results/openc3-cosmos-script-runner-api.json"
           vuln-type: "os,library"
           scanners: "vuln"
-      - name: Run Trivy on image traefik in SBOM mode
+          skip-setup-trivy: true
+      - name: Generate SBOM for image openc3-traefik
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
         with:
           image-ref: "docker.io/openc3inc/openc3-traefik:${{ env.VERSION }}"
           format: "cyclonedx"
           output: "sbom/openc3-traefik.sbom.json"
+          skip-setup-trivy: true
+      # Scan the SBOM we just generated rather than pulling and analyzing the
+      # image a second time. Keeps the vulnerability report and the published
+      # SBOM describing exactly the same set of packages.
+      - name: Run Trivy on SBOM for image openc3-traefik
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master
+        with:
+          scan-type: "sbom"
+          scan-ref: "sbom/openc3-traefik.sbom.json"
+          format: "json"
+          output: "trivy_results/openc3-traefik.json"
+          vuln-type: "os,library"
+          scanners: "vuln"
+          skip-setup-trivy: true
       - name: Create zip of trivy results
         run: zip -r trivy_results.zip trivy_results
       - name: Create zip of SBOM results
