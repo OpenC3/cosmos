@@ -53,10 +53,19 @@ module OpenC3
 
     USER_AGENT = 'OpenC3 / v7 (ruby/openc3/lib/io/json_api_object)'.freeze
 
+    # Time limit for the first response byte from the server. This must be an
+    # explicit number rather than nil, see connect() for why. Requests can
+    # legitimately block for a long time, e.g. cmd() with a large timeout waiting
+    # on an interface ack, so this is effectively "wait forever" while still
+    # bounded so a wedged connection eventually releases the thread.
+    DEFAULT_READ_TIMEOUT_S = 86400
+
     # @param url [String] The url of openc3-cosmos-cmd-tlm-api http://openc3-cosmos-cmd-tlm-api:2901
     # @param timeout [Float] The time to wait before disconnecting 1.0
     # @param authentication [OpenC3Authentication] The authentication object if nill initialize will generate
-    def initialize(url:, timeout: 1.0, authentication: nil)
+    # @param read_timeout [Float] The time to wait for the first response byte from the server.
+    #   Defaults to the OPENC3_API_READ_TIMEOUT environment variable or DEFAULT_READ_TIMEOUT_S.
+    def initialize(url:, timeout: 1.0, authentication: nil, read_timeout: nil)
       @http = nil
       @mutex = Mutex.new
       @request_data = ""
@@ -65,6 +74,7 @@ module OpenC3
       @log = [nil, nil, nil]
       @authentication = authentication.nil? ? generate_auth() : authentication
       @timeout = timeout
+      @read_timeout = (read_timeout || ENV['OPENC3_API_READ_TIMEOUT'] || DEFAULT_READ_TIMEOUT_S).to_f
       @shutdown = false
       # JsonDRb.debug = true # Enable for debugging
     end
@@ -120,7 +130,11 @@ module OpenC3
         # :open_timeout  - time limit for just the connection phase (e.g. handshake) (Integer in seconds)
         # :read_timeout  - time limit for the first response byte received from the server (Integer in seconds)
         # :write_timeout - time limit for the client to send the request to the server (Integer in seconds)
-        @http = Faraday.new(request: { open_timeout: @timeout.to_i, read_timeout: nil }) do |f|
+        # NOTE: read_timeout must be an explicit number. Faraday only assigns it to Net::HTTP
+        # when the value is truthy (see Faraday::Adapter::NetHttp#configure_request), so passing
+        # nil does NOT mean "wait forever", it silently leaves Net::HTTP's 60s default in place.
+        # That 60s then caps every request regardless of any longer application level timeout.
+        @http = Faraday.new(request: { open_timeout: @timeout.to_i, read_timeout: @read_timeout }) do |f|
           f.adapter :net_http # adds the adapter to the connection, defaults to `Faraday.default_adapter`
         end
       rescue => e
