@@ -116,9 +116,16 @@ jobs:
   scan:
     needs: authorize
     runs-on: ubuntu-latest
+    # No packages scope. build-cosmos logs the job's GITHUB_TOKEN into the
+    # runner's docker credential store, and the action it logs in from is
+    # itself read out of the PR checkout - as are openc3_setup.sh and the
+    # Dockerfiles it then runs - so a malicious PR can read whatever that
+    # token can reach. The *-buildcache packages are public, so the cache
+    # pull works anonymously and the scope buys nothing; dropping it leaves
+    # only contents: read on a public repo, which grants no more than an
+    # anonymous clone.
     permissions:
       contents: read
-      packages: read # pull the GHCR build cache; this job must never push it
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
