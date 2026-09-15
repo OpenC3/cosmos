@@ -16,6 +16,7 @@
 
 require 'open3'
 require 'fileutils'
+require 'tmpdir'
 require 'json'
 require 'yaml'
 require 'time'
@@ -463,7 +464,7 @@ def check_debian(client)
   # is what actually decides which one we ship: it busts the apt layer cache in
   # the Debian Dockerfiles and those builds assert they reached it. Nothing else
   # notices when Debian rolls one, hence this check.
-  point_release = ENV['DEBIAN_POINT_RELEASE']
+  point_release = ENV.fetch('DEBIAN_POINT_RELEASE', nil)
   current_point = debian_point_release(client, release)
   if current_point.nil?
     puts "WARN: Could not determine the current Debian '#{release}' point release"
@@ -506,6 +507,161 @@ def update_debian_files(key, new_value)
 end
 
 # Returns the new version selected by the user (and applied), or nil
+# npm ships its whole dependency tree inside its published tarball, so what
+# openc3-node is exposed to is whatever those bundled copies are - no lockfile
+# in this repo controls them. These are the ones that have carried advisories.
+NPM_BUNDLED_DEPS = %w[brace-expansion ip-address tar undici].freeze
+
+# Versions of NPM_BUNDLED_DEPS inside the published npm tarball, e.g.
+# {"tar" => "7.5.22", ...}. npm can ship more than one copy of a dep; the
+# oldest is reported, since that is the copy that decides the exposure.
+# Returns nil if the tarball cannot be fetched or unpacked.
+def npm_bundled_deps(version)
+  Dir.mktmpdir do |dir|
+    tgz = File.join(dir, 'npm.tgz')
+    url = "https://registry.npmjs.org/npm/-/npm-#{version}.tgz"
+    unless system('curl', '-sfL', url, '-o', tgz, out: File::NULL, err: File::NULL)
+      puts "WARN: Could not download #{url}"
+      return nil
+    end
+    unless system('tar', 'xzf', tgz, '-C', dir, out: File::NULL, err: File::NULL)
+      puts "WARN: Could not unpack the npm #{version} tarball"
+      return nil
+    end
+    NPM_BUNDLED_DEPS.to_h do |dep|
+      found = Dir.glob(File.join(dir, 'package', '**', 'node_modules', dep, 'package.json')).filter_map do |path|
+        begin
+          JSON.parse(File.read(path))['version']
+        rescue JSON::ParserError
+          nil
+        end
+      end
+      [dep, found.min_by { |v| Gem::Version.new(v) }]
+    end
+  end
+end
+
+# The bundled deps `candidate` moves BACKWARDS relative to `baseline`, as
+# "tar 7.5.19 < 7.5.22" strings. Empty means the bump is safe to take.
+#
+# This is why npm cannot be audited by recency like every other pin in this
+# file. npm 12.0.2 is the newest npm and bundles OLDER brace-expansion,
+# ip-address and tar than 11.19.1 does, so "take the latest" would quietly
+# reintroduce the advisories openc3-node is pinned to escape.
+def npm_bundled_regressions(baseline, candidate)
+  NPM_BUNDLED_DEPS.filter_map do |dep|
+    old = baseline[dep]
+    new = candidate[dep]
+    # A dep npm stopped bundling is not a regression - the exposure is gone.
+    next if old.nil? || new.nil?
+    next if Gem::Version.new(new) >= Gem::Version.new(old)
+    "#{dep} #{new} < #{old}"
+  end
+end
+
+def describe_bundled(deps)
+  deps.map { |dep, version| "#{dep} #{version || '(not bundled)'}" }.join(', ')
+end
+
+# openc3-node pins three things by hand - the node runtime, npm and pnpm - and
+# nothing else in this audit looks at that Dockerfile.
+def check_node(client)
+  dockerfile = File.join(ROOT_DIR, 'openc3-node/Dockerfile')
+  check_node_runtime(client, dockerfile)
+  check_npm(client, dockerfile)
+  check_pnpm(client, dockerfile)
+end
+
+# Stay on the pinned major: it is an LTS line, and moving off it is a deliberate
+# decision rather than something to accept mid-audit.
+def check_node_runtime(client, dockerfile)
+  current = get_docker_version(dockerfile, arg: 'NODE_VERSION')
+  return puts("WARN: NODE_VERSION not found in openc3-node/Dockerfile") if current.nil?
+  puts "Checking node against version: #{current}"
+  resp = client.get('https://nodejs.org/dist/index.json')
+  return puts("WARN: Could not read https://nodejs.org/dist/index.json") unless resp.status == 200
+  major = current.split('.').first
+  newest = JSON.parse(resp.body)
+               .map { |release| release['version'].to_s.sub(/\Av/, '') }
+               .select { |v| v.split('.').first == major && !v.include?('-') }
+               .max_by { |v| Gem::Version.new(v) }
+  if newest.nil? || newest == current
+    puts "node is up to date with #{current}"
+    return
+  end
+  puts "NOTE: node #{major}.x has a newer release: #{newest}, Current Version: #{current}"
+  return unless prompt_update?("Update node from #{current} to #{newest}?", current, newest)
+  update_key_value(dockerfile, 'NODE_VERSION', newest)
+end
+
+# Only two candidates are ever worth weighing: the newest npm overall and the
+# newest on the pinned major. Each one costs a tarball download to inspect, and
+# a candidate is offered only if it regresses none of NPM_BUNDLED_DEPS.
+def check_npm(client, dockerfile)
+  current = get_docker_version(dockerfile, arg: 'NPM_VERSION')
+  return puts("WARN: NPM_VERSION not found in openc3-node/Dockerfile") if current.nil?
+  puts "Checking npm against version: #{current}"
+  resp = client.get('https://registry.npmjs.org/npm')
+  return puts("WARN: Could not read the npm registry metadata") unless resp.status == 200
+  released = JSON.parse(resp.body)['versions'].keys.reject { |v| v.include?('-') }
+  newer = released.select { |v| Gem::Version.new(v) > Gem::Version.new(current) }
+  if newer.empty?
+    puts "npm is up to date with #{current}"
+    return
+  end
+
+  baseline = npm_bundled_deps(current)
+  return puts("WARN: Could not inspect the bundled dependencies of npm #{current}") if baseline.nil?
+  puts "  npm #{current} bundles #{describe_bundled(baseline)}"
+
+  major = current.split('.').first
+  candidates = [
+    newer.max_by { |v| Gem::Version.new(v) },
+    newer.select { |v| v.split('.').first == major }.max_by { |v| Gem::Version.new(v) },
+  ].compact.uniq.sort_by { |v| Gem::Version.new(v) }.reverse
+
+  candidates.each do |candidate|
+    deps = npm_bundled_deps(candidate)
+    next if deps.nil?
+    regressions = npm_bundled_regressions(baseline, deps)
+    if regressions.any?
+      puts "NOTE: npm #{candidate} is newer but bundles older #{regressions.join(', ')} - not offering it"
+      next
+    end
+    puts "NOTE: npm has a newer version: #{candidate}, Current Version: #{current}"
+    puts "  npm #{candidate} bundles #{describe_bundled(deps)}"
+    next unless prompt_update?("Update npm from #{current} to #{candidate}?", current, candidate)
+    update_key_value(dockerfile, 'NPM_VERSION', candidate)
+    return
+  end
+  puts "npm stays at #{current}"
+end
+
+# pnpm is pinned in both node Dockerfiles and they have to agree - the UBI image
+# is the same tool on a different base.
+def check_pnpm(client, dockerfile)
+  ubi = File.join(ROOT_DIR, 'openc3-node/Dockerfile-ubi')
+  current = get_docker_version(dockerfile, arg: 'PNPM_VERSION')
+  return puts("WARN: PNPM_VERSION not found in openc3-node/Dockerfile") if current.nil?
+  ubi_pinned = File.read(ubi)[/^ARG\s+PNPM_VERSION=(\S+)/, 1]
+  if ubi_pinned && ubi_pinned != current
+    puts "WARN: Dockerfile-ubi pins pnpm #{ubi_pinned} but Dockerfile pins #{current}; both get set from Dockerfile"
+  end
+  puts "Checking pnpm against version: #{current}"
+  resp = client.get('https://registry.npmjs.org/pnpm')
+  return puts("WARN: Could not read the pnpm registry metadata") unless resp.status == 200
+  major = current.split('.').first
+  newest = JSON.parse(resp.body).dig('dist-tags', "latest-#{major}")
+  if newest.nil? || newest == current
+    puts "pnpm is up to date with #{current}"
+    return
+  end
+  puts "NOTE: pnpm #{major}.x has a newer release: #{newest}, Current Version: #{current}"
+  return unless prompt_update?("Update pnpm from #{current} to #{newest}?", current, newest)
+  update_key_value(dockerfile, 'PNPM_VERSION', newest)
+  update_key_value(ubi, 'PNPM_VERSION', newest)
+end
+
 def check_versitygw(client, versitygw_version)
   puts "Checking versitygw against version: #{versitygw_version}"
   resp = client.get('https://api.github.com/repos/versity/versitygw/releases').body
