@@ -82,8 +82,9 @@ class JsonDRbObject(JsonApiObject):
     # @param url [String] The url of openc3-cosmos-cmd-tlm-api http://openc3-cosmos-cmd-tlm-api:2901
     # @param timeout [Float] The time to wait before disconnecting 1.0
     # @param authentication [OpenC3Authentication] The authentication object if Nonel initialize will generate
-    def __init__(self, url, timeout=1.0, authentication=None):
-        super().__init__(url, timeout, authentication)
+    # @param read_timeout [Float] The time to wait for the first response byte from the server
+    def __init__(self, url, timeout=1.0, authentication=None, read_timeout=None):
+        super().__init__(url, timeout, authentication, read_timeout)
         self.uri = f"{url}/openc3-api/api"
 
     # Forwards all method calls to the remote service.

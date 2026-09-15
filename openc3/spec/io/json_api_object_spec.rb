@@ -88,5 +88,31 @@ module OpenC3
         expect(net_http_read_timeout(api_object)).to eq(JsonApiObject::DEFAULT_READ_TIMEOUT_S)
       end
     end
+
+    describe "timeout retry behavior" do
+      let(:api_object) { JsonApiObject.new(url: 'http://openc3-cosmos-cmd-tlm-api:2901', timeout: 1.0) }
+
+      before(:each) do
+        api_object.send(:connect)
+        # Stub connect and sleep so a retry loops straight back to _http_request.
+        allow(api_object).to receive(:connect)
+        allow(api_object).to receive(:sleep)
+      end
+
+      it "does not retry after a read timeout" do
+        # The request was fully sent, so the server may have already acted on it.
+        # Retrying a non idempotent POST would duplicate the operation.
+        expect(api_object).to receive(:_http_request).once.and_raise(Faraday::TimeoutError.new('read timeout'))
+        expect { api_object.request('post', '/openc3-api/timeline', scope: 'DEFAULT') }.to raise_error(/Api Exception/)
+      end
+
+      it "retries after a connection failure" do
+        # Nothing was successfully sent, so replaying is safe. Net::OpenTimeout
+        # arrives here as Faraday::ConnectionFailed.
+        expect(api_object).to receive(:_http_request).exactly(RETRY_COUNT + 1).times
+                                                     .and_raise(Faraday::ConnectionFailed.new('connect timeout'))
+        expect { api_object.request('post', '/openc3-api/timeline', scope: 'DEFAULT') }.to raise_error(/Api Exception/)
+      end
+    end
   end
 end

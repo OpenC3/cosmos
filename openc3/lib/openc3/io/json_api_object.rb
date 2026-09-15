@@ -74,7 +74,7 @@ module OpenC3
       @log = [nil, nil, nil]
       @authentication = authentication.nil? ? generate_auth() : authentication
       @timeout = timeout
-      @read_timeout = (read_timeout || ENV['OPENC3_API_READ_TIMEOUT'] || DEFAULT_READ_TIMEOUT_S).to_f
+      @read_timeout = (read_timeout || ENV.fetch('OPENC3_API_READ_TIMEOUT', DEFAULT_READ_TIMEOUT_S)).to_f
       @shutdown = false
       # JsonDRb.debug = true # Enable for debugging
     end
@@ -226,7 +226,9 @@ module OpenC3
           @response_data = resp.body
           return resp
         rescue Faraday::ConnectionFailed, Errno::ECONNRESET, Errno::EPIPE, IOError => e
-          # Connection errors are retryable - reconnect and try again
+          # Retryable. Nothing was successfully sent, so replaying is safe. This includes
+          # Net::OpenTimeout, which Faraday maps to ConnectionFailed and which covers a
+          # service that is still starting up.
           retry_count += 1
           @log[2] = "#{method} Exception: #{e.class}, #{e.message}, #{e.backtrace}"
           if retry_count <= RETRY_COUNT
@@ -239,6 +241,11 @@ module OpenC3
             raise error
           end
         rescue StandardError => e
+          # Everything else, including Faraday::TimeoutError from a read timeout, is NOT
+          # retryable. A read timeout means the request was fully sent and the server may
+          # have already acted on it. Many endpoints are not idempotent (create_activity,
+          # script_run, cmd), so a retry risks duplicating the operation. It would also blow
+          # past the caller's deadline by RETRY_COUNT times.
           @log[2] = "#{method} Exception: #{e.class}, #{e.message}, #{e.backtrace}"
           disconnect()
           error = "Api Exception: #{@log[0]} ::: #{@log[1]} ::: #{@log[2]}"
