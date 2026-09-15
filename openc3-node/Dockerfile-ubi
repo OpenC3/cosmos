@@ -7,6 +7,7 @@ FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby-ubi:${OPENC3_TAG}
 ENV NODEJS_VERSION=22
 
 ARG NPM_URL=https://registry.npmjs.org
+ARG PNPM_VERSION=11.21.0
 
 USER root
 
@@ -18,8 +19,8 @@ RUN INSTALL_PKGS="nodejs nodejs-nodemon nodejs-full-i18n npm findutils tar" && \
     microdnf -y --nodocs --setopt=install_weak_deps=0 install $INSTALL_PKGS && \
     node -v | grep -qe "^v$NODEJS_VERSION\." && echo "Found VERSION $NODEJS_VERSION" && \
     npm config set registry="$NPM_URL" && \
-    npm install --global pnpm@11.21.0 && \
-    pnpm --version | grep -qx "11.21.0" && \
+    npm install --global --ignore-scripts "pnpm@${PNPM_VERSION}" && \
+    pnpm --version | grep -qx "${PNPM_VERSION}" && \
     microdnf clean all && \
     rm -rf /mnt/rootfs/var/cache/* /mnt/rootfs/var/log/dnf* /mnt/rootfs/var/log/yum.*
 
