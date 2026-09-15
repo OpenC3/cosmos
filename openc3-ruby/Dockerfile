@@ -113,7 +113,7 @@ RUN apt-get update && \
     gem install google-protobuf && \
     gem install grpc && \
     # resolv 0.7.2 fixes CVE-2026-80212. Ruby ships resolv as a default gem
-    # (0.7.1 in 3.4.10, 0.6.2 in 3.4.7) and a default gem cannot be uninstalled,
+    # (0.7.1 in 3.4.10) and a default gem cannot be uninstalled,
     # so install the patched gem and then delete the default gemspec along with
     # the stdlib copy of resolv.rb that it describes. Without that removal image
     # scanners keep reporting the bundled version, and a require "resolv" from a
