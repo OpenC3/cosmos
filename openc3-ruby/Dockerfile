@@ -11,6 +11,13 @@ FROM ${OPENC3_DEPENDENCY_REGISTRY}/ruby:${RUBY_VERSION}-slim-${DEBIAN_RELEASE}
 # used in any instruction after a FROM. So we need to re-ARG the ones we use.
 ARG RUBY_VERSION
 ARG APT_URL=http://deb.debian.org
+# Debian point release this image must reach. The rolling `<codename>` base
+# tags keep their old base-files until Docker Official Images rebuilds, so the
+# apt upgrade below is what lands a point release - and a cached layer would
+# pin this image to the previous one indefinitely. Bumping this busts that
+# layer; the dpkg check fails the build if apt fell short (stale APT_URL
+# mirror). scripts/release/package_audit.rb verifies it against deb.debian.org.
+ARG DEBIAN_POINT_RELEASE=13.7
 # Python minor version shipped by the chosen Debian release (trixie -> 3.13)
 ARG PYTHON_VERSION=3.13
 ARG RUBYGEMS_URL
@@ -68,6 +75,8 @@ COPY shoreman.sh /usr/bin/shoreman
 
 RUN apt-get update && \
     apt-get -y upgrade && \
+    dpkg --compare-versions "$(cat /etc/debian_version)" ge "${DEBIAN_POINT_RELEASE}" && \
+    echo "debian $(cat /etc/debian_version)" > /etc/openc3-base-os && \
     apt-get install -y --no-install-recommends \
       autoconf \
       automake \

@@ -414,6 +414,19 @@ def build_report(containers)
   report
 end
 
+# The current point release of a Debian suite, e.g. "13.7" for trixie today.
+# It is the `Version:` field of the archive's signed Release file. Returns nil
+# if the archive is unreachable or the field is missing - a release audit
+# should report that, not die on it.
+def debian_point_release(client, release)
+  resp = client.get("https://deb.debian.org/debian/dists/#{release}/Release")
+  return nil unless resp.status == 200
+  resp.body[/^Version:\s*(\S+)/, 1]
+rescue StandardError => e
+  puts "WARN: Could not read the Debian '#{release}' Release file: #{e.message}"
+  nil
+end
+
 def check_debian(client)
   release = ENV.fetch('DEBIAN_RELEASE')
   ruby_version = ENV.fetch('RUBY_VERSION')
@@ -444,6 +457,24 @@ def check_debian(client)
   # Debian stable releases roll on a multi-year cadence and require manual review
   # of the release notes (codenames don't sort by version), so just remind.
   puts "NOTE: Building on Debian '#{release}'. Verify it is still the current stable release: https://www.debian.org/releases/"
+
+  # The base image tags are rolling and carry no point release, and Docker
+  # Official Images lags a point release by days or weeks, so DEBIAN_POINT_RELEASE
+  # is what actually decides which one we ship: it busts the apt layer cache in
+  # the Debian Dockerfiles and those builds assert they reached it. Nothing else
+  # notices when Debian rolls one, hence this check.
+  point_release = ENV['DEBIAN_POINT_RELEASE']
+  current_point = debian_point_release(client, release)
+  if current_point.nil?
+    puts "WARN: Could not determine the current Debian '#{release}' point release"
+  elsif point_release.nil? || point_release.empty?
+    puts "ERROR: DEBIAN_POINT_RELEASE is not set in .env (Debian '#{release}' is at #{current_point})"
+  elsif point_release != current_point
+    puts "NOTE: Debian '#{release}' is at point release #{current_point}, building #{point_release}"
+    if prompt_update?("Update Debian point release from #{point_release} to #{current_point}?", point_release, current_point)
+      update_debian_files('DEBIAN_POINT_RELEASE', current_point)
+    end
+  end
 
   # Verify the roadmap.md documents the current Debian release
   roadmap_path = File.join(ROOT_DIR, 'docs.openc3.com/docs/development/roadmap.md')
