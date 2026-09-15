@@ -18,7 +18,7 @@ ARG NPM_VERSION=11.19.1
 FROM node:${NODE_VERSION}-trixie-slim AS nodejs
 
 ARG NPM_VERSION
-RUN npm install --global --ignore-scripts npm@${NPM_VERSION} && \
+RUN npm install --global --ignore-scripts "npm@${NPM_VERSION}" && \
     npm --version | grep -qx "${NPM_VERSION}"
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby:${OPENC3_TAG}
