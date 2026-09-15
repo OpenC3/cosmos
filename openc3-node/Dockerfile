@@ -33,7 +33,7 @@ COPY --from=nodejs /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/n
 
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx && \
-    npm install --global --ignore-scripts pnpm@${PNPM_VERSION} && \
+    npm install --global --ignore-scripts "pnpm@${PNPM_VERSION}" && \
     pnpm --version | grep -qx "${PNPM_VERSION}" && \
     rm -rf /tmp/* /var/tmp/*
 
