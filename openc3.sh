@@ -374,6 +374,50 @@ check_root() {
   fi
 }
 
+# Apply the host kernel settings COSMOS needs (vm.max_map_count for the tsdb,
+# transparent huge pages off for redis) before starting the containers, so users
+# do not have to remember a separate "util hostsetup" step.
+#
+# Skipped entirely when the host is already tuned, so the common case costs one
+# unprivileged read and never launches a privileged container. Tuning requires
+# --privileged --pid=host, which is not available everywhere (rootless docker,
+# locked down CI, some remote contexts), so a failure only warns: COSMOS runs
+# fine without it until a database grows past the default map count.
+#
+# Set OPENC3_HOSTSETUP_ON_RUN=0 in .env to opt out and manage the host yourself.
+maybe_hostsetup() {
+  if [[ "${OPENC3_HOSTSETUP_ON_RUN:-1}" != "1" ]]; then
+    return 0
+  fi
+  if [[ -z "$OPENC3_MAX_MAP_COUNT" ]]; then
+    echo "WARNING: OPENC3_MAX_MAP_COUNT is not set, skipping host setup. Define it in .env." >&2
+    return 0
+  fi
+
+  local repo="${OPENC3_ENTERPRISE_REGISTRY:-repos.openc3.com}"
+  local namespace="${OPENC3_ENTERPRISE_NAMESPACE:-openc3}"
+  local tag="${OPENC3_ENTERPRISE_TAG:-latest}"
+  local image="$repo/$namespace/openc3-enterprise-operator:$tag"
+
+  # Unprivileged probe. vm.max_map_count and transparent huge pages are not
+  # namespaced, so any container reads the host's (or the Docker VM's) values.
+  local current thp
+  current="$($CONTAINER_CMD run --rm --entrypoint='' "$image" cat /proc/sys/vm/max_map_count 2>/dev/null)" || return 0
+  thp="$($CONTAINER_CMD run --rm --entrypoint='' "$image" cat /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null)" || true
+  if [[ "$current" =~ ^[0-9]+$ ]] && [[ "$current" -ge "$OPENC3_MAX_MAP_COUNT" ]] && [[ "$thp" == *"[never]"* ]]; then
+    return 0
+  fi
+
+  echo "Configuring host kernel settings (vm.max_map_count=$OPENC3_MAX_MAP_COUNT, transparent huge pages off)..."
+  if ! "$(find_script openc3_util.sh)" hostsetup "$repo" "$namespace" "$tag"; then
+    echo "WARNING: host setup failed, continuing without it. $COSMOS_NAME will still start," >&2
+    echo "but the tsdb (QuestDB) may fail to open tables once its database grows past" >&2
+    echo "vm.max_map_count=$current. Run '$0 util hostsetup $repo $namespace $tag' as a user" >&2
+    echo "who can start privileged containers, or set OPENC3_HOSTSETUP_ON_RUN=0 in .env to" >&2
+    echo "silence this and manage the host yourself." >&2
+  fi
+}
+
 # Resolve OPENC3_TAG, reading from the env files if not already set.
 # .env.local is checked first so its override wins over the .env default.
 resolve_openc3_tag() {
@@ -537,6 +581,10 @@ case $1 in
         echo "This command:"
         echo "  1. Builds all $COSMOS_NAME containers (equivalent to 'openc3.sh build')"
         echo "  2. Starts all containers (equivalent to 'openc3.sh run')"
+        echo ""
+        echo "Starting also applies the host kernel settings $COSMOS_NAME needs"
+        echo "(vm.max_map_count, transparent huge pages) when the host lacks them."
+        echo "Set OPENC3_HOSTSETUP_ON_RUN=0 in .env to opt out."
         echo ""
         echo "Options:"
         echo "  -h, --help       Show this help message"
@@ -942,6 +990,8 @@ case $1 in
       exit 0
     fi
     check_root
+    source_env_files
+    maybe_hostsetup
     run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" up -d
     ;;
   run-ubi )
@@ -976,6 +1026,8 @@ case $1 in
       exit 0
     fi
     check_root
+    source_env_files
+    maybe_hostsetup
     # QuestDB RHEL images have a native arm64 variant; run tsdb natively on ARM
     # to avoid the x86-64-v3 QEMU emulation failure. All other services run as amd64.
     if [[ "$(uname -m)" == "arm64" ]]; then
@@ -1043,7 +1095,7 @@ case $1 in
       echo "                              Tag images from one repo to another"
       echo "  push REPO NS TAG [SUFFIX]   Push images to docker repository"
       echo "  clean                       Remove node_modules, coverage, etc"
-      echo "  hostsetup REPO NS TAG       Configure host for redis"
+      echo "  hostsetup REPO NS TAG       Configure host kernel settings for redis and tsdb"
       echo "  hostenter                   Shell into VM host"
       echo ""
       echo "Run '$0 util COMMAND --help' for detailed help on each command."
