@@ -64,6 +64,7 @@ check_container_version(client, containers, 'traefik')
 check_container_version(client, containers, 'redis') # valkey base image
 new_versitygw = check_versitygw(client, versitygw_version)
 check_tsdb(client, tsdb_version)
+check_ubi_ruby(client, ruby_version)
 ruby_container = containers.find { |c| c[:name].include?('openc3-ruby') }
 check_anycable(client, ruby_container[:name]) if ruby_container
 
