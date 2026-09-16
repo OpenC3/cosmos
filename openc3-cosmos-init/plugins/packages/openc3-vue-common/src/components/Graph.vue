@@ -1992,10 +1992,18 @@ export default {
       return config
     },
     createOverviewSeriesConfig: function () {
-      return {
+      const config = {
         spanGaps: true,
         stroke: (u, seriesIdx) => this.items[seriesIdx - 1].color,
       }
+      if (this.drawStyle === 'points') {
+        config.fill = (u, seriesIdx) => this.items[seriesIdx - 1].color
+        config.width = 0
+        config.paths = (u, seriesIdx, idx0, idx1) =>
+          this.scatterPointsPaths(u, seriesIdx, idx0, idx1)
+        config.points = { show: false }
+      }
+      return config
     },
     updateColorIndex: function (itemArray) {
       const lastItem = itemArray[itemArray.length - 1]
