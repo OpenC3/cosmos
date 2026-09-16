@@ -385,7 +385,7 @@ check_root() {
 # fine without it until a database grows past the default map count.
 #
 # Set OPENC3_HOSTSETUP_ON_RUN=0 in .env to opt out and manage the host yourself.
-maybe_hostsetup() {
+run_hostsetup() {
   if [[ "${OPENC3_HOSTSETUP_ON_RUN:-1}" != "1" ]]; then
     return 0
   fi
@@ -991,7 +991,7 @@ case $1 in
     fi
     check_root
     source_env_files
-    maybe_hostsetup
+    run_hostsetup
     run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" up -d
     ;;
   run-ubi )
@@ -1027,7 +1027,7 @@ case $1 in
     fi
     check_root
     source_env_files
-    maybe_hostsetup
+    run_hostsetup
     # QuestDB RHEL images have a native arm64 variant; run tsdb natively on ARM
     # to avoid the x86-64-v3 QEMU emulation failure. All other services run as amd64.
     if [[ "$(uname -m)" == "arm64" ]]; then
