@@ -211,10 +211,10 @@ Podman can also be used on MacOS, though we still generally recommend Docker Des
    export DOCKER_HOST=$(podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}' | sed 's|^|unix://|')
    ```
 
-1. Install docker-compose
+1. Install docker-compose (Optional if you already have Docker Desktop)
 
    ```bash
-   brew install docker-compose # Optional if you already have Docker Desktop
+   brew install docker-compose
    ```
 
 1. Run COSMOS
