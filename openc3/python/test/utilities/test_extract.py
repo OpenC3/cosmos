@@ -13,6 +13,7 @@ import pytest
 
 from openc3.utilities.extract import (
     add_cmd_parameter,
+    compare_values,
     extract_fields_from_check_text,
     extract_fields_from_cmd_text,
     extract_fields_from_set_tlm_text,
@@ -240,6 +241,126 @@ class TestExtractOperatorAndOperandFromComparison:
         with pytest.raises(RuntimeError, match="ERROR: Invalid"):
             extract_operator_and_operand_from_comparison("^ 'foo'")
 
+    def test_parses_hex_octal_and_binary_operands(self):
+        assert extract_operator_and_operand_from_comparison("== 0x0001") == ("==", 1)
+        assert extract_operator_and_operand_from_comparison("== 0o17") == ("==", 15)
+        assert extract_operator_and_operand_from_comparison("== 0b1010") == ("==", 10)
+
+    def test_parses_float_operands(self):
+        assert extract_operator_and_operand_from_comparison("> 1.5") == (">", 1.5)
+        assert extract_operator_and_operand_from_comparison("> 1e5") == (">", 100000.0)
+
+    def test_parses_bytes_operands(self):
+        assert extract_operator_and_operand_from_comparison("== b'\\xff'") == ("==", b"\xff")
+
     def test_complains_about_unparsable_operands(self):
         with pytest.raises(RuntimeError, match="ERROR: Unable"):
+            extract_operator_and_operand_from_comparison("== 1.2.3")
+
+    def test_suggests_a_string_for_bare_word_operands(self):
+        with pytest.raises(NameError, match="Uninitialized constant foo. Did you mean 'foo' as a string"):
             extract_operator_and_operand_from_comparison("== foo")
+
+    def test_processes_escape_sequences_using_python_string_literal_rules(self):
+        assert extract_operator_and_operand_from_comparison(r'== "line\nnext"') == ("==", "line\nnext")
+        assert extract_operator_and_operand_from_comparison(r"== 'line\nnext'") == ("==", "line\nnext")
+        assert extract_operator_and_operand_from_comparison(r"== 'tab\there'") == ("==", "tab\there")
+        assert extract_operator_and_operand_from_comparison(r"== 'it\'s'") == ("==", "it's")
+
+    def test_requires_a_single_complete_quoted_literal(self):
+        with pytest.raises(RuntimeError, match="ERROR: Unable to parse operand"):
+            extract_operator_and_operand_from_comparison("== 'a' garbage 'b'")
+        with pytest.raises(RuntimeError, match="ERROR: Unable to parse operand"):
+            extract_operator_and_operand_from_comparison("== 'unterminated")
+
+    def test_rejects_ambiguous_leading_zero_integers(self):
+        # Ruby reads 010 as octal 8 while Python rejects it outright so require 0o10 or 10
+        with pytest.raises(RuntimeError, match="ERROR: Unable to parse operand: 010"):
+            extract_operator_and_operand_from_comparison("== 010")
+        assert extract_operator_and_operand_from_comparison("== 0o10") == ("==", 8)
+        assert extract_operator_and_operand_from_comparison("== 10") == ("==", 10)
+        # A leading zero is not ambiguous for a float
+        assert extract_operator_and_operand_from_comparison("== 010.5") == ("==", 10.5)
+
+    def test_parses_numbers_with_underscore_separators(self):
+        assert extract_operator_and_operand_from_comparison("== 1_000") == ("==", 1000)
+        assert extract_operator_and_operand_from_comparison("== 1_000.5") == ("==", 1000.5)
+
+    def test_parses_a_bytearray_repr(self):
+        # tlm() returns BLOCK items as a bytearray so f"... == {data}" produces this form
+        data = bytearray(b"\x00\xff")
+        assert extract_operator_and_operand_from_comparison(f"== {data}") == ("==", data)
+        assert extract_operator_and_operand_from_comparison("== bytearray()") == ("==", bytearray())
+        assert extract_operator_and_operand_from_comparison("== bytearray([1, 2])") == ("==", bytearray(b"\x01\x02"))
+
+    def test_rejects_a_bytearray_wrapping_anything_but_a_literal(self):
+        # Only the one wrapper is recognized and its contents still go through extract_operand
+        with pytest.raises(RuntimeError, match="ERROR: Unable to parse operand"):
+            extract_operator_and_operand_from_comparison("== bytearray(open('/etc/passwd').read())")
+        with pytest.raises(RuntimeError, match="ERROR: Unable to parse operand"):
+            extract_operator_and_operand_from_comparison("== bytearray(5)")
+
+    def test_rejects_f_string_interpolation(self):
+        # The eval based implementation interpolated this. Interpolating is code execution so
+        # it is now an error rather than a silent comparison against the uninterpolated text.
+        with pytest.raises(RuntimeError, match="String interpolation is not supported in an operand"):
+            extract_operator_and_operand_from_comparison("== f'{1 + 1}'")
+        with pytest.raises(RuntimeError, match="String interpolation is not supported in an operand"):
+            extract_operator_and_operand_from_comparison('== f"{x}"')
+        # A brace in a plain string is literal text
+        assert extract_operator_and_operand_from_comparison("== '{1 + 1}'") == ("==", "{1 + 1}")
+
+    def test_parses_list_elements_with_the_same_rules_as_a_bare_operand(self):
+        assert extract_operator_and_operand_from_comparison("in ['ON', 'OFF']") == ("in", ["ON", "OFF"])
+        assert extract_operator_and_operand_from_comparison("in [0xA, 0o17, 1_000]") == ("in", [10, 15, 1000])
+        assert extract_operator_and_operand_from_comparison("in [True, None]") == ("in", [True, None])
+        assert extract_operator_and_operand_from_comparison("in []") == ("in", [])
+        assert extract_operator_and_operand_from_comparison("in [[1, 2], [3]]") == ("in", [[1, 2], [3]])
+        # Commas and brackets inside a quoted element do not split it
+        assert extract_operator_and_operand_from_comparison("in ['a,b', '[c]']") == ("in", ["a,b", "[c]"])
+
+    def test_allows_a_trailing_comma_like_a_ruby_or_python_list_literal(self):
+        assert extract_operator_and_operand_from_comparison("in [1,]") == ("in", [1])
+
+    def test_rejects_malformed_lists(self):
+        with pytest.raises(RuntimeError, match="ERROR: Unable to parse operand"):
+            extract_operator_and_operand_from_comparison("in [1,,2]")
+        with pytest.raises(RuntimeError, match="ERROR: Unable to parse operand"):
+            extract_operator_and_operand_from_comparison("in [,1]")
+        with pytest.raises(RuntimeError, match="ERROR: Unable to parse operand"):
+            extract_operator_and_operand_from_comparison("in [1, 2]]")
+        with pytest.raises(RuntimeError, match="ERROR: Unable to parse operand"):
+            extract_operator_and_operand_from_comparison("in ['unterminated]")
+
+    def test_allows_underscore_separators_in_an_exponent(self):
+        assert extract_operator_and_operand_from_comparison("== 1e1_0") == ("==", 1e10)
+
+    def test_requires_a_list_operand_for_the_in_operator(self):
+        with pytest.raises(RuntimeError, match="ERROR: The 'in' operator requires a list operand"):
+            extract_operator_and_operand_from_comparison("in 'abc'")
+        with pytest.raises(RuntimeError, match="ERROR: The 'in' operator requires a list operand"):
+            extract_operator_and_operand_from_comparison("in 5")
+
+
+class TestCompareValues:
+    def test_compares_with_all_the_supported_operators(self):
+        assert compare_values(1, "==", 1) is True
+        assert compare_values(1, "!=", 1) is False
+        assert compare_values(2, ">", 1) is True
+        assert compare_values(1, ">=", 1) is True
+        assert compare_values(1, "<", 2) is True
+        assert compare_values(1, "<=", 1) is True
+        assert compare_values(2, "in", [1, 2, 3]) is True
+        assert compare_values(4, "in", [1, 2, 3]) is False
+
+    def test_returns_false_when_the_types_can_not_be_compared(self):
+        assert compare_values(None, ">", 1) is False
+        assert compare_values(1, ">", None) is False
+        assert compare_values("STRING", ">", 1) is False
+        # 'in' is containment against a list, matching Ruby, so a str operand is not a match
+        assert compare_values(1, "in", 1) is False
+        assert compare_values("a", "in", "abc") is False
+
+    def test_complains_about_invalid_operators(self):
+        with pytest.raises(RuntimeError, match="ERROR: Invalid operator: '&'"):
+            compare_values(1, "&", 1)
