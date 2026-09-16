@@ -1572,9 +1572,9 @@ export default {
         return uPlot.rangeNum(min, max, yPad, true)
       }
       if (!this.xAxisIsTime) {
-        this.graph.scales.x.range = (u, dataMin, dataMax) => {
-          let min = dataMin ?? 0
-          let max = dataMax ?? 1
+        this.graph.scales.x.range = (u, dataMin = 0, dataMax = 1) => {
+          let min = dataMin
+          let max = dataMax
           if (this.graphMinX || this.graphMinX === 0) {
             min = this.graphMinX
           }
