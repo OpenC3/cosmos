@@ -216,8 +216,8 @@ def main() -> int:
 
     if not args.quiet:
         print("## Pinned tool versions\n")
-        print("| tool | pinned | latest | file |")
-        print("| --- | --- | --- | --- |")
+        print("| tool | pinned | latest | file | status |")
+        print("| --- | --- | --- | --- | --- |")
         for result in results:
             surface = result.surface
             latest = f"[`{result.latest}`]({source_url(surface.source)})"
@@ -229,10 +229,10 @@ def main() -> int:
         if behind:
             print(f"\n{len(behind)} pin(s) behind upstream: {', '.join(behind)}.")
             print("\nDependabot does not raise these, so they need a manual bump.")
-        else:
+        elif not unresolved:
             print("\nAll watched pins are current.")
 
-    return 1 if behind else 0
+    return 1 if behind or unresolved else 0
 
 
 if __name__ == "__main__":
