@@ -57,7 +57,7 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock p
 # setting can redirect. Relock and sync in one layer so the lockfile the sync
 # uses is the one this layer produced.
 RUN UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock && \
-    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project
+    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project --no-build
 
 # Copy application code (excluding .venv from source)
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
@@ -68,7 +68,7 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 # already cached, so this costs a moment on mirrored builds and nothing at all
 # on stock ones.
 RUN UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock && \
-    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev
+    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-build
 
 WORKDIR /openc3/
 
