@@ -56,7 +56,7 @@ updates:
       #
       # ruff and ty lose nothing here: both are pre-1.0, so their breaking
       # releases arrive as minors today. .github/workflows/tool_version_check.yml
-      # watches them, uv and mypy against upstream and files a tracking issue,
+      # watches them, uv and mypy against upstream and opens a bump pull request,
       # which is the notification this exclusion would otherwise cost.
       uv:
         patterns:

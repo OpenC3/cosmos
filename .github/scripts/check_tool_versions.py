@@ -27,10 +27,15 @@ to it, and those are exactly the ones this script watches:
   * PEP 723 script lockfiles (openc3/python/tools/*.py.lock)
 
 Prints a markdown report on stdout and exits 1 when anything is behind, so a
-scheduled workflow can turn that into a tracking issue.
+scheduled workflow can turn that into a pull request.
 
     uv run --script --locked .github/scripts/check_tool_versions.py
     uv run --script --locked .github/scripts/check_tool_versions.py --quiet
+    uv run --script --locked .github/scripts/check_tool_versions.py --fix
+
+--fix rewrites every stale pin in place. It does not regenerate the lockfiles
+that some of those pins feed (openc3/python/uv.lock, the PEP 723 *.py.lock);
+the caller does that, because uv is the only thing that can.
 """
 
 import argparse
@@ -64,6 +69,11 @@ class Surface(NamedTuple):
     path: str  # repository-relative file holding the pin
     pattern: str  # regex whose first group captures the pinned version
     source: str  # upstream to compare against
+    # An Actions pin carries the immutable commit SHA and the human-readable
+    # tag on the same line. Bumping one without the other leaves a pin whose
+    # comment lies about what it runs, so --fix rewrites both. The regex's
+    # first group captures the SHA.
+    sha_pattern: str | None = None
 
 
 SURFACES = [
@@ -72,11 +82,14 @@ SURFACES = [
         ".github/actions/setup-uv-python/action.yml",
         r"astral-sh/setup-uv@[0-9a-f]{40} # v(\S+)",
         SETUP_UV,
+        sha_pattern=r"astral-sh/setup-uv@([0-9a-f]{40})",
     ),
     Surface(
         "uv (all CI workflows)",
         ".github/actions/setup-uv-python/action.yml",
-        r'default:\s*"([\d.]+)"',
+        # Anchored to the uv-version input: --fix writes through this pattern,
+        # and a bare `default:` would match whichever input came first.
+        r'(?s)uv-version:.*?default:\s*"([\d.]+)"',
         UV,
     ),
     Surface(
@@ -152,6 +165,25 @@ def latest_version(source: str, cache: dict) -> str | None:
     return version
 
 
+def latest_commit_sha(source: str, tag: str, cache: dict) -> str | None:
+    """Commit SHA a GitHub release tag points at, for rewriting an Actions pin."""
+    key = f"{source}@{tag}"
+    if key in cache:
+        return cache[key]
+    name = source.split(":", 1)[1]
+    sha = None
+    try:
+        ref = fetch_json(f"https://api.github.com/repos/{name}/git/ref/tags/{tag}")["object"]
+        # An annotated tag points at a tag object, not the commit; deref it.
+        if ref["type"] == "tag":
+            ref = fetch_json(f"https://api.github.com/repos/{name}/git/tags/{ref['sha']}")["object"]
+        sha = ref["sha"]
+    except (requests.RequestException, KeyError, ValueError) as error:
+        print(f"warning: could not resolve {tag} of {source} to a commit: {error}", file=sys.stderr)
+    cache[key] = sha
+    return sha
+
+
 def as_tuple(version: str) -> tuple[int, ...]:
     """Numeric prefix of a version, for ordering. 'v10.0.1' -> (10, 0, 1)."""
     return tuple(int(part) for part in re.findall(r"\d+", version)) or (0,)
@@ -181,6 +213,41 @@ class Result(NamedTuple):
         return "behind" if self.stale else "ok"
 
 
+def apply_fix(result: Result, cache: dict) -> str | None:
+    """Rewrite one stale pin in place. Returns a description, or None if skipped."""
+    surface = result.surface
+    path = REPO_ROOT / surface.path
+    text = path.read_text()
+
+    # The report compares loosely (as_tuple ignores a leading "v"), but the
+    # file has to keep whatever form it already used.
+    latest = result.latest
+    if latest.startswith("v") and not result.pinned.startswith("v"):
+        latest = latest[1:]
+
+    match = re.search(surface.pattern, text)
+    if match is None:  # pragma: no cover - the caller already matched once
+        return None
+    text = text[: match.start(1)] + latest + text[match.end(1) :]
+    detail = f"{surface.label}: {result.pinned} -> {latest}"
+
+    if surface.sha_pattern:
+        sha = latest_commit_sha(surface.source, result.latest, cache)
+        if sha is None:
+            # Writing the tag without the SHA it names would leave the pin
+            # running the old commit under a new label, which is worse than
+            # leaving the whole pin alone.
+            return None
+        sha_match = re.search(surface.sha_pattern, text)
+        if sha_match is None:  # pragma: no cover
+            return None
+        text = text[: sha_match.start(1)] + sha + text[sha_match.end(1) :]
+        detail += f" ({sha[:7]})"
+
+    path.write_text(text)
+    return detail
+
+
 def source_url(source: str) -> str:
     kind, name = source.split(":", 1)
     return f"https://pypi.org/project/{name}/" if kind == "pypi" else f"https://github.com/{name}/releases"
@@ -189,6 +256,7 @@ def source_url(source: str) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--quiet", action="store_true", help="suppress the report, return the exit code only")
+    parser.add_argument("--fix", action="store_true", help="rewrite every stale pin in place")
     args = parser.parse_args()
 
     cache: dict[str, str | None] = {}
@@ -214,6 +282,17 @@ def main() -> int:
 
     behind = [result.surface.label for result in results if result.stale]
 
+    fixed: list[str] = []
+    if args.fix:
+        for result in results:
+            if not result.stale:
+                continue
+            detail = apply_fix(result, cache)
+            if detail:
+                fixed.append(detail)
+            else:
+                unresolved.append(f"{result.surface.label}: could not rewrite the pin")
+
     if not args.quiet:
         print("## Pinned tool versions\n")
         print("| tool | pinned | latest | file | status |")
@@ -226,7 +305,12 @@ def main() -> int:
             print("\n### Could not check\n")
             for note in unresolved:
                 print(f"- {note}")
-        if behind:
+        if fixed:
+            print("\n### Rewritten\n")
+            for detail in fixed:
+                print(f"- {detail}")
+            print("\nLockfiles that depend on these pins still need regenerating.")
+        elif behind:
             print(f"\n{len(behind)} pin(s) behind upstream: {', '.join(behind)}.")
             print("\nDependabot does not raise these, so they need a manual bump.")
         elif not unresolved:
