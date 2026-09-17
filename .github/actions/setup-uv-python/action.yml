@@ -31,6 +31,7 @@ inputs:
       uv release to install. The default is the version this repository
       standardizes on; override only to test a candidate.
     required: false
+    # Matches UV_VERSION in openc3-ruby/Dockerfile and Dockerfile-ubi.
     default: "0.12.5"
   working-directory:
     description: |
