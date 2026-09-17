@@ -31,22 +31,28 @@ class FakeClock:
     time.sleep(), both looked up on the module. Patching the module's time
     with this class makes sleeps advance the clock instantly, so the elapsed
     virtual time depends only on the protocol logic and not on how loaded the
-    machine running the test happens to be.
+    machine running the test happens to be. The durations the clock advances
+    by are the ones the protocol asks for, so the waits are still checked;
+    what is no longer checked is that time.sleep() really blocks that long.
 
-    tick advances the clock on every time() call, which is needed where the
-    protocol polls without sleeping.
+    Code that waits without sleeping never advances this clock and would spin
+    forever, so time() raises once it is clear that is happening.
     """
 
-    def __init__(self, tick=0.0):
+    MAX_READS = 100000
+
+    def __init__(self):
         self.now = 0.0
-        self.tick = tick
+        self.reads = 0
 
     def time(self):
-        now = self.now
-        self.now += self.tick
-        return now
+        self.reads += 1
+        if self.reads > self.MAX_READS:
+            raise RuntimeError("clock never advanced: does the code under test still wait with time.sleep()?")
+        return self.now
 
     def sleep(self, seconds):
+        self.reads = 0
         self.now += seconds
 
 
