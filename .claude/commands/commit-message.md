@@ -111,6 +111,29 @@ Wrapped correctly:
   Docker
 ```
 
+### Concise and relevant
+
+Before printing, read the body back and cut every bullet that fails either
+test.
+
+**Relevant** — the bullet is traceable to `git diff --cached`:
+
+- It names a symbol, file, flag or version that appears in the diff. One you
+  cannot point at is out.
+- A change that is easy to miss still earns its own bullet: a version moved
+  inside a lockfile, a second file that had to move in step with the first.
+- A comment, doc or test that is part of a change rides along with that
+  change's bullet rather than taking one of its own.
+
+**Concise** — the bullet says its thing once:
+
+- One logical change per bullet, not merely one sentence. "Bump X and move Y
+  in step" is two bullets, and the second is the one otherwise skimmed past.
+- If the commit adds a comment or doc that explains why, the body does not
+  paraphrase it — that file carries the argument now.
+- No clause restating the type or scope. `build(deps)` already says these are
+  dependencies.
+
 ## Breaking changes
 
 Indicate one in the type/scope prefix, in a footer, or both (rule 11).
