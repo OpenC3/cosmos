@@ -44,7 +44,6 @@ import re
 import sys
 from pathlib import Path
 from typing import NamedTuple
-from urllib.parse import urlparse
 
 import requests
 
@@ -52,12 +51,15 @@ import requests
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TIMEOUT = 30
 
-# Every upstream this script is allowed to reach. The URLs are built from the
-# hardcoded SURFACES below, so nothing external steers them today, but the
-# allowlist is what keeps that true: a future source entry cannot turn
-# fetch_json into a request at an arbitrary host, and redirects are refused so
-# an upstream cannot forward one either.
-ALLOWED_HOSTS = frozenset({"pypi.org", "api.github.com"})
+# The only two hosts this script talks to, keyed by the prefix a source uses.
+# fetch_json builds every request URL from one of these literals plus a path,
+# so no caller can aim a request at another host: appending to a scheme-and-host
+# base cannot change the host, which makes the property structural rather than
+# a check on a URL that was already assembled somewhere else.
+BASES = {
+    "pypi": "https://pypi.org",
+    "gh": "https://api.github.com",
+}
 
 # Upstream sources. "pypi:<name>" looks up the newest release on PyPI;
 # "gh:<owner>/<repo>" uses the latest GitHub release tag.
@@ -144,18 +146,20 @@ SURFACES = [
 ]
 
 
-def fetch_json(url: str) -> dict:
-    parsed = urlparse(url)
-    if parsed.scheme != "https" or parsed.hostname not in ALLOWED_HOSTS:
-        raise ValueError(f"refusing to fetch {url}: not an allowlisted upstream")
+def fetch_json(kind: str, path: str) -> dict:
+    """GET a JSON document from one upstream, named by its BASES key."""
+    base = BASES.get(kind)
+    if base is None:
+        raise ValueError(f"no upstream registered for {kind!r}")
+    url = f"{base}/{path.lstrip('/')}"
 
     headers = {"User-Agent": "openc3-tool-version-check"}
     # GitHub's unauthenticated rate limit is low; use the workflow token if present
     token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
-    if token and parsed.hostname == "api.github.com":
+    if token and kind == "gh":
         headers["Authorization"] = f"Bearer {token}"
-    # No redirects: a 3xx is the one way an allowlisted host could still send
-    # this request, and the workflow token with it, somewhere else.
+    # No redirects: a 3xx is the one way an upstream could still send this
+    # request, and the workflow token with it, somewhere else.
     response = requests.get(url, headers=headers, timeout=TIMEOUT, allow_redirects=False)
     response.raise_for_status()
     return response.json()
@@ -167,9 +171,9 @@ def latest_version(source: str, cache: dict) -> str | None:
     kind, name = source.split(":", 1)
     try:
         if kind == "pypi":
-            version = fetch_json(f"https://pypi.org/pypi/{name}/json")["info"]["version"]
+            version = fetch_json(kind, f"pypi/{name}/json")["info"]["version"]
         else:
-            version = fetch_json(f"https://api.github.com/repos/{name}/releases/latest")["tag_name"]
+            version = fetch_json(kind, f"repos/{name}/releases/latest")["tag_name"]
     except (requests.RequestException, KeyError, ValueError) as error:
         print(f"warning: could not resolve latest for {source}: {error}", file=sys.stderr)
         version = None
@@ -182,13 +186,13 @@ def latest_commit_sha(source: str, tag: str, cache: dict) -> str | None:
     key = f"{source}@{tag}"
     if key in cache:
         return cache[key]
-    name = source.split(":", 1)[1]
+    kind, name = source.split(":", 1)
     sha = None
     try:
-        ref = fetch_json(f"https://api.github.com/repos/{name}/git/ref/tags/{tag}")["object"]
+        ref = fetch_json(kind, f"repos/{name}/git/ref/tags/{tag}")["object"]
         # An annotated tag points at a tag object, not the commit; deref it.
         if ref["type"] == "tag":
-            ref = fetch_json(f"https://api.github.com/repos/{name}/git/tags/{ref['sha']}")["object"]
+            ref = fetch_json(kind, f"repos/{name}/git/tags/{ref['sha']}")["object"]
         sha = ref["sha"]
     except (requests.RequestException, KeyError, ValueError) as error:
         print(f"warning: could not resolve {tag} of {source} to a commit: {error}", file=sys.stderr)
