@@ -399,12 +399,12 @@ run_hostsetup() {
   local tag="${OPENC3_ENTERPRISE_TAG:-latest}"
   local image="$repo/$namespace/openc3-enterprise-operator:$tag"
 
-  # Unprivileged probe. vm.max_map_count and transparent huge pages are not
-  # namespaced, so any container reads the host's (or the Docker VM's) values.
-  local current thp
-  current="$($CONTAINER_CMD run --rm --entrypoint='' "$image" cat /proc/sys/vm/max_map_count 2>/dev/null)" || return 0
-  thp="$($CONTAINER_CMD run --rm --entrypoint='' "$image" cat /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null)" || true
-  if [[ "$current" =~ ^[0-9]+$ ]] && [[ "$current" -ge "$OPENC3_MAX_MAP_COUNT" ]] && [[ "$thp" == *"[never]"* ]]; then
+  # Unprivileged probe. vm.max_map_count (mmc) and transparent huge pages (thp)
+  # are not namespaced, so any container reads the host's (or the Docker VM's) values.
+  local probe mmc thp
+  probe="$($CONTAINER_CMD run --rm --entrypoint='' "$image" sh -c 'cat /proc/sys/vm/max_map_count || exit 1; cat /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null || :' 2>/dev/null)" || return 0
+  { IFS= read -r mmc; IFS= read -r thp || :; } <<<"$probe"  # thp stays empty if unreadable
+  if [[ "$mmc" =~ ^[0-9]+$ ]] && [[ "$mmc" -ge "$OPENC3_MAX_MAP_COUNT" ]] && [[ "$thp" == *"[never]"* ]]; then
     return 0
   fi
 
@@ -412,7 +412,7 @@ run_hostsetup() {
   if ! "$(find_script openc3_util.sh)" hostsetup "$repo" "$namespace" "$tag"; then
     echo "WARNING: host setup failed, continuing without it. $COSMOS_NAME will still start," >&2
     echo "but the tsdb (QuestDB) may fail to open tables once its database grows past" >&2
-    echo "vm.max_map_count=$current. Run '$0 util hostsetup $repo $namespace $tag' as a user" >&2
+    echo "vm.max_map_count=$mmc. Run '$0 util hostsetup $repo $namespace $tag' as a user" >&2
     echo "who can start privileged containers, or set OPENC3_HOSTSETUP_ON_RUN=0 in .env to" >&2
     echo "silence this and manage the host yourself." >&2
   fi
