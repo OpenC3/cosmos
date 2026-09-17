@@ -37,6 +37,10 @@ class LogLevel(IntEnum):
     ERROR = 3
     FATAL = 4
 
+warned_bad_level: bool
+
+def default_level(): ...
+
 class Logger(metaclass=LoggerMeta):
     instance_mutex: Incomplete
     my_instance: Incomplete
@@ -57,9 +61,9 @@ class Logger(metaclass=LoggerMeta):
     microservice_name: Incomplete
     no_store: bool
 
-    def __init__(self, level=...) -> None: ...
+    def __init__(self, level=None) -> None: ...
     @classmethod
-    def instance(cls, level=...): ...
+    def instance(cls, level=None): ...
     @classmethod
     def debug(cls, message=None, scope=None, user=None, type=..., url=None, other=None) -> None: ...
     @classmethod

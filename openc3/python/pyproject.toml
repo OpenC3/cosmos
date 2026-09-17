@@ -59,18 +59,25 @@ Issues = "https://github.com/OpenC3/cosmos/issues"
 openc3pycli = "openc3pycli:main"
 
 [dependency-groups]
+# Every dev tool is pinned exactly rather than ranged. uv.lock already decides
+# what gets installed, so the pin buys review rather than reproducibility: an
+# upgrade lands as a one-line constraint change that has to be approved, not
+# buried in a lockfile re-resolution. Dependabot's weekly uv group still
+# proposes each minor/patch bump, so pinning costs a second file to edit, not a
+# manual watch. These are dev-only (PEP 735 groups never reach wheel metadata,
+# and the images sync --no-dev), so nothing here constrains downstream users.
 dev = [
-    "coverage>=7.10,<8",
-    "fakeredis>=2.31,<3",
-    "pytest>=9.0,<10",
-    "pytest-profiling>=1.8,<2",
-    # Pinned exactly, not ranged: ruff's formatter output decides whether the
-    # generated .pyi stubs match (just stubs-check), and every ty 0.0.x release
-    # can change which diagnostics are reported. Both must move deliberately,
-    # via a dependabot PR that can be reviewed, not silently on re-resolution.
+    "coverage==7.16.1",
+    "fakeredis==2.38.0",
+    "pytest==9.1.1",
+    "pytest-profiling==1.8.1",
+    # ruff and ty must move deliberately for a reason beyond the group rule
+    # above: ruff's formatter output decides whether the generated .pyi stubs
+    # match (just stubs-check), and every ty 0.0.x release can change which
+    # diagnostics are reported.
     # Keep ruff in step with tools/generate_singleton_stubs.py.lock.
-    "ruff==0.16.6",
-    "ty==0.0.73",
+    "ruff==0.16.8",
+    "ty==0.0.81",
 ]
 
 [build-system]

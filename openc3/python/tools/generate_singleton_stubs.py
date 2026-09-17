@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["mypy==2.3.1", "ruff==0.16.4"]
+# dependencies = ["mypy==2.3.1", "ruff==0.16.8"]
 # ///
 
 # Copyright 2026 OpenC3, Inc.
