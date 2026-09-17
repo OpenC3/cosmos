@@ -23,7 +23,18 @@ NFS does not work for holding container storage due to issues with user ids and 
 
 - It uses `docker` if present, otherwise `podman`.
 - For the compose command it tries `<runtime> compose` first and falls back to the standalone `docker-compose`. `podman-compose` is **not** supported - install `docker-compose` (note that `podman compose` also delegates to `docker-compose` when it is installed).
-- It runs `<runtime> info` and looks for `rootless`. When rootless Podman is detected it exports `OPENC3_USER_ID=0` and `OPENC3_GROUP_ID=0`, which is what the `user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"` lines in `compose.yaml` consume. Rootless Podman maps that container-side root back to your unprivileged host user, so the containers still run without privileges on the host.
+- It runs `<runtime> info` and looks for `rootless`. When rootless Podman is detected it exports `OPENC3_USER_ID=0` and `OPENC3_GROUP_ID=0`; otherwise it exports your actual `id -u` and `id -g`. Either way those values feed the `user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"` lines in `compose.yaml`. See [User ID and Group ID Mapping](#user-id-and-group-id-mapping) below for why rootless gets `0:0`.
+
+### User ID and Group ID Mapping
+
+Under rootless Podman the containers run as `0:0`. That is root *inside* the container, not root on the host. Podman starts the containers in a user namespace where container uid/gid 0 maps back to the unprivileged host user who ran `openc3.sh`, so:
+
+- Files the containers write into bind mounted host volumes - logs, buckets, plugin installs - come out owned by your host user, with your uid and gid, rather than by an unusable high numbered subuid.
+- The containers hold no privilege on the host that you do not already have yourself.
+
+Every service in `compose.yaml` also sets `read_only: true`, so being root inside a container gains little beyond reading files in the image that a non-root user could not. It cannot modify the image.
+
+Under Docker, or under rootful Podman, there is no user namespace doing this remapping. `openc3.sh` exports your real uid and gid instead, and the container processes run as that uid directly. Files on bind mounted volumes still end up owned by you - the difference is that the container is running as your uid outright, rather than running as container root that Podman then maps to your uid.
 
 :::warning[Do not edit compose.yaml]
 Older versions of this guide told you to uncomment `user: 0:0` lines in `compose.yaml`, that has been removed. `openc3.sh` now handles the user ids automatically. Put any customization you need in `compose.override.yaml` (non-secret settings) or `.env.local` (passwords and keys) instead - see [Docker Compose](/docs/configuration/compose).
