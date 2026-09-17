@@ -570,6 +570,9 @@ export default {
       if (this.pollingPeriod === 0) {
         return
       }
+      // Poll right away so values appear immediately rather than after a full
+      // polling period, then continue on the interval from this point
+      this.update()
       let refreshInterval = this.pollingPeriod * 1000
       this.updater = setInterval(() => {
         this.update()
@@ -1173,6 +1176,13 @@ export default {
               return
             }
             this.actualScreenItems = data
+            // mounted() starts the interval before any widget has registered an
+            // item, so its immediate poll had nothing to ask for. Now that we
+            // know what to request, poll immediately instead of leaving the
+            // screen blank until the interval comes back around.
+            if (this.updater !== null) {
+              this.updateRefreshInterval()
+            }
             // This must be the same or we're going to have problems
             // because the data comes back in an ordered array
             if (this.screenItems.length != data.length) {
@@ -1214,6 +1224,9 @@ export default {
             console.error('Error getting tlm available', error)
             if (this.sameScreenItems(requestedItems)) {
               this.actualScreenItems = [...this.screenItems]
+              if (this.updater !== null) {
+                this.updateRefreshInterval()
+              }
             }
           })
         this.tlmAvailableTimeout = null

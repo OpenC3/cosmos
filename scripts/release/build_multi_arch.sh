@@ -94,6 +94,7 @@ retry_build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+  --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
   --build-arg RUBY_VERSION=${RUBY_VERSION} \
   --build-arg APT_URL=${APT_URL} \
   --build-arg RUBYGEMS_URL=${RUBYGEMS_URL} \
@@ -112,6 +113,7 @@ retry_build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+  --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
   --build-arg RUBY_VERSION=${RUBY_VERSION} \
   --build-arg APT_URL=${APT_URL} \
   --build-arg RUBYGEMS_URL=${RUBYGEMS_URL} \
@@ -207,6 +209,7 @@ else
     --platform ${OPENC3_PLATFORMS} \
     --progress plain \
     --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
+    --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
     --build-arg APT_URL=${APT_URL} \
     --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} \
     --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} .
@@ -217,6 +220,7 @@ else
     --platform ${OPENC3_PLATFORMS} \
     --progress plain \
     --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
+    --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
     --build-arg APT_URL=${APT_URL} \
     --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:latest \
     --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:latest .
@@ -254,6 +258,7 @@ retry_build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+  --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
   --build-arg APT_URL=${APT_URL} \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --build-arg OPENC3_VERSITYGW_VERSION=${OPENC3_VERSITYGW_VERSION} \
@@ -270,6 +275,7 @@ retry_build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+  --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
   --build-arg APT_URL=${APT_URL} \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --build-arg OPENC3_VERSITYGW_VERSION=${OPENC3_VERSITYGW_VERSION} \

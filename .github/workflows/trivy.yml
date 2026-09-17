@@ -11,11 +11,23 @@
 
 name: Trivy Scan
 
+# Runs either from the Actions tab (workflow_dispatch, any branch) or by
+# commenting "/trivy" on a pull request. The comment path is how dependency
+# bump PRs get scanned without path-filtering every manifest in the repo.
+#
+# GitHub always runs an issue_comment workflow from the DEFAULT BRANCH with
+# github.ref pointing at it, so this file's comment trigger only takes effect
+# once it is merged to main, and every step below has to target the PR head
+# SHA resolved at runtime rather than github.sha.
 on:
   workflow_dispatch:
+  issue_comment:
+    types: [created]
 
+# issue_comment runs all share github.ref (the default branch), so key the
+# group on the PR number instead or a /trivy on PR B would cancel PR A.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.issue.number || github.ref }}
   cancel-in-progress: true
 
 # Workaround for https://github.com/aquasecurity/trivy-action/issues/389
@@ -23,29 +35,131 @@ env:
   TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
   TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
 
+permissions:
+  contents: read
+
 jobs:
-  openc3-scan:
+  # Privileged half. Deliberately runs no PR-controlled code: it only works
+  # out which commit to scan and posts the Trivy Scan status. Splitting this
+  # from the build is what keeps the /trivy gate below a defence in depth
+  # rather than the only thing standing between a PR and a writable token.
+  authorize:
     runs-on: ubuntu-latest
+    # issue_comment fires on every issue and PR comment in the repo, so filter
+    # to PR comments that actually say /trivy, from someone who already has
+    # push access. This stops drive-by CI burn. It is NOT load bearing for
+    # token safety: a PR can be pushed to between the comment and this job
+    # starting, so the scan job below assumes the code it builds is hostile.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.issue.pull_request != null &&
+       startsWith(github.event.comment.body, '/trivy') &&
+       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association))
     permissions:
       contents: read
-      packages: write # required to push the GHCR build cache
+      pull-requests: read # read the PR head SHA
+      statuses: write # post the Trivy Scan check onto the scanned commit
+      issues: write # react to the triggering comment
+    outputs:
+      sha: ${{ steps.target.outputs.sha }}
+    steps:
+      - name: Resolve the commit to scan
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Not interpolated into the script body: issue.number is an integer,
+          # but comment.body is attacker controlled and never touches the shell.
+          PR_NUMBER: ${{ github.event.issue.number }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "issue_comment" ]; then
+            sha=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" -q .head.sha)
+          else
+            sha="$GITHUB_SHA"
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Scanning $sha"
+
+      - name: Acknowledge the comment
+        if: ${{ github.event_name == 'issue_comment' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+        run: |
+          gh api --silent -X POST \
+            "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID/reactions" \
+            -f content=eyes
+
+      # Posted before the build so a PR on this commit shows a pending Trivy
+      # Scan row for the ~20 minutes this takes rather than nothing at all.
+      # Dispatch runs post too: they are always aimed at a PR branch, so the
+      # status lands on that PR the same way the comment path does.
+      - name: Mark the check pending
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          gh api --silent "repos/$GITHUB_REPOSITORY/statuses/$HEAD_SHA" \
+            -f state=pending \
+            -f context="Trivy Scan" \
+            -f description="Building images and scanning" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+  # Unprivileged half. `docker compose build` runs the checked-out tree's
+  # Dockerfiles and scripts, so this job executes PR-controlled code by
+  # design. It therefore gets a read-only token and nothing that can write to
+  # the repo or its packages. Someone pushing to the PR between the /trivy
+  # comment and this job starting (CodeQL actions/untrusted-checkout-toctou)
+  # then gains nothing: there is no privilege here to race for.
+  scan:
+    needs: authorize
+    runs-on: ubuntu-latest
+    # No packages scope. build-cosmos logs the job's GITHUB_TOKEN into the
+    # runner's docker credential store, and the action it logs in from is
+    # itself read out of the PR checkout - as are openc3_setup.sh and the
+    # Dockerfiles it then runs - so a malicious PR can read whatever that
+    # token can reach. The *-buildcache packages are public, so the cache
+    # pull works anonymously and the scope buys nothing; dropping it leaves
+    # only contents: read on a public repo, which grants no more than an
+    # anonymous clone.
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Immutable SHA resolved by authorize, never a mutable branch name.
+          # build-cosmos also keys its cache off `git ls-tree HEAD`, so this
+          # has to be the PR head rather than the default branch.
+          ref: ${{ needs.authorize.outputs.sha }}
+          persist-credentials: false
       - id: build
         uses: ./.github/actions/build-cosmos
         with:
-          tag: ${{ github.sha }}
+          tag: ${{ needs.authorize.outputs.sha }}
+          # Never publish cache entries built from unreviewed code: main pulls
+          # these images by content hash, so a PR that could write them could
+          # poison every later build. The other workflows on this PR populate
+          # the same hashes anyway, so this costs no build time.
+          push-cache: false
+      # No Actions cache here, deliberately. The cache is scoped by github.ref,
+      # and on an issue_comment run that is the default branch - so a cache
+      # written while this job is executing PR-controlled code would land in
+      # main's scope and be served to later runs on main (CodeQL
+      # actions/cache-poisoning). Re-downloading the ~50MB binary costs
+      # seconds against a ~20 minute image build.
       - name: Manual Trivy Setup
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
         with:
-          cache: true
+          cache: false
           version: v0.69.3
       - name: Run Trivy on image ruby
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         # See https://github.com/aquasecurity/trivy-action
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
-          image-ref: "docker.io/openc3inc/openc3-ruby:${{ github.sha }}"
+          image-ref: "docker.io/openc3inc/openc3-ruby:${{ needs.authorize.outputs.sha }}"
           # output: "trivy-ruby.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
@@ -63,7 +177,7 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
-          image-ref: "docker.io/openc3inc/openc3-node:${{ github.sha }}"
+          image-ref: "docker.io/openc3inc/openc3-node:${{ needs.authorize.outputs.sha }}"
           # output: "trivy-node.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
@@ -77,7 +191,7 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
-          image-ref: "docker.io/openc3inc/openc3-base:${{ github.sha }}"
+          image-ref: "docker.io/openc3inc/openc3-base:${{ needs.authorize.outputs.sha }}"
           # output: "trivy-base.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
@@ -91,7 +205,7 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
-          image-ref: "docker.io/openc3inc/openc3-cosmos-init:${{ github.sha }}"
+          image-ref: "docker.io/openc3inc/openc3-cosmos-init:${{ needs.authorize.outputs.sha }}"
           # output: "trivy-init.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
@@ -105,7 +219,7 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
-          image-ref: "docker.io/openc3inc/openc3-redis:${{ github.sha }}"
+          image-ref: "docker.io/openc3inc/openc3-redis:${{ needs.authorize.outputs.sha }}"
           # output: "trivy-redis.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
@@ -119,7 +233,7 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
-          image-ref: "docker.io/openc3inc/openc3-buckets:${{ github.sha }}"
+          image-ref: "docker.io/openc3inc/openc3-buckets:${{ needs.authorize.outputs.sha }}"
           # output: "trivy-bucket.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
@@ -133,7 +247,7 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
-          image-ref: "docker.io/openc3inc/openc3-tsdb:${{ github.sha }}"
+          image-ref: "docker.io/openc3inc/openc3-tsdb:${{ needs.authorize.outputs.sha }}"
           # output: "trivy-tsdb.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
@@ -147,7 +261,7 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
-          image-ref: "docker.io/openc3inc/openc3-operator:${{ github.sha }}"
+          image-ref: "docker.io/openc3inc/openc3-operator:${{ needs.authorize.outputs.sha }}"
           # output: "trivy-operator.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
@@ -161,7 +275,7 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
-          image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ github.sha }}"
+          image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ needs.authorize.outputs.sha }}"
           # output: "trivy-cmd-tlm-api.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
@@ -175,7 +289,7 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
-          image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ github.sha }}"
+          image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ needs.authorize.outputs.sha }}"
           # output: "trivy-script-runner-api.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
@@ -189,7 +303,7 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
-          image-ref: "docker.io/openc3inc/openc3-traefik:${{ github.sha }}"
+          image-ref: "docker.io/openc3inc/openc3-traefik:${{ needs.authorize.outputs.sha }}"
           # output: "trivy-traefik.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
@@ -199,17 +313,6 @@ jobs:
       #   with:
       #     category: "openc3-traefik"
       #     sarif_file: "trivy-traefik.sarif"
-      - name: Run Trivy in GitHub SBOM mode and submit results to Dependency Snapshots
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-        with:
-          scan-type: "fs"
-          format: "github"
-          exit-code: 0
-          output: "dependency-results.sbom.json"
-          image-ref: "."
-          github-pat: ${{ secrets.GITHUB_TOKEN }}
-          skip-setup-trivy: true
       # - uses: anchore/scan-action/download-grype@v3
       #   id: grype
       # - name: Run grype on the image ruby
@@ -234,3 +337,69 @@ jobs:
       #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cosmos-script-runner-api:latest
       # - name: Run grype on the image traefik
       #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-traefik:latest
+
+  # Dependency Snapshots are recorded against GITHUB_REF, which on a comment
+  # run is the default branch - filing a PR branch's dependencies under main
+  # would corrupt the repo dependency graph. Dispatch only, and a separate job
+  # because submitting needs contents: write, which the scan job must not get.
+  # scan-type: fs only parses manifests, so no PR code runs here.
+  sbom:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # required by the Dependency Snapshot submission API
+    steps:
+      # No ref: and no dependency on authorize. This job only ever runs on
+      # workflow_dispatch, where the commit to scan is just the dispatched
+      # ref, so nothing here is derived from PR-controlled input and this
+      # write-scoped job never checks out a PR.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run Trivy in GitHub SBOM mode and submit results to Dependency Snapshots
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: "fs"
+          format: "github"
+          exit-code: 0
+          output: "dependency-results.sbom.json"
+          image-ref: "."
+          github-pat: ${{ secrets.GITHUB_TOKEN }}
+
+  # trivy.yaml sets exit-code: 1, so any CRITICAL/HIGH finding fails its step
+  # and therefore the scan job. Mirror that onto the scanned SHA as a commit
+  # status, which GitHub renders in the checks list of whatever PR has that
+  # commit as its head. Separate job so that statuses: write is never held by
+  # a runner that has executed PR code.
+  report:
+    needs: [authorize, scan]
+    if: ${{ always() && needs.authorize.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Report the result as a commit status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ needs.authorize.outputs.sha }}
+          SCAN_RESULT: ${{ needs.scan.result }}
+        run: |
+          set -euo pipefail
+          # Nothing to report against if resolving the SHA is what failed.
+          [ -n "$HEAD_SHA" ] || exit 0
+          case "$SCAN_RESULT" in
+            success)
+              state=success
+              desc="No unfixed CRITICAL or HIGH vulnerabilities" ;;
+            failure)
+              state=failure
+              desc="Trivy found CRITICAL or HIGH vulnerabilities" ;;
+            *)
+              state=error
+              desc="Scan did not complete ($SCAN_RESULT)" ;;
+          esac
+          gh api --silent "repos/$GITHUB_REPOSITORY/statuses/$HEAD_SHA" \
+            -f state="$state" \
+            -f context="Trivy Scan" \
+            -f description="$desc" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

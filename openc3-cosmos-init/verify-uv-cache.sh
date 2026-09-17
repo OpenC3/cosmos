@@ -39,6 +39,26 @@ GEMS_DIR="${2:-/openc3/plugins/gems}"
 WORK=$(mktemp -d)
 trap 'rm -rf "${WORK}"' EXIT
 
+# uv needs a WRITABLE cache directory - it creates lock and marker files under
+# UV_CACHE_DIR before it reads anything, and caches its interpreter probe there
+# on a miss. The baked seed is root-owned and we run as the image user, so
+# pointing UV_CACHE_DIR straight at it fails outright:
+#   error: Failed to initialize cache
+#     Caused by: failed to open file `.../sdists-v9/.git`: Permission denied
+# That this ever worked was an accident of layering: the
+# `COPY --from=<stage> --chown=... /openc3/uv_cache_plugins/ /openc3/uv_cache/`
+# lines happened to re-own whichever subdirectories the plugin warm produced,
+# and a build where the plugin cache stopped covering one of them broke it.
+#
+# So work against a writable copy, exactly as init.sh does at runtime
+# (cp -ruf /openc3/uv_cache/. /gems/uv/). Same bytes, so the assertion is
+# unchanged and --offline still proves the wheels came from the seed - it just
+# no longer depends on which directories a COPY happened to chown. The copy
+# lives in ${WORK} and is removed by the trap, so it adds no image layer.
+RUN_CACHE="${WORK}/uv_cache"
+mkdir -p "${RUN_CACHE}"
+cp -a "${CACHE_DIR}/." "${RUN_CACHE}/"
+
 CHECKED=0
 UNVERIFIED=""
 for GEM in "${GEMS_DIR}"/*.gem; do
@@ -71,10 +91,10 @@ for GEM in "${GEMS_DIR}"/*.gem; do
     # image build, and asserts the cache holds real wheels rather than sdists
     # this step would have to build.
     # UV_COMPILE_BYTECODE=0 overrides the base image's UV_COMPILE_BYTECODE=1:
-    # this step only asserts the wheels INSTALL offline from the cache, and byte-
-    # compilation would try to write a temp script into ${CACHE_DIR}, which is the
-    # root-owned, read-only baked seed (the openc3 user we run as can't write it).
-    if ! (cd "${SRC}" && UV_CACHE_DIR="${CACHE_DIR}" UV_PYTHON_DOWNLOADS=never \
+    # this step only asserts the wheels INSTALL offline from the cache, so
+    # byte-compiling every module into a venv we are about to delete is pure
+    # build time.
+    if ! (cd "${SRC}" && UV_CACHE_DIR="${RUN_CACHE}" UV_PYTHON_DOWNLOADS=never \
             UV_COMPILE_BYTECODE=0 \
             uv sync --frozen --no-dev --no-install-project --offline --no-build); then
         {

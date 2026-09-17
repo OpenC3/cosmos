@@ -59,6 +59,7 @@ summary_report = build_summary_report(containers)
 # user to apply each update inline. The previous version of this script only
 # printed NOTEs; it now edits the Dockerfiles, .env, and build scripts.
 check_debian(client)
+check_node(client)
 check_container_version(client, containers, 'traefik')
 check_container_version(client, containers, 'redis') # valkey base image
 new_versitygw = check_versitygw(client, versitygw_version)
