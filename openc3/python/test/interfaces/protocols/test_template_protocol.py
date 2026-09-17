@@ -113,18 +113,19 @@ class TestTemplateProtocol(unittest.TestCase):
     def test_ignores_all_data_during_the_connect_period(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
         self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD", 0, 0.01], "READ_WRITE")
-        # read_data polls without sleeping so the clock ticks on every check
-        clock = FakeClock(tick=0.001)
+        clock = FakeClock()
         with patch("openc3.interfaces.protocols.template_protocol.time", clock):
-            start = clock.now
             self.interface.connect()
+            protocol = self.interface.read_protocols[0]
+            # Data arriving during the connect period is dropped, not buffered
+            self.assertEqual(protocol.read_data(b"\x39\x39\xab\xcd"), ("STOP", None))
+            self.assertEqual(protocol.data, b"")
+            clock.sleep(0.01)
+            # Once the connect period is over data flows through immediately
             TestTemplateProtocol.read_buffer = b"\x31\x30\xab\xcd"
+            start = clock.now
             data = self.interface.read()
-            elapsed = clock.now - start
-        # Data is dropped for the entire delay and delivered right after it,
-        # allowing a few clock reads of slack for the connect and read plumbing
-        self.assertGreaterEqual(elapsed, 0.01)
-        self.assertLess(elapsed, 0.01 + 5 * clock.tick)
+            self.assertEqual(clock.now, start)
         self.assertEqual(data.buffer, b"\x31\x30")
 
     def test_waits_before_writing_during_the_initial_delay_period(self):
@@ -145,7 +146,9 @@ class TestTemplateProtocol(unittest.TestCase):
             self.interface.write(packet)
             elapsed = clock.now - write
         # The write sleeps out exactly the remainder of the initial delay
+        # before the data reaches the stream
         self.assertAlmostEqual(elapsed, 0.02, places=6)
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 1, (self.2)\xab\xcd")
 
     def test_works_without_a_response(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
