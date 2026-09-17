@@ -25,15 +25,16 @@ from test.test_helper import *
 
 
 class FakeClock:
-    """Virtual clock used to make the protocol timing tests deterministic.
+    """Virtual clock standing in for the time module of TemplateProtocol.
 
-    TemplateProtocol measures its delays with time.time() and waits with
-    time.sleep(), both looked up on the module. Patching the module's time
-    with this class makes sleeps advance the clock instantly, so the elapsed
-    virtual time depends only on the protocol logic and not on how loaded the
-    machine running the test happens to be. The durations the clock advances
-    by are the ones the protocol asks for, so the waits are still checked;
-    what is no longer checked is that time.sleep() really blocks that long.
+    The protocol measures its delays with time.time() and waits with
+    time.sleep(), both looked up on the module, so patching the module's time
+    with this makes sleeps advance the clock instantly by exactly the duration
+    the protocol asked to wait. That is how the tests check a delay is not
+    longer than configured, which cannot be asserted against the wall clock
+    without failing on a loaded machine. It proves nothing about the wait
+    really happening, so the tests using it are paired with a wall clock test
+    that asserts the protocol blocks for at least the configured time.
 
     Code that waits without sleeping never advances this clock and would spin
     forever, so time() raises once it is clear that is happening.
@@ -118,20 +119,17 @@ class TestTemplateProtocol(unittest.TestCase):
 
     def test_ignores_all_data_during_the_connect_period(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
-        self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD", 0, 0.01], "READ_WRITE")
-        clock = FakeClock()
-        with patch("openc3.interfaces.protocols.template_protocol.time", clock):
-            self.interface.connect()
-            protocol = self.interface.read_protocols[0]
-            # Data arriving during the connect period is dropped, not buffered
-            self.assertEqual(protocol.read_data(b"\x39\x39\xab\xcd"), ("STOP", None))
-            self.assertEqual(protocol.data, b"")
-            clock.sleep(0.01)
-            # Once the connect period is over data flows through immediately
-            TestTemplateProtocol.read_buffer = b"\x31\x30\xab\xcd"
-            start = clock.now
-            data = self.interface.read()
-            self.assertEqual(clock.now, start)
+        self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD", 0, 0.1], "READ_WRITE")
+        start = time.time()
+        self.interface.connect()
+        protocol = self.interface.read_protocols[0]
+        # Data arriving during the connect period is dropped, not buffered
+        self.assertEqual(protocol.read_data(b"\x39\x39\xab\xcd"), ("STOP", None))
+        self.assertEqual(protocol.data, b"")
+        # The read keeps dropping data until the connect period has really elapsed
+        TestTemplateProtocol.read_buffer = b"\x31\x30\xab\xcd"
+        data = self.interface.read()
+        self.assertGreaterEqual(time.time() - start, 0.1)
         self.assertEqual(data.buffer, b"\x31\x30")
 
     def test_waits_before_writing_during_the_initial_delay_period(self):
@@ -145,15 +143,14 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
         packet.get_item("CMD_TEMPLATE").default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
         packet.restore_defaults()
-        clock = FakeClock()
-        with patch("openc3.interfaces.protocols.template_protocol.time", clock):
-            self.interface.connect()
-            write = clock.now
-            self.interface.write(packet)
-            elapsed = clock.now - write
-        # The write sleeps out exactly the remainder of the initial delay
-        # before the data reaches the stream
-        self.assertAlmostEqual(elapsed, 0.02, places=6)
+        self.interface.connect()
+        write = time.time()
+        self.interface.write(packet)
+        # The write really blocks until the initial delay has elapsed. Only the
+        # lower bound can be checked here because a loaded machine can take
+        # arbitrarily longer; test_waits_no_longer_than_the_initial_delay_before_writing
+        # covers the protocol not waiting longer than it was configured to
+        self.assertGreaterEqual(time.time() - write, 0.02)
         self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 1, (self.2)\xab\xcd")
 
     def test_works_without_a_response(self):
@@ -186,22 +183,68 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.append_item("RSP_PACKET", 1024, "STRING")
         packet.get_item("RSP_PACKET").default = "DATA"
         packet.restore_defaults()
+        self.interface.connect()
+        start = time.time()
+        for stdout in capture_io():
+            self.interface.write(packet)
+            self.assertIn(
+                "Timeout waiting for response",
+                stdout.getvalue(),
+            )
+        # The write really blocks for the response timeout before giving up
+        self.assertGreaterEqual(time.time() - start, 0.03)
+
+    def test_disconnects_if_it_doesnt_receive_a_response(self):
+        self.interface.stream = TestTemplateProtocol.TemplateStream()
+        self.interface.add_protocol(
+            TemplateProtocol,
+            ["0xA", "0xA", 0, None, 1, True, 0, None, False, 0.04, 0.02, True],
+            "READ_WRITE",
+        )
+        self.interface.target_names = ["TGT"]
+        packet = Packet("TGT", "CMD")
+        packet.append_item("CMD_TEMPLATE", 1024, "STRING")
+        packet.get_item("CMD_TEMPLATE").default = "GO"
+        packet.append_item("RSP_TEMPLATE", 1024, "STRING")
+        packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>"
+        packet.append_item("RSP_PACKET", 1024, "STRING")
+        packet.get_item("RSP_PACKET").default = "DATA"
+        packet.restore_defaults()
+        self.interface.connect()
+        start = time.time()
+        with self.assertRaisesRegex(RuntimeError, "Timeout waiting for response"):
+            self.interface.write(packet)
+        # The write really blocks for the response timeout before raising
+        self.assertGreaterEqual(time.time() - start, 0.04)
+
+    def test_waits_no_longer_than_the_initial_delay_before_writing(self):
+        # The wall clock can only show that the write waited at least the
+        # initial delay. Run the same write against a virtual clock, which the
+        # protocol advances by exactly the durations it sleeps, to show it does
+        # not wait any longer than it was configured to
+        self.interface.stream = TestTemplateProtocol.TemplateStream()
+        self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD", 0, 0.02], "READ_WRITE")
+        packet = Packet("TGT", "CMD")
+        packet.append_item("VOLTAGE", 16, "UINT")
+        packet.get_item("VOLTAGE").default = 1
+        packet.append_item("CHANNEL", 16, "UINT")
+        packet.get_item("CHANNEL").default = 2
+        packet.append_item("CMD_TEMPLATE", 1024, "STRING")
+        packet.get_item("CMD_TEMPLATE").default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
+        packet.restore_defaults()
         clock = FakeClock()
         with patch("openc3.interfaces.protocols.template_protocol.time", clock):
             self.interface.connect()
-            start = clock.now
-            for stdout in capture_io():
-                self.interface.write(packet)
-                self.assertIn(
-                    "Timeout waiting for response",
-                    stdout.getvalue(),
-                )
-            elapsed = clock.now - start
-        # The timeout is detected on the first poll at or after it expires
-        self.assertGreaterEqual(elapsed, 0.03)
-        self.assertLess(elapsed, 0.03 + 0.02)  # response_polling_period
+            write = clock.now
+            self.interface.write(packet)
+            elapsed = clock.now - write
+        self.assertAlmostEqual(elapsed, 0.02, places=6)
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 1, (self.2)\xab\xcd")
 
-    def test_disconnects_if_it_doesnt_receive_a_response(self):
+    def test_times_out_within_one_polling_period_of_the_response_timeout(self):
+        # Same idea for the response timeout: the virtual clock shows the
+        # timeout fires on the first poll at or after it expires rather than
+        # some multiple of it
         self.interface.stream = TestTemplateProtocol.TemplateStream()
         self.interface.add_protocol(
             TemplateProtocol,
@@ -224,7 +267,6 @@ class TestTemplateProtocol(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "Timeout waiting for response"):
                 self.interface.write(packet)
             elapsed = clock.now - start
-        # The timeout is detected on the first poll at or after it expires
         self.assertGreaterEqual(elapsed, 0.04)
         self.assertLess(elapsed, 0.04 + 0.02)  # response_polling_period
 
