@@ -87,6 +87,26 @@ class TestTemplateProtocol(unittest.TestCase):
         TestTemplateProtocol.write_buffer = None
         self.interface = TestTemplateProtocol.MyInterface()
 
+    def _command_packet(self, cmd_template, rsp_template=None, rsp_packet=None, **items):
+        """Build a TGT CMD packet with the given 16 bit UINT items and templates.
+
+        Items are appended in the order given, each defaulting to its value,
+        followed by the CMD_TEMPLATE, RSP_TEMPLATE and RSP_PACKET strings the
+        TemplateProtocol reads. A template left as None is not appended.
+        """
+        packet = Packet("TGT", "CMD")
+        for name, default in items.items():
+            packet.append_item(name, 16, "UINT")
+            packet.get_item(name).default = default
+        templates = {"CMD_TEMPLATE": cmd_template, "RSP_TEMPLATE": rsp_template, "RSP_PACKET": rsp_packet}
+        for name, default in templates.items():
+            if default is None:
+                continue
+            packet.append_item(name, 1024, "STRING")
+            packet.get_item(name).default = default
+        packet.restore_defaults()
+        return packet
+
     def test_initializes_attributes(self):
         self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD"], "READ_WRITE")
         self.assertEqual(self.interface.read_protocols[0].data, b"")
@@ -135,14 +155,7 @@ class TestTemplateProtocol(unittest.TestCase):
     def test_waits_before_writing_during_the_initial_delay_period(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
         self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD", 0, 0.02], "READ_WRITE")
-        packet = Packet("TGT", "CMD")
-        packet.append_item("VOLTAGE", 16, "UINT")
-        packet.get_item("VOLTAGE").default = 1
-        packet.append_item("CHANNEL", 16, "UINT")
-        packet.get_item("CHANNEL").default = 2
-        packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item("CMD_TEMPLATE").default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
-        packet.restore_defaults()
+        packet = self._command_packet("SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)", VOLTAGE=1, CHANNEL=2)
         self.interface.connect()
         write = time.time()
         self.interface.write(packet)
@@ -175,14 +188,7 @@ class TestTemplateProtocol(unittest.TestCase):
             "READ_WRITE",
         )
         self.interface.target_names = ["TGT"]
-        packet = Packet("TGT", "CMD")
-        packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item("CMD_TEMPLATE").default = "GO"
-        packet.append_item("RSP_TEMPLATE", 1024, "STRING")
-        packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>"
-        packet.append_item("RSP_PACKET", 1024, "STRING")
-        packet.get_item("RSP_PACKET").default = "DATA"
-        packet.restore_defaults()
+        packet = self._command_packet("GO", "<VOLTAGE>", "DATA")
         self.interface.connect()
         start = time.time()
         for stdout in capture_io():
@@ -202,14 +208,7 @@ class TestTemplateProtocol(unittest.TestCase):
             "READ_WRITE",
         )
         self.interface.target_names = ["TGT"]
-        packet = Packet("TGT", "CMD")
-        packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item("CMD_TEMPLATE").default = "GO"
-        packet.append_item("RSP_TEMPLATE", 1024, "STRING")
-        packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>"
-        packet.append_item("RSP_PACKET", 1024, "STRING")
-        packet.get_item("RSP_PACKET").default = "DATA"
-        packet.restore_defaults()
+        packet = self._command_packet("GO", "<VOLTAGE>", "DATA")
         self.interface.connect()
         start = time.time()
         with self.assertRaisesRegex(RuntimeError, "Timeout waiting for response"):
@@ -224,14 +223,7 @@ class TestTemplateProtocol(unittest.TestCase):
         # not wait any longer than it was configured to
         self.interface.stream = TestTemplateProtocol.TemplateStream()
         self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD", 0, 0.02], "READ_WRITE")
-        packet = Packet("TGT", "CMD")
-        packet.append_item("VOLTAGE", 16, "UINT")
-        packet.get_item("VOLTAGE").default = 1
-        packet.append_item("CHANNEL", 16, "UINT")
-        packet.get_item("CHANNEL").default = 2
-        packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item("CMD_TEMPLATE").default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
-        packet.restore_defaults()
+        packet = self._command_packet("SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)", VOLTAGE=1, CHANNEL=2)
         clock = FakeClock()
         with patch("openc3.interfaces.protocols.template_protocol.time", clock):
             self.interface.connect()
@@ -252,14 +244,7 @@ class TestTemplateProtocol(unittest.TestCase):
             "READ_WRITE",
         )
         self.interface.target_names = ["TGT"]
-        packet = Packet("TGT", "CMD")
-        packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item("CMD_TEMPLATE").default = "GO"
-        packet.append_item("RSP_TEMPLATE", 1024, "STRING")
-        packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>"
-        packet.append_item("RSP_PACKET", 1024, "STRING")
-        packet.get_item("RSP_PACKET").default = "DATA"
-        packet.restore_defaults()
+        packet = self._command_packet("GO", "<VOLTAGE>", "DATA")
         clock = FakeClock()
         with patch("openc3.interfaces.protocols.template_protocol.time", clock):
             self.interface.connect()
