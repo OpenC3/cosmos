@@ -27,14 +27,22 @@
 # group, dev included, so the mirror has to serve the dev dependencies too even
 # though the images never install them.
 #
+# Every outcome is announced, including the skips. A silent no-op here is
+# indistinguishable in a build log from a relock that ran, and that is exactly
+# how an air-gapped build quietly regains the failure this script exists to
+# prevent - most plausibly when PYPI_URL never reached this image because it
+# was built against a base image that predates the current .env.
+#
 # Usage: uv-mirror-relock [uv lock args...]
 set -e
 
 if [ "${PYPI_URL:-https://pypi.org}" = "https://pypi.org" ]; then
+  echo "--- relock skipped in $(pwd): PYPI_URL=${PYPI_URL:-<unset>} is the public index"
   exit 0
 fi
 
 if [ ! -f pyproject.toml ] || [ ! -f uv.lock ]; then
+  echo "--- relock skipped in $(pwd): no pyproject.toml + uv.lock to relock"
   exit 0
 fi
 
