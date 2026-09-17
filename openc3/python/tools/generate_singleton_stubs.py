@@ -17,11 +17,11 @@
 
 """Generate .pyi stubs for the singleton-metaclass classes.
 
-Several OpenC3 classes (Logger, Store, StoreQueued, System, Topic) are used as
-singletons: the class itself is the public API and a metaclass __getattribute__
-forwards every access to cls.instance(). That forwarding happens at runtime and
-is invisible to static type checkers, so `Logger.info("msg")` looks like an
-unbound call of the instance method `info` and "msg" gets bound to `self`:
+Several OpenC3 classes (Logger, Store, and StoreQueued) are used as singletons:
+the class itself is the public API and a metaclass attribute hook forwards
+access to cls.instance(). That forwarding happens at runtime and is invisible
+to static type checkers, so `Logger.info("msg")` looks like an unbound call of
+the instance method `info` and "msg" gets bound to `self`:
 
     error[invalid-argument-type] Argument to function `Logger.info` is
     incorrect: Expected `Logger`, found `str`
@@ -88,8 +88,8 @@ FORWARDING_HOOKS = {"__getattr__", "__getattribute__", "__setattr__"}
 # forwarding hooks there restores unknown-attribute checking (Logger.infoo is
 # reported) at no cost.
 #
-# Store, StoreQueued and Topic are deliberately absent: they forward arbitrary
-# Valkey commands (Store.zrangebyscore, Store.hgetall, ...) that the stub cannot
+# Store and StoreQueued are deliberately absent: they forward arbitrary Valkey
+# commands (Store.zrangebyscore, Store.hgetall, ...) that the stub cannot
 # enumerate, so dropping their hooks reports ~73 attributes that do exist at
 # runtime. Typing those properly means annotating the forwarded client, not
 # removing the hook.
@@ -98,32 +98,72 @@ STRICT_MODULES = {
 }
 
 
-def find_singleton_modules() -> list[Path]:
-    """Return the source files that define a class with a custom metaclass."""
-    found = []
+def _base_name(node: ast.expr) -> str | None:
+    """Return the final name from a simple or qualified class expression."""
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    return None
+
+
+def find_singleton_modules() -> dict[Path, set[str]]:
+    """Return modules and classes governed by an OpenC3 forwarding metaclass."""
+    trees: dict[Path, ast.Module] = {}
     for path in sorted(PACKAGE.rglob("*.py")):
         try:
-            tree = ast.parse(path.read_text())
+            trees[path] = ast.parse(path.read_text())
         except SyntaxError:
             continue
-        if any(
-            isinstance(node, ast.ClassDef) and any(kw.arg == "metaclass" for kw in node.keywords)
-            for node in ast.walk(tree)
-        ):
-            found.append(path)
+
+    # Only metaclasses defined by OpenC3 and implementing an attribute-forwarding
+    # hook qualify. This excludes ordinary ABCMeta, EnumMeta, and other custom
+    # metaclasses that do not implement the singleton API this generator models.
+    metaclasses = {
+        node.name
+        for tree in trees.values()
+        for node in tree.body
+        if isinstance(node, ast.ClassDef)
+        and any(_base_name(base) == "type" for base in node.bases)
+        and any(isinstance(item, ast.FunctionDef) and item.name in FORWARDING_HOOKS for item in node.body)
+    }
+
+    found: dict[Path, set[str]] = {}
+    for path, tree in trees.items():
+        classes = {node.name: node for node in tree.body if isinstance(node, ast.ClassDef)}
+        singletons = {
+            node.name
+            for node in classes.values()
+            if any(kw.arg == "metaclass" and _base_name(kw.value) in metaclasses for kw in node.keywords)
+        }
+
+        # A subclass inherits its base's metaclass. Promote methods introduced by
+        # those subclasses too, otherwise they incompatibly override the promoted
+        # classmethods in the generated base stub.
+        changed = True
+        while changed:
+            changed = False
+            for node in classes.values():
+                if node.name not in singletons and any(_base_name(base) in singletons for base in node.bases):
+                    singletons.add(node.name)
+                    changed = True
+
+        if singletons:
+            found[path] = singletons
     return found
 
 
 class PromoteToClassmethod(ast.NodeTransformer):
     """Rewrite forwarded instance methods of metaclass-using classes as classmethods."""
 
-    def __init__(self, keep_hooks: bool = False):
+    def __init__(self, singleton_classes: set[str], keep_hooks: bool = False):
         self.promoted: list[str] = []
         self.dropped: list[str] = []
+        self.singleton_classes = singleton_classes
         self.keep_hooks = keep_hooks
 
     def visit_ClassDef(self, node: ast.ClassDef) -> ast.ClassDef:
-        if any(isinstance(base, ast.Name) and base.id == "type" for base in node.bases):
+        if any(_base_name(base) == "type" for base in node.bases):
             if not self.keep_hooks:
                 kept = []
                 for item in node.body:
@@ -133,7 +173,7 @@ class PromoteToClassmethod(ast.NodeTransformer):
                     kept.append(item)
                 node.body = kept or [ast.Expr(value=ast.Constant(value=Ellipsis))]
             return node
-        if not any(kw.arg == "metaclass" for kw in node.keywords):
+        if node.name not in self.singleton_classes:
             return node
         for item in node.body:
             if not isinstance(item, ast.FunctionDef):
@@ -173,22 +213,30 @@ def ruff_clean(text: str) -> str:
     if not ruff.exists():
         found = shutil.which("ruff")
         if found is None:
-            return text
+            raise SystemExit("ruff not found -- run this script with `uv run --script` or `just stubs`")
         ruff = Path(found)
 
     for argv in (
         ["check", "--stdin-filename", "stub.pyi", "--select", "I", "--fix", "-"],
         ["format", "--stdin-filename", "stub.pyi", "-"],
     ):
-        done = subprocess.run([str(ruff), *argv], input=text, capture_output=True, text=True)
-        if done.stdout:
-            text = done.stdout
+        done = subprocess.run(
+            [str(ruff), *argv],
+            input=text,
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=PACKAGE_ROOT,
+        )
+        text = done.stdout
     return text
 
 
-def build_stub(raw: Path, module: str, keep_hooks: bool = False) -> tuple[str, list[str], list[str]]:
+def build_stub(
+    raw: Path, module: str, singleton_classes: set[str], keep_hooks: bool = False
+) -> tuple[str, list[str], list[str]]:
     tree = ast.parse(raw.read_text())
-    transformer = PromoteToClassmethod(keep_hooks=keep_hooks)
+    transformer = PromoteToClassmethod(singleton_classes, keep_hooks=keep_hooks)
     transformer.visit(tree)
     body = ast.unparse(ast.fix_missing_locations(tree))
     stub = ruff_clean(HEADER.format(module=module) + "\n" + body + "\n")
@@ -212,11 +260,12 @@ def main() -> int:
         return 1
 
     stale = []
+    expected_targets: set[Path] = set()
     with tempfile.TemporaryDirectory() as tmp:
         out_dir = Path(tmp)
         run_stubgen(sources, out_dir)
 
-        for source in sources:
+        for source, singleton_classes in sources.items():
             relative = source.relative_to(PACKAGE_ROOT)
             raw = out_dir / relative.with_suffix(".pyi")
             if not raw.exists():
@@ -225,9 +274,16 @@ def main() -> int:
 
             module = ".".join(relative.with_suffix("").parts)
             keep_hooks = args.keep_hooks or relative.as_posix() not in STRICT_MODULES
-            stub, promoted, dropped = build_stub(raw, module, keep_hooks=keep_hooks)
+            stub, promoted, dropped = build_stub(raw, module, singleton_classes, keep_hooks=keep_hooks)
             target = source.with_suffix(".pyi")
             current = target.read_text() if target.exists() else ""
+
+            # A module such as topic.py may use the forwarding metaclass while
+            # exposing only explicit classmethods. A generated stub adds no value
+            # there and would hide return types a checker can infer from source.
+            if not promoted:
+                continue
+            expected_targets.add(target)
 
             if args.diff or args.check:
                 if current != stub:
@@ -249,6 +305,30 @@ def main() -> int:
                 print(f"    classmethod  {name}")
             for name in dropped:
                 print(f"    dropped      {name}")
+
+        # Remove stubs previously produced for false positives or for modules
+        # that no longer need any promotion. Otherwise those files keep
+        # shadowing their sources even after discovery is corrected.
+        marker = "# GENERATED by tools/generate_singleton_stubs.py"
+        for target in sorted(PACKAGE.rglob("*.pyi")):
+            current = target.read_text()
+            if marker not in current or target in expected_targets:
+                continue
+            relative = target.relative_to(PACKAGE_ROOT)
+            if args.check or args.diff:
+                stale.append(relative)
+                if args.diff:
+                    sys.stdout.writelines(
+                        difflib.unified_diff(
+                            current.splitlines(keepends=True),
+                            [],
+                            fromfile=f"a/{relative}",
+                            tofile="/dev/null",
+                        )
+                    )
+            else:
+                target.unlink()
+                print(f"removed {relative} (no methods need promotion)")
 
     if stale:
         verb = "differ from" if args.diff else "are out of date with"

@@ -59,4 +59,5 @@ class StoreQueued(metaclass=StoreMeta):
 class EphemeralStoreQueued(StoreQueued):
     my_instances: Incomplete
 
-    def store_instance(self): ...
+    @classmethod
+    def store_instance(cls): ...
