@@ -55,6 +55,8 @@ jobs:
       # run --no-build, so no third-party build backend executes here. The run
       # steps below then need --no-sync: with --frozen, uv re-evaluates whether
       # the skipped project could be installed and rejects it under --no-build.
+      # --no-sync keeps --no-build meaningful on them -- ruff comes from the
+      # venv this step built, and nothing is resolved or built at run time.
       - name: Set up uv and Python
         uses: ./.github/actions/setup-uv-python
         with:
@@ -101,16 +103,16 @@ jobs:
           retention-days: 14
 
       - name: Run ruff check on openc3/python
-        run: uv run --no-sync ruff check --output-format=github openc3 tools ../../.github/scripts/check_tool_versions.py
+        run: uv run --no-sync --no-build ruff check --output-format=github openc3 tools ../../.github/scripts/check_tool_versions.py
         working-directory: openc3/python
       - name: Run ruff format check on openc3/python
-        run: uv run --no-sync ruff format --check openc3 tools ../../.github/scripts/check_tool_versions.py
+        run: uv run --no-sync --no-build ruff format --check openc3 tools ../../.github/scripts/check_tool_versions.py
         working-directory: openc3/python
       - name: Run ruff check on script-runner-api scripts
-        run: uv run --no-sync ruff check --output-format=github ../../openc3-cosmos-script-runner-api/scripts
+        run: uv run --no-sync --no-build ruff check --output-format=github ../../openc3-cosmos-script-runner-api/scripts
         working-directory: openc3/python
       - name: Run ruff format check on script-runner-api scripts
-        run: uv run --no-sync ruff format --check ../../openc3-cosmos-script-runner-api/scripts
+        run: uv run --no-sync --no-build ruff format --check ../../openc3-cosmos-script-runner-api/scripts
         working-directory: openc3/python
 
       # Last so a vulnerable dependency does not stop ruff from reporting in
