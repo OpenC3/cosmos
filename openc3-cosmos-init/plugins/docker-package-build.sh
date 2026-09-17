@@ -27,6 +27,16 @@ mkdir -p ${UV_CACHE_PLUGINS}
 
 echo "<<< packageBuild $1"
 cd ${FOLDER_NAME}
+
+# Point this plugin's uv.lock at the PYPI_URL mirror before anything else runs.
+# It has to happen before `rake build` so the lockfile packaged into the gem
+# references the mirror too - a gem pinned to pythonhosted.org URLs would miss
+# the cache warmed below and send the runtime plugin install to the public PyPI,
+# which is exactly what fails in an air-gapped cluster. No-op when PYPI_URL is
+# the default public pypi.org. --no-build matches the sync below: no third-party
+# sdist gets built during the image build.
+UV_CACHE_DIR=${UV_CACHE_PLUGINS} uv-mirror-relock --no-build
+
 echo "--- packageBuild $1 pnpm run build"
 pnpm run build
 echo "=== packageBuild $1 pnpm run build complete"

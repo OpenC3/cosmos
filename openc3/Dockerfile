@@ -50,13 +50,25 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock p
 # UV_CACHE_DIR). Routing the sync through a mount and copying it into the seed
 # afterwards would bake wheels from unrelated past builds into the image, which
 # is exactly what verify-uv-cache.sh exists to prevent.
-RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project
+#
+# uv-mirror-relock (from the base image) rewrites uv.lock to point at PYPI_URL
+# when a PyPI mirror is configured, and does nothing otherwise - a frozen sync
+# fetches the absolute pythonhosted.org URLs in the lockfile, which no index
+# setting can redirect. Relock and sync in one layer so the lockfile the sync
+# uses is the one this layer produced.
+RUN UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock && \
+    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project
 
 # Copy application code (excluding .venv from source)
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 
 # Install the application itself with dependencies already present
-RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev
+# Relock again: the COPY above restored the committed uv.lock over the relocked
+# one from the previous layer. Resolution is unchanged and the metadata is
+# already cached, so this costs a moment on mirrored builds and nothing at all
+# on stock ones.
+RUN UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock && \
+    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev
 
 WORKDIR /openc3/
 
