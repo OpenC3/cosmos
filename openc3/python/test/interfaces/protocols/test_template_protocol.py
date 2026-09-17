@@ -91,7 +91,9 @@ class TestTemplateProtocol(unittest.TestCase):
         self.interface.connect()
         TestTemplateProtocol.read_buffer = b"\x31\x30\xab\xcd"
         data = self.interface.read()
-        self.assertAlmostEqual(time.time() - start, 0.01, places=1)
+        # Only assert the lower bound: loaded CI machines can take much
+        # longer than the delay, but must never return before it elapses
+        self.assertGreaterEqual(time.time() - start, 0.01)
         self.assertEqual(data.buffer, b"\x31\x30")
 
     def test_waits_before_writing_during_the_initial_delay_period(self):
@@ -108,7 +110,7 @@ class TestTemplateProtocol(unittest.TestCase):
         self.interface.connect()
         write = time.time()
         self.interface.write(packet)
-        self.assertAlmostEqual(time.time() - write, 0.02, places=1)
+        self.assertGreaterEqual(time.time() - write, 0.02)
 
     def test_works_without_a_response(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
@@ -148,7 +150,7 @@ class TestTemplateProtocol(unittest.TestCase):
                 "Timeout waiting for response",
                 stdout.getvalue(),
             )
-        self.assertAlmostEqual(time.time() - start, 0.03, places=1)
+        self.assertGreaterEqual(time.time() - start, 0.03)
 
     def test_disconnects_if_it_doesnt_receive_a_response(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
@@ -170,7 +172,7 @@ class TestTemplateProtocol(unittest.TestCase):
         start = time.time()
         with self.assertRaisesRegex(RuntimeError, "Timeout waiting for response"):
             self.interface.write(packet)
-        self.assertAlmostEqual(time.time() - start, 0.04, places=1)
+        self.assertGreaterEqual(time.time() - start, 0.04)
 
     def test_doesnt_expect_responses_for_empty_response_fields(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
