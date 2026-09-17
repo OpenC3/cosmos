@@ -62,13 +62,15 @@ RUN UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock && \
 # Copy application code (excluding .venv from source)
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 
-# Install the application itself with dependencies already present
+# Install the application itself with dependencies already present. This sync
+# must allow building the trusted local editable project; the dependency-only
+# sync above already rejects source distributions from third parties.
 # Relock again: the COPY above restored the committed uv.lock over the relocked
 # one from the previous layer. Resolution is unchanged and the metadata is
 # already cached, so this costs a moment on mirrored builds and nothing at all
 # on stock ones.
 RUN UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock && \
-    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-build
+    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev # NOSONAR
 
 WORKDIR /openc3/
 
