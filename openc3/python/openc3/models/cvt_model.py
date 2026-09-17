@@ -226,7 +226,12 @@ class CvtModel(Model):
         for item in items:
             cls._parse_item(now, lookups, overrides, item, cache_timeout=cache_timeout, scope=scope)
 
-        for target_packet_key, target_name, packet_name, value_keys in lookups:
+        for lookup in lookups:
+            # Set in _parse_item for an item which doesn't exist
+            if lookup is None:
+                results.append([None, None])
+                continue
+            target_packet_key, target_name, packet_name, value_keys = lookup
             if target_packet_key not in packet_lookup:
                 packet_lookup[target_packet_key] = cls.get(
                     target_name,
@@ -438,7 +443,13 @@ class CvtModel(Model):
     # return an ordered array of dict with keys
     @classmethod
     def _parse_item(cls, now, lookups, overrides, item, cache_timeout, scope):
-        target_name, packet_name, item_name, value_type = item
+        # Items can also carry a trailing limits element (see get_tlm_values) which
+        # is only used by the historical QuestDB lookup
+        target_name, packet_name, item_name, value_type = item[0:4]
+        # They are all None when the item doesn't exist (see get_tlm_available)
+        if item_name is None:
+            lookups.append(None)
+            return
 
         # We build lookup keys by including all the less formatted types to gracefully degrade lookups
         # This allows the user to specify FORMATTED and if there is no conversions it will simply return the RAW value

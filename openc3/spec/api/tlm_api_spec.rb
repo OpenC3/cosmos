@@ -763,6 +763,22 @@ module OpenC3
         expect { @api.get_tlm_values(["INST", "HEALTH_STATUS", "TEMP1"]) }.to raise_error(ArgumentError, /items must be formatted/)
       end
 
+      it "returns nil values for items which do not exist" do
+        # get_tlm_available returns nil for items which don't exist and its result
+        # is passed directly to get_tlm_values
+        vals = @api.get_tlm_values([nil, "INST__HEALTH_STATUS__TEMP1__CONVERTED", nil])
+        expect(vals[0]).to eql([nil, nil])
+        expect(vals[1][0]).to eql(-100.0)
+        expect(vals[1][1]).to eql(:RED_LOW)
+        expect(vals[2]).to eql([nil, nil])
+      end
+
+      it "returns a row of nils when no item exists in a historical query" do
+        # Nothing to query, so this doesn't need (or touch) the time series database
+        vals = @api.get_tlm_values([nil, nil], start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z")
+        expect(vals).to eql([[nil, nil], [nil, nil]])
+      end
+
       it "reads all the specified items" do
         items = []
         items << 'inst__Health_Status__Temp1__converted' # Case doesn't matter

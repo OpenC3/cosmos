@@ -928,6 +928,10 @@ module OpenC3
     # @return [Array, Hash] Array of [value, limits_state] pairs per row, or {} if no results.
     #   Single-row results return a flat array; multi-row results return array of arrays.
     def self.tsdb_lookup(items, start_time:, end_time: nil, scope: "DEFAULT")
+      # Every item is a placeholder for an item which doesn't exist, so there's
+      # nothing to query. Return a single row of nil values, one per item.
+      return Array.new(items.length) { [nil, nil] } if items.all? { |item| item[2].nil? }
+
       # Group items by db_shard number while preserving their original positions
       db_shard_groups = {} # db_shard => { positions: [], items: [] }
       items.each_with_index do |item, pos|
@@ -1059,6 +1063,11 @@ module OpenC3
           names << "\"T#{index}.#{safe_item_name}__L\""
         end
       end
+
+      # Every item in this db_shard is a placeholder so there's no table to query.
+      # Return no results and let tsdb_lookup fill these positions with [nil, nil]
+      # when it merges the db_shards (an all placeholder lookup returns before this)
+      return {} if tables.empty?
 
       # Add needed timestamp columns to the SELECT for calculated items
       needed_timestamps.each do |table_index, ts_columns|
