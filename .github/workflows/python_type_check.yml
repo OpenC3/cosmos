@@ -49,7 +49,7 @@ jobs:
       security-events: write
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           egress-policy: audit
 
@@ -78,10 +78,9 @@ jobs:
       - name: Run ty
         working-directory: openc3/python
         run: |
-          uv run --no-sync --no-build ty check --exit-zero --output-format=gitlab \
+          .venv/bin/ty --version | awk '{print $2}' > ty-version.txt
+          .venv/bin/ty check --exit-zero --output-format=gitlab \
             openc3 tools ../../openc3-cosmos-script-runner-api/scripts > ty.json
-          uv run --no-sync --no-build ty check --exit-zero --output-format=concise \
-            openc3 tools ../../openc3-cosmos-script-runner-api/scripts | tail -1
 
       # ty cannot emit SARIF, so convert its GitLab JSON. This also rewrites
       # paths to be repo-root relative, which is what GitHub matches against.
@@ -92,7 +91,7 @@ jobs:
             --input ty.json \
             --sarif ty.sarif \
             --markdown "$GITHUB_STEP_SUMMARY" \
-            --ty-version "$(uv run --no-sync ty --version | awk '{print $2}')"
+            --ty-version "$(cat ty-version.txt)"
 
       - name: Upload SARIF to code scanning
         # Pull requests from forks get a read-only token, so the upload is

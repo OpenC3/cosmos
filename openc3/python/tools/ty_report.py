@@ -258,6 +258,11 @@ def build_sarif(diagnostics: list[dict], version: str) -> dict:
         if message.startswith(prefix):
             message = message[len(prefix) :]
 
+        end_line = max(diagnostic["end_line"], diagnostic["start_line"])
+        end_column = diagnostic["end_column"]
+        if end_line == diagnostic["start_line"]:
+            end_column = max(end_column, diagnostic["start_column"])
+
         result = {
             "ruleId": rule_id(rule),
             "ruleIndex": rule_index[rule],
@@ -270,8 +275,8 @@ def build_sarif(diagnostics: list[dict], version: str) -> dict:
                         "region": {
                             "startLine": diagnostic["start_line"],
                             "startColumn": diagnostic["start_column"],
-                            "endLine": max(diagnostic["end_line"], diagnostic["start_line"]),
-                            "endColumn": diagnostic["end_column"],
+                            "endLine": end_line,
+                            "endColumn": end_column,
                         },
                     }
                 }
@@ -388,7 +393,10 @@ def main() -> int:
         print(f"wrote {sarif_path} ({len(diagnostics)} results)")
 
     if markdown_path:
-        markdown_path.write_text(build_markdown(diagnostics))
+        summary = os.environ.get("GITHUB_STEP_SUMMARY")
+        mode = "a" if summary and markdown_path == Path(summary).resolve() else "w"
+        with markdown_path.open(mode, encoding="utf-8") as stream:
+            stream.write(build_markdown(diagnostics))
         print(f"wrote {markdown_path}")
 
     return 0
