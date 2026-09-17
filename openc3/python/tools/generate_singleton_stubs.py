@@ -48,6 +48,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Iterable
 from pathlib import Path
 
 
@@ -191,7 +192,7 @@ class PromoteToClassmethod(ast.NodeTransformer):
         return node
 
 
-def run_stubgen(sources: list[Path], out_dir: Path) -> None:
+def run_stubgen(sources: Iterable[Path], out_dir: Path) -> None:
     # mypy ships compiled, so stubgen is only runnable as its console script,
     # which uv places next to the interpreter running this script
     stubgen = Path(sys.executable).parent / "stubgen"
@@ -263,7 +264,7 @@ def main() -> int:
     expected_targets: set[Path] = set()
     with tempfile.TemporaryDirectory() as tmp:
         out_dir = Path(tmp)
-        run_stubgen(sources, out_dir)
+        run_stubgen(sources.keys(), out_dir)
 
         for source, singleton_classes in sources.items():
             relative = source.relative_to(PACKAGE_ROOT)
