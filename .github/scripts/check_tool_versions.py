@@ -52,6 +52,13 @@ import requests
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TIMEOUT = 30
 
+# Every upstream this script is allowed to reach. The URLs are built from the
+# hardcoded SURFACES below, so nothing external steers them today, but the
+# allowlist is what keeps that true: a future source entry cannot turn
+# fetch_json into a request at an arbitrary host, and redirects are refused so
+# an upstream cannot forward one either.
+ALLOWED_HOSTS = frozenset({"pypi.org", "api.github.com"})
+
 # Upstream sources. "pypi:<name>" looks up the newest release on PyPI;
 # "gh:<owner>/<repo>" uses the latest GitHub release tag.
 SETUP_UV = "gh:astral-sh/setup-uv"
@@ -138,13 +145,18 @@ SURFACES = [
 
 
 def fetch_json(url: str) -> dict:
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or parsed.hostname not in ALLOWED_HOSTS:
+        raise ValueError(f"refusing to fetch {url}: not an allowlisted upstream")
+
     headers = {"User-Agent": "openc3-tool-version-check"}
     # GitHub's unauthenticated rate limit is low; use the workflow token if present
     token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
-    host = urlparse(url).hostname
-    if token and host == "api.github.com":
+    if token and parsed.hostname == "api.github.com":
         headers["Authorization"] = f"Bearer {token}"
-    response = requests.get(url, headers=headers, timeout=TIMEOUT)
+    # No redirects: a 3xx is the one way an allowlisted host could still send
+    # this request, and the workflow token with it, somewhere else.
+    response = requests.get(url, headers=headers, timeout=TIMEOUT, allow_redirects=False)
     response.raise_for_status()
     return response.json()
 
