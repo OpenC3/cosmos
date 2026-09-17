@@ -22,6 +22,7 @@ on:
     paths:
       - ".github/workflows/python_lint.yml"
       - "openc3/python/**/*.py"
+      - ".github/scripts/check_tool_versions.py"
       - "openc3-cosmos-script-runner-api/scripts/**/*.py"
       - "openc3-cosmos-script-runner-api/test/**/*.py"
       - "openc3/python/pyproject.toml"
@@ -100,16 +101,16 @@ jobs:
           retention-days: 14
 
       - name: Run ruff check on openc3/python
-        run: uv run --no-sync --no-build ruff check --output-format=github openc3
+        run: uv run --no-sync ruff check --output-format=github openc3 tools ../../.github/scripts/check_tool_versions.py
         working-directory: openc3/python
       - name: Run ruff format check on openc3/python
-        run: uv run --no-sync --no-build ruff format --check openc3
+        run: uv run --no-sync ruff format --check openc3 tools ../../.github/scripts/check_tool_versions.py
         working-directory: openc3/python
       - name: Run ruff check on script-runner-api scripts
-        run: uv run --no-sync --no-build ruff check --output-format=github ../../openc3-cosmos-script-runner-api/scripts
+        run: uv run --no-sync ruff check --output-format=github ../../openc3-cosmos-script-runner-api/scripts
         working-directory: openc3/python
       - name: Run ruff format check on script-runner-api scripts
-        run: uv run --no-sync --no-build ruff format --check ../../openc3-cosmos-script-runner-api/scripts
+        run: uv run --no-sync ruff format --check ../../openc3-cosmos-script-runner-api/scripts
         working-directory: openc3/python
 
       # Last so a vulnerable dependency does not stop ruff from reporting in

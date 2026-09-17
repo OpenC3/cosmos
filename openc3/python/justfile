@@ -24,11 +24,11 @@ install-dev:
 
 # Format code with Ruff
 format:
-    uv run ruff format openc3 test ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-script-runner-api/test
+    uv run ruff format openc3 test tools ../../.github/scripts/check_tool_versions.py ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-script-runner-api/test
 
 # Check formatting without making changes
 format-check:
-    uv run ruff format --check openc3 test ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-script-runner-api/test
+    uv run ruff format --check openc3 test tools ../../.github/scripts/check_tool_versions.py ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-script-runner-api/test
 
 # Format only changed files (staged and unstaged)
 format-changed:
@@ -47,19 +47,19 @@ format-changed:
 
 # Lint code with Ruff (shows issues but doesn't fail)
 lint:
-    -uv run ruff check openc3 ../../openc3-cosmos-script-runner-api/scripts
+    -uv run ruff check openc3 tools ../../.github/scripts/check_tool_versions.py ../../openc3-cosmos-script-runner-api/scripts
 
 # Lint code with Ruff (shows issues but doesn't fail)
 lint-all:
-    -uv run ruff check openc3 test ../../openc3-cosmos-script-runner-api/scripts
+    -uv run ruff check openc3 test tools ../../.github/scripts/check_tool_versions.py ../../openc3-cosmos-script-runner-api/scripts
 
 # Lint and auto-fix issues (doesn't fail if unfixable issues remain)
 lint-fix:
-    -uv run ruff check openc3 ../../openc3-cosmos-script-runner-api/scripts --fix
+    -uv run ruff check openc3 tools ../../.github/scripts/check_tool_versions.py ../../openc3-cosmos-script-runner-api/scripts --fix
 
 # Lint code strictly (fails on any issues - for CI)
 lint-strict:
-    uv run ruff check openc3 ../../openc3-cosmos-script-runner-api/scripts
+    uv run ruff check openc3 tools ../../.github/scripts/check_tool_versions.py ../../openc3-cosmos-script-runner-api/scripts
 
 # Lint only changed files (staged and unstaged)
 lint-changed:
@@ -78,11 +78,11 @@ lint-changed:
 
 # Show linting statistics
 lint-stats:
-    -uv run ruff check openc3 test ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-script-runner-api/test --statistics
+    -uv run ruff check openc3 test tools ../../.github/scripts/check_tool_versions.py ../../openc3-cosmos-script-runner-api/scripts ../../openc3-cosmos-script-runner-api/test --statistics
 
 # Lint and auto-fix unsafe issues including unsafe fixes (doesn't fail if unfixable issues remain)
 lint-unsafe:
-    -uv run ruff check openc3 ../../openc3-cosmos-script-runner-api/scripts --fix --unsafe-fixes
+    -uv run ruff check openc3 tools ../../.github/scripts/check_tool_versions.py ../../openc3-cosmos-script-runner-api/scripts --fix --unsafe-fixes
 
 # Type check and write GitHub-viewable reports (ty.sarif for code scanning, ty.md summary)
 typecheck-report:
@@ -144,7 +144,7 @@ test-integration:
     uv run pytest -m "integration"
 
 # Verify code is ready to commit (format, lint, test)
-verify: format lint-fix test
+verify: format lint-fix stubs-check test
     @echo "✅ Code is ready to commit!"
 
 # Verify only changed files (faster pre-commit check)
@@ -180,7 +180,7 @@ lint-check: format-check lint-strict
     @echo "✅ Lint and format checks passed!"
 
 # Check code without making changes (for CI - fails on any issues)
-check: format-check lint-strict test
+check: format-check lint-strict stubs-check test
     @echo "✅ All checks passed!"
 
 # Clean build artifacts and cache files
