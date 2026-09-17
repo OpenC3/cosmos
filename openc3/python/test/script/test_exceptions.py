@@ -24,15 +24,19 @@ class TestDeprecatedExceptionAliases(unittest.TestCase):
         self.assertIs(StopScript, StopScriptError)
         self.assertIs(SkipScript, SkipScriptError)
 
-    def test_the_old_names_catch_what_the_library_raises(self):
+    def test_stop_script_catches_what_the_library_raises(self):
         with self.assertRaises(StopScript):
             raise StopScriptError
+
+    def test_skip_script_catches_what_the_library_raises(self):
         with self.assertRaises(SkipScript):
             raise SkipScriptError
 
-    def test_the_new_names_catch_what_user_scripts_raise(self):
+    def test_stop_script_error_catches_what_user_scripts_raise(self):
         with self.assertRaises(StopScriptError):
             raise StopScript
+
+    def test_skip_script_error_catches_what_user_scripts_raise(self):
         with self.assertRaises(SkipScriptError):
             raise SkipScript
 
