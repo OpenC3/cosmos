@@ -261,18 +261,10 @@ export default {
   },
   watch: {
     displayTopBanner: function (val) {
-      if (val) {
-        this.topHeight = 20
-      } else {
-        this.topHeight = 0
-      }
+      this.topHeight = val ? this.topHeight || 20 : 0
     },
     displayBottomBanner: function (val) {
-      if (val) {
-        this.bottomHeight = 20
-      } else {
-        this.bottomHeight = 0
-      }
+      this.bottomHeight = val ? this.bottomHeight || 20 : 0
     },
     customFontColor: function (val) {
       if (val && val.length && !val.startsWith('#')) {
@@ -294,23 +286,38 @@ export default {
     },
     parseSetting: function (response) {
       if (response) {
-        const parsed = JSON.parse(response)
-        this.text = parsed.text
-        this.topHeight = parsed.topHeight
-        this.bottomHeight = parsed.bottomHeight
-        this.displayTopBanner = parsed.topHeight !== 0
-        this.displayBottomBanner = parsed.bottomHeight !== 0
+        let parsed
+        try {
+          parsed = JSON.parse(response)
+        } catch (error) {
+          // Surface it in the existing load error alert and keep the defaults,
+          // so the form is still editable and saving replaces the bad value.
+          this.errorText = `the stored value is not valid JSON (${error.message})`
+          this.errorLoading = true
+          return
+        }
+        // Every key falls back to its data() default because the stored value
+        // isn't always one this page wrote: OPENC3_SETTING_CLASSIFICATION_BANNER
+        // seeds it at deploy time and a hand-written blob like {"text":"FOOBAR"}
+        // omits most keys. Assigning undefined to a color left formValid false
+        // with no invalid field to fix, so Save stayed disabled forever and the
+        // banner could not be edited at all.
+        this.text = parsed.text || ''
+        this.topHeight = parsed.topHeight || 0
+        this.bottomHeight = parsed.bottomHeight || 0
+        this.displayTopBanner = this.topHeight !== 0
+        this.displayBottomBanner = this.bottomHeight !== 0
         if (parsed.backgroundColor && parsed.backgroundColor.startsWith('#')) {
           this.customBackgroundColor = parsed.backgroundColor
           this.selectedBackgroundColor = false
         } else {
-          this.selectedBackgroundColor = parsed.backgroundColor
+          this.selectedBackgroundColor = parsed.backgroundColor || 'red'
         }
         if (parsed.fontColor && parsed.fontColor.startsWith('#')) {
           this.customFontColor = parsed.fontColor
           this.selectedFontColor = false
         } else {
-          this.selectedFontColor = parsed.fontColor
+          this.selectedFontColor = parsed.fontColor || 'white'
         }
       }
     },

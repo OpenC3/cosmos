@@ -179,6 +179,36 @@ class TestSuiteRunner(unittest.TestCase):
         result = SuiteRunner.build_options(suite="MySuite")
         self.assertIsNot(result["options"], SuiteRunner.DEFAULT_OPTIONS)
 
+    def test_build_options_rejects_suite_that_is_not_a_class_name(self):
+        for suite in [
+            "MySuite) ; __import__('os').system('id') ; (1",
+            "MySuite ; print(1)",
+            None,
+            "",
+        ]:
+            with self.assertRaisesRegex(ValueError, "Invalid Suite name"):
+                SuiteRunner.build_options(suite=suite)
+
+    def test_build_options_allows_module_qualified_names(self):
+        self.assertEqual(
+            SuiteRunner.build_options(suite="my_mod.MySuite", group="my_mod.MyGroup")["suite"],
+            "my_mod.MySuite",
+        )
+
+    def test_build_options_rejects_group_that_is_not_a_class_name(self):
+        with self.assertRaisesRegex(ValueError, "Invalid Group name"):
+            SuiteRunner.build_options(suite="MySuite", group="MyGroup) ; print(1) ; (1")
+
+    def test_build_options_rejects_script_that_is_not_a_method_name(self):
+        with self.assertRaisesRegex(ValueError, "Invalid Script name"):
+            SuiteRunner.build_options(suite="MySuite", group="MyGroup", script="test') ; print(1) ; ('")
+
+    def test_build_options_rejects_method_not_an_entry_point(self):
+        with self.assertRaisesRegex(ValueError, "Invalid method"):
+            SuiteRunner.build_options(suite="MySuite", method="__init__")
+        with self.assertRaisesRegex(ValueError, "Invalid method"):
+            SuiteRunner.build_options(suite="MySuite", method="start(1) ; print(1) ; start")
+
 
 if __name__ == "__main__":
     unittest.main()

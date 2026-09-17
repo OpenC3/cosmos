@@ -84,6 +84,27 @@ class LogLevel(IntEnum):
     FATAL = 4
 
 
+warned_bad_level = False
+
+
+# Level named by the OPENC3_LOG_LEVEL env var.
+# INFO if the var is unset or isn't a level name.
+def default_level():
+    global warned_bad_level
+
+    name = OPENC3_LOG_LEVEL.strip().upper()
+    if not name:
+        return LogLevel.INFO
+    try:
+        return LogLevel[name]
+    except KeyError:
+        if not warned_bad_level:
+            warned_bad_level = True
+            names = ", ".join(level.name for level in LogLevel)
+            print(f"OPENC3_LOG_LEVEL '{OPENC3_LOG_LEVEL}' is not one of {names}, using INFO", file=sys.stderr)
+        return LogLevel.INFO
+
+
 # Supports different levels of logging and only writes if the level
 # is exceeded.
 class Logger(metaclass=LoggerMeta):
@@ -102,10 +123,10 @@ class Logger(metaclass=LoggerMeta):
     ALERT = "alert"
     EPHEMERAL = "ephemeral"
 
-    # @param level [Integer] The initial logging level
-    def __init__(self, level=LogLevel.INFO):
+    # @param level [LogLevel] The initial logging level
+    def __init__(self, level=None):
         self.stdout = True
-        self.level = level
+        self.level = default_level() if level is None else level
         self.detail_string = None
         self.container_name = socket.gethostname()
         self.microservice_name = None
@@ -116,7 +137,7 @@ class Logger(metaclass=LoggerMeta):
 
     # Get the singleton instance
     @classmethod
-    def instance(cls, level=LogLevel.INFO):
+    def instance(cls, level=None):
         if cls.my_instance:
             return cls.my_instance
 

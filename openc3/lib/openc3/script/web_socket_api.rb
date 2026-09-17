@@ -307,6 +307,7 @@ module OpenC3
   # Running Script WebSocket
   class RunningScriptWebSocketApi < ScriptWebSocketApi
     def initialize(id:, **options)
+      @pending_events = []
       @identifier = {
         channel: "RunningScriptChannel",
         id: id
@@ -324,6 +325,36 @@ module OpenC3
       was_subscribed = @subscribed
       super
       write_action({ 'action' => 'ready' }) unless was_subscribed
+    end
+
+    # RunningScriptChannel batches events to reduce ActionCable frame and
+    # client-dispatch overhead. Preserve the public API's historical contract:
+    # callers still receive one script event from each read.
+    def read(ignore_protocol_messages: true, timeout: nil)
+      return @pending_events.shift unless @pending_events.empty?
+
+      loop do
+        message = super
+        return message unless message.is_a?(Array)
+
+        @pending_events.concat(message)
+        return @pending_events.shift unless @pending_events.empty?
+      end
+    end
+
+    def connect
+      @pending_events.clear
+      super
+    end
+
+    def unsubscribe
+      @pending_events.clear
+      super
+    end
+
+    def disconnect
+      @pending_events.clear
+      super
     end
   end
 

@@ -67,7 +67,7 @@ module OpenC3
         if response.nil? || response.status != 200
           if response
             parsed = JSON.parse(response.body)
-            raise "autonomic_group_destroy error: #{parsed['error']}"
+            raise "autonomic_group_destroy error: #{parsed['message']}"
           else
             raise "autonomic_group_destroy failed"
           end
@@ -105,7 +105,7 @@ module OpenC3
         if response.nil? || response.status != 201
           if response
             parsed = JSON.parse(response.body)
-            raise "autonomic_trigger_create error: #{parsed['error']}"
+            raise "autonomic_trigger_create error: #{parsed['message']}"
           else
             raise "autonomic_trigger_create failed"
           end
@@ -136,7 +136,7 @@ module OpenC3
         if response.nil? || response.status != 200
           if response
             parsed = JSON.parse(response.body)
-            raise "autonomic_trigger_enable error: #{parsed['error']}"
+            raise "autonomic_trigger_enable error: #{parsed['message']}"
           else
             raise "autonomic_trigger_enable failed"
           end
@@ -154,7 +154,7 @@ module OpenC3
         if response.nil? || response.status != 200
           if response
             parsed = JSON.parse(response.body)
-            raise "autonomic_trigger_disable error: #{parsed['error']}"
+            raise "autonomic_trigger_disable error: #{parsed['message']}"
           else
             raise "autonomic_trigger_disable failed"
           end
@@ -176,7 +176,7 @@ module OpenC3
         if response.nil? || response.status != 200
           if response
             parsed = JSON.parse(response.body)
-            raise "autonomic_trigger_update error: #{parsed['error']}"
+            raise "autonomic_trigger_update error: #{parsed['message']}"
           else
             raise "autonomic_trigger_update failed"
           end
@@ -194,7 +194,7 @@ module OpenC3
         if response.nil? || response.status != 200
           if response
             parsed = JSON.parse(response.body)
-            raise "autonomic_trigger_destroy error: #{parsed['error']}"
+            raise "autonomic_trigger_destroy error: #{parsed['message']}"
           else
             raise "autonomic_trigger_destroy failed"
           end
@@ -232,7 +232,7 @@ module OpenC3
         if response.nil? || response.status != 201
           if response
             parsed = JSON.parse(response.body)
-            raise "autonomic_reaction_create error: #{parsed['error']}"
+            raise "autonomic_reaction_create error: #{parsed['message']}"
           else
             raise "autonomic_reaction_create failed"
           end
@@ -263,7 +263,7 @@ module OpenC3
         if response.nil? || response.status != 200
           if response
             parsed = JSON.parse(response.body)
-            raise "autonomic_reaction_enable error: #{parsed['error']}"
+            raise "autonomic_reaction_enable error: #{parsed['message']}"
           else
             raise "autonomic_reaction_enable failed"
           end
@@ -281,7 +281,7 @@ module OpenC3
         if response.nil? || response.status != 200
           if response
             parsed = JSON.parse(response.body)
-            raise "autonomic_reaction_disable error: #{parsed['error']}"
+            raise "autonomic_reaction_disable error: #{parsed['message']}"
           else
             raise "autonomic_reaction_disable failed"
           end
@@ -299,7 +299,7 @@ module OpenC3
         if response.nil? || response.status != 200
           if response
             parsed = JSON.parse(response.body)
-            raise "autonomic_reaction_execute error: #{parsed['error']}"
+            raise "autonomic_reaction_execute error: #{parsed['message']}"
           else
             raise "autonomic_reaction_execute failed"
           end
@@ -322,7 +322,7 @@ module OpenC3
         if response.nil? || response.status != 200
           if response
             parsed = JSON.parse(response.body)
-            raise "autonomic_reaction_update error: #{parsed['error']}"
+            raise "autonomic_reaction_update error: #{parsed['message']}"
           else
             raise "autonomic_reaction_update failed"
           end
@@ -340,7 +340,7 @@ module OpenC3
         if response.nil? || response.status != 200
           if response
             parsed = JSON.parse(response.body)
-            raise "autonomic_reaction_destroy error: #{parsed['error']}"
+            raise "autonomic_reaction_destroy error: #{parsed['message']}"
           else
             raise "autonomic_reaction_destroy failed"
           end

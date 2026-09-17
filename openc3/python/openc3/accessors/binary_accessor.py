@@ -98,7 +98,7 @@ class BinaryAccessor(Accessor):
     # Valid endianness
     ENDIANNESS = ["BIG_ENDIAN", "LITTLE_ENDIAN"]
 
-    def handle_read_variable_bit_size(self, item, _buffer):
+    def handle_read_variable_bit_size(self, item, buffer):
         length_value = self.packet.read(item.variable_bit_size["length_item_name"], "CONVERTED")
         # length_value can be None when reading an undersized packet where the length
         # item falls outside the buffer bounds
@@ -107,26 +107,53 @@ class BinaryAccessor(Accessor):
                 f"Length value {item.variable_bit_size['length_item_name']} for item {item.name} is None"
             )
         if item.array_size is not None:
-            item.array_size = (length_value * item.variable_bit_size["length_bits_per_count"]) + item.variable_bit_size[
+            array_size = (length_value * item.variable_bit_size["length_bits_per_count"]) + item.variable_bit_size[
                 "length_value_bit_offset"
             ]
+            self.validate_variable_bit_size(item, array_size, buffer)
+            item.array_size = array_size
         else:
             if item.data_type == "INT" or item.data_type == "UINT":
                 # QUIC encoding is currently assumed for individual variable sized integers
                 # see https://datatracker.ietf.org/doc/html/rfc9000#name-variable-length-integer-enc
                 match length_value:
                     case 0:
-                        item.bit_size = 6
+                        bit_size = 6
                     case 1:
-                        item.bit_size = 14
+                        bit_size = 14
                     case 2:
-                        item.bit_size = 30
+                        bit_size = 30
                     case _:
-                        item.bit_size = 62
+                        bit_size = 62
             else:
-                item.bit_size = (
-                    length_value * item.variable_bit_size["length_bits_per_count"]
-                ) + item.variable_bit_size["length_value_bit_offset"]
+                bit_size = (length_value * item.variable_bit_size["length_bits_per_count"]) + item.variable_bit_size[
+                    "length_value_bit_offset"
+                ]
+            self.validate_variable_bit_size(item, bit_size, buffer)
+            item.bit_size = bit_size
+
+    # A negative bit size is always invalid. A bit size larger than the buffer is
+    # only an error when the packet does not allow short buffers, otherwise the
+    # oversized item simply reads as None (ALLOW_SHORT).
+    def validate_variable_bit_size(self, item, bit_size, buffer):
+        available_bit_size = (len(buffer) * 8) - item.bit_offset
+        if bit_size < 0 or (
+            not self.packet.short_buffer_allowed and (available_bit_size < 0 or bit_size > available_bit_size)
+        ):
+            raise ValueError(
+                f"Variable bit size {bit_size} for item {item.name} exceeds the {max(available_bit_size, 0)} bits available in the buffer"
+            )
+
+    # Items that derive their size from the buffer (0 or negative bit_size or
+    # array_size) calculate a negative size when the buffer ends before the item
+    # starts. Such an item is simply not present in a short buffer.
+    def derived_size_negative(self, item, buffer):
+        available_bit_size = (len(buffer) * 8) - item.bit_offset
+        if item.array_size is not None:
+            return item.array_size <= 0 and (available_bit_size + item.array_size) < 0
+        elif item.bit_size <= 0:
+            return (available_bit_size + item.bit_size) < 0
+        return False
 
     def read_item(self, item, buffer):
         if item.data_type == "DERIVED":
@@ -142,6 +169,8 @@ class BinaryAccessor(Accessor):
         else:
             if item.variable_bit_size:
                 self.handle_read_variable_bit_size(item, buffer)
+            if self.packet.short_buffer_allowed and self.derived_size_negative(item, buffer):
+                return None
             return BinaryAccessor.class_read_item(item, buffer)
 
     # Note: do not use directly - use instance read_item
@@ -737,18 +766,29 @@ class BinaryAccessor(Accessor):
         lower_bound = math.floor(bit_offset / 8)
         upper_bound = math.floor((bit_offset + bit_size - 1) / 8)
 
+        # The access starts at lower_bound, so validate it independently rather
+        # than relying on upper_bound to imply that it is safe.
+        if lower_bound < 0 or lower_bound >= buffer_length or upper_bound < lower_bound:
+            return False, lower_bound, upper_bound
+
         # Sanity check buffer size
         # If it's not the special match of little endian bit field then we fail and return false
-        if upper_bound >= buffer_length and not (
-            (endianness == "LITTLE_ENDIAN")
-            and ((data_type == "INT") or (data_type == "UINT"))
-            and (
-                # Not byte aligned with an even bit size
-                not ((cls.byte_aligned(bit_offset)) and (cls.even_bit_size(bit_size)))
+        if upper_bound >= buffer_length:
+            # Note lower_bound is already known to be inside the buffer
+            little_endian_bitfield = (
+                (endianness == "LITTLE_ENDIAN")
+                and ((data_type == "INT") or (data_type == "UINT"))
+                and (
+                    # Not byte aligned with an even bit size
+                    not ((cls.byte_aligned(bit_offset)) and (cls.even_bit_size(bit_size)))
+                )
             )
-            and (lower_bound < buffer_length)
-        ):
-            result = False
+            # Little endian bitfields are accessed backwards from bit_offset, so the
+            # bytes they span must all be inside the buffer. Checking this here keeps
+            # a huge bit_size from allocating memory before it is rejected.
+            bitfield_lower_bound = lower_bound - (math.floor(((bit_offset % 8) + bit_size - 1) / 8) + 1) + 1
+            if not little_endian_bitfield or bitfield_lower_bound < 0:
+                result = False
 
         return result, lower_bound, upper_bound
 

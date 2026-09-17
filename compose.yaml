@@ -190,6 +190,12 @@ services:
     environment:
       - RAILS_ENV=production
       - GEM_HOME=/gems
+      # Seed the per-scope rubygems_url/pypi_url settings (scope_model) so plugin
+      # gem installs (gem_model) and python package installs (python_package_model)
+      # fetch dependencies from the configured mirrors. The api Gemfiles pin a
+      # constant source, so RUBYGEMS_URL never rewrites Gemfile.lock.
+      - RUBYGEMS_URL=${RUBYGEMS_URL}
+      - PYPI_URL=${PYPI_URL}
       - PYTHONUSERBASE=/gems/python_packages
       - ANYCABLE_REDIS_URL=redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}
       - SECRET_KEY_BASE=${SECRET_KEY_BASE}
@@ -227,6 +233,8 @@ services:
       - OPENC3_AUTH_RATE_LIMIT_TO
       - OPENC3_AUTH_RATE_LIMIT_WITHIN
       - OPENC3_LOG_STDERR
+      - OPENC3_SECRET_FILE_DIR
+      - OPENC3_LOG_LEVEL
     extra_hosts:
       - host.docker.internal:host-gateway
 
@@ -254,6 +262,12 @@ services:
     environment:
       - RAILS_ENV=production
       - GEM_HOME=/gems
+      # Seed the per-scope rubygems_url/pypi_url settings (scope_model) so plugin
+      # gem installs (gem_model) and python package installs (python_package_model)
+      # fetch dependencies from the configured mirrors. The api Gemfiles pin a
+      # constant source, so RUBYGEMS_URL never rewrites Gemfile.lock.
+      - RUBYGEMS_URL=${RUBYGEMS_URL}
+      - PYPI_URL=${PYPI_URL}
       - PYTHONUSERBASE=/gems/python_packages
       - OPENC3_USE_UV=true
       - ANYCABLE_REDIS_URL=redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}
@@ -294,15 +308,22 @@ services:
       - OPENC3_SERVICE_PASSWORD=${OPENC3_SERVICE_PASSWORD}
       # Optional: bare pass-through (only forwarded if set in host env or .env)
       - OPENC3_LOG_STDERR
+      - OPENC3_SECRET_FILE_DIR
+      - OPENC3_LOG_LEVEL
 
   openc3-operator:
     read_only: true
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-operator${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     restart: "unless-stopped"
-    # ports:
-    #   - "127.0.0.1:7779:7779" # Open port for the demo router
-    #   - "127.0.0.1:8081:8081/udp" # Open a udp port
+    ports:
+      # Iroh bridge hubs (bridge_microservice) bind one UDP port each from this
+      # range and advertise 127.0.0.1:<port> so openc3-app and host interfaces
+      # reach them locally with no relay. Keep this range in sync with
+      # BRIDGE_PORT_BASE/COUNT in bridge_microservice.py.
+      - "127.0.0.1:7799-7814:7799-7814/udp"
+      # - "127.0.0.1:7779:7779" # Open port for the demo router
+      # - "127.0.0.1:8081:8081/udp" # Open a udp port
     depends_on:
       - "openc3-redis"
       - "openc3-redis-ephemeral"
@@ -329,8 +350,18 @@ services:
       # List syntax passes through host CI only if set, omits it otherwise
       - CI
       - GEM_HOME=/gems
+      # Seed the per-scope rubygems_url/pypi_url settings (scope_model) so plugin
+      # gem installs (gem_model) and python package installs (python_package_model)
+      # fetch dependencies from the configured mirrors. The api Gemfiles pin a
+      # constant source, so RUBYGEMS_URL never rewrites Gemfile.lock.
+      - RUBYGEMS_URL=${RUBYGEMS_URL}
+      - PYPI_URL=${PYPI_URL}
       - PYTHONUSERBASE=/gems/python_packages
       - OPENC3_USE_UV=true
+      # If your microservices do heavy BLAS / linear algebra work,
+      # raise these or unset to restore threading.
+      - OPENBLAS_NUM_THREADS=1
+      - OMP_NUM_THREADS=1
       # Redis
       - OPENC3_REDIS_HOSTNAME=${OPENC3_REDIS_HOSTNAME}
       - OPENC3_REDIS_PORT=${OPENC3_REDIS_PORT}
@@ -359,6 +390,8 @@ services:
       - OPENC3_SERVICE_PASSWORD=${OPENC3_SERVICE_PASSWORD}
       # Optional: bare pass-through (only forwarded if set in host env or .env)
       - OPENC3_LOG_STDERR
+      - OPENC3_SECRET_FILE_DIR
+      - OPENC3_LOG_LEVEL
     extra_hosts:
       - host.docker.internal:host-gateway
 
@@ -369,7 +402,7 @@ services:
     volumes:
       - "./cacert.pem:/devel/cacert.pem:z"
       - "./openc3-traefik/traefik.yaml:/etc/traefik/traefik.yaml:z"
-      # To allow HTTP, uncomment OPENC3_ALLOW_HTTP in .env
+      # See compose.override.yaml for OPENC3_ALLOW_HTTP and OPENC3_NO_EVAL
       # - "./openc3-traefik/traefik-ssl.yaml:/etc/traefik/traefik.yaml:z"
       # - "./openc3-traefik/traefik-letsencrypt.yaml:/etc/traefik/traefik.yaml:z"
       # - "./openc3-traefik/cert.key:/etc/traefik/cert.key:z"
@@ -393,6 +426,7 @@ services:
       OPENC3_TOOLS_BUCKET: "${OPENC3_TOOLS_BUCKET}"
       OPENC3_BUCKET_URL: "${OPENC3_BUCKET_URL}"
       OPENC3_ALLOW_HTTP: "${OPENC3_ALLOW_HTTP:-}"
+      OPENC3_NO_EVAL: "${OPENC3_NO_EVAL:-}"
       SSL_CERT_FILE: "/devel/cacert.pem"
       CURL_CA_BUNDLE: "/devel/cacert.pem"
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
@@ -427,11 +461,24 @@ services:
         max-file: "3"
     # Values are interpolated from .env by compose; only the vars this
     # container actually reads at runtime are passed in (was env_file: .env).
+    #
+    # Admin Console settings (time zone, time format, theme, package URLs,
+    # ...) can be seeded here at deploy time with OPENC3_SETTING_<NAME>
+    # variables. They are deliberately NOT listed below: an override's
+    # environment: block ADDS variables, so a setting added by a later
+    # release needs no edit to this file. Put them in compose.override.yaml.
+    # See https://docs.openc3.com/docs/getting-started/cli#initsettings
     environment:
       # CI is set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
       # List syntax passes through host CI only if set, omits it otherwise
       - CI
       - GEM_HOME=/gems
+      # Seed the per-scope rubygems_url/pypi_url settings (scope_model) so plugin
+      # gem installs (gem_model) and python package installs (python_package_model)
+      # fetch dependencies from the configured mirrors. The api Gemfiles pin a
+      # constant source, so RUBYGEMS_URL never rewrites Gemfile.lock.
+      - RUBYGEMS_URL=${RUBYGEMS_URL}
+      - PYPI_URL=${PYPI_URL}
       - PYTHONUSERBASE=/gems/python_packages
       - OPENC3_USE_UV=true
       # Redis
@@ -473,6 +520,8 @@ services:
       - OPENC3_INIT_WAIT_TIMEOUT
       - OPENC3_ISTIO_ENABLED
       - OPENC3_LOG_STDERR
+      - OPENC3_SECRET_FILE_DIR
+      - OPENC3_LOG_LEVEL
       # Per-tool install opt-outs
       - OPENC3_NO_CMDTLMSERVER
       - OPENC3_NO_LIMITSMONITOR

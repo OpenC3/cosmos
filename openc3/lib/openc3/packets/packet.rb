@@ -637,6 +637,10 @@ module OpenC3
       else
         value = super(item, :RAW, buffer)
       end
+      # An item beyond the end of a short buffer reads as nil (ALLOW_SHORT).
+      # Conversions, states and format strings can't be applied to a nil value.
+      return nil if value.nil? && @short_buffer_allowed && item.data_type != :DERIVED
+
       derived_raw = false
       if item.data_type == :DERIVED && value_type == :RAW
         value_type = :CONVERTED

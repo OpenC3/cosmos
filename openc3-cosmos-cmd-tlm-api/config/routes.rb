@@ -55,6 +55,11 @@ Rails.application.routes.draw do
     post '/microservices/:id/start', to: 'microservices#start', id: /[^\/]+/
     post '/microservices/:id/stop', to: 'microservices#stop', id: /[^\/]+/
 
+    resources :bridges, only: [:index, :create]
+    get '/bridges/:id', to: 'bridges#show', id: /[^\/]+/
+    post '/bridges/:id/token', to: 'bridges#token', id: /[^\/]+/
+    delete '/bridges/:id', to: 'bridges#destroy', id: /[^\/]+/
+
     resources :process_status, only: [:index]
     get '/process_status/:id', to: 'process_status#show', id: /[^\/]+/
 
@@ -221,6 +226,7 @@ Rails.application.routes.draw do
 
     get "/auth/token-exists" => "auth#token_exists"
     post "/auth/verify" => "auth#verify"
+    post "/auth/verify-token" => "auth#verify_token"
     post "/auth/verify_service" => "auth#verify_service"
     post "/auth/set" => "auth#set"
     get "/auth/otp" => "auth#get_otp"

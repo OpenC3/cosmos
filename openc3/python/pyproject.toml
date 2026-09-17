@@ -1,6 +1,6 @@
 [project]
 name = "openc3"
-version = "7.3.1-beta0"
+version = "7.4.1-beta0"
 description = "Python support for OpenC3 COSMOS"
 authors = [{ name = "Support", email = "support@openc3.com" }]
 maintainers = [{ name = "OpenC3 Support", email = "support@openc3.com" }]
@@ -46,6 +46,7 @@ dependencies = [
     "watchdog (>=6.0.0,<7.0.0)",
     "websockets (>=16.0,<17.0)",
     "pyserial>=3.5",
+    "iroh (>=1.0.0,<2.0.0)",
 ]
 
 [project.urls]

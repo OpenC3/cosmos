@@ -17,6 +17,7 @@
 
 require 'tempfile'
 require 'openc3/utilities/target_file'
+require 'openc3/utilities/python_venv'
 require 'openc3/utilities/running_script'
 require 'openc3/script/suite'
 require 'openc3/script/suite_runner'
@@ -36,12 +37,6 @@ class Script < OpenC3::TargetFile
   def self.all(scope, target = nil)
     super(scope, nil, target: target) # No path matchers
   end
-
-  # Split off the '*' that indicates a file is modified on the server
-  def self.strip_modified(name)
-    name.split('*')[0]
-  end
-  private_class_method :strip_modified
 
   def self.lock(scope, name, username)
     OpenC3::Store.hset("#{scope}__script-locks", strip_modified(name), username)
@@ -88,7 +83,7 @@ class Script < OpenC3::TargetFile
                                  username: username, comment: comment)
   end
 
-  def self.process_suite(name, contents, new_process: true, username: nil, scope:)
+  def self.process_suite(name, contents, new_process: true, username: nil, scope:, python_venv: nil)
     python = false
     python = true if File.extname(name) == '.py'
 
@@ -155,9 +150,18 @@ class Script < OpenC3::TargetFile
         end
       end
       process.environment['GEM_HOME'] = ENV['GEM_HOME'] || '/gems'
-      process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE'] || '/gems/python_packages'
+      process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE'] || OpenC3::PythonVenv::DEFAULT_PYTHONUSERBASE
       # Preserve PYTHONPATH to ensure Python can find both UV venv and user packages
       process.environment['PYTHONPATH'] = ENV['PYTHONPATH'] || '.'
+
+      # Suite analysis executes Python in a separate process before the script
+      # itself is started. Give that process the same plugin venv visibility as
+      # RunningScript so imports used while defining a suite can be resolved.
+      if python
+        OpenC3::PythonVenv.configure_for_script(
+          process.environment, name: name, scope: scope, python_venv: python_venv
+        )
+      end
 
       # Spawned process should not be controlled by same Bundler constraints as spawning process
       ENV.each do |key, _value|

@@ -1,5 +1,5 @@
 /*
-# Copyright 2025 OpenC3, Inc
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -39,7 +39,15 @@ test('displays microservice names', async ({ page, utils }) => {
 })
 
 test('displays microservice details', async ({ page, utils }) => {
-  await page.locator('[aria-label="Show Microservice Details"]').nth(2).click()
+  // Target the specific microservice's details button rather than a positional
+  // nth() so the assertion is stable regardless of how many (and which)
+  // microservices are present or their sort order.
+  await page
+    .locator('[data-test="microserviceList"]')
+    .locator('.v-list-item')
+    .filter({ hasText: 'DEFAULT__CLEANUP__INST2' })
+    .locator('[aria-label="Show Microservice Details"]')
+    .click()
   await expect(page.locator('.editor')).toContainText(
     '"name": "DEFAULT__CLEANUP__INST2"',
   )

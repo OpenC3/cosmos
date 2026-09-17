@@ -569,6 +569,34 @@ module OpenC3
           expect { BinaryAccessor.read(3, 7, :UINT, @data, :LITTLE_ENDIAN) }.to raise_error(ArgumentError, "LITTLE_ENDIAN bitfield with bit_offset 3 and bit_size 7 is invalid")
         end
 
+        it "returns nil for little endian bitfields that span past the buffer" do
+          # Little endian bitfields are accessed backwards from bit_offset, so this
+          # 20 bit field would need the byte before the start of the 2 byte buffer.
+          # It must be rejected before any memory is allocated for the value.
+          expect(BinaryAccessor.read(12, 20, :UINT, "\x01\x02", :LITTLE_ENDIAN)).to be_nil
+          expect(BinaryAccessor.read(12, 20, :INT, "\x01\x02", :LITTLE_ENDIAN)).to be_nil
+        end
+
+        it "reads little endian bitfields whose span exactly reaches the start of the buffer" do
+          # The accessed bytes run from bit_offset / 8 back num_bytes - 1 bytes where
+          # num_bytes = ((bit_offset % 8) + bit_size - 1) / 8 + 1. These all span
+          # bytes 0 through 1 of the 2 byte buffer, which is the last accepted span.
+          data = "\x01\x02"
+          expect(BinaryAccessor.read(8, 9, :UINT, data, :LITTLE_ENDIAN)).to eql(4)
+          expect(BinaryAccessor.read(12, 9, :UINT, data, :LITTLE_ENDIAN)).to eql(64)
+          expect(BinaryAccessor.read(12, 12, :UINT, data, :LITTLE_ENDIAN)).to eql(513)
+          # One more bit needs byte -1 so it is rejected
+          expect(BinaryAccessor.read(12, 13, :UINT, data, :LITTLE_ENDIAN)).to be_nil
+        end
+
+        it "returns nil for little endian bitfields with a huge bit size" do
+          # A bit_size near the native int limit must not allocate bit_size / 8
+          # bytes before the bounds are rejected
+          data = "\xAA" * 9
+          expect(BinaryAccessor.read(69, 1_727_950_384, :INT, data, :LITTLE_ENDIAN)).to be_nil
+          expect(BinaryAccessor.read(69, 2_147_483_647, :UINT, data, :LITTLE_ENDIAN)).to be_nil
+        end
+
         it "reads 1-bit unsigned integers" do
           expected = [0x1, 0x0]
           bit_size = 1
@@ -1501,6 +1529,25 @@ module OpenC3
       describe "given little endian data" do
         it "complains about ill-defined little endian bitfields" do
           expect { BinaryAccessor.write(0x1, 3, 7, :UINT, @data, :LITTLE_ENDIAN, :ERROR) }.to raise_error(ArgumentError, "LITTLE_ENDIAN bitfield with bit_offset 3 and bit_size 7 is invalid")
+        end
+
+        it "complains about little endian bitfields that span past the buffer" do
+          # Little endian bitfields are accessed backwards from bit_offset, so this
+          # 20 bit field would need the byte before the start of the 2 byte buffer.
+          # It must be rejected before any memory is allocated for the value.
+          data = "\x01\x02"
+          expect { BinaryAccessor.write(0x1, 12, 20, :UINT, data, :LITTLE_ENDIAN, :ERROR) }.to raise_error(
+            ArgumentError, "2 byte buffer insufficient to write UINT at bit_offset 12 with bit_size 20"
+          )
+        end
+
+        it "complains about little endian bitfields with a huge bit size" do
+          # A bit_size near the native int limit must not allocate bit_size / 8
+          # bytes before the bounds are rejected
+          data = "\xAA" * 9
+          expect { BinaryAccessor.write(0x1, 69, 1_727_950_384, :INT, data, :LITTLE_ENDIAN, :ERROR) }.to raise_error(
+            ArgumentError, "9 byte buffer insufficient to write INT at bit_offset 69 with bit_size 1727950384"
+          )
         end
 
         it "writes 1-bit unsigned integers" do
@@ -2590,6 +2637,30 @@ module OpenC3
         buffer = "\x00\x01\x02\x03" # 4 bytes = 32 bits
         item = StructureItem.new("TEST", 16, 32, :UINT, :BIG_ENDIAN)
         expect(BinaryAccessor.read_item(item, buffer)).to be_nil
+      end
+
+      it "returns nil when the ending byte calculation would overflow a 32-bit integer" do
+        buffer = "\x00\x01\x02\x03"
+        item = StructureItem.new("TEST", 0x7FFFFFF8, 32, :UINT, :BIG_ENDIAN)
+        expect(BinaryAccessor.read_item(item, buffer)).to be_nil
+      end
+
+      it "rejects bit offsets that cannot be represented by the native accessor" do
+        skip "only applies to the native accessor" if RUBY_ENGINE != 'ruby' || ENV['OPENC3_NO_EXT']
+
+        expect { BinaryAccessor.read(2**63, 32, :UINT, "\x00\x01\x02\x03", :BIG_ENDIAN) }.to raise_error(RangeError)
+      end
+
+      it "rejects a negative bit size whose calculated size would overflow a 32-bit integer" do
+        # The bit size is calculated as (buffer bits - bit_offset + bit_size) which
+        # underflows a 32-bit integer with a large bit_offset. It must be rejected
+        # rather than wrapping around to a positive size.
+        expect { BinaryAccessor.read(2_147_483_640, -16, :STRING, "", :LITTLE_ENDIAN) }.to raise_error(
+          ArgumentError, /0 byte buffer insufficient to read STRING at bit_offset 2147483640/
+        )
+        expect { BinaryAccessor.read(2_147_483_640, -21, :BLOCK, "\x01", :BIG_ENDIAN) }.to raise_error(
+          ArgumentError, /1 byte buffer insufficient to read BLOCK at bit_offset 2147483640/
+        )
       end
     end
   end # describe BinaryAccessor

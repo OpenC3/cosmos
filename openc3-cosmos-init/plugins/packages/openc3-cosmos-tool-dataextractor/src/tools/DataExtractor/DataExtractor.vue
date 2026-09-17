@@ -306,7 +306,12 @@
 // Putting large data into Vue data section causes lots of overhead
 let dataExtractorRawData = []
 
-import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
+import {
+  Api,
+  Cable,
+  OpenC3Api,
+  logUnlessAuthRequired,
+} from '@openc3/js-common/services'
 import {
   Config,
   OpenC3TimePicker,
@@ -735,8 +740,8 @@ export default {
       } catch (e) {
         return
       }
-      this.startDateTime = startTemp.getTime() * 1000000 // TODO: eslint parser doesn't like 1_000_000
-      this.endDateTime = endTemp.getTime() * 1000000
+      this.startDateTime = startTemp.getTime() * 1_000_000
+      this.endDateTime = endTemp.getTime() * 1_000_000
     },
     processItems: function () {
       // Check for a process in progress
@@ -765,12 +770,12 @@ export default {
         return
       }
       // Check for a future End Time
-      if (new Date(this.endDateTime / 1000000) > Date.now()) {
+      if (new Date(this.endDateTime / 1_000_000) > Date.now()) {
         this.$notify.caution({
           title: 'Note',
           body: `End date/time is greater than current date/time. Data will
             continue to stream in real-time until
-            ${new Date(this.endDateTime / 1000000).toISOString()} is reached.`,
+            ${new Date(this.endDateTime / 1_000_000).toISOString()} is reached.`,
         })
       }
 
@@ -832,8 +837,8 @@ export default {
         this.keyMap[indexString] = key
         items.push([key, indexString])
       })
-      OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-        (refreshed) => {
+      OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity)
+        .then((refreshed) => {
           if (refreshed) {
             OpenC3Auth.setTokens()
           }
@@ -844,8 +849,11 @@ export default {
             start_time: this.startDateTime,
             end_time: this.endDateTime,
           })
-        },
-      )
+        })
+        // An AuthRequiredError means we have no token and are being redirected
+        // to login, so don't try to subscribe. Anything else is unexpected and
+        // still gets logged.
+        .catch(logUnlessAuthRequired)
     },
     received: function (data) {
       this.cable.recordPing()

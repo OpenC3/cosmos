@@ -81,26 +81,30 @@ module OpenC3
 
     # Update the news feed on demand to respond to frontend setting changes
     def update_news(manual: false, scope: $openc3_scope, token: $openc3_token)
+      # Authorize outside the begin/rescue so AuthError propagates to the caller
+      # rather than being swallowed and written into the news feed
       authorize(permission: 'admin', manual: manual, scope: scope, token: token)
-      conn = Faraday.new(
-        url: 'https://news.openc3.com',
-        params: {version: VERSION, enterprise: ENTERPRISE},
-      )
-      response = conn.get('/news')
-      if response.success?
-        NewsModel.set(response.body)
-      else
-        NewsModel.news_error("Error contacting OpenC3 news feed (status: #{response.status})")
-      end
+      begin
+        conn = Faraday.new(
+          url: 'https://news.openc3.com',
+          params: {version: VERSION, enterprise: ENTERPRISE},
+        )
+        response = conn.get('/news')
+        if response.success?
+          NewsModel.set(response.body)
+        else
+          NewsModel.news_error("Error contacting OpenC3 news feed (status: #{response.status})")
+        end
 
-      # Test code to update the news feed with a dummy message
-      # data = NewsModel.all()
-      # json = JSON.parse(data)
-      # json.unshift( { date: Time.now.utc.iso8601, title: "News at #{Time.now}", body: "The news feed has been updated at #{Time.now}." })
-      # json.pop if json.length > 5
-      # NewsModel.set(json.to_json)
-    rescue Exception => e
-      NewsModel.news_error("Error contacting OpenC3 news feed. #{e.message})")
+        # Test code to update the news feed with a dummy message
+        # data = NewsModel.all()
+        # json = JSON.parse(data)
+        # json.unshift( { date: Time.now.utc.iso8601, title: "News at #{Time.now}", body: "The news feed has been updated at #{Time.now}." })
+        # json.pop if json.length > 5
+        # NewsModel.set(json.to_json)
+      rescue StandardError => e
+        NewsModel.news_error("Error contacting OpenC3 news feed. #{e.message}")
+      end
     end
 
     # Update the local copy of the plugin store data

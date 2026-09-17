@@ -75,8 +75,12 @@ if [ -f "${GEM_PATH}/uv.lock" ] && [ -f "${GEM_PATH}/pyproject.toml" ]; then
     cd "${VENV_BASE}"
     uv venv "${VENV_DIR}" --allow-existing
 
-    # Offline sync first, online only on a cache miss (bounded by UV_HTTP_*)
-    uv_offline_then_online sync --frozen --no-dev --no-install-project ${UV_ARGS}
+    # Offline sync first, online only on a cache miss (bounded by UV_HTTP_*).
+    # --inexact keeps sync additive: without it sync makes the venv match the
+    # lock exactly and uninstalls anything else, including packages an admin
+    # uploaded into this plugin venv via PythonPackageModel.install (which uses
+    # the additive `pipinstall`).
+    uv_offline_then_online sync --frozen --inexact --no-dev --no-install-project ${UV_ARGS}
     RESULT=$?
 
     if [ $RESULT -eq 0 ]; then
@@ -99,7 +103,10 @@ if [ -f "${GEM_PATH}/requirements.txt" ]; then
     RESULT=$?
 elif [ -f "${GEM_PATH}/pyproject.toml" ]; then
     echo "Installing from pyproject.toml via uv pip install"
-    uv_offline_then_online pip install --python "${VENV_DIR}" ${UV_ARGS} "${GEM_PATH}"
+    # --python: The Python interpreter into which packages should be installed.
+    # --project: Discover a project (i.e. pyproject.toml) in the given directory.
+    # -r: Install the packages listed in the given files.
+    uv_offline_then_online pip install --python "${VENV_DIR}" --project "${GEM_PATH}" ${UV_ARGS} -r "${GEM_PATH}/pyproject.toml"
     RESULT=$?
 
     # `uv pip install <path>` builds the plugin as a package before installing

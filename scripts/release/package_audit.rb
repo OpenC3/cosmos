@@ -27,23 +27,23 @@ traefik_version = get_docker_version("openc3-traefik/Dockerfile")
 valkey_version = get_docker_version("openc3-redis/Dockerfile")
 versitygw_version = get_docker_version("openc3-buckets/Dockerfile", arg: 'OPENC3_VERSITYGW_VERSION')
 tsdb_version = get_docker_version("openc3-tsdb/Dockerfile", arg: 'OPENC3_TSDB_VERSION')
-alpine_version = ENV.fetch('ALPINE_VERSION', '3.23')
-alpine_build = ENV.fetch('ALPINE_BUILD', '5')
+debian_release = ENV.fetch('DEBIAN_RELEASE', 'trixie')
+ruby_version = ENV.fetch('RUBY_VERSION', '3.4')
 
 # Manual list - MAKE SURE UP TO DATE especially base images
 containers = [
   # This should match the values in the .env file
-  { name: "openc3inc/openc3-ruby:#{version_tag}", base_image: "alpine:#{alpine_version}.#{alpine_build}", apk: true, gems: true, python: true },
-  { name: "openc3inc/openc3-node:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true },
-  { name: "openc3inc/openc3-base:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true, gems: true, python: true },
-  { name: "openc3inc/openc3-cosmos-cmd-tlm-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
-  { name: "openc3inc/openc3-cosmos-init:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true,
+  { name: "openc3inc/openc3-ruby:#{version_tag}", base_image: "ruby:#{ruby_version}-slim-#{debian_release}", apt: true, gems: true, python: true },
+  { name: "openc3inc/openc3-node:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apt: true },
+  { name: "openc3inc/openc3-base:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apt: true, gems: true, python: true },
+  { name: "openc3inc/openc3-cosmos-cmd-tlm-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apt: true, gems: true, python: true },
+  { name: "openc3inc/openc3-cosmos-init:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apt: true, gems: true, python: true,
     pnpm: ["/openc3/plugins/pnpm-lock.yaml"] },
-  { name: "openc3inc/openc3-operator:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
-  { name: "openc3inc/openc3-cosmos-script-runner-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
-  { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "valkey:#{valkey_version}", apk: true },
+  { name: "openc3inc/openc3-operator:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apt: true, gems: true, python: true },
+  { name: "openc3inc/openc3-cosmos-script-runner-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apt: true, gems: true, python: true },
+  { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "valkey:#{valkey_version}", apt: true },
   { name: "openc3inc/openc3-traefik:#{version_tag}", base_image: "traefik:#{traefik_version}", apk: true },
-  { name: "openc3inc/openc3-buckets:#{version_tag}", base_image: "alpine:#{alpine_version}.#{alpine_build}", apk: true },
+  { name: "openc3inc/openc3-buckets:#{version_tag}", base_image: "debian:#{debian_release}-slim", apt: true },
   { name: "openc3inc/openc3-tsdb:#{version_tag}", base_image: "tsdb:#{tsdb_version}", dnf: true },
 ]
 
@@ -58,7 +58,8 @@ summary_report = build_summary_report(containers)
 # Check for new versions of all third-party base images / binaries and prompt the
 # user to apply each update inline. The previous version of this script only
 # printed NOTEs; it now edits the Dockerfiles, .env, and build scripts.
-check_alpine(client)
+check_debian(client)
+check_node(client)
 check_container_version(client, containers, 'traefik')
 check_container_version(client, containers, 'redis') # valkey base image
 new_versitygw = check_versitygw(client, versitygw_version)
@@ -73,10 +74,6 @@ check_build_files(
   get_docker_version('openc3-traefik/Dockerfile')
 )
 
-base_pkgs = %w(import-map-overrides pinia single-spa systemjs vue vue-router vuetify)
-# FORCE=1 re-downloads the tool-base js/css even when it already matches
-# package.json (and downloads fresh when the existing file was deleted).
-check_tool_base('openc3-cosmos-init/plugins/packages/openc3-tool-base', base_pkgs, force: ENV['FORCE'] == '1')
 puts "\n*** If you update a container version re-run to ensure there aren't additional updates! ***\n\n"
 
 # Per-language outdated dependency prompts. Each helper enumerates outdated
@@ -95,6 +92,16 @@ update_outdated_requirements_txt(
   update_outdated_pnpm(File.join(__dir__, '..', '..', dir), client)
 end
 
+# The externalized (import map / <link>) copies of these packages live in
+# openc3-tool-base/public and are referenced by hardcoded filenames in
+# index.html, so nothing in the build validates them against package.json.
+# This has to run AFTER update_outdated_pnpm so it reads the versions that
+# were just accepted rather than the ones package.json had on entry.
+base_pkgs = %w(@astrouxds/astro-web-components import-map-overrides pinia single-spa systemjs vue vue-router vuetify)
+# FORCE=1 re-downloads the tool-base js/css even when it already matches
+# package.json (and downloads fresh when the existing file was deleted).
+check_tool_base('openc3-cosmos-init/plugins/packages/openc3-tool-base', base_pkgs, force: ENV['FORCE'] == '1')
+
 File.open("openc3_package_report.txt", "w") do |file|
   file.write(summary_report)
   file.write(report)
@@ -107,5 +114,3 @@ end
 # puts "cd openc3/templates/tool_react; pnpm install; pnpm update --interactive --latest; cd ../../.."
 # puts "cd openc3/templates/tool_angular; pnpm install; pnpm update --interactive --latest; cd ../../.."
 # puts "cd openc3/templates/tool_svelte; pnpm install; pnpm update --interactive --latest; cd ../../.."
-
-puts "\n\n*** If you update #{base_pkgs.join(', ')} then re-run! ***\n\n"

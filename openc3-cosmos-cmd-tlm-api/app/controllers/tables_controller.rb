@@ -16,6 +16,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'base64'
+require 'openc3/utilities/config_overlay'
 
 class TablesController < ApplicationController
   def index
@@ -188,7 +189,7 @@ class TablesController < ApplicationController
   # destroy) that funnels through TargetFile.create/destroy into the
   # targets_modified overlay. The cmd_tlm overlay
   # (targets_modified/<TARGET>/cmd_tlm/...) is loaded and executed as code by
-  # PacketConfig (ERB rendering + GENERIC_*_CONVERSION eval), so writing it
+  # PacketConfig (GENERIC_*_CONVERSION eval), so writing it
   # requires admin even though general Table Manager operations only require
   # 'system' (which under Enterprise RBAC every role down to Viewer holds).
   # This mirrors storage_controller#non_admin_config_overlay_write?, which gates
@@ -202,16 +203,9 @@ class TablesController < ApplicationController
   end
 
   # True if the overlay-relative name targets the cmd_tlm subtree (code-execution
-  # territory). The name must be canonical: a positional segment check (parts[1])
-  # can otherwise be bypassed by a name the object store normalizes differently,
-  # so empty '//', '.'/'..' segments, and leading/trailing slashes fail closed to
-  # the admin path. sanitize_params already neutralizes '..', backslashes, etc.
+  # territory). Canonical-name handling lives in OpenC3::ConfigOverlay so every
+  # overlay writer fails closed on the same inputs.
   def cmd_tlm_overlay?(name)
-    return true if name.nil? || name.empty?
-    return true if name.start_with?('/') || name.end_with?('/')
-    parts = name.split('/')
-    return true if parts.any? { |p| p.empty? || p == '.' || p == '..' }
-    # parts: <TARGET> / <area> / ...
-    parts[1] == 'cmd_tlm'
+    OpenC3::ConfigOverlay.cmd_tlm_overlay?(name)
   end
 end

@@ -183,8 +183,8 @@ push() {
 }
 
 clean_files() {
-  find . -type d -name "node_modules" -exec sh -c 'echo "Removing {}"; rm -rf "{}"' \;
-  find . -type d -name "coverage" -exec sh -c 'echo "Removing {}"; rm -rf "{}"' \;
+  find . -type d -name "node_modules" -exec sh -c 'echo "Removing $1"; rm -rf -- "$1"' sh {} \;
+  find . -type d -name "coverage" -exec sh -c 'echo "Removing $1"; rm -rf -- "$1"' sh {} \;
   # Prompt for removing pnpm-lock.yaml files
   find . -type f -name "pnpm-lock.yaml" -exec rm -i {} \;
   # Prompt for removing Gemfile.lock files
@@ -409,7 +409,7 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    docker run -it --rm --privileged --pid=host ${OPENC3_DEPENDENCY_REGISTRY}/alpine:${ALPINE_VERSION}.${ALPINE_BUILD} nsenter -t 1 -m -u -n -i sh
+    docker run -it --rm --privileged --pid=host ${OPENC3_DEPENDENCY_REGISTRY}/debian:${DEBIAN_RELEASE:-trixie}-slim nsenter -t 1 -m -u -n -i sh
     ;;
   * )
     usage $0

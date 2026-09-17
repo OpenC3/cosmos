@@ -12,6 +12,7 @@
 # All Rights Reserved
 */
 
+import type { Route } from '@playwright/test'
 import { test, expect } from './../fixture'
 import { format } from 'date-fns'
 
@@ -278,6 +279,65 @@ test('view instrumented script', async ({ page, utils }) => {
   await page.locator('text=Instrumented Script').click()
   await expect(page.locator('.v-dialog')).toContainText('binding')
   await page.locator('button:has-text("Ok")').click()
+})
+
+test('loads the script contents when connecting to a running script', async ({
+  page,
+  utils,
+  context,
+}) => {
+  // Park the script in 'waiting' so it stays connectable. The state it
+  // republishes about once a second is what drives the attach path under test.
+  await page
+    .locator('textarea')
+    .fill(`puts "CONNECT_MARKER"\nwait\nputs "done"`)
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    /waiting \d+s/,
+    { timeout: 20000 },
+  )
+  const filename = await page.locator('[data-test=filename] input').inputValue()
+
+  // Attach from a second page: it has never loaded this file, so connecting has
+  // to fetch the contents. That is the case where processLine caches an empty
+  // placeholder (so it doesn't slam the API) while the fetch is in flight.
+  const attachPage = await context.newPage()
+  // Go to a non-existent script first to prevent reloading the script cache
+  await attachPage.goto('/tools/scriptrunner/999')
+  await expect(attachPage.locator('.v-app-bar')).toContainText(
+    'Script Runner',
+    {
+      timeout: 20000,
+    },
+  )
+  const toast = attachPage.locator('[data-test=toast]', {
+    hasText: 'Running Script 999 not found',
+  })
+  await expect(toast).toBeVisible()
+  await toast.locator('button:has-text("Dismiss")').click()
+  // This automatically brings up the Running Scripts sheet, so we can connect to the running script
+  await attachPage.getByText('Running Scripts').click()
+  await attachPage.locator('[data-test=running-search] input').fill(filename)
+  await attachPage
+    .locator('[data-test=running-scripts]')
+    .getByRole('button', { name: 'Connect' })
+    .first()
+    .click()
+  await expect(attachPage.locator('[data-test=filename] input')).toHaveValue(
+    filename,
+  )
+
+  // The point of the test: the editor shows the running script, not an empty
+  // buffer.
+  await expect(attachPage.locator('.ace_content')).toContainText(
+    'CONNECT_MARKER',
+    { timeout: 25000 },
+  )
+  await attachPage.close()
+
+  // Don't leave the script running for the rest of the suite
+  await page.locator('[data-test=go-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
 })
 
 // Remaining menu items tested in other cosmos-script-runner tests

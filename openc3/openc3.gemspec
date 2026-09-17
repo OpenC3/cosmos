@@ -41,7 +41,7 @@ spec = Gem::Specification.new do |s|
   end
   s.required_ruby_version = '>= 3.0'
 
-  s.version = '7.3.1.pre.beta0'
+  s.version = '7.4.1.pre.beta0'
   s.license = "OpenC3"
 
   # Executables
@@ -108,6 +108,8 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'opentelemetry-instrumentation-rack', '~> 0.21'
   s.add_runtime_dependency 'opentelemetry-instrumentation-redis', '~> 0.24'
   s.add_runtime_dependency 'opentelemetry-sdk', '~> 1.2'
+  # resolv is a Ruby default gem but pin it explicitly: 0.7.2 fixes CVE-2026-80212
+  s.add_runtime_dependency 'resolv', '~> 0.7', '>= 0.7.2'
   s.add_runtime_dependency 'resolv-replace', '~> 0.2'
   s.add_runtime_dependency 'rufus-scheduler', '~> 3.8'
   s.add_runtime_dependency 'tzinfo-data', '~> 1.2023'
@@ -117,6 +119,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'listen', '~> 3.9'
 
   # Development Dependencies
+  s.add_development_dependency 'benchmark', '~> 0.5'
   s.add_development_dependency 'benchmark-ips', '~> 2.9'
   s.add_development_dependency 'faraday-follow_redirects', '~> 0.3'
   s.add_development_dependency 'flay', '~> 2.12'
@@ -129,11 +132,9 @@ spec = Gem::Specification.new do |s|
   s.add_development_dependency 'rspec-rails', '~> 8.0'
   s.add_development_dependency 'rspec_junit_formatter', '~> 0.4'
   s.add_development_dependency 'ruby-prof', '~> 2.0' if RUBY_ENGINE == 'ruby' # MRI Only
-  s.add_development_dependency 'simplecov', '~> 0.22'
+  s.add_development_dependency 'simplecov', '~> 1.1'
   s.add_development_dependency 'rexml', '3.4.4' # 3.4.2 throws an error. See https://github.com/ruby/rexml/issues/287
-  s.add_development_dependency 'simplecov-cobertura', '~> 3.0'
-  # simplecov_json_formatter formatter supports SonarQube
-  # s.add_development_dependency 'simplecov_json_formatter', '~> 0.1'
+  s.add_development_dependency 'simplecov-cobertura', '~> 4.0'
 
   s.post_install_message = "Thanks for installing OpenC3!\n"
   s.metadata['rubygems_mfa_required'] = 'true'

@@ -138,7 +138,7 @@ OPENC3_API_PASSWORD=password
 
 > CORE, ENTERPRISE
 
-The library can log much more of what is happening in the library. If you wish to enable this you can set the environment variable `OPENC3_LOG_LEVEL` to equal "DEBUG". If this is not set you will not get log messages if this is an incorrect log level you will get a ValueError.
+Sets the minimum level logged: `DEBUG`, `INFO`, `WARN`, `ERROR`, or `FATAL`. Logging at a level prints that level and everything above it, so `DEBUG` logs everything and `FATAL` logs almost nothing. Names are case insensitive. If the variable is unset the level is `INFO`; if it names something else the level is `INFO` and a warning is printed to stderr.
 
 Example:
 

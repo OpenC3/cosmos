@@ -558,9 +558,18 @@ class Structure:
                         case _:
                             return 62
                 else:
-                    return (length_value * item.variable_bit_size["length_bits_per_count"]) + item.variable_bit_size[
-                        "length_value_bit_offset"
-                    ]
+                    total_bit_size = (
+                        length_value * item.variable_bit_size["length_bits_per_count"]
+                    ) + item.variable_bit_size["length_value_bit_offset"]
+                    available_bit_size = (len(self._buffer) * 8) - item.bit_offset
+                    if total_bit_size < 0 or (
+                        not self.short_buffer_allowed
+                        and (available_bit_size < 0 or total_bit_size > available_bit_size)
+                    ):
+                        raise ValueError(
+                            f"Variable bit size {total_bit_size} for item {item.name} exceeds the {max(available_bit_size, 0)} bits available in the buffer"
+                        )
+                    return total_bit_size
             else:
                 raise RuntimeError(
                     f"Length value {item.variable_bit_size['length_item_name']} for item {item.name} is None"

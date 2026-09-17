@@ -229,6 +229,22 @@ def wait_for_first_topic_read(redis, thread, timeout=5):
     raise RuntimeError(f"Thread {thread.name} never read from its topics")
 
 
+def wait_for(condition, timeout=5, interval=0.005):
+    """Poll until condition() is truthy or timeout expires.
+
+    Call this instead of sleeping a fixed amount when waiting on a background
+    microservice thread to process telemetry. A sleep that is long enough on a
+    developer machine can be too short on a loaded CI runner, which makes the
+    assertion that follows it flaky. Does not assert on timeout: the caller's
+    assertion still runs so its failure message stays useful.
+    """
+    start = time.time()
+    while (time.time() - start) < timeout:
+        if condition():
+            return
+        time.sleep(interval)
+
+
 def capture_io():
     stdout = sys.stdout
     captured_output = io.StringIO()  # Create StringIO object

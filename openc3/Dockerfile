@@ -9,7 +9,9 @@ WORKDIR /openc3/
 
 USER ${USER_ID}:${GROUP_ID}
 
-COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} . .
+# --chmod=777 sets the mode as the files are copied so we don't need a later
+# recursive chmod (which would duplicate the whole tree into its own layer).
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 . .
 
 USER root
 
@@ -25,7 +27,11 @@ RUN mkdir -p lib/openc3/ext \
     && mkdir -p gems \
     && mv ./*.gem gems/. \
     && gem cleanup \
-    && rm -rf /usr/lib/ruby/gems/*/cache/* /var/cache/apk/* /tmp/* /var/tmp/*
+    && rm -rf /usr/local/lib/ruby/gems/*/cache/* /var/lib/apt/lists/* /var/cache/apt/* /tmp/* /var/tmp/* \
+    # Make root-created build output (compiled C extensions, moved gems)
+    # writable like the rest of the tree. Scoped so it doesn't copy the whole
+    # source tree into this layer.
+    && chmod -R 777 /openc3/lib /openc3/gems
 
 WORKDIR /openc3/python
 
@@ -37,24 +43,26 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock p
 # Seed UV cache to /openc3/uv_cache/ so system wheels are baked into the
 # image. At runtime, the operator copies this into /gems/uv/ (the volume)
 # so plugins can reuse these wheels without re-downloading.
-RUN --mount=type=cache,target=/root/.cache/uv \
-    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project
+#
+# Deliberately no --mount=type=cache on these uv steps. UV_CACHE_DIR has to
+# point at a real layer so the seed ships in the image, and a cache mount never
+# lands in one - so a mount here is dead weight (uv writes only to
+# UV_CACHE_DIR). Routing the sync through a mount and copying it into the seed
+# afterwards would bake wheels from unrelated past builds into the image, which
+# is exactly what verify-uv-cache.sh exists to prevent.
+RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project
 
 # Copy application code (excluding .venv from source)
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 
 # Install the application itself with dependencies already present
-RUN --mount=type=cache,target=/root/.cache/uv \
-    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev
-
+RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev
 
 WORKDIR /openc3/
 
 RUN mkdir /gems && chown openc3:openc3 /gems \
     && mkdir /plugins && chown openc3:openc3 /plugins \
-    && chmod -R 777 /gems/ \
-    && chmod -R 777 /plugins/ \
-    && chmod -R 777 /openc3/
+    && chmod 777 /gems /plugins /openc3
 
 ENV HOME=/openc3
 ENV XDG_CACHE_HOME=/tmp/.cache

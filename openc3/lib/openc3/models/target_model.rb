@@ -106,20 +106,17 @@ module OpenC3
       targets = self.all(scope: scope)
       targets.each { |_target_name, target| target['modified'] = false }
 
+      modified_targets = []
       if ENV['OPENC3_LOCAL_MODE']
-        modified_targets = OpenC3::LocalMode.modified_targets(scope: scope)
-        modified_targets.each do |target_name|
-          targets[target_name]['modified'] = true if targets[target_name]
-        end
-      else
-        modified_targets = Bucket.getClient().list_files(bucket: ENV['OPENC3_CONFIG_BUCKET'], path: "DEFAULT/targets_modified/", only_directories: true)
-        modified_targets.each do |target_name|
-          # A target could have been deleted without removing the modified files
-          # Thus we have to check for the existence of the target_name key
-          if targets.has_key?(target_name)
-            targets[target_name]['modified'] = true
-          end
-        end
+        modified_targets += OpenC3::LocalMode.modified_targets(scope: scope)
+      end
+      # Always list the bucket, even in local mode, since the local directory
+      # only holds what COSMOS itself wrote there
+      modified_targets += Bucket.getClient().list_files(bucket: ENV['OPENC3_CONFIG_BUCKET'], path: "#{scope}/targets_modified/", only_directories: true)
+      modified_targets.each do |target_name|
+        # A target could have been deleted without removing the modified files
+        # Thus we have to check for the existence of the target_name key
+        targets[target_name]['modified'] = true if targets[target_name]
       end
       # Sort (which turns hash to array) and return hash
       # This enables a consistent listing of the targets
@@ -184,25 +181,33 @@ module OpenC3
     end
 
     # Given target's modified file list
+    # Returns the modified files as names relative to the scope,
+    # i.e. "INST/procedures/new.rb"
     def self.modified_files(target_name, scope:)
       modified = []
 
       if ENV['OPENC3_LOCAL_MODE']
-        modified = OpenC3::LocalMode.modified_files(target_name, scope: scope)
-      else
-        resp = Bucket.getClient().list_objects(
-          bucket: ENV['OPENC3_CONFIG_BUCKET'],
-          # The trailing slash is important!
-          prefix: "#{scope}/targets_modified/#{target_name}/",
-        )
-        resp.each do |item|
-          # Results look like DEFAULT/targets_modified/INST/procedures/new.rb
-          # so split on '/' and ignore the first two values
-          modified << item.key.split('/')[2..-1].join('/')
+        # LocalMode reports target relative paths, i.e. "procedures/new.rb",
+        # so add the target name to match the bucket listing below
+        modified += OpenC3::LocalMode.modified_files(target_name, scope: scope).map do |file_path|
+          "#{target_name}/#{file_path}"
         end
       end
+      # Always list the bucket, even in local mode. The local directory only
+      # holds what COSMOS itself wrote there, so a file placed directly in the
+      # bucket is modified but has no local copy.
+      resp = Bucket.getClient().list_objects(
+        bucket: ENV['OPENC3_CONFIG_BUCKET'],
+        # The trailing slash is important!
+        prefix: "#{scope}/targets_modified/#{target_name}/",
+      )
+      resp.each do |item|
+        # Results look like DEFAULT/targets_modified/INST/procedures/new.rb
+        # so split on '/' and ignore the first two values
+        modified << item.key.split('/')[2..-1].join('/')
+      end
       # Sort to enable a consistent listing of the modified files
-      modified.sort
+      modified.uniq.sort
     end
 
     # files: optional list of specific modified files to delete, each a name

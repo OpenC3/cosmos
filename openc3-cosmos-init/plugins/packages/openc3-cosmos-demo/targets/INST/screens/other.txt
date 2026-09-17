@@ -2,8 +2,13 @@ SCREEN 500 200 1.0
 
 SCROLLWINDOW 200
 
-  # Change the title font to 10 pt courier without bold and make it italic
-  TITLE "<%= target_name %> Other Widget Examples" courier 10 normal true
+  # TITLE only takes the text. Style it with SETTING RAW, which is how the
+  # COSMOS 4 font parameters (10 pt courier, not bold, italic) are done now.
+  TITLE "<%= target_name %> Other Widget Examples"
+    SETTING RAW font-family Courier
+    SETTING RAW font-size 10pt
+    SETTING RAW font-weight normal
+    SETTING RAW font-style italic
 
   HORIZONTAL
     LABEL "TestText œ © ®" # Throw in some UTF-8 chars

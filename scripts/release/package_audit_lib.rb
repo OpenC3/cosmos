@@ -16,6 +16,7 @@
 
 require 'open3'
 require 'fileutils'
+require 'tmpdir'
 require 'json'
 require 'yaml'
 require 'time'
@@ -414,87 +415,253 @@ def build_report(containers)
   report
 end
 
-def check_alpine(client)
-  current_version = ENV.fetch('ALPINE_VERSION')
-  current_build = ENV.fetch('ALPINE_BUILD')
-  major, minor = current_version.split('.').map(&:to_i)
+# The current point release of a Debian suite, e.g. "13.7" for trixie today.
+# It is the `Version:` field of the archive's signed Release file. Returns nil
+# if the archive is unreachable or the field is missing - a release audit
+# should report that, not die on it.
+def debian_point_release(client, release)
+  resp = client.get("https://deb.debian.org/debian/dists/#{release}/Release")
+  return nil unless resp.status == 200
+  resp.body[/^Version:\s*(\S+)/, 1]
+rescue StandardError => e
+  puts "WARN: Could not read the Debian '#{release}' Release file: #{e.message}"
+  nil
+end
 
-  resp = client.get('http://dl-cdn.alpinelinux.org/alpine/').body
-  # Anchor-based parse so we don't false-positive on substrings (file dates, sizes, etc.).
-  available_minors = resp.scan(/href="v(\d+\.\d+)\/"/).flatten
-  unless available_minors.include?(current_version)
-    puts "ERROR: Could not find Alpine build: #{current_version}"
-    return
+def check_debian(client)
+  release = ENV.fetch('DEBIAN_RELEASE')
+  ruby_version = ENV.fetch('RUBY_VERSION')
+
+  # Verify the pinned base image tags actually exist on Docker Hub
+  ruby_tag = "#{ruby_version}-slim-#{release}"
+  unless docker_tag_exists?(client, 'library/ruby', ruby_tag)
+    puts "ERROR: Could not find ruby image tag: #{ruby_tag}"
+  end
+  debian_tag = "#{release}-slim"
+  unless docker_tag_exists?(client, 'library/debian', debian_tag)
+    puts "ERROR: Could not find debian image tag: #{debian_tag}"
   end
 
-  # A directory under /alpine/ can exist before any release is cut. Only treat
-  # a candidate as a real upgrade once an alpine-virt ISO has been published.
-  alpine_release_published = lambda do |ver|
-    listing = client.get("http://dl-cdn.alpinelinux.org/alpine/v#{ver}/releases/armv7/").body
-    listing.match?(/alpine-virt-#{Regexp.escape(ver)}\.\d+-armv7\.iso/)
-  rescue StandardError
-    false
+  # Check for a newer Ruby minor/major line built on the same Debian release.
+  # Ruby uses rolling "X.Y-slim-<release>" tags, so there is no patch to bump.
+  major, minor = ruby_version.split('.').map(&:to_i)
+  new_ruby = nil
+  [[major, minor + 1], [major + 1, 0]].each do |mj, mn|
+    candidate = "#{mj}.#{mn}"
+    if docker_tag_exists?(client, 'library/ruby', "#{candidate}-slim-#{release}")
+      new_ruby = candidate
+      break
+    end
+  end
+  puts "NOTE: Ruby has a newer version available: #{new_ruby} (current #{ruby_version})" if new_ruby
+
+  # Debian stable releases roll on a multi-year cadence and require manual review
+  # of the release notes (codenames don't sort by version), so just remind.
+  puts "NOTE: Building on Debian '#{release}'. Verify it is still the current stable release: https://www.debian.org/releases/"
+
+  # The base image tags are rolling and carry no point release, and Docker
+  # Official Images lags a point release by days or weeks, so DEBIAN_POINT_RELEASE
+  # is what actually decides which one we ship: it busts the apt layer cache in
+  # the Debian Dockerfiles and those builds assert they reached it. Nothing else
+  # notices when Debian rolls one, hence this check.
+  point_release = ENV.fetch('DEBIAN_POINT_RELEASE', nil)
+  current_point = debian_point_release(client, release)
+  if current_point.nil?
+    puts "WARN: Could not determine the current Debian '#{release}' point release"
+  elsif point_release.nil? || point_release.empty?
+    puts "ERROR: DEBIAN_POINT_RELEASE is not set in .env (Debian '#{release}' is at #{current_point})"
+  elsif point_release != current_point
+    puts "NOTE: Debian '#{release}' is at point release #{current_point}, building #{point_release}"
+    if prompt_update?("Update Debian point release from #{point_release} to #{current_point}?", point_release, current_point)
+      update_debian_files('DEBIAN_POINT_RELEASE', current_point)
+    end
   end
 
-  new_major_candidate = available_minors.find { |v| v.start_with?("#{major + 1}.") }
-  new_major = new_major_candidate if new_major_candidate && alpine_release_published.call(new_major_candidate)
-  puts "NOTE: Alpine has a new major version: #{new_major}. Read release notes at https://wiki.alpinelinux.org/wiki/Release_Notes_for_Alpine_#{new_major}.0" if new_major
-
-  next_minor = "#{major}.#{minor + 1}"
-  new_minor = next_minor if available_minors.include?(next_minor) && alpine_release_published.call(next_minor)
-  puts "NOTE: Alpine has a new minor version: #{new_minor}. Read release notes at https://alpinelinux.org/posts/Alpine-#{new_minor}.0-released.html" if new_minor
-
-  arm_resp = client.get("http://dl-cdn.alpinelinux.org/alpine/v#{current_version}/releases/armv7").body
-  next_build = current_build.to_i + 1
-  new_patch_build = arm_resp.include?("alpine-virt-#{current_version}.#{next_build}-armv7.iso") ? next_build.to_s : nil
-  puts "NOTE: Alpine has a new patch version: #{current_version}.#{new_patch_build}" if new_patch_build
-
-  unless arm_resp.include?("alpine-virt-#{current_version}.#{current_build}-armv7.iso")
-    puts "ERROR: Could not find Alpine build: #{current_version}.#{current_build}"
-  end
-
-  # Verify the roadmap.md documents the current Alpine version
+  # Verify the roadmap.md documents the current Debian release
   roadmap_path = File.join(ROOT_DIR, 'docs.openc3.com/docs/development/roadmap.md')
   if File.exist?(roadmap_path)
     roadmap = File.read(roadmap_path)
-    unless roadmap.include?("Alpine-#{current_version}")
-      puts "WARN: roadmap.md Alpine version does not match ALPINE_VERSION=#{current_version}. Update the Alpine version in docs.openc3.com/docs/development/roadmap.md"
+    unless roadmap.include?("Debian release is [#{release}]")
+      puts "WARN: roadmap.md does not mention Debian #{release}. Update the base OS version in docs.openc3.com/docs/development/roadmap.md"
     end
   else
     puts "WARN: Could not find roadmap.md at #{roadmap_path}"
   end
 
-  # Prompt for upgrades; prefer highest (major > minor > patch build)
-  target_version = new_major || new_minor || current_version
-  target_build = (new_major || new_minor) ? '0' : (new_patch_build || current_build)
-  return if target_version == current_version && target_build == current_build
-
-  if prompt_update?(
-    "Update Alpine from #{current_version}.#{current_build} to #{target_version}.#{target_build}?",
-    "#{current_version}.#{current_build}",
-    "#{target_version}.#{target_build}"
-  )
-    update_alpine_files(target_version, target_build)
+  return unless new_ruby
+  if prompt_update?("Update Ruby from #{ruby_version} to #{new_ruby}?", ruby_version, new_ruby)
+    update_debian_files('RUBY_VERSION', new_ruby)
   end
 end
 
-def update_alpine_files(new_version, new_build)
-  env_path = File.join(ROOT_DIR, '.env')
-  update_key_value(env_path, 'ALPINE_VERSION', new_version)
-  update_key_value(env_path, 'ALPINE_BUILD', new_build)
-  # Dockerfiles that pin Alpine as a default ARG
+# Update a build variable (RUBY_VERSION or DEBIAN_RELEASE) in the .env and any
+# Dockerfile that pins it as a default ARG, then reload the in-process ENV.
+def update_debian_files(key, new_value)
+  update_key_value(File.join(ROOT_DIR, '.env'), key, new_value)
   Dir.glob(File.join(ROOT_DIR, '**', 'Dockerfile*')).each do |path|
-    next unless File.read(path).match?(/^ARG\s+ALPINE_(VERSION|BUILD)=/)
-    update_key_value(path, 'ALPINE_VERSION', new_version)
-    update_key_value(path, 'ALPINE_BUILD', new_build)
+    next unless File.read(path).match?(/^ARG\s+#{Regexp.escape(key)}=/)
+    update_key_value(path, key, new_value)
   end
-  # Reload the in-process ENV so subsequent checks see the new value
-  ENV['ALPINE_VERSION'] = new_version
-  ENV['ALPINE_BUILD'] = new_build
+  ENV[key] = new_value
   puts "  NOTE: also update docs.openc3.com/docs/development/roadmap.md and openc3-ruby/Dockerfile-ubi if needed"
 end
 
 # Returns the new version selected by the user (and applied), or nil
+# npm ships its whole dependency tree inside its published tarball, so what
+# openc3-node is exposed to is whatever those bundled copies are - no lockfile
+# in this repo controls them. These are the ones that have carried advisories.
+NPM_BUNDLED_DEPS = %w[brace-expansion ip-address tar undici].freeze
+
+# Versions of NPM_BUNDLED_DEPS inside the published npm tarball, e.g.
+# {"tar" => "7.5.22", ...}. npm can ship more than one copy of a dep; the
+# oldest is reported, since that is the copy that decides the exposure.
+# Returns nil if the tarball cannot be fetched or unpacked.
+def npm_bundled_deps(version)
+  Dir.mktmpdir do |dir|
+    tgz = File.join(dir, 'npm.tgz')
+    url = "https://registry.npmjs.org/npm/-/npm-#{version}.tgz"
+    unless system('curl', '-sfL', url, '-o', tgz, out: File::NULL, err: File::NULL)
+      puts "WARN: Could not download #{url}"
+      return nil
+    end
+    unless system('tar', 'xzf', tgz, '-C', dir, out: File::NULL, err: File::NULL)
+      puts "WARN: Could not unpack the npm #{version} tarball"
+      return nil
+    end
+    NPM_BUNDLED_DEPS.to_h do |dep|
+      found = Dir.glob(File.join(dir, 'package', '**', 'node_modules', dep, 'package.json')).filter_map do |path|
+        begin
+          JSON.parse(File.read(path))['version']
+        rescue JSON::ParserError
+          nil
+        end
+      end
+      [dep, found.min_by { |v| Gem::Version.new(v) }]
+    end
+  end
+end
+
+# The bundled deps `candidate` moves BACKWARDS relative to `baseline`, as
+# "tar 7.5.19 < 7.5.22" strings. Empty means the bump is safe to take.
+#
+# This is why npm cannot be audited by recency like every other pin in this
+# file. npm 12.0.2 is the newest npm and bundles OLDER brace-expansion,
+# ip-address and tar than 11.19.1 does, so "take the latest" would quietly
+# reintroduce the advisories openc3-node is pinned to escape.
+def npm_bundled_regressions(baseline, candidate)
+  NPM_BUNDLED_DEPS.filter_map do |dep|
+    old = baseline[dep]
+    new = candidate[dep]
+    # A dep npm stopped bundling is not a regression - the exposure is gone.
+    next if old.nil? || new.nil?
+    next if Gem::Version.new(new) >= Gem::Version.new(old)
+    "#{dep} #{new} < #{old}"
+  end
+end
+
+def describe_bundled(deps)
+  deps.map { |dep, version| "#{dep} #{version || '(not bundled)'}" }.join(', ')
+end
+
+# openc3-node pins three things by hand - the node runtime, npm and pnpm - and
+# nothing else in this audit looks at that Dockerfile.
+def check_node(client)
+  dockerfile = File.join(ROOT_DIR, 'openc3-node/Dockerfile')
+  check_node_runtime(client, dockerfile)
+  check_npm(client, dockerfile)
+  check_pnpm(client, dockerfile)
+end
+
+# Stay on the pinned major: it is an LTS line, and moving off it is a deliberate
+# decision rather than something to accept mid-audit.
+def check_node_runtime(client, dockerfile)
+  current = get_docker_version(dockerfile, arg: 'NODE_VERSION')
+  return puts("WARN: NODE_VERSION not found in openc3-node/Dockerfile") if current.nil?
+  puts "Checking node against version: #{current}"
+  resp = client.get('https://nodejs.org/dist/index.json')
+  return puts("WARN: Could not read https://nodejs.org/dist/index.json") unless resp.status == 200
+  major = current.split('.').first
+  newest = JSON.parse(resp.body)
+               .map { |release| release['version'].to_s.sub(/\Av/, '') }
+               .select { |v| v.split('.').first == major && !v.include?('-') }
+               .max_by { |v| Gem::Version.new(v) }
+  if newest.nil? || newest == current
+    puts "node is up to date with #{current}"
+    return
+  end
+  puts "NOTE: node #{major}.x has a newer release: #{newest}, Current Version: #{current}"
+  return unless prompt_update?("Update node from #{current} to #{newest}?", current, newest)
+  update_key_value(dockerfile, 'NODE_VERSION', newest)
+end
+
+# Only two candidates are ever worth weighing: the newest npm overall and the
+# newest on the pinned major. Each one costs a tarball download to inspect, and
+# a candidate is offered only if it regresses none of NPM_BUNDLED_DEPS.
+def check_npm(client, dockerfile)
+  current = get_docker_version(dockerfile, arg: 'NPM_VERSION')
+  return puts("WARN: NPM_VERSION not found in openc3-node/Dockerfile") if current.nil?
+  puts "Checking npm against version: #{current}"
+  resp = client.get('https://registry.npmjs.org/npm')
+  return puts("WARN: Could not read the npm registry metadata") unless resp.status == 200
+  released = JSON.parse(resp.body)['versions'].keys.reject { |v| v.include?('-') }
+  newer = released.select { |v| Gem::Version.new(v) > Gem::Version.new(current) }
+  if newer.empty?
+    puts "npm is up to date with #{current}"
+    return
+  end
+
+  baseline = npm_bundled_deps(current)
+  return puts("WARN: Could not inspect the bundled dependencies of npm #{current}") if baseline.nil?
+  puts "  npm #{current} bundles #{describe_bundled(baseline)}"
+
+  major = current.split('.').first
+  candidates = [
+    newer.max_by { |v| Gem::Version.new(v) },
+    newer.select { |v| v.split('.').first == major }.max_by { |v| Gem::Version.new(v) },
+  ].compact.uniq.sort_by { |v| Gem::Version.new(v) }.reverse
+
+  candidates.each do |candidate|
+    deps = npm_bundled_deps(candidate)
+    next if deps.nil?
+    regressions = npm_bundled_regressions(baseline, deps)
+    if regressions.any?
+      puts "NOTE: npm #{candidate} is newer but bundles older #{regressions.join(', ')} - not offering it"
+      next
+    end
+    puts "NOTE: npm has a newer version: #{candidate}, Current Version: #{current}"
+    puts "  npm #{candidate} bundles #{describe_bundled(deps)}"
+    next unless prompt_update?("Update npm from #{current} to #{candidate}?", current, candidate)
+    update_key_value(dockerfile, 'NPM_VERSION', candidate)
+    return
+  end
+  puts "npm stays at #{current}"
+end
+
+# pnpm is pinned in both node Dockerfiles and they have to agree - the UBI image
+# is the same tool on a different base.
+def check_pnpm(client, dockerfile)
+  ubi = File.join(ROOT_DIR, 'openc3-node/Dockerfile-ubi')
+  current = get_docker_version(dockerfile, arg: 'PNPM_VERSION')
+  return puts("WARN: PNPM_VERSION not found in openc3-node/Dockerfile") if current.nil?
+  ubi_pinned = File.read(ubi)[/^ARG\s+PNPM_VERSION=(\S+)/, 1]
+  if ubi_pinned && ubi_pinned != current
+    puts "WARN: Dockerfile-ubi pins pnpm #{ubi_pinned} but Dockerfile pins #{current}; both get set from Dockerfile"
+  end
+  puts "Checking pnpm against version: #{current}"
+  resp = client.get('https://registry.npmjs.org/pnpm')
+  return puts("WARN: Could not read the pnpm registry metadata") unless resp.status == 200
+  major = current.split('.').first
+  newest = JSON.parse(resp.body).dig('dist-tags', "latest-#{major}")
+  if newest.nil? || newest == current
+    puts "pnpm is up to date with #{current}"
+    return
+  end
+  puts "NOTE: pnpm #{major}.x has a newer release: #{newest}, Current Version: #{current}"
+  return unless prompt_update?("Update pnpm from #{current} to #{newest}?", current, newest)
+  update_key_value(dockerfile, 'PNPM_VERSION', newest)
+  update_key_value(ubi, 'PNPM_VERSION', newest)
+end
+
 def check_versitygw(client, versitygw_version)
   puts "Checking versitygw against version: #{versitygw_version}"
   resp = client.get('https://api.github.com/repos/versity/versitygw/releases').body
@@ -766,12 +933,27 @@ def check_anycable(client, container_name)
   anycable = `docker run --rm #{container_name} /usr/bin/anycable-go --version`.strip
   puts "Raw anycable-go version: #{anycable}"
   any_cable_version = anycable.split('version:')[-1].split('-')[0].strip
+  # A fourth version component means this is one of our own anycable-go builds,
+  # never an upstream release: every anycable/anycable release back to v0.5.0 is
+  # three-part. 1.6.16.1 is built from anycable/anycable#334 while that PR is
+  # unmerged. Audit such a build against the release it was cut from.
+  #
+  # Without this the pin is simply invisible to the audit: validate_versions
+  # returns [] for a current version missing from the tag list, so it reports
+  # the intentional pin as a missing image AND never offers an upgrade - not
+  # even once a later release lands, because the check that bails is on the
+  # CURRENT version. Its candidate regex would also read ".1" as the suffix and
+  # carry it into every candidate (v1.6.17.1 and friends, which do not exist).
+  audit_version = any_cable_version.sub(/\A(\d+\.\d+\.\d+)\.\d+\z/, '\\1')
+  if audit_version != any_cable_version
+    puts "  anycable-go #{any_cable_version} is a custom OpenC3 build; auditing against v#{audit_version}"
+  end
   # The anycable-go binaries ship as release assets on the anycable/anycable repo
   # (the anycable-go repo's own tags lag behind).
   resp = client.get('https://api.github.com/repos/anycable/anycable/releases?per_page=30').body
   releases = JSON.parse(resp)
   versions = releases.map { |r| r['tag_name'] }.compact.reject { |v| v.include?('-') }
-  candidates = validate_versions(versions, "v#{any_cable_version}", 'anycable-go')
+  candidates = validate_versions(versions, "v#{audit_version}", 'anycable-go')
   new_version = prompt_for_upgrade('anycable-go (will download binaries)', "v#{any_cable_version}", candidates)
   return nil unless new_version
   ver = new_version.sub(/^v/, '')
@@ -787,6 +969,29 @@ def check_anycable(client, container_name)
     puts "  Updated anycable-go binaries to #{new_version}"
   end
   new_version
+end
+
+# Packages whose only vendored browser artifact is a stylesheet in public/css
+# rather than a script in public/js. The key is the package.json name (scoped
+# names included), the value is the basename used on disk and in index.html.
+CSS_ONLY_PKGS = {
+  '@astrouxds/astro-web-components' => 'astro-web-components',
+}
+
+# The basename a package is vendored under in public/js or public/css. vue and
+# vuetify don't ship the build we want under their own name, and the css-only
+# packages drop their npm scope. Every place that has to build or match a
+# vendored filename goes through here so index.html, importmap.json and the
+# downloader can't disagree about what the file is called.
+def tool_base_asset_name(package)
+  case package
+  when 'vue'
+    'vue.runtime.global.prod'
+  when 'vuetify'
+    'vuetify-labs'
+  else
+    CSS_ONLY_PKGS[package] || package
+  end
 end
 
 def check_tool_base(path, base_pkgs, force: false)
@@ -811,16 +1016,15 @@ def check_tool_base(path, base_pkgs, force: false)
       `curl https://cdnjs.cloudflare.com/ajax/libs/MaterialDesign-Webfont/#{latest}/fonts/materialdesignicons-webfont.woff2 --output public/fonts/materialdesignicons-webfont.woff2`
       FileUtils.rm(existing)
 
-      # Now update the files with references to materialdesignicons
-      files = ["public/index.html"]
-      # The base also has to update index.html in openc3-tool-base
-      files << "../packages/openc3-tool-base/public/index.html" unless path.include?('enterprise')
-      files.each do |filename|
-        html = File.read(filename)
-        html.gsub!(/materialdesignicons-.+\.min\.css/, "materialdesignicons-#{latest}.min.css")
-        html.gsub!(/woff2\?v=.+/, "woff2?v=#{latest}")
-        File.open(filename, 'w') {|file| file.puts html }
-      end
+      # Now update the index.html references to materialdesignicons. Both core
+      # and enterprise have exactly one, at public/index.html relative to the
+      # tool-base this was called with.
+      html = File.read("public/index.html")
+      html.gsub!(/materialdesignicons-.+\.min\.css/, "materialdesignicons-#{latest}.min.css")
+      # Stop at the closing quote: `.+` is greedy to end of line and ate it,
+      # leaving an unterminated href attribute.
+      html.gsub!(/woff2\?v=[^"]+/, "woff2?v=#{latest}")
+      File.open("public/index.html", 'w') {|file| file.puts html }
     end
 
     # Ensure various js files match their package.json versions
@@ -837,21 +1041,18 @@ def check_tool_base(path, base_pkgs, force: false)
     end
     packages.each do |package, latest|
       # vue and vuetify are special cases due to the package names
-      alt_package = package
-      if package == 'vue'
-        alt_package = 'vue.runtime.global.prod'
-      elsif package == 'vuetify'
-        alt_package = 'vuetify-labs'
-      end
+      alt_package = tool_base_asset_name(package)
+      # css-only packages live in public/css, everything else in public/js
+      dir = CSS_ONLY_PKGS[package] ? 'css' : 'js'
       # Ensure we're only matching package names followed by numbers
       # This prevents vue- from matching vue-router-
-      existing = Dir["public/js/#{alt_package}-[0-9]*"][0]
+      existing = Dir["public/#{dir}/#{alt_package}-[0-9]*"][0]
       if !latest
         puts "ERROR: Could not find latest version for #{package} in #{Dir.pwd}/package.json"
         next
       end
       if !existing && !force
-        puts "ERROR: Could not find existing package #{alt_package} in #{Dir.pwd}/public/js (use FORCE=1 to download it fresh)"
+        puts "ERROR: Could not find existing package #{alt_package} in #{Dir.pwd}/public/#{dir} (use FORCE=1 to download it fresh)"
         next
       end
       existing_version = existing.to_s[/(\d+\.\d+\.\d+)/, 1]
@@ -918,6 +1119,17 @@ def check_tool_base(path, base_pkgs, force: false)
           outfile = "public/js/#{package}-#{latest}.min.js"
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.global.prod.js --output #{outfile}`
           validate_outfile(outfile, package, latest)
+        when '@astrouxds/astro-web-components'
+          # Only the global stylesheet (design tokens, .rux-* utility classes and
+          # the :not(:defined) pre-hydration rules) has to be vendored. The
+          # per-component styles ride along in the shadow DOM from the npm
+          # package that main.js loads via defineCustomElements(), so nothing
+          # here validates this file against package.json -- a stale copy drifts
+          # silently, which is why the audit keeps it in sync. Stencil publishes
+          # it unminified, so there is no .min in the filename.
+          outfile = "public/css/#{alt_package}-#{latest}.css"
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{alt_package}/#{alt_package}.css --output #{outfile}`
+          validate_outfile(outfile, package, latest)
         else
           outfile = "public/js/#{package}-#{latest}.min.js"
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/#{package}.min.js --output #{outfile}`
@@ -926,8 +1138,12 @@ def check_tool_base(path, base_pkgs, force: false)
         FileUtils.rm_f existing if existing && !version_matches
         # Now update the public/index.html with references to <package>-<version>.min.js
         html = File.read("public/index.html")
-        html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")
-        html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.css/, "#{alt_package}-#{latest}.min.css")
+        if CSS_ONLY_PKGS[package]
+          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.css/, "#{alt_package}-#{latest}.css")
+        else
+          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.js/, "#{alt_package}-#{latest}.min.js")
+          html.gsub!(/#{alt_package}-\d+\.\d+\.\d+\.min\.css/, "#{alt_package}-#{latest}.min.css")
+        end
         File.open("public/index.html", 'w') {|file| file.puts html }
         if package == 'keycloak-js'
           html = File.read('public/js/auth.js')
@@ -936,11 +1152,67 @@ def check_tool_base(path, base_pkgs, force: false)
         end
       end
     end
-    # The SystemJS import map is a separate file from index.html so it has to be
-    # updated as well. Sync it unconditionally (not just on an accepted prompt)
+    # index.html, auth.js and the SystemJS import map are all separate from the
+    # downloaded files, so a run that was interrupted (or declined) between the
+    # download and the rewrite leaves them pointing at a version that is no
+    # longer on disk -- which the browser only reports as a SystemJS Error#3 at
+    # runtime. Sync all three unconditionally, not just on an accepted prompt,
     # so a previously missed update is repaired on the next run.
+    sync_versioned_refs(packages)
+    sync_versioned_refs(packages, path: 'public/js/auth.js')
     sync_importmap(packages)
+    verify_tool_base_refs
   end
+end
+
+# Rewrite the hardcoded <package>-<version> filenames in an html/js file so
+# they match the versions in package.json. The download loop already does this
+# for a package it just downloaded; running it unconditionally repairs a file
+# that was left behind because an earlier run died (or was Ctrl-C'd) after the
+# download but before the rewrite.
+# packages is a Hash of package name => version (from package.json)
+def sync_versioned_refs(packages, path: 'public/index.html')
+  return unless File.exist?(path)
+  html = File.read(path)
+  changed = false
+  packages.each do |package, latest|
+    next unless latest
+    asset = tool_base_asset_name(package)
+    # Only rewrite once the file the new reference points at is actually on
+    # disk, otherwise a failed download would swap a working reference for a
+    # 404. Each package uses exactly one of these shapes, and vuetify uses two
+    # (the labs js and its stylesheet).
+    [['js', '.min.js'], ['css', '.min.css'], ['css', '.css']].each do |dir, ext|
+      target = "#{asset}-#{latest}#{ext}"
+      next unless File.exist?(File.join('public', dir, target))
+      updated = html.gsub(/#{Regexp.escape(asset)}-\d+\.\d+\.\d+#{Regexp.escape(ext)}/, target)
+      next if updated == html
+      html = updated
+      changed = true
+      puts "  Updated #{path}: #{package} => #{target}"
+    end
+  end
+  File.write(path, html) if changed
+end
+
+# Last line of defense: every /js/... and /css/... reference in the tool-base
+# entry points has to resolve to a file we actually vendored. A dangling one is
+# invisible until the browser fails to boot, so fail loudly here instead.
+# Returns the list of errors so callers can decide whether to keep going.
+def verify_tool_base_refs(paths: ['public/index.html', 'public/js/importmap.json', 'public/js/auth.js'])
+  errors = []
+  paths.each do |path|
+    next unless File.exist?(path)
+    # Only local absolute references in quotes -- skips CDN urls and anything
+    # with a cache-busting query string (the font files).
+    File.read(path).scan(%r{["'](/(?:js|css)/[^"'?]+)["']}).flatten.uniq.each do |ref|
+      local = File.join('public', ref.sub(%r{\A/}, ''))
+      errors << "ERROR: #{Dir.pwd}/#{path} references #{ref} but #{local} doesn't exist" unless File.exist?(local)
+    end
+  end
+  errors.each { |error| puts error }
+  puts "ERROR: tool-base references are broken, the browser will fail to load" unless errors.empty?
+  errors
 end
 
 # Update public/js/importmap.json so every import points at the versioned file

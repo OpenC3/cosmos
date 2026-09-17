@@ -938,9 +938,61 @@ module OpenC3
         # Buffer is too short to contain the 32 bit LENGTH item, so LENGTH reads nil
         expect { s.buffer = "\x00\x01" }.to raise_error(/Length value LENGTH for item DATA is nil/)
       end
+
+      it "rejects a variable size that moves a trailing item outside the packet buffer" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("LENGTH", 32, :UINT)
+        item = s.append_item("DATA", 8, :UINT, 0)
+        item.variable_bit_size = {'length_item_name' => 'LENGTH', 'length_bits_per_count' => 8, 'length_value_bit_offset' => 0}
+        s.set_item(item)
+        s.append_item("TRAILER", 32, :UINT)
+
+        # This length would move TRAILER to bit offset 0x80000000. Before the
+        # native bounds fix, reading it overflowed the ending-byte calculation.
+        # Without ALLOW_SHORT the packet must be rejected outright.
+        expect { s.buffer = [268_435_452, 0].pack("N2") }.to raise_error(
+          ArgumentError,
+          /Variable bit size 2147483616 for item DATA exceeds the 32 bits available in the buffer/
+        )
+      end
+
+      it "returns nil when a variable size moves a trailing item outside the packet buffer" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("LENGTH", 32, :UINT)
+        item = s.append_item("DATA", 8, :UINT, 0)
+        item.variable_bit_size = {'length_item_name' => 'LENGTH', 'length_bits_per_count' => 8, 'length_value_bit_offset' => 0}
+        s.set_item(item)
+        s.append_item("TRAILER", 32, :UINT)
+        s.short_buffer_allowed = true
+
+        # This length moves TRAILER beyond the native signed-int range. A short
+        # packet should still be accepted, and both unavailable items should be
+        # reported as nil without reaching the native accessor.
+        s.buffer = [268_435_452, 0].pack("N2")
+
+        expect(s.read("DATA")).to be_nil
+        expect(s.read("TRAILER")).to be_nil
+      end
     end
 
     describe "short_buffer_allowed" do
+      it "returns nil for a truncated variable_bit_size item when short_buffer_allowed is true" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("LENGTH", 32, :UINT)
+        item = s.append_item("DATA", 8, :UINT, 0)
+        item.variable_bit_size = {'length_item_name' => 'LENGTH', 'length_bits_per_count' => 8, 'length_value_bit_offset' => 0}
+        s.set_item(item)
+        s.short_buffer_allowed = true
+
+        # LENGTH is present and says DATA contains two bytes, but only one byte
+        # of DATA was received. ALLOW_SHORT should preserve the short buffer and
+        # make the truncated item unreadable rather than reject the packet.
+        s.buffer = [2].pack("N") + "\xAA"
+
+        expect(s.read("DATA")).to be_nil
+        expect(s.buffer.length).to eq(5)
+      end
+
       it "returns nil for items outside buffer bounds when short_buffer_allowed is true" do
         s = Structure.new(:BIG_ENDIAN)
         s.append_item("item1", 16, :UINT)
@@ -963,6 +1015,98 @@ module OpenC3
         s.append_item("item1", 16, :UINT)
         s.append_item("item2", 16, :UINT)
         expect { s.buffer = "\x00\x01" }.to raise_error(RuntimeError, /Buffer length less than defined length/)
+      end
+
+      it "returns nil for STRING and BLOCK items outside buffer bounds" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("ID", 16, :UINT)
+        s.append_item("STR", 64, :STRING)
+        s.append_item("BLK", 32, :BLOCK)
+        s.short_buffer_allowed = true
+        # Only ID and 2 bytes of the 8 byte STRING were received
+        s.buffer = "\x00\x01AB"
+
+        expect(s.read("ID")).to eq(1)
+        expect(s.read("STR")).to be_nil
+        expect(s.read("BLK")).to be_nil
+        expect(s.buffer.length).to eq(4)
+      end
+
+      it "returns nil for an array item truncated mid array" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("ID", 16, :UINT)
+        s.append_item("ARY", 8, :UINT, 32) # 4 element array
+        s.short_buffer_allowed = true
+        # Only 2 of the 4 array elements were received
+        s.buffer = "\x00\x01\xAA\xBB"
+
+        expect(s.read("ID")).to eq(1)
+        expect(s.read("ARY")).to be_nil
+      end
+
+      it "reads a fill to end item using only the bytes received" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("ID", 16, :UINT)
+        s.append_item("REST", 0, :BLOCK) # bit size determined by buffer length
+        s.short_buffer_allowed = true
+        s.buffer = "\x00\x01\xAA"
+
+        expect(s.read("ID")).to eq(1)
+        expect(s.read("REST")).to eq("\xAA")
+      end
+
+      it "returns nil for a fill to end item that starts past the buffer" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("ID", 16, :UINT)
+        s.append_item("REST", 0, :BLOCK)
+        s.append_item("TRAILER", -16, :UINT) # negative bit size
+        s.short_buffer_allowed = true
+        # The buffer ends before ID does, so REST calculates a negative bit size
+        s.buffer = "\x00"
+
+        expect(s.read("ID")).to be_nil
+        expect(s.read("REST")).to be_nil
+      end
+
+      it "reads all items and formats without raising" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("item1", 16, :UINT)
+        s.append_item("item2", 16, :UINT)
+        s.short_buffer_allowed = true
+        s.buffer = "\x00\x01"
+
+        expect(s.read_all).to eq([["ITEM1", 1], ["ITEM2", nil]])
+        expect(s.formatted).to eq("ITEM1: 1\nITEM2: \n")
+      end
+
+      it "raises a buffer error when writing an item outside buffer bounds" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("item1", 16, :UINT)
+        s.append_item("item2", 16, :UINT)
+        s.short_buffer_allowed = true
+        s.buffer = "\x00\x01"
+
+        # Reads return nil but writes must not silently grow or corrupt the buffer
+        expect { s.write("item2", 5) }.to raise_error(
+          ArgumentError, /2 byte buffer insufficient to write UINT at bit_offset 16 with bit_size 16/
+        )
+        expect(s.buffer.length).to eq(2)
+      end
+
+      it "raises a buffer error rather than RangeError when writing beyond the native int range" do
+        s = Structure.new(:BIG_ENDIAN)
+        s.append_item("LENGTH", 32, :UINT)
+        item = s.append_item("DATA", 8, :UINT, 0)
+        item.variable_bit_size = {'length_item_name' => 'LENGTH', 'length_bits_per_count' => 8, 'length_value_bit_offset' => 0}
+        s.set_item(item)
+        s.append_item("TRAILER", 32, :UINT)
+        s.short_buffer_allowed = true
+        # Pushes TRAILER to bit offset 0x80000000 which does not fit in a C int
+        s.buffer = [268_435_452, 0].pack("N2")
+
+        expect { s.write("TRAILER", 5) }.to raise_error(
+          ArgumentError, /8 byte buffer insufficient to write UINT/
+        )
       end
     end
   end # describe Structure

@@ -431,11 +431,14 @@ const PROTOCOL_MIN_WIDTH = 60
 const PROTOCOL_WRITE_Y = 98 // Upper row
 const PROTOCOL_READ_Y = 148 // Lower row
 
-// Position a row of protocols left to right, returning the label, width and
-// relative x position of each
-function layoutProtocolRow(protocols) {
-  let x = PROTOCOL_LEFT_MARGIN
-  return protocols.map((protocol) => {
+// Position a row of protocols, returning the label, width, relative x position
+// and original protocol index of each. Nodes are laid out in the direction the
+// data flows so the first protocol to run is nearest the data coming in. CMD
+// flows in on the left so write protocols are placed left to right, while TLM
+// flows in on the right so read protocols are placed right to left (pass
+// reverse). The returned array is always ordered left to right.
+function layoutProtocolRow(protocols, reverse = false) {
+  const row = protocols.map((protocol, index) => {
     let label = protocol.name
     if (label.slice(-8) === 'Protocol') {
       label = label.slice(0, -8)
@@ -446,10 +449,17 @@ function layoutProtocolRow(protocols) {
         PROTOCOL_CHROME + label.length * PROTOCOL_CHAR_WIDTH,
       ),
     )
-    const node = { label, width, x }
-    x += width + PROTOCOL_GAP
-    return node
+    return { label, width, index }
   })
+  if (reverse) {
+    row.reverse()
+  }
+  let x = PROTOCOL_LEFT_MARGIN
+  row.forEach((node) => {
+    node.x = x
+    x += node.width + PROTOCOL_GAP
+  })
+  return row
 }
 
 function protocolRowWidth(row) {
@@ -464,7 +474,7 @@ function protocolRowWidth(row) {
 // parent node width required to hold them
 function protocolLayout(details) {
   const writeRow = layoutProtocolRow(details.write_protocols || [])
-  const readRow = layoutProtocolRow(details.read_protocols || [])
+  const readRow = layoutProtocolRow(details.read_protocols || [], true)
   const width = Math.max(
     200,
     protocolRowWidth(writeRow) + PROTOCOL_RIGHT_MARGIN,
@@ -480,13 +490,13 @@ function addProtocolNodes(kind, name, protocols) {
     { type: 'read-protocol', row: protocols.readRow, y: PROTOCOL_READ_Y },
   ]
   rows.forEach(({ type, row, y }) => {
-    row.forEach((protocol, index) => {
+    row.forEach((protocol) => {
       nodes.value.push({
-        id: `${type}__${kind}__${name}__${index}`,
+        id: `${type}__${kind}__${name}__${protocol.index}`,
         type,
         position: { x: protocol.x, y },
         data: {
-          index,
+          index: protocol.index,
           [kind]: name,
           label: protocol.label,
           width: protocol.width,

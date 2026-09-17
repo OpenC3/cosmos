@@ -38,7 +38,6 @@ if !ENV['OPENC3_NO_SIMPLECOV']
     require 'simplecov-cobertura'
     SimpleCov.formatter = SimpleCov::Formatter::CoberturaFormatter
     # simplecov_json_formatter formatter supports SonarQube
-    # require 'simplecov_json_formatter'
     # SimpleCov.formatter = SimpleCov::Formatter::JSONFormatter
   else
     SimpleCov.formatter = SimpleCov::Formatter::HTMLFormatter
@@ -52,7 +51,7 @@ if !ENV['OPENC3_NO_SIMPLECOV']
   SimpleCov.command_name name
   SimpleCov.start do
     merge_timeout 60 * 60 # merge the last hour of results
-    add_filter '/spec/' # no coverage on spec files
+    skip '/spec/' # no coverage on spec files
     root = File.dirname(__FILE__)
     root.to_s
   end

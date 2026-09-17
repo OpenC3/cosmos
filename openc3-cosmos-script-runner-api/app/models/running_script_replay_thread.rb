@@ -13,8 +13,8 @@
 
 require 'openc3'
 
-# Streams a running script's replay stream and re-broadcasts each new event to a
-# single ActionCable subscription. The running script (running_script.rb /
+# Streams a running script's replay stream and re-broadcasts new events in
+# bounded batches to a single ActionCable subscription. The running script (running_script.rb /
 # running_script.py) mirrors every per-script frontend event into the stream
 # "running-script-channel:<id>:replay" (capped + short TTL).
 #
@@ -32,6 +32,8 @@ require 'openc3'
 # @start_offset and starts us there, so there is no gap and no duplicate
 # delivery. Modeled on MessagesThread/TopicsThread in cmd-tlm-api.
 class RunningScriptReplayThread
+  MAX_BATCH_SIZE = 100
+
   def initialize(subscription_key, id, start_offset = '0-0', arm_delay: 0.0)
     @subscription_key = subscription_key
     @topic = "running-script-channel:#{id}:replay"
@@ -66,23 +68,37 @@ class RunningScriptReplayThread
         end
       end
       while !@cancel_thread
-        # read_topics blocks up to ~1s for new entries then returns, so the loop
-        # both drains the backlog (offset starts at '0-0') and streams live.
-        OpenC3::Topic.read_topics([@topic], @offsets) do |_topic, msg_id, msg_hash, _redis|
-          @offsets[0] = msg_id
-          data = msg_hash['data']
-          if data
-            event = JSON.parse(data)
-            ActionCable.server.broadcast(@subscription_key, event)
-            # 'complete' is the script's terminal event: nothing is written to
-            # the stream after it. End the thread so it self-cleans without
-            # needing to be recycled, even if the client disconnects abruptly
-            # (and unsubscribed never fires). A client that subscribes after the
-            # script finished still gets the full backlog (replayed from '0-0',
-            # including complete) via its own fresh thread, which then ends too.
-            @cancel_thread = true if event['type'] == 'complete'
+        events = []
+        begin
+          # read_topics blocks up to ~1s for new entries then returns, so the
+          # loop both drains the backlog (offset starts at '0-0') and streams
+          # live.
+          OpenC3::Topic.read_topics([@topic], @offsets) do |_topic, msg_id, msg_hash, _redis|
+            @offsets[0] = msg_id
+            data = msg_hash['data']
+            if data
+              event = JSON.parse(data)
+              events << event
+              transmit_events(events) if events.length >= MAX_BATCH_SIZE
+              # 'complete' is the script's terminal event: nothing is written to
+              # the stream after it. End the thread so it self-cleans without
+              # needing to be recycled, even if the client disconnects abruptly
+              # (and unsubscribed never fires). A client that subscribes after
+              # the script finished still gets the full backlog (replayed from
+              # '0-0', including complete) via its own fresh thread, which then
+              # ends too.
+              @cancel_thread = true if event['type'] == 'complete'
+            end
+            break if @cancel_thread
           end
-          break if @cancel_thread
+        ensure
+          # read_topics commonly yields many entries from one Redis XREAD. Send
+          # them in one ActionCable frame rather than paying the websocket and
+          # client dispatch cost once per script event. Also flushes 'complete'
+          # immediately instead of leaving a partial terminal batch pending, and
+          # flushes on an exception so one bad entry cannot take the batch
+          # parsed before it down with the thread.
+          transmit_events(events)
         end
       end
     rescue => e
@@ -92,5 +108,14 @@ class RunningScriptReplayThread
 
   def stop
     @cancel_thread = true
+  end
+
+  private
+
+  def transmit_events(events)
+    return if events.empty?
+
+    ActionCable.server.broadcast(@subscription_key, events.dup)
+    events.clear
   end
 end

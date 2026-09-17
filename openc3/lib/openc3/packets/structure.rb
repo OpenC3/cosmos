@@ -617,7 +617,13 @@ module OpenC3
               return 62
             end
           else
-            return (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
+            total_bit_size = (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
+            available_bit_size = (@buffer.length * 8) - item.bit_offset
+            if total_bit_size < 0 ||
+               (!@short_buffer_allowed && (available_bit_size < 0 || total_bit_size > available_bit_size))
+              raise ArgumentError, "Variable bit size #{total_bit_size} for item #{item.name} exceeds the #{[available_bit_size, 0].max} bits available in the buffer"
+            end
+            return total_bit_size
           end
         else
           raise "Length value #{item.variable_bit_size['length_item_name']} for item #{item.name} is nil"

@@ -71,14 +71,18 @@ class TestUdpInterface(unittest.TestCase):
         i = UdpInterface("123.4.5.6", "8888", "8889", "8890", "456.7.8.9", "64", "5", "5", "1.2.3.4")
         self.assertEqual(
             i.connection_string(),
-            "123.4.5.6:8888 (write dest port) 8890 (write src port) 123.4.5.6:8889 (read) 456.7.8.9 (interface addr) 1.2.3.4 (bind addr)",
+            "123.4.5.6:8888 (write dest port) 8890 (write src port) 1.2.3.4:8889 (read) 456.7.8.9 (interface addr) 1.2.3.4 (bind addr)",
         )
 
         i = UdpInterface("localhost", "None", "8889")
-        self.assertEqual(i.connection_string(), "127.0.0.1:8889 (read)")
+        self.assertEqual(i.connection_string(), "0.0.0.0:8889 (read)")
 
         i = UdpInterface("localhost", "8888", "None")
         self.assertEqual(i.connection_string(), "127.0.0.1:8888 (write dest port)")
+
+        # None bind_address means all local addresses
+        i = UdpInterface("localhost", "None", "8889", "None", "None", "64", "5", "5", "None")
+        self.assertEqual(i.connection_string(), "0.0.0.0:8889 (read)")
 
     def test_creates_a_udpwritesocket_and_udpreadsocket_if_both_given(self):
         i = UdpInterface("localhost", "8888", "8889")
@@ -128,6 +132,64 @@ class TestUdpInterface(unittest.TestCase):
         self.assertFalse(i.connected())
         self.assertIsNone(i.write_socket)
         self.assertIsNone(i.read_socket)
+
+    def test_shared_socket_receives_from_a_different_source_port(self):
+        # Let the interface bind its own ephemeral port rather than closing a
+        # bound socket to reuse its port number. Any other socket can claim that
+        # number between the close and the bind, and since every socket sets
+        # SO_REUSEADDR the bind still succeeds while the datagrams get delivered
+        # to the other socket
+        destination = UdpReadSocket(0)
+        self.addCleanup(close_socket, destination)
+        dest_port = destination.getsockname()[1]
+
+        i = UdpInterface("127.0.0.1", dest_port, 0, 0)
+        self.addCleanup(i.disconnect)
+        i.connect()
+        read_port = i.read_socket.getsockname()[1]
+
+        # No src_port so the sender writes from an ephemeral port
+        sender = UdpWriteSocket("127.0.0.1", read_port)
+        self.addCleanup(close_socket, sender)
+
+        sender.write(b"telemetry")
+        self.assertEqual(i.read_socket.read(1.0), b"telemetry")
+        i.write_socket.write(b"command")
+        self.assertEqual(destination.read(1.0), b"command")
+        self.assertEqual(i.write_socket.getsockname()[1], read_port)
+
+    def test_clamps_a_ttl_below_one(self):
+        i = UdpInterface("localhost", "8888", "None", "None", "None", "0")
+        self.assertEqual(i.ttl, 1)
+
+    def test_defaults_a_none_write_timeout_to_ten_seconds(self):
+        i = UdpInterface("localhost", "8888", "None", "None", "None", "64", "None")
+        self.assertEqual(i.write_timeout, 10.0)
+
+    @patch("socket.socket")
+    def test_does_not_join_the_multicast_group_it_writes_to_on_a_shared_socket(self, mock_socket):
+        i = UdpInterface("224.0.1.1", 8889, 8889, 8889)
+        self.addCleanup(i.disconnect)
+        i.connect()
+        # Joining the group we transmit to would loop our own commands back as telemetry
+        membership = socket.inet_aton("224.0.1.1") + socket.inet_aton("0.0.0.0")
+        for call in mock_socket.return_value.setsockopt.call_args_list:
+            self.assertNotEqual(call.args, (socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, membership))
+        # Multicast writes are still set up
+        mock_socket.return_value.setsockopt.assert_any_call(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 128)
+
+    def test_creates_a_read_only_socket_with_an_unresolvable_hostname(self):
+        i = UdpInterface("this-host-does-not-exist.invalid", None, 0)
+        self.addCleanup(i.disconnect)
+        i.connect()
+        self.assertIsNotNone(i.read_socket)
+
+    def test_creates_a_read_socket_for_port_zero(self):
+        i = UdpInterface("127.0.0.1", None, 0)
+        self.addCleanup(i.disconnect)
+        i.connect()
+        self.assertIsNotNone(i.read_socket)
+        self.assertGreater(i.read_socket.getsockname()[1], 0)
 
     @patch("socket.socket")
     def test_stops_the_read_thread_if_there_is_an_ioerror(self, mock_socket):

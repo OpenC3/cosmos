@@ -8,10 +8,12 @@
 # See LICENSE.md for more details.
 */
 
+import { writeFile } from 'node:fs/promises'
 import { expect, test as base } from '@playwright/test'
 import { Utilities } from '../utilities'
 import { CoverageReport } from 'monocart-coverage-reports'
 import coverageOptions from '../coverage.config.mjs'
+import { ADMIN_STORAGE_STATE, STORAGE_STATE } from '../playwright.config'
 
 // V8 coverage is Chromium-only and only collected when COVERAGE=1,
 // so normal runs pay no profiler overhead. Requires bundles built with
@@ -42,6 +44,40 @@ const stopCoverage = async (page: any) => {
   }
 }
 
+// The only localStorage keys worth carrying in the shared storage state files.
+// Allowlisted rather than denylisted: every context is created from those files,
+// so anything else that gets captured silently changes app behavior for the rest
+// of the run - a persisted notoast disables alert toasts (Notifications.vue
+// reads it on load), and notificationStreamOffset / lastReadNotification /
+// ackedAlerts make alerts come back already read. A missing key here breaks
+// every spec loudly, which is the failure mode we want.
+const AUTH_STATE_KEYS = new Set([
+  // Session: openc3Token is core's whole auth story, the rest are Enterprise
+  // (see the two public/js/auth.js copies).
+  'openc3Token',
+  'openc3RefreshToken',
+  'openc3OfflineToken',
+  'openc3LoginMode',
+  // Keycloak client config, written at boot by Enterprise auth.js.
+  'keycloakUrl',
+  'keycloakRealm',
+  'keycloakClientId',
+  // Enterprise tool-base main.js reads this at boot to set window.openc3Scope.
+  'openc3Scope',
+])
+
+// Persist just the signed-in session, dropping everything else (UI preferences,
+// notification read state, keycloak kc-callback-* redirect leftovers).
+const saveAuthState = async (context: any, path: string) => {
+  const state = await context.storageState()
+  for (const origin of state.origins || []) {
+    origin.localStorage = (origin.localStorage || []).filter(
+      (item: { name: string }) => AUTH_STATE_KEYS.has(item.name),
+    )
+  }
+  await writeFile(path, JSON.stringify(state))
+}
+
 // Extend the page fixture to goto the OpenC3 tool and wait for potential
 // redirect to authentication login (Enterprise only).
 // Login and click the hamburger nav icon to close the navigation drawer.
@@ -68,22 +104,27 @@ export const test = base.extend<{
       // profile those too or their bundles are missing from the report.
       context.on('page', startCoverage)
     }
-    // Disable alert toast popups before the first navigation so the
+    // Set the alert toast preference before the first navigation so the
     // Notifications component reads it on load (localStorage.notoast === 'true'
     // means "don't toast"). Runs on every page in the context, so it survives
-    // reloads too.
-    if (disableToasts) {
-      await context.addInitScript(() => {
-        // Runs in every frame, including sandboxed iframes (e.g. the screen
-        // ButtonWidget command sandbox) whose opaque origin has no localStorage
-        // access - guard so we don't throw a SecurityError there.
-        try {
+    // reloads too. Always write the value rather than only setting it when
+    // disabling: contexts start from storageState.json, which can already carry
+    // a notoast from a previous test, and a spec that opts out (notifications)
+    // needs it actually removed.
+    await context.addInitScript((disable: boolean) => {
+      // Runs in every frame, including sandboxed iframes (e.g. the screen
+      // ButtonWidget command sandbox) whose opaque origin has no localStorage
+      // access - guard so we don't throw a SecurityError there.
+      try {
+        if (disable) {
           window.localStorage.setItem('notoast', 'true')
-        } catch {
-          // Sandboxed/cross-origin frame: nothing to disable here.
+        } else {
+          window.localStorage.removeItem('notoast')
         }
-      })
-    }
+      } catch {
+        // Sandboxed/cross-origin frame: nothing to set here.
+      }
+    }, disableToasts)
     await page.goto(`${baseURL}${toolPath}`, { waitUntil: 'domcontentloaded' })
     let utils = new Utilities(page)
     if (process.env.ENTERPRISE === '1') {
@@ -115,12 +156,10 @@ export const test = base.extend<{
           page.waitForURL(`${baseURL}${toolPath}`),
           page.locator('button:has-text("Sign In")').click(),
         ])
-        await page.context().storageState({
-          path:
-            username === 'admin'
-              ? 'adminStorageState.json'
-              : 'storageState.json',
-        })
+        await saveAuthState(
+          page.context(),
+          username === 'admin' ? ADMIN_STORAGE_STATE : STORAGE_STATE,
+        )
       }
     }
     await expect(page.locator('.v-app-bar')).toContainText(toolName, {

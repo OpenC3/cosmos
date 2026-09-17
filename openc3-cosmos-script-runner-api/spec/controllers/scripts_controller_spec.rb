@@ -185,6 +185,24 @@ RSpec.describe ScriptsController, type: :controller do
       expect(response).to have_http_status(:ok)
     end
 
+    it "passes the selected plugin venv when analyzing a temporary Python suite" do
+      name = "__TEMP__/suite.py"
+      text = "class TestSuite(Suite):\n  pass\n"
+      python_venv = "DEFAULT__demo__0"
+      suites_data = '{"suites":[]}'
+      allow(Script).to receive(:create)
+      expect(Script).to receive(:process_suite).with(
+        name, text, username: "anonymous", scope: "DEFAULT", python_venv: python_venv
+      ).and_return([suites_data, "", true])
+
+      post :create, params: {
+        scope: "DEFAULT", name: name, text: text, pythonVenv: python_venv
+      }
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)["suites"]).to eq(suites_data)
+    end
+
     context "with the script lifecycle feature enabled" do
       before(:each) do
         OpenC3::SettingModel.set({name: 'script_runner_lifecycle', data: true}, scope: 'DEFAULT')
@@ -231,25 +249,36 @@ RSpec.describe ScriptsController, type: :controller do
   describe "plugin_python_venvs" do
     it "returns list of plugin venvs with .uv_managed and .venv" do
       allow(File).to receive(:directory?).with('/gems/plugin_venvs').and_return(true)
-      allow(Dir).to receive(:glob).with('/gems/plugin_venvs/*/').and_return(
-        ['/gems/plugin_venvs/demo/', '/gems/plugin_venvs/other/']
+      allow(Dir).to receive(:glob).with('/gems/plugin_venvs/DEFAULT__*/').and_return(
+        ['/gems/plugin_venvs/DEFAULT__demo/', '/gems/plugin_venvs/DEFAULT__other/']
       )
       # demo has both .uv_managed and .venv
-      allow(File).to receive(:exist?).with('/gems/plugin_venvs/demo/.uv_managed').and_return(true)
-      allow(File).to receive(:directory?).with('/gems/plugin_venvs/demo/.venv').and_return(true)
+      allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__demo/.uv_managed').and_return(true)
+      allow(File).to receive(:directory?).with('/gems/plugin_venvs/DEFAULT__demo/.venv').and_return(true)
       # other has both .uv_managed and .venv
-      allow(File).to receive(:exist?).with('/gems/plugin_venvs/other/.uv_managed').and_return(true)
-      allow(File).to receive(:directory?).with('/gems/plugin_venvs/other/.venv').and_return(true)
+      allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__other/.uv_managed').and_return(true)
+      allow(File).to receive(:directory?).with('/gems/plugin_venvs/DEFAULT__other/.venv').and_return(true)
 
       get :plugin_python_venvs, params: {scope: "DEFAULT"}
 
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
       expect(json.length).to eq(2)
-      expect(json[0]["name"]).to eq("demo")
-      expect(json[0]["venv"]).to eq("/gems/plugin_venvs/demo/.venv")
-      expect(json[1]["name"]).to eq("other")
-      expect(json[1]["venv"]).to eq("/gems/plugin_venvs/other/.venv")
+      expect(json[0]["name"]).to eq("DEFAULT__demo")
+      expect(json[0]["venv"]).to eq("/gems/plugin_venvs/DEFAULT__demo/.venv")
+      expect(json[1]["name"]).to eq("DEFAULT__other")
+      expect(json[1]["venv"]).to eq("/gems/plugin_venvs/DEFAULT__other/.venv")
+    end
+
+    it "only globs venvs belonging to the requested scope" do
+      allow(File).to receive(:directory?).with('/gems/plugin_venvs').and_return(true)
+      # A venv owned by another scope is never even a glob candidate
+      expect(Dir).to receive(:glob).with('/gems/plugin_venvs/OTHER__*/').and_return([])
+
+      get :plugin_python_venvs, params: {scope: "OTHER"}
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to eq([])
     end
 
     it "returns empty array when plugin_venvs directory does not exist" do
@@ -264,10 +293,10 @@ RSpec.describe ScriptsController, type: :controller do
 
     it "skips plugin directories missing .uv_managed marker" do
       allow(File).to receive(:directory?).with('/gems/plugin_venvs').and_return(true)
-      allow(Dir).to receive(:glob).with('/gems/plugin_venvs/*/').and_return(
-        ['/gems/plugin_venvs/no_marker/']
+      allow(Dir).to receive(:glob).with('/gems/plugin_venvs/DEFAULT__*/').and_return(
+        ['/gems/plugin_venvs/DEFAULT__no_marker/']
       )
-      allow(File).to receive(:exist?).with('/gems/plugin_venvs/no_marker/.uv_managed').and_return(false)
+      allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__no_marker/.uv_managed').and_return(false)
 
       get :plugin_python_venvs, params: {scope: "DEFAULT"}
 
@@ -278,11 +307,11 @@ RSpec.describe ScriptsController, type: :controller do
 
     it "skips plugin directories missing .venv subdirectory" do
       allow(File).to receive(:directory?).with('/gems/plugin_venvs').and_return(true)
-      allow(Dir).to receive(:glob).with('/gems/plugin_venvs/*/').and_return(
-        ['/gems/plugin_venvs/no_venv/']
+      allow(Dir).to receive(:glob).with('/gems/plugin_venvs/DEFAULT__*/').and_return(
+        ['/gems/plugin_venvs/DEFAULT__no_venv/']
       )
-      allow(File).to receive(:exist?).with('/gems/plugin_venvs/no_venv/.uv_managed').and_return(true)
-      allow(File).to receive(:directory?).with('/gems/plugin_venvs/no_venv/.venv').and_return(false)
+      allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__no_venv/.uv_managed').and_return(true)
+      allow(File).to receive(:directory?).with('/gems/plugin_venvs/DEFAULT__no_venv/.venv').and_return(false)
 
       get :plugin_python_venvs, params: {scope: "DEFAULT"}
 
@@ -346,6 +375,45 @@ RSpec.describe ScriptsController, type: :controller do
       expect(response).to have_http_status(:ok)
     end
 
+    it "passes a valid suiteRunner through to Script.run" do
+      suite_runner = {"suite" => "MySuite", "group" => "MyGroup", "script" => "test_foo", "method" => "start"}
+      expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.rb", suite_runner, false, nil, "Anonymous", "anonymous", 1, nil, nil).and_return(1)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb", suiteRunner: suite_runner}
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "rejects a suiteRunner suite that isn't an identifier" do
+      expect(Script).not_to receive(:run)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb",
+                          suiteRunner: {"suite" => "MySuite) rescue nil; File.write('/tmp/x', 'y'); x=(1", "method" => "start"}}
+      expect(response).to have_http_status(:bad_request)
+      expect(response.body).to include("Invalid Suite name")
+    end
+
+    it "rejects a suiteRunner group that isn't an identifier" do
+      expect(Script).not_to receive(:run)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb",
+                          suiteRunner: {"suite" => "MySuite", "group" => "MyGroup) ; system('id') ; x=(1"}}
+      expect(response).to have_http_status(:bad_request)
+      expect(response.body).to include("Invalid Group name")
+    end
+
+    it "rejects a suiteRunner script that isn't an identifier" do
+      expect(Script).not_to receive(:run)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb",
+                          suiteRunner: {"suite" => "MySuite", "group" => "MyGroup", "script" => "test'); system('id'); ('"}}
+      expect(response).to have_http_status(:bad_request)
+      expect(response.body).to include("Invalid Script name")
+    end
+
+    it "rejects a suiteRunner method that isn't a SuiteRunner entry point" do
+      expect(Script).not_to receive(:run)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb",
+                          suiteRunner: {"suite" => "MySuite", "method" => "instance_eval"}}
+      expect(response).to have_http_status(:bad_request)
+      expect(response.body).to include("Invalid method")
+    end
+
     it "passes pythonVenv parameter through to Script.run" do
       expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.py", nil, false, nil, "Anonymous", "anonymous", 1, nil, "/gems/plugin_venvs/demo/.venv").and_return(1)
       post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.py", pythonVenv: "/gems/plugin_venvs/demo/.venv"}
@@ -398,7 +466,7 @@ RSpec.describe ScriptsController, type: :controller do
       expect(Script).to receive(:locked?).with("DEFAULT", "INST/procedures/test.rb").and_return(false)
       expect(Script).to receive(:lock).with("DEFAULT", "INST/procedures/test.rb", "anonymous")
       expect(Script).to receive(:get_breakpoints).with("DEFAULT", "INST/procedures/test.rb").and_return(breakpoints)
-      expect(Script).to receive(:process_suite).with("INST/procedures/test.rb", script_content, username: "anonymous", scope: "DEFAULT").and_return([suites_data, nil, true])
+      expect(Script).to receive(:process_suite).with("INST/procedures/test.rb", script_content, username: "anonymous", scope: "DEFAULT", python_venv: nil).and_return([suites_data, nil, true])
 
       get :body, params: {scope: "DEFAULT", name: "INST/procedures/test.rb"}
 
@@ -418,9 +486,9 @@ RSpec.describe ScriptsController, type: :controller do
       expect(Script).to receive(:locked?).with("DEFAULT", "INST/procedures/test.py").and_return(false)
       expect(Script).to receive(:lock).with("DEFAULT", "INST/procedures/test.py", "anonymous")
       expect(Script).to receive(:get_breakpoints).with("DEFAULT", "INST/procedures/test.py").and_return(breakpoints)
-      expect(Script).to receive(:process_suite).with("INST/procedures/test.py", script_content, username: "anonymous", scope: "DEFAULT").and_return([suites_data, nil, true])
+      expect(Script).to receive(:process_suite).with("INST/procedures/test.py", script_content, username: "anonymous", scope: "DEFAULT", python_venv: "DEFAULT__demo__0").and_return([suites_data, nil, true])
 
-      get :body, params: {scope: "DEFAULT", name: "INST/procedures/test.py"}
+      get :body, params: {scope: "DEFAULT", name: "INST/procedures/test.py", pythonVenv: "DEFAULT__demo__0"}
 
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
@@ -795,6 +863,68 @@ RSpec.describe ScriptsController, type: :controller do
       post :instrumented, params: {name: "script.rb"}
 
       expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  # Script.all lists every target file with no path matchers, so the Script Runner
+  # editor can address targets_modified/<TARGET>/cmd_tlm/..., which PacketConfig
+  # evaluates as code (GENERIC_*_CONVERSION eval) in the decom microservices.
+  # Writing that overlay must require admin, not just script_edit.
+  describe "cmd_tlm overlay gate" do
+    context "when the caller is non-admin (script_edit but not admin)" do
+      before do
+        allow(controller).to receive(:authorization).with('script_edit').and_return(true)
+        allow(controller).to receive(:authorization).with('admin').and_return(false)
+      end
+
+      it "blocks create into the cmd_tlm overlay" do
+        expect(Script).not_to receive(:create)
+
+        post :create, params: {scope: "DEFAULT", name: "INST/cmd_tlm/poc.txt", text: "TELEMETRY INST POC BIG_ENDIAN"}
+      end
+
+      it "blocks destroy of the cmd_tlm overlay" do
+        expect(Script).not_to receive(:destroy)
+
+        delete :destroy, params: {scope: "DEFAULT", name: "INST/cmd_tlm/tlm.txt"}
+      end
+
+      it "blocks non-canonical names that normalize into the cmd_tlm overlay" do
+        expect(Script).not_to receive(:create)
+
+        post :create, params: {scope: "DEFAULT", name: "INST//cmd_tlm/poc.txt", text: "text"}
+      end
+
+      it "still allows procedures, screens, and temp writes" do
+        expect(Script).to receive(:create)
+        allow(OpenC3::Logger).to receive(:info)
+
+        post :create, params: {scope: "DEFAULT", name: "INST/procedures/ok.rb", text: "text"}
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context "when the caller is admin" do
+      before do
+        allow(controller).to receive(:authorization).with('script_edit').and_return(true)
+        allow(controller).to receive(:authorization).with('admin').and_return(true)
+      end
+
+      it "allows create into the cmd_tlm overlay" do
+        expect(Script).to receive(:create)
+        allow(OpenC3::Logger).to receive(:info)
+
+        post :create, params: {scope: "DEFAULT", name: "INST/cmd_tlm/tlm.txt", text: "TELEMETRY INST POC BIG_ENDIAN"}
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "allows destroy of the cmd_tlm overlay" do
+        expect(Script).to receive(:destroy).with("DEFAULT", "INST/cmd_tlm/tlm.txt")
+        allow(OpenC3::Logger).to receive(:info)
+
+        delete :destroy, params: {scope: "DEFAULT", name: "INST/cmd_tlm/tlm.txt"}
+        expect(response).to have_http_status(:ok)
+      end
     end
   end
 end

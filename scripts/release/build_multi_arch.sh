@@ -27,7 +27,7 @@ cd ../..
 while IFS='=' read -r key value; do
   [[ -z "$key" || "$key" == \#* ]] && continue
   printf -v "$key" '%s' "${!key:-$value}"
-  export "$key"
+  export "${key?}"
 done < .env
 # OPENC3_REGISTRY=localhost:5000 # Uncomment for local builds
 # OPENC3_ENTERPRISE_REGISTRY=localhost:5000 # Uncomment for local builds
@@ -63,17 +63,17 @@ if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_PLATFORMS=linux/amd64
   DOCKERFILE='Dockerfile-ubi'
   SUFFIX='-ubi'
-  OPENC3_VERSITYGW_VERSION=v1.7.0
+  OPENC3_VERSITYGW_VERSION=v1.8.0
 else
   OPENC3_PLATFORMS=linux/amd64,linux/arm64
   DOCKERFILE='Dockerfile'
   SUFFIX=''
-  OPENC3_VERSITYGW_VERSION=v1.7.0
+  OPENC3_VERSITYGW_VERSION=v1.8.0
 fi
 
 # Setup cacert.pem
 echo "Downloading cert from curl"
-curl -q -L https://curl.se/ca/cacert.pem --output ./cacert.pem
+curl -q -L --proto "=https" https://curl.se/ca/cacert.pem --output ./cacert.pem
 if [[ $? -ne 0 ]]; then
   echo "ERROR: Problem downloading cacert.pem file from https://curl.se/ca/cacert.pem" 1>&2
   echo "openc3_setup FAILED" 1>&2
@@ -93,9 +93,10 @@ retry_build \
   --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
-  --build-arg ALPINE_VERSION=${ALPINE_VERSION} \
-  --build-arg ALPINE_BUILD=${ALPINE_BUILD} \
-  --build-arg APK_URL=${APK_URL} \
+  --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+  --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
+  --build-arg RUBY_VERSION=${RUBY_VERSION} \
+  --build-arg APT_URL=${APT_URL} \
   --build-arg RUBYGEMS_URL=${RUBYGEMS_URL} \
   --build-arg PYPI_URL=$PYPI_URL \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
@@ -111,9 +112,10 @@ retry_build \
   --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
-  --build-arg ALPINE_VERSION=${ALPINE_VERSION} \
-  --build-arg ALPINE_BUILD=${ALPINE_BUILD} \
-  --build-arg APK_URL=${APK_URL} \
+  --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+  --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
+  --build-arg RUBY_VERSION=${RUBY_VERSION} \
+  --build-arg APT_URL=${APT_URL} \
   --build-arg RUBYGEMS_URL=${RUBYGEMS_URL} \
   --build-arg PYPI_URL=$PYPI_URL \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
@@ -201,12 +203,14 @@ if [[ "${1:-default}" == "ubi" ]]; then
     --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:latest .
   fi
 else
-  # Standard build uses Valkey alpine image
+  # Standard build uses Valkey Debian image
   # OPENC3_REDIS_IMAGE and OPENC3_REDIS_VERSION default in the Dockerfile
   retry_build \
     --platform ${OPENC3_PLATFORMS} \
     --progress plain \
     --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
+    --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
+    --build-arg APT_URL=${APT_URL} \
     --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} \
     --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
@@ -216,6 +220,8 @@ else
     --platform ${OPENC3_PLATFORMS} \
     --progress plain \
     --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
+    --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
+    --build-arg APT_URL=${APT_URL} \
     --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:latest \
     --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:latest .
   fi
@@ -251,6 +257,9 @@ retry_build \
   --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
+  --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+  --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
+  --build-arg APT_URL=${APT_URL} \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --build-arg OPENC3_VERSITYGW_VERSION=${OPENC3_VERSITYGW_VERSION} \
   --build-arg OPENC3_UBI_REGISTRY=${OPENC3_UBI_REGISTRY} \
@@ -265,6 +274,9 @@ retry_build \
   --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
+  --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+  --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
+  --build-arg APT_URL=${APT_URL} \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --build-arg OPENC3_VERSITYGW_VERSION=${OPENC3_VERSITYGW_VERSION} \
   --build-arg OPENC3_UBI_REGISTRY=${OPENC3_UBI_REGISTRY} \
@@ -349,9 +361,9 @@ fi
 # Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
 if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik
-  OPENC3_TRAEFIK_RELEASE=v3.7.10
+  OPENC3_TRAEFIK_RELEASE=v3.7.13
 else
-  OPENC3_TRAEFIK_RELEASE=v3.7.10
+  OPENC3_TRAEFIK_RELEASE=v3.7.13
 fi
 cd ../openc3-traefik
 retry_build \

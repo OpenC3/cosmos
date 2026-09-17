@@ -51,6 +51,11 @@ module OpenC3
         @crc = Crc32.new()
         expect(@crc.calc('123456789')).to eql 0xCBF43926
       end
+
+      it "uses the configured seed when passed nil" do
+        @crc = Crc32.new()
+        expect(@crc.calc('123456789', nil)).to eql 0xCBF43926
+      end
     end
   end
 

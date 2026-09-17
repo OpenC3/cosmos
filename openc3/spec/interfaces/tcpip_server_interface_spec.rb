@@ -16,6 +16,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
+require 'openc3/interfaces'
 require 'openc3/interfaces/tcpip_server_interface'
 
 module OpenC3
