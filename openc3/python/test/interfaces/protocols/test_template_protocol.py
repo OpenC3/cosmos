@@ -24,6 +24,32 @@ from openc3.streams.stream import Stream
 from test.test_helper import *
 
 
+class FakeClock:
+    """Virtual clock used to make the protocol timing tests deterministic.
+
+    TemplateProtocol measures its delays with time.time() and waits with
+    time.sleep(), both looked up on the module. Patching the module's time
+    with this class makes sleeps advance the clock instantly, so the elapsed
+    virtual time depends only on the protocol logic and not on how loaded the
+    machine running the test happens to be.
+
+    tick advances the clock on every time() call, which is needed where the
+    protocol polls without sleeping.
+    """
+
+    def __init__(self, tick=0.0):
+        self.now = 0.0
+        self.tick = tick
+
+    def time(self):
+        now = self.now
+        self.now += self.tick
+        return now
+
+    def sleep(self, seconds):
+        self.now += seconds
+
+
 class TestTemplateProtocol(unittest.TestCase):
     read_buffer = None
     write_buffer = None
@@ -87,13 +113,18 @@ class TestTemplateProtocol(unittest.TestCase):
     def test_ignores_all_data_during_the_connect_period(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
         self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD", 0, 0.01], "READ_WRITE")
-        start = time.time()
-        self.interface.connect()
-        TestTemplateProtocol.read_buffer = b"\x31\x30\xab\xcd"
-        data = self.interface.read()
-        # Only assert the lower bound: loaded CI machines can take much
-        # longer than the delay, but must never return before it elapses
-        self.assertGreaterEqual(time.time() - start, 0.01)
+        # read_data polls without sleeping so the clock ticks on every check
+        clock = FakeClock(tick=0.001)
+        with patch("openc3.interfaces.protocols.template_protocol.time", clock):
+            start = clock.now
+            self.interface.connect()
+            TestTemplateProtocol.read_buffer = b"\x31\x30\xab\xcd"
+            data = self.interface.read()
+            elapsed = clock.now - start
+        # Data is dropped for the entire delay and delivered right after it,
+        # allowing a few clock reads of slack for the connect and read plumbing
+        self.assertGreaterEqual(elapsed, 0.01)
+        self.assertLess(elapsed, 0.01 + 5 * clock.tick)
         self.assertEqual(data.buffer, b"\x31\x30")
 
     def test_waits_before_writing_during_the_initial_delay_period(self):
@@ -107,10 +138,14 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
         packet.get_item("CMD_TEMPLATE").default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
         packet.restore_defaults()
-        self.interface.connect()
-        write = time.time()
-        self.interface.write(packet)
-        self.assertGreaterEqual(time.time() - write, 0.02)
+        clock = FakeClock()
+        with patch("openc3.interfaces.protocols.template_protocol.time", clock):
+            self.interface.connect()
+            write = clock.now
+            self.interface.write(packet)
+            elapsed = clock.now - write
+        # The write sleeps out exactly the remainder of the initial delay
+        self.assertAlmostEqual(elapsed, 0.02, places=6)
 
     def test_works_without_a_response(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
@@ -142,15 +177,20 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.append_item("RSP_PACKET", 1024, "STRING")
         packet.get_item("RSP_PACKET").default = "DATA"
         packet.restore_defaults()
-        self.interface.connect()
-        start = time.time()
-        for stdout in capture_io():
-            self.interface.write(packet)
-            self.assertIn(
-                "Timeout waiting for response",
-                stdout.getvalue(),
-            )
-        self.assertGreaterEqual(time.time() - start, 0.03)
+        clock = FakeClock()
+        with patch("openc3.interfaces.protocols.template_protocol.time", clock):
+            self.interface.connect()
+            start = clock.now
+            for stdout in capture_io():
+                self.interface.write(packet)
+                self.assertIn(
+                    "Timeout waiting for response",
+                    stdout.getvalue(),
+                )
+            elapsed = clock.now - start
+        # The timeout is detected on the first poll at or after it expires
+        self.assertGreaterEqual(elapsed, 0.03)
+        self.assertLess(elapsed, 0.03 + 0.02)  # response_polling_period
 
     def test_disconnects_if_it_doesnt_receive_a_response(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
@@ -168,11 +208,16 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.append_item("RSP_PACKET", 1024, "STRING")
         packet.get_item("RSP_PACKET").default = "DATA"
         packet.restore_defaults()
-        self.interface.connect()
-        start = time.time()
-        with self.assertRaisesRegex(RuntimeError, "Timeout waiting for response"):
-            self.interface.write(packet)
-        self.assertGreaterEqual(time.time() - start, 0.04)
+        clock = FakeClock()
+        with patch("openc3.interfaces.protocols.template_protocol.time", clock):
+            self.interface.connect()
+            start = clock.now
+            with self.assertRaisesRegex(RuntimeError, "Timeout waiting for response"):
+                self.interface.write(packet)
+            elapsed = clock.now - start
+        # The timeout is detected on the first poll at or after it expires
+        self.assertGreaterEqual(elapsed, 0.04)
+        self.assertLess(elapsed, 0.04 + 0.02)  # response_polling_period
 
     def test_doesnt_expect_responses_for_empty_response_fields(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
