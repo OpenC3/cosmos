@@ -54,6 +54,8 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       # --no-build refuses to build any source distribution, so no third-party
       # build backend gets to execute code in CI. Every locked dependency ships
       # a wheel, so nothing needs building. --no-install-project skips the

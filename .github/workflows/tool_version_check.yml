@@ -53,6 +53,8 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # The checker is a PEP 723 script, so it needs uv. sync: "false" because
       # it does not use openc3's dependencies -- its own are in its lockfile.
