@@ -868,10 +868,12 @@ def __init__(self, allow_empty_data=None):
 <TabItem value="ruby" label="Ruby">
 
 ```ruby
-# @param allow_empty_data [true/false] Whether STOP should be returned on empty data
-def initialize(allow_empty_data = false)
+# @param allow_empty_data [true/false/nil] Whether or not this protocol will allow an empty string
+# to be passed down to later Protocols (instead of returning :STOP). Can be true, false, or nil, where
+# nil is interpreted as true unless the Protocol is the last Protocol of the chain.
+def initialize(allow_empty_data = nil)
   @interface = nil
-  @allow_empty_data = ConfigParser.handle_true_false(allow_empty_data)
+  @allow_empty_data = ConfigParser.handle_true_false_nil(allow_empty_data)
   reset()
 end
 ```
@@ -892,7 +894,15 @@ Base class implementation:
 
 ```python
 def reset(self):
-    pass
+    self.read_data_input_time = None
+    self.read_data_input = b""
+    self.read_data_output_time = None
+    self.read_data_output = b""
+    self.write_data_input_time = None
+    self.write_data_input = b""
+    self.write_data_output_time = None
+    self.write_data_output = b""
+    self.extra = None
 ```
 
 </TabItem>
@@ -900,13 +910,14 @@ def reset(self):
 
 ```ruby
 def reset
+  @extra = nil
 end
 ```
 
 </TabItem>
 </Tabs>
 
-As you can see, the base class reset implementation doesn't do anything.
+The base class reset implementation only clears the protocol's own state: the extra hash and the data captured for the read_details / write_details methods.
 
 ### connect_reset
 
@@ -980,7 +991,7 @@ def read_data(self, data, extra=None):
             if self.interface and self.interface.read_protocols[-1] == self:
                 # Last read interface in chain with auto self.allow_empty_data
                 return ("STOP", extra)
-        elif self.allow_empty_data:
+        elif not self.allow_empty_data:
             # Don't self.allow_empty_data means STOP
             return ("STOP", extra)
     return (data, extra)
@@ -990,7 +1001,7 @@ def read_data(self, data, extra=None):
 <TabItem value="ruby" label="Ruby">
 
 ```ruby
-def read_data(data)
+def read_data(data, extra = nil)
   if (data.length <= 0)
     if @allow_empty_data.nil?
       if @interface and @interface.read_protocols[-1] == self # Last read interface in chain with auto @allow_empty_data
@@ -1000,7 +1011,7 @@ def read_data(data)
       return :STOP
     end
   end
-  data
+  return data, extra
 end
 ```
 
