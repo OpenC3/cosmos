@@ -238,3 +238,55 @@ test('custom x-axis item with RECEIVED_COUNT', async ({ page, utils }) => {
   await page.getByRole('button', { name: 'Ok' }).click()
   await expect(page.locator('#chart0')).toContainText('RECEIVED_COUNT')
 })
+
+test('XY scatter plot with draw style switching and X axis bounds', async ({
+  page,
+  utils,
+}) => {
+  // Add a Y-axis item and let data flow with default lines draw style
+  await utils.selectTargetPacketItem('INST', 'ADCS', 'POSY')
+  await page.locator('[data-test="add-item"]').click()
+  await expect(page.locator('#chart0')).toContainText('POSY')
+  await utils.sleep(3000) // Let line data accumulate for rendering
+
+  // Open edit dialog and configure as XY scatter plot
+  await page.locator('[data-test=edit-graph-icon]').click()
+  await expect(page.locator('.v-dialog')).toContainText('Edit Graph')
+  await page.getByRole('tab', { name: 'Scale / Lines' }).click()
+
+  // Change draw style to Points
+  await page.locator('[data-test=draw-style-select]').click()
+  await page.getByRole('option', { name: 'Points' }).click()
+
+  // Enable custom X axis and set POSX as the X axis item
+  await page.getByLabel('Custom X axis item').check()
+  await page.locator('.v-dialog [data-test=select-item] i').click()
+  await page.locator('.v-dialog').getByLabel('Select Item').fill('POSX')
+  await page.getByRole('option', { name: 'POSX' }).click()
+  await page.getByRole('button', { name: 'Set' }).click()
+
+  // Verify min/max X fields appear for non-time X axis and set values
+  await expect(page.getByLabel('Min X Axis (Optional)')).toBeVisible()
+  await expect(page.getByLabel('Max X Axis (Optional)')).toBeVisible()
+  await page.getByLabel('Min X Axis (Optional)').fill('-100')
+  await page.getByLabel('Max X Axis (Optional)').fill('100')
+
+  await page.getByRole('button', { name: 'Ok' }).click()
+
+  // Verify the graph now shows the custom X axis label and let scatter render
+  await expect(page.locator('#chart0')).toContainText('POSX')
+  await utils.sleep(3000)
+
+  // Switch draw style back to Lines while graph is running
+  await page.locator('[data-test=edit-graph-icon]').click()
+  await page.getByRole('tab', { name: 'Scale / Lines' }).click()
+  await page.locator('[data-test=draw-style-select]').click()
+  await page.getByRole('option', { name: 'Lines' }).click()
+  await page.getByRole('button', { name: 'Ok' }).click()
+
+  // Verify the graph still renders with the item after switching styles
+  await expect(page.locator('#chart0')).toContainText('POSX')
+  await expect(page.locator('#chart0')).toContainText('POSY')
+})
+
+
