@@ -163,7 +163,7 @@
       v-if="editGraph"
       v-model="editGraph"
       v-model:x-axis-item="xAxisItem"
-      v-model:draw-style="drawStyle"
+      :draw-style="drawStyle"
       :title="title"
       :legend-position="legendPosition"
       :items="items"
@@ -794,8 +794,15 @@ export default {
     actualXAxisItem: function (newVal, oldVal) {
       this.rebuildChart()
     },
-    drawStyle: function (newVal, oldVal) {
-      this.rebuildChart()
+    drawStyle: function () {
+      if (!this.graph || this.items.length === 0) return
+      for (let i = this.items.length; i >= 1; i--) {
+        this.graph.delSeries(i)
+      }
+      for (let i = 0; i < this.items.length; i++) {
+        this.graph.addSeries(this.createSeriesConfig(this.items[i]), i + 1)
+      }
+      this.graph.setData(this.data)
     },
     refreshIntervalMs: function (val) {
       if (this.interval) {
@@ -1486,6 +1493,7 @@ export default {
       this.graphMaxY = graph.graphMaxY
       this.graphMinX = graph.graphMinX
       this.graphMaxX = graph.graphMaxX
+      this.drawStyle = graph.drawStyle
       this.lines = [...graph.lines]
       this.graphStartDateTime = graph.startDateTime
       this.graphEndDateTime = graph.endDateTime
@@ -1964,11 +1972,7 @@ export default {
         item: item,
         label: this.formatLabel(item),
         stroke: (u, seriesIdx) => this.items[seriesIdx - 1].color,
-        fill:
-          this.drawStyle === 'points'
-            ? (u, seriesIdx) => this.items[seriesIdx - 1].color
-            : undefined,
-        width: this.drawStyle === 'points' ? 0 : 2,
+        width: 2,
         value: (self, rawValue) => {
           if (typeof rawValue === 'string' || Number.isNaN(rawValue)) {
             return 'NaN'
@@ -1985,25 +1989,22 @@ export default {
         },
       }
       if (this.drawStyle === 'points') {
-        config.paths = (u, seriesIdx, idx0, idx1) =>
-          this.scatterPointsPaths(u, seriesIdx, idx0, idx1)
-        config.points = { show: false }
+        config.paths = () => null
+        config.width = 0
+        config.points = {
+          show: true,
+          size: 6,
+          fill: (u, seriesIdx) => this.items[seriesIdx - 1].color,
+          stroke: (u, seriesIdx) => this.items[seriesIdx - 1].color,
+        }
       }
       return config
     },
     createOverviewSeriesConfig: function () {
-      const config = {
+      return {
         spanGaps: true,
         stroke: (u, seriesIdx) => this.items[seriesIdx - 1].color,
       }
-      if (this.drawStyle === 'points') {
-        config.fill = (u, seriesIdx) => this.items[seriesIdx - 1].color
-        config.width = 0
-        config.paths = (u, seriesIdx, idx0, idx1) =>
-          this.scatterPointsPaths(u, seriesIdx, idx0, idx1)
-        config.points = { show: false }
-      }
-      return config
     },
     updateColorIndex: function (itemArray) {
       const lastItem = itemArray[itemArray.length - 1]
@@ -2271,31 +2272,6 @@ export default {
             array[index] = value
           }
         }
-      }
-    },
-    scatterPointsPaths: function (u, seriesIdx, idx0, idx1) {
-      const xData = u.data[0]
-      const yData = u.data[seriesIdx]
-      const radius = 3
-
-      const p = new Path2D()
-      for (let i = idx0; i <= idx1; i++) {
-        const xVal = xData[i]
-        const yVal = yData[i]
-        if (xVal == null || yVal == null) continue
-        const cx = u.valToPos(xVal, 'x', true)
-        const cy = u.valToPos(yVal, u.series[seriesIdx].scale || 'y', true)
-        p.moveTo(cx + radius, cy)
-        p.arc(cx, cy, radius, 0, Math.PI * 2)
-      }
-
-      return {
-        stroke: p,
-        fill: p,
-        clip: undefined,
-        band: undefined,
-        gaps: null,
-        flags: 0x1, // skip default line stroke
       }
     },
     subscriptionKey: function (item) {

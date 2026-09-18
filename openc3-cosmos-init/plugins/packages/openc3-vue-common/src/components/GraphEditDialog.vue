@@ -172,7 +172,6 @@
               item-value="value"
               style="max-width: 280px"
               data-test="draw-style-select"
-              @update:model-value="drawStyleChanged"
             />
           </div>
           <div class="edit-box">
@@ -390,14 +389,7 @@ export default {
       default: null,
     },
   },
-  emits: [
-    'cancel',
-    'ok',
-    'remove',
-    'update:modelValue',
-    'update:xAxisItem',
-    'update:drawStyle',
-  ],
+  emits: ['cancel', 'ok', 'remove', 'update:modelValue', 'update:xAxisItem'],
   data: function () {
     return {
       tab: 0,
@@ -506,6 +498,7 @@ export default {
       graphMaxY: this.graphMaxY,
       graphMinX: this.graphMinX,
       graphMaxX: this.graphMaxX,
+      drawStyle: this.drawStyle,
       lines: [...this.lines],
     }
     this.selectedDrawStyle = this.drawStyle
@@ -546,6 +539,7 @@ export default {
       } else {
         this.graph.endDateTime = null
       }
+      this.graph.drawStyle = this.selectedDrawStyle
       this.$emit('ok', this.graph)
     },
     setLastHour() {
@@ -568,9 +562,7 @@ export default {
       let i = this.graph.lines.indexOf(dline)
       this.graph.lines.splice(i, 1)
     },
-    drawStyleChanged(value) {
-      this.$emit('update:drawStyle', value)
-    },
+
     customXAxisToggled(enabled) {
       if (!enabled) {
         this.selectedXAxisItem = '__time'

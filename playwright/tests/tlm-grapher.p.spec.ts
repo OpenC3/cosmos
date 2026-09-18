@@ -283,7 +283,10 @@ test('XY scatter plot with draw style switching and X axis bounds', async ({
   await page.locator('[data-test=draw-style-select]').click()
   await page.getByRole('option', { name: 'Lines' }).click()
   await page.getByRole('button', { name: 'Ok' }).click()
-  await utils.sleep(2000)
+
+  // Verify the graph still renders with the item after switching styles
+  await expect(page.locator('#chart0')).toContainText('POSX')
+  await expect(page.locator('#chart0')).toContainText('POSY')
 })
 
 
