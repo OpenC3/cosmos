@@ -236,6 +236,7 @@ if should_build "openc3-base-ubi"; then
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
     --build-arg OPENC3_IMAGE=openc3-ruby-ubi \
+    --build-arg PYPI_URL_OVERRIDE=$PYPI_URL \
     "${BUILD_FLAGS[@]}" \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-base-ubi:${OPENC3_TAG}" \
@@ -432,6 +433,7 @@ if should_build "openc3-cosmos-init-ubi"; then
     --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
+    --build-arg PYPI_URL_OVERRIDE=$PYPI_URL \
     "${BUILD_FLAGS[@]}" \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init-ubi:${OPENC3_TAG}" \

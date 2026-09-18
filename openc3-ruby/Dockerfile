@@ -142,6 +142,14 @@ ENV UV_PYTHON_DOWNLOADS=never
 # the runtime pip -i <pypi_url>/simple convention so air-gapped builds resolve
 # Python deps from the same mirror the runtime plugin installs use.
 ENV UV_DEFAULT_INDEX=${PYPI_URL}/simple
+
+# That index steers dependency *resolution* only - uv.lock pins absolute
+# pythonhosted.org URLs that `uv sync --frozen` fetches verbatim, so the mirror
+# would never be contacted. Derived images run this helper before each frozen
+# sync to relock against PYPI_URL when a mirror is configured; it is a no-op at
+# the default pypi.org. See the script for the full explanation.
+COPY uv_mirror_relock.sh /usr/local/bin/uv-mirror-relock
+
 # Use the Debian system Python instead of the project's .python-version pin
 # (which targets 3.12 for host development) since UV_PYTHON_DOWNLOADS is never.
 ENV UV_PYTHON=python${PYTHON_VERSION}

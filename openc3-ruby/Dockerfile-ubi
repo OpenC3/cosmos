@@ -107,6 +107,13 @@ ENV UV_PYTHON_DOWNLOADS=never
 # Python deps from the same mirror the runtime plugin installs use.
 ENV UV_DEFAULT_INDEX=${PYPI_URL}/simple
 
+# That index steers dependency *resolution* only - uv.lock pins absolute
+# pythonhosted.org URLs that `uv sync --frozen` fetches verbatim, so the mirror
+# would never be contacted. Derived images run this helper before each frozen
+# sync to relock against PYPI_URL when a mirror is configured; it is a no-op at
+# the default pypi.org. See the script for the full explanation.
+COPY uv_mirror_relock.sh /usr/local/bin/uv-mirror-relock
+
 # Set Python executable path for microservices (uses venv to support editable installs)
 ENV OPENC3_PYTHON_BIN=/openc3/python/.venv/bin/python
 
