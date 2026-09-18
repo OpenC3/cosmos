@@ -21,6 +21,7 @@ on:
       - synchronize
     paths:
       - "**/*.sh"
+      - "openc3/bin/*install"
       - ".github/workflows/shell_lint.yml"
 
 concurrency:
@@ -59,9 +60,15 @@ jobs:
       # and SC1128 (shebang not on line 1) are errors here for that reason -
       # without them a script is checked as bash no matter what runs it.
       - name: Run ShellCheck
-        run: git ls-files -z '*.sh' | xargs -0 -r shellcheck --severity=warning --format=gcc
+        # The pathspecs stay quoted so git expands them, not the shell: unquoted,
+        # '*.sh' would glob against the working directory and match only the
+        # repository root, silently dropping every nested script. The second
+        # pathspec picks up openc3/bin/uvinstall, pipinstall and pipuninstall,
+        # which are extensionless because they are invoked by name as commands
+        # and so were never matched by a *.sh glob.
+        run: git ls-files -z -- '*.sh' 'openc3/bin/*install' | xargs -0 -r shellcheck --severity=warning --format=gcc
       # Informational only: the note-level findings that the gate above skips.
       # Run it even when the gate failed so one push shows the whole picture.
       - name: Report note-level findings (advisory)
         if: ${{ !cancelled() }}
-        run: git ls-files -z '*.sh' | xargs -0 -r shellcheck --severity=style --format=gcc || true
+        run: git ls-files -z -- '*.sh' 'openc3/bin/*install' | xargs -0 -r shellcheck --severity=style --format=gcc || true
