@@ -16,13 +16,53 @@ require 'openc3/models/python_package_model'
 
 module OpenC3
   describe PythonPackageModel do
+    # ProcessManager#spawn is the only observable effect of .install and
+    # .destroy, so the examples for both go through this: it stubs the manager,
+    # captures the single spawn, and hands back what the model passed to it.
+    #
+    # @return [Array(Array<String>, Hash)] the argv and the keyword arguments
+    def capture_spawn
+      captured = nil
+      pm = double("process_manager")
+      allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
+      expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **kw|
+        captured = [cmd, kw]
+        double("process", name: "process_123")
+      end
+      yield
+      captured
+    end
+
+    # .names and .trees both walk PLUGIN_VENVS_DIR the same way, so the walk is
+    # stubbed here and each example is left with what it actually asserts.
+    #
+    # @param plugins [Hash{String => Array<String>, nil}, nil] plugin name to the
+    #   packages in its venv; a nil value is a plugin directory with no .venv,
+    #   and nil in place of the hash is no plugin venvs directory at all
+    def stub_plugin_venvs(plugins)
+      if plugins.nil?
+        allow(File).to receive(:directory?).with(PythonPackageModel::PLUGIN_VENVS_DIR).and_return(false)
+        return
+      end
+
+      allow(File).to receive(:directory?).with(PythonPackageModel::PLUGIN_VENVS_DIR).and_return(true)
+      allow(Dir).to receive(:glob).with("#{PythonPackageModel::PLUGIN_VENVS_DIR}/*/").and_return(
+        plugins.keys.map { |name| "/gems/plugin_venvs/#{name}/" }
+      )
+      plugins.each do |name, packages|
+        venv = "/gems/plugin_venvs/#{name}/.venv"
+        allow(File).to receive(:directory?).with(venv).and_return(!packages.nil?)
+        allow(PythonPackageModel).to receive(:packages_in_venv).with(venv).and_return(packages) if packages
+      end
+    end
+
     describe ".names" do
       before(:each) do
         allow(PythonPackageModel).to receive(:cached_packages).and_return([])
       end
 
       it "returns empty hash when no cache or plugin venvs exist" do
-        allow(File).to receive(:directory?).with(PythonPackageModel::PLUGIN_VENVS_DIR).and_return(false)
+        stub_plugin_venvs(nil)
         allow(ENV).to receive(:[]).and_call_original
         allow(ENV).to receive(:[]).with('PYTHONUSERBASE').and_return(nil)
 
@@ -32,7 +72,7 @@ module OpenC3
 
       it "includes cached packages under 'cached' key when present" do
         allow(PythonPackageModel).to receive(:cached_packages).and_return(["numpy-2.4.6", "requests-2.34.2"])
-        allow(File).to receive(:directory?).with(PythonPackageModel::PLUGIN_VENVS_DIR).and_return(false)
+        stub_plugin_venvs(nil)
         allow(PythonPackageModel).to receive(:shared_venv_packages).and_return([])
 
         result = PythonPackageModel.names
@@ -40,7 +80,7 @@ module OpenC3
       end
 
       it "omits cached key when UV cache has no packages" do
-        allow(File).to receive(:directory?).with(PythonPackageModel::PLUGIN_VENVS_DIR).and_return(false)
+        stub_plugin_venvs(nil)
         allow(PythonPackageModel).to receive(:shared_venv_packages).and_return([])
 
         result = PythonPackageModel.names
@@ -49,12 +89,7 @@ module OpenC3
 
       it "places cached key before plugin keys" do
         allow(PythonPackageModel).to receive(:cached_packages).and_return(["numpy-2.0.0"])
-        allow(File).to receive(:directory?).with(PythonPackageModel::PLUGIN_VENVS_DIR).and_return(true)
-        allow(Dir).to receive(:glob).with("#{PythonPackageModel::PLUGIN_VENVS_DIR}/*/").and_return(
-          ["/gems/plugin_venvs/demo/"]
-        )
-        allow(File).to receive(:directory?).with("/gems/plugin_venvs/demo/.venv").and_return(true)
-        allow(PythonPackageModel).to receive(:packages_in_venv).with("/gems/plugin_venvs/demo/.venv").and_return(["requests-2.31.0"])
+        stub_plugin_venvs("demo" => ["requests-2.31.0"])
         allow(PythonPackageModel).to receive(:shared_venv_packages).and_return([])
 
         result = PythonPackageModel.names
@@ -62,18 +97,7 @@ module OpenC3
       end
 
       it "collects packages from per-plugin venvs" do
-        allow(File).to receive(:directory?).with(PythonPackageModel::PLUGIN_VENVS_DIR).and_return(true)
-        allow(Dir).to receive(:glob).with("#{PythonPackageModel::PLUGIN_VENVS_DIR}/*/").and_return(
-          ["/gems/plugin_venvs/demo/", "/gems/plugin_venvs/other/"]
-        )
-
-        # demo plugin has a .venv with packages
-        allow(File).to receive(:directory?).with("/gems/plugin_venvs/demo/.venv").and_return(true)
-        allow(PythonPackageModel).to receive(:packages_in_venv).with("/gems/plugin_venvs/demo/.venv").and_return(["numpy-2.0.0", "requests-2.31.0"])
-
-        # other plugin has a .venv with packages
-        allow(File).to receive(:directory?).with("/gems/plugin_venvs/other/.venv").and_return(true)
-        allow(PythonPackageModel).to receive(:packages_in_venv).with("/gems/plugin_venvs/other/.venv").and_return(["boto3-1.28.0"])
+        stub_plugin_venvs("demo" => ["numpy-2.0.0", "requests-2.31.0"], "other" => ["boto3-1.28.0"])
 
         allow(PythonPackageModel).to receive(:shared_venv_packages).and_return([])
 
@@ -83,7 +107,7 @@ module OpenC3
       end
 
       it "includes shared venv packages under 'shared' key when present" do
-        allow(File).to receive(:directory?).with(PythonPackageModel::PLUGIN_VENVS_DIR).and_return(false)
+        stub_plugin_venvs(nil)
         allow(PythonPackageModel).to receive(:shared_venv_packages).and_return(["requests-2.31.0", "flask-3.0.0"])
 
         result = PythonPackageModel.names
@@ -91,7 +115,7 @@ module OpenC3
       end
 
       it "omits shared key when shared venv has no packages" do
-        allow(File).to receive(:directory?).with(PythonPackageModel::PLUGIN_VENVS_DIR).and_return(false)
+        stub_plugin_venvs(nil)
         allow(PythonPackageModel).to receive(:shared_venv_packages).and_return([])
 
         result = PythonPackageModel.names
@@ -99,11 +123,7 @@ module OpenC3
       end
 
       it "skips plugin dirs that lack a .venv subdirectory" do
-        allow(File).to receive(:directory?).with(PythonPackageModel::PLUGIN_VENVS_DIR).and_return(true)
-        allow(Dir).to receive(:glob).with("#{PythonPackageModel::PLUGIN_VENVS_DIR}/*/").and_return(
-          ["/gems/plugin_venvs/incomplete/"]
-        )
-        allow(File).to receive(:directory?).with("/gems/plugin_venvs/incomplete/.venv").and_return(false)
+        stub_plugin_venvs("incomplete" => nil)
         allow(PythonPackageModel).to receive(:shared_venv_packages).and_return([])
 
         result = PythonPackageModel.names
@@ -384,171 +404,86 @@ module OpenC3
         FileUtils.remove_entry_secure(@temp_dir)
       end
 
-      it "sets PIPINSTALL_VENV when plugin is provided" do
+      # Every example installs the same throwaway package. Its contents are
+      # never read - install only needs the path to exist.
+      def install_spawn(**kwargs)
         pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
         File.write(pkg_file, "fake")
+        capture_spawn { PythonPackageModel.install(pkg_file, scope: "DEFAULT", **kwargs) }
+      end
 
-        process_double = double("process", name: "process_123")
-        pm = double("process_manager")
-        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
+      it "sets PIPINSTALL_VENV when plugin is provided" do
         allow(PythonPackageModel).to receive(:get_setting).and_raise("no redis")
 
-        expect(pm).to receive(:spawn) do |_cmd, _type, _detail, _expires, **kw|
-          expect(kw[:env]).to eq({ 'PIPINSTALL_VENV' => '/gems/plugin_venvs/demo/.venv' })
-          process_double
-        end
-
-        PythonPackageModel.install(pkg_file, scope: "DEFAULT", plugin: "demo")
+        _cmd, kw = install_spawn(plugin: "demo")
+        expect(kw[:env]).to eq({ 'PIPINSTALL_VENV' => '/gems/plugin_venvs/demo/.venv' })
       end
 
       it "passes empty env hash when plugin is nil" do
-        pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
-        File.write(pkg_file, "fake")
-
-        process_double = double("process", name: "process_123")
-        pm = double("process_manager")
-        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
         allow(PythonPackageModel).to receive(:get_setting).and_raise("no redis")
 
-        expect(pm).to receive(:spawn) do |_cmd, _type, _detail, _expires, **kw|
-          expect(kw[:env]).to eq({})
-          process_double
-        end
-
-        PythonPackageModel.install(pkg_file, scope: "DEFAULT")
+        _cmd, kw = install_spawn
+        expect(kw[:env]).to eq({})
       end
 
       it "resolves pypi_url from get_setting" do
-        pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
-        File.write(pkg_file, "fake")
-
-        process_double = double("process", name: "process_123")
-        pm = double("process_manager")
-        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
         allow(PythonPackageModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return("https://custom.pypi.example.com")
 
-        expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **_kw|
-          expect(cmd).to include("--default-index")
-          expect(cmd).to include("https://custom.pypi.example.com/simple")
-          process_double
-        end
-
-        PythonPackageModel.install(pkg_file, scope: "DEFAULT")
+        cmd, _kw = install_spawn
+        expect(cmd).to include("--default-index")
+        expect(cmd).to include("https://custom.pypi.example.com/simple")
       end
 
       it "falls back to ENV PYPI_URL when get_setting raises" do
-        pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
-        File.write(pkg_file, "fake")
-
         allow(ENV).to receive(:fetch).with('PYPI_URL', nil).and_return("https://env.pypi.example.com")
-
-        process_double = double("process", name: "process_123")
-        pm = double("process_manager")
-        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
         allow(PythonPackageModel).to receive(:get_setting).and_raise("no redis")
 
-        expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **_kw|
-          expect(cmd).to include("https://env.pypi.example.com/simple")
-          process_double
-        end
-
-        PythonPackageModel.install(pkg_file, scope: "DEFAULT")
+        cmd, _kw = install_spawn
+        expect(cmd).to include("https://env.pypi.example.com/simple")
       end
 
       it "falls back to pypi.org/simple when get_setting raises and ENV is nil" do
-        pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
-        File.write(pkg_file, "fake")
-
-        process_double = double("process", name: "process_123")
-        pm = double("process_manager")
-        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
         allow(PythonPackageModel).to receive(:get_setting).and_raise("no redis")
 
-        expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **_kw|
-          expect(cmd).to include("https://pypi.org/simple")
-          process_double
-        end
-
-        PythonPackageModel.install(pkg_file, scope: "DEFAULT")
+        cmd, _kw = install_spawn
+        expect(cmd).to include("https://pypi.org/simple")
       end
 
       it "falls back to ENV PYPI_URL when the setting is nil" do
-        pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
-        File.write(pkg_file, "fake")
-
         allow(ENV).to receive(:fetch).with('PYPI_URL', nil).and_return("https://env.pypi.example.com")
-
-        process_double = double("process", name: "process_123")
-        pm = double("process_manager")
-        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
         allow(PythonPackageModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return(nil)
 
-        expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **_kw|
-          expect(cmd).to include("https://env.pypi.example.com/simple")
-          process_double
-        end
-
-        PythonPackageModel.install(pkg_file, scope: "DEFAULT")
+        cmd, _kw = install_spawn
+        expect(cmd).to include("https://env.pypi.example.com/simple")
       end
 
       it "replaces a pypi_url setting containing shell metacharacters with the default" do
-        pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
-        File.write(pkg_file, "fake")
-
         allow(OpenC3::Logger).to receive(:error)
         # A user-writable setting must never put shell metacharacters on the pipinstall argv
         payload = "https://pypi.org ; id > /tmp/PWNED ; #"
-        process_double = double("process", name: "process_123")
-        pm = double("process_manager")
-        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
         allow(PythonPackageModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return(payload)
 
-        expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **_kw|
-          expect(cmd).to include(PypiUrl::DEFAULT)
-          expect(cmd.join(' ')).to_not include("PWNED")
-          process_double
-        end
-
-        PythonPackageModel.install(pkg_file, scope: "DEFAULT")
+        cmd, _kw = install_spawn
+        expect(cmd).to include(PypiUrl::DEFAULT)
+        expect(cmd.join(' ')).to_not include("PWNED")
         expect(OpenC3::Logger).to have_received(:error).with(/Invalid pypi_url/)
       end
 
       it "replaces a non-http pypi_url setting with the default" do
-        pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
-        File.write(pkg_file, "fake")
-
         allow(OpenC3::Logger).to receive(:error)
-        process_double = double("process", name: "process_123")
-        pm = double("process_manager")
-        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
         allow(PythonPackageModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return("file:///etc")
 
-        expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **_kw|
-          expect(cmd).to include(PypiUrl::DEFAULT)
-          process_double
-        end
-
-        PythonPackageModel.install(pkg_file, scope: "DEFAULT")
+        cmd, _kw = install_spawn
+        expect(cmd).to include(PypiUrl::DEFAULT)
       end
 
       it "derives --allow-insecure-host from the pypi_url when PIP_ENABLE_TRUSTED_HOST is set" do
-        pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
-        File.write(pkg_file, "fake")
-
         allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return('1')
-
-        process_double = double("process", name: "process_123")
-        pm = double("process_manager")
-        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
         allow(PythonPackageModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return("https://custom.pypi.example.com")
 
-        expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **_kw|
-          expect(cmd).to include("--allow-insecure-host")
-          expect(cmd).to include("custom.pypi.example.com")
-          process_double
-        end
-
-        PythonPackageModel.install(pkg_file, scope: "DEFAULT")
+        cmd, _kw = install_spawn
+        expect(cmd).to include("--allow-insecure-host")
+        expect(cmd).to include("custom.pypi.example.com")
       end
     end
 
@@ -557,41 +492,25 @@ module OpenC3
         allow(OpenC3::Logger).to receive(:info)
       end
 
+      def destroy_spawn(**kwargs)
+        capture_spawn { PythonPackageModel.destroy("my-package-1.0.0", scope: "DEFAULT", **kwargs) }
+      end
+
       it "sets PIPINSTALL_VENV when plugin is provided" do
-        process_double = double("process", name: "process_123")
-        pm = double("process_manager")
-        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
-
-        expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **kw|
-          expect(kw[:env]).to eq({ 'PIPINSTALL_VENV' => '/gems/plugin_venvs/demo/.venv' })
-          expect(cmd).to include("my-package")
-          process_double
-        end
-
-        PythonPackageModel.destroy("my-package-1.0.0", scope: "DEFAULT", plugin: "demo")
+        cmd, kw = destroy_spawn(plugin: "demo")
+        expect(kw[:env]).to eq({ 'PIPINSTALL_VENV' => '/gems/plugin_venvs/demo/.venv' })
+        expect(cmd).to include("my-package")
       end
 
       it "passes empty env hash when plugin is nil" do
-        process_double = double("process", name: "process_123")
-        pm = double("process_manager")
-        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
-
-        expect(pm).to receive(:spawn) do |_cmd, _type, _detail, _expires, **kw|
-          expect(kw[:env]).to eq({})
-          process_double
-        end
-
-        PythonPackageModel.destroy("my-package-1.0.0", scope: "DEFAULT")
+        _cmd, kw = destroy_spawn
+        expect(kw[:env]).to eq({})
       end
     end
 
     describe ".trees" do
       it "calls uv pip list for each plugin venv and returns output keyed by plugin name" do
-        allow(File).to receive(:directory?).with(PythonPackageModel::PLUGIN_VENVS_DIR).and_return(true)
-        allow(Dir).to receive(:glob).with("#{PythonPackageModel::PLUGIN_VENVS_DIR}/*/").and_return(
-          ["/gems/plugin_venvs/demo/"]
-        )
-        allow(File).to receive(:directory?).with("/gems/plugin_venvs/demo/.venv").and_return(true)
+        stub_plugin_venvs("demo" => [])
 
         uv_output = "Package    Version\n---------- -------\nnumpy      2.0.0\nrequests   2.31.0"
         status = double("status", success?: true)
@@ -602,11 +521,7 @@ module OpenC3
       end
 
       it "skips venvs where uv pip list fails" do
-        allow(File).to receive(:directory?).with(PythonPackageModel::PLUGIN_VENVS_DIR).and_return(true)
-        allow(Dir).to receive(:glob).with("#{PythonPackageModel::PLUGIN_VENVS_DIR}/*/").and_return(
-          ["/gems/plugin_venvs/broken/"]
-        )
-        allow(File).to receive(:directory?).with("/gems/plugin_venvs/broken/.venv").and_return(true)
+        stub_plugin_venvs("broken" => [])
 
         status = double("status", success?: false)
         allow(Open3).to receive(:capture2).with('uv', 'pip', 'list', '--python', '/gems/plugin_venvs/broken/.venv').and_return(["", status])
@@ -616,7 +531,7 @@ module OpenC3
       end
 
       it "returns empty hash when plugin venvs directory does not exist" do
-        allow(File).to receive(:directory?).with(PythonPackageModel::PLUGIN_VENVS_DIR).and_return(false)
+        stub_plugin_venvs(nil)
 
         result = PythonPackageModel.trees
         expect(result).to eq({})
