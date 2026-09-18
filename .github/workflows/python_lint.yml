@@ -22,6 +22,7 @@ on:
     paths:
       - ".github/workflows/python_lint.yml"
       - "openc3/python/**/*.py"
+      - ".github/scripts/check_tool_versions.py"
       - "openc3-cosmos-script-runner-api/scripts/**/*.py"
       - "openc3-cosmos-script-runner-api/test/**/*.py"
       - "openc3/python/pyproject.toml"
@@ -49,34 +50,19 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      # ruff parses files and never imports them, so this job has no use for
+      # openc3 being installed. Skipping that editable install lets the sync
+      # run --no-build, so no third-party build backend executes here. The run
+      # steps below then need --no-sync: with --frozen, uv re-evaluates whether
+      # the skipped project could be installed and rejects it under --no-build.
+      # --no-sync keeps --no-build meaningful on them -- ruff comes from the
+      # venv this step built, and nothing is resolved or built at run time.
+      - name: Set up uv and Python
+        uses: ./.github/actions/setup-uv-python
         with:
-          version: "0.11.33" # Matches UV_VERSION in openc3-ruby/Dockerfile
-          enable-cache: auto
-          working-directory: openc3/python
-      - name: Set up Python
-        run: uv python install
-        working-directory: openc3/python
-      # ruff is a standalone binary and never imports our code, so this job installs
-      # the locked dependencies without the openc3 project itself (--no-install-project)
-      # and forbids building any source distribution (--no-build). The ruff steps then
-      # use --no-sync so they run against exactly what was installed here instead of
-      # re-syncing (a re-sync would try to build the skipped project and fail).
-      #
-      # Every package in uv.lock currently ships a wheel, so --no-build is a no-op that
-      # doubles as a tripwire: if a future dependency ever resolves to an sdist-only
-      # package, this step fails with "can't be installed because it is marked as
-      # --no-build but has no binary distribution" instead of silently executing that
-      # package's setup.py in CI. To fix, review that package's build scripts and either
-      # pin to a version that publishes a wheel or drop --no-build here.
-      #
-      # The other Python workflows deliberately do NOT use --no-build: they import and
-      # execute these same dependencies under pytest, so blocking build scripts there
-      # is not a security boundary. uv.lock is hash-pinned and --frozen is the control.
-      - name: Install dependencies
-        run: uv sync --frozen --no-build --no-install-project
-        working-directory: openc3/python
+          no-install-project: "true"
+          no-build: "true"
+
       # uv emits SARIF directly, so this needs no converter, and its
       # artifactLocation is already repo-relative to uv.lock. Everything found
       # is published, including advisories with no fix yet, so the Security tab
@@ -117,16 +103,16 @@ jobs:
           retention-days: 14
 
       - name: Run ruff check on openc3/python
-        run: uv run --no-sync ruff check --output-format=github openc3
+        run: uv run --no-sync --no-build ruff check --output-format=github openc3 tools ../../.github/scripts/check_tool_versions.py
         working-directory: openc3/python
       - name: Run ruff format check on openc3/python
-        run: uv run --no-sync ruff format --check openc3
+        run: uv run --no-sync --no-build ruff format --check openc3 tools ../../.github/scripts/check_tool_versions.py
         working-directory: openc3/python
       - name: Run ruff check on script-runner-api scripts
-        run: uv run --no-sync ruff check --output-format=github ../../openc3-cosmos-script-runner-api/scripts
+        run: uv run --no-sync --no-build ruff check --output-format=github ../../openc3-cosmos-script-runner-api/scripts
         working-directory: openc3/python
       - name: Run ruff format check on script-runner-api scripts
-        run: uv run --no-sync ruff format --check ../../openc3-cosmos-script-runner-api/scripts
+        run: uv run --no-sync --no-build ruff format --check ../../openc3-cosmos-script-runner-api/scripts
         working-directory: openc3/python
 
       # Last so a vulnerable dependency does not stop ruff from reporting in
