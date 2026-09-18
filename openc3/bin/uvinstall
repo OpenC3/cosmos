@@ -28,7 +28,22 @@ shift 2
 # `uv sync --frozen` path below: a frozen sync never resolves, so uv installs
 # from the registry and wheel URLs already recorded in uv.lock and the default
 # index is unused. On the `uv pip` fallback paths both matter.
-UV_ARGS="$@"
+UV_ARGS="$*"
+
+# --no-sources finishes what --no-config starts. PypiUrl.build_args adds
+# --no-config when an operator has designated an index, which stops uv searching
+# a named index the plugin declares in [tool.uv].index - but a package pinned
+# with [tool.uv].sources is project metadata that survives --no-config and still
+# resolves against the plugin author's index. --no-sources drops those pins so
+# the operator's index is the only one consulted.
+#
+# It is added only for the commands that resolve: `uv sync --frozen` rejects
+# --no-sources outright, and has no use for it, because a frozen sync installs
+# the registry and wheel URLs already recorded in uv.lock without resolving.
+RESOLVE_ARGS="$UV_ARGS"
+case " ${UV_ARGS} " in
+    *" --no-config "*) RESOLVE_ARGS="${UV_ARGS} --no-sources" ;;
+esac
 
 if [ -z "$PLUGIN_VENV_NAME" ] || [ -z "$GEM_PATH" ]; then
     echo "Usage: uvinstall <plugin_venv_name> <gem_path> [extra uv args...]"
@@ -63,7 +78,12 @@ uv_offline_then_online() {
     uv "$@"
 }
 
-VENV_BASE="/gems/plugin_venvs/${PLUGIN_VENV_NAME}"
+# The venv root is overridable so the spec suite can drive this script against
+# a temporary directory. Production never sets it; PluginModel computes the same
+# /gems/plugin_venvs path independently when it records the .uv_managed marker,
+# so pointing this elsewhere outside a test would put the two out of step.
+VENV_ROOT="${UVINSTALL_VENV_ROOT:-/gems/plugin_venvs}"
+VENV_BASE="${VENV_ROOT}/${PLUGIN_VENV_NAME}"
 VENV_DIR="${VENV_BASE}/.venv"
 
 echo "Creating per-plugin venv for '${PLUGIN_VENV_NAME}' at ${VENV_DIR}"
@@ -78,7 +98,9 @@ if [ -f "${GEM_PATH}/uv.lock" ] && [ -f "${GEM_PATH}/pyproject.toml" ]; then
     cp "${GEM_PATH}/uv.lock" "${VENV_BASE}/uv.lock"
 
     # Create venv and sync dependencies
-    cd "${VENV_BASE}"
+    # Syncing in the wrong directory would resolve against whatever
+    # pyproject.toml happens to be there, so treat this as fatal.
+    cd "${VENV_BASE}" || exit 1
     uv venv "${VENV_DIR}" --allow-existing
 
     # Offline sync first, online only on a cache miss (bounded by UV_HTTP_*).
@@ -105,14 +127,14 @@ uv venv "${VENV_DIR}" --allow-existing
 
 if [ -f "${GEM_PATH}/requirements.txt" ]; then
     echo "Installing from requirements.txt via uv pip install"
-    uv_offline_then_online pip install --python "${VENV_DIR}" ${UV_ARGS} -r "${GEM_PATH}/requirements.txt"
+    uv_offline_then_online pip install --python "${VENV_DIR}" ${RESOLVE_ARGS} -r "${GEM_PATH}/requirements.txt"
     RESULT=$?
 elif [ -f "${GEM_PATH}/pyproject.toml" ]; then
     echo "Installing from pyproject.toml via uv pip install"
     # --python: The Python interpreter into which packages should be installed.
     # --project: Discover a project (i.e. pyproject.toml) in the given directory.
     # -r: Install the packages listed in the given files.
-    uv_offline_then_online pip install --python "${VENV_DIR}" --project "${GEM_PATH}" ${UV_ARGS} -r "${GEM_PATH}/pyproject.toml"
+    uv_offline_then_online pip install --python "${VENV_DIR}" --project "${GEM_PATH}" ${RESOLVE_ARGS} -r "${GEM_PATH}/pyproject.toml"
     RESULT=$?
 
     # `uv pip install <path>` builds the plugin as a package before installing
@@ -127,11 +149,11 @@ elif [ -f "${GEM_PATH}/pyproject.toml" ]; then
     if [ $RESULT -ne 0 ]; then
         echo "Warning: Failed to build Python package, attempting to install declared dependencies from pyproject.toml"
         TMPFILE=$(mktemp)
-        uv pip compile --offline ${UV_ARGS} "${GEM_PATH}/pyproject.toml" > "$TMPFILE"
+        uv pip compile --offline ${RESOLVE_ARGS} "${GEM_PATH}/pyproject.toml" > "$TMPFILE"
         COMPILED=$?
         if [ $COMPILED -ne 0 ] || [ ! -s "$TMPFILE" ]; then
             echo "Offline uv pip compile missed the cache; retrying online"
-            uv pip compile ${UV_ARGS} "${GEM_PATH}/pyproject.toml" > "$TMPFILE"
+            uv pip compile ${RESOLVE_ARGS} "${GEM_PATH}/pyproject.toml" > "$TMPFILE"
             COMPILED=$?
         fi
         # Both the exit status AND a non-empty file are required: uv writes its
@@ -139,7 +161,7 @@ elif [ -f "${GEM_PATH}/pyproject.toml" ]; then
         # fails partway still leaves a non-empty file. Installing from that would
         # produce a venv missing dependencies and report success.
         if [ $COMPILED -eq 0 ] && [ -s "$TMPFILE" ]; then
-            uv_offline_then_online pip install --python "${VENV_DIR}" ${UV_ARGS} -r "$TMPFILE"
+            uv_offline_then_online pip install --python "${VENV_DIR}" ${RESOLVE_ARGS} -r "$TMPFILE"
             RESULT=$?
         fi
         rm -f "$TMPFILE"
