@@ -531,7 +531,7 @@ module OpenC3
         PythonPackageModel.install(pkg_file, scope: "DEFAULT")
       end
 
-      it "derives --trusted-host from the pypi_url when PIP_ENABLE_TRUSTED_HOST is set" do
+      it "derives --allow-insecure-host from the pypi_url when PIP_ENABLE_TRUSTED_HOST is set" do
         pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
         File.write(pkg_file, "fake")
 
@@ -543,7 +543,7 @@ module OpenC3
         allow(PythonPackageModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return("https://custom.pypi.example.com")
 
         expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **_kw|
-          expect(cmd).to include("--trusted-host")
+          expect(cmd).to include("--allow-insecure-host")
           expect(cmd).to include("custom.pypi.example.com")
           process_double
         end
