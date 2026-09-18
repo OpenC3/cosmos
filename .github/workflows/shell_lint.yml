@@ -21,6 +21,7 @@ on:
       - synchronize
     paths:
       - "**/*.sh"
+      - "openc3/bin/*install"
       - ".github/workflows/shell_lint.yml"
 
 concurrency:
@@ -34,6 +35,13 @@ jobs:
   shellcheck:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
+    env:
+      # A *.sh glob alone skipped openc3/bin/uvinstall, pipinstall and
+      # pipuninstall, which are extensionless because they are invoked by name
+      # as commands. They are /bin/sh scripts that run on every plugin install,
+      # so they are exactly the ones worth checking. Word splitting of this
+      # value is intended - it is a list of git pathspecs.
+      SHELL_PATHSPECS: "*.sh openc3/bin/*install"
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -59,9 +67,9 @@ jobs:
       # and SC1128 (shebang not on line 1) are errors here for that reason -
       # without them a script is checked as bash no matter what runs it.
       - name: Run ShellCheck
-        run: git ls-files -z '*.sh' | xargs -0 -r shellcheck --severity=warning --format=gcc
+        run: git ls-files -z $SHELL_PATHSPECS | xargs -0 -r shellcheck --severity=warning --format=gcc
       # Informational only: the note-level findings that the gate above skips.
       # Run it even when the gate failed so one push shows the whole picture.
       - name: Report note-level findings (advisory)
         if: ${{ !cancelled() }}
-        run: git ls-files -z '*.sh' | xargs -0 -r shellcheck --severity=style --format=gcc || true
+        run: git ls-files -z $SHELL_PATHSPECS | xargs -0 -r shellcheck --severity=style --format=gcc || true
