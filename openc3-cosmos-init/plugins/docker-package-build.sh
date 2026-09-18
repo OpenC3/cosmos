@@ -59,7 +59,7 @@ echo "=== packageInstall $1 mv gem complete"
 # document why. Runtime plugin installs (uvinstall) intentionally stay
 # permissive - user plugins are allowed to depend on sdist-only packages.
 if [ -f uv.lock ] && [ -f pyproject.toml ]; then
-  echo "--- packageBuild $1 warm UV cache (uv sync --frozen)"
-  UV_CACHE_DIR=${UV_CACHE_PLUGINS} uv sync --frozen --no-dev --no-install-project --no-build
+  echo "--- packageBuild $1 warm UV cache (uv sync --locked)"
+  UV_CACHE_DIR=${UV_CACHE_PLUGINS} uv sync --locked --no-dev --no-install-project --no-build
   echo "=== packageBuild $1 warm UV cache complete"
 fi

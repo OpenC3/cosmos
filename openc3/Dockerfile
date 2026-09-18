@@ -50,13 +50,25 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock p
 # UV_CACHE_DIR). Routing the sync through a mount and copying it into the seed
 # afterwards would bake wheels from unrelated past builds into the image, which
 # is exactly what verify-uv-cache.sh exists to prevent.
-RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project
+RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --no-build --locked --no-dev --no-install-project
 
 # Copy application code (excluding .venv from source)
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 
 # Install the application itself with dependencies already present
-RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev
+#
+# --no-build is global, so on its own it also forbids building the local
+# first-party openc3 project that this step installs from source:
+#
+#   error: Distribution `openc3 @ editable+.` can't be installed because it is
+#   marked as `--no-build` but has no binary distribution
+#
+# --no-binary-package openc3 says the opposite for that one package - openc3
+# must come from source, never a wheel - and the per-package setting wins for
+# the package it names while --no-build stays in force for every third-party
+# dependency. Naming the project explicitly is the point: a dependency can only
+# become build-eligible by being added here.
+RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --no-build --no-binary-package openc3 --locked --no-dev
 
 WORKDIR /openc3/
 
