@@ -1,5 +1,5 @@
 /*
-# Copyright 2026, OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -17,6 +17,7 @@ export { default as TimeFilters } from './timeFilters'
 export { default as CmdUtilities } from './cmdUtilities'
 export {
   getCachedSetting,
+  invalidateCachedSetting,
   peekCachedSetting,
   resetSettingsCache,
 } from './settingsCache'

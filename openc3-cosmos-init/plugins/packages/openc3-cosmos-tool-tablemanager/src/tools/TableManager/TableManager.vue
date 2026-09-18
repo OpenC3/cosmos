@@ -446,8 +446,8 @@ export default {
         }
       } else {
         this.unlockFile() // first unlock what was just being edited
-        // Split off the ' *' which indicates a file is modified on the server
-        this.filename = file.name.split('*')[0]
+        // Strip the '*' which indicates a file is modified on the server
+        this.filename = file.name.replace(/\*$/, '')
         this.fileModified = ''
         this.lockedBy = locked
         this.getDefinition()
@@ -492,7 +492,7 @@ export default {
     saveAsFilename: function (filename) {
       Api.put(`/openc3-api/tables/${this.filename}/save-as/${filename}`).then(
         (response) => {
-          this.filename = filename
+          this.filename = filename.replace(/\*$/, '')
           this.getDefinition(this.definitionFilename)
         },
       )

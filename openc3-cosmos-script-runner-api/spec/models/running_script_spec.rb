@@ -225,7 +225,7 @@ RSpec.describe RunningScript, type: :model do
 
         env = @process_double.environment
         expect(env['VIRTUAL_ENV']).to eq('/openc3/python/.venv')
-        expect(env['PYTHONUSERBASE']).to eq(ENV['PYTHONUSERBASE'])
+        expect(env['PYTHONUSERBASE']).to eq(ENV.fetch('PYTHONUSERBASE', OpenC3::PythonVenv::DEFAULT_PYTHONUSERBASE))
       end
 
       it "gracefully falls back to system venv when TargetModel.get raises an error" do
@@ -235,7 +235,7 @@ RSpec.describe RunningScript, type: :model do
 
         env = @process_double.environment
         expect(env['VIRTUAL_ENV']).to eq('/openc3/python/.venv')
-        expect(env['PYTHONUSERBASE']).to eq(ENV['PYTHONUSERBASE'])
+        expect(env['PYTHONUSERBASE']).to eq(ENV.fetch('PYTHONUSERBASE', OpenC3::PythonVenv::DEFAULT_PYTHONUSERBASE))
       end
 
       it "preserves PYTHONPATH from parent environment" do
@@ -250,7 +250,7 @@ RSpec.describe RunningScript, type: :model do
       end
 
       it "uses python_venv directly for venv resolution on temp scripts" do
-        plugin_name = "my-demo-plugin__0"
+        plugin_name = "DEFAULT__my-demo-plugin__0"
         venv_dir = "/gems/plugin_venvs/#{plugin_name}/.venv"
         allow(File).to receive(:directory?).and_call_original
         allow(File).to receive(:directory?).with(venv_dir).and_return(true)
@@ -263,6 +263,15 @@ RSpec.describe RunningScript, type: :model do
         expect(env['PYTHONUSERBASE']).to eq(venv_dir)
       end
 
+      it "ignores a temp script python_venv from another scope" do
+        allow(OpenC3::TargetModel).to receive(:get).with(name: "__TEMP__", scope: "DEFAULT").and_return(nil)
+
+        RunningScript.spawn("DEFAULT", "__TEMP__/temp_script.py", nil, false, nil, nil, nil, nil, nil, "OTHER__my-demo-plugin__0")
+
+        env = @process_double.environment
+        expect(env['VIRTUAL_ENV']).to eq('/openc3/python/.venv')
+      end
+
       it "falls back to system venv for temp scripts without python_venv" do
         allow(OpenC3::TargetModel).to receive(:get).with(name: "__TEMP__", scope: "DEFAULT").and_return(nil)
 
@@ -270,7 +279,7 @@ RSpec.describe RunningScript, type: :model do
 
         env = @process_double.environment
         expect(env['VIRTUAL_ENV']).to eq('/openc3/python/.venv')
-        expect(env['PYTHONUSERBASE']).to eq(ENV['PYTHONUSERBASE'])
+        expect(env['PYTHONUSERBASE']).to eq(ENV.fetch('PYTHONUSERBASE', OpenC3::PythonVenv::DEFAULT_PYTHONUSERBASE))
       end
     end
   end

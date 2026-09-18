@@ -619,7 +619,7 @@ Base64 encoded binary data
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Template File Path | The relative path to the template file. Filename should generally start with an underscore. | True |
+| Template File Path | The relative path to the template file. Filename should generally start with an underscore. Absolute paths and paths containing '..' are not allowed. The file must be inside the directory containing the definition file. | True |
 
 ### IGNORE_OVERLAP
 <span class="badge badge--secondary since-right">Since 5.16.0</span>**Ignores any packet items which overlap**

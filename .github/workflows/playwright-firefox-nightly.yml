@@ -35,7 +35,7 @@ jobs:
       packages: write # required to push the GHCR build cache
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           egress-policy: audit
 
@@ -44,7 +44,7 @@ jobs:
         with:
           node-version: 24
       - uses: ./.github/actions/build-cosmos
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
           version: 11
       - uses: ./.github/actions/setup-playwright
@@ -74,7 +74,7 @@ jobs:
         # startup and `gem build` on every run.
       - name: Cache test plugin gems
         id: pw_test_plugin
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: playwright/openc3-cosmos-pw-test
           key: pw-test-plugin-${{ hashFiles('openc3/templates/plugin/**', 'openc3/templates/target/**', 'openc3/lib/openc3/utilities/cli_generator.rb', 'playwright/playwright.sh') }}

@@ -16,16 +16,8 @@ class TestBridgeModel(unittest.TestCase):
         )
 
         self.assertTrue(model.enrollment_code_valid("one-time-code", 1_000))
-        self.assertTrue(
-            model.enrollment_code_valid(
-                "one-time-code", 1_000 + BridgeModel.ENROLLMENT_CODE_TTL_SECONDS
-            )
-        )
-        self.assertFalse(
-            model.enrollment_code_valid(
-                "one-time-code", 1_001 + BridgeModel.ENROLLMENT_CODE_TTL_SECONDS
-            )
-        )
+        self.assertTrue(model.enrollment_code_valid("one-time-code", 1_000 + BridgeModel.ENROLLMENT_CODE_TTL_SECONDS))
+        self.assertFalse(model.enrollment_code_valid("one-time-code", 1_001 + BridgeModel.ENROLLMENT_CODE_TTL_SECONDS))
         self.assertFalse(model.enrollment_code_valid("wrong-code", 1_001))
 
     def test_enrollment_codes_without_a_timestamp_fail_closed(self):

@@ -283,7 +283,7 @@ class TemplateProtocol(TerminatedProtocol):
         result["response_polling_period"] = self.response_polling_period
         if self.connect_complete_time:
             result["connect_complete_time"] = datetime.fromtimestamp(self.connect_complete_time, timezone.utc).strftime(
-                "%Y-%m-%dT%H:%M:%S.%fZ"
+                self.DATETIME_FORMAT
             )
         else:
             result["connect_complete_time"] = None
@@ -302,7 +302,7 @@ class TemplateProtocol(TerminatedProtocol):
         result["response_polling_period"] = self.response_polling_period
         if self.connect_complete_time:
             result["connect_complete_time"] = datetime.fromtimestamp(self.connect_complete_time, timezone.utc).strftime(
-                "%Y-%m-%dT%H:%M:%S.%fZ"
+                self.DATETIME_FORMAT
             )
         else:
             result["connect_complete_time"] = None

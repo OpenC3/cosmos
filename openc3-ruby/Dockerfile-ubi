@@ -12,7 +12,7 @@ ARG RUBYGEMS_URL=https://rubygems.org
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
 ARG PYPI_URL=https://pypi.org
 # Update Dockerfile and the python .github/workflow actions to match this version
-ARG UV_VERSION=0.11.33
+ARG UV_VERSION=0.12.5
 ENV PYPI_URL=${PYPI_URL}
 ENV UV_VERSION=${UV_VERSION}
 
@@ -53,13 +53,13 @@ COPY ./ubi.repo /etc/yum.repos.d/ubi.repo
 RUN microdnf update -y && \
     microdnf install -y --setopt=tsflags=nodocs $PACKAGES && \
     mkdir -p /usr/src && \
-    tar -xzf /tmp/ruby-3.4.7.tar.gz -C /usr/src/ && \
-    rm -f /tmp/ruby-3.4.7.tar.gz
-WORKDIR /usr/src/ruby-3.4.7
+    tar -xzf /tmp/ruby-3.4.10.tar.gz -C /usr/src/ && \
+    rm -f /tmp/ruby-3.4.10.tar.gz
+WORKDIR /usr/src/ruby-3.4.10
 RUN ./configure --disable-install-doc --enable-shared && \
     make -j "$(nproc)" && \
     make install && \
-    rm -rf /usr/src/ruby-3.4.7
+    rm -rf /usr/src/ruby-3.4.10
 
 # tini - https://github.com/krallin/tini
 WORKDIR /usr/src
@@ -77,6 +77,15 @@ RUN gem update --system 3.7.2 && \
     gem install rake && \
     gem install google-protobuf && \
     gem install grpc && \
+    # resolv 0.7.2 fixes CVE-2026-80212. Ruby ships resolv as a default gem
+    # (0.7.1 in 3.4.10) and a default gem cannot be uninstalled,
+    # so install the patched gem and then delete the default gemspec along with
+    # the stdlib copy of resolv.rb that it describes. Without that removal image
+    # scanners keep reporting the bundled version, and a require "resolv" from a
+    # bundle that does not list resolv would still load the vulnerable code.
+    gem install resolv -v 0.7.2 && \
+    rm -f "$(ruby -e 'print Gem.default_specifications_dir')"/resolv-[0-9]*.gemspec && \
+    rm -f "$(ruby -e 'print RbConfig::CONFIG["rubylibdir"]')"/resolv.rb && \
     gem cleanup && \
     bundle config build.nokogiri --use-system-libraries && \
     bundle config git.allow_insecure true && \
@@ -93,6 +102,10 @@ RUN gem update --system 3.7.2 && \
 ENV UV_LINK_MODE=copy
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_PYTHON_DOWNLOADS=never
+# Route uv at the configured PyPI mirror (no-op at the default pypi.org). Matches
+# the runtime pip -i <pypi_url>/simple convention so air-gapped builds resolve
+# Python deps from the same mirror the runtime plugin installs use.
+ENV UV_DEFAULT_INDEX=${PYPI_URL}/simple
 
 # Set Python executable path for microservices (uses venv to support editable installs)
 ENV OPENC3_PYTHON_BIN=/openc3/python/.venv/bin/python

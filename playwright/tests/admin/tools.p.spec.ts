@@ -1,5 +1,5 @@
 /*
-# Copyright 2025 OpenC3, Inc
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -73,6 +73,11 @@ test('adds a new tool', async ({ page, context, utils }) => {
     'OpenC3Home',
   )
   await page.reload()
+  // Intercept the popup at the context level so this checks the saved URL
+  // without depending on the public website's availability or redirects.
+  await context.route('https://openc3.com/', (route) =>
+    route.fulfill({ contentType: 'text/html', body: '<html></html>' }),
+  )
   const pagePromise = context.waitForEvent('page')
   await page.getByRole('link', { name: 'OpenC3Home' }).click()
   const newPage = await pagePromise

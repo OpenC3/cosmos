@@ -54,6 +54,39 @@ class AuthController < ApplicationController
     end
   end
 
+  # Checks an existing session token. The login page calls this to skip the
+  # login form when the browser already holds a valid session. Deliberately
+  # separate from verify: a session token is never a valid password, so passing
+  # one to verify always failed and counted as a bad password attempt, letting a
+  # stale token in localStorage eat into the rate limit. Session tokens are
+  # 128 bits of randomness, so there is nothing here to brute force.
+  def verify_token
+    # Reject anything that isn't shaped like a session token before touching
+    # Redis. Verification is an HGET, so it's O(1), but this endpoint is
+    # unauthenticated: the invariant is that garbage does no Redis work at all.
+    # session_token? checks the full shape, not just the prefix, so a caller
+    # that knows the prefix still can't
+    # fall through with a token generate_session could never have produced. The
+    # login page only ever holds a real token, so this costs us nothing. Note
+    # this also keeps an OTP token out of verify_no_service, which would consume
+    # it.
+    unless OpenC3::AuthModel.session_token?(params[:token])
+      head :unauthorized
+      return
+    end
+
+    begin
+      if OpenC3::AuthModel.verify_no_service(params[:token], mode: :token)
+        head :ok
+      else
+        head :unauthorized
+      end
+    rescue StandardError => e
+      log_error(e)
+      render json: { status: 'error', message: e.message, type: e.class }, status: :internal_server_error
+    end
+  end
+
   def verify_service
     if service_rate_limited?
       head :too_many_requests

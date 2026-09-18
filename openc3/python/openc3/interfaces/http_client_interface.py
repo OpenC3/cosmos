@@ -50,6 +50,7 @@ class HttpClientInterface(Interface):
         self.hostname = hostname
         self.port = int(port)
         self.protocol = protocol
+        self.http = None
         if (self.port == 80 and self.protocol == "http") or (self.port == 443 and self.protocol == "https"):
             self.url = f"{self.protocol}://{self.hostname}"
         else:

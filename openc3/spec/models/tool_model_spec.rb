@@ -12,6 +12,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
+require 'ostruct'
 require 'openc3/models/tool_model'
 require 'openc3/utilities/aws_bucket'
 

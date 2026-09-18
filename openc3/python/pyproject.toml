@@ -1,6 +1,6 @@
 [project]
 name = "openc3"
-version = "7.3.1-beta0"
+version = "7.4.1-beta0"
 description = "Python support for OpenC3 COSMOS"
 authors = [{ name = "Support", email = "support@openc3.com" }]
 maintainers = [{ name = "OpenC3 Support", email = "support@openc3.com" }]
@@ -59,12 +59,25 @@ Issues = "https://github.com/OpenC3/cosmos/issues"
 openc3pycli = "openc3pycli:main"
 
 [dependency-groups]
+# Every dev tool is pinned exactly rather than ranged. uv.lock already decides
+# what gets installed, so the pin buys review rather than reproducibility: an
+# upgrade lands as a one-line constraint change that has to be approved, not
+# buried in a lockfile re-resolution. Dependabot's weekly uv group still
+# proposes each minor/patch bump, so pinning costs a second file to edit, not a
+# manual watch. These are dev-only (PEP 735 groups never reach wheel metadata,
+# and the images sync --no-dev), so nothing here constrains downstream users.
 dev = [
-    "coverage>=7.10,<8",
-    "fakeredis>=2.31,<3",
-    "pytest>=9.0,<10",
-    "pytest-profiling>=1.8,<2",
-    "ruff>=0.15,<0.17",
+    "coverage==7.16.1",
+    "fakeredis==2.38.0",
+    "pytest==9.1.1",
+    "pytest-profiling==1.8.1",
+    # ruff and ty must move deliberately for a reason beyond the group rule
+    # above: ruff's formatter output decides whether the generated .pyi stubs
+    # match (just stubs-check), and every ty 0.0.x release can change which
+    # diagnostics are reported.
+    # Keep ruff in step with tools/generate_singleton_stubs.py.lock.
+    "ruff==0.16.8",
+    "ty==0.0.81",
 ]
 
 [build-system]
@@ -144,6 +157,9 @@ convention = "google"
 [tool.ruff.lint.isort]
 # Group imports: standard library, third-party, first-party
 known-first-party = ["openc3"]
+# _typeshed ships with typeshed and only exists at type-check time; group it
+# with the standard library instead of leaving it alone in third-party
+extra-standard-library = ["_typeshed"]
 # Add blank line between import groups
 lines-after-imports = 2
 
@@ -156,6 +172,14 @@ indent-style = "space"
 line-ending = "auto"
 # Enable auto-formatting of docstrings
 docstring-code-format = true
+
+[tool.ty.environment]
+# Match the minimum supported version so type errors that only appear on older
+# Pythons are still caught (same rationale as ruff's target-version = py310)
+python-version = "3.10"
+
+[tool.ty.src]
+exclude = [".venv", "build", "dist", "node_modules"]
 
 [tool.pytest.ini_options]
 testpaths = ["test"]

@@ -26,7 +26,58 @@ module OpenC3
 
     describe "initialize" do
       it "initializes the level to INFO" do
+        ENV.delete('OPENC3_LOG_LEVEL')
         expect(Logger.new.level).to eql Logger::INFO
+      end
+
+      it "initializes the level from OPENC3_LOG_LEVEL" do
+        ENV['OPENC3_LOG_LEVEL'] = 'DEBUG'
+        expect(Logger.new.level).to eql Logger::DEBUG
+      ensure
+        ENV.delete('OPENC3_LOG_LEVEL')
+      end
+    end
+
+    describe "default_level" do
+      after(:each) do
+        ENV.delete('OPENC3_LOG_LEVEL')
+        Logger.instance_variable_set(:@warned_bad_level, nil)
+      end
+
+      it "returns INFO if OPENC3_LOG_LEVEL isn't set" do
+        expect(Logger.default_level).to eql Logger::INFO
+      end
+
+      it "accepts every level name" do
+        {
+          'DEBUG' => Logger::DEBUG,
+          'INFO' => Logger::INFO,
+          'WARN' => Logger::WARN,
+          'ERROR' => Logger::ERROR,
+          'FATAL' => Logger::FATAL
+        }.each do |name, level|
+          ENV['OPENC3_LOG_LEVEL'] = name
+          expect(Logger.default_level).to eql level
+        end
+      end
+
+      it "ignores case and surrounding whitespace" do
+        ENV['OPENC3_LOG_LEVEL'] = 'debug'
+        expect(Logger.default_level).to eql Logger::DEBUG
+        ENV['OPENC3_LOG_LEVEL'] = ' warn '
+        expect(Logger.default_level).to eql Logger::WARN
+      end
+
+      it "warns once and returns INFO for an unknown level" do
+        stderr = StringIO.new('', 'r+')
+        $stderr = stderr
+        ENV['OPENC3_LOG_LEVEL'] = 'WARNING'
+        expect(Logger.default_level).to eql Logger::INFO
+        expect(Logger.default_level).to eql Logger::INFO
+        expect(stderr.string.scan("OPENC3_LOG_LEVEL 'WARNING'").length).to eql 1
+        expect(stderr.string).to match("DEBUG, INFO, WARN, ERROR, FATAL")
+      ensure
+        $stderr = STDERR
       end
     end
 

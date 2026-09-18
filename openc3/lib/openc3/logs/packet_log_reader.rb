@@ -142,7 +142,7 @@ module OpenC3
         end
       elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_RAW_PACKET_ENTRY_TYPE_MASK
         packet_index, time_nsec_since_epoch = entry[2..11].unpack('nQ>')
-        received_time_nsec_since_epoch, _extra, packet_data = handle_received_time_extra_and_data(entry, time_nsec_since_epoch, includes_received_time, includes_extra, cbor)
+        received_time_nsec_since_epoch, extra, packet_data = handle_received_time_extra_and_data(entry, time_nsec_since_epoch, includes_received_time, includes_extra, cbor)
         lookup_cmd_or_tlm, target_name, packet_name, _id = @packets[packet_index]
         if cmd_or_tlm != lookup_cmd_or_tlm
           raise "Packet type mismatch, packet:#{cmd_or_tlm}, lookup:#{lookup_cmd_or_tlm}"
@@ -159,6 +159,10 @@ module OpenC3
         packet.set_received_time_fast(received_time)
         packet.cmd_or_tlm = cmd_or_tlm
         packet.stored = stored
+        # Assigned unconditionally because identify_and_define_packet_data
+        # returns the shared System packet, so a nil extra here must clear
+        # the extra left over from a previous read of the same packet
+        packet.extra = extra
         packet.received_count += 1
         return packet
       elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_TARGET_DECLARATION_ENTRY_TYPE_MASK
@@ -304,7 +308,24 @@ module OpenC3
         if cbor
           extra = CBOR.decode(extra_encoded)
         else
-          extra = JSON.parse(extra_encoded, allow_nan: true, create_additions: true)
+          begin
+            extra = JSON.parse(extra_encoded, allow_nan: true, create_additions: true)
+          rescue JSON::ParserError => e
+            # PacketLogWriter up to version 7.3.0 CBOR encoded the extra on
+            # RAW_PACKET entries without setting OPENC3_CBOR_FLAG_MASK, so the
+            # flag claims JSON while the bytes are CBOR. Retry as CBOR so those
+            # existing files can still be read. extra is always a Hash, so a
+            # decode to anything else means these bytes aren't the legacy
+            # encoding either and the original JSON error is the useful one.
+            decoded = begin
+              CBOR.decode(extra_encoded)
+            rescue StandardError
+              raise e
+            end
+            raise e unless Hash === decoded
+
+            extra = decoded
+          end
         end
       end
       data = entry[next_offset..-1]

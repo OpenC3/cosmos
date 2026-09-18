@@ -371,15 +371,14 @@ export default {
         formData.append('store_plugin_id', storeData.id)
         formData.append('store_version_id', storeData.version_id)
       }
-      let self = this
       const promise = Api[method](path, {
         data: formData,
         headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: function (progressEvent) {
+        onUploadProgress: (progressEvent) => {
           let percentCompleted = Math.round(
             (progressEvent.loaded * 100) / progressEvent.total,
           )
-          self.progress = percentCompleted
+          this.progress = percentCompleted
         },
       })
       promise

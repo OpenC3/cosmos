@@ -21,13 +21,15 @@ test.use({
   toolName: 'Table Manager',
 })
 
-async function openFile(page: Page, _utils: Utilities, filename: string) {
-  await expect(page.locator('.v-dialog')).toBeVisible()
-  await expect(page.getByRole('progressbar')).not.toBeVisible()
+async function openFile(page: Page, utils: Utilities, filename: string) {
+  let openDialog = page.locator('.v-dialog').locator('text=File Open')
+  await expect(openDialog).toBeVisible()
   await expect(page.getByText('TEMPLATED')).not.toBeVisible()
   await page.locator('[data-test=file-open-save-search] input').fill(filename)
+  await utils.sleep(100) // Allow search to complete
   await page.locator(`text=${filename} >> nth=0`).click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
+  await expect(openDialog).not.toBeVisible()
 }
 
 //
@@ -38,7 +40,6 @@ test('creates a single binary file', async ({ page, utils }) => {
   await page.locator('text=New Binary from Definition').click()
   await openFile(page, utils, 'mcconfigurationtable_def.txt')
   // Handle optional confirmation dialog if binary file already exists
-  await utils.sleep(500)
   const confirmDialog = page.locator('.v-dialog:has-text("Confirm")')
   if (await confirmDialog.isVisible()) {
     await expect(confirmDialog).toContainText(
@@ -63,7 +64,6 @@ test('shows confirmation dialog when binary exists', async ({
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=New Binary from Definition').click()
   await openFile(page, utils, 'configtables_def.txt')
-  await utils.sleep(1000)
 
   await expect(page.locator('text=already exists')).toBeVisible()
   await expect(page.locator('text=Binary file')).toBeVisible()
@@ -83,7 +83,7 @@ test('shows confirmation dialog when binary exists', async ({
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=New Binary from Definition').click()
   await openFile(page, utils, 'configtables_def.txt')
-  await utils.sleep(1000)
+
   await expect(page.locator('text=already exists')).toBeVisible()
   await page.locator('button:has-text("Overwrite")').click()
 
@@ -103,7 +103,7 @@ test('edits a binary file', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=New Binary from Definition').click() // Create new since we're editing
   await openFile(page, utils, 'configtables_def.txt')
-  await utils.sleep(1000)
+
   await page.locator('button:has-text("Overwrite")').click()
   await expect(page.getByText('MC_CONFIGURATION')).toBeVisible()
   await expect(page.getByText('TLM_MONITORING')).toBeVisible()
@@ -211,7 +211,7 @@ test('edits a binary file', async ({ page, utils }) => {
 
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Save File').click()
-  await utils.sleep(5000) // Saving takes some time
+  await expect(page.locator('[data-test=filename] input')).not.toHaveValue(/\*/)
 
   // Check for new values
   await utils.download(

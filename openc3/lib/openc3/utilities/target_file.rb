@@ -21,6 +21,16 @@ module OpenC3
     # Matches ScriptRunner.vue const TEMP_FOLDER
     TEMP_FOLDER = '__TEMP__'
 
+    # self.all appends '*' to a name to mark it as modified on the server. The
+    # marker is display-only, so every path in and out of the bucket strips it.
+    #
+    # Strip only '*' at the end of a file name. '*' is a legal S3 object key character
+    # and is allowed by FileOpenSaveDialog's filename charset, so files named that
+    # way exist in the field and have to stay addressable.
+    def self.strip_modified(name)
+      name.sub(/\*$/, '')
+    end
+
     def self.all(scope, path_matchers, target: nil)
       target = target.upcase if target
 
@@ -89,7 +99,7 @@ module OpenC3
     end
 
     def self.body(scope, name)
-      name = name.split('*')[0] # Split '*' that indicates modified
+      name = strip_modified(name) # Remove '*' that indicates modified
       # First try opening a potentially modified version by looking for the modified target
       if ENV['OPENC3_LOCAL_MODE']
         local_file = OpenC3::LocalMode.open_local_file(name, scope: scope)
@@ -122,6 +132,10 @@ module OpenC3
 
     def self.create(scope, name, text, content_type: 'text/plain')
       return false unless text
+      # A trailing '*' here is the display-only modified marker leaking in from a
+      # file listing, not a name any caller means to write. Remove it to avoid 
+      # creating a file with a '*' in the name.
+      name = strip_modified(name)
       if ENV['OPENC3_LOCAL_MODE']
         OpenC3::LocalMode.put_target_file("#{scope}/targets_modified/#{name}", text, scope: scope)
       end
@@ -146,6 +160,9 @@ module OpenC3
     end
 
     def self.destroy(scope, name)
+      # Match body/create so deleting a name taken straight from a listing
+      # removes the file the user actually picked
+      name = strip_modified(name)
       if ENV['OPENC3_LOCAL_MODE']
         OpenC3::LocalMode.delete_local("#{scope}/targets_modified/#{name}")
       end

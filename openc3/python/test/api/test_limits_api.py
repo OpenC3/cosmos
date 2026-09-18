@@ -463,7 +463,7 @@ class TestLimitsApi(unittest.TestCase):
                 {"TEMP1": 0, "TEMP2": 0, "TEMP3": 52, "TEMP4": 81},
                 type="CONVERTED",
             )
-            time.sleep(0.1)
+            wait_for(lambda: len(get_out_of_limits()) == 2)
 
             items = get_out_of_limits()
             self.assertEqual(items[0][0], "INST")
@@ -487,7 +487,7 @@ class TestLimitsApi(unittest.TestCase):
                 {"TEMP1": 0, "TEMP2": 0, "TEMP3": 0, "TEMP4": 70},
                 type="CONVERTED",
             )
-            time.sleep(0.1)
+            wait_for(lambda: len(get_out_of_limits()) == 1)
 
             items = get_out_of_limits()
             self.assertEqual(items[0][0], "INST")
@@ -512,15 +512,15 @@ class TestLimitsApi(unittest.TestCase):
                 "GROUND2STATUS": "CONNECTED",
             },
         )
-        time.sleep(0.1)
+        wait_for(lambda: get_overall_limits_state() == "GREEN")
         self.assertEqual(get_overall_limits_state(), "GREEN")
         # TEMP1 limits: -80.0 -70.0 60.0 80.0 -20.0 20.0
         # TEMP2 limits: -60.0 -55.0 30.0 35.0
         inject_tlm("INST", "HEALTH_STATUS", {"TEMP1": 70, "TEMP2": 32, "TEMP3": 0, "TEMP4": 0})  # Both YELLOW
-        time.sleep(0.1)
+        wait_for(lambda: get_overall_limits_state() == "YELLOW")
         self.assertEqual(get_overall_limits_state(), "YELLOW")
         inject_tlm("INST", "HEALTH_STATUS", {"TEMP1": -75, "TEMP2": 40, "TEMP3": 0, "TEMP4": 0})
-        time.sleep(0.1)
+        wait_for(lambda: get_overall_limits_state() == "RED")
         self.assertEqual(get_overall_limits_state(), "RED")
         self.assertEqual(get_overall_limits_state([]), "RED")
 

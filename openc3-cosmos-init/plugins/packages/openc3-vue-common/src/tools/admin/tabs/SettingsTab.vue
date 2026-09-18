@@ -11,6 +11,20 @@
 # if purchased from OpenC3, Inc.
 -->
 
+<!--
+ADDING A SETTING? Also add a row for it to KNOWN_SETTINGS in
+openc3/lib/openc3/models/setting_model.rb, which is the list 'openc3cli
+initsettings' seeds from OPENC3_SETTING_<NAME> environment variables at deploy
+time. A setting missing from that list can't be seeded at all - an unknown name
+is reported and skipped - so the two have to stay together.
+
+The specs in openc3/spec/models/setting_model_spec.rb read the setting name and
+the type each component saves out of ./settings/*Settings.vue, so they fail if
+this page and KNOWN_SETTINGS drift apart. They can only see a setting reached
+through loadSetting/saveSetting with a literal name or a `const x = 'name'` in
+the same file.
+-->
+
 <template>
   <div>
     <suppressed-settings />
