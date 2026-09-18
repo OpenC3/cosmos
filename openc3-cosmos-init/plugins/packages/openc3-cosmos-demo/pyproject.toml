@@ -36,13 +36,20 @@ default-groups = []
 # Uncomment to install dependencies from a private PyPI repository.
 # See: https://docs.astral.sh/uv/configuration/indexes/
 #
-# These settings are used whenever uv resolves: when you run `uv lock`, and at
-# install time when no uv.lock is committed alongside this file. With the
-# uv.lock committed, COSMOS installs with `uv sync --frozen`, which fetches the
-# exact registry and wheel URLs recorded in the lock — so a locked plugin is not
-# redirected by the PyPI URL in Admin Console -> Settings. Without a uv.lock,
-# that setting is passed as uv's --default-index and overrides the default index
-# configured here.
+# These settings are used whenever uv resolves: when you run `uv lock` yourself,
+# and at install time when no uv.lock is committed alongside this file.
+#
+# They do not always survive installation into COSMOS. When the PyPI URL in
+# Admin Console -> Settings names anything other than public PyPI, the operator
+# has designated an index and COSMOS makes it authoritative: the install passes
+# uv `--no-config --no-sources`, so everything below is ignored and every
+# package is resolved from the operator's index. A dependency published only to
+# your private index then fails to install there, rather than being fetched
+# from it — coordinate with the operator so their index serves it too.
+#
+# A committed uv.lock sidesteps this entirely: COSMOS installs with
+# `uv sync --frozen`, which fetches the exact registry and wheel URLs recorded
+# in the lock and consults no index at all.
 #
 # Indexes are searched in the order listed, before the default index. Mark one
 # `default = true` to replace public PyPI entirely, or list your private repo
@@ -53,10 +60,9 @@ default-groups = []
 #     { name = "pypi", url = "https://pypi.org/simple", default = true },
 # ]
 #
-# Pin internal packages to a specific index. A pin is not overridden by the
-# Admin Console setting, and it prevents a same-named package on public PyPI
-# from being substituted. Add `explicit = true` to an index to keep it from
-# serving anything other than packages pinned to it.
+# Pin internal packages to a specific index. A pin keeps a same-named package on
+# public PyPI from being substituted. Add `explicit = true` to an index to keep
+# it from serving anything other than packages pinned to it.
 #
 # sources = { my-internal-pkg = { index = "private" } }
 #
