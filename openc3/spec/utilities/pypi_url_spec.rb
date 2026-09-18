@@ -92,7 +92,21 @@ module OpenC3
       it "allows an insecure host when opted in" do
         allow(ENV).to receive(:[]).with(PypiUrl::INSECURE_HOST_ENV).and_return('1')
         expect(PypiUrl.build_args("https://private.example.com/simple")).to eql \
-          ["--default-index", "https://private.example.com/simple", "--allow-insecure-host", "private.example.com"]
+          ["--default-index", "https://private.example.com/simple", "--no-config",
+           "--allow-insecure-host", "private.example.com"]
+      end
+
+      # --default-index alone loses to a named index declared in the plugin's own
+      # [tool.uv].index table, which uv searches first, so an operator who has
+      # designated an index would still see plugins resolve elsewhere.
+      it "ignores plugin uv configuration when an operator designated an index" do
+        expect(PypiUrl.build_args("https://private.example.com/simple")).to include "--no-config"
+      end
+
+      # At the public default there is no operator policy to enforce, so a
+      # plugin author's own index configuration is left alone.
+      it "leaves plugin uv configuration alone at the public default index" do
+        expect(PypiUrl.build_args(PypiUrl::DEFAULT)).to_not include "--no-config"
       end
 
       # The variable was named for pip's --trusted-host before every install

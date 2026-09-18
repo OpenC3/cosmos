@@ -606,6 +606,37 @@ module OpenC3
         expect(plugin_model['img_path']).to eql 'gems/test-plugin-1.0.0/public/store_img.png'
       end
 
+      # A ruby plugin ships no pyproject.toml or requirements.txt, so it must not
+      # be pushed down the python path: that would build a per-plugin venv, and
+      # cost every ruby plugin install a uv run it has no use for.
+      it "does not create a per-plugin venv for a plugin with no python dependencies" do
+        s3 = instance_double("Aws::S3::Client").as_null_object
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+
+        expect(GemModel).to receive(:get).and_return("my_plugin.gem")
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') { |f| f.puts "" }
+        end
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        spec = double("spec")
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(spec).to receive(:name).and_return("test-plugin")
+        allow(spec).to receive(:version).and_return("1.0.0")
+        allow(spec).to receive(:runtime_dependencies).and_return([])
+        allow(spec).to receive(:metadata).and_return({})
+        allow(spec).to receive(:summary).and_return("Test plugin")
+        allow(spec).to receive(:description).and_return("Test plugin description")
+        allow(spec).to receive(:licenses).and_return([])
+        allow(spec).to receive(:homepage).and_return(nil)
+        expect(GemModel).to receive(:install).and_return(nil)
+
+        expect(Open3).to_not receive(:capture2e)
+
+        plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => []}, scope: "DEFAULT")
+        expect(plugin_model['needs_dependencies']).to eql false
+      end
+
       context "with python dependencies" do
         let(:plugin_txt_lines) { [] }
         let(:spec_double) do
@@ -717,6 +748,23 @@ module OpenC3
           expect(install_plugin['needs_dependencies']).to eql true
         end
 
+        # Every other example here matches the index with `anything`, so without
+        # this one nothing asserts that a configured index actually reaches uv.
+        # --no-config rides along with it: PypiUrl.build_args adds it for any
+        # index that is not the public default.
+        it "passes a configured pypi_url and --no-config through to uvinstall" do
+          stub_plugin_gem
+          stub_uv_on_path(true)
+          allow(PluginModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return("https://mirror.example.com")
+
+          expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything,
+                                                    "--default-index", "https://mirror.example.com/simple",
+                                                    "--no-config").and_return(["ok", success_status])
+          allow(PythonVenv).to receive(:purge_reserved_packages).and_return([])
+
+          expect(install_plugin['needs_dependencies']).to eql true
+        end
+
         it "sanitizes an invalid pypi_url setting before invoking uvinstall" do
           stub_plugin_gem
           stub_uv_on_path(true)
@@ -798,14 +846,15 @@ module OpenC3
         allow(ENV).to receive(:[]).with('UV_ALLOW_INSECURE_HOST').and_return(nil)
         allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
         expect(PluginModel.build_pypi_args("https://custom.pypi.example.com/simple")).to \
-          eql ["--default-index", "https://custom.pypi.example.com/simple"]
+          eql ["--default-index", "https://custom.pypi.example.com/simple", "--no-config"]
       end
 
       it "adds the insecure host derived from the url when PIP_ENABLE_TRUSTED_HOST is set" do
         allow(ENV).to receive(:[]).with('UV_ALLOW_INSECURE_HOST').and_return(nil)
         allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return('1')
         expect(PluginModel.build_pypi_args("https://custom.pypi.example.com/simple")).to \
-          eql ["--default-index", "https://custom.pypi.example.com/simple", "--allow-insecure-host", "custom.pypi.example.com"]
+          eql ["--default-index", "https://custom.pypi.example.com/simple", "--no-config",
+               "--allow-insecure-host", "custom.pypi.example.com"]
       end
     end
 

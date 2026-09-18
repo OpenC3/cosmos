@@ -61,6 +61,19 @@ module OpenC3
     # @return [Array<String>] arguments to append to a uv command line
     def self.build_args(pypi_url)
       args = ["--default-index", pypi_url]
+      # --default-index does not win on its own: uv searches a named index
+      # declared in the plugin's own [tool.uv].index table first, so a plugin
+      # can quietly resolve against its author's index instead of the one the
+      # operator configured. --no-config makes uv ignore that table. Gated on
+      # the operator having actually designated an index, because at the public
+      # default there is no operator policy to enforce and the plugin author's
+      # own index configuration is the only signal there is.
+      #
+      # This is half the story: a package pinned with [tool.uv].sources is
+      # project metadata that survives --no-config. openc3/bin/uvinstall and
+      # openc3/bin/pipinstall add --no-sources for that, on the commands where
+      # uv actually resolves.
+      args << "--no-config" if pypi_url != DEFAULT
       if allow_insecure_host?
         args += ["--allow-insecure-host", URI.parse(pypi_url).host]
       end
