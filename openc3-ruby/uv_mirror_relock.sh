@@ -33,6 +33,14 @@
 # prevent - most plausibly when PYPI_URL never reached this image because it
 # was built against a base image that predates the current .env.
 #
+# --no-config --no-sources keep the resolve inside the mirror. --default-index
+# does not win on its own: uv searches a named index declared in the project's
+# own [tool.uv].index table first, and a package pinned with [tool.uv].sources
+# is project metadata that survives --no-config, so without both flags a plugin
+# that configures its author's index resolves against it and the air-gapped
+# build fails at exactly the point this script exists to prevent. Only the
+# mirror is consulted, which is the premise of pointing PYPI_URL at one.
+#
 # Usage: uv-mirror-relock [uv lock args...]
 set -e
 
@@ -47,5 +55,5 @@ if [ ! -f pyproject.toml ] || [ ! -f uv.lock ]; then
 fi
 
 echo "--- relock $(pwd)/uv.lock against ${PYPI_URL}"
-uv lock --default-index "${PYPI_URL}/simple" "$@"
+uv lock --no-config --no-sources --default-index "${PYPI_URL}/simple" "$@"
 echo "=== relock complete"
