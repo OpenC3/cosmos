@@ -59,7 +59,7 @@ jobs:
         # with:
         #   fetch-depth: 0 # all history for all branches and tags
       - name: Set up Ruby ${{ matrix.ruby-version }}
-        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        uses: ruby/setup-ruby@984c0c890880bbf811283d6f09c4607c62d210a4 # v1.323.0
         env:
           OPENC3_DEVEL: ../openc3
         with:
@@ -76,7 +76,7 @@ jobs:
         working-directory: openc3-cosmos-cmd-tlm-api
         env:
           OPENC3_DEVEL: ../openc3
-      - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+      - uses: codecov/codecov-action@0b35c9ecc4f0529d0eb674914510c22f85b196b4 # v7.1.0
         with:
           directory: openc3-cosmos-cmd-tlm-api/coverage
           flags: ruby-api # See codecov.yml
@@ -109,7 +109,7 @@ jobs:
         # with:
         #   fetch-depth: 0
       - name: Set up Ruby ${{ matrix.ruby-version }}
-        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        uses: ruby/setup-ruby@984c0c890880bbf811283d6f09c4607c62d210a4 # v1.323.0
         env:
           OPENC3_DEVEL: ../openc3
         with:
@@ -124,7 +124,7 @@ jobs:
         working-directory: openc3-cosmos-script-runner-api
         env:
           OPENC3_DEVEL: ../openc3
-      - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+      - uses: codecov/codecov-action@0b35c9ecc4f0529d0eb674914510c22f85b196b4 # v7.1.0
         with:
           directory: openc3-cosmos-script-runner-api/coverage
           flags: ruby-api # See codecov.yml
@@ -164,7 +164,7 @@ jobs:
           uv run --frozen coverage run -m pytest ../../openc3-cosmos-script-runner-api/test/
           uv run --frozen coverage xml -i
         working-directory: openc3/python
-      - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+      - uses: codecov/codecov-action@0b35c9ecc4f0529d0eb674914510c22f85b196b4 # v7.1.0
         with:
           working-directory: openc3/python
           flags: python # See codecov.yml
