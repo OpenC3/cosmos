@@ -125,6 +125,8 @@ Set in `.env`, or overridden per service in `compose.override.yaml`:
 | `OPENC3_CLOUD` | `local` | Cloud provider, for bucket and secret handling |
 | `RUBYGEMS_URL`, `PYPI_URL`, `NPM_URL`, `MAVEN_URL` | public mirrors | Package sources used at *build* time. To change the URLs COSMOS uses at *run* time, set the `rubygems_url` / `pypi_url` Admin settings |
 
+Pointing `pypi_url` (or `PYPI_URL`) at an index other than `https://pypi.org` makes that index authoritative for plugin Python dependencies: COSMOS passes uv `--no-config --no-sources`, so a plugin cannot resolve around it using an index declared in its own `[tool.uv].index` table or a `[tool.uv].sources` pin. Your index has to serve every package a plugin asks for — a plugin depending on something published only to its author's private index fails to install rather than quietly fetching from that index. This applies only where uv resolves; see [plugin Python dependencies](plugins.md#phase-2-deploy) for how a plugin shipping a `uv.lock` behaves.
+
 Per-service runtime flags - `OPENC3_NO_*`, `OPENC3_FORCE_INSTALL`, `OPENC3_ALLOW_HTTP`, `OPENC3_DEFAULT_QUEUE`, `OPENC3_AUTH_RATE_LIMIT_*`, `OPENC3_LANGUAGE`, `OPENC3_LOG_STDERR` - are documented in `compose.override.yaml` under the service each one applies to, because a flag only takes effect on the container that reads it. See [Install and runtime flags](compose.md#install-and-runtime-flags) for how their values are interpreted.
 
 ## Admin Console settings
