@@ -24,7 +24,7 @@ class Protocol:
 
     # self.param allow_empty_data [True/False/None] Whether or not this protocol will allow an empty string
     # to be passed down to later Protocols (instead of returning 'STOP'). Can be True, False, or None, where
-    # None is interpreted as True if not the Protocol is the last Protocol of the chain.
+    # None is interpreted as True unless the Protocol is the last Protocol of the chain.
     def __init__(self, allow_empty_data=None):
         self.interface = None
         self.allow_empty_data = ConfigParser.handle_true_false_none(allow_empty_data)
@@ -83,14 +83,14 @@ class Protocol:
             # if self.interface.stream_log_pair is not None:
             #     self.interface.stream_log_pair.write_log.write(data)
 
-    # Ensure we have some data in match this is the only protocol:
+    # Ensure we have some data in case this is the only protocol
     def read_data(self, data, extra=None):
         if len(data) <= 0:
             if self.allow_empty_data is None:
                 if self.interface and self.interface.read_protocols[-1] == self:
                     # Last read interface in chain with auto self.allow_empty_data
                     return ("STOP", extra)
-            elif self.allow_empty_data:
+            elif not self.allow_empty_data:
                 # Don't self.allow_empty_data means STOP
                 return ("STOP", extra)
         return (data, extra)
