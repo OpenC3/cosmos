@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "OpenC3 integration testing",
   "scripts": {
-    "coverage": "node generate-coverage.mjs",
+    "coverage": "node --max-old-space-size=8192 --expose-gc generate-coverage.mjs",
     "test": "pnpm test:parallel --quiet && pnpm test:serial --quiet && pnpm coverage",
     "test:parallel": "playwright test ./tests/*.p.spec.ts ./tests/**/*.p.spec.ts --project=chromium",
     "test:serial": "playwright test ./tests/*.s.spec.ts ./tests/**/*.s.spec.ts --project=chromium --workers=1",
