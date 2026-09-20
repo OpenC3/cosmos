@@ -18,6 +18,8 @@ on:
         description: "Release version"
         required: true
         type: string
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -28,13 +30,39 @@ jobs:
     permissions:
       contents: write # Need write permission to upload release asset
     env:
-      VERSION: ${{ github.event.inputs.version }}
+      # workflow_dispatch passes a bare version (6.10.0), the release event
+      # passes a tag (v6.10.0). Normalized to a bare version by the step below.
+      RAW_VERSION: ${{ github.event.inputs.version || github.event.release.tag_name }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           egress-policy: audit
 
+      # Expressions have no string replace, so strip the leading "v" in shell.
+      - name: Determine version
+        run: |
+          version="${RAW_VERSION#v}"
+          if [ -z "$version" ]; then
+            echo "Could not determine the release version to scan" >&2
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Verify release exists
+        id: check_release
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const tag = `v${process.env.VERSION}`;
+            // Fail fast rather than scanning every image and only discovering
+            // at upload time that there is no release to attach the results to.
+            await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag
+            });
+            console.log("found release for tag", tag);
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Ruby 3.4
         uses: ruby/setup-ruby@984c0c890880bbf811283d6f09c4607c62d210a4 # v1.323.0
