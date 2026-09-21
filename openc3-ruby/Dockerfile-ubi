@@ -12,7 +12,7 @@ ARG RUBYGEMS_URL=https://rubygems.org
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
 ARG PYPI_URL=https://pypi.org
 # Update Dockerfile and the python .github/workflow actions to match this version
-ARG UV_VERSION=0.12.5
+ARG UV_VERSION=0.12.17
 ENV PYPI_URL=${PYPI_URL}
 ENV UV_VERSION=${UV_VERSION}
 

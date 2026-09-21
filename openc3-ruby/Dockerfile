@@ -23,7 +23,7 @@ ARG PYTHON_VERSION=3.13
 ARG RUBYGEMS_URL
 ARG PYPI_URL=https://pypi.org
 # Update Dockerfile-ubi and the python .github/workflow actions to match this version
-ARG UV_VERSION=0.12.5
+ARG UV_VERSION=0.12.17
 
 ENV APT_URL=${APT_URL}
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
