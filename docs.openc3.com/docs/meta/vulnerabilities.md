@@ -8,7 +8,7 @@ sidebar_custom_props:
 Below is a list of CVEs reported in COSMOS. This does not include CVEs in our dependencies - you can find those in our [Trivy scans](https://github.com/OpenC3/cosmos/actions/workflows/post_release_trivy.yml).
 
 :::note[Publishing CVEs]
-Due to the recent rise in submitted CVEs, Github has falled behind in issuing and publishing CVEs. Thus some of these URLs may not yet resolve in the database even though they have been assigned.
+Due to the recent rise in submitted CVEs, Github has [fallen behind](https://github.blog/security/supply-chain-security/inside-the-advisory-database-and-what-happens-when-vulnerability-volume-breaks-records/) in issuing and publishing CVEs. Thus some of these URLs may not yet resolve in the database even though they have been assigned.
 :::
 
 ## Patched
