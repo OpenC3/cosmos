@@ -400,6 +400,8 @@ module OpenC3
       end
 
       interface = StreamInterface.new
+      # Only the read side of the connection needs a read thread
+      interface.read_allowed = listen_read
       interface.target_names = @target_names
       interface.cmd_target_names = @cmd_target_names
       interface.tlm_target_names = @tlm_target_names

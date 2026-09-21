@@ -399,6 +399,8 @@ class TcpipServerInterface(StreamInterface):
             stream = TcpipSocketStream(write_socket, read_socket, self.write_timeout, self.read_timeout)
 
             interface = StreamInterface()
+            # Only the read side of the connection needs a read thread
+            interface.read_allowed = listen_read
             interface.target_names = self.target_names
             interface.cmd_target_names = self.cmd_target_names
             interface.tlm_target_names = self.tlm_target_names

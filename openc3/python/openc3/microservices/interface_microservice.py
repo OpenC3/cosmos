@@ -810,11 +810,25 @@ class InterfaceMicroservice(Microservice):
                                             value=self.count,
                                             type="counter",
                                         )
+                                        self.metric.set(
+                                            name="interface_read_queue_bytes",
+                                            value=self.interface.read_queue_bytes(),
+                                            type="gauge",
+                                            unit="bytes",
+                                            help="Bytes buffered on the interface read queue waiting to be processed",
+                                        )
                                     else:
                                         self.metric.set(
                                             name="router_cmd_total",
                                             value=self.count,
                                             type="counter",
+                                        )
+                                        self.metric.set(
+                                            name="router_read_queue_bytes",
+                                            value=self.interface.read_queue_bytes(),
+                                            type="gauge",
+                                            unit="bytes",
+                                            help="Bytes buffered on the router read queue waiting to be processed",
                                         )
                                 else:
                                     self.logger.info(

@@ -717,8 +717,12 @@ module OpenC3
                   @count += 1
                   if @interface_or_router == 'INTERFACE'
                     @metric.set(name: 'interface_tlm_total', value: @count, type: 'counter')
+                    @metric.set(name: 'interface_read_queue_bytes', value: @interface.read_queue_bytes, type: 'gauge',
+                                unit: 'bytes', help: 'Bytes buffered on the interface read queue waiting to be processed')
                   else
                     @metric.set(name: 'router_cmd_total', value: @count, type: 'counter')
+                    @metric.set(name: 'router_read_queue_bytes', value: @interface.read_queue_bytes, type: 'gauge',
+                                unit: 'bytes', help: 'Bytes buffered on the router read queue waiting to be processed')
                   end
                 else
                   @logger.info "#{@interface.name}: Internal disconnect requested (returned nil)"
