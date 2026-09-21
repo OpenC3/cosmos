@@ -67,7 +67,7 @@ export default {
   padding: 10px;
   text-align: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  height: 200px;
+  height: 212px;
   width: 200px;
 }
 

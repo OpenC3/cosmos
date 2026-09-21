@@ -59,6 +59,12 @@
           </v-col>
         </v-row>
       </div>
+      <FlowMetricsPanel
+        v-if="
+          health && readProtocolIndex === null && writeProtocolIndex === null
+        "
+        :health="paused ? pausedHealth : health"
+      />
     </v-card-text>
   </v-card>
 </template>
@@ -66,14 +72,20 @@
 <script>
 import Updater from '../Updater'
 import RawBuffer from '../RawBuffer.vue'
+import FlowMetricsPanel from './FlowMetricsPanel.vue'
 
 export default {
   name: 'DetailsTable',
   components: {
     RawBuffer,
+    FlowMetricsPanel,
   },
   mixins: [Updater],
   props: {
+    health: {
+      type: Object,
+      default: null,
+    },
     mode: {
       type: String,
       default: 'Interface',
@@ -100,6 +112,7 @@ export default {
         { title: 'Value', key: 'value', width: '70%' },
       ],
       paused: false,
+      pausedHealth: null,
       updatedDetails: null,
     }
   },
@@ -199,6 +212,7 @@ export default {
   },
   methods: {
     pause: function () {
+      this.pausedHealth = this.health
       this.paused = !this.paused
     },
     closeClick: function () {
