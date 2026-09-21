@@ -1,0 +1,173 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+# Watches the tool pins that dependabot cannot see and raises them the way
+# dependabot would: one pull request, updated in place each week rather than
+# reopened, carrying the bump itself so it can be reviewed and merged:
+#
+#   * versions inside an Actions input (setup-uv's `version`) or a Dockerfile
+#     ARG consumed by pip -- dependabot parses neither
+#   * major releases, since every group in dependabot.yml is limited to
+#     update-types: [minor, patch]
+#   * PEP 723 script lockfiles (openc3/python/tools/*.py.lock)
+#
+# See .github/scripts/check_tool_versions.py for the list of watched pins.
+
+name: Tool Version Check
+
+on:
+  schedule:
+    - cron: "0 7 * * 1" # Mondays at 07:00 UTC, after dependabot's weekly run
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/scripts/check_tool_versions.py"
+      - ".github/scripts/check_tool_versions.py.lock"
+      - ".github/workflows/tool_version_check.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      # Needed to push the bump branch and open the pull request
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The bump targets the ref this run checked out, not a hardcoded main: a
+      # scheduled run only ever fires on the default branch, but a
+      # workflow_dispatch from a release or feature branch should raise its
+      # pins against that branch. The bump branch carries the base in its name
+      # so those runs get their own pull request instead of fighting over one.
+      - name: Name the bump branch after its base
+        run: |
+          echo "BASE=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          echo "BRANCH=chore/tool-version-bumps/${GITHUB_REF_NAME//\//-}" >> "$GITHUB_ENV"
+
+      # The checker is a PEP 723 script, so it needs uv. sync: "false" because
+      # it does not use openc3's dependencies -- its own are in its lockfile.
+      # uv is also what regenerates the lockfiles after a bump.
+      - name: Set up uv and Python
+        uses: ./.github/actions/setup-uv-python
+        with:
+          sync: "false"
+
+      # Exits 1 when a pin is behind; capture that without failing the step so
+      # the report can still be published
+      - name: Check pinned tool versions
+        id: check
+        env:
+          REPORT: ${{ runner.temp }}/report.md
+        run: |
+          if uv run --script --locked --no-build .github/scripts/check_tool_versions.py > "$REPORT"; then
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+
+      # On a pull request, report in the summary only: pushing a branch from a
+      # PR run would fight with the PR itself, and fork PRs have no write token
+      - name: Apply the bumps
+        id: fix
+        if: ${{ github.event_name != 'pull_request' && steps.check.outputs.stale == 'true' }}
+        env:
+          REPORT: ${{ runner.temp }}/report.md
+        run: |
+          set -euo pipefail
+          uv run --script --locked --no-build .github/scripts/check_tool_versions.py --fix > "$REPORT" || true
+          cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+
+          # A bumped pin is only half the change: ruff and ty live in
+          # pyproject.toml's dev group, and mypy, ruff and requests live in
+          # PEP 723 headers, all of which CI installs with --locked/--frozen.
+          # Leaving the lockfiles behind would put up a pull request that
+          # cannot pass its own checks.
+          uv lock --project openc3/python
+          uv lock --script .github/scripts/check_tool_versions.py
+          uv lock --script openc3/python/tools/generate_singleton_stubs.py
+
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # TOOL_VERSION_PAT, when present, is what makes the checks run on the
+      # pull request: GitHub does not trigger workflows for a push made with
+      # GITHUB_TOKEN. Without it the pull request still opens, it just arrives
+      # without CI, so the bump has to be verified by pushing an empty commit.
+      - name: Open or update the pull request
+        if: ${{ steps.fix.outputs.changed == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.TOOL_VERSION_PAT || secrets.GITHUB_TOKEN }}
+          TITLE: "chore(deps): bump the tool pins dependabot cannot see"
+          REPORT: ${{ runner.temp }}/report.md
+          BODY: ${{ runner.temp }}/pr.md
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # The checkout persisted no credentials, so restore push access from
+          # GH_TOKEN rather than hand-rolling an auth header.
+          gh auth setup-git
+          git remote set-url origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+
+          git switch -c "$BRANCH"
+          git commit --all --message "$TITLE" --message "$(cat "$REPORT")"
+          # Force: the branch is regenerated from its base each run, so it
+          # always carries exactly the bumps that are outstanding today.
+          git push --force origin "$BRANCH"
+
+          {
+            echo "Pins that dependabot does not raise have fallen behind, so this"
+            echo "raises them."
+            echo
+            cat "$REPORT"
+            echo
+            echo "Opened by [\`tool_version_check\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})."
+          } > "$BODY"
+
+          existing=$(gh pr list --head "$BRANCH" --state open --json number --jq 'first | .number // empty')
+          if [ -n "$existing" ]; then
+            gh pr edit "$existing" --title "$TITLE" --body-file "$BODY"
+          else
+            gh pr create --title "$TITLE" --body-file "$BODY" \
+              --base "$BASE" --head "$BRANCH" --label maintenance
+          fi
+
+      - name: Close the pull request when nothing is behind
+        if: ${{ github.event_name != 'pull_request' && steps.check.outputs.stale == 'false' }}
+        env:
+          GH_TOKEN: ${{ secrets.TOOL_VERSION_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          existing=$(gh pr list --head "$BRANCH" --state open --json number --jq 'first | .number // empty')
+          if [ -n "$existing" ]; then
+            gh pr close "$existing" --delete-branch \
+              --comment "All watched pins are current as of $GITHUB_SHA. Closing."
+          fi
+          echo "Nothing behind upstream."

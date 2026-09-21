@@ -36,8 +36,9 @@
 </template>
 
 <script>
-import { Api, OpenC3Api } from '@openc3/js-common/services'
+import { Api, logUnlessAuthRequired } from '@openc3/js-common/services'
 import { UpgradeToEnterpriseDialog } from '@/components'
+import { getCachedSetting } from '@/util'
 import ClockFooter from './ClockFooter.vue'
 
 export default {
@@ -83,16 +84,15 @@ export default {
         this.license = response.data.license
         this.version = response.data.version
       })
-      .catch(console.error)
+      .catch(logUnlessAuthRequired)
   },
   methods: {
     getSourceUrl: function () {
-      new OpenC3Api()
-        .get_settings(['source_url'])
-        .then((response) => {
-          this.sourceUrl = response[0]
-        })
-        .catch(console.error)
+      // Fall back to '' rather than undefined so the anchor keeps rendering an
+      // (empty) href instead of dropping the attribute entirely
+      getCachedSetting('source_url', '').then((response) => {
+        this.sourceUrl = response
+      })
     },
     upgrade: function () {
       if (!this.enterprise) {

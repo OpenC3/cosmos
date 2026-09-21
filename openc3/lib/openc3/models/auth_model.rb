@@ -27,7 +27,7 @@ module OpenC3
     PRIMARY_KEY = 'OPENC3__TOKEN' # for argon2 password hash
     SESSIONS_KEY = 'OPENC3__SESSIONS' # for hash containing session tokens
 
-    # The length of time in minutes to keep redis values in memory
+    # The length of time in seconds to keep redis values in memory
     PW_HASH_CACHE_TIMEOUT = 5
     SESSION_CACHE_TIMEOUT = 5
 
@@ -43,6 +43,21 @@ module OpenC3
 
     SESSION_PREFIX = "ses_"
     OTP_PREFIX = "otp_"
+
+    # A session token is SESSION_PREFIX followed by the unpadded urlsafe base64
+    # encoding of 16 random bytes, i.e. exactly 22 characters of [A-Za-z0-9_-].
+    # Keep this in sync with generate_session.
+    SESSION_TOKEN_REGEX = /\A#{SESSION_PREFIX}[A-Za-z0-9_-]{22}\z/
+
+    # Whether the given value could have been produced by generate_session.
+    # Callers handling a token from an unauthenticated request use this to
+    # reject garbage before doing any Redis work. Checking only the prefix is
+    # not enough: something like "ses_AAA" would pass and still cost us a read.
+    # @param token [String] the value to check
+    # @return [Boolean] whether the value is shaped like a session token
+    def self.session_token?(token)
+      SESSION_TOKEN_REGEX.match?(token.to_s)
+    end
 
     def self.set?(key = PRIMARY_KEY)
       Store.exists(key) == 1
@@ -78,15 +93,28 @@ module OpenC3
       # Check cached session tokens and password hash
       time = Time.now
       unless mode == :password
-        if @@session_cache and (time - @@session_cache_time) < SESSION_CACHE_TIMEOUT and @@session_cache[token]
+        # Drop the whole cache once it ages out rather than tracking per token
+        # times. This bounds how long a terminated token keeps working to
+        # SESSION_CACHE_TIMEOUT, same as before.
+        if @@session_cache.nil? or (time - @@session_cache_time) >= SESSION_CACHE_TIMEOUT
+          @@session_cache = {}
+          @@session_cache_time = time
+        end
+
+        if @@session_cache[token]
           terminate_otp(token)
           return true
         end
 
-        # Check stored session tokens
-        @@session_cache = Store.hgetall(SESSIONS_KEY)
-        @@session_cache_time = time
-        if @@session_cache[token]
+        # Check the stored session tokens for just this token. Deliberately not
+        # HGETALL: verify_token is unauthenticated, so reading the entire
+        # session hash here lets any caller make us pull every session ever
+        # created on every request, and that hash only grows. HGET is O(1) and
+        # can't be amplified. The cache then fills with the tokens actually in
+        # use instead of all of them.
+        stored = Store.hget(SESSIONS_KEY, token)
+        if stored
+          @@session_cache[token] = stored
           terminate_otp(token)
           return true
         end

@@ -108,6 +108,13 @@ class PreidentifiedProtocol(BurstProtocol):
                     raise RuntimeError(
                         f"Length value received larger than max_length: {string_length} > {self.max_length}"
                     )
+                # Reject up front rather than buffering the declared number of bytes first
+                if string_length > self.max_buffer_size:
+                    self.reset()  # Drop the partial frame rather than holding it until disconnect
+                    raise RuntimeError(
+                        f"Length value received of {string_length} bytes exceeds maximum buffer size of "
+                        f"{self.max_buffer_size} bytes. Increase OPENC3_PROTOCOL_MAX_BUFFER_SIZE."
+                    )
             case _:
                 raise RuntimeError(
                     f"Unsupported length given to read_length_field_followed_by_string: {length_num_bytes}"

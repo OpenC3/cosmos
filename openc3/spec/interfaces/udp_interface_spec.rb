@@ -127,20 +127,22 @@ module OpenC3
       end
 
       it "receives from a different source port on a shared read and write socket" do
-        # Bind the receiving sockets first so the ports are known, then let the
-        # sender pick an ephemeral source port
+        # Let the interface bind its own ephemeral port rather than closing a
+        # bound socket to reuse its port number. Any other socket can claim that
+        # number between the close and the bind, and since every socket sets
+        # SO_REUSEADDR the bind still succeeds while the datagrams get delivered
+        # to the other socket
         destination = UdpReadSocket.new(0)
         dest_port = destination.local_address.ip_port
-        shared_port = UdpReadSocket.new(0)
-        read_port = shared_port.local_address.ip_port
-        OpenC3.close_socket(shared_port)
 
         sender = nil
         i = nil
         begin
-          sender = UdpWriteSocket.new('127.0.0.1', read_port)
-          i = UdpInterface.new('127.0.0.1', dest_port, read_port, read_port)
+          i = UdpInterface.new('127.0.0.1', dest_port, 0, 0)
           i.connect
+          read_port = i.instance_variable_get(:@read_socket).local_address.ip_port
+          # No src_port so the sender writes from an ephemeral port
+          sender = UdpWriteSocket.new('127.0.0.1', read_port)
 
           sender.write("telemetry")
           expect(i.instance_variable_get(:@read_socket).read(1.0)).to eql "telemetry"

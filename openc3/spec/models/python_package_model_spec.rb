@@ -470,6 +470,85 @@ module OpenC3
 
         PythonPackageModel.install(pkg_file, scope: "DEFAULT")
       end
+
+      it "falls back to ENV PYPI_URL when the setting is nil" do
+        pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
+        File.write(pkg_file, "fake")
+
+        allow(ENV).to receive(:fetch).with('PYPI_URL', nil).and_return("https://env.pypi.example.com")
+
+        process_double = double("process", name: "process_123")
+        pm = double("process_manager")
+        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
+        allow(PythonPackageModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return(nil)
+
+        expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **_kw|
+          expect(cmd).to include("https://env.pypi.example.com/simple")
+          process_double
+        end
+
+        PythonPackageModel.install(pkg_file, scope: "DEFAULT")
+      end
+
+      it "replaces a pypi_url setting containing shell metacharacters with the default" do
+        pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
+        File.write(pkg_file, "fake")
+
+        allow(OpenC3::Logger).to receive(:error)
+        # A user-writable setting must never put shell metacharacters on the pipinstall argv
+        payload = "https://pypi.org ; id > /tmp/PWNED ; #"
+        process_double = double("process", name: "process_123")
+        pm = double("process_manager")
+        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
+        allow(PythonPackageModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return(payload)
+
+        expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **_kw|
+          expect(cmd).to include(PypiUrl::DEFAULT)
+          expect(cmd.join(' ')).to_not include("PWNED")
+          process_double
+        end
+
+        PythonPackageModel.install(pkg_file, scope: "DEFAULT")
+        expect(OpenC3::Logger).to have_received(:error).with(/Invalid pypi_url/)
+      end
+
+      it "replaces a non-http pypi_url setting with the default" do
+        pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
+        File.write(pkg_file, "fake")
+
+        allow(OpenC3::Logger).to receive(:error)
+        process_double = double("process", name: "process_123")
+        pm = double("process_manager")
+        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
+        allow(PythonPackageModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return("file:///etc")
+
+        expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **_kw|
+          expect(cmd).to include(PypiUrl::DEFAULT)
+          process_double
+        end
+
+        PythonPackageModel.install(pkg_file, scope: "DEFAULT")
+      end
+
+      it "derives --trusted-host from the pypi_url when PIP_ENABLE_TRUSTED_HOST is set" do
+        pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
+        File.write(pkg_file, "fake")
+
+        allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return('1')
+
+        process_double = double("process", name: "process_123")
+        pm = double("process_manager")
+        allow(OpenC3::ProcessManager).to receive(:instance).and_return(pm)
+        allow(PythonPackageModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return("https://custom.pypi.example.com")
+
+        expect(pm).to receive(:spawn) do |cmd, _type, _detail, _expires, **_kw|
+          expect(cmd).to include("--trusted-host")
+          expect(cmd).to include("custom.pypi.example.com")
+          process_double
+        end
+
+        PythonPackageModel.install(pkg_file, scope: "DEFAULT")
+      end
     end
 
     describe ".destroy" do

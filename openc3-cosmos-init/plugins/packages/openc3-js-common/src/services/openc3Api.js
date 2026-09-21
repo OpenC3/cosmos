@@ -19,6 +19,7 @@
 */
 
 import axios from './axios.js'
+import { refreshToken } from './authGuard.js'
 import { parse, stringify, isInteger, isSafeNumber } from 'lossless-json'
 
 // parse huge integer values into a bigint, and use a regular number otherwise
@@ -26,7 +27,7 @@ export function customNumberParser(value) {
   if (isInteger(value) && !isSafeNumber(value)) {
     return BigInt(value)
   } else {
-    return parseFloat(value)
+    return Number.parseFloat(value)
   }
 }
 export default class OpenC3Api {
@@ -41,16 +42,9 @@ export default class OpenC3Api {
     headerOptions = {},
     timeout = 60000,
   ) {
-    try {
-      let refreshed = await OpenC3Auth.updateToken(
-        OpenC3Auth.defaultMinValidity,
-      )
-      if (refreshed) {
-        OpenC3Auth.setTokens()
-      }
-    } catch (error) {
-      OpenC3Auth.login()
-    }
+    // Throws an AuthRequiredError if we have no token, in which case we're
+    // being redirected to login and must not send the request
+    await refreshToken()
     this.id = this.id + 1
     try {
       kwparams['scope'] = window.openc3Scope
@@ -175,9 +169,7 @@ export default class OpenC3Api {
     })
   }
 
-  // ***********************************************
-  // The following APIs are used by the CmdTlmServer
-  // ***********************************************
+  // #region CmdTlmServer APIs
 
   offline_access_needed() {
     return this.exec('offline_access_needed', [])
@@ -347,9 +339,11 @@ export default class OpenC3Api {
   get_param(target, packet, item) {
     return this.exec('get_param', [target, packet, item])
   }
-  // DEPRECATED for get_param
+  /**
+   * @deprecated prefer get_param
+   */
   get_parameter(target, packet, item) {
-    return this.exec('get_param', [target, packet, item])
+    return this.get_param(target, packet, item)
   }
 
   get_limits_sets() {
@@ -368,9 +362,7 @@ export default class OpenC3Api {
     return this.exec('delete_limits_set', [limits_set])
   }
 
-  // ***********************************************
-  // End CmdTlmServer APIs
-  // ***********************************************
+  // #endregion CmdTlmServer APIs
 
   get_target(target_name) {
     return this.exec('get_target', [target_name])
@@ -379,33 +371,41 @@ export default class OpenC3Api {
   get_target_names() {
     return this.exec('get_target_names', [])
   }
-  // DEPRECATED for get_target_names
+  /**
+   * @deprecated prefer get_target_names
+   */
   get_target_list() {
-    return this.exec('get_target_names', [])
+    return this.get_target_names()
   }
 
   get_tlm(target_name, packet_name) {
     return this.exec('get_tlm', [target_name, packet_name])
   }
-  // DEPRECATED for get_tlm
+  /**
+   * @deprecated prefer get_tlm
+   */
   get_telemetry(target_name, packet_name) {
-    return this.exec('get_tlm', [target_name, packet_name])
+    return this.get_tlm(target_name, packet_name)
   }
 
   get_all_tlm(target_name) {
     return this.exec('get_all_tlm', [target_name])
   }
-  // DEPRECATED for get_all_tlm
+  /**
+   * @deprecated prefer get_all_tlm
+   */
   get_all_telemetry(target_name) {
-    return this.exec('get_all_tlm', [target_name])
+    return this.get_all_tlm(target_name)
   }
 
   get_all_tlm_names(target_name, hidden = false) {
     return this.exec('get_all_tlm_names', [target_name], { hidden: hidden })
   }
-  // DEPRECATED for get_all_tlm_names
+  /**
+   * @deprecated prefer get_all_tlm_names
+   */
   get_all_telemetry_names(target_name) {
-    return this.exec('get_all_tlm_names', [target_name])
+    return this.get_all_tlm_names(target_name)
   }
 
   get_all_tlm_item_names(target_name) {
@@ -552,25 +552,31 @@ export default class OpenC3Api {
   get_all_cmds(target_name) {
     return this.exec('get_all_cmds', [target_name])
   }
-  // DEPRECATED for get_all_cmds
+  /**
+   * @deprecated prefer get_all_cmds
+   */
   get_all_commands(target_name) {
-    return this.exec('get_all_cmds', [target_name])
+    return this.get_all_cmds(target_name)
   }
 
   get_all_cmd_names(target_name, hidden = false) {
     return this.exec('get_all_cmd_names', [target_name], { hidden: hidden })
   }
-  // DEPRECATED for get_all_cmd_names
+  /**
+   * @deprecated prefer get_all_cmd_names
+   */
   get_all_command_names(target_name) {
-    return this.exec('get_all_cmd_names', [target_name])
+    return this.get_all_cmd_names(target_name)
   }
 
   get_cmd(target_name, command_name) {
     return this.exec('get_cmd', [target_name, command_name])
   }
-  // DEPRECATED for get_cmd
+  /**
+   * @deprecated prefer get_cmd
+   */
   get_command(target_name, command_name) {
-    return this.exec('get_cmd', [target_name, command_name])
+    return this.get_cmd(target_name, command_name)
   }
 
   get_cmd_cnts(target_commands) {
@@ -848,7 +854,9 @@ export default class OpenC3Api {
       )
     }
   }
-  // DEPRECATED for build_cmd
+  /**
+   * @deprecated prefer build_cmd
+   */
   build_command(
     target_name,
     command_name,
@@ -856,18 +864,13 @@ export default class OpenC3Api {
     headerOptions = {},
     kwparams = {},
   ) {
-    if (command_name === undefined) {
-      return this.exec('build_cmd', target_name, kwparams, headerOptions)
-    } else {
-      return this._cmd(
-        'build_cmd',
-        target_name,
-        command_name,
-        param_list,
-        headerOptions,
-        kwparams,
-      )
-    }
+    return this.build_cmd(
+      target_name,
+      command_name,
+      param_list,
+      headerOptions,
+      kwparams,
+    )
   }
 
   get_interface_names() {
@@ -942,9 +945,11 @@ export default class OpenC3Api {
     return this.exec('update_plugin_store', [])
   }
 
-  // DEPRECATED for set_setting
+  /**
+   * @deprecated prefer set_setting
+   */
   save_setting(name, data) {
-    return this.exec('set_setting', [name, data])
+    return this.set_setting(name, data)
   }
 
   get_metrics() {

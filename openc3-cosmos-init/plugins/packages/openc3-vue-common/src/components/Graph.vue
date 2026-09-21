@@ -321,7 +321,11 @@ import GraphEditDialog from './GraphEditDialog.vue'
 import GraphEditItemDialog from './GraphEditItemDialog.vue'
 import uPlot from 'uplot'
 import bs from 'binary-search'
-import { OpenC3Api, Cable } from '@openc3/js-common/services'
+import {
+  OpenC3Api,
+  Cable,
+  logUnlessAuthRequired,
+} from '@openc3/js-common/services'
 import { useStore } from '@/plugins/store'
 import { TimeFilters } from '@/util'
 import 'uplot/dist/uPlot.min.css'
@@ -434,8 +438,10 @@ export default {
     'click',
     'close-graph',
     'edit',
+    'error',
     'min-max-graph',
     'pause',
+    'recovered',
     'resize',
     'start',
     'started',
@@ -1456,6 +1462,14 @@ export default {
     clearErrors: function () {
       this.errors = []
     },
+    // Our own error list is only reachable through the toolbar, which is hidden
+    // when we're embedded in a screen (LINEGRAPH), so also emit so the screen
+    // can show it. See emitScreenError in Widget.js.
+    addError: function (error) {
+      const entry = { time: new Date().getTime(), ...error }
+      this.errors.push(entry)
+      this.$emit('error', entry)
+    },
     editGraphClose: function (graph) {
       this.editGraph = false
       this.title = graph.title
@@ -1554,6 +1568,10 @@ export default {
         .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => {
+            // The connection is back, so drop the disconnect we reported below
+            // and tell whoever embedded us (LINEGRAPH) to do the same
+            this.errors = this.errors.filter((error) => !error.transient)
+            this.$emit('recovered')
             const itemsToAdd = [...this.items]
             if (!this.xAxisIsDefault && !this.xAxisIsAlsoGraphedItem) {
               itemsToAdd.push(this.actualXAxisItem)
@@ -1564,18 +1582,18 @@ export default {
             // If allowReconnect is true it means we got a disconnect due to connection lost or server disconnect
             // If allowReconnect is false this is a normal server close or client close
             if (data.allowReconnect) {
-              this.errors.push({
+              this.addError({
                 type: 'disconnected',
                 message: 'OpenC3 backend connection disconnected',
-                time: new Date().getTime(),
+                // Cleared when 'connected' fires again, not left on the screen
+                transient: true,
               })
             }
           },
           rejected: () => {
-            this.errors.push({
+            this.addError({
               type: 'rejected',
               message: 'OpenC3 backend connection rejected',
-              time: new Date().getTime(),
             })
           },
         })
@@ -1957,8 +1975,8 @@ export default {
       if (this.subscription) {
         this.subscribeTime = performance.now()
         this.emptyDataNotified = false
-        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-          (refreshed) => {
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity)
+          .then((refreshed) => {
             if (refreshed) {
               OpenC3Auth.setTokens()
             }
@@ -1972,8 +1990,11 @@ export default {
               start_time: theStartTime,
               end_time: this.graphEndDateTime,
             })
-          },
-        )
+          })
+          // An AuthRequiredError means we have no token and are being
+          // redirected to login, so don't try to subscribe. Anything else is
+          // unexpected and still gets logged.
+          .catch(logUnlessAuthRequired)
       }
     },
     clearAllData: function () {

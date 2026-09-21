@@ -16,6 +16,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/model'
+require 'openc3/models/config_keyword_model'
 require 'openc3/models/microservice_model'
 require 'openc3/models/bridge_model'
 require 'openc3/models/host_interface_microservice_model'
@@ -23,6 +24,8 @@ require 'openc3/models/target_model'
 
 module OpenC3
   class InterfaceModel < Model
+    include ConfigKeywordModel
+
     INTERFACES_PRIMARY_KEY = 'openc3_interfaces'
     ROUTERS_PRIMARY_KEY = 'openc3_routers'
 
@@ -393,6 +396,7 @@ module OpenC3
 
       when 'SECRET'
         parser.verify_num_parameters(3, 5, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path> <Option Name (Optional)> <Secret Store Name (Optional)>")
+        validate_secret(parser, keyword, parameters)
         @secrets << parameters[0..2]
         if ConfigParser.handle_nil(parameters[3])
           # Option Name, Secret Name
@@ -403,6 +407,7 @@ module OpenC3
       when 'BRIDGE_SECRET'
         if type == 'INTERFACE'
           parser.verify_num_parameters(3, 5, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path> <Option Name (Optional)> <Secret Store Name (Optional)>")
+          validate_secret(parser, keyword, parameters)
           @secrets << parameters[0..2]
           if ConfigParser.handle_nil(parameters[3])
             # Option Name, Secret Name
@@ -418,24 +423,7 @@ module OpenC3
         @env[parameters[0]] = parameters[1]
 
       when 'PORT'
-        usage = "PORT <Number> <Protocol (Optional)"
-        parser.verify_num_parameters(1, 2, usage)
-        begin
-          @ports << [Integer(parameters[0])]
-        rescue # In case Integer fails
-          raise ConfigParser::Error.new(parser, "Port must be an integer: #{parameters[0]}", usage)
-        end
-        protocol = ConfigParser.handle_nil(parameters[1])
-        if protocol
-          # Per https://kubernetes.io/docs/concepts/services-networking/service/#protocol-support
-          if %w(TCP UDP SCTP).include?(protocol.upcase)
-            @ports[-1] << protocol.upcase
-          else
-            raise ConfigParser::Error.new(parser, "Unknown port protocol: #{parameters[1]}", usage)
-          end
-        else
-          @ports[-1] << 'TCP'
-        end
+        parse_port(parser, keyword, parameters)
 
       when 'WORK_DIR'
         parser.verify_num_parameters(1, 1, "#{keyword} <Dir>")
@@ -458,7 +446,7 @@ module OpenC3
         @shard = Integer(parameters[0])
 
       when 'DB_SHARD'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Shard Number Starting from 0>")
+        parser.verify_num_parameters(1, 1, "#{keyword} <DB_Shard Number Starting from 0>")
         @db_shard = Integer(parameters[0])
 
       when 'BRIDGE'

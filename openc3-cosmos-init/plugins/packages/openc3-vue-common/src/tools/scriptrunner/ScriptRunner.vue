@@ -3305,6 +3305,9 @@ export default {
           Accept: 'application/json',
           'Ignore-Errors': '404',
         },
+        params: {
+          pythonVenv: this.showPythonVenv ? this.pythonVenv : null,
+        },
       })
         .then((response) => {
           if (epoch !== this.sessionEpoch) {
@@ -3492,12 +3495,14 @@ export default {
           }
         }
         this.showSave = true
-        await Api.post(`/script-api/scripts/${this.filename}`, {
-          data: {
-            text: this.editor.getValue(), // Pass in the raw file text
-            breakpoints,
-          },
-        })
+        const data = {
+          text: this.editor.getValue(), // Pass in the raw file text
+          breakpoints,
+        }
+        if (this.showPythonVenv) {
+          data.pythonVenv = this.pythonVenv
+        }
+        await Api.post(`/script-api/scripts/${this.filename}`, { data })
           .then((response) => {
             if (response.status == 200) {
               if (response.data.suites) {

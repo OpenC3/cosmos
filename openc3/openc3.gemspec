@@ -41,7 +41,7 @@ spec = Gem::Specification.new do |s|
   end
   s.required_ruby_version = '>= 3.0'
 
-  s.version = '7.3.1.pre.beta0'
+  s.version = '7.4.1.pre.beta0'
   s.license = "OpenC3"
 
   # Executables
@@ -108,6 +108,8 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'opentelemetry-instrumentation-rack', '~> 0.21'
   s.add_runtime_dependency 'opentelemetry-instrumentation-redis', '~> 0.24'
   s.add_runtime_dependency 'opentelemetry-sdk', '~> 1.2'
+  # resolv is a Ruby default gem but pin it explicitly: 0.7.2 fixes CVE-2026-80212
+  s.add_runtime_dependency 'resolv', '~> 0.7', '>= 0.7.2'
   s.add_runtime_dependency 'resolv-replace', '~> 0.2'
   s.add_runtime_dependency 'rufus-scheduler', '~> 3.8'
   s.add_runtime_dependency 'tzinfo-data', '~> 1.2023'

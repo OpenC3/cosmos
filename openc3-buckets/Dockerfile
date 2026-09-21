@@ -1,11 +1,18 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG DEBIAN_RELEASE=trixie
 # Make sure to update build_multi_arch.sh with the same version when updating versitygw version
-ARG OPENC3_VERSITYGW_VERSION=v1.7.0
+ARG OPENC3_VERSITYGW_VERSION=v1.8.0
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/debian:${DEBIAN_RELEASE}-slim
 
 ARG APT_URL=http://deb.debian.org
+# Debian point release this image must reach. The rolling `<codename>` base
+# tags keep their old base-files until Docker Official Images rebuilds, so the
+# apt upgrade below is what lands a point release - and a cached layer would
+# pin this image to the previous one indefinitely. Bumping this busts that
+# layer; the dpkg check fails the build if apt fell short (stale APT_URL
+# mirror). scripts/release/package_audit.rb verifies it against deb.debian.org.
+ARG DEBIAN_POINT_RELEASE=13.7
 ARG OPENC3_VERSITYGW_VERSION
 ARG TARGETARCH
 
@@ -40,6 +47,8 @@ ENV GROUP_ID=1001
 COPY --chown=1001:1001 --chmod=755 docker-entrypoint.sh /usr/bin/
 RUN apt-get update && \
     apt-get -y upgrade && \
+    dpkg --compare-versions "$(cat /etc/debian_version)" ge "${DEBIAN_POINT_RELEASE}" && \
+    echo "debian $(cat /etc/debian_version)" > /etc/openc3-base-os && \
     # nc (busybox provided this on Alpine); netcat-openbsd supplies /usr/bin/nc
     apt-get install -y --no-install-recommends netcat-openbsd && \
     rm -rf /var/lib/apt/lists/* && \

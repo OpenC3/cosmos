@@ -13,8 +13,6 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 # Colors for output (using $'...' syntax for portability)
 RED=$'\033[0;31m'
 GREEN=$'\033[0;32m'
@@ -123,12 +121,15 @@ run_migration_benchmark() {
     run_mc mb "openc3s3/${BENCHMARK_BUCKET}" >/dev/null 2>&1 || true
 
     # Time the mirror operation
-    local start_time=$(get_time)
+    local start_time
+    start_time=$(get_time)
 
     run_mc mirror --preserve --overwrite "openc3minio/${BENCHMARK_BUCKET}" "openc3s3/${BENCHMARK_BUCKET}" >&2
 
-    local end_time=$(get_time)
-    local duration=$(echo "$end_time - $start_time" | bc)
+    local end_time
+    end_time=$(get_time)
+    local duration
+    duration=$(echo "$end_time - $start_time" | bc)
 
     # Only the duration goes to stdout (for capture)
     echo "$duration"
@@ -151,7 +152,8 @@ calc_rate() {
         return
     fi
 
-    local rate=$(echo "scale=2; $size_mb / $duration" | bc 2>/dev/null)
+    local rate
+    rate=$(echo "scale=2; $size_mb / $duration" | bc 2>/dev/null) || rate=""
     if [[ -z "$rate" ]]; then
         echo "N/A"
     else
@@ -172,13 +174,18 @@ format_duration() {
     if (( $(echo "$seconds < 60" | bc -l) )); then
         printf "%.2f seconds" "$seconds"
     elif (( $(echo "$seconds < 3600" | bc -l) )); then
-        local mins=$(echo "scale=0; $seconds / 60" | bc)
-        local secs=$(echo "scale=2; $seconds - ($mins * 60)" | bc)
+        local mins
+        mins=$(echo "scale=0; $seconds / 60" | bc)
+        local secs
+        secs=$(echo "scale=2; $seconds - ($mins * 60)" | bc)
         printf "%d min %.2f sec" "$mins" "$secs"
     else
-        local hours=$(echo "scale=0; $seconds / 3600" | bc)
-        local mins=$(echo "scale=0; ($seconds - $hours * 3600) / 60" | bc)
-        local secs=$(echo "scale=2; $seconds - ($hours * 3600) - ($mins * 60)" | bc)
+        local hours
+        hours=$(echo "scale=0; $seconds / 3600" | bc)
+        local mins
+        mins=$(echo "scale=0; ($seconds - $hours * 3600) / 60" | bc)
+        local secs
+        secs=$(echo "scale=2; $seconds - ($hours * 3600) - ($mins * 60)" | bc)
         printf "%d hr %d min %.2f sec" "$hours" "$mins" "$secs"
     fi
 }
@@ -199,11 +206,14 @@ run_benchmark() {
     generate_test_data "$size_mb"
 
     # Run migration and capture duration
-    local duration=$(run_migration_benchmark)
+    local duration
+    duration=$(run_migration_benchmark)
 
     # Calculate rate
-    local rate=$(calc_rate "$size_mb" "$duration")
-    local formatted_duration=$(format_duration "$duration")
+    local rate
+    rate=$(calc_rate "$size_mb" "$duration")
+    local formatted_duration
+    formatted_duration=$(format_duration "$duration")
 
     # Clean up
     cleanup_test_data
@@ -276,8 +286,10 @@ print_summary() {
         echo "${CYAN}Estimated times based on measured rate (${rate} MB/s):${NC}"
         for estimate_gb in 50 100 500 1000; do
             local estimate_mb=$((estimate_gb * 1024))
-            local est_seconds=$(echo "scale=2; $estimate_mb / $rate" | bc)
-            local est_formatted=$(format_duration "$est_seconds")
+            local est_seconds
+            est_seconds=$(echo "scale=2; $estimate_mb / $rate" | bc)
+            local est_formatted
+            est_formatted=$(format_duration "$est_seconds")
             printf "  %4d GB: %s\n" "$estimate_gb" "$est_formatted"
         done
         echo ""

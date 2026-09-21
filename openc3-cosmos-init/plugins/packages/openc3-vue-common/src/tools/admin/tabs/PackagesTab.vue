@@ -293,7 +293,6 @@ export default {
     },
     uploadFiles(files, plugin = null) {
       this.loadingPackage = true
-      let self = this
       const promises = [...files].map((file) => {
         const formData = new FormData()
         formData.append('package', file, file.name)
@@ -303,11 +302,11 @@ export default {
         return Api.post('/openc3-api/packages', {
           data: formData,
           headers: { 'Content-Type': 'multipart/form-data' },
-          onUploadProgress: function (progressEvent) {
+          onUploadProgress: (progressEvent) => {
             let percentCompleted = Math.round(
               (progressEvent.loaded * 100) / progressEvent.total,
             )
-            self.progress = percentCompleted
+            this.progress = percentCompleted
           },
         })
       })

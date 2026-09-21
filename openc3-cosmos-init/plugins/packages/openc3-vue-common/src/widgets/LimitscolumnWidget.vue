@@ -66,15 +66,11 @@ export default {
           '--blue-height': this.blue + '%',
         }
       } else {
-        // See errorCaptured in Openc3Screen.vue for how this is parsed
-        throw {
-          line: this.line,
-          lineNumber: this.lineNumber,
-          keyword: 'LIMITSCOLUMN',
-          parameters: this.parameters,
-          message: 'Item has no limits settings',
-          usage: 'Only items with limits',
-        }
+        throw this.screenError(
+          'LIMITSCOLUMN',
+          'Item has no limits settings',
+          'Only items with limits',
+        )
       }
     },
   },

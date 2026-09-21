@@ -166,17 +166,44 @@ module OpenC3
       return ERB.new(read_file(template_name).comment_erb(), trim_mode: "-").result(b)
     end
 
-    # Can be called during parsing to read a referenced file
+    # Can be called during parsing to read a referenced file. The filename must
+    # be relative to the configuration file being parsed and must resolve to a
+    # location inside that file's directory.
     def read_file(filename)
-      # Assume the file is there. If not we raise a pretty obvious error
-      if File.expand_path(filename) == filename # absolute path
-        path = filename
-      else # relative to the current @filename
-        path = File.join(File.dirname(@filename), filename)
-      end
+      path = resolve_config_path(filename)
       OpenC3.set_working_dir(File.dirname(path)) do
         return File.read(path).force_encoding("UTF-8")
       end
+    end
+
+    # Resolves a filename referenced by a configuration file (TEMPLATE_FILE, ERB
+    # render, etc) into an absolute path contained by the directory of the file
+    # being parsed. Absolute paths and paths containing '..' are rejected so a
+    # configuration file can not read arbitrary files on the filesystem.
+    #
+    # @param filename [String] Relative path from the configuration file
+    # @return [String] Absolute path to the referenced file
+    private def resolve_config_path(filename)
+      filename = filename.to_s
+      raise Error.new(self, "Filename must be given") if filename.strip.empty?
+
+      if File.absolute_path?(filename) or File.expand_path(filename) == filename
+        raise Error.new(self, "Absolute paths are not allowed: #{filename}")
+      end
+      if filename.include?('..')
+        raise Error.new(self, "Path traversal is not allowed: #{filename}")
+      end
+      if @filename.nil? or @filename.to_s.empty?
+        raise Error.new(self, "No configuration file is being parsed, can not resolve: #{filename}")
+      end
+
+      base = File.expand_path(File.dirname(@filename))
+      path = File.expand_path(File.join(base, filename))
+      # Final containment check in case the OS or Ruby normalizes something unexpected
+      unless path.start_with?(base + File::SEPARATOR)
+        raise Error.new(self, "Path is outside the configuration directory: #{filename}")
+      end
+      path
     end
 
     # Processes a file and yields |config| to the given block
@@ -307,6 +334,38 @@ module OpenC3
       return value
     end
 
+    # Values handle_true_false_strict accepts. Deliberately NOT shared with
+    # handle_true_false, which passes unrecognized values through and so can't
+    # tell the number 1 from a boolean - TABLE_MANAGER item defaults rely on 1
+    # staying 1. Named and scoped so they can't be mistaken for a truth table
+    # the whole parser honors.
+    STRICT_TRUE_VALUES = ['TRUE', '1']
+    STRICT_FALSE_VALUES = ['FALSE', '0', '']
+    private_constant :STRICT_TRUE_VALUES, :STRICT_FALSE_VALUES
+
+    # Converts a String containing 'TRUE', '1', 'FALSE', '0' or '' to a true or
+    # false Ruby primitive. Unlike handle_true_false, which returns anything it
+    # doesn't recognize unchanged, an unrecognized value raises.
+    #
+    # Use this for a flag where guessing is worse than failing - notably an
+    # environment variable that is enabled by presence elsewhere in COSMOS, so
+    # that 'VAR=false' (or 'VAR=0') means off here rather than the surprising on.
+    #
+    # @param value [Object] value to convert, nil returns the default
+    # @param description [String] what the value is, used in the error message
+    # @param default [true|false] returned when value is nil
+    # @return [true|false]
+    def self.handle_true_false_strict(value, description: 'value', default: false)
+      return default if value.nil?
+      normalized = value.to_s.strip.upcase
+      return true if STRICT_TRUE_VALUES.include?(normalized)
+      return false if STRICT_FALSE_VALUES.include?(normalized)
+      # Name empty explicitly - it is accepted (as false) but isn't a value
+      # anyone can read off the list
+      raise ArgumentError, "Invalid value #{value.to_s.strip.inspect} for #{description}. " \
+                           "Must be one of: #{(STRICT_TRUE_VALUES + STRICT_FALSE_VALUES - ['']).join(', ')}, or empty"
+    end
+
     # Converts a String containing '', 'NIL', 'NULL', 'TRUE' or 'FALSE' to nil,
     # true or false Ruby primitives. All other values are simply returned.
     #
@@ -321,6 +380,8 @@ module OpenC3
           return false
         when '', 'NIL', 'NULL'
           return nil
+        else
+          # All other strings are returned unmodified below
         end
       end
       return value
@@ -378,11 +439,12 @@ module OpenC3
           return Float::INFINITY
         when 'NEG_INFINITY'
           return -Float::INFINITY
+        else
+          # NOTE: The else case does not raise because of the following scenario:
+          # If the value type is a UINT but they have a WRITE_CONVERSION that takes a string
+          # then the default value will be a string. In that case we just want to return the string.
+          # For example, the IP_ADDRESS parameter in the TIME_OFFSET command in the Demo plugin.
         end
-        # NOTE: No else case because of the following scenario:
-        # If the value type is a UINT but they have a WRITE_CONVERSION that takes a string
-        # then the default value will be a string. In that case we just want to return the string.
-        # For example, the IP_ADDRESS parameter in the TIME_OFFSET command in the Demo plugin.
       end
       return value
     end
@@ -494,8 +556,8 @@ module OpenC3
         while true
           @line_number += 1
 
-          if @@progress_callback && ((@line_number % 10) == 0)
-            @@progress_callback.call(io.pos / size) if size > 0.0
+          if @@progress_callback && ((@line_number % 10) == 0) && size > 0.0
+            @@progress_callback.call(io.pos / size)
           end
 
           begin
@@ -586,10 +648,9 @@ module OpenC3
               # KEYWORD PARAM #This is a comment
               # But still process Ruby string interpolations such as:
               # KEYWORD PARAM #{var}
-              if (string.length > 0) && (string[0] == '#')
-                if !((string.length > 1) && (string[1] == '{'))
-                  break
-                end
+              if (string.length > 0) && (string[0] == '#') &&
+                 !((string.length > 1) && (string[1] == '{'))
+                break
               end
 
               if remove_quotes

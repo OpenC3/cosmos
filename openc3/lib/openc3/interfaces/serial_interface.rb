@@ -77,6 +77,8 @@ module OpenC3
 
     # Creates a new {SerialStream} using the parameters passed in the constructor
     def connect
+      # Cleanly close any existing stream rather than leaving it open
+      @stream.disconnect if @stream
       @stream = SerialStream.new(
         @write_port_name,
         @read_port_name,

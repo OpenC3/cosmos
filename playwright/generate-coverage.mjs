@@ -20,7 +20,7 @@
 // time, so after tweaking them just rerun this script - it regenerates from
 // coverage-raw/ without rerunning the tests. The backup mirrors the most
 // recent test session: the next session's generate replaces it.
-import fs from 'fs'
+import fs from 'node:fs'
 import { CoverageReport } from 'monocart-coverage-reports'
 import coverageOptions from './coverage.config.mjs'
 

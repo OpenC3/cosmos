@@ -84,10 +84,10 @@ export default {
 
     this.appliedSettings.forEach((setting) => {
       if (setting[0] === 'MIN_VALUE') {
-        this.minValue = parseInt(setting[1])
+        this.minValue = Number.parseInt(setting[1])
       }
       if (setting[0] === 'MAX_VALUE') {
-        this.maxValue = parseInt(setting[1])
+        this.maxValue = Number.parseInt(setting[1])
       }
     })
     this.width = this.setWidth(this.parameters[4], 'px', this.width)
@@ -183,10 +183,6 @@ export default {
       if (this.minValue && this.minValue == limitsSettings[0]) {
         lowValue = limitsSettings[0]
       }
-      let highValue = limitsSettings[3] - 10 * this.scale
-      if (this.maxValue && this.maxValue == limitsSettings[3]) {
-        highValue = limitsSettings[3]
-      }
 
       if (value.raw) {
         if (value.raw === '-Infinity') {
@@ -201,7 +197,7 @@ export default {
       } else if (value > this.max) {
         return 100
       } else {
-        const result = parseInt((value - lowValue) / this.scale)
+        const result = Number.parseInt((value - lowValue) / this.scale)
         if (result > 100) {
           return 100
         } else if (result < 0) {

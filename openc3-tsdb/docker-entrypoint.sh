@@ -10,11 +10,6 @@ QUESTDB_UID="${QUESTDB_UID:-"$(id -u questdb)"}"
 QUESTDB_GID="${QUESTDB_GID:-"$(id -g questdb)"}"
 JAVA_COMMAND="/app/bin/java"
 
-# directories inside QUESTDB_DATA_DIR that we will chown
-DEFAULT_LOCAL_DIRS=${DEFAULT_LOCAL_DIRS:-"/conf /public /db /.checkpoint /snapshot"}
-array=( ${DEFAULT_LOCAL_DIRS} )
-read -ra LOCALDIRS < <( echo -n "( "; printf -- "-ipath ${QUESTDB_DATA_DIR}%s* -o " "${array[@]:0:$((${#array[@]} - 1))}"; echo -n "-ipath ${QUESTDB_DATA_DIR}${array[@]: -1}*"; echo " )";)
-
 # backwards compatibility with previous versions
 # if [ ${IGNORE_FIND_AND_OWN_DIR+x} ]
 # then
@@ -48,7 +43,7 @@ if [[ $# -eq 0 ]]; then
     set -- $JAVA_COMMAND -ea -Dnoebug -XX:+UseParallelGC -XX:ErrorFile=${QUESTDB_DATA_DIR}/db/hs_err_pid+%p.log -Dout=${QUESTDB_DATA_DIR}/conf/log.conf -m io.questdb/io.questdb.ServerMain -d ${QUESTDB_DATA_DIR} -f
 else
     if [[ "${1:0:1}" == '-' ]]; then
-        echo "Found config arguments $@"
+        echo "Found config arguments $*"
         set -- $JAVA_COMMAND "$@"
     elif [[ "$1" == "/app/bin/java" ]]; then
         echo "Java binary argument found in command, ignoring on-demand JVM arguments, start with fully-customized arguments"

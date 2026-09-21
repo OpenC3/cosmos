@@ -266,7 +266,7 @@ module OpenC3
       result['response_timeout'] = @response_timeout
       result['response_polling_period'] = @response_polling_period
       if @connect_complete_time
-        result['connect_complete_time'] = @connect_complete_time.iso8601
+        result['connect_complete_time'] = @connect_complete_time.getutc.iso8601(6)
       else
         result['connect_complete_time'] = nil
       end
@@ -285,7 +285,7 @@ module OpenC3
       result['response_timeout'] = @response_timeout
       result['response_polling_period'] = @response_polling_period
       if @connect_complete_time
-        result['connect_complete_time'] = @connect_complete_time.iso8601
+        result['connect_complete_time'] = @connect_complete_time.getutc.iso8601(6)
       else
         result['connect_complete_time'] = nil
       end

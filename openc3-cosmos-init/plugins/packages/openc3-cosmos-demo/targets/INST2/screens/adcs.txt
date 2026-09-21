@@ -1,7 +1,7 @@
 SCREEN AUTO AUTO 1.0
 
 VERTICAL
-  TITLE "<%= target_name %> Instrument ADCS Information" Courier 20 NORMAL true
+  TITLE "<%= target_name %> Instrument ADCS Information"
   # Note @original_target_name is also available
 
   HORIZONTAL
