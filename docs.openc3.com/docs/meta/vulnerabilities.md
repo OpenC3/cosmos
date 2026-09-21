@@ -7,6 +7,10 @@ sidebar_custom_props:
 
 Below is a list of CVEs reported in COSMOS. This does not include CVEs in our dependencies - you can find those in our [Trivy scans](https://github.com/OpenC3/cosmos/actions/workflows/post_release_trivy.yml).
 
+:::note[Publishing CVEs]
+Due to the recent rise in submitted CVEs, Github has falled behind in issuing and publishing CVEs. Thus some of these URLs may not yet resolve in the database even though they have been assigned.
+:::
+
 ## Patched
 
 | CVE                                                               | Patched Version                                                                                                                 | Affected Editions | Description                                                                                                                        |
@@ -29,6 +33,11 @@ Below is a list of CVEs reported in COSMOS. This does not include CVEs in our de
 | [CVE-2026-77602](https://nvd.nist.gov/vuln/detail/cve-2026-77602) | [7.3.0](https://github.com/OpenC3/cosmos/releases/tag/v7.3.0)                                                                   | Core & Enterprise | Non-admin users can write to targets_modified which is evaluated by ERB in various places and thus can execute arbitrary Ruby code |
 | [CVE-2026-77601](https://nvd.nist.gov/vuln/detail/cve-2026-77601) | [7.3.0](https://github.com/OpenC3/cosmos/releases/tag/v7.3.0)                                                                   | Core & Enterprise | The pypi_url setting is evaluated and can execute arbitrary host commands                                                          |
 | [CVE-2026-77394](https://nvd.nist.gov/vuln/detail/cve-2026-77394) | [7.3.0](https://github.com/OpenC3/cosmos/releases/tag/v7.3.0)                                                                   | Core & Enterprise | BUTTON widgets in Telemetry Viewer can execute arbitrary javascript code                                                           |
+| [CVE-2026-92165](https://nvd.nist.gov/vuln/detail/cve-2026-92165) | [7.3.0](https://github.com/OpenC3/cosmos/releases/tag/v7.3.0)                                                                   | Core & Enterprise | Unauthenticated network clients can logout authenticated users resulting in DOS                                                    |
+| [CVE-2026-92166](https://nvd.nist.gov/vuln/detail/cve-2026-92166) | [7.3.0](https://github.com/OpenC3/cosmos/releases/tag/v7.3.0)                                                                   | Core & Enterprise | The JsonDRb method whitelist doesn't include public_send and therefore can execute arbitrary methods                               |
+| [CVE-2026-92167](https://nvd.nist.gov/vuln/detail/cve-2026-92167) | [7.4.0](https://github.com/OpenC3/cosmos/releases/tag/v7.4.0)                                                                   | Core & Enterprise | A variable length packet with deliberately malformed length field can cause a heap overflow DOS                                    |
+| [CVE-2026-92168](https://nvd.nist.gov/vuln/detail/cve-2026-92168) | [7.4.0](https://github.com/OpenC3/cosmos/releases/tag/v7.4.0)                                                                   | Core & Enterprise | An authenticated remote user can break the COSMOS news feed                                                                        |
+| [CVE-2026-92169](https://nvd.nist.gov/vuln/detail/cve-2026-92169) | [7.4.0](https://github.com/OpenC3/cosmos/releases/tag/v7.4.0)                                                                   | Core & Enterprise | An authenticated script runner role can execute arbitrary Ruby code via Script Suites                                              |
 
 ## Open
 
