@@ -20,8 +20,9 @@
 Dependabot covers most of this repository, but three kinds of pin are invisible
 to it, and those are exactly the ones this script watches:
 
-  * versions inside a GitHub Actions input (setup-uv's `version`) or a
-    Dockerfile ARG consumed by `pip install` -- dependabot parses neither
+  * versions inside a GitHub Actions input (setup-uv's and setup-trivy's
+    `version`) or a Dockerfile ARG consumed by `pip install` -- dependabot
+    parses neither
   * major releases, because every group in .github/dependabot.yml is limited to
     `update-types: [minor, patch]`
   * PEP 723 script lockfiles (openc3/python/tools/*.py.lock)
@@ -69,6 +70,7 @@ RUFF = "pypi:ruff"
 TY = "pypi:ty"
 MYPY = "pypi:mypy"
 REQUESTS = "pypi:requests"
+TRIVY = "gh:aquasecurity/trivy"
 
 
 class Surface(NamedTuple):
@@ -112,6 +114,23 @@ SURFACES = [
         "openc3-ruby/Dockerfile-ubi",
         r"ARG UV_VERSION=([\d.]+)",
         UV,
+    ),
+    # The trivy release the scan workflows install through setup-trivy, which
+    # they pass skip-setup-trivy: true to use. Dependabot bumps the action's
+    # commit SHA but never looks inside its inputs, so a stale binary here
+    # means the scans run against an old vulnerability scanner. Anchored to
+    # the setup-trivy step so it cannot match some other `version:` input.
+    Surface(
+        "trivy (image scan)",
+        ".github/workflows/trivy.yml",
+        r"(?s)aquasecurity/setup-trivy@.*?version:\s*(v[\d.]+)",
+        TRIVY,
+    ),
+    Surface(
+        "trivy (post release scan)",
+        ".github/workflows/post_release_trivy.yml",
+        r"(?s)aquasecurity/setup-trivy@.*?version:\s*(v[\d.]+)",
+        TRIVY,
     ),
     Surface(
         "ruff (python dev dependency)",
