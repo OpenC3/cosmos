@@ -23,7 +23,8 @@ import uuid
 from datetime import datetime, timezone
 
 from openc3.config.config_parser import ConfigParser
-from openc3.interfaces.interface import WriteRejectError
+from openc3.environment import OPENC3_SCOPE
+from openc3.interfaces.interface import Interface, WriteRejectError
 from openc3.microservices.interface_decom_common import handle_inject_tlm
 from openc3.microservices.microservice import Microservice
 from openc3.models.cvt_model import CvtModel
@@ -50,11 +51,19 @@ from openc3.utilities.time import from_nsec_from_epoch
 
 with contextlib.suppress(ModuleNotFoundError):
     # Should never actually be used in COSMOS Core
-    from openc3enterprise.models.critical_cmd_model import CriticalCmdModel
+    from openc3enterprise.models.critical_cmd_model import CriticalCmdModel  # ty: ignore[unresolved-import]
 
 
 class InterfaceCmdHandlerThread:
-    def __init__(self, interface, tlm, logger=None, metric=None, db_shard=0, scope=None):
+    def __init__(
+        self,
+        interface: Interface,
+        tlm,
+        logger: Logger | None = None,
+        metric=None,
+        db_shard=0,
+        scope: str = OPENC3_SCOPE,
+    ):
         self.interface = interface
         self.tlm = tlm
         self.scope = scope
@@ -64,9 +73,7 @@ class InterfaceCmdHandlerThread:
             self.critical_commanding = scope_model.critical_commanding
         else:
             self.critical_commanding = "OFF"
-        self.logger = logger
-        if not self.logger:
-            self.logger = Logger()
+        self.logger: Logger = logger or Logger()
         self.metric = metric
         self.count = 0
         self.directive_count = 0
@@ -438,14 +445,20 @@ class InterfaceCmdHandlerThread:
 
 
 class RouterTlmHandlerThread:
-    def __init__(self, router, tlm, logger=None, metric=None, db_shard=0, scope=None):
+    def __init__(
+        self,
+        router: Interface,
+        tlm,
+        logger: Logger | type[Logger] | None = None,
+        metric=None,
+        db_shard=0,
+        scope: str = OPENC3_SCOPE,
+    ):
         self.router = router
         self.tlm = tlm
         self.scope = scope
         self.db_shard = int(db_shard or 0)
-        self.logger = logger
-        if not self.logger:
-            self.logger = Logger
+        self.logger: Logger | type[Logger] = logger or Logger
         self.metric = metric
         self.count = 0
         self.directive_count = 0
@@ -644,7 +657,8 @@ class InterfaceMicroservice(Microservice):
 
     def __init__(self, name):
         self.mutex = threading.Lock()
-        self.interface = None
+        # Set to the built interface / router below before anything else uses it
+        self.interface: Interface = None  # ty: ignore[invalid-assignment]
         self.interface_or_router = None
         self.interface_thread_sleeper = Sleeper()
         self.cancel_thread = False
@@ -754,7 +768,7 @@ class InterfaceMicroservice(Microservice):
                 else:
                     router_model = RouterModel.get(name=self.interface.name, scope=self.scope)
                     # config_params[0] is the filename so set the rest
-                    interface_model["config_params"][1:] = list(params)
+                    router_model["config_params"][1:] = list(params)
                     RouterModel.set(router_model, scope=self.scope)
 
             self.interface.state = "ATTEMPTING"
@@ -804,7 +818,7 @@ class InterfaceMicroservice(Microservice):
                                 if packet is not None:
                                     self.handle_packet(packet)
                                     self.count += 1
-                                    read_queue_bytes = self.interface.read_queue_bytes() if self.interface else 0
+                                    read_queue_bytes = self.interface.read_queue_bytes()
                                     if self.interface_or_router == "INTERFACE":
                                         self.metric.set(
                                             name="interface_tlm_total",
@@ -1055,7 +1069,7 @@ class InterfaceMicroservice(Microservice):
                 if valid_interface:
                     valid_interface.destroy()
 
-    def shutdown(self, sig=None):
+    def shutdown(self, state="STOPPED"):
         if self.shutdown_complete:
             return  # Nothing more to do
         name = self.name
@@ -1066,7 +1080,7 @@ class InterfaceMicroservice(Microservice):
         if self.interface is not None and self.interface.stream_log_pair is not None:
             # In python shutdown does the join and cleanup
             self.interface.stream_log_pair.shutdown()
-        super().shutdown()
+        super().shutdown(state)
 
     def graceful_kill(self):
         pass  # Just to avoid warning

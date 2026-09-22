@@ -60,7 +60,7 @@ class UdpInterface(ReadQueue):
             self.read_port = int(read_port)
         self.write_src_port = ConfigParser.handle_none(write_src_port)
         if self.write_src_port is not None:
-            self.write_src_port = int(write_src_port)
+            self.write_src_port = int(self.write_src_port)
         self.interface_address = ConfigParser.handle_none(interface_address)
         if self.interface_address and self.interface_address.upper() == "LOCALHOST":
             self.interface_address = "127.0.0.1"
@@ -75,7 +75,7 @@ class UdpInterface(ReadQueue):
             self.write_timeout = 10.0
         self.read_timeout = ConfigParser.handle_none(read_timeout)
         if self.read_timeout is not None:
-            self.read_timeout = float(read_timeout)
+            self.read_timeout = float(self.read_timeout)
         self.bind_address = ConfigParser.handle_none(bind_address)
         if self.bind_address:
             if self.bind_address.upper() == "LOCALHOST":
@@ -220,6 +220,8 @@ class UdpInterface(ReadQueue):
     # Writes to the socket
     # @param data [String] Raw packet data
     def write_interface(self, data, extra=None):
+        if self.write_socket is None:
+            raise RuntimeError(f"Interface not writeable: {self.name}")
         self.write_interface_base(data, extra)
         self.write_socket.write(data, self.write_timeout)
         return data, extra

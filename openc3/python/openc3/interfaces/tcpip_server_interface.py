@@ -202,12 +202,12 @@ class TcpipServerInterface(StreamInterface):
             kill_thread(self, thread)
         self.read_threads = []
 
-        if self.write_thread:
+        if self.write_thread and self.write_condition_variable:
             with self.write_condition_variable:
                 self.write_condition_variable.notify_all()
             kill_thread(self, self.write_thread)
             self.write_thread = None
-        if self.write_raw_thread:
+        if self.write_raw_thread and self.write_raw_condition_variable:
             with self.write_raw_condition_variable:
                 self.write_raw_condition_variable.notify_all()
             kill_thread(self, self.write_raw_thread)
@@ -227,7 +227,7 @@ class TcpipServerInterface(StreamInterface):
     def read(self):
         if not self.connected():
             raise RuntimeError(f"Interface not connected for read: {self.name}")
-        if not self.read_allowed:
+        if not self.read_allowed or self.read_queue is None:
             raise RuntimeError(f"Interface not readable: {self.name}")
 
         try:
@@ -244,7 +244,7 @@ class TcpipServerInterface(StreamInterface):
     def write(self, packet):
         if not self.connected():
             raise RuntimeError(f"Interface not connected for write: {self.name}")
-        if not self.write_allowed:
+        if not self.write_allowed or self.write_queue is None or self.write_condition_variable is None:
             raise RuntimeError(f"Interface not writeable: {self.name}")
 
         self.write_count += 1
@@ -259,10 +259,10 @@ class TcpipServerInterface(StreamInterface):
 
     # @param data [String] Data to write to all clients connected to the
     #   write port.
-    def write_raw(self, data):
+    def write_raw(self, data, extra=None):
         if not self.connected():
             raise RuntimeError(f"Interface not connected for write_raw: {self.name}")
-        if not self.write_raw_allowed:
+        if not self.write_raw_allowed or self.write_raw_queue is None or self.write_raw_condition_variable is None:
             raise RuntimeError(f"Interface not write-rawable: {self.name}")
 
         self.write_raw_queue.put(data)
@@ -460,6 +460,9 @@ class TcpipServerInterface(StreamInterface):
             Logger.error(traceback.format_exc())
 
     def _write_thread_body(self):
+        write_queue = self.write_queue
+        if write_queue is None:  # No write port
+            return
         try:
             while True:
                 if self.cancel_threads:
@@ -474,7 +477,7 @@ class TcpipServerInterface(StreamInterface):
                         break
 
                     try:
-                        packet = self.write_queue.get_nowait()
+                        packet = write_queue.get_nowait()
                         break
                     except queue.Empty:
                         if self.cancel_threads:
@@ -491,6 +494,10 @@ class TcpipServerInterface(StreamInterface):
             Logger.error(traceback.format_exc())
 
     def _write_raw_thread_body(self):
+        write_raw_queue = self.write_raw_queue
+        write_raw_condition_variable = self.write_raw_condition_variable
+        if write_raw_queue is None or write_raw_condition_variable is None:  # No write port
+            return
         try:
             while True:
                 if self.cancel_threads:
@@ -504,12 +511,12 @@ class TcpipServerInterface(StreamInterface):
                         break
 
                     try:
-                        data = self.write_raw_queue.get_nowait()
+                        data = write_raw_queue.get_nowait()
                         break
                     except queue.Empty:
                         # Sleep until we receive data or for 100ms
-                        with self.write_raw_condition_variable:
-                            self.write_raw_condition_variable.wait(0.1)
+                        with write_raw_condition_variable:
+                            write_raw_condition_variable.wait(0.1)
 
                 data = self._write_raw_thread_hook(data)
                 if data:
@@ -535,7 +542,7 @@ class TcpipServerInterface(StreamInterface):
                 diff = interface_bytes_read - thread_bytes_read
                 self.bytes_read += diff
                 thread_bytes_read = interface_bytes_read
-            if not packet or self.cancel_threads:
+            if not packet or self.cancel_threads or self.read_queue is None:
                 return
 
             packet = self._read_thread_hook(packet)  # Do work on received packet
@@ -589,8 +596,10 @@ class TcpipServerInterface(StreamInterface):
                 del self.write_interface_infos[index_to_delete]
 
         # Sleep until we receive a packet or for 100ms
-        with self.write_condition_variable:
-            self.write_condition_variable.wait(0.1)
+        write_condition_variable = self.write_condition_variable
+        if write_condition_variable is not None:
+            with write_condition_variable:
+                write_condition_variable.wait(0.1)
 
     def _write_to_clients(self, method, packet_or_data):
         with self.connection_mutex:

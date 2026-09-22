@@ -19,8 +19,8 @@ from openc3.interfaces.udp_interface import UdpInterface
 from openc3.io.udp_sockets import UdpReadSocket, UdpWriteSocket
 from openc3.packets.packet import Packet
 from openc3.top_level import close_socket
-from openc3.utilities.read_queue import READ_QUEUE_ENTRY_OVERHEAD
 from openc3.utilities.bucket_utilities import BucketUtilities
+from openc3.utilities.read_queue import READ_QUEUE_ENTRY_OVERHEAD
 
 
 class TestUdpInterface(unittest.TestCase):
