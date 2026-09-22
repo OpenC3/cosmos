@@ -206,7 +206,8 @@ module OpenC3
 
       raise "ERROR: Invalid operator: '#{operator}'" unless COMPARISON_OPERATORS.include?(operator)
 
-      operand = extract_operand(operand)
+      # split leaves any trailing whitespace on the operand which the anchored matches reject
+      operand = extract_operand(operand.strip)
       # 'in' is containment against a list of values in both Ruby and Python.
       # Enforced here so check(), wait() and wait_check() all reject the same thing.
       if operator == "in" and !operand.is_a?(Array)
@@ -280,7 +281,8 @@ module OpenC3
     def unescape_double_quoted(string)
       # A \xHH or octal escape can produce a byte which is not valid UTF-8 so build the result
       # in binary. Otherwise preserve the encoding of the comparison the user passed in.
-      binary = string.match?(/\\(?:x\h|[0-7])/)
+      # The escape must not itself be escaped, e.g. "C:\\0" is a backslash followed by a zero.
+      binary = string.match?(/(?<!\\)(?:\\\\)*\\(?:x\h|[0-7])/)
       result = binary ? ''.b : String.new(encoding: string.encoding)
       string.scan(DOUBLE_QUOTE_TOKEN_REGEX).each do |token|
         replacement =

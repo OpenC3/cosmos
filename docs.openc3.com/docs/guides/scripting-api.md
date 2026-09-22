@@ -2688,6 +2688,7 @@ check("<Target Name> <Packet Name> <Item Name> <Comparison - optional>")
 A comparison is a single operator followed by a literal value. The supported operators are
 `==`, `!=`, `>`, `>=`, `<`, `<=` and `in`. `in` requires a list operand, e.g. `in [1, 2, 3]`,
 whose elements follow the same rules as any other value, e.g. `in ['ON', 'OFF']`.
+Python also accepts a tuple or set, e.g. `in (1, 2)`.
 Compound expressions, e.g. `TIMEUS & 0x0001 == 0x0000`, are not supported - use
 [check_expression](#check_expression) instead.
 :::
@@ -4155,6 +4156,7 @@ success = wait(
 A comparison is a single operator followed by a literal value. The supported operators are
 `==`, `!=`, `>`, `>=`, `<`, `<=` and `in`. `in` requires a list operand, e.g. `in [1, 2, 3]`,
 whose elements follow the same rules as any other value, e.g. `in ['ON', 'OFF']`.
+Python also accepts a tuple or set, e.g. `in (1, 2)`.
 Compound expressions, e.g. `TIMEUS & 0x0001 == 0x0000`, are not supported - use
 [wait_expression](#wait_expression) instead.
 :::
@@ -4444,6 +4446,7 @@ elapsed = wait_check(
 A comparison is a single operator followed by a literal value. The supported operators are
 `==`, `!=`, `>`, `>=`, `<`, `<=` and `in`. `in` requires a list operand, e.g. `in [1, 2, 3]`,
 whose elements follow the same rules as any other value, e.g. `in ['ON', 'OFF']`.
+Python also accepts a tuple or set, e.g. `in (1, 2)`.
 Compound expressions, e.g. `TIMEUS & 0x0001 == 0x0000`, are not supported - use
 [wait_check_expression](#wait_check_expression) instead.
 :::

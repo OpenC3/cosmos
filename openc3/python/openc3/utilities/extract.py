@@ -32,6 +32,8 @@ SCANNING_REGULAR_EXPRESSION = re.compile(
 
 # Operators supported by check(), wait() and wait_check() comparisons
 COMPARISON_OPERATORS = ["==", "!=", ">=", "<=", ">", "<", "in"]
+# Collections the in operator accepts. Ruby only has an Array.
+IN_OPERAND_TYPES = (list, tuple, set)
 
 # Matches Infinity and NaN which literal_eval rejects but float() accepts
 INFINITY_NAN_REGEX = re.compile(r"^[+-]?(inf(inity)?|nan)$", re.IGNORECASE)
@@ -275,10 +277,12 @@ def extract_operator_and_operand_from_comparison(comparison):
     if operator not in COMPARISON_OPERATORS:
         raise RuntimeError(f"ERROR: Invalid operator: '{operator}'")
 
-    operand = extract_operand(operand)
-    # 'in' is containment against a list of values in both Ruby and Python.
+    # split leaves any trailing whitespace on the operand which the anchored matches reject
+    operand = extract_operand(operand.strip())
+    # 'in' is containment against a list of values in both Ruby and Python. A tuple or set is
+    # also accepted since that is how Python scripts commonly spell a collection of values.
     # Enforced here so check(), wait() and wait_check() all reject the same thing.
-    if operator == "in" and not isinstance(operand, list):
+    if operator == "in" and not isinstance(operand, IN_OPERAND_TYPES):
         raise RuntimeError(f"ERROR: The 'in' operator requires a list operand: {operand!r}")
 
     return operator, operand
@@ -339,8 +343,8 @@ def compare_values(value, operator, operand):
         elif operator == "<=":
             return value <= operand
         elif operator == "in":
-            # 'in' is containment against a list of values, matching Ruby
-            return isinstance(operand, list) and value in operand
+            # 'in' is containment against a collection of values, matching Ruby
+            return isinstance(operand, IN_OPERAND_TYPES) and value in operand
         else:
             raise RuntimeError(f"ERROR: Invalid operator: '{operator}'")
     except TypeError:

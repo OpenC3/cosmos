@@ -415,6 +415,35 @@ module OpenC3
         expect { extract_operator_and_operand_from_comparison("in 5") }.to \
           raise_error(/ERROR: The 'in' operator requires a list operand/)
       end
+
+      it "should ignore whitespace trailing the operand" do
+        expect(extract_operator_and_operand_from_comparison("== 'ON' ")).to eql(["==", "ON"])
+        expect(extract_operator_and_operand_from_comparison(%q(== "ON" ))).to eql(["==", "ON"])
+        expect(extract_operator_and_operand_from_comparison("== nil ")).to eql(["==", nil])
+        expect(extract_operator_and_operand_from_comparison("== true\t")).to eql(["==", true])
+        expect(extract_operator_and_operand_from_comparison("== 0x10 ")).to eql(["==", 16])
+        expect(extract_operator_and_operand_from_comparison("== 1_000 ")).to eql(["==", 1000])
+        expect(extract_operator_and_operand_from_comparison("in ['A','B'] ")).to eql(["in", ["A", "B"]])
+        expect(extract_operator_and_operand_from_comparison("in ['A' , 'B' ] \n")).to eql(["in", ["A", "B"]])
+        _, _, _, comparison = extract_fields_from_check_text("INST HEALTH_STATUS COLLECT_TYPE == 'NORMAL' ")
+        expect(extract_operator_and_operand_from_comparison(comparison)).to eql(["==", "NORMAL"])
+      end
+
+      it "should not treat an escaped backslash before a digit as a binary escape" do
+        comparison = %q(== "C:\\\\0é").dup.force_encoding(Encoding::UTF_8)
+        operand = extract_operator_and_operand_from_comparison(comparison)[1]
+        expect(operand.encoding).to eql(Encoding::UTF_8)
+        expect(operand).to eql("C:\\0é".dup.force_encoding(Encoding::UTF_8))
+        comparison = %q(== "C:\\\\x41é").dup.force_encoding(Encoding::UTF_8)
+        operand = extract_operator_and_operand_from_comparison(comparison)[1]
+        expect(operand.encoding).to eql(Encoding::UTF_8)
+        expect(operand).to eql("C:\\x41é".dup.force_encoding(Encoding::UTF_8))
+        # An odd number of backslashes is still a real escape
+        comparison = %q(== "\\\\\\xff").dup.force_encoding(Encoding::UTF_8)
+        operand = extract_operator_and_operand_from_comparison(comparison)[1]
+        expect(operand.encoding).to eql(Encoding::ASCII_8BIT)
+        expect(operand.bytes).to eql([0x5C, 0xFF])
+      end
     end
 
     describe "compare_values" do

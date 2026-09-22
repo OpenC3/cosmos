@@ -341,6 +341,25 @@ class TestExtractOperatorAndOperandFromComparison:
         with pytest.raises(RuntimeError, match="ERROR: The 'in' operator requires a list operand"):
             extract_operator_and_operand_from_comparison("in 5")
 
+    def test_allows_tuple_and_set_operands_for_the_in_operator(self):
+        assert extract_operator_and_operand_from_comparison("in (1, 2)") == ("in", (1, 2))
+        assert extract_operator_and_operand_from_comparison("in {1, 2}") == ("in", {1, 2})
+        assert compare_values(1, "in", (1, 2))
+        assert not compare_values(3, "in", (1, 2))
+        assert compare_values(2, "in", {1, 2})
+        assert not compare_values(3, "in", {1, 2})
+        # An unhashable value can not be in a set so it is simply not a match
+        assert not compare_values([1], "in", {1, 2})
+
+    def test_ignores_whitespace_trailing_the_operand(self):
+        assert extract_operator_and_operand_from_comparison("== 'ON' ") == ("==", "ON")
+        assert extract_operator_and_operand_from_comparison("== None ") == ("==", None)
+        assert extract_operator_and_operand_from_comparison("== 0x10 ") == ("==", 16)
+        assert extract_operator_and_operand_from_comparison("== 1_000 ") == ("==", 1000)
+        assert extract_operator_and_operand_from_comparison("== inf ") == ("==", float("inf"))
+        assert extract_operator_and_operand_from_comparison("in ['A','B'] ") == ("in", ["A", "B"])
+        assert extract_operator_and_operand_from_comparison("== bytearray(b'AB') ") == ("==", bytearray(b"AB"))
+
 
 class TestCompareValues:
     def test_compares_with_all_the_supported_operators(self):
