@@ -24,14 +24,20 @@ def table_create_binary(definition: str, scope: str = OPENC3_SCOPE):
     return _handle_response(response, "Failed to create binary")
 
 
-def table_create_report(filename: str, definition: str, table_name: str = None, scope: str = OPENC3_SCOPE):
+# save=True (the default) writes the report into the target's storage next to the
+# binary so it can be read back with get_target_file(). Pass save=False to get the
+# contents in the return value without creating a file.
+def table_create_report(
+    filename: str, definition: str, table_name: str = None, save: bool = True, scope: str = OPENC3_SCOPE
+):
     data = {}
     data["binary"] = filename
     data["definition"] = definition
     if table_name:
         data["table_name"] = table_name
+    data["save"] = save
     response = openc3.script.API_SERVER.request("post", "/openc3-api/tables/report", data=data, json=True, scope=scope)
-    return _handle_response(response, "Failed to create binary")
+    return _handle_response(response, "Failed to create report")
 
 
 # Helper method to handle the response
