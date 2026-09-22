@@ -70,5 +70,75 @@ module OpenC3
         expect(Protocol.new(nil).read_data("")).to eql ["", nil]
       end
     end
+
+    describe "reset" do
+      before(:each) do
+        @interface.add_protocol(Protocol, [nil], :READ_WRITE)
+        @protocol = @interface.read_protocols[0]
+      end
+
+      def capture_data
+        @protocol.read_protocol_input_base("\x01")
+        @protocol.read_protocol_output_base("\x02")
+        @protocol.write_protocol_input_base("\x03")
+        @protocol.write_protocol_output_base("\x04")
+        @protocol.extra = { 'key' => 'value' }
+      end
+
+      def expect_cleared
+        read = @protocol.read_details
+        expect(read['read_data_input']).to eql ''
+        expect(read['read_data_input_time']).to be_nil
+        expect(read['read_data_output']).to eql ''
+        expect(read['read_data_output_time']).to be_nil
+        write = @protocol.write_details
+        expect(write['write_data_input']).to eql ''
+        expect(write['write_data_input_time']).to be_nil
+        expect(write['write_data_output']).to eql ''
+        expect(write['write_data_output_time']).to be_nil
+        expect(@protocol.extra).to be_nil
+      end
+
+      it "initializes the details data to empty strings" do
+        expect_cleared()
+      end
+
+      it "clears the captured details data and extra" do
+        capture_data()
+        read = @protocol.read_details
+        expect(read['read_data_input']).to eql "\x01"
+        expect(read['read_data_input_time']).to_not be_nil
+        expect(read['read_data_output']).to eql "\x02"
+        expect(read['read_data_output_time']).to_not be_nil
+        write = @protocol.write_details
+        expect(write['write_data_input']).to eql "\x03"
+        expect(write['write_data_input_time']).to_not be_nil
+        expect(write['write_data_output']).to eql "\x04"
+        expect(write['write_data_output_time']).to_not be_nil
+        expect(@protocol.extra).to eql({ 'key' => 'value' })
+
+        @protocol.reset()
+        expect_cleared()
+      end
+
+      it "is called by connect_reset" do
+        capture_data()
+        @protocol.connect_reset()
+        expect_cleared()
+      end
+
+      it "is called by disconnect_reset" do
+        capture_data()
+        @protocol.disconnect_reset()
+        expect_cleared()
+      end
+
+      it "does not capture data when save_raw_data is false" do
+        @interface.save_raw_data = false
+        capture_data()
+        @protocol.extra = nil
+        expect_cleared()
+      end
+    end
   end
 end

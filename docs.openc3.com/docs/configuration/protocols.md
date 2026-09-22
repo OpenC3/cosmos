@@ -910,6 +910,14 @@ def reset(self):
 
 ```ruby
 def reset
+  @read_data_input_time = nil
+  @read_data_input = ''
+  @read_data_output_time = nil
+  @read_data_output = ''
+  @write_data_input_time = nil
+  @write_data_input = ''
+  @write_data_output_time = nil
+  @write_data_output = ''
   @extra = nil
 end
 ```
@@ -917,7 +925,7 @@ end
 </TabItem>
 </Tabs>
 
-The base class reset implementation only clears the protocol's own state: the extra hash and the data captured for the read_details / write_details methods.
+The base class reset implementation only clears the protocol's own state: the extra field and the data captured for the read_details / write_details methods. Subclasses which define reset must call super to keep this state cleared.
 
 ### connect_reset
 
