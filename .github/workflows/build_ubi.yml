@@ -24,6 +24,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+# Workaround for https://github.com/aquasecurity/trivy-action/issues/389
+env:
+  TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
+  TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
+
 permissions:
   contents: read
 
@@ -55,6 +60,7 @@ jobs:
           IRONBANK_REGISTRY_CLI: ${{ secrets.IRONBANK_REGISTRY_CLI }}
         run: echo "$IRONBANK_REGISTRY_CLI" | docker login registry1.dso.mil -u jmthomas --password-stdin
       - name: openc3.sh build-ubi
+        id: build
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
         run: ./openc3.sh build-ubi
@@ -80,3 +86,56 @@ jobs:
             echo "ERROR: One or more containers are unhealthy"
             exit 1
           fi
+
+      # The UBI images are scanned here instead of in trivy.yml because they
+      # are never published: scanning them anywhere else means building all 11
+      # of them again, and unlike the Debian images they have no GHCR build
+      # cache. The build above already left them in the local docker daemon.
+      #
+      # aquasecurity/setup-trivy installs the binary the scan step below calls
+      # directly. The version here is the trivy release, not the action:
+      # dependabot bumps the action SHA but cannot see this input, so it is
+      # watched by .github/workflows/tool_version_check.yml instead.
+      - name: Manual Trivy Setup
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
+        with:
+          cache: true
+          version: v0.74.0
+      - name: Run Trivy on the UBI images
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        env:
+          UBI_IMAGES: >-
+            openc3-ruby-ubi
+            openc3-base-ubi
+            openc3-node-ubi
+            openc3-buckets-ubi
+            openc3-redis-ubi
+            openc3-tsdb-ubi
+            openc3-cosmos-cmd-tlm-api-ubi
+            openc3-cosmos-script-runner-api-ubi
+            openc3-operator-ubi
+            openc3-traefik-ubi
+            openc3-cosmos-init-ubi
+        run: |
+          # scripts/linux/openc3_build_ubi.sh tags the images with these .env
+          # values, so read them rather than hardcoding the reference.
+          registry=$(grep -E '^OPENC3_REGISTRY=' .env | cut -d= -f2)
+          namespace=$(grep -E '^OPENC3_NAMESPACE=' .env | cut -d= -f2)
+          tag=$(grep -E '^OPENC3_TAG=' .env | cut -d= -f2)
+          # --image-src docker pins each scan to the image just built. Without
+          # it trivy falls back to pulling the published image of the same name
+          # from Docker Hub, which would scan the last release, not this PR.
+          #
+          # trivy.yaml sets exit-code 1 on CRITICAL/HIGH, so record the failure
+          # and keep going: one vulnerable base image should not hide the
+          # findings in the other ten.
+          status=0
+          for image in $UBI_IMAGES; do
+            echo "::group::trivy ${image}"
+            trivy image --config trivy.yaml --image-src docker \
+              "${registry}/${namespace}/${image}:${tag}" || status=1
+            echo "::endgroup::"
+          done
+          exit $status
