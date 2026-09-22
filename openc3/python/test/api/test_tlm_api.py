@@ -26,6 +26,7 @@ from openc3.models.interface_model import InterfaceModel
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.topics.telemetry_topic import TelemetryTopic
+from openc3.utilities.questdb_client import TlmItem
 from openc3.utilities.time import formatted
 from test.test_helper import System, mock_redis, setup_system
 
@@ -820,8 +821,19 @@ class TestTlmApi(unittest.TestCase):
             vals = get_tlm_values(items, start_time="2026-09-13T00:00:00Z", end_time="2026-09-13T01:00:00Z")
         self.assertEqual(vals, [[[0.0, None], [(-100.0), "RED_LOW"]]])
         lookup_items = tsdb_lookup.call_args[0][0]
-        self.assertEqual(lookup_items[0], ["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", None])
-        self.assertEqual(lookup_items[1], ["INST", "HEALTH_STATUS", "TEMP2", "CONVERTED", "LIMITS"])
+        self.assertEqual(lookup_items[0], TlmItem("INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", None))
+        self.assertEqual(lookup_items[1], TlmItem("INST", "HEALTH_STATUS", "TEMP2", "CONVERTED", "LIMITS"))
+        self.assertEqual(lookup_items[1].limits, "LIMITS")
+        self.assertEqual(tsdb_lookup.call_args.kwargs["scope"], "DEFAULT")
+
+    def test_get_tlm_values_historical_passes_the_scope_to_the_tsdb_lookup(self):
+        with patch("openc3.models.cvt_model.QuestDBClient.tsdb_lookup") as tsdb_lookup:
+            tsdb_lookup.return_value = [[0.0, None]]
+            with patch("openc3.api.tlm_api.authorize"):
+                get_tlm_values(
+                    ["INST__HEALTH_STATUS__TEMP1__CONVERTED"], start_time="2026-09-13T00:00:00Z", scope="OTHER"
+                )
+        self.assertEqual(tsdb_lookup.call_args.kwargs["scope"], "OTHER")
 
     def test_get_tlm_values_accepts_the_limits_suffix_from_the_cvt(self):
         vals = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED__LIMITS"])
@@ -863,7 +875,7 @@ class TestTlmApi(unittest.TestCase):
                 end_time="2026-09-13T01:00:00Z",
             )
         lookup_items = tsdb_lookup.call_args[0][0]
-        self.assertEqual(lookup_items[1], [None, None, None, None, None])
+        self.assertEqual(lookup_items[1], TlmItem(None, None, None, None, None))
 
     def test_get_tlm_values_reads_all_the_specified_items(self):
         items = []
