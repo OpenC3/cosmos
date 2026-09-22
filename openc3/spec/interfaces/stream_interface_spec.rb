@@ -33,7 +33,9 @@ module OpenC3
         @queue << data
       end
 
-      def connect; end
+      def connect
+        # Nothing to connect, the queue is ready as soon as it is created
+      end
 
       def connected?; true; end
 
@@ -47,7 +49,9 @@ module OpenC3
         @queue.pop
       end
 
-      def write(_data); end
+      def write(_data)
+        # Writes are discarded, these tests only exercise reading
+      end
     end
 
     let(:interface) { StreamInterface.new }

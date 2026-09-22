@@ -12,8 +12,20 @@
 import queue
 import threading
 import traceback
+from typing import TYPE_CHECKING
 
 from openc3.utilities.logger import Logger
+
+
+# ReadQueue is mixed into Interface subclasses and relies on Interface
+# attributes (name, connected, set_option). Type checkers see Interface as the
+# base so those resolve, while at runtime it stays a plain mixin.
+if TYPE_CHECKING:
+    from openc3.interfaces.interface import Interface
+
+    _ReadQueueBase = Interface
+else:
+    _ReadQueueBase = object
 
 
 # Maximum number of bytes buffered on the queue before the read thread blocks
@@ -42,7 +54,7 @@ THREAD_JOIN_TIMEOUT = 2.0
 # Classes which include this mixin must implement read_queue_data which performs
 # a single blocking read and returns the data read or None to indicate the read
 # source is done (which disconnects the interface).
-class ReadQueue:
+class ReadQueue(_ReadQueueBase):
     # Initialize the read queue attributes. Must be called from the including
     # class __init__ method.
     def initialize_read_queue(self, max_size=DEFAULT_READ_QUEUE_MAX_SIZE):

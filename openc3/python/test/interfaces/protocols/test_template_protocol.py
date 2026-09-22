@@ -95,6 +95,21 @@ class TestTemplateProtocol(unittest.TestCase):
         # Stop the StreamInterface read thread started by reading
         self.interface.stop_read_queue_thread()
 
+    def _wait_for_response_template(self, timeout=5):
+        """Wait for the write to set the protocol response template.
+
+        A read which gets ahead of the write treats the response as an ordinary
+        packet rather than a response, which leaves the write (with no response
+        timeout) blocked forever. The response data is already buffered on the
+        read queue so the read has to be held back until the write is waiting.
+        """
+        protocol = self.interface.read_protocols[0]
+        deadline = time.time() + timeout
+        while not (protocol.response_template and protocol.response_packet):
+            if time.time() > deadline:
+                raise RuntimeError("write never set the response template")
+            time.sleep(0.001)
+
     def _command_packet(self, cmd_template, rsp_template=None, rsp_packet=None, **items):
         """Build a TGT CMD packet with the given 16 bit UINT items and templates.
 
@@ -318,12 +333,13 @@ class TestTemplateProtocol(unittest.TestCase):
         self.read_result = None
 
         def do_read(self):
-            time.sleep(0.001)
+            self._wait_for_response_template()
             self.read_result = self.interface.read()
 
         thread = threading.Thread(target=do_read, args=[self])
         thread.start()
         self.interface.write(packet)
+        thread.join(timeout=5)
         time.sleep(0.003)
         self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.1)\xab\xcd")
         self.assertEqual(self.read_result.read("VOLTAGE"), (10))
@@ -366,12 +382,13 @@ class TestTemplateProtocol(unittest.TestCase):
         self.read_result = None
 
         def do_read(self):
-            time.sleep(0.001)
+            self._wait_for_response_template()
             self.read_result = self.interface.read()
 
         thread = threading.Thread(target=do_read, args=[self])
         thread.start()
         self.interface.write(packet)
+        thread.join(timeout=5)
         time.sleep(0.003)
         self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.1)\xab\xcd")
         self.assertEqual(self.read_result.read("PKT_ID"), (1))  # Result ID set to the defined value)
@@ -421,13 +438,14 @@ class TestTemplateProtocol(unittest.TestCase):
         self.read_result = None
 
         def do_read(self):
-            time.sleep(0.001)
+            self._wait_for_response_template()
             self.read_result = self.interface.read()
 
         thread = threading.Thread(target=do_read, args=[self])
         thread.start()
 
         self.interface.write(packet)
+        thread.join(timeout=5)
         time.sleep(0.003)
         self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.1)\xab\xcd")
         self.assertEqual(self.read_result.read("APID"), (10))  # ID item set to the defined value)
@@ -467,13 +485,14 @@ class TestTemplateProtocol(unittest.TestCase):
         self.interface.connect()
 
         def do_read(self):
-            time.sleep(0.001)
+            self._wait_for_response_template()
             self.read_result = self.interface.read()
 
         thread = threading.Thread(target=do_read, args=[self])
         thread.start()
         for stdout in capture_io():
             self.interface.write(packet)
+            thread.join(timeout=5)
             time.sleep(0.003)
             self.assertIn(
                 "Unexpected response:",
@@ -516,7 +535,7 @@ class TestTemplateProtocol(unittest.TestCase):
         self.interface.connect()
 
         def do_read(self):
-            time.sleep(0.001)
+            self._wait_for_response_template()
             self.read_result = self.interface.read()
 
         thread = threading.Thread(target=do_read, args=[self])
@@ -524,6 +543,7 @@ class TestTemplateProtocol(unittest.TestCase):
 
         for stdout in capture_io():
             self.interface.write(packet)
+            thread.join(timeout=5)
             time.sleep(0.003)
             self.assertIn(
                 "Could not write value 10;11",
@@ -563,12 +583,13 @@ class TestTemplateProtocol(unittest.TestCase):
         self.read_result = None
 
         def do_read(self):
-            time.sleep(0.001)
+            self._wait_for_response_template()
             self.read_result = self.interface.read()
 
         thread = threading.Thread(target=do_read, args=[self])
         thread.start()
         self.interface.write(packet)
+        thread.join(timeout=5)
         self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.20)\xad")
         self.assertEqual(self.read_result.read("VOLTAGE"), 12)
 
@@ -599,13 +620,14 @@ class TestTemplateProtocol(unittest.TestCase):
         self.read_result = None
 
         def do_read(self):
-            time.sleep(0.001)
+            self._wait_for_response_template()
             self.read_result = self.interface.read()
 
         thread = threading.Thread(target=do_read, args=[self])
         thread.start()
 
         self.interface.write(packet)
+        thread.join(timeout=5)
         self.assertEqual(TestTemplateProtocol.write_buffer, b"GO\xad")
         self.assertEqual(self.read_result.read("STRING"), "OpenC3")
 

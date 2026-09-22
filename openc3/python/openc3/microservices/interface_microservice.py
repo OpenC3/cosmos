@@ -804,6 +804,7 @@ class InterfaceMicroservice(Microservice):
                                 if packet is not None:
                                     self.handle_packet(packet)
                                     self.count += 1
+                                    read_queue_bytes = self.interface.read_queue_bytes() if self.interface else 0
                                     if self.interface_or_router == "INTERFACE":
                                         self.metric.set(
                                             name="interface_tlm_total",
@@ -812,7 +813,7 @@ class InterfaceMicroservice(Microservice):
                                         )
                                         self.metric.set(
                                             name="interface_read_queue_bytes",
-                                            value=self.interface.read_queue_bytes(),
+                                            value=read_queue_bytes,
                                             type="gauge",
                                             unit="bytes",
                                             help="Bytes buffered on the interface read queue waiting to be processed",
@@ -825,7 +826,7 @@ class InterfaceMicroservice(Microservice):
                                         )
                                         self.metric.set(
                                             name="router_read_queue_bytes",
-                                            value=self.interface.read_queue_bytes(),
+                                            value=read_queue_bytes,
                                             type="gauge",
                                             unit="bytes",
                                             help="Bytes buffered on the router read queue waiting to be processed",

@@ -209,6 +209,14 @@ class UdpInterface(ReadQueue, Interface):
             return None
 
     # Reads the data queued by the read thread if the read_port is defined
+    # ReadQueue and Interface both define these so pick the ReadQueue ones
+    # explicitly rather than relying on the method resolution order
+    def read_queue_size(self):
+        return ReadQueue.read_queue_size(self)
+
+    def read_queue_bytes(self):
+        return ReadQueue.read_queue_bytes(self)
+
     def read_interface(self):
         data = self.read_queue_pop()
         if data is None:
