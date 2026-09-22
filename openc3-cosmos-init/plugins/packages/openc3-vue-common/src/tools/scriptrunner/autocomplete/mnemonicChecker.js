@@ -100,7 +100,7 @@ export default class MnemonicChecker {
 
         let mnemonicMatch = matchStr
           .substring(parenOrSpaceMatch.index + 1) // Trim off leading `(` or space
-          .replace(/\)+.*$/, '') // and the closing )s
+          .replace(/\).*$/, '') // and the closing )s
 
         if (mnemonicMatch.match(interpolatedStringRegex)) {
           result.linesToSkip.push(index + 1)

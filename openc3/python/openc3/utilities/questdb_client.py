@@ -1649,8 +1649,8 @@ class QuestDBClient:
             return False
 
         try:
-            table_match = re.search(r"table:\s+(.+?),", error_message)
-            column_match = re.search(r"column:\s+(.+?);", error_message)
+            table_match = re.search(r"table:\s+(\S[^,\n]*),", error_message)
+            column_match = re.search(r"column:\s+(\S[^;\n]*);", error_message)
             to_type_match = re.search(r"column type:\s+([A-Z]+)", error_message)
 
             # "cast error from protocol type" includes the protocol type;

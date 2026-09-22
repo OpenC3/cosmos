@@ -31,8 +31,10 @@ SCANNING_REGULAR_EXPRESSION = re.compile(
     re.VERBOSE,
 )
 
-SPLIT_WITH_REGEX = re.compile(r"\s+with\s+", re.IGNORECASE)
-SPLIT_WITH_OPTIONAL_WHITESPACE_REGEX = re.compile(r"\s*with\s*", re.IGNORECASE)
+# The (?<!\s) prefix pins the match to the start of a whitespace run so the
+# engine doesn't retry at every position within it (super-linear backtracking)
+SPLIT_WITH_REGEX = re.compile(r"(?<!\s)\s+with\s+", re.IGNORECASE)
+SPLIT_WITH_OPTIONAL_WHITESPACE_REGEX = re.compile(r"(?<!\s)\s*with\s*", re.IGNORECASE)
 
 # Regular expression to identify a String as a floating point number
 FLOAT_CHECK_REGEX = re.compile(r"\A\s*[-+]?\d*\.\d+\s*\Z")

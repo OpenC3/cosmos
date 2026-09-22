@@ -40,11 +40,11 @@ with open(py_file_name, "w+") as out, source_path.open() as file:
                 out.write(f"class {classes[0]}:\n")
             continue
 
-        m = re.compile(r".*describe \"(.*)\" do.*").match(line)
+        m = re.search(r'describe "(.*)" do', line)
         if m:
             class_name = "".join([x.capitalize() for x in m.group(1).split("_")])
             line = f"class {class_name}(unittest.TestCase):\n"
-        m = re.compile(r".*it \"(.*)\" do.*").match(line)
+        m = re.search(r'it "(.*)" do', line)
         if m:
             test_name = m.group(1).replace(" ", "_").replace("'", "").replace("-", "_").replace(",", "").lower()
             # No trailing : because that's added later
@@ -66,26 +66,26 @@ with open(py_file_name, "w+") as out, source_path.open() as file:
         line = re.sub(r":([A-Z_]+)", r"'\1'", line)
         # Ruby:   var.length
         # Python: len(var)
-        line = re.sub(r"([@a-z._]+)\.length", r"len(\1)", line)
+        line = re.sub(r"((?:[@a-z_]*\.)*[@a-z_]+)\.length", r"len(\1)", line)
         # Ruby:   var.abs
         # Python: abs(var)
-        line = re.sub(r"([@a-z._]+)\.abs", r"abs(\1)", line)
+        line = re.sub(r"((?:[@a-z_]*\.)*[@a-z_]+)\.abs", r"abs(\1)", line)
         # Ruby:   param: value
         # Python: param = value
         line = re.sub(r"([a-z_]):", r"\1=", line)
         # Add a ':' to the end of if lines
-        line = re.sub(r"(\s*if .*)", r"\1:", line)
-        m = re.compile(r"(\s*)def self\.(.*)\((.*)\)").match(line)
+        line = re.sub(r"(?<!\s)(\s*if .*)", r"\1:", line)
+        m = re.compile(r"(\s*)def self\.([^(]*)\((.*)\)").match(line)
         if m:
             name = m.group(2).replace("self.", "")
             out.write(f"{m.group(1)}@classmethod\n")
             line = f"{m.group(1)}def {name}(cls, {m.group(3)}):\n"
         else:
-            line = re.sub(r"(\s*def .*)", r"\1:", line)
+            line = re.sub(r"(?<!\s)(\s*def .*)", r"\1:", line)
 
-        line = re.sub(r"\s*?(\w*?)\.to_s", r" str(\1)", line)
-        line = re.sub(r"\s*?(\w*?)\.to_f", r" float(\1)", line)
-        line = re.sub(r"\s*?(\w*?)\.to_i", r" int(\1)", line)
+        line = re.sub(r"(?<!\s)\s*(\w*)\.to_s", r" str(\1)", line)
+        line = re.sub(r"(?<!\s)\s*(\w*)\.to_f", r" float(\1)", line)
+        line = re.sub(r"(?<!\s)\s*(\w*)\.to_i", r" int(\1)", line)
 
         line = line.replace("initialize(", "__init__(self, ")
 
@@ -121,18 +121,20 @@ with open(py_file_name, "w+") as out, source_path.open() as file:
             line = re.sub(r"\)\.to be (.*)", r", \1)", line)
         if "expect {" in line:
             line = line.replace("expect ", "")
-            m = re.compile(r"(\s*)\{(.*)\}\.to raise_error\(.* [\"\/](.*)[\"\/]\)").match(line)
+            # The (?:(?!\}\.to raise_error).)* is a tempered match: it steps over any '}'
+            # inside the block (e.g. a '{}' literal) and stops at the one ending the block
+            m = re.compile(r"(\s*)\{((?:(?!\}\.to raise_error).)*)\}\.to raise_error\([^ ]* [\"\/](.*)[\"\/]\)").match(line)
             if m:
                 name = m.group(2).replace("self.", "")
                 string = m.group(3).replace("#{", "{").replace("@", "self.")
                 out.write(f'{m.group(1)}with self.assertRaisesRegex(AttributeError, f"{string}"):\n')
                 line = f"{m.group(1)}    {m.group(2)}\n"
         if "expect(" in line and ".to match(" in line:
-            m = re.compile(r"(\s*)expect\((.*)\)\.to match\(/(.*)/\)").match(line)
+            m = re.compile(r"(\s*)expect\((.*)\)\.to match\(/((?:\\.|[^\\/])*)/\)").match(line)
             if m:
                 line = f"{m.group(1)}self.assertIn('{m.group(3)}', {m.group(2)})\n"
         if "expect(" in line and ".to include(" in line:
-            m = re.compile(r"(\s*)expect\((.*)\)\.to include\((.*)\)").match(line)
+            m = re.compile(r"(\s*)expect\(((?:(?!\)\.to include\().)*)\)\.to include\((.*)\)").match(line)
             if m:
                 line = f"{m.group(1)}self.assertIn([{m.group(3)}], {m.group(2)})\n"
         line = line.replace("capture_io do |stdout|", "for stdout in capture_io():")
@@ -161,13 +163,13 @@ with open(py_file_name, "w+") as out, source_path.open() as file:
             .replace("tf.close", "tf.seek(0)")
             .replace("tf.unlink", "tf.close()")
         )
-        line = re.sub(r"(\s*)tf.puts '(.*)'", r"\1tf.write('\2\\n')", line)
+        line = re.sub(r"(?<!\s)(\s*)tf.puts '(.*)'", r"\1tf.write('\2\\n')", line)
         # Usually << means append to a list
-        line = re.sub(r"(.*) << (.*)", r"\1.append(\2)", line)
-        line = re.sub(r"(\s*)case (.*)", r"\1match \2:", line)
+        line = re.sub(r"(.*) << ([^<\n]*)", r"\1.append(\2)", line)
+        line = re.sub(r"(?<!\s)(\s*)case (.*)", r"\1match \2:", line)
         m = re.compile(r"(\s*)when (.*)").match(line)
         if m:
-            line = re.sub(r"(\s*)when (.*)", r"\1case \2:", line)
+            line = re.sub(r"(?<!\s)(\s*)when (.*)", r"\1case \2:", line)
             line.replace(",", "|")  # python separates values with | not ,
         line = (
             line.replace(".new(", "(")
