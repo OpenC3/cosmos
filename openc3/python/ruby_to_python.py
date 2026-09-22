@@ -121,9 +121,9 @@ with open(py_file_name, "w+") as out, source_path.open() as file:
             line = re.sub(r"\)\.to be (.*)", r", \1)", line)
         if "expect {" in line:
             line = line.replace("expect ", "")
-            # The (?:(?!\}\.to raise_error).)* is a tempered match: it steps over any '}'
-            # inside the block (e.g. a '{}' literal) and stops at the one ending the block
-            m = re.compile(r"(\s*)\{((?:(?!\}\.to raise_error).)*)\}\.to raise_error\([^ ]* [\"\/](.*)[\"\/]\)").match(line)
+            # The (?:(?!\}\.to raise_error).)* steps over any '}' inside the block
+            # (e.g. a '{}' literal) and stops at the one ending the block
+            m = re.match(r"(\s*)\{((?:(?!\}\.to raise_error).)*)\}\.to raise_error\([^ ]* [\"\/](.*)[\"\/]\)", line)
             if m:
                 name = m.group(2).replace("self.", "")
                 string = m.group(3).replace("#{", "{").replace("@", "self.")
@@ -165,11 +165,11 @@ with open(py_file_name, "w+") as out, source_path.open() as file:
         )
         line = re.sub(r"(?<!\s)(\s*)tf.puts '(.*)'", r"\1tf.write('\2\\n')", line)
         # Usually << means append to a list
-        line = re.sub(r"(.*) << ([^<\n]*)", r"\1.append(\2)", line)
-        line = re.sub(r"(?<!\s)(\s*)case (.*)", r"\1match \2:", line)
+        line = re.sub(r"(?m)^(.*) << ([^<\n]*)", r"\1.append(\2)", line)
+        line = re.sub(r"(?m)^(\s*)case (.*)", r"\1match \2:", line)
         m = re.compile(r"(\s*)when (.*)").match(line)
         if m:
-            line = re.sub(r"(?<!\s)(\s*)when (.*)", r"\1case \2:", line)
+            line = re.sub(r"^(\s*)when (.*)", r"\1case \2:", line)
             line.replace(",", "|")  # python separates values with | not ,
         line = (
             line.replace(".new(", "(")
