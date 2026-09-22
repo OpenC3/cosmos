@@ -28,7 +28,7 @@ def table_create_binary(definition: str, scope: str = OPENC3_SCOPE):
 # binary so it can be read back with get_target_file(). Pass save=False to get the
 # contents in the return value without creating a file.
 def table_create_report(
-    filename: str, definition: str, table_name: str = None, save: bool = True, scope: str = OPENC3_SCOPE
+    filename: str, definition: str, table_name: str | None = None, save: bool = True, scope: str = OPENC3_SCOPE
 ):
     data = {}
     data["binary"] = filename

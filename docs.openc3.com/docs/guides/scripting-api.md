@@ -7368,7 +7368,7 @@ Creates a table binary based on a table definition file. You can achieve the sam
 <TabItem value="python" label="Python Syntax">
 
 ```python
-table_create_binary(<Table Definition File>)
+table_create_binary(<Table Definition File>, scope=OPENC3_SCOPE)
 ```
 
 </TabItem>
@@ -7376,7 +7376,7 @@ table_create_binary(<Table Definition File>)
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-table_create_binary(<Table Definition File>)
+table_create_binary(<Table Definition File>, scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -7385,6 +7385,7 @@ table_create_binary(<Table Definition File>)
 | Parameter             | Description                                                                     |
 | --------------------- | ------------------------------------------------------------------------------- |
 | Table Definition File | Path to the table definition file, e.g. INST/tables/config/ConfigTables_def.txt |
+| scope                 | Scope to use, defaults to current scope                                         |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -7448,7 +7449,7 @@ The report is written into the target's storage next to the binary, replacing th
 <TabItem value="python" label="Python Syntax">
 
 ```python
-table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Name (optional)>, <Save (optional)>)
+table_create_report(<Table Binary Filename>, <Table Definition File>, table_name=None, save=True, scope=OPENC3_SCOPE)
 ```
 
 </TabItem>
@@ -7456,7 +7457,7 @@ table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Nam
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Name (optional)>, <Save (optional)>)
+table_create_report(<Table Binary Filename>, <Table Definition File>, table_name: nil, save: true, scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -7468,6 +7469,7 @@ table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Nam
 | Table Definition File | Path to the table definition file, e.g. INST/tables/config/ConfigTables_def.txt                                                                                                                                                                                                                                  |
 | table_name            | Name of the table to create the report. This only applies if the Table Binary and Table Definition consist of multiple tables. By default the report consists of all tables and is named after the binary file. If the table name is given, the report is just the specified table and is named after the table. |
 | save                  | Whether to write the report into the target's storage. Defaults to true. Pass false to only return the contents.                                                                                                                                                                                                 |
+| scope                 | Scope to use, defaults to current scope                                                                                                                                                                                                                                                                          |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
