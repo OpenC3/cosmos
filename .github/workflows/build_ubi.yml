@@ -40,6 +40,9 @@ jobs:
       fail-fast: false
     permissions:
       contents: read
+      # Report Trivy status below publishes the scan result as its own commit
+      # status so it is not folded into this job's pass/fail.
+      statuses: write
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -103,7 +106,13 @@ jobs:
           cache: true
           version: v0.74.0
       - name: Run Trivy on the UBI images
+        id: trivy
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        # A vulnerable IronBank base image is not a broken build: the traefik
+        # UBI image, for one, is rebuilt upstream on RedHat's schedule, not
+        # ours. Let the job go green and carry the scan verdict in the separate
+        # commit status posted by the next step.
+        continue-on-error: true
         shell: bash
         env:
           UBI_IMAGES: >-
@@ -131,11 +140,54 @@ jobs:
           # trivy.yaml sets exit-code 1 on CRITICAL/HIGH, so record the failure
           # and keep going: one vulnerable base image should not hide the
           # findings in the other ten.
-          status=0
+          failed=()
           for image in $UBI_IMAGES; do
             echo "::group::trivy ${image}"
             trivy image --config trivy.yaml --image-src docker \
-              "${registry}/${namespace}/${image}:${tag}" || status=1
+              "${registry}/${namespace}/${image}:${tag}" || failed+=("$image")
             echo "::endgroup::"
           done
-          exit $status
+
+          # Each image's output is inside a collapsed ::group:: and a clean
+          # image still prints a full all-zero Report Summary, so a reader who
+          # only sees "exit code 1" cannot tell which of the 11 failed without
+          # expanding every one. Name them where they are visible unexpanded.
+          {
+            echo "### Trivy UBI scan"
+            if [ ${#failed[@]} -eq 0 ]; then
+              echo "No fixable CRITICAL/HIGH vulnerabilities."
+            else
+              echo "Fixable CRITICAL/HIGH vulnerabilities in:"
+              printf -- '- `%s`\n' "${failed[@]}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          for image in "${failed[@]}"; do
+            echo "::error title=Trivy::${image} has fixable CRITICAL/HIGH vulnerabilities"
+          done
+          [ ${#failed[@]} -eq 0 ]
+
+      # Published as a commit status rather than left as this job's outcome so
+      # "did the UBI images build and come up" and "is a base image currently
+      # vulnerable" are two checks on the PR instead of one. Do not mark this
+      # status required unless the images are ones we can actually patch.
+      - name: Report Trivy status
+        if: ${{ !cancelled() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # On a pull_request event github.sha is the throwaway merge commit,
+          # which is not the commit the PR shows checks against.
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          OUTCOME: ${{ steps.trivy.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          case "$OUTCOME" in
+            success) state=success; desc="No fixable CRITICAL/HIGH vulnerabilities" ;;
+            skipped) state=error;   desc="Image build failed, scan did not run" ;;
+            *)       state=failure; desc="Fixable CRITICAL/HIGH vulnerabilities found" ;;
+          esac
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
+            -f state="$state" \
+            -f context="Trivy UBI Scan" \
+            -f target_url="$RUN_URL" \
+            -f description="$desc"
