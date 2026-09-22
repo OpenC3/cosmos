@@ -10,7 +10,6 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.config.config_parser import ConfigParser
-from openc3.interfaces.interface import Interface
 from openc3.top_level import get_class_from_module
 from openc3.utilities.logger import Logger
 from openc3.utilities.read_queue import ReadQueue
@@ -18,7 +17,7 @@ from openc3.utilities.string import class_name_to_filename
 
 
 # Base class for interfaces that act read and write from a stream
-class StreamInterface(ReadQueue, Interface):
+class StreamInterface(ReadQueue):
     def __init__(self, protocol_type=None, protocol_args=None):
         if protocol_args is None:
             protocol_args = []

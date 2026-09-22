@@ -13,6 +13,7 @@ import queue
 import threading
 import traceback
 
+from openc3.interfaces.interface import Interface
 from openc3.utilities.logger import Logger
 
 
@@ -34,17 +35,17 @@ QUEUE_POLL_TIMEOUT = 0.1
 THREAD_JOIN_TIMEOUT = 2.0
 
 
-# Mixin which reads an underlying socket / stream in a dedicated thread and
-# buffers the results on a queue. This keeps the operating system receive
+# Interface base class which reads an underlying socket / stream in a dedicated
+# thread and buffers the results on a queue. This keeps the operating system receive
 # buffers drained as fast as possible so data isn't dropped while the packet
 # reading thread is busy processing protocols and writing to the database.
 #
-# Classes which include this mixin must implement read_queue_data which performs
+# Subclasses must implement read_queue_data which performs
 # a single blocking read and returns the data read or None to indicate the read
 # source is done (which disconnects the interface).
-class ReadQueue:
-    # Initialize the read queue attributes. Must be called from the including
-    # class __init__ method.
+class ReadQueue(Interface):
+    # Initialize the read queue attributes. Must be called from the subclass
+    # __init__ method.
     def initialize_read_queue(self, max_size=DEFAULT_READ_QUEUE_MAX_SIZE):
         self._read_queue = None
         self.read_queue_thread = None
@@ -81,7 +82,7 @@ class ReadQueue:
         with self._read_queue_condition:
             return self._read_queue_bytes
 
-    # Perform a single blocking read. Must be implemented by the including class.
+    # Perform a single blocking read. Must be implemented by the subclass.
     #
     # @return [bytes, None] Data read or None if the read source is done
     def read_queue_data(self):

@@ -11,7 +11,6 @@
 
 
 from openc3.config.config_parser import ConfigParser
-from openc3.interfaces.interface import Interface
 from openc3.io.udp_sockets import UdpReadSocket, UdpReadWriteSocket, UdpWriteSocket
 from openc3.top_level import close_socket
 from openc3.utilities.logger import Logger
@@ -20,7 +19,7 @@ from openc3.utilities.sleeper import Sleeper
 
 
 # Base class for interfaces that send and receive messages over UDP
-class UdpInterface(ReadQueue, Interface):
+class UdpInterface(ReadQueue):
     # @param hostname [String] Machine to connect to
     # @param write_dest_port [Integer] Port to write commands to
     # @param read_port [Integer] Port to read telemetry from

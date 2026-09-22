@@ -33,7 +33,9 @@ module OpenC3
         @queue << data
       end
 
-      def connect; end
+      def connect
+        # Nothing to connect, data comes from the queue
+      end
 
       def connected?; true; end
 
@@ -47,7 +49,9 @@ module OpenC3
         @queue.pop
       end
 
-      def write(_data); end
+      def write(_data)
+        # Writes are discarded, only reads are tested
+      end
     end
 
     let(:interface) { StreamInterface.new }
@@ -90,12 +94,12 @@ module OpenC3
         stream = QueueStream.new
         interface.stream = stream
         interface.connect
-        thread = Thread.new { Thread.current[:data] = interface.read_interface()[0] }
+        thread = Thread.new { interface.read_interface()[0] }
         sleep(0.01)
         expect(thread.alive?).to be true
         stream.push("\x01\x02")
-        thread.join(2)
-        expect(thread[:data]).to eql "\x01\x02"
+        expect(thread.join(2)).to_not be_nil
+        expect(thread.value).to eql "\x01\x02"
       end
 
       it "counts the bytes read as they are dequeued" do
