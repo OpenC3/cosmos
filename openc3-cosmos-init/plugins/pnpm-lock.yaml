@@ -10,16 +10,16 @@ importers:
     devDependencies:
       '@vue/eslint-config-prettier':
         specifier: 10.2.0
-        version: 10.2.0(eslint@10.10.0)(prettier@3.9.6)
+        version: 10.2.0(eslint@10.11.0)(prettier@3.9.8)
       eslint:
-        specifier: 10.10.0
-        version: 10.10.0
+        specifier: 10.11.0
+        version: 10.11.0
       eslint-plugin-vue:
         specifier: 10.11.0
-        version: 10.11.0(@typescript-eslint/parser@8.70.0(eslint@10.10.0)(typescript@6.0.3))(eslint@10.10.0)(vue-eslint-parser@10.4.1(eslint@10.10.0))
+        version: 10.11.0(@typescript-eslint/parser@8.70.0(eslint@10.11.0)(typescript@6.0.3))(eslint@10.11.0)(vue-eslint-parser@10.4.1(eslint@10.11.0))
       eslint-plugin-vuetify:
         specifier: 2.7.2
-        version: 2.7.2(@typescript-eslint/parser@8.70.0(eslint@10.10.0)(typescript@6.0.3))(eslint@10.10.0)(vue-eslint-parser@10.4.1(eslint@10.10.0))(vuetify@4.0.7(typescript@6.0.3)(vue@3.5.42(typescript@6.0.3)))
+        version: 2.7.2(@typescript-eslint/parser@8.70.0(eslint@10.11.0)(typescript@6.0.3))(eslint@10.11.0)(vue-eslint-parser@10.4.1(eslint@10.11.0))(vuetify@4.0.7(typescript@6.0.3)(vue@3.5.42(typescript@6.0.3)))
       globals:
         specifier: 17.12.0
         version: 17.12.0
@@ -28,10 +28,10 @@ importers:
         version: 6.0.3
       typescript-eslint:
         specifier: 8.70.0
-        version: 8.70.0(eslint@10.10.0)(typescript@6.0.3)
+        version: 8.70.0(eslint@10.11.0)(typescript@6.0.3)
       vue-eslint-parser:
         specifier: 10.4.1
-        version: 10.4.1(eslint@10.10.0)
+        version: 10.4.1(eslint@10.11.0)
 
   packages/openc3-cosmos-demo:
     dependencies:
@@ -49,20 +49,20 @@ importers:
         specifier: 1.16.1
         version: 1.16.1
       '@vitejs/plugin-vue':
-        specifier: 6.0.8
-        version: 6.0.8(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))(vue@3.5.42(typescript@6.0.3))
+        specifier: 6.0.9
+        version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))(vue@3.5.42(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       sass:
-        specifier: 1.104.0
-        version: 1.104.0
+        specifier: 1.104.1
+        version: 1.104.1
       vite:
         specifier: 7.3.6
-        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
       vite-plugin-style-inject:
         specifier: 0.0.1
-        version: 0.0.1(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))
+        version: 0.0.1(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))
       vue:
         specifier: 3.5.42
         version: 3.5.42(typescript@6.0.3)
@@ -83,20 +83,20 @@ importers:
         version: 3.0.1
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 6.0.8
-        version: 6.0.8(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))(vue@3.5.42(typescript@6.0.3))
+        specifier: 6.0.9
+        version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))(vue@3.5.42(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
-        specifier: 1.104.0
-        version: 1.104.0
+        specifier: 1.104.1
+        version: 1.104.1
       vite:
         specifier: 7.3.6
-        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
       vue:
         specifier: 3.5.42
         version: 3.5.42(typescript@6.0.3)
@@ -129,20 +129,20 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 6.0.8
-        version: 6.0.8(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))(vue@3.5.42(typescript@6.0.3))
+        specifier: 6.0.9
+        version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))(vue@3.5.42(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
-        specifier: 1.104.0
-        version: 1.104.0
+        specifier: 1.104.1
+        version: 1.104.1
       vite:
         specifier: 7.3.6
-        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
       vue:
         specifier: 3.5.42
         version: 3.5.42(typescript@6.0.3)
@@ -178,20 +178,20 @@ importers:
         specifier: 1.16.1
         version: 1.16.1
       '@vitejs/plugin-vue':
-        specifier: 6.0.8
-        version: 6.0.8(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))(vue@3.5.42(typescript@6.0.3))
+        specifier: 6.0.9
+        version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))(vue@3.5.42(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
-        specifier: 1.104.0
-        version: 1.104.0
+        specifier: 1.104.1
+        version: 1.104.1
       vite:
         specifier: 7.3.6
-        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
       vue:
         specifier: 3.5.42
         version: 3.5.42(typescript@6.0.3)
@@ -242,20 +242,20 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 6.0.8
-        version: 6.0.8(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))(vue@3.5.42(typescript@6.0.3))
+        specifier: 6.0.9
+        version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))(vue@3.5.42(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
-        specifier: 1.104.0
-        version: 1.104.0
+        specifier: 1.104.1
+        version: 1.104.1
       vite:
         specifier: 7.3.6
-        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
       vue:
         specifier: 3.5.42
         version: 3.5.42(typescript@6.0.3)
@@ -285,20 +285,20 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 6.0.8
-        version: 6.0.8(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))(vue@3.5.42(typescript@6.0.3))
+        specifier: 6.0.9
+        version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))(vue@3.5.42(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
-        specifier: 1.104.0
-        version: 1.104.0
+        specifier: 1.104.1
+        version: 1.104.1
       vite:
         specifier: 7.3.6
-        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
       vue:
         specifier: 3.5.42
         version: 3.5.42(typescript@6.0.3)
@@ -331,20 +331,20 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 6.0.8
-        version: 6.0.8(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))(vue@3.5.42(typescript@6.0.3))
+        specifier: 6.0.9
+        version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))(vue@3.5.42(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
-        specifier: 1.104.0
-        version: 1.104.0
+        specifier: 1.104.1
+        version: 1.104.1
       vite:
         specifier: 7.3.6
-        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
       vue:
         specifier: 3.5.42
         version: 3.5.42(typescript@6.0.3)
@@ -377,20 +377,20 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 6.0.8
-        version: 6.0.8(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))(vue@3.5.42(typescript@6.0.3))
+        specifier: 6.0.9
+        version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))(vue@3.5.42(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
-        specifier: 1.104.0
-        version: 1.104.0
+        specifier: 1.104.1
+        version: 1.104.1
       vite:
         specifier: 7.3.6
-        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
       vue:
         specifier: 3.5.42
         version: 3.5.42(typescript@6.0.3)
@@ -426,20 +426,20 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 6.0.8
-        version: 6.0.8(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))(vue@3.5.42(typescript@6.0.3))
+        specifier: 6.0.9
+        version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))(vue@3.5.42(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
-        specifier: 1.104.0
-        version: 1.104.0
+        specifier: 1.104.1
+        version: 1.104.1
       vite:
         specifier: 7.3.6
-        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
       vue:
         specifier: 3.5.42
         version: 3.5.42(typescript@6.0.3)
@@ -472,20 +472,20 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 6.0.8
-        version: 6.0.8(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))(vue@3.5.42(typescript@6.0.3))
+        specifier: 6.0.9
+        version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))(vue@3.5.42(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
-        specifier: 1.104.0
-        version: 1.104.0
+        specifier: 1.104.1
+        version: 1.104.1
       vite:
         specifier: 7.3.6
-        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
       vue:
         specifier: 3.5.42
         version: 3.5.42(typescript@6.0.3)
@@ -518,20 +518,20 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 6.0.8
-        version: 6.0.8(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))(vue@3.5.42(typescript@6.0.3))
+        specifier: 6.0.9
+        version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))(vue@3.5.42(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
-        specifier: 1.104.0
-        version: 1.104.0
+        specifier: 1.104.1
+        version: 1.104.1
       vite:
         specifier: 7.3.6
-        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
       vue:
         specifier: 3.5.42
         version: 3.5.42(typescript@6.0.3)
@@ -570,20 +570,20 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 6.0.8
-        version: 6.0.8(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))(vue@3.5.42(typescript@6.0.3))
+        specifier: 6.0.9
+        version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))(vue@3.5.42(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
-        specifier: 1.104.0
-        version: 1.104.0
+        specifier: 1.104.1
+        version: 1.104.1
       vite:
         specifier: 7.3.6
-        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
       vue:
         specifier: 3.5.42
         version: 3.5.42(typescript@6.0.3)
@@ -616,20 +616,20 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 6.0.8
-        version: 6.0.8(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))(vue@3.5.42(typescript@6.0.3))
+        specifier: 6.0.9
+        version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))(vue@3.5.42(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
-        specifier: 1.104.0
-        version: 1.104.0
+        specifier: 1.104.1
+        version: 1.104.1
       vite:
         specifier: 7.3.6
-        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
       vue:
         specifier: 3.5.42
         version: 3.5.42(typescript@6.0.3)
@@ -668,20 +668,20 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 6.0.8
-        version: 6.0.8(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))(vue@3.5.42(typescript@6.0.3))
+        specifier: 6.0.9
+        version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))(vue@3.5.42(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
-        specifier: 1.104.0
-        version: 1.104.0
+        specifier: 1.104.1
+        version: 1.104.1
       vite:
         specifier: 7.3.6
-        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
       vue:
         specifier: 3.5.42
         version: 3.5.42(typescript@6.0.3)
@@ -723,20 +723,20 @@ importers:
         version: 1.1.3
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 6.0.8
-        version: 6.0.8(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))(vue@3.5.42(typescript@6.0.3))
+        specifier: 6.0.9
+        version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))(vue@3.5.42(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
-        specifier: 1.104.0
-        version: 1.104.0
+        specifier: 1.104.1
+        version: 1.104.1
       vite:
         specifier: 7.3.6
-        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
       vue:
         specifier: 3.5.42
         version: 3.5.42(typescript@6.0.3)
@@ -768,8 +768,8 @@ importers:
         specifier: 4.3.1
         version: 4.3.1
       sass:
-        specifier: 1.104.0
-        version: 1.104.0
+        specifier: 1.104.1
+        version: 1.104.1
       sortablejs:
         specifier: 1.15.7
         version: 1.15.7
@@ -781,11 +781,11 @@ importers:
         version: 1.6.32
     devDependencies:
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       vite:
         specifier: 7.3.6
-        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
 
   packages/openc3-tool-base:
     dependencies:
@@ -830,20 +830,20 @@ importers:
         specifier: 6.15.4
         version: 6.15.4
       '@vitejs/plugin-vue':
-        specifier: 6.0.8
-        version: 6.0.8(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))(vue@3.5.42(typescript@6.0.3))
+        specifier: 6.0.9
+        version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))(vue@3.5.42(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       sass:
-        specifier: 1.104.0
-        version: 1.104.0
+        specifier: 1.104.1
+        version: 1.104.1
       vite:
         specifier: 7.3.6
-        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
       vue:
         specifier: 3.5.42
         version: 3.5.42(typescript@6.0.3)
@@ -890,8 +890,8 @@ importers:
         specifier: 4.0.3
         version: 4.0.3(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.42(typescript@6.0.3))
       sass:
-        specifier: 1.104.0
-        version: 1.104.0
+        specifier: 1.104.1
+        version: 1.104.1
       semver:
         specifier: 7.8.5
         version: 7.8.5
@@ -921,17 +921,17 @@ importers:
         version: 0.4.2(vue@3.5.42(typescript@6.0.3))(vuetify@3.13.4(typescript@6.0.3)(vue@3.5.42(typescript@6.0.3)))
     devDependencies:
       '@vitejs/plugin-vue':
-        specifier: 6.0.8
-        version: 6.0.8(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))(vue@3.5.42(typescript@6.0.3))
+        specifier: 6.0.9
+        version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))(vue@3.5.42(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
       vite:
         specifier: 7.3.6
-        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
 
 packages:
 
@@ -1658,8 +1658,8 @@ packages:
     resolution: {integrity: sha512-BoC8PiO4Hkdo0TVJh9Ntxr5MxPDI7/oFsrygN5ADelFSeXG/qgNuucIGA+L5Z6JpPTE/uRfcTWtscjbUaufepQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@vitejs/plugin-vue@6.0.8':
-    resolution: {integrity: sha512-0ZjgOg7oO6farnNGup7yvoM/YXZV84OZxHAwtflItNa/6zzQyVb5LNxyea3FEKEX2XlagIKzrlH7wwxkKgtiew==}
+  '@vitejs/plugin-vue@6.0.9':
+    resolution: {integrity: sha512-rD/MORlhaZMlXWW0rEn4FB4wMinWC0z/D7Ye160S5+Rs1mC8ZDAdcDp4SjKfUhG5t8q1ktcPVw4xuTkPRlzrSA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     peerDependencies:
       vite: ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
@@ -2021,8 +2021,8 @@ packages:
     resolution: {integrity: sha512-tD40eHxA35h0PEIZNeIjkHoDR4YjjJp34biM0mDvplBe//mB+IHCqHDGV7pxF+7MklTvighcCPPZC7ynWyjdTA==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  eslint@10.10.0:
-    resolution: {integrity: sha512-NPXn6r5zl4uET1DAVPaOwzX3rut4c0wcmw3dWJAfOsTM5+TogXo0DDjz8pwm/hL8cyVNpHqeK4JpN0NjnyFFNw==}
+  eslint@10.11.0:
+    resolution: {integrity: sha512-P7a6UEEqb9G95MYAtqkmsTbVXIYyzIfl6NGOIJk162PaahFxFyeGcrlXYFSiagECg4sEm8IseJdZBKR3rx6MsQ==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
     hasBin: true
     peerDependencies:
@@ -2427,8 +2427,8 @@ packages:
     resolution: {integrity: sha512-SxToR7P8Y2lWmv/kTzVLC1t/GDI2WGjMwNhLLE9qtH8Q13C+aEmuRlzDst4Up4s0Wc8sF2M+J57iB3cMLqftfg==}
     engines: {node: '>=6.0.0'}
 
-  prettier@3.9.6:
-    resolution: {integrity: sha512-OpN0zzVdiaiAhxpuuj5efpIS4sY9j7bY6uR5mnj5yPzGkdkjNKSJeUThPb60Jw29QuAZgA4o+/iB49kFiaBX6g==}
+  prettier@3.9.8:
+    resolution: {integrity: sha512-WRFq3Wn3WId7LLROfMLdH7xaFr2jR62wU8nLO6rQUOLOxNZUviyJQs1M0iIhLexSFy+L+w0ch66wtoO2jRjG0A==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -2467,8 +2467,8 @@ packages:
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
     hasBin: true
 
-  sass@1.104.0:
-    resolution: {integrity: sha512-btHMApW2bgolvClhRW8AlQJzgI9lUB3pPSofBQQT+E46GWvf9o0TVQ13SYv5riWZVFyPN+JNz3TKW9XhBlc10w==}
+  sass@1.104.1:
+    resolution: {integrity: sha512-yDA+1aIG3EHgN4V/BvuhCvu61FF6hEd4e+9DxikUm9U0CAGuvdIZ/UYy7qbOxjhbbWQraoyLlMuzdRGOSV5Bmw==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
@@ -2941,9 +2941,9 @@ snapshots:
   '@esbuild/win32-x64@0.27.7':
     optional: true
 
-  '@eslint-community/eslint-utils@4.9.1(eslint@10.10.0)':
+  '@eslint-community/eslint-utils@4.9.1(eslint@10.11.0)':
     dependencies:
-      eslint: 10.10.0
+      eslint: 10.11.0
       eslint-visitor-keys: 3.4.3
 
   '@eslint-community/regexpp@4.12.2': {}
@@ -3231,15 +3231,15 @@ snapshots:
 
   '@types/web-bluetooth@0.0.20': {}
 
-  '@typescript-eslint/eslint-plugin@8.70.0(@typescript-eslint/parser@8.70.0(eslint@10.10.0)(typescript@6.0.3))(eslint@10.10.0)(typescript@6.0.3)':
+  '@typescript-eslint/eslint-plugin@8.70.0(@typescript-eslint/parser@8.70.0(eslint@10.11.0)(typescript@6.0.3))(eslint@10.11.0)(typescript@6.0.3)':
     dependencies:
       '@eslint-community/regexpp': 4.12.2
-      '@typescript-eslint/parser': 8.70.0(eslint@10.10.0)(typescript@6.0.3)
+      '@typescript-eslint/parser': 8.70.0(eslint@10.11.0)(typescript@6.0.3)
       '@typescript-eslint/scope-manager': 8.70.0
-      '@typescript-eslint/type-utils': 8.70.0(eslint@10.10.0)(typescript@6.0.3)
-      '@typescript-eslint/utils': 8.70.0(eslint@10.10.0)(typescript@6.0.3)
+      '@typescript-eslint/type-utils': 8.70.0(eslint@10.11.0)(typescript@6.0.3)
+      '@typescript-eslint/utils': 8.70.0(eslint@10.11.0)(typescript@6.0.3)
       '@typescript-eslint/visitor-keys': 8.70.0
-      eslint: 10.10.0
+      eslint: 10.11.0
       ignore: 7.0.6
       natural-compare: 1.4.0
       ts-api-utils: 2.5.0(typescript@6.0.3)
@@ -3247,14 +3247,14 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/parser@8.70.0(eslint@10.10.0)(typescript@6.0.3)':
+  '@typescript-eslint/parser@8.70.0(eslint@10.11.0)(typescript@6.0.3)':
     dependencies:
       '@typescript-eslint/scope-manager': 8.70.0
       '@typescript-eslint/types': 8.70.0
       '@typescript-eslint/typescript-estree': 8.70.0(typescript@6.0.3)
       '@typescript-eslint/visitor-keys': 8.70.0
       debug: 4.4.3
-      eslint: 10.10.0
+      eslint: 10.11.0
       typescript: 6.0.3
     transitivePeerDependencies:
       - supports-color
@@ -3277,13 +3277,13 @@ snapshots:
     dependencies:
       typescript: 6.0.3
 
-  '@typescript-eslint/type-utils@8.70.0(eslint@10.10.0)(typescript@6.0.3)':
+  '@typescript-eslint/type-utils@8.70.0(eslint@10.11.0)(typescript@6.0.3)':
     dependencies:
       '@typescript-eslint/types': 8.70.0
       '@typescript-eslint/typescript-estree': 8.70.0(typescript@6.0.3)
-      '@typescript-eslint/utils': 8.70.0(eslint@10.10.0)(typescript@6.0.3)
+      '@typescript-eslint/utils': 8.70.0(eslint@10.11.0)(typescript@6.0.3)
       debug: 4.4.3
-      eslint: 10.10.0
+      eslint: 10.11.0
       ts-api-utils: 2.5.0(typescript@6.0.3)
       typescript: 6.0.3
     transitivePeerDependencies:
@@ -3306,13 +3306,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/utils@8.70.0(eslint@10.10.0)(typescript@6.0.3)':
+  '@typescript-eslint/utils@8.70.0(eslint@10.11.0)(typescript@6.0.3)':
     dependencies:
-      '@eslint-community/eslint-utils': 4.9.1(eslint@10.10.0)
+      '@eslint-community/eslint-utils': 4.9.1(eslint@10.11.0)
       '@typescript-eslint/scope-manager': 8.70.0
       '@typescript-eslint/types': 8.70.0
       '@typescript-eslint/typescript-estree': 8.70.0(typescript@6.0.3)
-      eslint: 10.10.0
+      eslint: 10.11.0
       typescript: 6.0.3
     transitivePeerDependencies:
       - supports-color
@@ -3322,10 +3322,10 @@ snapshots:
       '@typescript-eslint/types': 8.70.0
       eslint-visitor-keys: 5.0.1
 
-  '@vitejs/plugin-vue@6.0.8(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0))(vue@3.5.42(typescript@6.0.3))':
+  '@vitejs/plugin-vue@6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1))(vue@3.5.42(typescript@6.0.3))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
-      vite: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+      vite: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
       vue: 3.5.42(typescript@6.0.3)
 
   '@vue-flow/background@1.3.2(@vue-flow/core@1.48.2(vue@3.5.42(typescript@6.0.3)))(vue@3.5.42(typescript@6.0.3))':
@@ -3413,12 +3413,12 @@ snapshots:
 
   '@vue/devtools-shared@8.2.1': {}
 
-  '@vue/eslint-config-prettier@10.2.0(eslint@10.10.0)(prettier@3.9.6)':
+  '@vue/eslint-config-prettier@10.2.0(eslint@10.11.0)(prettier@3.9.8)':
     dependencies:
-      eslint: 10.10.0
-      eslint-config-prettier: 10.1.8(eslint@10.10.0)
-      eslint-plugin-prettier: 5.5.5(eslint-config-prettier@10.1.8(eslint@10.10.0))(eslint@10.10.0)(prettier@3.9.6)
-      prettier: 3.9.6
+      eslint: 10.11.0
+      eslint-config-prettier: 10.1.8(eslint@10.11.0)
+      eslint-plugin-prettier: 5.5.5(eslint-config-prettier@10.1.8(eslint@10.11.0))(eslint@10.11.0)(prettier@3.9.8)
+      prettier: 3.9.8
     transitivePeerDependencies:
       - '@types/eslint'
 
@@ -3686,36 +3686,36 @@ snapshots:
 
   escape-string-regexp@4.0.0: {}
 
-  eslint-config-prettier@10.1.8(eslint@10.10.0):
+  eslint-config-prettier@10.1.8(eslint@10.11.0):
     dependencies:
-      eslint: 10.10.0
+      eslint: 10.11.0
 
-  eslint-plugin-prettier@5.5.5(eslint-config-prettier@10.1.8(eslint@10.10.0))(eslint@10.10.0)(prettier@3.9.6):
+  eslint-plugin-prettier@5.5.5(eslint-config-prettier@10.1.8(eslint@10.11.0))(eslint@10.11.0)(prettier@3.9.8):
     dependencies:
-      eslint: 10.10.0
-      prettier: 3.9.6
+      eslint: 10.11.0
+      prettier: 3.9.8
       prettier-linter-helpers: 1.0.1
       synckit: 0.11.12
     optionalDependencies:
-      eslint-config-prettier: 10.1.8(eslint@10.10.0)
+      eslint-config-prettier: 10.1.8(eslint@10.11.0)
 
-  eslint-plugin-vue@10.11.0(@typescript-eslint/parser@8.70.0(eslint@10.10.0)(typescript@6.0.3))(eslint@10.10.0)(vue-eslint-parser@10.4.1(eslint@10.10.0)):
+  eslint-plugin-vue@10.11.0(@typescript-eslint/parser@8.70.0(eslint@10.11.0)(typescript@6.0.3))(eslint@10.11.0)(vue-eslint-parser@10.4.1(eslint@10.11.0)):
     dependencies:
-      '@eslint-community/eslint-utils': 4.9.1(eslint@10.10.0)
-      eslint: 10.10.0
+      '@eslint-community/eslint-utils': 4.9.1(eslint@10.11.0)
+      eslint: 10.11.0
       natural-compare: 1.4.0
       nth-check: 2.1.1
       postcss-selector-parser: 7.1.4
       semver: 7.8.5
-      vue-eslint-parser: 10.4.1(eslint@10.10.0)
+      vue-eslint-parser: 10.4.1(eslint@10.11.0)
       xml-name-validator: 5.0.0
     optionalDependencies:
-      '@typescript-eslint/parser': 8.70.0(eslint@10.10.0)(typescript@6.0.3)
+      '@typescript-eslint/parser': 8.70.0(eslint@10.11.0)(typescript@6.0.3)
 
-  eslint-plugin-vuetify@2.7.2(@typescript-eslint/parser@8.70.0(eslint@10.10.0)(typescript@6.0.3))(eslint@10.10.0)(vue-eslint-parser@10.4.1(eslint@10.10.0))(vuetify@4.0.7(typescript@6.0.3)(vue@3.5.42(typescript@6.0.3))):
+  eslint-plugin-vuetify@2.7.2(@typescript-eslint/parser@8.70.0(eslint@10.11.0)(typescript@6.0.3))(eslint@10.11.0)(vue-eslint-parser@10.4.1(eslint@10.11.0))(vuetify@4.0.7(typescript@6.0.3)(vue@3.5.42(typescript@6.0.3))):
     dependencies:
-      eslint: 10.10.0
-      eslint-plugin-vue: 10.11.0(@typescript-eslint/parser@8.70.0(eslint@10.10.0)(typescript@6.0.3))(eslint@10.10.0)(vue-eslint-parser@10.4.1(eslint@10.10.0))
+      eslint: 10.11.0
+      eslint-plugin-vue: 10.11.0(@typescript-eslint/parser@8.70.0(eslint@10.11.0)(typescript@6.0.3))(eslint@10.11.0)(vue-eslint-parser@10.4.1(eslint@10.11.0))
       requireindex: 1.2.0
       vuetify: 4.0.7(typescript@6.0.3)(vue@3.5.42(typescript@6.0.3))
     transitivePeerDependencies:
@@ -3734,9 +3734,9 @@ snapshots:
 
   eslint-visitor-keys@5.0.1: {}
 
-  eslint@10.10.0:
+  eslint@10.11.0:
     dependencies:
-      '@eslint-community/eslint-utils': 4.9.1(eslint@10.10.0)
+      '@eslint-community/eslint-utils': 4.9.1(eslint@10.11.0)
       '@eslint-community/regexpp': 4.12.2
       '@eslint/config-array': 0.23.5
       '@eslint/config-helpers': 0.7.0
@@ -4095,7 +4095,7 @@ snapshots:
     dependencies:
       fast-diff: 1.3.0
 
-  prettier@3.9.6: {}
+  prettier@3.9.8: {}
 
   proxy-from-env@2.1.0: {}
 
@@ -4147,7 +4147,7 @@ snapshots:
       '@rollup/rollup-win32-x64-msvc': 4.60.4
       fsevents: 2.3.3
 
-  sass@1.104.0:
+  sass@1.104.1:
     dependencies:
       chokidar: 5.0.0
       immutable: 5.1.5
@@ -4200,13 +4200,13 @@ snapshots:
     dependencies:
       prelude-ls: 1.2.1
 
-  typescript-eslint@8.70.0(eslint@10.10.0)(typescript@6.0.3):
+  typescript-eslint@8.70.0(eslint@10.11.0)(typescript@6.0.3):
     dependencies:
-      '@typescript-eslint/eslint-plugin': 8.70.0(@typescript-eslint/parser@8.70.0(eslint@10.10.0)(typescript@6.0.3))(eslint@10.10.0)(typescript@6.0.3)
-      '@typescript-eslint/parser': 8.70.0(eslint@10.10.0)(typescript@6.0.3)
+      '@typescript-eslint/eslint-plugin': 8.70.0(@typescript-eslint/parser@8.70.0(eslint@10.11.0)(typescript@6.0.3))(eslint@10.11.0)(typescript@6.0.3)
+      '@typescript-eslint/parser': 8.70.0(eslint@10.11.0)(typescript@6.0.3)
       '@typescript-eslint/typescript-estree': 8.70.0(typescript@6.0.3)
-      '@typescript-eslint/utils': 8.70.0(eslint@10.10.0)(typescript@6.0.3)
-      eslint: 10.10.0
+      '@typescript-eslint/utils': 8.70.0(eslint@10.11.0)(typescript@6.0.3)
+      eslint: 10.11.0
       typescript: 6.0.3
     transitivePeerDependencies:
       - supports-color
@@ -4230,11 +4230,11 @@ snapshots:
 
   util-deprecate@1.0.2: {}
 
-  vite-plugin-style-inject@0.0.1(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)):
+  vite-plugin-style-inject@0.0.1(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)):
     dependencies:
-      vite: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0)
+      vite: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1)
 
-  vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.0):
+  vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.104.1):
     dependencies:
       esbuild: 0.27.7
       fdir: 6.5.0(picomatch@4.0.4)
@@ -4246,7 +4246,7 @@ snapshots:
       '@types/node': 25.0.3
       fsevents: 2.3.3
       lightningcss: 1.32.0
-      sass: 1.104.0
+      sass: 1.104.1
 
   vue-component-type-helpers@3.3.6: {}
 
@@ -4254,10 +4254,10 @@ snapshots:
     dependencies:
       vue: 3.5.42(typescript@6.0.3)
 
-  vue-eslint-parser@10.4.1(eslint@10.10.0):
+  vue-eslint-parser@10.4.1(eslint@10.11.0):
     dependencies:
       debug: 4.4.3
-      eslint: 10.10.0
+      eslint: 10.11.0
       eslint-scope: 9.1.2
       eslint-visitor-keys: 5.0.1
       espree: 11.2.0
