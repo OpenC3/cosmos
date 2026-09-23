@@ -179,9 +179,32 @@ module OpenC3
         expect(interface.read_interface()[0]).to eql "\x01\x02\x03\x04\x05"
       end
 
-      it "raises if the max size isn't positive" do
-        expect { interface.set_option('READ_QUEUE_MAX_SIZE', ['0']) }.to \
-          raise_error(/READ_QUEUE_MAX_SIZE must be a positive integer/)
+      it "raises if the max size is negative" do
+        expect { interface.set_option('READ_QUEUE_MAX_SIZE', ['-1']) }.to \
+          raise_error(/READ_QUEUE_MAX_SIZE must be 0 \(disabled\) or a positive integer/)
+      end
+
+      it "reads inline without a read thread when the max size is 0" do
+        interface.set_option('READ_QUEUE_MAX_SIZE', ['0'])
+        stream = QueueStream.new("\x01", "\x02")
+        interface.stream = stream
+        interface.connect
+        expect(interface.instance_variable_get(:@raw_read_thread)).to be_nil
+        # Nothing reads ahead of read_interface
+        sleep(0.05)
+        expect(stream.reads).to eql 0
+        expect(interface.read_queue_size).to eql 0
+
+        expect(interface.read_interface()[0]).to eql "\x01"
+        expect(stream.reads).to eql 1
+        expect(interface.read_interface()[0]).to eql "\x02"
+        expect(stream.reads).to eql 2
+        expect(interface.read_queue_bytes).to eql 0
+        expect(interface.instance_variable_get(:@raw_read_thread)).to be_nil
+
+        # A closed stream still disconnects the interface
+        stream.disconnect
+        expect(interface.read_interface()).to be_nil
       end
     end
 

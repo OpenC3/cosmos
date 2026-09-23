@@ -24,6 +24,9 @@ module OpenC3
   # Classes which include this module must implement read_queue_data which
   # performs a single blocking read and returns the data read or nil to
   # indicate the read source is done (which disconnects the interface).
+  #
+  # Setting READ_QUEUE_MAX_SIZE to 0 disables the read thread and reads inline
+  # from read_queue_pop, which is how interfaces read before the queue existed.
   module ReadQueue
     # Maximum number of bytes buffered on the queue before the read thread
     # blocks and lets the operating system do the buffering instead
@@ -43,7 +46,7 @@ module OpenC3
     THREAD_JOIN_TIMEOUT = 2
 
     # @return [Integer] Maximum number of bytes buffered on the queue
-    attr_reader :read_queue_max_size
+    attr_accessor :read_queue_max_size
 
     # Initialize the read queue attributes. Must be called from the including
     # class initialize method.
@@ -62,15 +65,21 @@ module OpenC3
 
     # Supported Options
     # READ_QUEUE_MAX_SIZE - Maximum number of bytes buffered on the read queue
-    # (see Interface#set_option)
+    #   or 0 to disable the read thread and read inline (see Interface#set_option)
     def set_option(option_name, option_values)
       super(option_name, option_values)
       if option_name.upcase == 'READ_QUEUE_MAX_SIZE'
         max_size = Integer(option_values[0])
-        raise "READ_QUEUE_MAX_SIZE must be a positive integer but was #{max_size}" if max_size < 1
+        raise "READ_QUEUE_MAX_SIZE must be 0 (disabled) or a positive integer but was #{max_size}" if max_size < 0
 
         @read_queue_max_size = max_size
       end
+    end
+
+    # @return [Boolean] Whether reads are buffered by a read thread (false when
+    #   READ_QUEUE_MAX_SIZE is 0 and reads happen inline)
+    def read_queue_enabled?
+      @read_queue_max_size > 0
     end
 
     # @return [Integer] The number of reads waiting on the read queue
@@ -93,9 +102,12 @@ module OpenC3
       raise "read_queue_data not defined by #{self.class}"
     end
 
-    # Start the thread which continuously reads and queues data
+    # Start the thread which continuously reads and queues data. Does nothing
+    # beyond stopping any existing thread if the read queue is disabled.
     def start_read_queue_thread
       stop_read_queue_thread()
+      return unless read_queue_enabled?
+
       queue = Queue.new
       @raw_read_mutex.synchronize do
         @raw_read_cancel = false
@@ -136,6 +148,9 @@ module OpenC3
     #
     # @return [String, nil] Data read or nil if the read source is done
     def read_queue_pop
+      # Disabled so read inline exactly as interfaces did before the queue
+      return read_queue_data() unless read_queue_enabled?
+
       queue = @raw_read_queue
       unless queue
         # The read thread is normally started by connect but interfaces can also

@@ -818,19 +818,11 @@ class InterfaceMicroservice(Microservice):
                                 if packet is not None:
                                     self.handle_packet(packet)
                                     self.count += 1
-                                    read_queue_bytes = self.interface.read_queue_bytes()
                                     if self.interface_or_router == "INTERFACE":
                                         self.metric.set(
                                             name="interface_tlm_total",
                                             value=self.count,
                                             type="counter",
-                                        )
-                                        self.metric.set(
-                                            name="interface_read_queue_bytes",
-                                            value=read_queue_bytes,
-                                            type="gauge",
-                                            unit="bytes",
-                                            help="Bytes buffered on the interface read queue waiting to be processed",
                                         )
                                     else:
                                         self.metric.set(
@@ -838,13 +830,7 @@ class InterfaceMicroservice(Microservice):
                                             value=self.count,
                                             type="counter",
                                         )
-                                        self.metric.set(
-                                            name="router_read_queue_bytes",
-                                            value=read_queue_bytes,
-                                            type="gauge",
-                                            unit="bytes",
-                                            help="Bytes buffered on the router read queue waiting to be processed",
-                                        )
+                                    self.set_read_queue_bytes_metric()
                                 else:
                                     self.logger.info(
                                         f"{self.interface.name}: Internal disconnect requested (returned None)"
@@ -872,6 +858,27 @@ class InterfaceMicroservice(Microservice):
             else:
                 RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         self.logger.info(f"{self.interface.name}: Stopped packet reading")
+
+    # Report the bytes buffered on the read queue. Called after each packet and
+    # after a disconnect (which discards the queue) so the gauge doesn't stay
+    # stuck at its last value while no packets are flowing.
+    def set_read_queue_bytes_metric(self):
+        if self.interface_or_router == "INTERFACE":
+            self.metric.set(
+                name="interface_read_queue_bytes",
+                value=self.interface.read_queue_bytes(),
+                type="gauge",
+                unit="bytes",
+                help="Bytes buffered on the interface read queue waiting to be processed",
+            )
+        else:
+            self.metric.set(
+                name="router_read_queue_bytes",
+                value=self.interface.read_queue_bytes(),
+                type="gauge",
+                unit="bytes",
+                help="Bytes buffered on the router read queue waiting to be processed",
+            )
 
     def handle_packet(self, packet):
         # Skip status update if stop() has been called to avoid re-creating the status model
@@ -1021,6 +1028,8 @@ class InterfaceMicroservice(Microservice):
                 self.interface.disconnect()
             except Exception:
                 self.logger.error(f"Disconnect: {self.interface.name}: {traceback.format_exc()}")
+            if self.metric:
+                self.set_read_queue_bytes_metric()
 
             # If the interface is set to auto_reconnect then delay so the thread
             # can come back around and allow the interface a chance to reconnect.

@@ -13,7 +13,7 @@ import queue
 import threading
 import time
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
 from openc3.interfaces.protocols.length_protocol import LengthProtocol
@@ -54,6 +54,33 @@ class QueueStream(Stream):
                 if self.closed:
                     # None disconnects the interface
                     return None
+
+    def write(self, data):
+        pass
+
+
+# Stream whose read blocks until released, even across a disconnect, like a
+# stream whose disconnect doesn't wake up a pending read
+class StuckStream(Stream):
+    def __init__(self):
+        self.reading = threading.Event()
+        self.release = threading.Event()
+        self.reads = 0
+
+    def connect(self):
+        pass
+
+    def connected(self):
+        return True
+
+    def disconnect(self):
+        pass
+
+    def read(self):
+        self.reads += 1
+        self.reading.set()
+        self.release.wait(5)
+        return b"\x01\x02\x03"
 
     def write(self, data):
         pass
@@ -192,9 +219,31 @@ class TestStreamInterface(unittest.TestCase):
         # Otherwise the read would never fit and the interface would stall
         self.assertEqual(self.interface.read_interface()[0], b"\x01\x02\x03\x04\x05")
 
-    def test_raises_if_the_max_size_isnt_positive(self):
-        with self.assertRaisesRegex(RuntimeError, "READ_QUEUE_MAX_SIZE must be a positive integer"):
-            self.interface.set_option("READ_QUEUE_MAX_SIZE", ["0"])
+    def test_raises_if_the_max_size_is_negative(self):
+        with self.assertRaisesRegex(RuntimeError, r"READ_QUEUE_MAX_SIZE must be 0 \(disabled\) or a positive integer"):
+            self.interface.set_option("READ_QUEUE_MAX_SIZE", ["-1"])
+
+    def test_reads_inline_without_a_read_thread_when_the_max_size_is_0(self):
+        self.interface.set_option("READ_QUEUE_MAX_SIZE", ["0"])
+        stream = QueueStream(b"\x01", b"\x02")
+        self.interface.stream = stream
+        self.interface.connect()
+        self.assertIsNone(self.interface.read_queue_thread)
+        # Nothing reads ahead of read_interface
+        time.sleep(0.05)
+        self.assertEqual(stream.reads, 0)
+        self.assertEqual(self.interface.read_queue_size(), 0)
+
+        self.assertEqual(self.interface.read_interface()[0], b"\x01")
+        self.assertEqual(stream.reads, 1)
+        self.assertEqual(self.interface.read_interface()[0], b"\x02")
+        self.assertEqual(stream.reads, 2)
+        self.assertEqual(self.interface.read_queue_bytes(), 0)
+        self.assertIsNone(self.interface.read_queue_thread)
+
+        # A closed stream still disconnects the interface
+        stream.disconnect()
+        self.assertEqual(self.interface.read_interface(), (None, None))
 
     def test_disconnect_stops_the_read_thread_and_clears_the_queue(self):
         self.interface.stream = QueueStream(b"\x01", b"\x02")
@@ -214,3 +263,27 @@ class TestStreamInterface(unittest.TestCase):
         self.interface.stream = QueueStream(b"\x02")
         self.assertEqual(self.interface.read_queue_size(), 0)
         self.assertEqual(self.interface.read_interface()[0], b"\x02")
+
+    @patch("openc3.utilities.read_queue.THREAD_JOIN_TIMEOUT", 0.05)
+    def test_a_replaced_read_thread_stuck_in_a_read_does_not_queue_or_read_again(self):
+        stuck = StuckStream()
+        self.interface.stream = stuck
+        self.interface.connect()
+        self.assertTrue(stuck.reading.wait(2))
+        old_thread = self.interface.read_queue_thread
+
+        # The old thread can't be stopped because its read never returns
+        self.interface.stream = QueueStream(b"\x0a")
+        self.interface.connect()
+        self.wait_for_queue_size(1)
+        self.assertTrue(old_thread.is_alive())
+
+        # Once its read finally returns the old thread must exit without
+        # charging the bytes against the new queue or reading the new stream
+        stuck.release.set()
+        old_thread.join(2)
+        self.assertFalse(old_thread.is_alive())
+        self.assertEqual(stuck.reads, 1)
+        self.assertEqual(self.interface.read_queue_bytes(), 1)
+        self.assertEqual(self.interface.read_interface()[0], b"\x0a")
+        self.assertEqual(self.interface.read_queue_bytes(), 0)
