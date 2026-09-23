@@ -133,6 +133,12 @@ SURFACES = [
         TRIVY,
     ),
     Surface(
+        "trivy (ubi image scan)",
+        ".github/workflows/build_ubi.yml",
+        r"(?s)aquasecurity/setup-trivy@.*?version:\s*(v[\d.]+)",
+        TRIVY,
+    ),
+    Surface(
         "ruff (python dev dependency)",
         "openc3/python/pyproject.toml",
         r'"ruff==([\d.]+)"',
