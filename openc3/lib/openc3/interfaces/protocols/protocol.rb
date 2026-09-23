@@ -36,6 +36,14 @@ module OpenC3
     end
 
     def reset
+      @read_data_input_time = nil
+      @read_data_input = ''
+      @read_data_output_time = nil
+      @read_data_output = ''
+      @write_data_input_time = nil
+      @write_data_input = ''
+      @write_data_output_time = nil
+      @write_data_output = ''
       @extra = nil
     end
 
