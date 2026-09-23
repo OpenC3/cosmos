@@ -249,13 +249,10 @@ class TcpipServerInterface(StreamInterface):
 
         self.write_count += 1
         self.write_queue.put(packet.clone())
-        try:
+        # The lock must be held to notify, otherwise notify_all raises and the
+        # write thread only wakes up when its wait times out
+        with self.write_condition_variable:
             self.write_condition_variable.notify_all()
-        except Exception as error:
-            if "cannot notify on un-acquired lock" in traceback.format_exc():
-                pass
-            else:
-                raise error
 
     # @param data [String] Data to write to all clients connected to the
     #   write port.
@@ -266,13 +263,11 @@ class TcpipServerInterface(StreamInterface):
             raise RuntimeError(f"Interface not write-rawable: {self.name}")
 
         self.write_raw_queue.put(data)
-        try:
+        # The lock must be held to notify, otherwise notify_all raises and the
+        # write raw thread only wakes up when its wait times out
+        with self.write_raw_condition_variable:
             self.write_raw_condition_variable.notify_all()
-        except Exception as error:
-            if "cannot notify on un-acquired lock" in traceback.format_exc():
-                return data
-            else:
-                raise error
+        return data
 
     # @return [Integer] The number of packets waiting on the read queue
     def read_queue_size(self):
@@ -280,6 +275,13 @@ class TcpipServerInterface(StreamInterface):
             return self.read_queue.qsize()
         else:
             return 0
+
+    # @return [Integer] The number of bytes waiting on the read queues of the
+    #   connected clients. The server itself has no stream so the raw reads are
+    #   buffered by each client connection.
+    def read_queue_bytes(self):
+        with self.connection_mutex:
+            return sum(rii.interface.read_queue_bytes() for rii in self.read_interface_infos)
 
     # @return [Integer] The number of packets waiting on the write queue
     def write_queue_size(self):
@@ -328,10 +330,10 @@ class TcpipServerInterface(StreamInterface):
         if self.stream_log_pair:
             for interface_info in self.write_interface_infos:
                 if interface_info.interface.stream_log_pair:
-                    getattr(interface_info.interface.stream_log_pair, method)
+                    getattr(interface_info.interface.stream_log_pair, method)()
             for interface_info in self.read_interface_infos:
                 if interface_info.interface.stream_log_pair:
-                    getattr(interface_info.interface.stream_log_pair, method)
+                    getattr(interface_info.interface.stream_log_pair, method)()
 
     def _start_listen_thread(self, port, listen_write=False, listen_read=False):
         listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
@@ -401,6 +403,8 @@ class TcpipServerInterface(StreamInterface):
             interface = StreamInterface()
             # Only the read side of the connection needs a read thread
             interface.read_allowed = listen_read
+            # Each connection buffers its own reads so give it the configured limit
+            interface.read_queue_max_size = self.read_queue_max_size
             interface.target_names = self.target_names
             interface.cmd_target_names = self.cmd_target_names
             interface.tlm_target_names = self.tlm_target_names
