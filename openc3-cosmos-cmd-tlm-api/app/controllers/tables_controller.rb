@@ -59,8 +59,12 @@ class TablesController < ApplicationController
     return unless authorization('system')
     scope, binary, definition, table_name = sanitize_params([:scope, :binary, :definition, :table_name], require_params: false, allow_forward_slash: true)
     return unless scope
+    save = to_bool(params[:save])
+    # report writes the csv next to the binary under the same TARGET/<area>
+    # prefix, so gating on the binary covers the write target.
+    return if save and !authorize_overlay_write(binary)
     begin
-      file = Table.report(scope, binary, definition, table_name)
+      file = Table.report(scope, binary, definition, table_name, save: save)
       render json: { filename: file.filename, contents: file.contents }
     rescue Table::NotFound => e
       log_error(e)
@@ -207,5 +211,13 @@ class TablesController < ApplicationController
   # overlay writer fails closed on the same inputs.
   def cmd_tlm_overlay?(name)
     OpenC3::ConfigOverlay.cmd_tlm_overlay?(name)
+  end
+
+  # Params arrive as strings from JSON and as strings from multipart forms, so
+  # 'false' and '0' must not read as true.
+  def to_bool(value)
+    return false if value.nil?
+    return value if value == true or value == false
+    !['false', '0', ''].include?(value.to_s.strip.downcase)
   end
 end
