@@ -20,7 +20,7 @@
     "date-fns": "4.4.0",
     "jszip": "^3.10.2",
     "monocart-coverage-reports": "^2.13.0",
-    "prettier": "^3.9.6"
+    "prettier": "^3.9.8"
   },
   "devDependencies": {
     "@types/node": "^25.9.8",
