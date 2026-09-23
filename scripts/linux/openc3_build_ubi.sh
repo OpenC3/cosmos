@@ -228,6 +228,7 @@ if should_build "openc3-ruby-ubi"; then
     --build-arg OPENC3_UBI_TAG=$OPENC3_UBI_TAG \
     --build-arg RUBYGEMS_URL=$RUBYGEMS_URL \
     --build-arg PYPI_URL=$PYPI_URL \
+    --build-arg UV_INSECURE_HOST=$UV_INSECURE_HOST \
     "${BUILD_FLAGS[@]}" \
     $PULL_FLAG \
     $PLATFORM_FLAG \

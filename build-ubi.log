@@ -1,0 +1,1753 @@
+Using existing ./cacert.pem
+Docker version 29.5.2, build 79eb04c
+Building specified images: openc3-ruby-ubi openc3-base-ubi openc3-node-ubi openc3-cosmos-init-ubi
+Building openc3-ruby-ubi...
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile-ubi
+#1 transferring dockerfile: 8.57kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for registry.access.redhat.com/ubi9/ubi-minimal:9.6
+#2 DONE 1.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [ 1/45] FROM registry.access.redhat.com/ubi9/ubi-minimal:9.6@sha256:34880b64c07f28f64d95737f82f891516de9a3b43583f39970f7bf8e4cfa48b7
+#4 resolve registry.access.redhat.com/ubi9/ubi-minimal:9.6@sha256:34880b64c07f28f64d95737f82f891516de9a3b43583f39970f7bf8e4cfa48b7 done
+#4 DONE 0.1s
+
+#5 [internal] load build context
+#5 transferring context: 24.51MB 0.2s done
+#5 DONE 0.3s
+
+#6 [ 2/45] COPY cacert.pem /devel/cacert.pem
+#6 DONE 0.1s
+
+#7 [ 3/45] COPY .gemrc /root/.gemrc
+#7 DONE 0.0s
+
+#8 [ 4/45] RUN sed -i "s|RUBYGEMS_URL|https://rubygems.org|g" /root/.gemrc &&     cp /root/.gemrc /etc/gemrc &&     cp /root/.gemrc /usr/local/etc/gemrc
+#8 DONE 0.2s
+
+#9 [ 5/45] COPY *.tar.gz /tmp/
+#9 DONE 0.2s
+
+#10 [ 6/45] COPY anycable* /usr/bin/
+#10 DONE 0.2s
+
+#11 [ 7/45] RUN /usr/bin/anycable_install.sh
+#11 DONE 0.2s
+
+#12 [ 8/45] COPY shoreman.sh /usr/bin/shoreman
+#12 DONE 0.1s
+
+#13 [ 9/45] RUN rm /etc/yum.repos.d/*
+#13 DONE 0.1s
+
+#14 [10/45] COPY ./ubi.repo /etc/yum.repos.d/ubi.repo
+#14 DONE 0.0s
+
+#15 [11/45] RUN microdnf update -y &&     microdnf install -y --setopt=tsflags=nodocs gcc-c++ patch readline zlib zlib-devel libffi-devel libedit   openssl-devel make nc bzip2 autoconf automake libtool sqlite-devel libpq-devel   python3.12 python3.12-devel python3.12-pip python3.12-numpy ca-certificates less git   libpq-devel libxml2-devel libxslt-devel libyaml-devel cmake glibc-static vim procps unzip ncurses-devel &&     mkdir -p /usr/src &&     tar -xzf /tmp/ruby-3.4.10.tar.gz -C /usr/src/ &&     rm -f /tmp/ruby-3.4.10.tar.gz
+#15 0.220 
+#15 0.220 (microdnf:7): librhsm-WARNING **: 22:42:48.026: Found 0 entitlement certificates
+#15 0.232 
+#15 0.232 (microdnf:7): librhsm-WARNING **: 22:42:48.039: Found 0 entitlement certificates
+#15 0.441 Downloading metadata...
+#15 1.125 Downloading metadata...
+#15 2.041 Downloading metadata...
+#15 2.575 Package                                                          Repository            Size
+#15 2.575 Installing:                                                                                
+#15 2.575  findutils-1:4.8.0-7.el9.x86_64                                  ubi-9-baseos-rpms 563.5 kB
+#15 2.575  glibc-langpack-en-2.34-275.el9_8.x86_64                         ubi-9-baseos-rpms 684.4 kB
+#15 2.575 Upgrading:                                                                                 
+#15 2.575  audit-libs-3.1.5-8.el9.x86_64                                   ubi-9-baseos-rpms 130.6 kB
+#15 2.575   replacing audit-libs-3.1.5-4.el9.x86_64                                                  
+#15 2.575  bzip2-libs-1.0.8-11.el9.x86_64                                  ubi-9-baseos-rpms  46.3 kB
+#15 2.575   replacing bzip2-libs-1.0.8-10.el9_5.x86_64                                               
+#15 2.575  ca-certificates-2025.2.80_v9.0.305-91.el9.noarch                ubi-9-baseos-rpms   1.1 MB
+#15 2.575   replacing ca-certificates-2024.2.69_v8.0.303-91.4.el9_4.noarch                           
+#15 2.575  coreutils-single-8.32-41.el9_8.1.x86_64                         ubi-9-baseos-rpms 642.5 kB
+#15 2.575   replacing coreutils-single-8.32-39.el9.x86_64                                            
+#15 2.575  crypto-policies-20260224-1.gitea0f072.el9_8.noarch              ubi-9-baseos-rpms  98.7 kB
+#15 2.575   replacing crypto-policies-20250128-1.git5269e22.el9.noarch                               
+#15 2.575  curl-minimal-7.76.1-40.el9_8.7.x86_64                           ubi-9-baseos-rpms 136.0 kB
+#15 2.575   replacing curl-minimal-7.76.1-31.el9_6.1.x86_64                                          
+#15 2.575  cyrus-sasl-lib-2.1.27-22.el9.x86_64                             ubi-9-baseos-rpms 786.2 kB
+#15 2.575   replacing cyrus-sasl-lib-2.1.27-21.el9.x86_64                                            
+#15 2.575  dnf-data-4.14.0-34.el9_8.noarch                                 ubi-9-baseos-rpms  46.7 kB
+#15 2.575   replacing dnf-data-4.14.0-25.el9.noarch                                                  
+#15 2.575  file-libs-5.39-17.el9.x86_64                                    ubi-9-baseos-rpms 608.2 kB
+#15 2.575   replacing file-libs-5.39-16.el9.x86_64                                                   
+#15 2.575  glib2-2.68.4-19.el9_8.10.x86_64                                 ubi-9-baseos-rpms   2.8 MB
+#15 2.575   replacing glib2-2.68.4-16.el9_6.2.x86_64                                                 
+#15 2.575  glibc-2.34-275.el9_8.x86_64                                     ubi-9-baseos-rpms   2.1 MB
+#15 2.575   replacing glibc-2.34-168.el9_6.23.x86_64                                                 
+#15 2.575  glibc-common-2.34-275.el9_8.x86_64                              ubi-9-baseos-rpms 321.6 kB
+#15 2.575   replacing glibc-common-2.34-168.el9_6.23.x86_64                                          
+#15 2.575  glibc-minimal-langpack-2.34-275.el9_8.x86_64                    ubi-9-baseos-rpms  30.9 kB
+#15 2.575   replacing glibc-minimal-langpack-2.34-168.el9_6.23.x86_64                                
+#15 2.575  gnupg2-2.3.3-5.el9_7.x86_64                                     ubi-9-baseos-rpms   2.6 MB
+#15 2.575   replacing gnupg2-2.3.3-4.el9.x86_64                                                      
+#15 2.575  gnutls-3.8.10-8.el9_8.x86_64                                    ubi-9-baseos-rpms   1.5 MB
+#15 2.575   replacing gnutls-3.8.3-6.el9_6.2.x86_64                                                  
+#15 2.575  krb5-libs-1.21.1-10.el9_8.x86_64                                ubi-9-baseos-rpms 790.7 kB
+#15 2.575   replacing krb5-libs-1.21.1-8.el9_6.x86_64                                                
+#15 2.575  libacl-2.4.0-1.el9_8.x86_64                                     ubi-9-baseos-rpms  31.7 kB
+#15 2.575   replacing libacl-2.3.1-4.el9.x86_64                                                      
+#15 2.575  libarchive-3.5.3-11.el9_8.x86_64                                ubi-9-baseos-rpms 402.9 kB
+#15 2.575   replacing libarchive-3.5.3-6.el9_6.x86_64                                                
+#15 2.575  libattr-2.6.0-1.el9_8.x86_64                                    ubi-9-baseos-rpms  23.8 kB
+#15 2.575   replacing libattr-2.5.1-3.el9.x86_64                                                     
+#15 2.575  libblkid-2.37.4-25.el9.x86_64                                   ubi-9-baseos-rpms 114.2 kB
+#15 2.575   replacing libblkid-2.37.4-21.el9.x86_64                                                  
+#15 2.575  libcap-2.48-10.el9_8.1.x86_64                                   ubi-9-baseos-rpms  78.9 kB
+#15 2.575   replacing libcap-2.48-9.el9_2.x86_64                                                     
+#15 2.575  libcom_err-1.46.5-8.el9.x86_64                                  ubi-9-baseos-rpms  27.0 kB
+#15 2.575   replacing libcom_err-1.46.5-7.el9.x86_64                                                 
+#15 2.575  libcurl-minimal-7.76.1-40.el9_8.7.x86_64                        ubi-9-baseos-rpms 237.0 kB
+#15 2.575   replacing libcurl-minimal-7.76.1-31.el9_6.1.x86_64                                       
+#15 2.575  libdnf-0.69.0-18.el9.x86_64                                     ubi-9-baseos-rpms 687.1 kB
+#15 2.575   replacing libdnf-0.69.0-13.el9.x86_64                                                    
+#15 2.575  libevent-2.1.13-1.el9_8.x86_64                                  ubi-9-baseos-rpms 276.2 kB
+#15 2.575   replacing libevent-2.1.12-8.el9_4.x86_64                                                 
+#15 2.575  libgcc-11.5.0-14.el9.x86_64                                     ubi-9-baseos-rpms  87.3 kB
+#15 2.575   replacing libgcc-11.5.0-5.el9_5.x86_64                                                   
+#15 2.575  libgcrypt-1.10.0-13.el9_8.x86_64                                ubi-9-baseos-rpms 523.8 kB
+#15 2.575   replacing libgcrypt-1.10.0-11.el9.x86_64                                                 
+#15 2.575  libmount-2.37.4-25.el9.x86_64                                   ubi-9-baseos-rpms 142.5 kB
+#15 2.575   replacing libmount-2.37.4-21.el9.x86_64                                                  
+#15 2.575  libnghttp2-1.43.0-6.el9_8.2.x86_64                              ubi-9-baseos-rpms  80.4 kB
+#15 2.575   replacing libnghttp2-1.43.0-6.el9.x86_64                                                 
+#15 2.575  librepo-1.19.0-1.el9.x86_64                                     ubi-9-baseos-rpms  91.5 kB
+#15 2.575   replacing librepo-1.14.5-2.el9.x86_64                                                    
+#15 2.575  libsepol-3.6-3.el9.x86_64                                       ubi-9-baseos-rpms 338.8 kB
+#15 2.575   replacing libsepol-3.6-2.el9.x86_64                                                      
+#15 2.575  libsmartcols-2.37.4-25.el9.x86_64                               ubi-9-baseos-rpms  68.7 kB
+#15 2.575   replacing libsmartcols-2.37.4-21.el9.x86_64                                              
+#15 2.575  libsolv-0.7.24-6.el9_8.x86_64                                   ubi-9-baseos-rpms 417.9 kB
+#15 2.575   replacing libsolv-0.7.24-3.el9.x86_64                                                    
+#15 2.575  libstdc++-11.5.0-14.el9.x86_64                                  ubi-9-baseos-rpms 763.0 kB
+#15 2.575   replacing libstdc++-11.5.0-5.el9_5.x86_64                                                
+#15 2.575  libtasn1-4.16.0-10.el9_8.x86_64                                 ubi-9-baseos-rpms  81.4 kB
+#15 2.575   replacing libtasn1-4.16.0-9.el9.x86_64                                                   
+#15 2.575  libusbx-1.0.30-1.el9_8.x86_64                                   ubi-9-baseos-rpms  85.6 kB
+#15 2.575   replacing libusbx-1.0.26-1.el9.x86_64                                                    
+#15 2.575  libuuid-2.37.4-25.el9.x86_64                                    ubi-9-baseos-rpms  32.8 kB
+#15 2.575   replacing libuuid-2.37.4-21.el9.x86_64                                                   
+#15 2.575  libxml2-2.9.13-14.el9_8.4.x86_64                                ubi-9-baseos-rpms 772.6 kB
+#15 2.575   replacing libxml2-2.9.13-12.el9_6.x86_64                                                 
+#15 2.575  mpfr-4.1.0-10.el9.x86_64                                        ubi-9-baseos-rpms 338.1 kB
+#15 2.575   replacing mpfr-4.1.0-7.el9.x86_64                                                        
+#15 2.575  ncurses-base-6.2-12.20210508.el9.noarch                         ubi-9-baseos-rpms  97.8 kB
+#15 2.575   replacing ncurses-base-6.2-10.20210508.el9_6.2.noarch                                    
+#15 2.575  ncurses-libs-6.2-12.20210508.el9.x86_64                         ubi-9-baseos-rpms 336.3 kB
+#15 2.575   replacing ncurses-libs-6.2-10.20210508.el9_6.2.x86_64                                    
+#15 2.575  openssl-fips-provider-3.0.7-11.el9_8.x86_64                     ubi-9-baseos-rpms  14.3 kB
+#15 2.575   replacing openssl-fips-provider-3.0.7-6.el9_5.x86_64                                     
+#15 2.575  openssl-fips-provider-so-3.0.7-11.el9_8.x86_64                  ubi-9-baseos-rpms 595.0 kB
+#15 2.575   replacing openssl-fips-provider-so-3.0.7-6.el9_5.x86_64                                  
+#15 2.575  openssl-libs-1:3.5.8-1.el9_8.x86_64                             ubi-9-baseos-rpms   2.4 MB
+#15 2.575   replacing openssl-libs-1:3.2.2-6.el9_5.1.x86_64                                          
+#15 2.575  p11-kit-0.26.4-1.el9_8.x86_64                                   ubi-9-baseos-rpms 625.9 kB
+#15 2.575   replacing p11-kit-0.25.3-3.el9_5.x86_64                                                  
+#15 2.575  p11-kit-trust-0.26.4-1.el9_8.x86_64                             ubi-9-baseos-rpms 165.5 kB
+#15 2.575   replacing p11-kit-trust-0.25.3-3.el9_5.x86_64                                            
+#15 2.575  redhat-release-9.8-1.0.el9.x86_64                               ubi-9-baseos-rpms  61.7 kB
+#15 2.575   replacing redhat-release-9.6-0.1.el9.x86_64                                              
+#15 2.575  rootfiles-8.1-35.el9.noarch                                     ubi-9-baseos-rpms  10.7 kB
+#15 2.575   replacing rootfiles-8.1-34.el9.noarch                                                    
+#15 2.575  rpm-4.16.1.3-40.el9.x86_64                                      ubi-9-baseos-rpms 548.4 kB
+#15 2.575   replacing rpm-4.16.1.3-37.el9.x86_64                                                     
+#15 2.575  rpm-libs-4.16.1.3-40.el9.x86_64                                 ubi-9-baseos-rpms 314.9 kB
+#15 2.575   replacing rpm-libs-4.16.1.3-37.el9.x86_64                                                
+#15 2.575  sed-4.8-10.el9.x86_64                                           ubi-9-baseos-rpms 317.5 kB
+#15 2.575   replacing sed-4.8-9.el9.x86_64                                                           
+#15 2.575  shadow-utils-2:4.9-16.el9.x86_64                                ubi-9-baseos-rpms   1.3 MB
+#15 2.575   replacing shadow-utils-2:4.9-12.el9.x86_64                                               
+#15 2.575  sqlite-libs-3.34.1-11.el9_8.x86_64                              ubi-9-baseos-rpms 665.1 kB
+#15 2.575   replacing sqlite-libs-3.34.1-8.el9_6.x86_64                                              
+#15 2.575  systemd-libs-252-67.el9_8.6.x86_64                              ubi-9-baseos-rpms 662.0 kB
+#15 2.575   replacing systemd-libs-252-51.el9_6.2.x86_64                                             
+#15 2.575  tzdata-2026c-1.el9_8.noarch                                     ubi-9-baseos-rpms 933.3 kB
+#15 2.575    replacing tzdata-2025b-1.el9.noarch                                                     
+#15 2.575 Transaction Summary:
+#15 2.575  Installing:        2 packages
+#15 2.575  Reinstalling:      0 packages
+#15 2.575  Upgrading:        55 packages
+#15 2.575  Obsoleting:        0 packages
+#15 2.575  Removing:          0 packages
+#15 2.575  Downgrading:       0 packages
+#15 2.580 Downloading packages...
+#15 4.000 Running transaction test...
+#15 4.250 Updating: crypto-policies;20260224-1.gitea0f072.el9_8;noarch;ubi-9-baseos-rpms
+#15 4.286 Updating: tzdata;2026c-1.el9_8;noarch;ubi-9-baseos-rpms
+#15 4.363 Updating: glibc-common;2.34-275.el9_8;x86_64;ubi-9-baseos-rpms
+#15 4.382 Updating: glibc-minimal-langpack;2.34-275.el9_8;x86_64;ubi-9-baseos-rpms
+#15 4.383 Updating: libgcc;11.5.0-14.el9;x86_64;ubi-9-baseos-rpms
+#15 4.429 Installing: glibc-langpack-en;2.34-275.el9_8;x86_64;ubi-9-baseos-rpms
+#15 4.471 Updating: glibc;2.34-275.el9_8;x86_64;ubi-9-baseos-rpms
+#15 4.540 Updating: libacl;2.4.0-1.el9_8;x86_64;ubi-9-baseos-rpms
+#15 4.542 Updating: bzip2-libs;1.0.8-11.el9;x86_64;ubi-9-baseos-rpms
+#15 4.545 Updating: sed;4.8-10.el9;x86_64;ubi-9-baseos-rpms
+#15 4.550 Updating: libcap;2.48-10.el9_8.1;x86_64;ubi-9-baseos-rpms
+#15 4.560 Updating: libcom_err;1.46.5-8.el9;x86_64;ubi-9-baseos-rpms
+#15 4.562 Updating: libtasn1;4.16.0-10.el9_8;x86_64;ubi-9-baseos-rpms
+#15 4.568 Updating: p11-kit;0.26.4-1.el9_8;x86_64;ubi-9-baseos-rpms
+#15 4.585 Updating: libxml2;2.9.13-14.el9_8.4;x86_64;ubi-9-baseos-rpms
+#15 4.595 Updating: sqlite-libs;3.34.1-11.el9_8;x86_64;ubi-9-baseos-rpms
+#15 4.603 Updating: p11-kit-trust;0.26.4-1.el9_8;x86_64;ubi-9-baseos-rpms
+#15 4.637 Updating: gnutls;3.8.10-8.el9_8;x86_64;ubi-9-baseos-rpms
+#15 4.652 Updating: audit-libs;3.1.5-8.el9;x86_64;ubi-9-baseos-rpms
+#15 4.657 Updating: libattr;2.6.0-1.el9_8;x86_64;ubi-9-baseos-rpms
+#15 4.660 Updating: coreutils-single;8.32-41.el9_8.1;x86_64;ubi-9-baseos-rpms
+#15 4.675 Updating: libgcrypt;1.10.0-13.el9_8;x86_64;ubi-9-baseos-rpms
+#15 4.684 Updating: libuuid;2.37.4-25.el9;x86_64;ubi-9-baseos-rpms
+#15 4.687 Updating: libblkid;2.37.4-25.el9;x86_64;ubi-9-baseos-rpms
+#15 4.708 Updating: libmount;2.37.4-25.el9;x86_64;ubi-9-baseos-rpms
+#15 4.714 Updating: glib2;2.68.4-19.el9_8.10;x86_64;ubi-9-baseos-rpms
+#15 4.746 Updating: openssl-fips-provider-so;3.0.7-11.el9_8;x86_64;ubi-9-baseos-rpms
+#15 4.753 Updating: openssl-fips-provider;3.0.7-11.el9_8;x86_64;ubi-9-baseos-rpms
+#15 4.754 Installing: findutils;1:4.8.0-7.el9;x86_64;ubi-9-baseos-rpms
+#15 4.780 Updating: ca-certificates;2025.2.80_v9.0.305-91.el9;noarch;ubi-9-baseos-rpms
+#15 5.644 Updating: openssl-libs;1:3.5.8-1.el9_8;x86_64;ubi-9-baseos-rpms
+#15 5.676 Updating: krb5-libs;1.21.1-10.el9_8;x86_64;ubi-9-baseos-rpms
+#15 5.698 Updating: libarchive;3.5.3-11.el9_8;x86_64;ubi-9-baseos-rpms
+#15 5.704 Updating: systemd-libs;252-67.el9_8.6;x86_64;ubi-9-baseos-rpms
+#15 5.779 Updating: libnghttp2;1.43.0-6.el9_8.2;x86_64;ubi-9-baseos-rpms
+#15 5.783 Updating: libcurl-minimal;7.76.1-40.el9_8.7;x86_64;ubi-9-baseos-rpms
+#15 5.788 Updating: curl-minimal;7.76.1-40.el9_8.7;x86_64;ubi-9-baseos-rpms
+#15 5.791 Updating: rpm;4.16.1.3-40.el9;x86_64;ubi-9-baseos-rpms
+#15 5.845 Updating: rpm-libs;4.16.1.3-40.el9;x86_64;ubi-9-baseos-rpms
+#15 5.850 Updating: libsolv;0.7.24-6.el9_8;x86_64;ubi-9-baseos-rpms
+#15 5.856 Updating: librepo;1.19.0-1.el9;x86_64;ubi-9-baseos-rpms
+#15 5.861 Updating: libsmartcols;2.37.4-25.el9;x86_64;ubi-9-baseos-rpms
+#15 5.864 Updating: libstdc++;11.5.0-14.el9;x86_64;ubi-9-baseos-rpms
+#15 5.880 Updating: ncurses-base;6.2-12.20210508.el9;noarch;ubi-9-baseos-rpms
+#15 5.904 Updating: ncurses-libs;6.2-12.20210508.el9;x86_64;ubi-9-baseos-rpms
+#15 5.914 Updating: libdnf;0.69.0-18.el9;x86_64;ubi-9-baseos-rpms
+#15 5.924 Updating: libusbx;1.0.30-1.el9_8;x86_64;ubi-9-baseos-rpms
+#15 5.928 Updating: cyrus-sasl-lib;2.1.27-22.el9;x86_64;ubi-9-baseos-rpms
+#15 5.941 Updating: libevent;2.1.13-1.el9_8;x86_64;ubi-9-baseos-rpms
+#15 5.947 Updating: gnupg2;2.3.3-5.el9_7;x86_64;ubi-9-baseos-rpms
+#15 5.981 Updating: shadow-utils;2:4.9-16.el9;x86_64;ubi-9-baseos-rpms
+#15 6.012 Updating: file-libs;5.39-17.el9;x86_64;ubi-9-baseos-rpms
+#15 6.032 Updating: libsepol;3.6-3.el9;x86_64;ubi-9-baseos-rpms
+#15 6.037 Updating: mpfr;4.1.0-10.el9;x86_64;ubi-9-baseos-rpms
+#15 6.044 Updating: rootfiles;8.1-35.el9;noarch;ubi-9-baseos-rpms
+#15 6.046 Updating: redhat-release;9.8-1.0.el9;x86_64;ubi-9-baseos-rpms
+#15 6.059 Updating: dnf-data;4.14.0-34.el9_8;noarch;ubi-9-baseos-rpms
+#15 6.069 Cleanup: libdnf;0.69.0-13.el9;x86_64;installed
+#15 6.073 Cleanup: libstdc++;11.5.0-5.el9_5;x86_64;installed
+#15 6.075 Cleanup: gnupg2;2.3.3-4.el9;x86_64;installed
+#15 6.086 Cleanup: libevent;2.1.12-8.el9_4;x86_64;installed
+#15 6.088 Cleanup: librepo;1.14.5-2.el9;x86_64;installed
+#15 6.091 Cleanup: glib2;2.68.4-16.el9_6.2;x86_64;installed
+#15 6.098 Cleanup: gnutls;3.8.3-6.el9_6.2;x86_64;installed
+#15 6.100 Cleanup: libmount;2.37.4-21.el9;x86_64;installed
+#15 6.101 Cleanup: libsolv;0.7.24-3.el9;x86_64;installed
+#15 6.103 Cleanup: shadow-utils;2:4.9-12.el9;x86_64;installed
+#15 6.113 Cleanup: cyrus-sasl-lib;2.1.27-21.el9;x86_64;installed
+#15 6.117 Cleanup: rootfiles;8.1-34.el9;noarch;installed
+#15 6.118 Cleanup: redhat-release;9.6-0.1.el9;x86_64;installed
+#15 6.119 Cleanup: dnf-data;4.14.0-25.el9;noarch;installed
+#15 6.121 Cleanup: libusbx;1.0.26-1.el9;x86_64;installed
+#15 6.122 Cleanup: systemd-libs;252-51.el9_6.2;x86_64;installed
+#15 6.125 Cleanup: libblkid;2.37.4-21.el9;x86_64;installed
+#15 6.127 Cleanup: file-libs;5.39-16.el9;x86_64;installed
+#15 6.128 Cleanup: libuuid;2.37.4-21.el9;x86_64;installed
+#15 6.129 Cleanup: ncurses-libs;6.2-10.20210508.el9_6.2;x86_64;installed
+#15 6.136 Cleanup: rpm;4.16.1.3-37.el9;x86_64;installed
+#15 6.138 Cleanup: rpm-libs;4.16.1.3-37.el9;x86_64;installed
+#15 6.140 Cleanup: libarchive;3.5.3-6.el9_6;x86_64;installed
+#15 6.141 Cleanup: libxml2;2.9.13-12.el9_6;x86_64;installed
+#15 6.143 Cleanup: curl-minimal;7.76.1-31.el9_6.1;x86_64;installed
+#15 6.147 Cleanup: libcurl-minimal;7.76.1-31.el9_6.1;x86_64;installed
+#15 6.148 Cleanup: krb5-libs;1.21.1-8.el9_6;x86_64;installed
+#15 6.152 Cleanup: openssl-libs;1:3.2.2-6.el9_5.1;x86_64;installed
+#15 6.156 Cleanup: audit-libs;3.1.5-4.el9;x86_64;installed
+#15 6.158 Cleanup: sqlite-libs;3.34.1-8.el9_6;x86_64;installed
+#15 6.160 Cleanup: libgcrypt;1.10.0-11.el9;x86_64;installed
+#15 6.161 Cleanup: mpfr;4.1.0-7.el9;x86_64;installed
+#15 6.163 Cleanup: libsepol;3.6-2.el9;x86_64;installed
+#15 6.164 Cleanup: libcom_err;1.46.5-7.el9;x86_64;installed
+#15 6.166 Cleanup: libnghttp2;1.43.0-6.el9;x86_64;installed
+#15 6.167 Cleanup: libsmartcols;2.37.4-21.el9;x86_64;installed
+#15 6.170 Cleanup: ca-certificates;2024.2.69_v8.0.303-91.4.el9_4;noarch;installed
+#15 6.172 Cleanup: openssl-fips-provider;3.0.7-6.el9_5;x86_64;installed
+#15 6.174 Cleanup: crypto-policies;20250128-1.git5269e22.el9;noarch;installed
+#15 6.176 Cleanup: ncurses-base;6.2-10.20210508.el9_6.2;noarch;installed
+#15 6.178 Cleanup: p11-kit-trust;0.25.3-3.el9_5;x86_64;installed
+#15 6.198 Cleanup: p11-kit;0.25.3-3.el9_5;x86_64;installed
+#15 6.201 Cleanup: sed;4.8-9.el9;x86_64;installed
+#15 6.203 Cleanup: openssl-fips-provider-so;3.0.7-6.el9_5;x86_64;installed
+#15 6.204 Cleanup: coreutils-single;8.32-39.el9;x86_64;installed
+#15 6.207 Cleanup: libcap;2.48-9.el9_2;x86_64;installed
+#15 6.210 Cleanup: libacl;2.3.1-4.el9;x86_64;installed
+#15 6.212 Cleanup: libtasn1;4.16.0-9.el9;x86_64;installed
+#15 6.213 Cleanup: bzip2-libs;1.0.8-10.el9_5;x86_64;installed
+#15 6.215 Cleanup: libattr;2.5.1-3.el9;x86_64;installed
+#15 6.217 Cleanup: glibc;2.34-168.el9_6.23;x86_64;installed
+#15 6.228 Cleanup: glibc-minimal-langpack;2.34-168.el9_6.23;x86_64;installed
+#15 6.229 Cleanup: glibc-common;2.34-168.el9_6.23;x86_64;installed
+#15 6.234 Cleanup: tzdata;2025b-1.el9;noarch;installed
+#15 6.237 Cleanup: libgcc;11.5.0-5.el9_5;x86_64;installed
+#15 7.360 Complete.
+#15 7.479 
+#15 7.479 (microdnf:119): librhsm-WARNING **: 22:42:55.285: Found 0 entitlement certificates
+#15 7.489 
+#15 7.489 (microdnf:119): librhsm-WARNING **: 22:42:55.296: Found 0 entitlement certificates
+#15 7.587 Package                                         Repository                       Size
+#15 7.587 Installing:                                                                          
+#15 7.587  acl-2.4.0-1.el9_8.x86_64                       ubi-9-baseos-rpms             85.3 kB
+#15 7.587  autoconf-2.69-41.el9.noarch                    ubi-9-appstream-rpms         697.2 kB
+#15 7.587  automake-1.16.2-8.el9.noarch                   ubi-9-appstream-rpms         709.3 kB
+#15 7.587  binutils-2.35.2-72.el9.x86_64                  ubi-9-baseos-rpms              4.8 MB
+#15 7.587  binutils-gold-2.35.2-72.el9.x86_64             ubi-9-baseos-rpms            758.4 kB
+#15 7.587  bzip2-1.0.8-11.el9.x86_64                      ubi-9-baseos-rpms             63.3 kB
+#15 7.587  cmake-3.31.8-3.el9.x86_64                      ubi-9-appstream-rpms          14.0 MB
+#15 7.587  cmake-data-3.31.8-3.el9.noarch                 ubi-9-appstream-rpms           2.8 MB
+#15 7.587  cmake-filesystem-3.31.8-3.el9.x86_64           ubi-9-appstream-rpms          19.3 kB
+#15 7.587  cpp-11.5.0-14.el9.x86_64                       ubi-9-appstream-rpms          11.2 MB
+#15 7.587  cracklib-2.9.6-28.el9.x86_64                   ubi-9-baseos-rpms            102.4 kB
+#15 7.587  cracklib-dicts-2.9.6-28.el9.x86_64             ubi-9-baseos-rpms              3.8 MB
+#15 7.587  dbus-1:1.12.20-8.el9.x86_64                    ubi-9-baseos-rpms              8.1 kB
+#15 7.587  dbus-broker-28-9.el9_8.x86_64                  ubi-9-baseos-rpms            180.4 kB
+#15 7.587  dbus-common-1:1.12.20-8.el9.noarch             ubi-9-baseos-rpms             18.6 kB
+#15 7.587  ed-1.14.2-12.el9.x86_64                        ubi-9-baseos-rpms             80.0 kB
+#15 7.587  elfutils-debuginfod-client-0.194-1.el9.x86_64  ubi-9-baseos-rpms             43.8 kB
+#15 7.587  elfutils-default-yama-scope-0.194-1.el9.noarch ubi-9-baseos-rpms              8.9 kB
+#15 7.587  elfutils-libelf-0.194-1.el9.x86_64             ubi-9-baseos-rpms            205.9 kB
+#15 7.587  elfutils-libs-0.194-1.el9.x86_64               ubi-9-baseos-rpms            274.7 kB
+#15 7.587  emacs-filesystem-1:27.2-18.el9.noarch          ubi-9-appstream-rpms           9.5 kB
+#15 7.587  expat-2.5.0-6.el9_8.3.x86_64                   ubi-9-baseos-rpms            128.6 kB
+#15 7.587  flexiblas-3.0.4-9.el9.x86_64                   ubi-9-appstream-rpms          36.8 kB
+#15 7.587  flexiblas-netlib-3.0.4-9.el9.x86_64            ubi-9-appstream-rpms           3.1 MB
+#15 7.587  flexiblas-openblas-openmp-3.0.4-9.el9.x86_64   ubi-9-appstream-rpms          21.6 kB
+#15 7.587  gcc-11.5.0-14.el9.x86_64                       ubi-9-appstream-rpms          34.0 MB
+#15 7.587  gcc-c++-11.5.0-14.el9.x86_64                   ubi-9-appstream-rpms          13.5 MB
+#15 7.587  git-2.52.0-1.el9.x86_64                        ubi-9-appstream-rpms          46.1 kB
+#15 7.587  git-core-2.52.0-1.el9.x86_64                   ubi-9-appstream-rpms           5.3 MB
+#15 7.587  git-core-doc-2.52.0-1.el9.noarch               ubi-9-appstream-rpms           3.3 MB
+#15 7.587  glibc-devel-2.34-275.el9_8.x86_64              ubi-9-appstream-rpms          46.5 kB
+#15 7.587  glibc-headers-2.34-275.el9_8.x86_64            ubi-9-appstream-rpms         567.2 kB
+#15 7.587  glibc-static-2.34-275.el9_8.x86_64             ubi-9-codeready-builder-rpms   1.5 MB
+#15 7.587  gpm-libs-1.20.7-29.el9.x86_64                  ubi-9-appstream-rpms          23.0 kB
+#15 7.587  groff-base-1.22.4-10.el9.x86_64                ubi-9-baseos-rpms              1.1 MB
+#15 7.587  gzip-1.12-2.el9_8.x86_64                       ubi-9-baseos-rpms            172.6 kB
+#15 7.587  info-6.7-15.el9.x86_64                         ubi-9-baseos-rpms            233.8 kB
+#15 7.587  kernel-headers-5.14.0-687.50.1.el9_8.x86_64    ubi-9-appstream-rpms           2.9 MB
+#15 7.587  kmod-libs-28-11.el9.x86_64                     ubi-9-baseos-rpms             63.6 kB
+#15 7.587  less-590-6.el9.x86_64                          ubi-9-baseos-rpms            166.0 kB
+#15 7.587  libcbor-0.7.0-5.el9.x86_64                     ubi-9-baseos-rpms             60.6 kB
+#15 7.587  libdb-5.3.28-57.el9_6.x86_64                   ubi-9-baseos-rpms            755.2 kB
+#15 7.587  libeconf-0.4.1-7.el9_8.x86_64                  ubi-9-baseos-rpms             33.2 kB
+#15 7.587  libedit-3.1-39.20210216cvs.el9.x86_64          ubi-9-baseos-rpms            112.1 kB
+#15 7.587  libfdisk-2.37.4-25.el9.x86_64                  ubi-9-baseos-rpms            161.8 kB
+#15 7.587  libffi-devel-3.4.2-8.el9.x86_64                ubi-9-appstream-rpms          32.5 kB
+#15 7.587  libfido2-1.13.0-2.el9.x86_64                   ubi-9-baseos-rpms            102.7 kB
+#15 7.587  libgfortran-11.5.0-14.el9.x86_64               ubi-9-baseos-rpms            813.4 kB
+#15 7.587  libgomp-11.5.0-14.el9.x86_64                   ubi-9-baseos-rpms            263.7 kB
+#15 7.587  libgpg-error-devel-1.42-5.el9.x86_64           ubi-9-appstream-rpms          70.9 kB
+#15 7.587  libibverbs-61.0-2.el9.x86_64                   ubi-9-baseos-rpms            498.5 kB
+#15 7.587  libmpc-1.2.1-4.el9.x86_64                      ubi-9-appstream-rpms          66.1 kB
+#15 7.587  libnl3-3.11.0-1.el9.x86_64                     ubi-9-baseos-rpms            376.1 kB
+#15 7.587  libnsl2-2.0.0-1.el9.x86_64                     ubi-9-appstream-rpms          33.3 kB
+#15 7.587  libpcap-14:1.10.0-4.el9.x86_64                 ubi-9-baseos-rpms            180.8 kB
+#15 7.587  libpkgconf-1.7.3-10.el9.x86_64                 ubi-9-baseos-rpms             38.4 kB
+#15 7.587  libpq-13.23-3.el9_8.x86_64                     ubi-9-appstream-rpms         221.4 kB
+#15 7.587  libpq-devel-13.23-3.el9_8.x86_64               ubi-9-appstream-rpms         107.8 kB
+#15 7.587  libpwquality-1.4.4-8.el9.x86_64                ubi-9-baseos-rpms            126.1 kB
+#15 7.587  libquadmath-11.5.0-14.el9.x86_64               ubi-9-baseos-rpms            188.9 kB
+#15 7.587  libseccomp-2.5.2-2.el9.x86_64                  ubi-9-baseos-rpms             76.2 kB
+#15 7.587  libstdc++-devel-11.5.0-14.el9.x86_64           ubi-9-appstream-rpms           2.5 MB
+#15 7.587  libtirpc-1.3.3-9.el9.x86_64                    ubi-9-baseos-rpms             98.9 kB
+#15 7.587  libtool-2.4.6-46.el9.x86_64                    ubi-9-appstream-rpms         598.9 kB
+#15 7.587  libutempter-1.2.1-6.el9.x86_64                 ubi-9-baseos-rpms             30.4 kB
+#15 7.587  libuv-1:1.42.0-2.el9_4.x86_64                  ubi-9-appstream-rpms         154.4 kB
+#15 7.587  libxcrypt-devel-4.4.18-3.el9.x86_64            ubi-9-appstream-rpms          33.1 kB
+#15 7.587  libxcrypt-static-4.4.18-3.el9.x86_64           ubi-9-codeready-builder-rpms 105.7 kB
+#15 7.587  libxml2-devel-2.9.13-14.el9_8.4.x86_64         ubi-9-appstream-rpms         927.3 kB
+#15 7.587  libxslt-1.1.34-14.el9_8.1.x86_64               ubi-9-appstream-rpms         254.4 kB
+#15 7.587  libxslt-devel-1.1.34-14.el9_8.1.x86_64         ubi-9-appstream-rpms         334.0 kB
+#15 7.587  libyaml-devel-0.2.5-7.el9.x86_64               ubi-9-codeready-builder-rpms 169.2 kB
+#15 7.587  m4-1.4.19-1.el9.x86_64                         ubi-9-appstream-rpms         311.7 kB
+#15 7.587  make-1:4.3-8.el9.x86_64                        ubi-9-baseos-rpms            553.9 kB
+#15 7.587  mpdecimal-2.5.1-3.el9.x86_64                   ubi-9-appstream-rpms          89.7 kB
+#15 7.587  ncurses-6.2-12.20210508.el9.x86_64             ubi-9-baseos-rpms            416.3 kB
+#15 7.587  ncurses-c++-libs-6.2-12.20210508.el9.x86_64    ubi-9-appstream-rpms          38.1 kB
+#15 7.587  ncurses-devel-6.2-12.20210508.el9.x86_64       ubi-9-appstream-rpms         745.6 kB
+#15 7.587  nmap-ncat-3:7.92-5.el9.x86_64                  ubi-9-appstream-rpms         236.9 kB
+#15 7.587  openblas-0.3.29-1.el9.x86_64                   ubi-9-appstream-rpms          43.1 kB
+#15 7.587  openblas-openmp-0.3.29-1.el9.x86_64            ubi-9-appstream-rpms           5.5 MB
+#15 7.587  openssh-9.9p1-11.el9_8.x86_64                  ubi-9-baseos-rpms            443.1 kB
+#15 7.587  openssh-clients-9.9p1-11.el9_8.x86_64          ubi-9-baseos-rpms            799.5 kB
+#15 7.587  openssl-1:3.5.8-1.el9_8.x86_64                 ubi-9-baseos-rpms              1.6 MB
+#15 7.587  openssl-devel-1:3.5.8-1.el9_8.x86_64           ubi-9-appstream-rpms           5.0 MB
+#15 7.587  pam-1.5.1-28.el9_8.1.x86_64                    ubi-9-baseos-rpms            645.1 kB
+#15 7.587  patch-2.7.6-16.el9.x86_64                      ubi-9-appstream-rpms         133.2 kB
+#15 7.587  perl-AutoLoader-5.74-484.el9_8.noarch          ubi-9-appstream-rpms          26.8 kB
+#15 7.587  perl-B-1.80-484.el9_8.x86_64                   ubi-9-appstream-rpms         190.7 kB
+#15 7.587  perl-Carp-1.50-460.el9.noarch                  ubi-9-appstream-rpms          32.0 kB
+#15 7.587  perl-Class-Struct-0.66-484.el9_8.noarch        ubi-9-appstream-rpms          27.6 kB
+#15 7.587  perl-Data-Dumper-2.174-462.el9.x86_64          ubi-9-appstream-rpms          59.9 kB
+#15 7.587  perl-Digest-1.19-4.el9.noarch                  ubi-9-appstream-rpms          29.4 kB
+#15 7.587  perl-Digest-MD5-2.58-4.el9.x86_64              ubi-9-appstream-rpms          40.3 kB
+#15 7.587  perl-DynaLoader-1.47-484.el9_8.x86_64          ubi-9-appstream-rpms          31.4 kB
+#15 7.587  perl-Encode-4:3.08-462.el9.x86_64              ubi-9-appstream-rpms           1.8 MB
+#15 7.587  perl-Errno-1.30-484.el9_8.x86_64               ubi-9-appstream-rpms          20.3 kB
+#15 7.587  perl-Error-1:0.17029-7.el9.noarch              ubi-9-appstream-rpms          47.6 kB
+#15 7.587  perl-Exporter-5.74-461.el9.noarch              ubi-9-appstream-rpms          34.5 kB
+#15 7.587  perl-Fcntl-1.13-484.el9_8.x86_64               ubi-9-appstream-rpms          25.8 kB
+#15 7.587  perl-File-Basename-2.85-484.el9_8.noarch       ubi-9-appstream-rpms          22.6 kB
+#15 7.587  perl-File-Compare-1.100.600-484.el9_8.noarch   ubi-9-appstream-rpms          18.6 kB
+#15 7.587  perl-File-Copy-2.34-484.el9_8.noarch           ubi-9-appstream-rpms          25.6 kB
+#15 7.587  perl-File-Find-1.37-484.el9_8.noarch           ubi-9-appstream-rpms          30.9 kB
+#15 7.587  perl-File-Path-2.18-4.el9.noarch               ubi-9-appstream-rpms          38.5 kB
+#15 7.587  perl-File-Temp-1:0.231.100-4.el9.noarch        ubi-9-appstream-rpms          64.2 kB
+#15 7.587  perl-File-stat-1.09-484.el9_8.noarch           ubi-9-appstream-rpms          22.5 kB
+#15 7.587  perl-FileHandle-2.03-484.el9_8.noarch          ubi-9-appstream-rpms          20.9 kB
+#15 7.587  perl-Getopt-Long-1:2.52-4.el9.noarch           ubi-9-appstream-rpms          65.1 kB
+#15 7.587  perl-Getopt-Std-1.12-484.el9_8.noarch          ubi-9-appstream-rpms          20.9 kB
+#15 7.587  perl-Git-2.52.0-1.el9.noarch                   ubi-9-appstream-rpms          44.2 kB
+#15 7.587  perl-HTTP-Tiny-0.076-462.el9.noarch            ubi-9-appstream-rpms          58.7 kB
+#15 7.587  perl-IO-1.43-484.el9_8.x86_64                  ubi-9-appstream-rpms          97.1 kB
+#15 7.587  perl-IO-Socket-IP-0.41-5.el9.noarch            ubi-9-appstream-rpms          46.5 kB
+#15 7.587  perl-IO-Socket-SSL-2.073-2.el9.noarch          ubi-9-appstream-rpms         226.0 kB
+#15 7.587  perl-IPC-Open3-1.21-484.el9_8.noarch           ubi-9-appstream-rpms          28.4 kB
+#15 7.587  perl-MIME-Base64-3.16-4.el9.x86_64             ubi-9-appstream-rpms          35.1 kB
+#15 7.587  perl-Mozilla-CA-20200520-6.el9.noarch          ubi-9-appstream-rpms          14.8 kB
+#15 7.587  perl-NDBM_File-1.15-484.el9_8.x86_64           ubi-9-appstream-rpms          27.6 kB
+#15 7.587  perl-Net-SSLeay-1.94-3.el9.x86_64              ubi-9-appstream-rpms         424.4 kB
+#15 7.587  perl-POSIX-1.94-484.el9_8.x86_64               ubi-9-appstream-rpms         103.5 kB
+#15 7.587  perl-PathTools-3.78-461.el9.x86_64             ubi-9-appstream-rpms          94.6 kB
+#15 7.587  perl-Pod-Escapes-1:1.07-460.el9.noarch         ubi-9-appstream-rpms          22.6 kB
+#15 7.587  perl-Pod-Perldoc-3.28.01-461.el9.noarch        ubi-9-appstream-rpms          93.7 kB
+#15 7.587  perl-Pod-Simple-1:3.42-4.el9.noarch            ubi-9-appstream-rpms         234.4 kB
+#15 7.587  perl-Pod-Usage-4:2.01-4.el9.noarch             ubi-9-appstream-rpms          44.5 kB
+#15 7.587  perl-Scalar-List-Utils-4:1.56-462.el9.x86_64   ubi-9-appstream-rpms          77.3 kB
+#15 7.587  perl-SelectSaver-1.02-484.el9_8.noarch         ubi-9-appstream-rpms          17.0 kB
+#15 7.587  perl-Socket-4:2.031-4.el9.x86_64               ubi-9-appstream-rpms          59.8 kB
+#15 7.587  perl-Storable-1:3.21-460.el9.x86_64            ubi-9-appstream-rpms         100.3 kB
+#15 7.587  perl-Symbol-1.08-484.el9_8.noarch              ubi-9-appstream-rpms          19.5 kB
+#15 7.587  perl-Term-ANSIColor-5.01-461.el9.noarch        ubi-9-appstream-rpms          52.2 kB
+#15 7.587  perl-Term-Cap-1.17-460.el9.noarch              ubi-9-appstream-rpms          25.0 kB
+#15 7.587  perl-TermReadKey-2.38-11.el9.x86_64            ubi-9-appstream-rpms          41.0 kB
+#15 7.587  perl-Text-ParseWords-3.30-460.el9.noarch       ubi-9-appstream-rpms          18.7 kB
+#15 7.587  perl-Text-Tabs+Wrap-2013.0523-460.el9.noarch   ubi-9-appstream-rpms          25.9 kB
+#15 7.587  perl-Thread-Queue-3.14-460.el9.noarch          ubi-9-appstream-rpms          24.8 kB
+#15 7.587  perl-Time-Local-2:1.300-7.el9.noarch           ubi-9-appstream-rpms          37.5 kB
+#15 7.587  perl-URI-5.09-3.el9.noarch                     ubi-9-appstream-rpms         128.3 kB
+#15 7.587  perl-base-2.27-484.el9_8.noarch                ubi-9-appstream-rpms          21.6 kB
+#15 7.587  perl-constant-1.33-461.el9.noarch              ubi-9-appstream-rpms          25.9 kB
+#15 7.587  perl-if-0.60.800-484.el9_8.noarch              ubi-9-appstream-rpms          19.3 kB
+#15 7.587  perl-interpreter-4:5.32.1-484.el9_8.x86_64     ubi-9-appstream-rpms          77.6 kB
+#15 7.587  perl-lib-0.65-484.el9_8.x86_64                 ubi-9-appstream-rpms          20.3 kB
+#15 7.587  perl-libnet-3.13-4.el9.noarch                  ubi-9-appstream-rpms         137.3 kB
+#15 7.587  perl-libs-4:5.32.1-484.el9_8.x86_64            ubi-9-appstream-rpms           2.3 MB
+#15 7.587  perl-mro-1.23-484.el9_8.x86_64                 ubi-9-appstream-rpms          33.8 kB
+#15 7.587  perl-overload-1.31-484.el9_8.noarch            ubi-9-appstream-rpms          51.6 kB
+#15 7.587  perl-overloading-0.02-484.el9_8.noarch         ubi-9-appstream-rpms          18.1 kB
+#15 7.587  perl-parent-1:0.238-460.el9.noarch             ubi-9-appstream-rpms          16.3 kB
+#15 7.587  perl-podlators-1:4.14-460.el9.noarch           ubi-9-appstream-rpms         121.3 kB
+#15 7.587  perl-subs-1.03-484.el9_8.noarch                ubi-9-appstream-rpms          16.9 kB
+#15 7.587  perl-threads-1:2.25-460.el9.x86_64             ubi-9-appstream-rpms          62.7 kB
+#15 7.587  perl-threads-shared-1.61-460.el9.x86_64        ubi-9-appstream-rpms          48.9 kB
+#15 7.587  perl-vars-1.05-484.el9_8.noarch                ubi-9-appstream-rpms          18.3 kB
+#15 7.587  pkgconf-1.7.3-10.el9.x86_64                    ubi-9-baseos-rpms             45.7 kB
+#15 7.587  pkgconf-m4-1.7.3-10.el9.noarch                 ubi-9-baseos-rpms             16.1 kB
+#15 7.587  pkgconf-pkg-config-1.7.3-10.el9.x86_64         ubi-9-baseos-rpms             12.4 kB
+#15 7.587  procps-ng-3.3.17-14.el9.x86_64                 ubi-9-baseos-rpms            361.5 kB
+#15 7.587  python3.12-3.12.14-1.el9_8.x86_64              ubi-9-appstream-rpms          32.5 kB
+#15 7.587  python3.12-devel-3.12.14-1.el9_8.x86_64        ubi-9-appstream-rpms         338.3 kB
+#15 7.587  python3.12-libs-3.12.14-1.el9_8.x86_64         ubi-9-appstream-rpms          10.2 MB
+#15 7.587  python3.12-numpy-1.24.4-3.el9.x86_64           ubi-9-appstream-rpms           7.7 MB
+#15 7.587  python3.12-pip-23.2.1-5.el9.noarch             ubi-9-appstream-rpms           3.4 MB
+#15 7.587  python3.12-pip-wheel-23.2.1-5.el9.noarch       ubi-9-appstream-rpms           1.5 MB
+#15 7.587  python3.12-setuptools-68.2.2-5.el9_6.noarch    ubi-9-appstream-rpms           1.7 MB
+#15 7.587  sqlite-3.34.1-11.el9_8.x86_64                  ubi-9-appstream-rpms         782.6 kB
+#15 7.587  sqlite-devel-3.34.1-11.el9_8.x86_64            ubi-9-appstream-rpms         142.9 kB
+#15 7.587  systemd-252-67.el9_8.6.x86_64                  ubi-9-baseos-rpms              4.4 MB
+#15 7.587  systemd-pam-252-67.el9_8.6.x86_64              ubi-9-baseos-rpms            258.3 kB
+#15 7.587  systemd-rpm-macros-252-67.el9_8.6.noarch       ubi-9-baseos-rpms             40.8 kB
+#15 7.587  tar-2:1.34-13.el9_8.x86_64                     ubi-9-baseos-rpms            914.2 kB
+#15 7.587  unzip-6.0-60.el9.x86_64                        ubi-9-baseos-rpms            185.9 kB
+#15 7.587  util-linux-2.37.4-25.el9.x86_64                ubi-9-baseos-rpms              2.4 MB
+#15 7.587  util-linux-core-2.37.4-25.el9.x86_64           ubi-9-baseos-rpms            476.8 kB
+#15 7.587  vim-common-2:8.2.2637-26.el9_8.21.x86_64       ubi-9-appstream-rpms           7.4 MB
+#15 7.587  vim-enhanced-2:8.2.2637-26.el9_8.21.x86_64     ubi-9-appstream-rpms           1.8 MB
+#15 7.587  vim-filesystem-2:8.2.2637-26.el9_8.21.noarch   ubi-9-baseos-rpms             24.2 kB
+#15 7.587  which-2.21-30.el9_6.x86_64                     ubi-9-baseos-rpms             42.0 kB
+#15 7.587  xz-devel-5.2.5-8.el9_0.x86_64                  ubi-9-appstream-rpms          60.6 kB
+#15 7.587  zlib-devel-1.2.11-40.el9.x86_64                ubi-9-appstream-rpms          48.0 kB
+#15 7.587 Transaction Summary:
+#15 7.588  Installing:      181 packages
+#15 7.588  Reinstalling:      0 packages
+#15 7.588  Upgrading:         0 packages
+#15 7.588  Obsoleting:        0 packages
+#15 7.588  Removing:          0 packages
+#15 7.588  Downgrading:       0 packages
+#15 7.595 Downloading packages...
+#15 12.08 warning: Unsupported version of key: V6
+#15 12.08 
+#15 12.08 (microdnf:119): libdnf-WARNING **: 22:42:59.888: failed to parse public key for /etc/pki/rpm-gpg/RPM-GPG-KEY-PQC-redhat-release
+#15 13.15 Running transaction test...
+#15 14.95 Installing: expat;2.5.0-6.el9_8.3;x86_64;ubi-9-baseos-rpms
+#15 14.96 Installing: cmake-filesystem;3.31.8-3.el9;x86_64;ubi-9-appstream-rpms
+#15 14.97 Installing: libmpc;1.2.1-4.el9;x86_64;ubi-9-appstream-rpms
+#15 14.97 Installing: flexiblas;3.0.4-9.el9;x86_64;ubi-9-appstream-rpms
+#15 14.97 Installing: emacs-filesystem;1:27.2-18.el9;noarch;ubi-9-appstream-rpms
+#15 14.97 Installing: vim-filesystem;2:8.2.2637-26.el9_8.21;noarch;ubi-9-baseos-rpms
+#15 14.98 Installing: make;1:4.3-8.el9;x86_64;ubi-9-baseos-rpms
+#15 14.98 Installing: libtirpc;1.3.3-9.el9;x86_64;ubi-9-baseos-rpms
+#15 14.98 Installing: libquadmath;11.5.0-14.el9;x86_64;ubi-9-baseos-rpms
+#15 14.99 Installing: libgfortran;11.5.0-14.el9;x86_64;ubi-9-baseos-rpms
+#15 15.00 Installing: libgomp;11.5.0-14.el9;x86_64;ubi-9-baseos-rpms
+#15 15.00 Installing: libfdisk;2.37.4-25.el9;x86_64;ubi-9-baseos-rpms
+#15 15.00 Installing: elfutils-libelf;0.194-1.el9;x86_64;ubi-9-baseos-rpms
+#15 15.00 Installing: libnsl2;2.0.0-1.el9;x86_64;ubi-9-appstream-rpms
+#15 15.01 Installing: vim-common;2:8.2.2637-26.el9_8.21;x86_64;ubi-9-appstream-rpms
+#15 15.15 Installing: cpp;11.5.0-14.el9;x86_64;ubi-9-appstream-rpms
+#15 15.25 Installing: kernel-headers;5.14.0-687.50.1.el9_8;x86_64;ubi-9-appstream-rpms
+#15 15.38 Installing: sqlite;3.34.1-11.el9_8;x86_64;ubi-9-appstream-rpms
+#15 15.39 Installing: python3.12-pip-wheel;23.2.1-5.el9;noarch;ubi-9-appstream-rpms
+#15 15.39 Installing: openblas;0.3.29-1.el9;x86_64;ubi-9-appstream-rpms
+#15 15.39 Installing: openblas-openmp;0.3.29-1.el9;x86_64;ubi-9-appstream-rpms
+#15 15.51 Installing: flexiblas-openblas-openmp;3.0.4-9.el9;x86_64;ubi-9-appstream-rpms
+#15 15.51 Installing: flexiblas-netlib;3.0.4-9.el9;x86_64;ubi-9-appstream-rpms
+#15 15.55 Installing: ncurses-c++-libs;6.2-12.20210508.el9;x86_64;ubi-9-appstream-rpms
+#15 15.55 Installing: libxslt;1.1.34-14.el9_8.1;x86_64;ubi-9-appstream-rpms
+#15 15.55 Installing: libstdc++-devel;11.5.0-14.el9;x86_64;ubi-9-appstream-rpms
+#15 15.61 Installing: libpq;13.23-3.el9_8;x86_64;ubi-9-appstream-rpms
+#15 15.62 Installing: glibc-headers;2.34-275.el9_8;x86_64;ubi-9-appstream-rpms
+#15 15.64 Installing: mpdecimal;2.5.1-3.el9;x86_64;ubi-9-appstream-rpms
+#15 15.64 Installing: python3.12;3.12.14-1.el9_8;x86_64;ubi-9-appstream-rpms
+#15 15.65 Installing: python3.12-libs;3.12.14-1.el9_8;x86_64;ubi-9-appstream-rpms
+#15 15.85 Installing: python3.12-setuptools;68.2.2-5.el9_6;noarch;ubi-9-appstream-rpms
+#15 15.90 Installing: m4;1.4.19-1.el9;x86_64;ubi-9-appstream-rpms
+#15 15.91 Installing: libuv;1:1.42.0-2.el9_4;x86_64;ubi-9-appstream-rpms
+#15 15.91 Installing: cmake-data;3.31.8-3.el9;noarch;ubi-9-appstream-rpms
+#15 16.06 Installing: cmake;3.31.8-3.el9;x86_64;ubi-9-appstream-rpms
+#15 16.18 Installing: gpm-libs;1.20.7-29.el9;x86_64;ubi-9-appstream-rpms
+#15 16.19 Installing: which;2.21-30.el9_6;x86_64;ubi-9-baseos-rpms
+#15 16.19 Installing: util-linux-core;2.37.4-25.el9;x86_64;ubi-9-baseos-rpms
+#15 16.23 Installing: tar;2:1.34-13.el9_8;x86_64;ubi-9-baseos-rpms
+#15 16.24 Installing: systemd-rpm-macros;252-67.el9_8.6;noarch;ubi-9-baseos-rpms
+#15 16.24 Installing: pkgconf-m4;1.7.3-10.el9;noarch;ubi-9-baseos-rpms
+#15 16.24 Installing: openssl;1:3.5.8-1.el9_8;x86_64;ubi-9-baseos-rpms
+#15 16.25 Installing: ncurses;6.2-12.20210508.el9;x86_64;ubi-9-baseos-rpms
+#15 16.33 Installing: libutempter;1.2.1-6.el9;x86_64;ubi-9-baseos-rpms
+#15 16.33 Installing: libseccomp;2.5.2-2.el9;x86_64;ubi-9-baseos-rpms
+#15 16.33 Installing: libpkgconf;1.7.3-10.el9;x86_64;ubi-9-baseos-rpms
+#15 16.33 Installing: pkgconf;1.7.3-10.el9;x86_64;ubi-9-baseos-rpms
+#15 16.34 Installing: pkgconf-pkg-config;1.7.3-10.el9;x86_64;ubi-9-baseos-rpms
+#15 16.34 Installing: glibc-devel;2.34-275.el9_8;x86_64;ubi-9-appstream-rpms
+#15 16.34 Installing: libxcrypt-devel;4.4.18-3.el9;x86_64;ubi-9-appstream-rpms
+#15 16.34 Installing: glibc-static;2.34-275.el9_8;x86_64;ubi-9-codeready-builder-rpms
+#15 16.37 Installing: libxcrypt-static;4.4.18-3.el9;x86_64;ubi-9-codeready-builder-rpms
+#15 16.37 Installing: libgpg-error-devel;1.42-5.el9;x86_64;ubi-9-appstream-rpms
+#15 16.38 Installing: xz-devel;5.2.5-8.el9_0;x86_64;ubi-9-appstream-rpms
+#15 16.38 Installing: zlib-devel;1.2.11-40.el9;x86_64;ubi-9-appstream-rpms
+#15 16.38 Installing: libxml2-devel;2.9.13-14.el9_8.4;x86_64;ubi-9-appstream-rpms
+#15 16.39 Installing: libnl3;3.11.0-1.el9;x86_64;ubi-9-baseos-rpms
+#15 16.39 Installing: libibverbs;61.0-2.el9;x86_64;ubi-9-baseos-rpms
+#15 16.41 Installing: libpcap;14:1.10.0-4.el9;x86_64;ubi-9-baseos-rpms
+#15 16.41 Installing: libedit;3.1-39.20210216cvs.el9;x86_64;ubi-9-baseos-rpms
+#15 16.41 Installing: libeconf;0.4.1-7.el9_8;x86_64;ubi-9-baseos-rpms
+#15 16.41 Installing: libdb;5.3.28-57.el9_6;x86_64;ubi-9-baseos-rpms
+#15 16.42 Installing: libcbor;0.7.0-5.el9;x86_64;ubi-9-baseos-rpms
+#15 16.42 Installing: libfido2;1.13.0-2.el9;x86_64;ubi-9-baseos-rpms
+#15 16.42 Installing: less;590-6.el9;x86_64;ubi-9-baseos-rpms
+#15 16.43 Installing: kmod-libs;28-11.el9;x86_64;ubi-9-baseos-rpms
+#15 16.43 Installing: info;6.7-15.el9;x86_64;ubi-9-baseos-rpms
+#15 16.43 Installing: ed;1.14.2-12.el9;x86_64;ubi-9-baseos-rpms
+#15 16.43 Installing: gzip;1.12-2.el9_8;x86_64;ubi-9-baseos-rpms
+#15 16.44 Installing: cracklib;2.9.6-28.el9;x86_64;ubi-9-baseos-rpms
+#15 16.44 Installing: cracklib-dicts;2.9.6-28.el9;x86_64;ubi-9-baseos-rpms
+#15 16.47 Installing: pam;1.5.1-28.el9_8.1;x86_64;ubi-9-baseos-rpms
+#15 16.48 Installing: libpwquality;1.4.4-8.el9;x86_64;ubi-9-baseos-rpms
+#15 16.49 Installing: util-linux;2.37.4-25.el9;x86_64;ubi-9-baseos-rpms
+#15 16.58 Installing: openssh;9.9p1-11.el9_8;x86_64;ubi-9-baseos-rpms
+#15 16.59 Installing: openssh-clients;9.9p1-11.el9_8;x86_64;ubi-9-baseos-rpms
+#15 16.61 Installing: git-core;2.52.0-1.el9;x86_64;ubi-9-appstream-rpms
+#15 16.67 Installing: git-core-doc;2.52.0-1.el9;noarch;ubi-9-appstream-rpms
+#15 16.72 Installing: groff-base;1.22.4-10.el9;x86_64;ubi-9-baseos-rpms
+#15 16.77 Installing: perl-Digest;1.19-4.el9;noarch;ubi-9-appstream-rpms
+#15 16.77 Installing: perl-Digest-MD5;2.58-4.el9;x86_64;ubi-9-appstream-rpms
+#15 16.77 Installing: perl-B;1.80-484.el9_8;x86_64;ubi-9-appstream-rpms
+#15 16.78 Installing: perl-FileHandle;2.03-484.el9_8;noarch;ubi-9-appstream-rpms
+#15 16.78 Installing: perl-Data-Dumper;2.174-462.el9;x86_64;ubi-9-appstream-rpms
+#15 16.78 Installing: perl-libnet;3.13-4.el9;noarch;ubi-9-appstream-rpms
+#15 16.78 Installing: perl-AutoLoader;5.74-484.el9_8;noarch;ubi-9-appstream-rpms
+#15 16.79 Installing: perl-base;2.27-484.el9_8;noarch;ubi-9-appstream-rpms
+#15 16.79 Installing: perl-URI;5.09-3.el9;noarch;ubi-9-appstream-rpms
+#15 16.79 Installing: perl-Time-Local;2:1.300-7.el9;noarch;ubi-9-appstream-rpms
+#15 16.79 Installing: perl-Mozilla-CA;20200520-6.el9;noarch;ubi-9-appstream-rpms
+#15 16.79 Installing: perl-if;0.60.800-484.el9_8;noarch;ubi-9-appstream-rpms
+#15 16.79 Installing: perl-IO-Socket-IP;0.41-5.el9;noarch;ubi-9-appstream-rpms
+#15 16.80 Installing: perl-File-Path;2.18-4.el9;noarch;ubi-9-appstream-rpms
+#15 16.80 Installing: perl-Pod-Escapes;1:1.07-460.el9;noarch;ubi-9-appstream-rpms
+#15 16.80 Installing: perl-Text-Tabs+Wrap;2013.0523-460.el9;noarch;ubi-9-appstream-rpms
+#15 16.80 Installing: perl-IO-Socket-SSL;2.073-2.el9;noarch;ubi-9-appstream-rpms
+#15 16.80 Installing: perl-Net-SSLeay;1.94-3.el9;x86_64;ubi-9-appstream-rpms
+#15 16.82 Installing: perl-Term-ANSIColor;5.01-461.el9;noarch;ubi-9-appstream-rpms
+#15 16.82 Installing: perl-Class-Struct;0.66-484.el9_8;noarch;ubi-9-appstream-rpms
+#15 16.82 Installing: perl-POSIX;1.94-484.el9_8;x86_64;ubi-9-appstream-rpms
+#15 16.82 Installing: perl-IPC-Open3;1.21-484.el9_8;noarch;ubi-9-appstream-rpms
+#15 16.82 Installing: perl-subs;1.03-484.el9_8;noarch;ubi-9-appstream-rpms
+#15 16.82 Installing: perl-File-Temp;1:0.231.100-4.el9;noarch;ubi-9-appstream-rpms
+#15 16.83 Installing: perl-Term-Cap;1.17-460.el9;noarch;ubi-9-appstream-rpms
+#15 16.83 Installing: perl-HTTP-Tiny;0.076-462.el9;noarch;ubi-9-appstream-rpms
+#15 16.83 Installing: perl-Pod-Simple;1:3.42-4.el9;noarch;ubi-9-appstream-rpms
+#15 16.83 Installing: perl-Socket;4:2.031-4.el9;x86_64;ubi-9-appstream-rpms
+#15 16.84 Installing: perl-SelectSaver;1.02-484.el9_8;noarch;ubi-9-appstream-rpms
+#15 16.84 Installing: perl-Symbol;1.08-484.el9_8;noarch;ubi-9-appstream-rpms
+#15 16.84 Installing: perl-File-stat;1.09-484.el9_8;noarch;ubi-9-appstream-rpms
+#15 16.84 Installing: perl-podlators;1:4.14-460.el9;noarch;ubi-9-appstream-rpms
+#15 16.84 Installing: perl-Pod-Perldoc;3.28.01-461.el9;noarch;ubi-9-appstream-rpms
+#15 16.85 Installing: perl-Text-ParseWords;3.30-460.el9;noarch;ubi-9-appstream-rpms
+#15 16.85 Installing: perl-Fcntl;1.13-484.el9_8;x86_64;ubi-9-appstream-rpms
+#15 16.85 Installing: perl-mro;1.23-484.el9_8;x86_64;ubi-9-appstream-rpms
+#15 16.85 Installing: perl-IO;1.43-484.el9_8;x86_64;ubi-9-appstream-rpms
+#15 16.85 Installing: perl-overloading;0.02-484.el9_8;noarch;ubi-9-appstream-rpms
+#15 16.86 Installing: perl-Pod-Usage;4:2.01-4.el9;noarch;ubi-9-appstream-rpms
+#15 16.86 Installing: perl-MIME-Base64;3.16-4.el9;x86_64;ubi-9-appstream-rpms
+#15 16.86 Installing: perl-Scalar-List-Utils;4:1.56-462.el9;x86_64;ubi-9-appstream-rpms
+#15 16.86 Installing: perl-constant;1.33-461.el9;noarch;ubi-9-appstream-rpms
+#15 16.86 Installing: perl-parent;1:0.238-460.el9;noarch;ubi-9-appstream-rpms
+#15 16.86 Installing: perl-Errno;1.30-484.el9_8;x86_64;ubi-9-appstream-rpms
+#15 16.86 Installing: perl-File-Basename;2.85-484.el9_8;noarch;ubi-9-appstream-rpms
+#15 16.87 Installing: perl-Getopt-Std;1.12-484.el9_8;noarch;ubi-9-appstream-rpms
+#15 16.87 Installing: perl-Storable;1:3.21-460.el9;x86_64;ubi-9-appstream-rpms
+#15 16.87 Installing: perl-overload;1.31-484.el9_8;noarch;ubi-9-appstream-rpms
+#15 16.87 Installing: perl-vars;1.05-484.el9_8;noarch;ubi-9-appstream-rpms
+#15 16.87 Installing: perl-Getopt-Long;1:2.52-4.el9;noarch;ubi-9-appstream-rpms
+#15 16.87 Installing: perl-Carp;1.50-460.el9;noarch;ubi-9-appstream-rpms
+#15 16.87 Installing: perl-Exporter;5.74-461.el9;noarch;ubi-9-appstream-rpms
+#15 16.88 Installing: perl-PathTools;3.78-461.el9;x86_64;ubi-9-appstream-rpms
+#15 16.88 Installing: perl-NDBM_File;1.15-484.el9_8;x86_64;ubi-9-appstream-rpms
+#15 16.88 Installing: perl-Encode;4:3.08-462.el9;x86_64;ubi-9-appstream-rpms
+#15 16.92 Installing: perl-libs;4:5.32.1-484.el9_8;x86_64;ubi-9-appstream-rpms
+#15 16.97 Installing: perl-interpreter;4:5.32.1-484.el9_8;x86_64;ubi-9-appstream-rpms
+#15 16.97 Installing: perl-DynaLoader;1.47-484.el9_8;x86_64;ubi-9-appstream-rpms
+#15 16.97 Installing: perl-threads;1:2.25-460.el9;x86_64;ubi-9-appstream-rpms
+#15 16.98 Installing: perl-File-Compare;1.100.600-484.el9_8;noarch;ubi-9-appstream-rpms
+#15 16.98 Installing: perl-File-Copy;2.34-484.el9_8;noarch;ubi-9-appstream-rpms
+#15 16.98 Installing: perl-threads-shared;1.61-460.el9;x86_64;ubi-9-appstream-rpms
+#15 16.98 Installing: perl-Thread-Queue;3.14-460.el9;noarch;ubi-9-appstream-rpms
+#15 16.99 Installing: perl-TermReadKey;2.38-11.el9;x86_64;ubi-9-appstream-rpms
+#15 16.99 Installing: perl-Error;1:0.17029-7.el9;noarch;ubi-9-appstream-rpms
+#15 16.99 Installing: perl-File-Find;1.37-484.el9_8;noarch;ubi-9-appstream-rpms
+#15 16.99 Installing: autoconf;2.69-41.el9;noarch;ubi-9-appstream-rpms
+#15 17.00 Installing: automake;1.16.2-8.el9;noarch;ubi-9-appstream-rpms
+#15 17.01 Installing: perl-lib;0.65-484.el9_8;x86_64;ubi-9-appstream-rpms
+#15 17.01 Installing: perl-Git;2.52.0-1.el9;noarch;ubi-9-appstream-rpms
+#15 17.02 Installing: git;2.52.0-1.el9;x86_64;ubi-9-appstream-rpms
+#15 17.02 Installing: acl;2.4.0-1.el9_8;x86_64;ubi-9-baseos-rpms
+#15 17.02 Installing: dbus;1:1.12.20-8.el9;x86_64;ubi-9-baseos-rpms
+#15 17.02 Installing: systemd-pam;252-67.el9_8.6;x86_64;ubi-9-baseos-rpms
+#15 17.39 Installing: systemd;252-67.el9_8.6;x86_64;ubi-9-baseos-rpms
+#15 17.66 Installing: dbus-common;1:1.12.20-8.el9;noarch;ubi-9-baseos-rpms
+#15 17.73 Created symlink /etc/systemd/system/sockets.target.wants/dbus.socket → /usr/lib/systemd/system/dbus.socket.
+#15 17.76 Created symlink /etc/systemd/user/sockets.target.wants/dbus.socket → /usr/lib/systemd/user/dbus.socket.
+#15 17.77 Installing: dbus-broker;28-9.el9_8;x86_64;ubi-9-baseos-rpms
+#15 17.83 Created symlink /etc/systemd/system/dbus.service → /usr/lib/systemd/system/dbus-broker.service.
+#15 17.87 Created symlink /etc/systemd/user/dbus.service → /usr/lib/systemd/user/dbus-broker.service.
+#15 17.87 Installing: elfutils-default-yama-scope;0.194-1.el9;noarch;ubi-9-baseos-rpms
+#15 17.89 Installing: elfutils-libs;0.194-1.el9;x86_64;ubi-9-baseos-rpms
+#15 17.89 Installing: elfutils-debuginfod-client;0.194-1.el9;x86_64;ubi-9-baseos-rpms
+#15 17.90 Installing: binutils-gold;2.35.2-72.el9;x86_64;ubi-9-baseos-rpms
+#15 17.91 Installing: binutils;2.35.2-72.el9;x86_64;ubi-9-baseos-rpms
+#15 17.99 Installing: gcc;11.5.0-14.el9;x86_64;ubi-9-appstream-rpms
+#15 18.29 Installing: libtool;2.4.6-46.el9;x86_64;ubi-9-appstream-rpms
+#15 18.30 Installing: gcc-c++;11.5.0-14.el9;x86_64;ubi-9-appstream-rpms
+#15 18.42 Installing: vim-enhanced;2:8.2.2637-26.el9_8.21;x86_64;ubi-9-appstream-rpms
+#15 18.44 Installing: patch;2.7.6-16.el9;x86_64;ubi-9-appstream-rpms
+#15 18.44 Installing: nmap-ncat;3:7.92-5.el9;x86_64;ubi-9-appstream-rpms
+#15 18.48 Installing: libxslt-devel;1.1.34-14.el9_8.1;x86_64;ubi-9-appstream-rpms
+#15 18.48 Installing: libffi-devel;3.4.2-8.el9;x86_64;ubi-9-appstream-rpms
+#15 18.48 Installing: libpq-devel;13.23-3.el9_8;x86_64;ubi-9-appstream-rpms
+#15 18.49 Installing: ncurses-devel;6.2-12.20210508.el9;x86_64;ubi-9-appstream-rpms
+#15 18.51 Installing: openssl-devel;1:3.5.8-1.el9_8;x86_64;ubi-9-appstream-rpms
+#15 18.57 Installing: python3.12-devel;3.12.14-1.el9_8;x86_64;ubi-9-appstream-rpms
+#15 18.58 Installing: sqlite-devel;3.34.1-11.el9_8;x86_64;ubi-9-appstream-rpms
+#15 18.58 Installing: libyaml-devel;0.2.5-7.el9;x86_64;ubi-9-codeready-builder-rpms
+#15 18.59 Installing: python3.12-pip;23.2.1-5.el9;noarch;ubi-9-appstream-rpms
+#15 18.70 Installing: python3.12-numpy;1.24.4-3.el9;x86_64;ubi-9-appstream-rpms
+#15 18.87 Installing: unzip;6.0-60.el9;x86_64;ubi-9-baseos-rpms
+#15 18.87 Installing: procps-ng;3.3.17-14.el9;x86_64;ubi-9-baseos-rpms
+#15 18.88 Installing: bzip2;1.0.8-11.el9;x86_64;ubi-9-baseos-rpms
+#15 21.81 Complete.
+#15 DONE 22.8s
+
+#16 [12/45] WORKDIR /usr/src/ruby-3.4.10
+#16 DONE 0.1s
+
+#17 [13/45] RUN ./configure --disable-install-doc --enable-shared &&     make -j "$(nproc)" &&     make install &&     rm -rf /usr/src/ruby-3.4.10
+#17 0.614 checking for ruby... false
+#17 0.697 checking build system type... x86_64-pc-linux-gnu
+#17 1.028 checking host system type... x86_64-pc-linux-gnu
+#17 1.028 checking target system type... x86_64-pc-linux-gnu
+#17 1.045 checking for gcc... gcc
+#17 1.060 checking for ld... ld
+#17 1.076 checking for gcc-ar... gcc-ar
+#17 1.092 checking for g++... g++
+#17 1.108 checking for gcc-nm... gcc-nm
+#17 1.124 checking for gcc-ranlib... gcc-ranlib
+#17 1.125 checking for gcc... (cached) gcc
+#17 1.331 checking whether the C compiler works... yes
+#17 1.520 checking for C compiler default output file name... a.out
+#17 1.531 checking for suffix of executables... 
+#17 1.722 checking whether we are cross compiling... no
+#17 1.927 checking for suffix of object files... o
+#17 2.085 checking whether the compiler supports GNU C... yes
+#17 2.227 checking whether gcc accepts -g... yes
+#17 2.376 checking for gcc option to enable C11 features... none needed
+#17 2.906 checking whether the compiler supports GNU C++... yes
+#17 3.057 checking whether g++ accepts -g... yes
+#17 3.214 checking for g++ option to enable C++11 features... none needed
+#17 3.671 checking how to run the C preprocessor... gcc -E
+#17 4.033 checking for gas... no
+#17 4.033 checking for as... as
+#17 4.033 checking for gobjcopy... no
+#17 4.034 checking for objcopy... objcopy
+#17 4.034 checking for gobjdump... no
+#17 4.034 checking for objdump... objdump
+#17 4.034 checking for gstrip... no
+#17 4.034 checking for strip... strip
+#17 4.075 checking for stdio.h... yes
+#17 4.180 checking for stdlib.h... yes
+#17 4.296 checking for string.h... yes
+#17 4.413 checking for inttypes.h... yes
+#17 4.530 checking for stdint.h... yes
+#17 4.653 checking for strings.h... yes
+#17 4.772 checking for sys/stat.h... yes
+#17 4.890 checking for sys/types.h... yes
+#17 5.008 checking for unistd.h... yes
+#17 5.130 checking for wchar.h... yes
+#17 5.253 checking for minix/config.h... no
+#17 5.400 checking for vfork.h... no
+#17 5.551 checking whether it is safe to define __EXTENSIONS__... yes
+#17 5.717 checking whether _XOPEN_SOURCE should be defined... no
+#17 6.039 checking whether the linker is GNU ld... yes
+#17 6.070 checking whether gcc -E accepts -o... yes
+#17 6.194 checking for gcc-ar flags... rcD
+#17 6.222 checking whether ln -s works... yes
+#17 6.222 checking whether make sets $(MAKE)... yes
+#17 6.285 checking for a BSD-compatible install... /usr/bin/install -c
+#17 6.353 checking for a race-free mkdir -p... /usr/bin/mkdir -p
+#17 6.365 checking for dtrace... no
+#17 6.365 checking for dot... no
+#17 6.365 checking for doxygen... no
+#17 6.365 checking for pkg-config... pkg-config
+#17 6.428 checking whether it is Android... no
+#17 6.595 checking for cd using physical directory... cd -P
+#17 6.661 checking whether CFLAGS is valid... yes
+#17 6.810 checking whether LDFLAGS is valid... yes
+#17 7.043 checking whether ELF binaries are produced... yes
+#17 7.274 checking whether -Wl,-rpath,. is accepted as LDFLAGS... yes
+#17 7.477 checking whether -fdeclspec is accepted as LDFLAGS... no
+#17 7.578 checking whether -fdeclspec is accepted as CXXFLAGS... no
+#17 7.694 checking whether -Wextra-tokens is accepted as CFLAGS... no
+#17 7.800 checking whether -Wdeprecated-declarations is accepted as CFLAGS... yes
+#17 7.957 checking whether -Wdivision-by-zero is accepted as CFLAGS... no
+#17 8.065 checking whether -Wdiv-by-zero is accepted as CFLAGS... yes
+#17 8.225 checking whether -Wduplicated-cond is accepted as CFLAGS... yes
+#17 8.384 checking whether -Wimplicit-function-declaration is accepted as CFLAGS... yes
+#17 8.543 checking whether -Wimplicit-int is accepted as CFLAGS... yes
+#17 8.706 checking whether -Wpointer-arith is accepted as CFLAGS... yes
+#17 8.871 checking whether -Wshorten-64-to-32 is accepted as CFLAGS... no
+#17 8.980 checking whether -Wwrite-strings is accepted as CFLAGS... yes
+#17 9.138 checking whether -Wold-style-definition is accepted as CFLAGS... yes
+#17 9.298 checking whether -Wimplicit-fallthrough=0 is accepted as CFLAGS... yes
+#17 9.456 checking whether -Wmissing-noreturn is accepted as CFLAGS... yes
+#17 9.617 checking whether -Wno-cast-function-type is accepted as CFLAGS... yes
+#17 9.776 checking whether -Wno-constant-logical-operand is accepted as CFLAGS... yes
+#17 9.935 checking whether -Wno-long-long is accepted as CFLAGS... yes
+#17 10.10 checking whether -Wno-missing-field-initializers is accepted as CFLAGS... yes
+#17 10.26 checking whether -Wno-overlength-strings is accepted as CFLAGS... yes
+#17 10.42 checking whether -Wno-packed-bitfield-compat is accepted as CFLAGS... yes
+#17 10.58 checking whether -Wno-parentheses-equality is accepted as CFLAGS... yes
+#17 10.74 checking whether -Wno-self-assign is accepted as CFLAGS... yes
+#17 10.90 checking whether -Wno-tautological-compare is accepted as CFLAGS... yes
+#17 11.06 checking whether -Wno-unused-parameter is accepted as CFLAGS... yes
+#17 11.22 checking whether -Wno-unused-value is accepted as CFLAGS... yes
+#17 11.38 checking whether -Wsuggest-attribute=format is accepted as CFLAGS... yes
+#17 11.54 checking whether -Wsuggest-attribute=noreturn is accepted as CFLAGS... yes
+#17 11.70 checking whether -Wunused-variable is accepted as CFLAGS... yes
+#17 11.86 checking whether -diag-disable=175,188,1684,2259,2312 is accepted as CFLAGS... no
+#17 12.07 checking whether -Wmisleading-indentation is accepted as CFLAGS... yes
+#17 12.21 checking whether -Wundef is accepted as CFLAGS... yes
+#17 12.36 checking whether -Wall -Wextra is accepted as CFLAGS... yes
+#17 12.50 checking whether -Qunused-arguments is accepted as CFLAGS... no
+#17 12.73 checking whether -O3 -D_FORTIFY_SOURCE=2 is accepted as CFLAGS... yes
+#17 12.94 checking whether -fstack-protector-strong is accepted as CFLAGS... yes
+#17 13.09 checking whether -fstack-protector-strong is accepted as LDFLAGS... yes
+#17 13.29 checking for -fstack-protector... -fstack-protector-strong
+#17 13.29 checking whether -Wl,--compress-debug-sections=zlib is accepted as LDFLAGS... yes
+#17 13.50 checking whether -fno-strict-overflow is accepted as CFLAGS... yes
+#17 13.64 checking whether -ggdb3 is accepted as LDFLAGS... yes
+#17 13.85 checking whether -fvisibility=hidden is accepted as CFLAGS... yes
+#17 14.00 checking whether -fno-fast-math is accepted as CFLAGS... yes
+#17 14.15 checking whether -fexcess-precision=standard is accepted as CFLAGS... yes
+#17 14.29 checking whether -fp-model precise is accepted as CFLAGS... no
+#17 14.38 checking whether compiler has statement and declarations in expressions... yes
+#17 14.58 checking for pthread.h... yes
+#17 14.76 checking for pthread_create in -lthr... no
+#17 15.08 checking for pthread_create in -lpthread... yes
+#17 15.36 checking for pthread_np.h... no
+#17 15.51 checking thread model... pthread
+#17 15.51 checking whether CXXFLAGS is valid... yes
+#17 15.68 checking for crypt in -lcrypt... yes
+#17 15.96 checking for dlopen in -ldl... yes
+#17 16.24 checking for shutdown in -lsocket... no
+#17 16.56 checking for dirent.h that defines DIR... yes
+#17 16.80 checking for library containing opendir... none required
+#17 17.09 checking for _Bool... yes
+#17 17.50 checking for stdbool.h that conforms to C99... yes
+#17 17.76 checking for sys/wait.h that is POSIX.1 compatible... yes
+#17 18.03 checking for afunix.h... no
+#17 18.15 checking for atomic.h... no
+#17 18.33 checking for copyfile.h... no
+#17 18.50 checking for direct.h... no
+#17 18.67 checking for grp.h... yes
+#17 18.83 checking for fcntl.h... yes
+#17 18.99 checking for float.h... yes
+#17 19.15 checking for ieeefp.h... no
+#17 19.32 checking for intrinsics.h... no
+#17 19.49 checking for langinfo.h... yes
+#17 19.65 checking for limits.h... yes
+#17 19.81 checking for locale.h... yes
+#17 19.97 checking for malloc.h... yes
+#17 20.12 checking for malloc/malloc.h... no
+#17 20.30 checking for malloc_np.h... no
+#17 20.47 checking for net/socket.h... no
+#17 20.64 checking for process.h... no
+#17 20.82 checking for pwd.h... yes
+#17 20.98 checking for sanitizer/asan_interface.h... yes
+#17 21.13 checking for sanitizer/msan_interface.h... no
+#17 21.31 checking for setjmpex.h... no
+#17 21.50 checking for stdalign.h... yes
+#17 21.66 checking for stdio.h... (cached) yes
+#17 21.66 checking for sys/attr.h... no
+#17 21.83 checking for sys/eventfd.h... yes
+#17 21.99 checking for sys/fcntl.h... yes
+#17 22.15 checking for sys/file.h... yes
+#17 22.31 checking for sys/id.h... no
+#17 22.48 checking for sys/ioctl.h... yes
+#17 22.64 checking for sys/mkdev.h... no
+#17 22.81 checking for sys/param.h... yes
+#17 22.98 checking for sys/prctl.h... yes
+#17 23.13 checking for sys/random.h... yes
+#17 23.29 checking for sys/resource.h... yes
+#17 23.45 checking for sys/select.h... yes
+#17 23.62 checking for sys/sendfile.h... yes
+#17 23.83 checking for sys/socket.h... yes
+#17 24.00 checking for sys/syscall.h... yes
+#17 24.16 checking for sys/sysmacros.h... yes
+#17 24.32 checking for sys/time.h... yes
+#17 24.49 checking for sys/times.h... yes
+#17 24.65 checking for sys/uio.h... yes
+#17 24.81 checking for sys/utime.h... no
+#17 24.99 checking for syscall.h... yes
+#17 25.15 checking for time.h... yes
+#17 25.31 checking for ucontext.h... yes
+#17 25.48 checking for utime.h... yes
+#17 25.64 checking for sys/epoll.h... yes
+#17 25.80 checking for sys/event.h... no
+#17 25.98 checking for stdckdint.h... no
+#17 26.17 checking for stdatomic.h... yes
+#17 26.33 checking for x86intrin.h... yes
+#17 26.69 checking for x86intrin.h when defined(__x86_64__)... yes
+#17 27.14 checking for gmp.h... no
+#17 27.33 checking for special C compiler options needed for large files... no
+#17 27.33 checking for _FILE_OFFSET_BITS value needed for large files... no
+#17 27.57 checking whether byte ordering is bigendian... no
+#17 28.11 checking for an ANSI C-conforming const... yes
+#17 28.33 checking whether char is unsigned... no
+#17 28.58 checking for inline... inline
+#17 28.70 checking for working volatile... yes
+#17 28.94 checking for typeof syntax and keyword spelling... typeof
+#17 29.15 checking for C/C++ restrict keyword... __restrict__
+#17 29.39 checking for long long... yes
+#17 29.83 checking for off_t... yes
+#17 30.26 checking char bit... 8
+#17 30.63 checking size of int... 4
+#17 31.01 checking size of short... 2
+#17 31.40 checking size of long... 8
+#17 31.78 checking size of long long... 8
+#17 32.17 checking size of __int64... 0
+#17 32.32 checking size of __int128... 16
+#17 32.70 checking size of off_t... 8
+#17 33.08 checking size of void*... 8
+#17 33.47 checking size of float... 4
+#17 33.86 checking size of double... 8
+#17 34.24 checking size of time_t... 8
+#17 34.62 checking size of clock_t... 8
+#17 35.00 checking word size... 8
+#17 35.32 checking packed struct attribute... x __attribute__((packed))
+#17 35.74 checking whether -Wno-address-of-packed-member is accepted as CFLAGS... yes
+#17 35.94 checking for printf prefix for long long... ll
+#17 36.18 checking for pid_t... yes
+#17 36.60 checking for convertible type of pid_t... INT
+#17 37.57 checking for uid_t... yes
+#17 37.99 checking for convertible type of uid_t... UINT
+#17 39.04 checking for gid_t... yes
+#17 39.46 checking for convertible type of gid_t... UINT
+#17 40.50 checking for time_t... yes
+#17 40.86 checking for convertible type of time_t... LONG
+#17 41.53 checking for dev_t... yes
+#17 41.95 checking for convertible type of dev_t... ULONG
+#17 42.82 checking for mode_t... yes
+#17 43.18 checking for convertible type of mode_t... UINT
+#17 44.07 checking for rlim_t... yes
+#17 44.43 checking for convertible type of rlim_t... ULONG
+#17 45.19 checking for off_t... (cached) yes
+#17 45.19 checking for convertible type of off_t... LONG
+#17 45.99 checking for clockid_t... yes
+#17 46.35 checking for convertible type of clockid_t... INT
+#17 47.17 checking for variable length macro... yes
+#17 47.39 checking if _Alignof() works... yes
+#17 47.60 checking for CONSTFUNC function attribute... __attribute__ ((__const__)) x
+#17 47.79 checking for PUREFUNC function attribute... __attribute__ ((__pure__)) x
+#17 47.98 checking for NORETURN function attribute... __attribute__ ((__noreturn__)) x
+#17 48.17 checking for DEPRECATED function attribute... __attribute__ ((__deprecated__)) x
+#17 48.36 checking for DEPRECATED_BY function attribute... __attribute__ ((__deprecated__("by "#n))) x
+#17 48.55 checking for NOINLINE function attribute... __attribute__ ((__noinline__)) x
+#17 48.74 checking for ALWAYS_INLINE function attribute... __attribute__ ((__always_inline__)) x
+#17 48.93 checking for NO_SANITIZE function attribute... __attribute__ ((__no_sanitize__(san))) x
+#17 49.12 checking for NO_SANITIZE_ADDRESS function attribute... __attribute__ ((__no_sanitize_address__)) x
+#17 49.32 checking for NO_ADDRESS_SAFETY_ANALYSIS function attribute... __attribute__ ((__no_address_safety_analysis__)) x
+#17 49.51 checking for WARN_UNUSED_RESULT function attribute... __attribute__ ((__warn_unused_result__)) x
+#17 49.70 checking for MAYBE_UNUSED function attribute... __attribute__ ((__unused__)) x
+#17 49.89 checking for ERRORFUNC function attribute... __attribute__ ((__error__ mesg)) x
+#17 50.09 checking for WARNINGFUNC function attribute... __attribute__ ((__warning__ mesg)) x
+#17 50.28 checking for WEAK function attribute... __attribute__ ((__weak__)) x
+#17 50.47 checking for __attribute__((__deprecated__(msg))) in C++... yes
+#17 50.62 checking for std::nullptr_t... yes
+#17 50.81 checking for FUNC_STDCALL function attribute... x
+#17 51.63 checking for FUNC_CDECL function attribute... x
+#17 52.45 checking for FUNC_FASTCALL function attribute... x
+#17 53.27 checking for FUNC_UNOPTIMIZED function attribute... __attribute__ ((__optimize__("O0"))) x
+#17 53.46 checking for FUNC_MINIMIZED function attribute... __attribute__ ((__optimize__("-Os","-fomit-frame-pointer"))) x
+#17 53.65 checking for function alias... alias
+#17 53.92 checking for __atomic builtins... yes
+#17 54.21 checking for __sync builtins... yes
+#17 54.50 checking for __builtin_unreachable... yes
+#17 54.79 checking for __assume... no
+#17 55.12 checking for exported function attribute... __attribute__ ((__visibility__("default")))
+#17 55.45 checking for RUBY_FUNC_NONNULL function attribute... __attribute__ ((__nonnull__(n))) x
+#17 55.64 checking for function name string predefined identifier... __func__
+#17 55.93 checking if enum over int is allowed... yes
+#17 56.15 checking for gcc options needed to detect all undeclared functions... none needed
+#17 56.51 checking whether sys_nerr is declared... no
+#17 56.72 checking whether getenv is declared... yes
+#17 56.98 checking for size_t... yes
+#17 57.62 checking size of size_t... 8
+#17 57.99 checking size of ptrdiff_t... 8
+#17 58.36 checking size of dev_t... 8
+#17 58.74 checking for printf prefix for size_t... z
+#17 58.98 checking for printf prefix for ptrdiff_t... t
+#17 59.22 checking for struct stat.st_blksize... yes
+#17 59.48 checking for struct stat.st_blocks... yes
+#17 59.73 checking for struct stat.st_rdev... yes
+#17 59.98 checking size of struct stat.st_size... SIZEOF_OFF_T
+#17 60.21 checking size of struct stat.st_blocks... SIZEOF_OFF_T
+#17 60.43 checking size of struct stat.st_ino... SIZEOF_LONG
+#17 60.65 checking size of struct stat.st_dev... SIZEOF_DEV_T
+#17 60.88 checking size of struct stat.st_rdev... SIZEOF_DEV_T
+#17 61.10 checking for struct stat.st_atim... yes
+#17 61.53 checking for struct stat.st_atimespec... no
+#17 61.89 checking for struct stat.st_atimensec... no
+#17 62.25 checking for struct stat.st_mtim... yes
+#17 62.67 checking for struct stat.st_mtimespec... no
+#17 63.03 checking for struct stat.st_mtimensec... no
+#17 63.39 checking for struct stat.st_ctim... yes
+#17 63.82 checking for struct stat.st_ctimespec... no
+#17 64.18 checking for struct stat.st_ctimensec... no
+#17 64.53 checking for struct stat.st_birthtimespec... no
+#17 64.90 checking for struct statx.stx_btime... yes
+#17 65.32 checking for struct timeval... yes
+#17 65.69 checking size of struct timeval.tv_sec... SIZEOF_TIME_T
+#17 65.91 checking for struct timespec... yes
+#17 66.28 checking for struct timezone... yes
+#17 66.64 checking for fd_mask... yes
+#17 67.07 checking for int8_t... yes
+#17 67.32 checking size of int8_t... 1
+#17 67.71 checking for uint8_t... yes
+#17 67.96 checking size of uint8_t... 1
+#17 68.35 checking for int16_t... yes
+#17 68.59 checking size of int16_t... 2
+#17 68.98 checking for uint16_t... yes
+#17 69.22 checking size of uint16_t... 2
+#17 69.61 checking for int32_t... yes
+#17 69.86 checking size of int32_t... 4
+#17 70.24 checking for uint32_t... yes
+#17 70.49 checking size of uint32_t... 4
+#17 70.87 checking for int64_t... yes
+#17 71.12 checking size of int64_t... 8
+#17 71.50 checking for uint64_t... yes
+#17 71.75 checking size of uint64_t... 8
+#17 72.14 checking for int128_t... __int128
+#17 72.35 checking for uint128_t... unsigned __int128
+#17 72.56 checking for intptr_t... yes
+#17 72.84 checking size of intptr_t... 8
+#17 73.23 checking for uintptr_t... yes
+#17 73.49 checking size of uintptr_t... 8
+#17 73.87 checking for printf prefix for intptr_t... NONE
+#17 74.54 checking for ssize_t... yes
+#17 74.75 checking size of ssize_t... 8
+#17 75.13 checking for printf prefix for int64_t... NONE
+#17 75.74 checking for stack end address... __libc_stack_end
+#17 76.11 checking for grep that handles long lines and -e... /usr/bin/grep
+#17 76.12 checking for egrep... /usr/bin/grep -E
+#17 76.14 checking for uid_t in sys/types.h... (cached) yes
+#17 76.14 checking type of array argument to getgroups... gid_t
+#17 76.58 checking for working alloca.h... yes
+#17 76.87 checking for alloca... yes
+#17 76.87 checking for dynamic size alloca... ok
+#17 77.15 checking for working memcmp... yes
+#17 77.57 checking for dup... yes
+#17 77.87 checking for dup2... yes
+#17 78.16 checking for acosh... yes
+#17 78.50 checking for cbrt... yes
+#17 78.84 checking for crypt... yes
+#17 79.14 checking for erf... yes
+#17 79.48 checking for explicit_bzero... yes
+#17 79.79 checking for ffs... yes
+#17 80.13 checking for flock... yes
+#17 80.44 checking for hypot... yes
+#17 80.78 checking for lgamma_r... yes
+#17 81.13 checking for memmove... yes
+#17 81.48 checking for nan... yes
+#17 81.82 checking for nextafter... yes
+#17 82.15 checking for setproctitle... no
+#17 82.50 checking for strchr... yes
+#17 82.83 checking for strerror... yes
+#17 83.14 checking for strlcat... no
+#17 83.49 checking for strlcpy... no
+#17 83.85 checking for strstr... yes
+#17 84.19 checking for tgamma... yes
+#17 84.53 checking for sys/pstat.h... no
+#17 84.71 checking for pid_t... (cached) yes
+#17 84.71 checking for fork... yes
+#17 85.04 checking for vfork... yes
+#17 85.35 checking for working fork... yes
+#17 85.71 checking for working vfork... (cached) yes
+#17 85.71 checking for __syscall... no
+#17 86.05 checking for _longjmp... yes
+#17 86.36 checking for arc4random_buf... no
+#17 86.71 checking for atan2l... yes
+#17 87.05 checking for atan2f... yes
+#17 87.39 checking whether atomic_signal_fence is declared... yes
+#17 87.61 checking for chmod... yes
+#17 87.92 checking for chown... yes
+#17 88.23 checking for chroot... yes
+#17 88.54 checking for chsize... no
+#17 88.89 checking for clock_gettime... yes
+#17 89.19 checking for copy_file_range... yes
+#17 89.49 checking for cosh... yes
+#17 89.84 checking for crypt_r... yes
+#17 90.15 checking for daemon... (cached) no
+#17 90.15 checking for dirfd... yes
+#17 90.46 checking for dl_iterate_phdr... yes
+#17 90.76 checking for dlopen... yes
+#17 91.06 checking for dladdr... yes
+#17 91.36 checking for dup3... yes
+#17 91.67 checking for eaccess... yes
+#17 91.97 checking for endgrent... yes
+#17 92.26 checking for eventfd... yes
+#17 92.56 checking for execl... yes
+#17 92.89 checking for execle... yes
+#17 93.23 checking for execv... yes
+#17 93.56 checking for execve... yes
+#17 93.91 checking for explicit_memset... no
+#17 94.27 checking for fcopyfile... no
+#17 94.63 checking for fchdir... yes
+#17 94.93 checking for fchmod... yes
+#17 95.22 checking for fchown... yes
+#17 95.52 checking for fcntl... yes
+#17 95.83 checking for fdatasync... yes
+#17 96.15 checking for fdopendir... yes
+#17 96.45 checking for fgetattrlist... no
+#17 96.82 checking for fmod... yes
+#17 97.17 checking for fstatat... yes
+#17 97.52 checking for fsync... yes
+#17 97.83 checking for ftruncate... yes
+#17 98.13 checking for ftruncate64... yes
+#17 98.44 checking for getattrlist... no
+#17 98.79 checking for getcwd... yes
+#17 99.11 checking for getegid... yes
+#17 99.43 checking for getentropy... yes
+#17 99.74 checking for geteuid... yes
+#17 100.0 checking for getgid... yes
+#17 100.4 checking for getgidx... no
+#17 100.7 checking for getgrnam... yes
+#17 101.1 checking for getgrnam_r... yes
+#17 101.4 checking for getgroups... yes
+#17 101.7 checking for getlogin... yes
+#17 102.0 checking for getlogin_r... yes
+#17 102.3 checking for getpgid... yes
+#17 102.6 checking for getpgrp... yes
+#17 102.9 checking for getppid... yes
+#17 103.2 checking for getpriority... yes
+#17 103.6 checking for getpwnam... yes
+#17 103.9 checking for getpwnam_r... yes
+#17 104.2 checking for getpwuid... yes
+#17 104.5 checking for getpwuid_r... yes
+#17 104.8 checking for getrandom... yes
+#17 105.1 checking for getresgid... yes
+#17 105.4 checking for getresuid... yes
+#17 105.7 checking for getrlimit... yes
+#17 106.0 checking for getsid... yes
+#17 106.4 checking for gettimeofday... yes
+#17 106.7 checking for getuid... yes
+#17 107.0 checking for getuidx... no
+#17 107.4 checking for gmtime_r... yes
+#17 107.7 checking for initgroups... yes
+#17 108.0 checking for ioctl... yes
+#17 108.3 checking for isfinite... no
+#17 108.6 checking for issetugid... no
+#17 109.0 checking for kill... yes
+#17 109.3 checking for killpg... yes
+#17 109.6 checking for lchmod... yes
+#17 109.9 checking for lchown... yes
+#17 110.2 checking for link... yes
+#17 110.5 checking for llabs... yes
+#17 110.9 checking for lockf... yes
+#17 111.2 checking for log2... yes
+#17 111.5 checking for lstat... yes
+#17 111.9 checking for lutimes... yes
+#17 112.2 checking for malloc_usable_size... yes
+#17 112.5 checking for malloc_size... no
+#17 112.9 checking for malloc_trim... yes
+#17 113.2 checking for mblen... yes
+#17 113.6 checking for memalign... yes
+#17 113.9 checking for memset_s... no
+#17 114.3 checking for writev... yes
+#17 114.7 checking for memrchr... yes
+#17 115.0 checking for memmem... yes
+#17 115.3 checking for mkfifo... yes
+#17 115.6 checking for mknod... yes
+#17 115.9 checking for mktime... yes
+#17 116.2 checking for mmap... yes
+#17 116.5 checking for mremap... yes
+#17 116.9 checking for openat... yes
+#17 117.2 checking for pclose... yes
+#17 117.5 checking for pipe... yes
+#17 117.8 checking for pipe2... yes
+#17 118.1 checking for poll... yes
+#17 118.4 checking for popen... yes
+#17 118.7 checking for posix_fadvise... yes
+#17 119.0 checking for posix_madvise... yes
+#17 119.3 checking for posix_memalign... yes
+#17 119.7 checking for ppoll... yes
+#17 120.0 checking for pread... yes
+#17 120.3 checking for pwrite... yes
+#17 120.6 checking for qsort_r... yes
+#17 120.9 checking for qsort_s... no
+#17 121.2 checking for readlink... yes
+#17 121.5 checking for realpath... yes
+#17 121.8 checking for round... yes
+#17 122.2 checking for sched_getaffinity... yes
+#17 122.5 checking for seekdir... yes
+#17 122.8 checking for select_large_fdset... no
+#17 123.2 checking for sendfile... yes
+#17 123.5 checking for setegid... yes
+#17 123.8 checking for setenv... yes
+#17 124.2 checking for seteuid... yes
+#17 124.5 checking for setgid... yes
+#17 124.8 checking for setgroups... yes
+#17 125.1 checking for setpgid... yes
+#17 125.4 checking for setpgrp... yes
+#17 125.7 checking for setregid... yes
+#17 126.0 checking for setresgid... yes
+#17 126.3 checking for setresuid... yes
+#17 126.6 checking for setreuid... yes
+#17 126.9 checking for setrgid... no
+#17 127.3 checking for setrlimit... yes
+#17 127.6 checking for setruid... no
+#17 128.0 checking for setsid... yes
+#17 128.3 checking for setuid... yes
+#17 128.6 checking for shutdown... yes
+#17 128.9 checking for sigaction... yes
+#17 129.1 checking for sigaltstack... yes
+#17 129.4 checking for sigprocmask... yes
+#17 129.7 checking for sinh... yes
+#17 130.1 checking for snprintf... yes
+#17 130.4 checking for spawnv... no
+#17 130.8 checking for symlink... yes
+#17 131.1 checking for syscall... yes
+#17 131.4 checking for sysconf... yes
+#17 131.6 checking for system... yes
+#17 132.0 checking for tanh... yes
+#17 132.3 checking for telldir... yes
+#17 132.6 checking for timegm... yes
+#17 132.9 checking for times... yes
+#17 133.2 checking for truncate... yes
+#17 133.6 checking for truncate64... yes
+#17 133.9 checking for tzset... yes
+#17 134.2 checking for umask... yes
+#17 134.5 checking for unsetenv... yes
+#17 134.8 checking for utimensat... yes
+#17 135.1 checking for utimes... yes
+#17 135.4 checking for wait4... yes
+#17 135.7 checking for waitpid... yes
+#17 136.0 checking for __cospi... no
+#17 136.4 checking for __sinpi... no
+#17 136.7 checking for statx... yes
+#17 137.0 checking if getcwd allocates buffer if NULL is given... yes
+#17 137.4 checking for crypt.h... yes
+#17 137.5 checking for struct crypt_data.initialized... yes
+#17 137.8 checking for __builtin_alloca_with_align... yes
+#17 138.0 checking for __builtin_assume_aligned... yes
+#17 138.3 checking for __builtin_bswap16... yes
+#17 138.6 checking for __builtin_bswap32... yes
+#17 138.9 checking for __builtin_bswap64... yes
+#17 139.2 checking for __builtin_popcount... yes
+#17 139.4 checking for __builtin_popcountll... yes
+#17 139.7 checking for __builtin_clz... yes
+#17 140.0 checking for __builtin_clzl... yes
+#17 140.3 checking for __builtin_clzll... yes
+#17 140.6 checking for __builtin_ctz... yes
+#17 140.8 checking for __builtin_ctzll... yes
+#17 141.1 checking for __builtin_constant_p... yes
+#17 141.4 checking for __builtin_choose_expr... yes
+#17 141.7 checking for __builtin_choose_expr_constant_p... yes
+#17 141.9 checking for __builtin_types_compatible_p... yes
+#17 142.2 checking for __builtin_trap... yes
+#17 142.5 checking for __builtin_expect... yes
+#17 142.8 checking for __builtin_add_overflow... yes
+#17 143.0 checking for __builtin_add_overflow_p... yes
+#17 143.3 checking for __builtin_add_overflow with long long arguments... yes
+#17 143.6 checking for __builtin_sub_overflow... yes
+#17 143.9 checking for __builtin_sub_overflow_p... yes
+#17 144.2 checking for __builtin_sub_overflow with long long arguments... yes
+#17 144.4 checking for __builtin_mul_overflow... yes
+#17 144.7 checking for __builtin_mul_overflow_p... yes
+#17 145.0 checking for __builtin_mul_overflow with long long arguments... yes
+#17 145.3 checking whether qsort_r is GNU version... yes
+#17 145.5 checking whether qsort_r is BSD version... no
+#17 145.7 checking whether atan2 handles Inf as C99... yes
+#17 146.1 checking for clock_getres... yes
+#17 146.4 checking for timer_create in -lrt... yes
+#17 146.7 checking for timer_settime in -lrt... yes
+#17 147.0 checking for unsetenv returns a value... yes
+#17 147.3 checking whether struct tm is in sys/time.h or time.h... time.h
+#17 147.5 checking for struct tm.tm_zone... yes
+#17 147.7 checking for struct tm.tm_gmtoff... yes
+#17 147.9 checking for external int daylight... yes
+#17 148.3 checking for negative time_t for gmtime(3)... yes
+#17 148.6 checking for localtime(3) overflow correctly... yes
+#17 149.0 checking for sig_t... yes
+#17 149.4 checking whether right shift preserve sign bit... yes
+#17 149.6 checking whether _SC_CLK_TCK is supported... yes
+#17 149.9 checking stack growing direction on x86_64... -1
+#17 149.9 checking native coroutine implementation for x86_64-linux... amd64
+#17 149.9 checking whether pthread_t is scalar type... yes
+#17 150.1 checking for sched_yield... yes
+#17 150.4 checking for pthread_attr_setinheritsched... yes
+#17 150.7 checking for pthread_attr_get_np... no
+#17 151.1 checking for pthread_attr_getstack... yes
+#17 151.4 checking for pthread_attr_getguardsize... yes
+#17 151.7 checking for pthread_get_stackaddr_np... no
+#17 152.1 checking for pthread_get_stacksize_np... no
+#17 152.4 checking for thr_stksegment... no
+#17 152.8 checking for pthread_stackseg_np... no
+#17 153.1 checking for pthread_getthrds_np... no
+#17 153.5 checking for pthread_condattr_setclock... yes
+#17 153.8 checking for pthread_setname_np... yes
+#17 154.1 checking for pthread_set_name_np... no
+#17 154.5 checking for pthread_sigmask... yes
+#17 154.8 checking for pthread_getattr_np... yes
+#17 155.1 checking arguments of pthread_setname_np... (pthread_self(), name)
+#17 155.4 checking for thread-local storage specifier... _Thread_local
+#17 155.6 checking if mcontext_t is a pointer... no
+#17 155.8 checking for getcontext... yes
+#17 156.1 checking for setcontext... yes
+#17 156.4 checking if fork works with pthread... yes
+#17 157.8 checking for sys/user.h... yes
+#17 158.0 checking whether PAGE_SIZE is compile-time const... no
+#17 158.2 checking ioctl request type... unsigned long
+#17 158.5 checking for elf.h... yes
+#17 158.6 checking for elf_abi.h... no
+#17 158.8 checking for uncompress in -lz... yes
+#17 159.1 checking for mach-o/loader.h... no
+#17 159.3 checking whether OS depend dynamic link works... yes
+#17 159.3 checking for backtrace... yes
+#17 159.6 checking for broken backtrace... no
+#17 160.0 checking for valgrind/memcheck.h... no
+#17 160.2 checking for strip flags... -S -x
+#17 160.6 checking whether -Wl,--no-as-needed is accepted as LDFLAGS... yes
+#17 160.9 checking whether -Wl,--no-undefined is accepted as LDFLAGS... yes
+#17 161.2 checking whether wrapper for LD_LIBRARY_PATH is needed... no
+#17 161.2 checking whether dtrace USDT is available... no
+#17 161.2 checking for __builtin_setjmp... yes
+#17 161.6 checking for _setjmpex as a macro or function... no
+#17 161.7 checking for _setjmp as a macro or function... yes
+#17 162.0 checking for setjmp type... __builtin_setjmp
+#17 162.0 checking if building with modular GC support... no
+#17 162.0 checking for rustc... no
+#17 162.0 checking for prefix of external symbols... NONE
+#17 162.3 checking for default symbols in empty shared library... 
+#17 162.6 checking if make is GNU make... yes
+#17 163.0 .ext/include/x86_64-linux/ruby/config.h updated
+#17 163.2 configure: ruby library version = 3.4.0
+#17 163.4 configure: creating ./config.status
+#17 164.1 config.status: creating GNUmakefile
+#17 164.2 config.status: creating Makefile
+#17 164.5 ---
+#17 164.5 Configuration summary for ruby version 3.4.10
+#17 164.5 
+#17 164.6    * Installation prefix: /usr/local
+#17 164.6    * exec prefix:         ${prefix}
+#17 164.6    * arch:                x86_64-linux
+#17 164.7    * site arch:           ${arch}
+#17 164.7    * RUBY_BASE_NAME:      ruby
+#17 164.7    * enable shared:       yes
+#17 164.7    * ruby lib prefix:     ${libdir}/${RUBY_BASE_NAME}
+#17 164.8    * site libraries path: ${rubylibprefix}/${sitearch}
+#17 164.8    * vendor path:         ${rubylibprefix}/vendor_ruby
+#17 164.8    * target OS:           linux
+#17 164.9    * compiler:            gcc
+#17 164.9    * with thread:         pthread
+#17 164.9    * with coroutine:      amd64
+#17 165.0    * with modular GC:     no
+#17 165.0    * enable shared libs:  yes
+#17 165.0    * dynamic library ext: so
+#17 165.0    * CFLAGS:              ${hardenflags}  ${optflags} ${debugflags} \
+#17 165.1                           ${warnflags}
+#17 165.1    * LDFLAGS:             -L. -fstack-protector-strong -rdynamic \
+#17 165.1                           -Wl,-export-dynamic -Wl,--no-as-needed
+#17 165.1    * DLDFLAGS:            -Wl,--compress-debug-sections=zlib
+#17 165.1    * optflags:            -O3 -fno-fast-math
+#17 165.2    * debugflags:          -ggdb3
+#17 165.2    * warnflags:           -Wall -Wextra -Wdeprecated-declarations \
+#17 165.2                           -Wdiv-by-zero -Wduplicated-cond \
+#17 165.2                           -Wimplicit-function-declaration -Wimplicit-int \
+#17 165.2                           -Wpointer-arith -Wwrite-strings \
+#17 165.2                           -Wold-style-definition -Wimplicit-fallthrough=0 \
+#17 165.2                           -Wmissing-noreturn -Wno-cast-function-type \
+#17 165.2                           -Wno-constant-logical-operand -Wno-long-long \
+#17 165.2                           -Wno-missing-field-initializers \
+#17 165.2                           -Wno-overlength-strings \
+#17 165.2                           -Wno-packed-bitfield-compat \
+#17 165.2                           -Wno-parentheses-equality -Wno-self-assign \
+#17 165.2                           -Wno-tautological-compare -Wno-unused-parameter \
+#17 165.2                           -Wno-unused-value -Wsuggest-attribute=format \
+#17 165.2                           -Wsuggest-attribute=noreturn -Wunused-variable \
+#17 165.2                           -Wmisleading-indentation -Wundef
+#17 165.2    * hardenflags:         -fstack-protector-strong -U_FORTIFY_SOURCE \
+#17 165.2                           -D_FORTIFY_SOURCE=2
+#17 165.3    * strip command:       strip -S -x
+#17 165.3    * install doc:         no
+#17 165.3    * YJIT support:        no
+#17 165.4    * RJIT support:        yes
+#17 165.4    * man page type:       doc
+#17 165.4 
+#17 165.4 ---
+#17 165.7 	BASERUBY = ./tool/missing-baseruby.bat
+#17 165.7 	CC = gcc
+#17 165.7 	LD = ld
+#17 165.7 	LDSHARED = gcc -shared
+#17 165.7 	CFLAGS = -fstack-protector-strong -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2  -O3 -fno-fast-math -ggdb3 -Wall -Wextra -Wdeprecated-declarations -Wdiv-by-zero -Wduplicated-cond -Wimplicit-function-declaration -Wimplicit-int -Wpointer-arith -Wwrite-strings -Wold-style-definition -Wimplicit-fallthrough=0 -Wmissing-noreturn -Wno-cast-function-type -Wno-constant-logical-operand -Wno-long-long -Wno-missing-field-initializers -Wno-overlength-strings -Wno-packed-bitfield-compat -Wno-parentheses-equality -Wno-self-assign -Wno-tautological-compare -Wno-unused-parameter -Wno-unused-value -Wsuggest-attribute=format -Wsuggest-attribute=noreturn -Wunused-variable -Wmisleading-indentation -Wundef   -fPIC 
+#17 165.7 	XCFLAGS = -fno-strict-overflow -fvisibility=hidden -fexcess-precision=standard -DRUBY_EXPORT -I. -I.ext/include/x86_64-linux -I.ext/include -I./include -I. -I./prism -I./enc/unicode/15.0.0   -Dmodular_gc_dir=
+#17 165.7 	CPPFLAGS =   
+#17 165.7 	DLDFLAGS = -Wl,--compress-debug-sections=zlib -Wl,-soname,libruby.so.3.4  -fstack-protector-strong  
+#17 165.7 	SOLIBS = -lz -lrt -lrt -ldl -lcrypt -lm -lpthread 
+#17 165.7 	LANG = 
+#17 165.7 	LC_ALL = 
+#17 165.7 	LC_CTYPE = 
+#17 165.7 	MFLAGS = -j14 --jobserver-auth=10,11
+#17 165.7 	RUSTC = no
+#17 165.7 	YJIT_RUSTC_ARGS = --crate-name=yjit --crate-type=staticlib --edition=2021 -g -C lto=thin -C opt-level=3 -C overflow-checks=on '--out-dir=/usr/src/ruby-3.4.10/yjit/target/release/' ./yjit/src/lib.rs
+#17 165.7 gcc (GCC) 11.5.0 20240719 (Red Hat 11.5.0-14)
+#17 165.7 Copyright (C) 2021 Free Software Foundation, Inc.
+#17 165.7 This is free software; see the source for copying conditions.  There is NO
+#17 165.7 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#17 165.7 
+#17 165.7 compiling dmydln.c
+#17 165.7 compiling ./main.c
+#17 165.7 compiling miniinit.c
+#17 165.7 compiling bignum.c
+#17 165.7 compiling class.c
+#17 165.7 compiling ast.c
+#17 165.7 compiling compar.c
+#17 165.7 making dummy probes.h
+#17 165.7 compiling complex.c
+#17 165.7 compiling cont.c
+#17 165.8 compiling debug.c
+#17 165.8 compiling debug_counter.c
+#17 165.8 compiling compile.c
+#17 165.8 compiling dir.c
+#17 165.8 compiling dln_find.c
+#17 166.3 compiling encoding.c
+#17 166.3 compiling enum.c
+#17 166.4 compiling enumerator.c
+#17 166.6 compiling error.c
+#17 166.6 compiling eval.c
+#17 166.6 compiling file.c
+#17 166.9 compiling gc.c
+#17 167.4 compiling hash.c
+#17 167.5 compiling inits.c
+#17 167.9 compiling imemo.c
+#17 167.9 compiling io.c
+#17 168.1 compiling io_buffer.c
+#17 168.8 compiling iseq.c
+#17 169.0 compiling load.c
+#17 169.0 compiling marshal.c
+#17 169.2 compiling math.c
+#17 169.2 compiling memory_view.c
+#17 169.4 compiling rjit.c
+#17 169.5 compiling rjit_c.c
+#17 169.7 compiling node.c
+#17 170.2 compiling node_dump.c
+#17 170.4 compiling numeric.c
+#17 170.6 compiling object.c
+#17 170.6 compiling parse.c
+#17 170.6 compiling pack.c
+#17 170.9 compiling parser_st.c
+#17 170.9 compiling proc.c
+#17 171.1 compiling process.c
+#17 171.4 compiling ractor.c
+#17 171.6 compiling random.c
+#17 171.8 compiling range.c
+#17 172.5 compiling rational.c
+#17 172.7 compiling re.c
+#17 172.7 compiling regcomp.c
+#17 173.1 compiling regenc.c
+#17 173.1 compiling regerror.c
+#17 173.4 compiling regexec.c
+#17 173.5 compiling regparse.c
+#17 173.7 compiling regsyntax.c
+#17 174.0 compiling ruby.c
+#17 174.1 compiling ruby_parser.c
+#17 174.1 compiling scheduler.c
+#17 174.2 compiling shape.c
+#17 174.2 compiling signal.c
+#17 174.3 compiling sprintf.c
+#17 174.3 compiling st.c
+#17 175.0 compiling strftime.c
+#17 175.3 compiling string.c
+#17 175.4 compiling struct.c
+#17 175.4 compiling symbol.c
+#17 175.5 compiling thread.c
+#17 175.5 compiling time.c
+#17 175.6 compiling transcode.c
+#17 175.8 compiling util.c
+#17 176.0 compiling variable.c
+#17 176.1 compiling version.c
+#17 176.1 compiling vm.c
+#17 176.4 compiling vm_backtrace.c
+#17 176.6 compiling vm_dump.c
+#17 176.9 compiling vm_sync.c
+#17 177.1 compiling vm_trace.c
+#17 177.2 compiling weakmap.c
+#17 177.7 compiling ./missing/setproctitle.c
+#17 177.7 compiling ./missing/strlcat.c
+#17 177.7 compiling ./missing/strlcpy.c
+#17 177.7 compiling addr2line.c
+#17 177.9 compiling dln.c
+#17 178.1 compiling localeinit.c
+#17 178.2 compiling dmyext.c
+#17 178.2 compiling dmyenc.c
+#17 178.5 compiling array.c
+#17 178.5 compiling prism/api_node.c
+#17 178.5 compiling prism/diagnostic.c
+#17 178.6 compiling prism/api_pack.c
+#17 178.6 compiling prism/encoding.c
+#17 178.7 compiling prism/extension.c
+#17 178.7 compiling prism/node.c
+#17 178.9 compiling prism/options.c
+#17 179.1 compiling prism/pack.c
+#17 179.2 compiling prism/prettyprint.c
+#17 179.3 compiling prism/regexp.c
+#17 179.4 compiling prism/serialize.c
+#17 179.5 compiling prism/static_literals.c
+#17 179.6 compiling prism/token_type.c
+#17 179.7 compiling prism/util/pm_buffer.c
+#17 179.7 compiling prism/util/pm_char.c
+#17 179.8 compiling prism/util/pm_constant_pool.c
+#17 179.9 compiling prism/util/pm_integer.c
+#17 180.1 compiling prism/util/pm_list.c
+#17 180.1 compiling prism/util/pm_memchr.c
+#17 180.3 compiling prism/util/pm_newline_list.c
+#17 180.4 compiling prism/util/pm_string.c
+#17 180.4 compiling prism/util/pm_strncasecmp.c
+#17 180.6 compiling prism/util/pm_strpbrk.c
+#17 180.6 compiling prism/prism.c
+#17 180.6 compiling prism_init.c
+#17 180.7 assembling coroutine/amd64/Context.S
+#17 180.7 compiling enc/ascii.c
+#17 180.9 compiling enc/us_ascii.c
+#17 180.9 compiling enc/unicode.c
+#17 180.9 compiling enc/utf_8.c
+#17 181.0 compiling enc/trans/newline.c
+#17 186.3 linking miniruby
+#17 187.7 builtin_binary.inc updated
+#17 187.7 22411c5a3bc387e0417906b233661b6b938c1780c3e5ac5e4906384345a9e9f9  builtin_binary.inc
+#17 187.8 compiling builtin.c
+#17 187.9 /bin/sh ./tool/ifchange "--timestamp=.rbconfig.time" rbconfig.rb rbconfig.tmp
+#17 187.9 rbconfig.rb updated
+#17 187.9 generating enc.mk
+#17 187.9 generating encdb.h
+#17 187.9 creating verconf.h
+#17 188.1 encdb.h updated
+#17 188.1 verconf.h updated
+#17 188.1 compiling loadpath.c
+#17 188.2 making srcs under enc
+#17 188.3 make[1]: Entering directory '/usr/src/ruby-3.4.10'
+#17 188.3 make[1]: Nothing to be done for 'srcs'.
+#17 188.3 make[1]: Leaving directory '/usr/src/ruby-3.4.10'
+#17 188.3 generating transdb.h
+#17 188.5 linking static-library libruby-static.a
+#17 188.5 transdb.h updated
+#17 189.0 linking shared-library libruby.so.3.4.10
+#17 191.0 generating makefiles ext/configure-ext.mk
+#17 191.0 making enc
+#17 191.1 making trans
+#17 191.1 make[1]: Entering directory '/usr/src/ruby-3.4.10'
+#17 191.1 make[1]: Entering directory '/usr/src/ruby-3.4.10'
+#17 191.1 compiling ./enc/encdb.c
+#17 191.1 compiling ./enc/cesu_8.c
+#17 191.1 compiling ./enc/big5.c
+#17 191.1 compiling ./enc/cp949.c
+#17 191.1 compiling ./enc/emacs_mule.c
+#17 191.1 compiling ./enc/euc_kr.c
+#17 191.1 compiling ./enc/euc_tw.c
+#17 191.1 compiling ./enc/gb2312.c
+#17 191.1 compiling ./enc/trans/transdb.c
+#17 191.1 compiling ./enc/gb18030.c
+#17 191.1 compiling ./enc/euc_jp.c
+#17 191.2 compiling ./enc/gbk.c
+#17 191.2 compiling ./enc/iso_8859_1.c
+#17 191.3 ext/configure-ext.mk updated
+#17 191.3 compiling ./enc/iso_8859_2.c
+#17 191.6 compiling ./enc/trans/big5.c
+#17 191.7 compiling ./enc/trans/cesu_8.c
+#17 191.7 make[1]: Entering directory '/usr/src/ruby-3.4.10'
+#17 191.7 compiling ./enc/trans/chinese.c
+#17 191.7 compiling ./enc/iso_8859_3.c
+#17 191.7 compiling ./enc/trans/emoji.c
+#17 191.8 compiling ./enc/trans/ebcdic.c
+#17 191.8 compiling ./enc/iso_8859_4.c
+#17 191.8 compiling ./enc/iso_8859_5.c
+#17 191.8 compiling ./enc/trans/emoji_iso2022_kddi.c
+#17 191.9 configuring -test-/RUBY_ALIGNOF
+#17 191.9 configuring cgi/escape
+#17 192.0 compiling ./enc/trans/emoji_sjis_docomo.c
+#17 192.0 compiling ./enc/iso_8859_6.c
+#17 192.0 configuring continuation
+#17 192.0 compiling ./enc/trans/emoji_sjis_kddi.c
+#17 192.1 configuring coverage
+#17 192.3 compiling ./enc/iso_8859_7.c
+#17 192.4 configuring digest
+#17 192.4 configuring date
+#17 192.4 configuring digest/bubblebabble
+#17 192.4 configuring erb/escape
+#17 192.4 configuring digest/md5
+#17 192.4 compiling ./enc/iso_8859_8.c
+#17 192.4 compiling ./enc/trans/emoji_sjis_softbank.c
+#17 192.4 compiling ./enc/iso_8859_9.c
+#17 192.5 compiling ./enc/trans/escape.c
+#17 192.6 configuring -test-/abi
+#17 192.6 configuring -test-/arith_seq/beg_len_step
+#17 192.6 configuring etc
+#17 192.6 configuring -test-/arith_seq/extract
+#17 192.6 configuring -test-/array/concat
+#17 192.6 configuring -test-/array/resize
+#17 192.6 configuring -test-/asan
+#17 192.6 configuring -test-/bignum
+#17 192.6 configuring -test-/bug-14834
+#17 192.6 configuring -test-/bug-3571
+#17 192.6 configuring -test-/bug-5832
+#17 192.6 configuring -test-/bug_reporter
+#17 192.6 configuring -test-/class
+#17 192.6 configuring -test-/cxxanyargs
+#17 192.7 configuring fcntl
+#17 192.7 compiling ./enc/trans/gb18030.c
+#17 192.7 compiling ./enc/iso_8859_10.c
+#17 192.8 configuring fiddle
+#17 192.9 configuring io/console
+#17 192.9 compiling ./enc/trans/gbk.c
+#17 193.0 configuring -test-/debug
+#17 193.0 configuring -test-/dln/empty
+#17 193.0 configuring -test-/econv
+#17 193.0 configuring -test-/ensure_and_callcc
+#17 193.0 configuring -test-/enumerator_kw
+#17 193.0 configuring -test-/eval
+#17 193.0 configuring -test-/exception
+#17 193.0 configuring -test-/fatal
+#17 193.0 configuring -test-/file
+#17 193.0 compiling ./enc/iso_8859_11.c
+#17 193.1 compiling ./enc/trans/iso2022.c
+#17 193.1 configuring json
+#17 193.1 configuring json/generator
+#17 193.2 configuring monitor
+#17 193.2 compiling ./enc/trans/japanese.c
+#17 193.3 configuring objspace
+#17 193.3 compiling ./enc/trans/japanese_euc.c
+#17 193.5 configuring openssl
+#17 193.5 configuring digest/rmd160
+#17 193.5 compiling ./enc/iso_8859_13.c
+#17 193.6 compiling ./enc/trans/japanese_sjis.c
+#17 193.7 compiling ./enc/iso_8859_14.c
+#17 193.8 compiling ./enc/trans/korean.c
+#17 193.9 configuring pathname
+#17 194.0 compiling ./enc/iso_8859_15.c
+#17 194.1 configuring digest/sha1
+#17 194.2 compiling ./enc/trans/single_byte.c
+#17 194.2 configuring json/parser
+#17 194.4 compiling ./enc/trans/utf8_mac.c
+#17 194.4 configuring psych
+#17 194.6 compiling ./enc/iso_8859_16.c
+#17 194.6 configuring digest/sha2
+#17 194.6 configuring pty
+#17 194.7 compiling ./enc/koi8_r.c
+#17 194.7 compiling ./enc/koi8_u.c
+#17 195.3 compiling ./enc/trans/utf_16_32.c
+#17 195.3 compiling ./enc/shift_jis.c
+#17 195.4 configuring rbconfig/sizeof
+#17 195.5 compiling ./enc/utf_16be.c
+#17 195.7 configuring ripper
+#17 195.7 linking transcoder transdb.so
+#17 195.9 libffi_version: 3.4.2
+#17 196.0 compiling ./enc/utf_16le.c
+#17 196.0 linking transcoder big5.so
+#17 196.1 configuring rubyvm
+#17 196.1 linking transcoder cesu_8.so
+#17 196.1 compiling ./enc/utf_32be.c
+#17 196.2 linking transcoder chinese.so
+#17 196.2 configuring socket
+#17 196.3 compiling ./enc/utf_32le.c
+#17 196.4 linking transcoder ebcdic.so
+#17 196.5 linking transcoder emoji.so
+#17 196.7 linking transcoder emoji_iso2022_kddi.so
+#17 196.7 linking transcoder emoji_sjis_docomo.so
+#17 196.8 configuring stringio
+#17 196.8 linking transcoder emoji_sjis_kddi.so
+#17 196.8 compiling ./enc/windows_31j.c
+#17 196.9 linking transcoder emoji_sjis_softbank.so
+#17 196.9 linking transcoder escape.so
+#17 197.0 linking transcoder gb18030.so
+#17 197.0 linking transcoder gbk.so
+#17 197.2 compiling ./enc/windows_1250.c
+#17 197.2 configuring strscan
+#17 197.2 linking transcoder iso2022.so
+#17 197.4 configuring -test-/float
+#17 197.4 configuring -test-/funcall
+#17 197.4 linking transcoder japanese.so
+#17 197.4 configuring -test-/gvl/call_without_gvl
+#17 197.4 configuring -test-/hash
+#17 197.4 configuring -test-/integer
+#17 197.4 configuring -test-/iseq_load
+#17 197.4 configuring -test-/iter
+#17 197.4 configuring -test-/load/dot.dot
+#17 197.4 configuring -test-/load/protect
+#17 197.4 configuring -test-/load/resolve_symbol_resolver
+#17 197.4 configuring -test-/load/resolve_symbol_target
+#17 197.4 configuring -test-/load/stringify_symbols
+#17 197.4 configuring -test-/load/stringify_target
+#17 197.5 configuring -test-/marshal/compat
+#17 197.5 configuring -test-/marshal/internal_ivar
+#17 197.5 configuring -test-/marshal/usr
+#17 197.5 configuring -test-/memory_status
+#17 197.5 configuring -test-/memory_view
+#17 197.5 configuring -test-/method
+#17 197.5 configuring -test-/notimplement
+#17 197.5 configuring -test-/num2int
+#17 197.5 configuring -test-/path_to_class
+#17 197.5 configuring -test-/popen_deadlock
+#17 197.5 configuring -test-/postponed_job
+#17 197.5 configuring -test-/printf
+#17 197.5 configuring -test-/proc
+#17 197.5 configuring -test-/public_header_warnings
+#17 197.5 linking transcoder japanese_euc.so
+#17 197.6 compiling ./enc/windows_1251.c
+#17 197.7 linking transcoder japanese_sjis.so
+#17 197.8 linking transcoder korean.so
+#17 197.8 linking transcoder single_byte.so
+#17 198.0 linking transcoder utf8_mac.so
+#17 198.1 configuring zlib
+#17 198.1 linking transcoder utf_16_32.so
+#17 198.2 compiling ./enc/windows_1252.c
+#17 198.2 configuring bigdecimal-3.1.8/ext/bigdecimal
+#17 198.2 compiling ./enc/windows_1253.c
+#17 198.3 make[1]: Leaving directory '/usr/src/ruby-3.4.10'
+#17 198.5 configuring -test-/random
+#17 198.5 configuring -test-/rational
+#17 198.5 configuring debug-1.11.0/ext/debug
+#17 198.5 configuring -test-/rb_call_super_kw
+#17 198.5 configuring -test-/recursion
+#17 198.5 configuring -test-/regexp
+#17 198.5 configuring -test-/scan_args
+#17 198.5 configuring -test-/st/foreach
+#17 198.5 configuring -test-/st/numhash
+#17 198.5 configuring -test-/st/update
+#17 198.5 configuring -test-/string
+#17 198.5 compiling ./enc/windows_1254.c
+#17 198.5 configuring -test-/struct
+#17 198.5 configuring -test-/symbol
+#17 198.9 compiling ./enc/windows_1257.c
+#17 199.0 configuring nkf-0.2.0/ext/nkf
+#17 199.3 configuring racc-1.8.1/ext/racc/cparse
+#17 199.3 linking encoding encdb.so
+#17 199.4 configuring rbs-3.8.0/ext/rbs_extension
+#17 199.5 configuring -test-/thread/id
+#17 199.5 linking encoding big5.so
+#17 199.6 configuring syslog-0.2.0/ext/syslog
+#17 199.7 linking encoding cesu_8.so
+#17 199.8 linking encoding cp949.so
+#17 200.0 linking encoding emacs_mule.so
+#17 200.1 configuring -test-/thread/instrumentation
+#17 200.1 configuring -test-/thread/lock_native_thread
+#17 200.1 configuring -test-/thread_fd
+#17 200.1 configuring -test-/time
+#17 200.1 configuring -test-/tracepoint
+#17 200.2 configuring -test-/typeddata
+#17 200.2 configuring -test-/vm
+#17 200.2 configuring -test-/wait
+#17 200.2 linking encoding euc_jp.so
+#17 200.2 linking encoding euc_kr.so
+#17 200.3 linking encoding euc_tw.so
+#17 200.4 linking encoding gb2312.so
+#17 200.5 linking encoding gb18030.so
+#17 200.5 linking encoding gbk.so
+#17 200.5 linking encoding iso_8859_1.so
+#17 200.6 linking encoding iso_8859_2.so
+#17 200.6 linking encoding iso_8859_3.so
+#17 200.7 linking encoding iso_8859_4.so
+#17 200.7 linking encoding iso_8859_5.so
+#17 200.8 linking encoding iso_8859_6.so
+#17 200.8 linking encoding iso_8859_7.so
+#17 200.9 linking encoding iso_8859_8.so
+#17 200.9 linking encoding iso_8859_9.so
+#17 201.0 linking encoding iso_8859_10.so
+#17 201.1 linking encoding iso_8859_11.so
+#17 201.1 linking encoding iso_8859_13.so
+#17 201.2 linking encoding iso_8859_14.so
+#17 201.2 linking encoding iso_8859_15.so
+#17 201.2 linking encoding iso_8859_16.so
+#17 201.3 linking encoding koi8_r.so
+#17 201.4 linking encoding koi8_u.so
+#17 201.4 linking encoding shift_jis.so
+#17 201.5 linking encoding utf_16be.so
+#17 201.5 linking encoding utf_16le.so
+#17 201.6 linking encoding utf_32be.so
+#17 201.7 linking encoding utf_32le.so
+#17 201.7 linking encoding windows_1250.so
+#17 201.7 linking encoding windows_31j.so
+#17 201.8 linking encoding windows_1251.so
+#17 201.9 linking encoding windows_1252.so
+#17 201.9 linking encoding windows_1253.so
+#17 201.9 linking encoding windows_1254.so
+#17 202.0 linking encoding windows_1257.so
+#17 202.1 make[1]: Leaving directory '/usr/src/ruby-3.4.10'
+#17 202.1 making encs
+#17 202.3 make[1]: Entering directory '/usr/src/ruby-3.4.10'
+#17 202.3 make[1]: Nothing to be done for 'encs'.
+#17 202.3 make[1]: Leaving directory '/usr/src/ruby-3.4.10'
+#17 211.9 configuring io/nonblock
+#17 214.3 configuring io/wait
