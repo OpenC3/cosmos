@@ -22,12 +22,15 @@ ARG DEBIAN_POINT_RELEASE=13.7
 ARG PYTHON_VERSION=3.13
 ARG RUBYGEMS_URL
 ARG PYPI_URL=https://pypi.org
+# host[:port] of a plain-HTTP PYPI_URL mirror to trust; leave unset for HTTPS
+ARG UV_INSECURE_HOST=
 # Update Dockerfile-ubi and the python .github/workflow actions to match this version
 ARG UV_VERSION=0.12.5
 
 ENV APT_URL=${APT_URL}
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
 ENV PYPI_URL=${PYPI_URL}
+ENV UV_INSECURE_HOST=${UV_INSECURE_HOST}
 ENV UV_VERSION=${UV_VERSION}
 
 # The official ruby image redirects gem installs to /usr/local/bundle via
@@ -131,7 +134,11 @@ RUN apt-get update && \
       bundle config set --global mirror.https://rubygems.org "${RUBYGEMS_URL}"; \
     fi && \
     chmod -R a+rX /etc/bundle && \
-    python3 -m pip install --break-system-packages "uv==${UV_VERSION}" && \
+    # Install uv from the PYPI_URL mirror too - without --index-url pip always
+    # reaches for pypi.org, which fails an air-gapped build before any relock.
+    # UV_INSECURE_HOST (host[:port]) opts a plain-HTTP mirror into being trusted.
+    python3 -m pip install --break-system-packages --index-url "${PYPI_URL}/simple" \
+      ${UV_INSECURE_HOST:+--trusted-host "${UV_INSECURE_HOST}"} "uv==${UV_VERSION}" && \
     rm -rf /var/lib/apt/lists/*
 
 # Configure UV for production container usage
