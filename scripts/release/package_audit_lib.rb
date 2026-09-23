@@ -767,8 +767,6 @@ def check_ubi_ruby(client, ruby_version)
   content = File.read(dockerfile)
   File.write(dockerfile, content.gsub(/ruby-#{Regexp.escape(current)}(?!\d)/, "ruby-#{newest}"))
   puts "  Updated ruby-#{current} -> ruby-#{newest} in openc3-ruby/Dockerfile-ubi"
-  puts "  NOTE: openc3-ruby/.gitignore ignores *.tar.gz, so commit the new tarball with:"
-  puts "        git add -f openc3-ruby/ruby-#{newest}.tar.gz"
   newest
 end
 
@@ -828,6 +826,14 @@ def download_ubi_ruby(version, release)
     next if other == path
     FileUtils.rm_f(other)
     puts "  Removed #{File.basename(other)}"
+  end
+  # openc3-ruby/.gitignore ignores *.tar.gz, so the old tarball shows up as a
+  # deletion while the new one is invisible to git status. Force-add it so the
+  # replacement is staged alongside the deletion instead of silently dropped.
+  if system('git', '-C', ROOT_DIR, 'add', '-f', path)
+    puts "  Staged #{File.basename(path)} (git add -f)"
+  else
+    puts "  WARN: could not stage, run: git add -f openc3-ruby/#{File.basename(path)}"
   end
   true
 end
