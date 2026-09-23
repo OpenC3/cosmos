@@ -136,9 +136,12 @@ RUN apt-get update && \
     chmod -R a+rX /etc/bundle && \
     # Install uv from the PYPI_URL mirror too - without --index-url pip always
     # reaches for pypi.org, which fails an air-gapped build before any relock.
-    # UV_INSECURE_HOST (host[:port]) opts a plain-HTTP mirror into being trusted.
-    python3 -m pip install --break-system-packages --index-url "${PYPI_URL}/simple" \
-      ${UV_INSECURE_HOST:+--trusted-host "${UV_INSECURE_HOST}"} "uv==${UV_VERSION}" && \
+    # UV_INSECURE_HOST (host[:port]) opts a plain-HTTP mirror into being trusted;
+    # pip treats an empty PIP_TRUSTED_HOST as no trusted host.
+    # --only-binary: uv ships wheels for every platform we build, so never run a
+    # setup script from an sdist, even if the mirror serves one.
+    PIP_TRUSTED_HOST="${UV_INSECURE_HOST}" python3 -m pip install --break-system-packages \
+      --only-binary :all: --index-url "${PYPI_URL}/simple" "uv==${UV_VERSION}" && \
     rm -rf /var/lib/apt/lists/*
 
 # Configure UV for production container usage
