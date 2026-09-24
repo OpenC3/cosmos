@@ -28,11 +28,17 @@ ENV IMAGE_GROUP=openc3
 ENV USER_ID=1001
 ENV GROUP_ID=1001
 
-# Create non-root user and update packages if we're on docker.io (not ironbank)
+# On docker.io (alpine) create the non-root user and upgrade with apk.
+# The ironbank image already has uid 1001, but it is only rebuilt on RedHat's
+# schedule, so pull the RPM security fixes released since with dnf.
 RUN if [[ $OPENC3_DEPENDENCY_REGISTRY == 'docker.io' ]]; then \
   addgroup -g ${GROUP_ID} -S ${IMAGE_GROUP}; \
   adduser -u ${USER_ID} -G ${IMAGE_GROUP} -s /bin/ash -S ${IMAGE_USER}; \
   apk update && apk upgrade; \
+  else \
+  dnf -y upgrade && \
+  dnf clean all && \
+  rm -rf /var/cache/dnf; \
   fi
 
 # Switch to user
