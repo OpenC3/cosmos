@@ -35,9 +35,6 @@ importers:
 
   packages/openc3-cosmos-demo:
     dependencies:
-      '@astrouxds/astro-web-components':
-        specifier: 8.0.0
-        version: 8.0.0
       '@openc3/js-common':
         specifier: workspace:*
         version: link:../openc3-js-common
@@ -69,9 +66,6 @@ importers:
 
   packages/openc3-cosmos-tool-admin:
     dependencies:
-      '@astrouxds/astro-web-components':
-        specifier: 8.0.0
-        version: 8.0.0
       '@openc3/js-common':
         specifier: workspace:*
         version: link:../openc3-js-common
@@ -106,9 +100,6 @@ importers:
 
   packages/openc3-cosmos-tool-bucketexplorer:
     dependencies:
-      '@astrouxds/astro-web-components':
-        specifier: 8.0.0
-        version: 8.0.0
       '@openc3/js-common':
         specifier: workspace:*
         version: link:../openc3-js-common
@@ -155,9 +146,6 @@ importers:
 
   packages/openc3-cosmos-tool-cmdsender:
     dependencies:
-      '@astrouxds/astro-web-components':
-        specifier: 8.0.0
-        version: 8.0.0
       '@openc3/js-common':
         specifier: workspace:*
         version: link:../openc3-js-common
@@ -207,9 +195,6 @@ importers:
 
   packages/openc3-cosmos-tool-cmdtlmserver:
     dependencies:
-      '@astrouxds/astro-web-components':
-        specifier: 8.0.0
-        version: 8.0.0
       '@dagrejs/dagre':
         specifier: 3.1.1
         version: 3.1.1
@@ -274,9 +259,6 @@ importers:
 
   packages/openc3-cosmos-tool-dataextractor:
     dependencies:
-      '@astrouxds/astro-web-components':
-        specifier: 8.0.0
-        version: 8.0.0
       '@openc3/js-common':
         specifier: workspace:*
         version: link:../openc3-js-common
@@ -320,9 +302,6 @@ importers:
 
   packages/openc3-cosmos-tool-dataviewer:
     dependencies:
-      '@astrouxds/astro-web-components':
-        specifier: 8.0.0
-        version: 8.0.0
       '@openc3/js-common':
         specifier: workspace:*
         version: link:../openc3-js-common
@@ -369,9 +348,6 @@ importers:
 
   packages/openc3-cosmos-tool-handbooks:
     dependencies:
-      '@astrouxds/astro-web-components':
-        specifier: 8.0.0
-        version: 8.0.0
       '@openc3/js-common':
         specifier: workspace:*
         version: link:../openc3-js-common
@@ -418,9 +394,6 @@ importers:
 
   packages/openc3-cosmos-tool-iframe:
     dependencies:
-      '@astrouxds/astro-web-components':
-        specifier: 8.0.0
-        version: 8.0.0
       '@braintree/sanitize-url':
         specifier: 7.1.2
         version: 7.1.2
@@ -470,9 +443,6 @@ importers:
 
   packages/openc3-cosmos-tool-limitsmonitor:
     dependencies:
-      '@astrouxds/astro-web-components':
-        specifier: 8.0.0
-        version: 8.0.0
       '@openc3/js-common':
         specifier: workspace:*
         version: link:../openc3-js-common
@@ -519,9 +489,6 @@ importers:
 
   packages/openc3-cosmos-tool-packetviewer:
     dependencies:
-      '@astrouxds/astro-web-components':
-        specifier: 8.0.0
-        version: 8.0.0
       '@openc3/js-common':
         specifier: workspace:*
         version: link:../openc3-js-common
@@ -568,9 +535,6 @@ importers:
 
   packages/openc3-cosmos-tool-scriptrunner:
     dependencies:
-      '@astrouxds/astro-web-components':
-        specifier: 8.0.0
-        version: 8.0.0
       '@openc3/js-common':
         specifier: workspace:*
         version: link:../openc3-js-common
@@ -623,9 +587,6 @@ importers:
 
   packages/openc3-cosmos-tool-tablemanager:
     dependencies:
-      '@astrouxds/astro-web-components':
-        specifier: 8.0.0
-        version: 8.0.0
       '@openc3/js-common':
         specifier: workspace:*
         version: link:../openc3-js-common
@@ -672,9 +633,6 @@ importers:
 
   packages/openc3-cosmos-tool-tlmgrapher:
     dependencies:
-      '@astrouxds/astro-web-components':
-        specifier: 8.0.0
-        version: 8.0.0
       '@openc3/js-common':
         specifier: workspace:*
         version: link:../openc3-js-common
@@ -727,9 +685,6 @@ importers:
 
   packages/openc3-cosmos-tool-tlmviewer:
     dependencies:
-      '@astrouxds/astro-web-components':
-        specifier: 8.0.0
-        version: 8.0.0
       '@openc3/js-common':
         specifier: workspace:*
         version: link:../openc3-js-common
@@ -788,9 +743,6 @@ importers:
       '@anycable/web':
         specifier: 1.1.1
         version: 1.1.1
-      '@astrouxds/astro-web-components':
-        specifier: 8.0.0
-        version: 8.0.0
       axios:
         specifier: 1.20.0
         version: 1.20.0(debug@4.4.3)
@@ -889,9 +841,6 @@ importers:
 
   packages/openc3-vue-common:
     dependencies:
-      '@astrouxds/astro-web-components':
-        specifier: 8.0.0
-        version: 8.0.0
       '@braintree/sanitize-url':
         specifier: 7.1.2
         version: 7.1.2
