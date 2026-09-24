@@ -67,6 +67,10 @@ COSMOS supports two formats for declaring Python dependencies:
 
 System Python packages (those shipped in the COSMOS Docker image) are pre-seeded into the UV download cache, so plugins that depend on those packages reuse them without re-downloading. If the UV install fails for any reason, COSMOS falls back to a shared pip install and logs a warning.
 
+Dependencies are resolved against the `pypi_url` Admin Console setting, falling back to the `PYPI_URL` environment variable and then to public PyPI. When that setting names an index other than `https://pypi.org`, COSMOS treats it as authoritative and passes uv `--no-config --no-sources`, so a plugin cannot resolve around it using an index declared in its own `[tool.uv].index` table or a `[tool.uv].sources` pin. A plugin depending on a package published only to its author's private index therefore fails to install unless your index serves that package too.
+
+This applies only to the paths where uv resolves — `requirements.txt` plugins, and `pyproject.toml` plugins with no `uv.lock`. A plugin shipping a `uv.lock` installs with `uv sync --frozen`, which reuses the registry and wheel URLs already recorded in that lock and never consults an index, so a locked plugin still downloads from whatever index its author locked against.
+
 After installing dependencies, COSMOS parses `plugin.txt` again with [ERB](/docs/configuration/format#erb) variable substitution applied and deploys each component declared in the file: targets, interfaces, routers, microservices, tools, widgets, and script engines.
 
 ### Target Deployment
