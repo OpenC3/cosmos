@@ -452,14 +452,16 @@ Only settings stored server-side (in Redis) can be seeded, and `--help` lists ex
 - **Suppressed Warnings** and **Default Configs** - entirely browser-local.
 :::
 
-### Existing settings are left alone
+### Admin Console edits are kept
 
-A setting is written on the first init that sees it and is then left alone, so a value changed in the Admin Console survives a container restart. Two consequences worth knowing:
+initsettings records each value it writes, so a later init can tell a setting nobody touched from one an operator changed:
 
+- A setting that does not exist yet is written
+- A setting still holding the value last seeded is updated, so changing a variable's value and restarting works
+- A setting changed in the Admin Console is left alone on every later init
 - Commenting out a variable does not revert the setting
-- Changing a variable's value does nothing once the setting has been seeded
 
-To change an already seeded value, either edit it in the Admin Console or set `OPENC3_SETTINGS_OVERWRITE=true` to make the environment authoritative.
+To replace an Admin Console edit with the environment value, set `OPENC3_SETTINGS_OVERWRITE=true` to make the environment authoritative.
 
 :::note[Upgrading from a version before this command existed]
 Settings written by an earlier release carry no record of having been seeded, so they all count as operator-edited and are left alone no matter what the environment says. On such an upgrade, run one init with `OPENC3_SETTINGS_OVERWRITE=true` to adopt the environment values, then turn it back off.
@@ -478,7 +480,7 @@ ERROR: 'time_zones' is not a known COSMOS setting. Did you mean 'time_zone'?
 
 ### Controlling how the settings are applied
 
-Three variables on the init container control the behavior above rather than setting a value. Unlike the settings themselves, none of them is sticky - all three are re-read on every init.
+Three variables on the init container control the behavior above rather than setting a value. Unlike the settings themselves, none of them is seeded - all three are re-read on every init.
 
 | Variable | Default | Effect when true |
 | --- | --- | --- |
