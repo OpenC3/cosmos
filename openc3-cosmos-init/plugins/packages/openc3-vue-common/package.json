@@ -98,7 +98,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "6.0.9",
-    "prettier": "3.9.6",
+    "prettier": "3.9.8",
     "rollup-plugin-sourcemaps2": "^0.5.8",
     "vite": "7.3.6"
   }
