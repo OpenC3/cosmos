@@ -460,9 +460,6 @@ importers:
       '@openc3/vue-common':
         specifier: workspace:*
         version: link:../openc3-vue-common
-      ace-builds:
-        specifier: 1.44.0
-        version: 1.44.0
       lodash:
         specifier: 4.18.1
         version: 4.18.1
@@ -583,9 +580,6 @@ importers:
       '@openc3/vue-common':
         specifier: workspace:*
         version: link:../openc3-vue-common
-      ace-builds:
-        specifier: 1.44.0
-        version: 1.44.0
       binary-search:
         specifier: 1.3.6
         version: 1.3.6
