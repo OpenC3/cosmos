@@ -807,21 +807,9 @@ importers:
       import-map-overrides:
         specifier: 6.1.0
         version: 6.1.0
-      pinia:
-        specifier: 4.0.3
-        version: 4.0.3(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.43(typescript@6.0.3))
-      single-spa:
-        specifier: 6.0.3
-        version: 6.0.3
       systemjs:
         specifier: 6.15.1
         version: 6.15.1
-      vue-router:
-        specifier: 4.4.4
-        version: 4.4.4(vue@3.5.43(typescript@6.0.3))
-      vuetify:
-        specifier: 3.13.5
-        version: 3.13.5(typescript@6.0.3)(vue@3.5.43(typescript@6.0.3))
     devDependencies:
       '@types/systemjs':
         specifier: 6.15.4
@@ -829,6 +817,9 @@ importers:
       '@vitejs/plugin-vue':
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
+      pinia:
+        specifier: 4.0.3
+        version: 4.0.3(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.43(typescript@6.0.3))
       prettier:
         specifier: 3.9.6
         version: 3.9.6
@@ -838,12 +829,21 @@ importers:
       sass:
         specifier: 1.105.0
         version: 1.105.0
+      single-spa:
+        specifier: 6.0.3
+        version: 6.0.3
       vite:
         specifier: 7.3.6
         version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0)
       vue:
         specifier: 3.5.43
         version: 3.5.43(typescript@6.0.3)
+      vue-router:
+        specifier: 4.4.4
+        version: 4.4.4(vue@3.5.43(typescript@6.0.3))
+      vuetify:
+        specifier: 3.13.5
+        version: 3.13.5(typescript@6.0.3)(vue@3.5.43(typescript@6.0.3))
 
   packages/openc3-vue-common:
     dependencies:
@@ -883,18 +883,12 @@ importers:
       monaco-editor:
         specifier: 0.56.0
         version: 0.56.0
-      pinia:
-        specifier: 4.0.3
-        version: 4.0.3(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.43(typescript@6.0.3))
       sass:
         specifier: 1.105.0
         version: 1.105.0
       semver:
         specifier: 7.8.5
         version: 7.8.5
-      single-spa:
-        specifier: 6.0.3
-        version: 6.0.3
       sortablejs:
         specifier: 1.15.7
         version: 1.15.7
@@ -907,12 +901,6 @@ importers:
       uplot:
         specifier: 1.6.32
         version: 1.6.32
-      vue:
-        specifier: 3.5.43
-        version: 3.5.43(typescript@6.0.3)
-      vuetify:
-        specifier: 3.13.5
-        version: 3.13.5(typescript@6.0.3)(vue@3.5.43(typescript@6.0.3))
       vuetify-sonner:
         specifier: ^0.4.2
         version: 0.4.2(vue@3.5.43(typescript@6.0.3))(vuetify@3.13.5(typescript@6.0.3)(vue@3.5.43(typescript@6.0.3)))
@@ -920,15 +908,30 @@ importers:
       '@vitejs/plugin-vue':
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
+      pinia:
+        specifier: 4.0.3
+        version: 4.0.3(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.43(typescript@6.0.3))
       prettier:
         specifier: 3.9.6
         version: 3.9.6
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
+      single-spa:
+        specifier: 6.0.3
+        version: 6.0.3
       vite:
         specifier: 7.3.6
         version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0)
+      vue:
+        specifier: 3.5.43
+        version: 3.5.43(typescript@6.0.3)
+      vue-router:
+        specifier: 4.4.4
+        version: 4.4.4(vue@3.5.43(typescript@6.0.3))
+      vuetify:
+        specifier: 3.13.5
+        version: 3.13.5(typescript@6.0.3)(vue@3.5.43(typescript@6.0.3))
 
 packages:
 
