@@ -43,9 +43,7 @@
   "dependencies": {
     "@anycable/web": "1.1.1",
     "axios": "1.20.0",
-    "lossless-json": "4.3.1",
-    "sortablejs": "1.15.7",
-    "uplot": "1.6.32"
+    "lossless-json": "4.3.1"
   },
   "devDependencies": {
     "prettier": "3.9.6",
