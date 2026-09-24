@@ -24,6 +24,39 @@ from openc3.streams.stream import Stream
 from test.test_helper import *
 
 
+class FakeClock:
+    """Virtual clock standing in for the time module of TemplateProtocol.
+
+    The protocol measures its delays with time.time() and waits with
+    time.sleep(), both looked up on the module, so patching the module's time
+    with this makes sleeps advance the clock instantly by exactly the duration
+    the protocol asked to wait. That is how the tests check a delay is not
+    longer than configured, which cannot be asserted against the wall clock
+    without failing on a loaded machine. It proves nothing about the wait
+    really happening, so the tests using it are paired with a wall clock test
+    that asserts the protocol blocks for at least the configured time.
+
+    Code that waits without sleeping never advances this clock and would spin
+    forever, so time() raises once it is clear that is happening.
+    """
+
+    MAX_READS = 100000
+
+    def __init__(self):
+        self.now = 0.0
+        self.reads = 0
+
+    def time(self):
+        self.reads += 1
+        if self.reads > self.MAX_READS:
+            raise RuntimeError("clock never advanced: does the code under test still wait with time.sleep()?")
+        return self.now
+
+    def sleep(self, seconds):
+        self.reads = 0
+        self.now += seconds
+
+
 class TestTemplateProtocol(unittest.TestCase):
     read_buffer = None
     write_buffer = None
@@ -53,6 +86,26 @@ class TestTemplateProtocol(unittest.TestCase):
         TestTemplateProtocol.read_buffer = None
         TestTemplateProtocol.write_buffer = None
         self.interface = TestTemplateProtocol.MyInterface()
+
+    def _command_packet(self, cmd_template, rsp_template=None, rsp_packet=None, **items):
+        """Build a TGT CMD packet with the given 16 bit UINT items and templates.
+
+        Items are appended in the order given, each defaulting to its value,
+        followed by the CMD_TEMPLATE, RSP_TEMPLATE and RSP_PACKET strings the
+        TemplateProtocol reads. A template left as None is not appended.
+        """
+        packet = Packet("TGT", "CMD")
+        for name, default in items.items():
+            packet.append_item(name, 16, "UINT")
+            packet.get_item(name).default = default
+        templates = {"CMD_TEMPLATE": cmd_template, "RSP_TEMPLATE": rsp_template, "RSP_PACKET": rsp_packet}
+        for name, default in templates.items():
+            if default is None:
+                continue
+            packet.append_item(name, 1024, "STRING")
+            packet.get_item(name).default = default
+        packet.restore_defaults()
+        return packet
 
     def test_initializes_attributes(self):
         self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD"], "READ_WRITE")
@@ -86,29 +139,32 @@ class TestTemplateProtocol(unittest.TestCase):
 
     def test_ignores_all_data_during_the_connect_period(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
-        self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD", 0, 0.01], "READ_WRITE")
+        self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD", 0, 0.1], "READ_WRITE")
         start = time.time()
         self.interface.connect()
+        protocol = self.interface.read_protocols[0]
+        # Data arriving during the connect period is dropped, not buffered
+        self.assertEqual(protocol.read_data(b"\x39\x39\xab\xcd"), ("STOP", None))
+        self.assertEqual(protocol.data, b"")
+        # The read keeps dropping data until the connect period has really elapsed
         TestTemplateProtocol.read_buffer = b"\x31\x30\xab\xcd"
         data = self.interface.read()
-        self.assertAlmostEqual(time.time() - start, 0.01, places=1)
+        self.assertGreaterEqual(time.time() - start, 0.1)
         self.assertEqual(data.buffer, b"\x31\x30")
 
     def test_waits_before_writing_during_the_initial_delay_period(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
         self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD", 0, 0.02], "READ_WRITE")
-        packet = Packet("TGT", "CMD")
-        packet.append_item("VOLTAGE", 16, "UINT")
-        packet.get_item("VOLTAGE").default = 1
-        packet.append_item("CHANNEL", 16, "UINT")
-        packet.get_item("CHANNEL").default = 2
-        packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item("CMD_TEMPLATE").default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
-        packet.restore_defaults()
+        packet = self._command_packet("SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)", VOLTAGE=1, CHANNEL=2)
         self.interface.connect()
         write = time.time()
         self.interface.write(packet)
-        self.assertAlmostEqual(time.time() - write, 0.02, places=1)
+        # The write really blocks until the initial delay has elapsed. Only the
+        # lower bound can be checked here because a loaded machine can take
+        # arbitrarily longer; test_waits_no_longer_than_the_initial_delay_before_writing
+        # covers the protocol not waiting longer than it was configured to
+        self.assertGreaterEqual(time.time() - write, 0.02)
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 1, (self.2)\xab\xcd")
 
     def test_works_without_a_response(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
@@ -132,14 +188,7 @@ class TestTemplateProtocol(unittest.TestCase):
             "READ_WRITE",
         )
         self.interface.target_names = ["TGT"]
-        packet = Packet("TGT", "CMD")
-        packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item("CMD_TEMPLATE").default = "GO"
-        packet.append_item("RSP_TEMPLATE", 1024, "STRING")
-        packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>"
-        packet.append_item("RSP_PACKET", 1024, "STRING")
-        packet.get_item("RSP_PACKET").default = "DATA"
-        packet.restore_defaults()
+        packet = self._command_packet("GO", "<VOLTAGE>", "DATA")
         self.interface.connect()
         start = time.time()
         for stdout in capture_io():
@@ -148,7 +197,8 @@ class TestTemplateProtocol(unittest.TestCase):
                 "Timeout waiting for response",
                 stdout.getvalue(),
             )
-        self.assertAlmostEqual(time.time() - start, 0.03, places=1)
+        # The write really blocks for the response timeout before giving up
+        self.assertGreaterEqual(time.time() - start, 0.03)
 
     def test_disconnects_if_it_doesnt_receive_a_response(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
@@ -158,19 +208,52 @@ class TestTemplateProtocol(unittest.TestCase):
             "READ_WRITE",
         )
         self.interface.target_names = ["TGT"]
-        packet = Packet("TGT", "CMD")
-        packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item("CMD_TEMPLATE").default = "GO"
-        packet.append_item("RSP_TEMPLATE", 1024, "STRING")
-        packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>"
-        packet.append_item("RSP_PACKET", 1024, "STRING")
-        packet.get_item("RSP_PACKET").default = "DATA"
-        packet.restore_defaults()
+        packet = self._command_packet("GO", "<VOLTAGE>", "DATA")
         self.interface.connect()
         start = time.time()
         with self.assertRaisesRegex(RuntimeError, "Timeout waiting for response"):
             self.interface.write(packet)
-        self.assertAlmostEqual(time.time() - start, 0.04, places=1)
+        # The write really blocks for the response timeout before raising
+        self.assertGreaterEqual(time.time() - start, 0.04)
+
+    def test_waits_no_longer_than_the_initial_delay_before_writing(self):
+        # The wall clock can only show that the write waited at least the
+        # initial delay. Run the same write against a virtual clock, which the
+        # protocol advances by exactly the durations it sleeps, to show it does
+        # not wait any longer than it was configured to
+        self.interface.stream = TestTemplateProtocol.TemplateStream()
+        self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD", 0, 0.02], "READ_WRITE")
+        packet = self._command_packet("SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)", VOLTAGE=1, CHANNEL=2)
+        clock = FakeClock()
+        with patch("openc3.interfaces.protocols.template_protocol.time", clock):
+            self.interface.connect()
+            write = clock.now
+            self.interface.write(packet)
+            elapsed = clock.now - write
+        self.assertAlmostEqual(elapsed, 0.02, places=6)
+        self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 1, (self.2)\xab\xcd")
+
+    def test_times_out_within_one_polling_period_of_the_response_timeout(self):
+        # Same idea for the response timeout: the virtual clock shows the
+        # timeout fires on the first poll at or after it expires rather than
+        # some multiple of it
+        self.interface.stream = TestTemplateProtocol.TemplateStream()
+        self.interface.add_protocol(
+            TemplateProtocol,
+            ["0xA", "0xA", 0, None, 1, True, 0, None, False, 0.04, 0.02, True],
+            "READ_WRITE",
+        )
+        self.interface.target_names = ["TGT"]
+        packet = self._command_packet("GO", "<VOLTAGE>", "DATA")
+        clock = FakeClock()
+        with patch("openc3.interfaces.protocols.template_protocol.time", clock):
+            self.interface.connect()
+            start = clock.now
+            with self.assertRaisesRegex(RuntimeError, "Timeout waiting for response"):
+                self.interface.write(packet)
+            elapsed = clock.now - start
+        self.assertGreaterEqual(elapsed, 0.04)
+        self.assertLess(elapsed, 0.04 + 0.02)  # response_polling_period
 
     def test_doesnt_expect_responses_for_empty_response_fields(self):
         self.interface.stream = TestTemplateProtocol.TemplateStream()

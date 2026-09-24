@@ -19,6 +19,7 @@
         :initial-target-name="targetName"
         :initial-packet-name="commandName"
         :disabled="sendDisabled"
+        :disable-button-text="readOnly ? 'Viewers cannot send commands' : null"
         :button-text="showCommandButton ? 'Send' : null"
         :show-queue-select="showQueueSelect"
         :parameter-hazardous="hasHazardousParameter"
@@ -128,6 +129,10 @@ export default {
       default: null,
     },
     sendDisabled: {
+      type: Boolean,
+      default: false,
+    },
+    readOnly: {
       type: Boolean,
       default: false,
     },

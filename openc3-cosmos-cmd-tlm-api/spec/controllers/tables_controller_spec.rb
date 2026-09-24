@@ -196,6 +196,47 @@ RSpec.describe TablesController, type: :controller do
       expect(json["contents"]).to eq("table report content")
     end
 
+    it "does not save the report by default" do
+      report_file = OpenStruct.new(filename: "table.csv", contents: "report content")
+      expect(Table).to receive(:report).with("DEFAULT", "INST/tables/bin/table.bin", "INST/tables/config/table_def.txt", nil, save: false).and_return(report_file)
+
+      get :report, params: {
+        scope: "DEFAULT",
+        binary: "INST/tables/bin/table.bin",
+        definition: "INST/tables/config/table_def.txt"
+      }
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "saves the report when save is requested" do
+      report_file = OpenStruct.new(filename: "table.csv", contents: "report content")
+      expect(Table).to receive(:report).with("DEFAULT", "INST/tables/bin/table.bin", "INST/tables/config/table_def.txt", nil, save: true).and_return(report_file)
+
+      get :report, params: {
+        scope: "DEFAULT",
+        binary: "INST/tables/bin/table.bin",
+        definition: "INST/tables/config/table_def.txt",
+        save: true
+      }
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "does not save the report when save is the string false" do
+      report_file = OpenStruct.new(filename: "table.csv", contents: "report content")
+      expect(Table).to receive(:report).with("DEFAULT", "INST/tables/bin/table.bin", "INST/tables/config/table_def.txt", nil, save: false).and_return(report_file)
+
+      get :report, params: {
+        scope: "DEFAULT",
+        binary: "INST/tables/bin/table.bin",
+        definition: "INST/tables/config/table_def.txt",
+        save: "false"
+      }
+
+      expect(response).to have_http_status(:ok)
+    end
+
     it "handles not found errors" do
       allow(Table).to receive(:report).and_raise(Table::NotFound.new("Report file not found"))
       allow(controller).to receive(:log_error)

@@ -5,7 +5,11 @@ strictDepBuilds: false
 
 minimumReleaseAge: 1440 # 1 day
 minimumReleaseAgeExclude:
-  - ace-diff # we control this package
+  # we control these packages
+  - ace-diff
+  - '@openc3/js-common'
+  - '@openc3/vue-common'
+  - '@openc3/tool-base'
 
 # pnpm 11 defaults strictDepBuilds to true, which turns "ignored build scripts"
 # from a warning into an install failure. Note pnpm 11 replaced
