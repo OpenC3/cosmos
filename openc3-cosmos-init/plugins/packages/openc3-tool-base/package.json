@@ -17,7 +17,6 @@
     "systemjs": "6.15.1"
   },
   "devDependencies": {
-    "@types/systemjs": "6.15.4",
     "@vitejs/plugin-vue": "6.0.9",
     "prettier": "3.9.6",
     "rollup-plugin-sourcemaps2": "^0.5.8",
