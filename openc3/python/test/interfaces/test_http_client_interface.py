@@ -30,6 +30,14 @@ class TestHttpClientInterface(unittest.TestCase):
         self.assertEqual(i.read_timeout, 30.0)
         self.assertEqual(i.connect_timeout, 10.0)
         self.assertTrue(i.include_request_in_response)
+        self.assertIsNone(i.http)
+
+    def test_is_disconnected_before_connect(self):
+        i = HttpClientInterface("example.com")
+
+        self.assertFalse(i.connected())
+        i.disconnect()
+        self.assertFalse(i.connected())
 
     def test_default_parameters(self):
         i = HttpClientInterface("example.com")

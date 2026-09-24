@@ -295,11 +295,19 @@ GOTO :EOF
 
 :util
   REM Send the remaining arguments to openc3_util
+  CALL :resolve_max_map_count
   set args=%*
   call set args=%%args:*%1=%%
   CALL scripts\windows\openc3_util %args% || exit /b
   @echo off
 GOTO :EOF
+
+:resolve_max_map_count
+  REM Resolve OPENC3_MAX_MAP_COUNT from the env file if not already set. The
+  REM value is defined once in .env; deliberately no fallback here so this and
+  REM .env can never disagree. openc3_util reports the error if it stays unset.
+  if not defined OPENC3_MAX_MAP_COUNT FOR /F "tokens=1,* delims==" %%a in ('findstr /B /C:"OPENC3_MAX_MAP_COUNT=" "%~dp0.env" 2^>nul') do set "OPENC3_MAX_MAP_COUNT=%%b"
+  exit /b 0
 
 :resolve_openc3_tag
   REM Resolve OPENC3_TAG from the env files if not already set.

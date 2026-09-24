@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "OpenC3 integration testing",
   "scripts": {
-    "coverage": "node generate-coverage.mjs",
+    "coverage": "node --max-old-space-size=8192 --expose-gc generate-coverage.mjs",
     "test": "pnpm test:parallel --quiet && pnpm test:serial --quiet && pnpm coverage",
     "test:parallel": "playwright test ./tests/*.p.spec.ts ./tests/**/*.p.spec.ts --project=chromium",
     "test:serial": "playwright test ./tests/*.s.spec.ts ./tests/**/*.s.spec.ts --project=chromium --workers=1",
@@ -16,17 +16,17 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@playwright/test": "1.62.1",
+    "@playwright/test": "1.63.0",
     "date-fns": "4.4.0",
-    "jszip": "^3.10.1",
-    "monocart-coverage-reports": "^2.12.12",
+    "jszip": "^3.10.2",
+    "monocart-coverage-reports": "^2.13.0",
     "prettier": "^3.9.6"
   },
   "devDependencies": {
-    "@types/node": "^25.9.5",
-    "eslint": "^10.8.0",
-    "globals": "^17.9.0",
+    "@types/node": "^25.9.8",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.66.0"
+    "typescript-eslint": "^8.70.1"
   }
 }

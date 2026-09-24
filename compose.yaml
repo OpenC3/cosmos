@@ -233,6 +233,7 @@ services:
       - OPENC3_AUTH_RATE_LIMIT_TO
       - OPENC3_AUTH_RATE_LIMIT_WITHIN
       - OPENC3_LOG_STDERR
+      - OPENC3_SECRET_FILE_DIR
       - OPENC3_LOG_LEVEL
     extra_hosts:
       - host.docker.internal:host-gateway
@@ -307,6 +308,7 @@ services:
       - OPENC3_SERVICE_PASSWORD=${OPENC3_SERVICE_PASSWORD}
       # Optional: bare pass-through (only forwarded if set in host env or .env)
       - OPENC3_LOG_STDERR
+      - OPENC3_SECRET_FILE_DIR
       - OPENC3_LOG_LEVEL
 
   openc3-operator:
@@ -388,6 +390,7 @@ services:
       - OPENC3_SERVICE_PASSWORD=${OPENC3_SERVICE_PASSWORD}
       # Optional: bare pass-through (only forwarded if set in host env or .env)
       - OPENC3_LOG_STDERR
+      - OPENC3_SECRET_FILE_DIR
       - OPENC3_LOG_LEVEL
     extra_hosts:
       - host.docker.internal:host-gateway
@@ -458,6 +461,13 @@ services:
         max-file: "3"
     # Values are interpolated from .env by compose; only the vars this
     # container actually reads at runtime are passed in (was env_file: .env).
+    #
+    # Admin Console settings (time zone, time format, theme, package URLs,
+    # ...) can be seeded here at deploy time with OPENC3_SETTING_<NAME>
+    # variables. They are deliberately NOT listed below: an override's
+    # environment: block ADDS variables, so a setting added by a later
+    # release needs no edit to this file. Put them in compose.override.yaml.
+    # See https://docs.openc3.com/docs/getting-started/cli#initsettings
     environment:
       # CI is set in Github actions, changes the Demo TLM_LOG_CYCLE_TIME
       # List syntax passes through host CI only if set, omits it otherwise
@@ -510,6 +520,7 @@ services:
       - OPENC3_INIT_WAIT_TIMEOUT
       - OPENC3_ISTIO_ENABLED
       - OPENC3_LOG_STDERR
+      - OPENC3_SECRET_FILE_DIR
       - OPENC3_LOG_LEVEL
       # Per-tool install opt-outs
       - OPENC3_NO_CMDTLMSERVER

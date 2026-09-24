@@ -327,9 +327,7 @@ class TestRunningScriptWebSocketApiReady(unittest.TestCase):
         )
         api.stream = FakeWebSocketStream()
         api.subscribed = True
-        api.stream.queue_read(
-            '{"message":[{"type":"line","line_no":1},{"type":"output","line":"hi"}]}'
-        )
+        api.stream.queue_read('{"message":[{"type":"line","line_no":1},{"type":"output","line":"hi"}]}')
 
         self.assertEqual(api.read(), {"type": "line", "line_no": 1})
         self.assertEqual(api.read(), {"type": "output", "line": "hi"})

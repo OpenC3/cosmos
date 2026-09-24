@@ -46,6 +46,14 @@ Note that all protocols take a final parameter called "Allow Empty Data". This i
 
 Note the first parameter after the PROTOCOL keyword is how to apply the protocol: READ, WRITE, or READ_WRITE. Read applies the protocol on incoming packets (telemetry) and write on outgoing packets (commands). The next parameter is the protocol filename or class name. All other parameters are protocol specific.
 
+#### Maximum Buffer Size
+
+Protocols which delineate packets have to accumulate bytes until a complete packet has arrived. The Length and Preidentified protocols buffer until the number of bytes named by a length field on the wire has been received; the Terminated protocol buffers until it sees the termination characters. In all three cases the peer on the other end controls how much COSMOS buffers, so a peer which declares an enormous length, or never sends a terminator, can drive an interface microservice to memory exhaustion.
+
+COSMOS bounds this with a maximum buffer size, which defaults to 100,000,000 bytes (100 MB). This is far larger than any realistic packet, so it does not affect normal configurations. When the limit is hit the interface logs an error and disconnects, which drops the offending peer and clears the buffer. The Length and Preidentified protocols additionally reject a declared length larger than the limit immediately, without buffering the declared number of bytes first.
+
+Set the `OPENC3_PROTOCOL_MAX_BUFFER_SIZE` environment variable to change the limit for all protocols. Note that the Length and Preidentified protocols also take a Max Length parameter which bounds the value of the length field itself. Max Length is checked before the buffer size and gives a tighter, per-interface bound, so it is worth setting on those protocols in addition to the global limit.
+
 ### COBS Protocol
 
 The Consistent Overhead Byte Stuffing (COBS) Protocol is an algorithm for encoding data bytes that results in efficient, reliable, unambiguous packet framing regardless of packet content, thus making it easy for receiving applications to recover from malformed packets. It employs the zero byte value to serve as a packet delimiter (a special value that indicates the boundary between packets). The algorithm replaces each zero data byte with a non-zero value so that no zero data bytes will appear in the packet and thus be misinterpreted as packet boundaries (See https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing for more).
@@ -120,6 +128,8 @@ Source code for [slip_protocol.rb](https://github.com/OpenC3/cosmos/blob/main/op
 ### Burst Protocol
 
 The Burst Protocol simply reads as much data as it can from the interface before returning the data as a COSMOS Packet (It returns a packet for each burst of data read). This Protocol relies on regular bursts of data delimited by time and thus is not very robust. However, it can utilize a sync pattern which does allow it to re-sync if necessary. It can also discard bytes from the incoming data to remove the sync pattern. Finally, it can add sync patterns to data being written out of the Interface.
+
+Note that Burst Protocol is the base class for many of the other protocols.
 
 | Parameter             | Description                                                                                                                                                                                 | Required | Default                  |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------ |
@@ -201,7 +211,7 @@ The Length Protocol depends on a length field at a fixed location in the defined
 | Length Endianness            | The endianness of the length field. Must be either 'BIG_ENDIAN' or 'LITTLE_ENDIAN'.                                                                                                                                                                                                                                                                                                                                          | No       | 'BIG_ENDIAN'             |
 | Discard Leading Bytes        | The number of bytes to discard from the binary data after reading. Note that this applies to bytes including the sync pattern if the sync pattern is being used. Discarding is one of the very last steps so any size and offsets above need to account for all the data before discarding.                                                                                                                                  | No       | 0 (do not discard bytes) |
 | Sync Pattern                 | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found including the sync pattern will be returned.                                                                                                                                                                                                                                 | No       | nil (no sync pattern)    |
-| Max Length                   | The maximum allowed value in the length field                                                                                                                                                                                                                                                                                                                                                                                | No       | nil (no maximum length)  |
+| Max Length                   | The maximum allowed value in the length field. Strongly recommended: it is the only per-interface bound on how much data a peer can make COSMOS buffer. For a UDP-backed interface 65535 is a natural value since a UDP payload cannot exceed 65507 bytes. See [Maximum Buffer Size](#maximum-buffer-size).                                                                                                                  | No       | nil (no maximum length)  |
 | Fill Length and Sync Pattern | Setting this flag to true causes the length field and sync pattern (if present) to be filled automatically on outgoing packets.                                                                                                                                                                                                                                                                                              | No       | false                    |
 
 The most confusing aspect of the Length Protocol is calculating the Length Value Offset. This is especially true in the commonly used CCSDS Space Packet Protocol. The best way to illustrate this is with an example. Suppose you have CCSDS Space Packets prepended with a Sync Pattern of 0x1ACFFC1D. This would look like the following:
@@ -426,7 +436,7 @@ The Preidentified Protocol delineates packets using the COSMOS header. This Prot
 | Parameter    | Description                                                                                                                                                                                                                    | Required | Default                 |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- | ----------------------- |
 | Sync Pattern | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found AFTER the sync pattern will be returned. The sync pattern itself is discarded. | No       | nil (no sync pattern)   |
-| Max Length   | The maximum allowed value in the length field                                                                                                                                                                                  | No       | nil (no maximum length) |
+| Max Length   | The maximum allowed value in the length field. Strongly recommended, see [Maximum Buffer Size](#maximum-buffer-size).                                                                                                          | No       | nil (no maximum length) |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -858,10 +868,12 @@ def __init__(self, allow_empty_data=None):
 <TabItem value="ruby" label="Ruby">
 
 ```ruby
-# @param allow_empty_data [true/false] Whether STOP should be returned on empty data
-def initialize(allow_empty_data = false)
+# @param allow_empty_data [true/false/nil] Whether or not this protocol will allow an empty string
+# to be passed down to later Protocols (instead of returning :STOP). Can be true, false, or nil, where
+# nil is interpreted as true unless the Protocol is the last Protocol of the chain.
+def initialize(allow_empty_data = nil)
   @interface = nil
-  @allow_empty_data = ConfigParser.handle_true_false(allow_empty_data)
+  @allow_empty_data = ConfigParser.handle_true_false_nil(allow_empty_data)
   reset()
 end
 ```
@@ -882,7 +894,15 @@ Base class implementation:
 
 ```python
 def reset(self):
-    pass
+    self.read_data_input_time = None
+    self.read_data_input = b""
+    self.read_data_output_time = None
+    self.read_data_output = b""
+    self.write_data_input_time = None
+    self.write_data_input = b""
+    self.write_data_output_time = None
+    self.write_data_output = b""
+    self.extra = None
 ```
 
 </TabItem>
@@ -890,13 +910,22 @@ def reset(self):
 
 ```ruby
 def reset
+  @read_data_input_time = nil
+  @read_data_input = ''
+  @read_data_output_time = nil
+  @read_data_output = ''
+  @write_data_input_time = nil
+  @write_data_input = ''
+  @write_data_output_time = nil
+  @write_data_output = ''
+  @extra = nil
 end
 ```
 
 </TabItem>
 </Tabs>
 
-As you can see, the base class reset implementation doesn't do anything.
+The base class reset implementation only clears the protocol's own state: the extra field and the data captured for the read_details / write_details methods. Subclasses which define reset must call super to keep this state cleared.
 
 ### connect_reset
 
@@ -970,7 +999,7 @@ def read_data(self, data, extra=None):
             if self.interface and self.interface.read_protocols[-1] == self:
                 # Last read interface in chain with auto self.allow_empty_data
                 return ("STOP", extra)
-        elif self.allow_empty_data:
+        elif not self.allow_empty_data:
             # Don't self.allow_empty_data means STOP
             return ("STOP", extra)
     return (data, extra)
@@ -980,7 +1009,7 @@ def read_data(self, data, extra=None):
 <TabItem value="ruby" label="Ruby">
 
 ```ruby
-def read_data(data)
+def read_data(data, extra = nil)
   if (data.length <= 0)
     if @allow_empty_data.nil?
       if @interface and @interface.read_protocols[-1] == self # Last read interface in chain with auto @allow_empty_data
@@ -990,7 +1019,7 @@ def read_data(data)
       return :STOP
     end
   end
-  data
+  return data, extra
 end
 ```
 

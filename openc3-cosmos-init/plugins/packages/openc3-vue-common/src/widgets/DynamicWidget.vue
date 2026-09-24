@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -38,7 +38,9 @@ export default {
     try {
       this.widgetType = await System.import(/* webpackIgnore: true */ this.url)
     } catch (e) {
-      throw new Error(`Unknown widget: ${this.name}: ${e}`)
+      // Vue routes a rejected async lifecycle hook through errorCaptured, so
+      // throwing here still reports against the screen definition line
+      throw this.screenError(this.name, `Unknown widget: ${this.name}: ${e}`)
     }
   },
 }

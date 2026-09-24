@@ -11,12 +11,19 @@ FROM ${OPENC3_DEPENDENCY_REGISTRY}/ruby:${RUBY_VERSION}-slim-${DEBIAN_RELEASE}
 # used in any instruction after a FROM. So we need to re-ARG the ones we use.
 ARG RUBY_VERSION
 ARG APT_URL=http://deb.debian.org
+# Debian point release this image must reach. The rolling `<codename>` base
+# tags keep their old base-files until Docker Official Images rebuilds, so the
+# apt upgrade below is what lands a point release - and a cached layer would
+# pin this image to the previous one indefinitely. Bumping this busts that
+# layer; the dpkg check fails the build if apt fell short (stale APT_URL
+# mirror). scripts/release/package_audit.rb verifies it against deb.debian.org.
+ARG DEBIAN_POINT_RELEASE=13.7
 # Python minor version shipped by the chosen Debian release (trixie -> 3.13)
 ARG PYTHON_VERSION=3.13
 ARG RUBYGEMS_URL
 ARG PYPI_URL=https://pypi.org
 # Update Dockerfile-ubi and the python .github/workflow actions to match this version
-ARG UV_VERSION=0.11.33
+ARG UV_VERSION=0.12.5
 
 ENV APT_URL=${APT_URL}
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
@@ -68,6 +75,8 @@ COPY shoreman.sh /usr/bin/shoreman
 
 RUN apt-get update && \
     apt-get -y upgrade && \
+    dpkg --compare-versions "$(cat /etc/debian_version)" ge "${DEBIAN_POINT_RELEASE}" && \
+    echo "debian $(cat /etc/debian_version)" > /etc/openc3-base-os && \
     apt-get install -y --no-install-recommends \
       autoconf \
       automake \
@@ -103,6 +112,15 @@ RUN apt-get update && \
     gem install rake && \
     gem install google-protobuf && \
     gem install grpc && \
+    # resolv 0.7.2 fixes CVE-2026-80212. Ruby ships resolv as a default gem
+    # (0.7.1 in 3.4.10) and a default gem cannot be uninstalled,
+    # so install the patched gem and then delete the default gemspec along with
+    # the stdlib copy of resolv.rb that it describes. Without that removal image
+    # scanners keep reporting the bundled version, and a require "resolv" from a
+    # bundle that does not list resolv would still load the vulnerable code.
+    gem install resolv -v 0.7.2 && \
+    rm -f "$(ruby -e 'print Gem.default_specifications_dir')"/resolv-[0-9]*.gemspec && \
+    rm -f "$(ruby -e 'print RbConfig::CONFIG["rubylibdir"]')"/resolv.rb && \
     gem cleanup && \
     bundle config build.nokogiri --use-system-libraries && \
     bundle config git.allow_insecure true && \

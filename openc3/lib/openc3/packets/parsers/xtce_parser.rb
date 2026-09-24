@@ -22,6 +22,10 @@ module OpenC3
   class XtceParser
     attr_accessor :current_target_name
 
+    # The target the file defined, still readable after parsing finishes.
+    # current_target_name is cleared by reset_processing_variables.
+    attr_reader :parsed_target_name
+
     # Processes a XTCE formatted OpenC3 configuration file
     #
     # @param commands [Hash<String=>Packet>] Hash of all the command packets
@@ -32,8 +36,10 @@ module OpenC3
     #   that were created while parsing the configuration
     # @param filename [String] The name of the configuration file
     # @param target_name [String] Override the target name found in the XTCE file
+    # @return [String] The target name the packets were added under. The caller
+    #   needs this to build the ID lookup metadata for those packets.
     def self.process(commands, telemetry, warnings, filename, target_name = nil)
-      XtceParser.new(commands, telemetry, warnings, filename, target_name)
+      XtceParser.new(commands, telemetry, warnings, filename, target_name).parsed_target_name
     end
 
     def self.reverse_packet_order(target_name, cmd_or_tlm_hash)
@@ -91,6 +97,7 @@ module OpenC3
       XtceParser.reverse_packet_order(@current_target_name, @commands)
       XtceParser.reverse_packet_order(@current_target_name, @telemetry)
 
+      @parsed_target_name = @current_target_name
       reset_processing_variables()
     end
 

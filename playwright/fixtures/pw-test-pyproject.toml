@@ -1,0 +1,37 @@
+# Python dependencies for the generated PW_TEST plugin.
+#
+# `openc3.sh cli generate plugin --ruby` produces a Ruby-only plugin, which
+# means PluginModel never runs uvinstall and no per-plugin venv is created. With
+# no venv on disk the /script-api/scripts/plugin_python_venvs endpoint returns
+# an empty list, Script Runner's `showPythonVenv` is false, and the Python venv
+# selector never renders - so nothing about that feature is reachable from a
+# browser test. Copying this file into the plugin before `rake build` is what
+# gives the Playwright environment a real plugin venv to select.
+#
+# cowsay is deliberate: it is pure Python, has no dependencies of its own, and
+# is NOT part of the openc3 base venv (directly or transitively). A script that
+# imports it therefore proves the plugin venv is actually on the path, which a
+# package the base venv already carries could not.
+#
+# openc3 itself must never appear in [project.dependencies]. The plugin venv's
+# site-packages goes on PYTHONPATH ahead of the base venv's own site-packages,
+# so a plugin copy would shadow the system library. PythonVenv.RESERVED_PACKAGES
+# strips it at install time; see the demo plugin, which keeps openc3 in the dev
+# group where `uv sync --no-dev` ignores it.
+[project]
+name = "openc3-cosmos-pw-test"
+version = "0.0.0"
+description = "OpenC3 COSMOS Playwright test plugin Python dependencies"
+requires-python = ">=3.11"
+dependencies = [
+    "cowsay>=6.1,<7.0",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# Nothing to build: the plugin ships no Python package of its own, it only
+# declares dependencies to install into the venv.
+packages = []

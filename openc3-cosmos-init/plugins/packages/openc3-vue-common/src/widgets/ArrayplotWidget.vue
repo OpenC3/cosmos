@@ -166,24 +166,25 @@ export default {
         .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => {
+            // We're back, so drop the disconnect error we reported below.
+            // Nothing else clears it: a screen of nothing but graphs never
+            // polls the REST API.
+            this.clearScreenErrors()
             this.addItemsToSubscription(this.items)
           },
           disconnected: (data) => {
             // If allowReconnect is true it means we got a disconnect due to connection lost or server disconnect
             // If allowReconnect is false this is a normal server close or client close
             if (data.allowReconnect) {
-              this.errors.push({
+              this.emitScreenError('OpenC3 backend connection disconnected', {
                 type: 'disconnected',
-                message: 'OpenC3 backend connection disconnected',
-                time: new Date().getTime(),
+                transient: true,
               })
             }
           },
           rejected: () => {
-            this.errors.push({
+            this.emitScreenError('OpenC3 backend connection rejected', {
               type: 'rejected',
-              message: 'OpenC3 backend connection rejected',
-              time: new Date().getTime(),
             })
           },
         })
@@ -199,14 +200,17 @@ export default {
           // or an array with both X and Y values, e.g. [[x1,x2,x3...], [y1,y2,y3...]]
           if (key === '__time') {
             // Explicitly setting the X axis values always wins
+            // data[1] is the first item's series, missing if the screen
+            // defined an ARRAYPLOT without any SETTING ITEM
+            const points = this.data[1]?.length || 0
             if (this.xAxis) {
               xaxis = Array.from(
-                { length: this.data[1].length },
+                { length: points },
                 (_, i) => this.xAxis.start + i * this.xAxis.step,
               )
             } else if (xaxis.length === 0) {
               // If we don't have an array of X values we generate them
-              xaxis = Array.from({ length: this.data[1].length }, (_, i) => i)
+              xaxis = Array.from({ length: points }, (_, i) => i)
             }
             this.data[0] = xaxis
           }

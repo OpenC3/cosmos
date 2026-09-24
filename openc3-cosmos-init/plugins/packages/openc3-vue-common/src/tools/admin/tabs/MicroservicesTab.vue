@@ -283,14 +283,9 @@ export default {
       Api.get('/openc3-api/microservices/all')
         .then((response) => {
           // Convert hash of microservices to array of microservices
-          let microservices = []
-          for (const [_microservice_name, microservice] of Object.entries(
-            response.data,
-          )) {
-            microservices.push(microservice)
-          }
-          microservices.sort((a, b) => a.name.localeCompare(b.name))
-          this.allMicroservices = microservices
+          this.allMicroservices = Object.values(response.data).sort((a, b) =>
+            a.name.localeCompare(b.name),
+          )
           this.applyServiceFilter()
         })
         .catch(console.error)
@@ -364,91 +359,71 @@ export default {
     clearServiceFilter: function () {
       this.$router.push({ query: {} })
     },
-    bulkRestartServices: function () {
+    startService: async function (name) {
+      try {
+        await Api.post(`/openc3-api/microservices/${name}/start`)
+      } catch (error) {
+        this.alert = `Start command failed for ${name}: ${error}`
+        this.alertType = 'error'
+        this.showAlert = true
+        setTimeout(() => {
+          this.showAlert = false
+        }, 5000)
+        delete this.microserviceOperations[name]
+      }
+    },
+    bulkRestartServices: async function () {
       const microserviceNames = this.filteredMicroservices.map((m) => m.name)
       const microserviceList = microserviceNames.join(', ')
       const confirmMessage = `Are you sure you want to restart ${microserviceNames.length} microservice(s)? ${microserviceList}`
 
-      this.$dialog
-        .confirm(confirmMessage, {
+      try {
+        await this.$dialog.confirm(confirmMessage, {
           okText: 'Restart',
           cancelText: 'Cancel',
         })
-        .then(() => {
-          microserviceNames.forEach((name) => {
-            const microservice = this.allMicroservices.find(
-              (ms) => ms.name === name,
-            )
-            const currentEnabled = microservice?.enabled !== false
-            const initialUpdatedAt = this.microservice_status[name]?.updated_at
-            this.microserviceOperations[name] = {
-              operation: 'restarting',
-              enabled_states: [currentEnabled],
-              initial_updated_at: initialUpdatedAt,
-              time_started: Date.now(),
-            }
-            Api.post(`/openc3-api/microservices/${name}/start`).catch(
-              (error) => {
-                this.alert = `Start command failed for ${name}: ${error}`
-                this.alertType = 'error'
-                this.showAlert = true
-                setTimeout(() => {
-                  this.showAlert = false
-                }, 5000)
-                delete this.microserviceOperations[name]
-              },
-            )
-          })
+        microserviceNames.forEach((name) => {
+          const microservice = this.allMicroservices.find(
+            (ms) => ms.name === name,
+          )
+          const currentEnabled = microservice?.enabled !== false
+          const initialUpdatedAt = this.microservice_status[name]?.updated_at
+          this.microserviceOperations[name] = {
+            operation: 'restarting',
+            enabled_states: [currentEnabled],
+            initial_updated_at: initialUpdatedAt,
+            time_started: Date.now(),
+          }
+          this.startService(name)
         })
-        .catch(() => {
-          // User cancelled
-        })
+      } catch {
+        // User cancelled
+      }
     },
-    bulkStopServices: function () {
+    stopService: async function (name) {
+      try {
+        await Api.post(`/openc3-api/microservices/${name}/stop`)
+      } catch (error) {
+        this.alert = `Stop command failed for ${name}: ${error}`
+        this.alertType = 'error'
+        this.showAlert = true
+        setTimeout(() => {
+          this.showAlert = false
+        }, 5000)
+        delete this.microserviceOperations[name]
+      }
+    },
+    bulkStopServices: async function () {
       const microserviceNames = this.filteredMicroservices.map((m) => m.name)
       const microserviceList = microserviceNames.join(', ')
       const confirmMessage = `Are you sure you want to stop ${microserviceNames.length} microservice(s)?\n\n${microserviceList}`
 
-      this.$dialog
-        .confirm(confirmMessage, {
+      try {
+        await this.$dialog.confirm(confirmMessage, {
           okText: 'Stop',
           cancelText: 'Cancel',
         })
-        .then(() => {
-          microserviceNames.forEach((name) => {
-            const microservice = this.allMicroservices.find(
-              (ms) => ms.name === name,
-            )
-            const currentEnabled = microservice?.enabled !== false
-            this.microserviceOperations[name] = {
-              operation: 'stopping',
-              enabled_states: [currentEnabled],
-              time_started: Date.now(),
-            }
-            Api.post(`/openc3-api/microservices/${name}/stop`).catch(
-              (error) => {
-                this.alert = `Stop command failed for ${name}: ${error}`
-                this.alertType = 'error'
-                this.showAlert = true
-                setTimeout(() => {
-                  this.showAlert = false
-                }, 5000)
-                delete this.microserviceOperations[name]
-              },
-            )
-          })
-        })
-        .catch(() => {
-          // User cancelled
-        })
-    },
-    stopMicroservice: function (name) {
-      this.$dialog
-        .confirm(`Are you sure you want to stop microservice: ${name}?`, {
-          okText: 'Stop',
-          cancelText: 'Cancel',
-        })
-        .then((_dialog) => {
+        microserviceNames.forEach((name) => {
           const microservice = this.allMicroservices.find(
             (ms) => ms.name === name,
           )
@@ -458,44 +433,58 @@ export default {
             enabled_states: [currentEnabled],
             time_started: Date.now(),
           }
-          Api.post(`/openc3-api/microservices/${name}/stop`).catch((error) => {
-            this.alert = `Stop command failed for ${name}: ${error}`
-            this.alertType = 'error'
-            this.showAlert = true
-            setTimeout(() => {
-              this.showAlert = false
-            }, 5000)
-            delete this.microserviceOperations[name]
-          })
+          this.stopService(name)
         })
+      } catch {
+        // User cancelled
+      }
     },
-    restartMicroservice: function (name) {
-      this.$dialog
-        .confirm(`Are you sure you want to restart microservice: ${name}?`, {
-          okText: 'Restart',
-          cancelText: 'Cancel',
-        })
-        .then((_dialog) => {
-          const microservice = this.allMicroservices.find(
-            (ms) => ms.name === name,
-          )
-          const currentEnabled = microservice?.enabled !== false
-          this.microserviceOperations[name] = {
-            operation: 'restarting',
-            enabled_states: [currentEnabled],
-            initial_updated_at: this.microservice_status[name]?.updated_at,
-            time_started: Date.now(),
-          }
-          Api.post(`/openc3-api/microservices/${name}/start`).catch((error) => {
-            this.alert = `Restart command failed for ${name}: ${error}`
-            this.alertType = 'error'
-            this.showAlert = true
-            setTimeout(() => {
-              this.showAlert = false
-            }, 5000)
-            delete this.microserviceOperations[name]
-          })
-        })
+    stopMicroservice: async function (name) {
+      try {
+        await this.$dialog.confirm(
+          `Are you sure you want to stop microservice: ${name}?`,
+          {
+            okText: 'Stop',
+            cancelText: 'Cancel',
+          },
+        )
+        const microservice = this.allMicroservices.find(
+          (ms) => ms.name === name,
+        )
+        const currentEnabled = microservice?.enabled !== false
+        this.microserviceOperations[name] = {
+          operation: 'stopping',
+          enabled_states: [currentEnabled],
+          time_started: Date.now(),
+        }
+        this.stopService(name)
+      } catch {
+        // User cancelled
+      }
+    },
+    restartMicroservice: async function (name) {
+      try {
+        await this.$dialog.confirm(
+          `Are you sure you want to restart microservice: ${name}?`,
+          {
+            okText: 'Restart',
+            cancelText: 'Cancel',
+          },
+        )
+        const microservice = this.allMicroservices.find(
+          (ms) => ms.name === name,
+        )
+        const currentEnabled = microservice?.enabled !== false
+        this.microserviceOperations[name] = {
+          operation: 'restarting',
+          enabled_states: [currentEnabled],
+          initial_updated_at: this.microservice_status[name]?.updated_at,
+          time_started: Date.now(),
+        }
+        this.startService(name)
+      } catch {
+        // User cancelled
+      }
     },
     showMicroservice: async function (name) {
       const response = await Api.get(`/openc3-api/microservices/${name}`)

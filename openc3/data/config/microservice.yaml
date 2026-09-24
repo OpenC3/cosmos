@@ -139,7 +139,9 @@ MICROSERVICE:
           values: .*
         - name: Environment Variable or File Path
           required: true
-          description: Environment variable name or file path to store secret
+          description: Environment variable name or file path to store secret.
+            FILE paths must be under /tmp (or the directory set by the
+            OPENC3_SECRET_FILE_DIR environment variable); paths outside of it are rejected.
           values: .*
         - name: Secret Store Name
           required: false

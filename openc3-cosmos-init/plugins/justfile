@@ -1,0 +1,189 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+# OpenC3 COSMOS Frontend Plugin Commands
+# Run `just` or `just --list` to see all available commands
+#
+# From the repository root these are namespaced: `just plugins::lint-all`.
+# Recipes run with this directory (the pnpm workspace root) as the working
+# directory, so paths below are relative to openc3-cosmos-init/plugins.
+#
+# Quick Start:
+#   just build-deps       - Build the shared packages the tools import
+#   just dev-admin        - Run a tool's dev server
+#   just lint-all         - Lint every workspace package
+
+packages_dir := "packages"
+
+# Default recipe - show available commands
+default:
+    @just --list
+
+# ---------------------------------------------------------------------------
+# Shared dependency builds
+# ---------------------------------------------------------------------------
+
+# Skips packages whose src/ hasn't changed since the last build
+
+# Build all shared frontend dependencies (js-common, vue-common, tool-base)
+build-deps:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    build_if_stale() {
+        local name="$1" src="$2" out="$3"
+        local dir="{{ packages_dir }}/$name"
+        if [[ ! -d "$dir/$out" ]] || [[ -n "$(find "$dir/$src" -newer "$dir/$out" -type f 2>/dev/null | head -1)" ]]; then
+            echo "Building $name ..."
+            (cd "$dir" && pnpm install && pnpm build)
+        else
+            echo "Skipping $name (up to date)"
+        fi
+    }
+    build_if_stale openc3-js-common  src dist
+    build_if_stale openc3-vue-common src dist
+    build_if_stale openc3-tool-base  src tools/base
+
+# Force-build all shared frontend dependencies (ignore cache)
+build-deps-force:
+    cd {{ packages_dir }}/openc3-js-common && pnpm install && pnpm build
+    cd {{ packages_dir }}/openc3-vue-common && pnpm install && pnpm build
+    cd {{ packages_dir }}/openc3-tool-base && pnpm install && pnpm build
+
+# ---------------------------------------------------------------------------
+# Generic dev server
+# ---------------------------------------------------------------------------
+
+# Run any plugin dev server: just dev openc3-cosmos-tool-admin
+dev plugin *FLAGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    plugin="{{ plugin }}"
+    skip_deps=false
+    for flag in {{ FLAGS }}; do
+        if [[ "$flag" == "--skip-deps" ]]; then
+            skip_deps=true
+        fi
+    done
+    dir="{{ packages_dir }}/$plugin"
+    if [[ ! -d "$dir" ]]; then
+        echo "Error: plugin '$plugin' not found in {{ packages_dir }}"
+        echo ""
+        echo "Available plugins:"
+        ls {{ packages_dir }} | grep openc3-cosmos-tool-
+        exit 1
+    fi
+    if [[ "$skip_deps" == false ]]; then
+        just build-deps
+    fi
+    cd "$dir"
+    pnpm install
+    port=$(grep -o 'port: [0-9]*' vite.config.js 2>/dev/null | grep -o '[0-9]*' | head -1)
+    port="${port:-2900}"
+    echo ""
+    echo "Starting $plugin on http://localhost:$port"
+    echo ""
+    pnpm serve
+
+# ---------------------------------------------------------------------------
+# Individual tool dev servers (alphabetical)
+# ---------------------------------------------------------------------------
+
+# Dev server for Admin (port 2930)
+dev-admin *FLAGS:
+    just dev openc3-cosmos-tool-admin {{ FLAGS }}
+
+# Dev server for Bucket Explorer (port 2921)
+dev-bucket-explorer *FLAGS:
+    just dev openc3-cosmos-tool-bucketexplorer {{ FLAGS }}
+
+# Dev server for Command Sender (port 2913)
+dev-cmd-sender *FLAGS:
+    just dev openc3-cosmos-tool-cmdsender {{ FLAGS }}
+
+# Dev server for CmdTlm Server (port 2911)
+dev-cmd-tlm-server *FLAGS:
+    just dev openc3-cosmos-tool-cmdtlmserver {{ FLAGS }}
+
+# Dev server for Data Extractor (port 2918)
+dev-data-extractor *FLAGS:
+    just dev openc3-cosmos-tool-dataextractor {{ FLAGS }}
+
+# Dev server for Data Viewer (port 2919)
+dev-data-viewer *FLAGS:
+    just dev openc3-cosmos-tool-dataviewer {{ FLAGS }}
+
+# Dev server for Handbooks (port 2922)
+dev-handbooks *FLAGS:
+    just dev openc3-cosmos-tool-handbooks {{ FLAGS }}
+
+# Dev server for iFrame (port 2915)
+dev-iframe *FLAGS:
+    just dev openc3-cosmos-tool-iframe {{ FLAGS }}
+
+# Dev server for Limits Monitor (port 2912)
+dev-limits-monitor *FLAGS:
+    just dev openc3-cosmos-tool-limitsmonitor {{ FLAGS }}
+
+# Dev server for Packet Viewer (port 2915)
+dev-packet-viewer *FLAGS:
+    just dev openc3-cosmos-tool-packetviewer {{ FLAGS }}
+
+# Dev server for Script Runner (port 2914)
+dev-script-runner *FLAGS:
+    just dev openc3-cosmos-tool-scriptrunner {{ FLAGS }}
+
+# Dev server for Table Manager (port 2916)
+dev-table-manager *FLAGS:
+    just dev openc3-cosmos-tool-tablemanager {{ FLAGS }}
+
+# Dev server for Telemetry Grapher (port 2917)
+dev-tlm-grapher *FLAGS:
+    just dev openc3-cosmos-tool-tlmgrapher {{ FLAGS }}
+
+# Dev server for Telemetry Viewer (port 2920)
+dev-tlm-viewer *FLAGS:
+    just dev openc3-cosmos-tool-tlmviewer {{ FLAGS }}
+
+# ---------------------------------------------------------------------------
+# Linting
+# ---------------------------------------------------------------------------
+
+# Lint a single package: just plugins::lint openc3-cosmos-tool-dataextractor
+lint package *ARGS:
+    cd {{ packages_dir }}/{{ package }} && pnpm lint --max-warnings 0 {{ ARGS }}
+
+# Auto-fix a single package
+lint-fix package *ARGS:
+    cd {{ packages_dir }}/{{ package }} && pnpm lint --fix {{ ARGS }}
+
+# ESLint 9 flat config does not cascade, so each package must be linted from
+# its own directory against its own eslint.config.mjs. The workspace `lint`
+# script (lint-all.mjs) handles that, and additionally fails when a package
+# has a src/ but no eslint config - source that would otherwise go unchecked.
+
+# Lint every workspace package
+lint-all *ARGS:
+    pnpm lint --max-warnings 0 {{ ARGS }}
+
+# Auto-fix every workspace package
+lint-fix-all *ARGS:
+    pnpm lint --fix {{ ARGS }}
+
+# Check lint only, no tests (used by the root `just check`)
+lint-check: lint-all
+
+# ---------------------------------------------------------------------------
+# Utilities
+# ---------------------------------------------------------------------------
+
+# List all available frontend tool plugins
+list-plugins:
+    @ls {{ packages_dir }} | grep openc3-cosmos-tool-

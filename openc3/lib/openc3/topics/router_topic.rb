@@ -170,7 +170,12 @@ module OpenC3
       while (Time.now - time) < timeout
         Topic.read_topics([ack_topic], db_shard: db_shard) do |_topic, _msg_id, msg_hash, _redis|
           if msg_hash["id"] == cmd_id
-            return JSON.parse(msg_hash["result"], :allow_nan => true, :create_additions => true)
+            begin
+              return JSON.parse(msg_hash["result"], :allow_nan => true, :create_additions => true)
+            rescue JSON::ParserError
+              # The microservice returns a plain error message rather than JSON if details raises
+              raise "router_details failed: #{msg_hash['result']}"
+            end
           end
         end
       end

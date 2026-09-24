@@ -65,7 +65,10 @@ load_env_file() {
   export PORT=${PORT:-5000}
 
   if [[ -f "$env_file" ]]; then
-    export $(grep "^[^#]*=.*" "$env_file" | xargs)
+    local assignment
+    while IFS= read -r -d '' assignment; do
+      [[ -n "$assignment" ]] && export "${assignment?}"
+    done < <(grep "^[^#]*=.*" "$env_file" | xargs printf '%s\0')
   fi
 }
 
@@ -109,7 +112,6 @@ main() {
 
   trap onexit INT TERM
 
-  exitcode=0
   while true; do
     for pid in $pids; do
       # Wait for the children to finish executing before exiting.

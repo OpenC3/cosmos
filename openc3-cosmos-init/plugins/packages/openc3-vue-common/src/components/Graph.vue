@@ -163,17 +163,21 @@
       v-if="editGraph"
       v-model="editGraph"
       v-model:x-axis-item="xAxisItem"
+      :draw-style="drawStyle"
       :title="title"
       :legend-position="legendPosition"
       :items="items"
       :graph-min-y="graphMinY"
       :graph-max-y="graphMaxY"
+      :graph-min-x="graphMinX"
+      :graph-max-x="graphMaxX"
       :lines="lines"
       :colors="colors"
       :start-date-time="graphStartDateTime"
       :end-date-time="graphEndDateTime"
       :time-zone="timeZone"
       :x-axis-item-packet="allowableXAxisItemPacket"
+      :x-axis-is-time="xAxisIsTime"
       @remove="removeItems([$event])"
       @ok="editGraphClose"
       @cancel="editGraph = false"
@@ -438,8 +442,10 @@ export default {
     'click',
     'close-graph',
     'edit',
+    'error',
     'min-max-graph',
     'pause',
+    'recovered',
     'resize',
     'start',
     'started',
@@ -482,9 +488,12 @@ export default {
       interval: null,
       graphMinY: null,
       graphMaxY: null,
+      graphMinX: null,
+      graphMaxX: null,
       graphStartDateTime: null,
       graphEndDateTime: null,
       xAxisItem: this.initialXAxisItem, // '__time' or something like 'DECOM__TLM__INST__ADCS__RECEIVED_COUNT__CONVERTED'
+      drawStyle: 'lines', // 'lines' or 'points'
       indexes: {},
       items: this.initialItems,
       graphItems: [],
@@ -737,6 +746,20 @@ export default {
       }
       this.setGraphRange()
     },
+    graphMinX: function (newVal) {
+      let val = Number.parseFloat(newVal)
+      if (Number.isFinite(val)) {
+        this.graphMinX = val
+      }
+      this.setGraphRange()
+    },
+    graphMaxX: function (newVal) {
+      let val = Number.parseFloat(newVal)
+      if (Number.isFinite(val)) {
+        this.graphMaxX = val
+      }
+      this.setGraphRange()
+    },
     graphStartDateTime: function (newVal, oldVal) {
       if (newVal && typeof newVal === 'string') {
         this.graphStartDateTime =
@@ -769,28 +792,17 @@ export default {
       }
     },
     actualXAxisItem: function (newVal, oldVal) {
-      let clonedItems = JSON.parse(JSON.stringify(this.items))
-      this.removeItems(clonedItems)
-      this.graph.destroy()
-      this.chartOpts.series[0].label = this.xAxisLabel
-      this.chartOpts.scales.x.time = this.xAxisIsTime
-      this.graph = new uPlot(
-        this.chartOpts,
-        this.data,
-        document.getElementById(`chart${this.id}`),
-      )
-      if (!this.hideOverview) {
-        this.overview.destroy()
-        this.overviewOpts.scales.x.time = this.xAxisIsTime
-        this.overview = new uPlot(
-          this.overviewOpts,
-          this.data,
-          document.getElementById(`overview${this.id}`),
-        )
+      this.rebuildChart()
+    },
+    drawStyle: function () {
+      if (!this.graph || this.items.length === 0) return
+      for (let i = this.items.length; i >= 1; i--) {
+        this.graph.delSeries(i)
       }
-      this.addItems(clonedItems)
-      this.startRealtimeScrolling()
-      // Don't need to $emit('edit') because addItems() does that
+      for (let i = 0; i < this.items.length; i++) {
+        this.graph.addSeries(this.createSeriesConfig(this.items[i]), i + 1)
+      }
+      this.graph.setData(this.data)
     },
     refreshIntervalMs: function (val) {
       if (this.interval) {
@@ -861,28 +873,8 @@ export default {
     // NOTE: These are just initial settings ... actual series are added by this.graph.addSeries
     const { chartSeries, overviewSeries } = this.items.reduce(
       (seriesObj, item) => {
-        const commonProps = {
-          spanGaps: true,
-        }
-        seriesObj.chartSeries.push({
-          ...commonProps,
-          item: item,
-          label: this.formatLabel(item),
-          stroke: (u, seriesIdx) => {
-            return this.items[seriesIdx - 1].color
-          },
-          width: 2,
-          value: (self, rawValue) => {
-            if (typeof rawValue === 'string' || Number.isNaN(rawValue)) {
-              return 'NaN'
-            } else {
-              return rawValue == null ? '--' : rawValue.toFixed(3)
-            }
-          },
-        })
-        seriesObj.overviewSeries.push({
-          ...commonProps,
-        })
+        seriesObj.chartSeries.push(this.createSeriesConfig(item))
+        seriesObj.overviewSeries.push(this.createOverviewSeriesConfig())
         return seriesObj
       },
       { chartSeries: [], overviewSeries: [] },
@@ -1144,6 +1136,30 @@ export default {
           )
         }
       })
+    },
+    rebuildChart: function () {
+      let clonedItems = JSON.parse(JSON.stringify(this.items))
+      this.removeItems(clonedItems)
+      this.graph.destroy()
+      this.chartOpts.series[0].label = this.xAxisLabel
+      this.chartOpts.scales.x.time = this.xAxisIsTime
+      this.graph = new uPlot(
+        this.chartOpts,
+        this.data,
+        document.getElementById(`chart${this.id}`),
+      )
+      if (!this.hideOverview) {
+        this.overview.destroy()
+        this.overviewOpts.scales.x.time = this.xAxisIsTime
+        this.overview = new uPlot(
+          this.overviewOpts,
+          this.data,
+          document.getElementById(`overview${this.id}`),
+        )
+      }
+      this.addItems(clonedItems)
+      this.startRealtimeScrolling()
+      // Don't need to $emit('edit') because addItems() does that
     },
     startGraph: function () {
       this.subscribe()
@@ -1460,6 +1476,14 @@ export default {
     clearErrors: function () {
       this.errors = []
     },
+    // Our own error list is only reachable through the toolbar, which is hidden
+    // when we're embedded in a screen (LINEGRAPH), so also emit so the screen
+    // can show it. See emitScreenError in Widget.js.
+    addError: function (error) {
+      const entry = { time: new Date().getTime(), ...error }
+      this.errors.push(entry)
+      this.$emit('error', entry)
+    },
     editGraphClose: function (graph) {
       this.editGraph = false
       this.title = graph.title
@@ -1467,6 +1491,9 @@ export default {
       this.legendPosition = graph.legendPosition
       this.graphMinY = graph.graphMinY
       this.graphMaxY = graph.graphMaxY
+      this.graphMinX = graph.graphMinX
+      this.graphMaxX = graph.graphMaxX
+      this.drawStyle = graph.drawStyle
       this.lines = [...graph.lines]
       this.graphStartDateTime = graph.startDateTime
       this.graphEndDateTime = graph.endDateTime
@@ -1532,14 +1559,14 @@ export default {
       this.$emit('min-max-graph', this.id)
     },
     setGraphRange: function () {
-      let pad = 0.1
+      let yPad = 0.1
       if (
         this.graphMinY ||
         this.graphMinY === 0 ||
         this.graphMaxY ||
         this.graphMaxY === 0
       ) {
-        pad = 0
+        yPad = 0
       }
       this.graph.scales.y.range = (u, dataMin, dataMax) => {
         let min = dataMin
@@ -1550,7 +1577,20 @@ export default {
         if (this.graphMaxY || this.graphMaxY === 0) {
           max = this.graphMaxY
         }
-        return uPlot.rangeNum(min, max, pad, true)
+        return uPlot.rangeNum(min, max, yPad, true)
+      }
+      if (!this.xAxisIsTime) {
+        this.graph.scales.x.range = (u, dataMin = 0, dataMax = 1) => {
+          let min = dataMin
+          let max = dataMax
+          if (this.graphMinX || this.graphMinX === 0) {
+            min = this.graphMinX
+          }
+          if (this.graphMaxX || this.graphMaxX === 0) {
+            max = this.graphMaxX
+          }
+          return [min, max]
+        }
       }
     },
     subscribe: function () {
@@ -1558,6 +1598,10 @@ export default {
         .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => {
+            // The connection is back, so drop the disconnect we reported below
+            // and tell whoever embedded us (LINEGRAPH) to do the same
+            this.errors = this.errors.filter((error) => !error.transient)
+            this.$emit('recovered')
             const itemsToAdd = [...this.items]
             if (!this.xAxisIsDefault && !this.xAxisIsAlsoGraphedItem) {
               itemsToAdd.push(this.actualXAxisItem)
@@ -1568,18 +1612,18 @@ export default {
             // If allowReconnect is true it means we got a disconnect due to connection lost or server disconnect
             // If allowReconnect is false this is a normal server close or client close
             if (data.allowReconnect) {
-              this.errors.push({
+              this.addError({
                 type: 'disconnected',
                 message: 'OpenC3 backend connection disconnected',
-                time: new Date().getTime(),
+                // Cleared when 'connected' fires again, not left on the screen
+                transient: true,
               })
             }
           },
           rejected: () => {
-            this.errors.push({
+            this.addError({
               type: 'rejected',
               message: 'OpenC3 backend connection rejected',
-              time: new Date().getTime(),
             })
           },
         })
@@ -1668,7 +1712,25 @@ export default {
                 }
                 return [0, 1]
               }
-              return [dataMin, dataMax]
+              let min = dataMin
+              let max = dataMax
+              if (!this.xAxisIsTime) {
+                if (
+                  this.graphMinX !== null &&
+                  this.graphMinX !== undefined &&
+                  Number.isFinite(this.graphMinX)
+                ) {
+                  min = this.graphMinX
+                }
+                if (
+                  this.graphMaxX !== null &&
+                  this.graphMaxX !== undefined &&
+                  Number.isFinite(this.graphMaxX)
+                ) {
+                  max = this.graphMaxX
+                }
+              }
+              return [min, max]
             },
             time: this.xAxisIsTime,
           },
@@ -1905,7 +1967,7 @@ export default {
       this.$emit('edit')
     },
     createSeriesConfig: function (item) {
-      return {
+      const config = {
         spanGaps: true,
         item: item,
         label: this.formatLabel(item),
@@ -1926,6 +1988,17 @@ export default {
           }
         },
       }
+      if (this.drawStyle === 'points') {
+        config.paths = () => null
+        config.width = 0
+        config.points = {
+          show: true,
+          size: 6,
+          fill: (u, seriesIdx) => this.items[seriesIdx - 1].color,
+          stroke: (u, seriesIdx) => this.items[seriesIdx - 1].color,
+        }
+      }
+      return config
     },
     createOverviewSeriesConfig: function () {
       return {

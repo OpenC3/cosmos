@@ -134,20 +134,23 @@ class TestUdpInterface(unittest.TestCase):
         self.assertIsNone(i.read_socket)
 
     def test_shared_socket_receives_from_a_different_source_port(self):
-        # Bind the receiving sockets first so the ports are known, then let the
-        # sender pick an ephemeral source port
+        # Let the interface bind its own ephemeral port rather than closing a
+        # bound socket to reuse its port number. Any other socket can claim that
+        # number between the close and the bind, and since every socket sets
+        # SO_REUSEADDR the bind still succeeds while the datagrams get delivered
+        # to the other socket
         destination = UdpReadSocket(0)
         self.addCleanup(close_socket, destination)
         dest_port = destination.getsockname()[1]
-        shared_port = UdpReadSocket(0)
-        read_port = shared_port.getsockname()[1]
-        close_socket(shared_port)
 
-        sender = UdpWriteSocket("127.0.0.1", read_port)
-        self.addCleanup(close_socket, sender)
-        i = UdpInterface("127.0.0.1", dest_port, read_port, read_port)
+        i = UdpInterface("127.0.0.1", dest_port, 0, 0)
         self.addCleanup(i.disconnect)
         i.connect()
+        read_port = i.read_socket.getsockname()[1]
+
+        # No src_port so the sender writes from an ephemeral port
+        sender = UdpWriteSocket("127.0.0.1", read_port)
+        self.addCleanup(close_socket, sender)
 
         sender.write(b"telemetry")
         self.assertEqual(i.read_socket.read(1.0), b"telemetry")

@@ -126,14 +126,25 @@
         />
       </v-col>
       <v-col v-if="buttonText" :cols="colSize" style="max-width: 140px">
-        <v-btn
-          :disabled="buttonDisabled"
-          color="primary"
-          data-test="select-send"
-          @click="buttonPressed"
+        <v-tooltip
+          :disabled="!disableButtonText"
+          :open-delay="600"
+          location="top"
         >
-          {{ actualButtonText }}
-        </v-btn>
+          <template #activator="{ props }">
+            <div v-bind="props" class="d-inline-block">
+              <v-btn
+                :disabled="buttonDisabled"
+                color="primary"
+                data-test="select-send"
+                @click="buttonPressed"
+              >
+                {{ actualButtonText }}
+              </v-btn>
+            </div>
+          </template>
+          <span>{{ disableButtonText }}</span>
+        </v-tooltip>
       </v-col>
     </v-row>
     <v-row v-if="selectTypes" class="pt-6 align-center" no-gutters>
@@ -223,6 +234,10 @@ export default {
     disabled: {
       type: Boolean,
       default: false,
+    },
+    disableButtonText: {
+      type: String,
+      default: null,
     },
     initialTargetName: {
       type: String,
@@ -349,6 +364,7 @@ export default {
     buttonDisabled: function () {
       return (
         this.disabled ||
+        !!this.disableButtonText ||
         this.internalDisabled ||
         this.selectedTargetName === null ||
         this.selectedPacketName === null ||

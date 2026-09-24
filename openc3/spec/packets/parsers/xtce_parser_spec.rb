@@ -1109,5 +1109,80 @@ module OpenC3
         FileUtils.rm_rf File.join(spec_install, "TGT1")
       end
     end
+
+    describe "id metadata" do
+      before(:each) do
+        @pc = PacketConfig.new
+      end
+
+      # Two telemetry packets sharing an ID parameter with different values
+      def id_value_xtce(target)
+        tf = Tempfile.new(['unittest', '.xtce'])
+        tf.puts '<?xml version="1.0" encoding="UTF-8"?>'
+        tf.puts "<xtce:SpaceSystem name=\"#{target}\" xmlns:xtce=\"http://www.omg.org/spec/XTCE/20180204\">"
+        tf.puts '  <xtce:TelemetryMetaData>'
+        tf.puts '    <xtce:ParameterTypeSet>'
+        tf.puts '      <xtce:IntegerParameterType name="uint8Type" signed="false">'
+        tf.puts '        <xtce:IntegerDataEncoding sizeInBits="8" encoding="unsigned"/>'
+        tf.puts '      </xtce:IntegerParameterType>'
+        tf.puts '      <xtce:IntegerParameterType name="uint16Type" signed="false">'
+        tf.puts '        <xtce:IntegerDataEncoding sizeInBits="16" encoding="unsigned"/>'
+        tf.puts '      </xtce:IntegerParameterType>'
+        tf.puts '    </xtce:ParameterTypeSet>'
+        tf.puts '    <xtce:ParameterSet>'
+        tf.puts '      <xtce:Parameter name="APID" parameterTypeRef="uint8Type"/>'
+        tf.puts '      <xtce:Parameter name="DATA" parameterTypeRef="uint16Type"/>'
+        tf.puts '    </xtce:ParameterSet>'
+        tf.puts '    <xtce:ContainerSet>'
+        tf.puts '      <xtce:SequenceContainer name="HEADER" abstract="true">'
+        tf.puts '        <xtce:EntryList>'
+        tf.puts '          <xtce:ParameterRefEntry parameterRef="APID"/>'
+        tf.puts '        </xtce:EntryList>'
+        tf.puts '      </xtce:SequenceContainer>'
+        [1, 2].each do |id|
+          tf.puts "      <xtce:SequenceContainer name=\"PKT#{id}\">"
+          tf.puts '        <xtce:EntryList>'
+          tf.puts '          <xtce:ParameterRefEntry parameterRef="DATA"/>'
+          tf.puts '        </xtce:EntryList>'
+          tf.puts '        <xtce:BaseContainer containerRef="HEADER">'
+          tf.puts '          <xtce:RestrictionCriteria>'
+          tf.puts '            <xtce:ComparisonList>'
+          tf.puts "              <xtce:Comparison parameterRef=\"APID\" value=\"#{id}\"/>"
+          tf.puts '            </xtce:ComparisonList>'
+          tf.puts '          </xtce:RestrictionCriteria>'
+          tf.puts '        </xtce:BaseContainer>'
+          tf.puts '      </xtce:SequenceContainer>'
+        end
+        tf.puts '    </xtce:ContainerSet>'
+        tf.puts '  </xtce:TelemetryMetaData>'
+        tf.puts '</xtce:SpaceSystem>'
+        tf.close
+        tf
+      end
+
+      it "builds the tlm id value hash for xtce packets" do
+        tf = id_value_xtce("TGT")
+        @pc.process_file(tf.path, 'TGT')
+
+        # XtceParser bypasses finish_packet, so without build_xtce_id_metadata
+        # this hash is nil and Telemetry#identify raises NoMethodError on it
+        expect(@pc.tlm_id_value_hash['TGT']).to_not be_nil
+        expect(@pc.tlm_id_value_hash['TGT'][[1]]).to eql @pc.telemetry['TGT']['PKT1']
+        expect(@pc.tlm_id_value_hash['TGT'][[2]]).to eql @pc.telemetry['TGT']['PKT2']
+        tf.unlink
+      end
+
+      it "identifies xtce packets by id value" do
+        tf = id_value_xtce("TGT")
+        @pc.process_file(tf.path, 'TGT')
+        tlm = Telemetry.new(@pc)
+        allow(System).to receive(:telemetry).and_return(tlm)
+
+        expect(tlm.identify("\x01\xAB\xCD", ['TGT']).packet_name).to eql 'PKT1'
+        expect(tlm.identify("\x02\xAB\xCD", ['TGT']).packet_name).to eql 'PKT2'
+        expect(tlm.identify("\x03\xAB\xCD", ['TGT'])).to be_nil
+        tf.unlink
+      end
+    end
   end
 end

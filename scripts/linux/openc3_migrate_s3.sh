@@ -70,8 +70,6 @@ NC='\033[0m' # No Color
 # State variables
 MINIO_SOURCE=""        # Where to read MINIO data from (live or temp container)
 VERSITY_DEST=""        # Where to write versitygw data to (live or temp container)
-USING_TEMP_MINIO=false
-USING_TEMP_VERSITY=false
 DOCKER_NETWORK=""
 
 usage() {
@@ -235,16 +233,13 @@ detect_environment() {
     live_minio=$(find_container "openc3-minio")
     if [[ -n "$live_minio" ]] && [[ "$live_minio" != "$MINIO_MIGRATION_CONTAINER" ]]; then
         MINIO_SOURCE="$live_minio"
-        USING_TEMP_MINIO=false
         log_info "Found live MINIO (COSMOS 6): $MINIO_SOURCE"
         DOCKER_NETWORK=$(get_container_network "$MINIO_SOURCE")
     elif container_running "$MINIO_MIGRATION_CONTAINER"; then
         MINIO_SOURCE="$MINIO_MIGRATION_CONTAINER"
-        USING_TEMP_MINIO=true
         log_info "Using temp MINIO container: $MINIO_SOURCE"
     else
         MINIO_SOURCE=""
-        USING_TEMP_MINIO=true
         log_info "No MINIO running - will start temp container"
     fi
 
@@ -253,18 +248,15 @@ detect_environment() {
     live_versity=$(find_container "openc3-buckets")
     if [[ -n "$live_versity" ]] && [[ "$live_versity" != "$VERSITY_MIGRATION_CONTAINER" ]]; then
         VERSITY_DEST="$live_versity"
-        USING_TEMP_VERSITY=false
         log_info "Found live versitygw (COSMOS 7): $VERSITY_DEST"
         if [[ -z "$DOCKER_NETWORK" ]]; then
             DOCKER_NETWORK=$(get_container_network "$VERSITY_DEST")
         fi
     elif container_running "$VERSITY_MIGRATION_CONTAINER"; then
         VERSITY_DEST="$VERSITY_MIGRATION_CONTAINER"
-        USING_TEMP_VERSITY=true
         log_info "Using temp versitygw container: $VERSITY_DEST"
     else
         VERSITY_DEST=""
-        USING_TEMP_VERSITY=true
         log_info "No versitygw running - will start temp container"
     fi
 

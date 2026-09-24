@@ -761,6 +761,48 @@ module OpenC3
         expect { @api.get_tlm_values() }.to raise_error(ArgumentError)
         expect { @api.get_tlm_values({}) }.to raise_error(ArgumentError, /items must be array of strings/)
         expect { @api.get_tlm_values(["INST", "HEALTH_STATUS", "TEMP1"]) }.to raise_error(ArgumentError, /items must be formatted/)
+        expect { @api.get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED__LIMITS__EXTRA"]) }.to raise_error(ArgumentError, /items must be formatted/)
+      end
+
+      it "only authorizes the packets of items which exist" do
+        expect(@api).to receive(:authorize).once.with(hash_including(target_name: "INST", packet_name: "HEALTH_STATUS"))
+        @api.get_tlm_values([nil, "INST__HEALTH_STATUS__TEMP1__CONVERTED", nil])
+      end
+
+      it "passes the limits flag and placeholders to the historical lookup" do
+        # get_tlm_available tacks on __LIMITS and returns nil for items which don't exist
+        expect(CvtModel).to receive(:tsdb_lookup).with(
+          [
+            ["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", nil],
+            ["INST", "HEALTH_STATUS", "TEMP2", "CONVERTED", "LIMITS"],
+            [nil, nil, nil, nil, nil],
+          ],
+          start_time: "2026-09-13T00:00:00Z", end_time: nil, scope: "DEFAULT"
+        ).and_return([[0.0, nil], [-100.0, "RED_LOW"], [nil, nil]])
+        vals = @api.get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__CONVERTED__LIMITS", nil], start_time: "2026-09-13T00:00:00Z")
+        expect(vals).to eql([[0.0, nil], [-100.0, "RED_LOW"], [nil, nil]])
+      end
+
+      it "accepts the limits suffix from get_tlm_available" do
+        vals = @api.get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED__LIMITS"])
+        expect(vals[0][0]).to eql(-100.0)
+        expect(vals[0][1]).to eql(:RED_LOW)
+      end
+
+      it "returns nil values for items which do not exist" do
+        # get_tlm_available returns nil for items which don't exist and its result
+        # is passed directly to get_tlm_values
+        vals = @api.get_tlm_values([nil, "INST__HEALTH_STATUS__TEMP1__CONVERTED", nil])
+        expect(vals[0]).to eql([nil, nil])
+        expect(vals[1][0]).to eql(-100.0)
+        expect(vals[1][1]).to eql(:RED_LOW)
+        expect(vals[2]).to eql([nil, nil])
+      end
+
+      it "returns a row of nils when no item exists in a historical query" do
+        # Nothing to query, so this doesn't need (or touch) the time series database
+        vals = @api.get_tlm_values([nil, nil], start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z")
+        expect(vals).to eql([[nil, nil], [nil, nil]])
       end
 
       it "reads all the specified items" do

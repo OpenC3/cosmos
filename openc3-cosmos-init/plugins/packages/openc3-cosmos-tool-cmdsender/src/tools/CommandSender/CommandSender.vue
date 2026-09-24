@@ -23,6 +23,7 @@
       :initial-target-name="$route.params.target"
       :initial-packet-name="$route.params.packet"
       :send-disabled="sendDisabled"
+      :read-only="readOnlyUser"
       :states-in-hex="statesInHex"
       :show-ignored-params="showIgnoredParams"
       :cmd-raw="cmdRaw"
@@ -269,6 +270,10 @@ export default {
     }
   },
   computed: {
+    readOnlyUser: function () {
+      const roles = OpenC3Auth.userroles() || []
+      return roles.length > 0 && roles.every((role) => role === 'viewer')
+    },
     menus: function () {
       return [
         // TODO: Implement send raw
@@ -527,6 +532,11 @@ export default {
     // sent from the history. In that case commandName and paramList are undefined
     // and the api calls handle that.
     sendCmd(targetName, commandName, paramList) {
+      // The command history editor doesn't go through the Send button
+      if (this.readOnlyUser) {
+        this.status = 'Viewers cannot send commands'
+        return
+      }
       // Snapshot what's being sent. The history editor stays editable while the
       // hazardous check is in flight so this.queueName and the last* variables
       // can change out from under us before the command actually goes out.

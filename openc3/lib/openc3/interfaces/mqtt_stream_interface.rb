@@ -49,6 +49,8 @@ module OpenC3
 
     # Creates a new {SerialStream} using the parameters passed in the constructor
     def connect
+      # Cleanly close any existing stream rather than leaving it open
+      @stream.disconnect if @stream
       @stream = MqttStream.new(@hostname, @port, @ssl, @write_topic, @read_topic, @ack_timeout)
       @stream.username = @username if @username
       @stream.password = @password if @password

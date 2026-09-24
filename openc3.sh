@@ -88,7 +88,8 @@ run_with_registry_check() {
 # alone would clobber them, so their values are saved first and restored
 # afterwards.
 source_env_files() {
-  local dir="$(dirname -- "$0")"
+  local dir
+  dir="$(dirname -- "$0")"
   local -a env_files=()
   local file key
   if [[ -f "$dir/${ENV_FILE:-.env}" ]]; then
@@ -109,10 +110,12 @@ source_env_files() {
 
   set -a
   for file in "${env_files[@]}"; do
+    # Env files are selected at runtime and may be outside the repository.
+    # shellcheck source=/dev/null
     . "$file"
   done
   for key in "${preset[@]}"; do
-    export "$key"
+    export "${key?}"
   done
   set +a
 }
@@ -160,8 +163,9 @@ fi
 $CONTAINER_CMD info | grep -e "rootless$" -e "rootless: true"
 if [[ "$?" -ne 0 ]]; then
   export OPENC3_ROOTFUL=1
-  export OPENC3_USER_ID=`id -u`
-  export OPENC3_GROUP_ID=`id -g`
+  OPENC3_USER_ID=$(id -u)
+  OPENC3_GROUP_ID=$(id -g)
+  export OPENC3_USER_ID OPENC3_GROUP_ID
 else
   export OPENC3_ROOTLESS=1
   export OPENC3_USER_ID=0
@@ -370,13 +374,58 @@ check_root() {
   fi
 }
 
+# Apply the host kernel settings COSMOS needs (vm.max_map_count for the tsdb,
+# transparent huge pages off for redis) before starting the containers, so users
+# do not have to remember a separate "util hostsetup" step.
+#
+# Skipped entirely when the host is already tuned, so the common case costs one
+# unprivileged read and never launches a privileged container. Tuning requires
+# --privileged --pid=host, which is not available everywhere (rootless docker,
+# locked down CI, some remote contexts), so a failure only warns: COSMOS runs
+# fine without it until a database grows past the default map count.
+#
+# Set OPENC3_HOSTSETUP_ON_RUN=0 in .env to opt out and manage the host yourself.
+run_hostsetup() {
+  if [[ "${OPENC3_HOSTSETUP_ON_RUN:-1}" != "1" ]]; then
+    return 0
+  fi
+  if [[ -z "$OPENC3_MAX_MAP_COUNT" ]]; then
+    echo "WARNING: OPENC3_MAX_MAP_COUNT is not set, skipping host setup. Define it in .env." >&2
+    return 0
+  fi
+
+  local repo="${OPENC3_ENTERPRISE_REGISTRY:-repos.openc3.com}"
+  local namespace="${OPENC3_ENTERPRISE_NAMESPACE:-openc3}"
+  local tag="${OPENC3_ENTERPRISE_TAG:-latest}"
+  local image="$repo/$namespace/openc3-enterprise-operator:$tag"
+
+  # Unprivileged probe. vm.max_map_count (mmc) and transparent huge pages (thp)
+  # are not namespaced, so any container reads the host's (or the Docker VM's) values.
+  local probe mmc thp
+  probe="$($CONTAINER_CMD run --rm --entrypoint='' "$image" sh -c 'cat /proc/sys/vm/max_map_count || exit 1; cat /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null || :' 2>/dev/null)" || return 0
+  { IFS= read -r mmc; IFS= read -r thp || :; } <<<"$probe"  # thp stays empty if unreadable
+  if [[ "$mmc" =~ ^[0-9]+$ ]] && [[ "$mmc" -ge "$OPENC3_MAX_MAP_COUNT" ]] && [[ "$thp" == *"[never]"* ]]; then
+    return 0
+  fi
+
+  echo "Configuring host kernel settings (vm.max_map_count=$OPENC3_MAX_MAP_COUNT, transparent huge pages off)..."
+  if ! "$(find_script openc3_util.sh)" hostsetup "$repo" "$namespace" "$tag"; then
+    echo "WARNING: host setup failed, continuing without it. $COSMOS_NAME will still start," >&2
+    echo "but the tsdb (QuestDB) may fail to open tables once its database grows past" >&2
+    echo "vm.max_map_count=$mmc. Run '$0 util hostsetup $repo $namespace $tag' as a user" >&2
+    echo "who can start privileged containers, or set OPENC3_HOSTSETUP_ON_RUN=0 in .env to" >&2
+    echo "silence this and manage the host yourself." >&2
+  fi
+}
+
 # Resolve OPENC3_TAG, reading from the env files if not already set.
 # .env.local is checked first so its override wins over the .env default.
 resolve_openc3_tag() {
   if [[ -n "$OPENC3_TAG" ]]; then
     return
   fi
-  local dir="$(dirname -- "$0")"
+  local dir
+  dir="$(dirname -- "$0")"
   local env_file
   for env_file in "$dir/.env.local" "$dir/${ENV_FILE:-.env}"; do
     if [[ -f "$env_file" ]]; then
@@ -399,7 +448,8 @@ build_core_images() {
   if [[ "$OPENC3_TAG" != "latest" ]]; then
     return
   fi
-  local core_dir="$(dirname -- "$0")/../cosmos"
+  local core_dir
+  core_dir="$(dirname -- "$0")/../cosmos"
   if [[ -f "$core_dir/compose-build.yaml" ]]; then
     echo "Building core images from $core_dir ..."
     ${DOCKER_COMPOSE_COMMAND} --project-directory "$core_dir" \
@@ -455,10 +505,21 @@ case $1 in
     # Run the command "ruby /openc3/bin/openc3cli" with all parameters starting at 2 since the first is 'openc3'
     # Shift off the first argument (script name) to get CLI args
     shift
+    # Most subcommands run in the cmd-tlm-api container, but a few only make
+    # sense with the init container's environment. initsettings reads
+    # OPENC3_SETTING_* variables, which are set on openc3-cosmos-init - running
+    # it anywhere else reports "nothing to seed" no matter how it is configured.
+    CLI_SERVICE=openc3-cosmos-cmd-tlm-api
+    case "$1" in
+      initsettings ) CLI_SERVICE=openc3-cosmos-init ;;
+      # Every other subcommand (including an empty or unrecognized one, which
+      # openc3cli itself reports on) runs in the cmd-tlm-api container
+      * ) CLI_SERVICE=openc3-cosmos-cmd-tlm-api ;;
+    esac
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v "$PWD:/openc3/local:z" -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps $CLI_SERVICE ruby /openc3/bin/openc3cli "$@"
     else
-      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v "$PWD:/openc3/local:z" -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps $CLI_SERVICE ruby /openc3/bin/openc3cli "$@"
     fi
     ;;
   cliroot )
@@ -505,9 +566,9 @@ case $1 in
     # Shift off the first argument (script name) to get CLI args
     shift
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm --user=root -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm --user=root -v "$PWD:/openc3/local:z" -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     else
-      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm --user=root -v $(pwd):/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm --user=root -v "$PWD:/openc3/local:z" -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     fi
     ;;
   start )
@@ -520,6 +581,10 @@ case $1 in
         echo "This command:"
         echo "  1. Builds all $COSMOS_NAME containers (equivalent to 'openc3.sh build')"
         echo "  2. Starts all containers (equivalent to 'openc3.sh run')"
+        echo ""
+        echo "Starting also applies the host kernel settings $COSMOS_NAME needs"
+        echo "(vm.max_map_count, transparent huge pages) when the host lacks them."
+        echo "Set OPENC3_HOSTSETUP_ON_RUN=0 in .env to opt out."
         echo ""
         echo "Options:"
         echo "  -h, --help       Show this help message"
@@ -647,9 +712,14 @@ case $1 in
     fi
     if [[ "$2" == "local" ]]
     then
-      cd "$(dirname -- "$0")/plugins/DEFAULT"
-      ls | grep -xv "README.md" | xargs rm -r
-      cd ../..
+      (
+        cd "$(dirname -- "$0")/plugins/DEFAULT" || exit 1
+        for entry in *; do
+          [[ "$entry" == "README.md" ]] && continue
+          [[ -e "$entry" || -L "$entry" ]] || continue
+          rm -r -- "$entry"
+        done
+      )
     fi
     ;;
   list )
@@ -820,16 +890,16 @@ case $1 in
     umask 0022
     chmod -R +r "$(dirname -- "$0")"
     # Collect any additional build flags from arguments (skip first arg which is "build")
-    BUILD_FLAGS="${@:2}"
+    BUILD_FLAGS=("${@:2}")
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      build_core_images $BUILD_FLAGS
-      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-enterprise-gem
+      build_core_images "${BUILD_FLAGS[@]}"
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build "${BUILD_FLAGS[@]}" openc3-enterprise-gem
     else
-      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-ruby
-      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-base
-      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-node
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build "${BUILD_FLAGS[@]}" openc3-ruby
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build "${BUILD_FLAGS[@]}" openc3-base
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build "${BUILD_FLAGS[@]}" openc3-node
     fi
-    run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS
+    run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build "${BUILD_FLAGS[@]}"
     ;;
   build-ubi )
     if [[ "$OPENC3_DEVEL" -eq 0 ]]; then
@@ -920,6 +990,8 @@ case $1 in
       exit 0
     fi
     check_root
+    source_env_files
+    run_hostsetup
     run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" up -d
     ;;
   run-ubi )
@@ -954,6 +1026,8 @@ case $1 in
       exit 0
     fi
     check_root
+    source_env_files
+    run_hostsetup
     # QuestDB RHEL images have a native arm64 variant; run tsdb natively on ARM
     # to avoid the x86-64-v3 QEMU emulation failure. All other services run as amd64.
     if [[ "$(uname -m)" == "arm64" ]]; then
@@ -1021,7 +1095,7 @@ case $1 in
       echo "                              Tag images from one repo to another"
       echo "  push REPO NS TAG [SUFFIX]   Push images to docker repository"
       echo "  clean                       Remove node_modules, coverage, etc"
-      echo "  hostsetup REPO NS TAG       Configure host for redis"
+      echo "  hostsetup REPO NS TAG       Configure host kernel settings for redis and tsdb"
       echo "  hostenter                   Shell into VM host"
       echo ""
       echo "Run '$0 util COMMAND --help' for detailed help on each command."

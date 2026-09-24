@@ -634,7 +634,7 @@ export default {
           }
         })
 
-        .catch((response) => {
+        .catch(() => {
           this.$notify.caution({
             title: `Unable to download file ${this.path}${filename} from bucket ${this.root}`,
           })
@@ -687,7 +687,7 @@ export default {
       )
       // This pushes the file into storage by using the fields in the presignedRequest
       // See storage_controller.rb get_upload_presigned_request()
-      const response = await axios({
+      await axios({
         ...presignedRequest,
         data: this.file,
       })

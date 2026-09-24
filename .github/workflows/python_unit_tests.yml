@@ -48,24 +48,22 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - name: Set up uv and Python ${{ matrix.python-version }}
+        uses: ./.github/actions/setup-uv-python
         with:
-          version: "0.11.33" # Matches UV_VERSION in openc3-ruby/Dockerfile
-          enable-cache: auto
-          cache-suffix: ${{ matrix.python-version }}
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: uv sync --frozen
-        working-directory: openc3/python
+          cache-suffix: ${{ matrix.python-version }}
+      # --no-sync runs against the venv the setup action synced, so --no-build
+      # costs nothing here and keeps a third-party build backend from executing
+      # if a future dependency arrives without a wheel.
       - name: Run unit tests
         run: |
-          uv run --frozen coverage run -m pytest ./test/
-          uv run --frozen coverage xml -i
+          uv run --no-sync --no-build coverage run -m pytest ./test/
+          uv run --no-sync --no-build coverage xml -i
         working-directory: openc3/python
       - name: Prune uv cache
         run: uv cache prune --ci
-      - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+      - uses: codecov/codecov-action@0b35c9ecc4f0529d0eb674914510c22f85b196b4 # v7.1.0
         with:
           working-directory: openc3/python
           flags: python # See codecov.yml

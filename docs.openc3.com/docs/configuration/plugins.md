@@ -355,7 +355,7 @@ Defines a secret for this interface and optionally assigns its value to an optio
 |-----------|-------------|----------|
 | Type | ENV or FILE.  ENV will mount the secret into an environment variable. FILE mounts the secret into a file. | True |
 | Secret Name | The name of the secret to retrieve from the Admin / Secrets tab. For more information see [Admin Secrets](/docs/tools/admin#secrets). | True |
-| Environment Variable or File Path | Environment variable name or file path to store secret. Note that if you use the Option Name to set an option to the secret value, this value doesn't really matter as long as it is unique. | True |
+| Environment Variable or File Path | Environment variable name or file path to store secret. FILE paths must be under /tmp (or the directory set by the OPENC3_SECRET_FILE_DIR environment variable); paths outside of it are rejected. Note that if you use the Option Name to set an option to the secret value, this value doesn't really matter as long as it is unique. | True |
 | Option Name | Interface option to pass the secret value. This is the primary way to pass secrets to interfaces. | False |
 | Secret Store Name | Name of the secret store for stores with multipart keys | False |
 
@@ -467,7 +467,7 @@ SHARD 0
 ```
 
 ### BRIDGE
-<span class="badge badge--secondary since-right">Since _Coming Soon_</span>**Name of the bridge to run this interface on**
+<span class="badge badge--secondary since-right">Since 7.4.0</span>**Name of the bridge to run this interface on**
 
 Run this interface on a bridge host rather than within COSMOS. Note only python is supported.
 
@@ -481,7 +481,7 @@ BRIDGE DEFAULT
 ```
 
 ### BRIDGE_PROTOCOL
-<span class="badge badge--secondary since-right">Since _Coming Soon_</span>**Bridge Protocols modify the bridge interface by processing the data**
+<span class="badge badge--secondary since-right">Since 7.4.0</span>**Bridge Protocols modify the bridge interface by processing the data**
 
 Protocols can be either READ, WRITE, or READ_WRITE. READ protocols act on the data received by the interface while write acts on the data before it is sent out. READ_WRITE applies the protocol to both reading and writing.<br/><br/> For information on creating your own custom protocol please see [Protocols](../configuration/protocols.md)
 
@@ -502,7 +502,7 @@ INTERFACE DATA_INT openc3/interfaces/tcpip_client_interface.py host.docker.inter
 </Tabs>
 
 ### BRIDGE_OPTION
-<span class="badge badge--secondary since-right">Since _Coming Soon_</span>**Set a parameter on a bridged interface**
+<span class="badge badge--secondary since-right">Since 7.4.0</span>**Set a parameter on a bridged interface**
 
 When a bridge option is set the bridge interface class calls the set_option method. Custom interfaces can override set_option to handle any additional options they want.
 
@@ -520,7 +520,7 @@ INTERFACE SERIAL_INT serial_interface.rb COM1 COM1 115200 NONE 1 10.0 nil
 ```
 
 ### BRIDGE_SECRET
-<span class="badge badge--secondary since-right">Since _Coming Soon_</span>**Define a bridge secret needed by this bridge interface**
+<span class="badge badge--secondary since-right">Since 7.4.0</span>**Define a bridge secret needed by this bridge interface**
 
 Defines a bridge secret for this bridge interface and optionally assigns its value to an option. For more information see [Admin Secrets](/docs/tools/admin#secrets).
 
@@ -528,7 +528,7 @@ Defines a bridge secret for this bridge interface and optionally assigns its val
 |-----------|-------------|----------|
 | Type | ENV or FILE.  ENV will mount the secret into an environment variable. FILE mounts the secret into a file. | True |
 | Secret Name | The name of the secret to retrieve from the Admin / Secrets tab. For more information see [Admin Secrets](/docs/tools/admin#secrets). | True |
-| Environment Variable or File Path | Environment variable name or file path to store secret. Note that if you use the Option Name to set an option to the secret value, this value doesn't really matter as long as it is unique. | True |
+| Environment Variable or File Path | Environment variable name or file path to store secret. FILE paths must be under /tmp (or the directory set by the OPENC3_SECRET_FILE_DIR environment variable); paths outside of it are rejected. Note that if you use the Option Name to set an option to the secret value, this value doesn't really matter as long as it is unique. | True |
 | Option Name | Interface option to pass the secret value. This is the primary way to pass secrets to interfaces. | False |
 | Secret Store Name | Name of the secret store for stores with multipart keys | False |
 
@@ -878,7 +878,7 @@ Defines a secret for this microservice. For more information see the [Secrets gu
 |-----------|-------------|----------|
 | Type | ENV or FILE.  ENV will mount the secret into an environment variable. FILE mounts the secret into a file. | True |
 | Secret Name | The name of the secret to retrieve from the Admin / Secrets tab. For more information see [Admin Secrets](/docs/tools/admin#secrets). | True |
-| Environment Variable or File Path | Environment variable name or file path to store secret | True |
+| Environment Variable or File Path | Environment variable name or file path to store secret. FILE paths must be under /tmp (or the directory set by the OPENC3_SECRET_FILE_DIR environment variable); paths outside of it are rejected. | True |
 | Secret Store Name | Name of the secret store for stores with multipart keys | False |
 
 Example Usage:

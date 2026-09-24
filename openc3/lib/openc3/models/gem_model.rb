@@ -22,6 +22,7 @@ require 'rubygems'
 require 'rubygems/uninstaller'
 require 'tempfile'
 require 'openc3/utilities/process_manager'
+require 'openc3/utilities/rubygems_url'
 require 'openc3/api/api'
 require 'pathname'
 
@@ -79,8 +80,11 @@ module OpenC3
         rubygems_url = get_setting('rubygems_url', scope: scope)
       rescue
         # If Redis isn't running try the ENV, then simply rubygems.org
-        rubygems_url = ENV.fetch('RUBYGEMS_URL', 'https://rubygems.org')
+        rubygems_url = ENV.fetch('RUBYGEMS_URL', RubygemsUrl::DEFAULT)
       end
+      # The url comes from a user-writable setting or ENV so validate it before
+      # using it as a Gem source
+      rubygems_url = RubygemsUrl.validate(rubygems_url) if rubygems_url
       Gem.sources = [rubygems_url] if rubygems_url
       Gem.done_installing_hooks.clear
       begin

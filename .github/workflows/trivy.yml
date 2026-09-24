@@ -11,17 +11,33 @@
 
 name: Trivy Scan
 
+# Runs on every pull request, on pushes to main, and from the Actions tab.
+# Deliberately unfiltered by path: the point of scanning a pull request is to
+# catch vulnerable dependencies, and those arrive through manifests scattered
+# across the whole repo (Gemfile.lock, uv.lock, package.json, every
+# Dockerfile), so a path filter would silently skip the bump PRs that matter
+# most. The GHCR build cache in .github/actions/build-cosmos is what makes
+# that affordable: an unrelated PR pulls all 11 images instead of building.
 on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - "**"
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 # Workaround for https://github.com/aquasecurity/trivy-action/issues/389
 env:
   TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
   TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
+
+permissions:
+  contents: read
 
 jobs:
   openc3-scan:
@@ -31,15 +47,22 @@ jobs:
       packages: write # required to push the GHCR build cache
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - id: build
         uses: ./.github/actions/build-cosmos
         with:
           tag: ${{ github.sha }}
+      # aquasecurity/setup-trivy installs the binary once for all the scan
+      # steps below (each passes skip-setup-trivy: true). The version here is
+      # the trivy release, not the action: dependabot bumps the action SHA but
+      # cannot see this input, so it is watched by
+      # .github/workflows/tool_version_check.yml instead.
       - name: Manual Trivy Setup
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
         with:
           cache: true
-          version: v0.69.3
+          version: v0.74.0
       - name: Run Trivy on image ruby
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         # See https://github.com/aquasecurity/trivy-action
@@ -199,16 +222,6 @@ jobs:
       #   with:
       #     category: "openc3-traefik"
       #     sarif_file: "trivy-traefik.sarif"
-      - name: Run Trivy in GitHub SBOM mode and submit results to Dependency Snapshots
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-        with:
-          scan-type: "fs"
-          format: "github"
-          exit-code: 0
-          output: "dependency-results.sbom.json"
-          image-ref: "."
-          github-pat: ${{ secrets.GITHUB_TOKEN }}
       # - uses: anchore/scan-action/download-grype@v3
       #   id: grype
       # - name: Run grype on the image ruby
@@ -233,3 +246,28 @@ jobs:
       #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cosmos-script-runner-api:latest
       # - name: Run grype on the image traefik
       #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-traefik:latest
+
+  # Dependency Snapshots are recorded against GITHUB_REF, so this is kept off
+  # pull requests: filing a PR branch's dependencies would corrupt the repo
+  # dependency graph (and a fork PR has no write token to submit with anyway).
+  # Separate job because submitting needs contents: write, which the build job
+  # must not hold while it runs `docker compose build` on the checked-out tree.
+  # scan-type: fs only parses manifests, so no repo code runs here.
+  sbom:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # required by the Dependency Snapshot submission API
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run Trivy in GitHub SBOM mode and submit results to Dependency Snapshots
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: "fs"
+          format: "github"
+          exit-code: 0
+          output: "dependency-results.sbom.json"
+          image-ref: "."
+          github-pat: ${{ secrets.GITHUB_TOKEN }}

@@ -19,11 +19,12 @@ from openc3.config.config_parser import ConfigParser
 # Base class for all OpenC3 protocols which defines a framework which must be
 # implemented by a subclass.
 class Protocol:
+    # Matches the Ruby Time#iso8601(6) output format so details() is identical in both languages
     DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
     # self.param allow_empty_data [True/False/None] Whether or not this protocol will allow an empty string
     # to be passed down to later Protocols (instead of returning 'STOP'). Can be True, False, or None, where
-    # None is interpreted as True if not the Protocol is the last Protocol of the chain.
+    # None is interpreted as True unless the Protocol is the last Protocol of the chain.
     def __init__(self, allow_empty_data=None):
         self.interface = None
         self.allow_empty_data = ConfigParser.handle_true_false_none(allow_empty_data)
@@ -48,7 +49,7 @@ class Protocol:
 
     # Called to provide insight into the protocol read_data for the input data
     def read_protocol_input_base(self, data, _extra=None):
-        if self.interface is not None and self.interface.save_raw_data is not None:
+        if self.interface is not None and self.interface.save_raw_data:
             self.read_data_input_time = datetime.now(timezone.utc)
             self.read_data_input = data
             # Todo in future enhancement with packet logger
@@ -57,7 +58,7 @@ class Protocol:
 
     # Called to provide insight into the protocol read_data for the output data
     def read_protocol_output_base(self, data, _extra=None):
-        if self.interface is not None and self.interface.save_raw_data is not None:
+        if self.interface is not None and self.interface.save_raw_data:
             self.read_data_output_time = datetime.now(timezone.utc)
             self.read_data_output = data
             # Todo in future enhancement with packet logger
@@ -66,7 +67,7 @@ class Protocol:
 
     # Called to provide insight into the protocol write_data for the input data
     def write_protocol_input_base(self, data, _extra=None):
-        if self.interface is not None and self.interface.save_raw_data is not None:
+        if self.interface is not None and self.interface.save_raw_data:
             self.write_data_input_time = datetime.now(timezone.utc)
             self.write_data_input = data
             # Todo in future enhancement with packet logger
@@ -75,21 +76,21 @@ class Protocol:
 
     # Called to provide insight into the protocol write_data for the output data
     def write_protocol_output_base(self, data, _extra=None):
-        if self.interface is not None and self.interface.save_raw_data is not None:
+        if self.interface is not None and self.interface.save_raw_data:
             self.write_data_output_time = datetime.now(timezone.utc)
             self.write_data_output = data
             # Todo in future enhancement with packet logger
             # if self.interface.stream_log_pair is not None:
             #     self.interface.stream_log_pair.write_log.write(data)
 
-    # Ensure we have some data in match this is the only protocol:
+    # Ensure we have some data in case this is the only protocol
     def read_data(self, data, extra=None):
         if len(data) <= 0:
             if self.allow_empty_data is None:
                 if self.interface and self.interface.read_protocols[-1] == self:
                     # Last read interface in chain with auto self.allow_empty_data
                     return ("STOP", extra)
-            elif self.allow_empty_data:
+            elif not self.allow_empty_data:
                 # Don't self.allow_empty_data means STOP
                 return ("STOP", extra)
         return (data, extra)
