@@ -77,7 +77,7 @@ dev = [
     # diagnostics are reported.
     # Keep ruff in step with tools/generate_singleton_stubs.py.lock.
     "ruff==0.16.8",
-    "ty==0.0.81",
+    "ty==0.0.82",
 ]
 
 [build-system]
