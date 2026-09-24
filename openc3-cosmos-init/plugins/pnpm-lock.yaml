@@ -10,7 +10,7 @@ importers:
     devDependencies:
       '@vue/eslint-config-prettier':
         specifier: 10.2.0
-        version: 10.2.0(eslint@10.11.0)(prettier@3.9.6)
+        version: 10.2.0(eslint@10.11.0)(prettier@3.9.8)
       eslint:
         specifier: 10.11.0
         version: 10.11.0
@@ -52,8 +52,8 @@ importers:
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       sass:
         specifier: 1.105.0
         version: 1.105.0
@@ -86,8 +86,8 @@ importers:
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
@@ -132,8 +132,8 @@ importers:
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
@@ -181,8 +181,8 @@ importers:
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
@@ -245,8 +245,8 @@ importers:
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
@@ -288,8 +288,8 @@ importers:
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
@@ -334,8 +334,8 @@ importers:
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
@@ -380,8 +380,8 @@ importers:
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
@@ -429,8 +429,8 @@ importers:
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
@@ -475,8 +475,8 @@ importers:
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
@@ -521,8 +521,8 @@ importers:
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
@@ -573,8 +573,8 @@ importers:
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
@@ -619,8 +619,8 @@ importers:
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
@@ -671,8 +671,8 @@ importers:
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
@@ -726,8 +726,8 @@ importers:
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
@@ -781,8 +781,8 @@ importers:
         version: 1.6.32
     devDependencies:
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       vite:
         specifier: 7.3.6
         version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0)
@@ -830,8 +830,8 @@ importers:
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
@@ -921,8 +921,8 @@ importers:
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
       prettier:
-        specifier: 3.9.6
-        version: 3.9.6
+        specifier: 3.9.8
+        version: 3.9.8
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
@@ -2295,8 +2295,8 @@ packages:
     resolution: {integrity: sha512-SxToR7P8Y2lWmv/kTzVLC1t/GDI2WGjMwNhLLE9qtH8Q13C+aEmuRlzDst4Up4s0Wc8sF2M+J57iB3cMLqftfg==}
     engines: {node: '>=6.0.0'}
 
-  prettier@3.9.6:
-    resolution: {integrity: sha512-OpN0zzVdiaiAhxpuuj5efpIS4sY9j7bY6uR5mnj5yPzGkdkjNKSJeUThPb60Jw29QuAZgA4o+/iB49kFiaBX6g==}
+  prettier@3.9.8:
+    resolution: {integrity: sha512-WRFq3Wn3WId7LLROfMLdH7xaFr2jR62wU8nLO6rQUOLOxNZUviyJQs1M0iIhLexSFy+L+w0ch66wtoO2jRjG0A==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -3152,12 +3152,12 @@ snapshots:
 
   '@vue/devtools-shared@8.2.1': {}
 
-  '@vue/eslint-config-prettier@10.2.0(eslint@10.11.0)(prettier@3.9.6)':
+  '@vue/eslint-config-prettier@10.2.0(eslint@10.11.0)(prettier@3.9.8)':
     dependencies:
       eslint: 10.11.0
       eslint-config-prettier: 10.1.8(eslint@10.11.0)
-      eslint-plugin-prettier: 5.5.5(eslint-config-prettier@10.1.8(eslint@10.11.0))(eslint@10.11.0)(prettier@3.9.6)
-      prettier: 3.9.6
+      eslint-plugin-prettier: 5.5.5(eslint-config-prettier@10.1.8(eslint@10.11.0))(eslint@10.11.0)(prettier@3.9.8)
+      prettier: 3.9.8
     transitivePeerDependencies:
       - '@types/eslint'
 
@@ -3411,10 +3411,10 @@ snapshots:
     dependencies:
       eslint: 10.11.0
 
-  eslint-plugin-prettier@5.5.5(eslint-config-prettier@10.1.8(eslint@10.11.0))(eslint@10.11.0)(prettier@3.9.6):
+  eslint-plugin-prettier@5.5.5(eslint-config-prettier@10.1.8(eslint@10.11.0))(eslint@10.11.0)(prettier@3.9.8):
     dependencies:
       eslint: 10.11.0
-      prettier: 3.9.6
+      prettier: 3.9.8
       prettier-linter-helpers: 1.0.1
       synckit: 0.11.12
     optionalDependencies:
@@ -3794,7 +3794,7 @@ snapshots:
     dependencies:
       fast-diff: 1.3.0
 
-  prettier@3.9.6: {}
+  prettier@3.9.8: {}
 
   proxy-from-env@2.1.0: {}
 
