@@ -216,8 +216,18 @@ module OpenC3
     # some modified files while keeping others); when nil, every modified file
     # for the target is removed (the original behavior).
     def self.delete_modified(target_name, scope:, files: nil)
+      # Validate target_name to not allow directory traversal
+      unless OpenC3::LocalMode.safe_key?(target_name) and !target_name.include?('/')
+        raise ArgumentError, "Invalid target_name: #{target_name.inspect}"
+      end
       if files && !files.empty?
+        # Only delete names that are actually modified files of this target.
+        # Anything else (another target, another scope via '..') is ignored.
+        allowed = modified_files(target_name, scope: scope)
         files.each do |name|
+          next unless String === name
+          name = OpenC3::TargetFile.strip_modified(name)
+          next unless allowed.include?(name)
           # TargetFile.destroy handles both local mode and the bucket.
           OpenC3::TargetFile.destroy(scope, name)
         end
