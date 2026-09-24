@@ -31,11 +31,14 @@
           density="compact"
           variant="outlined"
           :disabled="autocompleteDisabled || lockTarget"
-          :items="targetNames"
+          :items="rankedTargetNames"
           item-title="label"
           item-value="value"
+          :custom-filter="tokenizedFilter"
+          :filter-keys="filterKeys"
+          @update:search="searches.target = $event"
           @update:model-value="targetNameChanged"
-          @focus="selectOnFocus('targetAutocomplete')"
+          @focus="resetSearchAndFocus('targetAutocomplete', 'target')"
         />
       </v-col>
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="select-packet">
@@ -49,11 +52,14 @@
           density="compact"
           variant="outlined"
           :disabled="packetsDisabled || autocompleteDisabled || lockPacket"
-          :items="packetNames"
+          :items="rankedPacketNames"
           item-title="label"
           item-value="value"
+          :custom-filter="tokenizedFilter"
+          :filter-keys="filterKeys"
+          @update:search="searches.packet = $event"
           @update:model-value="packetNameChanged"
-          @focus="selectOnFocus('packetAutocomplete')"
+          @focus="resetSearchAndFocus('packetAutocomplete', 'packet')"
         />
       </v-col>
       <v-col
@@ -71,11 +77,14 @@
           density="compact"
           variant="outlined"
           :disabled="autocompleteDisabled || queueNames.length === 1"
-          :items="queueNames"
+          :items="rankedQueueNames"
           item-title="label"
           item-value="value"
+          :custom-filter="tokenizedFilter"
+          :filter-keys="filterKeys"
+          @update:search="searches.queue = $event"
           @update:model-value="queueNameChanged"
-          @focus="selectOnFocus('queueAutocomplete')"
+          @focus="resetSearchAndFocus('queueAutocomplete', 'queue')"
         />
       </v-col>
       <v-col
@@ -94,11 +103,14 @@
           density="compact"
           variant="outlined"
           :disabled="itemsDisabled || autocompleteDisabled"
-          :items="itemNames"
+          :items="rankedItemNames"
           item-title="label"
           item-value="value"
+          :custom-filter="tokenizedFilter"
+          :filter-keys="filterKeys"
+          @update:search="searches.item = $event"
           @update:model-value="itemNameChanged($event)"
-          @focus="selectOnFocus('itemAutocomplete')"
+          @focus="resetSearchAndFocus('itemAutocomplete', 'item')"
         />
       </v-col>
       <!-- min-width: 105px is enough to display a 2 digit index -->
@@ -208,6 +220,7 @@
 
 <script>
 import { Api, OpenC3Api } from '@openc3/js-common/services'
+import { tokenizedFilter, tokenizedSort } from '@openc3/js-common/utils'
 
 export default {
   props: {
@@ -331,6 +344,20 @@ export default {
       packetsDisabled: false,
       itemsDisabled: false,
       api: null,
+      // Restrict the dropdown search to the displayed name. Without this
+      // Vuetify filters over every key of its internal item, including the
+      // literal type of "item", so searching "ite" matches everything.
+      // Note this is 'title' rather than 'label' because Vuetify has already
+      // mapped item-title="label" onto its own title key by then.
+      filterKeys: ['title'],
+      // What the user has typed into each dropdown, tracked so the lists can
+      // be ranked by how well they match
+      searches: {
+        target: '',
+        packet: '',
+        queue: '',
+        item: '',
+      },
       ALL: {
         label: '[ ALL ]',
         value: 'ALL',
@@ -384,6 +411,21 @@ export default {
       } else {
         return this.selectedItemName
       }
+    },
+    // Ranked copies of the lists for display only. Everything else keeps
+    // working off the unranked source arrays, so lookups and the "first
+    // packet" defaults are unaffected.
+    rankedTargetNames: function () {
+      return tokenizedSort(this.targetNames, this.searches.target, 'label')
+    },
+    rankedPacketNames: function () {
+      return tokenizedSort(this.packetNames, this.searches.packet, 'label')
+    },
+    rankedQueueNames: function () {
+      return tokenizedSort(this.queueNames, this.searches.queue, 'label')
+    },
+    rankedItemNames: function () {
+      return tokenizedSort(this.itemNames, this.searches.item, 'label')
     },
     includeLatestPacketInDropdown: function () {
       return this.showLatest && this.mode === 'tlm' // because LATEST cmd doesn't have much use and thus isn't currently implemented
@@ -544,6 +586,19 @@ export default {
       })
   },
   methods: {
+    tokenizedFilter,
+    // A v-combobox (glob mode) commits whatever text is in the input when it
+    // loses focus. With tokenized search that text can be a multi word query
+    // like "heal stat", which is never a valid name, so throw it away instead
+    // of selecting it. Names are only rejected when they're unknown, so a
+    // quoted name that really does contain a space still selects normally.
+    isSearchText: function (value, names) {
+      return (
+        typeof value === 'string' &&
+        /\s/.test(value) &&
+        !names.some((name) => name.value === value)
+      )
+    },
     emitOnSet: function () {
       this.$emit('on-set', {
         targetName: this.selectedTargetName,
@@ -554,6 +609,13 @@ export default {
         reducedType: this.selectedReducedType,
         queueName: this.selectedQueueName,
       })
+    },
+    // Focus handler for the four name dropdowns. The search text sticks
+    // around after a selection, so clear it to put the list back in name
+    // order, then select the input contents as every other field does.
+    resetSearchAndFocus: function (refName, searchKey) {
+      this.searches[searchKey] = ''
+      this.selectOnFocus(refName)
     },
     selectOnFocus: function (refName) {
       this.$nextTick(() => {
@@ -757,6 +819,10 @@ export default {
         value = value.value
         this.selectedPacketName = value
       }
+      if (this.isSearchText(value, this.packetNames)) {
+        this.selectedPacketName = null
+        return
+      }
       // When the packet name is completed deleted in the v-autocomplete
       // the @change handler is fired but the value is null
       // In this case we don't want to update packet details
@@ -826,6 +892,10 @@ export default {
       if (value !== null && typeof value === 'object' && value.value) {
         value = value.value
         this.selectedItemName = value
+      }
+      if (this.isSearchText(value, this.itemNames)) {
+        this.selectedItemName = null
+        return
       }
       const item = this.itemNames.find((item) => {
         return value === item.value
