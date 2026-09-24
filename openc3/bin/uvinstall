@@ -6,7 +6,7 @@
 # and installs Python dependencies from the plugin's gem_path.
 #
 # Two installation paths:
-#   1. If gem_path contains uv.lock: uses `uv sync --locked` (reproducible)
+#   1. If gem_path contains uv.lock: uses `uv sync --frozen` (reproducible)
 #   2. Otherwise: falls back to `uv pip install` for requirements.txt / pyproject.toml
 #
 # Network safety: uv's own HTTP controls (connect timeout, read timeout,
@@ -63,9 +63,15 @@ VENV_DIR="${VENV_BASE}/.venv"
 echo "Creating per-plugin venv for '${PLUGIN_VENV_NAME}' at ${VENV_DIR}"
 mkdir -p "${VENV_BASE}"
 
-# Path 1: uv.lock present - use `uv sync --locked` for reproducible installs
+# Path 1: uv.lock present - use `uv sync --frozen` for reproducible installs
+#
+# --frozen, not --locked: UV_ARGS carries `-i ${PYPI_URL}/simple`, and --locked
+# calls a lock recorded against a different registry stale. On a mirror that
+# drops every locked plugin into path 2, which has no lock and no --no-build,
+# and the re-resolve needs index listings the baked wheel cache lacks. CI
+# catches drift in our own repo; a user's gem installs what they locked.
 if [ -f "${GEM_PATH}/uv.lock" ] && [ -f "${GEM_PATH}/pyproject.toml" ]; then
-    echo "Found uv.lock - using uv sync --locked for reproducible install"
+    echo "Found uv.lock - using uv sync --frozen for reproducible install"
 
     # Copy pyproject.toml and uv.lock into the venv base directory
     cp "${GEM_PATH}/pyproject.toml" "${VENV_BASE}/pyproject.toml"
@@ -80,16 +86,16 @@ if [ -f "${GEM_PATH}/uv.lock" ] && [ -f "${GEM_PATH}/pyproject.toml" ]; then
     # lock exactly and uninstalls anything else, including packages an admin
     # uploaded into this plugin venv via PythonPackageModel.install (which uses
     # the additive `pipinstall`).
-    uv_offline_then_online sync --locked --inexact --no-dev --no-install-project ${UV_ARGS}
+    uv_offline_then_online sync --frozen --inexact --no-dev --no-install-project ${UV_ARGS}
     RESULT=$?
 
     if [ $RESULT -eq 0 ]; then
-        echo "uv sync --locked succeeded"
+        echo "uv sync --frozen succeeded"
         touch "${VENV_BASE}/.uv_managed"
         exit 0
     fi
 
-    echo "Warning: uv sync --locked failed (exit code ${RESULT}), falling back to uv pip install"
+    echo "Warning: uv sync --frozen failed (exit code ${RESULT}), falling back to uv pip install"
 fi
 
 # Path 2: Fallback - use uv pip install for requirements.txt or pyproject.toml

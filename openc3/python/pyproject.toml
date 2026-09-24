@@ -93,7 +93,7 @@ build-backend = "setuptools.build_meta"
 # not version-pinned and hash-verified. Every third-party runtime dependency is
 # already blocked from building from source (see the `uv sync --no-build` step
 # in openc3/Dockerfile), which leaves this build environment as the one place
-# where unpinned code executes at image build time. These constraints close
+# where unpinned code executes at image build time. These constraints narrow
 # that gap without narrowing `requires`, which stays permissive for consumers
 # building the sdist themselves.
 #

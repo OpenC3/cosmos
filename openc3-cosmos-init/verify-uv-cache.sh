@@ -15,7 +15,7 @@
 # dependencies from the baked UV cache with NO network.
 #
 # Scope, precisely: this covers exactly the plugins docker-package-build.sh
-# warms, which is uvinstall's path 1 (`uv sync --locked`). uvinstall's fallback
+# warms, which is uvinstall's path 1 (`uv sync --frozen`). uvinstall's fallback
 # paths (requirements.txt, or a pyproject.toml with no uv.lock) are NOT warmed
 # at image build and so are NOT verified here - a plugin using them installs
 # online at runtime. Gems in that shape are reported below as UNVERIFIED so the
@@ -96,7 +96,7 @@ for GEM in "${GEMS_DIR}"/*.gem; do
     # build time.
     if ! (cd "${SRC}" && UV_CACHE_DIR="${RUN_CACHE}" UV_PYTHON_DOWNLOADS=never \
             UV_COMPILE_BYTECODE=0 \
-            uv sync --locked --no-dev --no-install-project --offline --no-build); then
+            uv sync --frozen --no-dev --no-install-project --offline --no-build); then
         {
             echo "ERROR: ${NAME} cannot install its Python dependencies from the baked UV cache."
             echo "       Add a 'COPY --from=<build stage> /openc3/uv_cache_plugins/ /openc3/uv_cache/'"
@@ -126,4 +126,4 @@ if [ "${CHECKED}" -eq 0 ]; then
     exit 1
 fi
 
-echo "=== offline UV cache verified for ${CHECKED} plugin gem(s) taking uv sync --locked"
+echo "=== offline UV cache verified for ${CHECKED} plugin gem(s) taking uv sync --frozen"

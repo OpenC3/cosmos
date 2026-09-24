@@ -50,7 +50,11 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock p
 # UV_CACHE_DIR). Routing the sync through a mount and copying it into the seed
 # afterwards would bake wheels from unrelated past builds into the image, which
 # is exactly what verify-uv-cache.sh exists to prevent.
-RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --no-build --locked --no-dev --no-install-project
+#
+# --frozen, not --locked: a mirror build points UV_DEFAULT_INDEX away from the
+# registry in uv.lock, which --locked then rejects. Can move to --locked once
+# the relock in #3891 lands.
+RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --no-build --frozen --no-dev --no-install-project
 
 # Copy application code (excluding .venv from source)
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
@@ -68,7 +72,7 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 # the package it names while --no-build stays in force for every third-party
 # dependency. Naming the project explicitly is the point: a dependency can only
 # become build-eligible by being added here.
-RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --no-build --no-binary-package openc3 --locked --no-dev
+RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --no-build --no-binary-package openc3 --frozen --no-dev
 
 WORKDIR /openc3/
 
