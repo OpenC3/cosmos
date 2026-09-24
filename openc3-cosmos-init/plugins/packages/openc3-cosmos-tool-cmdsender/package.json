@@ -14,7 +14,6 @@
     "@openc3/vue-common": "workspace:*",
     "ace-builds": "1.44.0",
     "axios": "1.20.0",
-    "date-fns": "4.4.0",
     "single-spa-vue": "3.0.1"
   },
   "devDependencies": {
