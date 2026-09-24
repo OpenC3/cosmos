@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
 from openc3.utilities.extract import convert_to_value
+from openc3.utilities.json import JsonEncoder
 
 
 # Delineates packets using the OpenC3 preidentification system
@@ -68,7 +69,9 @@ class PreidentifiedProtocol(BurstProtocol):
         self.write_extra = None
         if packet.extra:
             self.write_flags |= PreidentifiedProtocol.COSMOS4_EXTRA_FLAG_MASK
-            self.write_extra = json.dumps(packet.extra)
+            # JsonEncoder so binary and other COSMOS types survive, matching the Ruby
+            # side which encodes via as_json
+            self.write_extra = json.dumps(packet.extra, cls=JsonEncoder)
         return packet
 
     def write_data(self, data, extra=None):
@@ -78,8 +81,11 @@ class PreidentifiedProtocol(BurstProtocol):
             data_to_send += self.sync_pattern
         data_to_send += self.write_flags.to_bytes(1, byteorder="big")
         if self.write_extra:
-            data_to_send += struct.pack(">I", len(self.write_extra))
-            data_to_send += bytes(self.write_extra, "ascii")
+            # Length field must count bytes, not characters, or a non-ASCII value in
+            # extra desyncs the receiver
+            write_extra = self.write_extra.encode("utf-8")
+            data_to_send += struct.pack(">I", len(write_extra))
+            data_to_send += write_extra
         data_to_send += self.write_time_seconds
         data_to_send += self.write_time_microseconds
         data_to_send += struct.pack(">B", len(self.write_target_name))

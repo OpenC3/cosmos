@@ -450,7 +450,7 @@ module OpenC3
 
     # NOTE: When adding new keywords to this method, make sure to update script/commands.rb
     def _cmd_implementation(method_name, *args, range_check:, hazardous_check:, raw:, timeout: nil, log_message: nil, manual: false, validate: true, queue: nil,
-                            queue_username: nil, scope: $openc3_scope, token: $openc3_token, **kwargs)
+                            queue_username: nil, extra: nil, scope: $openc3_scope, token: $openc3_token, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
       unless [nil, true, false].include?(log_message)
         raise "Invalid log_message parameter: #{log_message}. Must be true or false."
@@ -461,6 +461,9 @@ module OpenC3
         rescue ArgumentError, TypeError
           raise "Invalid timeout parameter: #{timeout}. Must be numeric."
         end
+      end
+      unless extra.nil? || extra.is_a?(Hash)
+        raise "Invalid extra parameter: #{extra}. Must be a Hash."
       end
 
       case args.length
@@ -535,6 +538,7 @@ module OpenC3
         'log_message' => log_message.to_s,
         'obfuscated_items' => packet['obfuscated_items'].to_s
       }
+      command['extra'] = extra unless extra.nil?
       # Record the original queuing user (author) separately from 'username' (the
       # user or process that actually executed the command). Command History shows
       # 'username' as "Executed By" and queue_username as "Queued By".
@@ -550,6 +554,7 @@ module OpenC3
           target_name: target_name,
           cmd_name: cmd_name,
           cmd_params: cmd_params,
+          extra: extra,
           validate: validate,
           timeout: timeout,
           username: username,
