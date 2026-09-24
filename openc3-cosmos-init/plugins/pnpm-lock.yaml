@@ -466,9 +466,6 @@ importers:
       single-spa-vue:
         specifier: 3.0.1
         version: 3.0.1
-      splitpanes:
-        specifier: 4.1.2
-        version: 4.1.2(vue@3.5.43(typescript@6.0.3))
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 6.0.9

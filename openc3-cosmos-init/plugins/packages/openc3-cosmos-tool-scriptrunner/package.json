@@ -13,8 +13,7 @@
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
     "lodash": "4.18.1",
-    "single-spa-vue": "3.0.1",
-    "splitpanes": "4.1.2"
+    "single-spa-vue": "3.0.1"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "6.0.9",
