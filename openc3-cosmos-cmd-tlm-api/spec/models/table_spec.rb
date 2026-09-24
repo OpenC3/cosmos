@@ -187,6 +187,29 @@ RSpec.describe Table, :type => :model do
       file = Table.report('DEFAULT', 'INST/tables/bin/table.bin', 'INST/tables/config/table_def.txt')
       expect(file.filename).to eql 'INST/tables/bin/table.csv'
       expect(file.contents).to eql 'report'
+      # Not saved unless asked
+      expect(@put_object).to be_empty
+    end
+
+    it "does not save over a binary with a non .bin extension" do
+      # Simulate what S3 get_object returns
+      @get_object.body = OpenStruct.new
+      @get_object.body.read = 'definition'
+      allow(OpenC3::TableManagerCore).to receive(:report).and_return('report')
+      file = Table.report('DEFAULT', 'INST/tables/bin/table.tbl', 'INST/tables/config/table_def.txt', save: true)
+      expect(file.filename).to eql 'INST/tables/bin/table.csv'
+      expect(@put_object['DEFAULT/targets_modified/INST/tables/bin/table.csv']).to eql 'report'
+      expect(@put_object).to_not have_key('DEFAULT/targets_modified/INST/tables/bin/table.tbl')
+    end
+
+    it "saves the report to the target when save is true" do
+      # Simulate what S3 get_object returns
+      @get_object.body = OpenStruct.new
+      @get_object.body.read = 'definition'
+      allow(OpenC3::TableManagerCore).to receive(:report).and_return('report')
+      file = Table.report('DEFAULT', 'INST/tables/bin/table.bin', 'INST/tables/config/table_def.txt', save: true)
+      expect(file.filename).to eql 'INST/tables/bin/table.csv'
+      expect(@put_object['DEFAULT/targets_modified/INST/tables/bin/table.csv']).to eql 'report'
     end
 
     it "calls table manager to parse a definition" do

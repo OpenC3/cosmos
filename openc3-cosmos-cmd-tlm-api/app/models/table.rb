@@ -74,7 +74,11 @@ class Table < OpenC3::TargetFile
     return definition
   end
 
-  def self.report(scope, binary_filename, definition_filename, table_name = nil)
+  # save: true writes the report into the targets_modified overlay next to the
+  # binary so scripts can read it back with get_target_file(). The Table Manager
+  # GUI leaves it false and streams the contents straight to the browser, since
+  # downloading a report should not create files in the bucket (issue #1729).
+  def self.report(scope, binary_filename, definition_filename, table_name = nil, save: false)
     report = OpenStruct.new
     binary = body(scope, binary_filename)
     raise NotFound, "Binary file '#{binary_filename}' not found" unless binary
@@ -85,11 +89,16 @@ class Table < OpenC3::TargetFile
         # Convert the typical table naming convention of all caps with underscores
         # to the typical binary convention of camelcase, e.g. MC_CONFIG => McConfig.bin
         filename = table_name.split('_').map { |part| part.capitalize }.join()
-        report.filename = "#{File.dirname(binary_filename)}/#{filename}.csv"
       else
-        report.filename = binary_filename.sub('.bin', '.csv')
+        # Replace whatever extension the binary has, not just '.bin'. Binaries are
+        # commonly named .tbl or .dat and a blind sub('.bin', '.csv') left the report
+        # named exactly like the binary, which overwrote the binary when saving.
+        filename = File.basename(binary_filename, '.*')
       end
+      dirname = File.dirname(binary_filename)
+      report.filename = dirname == '.' ? "#{filename}.csv" : "#{dirname}/#{filename}.csv"
       report.contents = OpenC3::TableManagerCore.report(binary, root_definition, table_name)
+      create(scope, report.filename, report.contents) if save
     ensure
       # Cleanup temp_dir
       FileUtils.remove_entry_secure(temp_dir, true) if temp_dir

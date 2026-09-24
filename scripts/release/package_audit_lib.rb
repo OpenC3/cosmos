@@ -429,7 +429,9 @@ rescue StandardError => e
   nil
 end
 
-def check_debian(client)
+# root_dir is the repo whose .env and Dockerfiles get rewritten when a bump is
+# accepted. Enterprise passes its own root since it loads this lib from core.
+def check_debian(client, root_dir: ROOT_DIR)
   release = ENV.fetch('DEBIAN_RELEASE')
   ruby_version = ENV.fetch('RUBY_VERSION')
 
@@ -474,7 +476,7 @@ def check_debian(client)
   elsif point_release != current_point
     puts "NOTE: Debian '#{release}' is at point release #{current_point}, building #{point_release}"
     if prompt_update?("Update Debian point release from #{point_release} to #{current_point}?", point_release, current_point)
-      update_debian_files('DEBIAN_POINT_RELEASE', current_point)
+      update_debian_files('DEBIAN_POINT_RELEASE', current_point, root_dir: root_dir)
     end
   end
 
@@ -491,15 +493,15 @@ def check_debian(client)
 
   return unless new_ruby
   if prompt_update?("Update Ruby from #{ruby_version} to #{new_ruby}?", ruby_version, new_ruby)
-    update_debian_files('RUBY_VERSION', new_ruby)
+    update_debian_files('RUBY_VERSION', new_ruby, root_dir: root_dir)
   end
 end
 
 # Update a build variable (RUBY_VERSION or DEBIAN_RELEASE) in the .env and any
 # Dockerfile that pins it as a default ARG, then reload the in-process ENV.
-def update_debian_files(key, new_value)
-  update_key_value(File.join(ROOT_DIR, '.env'), key, new_value)
-  Dir.glob(File.join(ROOT_DIR, '**', 'Dockerfile*')).each do |path|
+def update_debian_files(key, new_value, root_dir: ROOT_DIR)
+  update_key_value(File.join(root_dir, '.env'), key, new_value)
+  Dir.glob(File.join(root_dir, '**', 'Dockerfile*')).each do |path|
     next unless File.read(path).match?(/^ARG\s+#{Regexp.escape(key)}=/)
     update_key_value(path, key, new_value)
   end
@@ -767,8 +769,6 @@ def check_ubi_ruby(client, ruby_version)
   content = File.read(dockerfile)
   File.write(dockerfile, content.gsub(/ruby-#{Regexp.escape(current)}(?!\d)/, "ruby-#{newest}"))
   puts "  Updated ruby-#{current} -> ruby-#{newest} in openc3-ruby/Dockerfile-ubi"
-  puts "  NOTE: openc3-ruby/.gitignore ignores *.tar.gz, so commit the new tarball with:"
-  puts "        git add -f openc3-ruby/ruby-#{newest}.tar.gz"
   newest
 end
 
@@ -828,6 +828,14 @@ def download_ubi_ruby(version, release)
     next if other == path
     FileUtils.rm_f(other)
     puts "  Removed #{File.basename(other)}"
+  end
+  # openc3-ruby/.gitignore ignores *.tar.gz, so the old tarball shows up as a
+  # deletion while the new one is invisible to git status. Force-add it so the
+  # replacement is staged alongside the deletion instead of silently dropped.
+  if system('git', '-C', ROOT_DIR, 'add', '-f', path)
+    puts "  Staged #{File.basename(path)} (git add -f)"
+  else
+    puts "  WARN: could not stage, run: git add -f openc3-ruby/#{File.basename(path)}"
   end
   true
 end
