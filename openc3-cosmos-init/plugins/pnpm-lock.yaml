@@ -106,9 +106,6 @@ importers:
       axios:
         specifier: 1.20.0
         version: 1.20.0(debug@4.4.3)
-      lodash:
-        specifier: 4.18.1
-        version: 4.18.1
       single-spa-vue:
         specifier: 3.0.1
         version: 3.0.1
@@ -309,9 +306,6 @@ importers:
       '@openc3/vue-common':
         specifier: workspace:*
         version: link:../openc3-vue-common
-      lodash:
-        specifier: 4.18.1
-        version: 4.18.1
       single-spa-vue:
         specifier: 3.0.1
         version: 3.0.1
@@ -349,9 +343,6 @@ importers:
       '@openc3/vue-common':
         specifier: workspace:*
         version: link:../openc3-vue-common
-      lodash:
-        specifier: 4.18.1
-        version: 4.18.1
       single-spa-vue:
         specifier: 3.0.1
         version: 3.0.1
@@ -386,9 +377,6 @@ importers:
       '@openc3/vue-common':
         specifier: workspace:*
         version: link:../openc3-vue-common
-      lodash:
-        specifier: 4.18.1
-        version: 4.18.1
       single-spa-vue:
         specifier: 3.0.1
         version: 3.0.1
@@ -423,9 +411,6 @@ importers:
       '@openc3/vue-common':
         specifier: workspace:*
         version: link:../openc3-vue-common
-      lodash:
-        specifier: 4.18.1
-        version: 4.18.1
       single-spa-vue:
         specifier: 3.0.1
         version: 3.0.1
@@ -460,9 +445,6 @@ importers:
       '@openc3/vue-common':
         specifier: workspace:*
         version: link:../openc3-vue-common
-      lodash:
-        specifier: 4.18.1
-        version: 4.18.1
       single-spa-vue:
         specifier: 3.0.1
         version: 3.0.1
@@ -497,9 +479,6 @@ importers:
       '@openc3/vue-common':
         specifier: workspace:*
         version: link:../openc3-vue-common
-      lodash:
-        specifier: 4.18.1
-        version: 4.18.1
       single-spa-vue:
         specifier: 3.0.1
         version: 3.0.1
@@ -534,9 +513,6 @@ importers:
       '@openc3/vue-common':
         specifier: workspace:*
         version: link:../openc3-vue-common
-      lodash:
-        specifier: 4.18.1
-        version: 4.18.1
       muuri:
         specifier: 0.9.5
         version: 0.9.5
@@ -574,9 +550,6 @@ importers:
       '@openc3/vue-common':
         specifier: workspace:*
         version: link:../openc3-vue-common
-      lodash:
-        specifier: 4.18.1
-        version: 4.18.1
       muuri:
         specifier: 0.9.5
         version: 0.9.5
@@ -614,9 +587,6 @@ importers:
       axios:
         specifier: 1.20.0
         version: 1.20.0(debug@4.4.3)
-      lodash:
-        specifier: 4.18.1
-        version: 4.18.1
       lossless-json:
         specifier: 4.3.1
         version: 4.3.1
