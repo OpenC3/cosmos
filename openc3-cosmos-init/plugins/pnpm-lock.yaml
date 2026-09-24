@@ -100,6 +100,9 @@ importers:
       vue:
         specifier: 3.5.43
         version: 3.5.43(typescript@6.0.3)
+      vue-router:
+        specifier: 4.4.4
+        version: 4.4.4(vue@3.5.43(typescript@6.0.3))
 
   packages/openc3-cosmos-tool-bucketexplorer:
     dependencies:
@@ -146,6 +149,9 @@ importers:
       vue:
         specifier: 3.5.43
         version: 3.5.43(typescript@6.0.3)
+      vue-router:
+        specifier: 4.4.4
+        version: 4.4.4(vue@3.5.43(typescript@6.0.3))
 
   packages/openc3-cosmos-tool-cmdsender:
     dependencies:
@@ -195,6 +201,9 @@ importers:
       vue:
         specifier: 3.5.43
         version: 3.5.43(typescript@6.0.3)
+      vue-router:
+        specifier: 4.4.4
+        version: 4.4.4(vue@3.5.43(typescript@6.0.3))
 
   packages/openc3-cosmos-tool-cmdtlmserver:
     dependencies:
@@ -259,6 +268,9 @@ importers:
       vue:
         specifier: 3.5.43
         version: 3.5.43(typescript@6.0.3)
+      vue-router:
+        specifier: 4.4.4
+        version: 4.4.4(vue@3.5.43(typescript@6.0.3))
 
   packages/openc3-cosmos-tool-dataextractor:
     dependencies:
@@ -302,6 +314,9 @@ importers:
       vue:
         specifier: 3.5.43
         version: 3.5.43(typescript@6.0.3)
+      vue-router:
+        specifier: 4.4.4
+        version: 4.4.4(vue@3.5.43(typescript@6.0.3))
 
   packages/openc3-cosmos-tool-dataviewer:
     dependencies:
@@ -348,6 +363,9 @@ importers:
       vue:
         specifier: 3.5.43
         version: 3.5.43(typescript@6.0.3)
+      vue-router:
+        specifier: 4.4.4
+        version: 4.4.4(vue@3.5.43(typescript@6.0.3))
 
   packages/openc3-cosmos-tool-handbooks:
     dependencies:
@@ -394,6 +412,9 @@ importers:
       vue:
         specifier: 3.5.43
         version: 3.5.43(typescript@6.0.3)
+      vue-router:
+        specifier: 4.4.4
+        version: 4.4.4(vue@3.5.43(typescript@6.0.3))
 
   packages/openc3-cosmos-tool-iframe:
     dependencies:
@@ -443,6 +464,9 @@ importers:
       vue:
         specifier: 3.5.43
         version: 3.5.43(typescript@6.0.3)
+      vue-router:
+        specifier: 4.4.4
+        version: 4.4.4(vue@3.5.43(typescript@6.0.3))
 
   packages/openc3-cosmos-tool-limitsmonitor:
     dependencies:
@@ -489,6 +513,9 @@ importers:
       vue:
         specifier: 3.5.43
         version: 3.5.43(typescript@6.0.3)
+      vue-router:
+        specifier: 4.4.4
+        version: 4.4.4(vue@3.5.43(typescript@6.0.3))
 
   packages/openc3-cosmos-tool-packetviewer:
     dependencies:
@@ -535,6 +562,9 @@ importers:
       vue:
         specifier: 3.5.43
         version: 3.5.43(typescript@6.0.3)
+      vue-router:
+        specifier: 4.4.4
+        version: 4.4.4(vue@3.5.43(typescript@6.0.3))
 
   packages/openc3-cosmos-tool-scriptrunner:
     dependencies:
@@ -587,6 +617,9 @@ importers:
       vue:
         specifier: 3.5.43
         version: 3.5.43(typescript@6.0.3)
+      vue-router:
+        specifier: 4.4.4
+        version: 4.4.4(vue@3.5.43(typescript@6.0.3))
 
   packages/openc3-cosmos-tool-tablemanager:
     dependencies:
@@ -633,6 +666,9 @@ importers:
       vue:
         specifier: 3.5.43
         version: 3.5.43(typescript@6.0.3)
+      vue-router:
+        specifier: 4.4.4
+        version: 4.4.4(vue@3.5.43(typescript@6.0.3))
 
   packages/openc3-cosmos-tool-tlmgrapher:
     dependencies:
@@ -685,6 +721,9 @@ importers:
       vue:
         specifier: 3.5.43
         version: 3.5.43(typescript@6.0.3)
+      vue-router:
+        specifier: 4.4.4
+        version: 4.4.4(vue@3.5.43(typescript@6.0.3))
 
   packages/openc3-cosmos-tool-tlmviewer:
     dependencies:
@@ -740,6 +779,9 @@ importers:
       vue:
         specifier: 3.5.43
         version: 3.5.43(typescript@6.0.3)
+      vue-router:
+        specifier: 4.4.4
+        version: 4.4.4(vue@3.5.43(typescript@6.0.3))
 
   packages/openc3-js-common:
     dependencies:
