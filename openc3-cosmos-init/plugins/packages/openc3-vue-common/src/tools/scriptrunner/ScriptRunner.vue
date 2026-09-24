@@ -3502,7 +3502,16 @@ export default {
         if (this.showPythonVenv) {
           data.pythonVenv = this.pythonVenv
         }
-        await Api.post(`/script-api/scripts/${this.filename}`, { data })
+        await Api.post(`/script-api/scripts/${this.filename}`, {
+          data,
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            // A 403 (approved script, admin-only area) is shown as an alert
+            // below, so skip the global network error banner
+            'Ignore-Errors': '403',
+          },
+        })
           .then((response) => {
             if (response.status == 200) {
               if (response.data.suites) {
