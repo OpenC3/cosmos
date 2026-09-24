@@ -82,9 +82,6 @@ importers:
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
-      sass:
-        specifier: 1.105.0
-        version: 1.105.0
       vite:
         specifier: 7.3.6
         version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0)
@@ -119,9 +116,6 @@ importers:
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
-      sass:
-        specifier: 1.105.0
-        version: 1.105.0
       vite:
         specifier: 7.3.6
         version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0)
@@ -156,9 +150,6 @@ importers:
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
-      sass:
-        specifier: 1.105.0
-        version: 1.105.0
       vite:
         specifier: 7.3.6
         version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0)
@@ -205,9 +196,6 @@ importers:
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
-      sass:
-        specifier: 1.105.0
-        version: 1.105.0
       vite:
         specifier: 7.3.6
         version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0)
@@ -276,9 +264,6 @@ importers:
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
-      sass:
-        specifier: 1.105.0
-        version: 1.105.0
       vite:
         specifier: 7.3.6
         version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0)
@@ -310,9 +295,6 @@ importers:
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
-      sass:
-        specifier: 1.105.0
-        version: 1.105.0
       vite:
         specifier: 7.3.6
         version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0)
@@ -347,9 +329,6 @@ importers:
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
-      sass:
-        specifier: 1.105.0
-        version: 1.105.0
       vite:
         specifier: 7.3.6
         version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0)
@@ -415,9 +394,6 @@ importers:
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
-      sass:
-        specifier: 1.105.0
-        version: 1.105.0
       vite:
         specifier: 7.3.6
         version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0)
@@ -449,9 +425,6 @@ importers:
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
-      sass:
-        specifier: 1.105.0
-        version: 1.105.0
       vite:
         specifier: 7.3.6
         version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0)
@@ -483,9 +456,6 @@ importers:
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
-      sass:
-        specifier: 1.105.0
-        version: 1.105.0
       vite:
         specifier: 7.3.6
         version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0)
@@ -557,9 +527,6 @@ importers:
       rollup-plugin-sourcemaps2:
         specifier: ^0.5.8
         version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
-      sass:
-        specifier: 1.105.0
-        version: 1.105.0
       vite:
         specifier: 7.3.6
         version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0)
@@ -581,9 +548,6 @@ importers:
       lossless-json:
         specifier: 4.3.1
         version: 4.3.1
-      sass:
-        specifier: 1.105.0
-        version: 1.105.0
       sortablejs:
         specifier: 1.15.7
         version: 1.15.7

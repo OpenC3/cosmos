@@ -44,7 +44,6 @@
     "@anycable/web": "1.1.1",
     "axios": "1.20.0",
     "lossless-json": "4.3.1",
-    "sass": "1.105.0",
     "sortablejs": "1.15.7",
     "uplot": "1.6.32"
   },
