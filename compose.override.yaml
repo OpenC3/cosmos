@@ -294,8 +294,10 @@
 # plugin is installed. It is read by cmd-tlm-api and init (which validate the
 # path) and by the operator (which writes the secret files) - set it to the
 # SAME value on all of them, plus script-runner-api if scripts read FILE
-# secrets. The directory must be writable in each container, so a value other
-# than /tmp also needs a volume mount because the containers are read_only:
+# secrets. cmd-tlm-api and init only check the path lexically, so they need
+# the variable but not the directory. The operator writes the files, so it
+# needs a writable mount when the value is not /tmp (the containers are
+# read_only), as does script-runner-api if scripts read FILE secrets:
 #
 # services:
 #   openc3-operator:
@@ -309,6 +311,12 @@
 #   openc3-cosmos-init:
 #     environment:
 #       - OPENC3_SECRET_FILE_DIR=/secrets
+#   # Only if scripts read FILE secrets:
+#   openc3-cosmos-script-runner-api:
+#     environment:
+#       - OPENC3_SECRET_FILE_DIR=/secrets
+#     volumes:
+#       - "openc3-secrets-v:/secrets"
 # volumes:
 #   openc3-secrets-v: {}
 
