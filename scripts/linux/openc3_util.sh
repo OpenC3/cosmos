@@ -15,13 +15,14 @@ if ! command -v docker &> /dev/null; then
 fi
 
 usage() {
-  echo "Usage: $1 [encode, hash, save, load, tag, push, pull, clean, hostsetup]" >&2
+  echo "Usage: $1 [encode, hash, save, load, tag, push, mirror, pull, clean, hostsetup]" >&2
   echo "*  encode: encode a string to base64" >&2
   echo "*  hash: hash a string using SHA-256" >&2
   echo "*  save: save images to a tar file" >&2
   echo "*  load: load images from a tar file" >&2
   echo "*  tag: tag images" >&2
   echo "*  push: push images" >&2
+  echo "*  mirror: copy multi-arch images between registries" >&2
   echo "*  pull: pull images from a registry" >&2
   echo "*  clean: remove node_modules, coverage, etc" >&2
   echo "*  hostsetup: configure host for redis" >&2
@@ -151,6 +152,50 @@ tag() {
   docker tag $repo1/$namespace1/openc3-redis$suffix:$tag1 $repo2/$namespace2/openc3-redis$suffix:$tag2
   docker tag $repo1/$namespace1/openc3-traefik$suffix:$tag1 $repo2/$namespace2/openc3-traefik$suffix:$tag2
   docker tag $repo1/$namespace1/openc3-tsdb$suffix:$tag1 $repo2/$namespace2/openc3-tsdb$suffix:$tag2
+  set +x
+  return 0
+}
+
+# Copy images directly between registries, preserving all platforms (multi-arch).
+# Unlike pull/tag/push, which only carries the host platform.
+mirror() {
+  if [[ "$#" -lt 4 ]]; then
+    echo "Usage: mirror <REPO1> <REPO2> <NAMESPACE1> <TAG1> <NAMESPACE2> <TAG2> <SUFFIX>" >&2
+    echo "e.g. mirror docker.io localhost:12345 openc3inc latest" >&2
+    echo "Note: NAMESPACE2 and TAG2 default to NAMESPACE1 and TAG1 if not given" >&2
+    exit 1
+  fi
+
+  repo1=$1
+  repo2=$2
+  namespace1=$3
+  tag1=$4
+  namespace2=${5:-$namespace1}
+  tag2=${6:-$tag1}
+  suffix=${7:-}
+
+  if docker buildx imagetools --help &> /dev/null; then
+    copy_cmd="buildx"
+  elif command -v skopeo &> /dev/null; then
+    copy_cmd="skopeo"
+  elif command -v crane &> /dev/null; then
+    copy_cmd="crane"
+  else
+    echo "mirror requires docker buildx, skopeo, or crane" >&2
+    exit 1
+  fi
+
+  set -x
+  for image in openc3-buckets openc3-cosmos-cmd-tlm-api openc3-cosmos-init openc3-cosmos-script-runner-api \
+    openc3-operator openc3-redis openc3-traefik openc3-tsdb; do
+    src=$repo1/$namespace1/$image$suffix:$tag1
+    dst=$repo2/$namespace2/$image$suffix:$tag2
+    case $copy_cmd in
+      buildx ) docker buildx imagetools create --tag $dst $src ;;
+      skopeo ) skopeo copy --all docker://$src docker://$dst ;;
+      crane ) crane copy $src $dst ;;
+    esac
+  done
   set +x
   return 0
 }
@@ -322,6 +367,32 @@ case $1 in
       exit 0
     fi
     tag "${@:2}"
+    ;;
+  mirror )
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
+      echo "Usage: $0 mirror REPO1 REPO2 NAMESPACE1 TAG1 [NAMESPACE2] [TAG2] [SUFFIX]"
+      echo ""
+      echo "Copy OpenC3 images directly from one registry to another, preserving"
+      echo "all platforms (multi-arch). Requires docker buildx, skopeo, or crane."
+      echo "Log in to both registries first."
+      echo ""
+      echo "Arguments:"
+      echo "  REPO1        Source repository (e.g., docker.io)"
+      echo "  REPO2        Target repository (e.g., localhost:12345)"
+      echo "  NAMESPACE1   Source namespace (e.g., openc3inc)"
+      echo "  TAG1         Source tag (e.g., latest)"
+      echo "  NAMESPACE2   Target namespace (default: same as NAMESPACE1)"
+      echo "  TAG2         Target tag (default: same as TAG1)"
+      echo "  SUFFIX       Optional suffix for image names (e.g., -ubi)"
+      echo ""
+      echo "Example:"
+      echo "  $0 mirror docker.io localhost:12345 openc3inc latest"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
+    mirror "${@:2}"
     ;;
   push )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
