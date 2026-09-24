@@ -12,7 +12,6 @@
   "dependencies": {
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
-    "axios": "1.20.0",
     "single-spa-vue": "3.0.1"
   },
   "devDependencies": {
