@@ -22,12 +22,15 @@ ARG DEBIAN_POINT_RELEASE=13.7
 ARG PYTHON_VERSION=3.13
 ARG RUBYGEMS_URL
 ARG PYPI_URL=https://pypi.org
+# host[:port] of a plain-HTTP PYPI_URL mirror to trust; leave unset for HTTPS
+ARG UV_INSECURE_HOST=
 # Update Dockerfile-ubi and the python .github/workflow actions to match this version
 ARG UV_VERSION=0.12.5
 
 ENV APT_URL=${APT_URL}
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
 ENV PYPI_URL=${PYPI_URL}
+ENV UV_INSECURE_HOST=${UV_INSECURE_HOST}
 ENV UV_VERSION=${UV_VERSION}
 
 # The official ruby image redirects gem installs to /usr/local/bundle via
@@ -131,7 +134,14 @@ RUN apt-get update && \
       bundle config set --global mirror.https://rubygems.org "${RUBYGEMS_URL}"; \
     fi && \
     chmod -R a+rX /etc/bundle && \
-    python3 -m pip install --break-system-packages "uv==${UV_VERSION}" && \
+    # Install uv from the PYPI_URL mirror too - without --index-url pip always
+    # reaches for pypi.org, which fails an air-gapped build before any relock.
+    # UV_INSECURE_HOST (host[:port]) opts a plain-HTTP mirror into being trusted;
+    # pip treats an empty PIP_TRUSTED_HOST as no trusted host.
+    # --only-binary: uv ships wheels for every platform we build, so never run a
+    # setup script from an sdist, even if the mirror serves one.
+    PIP_TRUSTED_HOST="${UV_INSECURE_HOST}" python3 -m pip install --break-system-packages \
+      --only-binary :all: --index-url "${PYPI_URL}/simple" "uv==${UV_VERSION}" && \
     rm -rf /var/lib/apt/lists/*
 
 # Configure UV for production container usage
@@ -142,6 +152,14 @@ ENV UV_PYTHON_DOWNLOADS=never
 # the runtime pip -i <pypi_url>/simple convention so air-gapped builds resolve
 # Python deps from the same mirror the runtime plugin installs use.
 ENV UV_DEFAULT_INDEX=${PYPI_URL}/simple
+
+# That index steers dependency *resolution* only - uv.lock pins absolute
+# pythonhosted.org URLs that `uv sync --frozen` fetches verbatim, so the mirror
+# would never be contacted. Derived images run this helper before each frozen
+# sync to relock against PYPI_URL when a mirror is configured; it is a no-op at
+# the default pypi.org. See the script for the full explanation.
+COPY uv_mirror_relock.sh /usr/local/bin/uv-mirror-relock
+
 # Use the Debian system Python instead of the project's .python-version pin
 # (which targets 3.12 for host development) since UV_PYTHON_DOWNLOADS is never.
 ENV UV_PYTHON=python${PYTHON_VERSION}

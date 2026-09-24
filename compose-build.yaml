@@ -27,6 +27,7 @@ services:
         APT_URL: ${APT_URL}
         RUBYGEMS_URL: ${RUBYGEMS_URL}
         PYPI_URL: ${PYPI_URL}
+        UV_INSECURE_HOST: ${UV_INSECURE_HOST:-}
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby:${OPENC3_TAG}"
 
@@ -38,6 +39,9 @@ services:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
         OPENC3_TAG: ${OPENC3_TAG}
+        # Keeps the uv.lock relock aimed at the same mirror even when this
+        # image is rebuilt on its own against an older openc3-ruby.
+        PYPI_URL_OVERRIDE: ${PYPI_URL}
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-base:${OPENC3_TAG}"
     depends_on:
       - "openc3-ruby"
@@ -141,6 +145,9 @@ services:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
         OPENC3_TAG: ${OPENC3_TAG}
+        # Keeps each plugin's uv.lock relock aimed at the same mirror even when
+        # this image is rebuilt on its own against an older openc3-node.
+        PYPI_URL_OVERRIDE: ${PYPI_URL}
         # 1 = build the tool bundles with sourcemaps so Playwright V8
         # coverage can map back to original sources. Never set for
         # production images (maps roughly triple the tool footprint).

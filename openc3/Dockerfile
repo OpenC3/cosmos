@@ -33,6 +33,17 @@ RUN mkdir -p lib/openc3/ext \
     # source tree into this layer.
     && chmod -R 777 /openc3/lib /openc3/gems
 
+# PYPI_URL normally arrives as an ENV baked into the openc3-ruby base image,
+# which is the only place the build sets it. That breaks down when this image
+# is built against a base image that did not see the current .env - a selective
+# rebuild of just this image, or a build pointed at a published openc3-ruby -
+# and the relock below would then silently target public PyPI. Accept an
+# explicit override so the mirror can be supplied here too; leaving it unset
+# keeps whatever the base image carries.
+ARG PYPI_URL_OVERRIDE=
+ENV PYPI_URL=${PYPI_URL_OVERRIDE:-$PYPI_URL}
+ENV UV_DEFAULT_INDEX=${PYPI_URL}/simple
+
 WORKDIR /openc3/python
 
 # Install openc3 Python package and dependencies using UV
@@ -50,13 +61,30 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock p
 # UV_CACHE_DIR). Routing the sync through a mount and copying it into the seed
 # afterwards would bake wheels from unrelated past builds into the image, which
 # is exactly what verify-uv-cache.sh exists to prevent.
-RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project
+#
+# uv-mirror-relock (from the base image) rewrites uv.lock to point at PYPI_URL
+# when a PyPI mirror is configured, and does nothing otherwise - a frozen sync
+# fetches the absolute pythonhosted.org URLs in the lockfile, which no index
+# setting can redirect. Relock and sync in one layer so the lockfile the sync
+# uses is the one this layer produced.
+RUN UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock --no-build && \
+    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project --no-build
 
 # Copy application code (excluding .venv from source)
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 
-# Install the application itself with dependencies already present
-RUN UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev
+# Install the application itself with dependencies already present. This sync
+# must allow building the trusted local editable project; the dependency-only
+# sync above already rejects source distributions from third parties.
+# Relock again: the COPY above restored the committed uv.lock over the relocked
+# one from the previous layer. Resolution is unchanged and the metadata is
+# already cached, so this costs a moment on mirrored builds and nothing at all
+# on stock ones. --no-build on the relock keeps every lock in this build under
+# the same rule as the sync above - resolution never builds a third-party
+# sdist, and the local project's metadata is static so locking never has to
+# build it either.
+RUN UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock --no-build && \
+    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev # NOSONAR
 
 WORKDIR /openc3/
 
