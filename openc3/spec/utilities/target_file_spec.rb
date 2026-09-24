@@ -43,6 +43,17 @@ module OpenC3
       end
     end
 
+    # The bucket normalizes '..' segments in keys, so a traversal name would
+    # reach another scope's objects. Names are rejected before any bucket call.
+    describe "name validation" do
+      it "rejects traversal names on destroy and create without touching the bucket" do
+        expect(Bucket).to_not receive(:getClient)
+        name = "INST/../../OTHER/targets_modified/INST/procedures/x.rb"
+        expect { TargetFile.destroy("DEFAULT", name) }.to raise_error(ArgumentError, /Invalid target file name/)
+        expect { TargetFile.create("DEFAULT", name, "data") }.to raise_error(ArgumentError, /Invalid target file name/)
+      end
+    end
+
     describe "marker handling on bucket keys" do
       before(:each) do
         @fsys_s3 = ENV['OPENC3_CLOUD'].nil? || ENV['OPENC3_CLOUD'] == 'local'
