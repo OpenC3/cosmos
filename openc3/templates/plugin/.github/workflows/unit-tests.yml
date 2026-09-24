@@ -1,0 +1,34 @@
+# Runs this plugin's unit tests on every push and pull request.
+#
+# Python tests are discovered in tests/ or test/, Ruby specs in spec/ or specs/.
+# Whichever this plugin doesn't have is skipped, so there is nothing to set up:
+# add a test file and it starts running. A plugin with no tests at all passes
+# with a warning until you set require_tests below.
+#
+# Dependencies are picked up automatically - requirements.txt for the code under
+# test, <test dir>/requirements.txt for test only ones, and a Gemfile for Ruby
+# when there is one.
+
+name: Unit Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    uses: OpenC3/.github/.github/workflows/plugin-unit-tests-reusable.yml@main
+    with:
+      plugin_directory: .
+      # python_version: '3.12'  # Uncomment to pin a different Python
+      # ruby_version: '3.4'  # Uncomment to pin a different Ruby
+      # require_tests: true  # Uncomment to fail the build when there are no tests
