@@ -19,7 +19,6 @@
     "sprintf-js": "1.1.3"
   },
   "devDependencies": {
-    "@rushstack/eslint-patch": "1.16.1",
     "@vitejs/plugin-vue": "6.0.9",
     "prettier": "3.9.6",
     "rollup-plugin-sourcemaps2": "^0.5.8",

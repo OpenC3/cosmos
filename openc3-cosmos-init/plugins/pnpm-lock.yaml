@@ -42,9 +42,6 @@ importers:
         specifier: workspace:*
         version: link:../openc3-vue-common
     devDependencies:
-      '@rushstack/eslint-patch':
-        specifier: 1.16.1
-        version: 1.16.1
       '@vitejs/plugin-vue':
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
@@ -168,9 +165,6 @@ importers:
         specifier: 1.1.3
         version: 1.1.3
     devDependencies:
-      '@rushstack/eslint-patch':
-        specifier: 1.16.1
-        version: 1.16.1
       '@vitejs/plugin-vue':
         specifier: 6.0.9
         version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
@@ -1480,9 +1474,6 @@ packages:
     resolution: {integrity: sha512-QVTUovf40zgTqlFVrKA1uXMVvU2QWEFWfAH8Wdc48IxLvrJMQVMBRjuQyUpzZCDkakImib9eVazbWlC6ksWtJw==}
     cpu: [x64]
     os: [win32]
-
-  '@rushstack/eslint-patch@1.16.1':
-    resolution: {integrity: sha512-TvZbIpeKqGQQ7X0zSCvPH9riMSFQFSggnfBjFZ1mEoILW+UuXCKwOoPcgjMwiUtRqFZ8jWhPJc4um14vC6I4ag==}
 
   '@sanity/diff-match-patch@3.2.0':
     resolution: {integrity: sha512-4hPADs0qUThFZkBK/crnfKKHg71qkRowfktBljH2UIxGHHTxIzt8g8fBiXItyCjxkuNy+zpYOdRMifQNv8+Yww==}
@@ -2928,8 +2919,6 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.60.4':
     optional: true
-
-  '@rushstack/eslint-patch@1.16.1': {}
 
   '@sanity/diff-match-patch@3.2.0': {}
 
