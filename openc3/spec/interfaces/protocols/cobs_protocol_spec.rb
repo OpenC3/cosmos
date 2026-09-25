@@ -78,6 +78,17 @@ module OpenC3
       $buffer = ''
     end
 
+    # The stub streams below return data forever so cap the read queue rather
+    # than letting the read thread buffer the full default budget
+    before(:each) do
+      @interface.set_option('READ_QUEUE_MAX_SIZE', ['65536'])
+    end
+
+    after(:each) do
+      # Stop the StreamInterface read thread started by reading
+      @interface.stop_read_queue_thread if @interface
+    end
+
     describe "read" do
       it "handles multiple reads" do
         $index = 0
@@ -151,6 +162,8 @@ module OpenC3
         @interface.add_protocol(CobsProtocol, [], :READ_WRITE)
         @examples.each do |decoded, encoded|
           $buffer = encoded
+          # The read thread buffers ahead so flush it to pick up the new data
+          @interface.stop_read_queue_thread
           packet = @interface.read
           expect(packet.buffer).to eql(decoded)
         end

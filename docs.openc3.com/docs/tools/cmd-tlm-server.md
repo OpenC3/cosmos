@@ -73,6 +73,12 @@ The Data Flows tab displays all the Interface data flows through the system.
 
 ![Data Flows](/img/cmd_tlm_server/data_flows.png)
 
+Click an Interface or Router node to see its processing metrics below the properties and raw data. Click a Target Processing node on the left to see metrics for that target's services, including decommutation, logging, and database ingestion. Each service instance is listed separately so a slow instance is visible. The same metrics are available in the connection maps opened from the Interfaces and Routers tabs.
+
+Nodes show an amber or red outline and a **Falling behind** indicator when a reported queue delay or processing duration reaches 1 second (amber) or 5 seconds (red), or buffered input reaches 1 MiB (amber) or 10 MiB (red). Click the indicator to see the affected metric and service. These thresholds are diagnostic indicators; normal buffering and processing times depend on your configuration and traffic.
+
+Metrics refresh approximately every 5 seconds. Reports older than 30 seconds are marked **Stale metrics**, and request failures show **Metrics unavailable**. Services with no delay or buffer samples show **No delay samples**. Measurements describe the last processed data, so idle services retain their last measurement; they do not measure the current age of unprocessed data. Counters are cumulative and reset when a service restarts. Use the pause button in either details dialog to freeze the displayed values for inspection.
+
 You can disconnect the interface from the COSMOS Processing by clicking and deleting the lines connecting the Processing to the Interface. This will leave the interface "connected" but no commands are sent out or telemetry processed. Removing the lines from the Interface to the Target will effectively "unmap" the interface and restart it. This may require re-installing the plugin to restore the interface.
 
 From the Details dialog you can also view details about the individual Protocols applied to the Interface. In the EXAMPLE_INT Interface, when you click on the Length protocol you can see the details of the protocol.

@@ -281,6 +281,12 @@ class TcpipServerInterface(StreamInterface):
         else:
             return 0
 
+    # @return [Integer] The number of bytes buffered on the read queues of
+    #   all the connected clients
+    def read_queue_bytes(self):
+        # Snapshot the list as the listen thread can remove clients concurrently
+        return sum(rii.interface.read_queue_bytes() for rii in self.read_interface_infos.copy())
+
     # @return [Integer] The number of packets waiting on the write queue
     def write_queue_size(self):
         if self.write_queue:
@@ -399,6 +405,10 @@ class TcpipServerInterface(StreamInterface):
             stream = TcpipSocketStream(write_socket, read_socket, self.write_timeout, self.read_timeout)
 
             interface = StreamInterface()
+            # Only the read side of the connection needs a read thread
+            interface.read_allowed = listen_read
+            # The per client interfaces do the raw reading so they get the read queue limit
+            interface.set_option("READ_QUEUE_MAX_SIZE", [self.read_queue_max_size])
             interface.target_names = self.target_names
             interface.cmd_target_names = self.cmd_target_names
             interface.tlm_target_names = self.tlm_target_names

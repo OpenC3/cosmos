@@ -30,6 +30,17 @@ module OpenC3
       allow(@interface).to receive(:disconnect) { nil }
     end
 
+    # The stub streams below return data forever so cap the read queue rather
+    # than letting the read thread buffer the full default budget
+    before(:each) do
+      @interface.set_option('READ_QUEUE_MAX_SIZE', ['65536'])
+    end
+
+    after(:each) do
+      # Stop the StreamInterface read thread started by reading
+      @interface.stop_read_queue_thread if @interface
+    end
+
     describe "initialize" do
       it "initializes attributes" do
         @interface.add_protocol(FixedProtocol, [2, 1, '0xDEADBEEF', false, true], :READ_WRITE)
@@ -80,6 +91,8 @@ module OpenC3
         expect(packet.buffer[0]).to eql "\x01"
         # Return zeros which will not be identified
         $index = 0
+        # The read thread buffers ahead so flush it to pick up the new data
+        @interface.stop_read_queue_thread
         packet = @interface.read
         expect(packet.received_time.to_f).to eql 0.0
         expect(packet.target_name).to eql nil
@@ -122,17 +135,23 @@ module OpenC3
         expect(packet.target_name).to eql 'SYSTEM'
         expect(packet.packet_name).to eql 'META'
         $index = 2
+        # The read thread buffers ahead so flush it to pick up the new data
+        @interface.stop_read_queue_thread
         packet = @interface.read
         expect(packet.received_time.to_f).to be_within(0.1).of(Time.now.to_f)
         expect(packet.target_name).to eql 'SYSTEM'
         expect(packet.packet_name).to eql 'LIMITS_CHANGE'
         System.telemetry.config.tlm_unique_id_mode['SYSTEM'] = true
         $index = 1
+        # The read thread buffers ahead so flush it to pick up the new data
+        @interface.stop_read_queue_thread
         packet = @interface.read
         expect(packet.received_time.to_f).to be_within(0.1).of(Time.now.to_f)
         expect(packet.target_name).to eql 'SYSTEM'
         expect(packet.packet_name).to eql 'META'
         $index = 2
+        # The read thread buffers ahead so flush it to pick up the new data
+        @interface.stop_read_queue_thread
         packet = @interface.read
         expect(packet.received_time.to_f).to be_within(0.1).of(Time.now.to_f)
         expect(packet.target_name).to eql 'SYSTEM'

@@ -78,6 +78,7 @@ module OpenC3
         expect(i.connected?).to be false
         i.connect
         expect(i.connected?).to be true
+        i.stop_read_queue_thread
       end
     end
 

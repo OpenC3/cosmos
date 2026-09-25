@@ -70,6 +70,9 @@ module OpenC3
     #   this interface
     attr_accessor :disable_disconnect
 
+    # @return [Boolean] Flag indicating if the interface is allowed to read
+    attr_writer :read_allowed
+
     # @return [StreamLogPair] StreamLogPair instance or nil
     attr_accessor :stream_log_pair
 
@@ -441,6 +444,12 @@ module OpenC3
       config['txcnt'] = @write_count
       config['rxcnt'] = @read_count
       config
+    end
+
+    # @return [Integer] The number of bytes waiting on the read queue.
+    #   Interfaces which buffer raw reads override this (see ReadQueue).
+    def read_queue_bytes
+      0
     end
 
     # @return [Boolean] Whether reading is allowed

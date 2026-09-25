@@ -561,6 +561,10 @@ module OpenC3
       super(name)
 
       @interface_or_router = self.class.name.to_s.split("Microservice")[0].upcase.split("::")[-1]
+      # Built once since the metric is updated for every packet
+      kind = @interface_or_router.downcase
+      @read_queue_metric_name = "#{kind}_read_queue_bytes"
+      @read_queue_metric_help = "Bytes buffered on the #{kind} read queue waiting to be processed"
       if @interface_or_router == 'INTERFACE'
         @metric.set(name: 'interface_tlm_total', value: @count, type: 'counter')
       else
@@ -720,6 +724,7 @@ module OpenC3
                   else
                     @metric.set(name: 'router_cmd_total', value: @count, type: 'counter')
                   end
+                  update_read_queue_metric()
                 else
                   @logger.info "#{@interface.name}: Internal disconnect requested (returned nil)"
                   handle_connection_lost()
@@ -884,6 +889,11 @@ module OpenC3
       @logger.info "#{@interface.name}: Connection Success"
     end
 
+    def update_read_queue_metric
+      @metric.set(name: @read_queue_metric_name, value: @interface.read_queue_bytes, type: 'gauge',
+                  unit: 'bytes', help: @read_queue_metric_help)
+    end
+
     def disconnect(allow_reconnect = true)
       reconnect = false
 
@@ -905,6 +915,9 @@ module OpenC3
         rescue => e
           @logger.error "Disconnect: #{@interface.name}: #{e.formatted}"
         end
+        # Disconnecting discards the read queue so report it as empty, otherwise
+        # the last reported value would persist until the next packet
+        update_read_queue_metric()
 
         # If the interface is set to auto_reconnect then delay so the thread
         # can come back around and allow the interface a chance to reconnect.

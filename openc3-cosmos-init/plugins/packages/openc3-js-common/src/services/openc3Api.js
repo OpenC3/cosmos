@@ -952,8 +952,8 @@ export default class OpenC3Api {
     return this.set_setting(name, data)
   }
 
-  get_metrics() {
-    return this.exec('get_metrics', [])
+  get_metrics(detailed = false) {
+    return this.exec('get_metrics', [], { detailed })
   }
 
   // Opens a new browser tab with the given URL

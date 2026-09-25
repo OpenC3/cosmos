@@ -15,11 +15,12 @@ from openc3.interfaces.interface import Interface
 from openc3.io.udp_sockets import UdpReadSocket, UdpReadWriteSocket, UdpWriteSocket
 from openc3.top_level import close_socket
 from openc3.utilities.logger import Logger
+from openc3.utilities.read_queue import ReadQueue
 from openc3.utilities.sleeper import Sleeper
 
 
 # Base class for interfaces that send and receive messages over UDP
-class UdpInterface(Interface):
+class UdpInterface(ReadQueue, Interface):
     # @param hostname [String] Machine to connect to
     # @param write_dest_port [Integer] Port to write commands to
     # @param read_port [Integer] Port to read telemetry from
@@ -46,6 +47,7 @@ class UdpInterface(Interface):
         bind_address="0.0.0.0",
     ):
         super().__init__()
+        self.initialize_read_queue()
         self.hostname = ConfigParser.handle_none(hostname)
         if self.hostname is not None:
             self.hostname = str(hostname)
@@ -149,6 +151,11 @@ class UdpInterface(Interface):
                 )
         self.thread_sleeper = None
         super().connect()
+        # The read thread continuously drains the socket so the operating system
+        # buffers don't fill up (and drop datagrams) while we're busy processing
+        # the previous read
+        if self.read_port is not None:
+            self.start_read_queue_thread()
 
     # @return [Boolean] Whether the active ports (read and/or write) have
     #   created sockets. Since UDP is connectionless, creation of the sockets
@@ -168,6 +175,8 @@ class UdpInterface(Interface):
         close_socket(self.read_socket)
         self.write_socket = None
         self.read_socket = None
+        # The sockets are closed above which unblocks the read thread
+        self.stop_read_queue_thread()
         if self.thread_sleeper:
             self.thread_sleeper.cancel()
         self.thread_sleeper = None
@@ -183,19 +192,39 @@ class UdpInterface(Interface):
             self.thread_sleeper.sleep(1_000_000_000)
         return None
 
-    # Reads from the socket if the read_port is defined
-    def read_interface(self):
+    # Called by the read thread to perform a single blocking socket read
+    # @return [bytes, None] Data read or None if the socket is done
+    def read_queue_data(self):
+        read_socket = self.read_socket
+        if read_socket is None:  # Disconnected
+            return None
         try:
-            data = self.read_socket.read(self.read_timeout)
+            data = read_socket.read(self.read_timeout)
             if len(data) <= 0:
                 Logger.info(f"{self.name}: Udp read returned 0 bytes (stream closed)")
-            extra = None
-            self.read_interface_base(data, extra)
-            return (data, extra)
+            return data
         # TODO: select.select can throw TypeErorr: fileno() returned a non-integer
         # Does it also throw socket.error?
         except (OSError, TypeError):
+            return None
+
+    # Reads the data queued by the read thread if the read_port is defined
+    # ReadQueue and Interface both define these so pick the ReadQueue ones
+    # explicitly rather than relying on the method resolution order
+    def read_queue_size(self):
+        return ReadQueue.read_queue_size(self)
+
+    def read_queue_bytes(self):
+        return ReadQueue.read_queue_bytes(self)
+
+    def read_interface(self):
+        data = self.read_queue_pop()
+        if data is None:
             return None, None
+
+        extra = None
+        self.read_interface_base(data, extra)
+        return data, extra
 
     # Writes to the socket
     # @param data [String] Raw packet data
