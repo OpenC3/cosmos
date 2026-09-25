@@ -27,7 +27,7 @@ import time
 
 MB = 1024 * 1024
 # Total bytes the simulated device sends
-TOTAL_BYTES = int(float(os.environ.get("OPENC3_SOCKET_TEST_MB", "100")) * MB)
+TOTAL_BYTES = int(float(os.environ.get("OPENC3_SOCKET_TEST_MB", "30")) * MB)
 # Rate the simulated device sends at
 SEND_RATE = float(os.environ.get("OPENC3_SOCKET_TEST_SEND_MBPS", "40")) * MB
 # Rate the interface consumer processes data at. This stands in for the

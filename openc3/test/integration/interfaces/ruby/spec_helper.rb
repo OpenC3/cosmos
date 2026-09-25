@@ -35,7 +35,7 @@ puts "Testing #{$LOADED_FEATURES.grep(%r{openc3/interfaces/udp_interface\.rb}).f
 module SocketThroughput
   MB = 1024 * 1024
   # Total bytes the simulated device sends
-  TOTAL_BYTES = (Float(ENV.fetch('OPENC3_SOCKET_TEST_MB', '100')) * MB).to_i
+  TOTAL_BYTES = (Float(ENV.fetch('OPENC3_SOCKET_TEST_MB', '30')) * MB).to_i
   # Rate the simulated device sends at
   SEND_RATE = Float(ENV.fetch('OPENC3_SOCKET_TEST_SEND_MBPS', '40')) * MB
   # Rate the interface consumer processes data at. This stands in for the

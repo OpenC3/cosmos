@@ -14,13 +14,13 @@ are small (about 200KB for UDP on Linux). Once they fill:
 - **TCP**: the device can't write. Real hardware usually can't block so its own
   buffer overruns and data is lost at the source.
 
-The read queue (`READ_QUEUE_MAX_SIZE`, default 100MB) reads the socket in a
+The read queue (`READ_QUEUE_MAX_SIZE`, default 20MB) reads the socket in a
 dedicated thread and buffers the backlog in memory so the socket buffers stay
 drained.
 
 ## What the tests do
 
-A simulated device in a separate process sends 100MB in 8KB chunks at 40MB/s
+A simulated device in a separate process sends 30MB in 8KB chunks at 40MB/s
 while the consumer reads the interface and only processes 20MB/s (standing in
 for the protocol / decom / Redis work). Each case runs with reads inline
 (`READ_QUEUE_MAX_SIZE 0`, which is how interfaces read before the read queue)
@@ -29,7 +29,7 @@ and with the default read queue:
 | Test                   | Inline reads                 | Read queue                    |
 | ---------------------- | ---------------------------- | ----------------------------- |
 | UDP datagrams received | ~50% lost (test expects > 0) | 0% (macOS), ~2% (Ruby, Linux) |
-| TCP device overrun     | ~45% lost (test expects > 0) | 0% (test expects 0)           |
+| TCP device overrun     | ~35% lost (test expects > 0) | 0% (test expects 0)           |
 
 The inline tests are a sanity check that the scenario really overflows the
 socket buffers on the machine running it.
@@ -58,8 +58,8 @@ uv run pytest ../test/integration/interfaces/python -s
 `-s` shows the per test report, e.g.
 
 ```
-UDP inline: produced 100.0MB in 2.50s, received 50.7MB, lost 49.3MB (49.3%), peak queue 0.0MB
-UDP read queue: produced 100.0MB in 2.50s, received 100.0MB, lost 0.0MB (0.0%), peak queue 50.0MB
+UDP inline: produced 30.0MB in 0.75s, received 15.7MB, lost 14.3MB (47.5%), peak queue 0.0MB
+UDP read queue: produced 30.0MB in 0.75s, received 30.0MB, lost 0.0MB (0.0%), peak queue 15.0MB
 ```
 
 ## Running against another version
@@ -79,10 +79,10 @@ reads are always inline:
 
 | Environment variable                      | Default | Description                          |
 | ----------------------------------------- | ------- | ------------------------------------ |
-| `OPENC3_SOCKET_TEST_MB`                   | 100     | Total MB the device sends            |
+| `OPENC3_SOCKET_TEST_MB`                   | 30      | Total MB the device sends            |
 | `OPENC3_SOCKET_TEST_SEND_MBPS`            | 40      | Device send rate in MB/s             |
 | `OPENC3_SOCKET_TEST_CONSUME_MBPS`         | 20      | Consumer processing rate in MB/s     |
 | `OPENC3_SOCKET_TEST_MAX_UDP_LOSS_PERCENT` | 5       | UDP loss allowed with the read queue |
 
 Keep the send rate above the consume rate and the backlog
-(`MB * (1 - CONSUME / SEND)`) below the 100MB read queue limit.
+(`MB * (1 - CONSUME / SEND)`) below the 20MB default read queue limit.
