@@ -13,5 +13,6 @@
 
 import { prependBasePath } from './routeUtils'
 import { formatBytesToString } from './formatter'
+import { tokenizedFilter, tokenizedSort } from './search'
 
-export { prependBasePath, formatBytesToString }
+export { prependBasePath, formatBytesToString, tokenizedFilter, tokenizedSort }

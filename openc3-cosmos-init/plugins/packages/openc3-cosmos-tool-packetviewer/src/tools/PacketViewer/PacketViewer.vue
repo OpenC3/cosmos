@@ -81,6 +81,7 @@
         }"
         :items="rows"
         :custom-filter="filter"
+        :filter-keys="filterKeys"
         :sort-by="sortBy"
         :loading="loading > 0"
         multi-sort
@@ -232,6 +233,7 @@ import {
 } from '@openc3/vue-common/components'
 import { ValueWidget } from '@openc3/vue-common/widgets'
 import { useContainerHeight } from '@openc3/vue-common/composables'
+import { tokenizedFilter } from '@openc3/js-common/utils'
 
 // Used in the menu and openConfiguration lookup
 const valueTypeToRadioGroup = {
@@ -274,6 +276,10 @@ export default {
         },
         { title: 'Value', key: 'value' },
       ],
+      // Search the item name only, not the live telemetry value, which would
+      // make rows come and go as values change. Hoisted rather than written
+      // inline so it keeps the same identity across renders.
+      filterKeys: ['name'],
       sortBy: [{ key: 'pinned', order: 'desc' }],
       optionsDialog: false,
       optionsFormValid: true,
@@ -566,14 +572,10 @@ export default {
           item.item === name,
       )
     },
-    filter(value, search, _item) {
-      if (this.isPinned(value)) {
-        return true
-      } else if (value) {
-        return value.toString().indexOf(search.toUpperCase()) >= 0
-      } else {
-        return false
-      }
+    filter(value, search, item) {
+      // Pinned items stay visible no matter what's typed
+      if (item?.raw?.pinned) return true
+      return tokenizedFilter(value, search) !== -1
     },
     async packetChanged(event, force = false) {
       if (
