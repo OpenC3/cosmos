@@ -84,6 +84,22 @@ dev = [
 requires = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.uv]
+# Pin the build backend used to build this project from source.
+#
+# `requires` above is an open range, resolved fresh into an isolated build
+# environment on every build. With `uv sync --no-build` blocking third-party
+# source builds (see openc3/Dockerfile), that environment is the one place
+# unpinned code runs at image build time. These pins narrow the gap - they are
+# not hash-verified the way uv.lock entries are - while `requires` stays
+# permissive for anyone building the sdist themselves. Bump alongside
+# `uv lock --upgrade`; `packaging` is a transitive dependency of `wheel`.
+build-constraint-dependencies = [
+    "setuptools==84.0.0",
+    "wheel==0.48.0",
+    "packaging==26.3",
+]
+
 [tool.setuptools]
 py-modules = ["openc3pycli"]
 

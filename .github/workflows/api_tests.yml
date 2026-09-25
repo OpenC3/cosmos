@@ -161,8 +161,8 @@ jobs:
           cache-suffix: ${{ matrix.python-version }}
       - name: Run unit tests
         run: |
-          uv run --frozen coverage run -m pytest ../../openc3-cosmos-script-runner-api/test/
-          uv run --frozen coverage xml -i
+          uv run --locked --no-build --no-binary-package openc3 coverage run -m pytest ../../openc3-cosmos-script-runner-api/test/
+          uv run --locked --no-build --no-binary-package openc3 coverage xml -i
         working-directory: openc3/python
       - uses: codecov/codecov-action@0b35c9ecc4f0529d0eb674914510c22f85b196b4 # v7.1.0
         with:
