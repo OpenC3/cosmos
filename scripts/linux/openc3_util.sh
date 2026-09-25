@@ -194,6 +194,7 @@ mirror() {
       buildx ) docker buildx imagetools create --tag $dst $src ;;
       skopeo ) skopeo copy --all docker://$src docker://$dst ;;
       crane ) crane copy $src $dst ;;
+      * ) echo "Unknown copy command: $copy_cmd" >&2; exit 1 ;;
     esac
   done
   set +x
