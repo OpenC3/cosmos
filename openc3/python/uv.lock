@@ -968,7 +968,7 @@ wheels = [
 
 [[package]]
 name = "openc3"
-version = "7.4.1b0"
+version = "7.5.0b0"
 source = { editable = "." }
 dependencies = [
     { name = "boto3" },
