@@ -126,9 +126,9 @@ module OpenC3
       queue.close if queue
       thread = @raw_read_thread
       @raw_read_thread = nil
-      if thread and thread != Thread.current
-        # The read source should already be disconnected which unblocks the read
-        OpenC3.kill_thread(nil, thread) unless thread.join(THREAD_JOIN_TIMEOUT)
+      # The read source should already be disconnected which unblocks the read
+      if thread and thread != Thread.current and !thread.join(THREAD_JOIN_TIMEOUT)
+        OpenC3.kill_thread(nil, thread)
       end
     end
 
