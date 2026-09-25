@@ -59,6 +59,7 @@
           :filter-keys="filterKeys"
           @update:search="searches.packet = $event"
           @update:model-value="packetNameChanged"
+          @update:focused="packetFocusChanged"
           @focus="resetSearchAndFocus('packetAutocomplete', 'packet')"
         />
       </v-col>
@@ -110,6 +111,7 @@
           :filter-keys="filterKeys"
           @update:search="searches.item = $event"
           @update:model-value="itemNameChanged($event)"
+          @update:focused="itemFocusChanged"
           @focus="resetSearchAndFocus('itemAutocomplete', 'item')"
         />
       </v-col>
@@ -587,11 +589,29 @@ export default {
   },
   methods: {
     tokenizedFilter,
-    // A v-combobox (glob mode) commits whatever text is in the input when it
-    // loses focus. With tokenized search that text can be a multi word query
-    // like "heal stat", which is never a valid name, so throw it away instead
-    // of selecting it. Names are only rejected when they're unknown, so a
+    // A v-combobox (glob mode) keeps its model in sync with the text as you
+    // type and commits whatever is left when it loses focus. With tokenized 
+    // search that text can be a multi word query like "heal stat", which is
+    // never a valid name, so throw it away instead of selecting it - but only
+    // once focus is gone, because while typing that same text is a half
+    // finished query. Names are only rejected when they're unknown, so a
     // quoted name that really does contain a space still selects normally.
+    packetFocusChanged: function (focused) {
+      if (
+        !focused &&
+        this.isSearchText(this.selectedPacketName, this.packetNames)
+      ) {
+        this.selectedPacketName = null
+      }
+    },
+    itemFocusChanged: function (focused) {
+      if (
+        !focused &&
+        this.isSearchText(this.selectedItemName, this.itemNames)
+      ) {
+        this.selectedItemName = null
+      }
+    },
     isSearchText: function (value, names) {
       return (
         typeof value === 'string' &&
@@ -819,10 +839,6 @@ export default {
         value = value.value
         this.selectedPacketName = value
       }
-      if (this.isSearchText(value, this.packetNames)) {
-        this.selectedPacketName = null
-        return
-      }
       // When the packet name is completed deleted in the v-autocomplete
       // the @change handler is fired but the value is null
       // In this case we don't want to update packet details
@@ -892,10 +908,6 @@ export default {
       if (value !== null && typeof value === 'object' && value.value) {
         value = value.value
         this.selectedItemName = value
-      }
-      if (this.isSearchText(value, this.itemNames)) {
-        this.selectedItemName = null
-        return
       }
       const item = this.itemNames.find((item) => {
         return value === item.value
