@@ -50,7 +50,7 @@ BYTEARRAY_REGEX = re.compile(r"^bytearray\((.*)\)$", re.DOTALL)
 # single whitespace character is matched on each side (the rest of each run is
 # stripped by the caller) so the pattern stays free of quantifiers, which a
 # leading \s+ would make super-linear to search for.
-SPLIT_WITH_REGEX = re.compile(r"\swith\s", re.IGNORECASE) # codespell:ignore
+SPLIT_WITH_REGEX = re.compile(r"\swith\s", re.IGNORECASE)  # codespell:ignore
 # 'with' surrounded by optional whitespace is simply 'with' appearing anywhere
 SPLIT_WITH_OPTIONAL_WHITESPACE_REGEX = re.compile(r"with", re.IGNORECASE)
 
