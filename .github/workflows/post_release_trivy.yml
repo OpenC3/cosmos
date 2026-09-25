@@ -72,11 +72,17 @@ jobs:
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
         with:
           cache: true
-          version: v0.69.3
+          version: v0.74.0
       - name: Create trivy output folder
         run: mkdir trivy_results
       - name: Create sbom folder
         run: mkdir sbom
+      # The UBI results go in their own folders so they zip into their own
+      # release attachments: the UBI images are a separate distribution and
+      # are asked for separately, so mixing them into the Debian report would
+      # make either one harder to hand over.
+      - name: Create UBI trivy output and sbom folders
+        run: mkdir trivy_results_ubi sbom_ubi
       - name: Get current date
         id: date
         run: echo "date=$(date -u '+%m_%d_%y_%H_%M_%S')" >> "$GITHUB_OUTPUT"
@@ -256,10 +262,53 @@ jobs:
           format: "cyclonedx"
           output: "sbom/openc3-traefik.sbom.json"
           skip-setup-trivy: true
+      # scripts/release/build_multi_arch.sh ubi publishes these alongside the
+      # Debian images, so they can be scanned straight from Docker Hub. One
+      # loop rather than 22 more copies of the step above: the trivy-action
+      # only shells out to the same binary "Manual Trivy Setup" installed.
+      #
+      # continue-on-error because the release attachments are uploaded at the
+      # end of this job: a UBI image that failed to publish must not take the
+      # Debian report down with it. The loop records a failure and keeps going
+      # so one bad image does not hide the other ten.
+      - name: Run Trivy on the UBI images
+        continue-on-error: true
+        env:
+          UBI_IMAGES: >-
+            openc3-ruby-ubi
+            openc3-base-ubi
+            openc3-node-ubi
+            openc3-buckets-ubi
+            openc3-redis-ubi
+            openc3-tsdb-ubi
+            openc3-cosmos-cmd-tlm-api-ubi
+            openc3-cosmos-script-runner-api-ubi
+            openc3-operator-ubi
+            openc3-traefik-ubi
+            openc3-cosmos-init-ubi
+        run: |
+          status=0
+          for image in $UBI_IMAGES; do
+            ref="docker.io/openc3inc/${image}:${VERSION}"
+            echo "::group::trivy ${image}"
+            trivy image --image-src remote --exit-code 0 \
+              --pkg-types os,library --scanners vuln \
+              --format json --output "trivy_results_ubi/${image}.json" \
+              "$ref" || status=1
+            trivy image --image-src remote --exit-code 0 \
+              --format cyclonedx --output "sbom_ubi/${image}.sbom.json" \
+              "$ref" || status=1
+            echo "::endgroup::"
+          done
+          exit $status
       - name: Create zip of trivy results
         run: zip -r trivy_results.zip trivy_results
       - name: Create zip of SBOM results
         run: zip -r sbom.zip sbom
+      - name: Create zip of UBI trivy results
+        run: zip -r trivy_results_ubi.zip trivy_results_ubi
+      - name: Create zip of UBI SBOM results
+        run: zip -r sbom_ubi.zip sbom_ubi
       - name: Upload release attachments
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
@@ -293,4 +342,20 @@ jobs:
               release_id: release.data.id,
               name: `${date}_sbom_v${version}.zip`,
               data: await fs.readFileSync("sbom.zip")
+            });
+            // Upload the UBI release assets, kept separate from the Debian
+            // results above so each distribution can be handed over on its own
+            await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.data.id,
+              name: `${date}_trivy_results_ubi_v${version}.zip`,
+              data: await fs.readFileSync("trivy_results_ubi.zip")
+            });
+            await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.data.id,
+              name: `${date}_sbom_ubi_v${version}.zip`,
+              data: await fs.readFileSync("sbom_ubi.zip")
             });

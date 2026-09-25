@@ -2684,8 +2684,17 @@ check("<Target Name> <Packet Name> <Item Name> <Comparison - optional>")
 | Item Name   | Name of the telemetry item.                                                                                                                        |
 | Comparison  | A comparison to perform against the telemetry item. If a comparison is not given then the telemetry item will just be printed into the script log. |
 
+:::note[Supported Comparisons]
+A comparison is a single operator followed by a literal value. The supported operators are
+`==`, `!=`, `>`, `>=`, `<`, `<=` and `in`. `in` requires a list operand, e.g. `in [1, 2, 3]`,
+whose elements follow the same rules as any other value, e.g. `in ['ON', 'OFF']`.
+Python also accepts a tuple or set, e.g. `in (1, 2)`.
+Compound expressions, e.g. `TIMEUS & 0x0001 == 0x0000`, are not supported - use
+[check_expression](#check_expression) instead.
+:::
+
 :::note[String Comparisons]
-When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). Unquoted values are interpreted as variable names.
+When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). An unquoted value is rejected with `Uninitialized constant ON. Did you mean 'ON' as a string?`. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself instead: Ruby `check("INST HEALTH_STATUS TYPE == '#{expected}'")` or Python `check(f"INST HEALTH_STATUS TYPE == '{expected}'")`.
 :::
 
 <Tabs groupId="script-language">
@@ -4143,8 +4152,17 @@ success = wait(
 | type         | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).       |
 | quiet        | Named parameter indicating whether to log the result. Defaults to false which means log the wait.              |
 
+:::note[Supported Comparisons]
+A comparison is a single operator followed by a literal value. The supported operators are
+`==`, `!=`, `>`, `>=`, `<`, `<=` and `in`. `in` requires a list operand, e.g. `in [1, 2, 3]`,
+whose elements follow the same rules as any other value, e.g. `in ['ON', 'OFF']`.
+Python also accepts a tuple or set, e.g. `in (1, 2)`.
+Compound expressions, e.g. `TIMEUS & 0x0001 == 0x0000`, are not supported - use
+[wait_expression](#wait_expression) instead.
+:::
+
 :::note[String Comparisons]
-When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). Unquoted values are interpreted as variable names.
+When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). An unquoted value is rejected with `Uninitialized constant ON. Did you mean 'ON' as a string?`. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself instead: Ruby `wait("INST HEALTH_STATUS TYPE == '#{expected}'", 10)` or Python `wait(f"INST HEALTH_STATUS TYPE == '{expected}'", 10)`.
 :::
 
 <Tabs groupId="script-language">
@@ -4424,8 +4442,17 @@ elapsed = wait_check(
 | Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                        |
 | type         | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).    |
 
-:::note String Comparisons
-When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). Unquoted values are interpreted as variable names.
+:::note[Supported Comparisons]
+A comparison is a single operator followed by a literal value. The supported operators are
+`==`, `!=`, `>`, `>=`, `<`, `<=` and `in`. `in` requires a list operand, e.g. `in [1, 2, 3]`,
+whose elements follow the same rules as any other value, e.g. `in ['ON', 'OFF']`.
+Python also accepts a tuple or set, e.g. `in (1, 2)`.
+Compound expressions, e.g. `TIMEUS & 0x0001 == 0x0000`, are not supported - use
+[wait_check_expression](#wait_check_expression) instead.
+:::
+
+:::note[String Comparisons]
+When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). An unquoted value is rejected with `Uninitialized constant ON. Did you mean 'ON' as a string?`. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself instead: Ruby `wait_check("INST HEALTH_STATUS TYPE == '#{expected}'", 10)` or Python `wait_check(f"INST HEALTH_STATUS TYPE == '{expected}'", 10)`.
 :::
 
 <Tabs groupId="script-language">
@@ -5192,12 +5219,12 @@ set_state_color(<Target Name>, <Packet Name>, <Item Name>, <State Name>, <Color>
 </TabItem>
 </Tabs>
 
-| Parameter   | Description                                                    |
-| ----------- | -------------------------------------------------------------- |
-| Target Name | Name of the target of the telemetry item.                      |
-| Packet Name | Name of the telemetry packet of the telemetry item.            |
-| Item Name   | Name of the telemetry item.                                    |
-| State Name  | Name of the state to change, e.g. 'CONNECTED'.                 |
+| Parameter   | Description                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------ |
+| Target Name | Name of the target of the telemetry item.                                                              |
+| Packet Name | Name of the telemetry packet of the telemetry item.                                                    |
+| Item Name   | Name of the telemetry item.                                                                            |
+| State Name  | Name of the state to change, e.g. 'CONNECTED'.                                                         |
 | Color       | New color for the state. Must be one of GREEN, YELLOW, or RED. Pass None/nil to clear the state color. |
 
 <Tabs groupId="script-language">
@@ -6508,7 +6535,6 @@ Returns a hash / dict of the interface state. The following keys are always pres
 | read_protocols  | Array | One hash / dict per read protocol, in the order data flows through them  |
 | write_protocols | Array | One hash / dict per write protocol, in the order data flows through them |
 
-
 Every entry in `read_protocols` and `write_protocols` contains the protocol class name plus the data flowing into and out of that protocol. Entries in `read_protocols` use the `read_` prefixed keys, entries in `write_protocols` use the `write_` prefixed keys.
 
 | Key                    | Type          | Description                               |
@@ -6537,6 +6563,7 @@ Each protocol also adds keys for its own configuration. Protocols inherit their 
 | TerminatedProtocol    | Burst      | read_termination_characters, strip_read_termination                                                                                                                                            | write_termination_characters                                                                                                                                                                   |
 | SlipProtocol          | Terminated | start_char, end_char, esc_char, esc_end_char, esc_esc_char, read_strip_characters, read_enable_escaping                                                                                        | start_char, end_char, esc_char, esc_end_char, esc_esc_char, write_enable_escaping                                                                                                              |
 | TemplateProtocol      | Terminated | response_template, response_packet, response_target_name, response_lines, response_timeout, response_polling_period, ignore_lines, initial_read_delay, connect_complete_time, raise_exceptions | response_template, response_packet, response_target_name, response_lines, response_timeout, response_polling_period, ignore_lines, initial_read_delay, connect_complete_time, raise_exceptions |
+
 </TabItem>
 </Tabs>
 
@@ -6625,6 +6652,7 @@ Same as MqttInterface except `read_packets_by_topic` is replaced by:
 | ----------- | ------ | ------------------------------- |
 | write_topic | String | Topic commands are published to |
 | read_topic  | String | Topic telemetry is read from    |
+
 </TabItem>
 <TabItem value="HttpClientInterface">
 | Key                         | Type    | Description                                            |
@@ -6644,7 +6672,6 @@ Same as MqttInterface except `read_packets_by_topic` is replaced by:
 | request_queue_length | Integer | Number of requests queued to be read |
 </TabItem>
 </Tabs>
-
 
 :::note[Timestamp Formats]
 All timestamp strings are ISO 8601 in UTC with microsecond precision, e.g. `2026-08-26T16:15:30.123456Z`. The format is the same whether the interface is implemented in Ruby or Python.
@@ -7368,7 +7395,7 @@ Creates a table binary based on a table definition file. You can achieve the sam
 <TabItem value="python" label="Python Syntax">
 
 ```python
-table_create_binary(<Table Definition File>)
+table_create_binary(<Table Definition File>, scope=OPENC3_SCOPE)
 ```
 
 </TabItem>
@@ -7376,7 +7403,7 @@ table_create_binary(<Table Definition File>)
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-table_create_binary(<Table Definition File>)
+table_create_binary(<Table Definition File>, scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -7385,6 +7412,7 @@ table_create_binary(<Table Definition File>)
 | Parameter             | Description                                                                     |
 | --------------------- | ------------------------------------------------------------------------------- |
 | Table Definition File | Path to the table definition file, e.g. INST/tables/config/ConfigTables_def.txt |
+| scope                 | Scope to use, defaults to current scope                                         |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -7440,13 +7468,15 @@ put_target_file("INST/tables/bin/MCConfigurationTable_NoScrub.bin", table.buffer
 
 <span class="badge badge--secondary since-heading">Since 6.1.0</span>
 
-Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
+Creates a CSV report of the values in a table binary. You can achieve the same result in the Table Manager GUI with the Download Report button. Returns the report filename and the report contents.
+
+The report is written into the target's storage next to the binary, replacing the binary's extension with `.csv`. For example a report of `INST/tables/bin/ConfigTables.bin` is written to `INST/tables/bin/ConfigTables.csv` and can be read back with [get_target_file](#get_target_file). In the Bucket Explorer it appears under `DEFAULT/targets_modified/INST/tables/bin/ConfigTables.csv`. Pass `save` as false to get the contents in the return value without writing a file.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
 
 ```python
-table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Name (optional)>)
+table_create_report(<Table Binary Filename>, <Table Definition File>, table_name=None, save=True, scope=OPENC3_SCOPE)
 ```
 
 </TabItem>
@@ -7454,28 +7484,33 @@ table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Nam
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Name (optional)>)
+table_create_report(<Table Binary Filename>, <Table Definition File>, table_name: nil, save: true, scope: $openc3_scope)
 ```
 
 </TabItem>
 </Tabs>
 
-filename, definition, table_name
-
 | Parameter             | Description                                                                                                                                                                                                                                                                                                      |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Table Binary File     | Path to the table binary file, e.g. INST/tables/bin/ConfigTables.bin                                                                                                                                                                                                                                             |
 | Table Definition File | Path to the table definition file, e.g. INST/tables/config/ConfigTables_def.txt                                                                                                                                                                                                                                  |
-| Table Name            | Name of the table to create the report. This only applies if the Table Binary and Table Definition consist of multiple tables. By default the report consists of all tables and is named after the binary file. If the table name is given, the report is just the specified table and is named after the table. |
+| table_name            | Name of the table to create the report. This only applies if the Table Binary and Table Definition consist of multiple tables. By default the report consists of all tables and is named after the binary file. If the table name is given, the report is just the specified table and is named after the table. |
+| save                  | Whether to write the report into the target's storage. Defaults to true. Pass false to only return the contents.                                                                                                                                                                                                 |
+| scope                 | Scope to use, defaults to current scope                                                                                                                                                                                                                                                                          |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
-table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt") # =>
-# {'filename': 'INST/tables/bin/ConfigTables.csv', 'contents': 'MC_CONFIGURATION\nLabel, ...
-table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name="MC_CONFIGURATION") # =>
-# {'filename': 'INST/tables/bin/ConfigTables.csv', 'contents': 'MC_CONFIGURATION\nLabel, ...
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt")
+# Read the report back out of the target
+file = get_target_file(table['filename'])
+print(file.read())
+file.close() # delete file
+
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name="MC_CONFIGURATION", save=False)
+print(table['filename']) #=> INST/tables/bin/McConfiguration.csv
+print(table['contents']) #=> MC_CONFIGURATION\nLabel, Value\n...
 ```
 
 </TabItem>
@@ -7483,10 +7518,16 @@ table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/con
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt") # =>
-# {"filename"=>"INST/tables/bin/ConfigTables.csv", "contents"=>"MC_CONFIGURATION\nLabel, ...
-table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name: "MC_CONFIGURATION") # =>
-# {"filename"=>"INST/tables/bin/McConfiguration.csv", "contents"=>"MC_CONFIGURATION\nLabel, ...
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt")
+
+# Read the report back out of the target
+file = get_target_file(table['filename'])
+puts file.read()
+file.unlink # delete file
+
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name: "MC_CONFIGURATION", save: false)
+puts table['filename'] #=> INST/tables/bin/McConfiguration.csv
+puts table['contents'] #=> MC_CONFIGURATION\nLabel, Value\n...
 ```
 
 </TabItem>

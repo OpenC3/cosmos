@@ -24,6 +24,7 @@ import threading
 import time
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import NamedTuple
 
 import numpy
 import psycopg
@@ -111,6 +112,21 @@ def decode_float_special_values(value):
         return float("nan")
 
     return value
+
+
+class TlmItem(NamedTuple):
+    """A telemetry item to look up in the CVT or QuestDB.
+
+    All fields are None for a placeholder representing an item which doesn't exist
+    (get_tlm_available returns None for these). limits is "LIMITS" when the limits
+    state should also be returned (only used by the QuestDB lookup).
+    """
+
+    target_name: str | None
+    packet_name: str | None
+    item_name: str | None
+    value_type: str | None
+    limits: str | None = None
 
 
 class QuestDBClient:
@@ -534,7 +550,7 @@ class QuestDBClient:
                 return {"data_type": None, "array_size": None}
 
     @classmethod
-    def query_with_retry(cls, query, params=None, max_retries=5, label=None):
+    def query_with_retry(cls, query, params=None, max_retries=5, label=None, db_shard=0):
         """Execute a SQL query with automatic retry on connection errors.
 
         Args:
@@ -542,6 +558,7 @@ class QuestDBClient:
             params: Query parameters (list/tuple), or None
             max_retries: Maximum number of retry attempts (default 5)
             label: Optional label for log messages
+            db_shard: DB_Shard number to query (default 0)
 
         Returns:
             List of result rows (dicts)
@@ -555,7 +572,7 @@ class QuestDBClient:
         label_str = f" ({label})" if label else ""
         while True:
             try:
-                conn = cls.connection()
+                conn = cls.connection(db_shard=db_shard)
                 with conn.cursor(binary=True, row_factory=dict_row) as cursor:
                     cursor.execute(query, params or None)
                     return cursor.fetchall()
@@ -565,7 +582,7 @@ class QuestDBClient:
                     raise RuntimeError(f"Error querying TSDB{label_str}: {e!s}") from e
                 Logger.warn(f"TSDB{label_str}: Retrying due to error: {e!s}")
                 Logger.warn(f"TSDB{label_str}: Last query: {query}")
-                cls.disconnect()
+                cls.disconnect(db_shard=db_shard)
                 time.sleep(0.1)
 
     @staticmethod
@@ -757,12 +774,21 @@ class QuestDBClient:
         entry[f"{prefix}_TIMEFORMATTED"] = cls.format_timestamp(utc_time, "formatted")
 
     @classmethod
+    def db_shard_for_target(cls, target_name, scope="DEFAULT"):
+        """Look up the db_shard number for a target (cached). None target_name returns db_shard 0."""
+        from openc3.utilities.store import Store
+
+        return Store.db_shard_for_target(target_name, scope=scope)
+
+    @classmethod
     def tsdb_lookup(cls, items, start_time, end_time=None, scope="DEFAULT"):
         """Query historical telemetry data from QuestDB for a list of items.
         Builds the SQL query, executes it, and decodes all results.
+        Supports cross-db_shard queries by grouping items by db_shard, executing
+        separate queries per db_shard, and merging results positionally.
 
         Args:
-            items: List of [target_name, packet_name, item_name, value_type, limits].
+            items: List of TlmItem (or [target_name, packet_name, item_name, value_type, limits]).
                 item_name may be None to indicate a placeholder (non-existent item).
             start_time: Start timestamp for the query
             end_time: End timestamp, or None for "latest single row"
@@ -771,6 +797,60 @@ class QuestDBClient:
         Returns:
             Array of [value, limits_state] pairs per row, or {} if no results.
             Single-row results return a flat array; multi-row results return array of arrays.
+        """
+        items = [TlmItem(*item) for item in items]
+
+        # Every item is a placeholder for an item which doesn't exist, so there's
+        # nothing to query. Return a single row of None values, one per item.
+        if all(item.item_name is None for item in items):
+            return [[None, None] for _ in items]
+
+        # Group items by db_shard number while preserving their original positions
+        db_shard_groups = {}  # db_shard => {"positions": [], "items": []}
+        for pos, item in enumerate(items):
+            db_shard = cls.db_shard_for_target(item.target_name, scope=scope)
+            group = db_shard_groups.setdefault(db_shard, {"positions": [], "items": []})
+            group["positions"].append(pos)
+            group["items"].append(item)
+
+        # Single-db_shard fast path (most common case)
+        if len(db_shard_groups) == 1:
+            db_shard, group = next(iter(db_shard_groups.items()))
+            return cls._tsdb_lookup_single_db_shard(
+                group["items"], start_time=start_time, end_time=end_time, scope=scope, db_shard=db_shard
+            )
+
+        # Cross-db_shard: execute per-db_shard queries (as lists of rows) and merge results
+        db_shard_rows = {}
+        for db_shard, group in db_shard_groups.items():
+            result = cls._tsdb_lookup_single_db_shard(
+                group["items"], start_time=start_time, end_time=end_time, scope=scope, db_shard=db_shard, flatten=False
+            )
+            db_shard_rows[db_shard] = result if isinstance(result, list) else []
+
+        # Merge results positionally back into the original item order. Each db_shard
+        # may have different row counts so use the maximum row count and fill missing
+        # positions with [None, None]. If all db_shards returned empty, return empty.
+        max_rows = max(len(rows) for rows in db_shard_rows.values())
+        if max_rows == 0:
+            return {}
+
+        merged = [[[None, None] for _ in items] for _ in range(max_rows)]
+        for db_shard, group in db_shard_groups.items():
+            for row_num, row in enumerate(db_shard_rows[db_shard]):
+                for db_shard_idx, orig_pos in enumerate(group["positions"]):
+                    if db_shard_idx < len(row) and row[db_shard_idx]:
+                        merged[row_num][orig_pos] = row[db_shard_idx]
+        # Match the single db_shard behavior of returning a flat array for a single row
+        if max_rows == 1:
+            return merged[0]
+        return merged
+
+    @classmethod
+    def _tsdb_lookup_single_db_shard(cls, items, start_time, end_time=None, scope="DEFAULT", db_shard=0, flatten=True):
+        """Execute a tsdb_lookup query against a single db_shard.
+        This contains the ASOF JOIN logic for items all on the same QuestDB instance.
+        When flatten is True a single row result is returned as a flat array rather than a list of rows.
         """
         tables = {}
         names = []
@@ -829,6 +909,12 @@ class QuestDBClient:
             if limits:
                 names.append(f'"T{index}.{safe_item_name}__L"')
 
+        # Every item in this db_shard is a placeholder so there's no table to query.
+        # Return no results and let tsdb_lookup fill these positions with [None, None]
+        # when it merges the db_shards (an all placeholder lookup returns before this)
+        if not tables:
+            return {}
+
         # Add needed timestamp columns to the SELECT for calculated items
         for table_index, ts_columns in needed_timestamps.items():
             for ts_col in ts_columns:
@@ -851,7 +937,7 @@ class QuestDBClient:
             query_params.append(start_time)
             query_params.append(end_time)
 
-        result = cls.query_with_retry(query, params=query_params or None, label="tsdb_lookup")
+        result = cls.query_with_retry(query, params=query_params or None, label="tsdb_lookup", db_shard=db_shard)
 
         if not result:
             return {}
@@ -913,7 +999,7 @@ class QuestDBClient:
                 calculated_value = cls.format_timestamp(ts_utc, calc_info["format"])
                 data[row_index].insert(position, [calculated_value, None])
 
-        if len(result) == 1:
+        if flatten and len(result) == 1:
             data = data[0]
         return data
 
