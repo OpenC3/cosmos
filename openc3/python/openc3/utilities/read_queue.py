@@ -30,7 +30,7 @@ else:
 
 # Maximum number of bytes buffered on the queue before the read thread blocks
 # and lets the operating system do the buffering instead
-DEFAULT_READ_QUEUE_MAX_SIZE = 100 * 1024 * 1024  # 100MB
+DEFAULT_READ_QUEUE_MAX_SIZE = 20 * 1024 * 1024  # 20MB
 
 # Approximate memory each queued read costs on top of the data itself (the bytes
 # object plus the queue entry). Small reads are dominated by this so it is

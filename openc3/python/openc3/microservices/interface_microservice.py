@@ -654,6 +654,10 @@ class InterfaceMicroservice(Microservice):
 
         super().__init__(name)
         self.interface_or_router = self.__class__.__name__.split("Microservice")[0].upper()
+        # Built once since the metric is updated for every packet
+        kind = self.interface_or_router.lower()
+        self.read_queue_metric_name = f"{kind}_read_queue_bytes"
+        self.read_queue_metric_help = f"Bytes buffered on the {kind} read queue waiting to be processed"
         if self.interface_or_router == "INTERFACE":
             self.metric.set(name="interface_tlm_total", value=self.count, type="counter")
         else:
@@ -976,15 +980,14 @@ class InterfaceMicroservice(Microservice):
         self.logger.info(f"{self.interface.name}: Connection Success")
 
     def update_read_queue_metric(self):
-        if self.interface is None or self.interface_or_router is None:
+        if self.interface is None:
             return
-        kind = self.interface_or_router.lower()
         self.metric.set(
-            name=f"{kind}_read_queue_bytes",
+            name=self.read_queue_metric_name,
             value=self.interface.read_queue_bytes(),
             type="gauge",
             unit="bytes",
-            help=f"Bytes buffered on the {kind} read queue waiting to be processed",
+            help=self.read_queue_metric_help,
         )
 
     def disconnect(self, allow_reconnect=True):

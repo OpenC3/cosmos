@@ -561,6 +561,10 @@ module OpenC3
       super(name)
 
       @interface_or_router = self.class.name.to_s.split("Microservice")[0].upcase.split("::")[-1]
+      # Built once since the metric is updated for every packet
+      kind = @interface_or_router.downcase
+      @read_queue_metric_name = "#{kind}_read_queue_bytes"
+      @read_queue_metric_help = "Bytes buffered on the #{kind} read queue waiting to be processed"
       if @interface_or_router == 'INTERFACE'
         @metric.set(name: 'interface_tlm_total', value: @count, type: 'counter')
       else
@@ -886,9 +890,8 @@ module OpenC3
     end
 
     def update_read_queue_metric
-      kind = @interface_or_router.downcase
-      @metric.set(name: "#{kind}_read_queue_bytes", value: @interface.read_queue_bytes, type: 'gauge',
-                  unit: 'bytes', help: "Bytes buffered on the #{kind} read queue waiting to be processed")
+      @metric.set(name: @read_queue_metric_name, value: @interface.read_queue_bytes, type: 'gauge',
+                  unit: 'bytes', help: @read_queue_metric_help)
     end
 
     def disconnect(allow_reconnect = true)
