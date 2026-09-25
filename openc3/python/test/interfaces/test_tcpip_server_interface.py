@@ -13,6 +13,7 @@ import socket
 import threading
 import time
 import unittest
+from unittest.mock import Mock
 
 from openc3.interfaces.tcpip_server_interface import TcpipServerInterface
 from openc3.packets.packet import Packet
@@ -116,6 +117,28 @@ class TestTcpipServerInterface(unittest.TestCase):
         i = TcpipServerInterface("8888", "8889", "5", "5", "burst")
         i.set_option("LISTEN_ADDRESS", ["127.0.0.1"])
         self.assertEqual(i.listen_address, "127.0.0.1")
+
+    def test_passes_the_read_queue_max_size_to_the_client_interfaces(self):
+        i = TcpipServerInterface(None, "8889", None, "5", "burst")
+        i.set_option("READ_QUEUE_MAX_SIZE", ["1000"])
+        i.connect()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(("localhost", 8889))
+        start = time.time()
+        while i.num_clients() < 1 and (time.time() - start) < 2:
+            time.sleep(0.01)
+        self.assertEqual(i.read_interface_infos[0].interface.read_queue_max_size, 1000)
+        sock.close()
+        i.disconnect()
+
+    def test_reports_the_bytes_buffered_by_all_the_clients(self):
+        i = TcpipServerInterface(None, "8889", None, "5", "burst")
+        client1 = Mock()
+        client1.interface.read_queue_bytes.return_value = 10
+        client2 = Mock()
+        client2.interface.read_queue_bytes.return_value = 20
+        i.read_interface_infos = [client1, client2]
+        self.assertEqual(i.read_queue_bytes(), 30)
 
     def test_server_read_only(self):
         i = TcpipServerInterface(None, "8889", None, "5", "burst")

@@ -60,7 +60,11 @@ class ReadQueue(_ReadQueueBase):
     def initialize_read_queue(self, max_size=DEFAULT_READ_QUEUE_MAX_SIZE):
         self._read_queue = None
         self.read_queue_thread = None
-        self.read_queue_cancel = False
+        # Each read thread gets its own cancel event. Python can't kill a thread
+        # so one stuck in a read may outlive stop_read_queue_thread and must
+        # never be revived by the next start_read_queue_thread.
+        self._read_queue_cancel = threading.Event()
+        self._read_queue_cancel.set()
         self._read_queue_bytes = 0
         self._read_queue_budget = 0
         # Guards _read_queue_bytes / _read_queue_budget and wakes the read thread
@@ -103,12 +107,13 @@ class ReadQueue(_ReadQueueBase):
     def start_read_queue_thread(self):
         self.stop_read_queue_thread()
         read_queue = queue.Queue()
+        cancel = threading.Event()
         with self._read_queue_condition:
-            self.read_queue_cancel = False
+            self._read_queue_cancel = cancel
             self._read_queue_bytes = 0
             self._read_queue_budget = 0
         self._read_queue = read_queue
-        thread = threading.Thread(target=self._read_queue_thread_body, args=[read_queue], daemon=True)
+        thread = threading.Thread(target=self._read_queue_thread_body, args=[read_queue, cancel], daemon=True)
         thread.start()
         self.read_queue_thread = thread
 
@@ -118,7 +123,7 @@ class ReadQueue(_ReadQueueBase):
         read_queue = self._read_queue
         self._read_queue = None
         with self._read_queue_condition:
-            self.read_queue_cancel = True
+            self._read_queue_cancel.set()
             self._read_queue_bytes = 0
             self._read_queue_budget = 0
             # Unblock the read thread if it is waiting for room on the queue
@@ -150,17 +155,26 @@ class ReadQueue(_ReadQueueBase):
             read_queue = self._read_queue
             if read_queue is None:
                 return None
+        cancel = self._read_queue_cancel
+        thread = self.read_queue_thread
         while True:
             try:
                 data = read_queue.get(timeout=QUEUE_POLL_TIMEOUT)
             except queue.Empty:
                 # Nothing will ever be queued again once the read thread is done
                 # so return rather than blocking forever
-                thread = self.read_queue_thread
-                if self.read_queue_cancel or thread is None or not thread.is_alive():
+                if cancel.is_set():
                     return None
-                continue
-            if isinstance(data, (bytes, bytearray)):
+                if thread is None or not thread.is_alive():
+                    # The thread may have queued its final reads between the get
+                    # timing out and it exiting so pick those up first
+                    try:
+                        data = read_queue.get_nowait()
+                    except queue.Empty:
+                        return None
+                else:
+                    continue
+            if isinstance(data, (bytes, bytearray)) and not cancel.is_set():
                 with self._read_queue_condition:
                     self._read_queue_bytes -= len(data)
                     self._read_queue_budget -= len(data) + READ_QUEUE_ENTRY_OVERHEAD
@@ -172,8 +186,8 @@ class ReadQueue(_ReadQueueBase):
                 raise data
             return data
 
-    def _read_queue_put(self, read_queue, item):
-        if self.read_queue_cancel:
+    def _read_queue_put(self, read_queue, cancel, item):
+        if cancel.is_set():
             return False
         read_queue.put(item)
         return True
@@ -183,37 +197,37 @@ class ReadQueue(_ReadQueueBase):
     # than never fitting, so the budget can be exceeded by at most one read.
     #
     # @return [bool] Whether the bytes were reserved (False if disconnected)
-    def _reserve_read_queue_bytes(self, length):
+    def _reserve_read_queue_bytes(self, cancel, length):
         cost = length + READ_QUEUE_ENTRY_OVERHEAD
         with self._read_queue_condition:
             while self._read_queue_budget > 0 and (self._read_queue_budget + cost) > self.read_queue_max_size:
-                if self.read_queue_cancel:
+                if cancel.is_set():
                     return False
                 self._read_queue_condition.wait(QUEUE_POLL_TIMEOUT)
-            if self.read_queue_cancel:
+            if cancel.is_set():
                 return False
             self._read_queue_bytes += length
             self._read_queue_budget += cost
             return True
 
-    def _read_queue_thread_body(self, read_queue):
+    def _read_queue_thread_body(self, read_queue, cancel):
         try:
-            while not self.read_queue_cancel:
+            while not cancel.is_set():
                 try:
                     data = self.read_queue_data()
                 except Exception as error:
-                    self._read_queue_put(read_queue, error)
+                    self._read_queue_put(read_queue, cancel, error)
                     break
                 # None means the read source is done so tell read_queue_pop to disconnect
                 if data is None:
-                    self._read_queue_put(read_queue, None)
+                    self._read_queue_put(read_queue, cancel, None)
                     break
                 # Charge the bytes against the budget before the push so
                 # read_queue_bytes never goes negative if the data is dequeued
                 # before we get back here
-                if not self._reserve_read_queue_bytes(len(data)):
+                if not self._reserve_read_queue_bytes(cancel, len(data)):
                     break
-                if not self._read_queue_put(read_queue, data):
+                if not self._read_queue_put(read_queue, cancel, data):
                     break
         except Exception:
             Logger.error(f"{self.name}: Read queue thread unexpectedly died: {traceback.format_exc()}")

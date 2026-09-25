@@ -178,6 +178,17 @@ module OpenC3
       end
     end
 
+    describe "read_queue_bytes" do
+      it "reports the bytes buffered by all the clients" do
+        i = TcpipServerInterface.new('nil', '8889', 'nil', '5', 'burst')
+        clients = [10, 20].map do |bytes|
+          double(interface: double(read_queue_bytes: bytes))
+        end
+        i.instance_variable_set(:@read_interface_infos, clients)
+        expect(i.read_queue_bytes).to eql 30
+      end
+    end
+
     describe "details" do
       it "returns detailed interface information" do
         i = TcpipServerInterface.new('8888', '8889', '5.0', '10.0', 'burst')

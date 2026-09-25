@@ -257,6 +257,12 @@ module OpenC3
       @read_queue ? @read_queue.size : 0
     end
 
+    # @return [Integer] The number of bytes buffered on the read queues of
+    #   all the connected clients
+    def read_queue_bytes
+      @read_interface_infos.dup.sum { |rii| rii.interface.read_queue_bytes }
+    end
+
     # @return [Integer] The number of packets waiting on the write queue
     def write_queue_size
       @write_queue ? @write_queue.size : 0
@@ -402,6 +408,8 @@ module OpenC3
       interface = StreamInterface.new
       # Only the read side of the connection needs a read thread
       interface.read_allowed = listen_read
+      # The per client interfaces do the raw reading so they get the read queue limit
+      interface.set_option('READ_QUEUE_MAX_SIZE', [@read_queue_max_size])
       interface.target_names = @target_names
       interface.cmd_target_names = @cmd_target_names
       interface.tlm_target_names = @tlm_target_names

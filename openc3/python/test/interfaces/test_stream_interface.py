@@ -13,7 +13,7 @@ import queue
 import threading
 import time
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
 from openc3.interfaces.protocols.length_protocol import LengthProtocol
@@ -214,3 +214,51 @@ class TestStreamInterface(unittest.TestCase):
         self.interface.stream = QueueStream(b"\x02")
         self.assertEqual(self.interface.read_queue_size(), 0)
         self.assertEqual(self.interface.read_interface()[0], b"\x02")
+
+    def test_a_read_thread_which_outlives_disconnect_is_not_revived(self):
+        release = threading.Event()
+        done = threading.Event()
+        # Stop any reads still looping even if the test fails
+        self.addCleanup(release.set)
+        self.addCleanup(done.set)
+
+        # Stream stuck in a read that ignores disconnect, like a select that
+        # never wakes up when the socket is closed
+        class StuckStream(QueueStream):
+            def read(self):
+                release.wait()
+                if done.is_set():
+                    return None
+                time.sleep(0.001)
+                return b"\x01"
+
+        self.interface.stream = StuckStream()
+        with patch("openc3.utilities.read_queue.THREAD_JOIN_TIMEOUT", 0.05):
+            self.interface.connect()
+            stuck_thread = self.interface.read_queue_thread
+            self.interface.disconnect()
+            self.assertTrue(stuck_thread.is_alive())
+            # Reconnecting must not let the stuck thread keep reading
+            self.interface.connect()
+            release.set()
+            stuck_thread.join(1)
+            self.assertFalse(stuck_thread.is_alive())
+            done.set()
+            self.interface.disconnect()
+
+    def test_returns_reads_queued_just_before_the_read_thread_exits(self):
+        # The get times out, then the thread queues its final read and exits
+        read_queue = Mock()
+        read_queue.get.side_effect = queue.Empty
+        read_queue.get_nowait.return_value = b"\x01"
+        dead_thread = threading.Thread(target=lambda: None)
+        dead_thread.start()
+        dead_thread.join()
+        self.interface._read_queue = read_queue
+        self.interface._read_queue_cancel = threading.Event()
+        self.interface.read_queue_thread = dead_thread
+        self.interface._read_queue_bytes = 1
+        self.interface._read_queue_budget = 1 + READ_QUEUE_ENTRY_OVERHEAD
+        self.assertEqual(self.interface.read_queue_pop(), b"\x01")
+        self.assertEqual(self.interface._read_queue_bytes, 0)
+        self.interface._read_queue = None

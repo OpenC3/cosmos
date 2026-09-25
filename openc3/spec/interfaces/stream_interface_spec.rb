@@ -199,6 +199,24 @@ module OpenC3
       end
     end
 
+    describe "read_queue_pop" do
+      it "doesn't count reads left on a queue stopped while popping" do
+        stream = QueueStream.new("\x01", "\x02")
+        interface.stream = stream
+        interface.connect
+        sleep(0.01)
+        queue = interface.instance_variable_get(:@raw_read_queue)
+        allow(queue).to receive(:pop).and_wrap_original do |original|
+          # Disconnect lands after pop grabbed the queue but before it dequeues
+          stream.disconnect
+          interface.stop_read_queue_thread
+          original.call
+        end
+        expect(interface.read_queue_pop).to eql "\x01"
+        expect(interface.instance_variable_get(:@raw_read_bytes)).to eql 0
+      end
+    end
+
     describe "stream=" do
       it "stops the read thread reading the old stream" do
         old_stream = QueueStream.new("\x01")

@@ -804,19 +804,11 @@ class InterfaceMicroservice(Microservice):
                                 if packet is not None:
                                     self.handle_packet(packet)
                                     self.count += 1
-                                    read_queue_bytes = self.interface.read_queue_bytes() if self.interface else 0
                                     if self.interface_or_router == "INTERFACE":
                                         self.metric.set(
                                             name="interface_tlm_total",
                                             value=self.count,
                                             type="counter",
-                                        )
-                                        self.metric.set(
-                                            name="interface_read_queue_bytes",
-                                            value=read_queue_bytes,
-                                            type="gauge",
-                                            unit="bytes",
-                                            help="Bytes buffered on the interface read queue waiting to be processed",
                                         )
                                     else:
                                         self.metric.set(
@@ -824,13 +816,7 @@ class InterfaceMicroservice(Microservice):
                                             value=self.count,
                                             type="counter",
                                         )
-                                        self.metric.set(
-                                            name="router_read_queue_bytes",
-                                            value=read_queue_bytes,
-                                            type="gauge",
-                                            unit="bytes",
-                                            help="Bytes buffered on the router read queue waiting to be processed",
-                                        )
+                                    self.update_read_queue_metric()
                                 else:
                                     self.logger.info(
                                         f"{self.interface.name}: Internal disconnect requested (returned None)"
@@ -969,6 +955,9 @@ class InterfaceMicroservice(Microservice):
                 self.interface.disconnect()
             except Exception:
                 self.logger.error(f"Disconnect: {self.interface.name}: {traceback.format_exc()}")
+            # Disconnecting discards the read queue so report it as empty, otherwise
+            # the last reported value would persist until the next packet
+            self.update_read_queue_metric()
 
         try:
             self.interface.connect()
@@ -985,6 +974,16 @@ class InterfaceMicroservice(Microservice):
         else:
             RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         self.logger.info(f"{self.interface.name}: Connection Success")
+
+    def update_read_queue_metric(self):
+        kind = self.interface_or_router.lower()
+        self.metric.set(
+            name=f"{kind}_read_queue_bytes",
+            value=self.interface.read_queue_bytes(),
+            type="gauge",
+            unit="bytes",
+            help=f"Bytes buffered on the {kind} read queue waiting to be processed",
+        )
 
     def disconnect(self, allow_reconnect=True):
         reconnect = False
@@ -1007,6 +1006,9 @@ class InterfaceMicroservice(Microservice):
                 self.interface.disconnect()
             except Exception:
                 self.logger.error(f"Disconnect: {self.interface.name}: {traceback.format_exc()}")
+            # Disconnecting discards the read queue so report it as empty, otherwise
+            # the last reported value would persist until the next packet
+            self.update_read_queue_metric()
 
             # If the interface is set to auto_reconnect then delay so the thread
             # can come back around and allow the interface a chance to reconnect.

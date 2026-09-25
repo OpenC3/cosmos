@@ -148,6 +148,10 @@ module OpenC3
       data = queue.pop
       if data.kind_of?(String)
         @raw_read_mutex.synchronize do
+          # A closed queue still hands out what was left on it but stop has
+          # already zeroed the counts so only charge reads from the live queue
+          next unless queue.equal?(@raw_read_queue)
+
           @raw_read_bytes -= data.length
           @raw_read_budget -= data.length + READ_QUEUE_ENTRY_OVERHEAD
           # Tell the read thread there is room for more data
