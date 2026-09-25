@@ -976,6 +976,8 @@ class InterfaceMicroservice(Microservice):
         self.logger.info(f"{self.interface.name}: Connection Success")
 
     def update_read_queue_metric(self):
+        if self.interface is None or self.interface_or_router is None:
+            return
         kind = self.interface_or_router.lower()
         self.metric.set(
             name=f"{kind}_read_queue_bytes",

@@ -284,7 +284,8 @@ class TcpipServerInterface(StreamInterface):
     # @return [Integer] The number of bytes buffered on the read queues of
     #   all the connected clients
     def read_queue_bytes(self):
-        return sum(rii.interface.read_queue_bytes() for rii in list(self.read_interface_infos))
+        # Snapshot the list as the listen thread can remove clients concurrently
+        return sum(rii.interface.read_queue_bytes() for rii in self.read_interface_infos.copy())
 
     # @return [Integer] The number of packets waiting on the write queue
     def write_queue_size(self):
