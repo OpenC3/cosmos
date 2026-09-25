@@ -1906,8 +1906,10 @@ export default {
         const line = this.editor.session.getLine(this.commandEditor.editLine)
         const indent = line.match(/^\s*/)[0] // Preserve indentation
         // Extract trailing comment if present
-        const commentMatch = line.match(/\s+#.*$/)
-        const trailingComment = commentMatch ? commentMatch[0] : ''
+        // The leading (?:^|\S) pins the match to the start of the whitespace run
+        // so the engine doesn't retry at every position inside it
+        const commentMatch = line.match(/(?:^|\S)(\s+#.*)$/)
+        const trailingComment = commentMatch ? commentMatch[1] : ''
         const newLine = `${indent}cmd("${commandString}")${trailingComment}`
         const Range = this.Range
         this.editor.session.replace(

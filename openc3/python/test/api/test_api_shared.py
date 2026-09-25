@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import re
 import unittest
 from unittest.mock import patch
 
@@ -63,7 +64,8 @@ def tlm(target_name, packet_name, item_name, type="CONVERTED", scope="DEFAULT"):
         case "CCSDSSHF":
             return "FALSE"
         case "BLOCKTEST":
-            return b"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"
+            # tlm() returns BLOCK items as a bytearray, not bytes
+            return bytearray(b"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff")
         case "ARY":
             return [2, 3, 4]
         case "RECEIVED_COUNT":
@@ -557,7 +559,8 @@ class TestApiShared(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "ERROR: Invalid comparison to non-ascii value"):
             wait_check(f"INST HEALTH_STATUS BLOCKTEST == '{data}'", 0.01)
         data = b"\xff" * 10
-        with self.assertRaises(SyntaxError):
+        # Quoting the bytes repr does not produce a single complete literal
+        with self.assertRaisesRegex(RuntimeError, "ERROR: Unable to parse operand"):
             wait_check(f"INST HEALTH_STATUS BLOCKTEST == '{data}'", 0.01)
 
     def test_warns_when_checking_a_state_against_a_constant(self):
@@ -573,6 +576,92 @@ class TestApiShared(unittest.TestCase):
             "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?",
         ):
             wait_check("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01)
+
+    # check(), wait() and wait_check() all parse the same comparison syntax
+    # so they must all accept and reject exactly the same expressions
+    def test_consistency_rejects_operators_which_are_not_supported(self):
+        # Bitwise and boolean operators are not part of the comparison syntax
+        for operator in ["&", "|", "^", "and", "or", "==="]:
+            for call in [
+                lambda op: check(f"INST HEALTH_STATUS TEMP1 {op} 1"),
+                lambda op: wait(f"INST HEALTH_STATUS TEMP1 {op} 1", 0.01),
+                lambda op: wait_check(f"INST HEALTH_STATUS TEMP1 {op} 1", 0.01),
+            ]:
+                with self.assertRaisesRegex(RuntimeError, f"ERROR: Invalid operator: '{re.escape(operator)}'"):
+                    call(operator)
+
+    def test_consistency_rejects_compound_expressions(self):
+        # https://github.com/OpenC3/cosmos/issues/3802
+        expression = "INST HEALTH_STATUS TIMEUS & 0x0001 == 0x0000"
+        with self.assertRaisesRegex(RuntimeError, "ERROR: Invalid operator: '&'"):
+            check(expression)
+        with self.assertRaisesRegex(RuntimeError, "ERROR: Invalid operator: '&'"):
+            wait(expression, 0.01)
+        with self.assertRaisesRegex(RuntimeError, "ERROR: Invalid operator: '&'"):
+            wait_check(expression, 0.01)
+
+    def test_consistency_rejects_operators_without_an_operand(self):
+        with self.assertRaisesRegex(RuntimeError, "must specify an operand"):
+            check("INST HEALTH_STATUS TEMP1 >")
+        with self.assertRaisesRegex(RuntimeError, "must specify an operand"):
+            wait("INST HEALTH_STATUS TEMP1 >", 0.01)
+        with self.assertRaisesRegex(RuntimeError, "must specify an operand"):
+            wait_check("INST HEALTH_STATUS TEMP1 >", 0.01)
+
+    def test_consistency_suggests_a_string_when_comparing_against_a_bare_word(self):
+        error = "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?"
+        with self.assertRaisesRegex(NameError, re.escape(error)):
+            check("INST HEALTH_STATUS CCSDSSHF == FALSE")
+        with self.assertRaisesRegex(NameError, re.escape(error)):
+            wait("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01)
+        with self.assertRaisesRegex(NameError, re.escape(error)):
+            wait_check("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01)
+
+    def test_consistency_accepts_hex_operands(self):
+        for stdout in capture_io():
+            check("INST HEALTH_STATUS TEMP1 == 0x0A")  # TEMP1 is 10
+            self.assertIn(
+                "CHECK: INST HEALTH_STATUS TEMP1 == 0x0A success with value == 10",
+                stdout.getvalue(),
+            )
+            self.assertTrue(wait("INST HEALTH_STATUS TEMP1 == 0x0A", 0.01))
+            self.assertIsInstance(wait_check("INST HEALTH_STATUS TEMP1 == 0x0A", 0.01), float)
+
+    def test_consistency_rejects_ambiguous_leading_zero_integers(self):
+        # Ruby reads 010 as octal 8 while Python rejects it outright so require 0o10 or 10
+        with self.assertRaisesRegex(RuntimeError, "ERROR: Unable to parse operand: 010"):
+            check("INST HEALTH_STATUS TEMP1 == 010")
+        with self.assertRaisesRegex(RuntimeError, "ERROR: Unable to parse operand: 010"):
+            wait("INST HEALTH_STATUS TEMP1 == 010", 0.01)
+        with self.assertRaisesRegex(RuntimeError, "ERROR: Unable to parse operand: 010"):
+            wait_check("INST HEALTH_STATUS TEMP1 == 010", 0.01)
+
+    def test_consistency_rejects_a_comparison_which_is_not_a_single_quoted_literal(self):
+        comparison = "INST HEALTH_STATUS CCSDSSHF == 'a' garbage 'b'"
+        with self.assertRaisesRegex(RuntimeError, "ERROR: Unable to parse operand"):
+            check(comparison)
+        with self.assertRaisesRegex(RuntimeError, "ERROR: Unable to parse operand"):
+            wait(comparison, 0.01)
+        with self.assertRaisesRegex(RuntimeError, "ERROR: Unable to parse operand"):
+            wait_check(comparison, 0.01)
+
+    def test_consistency_requires_a_list_operand_for_the_in_operator(self):
+        error = "ERROR: The 'in' operator requires a list operand"
+        with self.assertRaisesRegex(RuntimeError, error):
+            check("INST HEALTH_STATUS TEMP1 in 'abc'")
+        with self.assertRaisesRegex(RuntimeError, error):
+            wait("INST HEALTH_STATUS TEMP1 in 'abc'", 0.01)
+        with self.assertRaisesRegex(RuntimeError, error):
+            wait_check("INST HEALTH_STATUS TEMP1 in 'abc'", 0.01)
+
+        for stdout in capture_io():
+            check("INST HEALTH_STATUS TEMP1 in [1, 10]")  # TEMP1 is 10
+            self.assertIn(
+                "CHECK: INST HEALTH_STATUS TEMP1 in [1, 10] success with value == 10",
+                stdout.getvalue(),
+            )
+            self.assertTrue(wait("INST HEALTH_STATUS TEMP1 in [1, 10]", 0.01))
+            self.assertIsInstance(wait_check("INST HEALTH_STATUS TEMP1 in [1, 10]", 0.01), float)
 
     def test_wait_check_tolerance_raises_with_formatted_or_with_units(self):
         with self.assertRaisesRegex(RuntimeError, r"Invalid type 'FORMATTED' for wait_check_tolerance"):
