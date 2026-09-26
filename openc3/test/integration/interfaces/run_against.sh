@@ -51,7 +51,7 @@ fi
 
 if [[ "$WHICH" == "all" || "$WHICH" == "python" ]]; then
   (cd "$OPENC3/python" && OPENC3_TEST_PYTHON="$WORKTREE/openc3/python" \
-    uv run pytest ../test/integration/interfaces/python -s -p no:cacheprovider) || status=1
+    uv run --no-sync --no-build pytest ../test/integration/interfaces/python -s -p no:cacheprovider) || status=1
 fi
 
 exit $status

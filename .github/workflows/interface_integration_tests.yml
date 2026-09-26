@@ -2,7 +2,7 @@
 # All Rights Reserved.
 #
 # Interface Integration Tests
-# Sends 100MB over UDP and TCP to interfaces with a slow consumer to verify
+# Sends 30MB over UDP and TCP to interfaces with a slow consumer to verify
 # the socket reads keep up. See openc3/test/integration/interfaces/README.md
 
 name: Interface Integration Tests
@@ -59,6 +59,8 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up uv and Python
         uses: ./.github/actions/setup-uv-python
@@ -80,6 +82,9 @@ jobs:
         working-directory: openc3
         run: bundle exec rspec test/integration/interfaces/ruby
 
+      # --no-sync runs against the venv the setup action synced, so --no-build
+      # costs nothing here and keeps a third-party build backend from executing
+      # if a future dependency arrives without a wheel.
       - name: Run Python interface integration tests
         working-directory: openc3/python
-        run: uv run --frozen pytest ../test/integration/interfaces/python -s --tb=short
+        run: uv run --no-sync --no-build pytest ../test/integration/interfaces/python -s --tb=short

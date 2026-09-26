@@ -35,7 +35,6 @@ def collect_garbage():
     # to fall behind the default Linux socket buffer (~200KB, ~5ms at 40MB/s).
     # Start each test clean so one test's garbage doesn't land on the next.
     gc.collect()
-    yield
 
 
 def pytest_report_header(config):
