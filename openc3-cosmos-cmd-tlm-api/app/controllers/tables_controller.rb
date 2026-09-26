@@ -143,9 +143,10 @@ class TablesController < ApplicationController
     return unless authorization('system')
     scope, definition = sanitize_params([:scope, :definition], require_params: false, allow_forward_slash: true)
     return unless scope
-    # generate writes a binary derived from the definition path under the same
-    # TARGET/<area> prefix, so gating on the definition covers the write target.
-    return unless authorize_overlay_write(definition)
+    # No overlay gate: Table.generate only accepts definitions under
+    # TARGET/tables/config and always writes the binary to TARGET/tables/bin,
+    # which is not a code area. Gating on the definition path would make every
+    # generate admin-only now that tables/config is itself a code area.
     begin
       filename = Table.generate(scope, definition)
       render json: { filename: filename }
@@ -189,28 +190,29 @@ class TablesController < ApplicationController
 
   private
 
-  # Single choke point gating every Table writer (save, save_as, generate,
-  # destroy) that funnels through TargetFile.create/destroy into the
-  # targets_modified overlay. The cmd_tlm overlay
-  # (targets_modified/<TARGET>/cmd_tlm/...) is loaded and executed as code by
-  # PacketConfig (GENERIC_*_CONVERSION eval), so writing it
-  # requires admin even though general Table Manager operations only require
-  # 'system' (which under Enterprise RBAC every role down to Viewer holds).
-  # This mirrors storage_controller#non_admin_config_overlay_write?, which gates
-  # the other writer (the presigned S3 upload). `name` is the overlay-relative
-  # path written under targets_modified/ (e.g. "<TARGET>/cmd_tlm/..."). Returns
-  # true if allowed; otherwise renders the 401/403 and returns false.
+  # Single choke point gating every Table writer whose target the caller picks
+  # (save, save_as, report save, destroy) that funnels through
+  # TargetFile.create/destroy into the targets_modified overlay. The code areas
+  # (targets_modified/<TARGET>/cmd_tlm/... and <TARGET>/tables/config/...) hold
+  # definitions whose GENERIC_*_CONVERSION blocks are evaluated as code, so
+  # writing them requires admin even though general Table Manager operations
+  # only require 'system' (which under Enterprise RBAC every role down to Viewer
+  # holds). This mirrors storage_controller#non_admin_config_overlay_write?,
+  # which gates the other writer (the presigned S3 upload). `name` is the
+  # overlay-relative path written under targets_modified/ (e.g.
+  # "<TARGET>/tables/config/..."). Returns true if allowed; otherwise renders
+  # the 401/403 and returns false.
   def authorize_overlay_write(name)
-    return true unless cmd_tlm_overlay?(name)
+    return true unless code_overlay?(name)
     return false unless authorization('admin')
     true
   end
 
-  # True if the overlay-relative name targets the cmd_tlm subtree (code-execution
-  # territory). Canonical-name handling lives in OpenC3::ConfigOverlay so every
-  # overlay writer fails closed on the same inputs.
-  def cmd_tlm_overlay?(name)
-    OpenC3::ConfigOverlay.cmd_tlm_overlay?(name)
+  # True if the overlay-relative name targets a code area. Canonical-name
+  # handling lives in OpenC3::ConfigOverlay so every overlay writer fails closed
+  # on the same inputs.
+  def code_overlay?(name)
+    OpenC3::ConfigOverlay.code_overlay?(name)
   end
 
   # Params arrive as strings from JSON and as strings from multipart forms, so
