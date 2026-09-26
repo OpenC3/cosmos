@@ -145,7 +145,9 @@ module OpenC3
           sender = UdpWriteSocket.new('127.0.0.1', read_port)
 
           sender.write("telemetry")
-          expect(i.instance_variable_get(:@read_socket).read(1.0)).to eql "telemetry"
+          # The interface read thread owns the socket so read through the interface
+          data, _extra = i.read_interface
+          expect(data).to eql "telemetry"
           i.instance_variable_get(:@write_socket).write("command")
           expect(destination.read(1.0)).to eql "command"
           expect(i.instance_variable_get(:@write_socket).local_address.ip_port).to eql read_port
@@ -235,6 +237,42 @@ module OpenC3
         i.disconnect
         OpenC3.close_socket(write)
       end
+
+      it "queues datagrams as fast as they arrive" do
+        write = UdpWriteSocket.new('127.0.0.1', 8889)
+        i = UdpInterface.new('127.0.0.1', 'nil', '8889')
+        i.connect
+        # The read thread drains the socket without read being called so the
+        # operating system receive buffer doesn't overflow and drop datagrams
+        5.times { |index| write.write("\x00\x01\x02#{index}") }
+        start = Time.now
+        sleep(0.001) while i.read_queue_size < 5 and (Time.now - start) < 2
+        expect(i.read_queue_size).to eql 5
+        expect(i.read_queue_bytes).to eql 20
+        5.times do |index|
+          expect(i.read.buffer).to eql "\x00\x01\x02#{index}"
+        end
+        expect(i.read_queue_size).to eql 0
+        expect(i.read_queue_bytes).to eql 0
+        i.disconnect
+        OpenC3.close_socket(write)
+      end
+
+      it "limits how many bytes are queued" do
+        write = UdpWriteSocket.new('127.0.0.1', 8889)
+        i = UdpInterface.new('127.0.0.1', 'nil', '8889')
+        # Each datagram below is 4 bytes and is also charged the per entry
+        # overhead so budget for exactly 2 of them
+        i.set_option('READ_QUEUE_MAX_SIZE', [(2 * (4 + ReadQueue::READ_QUEUE_ENTRY_OVERHEAD)).to_s])
+        i.connect
+        5.times { |index| write.write("\x00\x01\x02#{index}") }
+        sleep(0.1)
+        expect(i.read_queue_bytes).to eql 8
+        expect(i.read_queue_size).to eql 2
+        i.disconnect
+        OpenC3.close_socket(write)
+      end
+
 
       it "logs the raw data" do
         thread = double("Thread")

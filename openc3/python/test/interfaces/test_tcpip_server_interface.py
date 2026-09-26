@@ -13,6 +13,7 @@ import socket
 import threading
 import time
 import unittest
+from unittest.mock import Mock
 
 from openc3.interfaces.tcpip_server_interface import TcpipServerInterface
 from openc3.packets.packet import Packet
@@ -270,6 +271,58 @@ class TestTcpipServerInterface(unittest.TestCase):
         self.assertEqual(len(i.read_interface_infos), 0)
         self.assertEqual(i.num_clients(), 0)
         i.disconnect()
+
+    def wait_for_notify(self, condition_variable, action):
+        notified = []
+
+        def waiter():
+            with condition_variable:
+                started.set()
+                notified.append(condition_variable.wait(2))
+
+        started = threading.Event()
+        thread = threading.Thread(target=waiter)
+        thread.start()
+        started.wait(1)
+        result = action()
+        thread.join(3)
+        return notified[0], result
+
+    def test_write_wakes_up_the_write_thread(self):
+        i = TcpipServerInterface("8888", "8889", "5", "5", "burst")
+        i.connected = lambda: True
+        notified, _ = self.wait_for_notify(i.write_condition_variable, lambda: i.write(Packet("TGT", "PKT")))
+        self.assertTrue(notified)
+
+    def test_write_raw_wakes_up_the_write_raw_thread_and_returns_the_data(self):
+        i = TcpipServerInterface("8888", "8889", "5", "5", "burst")
+        i.connected = lambda: True
+        notified, result = self.wait_for_notify(i.write_raw_condition_variable, lambda: i.write_raw(b"\x01\x02"))
+        self.assertTrue(notified)
+        self.assertEqual(result, b"\x01\x02")
+
+    def test_passes_read_queue_max_size_to_each_client_connection(self):
+        i = TcpipServerInterface(None, "8890", None, "5", "burst")
+        i.set_option("READ_QUEUE_MAX_SIZE", ["1000"])
+        i.connect()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(("localhost", 8890))
+        try:
+            for _ in range(50):
+                if i.read_interface_infos:
+                    break
+                time.sleep(0.01)
+            self.assertEqual(len(i.read_interface_infos), 1)
+            self.assertEqual(i.read_interface_infos[0].interface.read_queue_max_size, 1000)
+        finally:
+            sock.close()
+            i.disconnect()
+
+    def test_read_queue_bytes_sums_the_client_connections(self):
+        i = TcpipServerInterface("8888", "8889", "5", "5", "burst")
+        self.assertEqual(i.read_queue_bytes(), 0)
+        i.read_interface_infos = [Mock(interface=Mock(read_queue_bytes=Mock(return_value=n))) for n in (3, 4)]
+        self.assertEqual(i.read_queue_bytes(), 7)
 
     def test_details(self):
         i = TcpipServerInterface("8888", "8889", "10.0", "15.0", "burst")

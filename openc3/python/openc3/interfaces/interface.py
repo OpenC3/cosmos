@@ -91,6 +91,11 @@ class Interface:
     def write_queue_size(self):
         return self._write_queue_size
 
+    # @return [Integer] The number of bytes waiting on the read queue.
+    #   Interfaces which buffer raw reads override this (see ReadQueue).
+    def read_queue_bytes(self):
+        return 0
+
     # Should be implemented by subclass to return human readable connection string
     # which will be placed in log messages when connecting and during connection failures
     def connection_string(self):
@@ -104,12 +109,14 @@ class Interface:
 
         periodic_cmds = self.options.get("PERIODIC_CMD")
         if periodic_cmds:
-            self.scheduler = schedule.Scheduler()
+            scheduler = schedule.Scheduler()
+            self.scheduler = scheduler
 
             for log_dont_log, period, cmd_string in periodic_cmds:
                 upper_log_dont_log = log_dont_log.upper()
                 period = float(period)
-                self.scheduler.every(period).seconds.do(
+                # schedule annotates the interval as int but supports float periods
+                scheduler.every(period).seconds.do(  # ty: ignore[invalid-argument-type]
                     self.run_periodic_cmd,
                     log_dont_log=upper_log_dont_log,
                     cmd_string=cmd_string,
@@ -358,7 +365,7 @@ class Interface:
         other_interface.bytes_read = self.bytes_read
         other_interface.bytes_written = self.bytes_written
         if self.stream_log_pair:
-            other_interface.stream_log_pair = self.stream_log_pair[:]
+            other_interface.stream_log_pair = self.stream_log_pair.clone()
         # num_clients is per interface so don't copy
         # read_queue_size is the number of packets in the queue so don't copy
         # write_queue_size is the number of packets in the queue so don't copy
@@ -569,12 +576,15 @@ class Interface:
                 Logger.error(f"Error sending periodic cmd({cmd_string}):\n{traceback.format_exc()}")
 
     def scheduler_thread_body(self):
+        scheduler = self.scheduler
+        if scheduler is None:
+            return
         next_time = time.time()
         while True:
             if self.cancel_scheduler_thread:
                 break
 
-            self.scheduler.run_pending()
+            scheduler.run_pending()
 
             if self.cancel_scheduler_thread:
                 break

@@ -46,6 +46,14 @@ class TestCobsProtocol(unittest.TestCase):
         TestCobsProtocol.buffer = b""
         self.interface = TestCobsProtocol.MyInterface()
 
+        # The stub streams below return data forever so cap the read queue
+        # rather than letting the read thread buffer the full default budget
+        self.interface.set_option("READ_QUEUE_MAX_SIZE", ["65536"])
+
+    def tearDown(self):
+        # Stop the StreamInterface read thread started by reading
+        self.interface.stop_read_queue_thread()
+
     # Test vectors from= https=//en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
     def build_example_data(self):
         self.examples = [
@@ -149,6 +157,8 @@ class TestCobsProtocol(unittest.TestCase):
         self.interface.add_protocol(CobsProtocol, [], "READ_WRITE")
         for decoded, encoded in self.examples:
             TestCobsProtocol.buffer = encoded
+            # The read thread buffers ahead so flush it to pick up the new data
+            self.interface.stop_read_queue_thread()
             packet = self.interface.read()
             self.assertEqual(packet.buffer, decoded)
 
