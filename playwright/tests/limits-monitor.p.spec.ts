@@ -38,7 +38,10 @@ test('changes the limits set', async ({ page, utils }) => {
   await expect
     .poll(
       async () =>
-        await page.locator('[data-test=limits-set]').locator('input').inputValue(),
+        await page
+          .locator('[data-test=limits-set]')
+          .locator('input')
+          .inputValue(),
       {
         timeout: 15000,
       },
@@ -62,7 +65,10 @@ test('changes the limits set', async ({ page, utils }) => {
   await expect
     .poll(
       async () =>
-        await page.locator('[data-test=limits-set]').locator('input').inputValue(),
+        await page
+          .locator('[data-test=limits-set]')
+          .locator('input')
+          .inputValue(),
       {
         timeout: 15000,
       },
@@ -352,6 +358,109 @@ test('ignores entire packets', async ({ page, utils }) => {
       },
     )
     .toBe(2)
+})
+
+test('restores ignored packets and items from a saved configuration', async ({
+  page,
+  utils,
+}) => {
+  test.setTimeout(300000) // 5 min
+  const configName = 'playwright-ignored-mix'
+
+  // Ignoring an entire packet stores TARGET__PACKET while ignoring a single item
+  // stores TARGET__PACKET__ITEM. Saving both and re-opening the configuration
+  // re-creates LimitsControl, whose created() hook has to tell them apart again.
+  await expect(
+    page.locator('[data-test=limits-table]').getByText('VALUE2'),
+  ).toHaveCount(2)
+  await page
+    .locator('[data-test=limits-table]')
+    .getByText('VALUE2')
+    .first()
+    .locator('xpath=ancestor::tr')
+    .getByRole('button')
+    .click()
+  await page.waitForSelector('.v-list-item:has-text("Ignore Entire Packet")')
+  await page.click('.v-list-item:has-text("Ignore Entire Packet")')
+
+  await page
+    .locator('[data-test=limits-table]')
+    .getByText('GROUND1STATUS')
+    .first()
+    .locator('xpath=ancestor::tr')
+    .getByRole('button')
+    .click()
+  await page.waitForSelector('.v-list-item:has-text("Ignore Item")')
+  await page.click('.v-list-item:has-text("Ignore Item")')
+
+  await page.locator('[data-test=limits-monitor-file]').click()
+  await page.locator('text=Save Configuration').click()
+  await page.getByLabel('Configuration Name').fill(configName)
+  await page.locator('button:has-text("Ok")').click()
+  await expect(page.getByText(`Saved configuration${configName}`)).toBeVisible()
+  // The toast auto-hides after ~5s so its Dismiss button may already be gone
+  await page
+    .getByRole('button', { name: 'Dismiss' })
+    .click({ timeout: 5000 })
+    .catch(() => {})
+
+  // Clear everything so re-opening the configuration has to restore it
+  await page.locator('[data-test=limits-monitor-file]').click()
+  await page.locator('text=Reset Configuration').click()
+  await utils.sleep(200) // Allow menu to close
+  await expect
+    .poll(
+      () =>
+        page.locator('[data-test=limits-table]').getByText('VALUE2').count(),
+      { timeout: 10000 },
+    )
+    .toBe(2)
+
+  await page.locator('[data-test=limits-monitor-file]').click()
+  await page.locator('text=Open Configuration').click()
+  await page.locator(`td:has-text("${configName}")`).click()
+  await page.locator('button:has-text("Ok")').click()
+  await page
+    .getByRole('button', { name: 'Dismiss' })
+    .click({ timeout: 5000 })
+    .catch(() => {})
+
+  // The packet entry has to be re-applied as a packet: ignoring a packet drops
+  // every item in it, so only the other target's VALUE2 and VALUE4 remain. If it
+  // had been re-applied as an item instead, both would still be showing.
+  await expect
+    .poll(
+      () =>
+        page.locator('[data-test=limits-table]').getByText('VALUE2').count(),
+      { timeout: 10000 },
+    )
+    .toBe(1)
+  await expect(
+    page.locator('[data-test=limits-table]').getByText('VALUE4'),
+  ).toHaveCount(1)
+
+  await page.locator('[data-test=limits-monitor-file]').click()
+  await page.locator('text=Show Ignored').click()
+  const ignoredDialog = page.locator(
+    'div[role="dialog"]:has-text("Ignored Items")',
+  )
+  await expect(ignoredDialog).toContainText('PARAMS') // INST[2] PARAMS, the packet
+  // The item keeps all three of its parts. Had it been re-applied as a packet
+  // the item name would have been dropped, leaving only "<TARGET> HEALTH_STATUS"
+  await expect(ignoredDialog).toContainText('HEALTH_STATUS GROUND1STATUS')
+  await page.locator('button:has-text("Ok")').click()
+
+  // Reset and delete this test configuration
+  await page.locator('[data-test=limits-monitor-file]').click()
+  await page.locator('text=Reset Configuration').click()
+  await utils.sleep(200) // Allow menu to close
+  await page.locator('[data-test=limits-monitor-file]').click()
+  await page.locator('text=Open Configuration').click()
+  await page
+    .locator(`tr:has-text("${configName}") [data-test=item-delete]`)
+    .click()
+  await page.locator('button:has-text("Delete")').click()
+  await page.locator('[data-test=open-config-cancel-btn]').click()
 })
 
 test('displays the limits log', async ({ page, utils }) => {

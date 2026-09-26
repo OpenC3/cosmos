@@ -105,7 +105,7 @@ class CheckResult:
 # ---------------------------------------------------------------------------
 
 # Matches opening fence: ``` optionally followed by a language tag
-FENCE_OPEN = re.compile(r"^(`{3,}|~{3,})\s*(\w[\w+-]*)?.*$")
+FENCE_OPEN = re.compile(r"^(`{3,}|~{3,})\s*(\w[\w+-]*)?")
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -681,9 +681,7 @@ _GITHUB_RELEASE_TAG = re.compile(
     r"^https://github\.com/([^/]+)/([^/]+)/releases/tag/([^/]+)$"
 )
 # Matches github.com/:owner/:repo (with optional trailing slash, .git, or ?query)
-_GITHUB_REPO = re.compile(
-    r"^https://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?(?:\?.*)?$"
-)
+_GITHUB_REPO = re.compile(r"^https://github\.com/([^/?]+)/([^/?]+)/?(?:\?.*)?$")
 
 
 def _github_api_url(url: str) -> str | None:
@@ -700,7 +698,7 @@ def _github_api_url(url: str) -> str | None:
     m = _GITHUB_REPO.match(url)
     if m:
         owner, repo = m.groups()
-        return f"https://api.github.com/repos/{owner}/{repo}"
+        return f"https://api.github.com/repos/{owner}/{repo.removesuffix('.git')}"
     return None
 
 
