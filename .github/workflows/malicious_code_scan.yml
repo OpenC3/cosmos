@@ -55,5 +55,10 @@ jobs:
         OpenC3 COSMOS, an open-source command and control system for spacecraft and embedded systems
         (Ruby, Python, Vue/JS, shell, Docker)
       claude_model: ${{ vars.MALICIOUS_SCAN_CLAUDE_MODEL }}
+      # The built docs site (Docusaurus output published to GitHub Pages; the source is docs.openc3.com/)
+      generated_paths: |
+        docs/**/*.html
+        docs/assets/**
+        docs/search-*.json
     secrets:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

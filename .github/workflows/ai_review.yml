@@ -30,7 +30,7 @@ name: AI Review
 on:
   workflow_run:
     # Every workflow that runs on pull_request, plus GitHub's CodeQL default setup. Each run warns
-    # about a missing one; the gate does not wait on built-in runs like CodeQL.
+    # about a missing one; the gate waits only on pull_request runs, not built-in ones like CodeQL.
     workflows:
       - API Tests
       - Build UBI
