@@ -20,7 +20,9 @@
 # workflow with workflow_dispatch when it passes. workflow_run only uses the copy
 # of this file on the default branch, so edits here take effect after they merge.
 #
-# Secrets: ANTHROPIC_API_KEY, OPENAI_API_KEY, AI_REVIEW_PUSH_TOKEN (to push fixes)
+# Secrets: ANTHROPIC_API_KEY, OPENAI_API_KEY, AI_REVIEW_PUSH_TOKEN (to push fixes: a GitHub App
+#   token or fine-grained PAT with contents:write and no workflows permission, so GitHub refuses a
+#   fix that changes a workflow)
 # Variables (optional): AI_REVIEW_MAX_TURNS, AI_REVIEW_MAX_CI_ROUNDS, AI_REVIEW_CLAUDE_MODEL,
 #   AI_REVIEW_CODEX_MODEL, AI_REVIEW_CLAUDE_MAX_BUDGET_USD, AI_REVIEW_CODEX_SANDBOX
 # Add the `skip-ai-review` label to a PR to opt out.
@@ -72,7 +74,7 @@ jobs:
     uses: OpenC3/.github/.github/workflows/ai-review-reusable.yml@main
     permissions:
       actions: read
-      contents: write
+      contents: read
       pull-requests: write
       statuses: read
     with:
