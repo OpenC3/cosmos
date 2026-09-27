@@ -16,6 +16,7 @@ import tempfile
 
 from openc3.environment import OPENC3_CONFIG_BUCKET, OPENC3_SCOPE
 from openc3.utilities.bucket import Bucket
+from openc3.utilities.local_mode import LocalMode
 from openc3.utilities.target_file import TargetFile
 
 
@@ -73,8 +74,13 @@ class MyFinder(type(_real_pathfinder)):
         path = f"{OPENC3_SCOPE}/targets/{path_name}/"
 
         # See if anything exists at this path
-        dirs, files = _bucket_client.list_files(OPENC3_CONFIG_BUCKET, path)
-        if dirs or files:
+        # Local only targets are never read from the bucket
+        if LocalMode.local_only_name(path_name):
+            found = LocalMode.local_target_dir_exists(path_name, scope=OPENC3_SCOPE)
+        else:
+            dirs, files = _bucket_client.list_files(OPENC3_CONFIG_BUCKET, path)
+            found = bool(dirs or files)
+        if found:
             # Create a ModuleSpec using our loader
             spec = importlib.machinery.ModuleSpec(name, MyLoader(), origin=None)
             # Must set submodule_search_locations to indicate this is a package
