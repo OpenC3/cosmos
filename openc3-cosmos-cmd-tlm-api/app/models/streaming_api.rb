@@ -30,6 +30,8 @@ OpenC3.require_file 'openc3/models/target_model'
 class StreamingApi
   include OpenC3::Authorization
 
+  KILL_TIMEOUT_SECONDS = 1.1
+
   def initialize(subscription_key, scope: nil)
     @subscription_key = subscription_key
     @scope = scope
@@ -304,12 +306,12 @@ class StreamingApi
       @realtime_thread = nil
       @logged_threads = []
     end
-    # Allow the threads a chance to stop before returning (1.1s total)
-    i = 0
+    # Allow the threads a chance to stop before returning (1.1s total across all threads)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + KILL_TIMEOUT_SECONDS
     threads.each do |thread|
-      while thread.alive? or i < 110 do
-        sleep 0.01
-        i += 1
+      remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      unless thread.join(remaining)
+        OpenC3::Logger.warn "#{thread.class.name} did not stop within #{KILL_TIMEOUT_SECONDS}s of kill"
       end
     end
   end
