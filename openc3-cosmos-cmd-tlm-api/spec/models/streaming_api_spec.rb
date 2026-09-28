@@ -139,6 +139,23 @@ RSpec.describe StreamingApi, type: :model do
     expect(@api.instance_variable_get('@logged_threads')).to be_empty
   end
 
+  describe '#transmit_notice' do
+    it 'only sends notices to clients that opted in' do
+      @api.transmit_notice('SKIPPED', 'skipped', skipped_seconds: 1.5)
+      expect(@messages).to be_empty
+
+      @api.instance_variable_set('@notices', true)
+      @api.transmit_notice('SKIPPED', 'skipped', skipped_seconds: 1.5)
+      expect(@messages).to eq([{ "__type" => "NOTICE", "notice" => "SKIPPED", "message" => "skipped", "skipped_seconds" => 1.5 }])
+    end
+
+    it 'opts in via the add request' do
+      allow(StreamingObject).to receive(:new).and_raise(OpenC3::ForbiddenError)
+      @api.add({ 'scope' => 'DEFAULT', 'notices' => true, 'end_time' => 0, 'packets' => ['DECOM__TLM__INST__PARAMS__CONVERTED'] })
+      expect(@api.instance_variable_get('@notices')).to be true
+    end
+  end
+
   describe '#expand_all_packets' do
     before(:each) do
       allow(OpenC3::TargetModel).to receive(:names).with(scope: 'DEFAULT').and_return(['INST', 'SYSTEM', 'EMPTY', 'UNKNOWN'])
@@ -595,6 +612,21 @@ RSpec.describe StreamingApi, type: :model do
 
             @api.kill
             expect(@api.instance_variable_get('@realtime_thread')).to be_nil
+          end
+
+          it 'skips ahead and notifies when far behind realtime' do
+            # Messages were written 2 minutes ago so we're well past the max lag
+            @time = @start_time - 120
+            allow(OpenC3::Topic).to receive(:get_last_offset).and_return("#{Time.now.to_i * 1000}-0")
+            @send_count = 1
+            data['notices'] = true
+            @api.add(data)
+            sleep 0.35 # Allow the thread to run
+            notice = @messages.find { |message| message.is_a?(Hash) }
+            expect(notice['notice']).to eq('SKIPPED')
+            expect(notice['skipped_seconds']).to be > 60
+            expect(OpenC3::Topic).to have_received(:get_last_offset).at_least(:once)
+            @api.kill
           end
         end
 

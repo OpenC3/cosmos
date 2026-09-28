@@ -2048,6 +2048,8 @@ export default {
               items: items,
               start_time: theStartTime,
               end_time: this.graphEndDateTime,
+              // Ask to be told when realtime streaming skips data
+              notices: true,
             })
           })
           // An AuthRequiredError means we have no token and are being
@@ -2141,6 +2143,11 @@ export default {
     },
     received: function (data) {
       this.cable.recordPing()
+      // Data always arrives as an Array, notices we opted into are an Object
+      if (!Array.isArray(data)) {
+        this.receivedNotice(data)
+        return
+      }
       // Buffer incoming data and schedule processing via requestAnimationFrame
       // to prevent blocking the main thread during historical data floods
       this.pendingData.push(data)
@@ -2148,6 +2155,41 @@ export default {
         this.processingRAF = requestAnimationFrame(() =>
           this.processReceivedData(),
         )
+      }
+    },
+    receivedNotice: function (notice) {
+      if (notice.__type !== 'NOTICE' || notice.notice !== 'SKIPPED') {
+        return
+      }
+      // Coalesce repeated skips into one entry so a graph that can't keep up
+      // doesn't bury every other error, and only re-report it to an embedding
+      // screen (which keeps its own list) once a minute
+      const now = new Date().getTime()
+      const existing = this.errors.find((error) => error.type === 'skipped')
+      const skippedSeconds =
+        (existing?.skippedSeconds || 0) + notice.skipped_seconds
+      const count = (existing?.count || 0) + 1
+      let message = `Streaming fell behind realtime, skipped ${skippedSeconds.toFixed(1)}s of data`
+      if (count > 1) {
+        message += ` (${count} times)`
+      }
+      if (existing) {
+        existing.skippedSeconds = skippedSeconds
+        existing.count = count
+        existing.message = message
+        existing.time = now
+        if (now - existing.emitted > 60000) {
+          existing.emitted = now
+          this.$emit('error', existing)
+        }
+      } else {
+        this.addError({
+          type: 'skipped',
+          message: message,
+          skippedSeconds: skippedSeconds,
+          count: count,
+          emitted: now,
+        })
       }
     },
     // Drains the pendingData buffer in a time-boxed loop. Each call is
