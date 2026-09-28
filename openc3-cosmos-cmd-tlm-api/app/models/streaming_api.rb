@@ -36,6 +36,7 @@ class StreamingApi
     @mutex = Mutex.new
     @realtime_thread = nil
     @logged_threads = []
+    @notices = false
   end
 
   # Create new StreamingObjects using the data['items'] and add them to the StreamingObjectCollection
@@ -167,6 +168,8 @@ class StreamingApi
   # token: authorization token
   # start_time: 64-bit nanoseconds from unix epoch - If not present then realtime
   # end_time: 64-bit nanoseconds from unix epoch - If not present stream forever
+  # notices: true to also receive notice Hashes, e.g. { "__type" => "NOTICE", "notice" => "SKIPPED",
+  #   "message" => "...", "skipped_seconds" => 12.3 } when realtime streaming falls behind and skips ahead
   # items: [ [ MODE__CMDORTLM__TARGET__PACKET__ITEM__VALUETYPE__REDUCEDTYPE, item_key] ]
   #   MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
   #   CMDORTLM - CMD or TLM
@@ -194,6 +197,9 @@ class StreamingApi
       end_time = data["end_time"].to_i if data["end_time"]
       scope = data["scope"]
       token = data["token"]
+      # Clients opt in to out-of-band notices (a Hash rather than the usual
+      # Array of results) so older clients never see a message they can't parse
+      @notices = true if data["notices"]
 
       # Expand ALL wildcards in packets before building the collection
       expand_all_packets(data, scope: scope)
@@ -331,6 +337,12 @@ class StreamingApi
     if results.length > 0 or force
       ActionCable.server.broadcast(@subscription_key, results.as_json())
     end
+  end
+
+  # Send an out-of-band notice (e.g. that data was skipped) to clients that opted in
+  def transmit_notice(notice, message, **extra)
+    return unless @notices
+    ActionCable.server.broadcast(@subscription_key, { "__type" => "NOTICE", "notice" => notice, "message" => message }.merge(extra.transform_keys(&:to_s)))
   end
 
   # Returns if the calling thread should be canceled or not

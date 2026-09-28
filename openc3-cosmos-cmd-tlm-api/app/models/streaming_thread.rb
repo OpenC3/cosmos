@@ -92,9 +92,11 @@ class StreamingThread
       # Read from each db_shard with proportionally shorter timeouts
       timeout_per_db_shard = [500 / [db_shard_groups.length, 1].max, 100].max
       any_result = false
+      newest_msg_ids = {} # topic => newest msg_id read this pass, used to measure lag
       db_shard_groups.each do |db_shard, group|
         break if @cancel_thread
         xread_result = OpenC3::Topic.read_topics(group[:topics], group[:offsets], timeout_per_db_shard, db_shard: db_shard) do |topic, msg_id, msg_hash, _|
+          newest_msg_ids[topic] = msg_id
           stored = OpenC3::ConfigParser.handle_true_false(msg_hash["stored"])
           next if stored # Ignore stored packets while realtime streaming
 
@@ -151,9 +153,16 @@ class StreamingThread
 
       # Check for completed objects by wall clock time if we got nothing
       check_for_completed_objects() unless any_result
+
+      check_lag(newest_msg_ids, item_objects_by_topic, packet_objects_by_topic) unless @cancel_thread
     else
       @cancel_thread = true
     end
+  end
+
+  # Called after each pass through Redis with the newest msg_id read per topic.
+  # Subclasses that stream realtime data override this to react to falling behind.
+  def check_lag(newest_msg_ids, item_objects_by_topic, packet_objects_by_topic)
   end
 
   def handle_message(msg_hash, objects)
