@@ -1,0 +1,64 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+
+# Scans every PR for obfuscated code, prompt injection, and other malicious
+# changes, and gates the AI Review workflow on the result. The workflow and
+# scanner live in OpenC3/.github (malicious-code-scan-reusable.yml).
+#
+# This runs on pull_request_target so the workflow and scanner never come from
+# the PR: a PR cannot edit its way past the scan, and fork PRs get the Claude
+# review too. The PR is only ever read as data.
+#
+# The result is posted as the commit status `security/malicious-code-scan` on
+# the PR head; make that a required check in branch protection. A maintainer
+# (write access or above) accepts blocking findings with the
+# `malicious-scan-override` label.
+#
+# Secrets: ANTHROPIC_API_KEY (the Claude review is skipped with a warning without it)
+# Variables (optional): MALICIOUS_SCAN_CLAUDE_MODEL
+
+name: Malicious Code Scan
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+      - ready_for_review
+      - labeled
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    uses: OpenC3/.github/.github/workflows/malicious-code-scan-reusable.yml@main
+    permissions:
+      contents: read
+      statuses: write
+      pull-requests: write
+      actions: write
+    with:
+      review_workflow: ai_review.yml
+      project_description: >-
+        OpenC3 COSMOS, an open-source command and control system for spacecraft and embedded systems
+        (Ruby, Python, Vue/JS, shell, Docker)
+      claude_model: ${{ vars.MALICIOUS_SCAN_CLAUDE_MODEL }}
+      # The built docs site (Docusaurus output published to GitHub Pages; the source is docs.openc3.com/)
+      generated_paths: |
+        docs/**/*.html
+        docs/assets/**
+        docs/search-*.json
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
