@@ -42,7 +42,7 @@ module OpenC3
   class InterfaceCmdHandlerThread
     include InterfaceDecomCommon
 
-    def initialize(interface, tlm, logger: nil, metric: nil, db_shard: 0, scope:)
+    def initialize(interface, tlm, logger: nil, metric: nil, lag_monitor: nil, db_shard: 0, scope:)
       @interface = interface
       @tlm = tlm
       @scope = scope
@@ -56,6 +56,7 @@ module OpenC3
       @logger = logger
       @logger = Logger unless @logger
       @metric = metric
+      @lag_monitor = lag_monitor || TopicLagMonitor.new(name: "#{@scope}__INTERFACE__#{@interface.name}", logger: @logger, metric: @metric, scope: @scope, db_shard: @db_shard)
       @count = 0
       @directive_count = 0
       @metric.set(name: 'interface_directive_total', value: @directive_count, type: 'counter') if @metric
@@ -86,9 +87,7 @@ module OpenC3
         OpenC3.with_context(msg_hash) do
           release_critical = false
           critical_model = nil
-          msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
-          delta = Time.now.to_f - msgid_seconds_from_epoch
-          @metric.set(name: 'interface_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and interface cmd start') if @metric
+          @lag_monitor.record(topic, msg_id, metric_name: 'interface_topic_delta_seconds', help: 'Delta time between data written to stream and interface cmd start')
 
           if topic == "OPENC3__SYSTEM__EVENTS"
             msg = JSON.parse(msg_hash['event'])
@@ -393,7 +392,7 @@ module OpenC3
   end
 
   class RouterTlmHandlerThread
-    def initialize(router, tlm, logger: nil, metric: nil, db_shard: 0, scope:)
+    def initialize(router, tlm, logger: nil, metric: nil, lag_monitor: nil, db_shard: 0, scope:)
       @router = router
       @tlm = tlm
       @scope = scope
@@ -401,6 +400,7 @@ module OpenC3
       @logger = logger
       @logger = Logger unless @logger
       @metric = metric
+      @lag_monitor = lag_monitor || TopicLagMonitor.new(name: "#{@scope}__ROUTER__#{@router.name}", logger: @logger, metric: @metric, scope: @scope, db_shard: @db_shard)
       @count = 0
       @directive_count = 0
       @metric.set(name: 'router_directive_total', value: @directive_count, type: 'counter') if @metric
@@ -428,9 +428,7 @@ module OpenC3
 
     def run
       RouterTopic.receive_telemetry(@router, scope: @scope, db_shard: @db_shard) do |topic, msg_id, msg_hash, _redis|
-        msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
-        delta = Time.now.to_f - msgid_seconds_from_epoch
-        @metric.set(name: 'router_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and router tlm start') if @metric
+        @lag_monitor.record(topic, msg_id, metric_name: 'router_topic_delta_seconds', help: 'Delta time between data written to stream and router tlm start')
 
         # Check for commands to the router itself
         if /CMD}ROUTER/.match?(topic)
@@ -610,9 +608,9 @@ module OpenC3
       @connection_failed_messages = []
       @connection_lost_messages = []
       if @interface_or_router == 'INTERFACE'
-        @handler_thread = InterfaceCmdHandlerThread.new(@interface, self, logger: @logger, metric: @metric, db_shard: @db_shard, scope: @scope)
+        @handler_thread = InterfaceCmdHandlerThread.new(@interface, self, logger: @logger, metric: @metric, lag_monitor: topic_lag_monitor, db_shard: @db_shard, scope: @scope)
       else
-        @handler_thread = RouterTlmHandlerThread.new(@interface, self, logger: @logger, metric: @metric, db_shard: @db_shard, scope: @scope)
+        @handler_thread = RouterTlmHandlerThread.new(@interface, self, logger: @logger, metric: @metric, lag_monitor: topic_lag_monitor, db_shard: @db_shard, scope: @scope)
       end
       @handler_thread.start
     end

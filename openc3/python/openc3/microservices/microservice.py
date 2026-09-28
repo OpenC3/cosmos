@@ -32,6 +32,7 @@ from openc3.utilities.secrets import Secrets
 from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.store import EphemeralStore
 from openc3.utilities.thread_manager import ThreadManager
+from openc3.utilities.topic_lag_monitor import TopicLagMonitor
 
 
 # TODO:
@@ -251,6 +252,26 @@ class Microservice:
         if thread_id not in ephemeral_store_instance.topic_offsets:
             ephemeral_store_instance.topic_offsets[thread_id] = {}
         ephemeral_store_instance.topic_offsets[thread_id][self.microservice_topic] = "0-0"
+
+    def update_topic_lag(self, topic, msg_id, metric_name, help):
+        """Update the lag metric for a message read from a topic and notify users
+        if this microservice is falling behind or has skipped trimmed data"""
+        return self.topic_lag_monitor.record(topic, msg_id, metric_name=metric_name, help=help)
+
+    @property
+    def topic_lag_monitor(self):
+        """Lag monitor shared by this microservice's topic readers"""
+        monitor = getattr(self, "_topic_lag_monitor", None)
+        if monitor is None:
+            monitor = TopicLagMonitor(
+                name=self.name,
+                logger=getattr(self, "logger", None) or Logger,
+                metric=getattr(self, "metric", None),
+                scope=getattr(self, "scope", None),
+                db_shard=getattr(self, "db_shard", 0) or 0,
+            )
+            self._topic_lag_monitor = monitor
+        return monitor
 
     # Returns if the command was handled
     def microservice_cmd(self, topic, msg_id, msg_hash, _):
