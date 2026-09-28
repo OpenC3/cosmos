@@ -19,6 +19,15 @@ import { TimeFilters } from '@/util'
 import Widget from './Widget'
 import FormatValueBase from './FormatValueBase'
 import { limitsColor, astroStatus } from './LimitsColor'
+
+// A value fades from AGING_START to AGING_MIN by AGING_RATE on every update
+// where it didn't change. The screen uses AGING_UPDATES to know when the fade
+// is done and it can stop pushing unchanged values to the widget.
+export const AGING_START = 80
+export const AGING_MIN = 30
+export const AGING_RATE = 5
+export const AGING_UPDATES = Math.ceil((AGING_START - AGING_MIN) / AGING_RATE)
+
 export default {
   mixins: [Widget, TimeFilters, FormatValueBase],
   // ValueWidget can either get it's value and limitsState directly through props
@@ -46,8 +55,8 @@ export default {
       appliedTimeZone: 'local',
       curValue: null,
       prevValue: null,
-      grayLevel: 80,
-      grayRate: 5,
+      grayLevel: AGING_START,
+      grayRate: AGING_RATE,
       valueId: null,
       arrayIndex: null,
       viewDetails: false,
@@ -74,11 +83,11 @@ export default {
   watch: {
     _counter: function (newVal, oldVal) {
       if (this.curValue !== this.prevValue) {
-        this.grayLevel = 80
+        this.grayLevel = AGING_START
       } else {
         this.grayLevel -= this.grayRate
-        if (this.grayLevel < 30) {
-          this.grayLevel = 30
+        if (this.grayLevel < AGING_MIN) {
+          this.grayLevel = AGING_MIN
         }
       }
       this.prevValue = this.curValue

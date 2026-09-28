@@ -242,11 +242,25 @@ import {
   OpenC3Api,
 } from '@openc3/js-common/services'
 import WidgetComponents from '@/widgets/WidgetComponents'
+import { AGING_UPDATES } from '@/widgets/VWidget'
 import EditScreenDialog from './EditScreenDialog.vue'
 
 const MAX_ERRORS = 20
 // Identifies our own get_tlm_values poll as the source of a transient error
 const POLL_ERROR_SOURCE = 'screen:get_tlm_values'
+
+// Values compare equal if they're the same primitive or serialize the same.
+// Array and object values (ARRAY widgets, BLOCK, etc) come back as new objects
+// every poll so they need the JSON comparison.
+function sameValue(a, b) {
+  if (Object.is(a, b)) {
+    return true
+  }
+  if (a === null || b === null || typeof a !== 'object') {
+    return false
+  }
+  return JSON.stringify(a) === JSON.stringify(b)
+}
 
 export default {
   components: {
@@ -484,6 +498,9 @@ export default {
     return false
   },
   created() {
+    // Consecutive polls each item has come back unchanged. Deliberately not
+    // reactive, nothing renders from it.
+    this.unchangedCounts = {}
     this.api = new OpenC3Api()
     this.configParser = new ConfigParserService()
     this.parseDefinition()
@@ -582,6 +599,7 @@ export default {
       // Each time we start over and parse the screen definition
       this.clearErrors()
       this.screenItems = []
+      this.unchangedCounts = {}
       // Reset what we poll along with it. The new definition may register no
       // items at all (a screen of nothing but graphs, say) in which case
       // nothing calls debouncedUpdateTlmAvailable and this would otherwise
@@ -1144,9 +1162,34 @@ export default {
           JSON.stringify(this.actualScreenItems),
         )
       } else {
+        // The same item can appear more than once in screenItems but it
+        // should only count as one poll per update
+        const seen = new Set()
         for (let i = 0; i < values.length; i++) {
+          const valueId = this.screenItems[i]
+          if (seen.has(valueId)) {
+            continue
+          }
+          seen.add(valueId)
+          const previous = this.screenValues[valueId]
+          if (
+            previous &&
+            sameValue(previous[0], values[i][0]) &&
+            previous[1] === values[i][1]
+          ) {
+            const count = (this.unchangedCounts[valueId] || 0) + 1
+            this.unchangedCounts[valueId] = count
+            // Widgets fade unchanged values on each counter bump. Once the
+            // fade is done another update changes nothing on screen, so skip
+            // it rather than re-render every widget on every poll.
+            if (count > AGING_UPDATES) {
+              continue
+            }
+          } else {
+            this.unchangedCounts[valueId] = 0
+          }
           values[i].push(this.updateCounter)
-          this.screenValues[this.screenItems[i]] = values[i]
+          this.screenValues[valueId] = values[i]
         }
       }
     },
@@ -1268,6 +1311,8 @@ export default {
     },
     addItem: function (valueId) {
       this.screenItems.push(valueId)
+      // The value is reset below so a new widget starts its fade from scratch
+      delete this.unchangedCounts[valueId]
       // If frozen and we have a saved value for this item, use it
       // Otherwise initialize to null
       if (this.frozen && this.frozenValues && this.frozenValues[valueId]) {
