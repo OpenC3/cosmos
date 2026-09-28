@@ -16,29 +16,50 @@ require "openc3/utilities/config_overlay"
 
 module OpenC3
   describe ConfigOverlay do
-    describe "cmd_tlm_overlay?" do
-      it "flags cmd_tlm overlay names (admin required)" do
-        expect(ConfigOverlay.cmd_tlm_overlay?("INST/cmd_tlm/tlm.txt")).to be true
-        expect(ConfigOverlay.cmd_tlm_overlay?("INST/cmd_tlm/config/extra.txt")).to be true
+    describe "code_overlay?" do
+      it "flags code area names (admin required)" do
+        expect(ConfigOverlay.code_overlay?("INST/cmd_tlm/tlm.txt")).to be true
+        expect(ConfigOverlay.code_overlay?("INST/cmd_tlm/config/extra.txt")).to be true
+        expect(ConfigOverlay.code_overlay?("INST/tables/config/table_def.txt")).to be true
+        expect(ConfigOverlay.code_overlay?("INST/tables/config/sub/table_def.txt")).to be true
       end
 
-      it "allows non-cmd_tlm overlay names" do
-        expect(ConfigOverlay.cmd_tlm_overlay?("INST/procedures/x.rb")).to be false
-        expect(ConfigOverlay.cmd_tlm_overlay?("INST/screens/x.txt")).to be false
-        expect(ConfigOverlay.cmd_tlm_overlay?("INST/tables/bin/table.bin")).to be false
-        expect(ConfigOverlay.cmd_tlm_overlay?("__TEMP__/2026_01_01_00_00_00_000_temp.rb")).to be false
+      it "allows other overlay names" do
+        expect(ConfigOverlay.code_overlay?("INST/procedures/x.rb")).to be false
+        expect(ConfigOverlay.code_overlay?("INST/screens/x.txt")).to be false
+        expect(ConfigOverlay.code_overlay?("INST/tables/bin/table.bin")).to be false
+        expect(ConfigOverlay.code_overlay?("INST/tables/table.txt")).to be false
+        expect(ConfigOverlay.code_overlay?("INST/screens/config/x.txt")).to be false
+        expect(ConfigOverlay.code_overlay?("__TEMP__/2026_01_01_00_00_00_000_temp.rb")).to be false
         # No area segment at all (e.g. a bare filename) is not the cmd_tlm subtree
-        expect(ConfigOverlay.cmd_tlm_overlay?("script.rb")).to be false
+        expect(ConfigOverlay.code_overlay?("script.rb")).to be false
       end
 
       it "fails closed on non-canonical names so the positional check cannot be bypassed" do
-        expect(ConfigOverlay.cmd_tlm_overlay?("INST//cmd_tlm/x.txt")).to be true
-        expect(ConfigOverlay.cmd_tlm_overlay?("INST/./cmd_tlm/x.txt")).to be true
-        expect(ConfigOverlay.cmd_tlm_overlay?("INST/../cmd_tlm/x.txt")).to be true
-        expect(ConfigOverlay.cmd_tlm_overlay?("/INST/procedures/x.rb")).to be true
-        expect(ConfigOverlay.cmd_tlm_overlay?("INST/procedures/")).to be true
-        expect(ConfigOverlay.cmd_tlm_overlay?("")).to be true
-        expect(ConfigOverlay.cmd_tlm_overlay?(nil)).to be true
+        expect(ConfigOverlay.code_overlay?("INST//cmd_tlm/x.txt")).to be true
+        expect(ConfigOverlay.code_overlay?("INST/./cmd_tlm/x.txt")).to be true
+        expect(ConfigOverlay.code_overlay?("INST/../cmd_tlm/x.txt")).to be true
+        expect(ConfigOverlay.code_overlay?("INST/tables//config/x.txt")).to be true
+        expect(ConfigOverlay.code_overlay?("/INST/procedures/x.rb")).to be true
+        expect(ConfigOverlay.code_overlay?("INST/procedures/")).to be true
+        expect(ConfigOverlay.code_overlay?("")).to be true
+        expect(ConfigOverlay.code_overlay?(nil)).to be true
+      end
+    end
+
+    describe "table_definition?" do
+      it "flags table definition names" do
+        expect(ConfigOverlay.table_definition?("INST/tables/config/table_def.txt")).to be true
+        expect(ConfigOverlay.table_definition?("INST/tables/config/sub/table_def.txt")).to be true
+      end
+
+      it "rejects other and non-canonical names" do
+        expect(ConfigOverlay.table_definition?("INST/tables/config")).to be false
+        expect(ConfigOverlay.table_definition?("INST/tables/bin/table.bin")).to be false
+        expect(ConfigOverlay.table_definition?("INST/screens/x.txt")).to be false
+        expect(ConfigOverlay.table_definition?("INST/tables/config/../../screens/x.txt")).to be false
+        expect(ConfigOverlay.table_definition?("INST//tables/config/x.txt")).to be false
+        expect(ConfigOverlay.table_definition?(nil)).to be false
       end
     end
 
@@ -54,6 +75,11 @@ module OpenC3
       it "requires admin (returns false) for the cmd_tlm overlay" do
         expect(ConfigOverlay.non_admin_writable_key?("DEFAULT/targets_modified/INST/cmd_tlm/tlm.txt")).to be false
         expect(ConfigOverlay.non_admin_writable_key?("DEFAULT/targets_modified/INST/cmd_tlm/config/extra.txt")).to be false
+        expect(ConfigOverlay.non_admin_writable_key?("DEFAULT/targets_modified/INST/tables/config/table_def.txt")).to be false
+      end
+
+      it "allows table binaries" do
+        expect(ConfigOverlay.non_admin_writable_key?("DEFAULT/targets_modified/INST/tables/bin/table.bin")).to be true
       end
 
       it "requires admin for non-overlay areas" do

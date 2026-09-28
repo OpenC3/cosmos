@@ -18,6 +18,9 @@
 import axios from 'axios'
 import { logUnlessAuthRequired } from './authGuard'
 
+// Maximum characters of the request body shown in the network error banner
+const MAX_REQUEST_DATA_LENGTH = 200
+
 const axiosInstance = axios.create({
   baseURL: location.origin,
   timeout: 60000,
@@ -77,8 +80,16 @@ axiosInstance.interceptors.response.use(
       if (error.response?.statusText) {
         body += `${error.response.statusText} `
       }
-      if (error.response?.config?.data) {
-        body += `${error.response.config.data} `
+      // The request body gives useful context (e.g. which JSON-RPC method
+      // failed) but can be an entire file on a save, so truncate it. Non-string
+      // bodies such as FormData would only render as '[object FormData]'.
+      const requestData = error.response?.config?.data
+      if (typeof requestData === 'string' && requestData.length > 0) {
+        if (requestData.length > MAX_REQUEST_DATA_LENGTH) {
+          body += `${requestData.slice(0, MAX_REQUEST_DATA_LENGTH)}... `
+        } else {
+          body += `${requestData} `
+        }
       }
       if (error.response?.data?.message) {
         body += `${error.response.data.message}`
