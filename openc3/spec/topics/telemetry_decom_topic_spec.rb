@@ -42,6 +42,7 @@ module OpenC3
             stored: 'false'
           ),
           nil,
+          minid: kind_of(String),
           db_shard: 0
         )
         TelemetryDecomTopic.write_packet(packet, scope: 'DEFAULT')

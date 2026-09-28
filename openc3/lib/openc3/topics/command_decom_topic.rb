@@ -58,7 +58,7 @@ module OpenC3
       msg_hash['json_data'] = JSON.generate(json_hash.as_json, allow_nan: true)
       msg_hash['extra'] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
       db_shard = Store.db_shard_for_target(packet.target_name, scope: scope)
-      EphemeralStoreQueued.instance(db_shard: db_shard).write_topic(topic, msg_hash)
+      EphemeralStoreQueued.instance(db_shard: db_shard).write_topic(topic, msg_hash, minid: Topic.stream_safety_minid)
     end
 
     def self.get_cmd_item(target_name, packet_name, param_name, type: :FORMATTED, scope: $openc3_scope)

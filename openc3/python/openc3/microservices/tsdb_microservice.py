@@ -29,6 +29,9 @@ from openc3.utilities.thread_manager import ThreadManager
 
 
 class TsdbMicroservice(Microservice):
+    # This is the primary trimmer of the DECOM__ and DECOMCMD__ streams. Writers also
+    # apply a safety MINID cap (see Topic.stream_safety_minid, default 10 minutes) so the
+    # streams stay bounded if this microservice is not running or falls behind.
     TRIM_KEEP_MS = 60000  # 1 minute
     DEFAULT_FLUSH_PERIOD_S = 5.0  # 5 seconds
 

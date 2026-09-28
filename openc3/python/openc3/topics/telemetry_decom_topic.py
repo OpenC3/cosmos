@@ -50,6 +50,7 @@ class TelemetryDecomTopic(Topic):
             msg_hash,
             id,
             db_shard=db_shard,
+            minid=Topic.stream_safety_minid(id),
         )
 
         if not packet.stored:
