@@ -206,9 +206,13 @@ class LoggedStreamingThread < StreamingThread
         any_result = false
         db_shard_groups.each do |db_shard, group|
           break if @cancel_thread
-          xread_result = OpenC3::Topic.read_topics(group[:topics], group[:offsets], timeout_per_db_shard, db_shard: db_shard) do |topic, msg_id, msg_hash, _|
+          xread_result = OpenC3::Topic.read_topics(group[:topics], group[:offsets], timeout_per_db_shard, @max_batch_size, db_shard: db_shard) do |topic, msg_id, msg_hash, _|
             stored = OpenC3::ConfigParser.handle_true_false(msg_hash["stored"])
-            next if stored
+            if stored
+              # Advance offsets past skipped messages so a capped read makes progress
+              advance_offsets(topic, msg_id, item_objects_by_topic, packet_objects_by_topic)
+              next
+            end
 
             break if @cancel_thread
 
@@ -218,10 +222,7 @@ class LoggedStreamingThread < StreamingThread
               time = msg_hash['time'].to_i
               if time <= last_time
                 # Skip messages already delivered from TSDB, but advance offsets
-                objects = item_objects_by_topic[topic]
-                objects.each { |object| object.offset = msg_id } if objects
-                objects = packet_objects_by_topic[topic]
-                objects.each { |object| object.offset = msg_id } if objects
+                advance_offsets(topic, msg_id, item_objects_by_topic, packet_objects_by_topic)
                 next
               end
               # Past the overlap for this topic - clear its filter

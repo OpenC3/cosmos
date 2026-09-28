@@ -51,5 +51,30 @@ module OpenC3
         expect(a).not_to eq(b)
       end
     end
+
+    describe "read_topics" do
+      before(:each) do
+        mock_redis()
+        stub_const("OpenC3::Store::READ_TOPICS_DEFAULT_COUNT", 2)
+      end
+
+      it "caps the read at READ_TOPICS_DEFAULT_COUNT when no count is given" do
+        5.times { |i| EphemeralStore.write_topic("TEST__TOPIC", { "i" => i.to_s }) }
+        ids = []
+        EphemeralStore.read_topics(["TEST__TOPIC"], ["0-0"]) { |_t, msg_id, _h, _r| ids << msg_id }
+        expect(ids.length).to eql 2
+        # Continuing from the last offset picks up where the capped read stopped
+        EphemeralStore.read_topics(["TEST__TOPIC"], [ids[-1]]) { |_t, msg_id, _h, _r| ids << msg_id }
+        expect(ids.length).to eql 4
+        expect(ids.uniq.length).to eql 4
+      end
+
+      it "honors an explicit count" do
+        5.times { |i| EphemeralStore.write_topic("TEST__TOPIC", { "i" => i.to_s }) }
+        ids = []
+        EphemeralStore.read_topics(["TEST__TOPIC"], ["0-0"], nil, 4) { |_t, msg_id, _h, _r| ids << msg_id }
+        expect(ids.length).to eql 4
+      end
+    end
   end
 end

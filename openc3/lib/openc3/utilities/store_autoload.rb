@@ -54,6 +54,14 @@ module OpenC3
     @@db_shard_cache_mutex = Mutex.new
     DB_SHARD_CACHE_TIMEOUT = 60 # seconds
 
+    # Maximum number of entries read_topics returns PER STREAM when the caller
+    # does not pass a count. XREAD without COUNT returns everything from the
+    # offset to the tail of the stream, which for a consumer that has fallen
+    # behind on a high-rate stream can be an enormous reply materialized in
+    # memory all at once. Callers loop on their offsets so a capped read simply
+    # continues on the next call.
+    READ_TOPICS_DEFAULT_COUNT = 1000
+
     # Mutex used to ensure that only one instance is created
     @@instance_mutex = Mutex.new
 
@@ -225,8 +233,10 @@ module OpenC3
       return offsets
     end
 
+    # @param count [Integer] Maximum entries to return per stream. nil uses READ_TOPICS_DEFAULT_COUNT.
     def read_topics(topics, offsets = nil, timeout_ms = 1000, count = nil)
       return {} if topics.empty?
+      count ||= READ_TOPICS_DEFAULT_COUNT
       Thread.current[:topic_offsets] ||= {}
       topic_offsets = Thread.current[:topic_offsets]
       begin
