@@ -156,9 +156,9 @@ const tokenizedMatch = function (value, query) {
 const tokenizedFilter = function (value, query) {
   const match = tokenizedMatch(value, query)
   if (match === null) {
-    return -1
+    return false
   }
-  return match.ranges.length ? match.ranges : -1
+  return match.ranges.length ? match.ranges : false
 }
 
 // Sort items so the closest matches come first, which matters because

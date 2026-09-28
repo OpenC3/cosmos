@@ -575,7 +575,7 @@ export default {
     filter(value, search, item) {
       // Pinned items stay visible no matter what's typed
       if (item?.raw?.pinned) return true
-      return tokenizedFilter(value, search) !== -1
+      return tokenizedFilter(value, search)
     },
     async packetChanged(event, force = false) {
       if (
