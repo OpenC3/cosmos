@@ -16,15 +16,21 @@
 # committing fixes until one of them approves without changes. The workflow,
 # scripts and prompt live in OpenC3/.github (ai-review-reusable.yml).
 #
-# workflow_run fires once per completed CI workflow, and the scan starts this
-# workflow with workflow_dispatch when it passes. workflow_run only uses the copy
-# of this file on the default branch, so edits here take effect after they merge.
+# workflow_run fires once per completed CI workflow; once all CI is done, the
+# review waits (up to scan_wait_minutes) for a scan still running. The scan does
+# not start this workflow. workflow_run only uses the copy of this file on the
+# default branch, so edits here take effect after they merge.
+#
+# To review a PR by hand, run this workflow from the Actions tab with the PR
+# number. The run fails with the reason if it cannot review, e.g. when the
+# Malicious Code Scan has not passed on the PR's head: run that for the PR first.
 #
 # Secrets: ANTHROPIC_API_KEY, OPENAI_API_KEY, AI_REVIEW_PUSH_TOKEN (to push fixes: a GitHub App
 #   token or fine-grained PAT with contents:write and no workflows permission, so GitHub refuses a
 #   fix that changes a workflow)
 # Variables (optional): AI_REVIEW_MAX_TURNS, AI_REVIEW_MAX_CI_ROUNDS, AI_REVIEW_CLAUDE_MODEL,
-#   AI_REVIEW_CODEX_MODEL, AI_REVIEW_CLAUDE_MAX_BUDGET_USD, AI_REVIEW_CODEX_SANDBOX
+#   AI_REVIEW_CODEX_MODEL, AI_REVIEW_CLAUDE_MAX_BUDGET_USD, AI_REVIEW_CODEX_SANDBOX,
+#   AI_REVIEW_SCAN_WAIT_MINUTES
 # Add the `skip-ai-review` label to a PR to opt out.
 
 name: AI Review
@@ -89,6 +95,7 @@ jobs:
       codex_model: ${{ vars.AI_REVIEW_CODEX_MODEL }}
       claude_max_budget_usd: ${{ vars.AI_REVIEW_CLAUDE_MAX_BUDGET_USD }}
       codex_sandbox: ${{ vars.AI_REVIEW_CODEX_SANDBOX }}
+      scan_wait_minutes: ${{ vars.AI_REVIEW_SCAN_WAIT_MINUTES }}
     secrets:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
