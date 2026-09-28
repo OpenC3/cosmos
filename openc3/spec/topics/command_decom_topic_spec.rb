@@ -63,7 +63,8 @@ module OpenC3
             packet_name: 'CMD',
             received_count: 1,
             stored: 'false'
-          )
+          ),
+          minid: kind_of(String)
         )
         CommandDecomTopic.write_packet(packet, scope: 'DEFAULT')
       end

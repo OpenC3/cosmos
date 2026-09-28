@@ -123,6 +123,7 @@ Set in `.env`, or overridden per service in `compose.override.yaml`:
 | `OPENC3_LOGS_BUCKET`, `OPENC3_TOOLS_BUCKET`, `OPENC3_CONFIG_BUCKET` | `logs`, `tools`, `config` | Bucket names |
 | `OPENC3_REDIS_HOSTNAME`, `OPENC3_REDIS_PORT` | `openc3-redis`, `6379` | Redis / Valkey connection |
 | `OPENC3_CLOUD` | `local` | Cloud provider, for bucket and secret handling |
+| `OPENC3_STREAM_MAX_AGE_SECONDS` | `600` | Safety cap on the age of data kept in the Redis / Valkey telemetry and command streams, which are normally trimmed by the log and TSDB microservices. Raw streams always keep at least two log cycles plus one minute. Set on the operator. `0` or empty disables the cap |
 | `RUBYGEMS_URL`, `PYPI_URL`, `NPM_URL`, `MAVEN_URL` | public mirrors | Package sources used at *build* time. To change the URLs COSMOS uses at *run* time, set the `rubygems_url` / `pypi_url` Admin settings |
 
 Per-service runtime flags - `OPENC3_NO_*`, `OPENC3_FORCE_INSTALL`, `OPENC3_ALLOW_HTTP`, `OPENC3_DEFAULT_QUEUE`, `OPENC3_AUTH_RATE_LIMIT_*`, `OPENC3_LANGUAGE`, `OPENC3_LOG_STDERR` - are documented in `compose.override.yaml` under the service each one applies to, because a flag only takes effect on the container that reads it. See [Install and runtime flags](compose.md#install-and-runtime-flags) for how their values are interpreted.

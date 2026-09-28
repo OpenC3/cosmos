@@ -25,9 +25,10 @@ class TestCommandDecomTopic(unittest.TestCase):
         mock_redis(self)
         self.captured = {}
 
-        def fake_write_topic(topic, msg_hash):
+        def fake_write_topic(topic, msg_hash, minid=None):
             self.captured["topic"] = topic
             self.captured["msg_hash"] = msg_hash
+            self.captured["minid"] = minid
 
         self.store_instance = MagicMock()
         self.store_instance.write_topic.side_effect = fake_write_topic
@@ -75,6 +76,7 @@ class TestCommandDecomTopic(unittest.TestCase):
     def test_writes_to_correct_topic(self):
         CommandDecomTopic.write_packet(self._make_packet(), scope="DEFAULT")
         self.assertEqual(self.captured["topic"], "DEFAULT__DECOMCMD__{TARGET}__CMD")
+        self.assertIsNotNone(self.captured["minid"])
         msg_hash = self.captured["msg_hash"]
         self.assertEqual(msg_hash["target_name"], "TARGET")
         self.assertEqual(msg_hash["packet_name"], "CMD")

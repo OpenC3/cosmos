@@ -23,10 +23,11 @@ class TestTelemetryDecomTopic(unittest.TestCase):
         mock_redis(self)
         self.captured = {}
 
-        def fake_write_topic(topic, msg_hash, id, db_shard=None):
+        def fake_write_topic(topic, msg_hash, id, db_shard=None, minid=None):
             self.captured["topic"] = topic
             self.captured["msg_hash"] = msg_hash
             self.captured["id"] = id
+            self.captured["minid"] = minid
 
         write_patch = patch(
             "openc3.topics.telemetry_decom_topic.Topic.write_topic",
@@ -71,6 +72,7 @@ class TestTelemetryDecomTopic(unittest.TestCase):
     def test_writes_to_correct_decom_topic(self):
         TelemetryDecomTopic.write_packet(self._make_packet(), scope="DEFAULT")
         self.assertEqual(self.captured["topic"], "DEFAULT__DECOM__{TARGET}__PKT")
+        self.assertIsNotNone(self.captured["minid"])
         msg_hash = self.captured["msg_hash"]
         self.assertEqual(msg_hash["target_name"], "TARGET")
         self.assertEqual(msg_hash["packet_name"], "PKT")
