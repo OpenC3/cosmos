@@ -23,6 +23,19 @@ import { isAuthRequiredError } from './authGuard'
 // enough that a tool isn't visibly stuck.
 const RECOVERY_DELAY = 1000
 
+const DEFAULT_URL = '/openc3-api/cable'
+
+// How often each subscription tells the cmd-tlm-api it is still alive. The
+// server reaps broadcasters that stop heartbeating (see
+// ApplicationCable::BroadcasterRegistry), which bounds the lifetime of a
+// subscription whose disconnect never reached it.
+const HEARTBEAT_INTERVAL = 60000
+
+// Sent by the server in reply to a heartbeat when it no longer has a
+// broadcaster for this subscription (e.g. it was reaped), asking us to
+// resubscribe so the channel's subscribed callback runs again.
+const RESUBSCRIBE_KEY = '__openc3_cable__'
+
 // Wraps an anycable subscription so one that dies unrecoverably is replaced
 // transparently, keeping the object the caller holds valid across the swap.
 //
@@ -57,6 +70,7 @@ class ResilientSubscription {
     this._additionalOptions = additionalOptions
     this._subscription = null
     this._unsubscribed = false
+    this._heartbeat = null
   }
 
   get identifier() {
@@ -73,6 +87,7 @@ class ResilientSubscription {
 
   unsubscribe() {
     this._unsubscribed = true
+    this._stopHeartbeat()
     this._cable._forget(this)
     return this._subscription?.unsubscribe()
   }
@@ -91,6 +106,13 @@ class ResilientSubscription {
       },
       {
         ...this._callbacks,
+        received: (data) => {
+          if (data?.[RESUBSCRIBE_KEY] === 'resubscribe') {
+            this._cable._scheduleRecovery()
+            return
+          }
+          this._callbacks.received?.(data)
+        },
         disconnected: (data) => {
           // We tore this subscription down ourselves (unsubscribe, or the
           // whole cable disconnecting because the component unmounted). The
@@ -109,13 +131,45 @@ class ResilientSubscription {
         },
       },
     )
+    this._startHeartbeat()
+  }
+
+  _startHeartbeat() {
+    const interval = this._cable._heartbeatInterval
+    if (!interval || this._heartbeat) {
+      return
+    }
+    this._heartbeat = setInterval(() => {
+      if (this._unsubscribed) {
+        this._stopHeartbeat()
+        return
+      }
+      // Failures (e.g. while disconnected) are expected and harmless; the next
+      // heartbeat or the reconnect's resubscribe covers them
+      Promise.resolve()
+        .then(() => this._subscription?.perform('heartbeat', {}))
+        .catch(() => {})
+    }, interval)
+  }
+
+  _stopHeartbeat() {
+    if (this._heartbeat) {
+      clearInterval(this._heartbeat)
+      this._heartbeat = null
+    }
   }
 }
 
 export default class Cable {
-  constructor(url = '/openc3-api/cable') {
+  // Heartbeats default on only for the cmd-tlm-api cable, whose channels
+  // track subscription liveness. Other backends may not accept the action.
+  constructor(
+    url = DEFAULT_URL,
+    { heartbeatInterval = url === DEFAULT_URL ? HEARTBEAT_INTERVAL : 0 } = {},
+  ) {
     this._cable = null
     this._url = url
+    this._heartbeatInterval = heartbeatInterval
     this._subscriptions = new Set()
     this._recovery = null
   }
@@ -127,6 +181,7 @@ export default class Cable {
     // recovery, since we just cancelled one and the consumer is going away.
     this._subscriptions.forEach((subscription) => {
       subscription._unsubscribed = true
+      subscription._stopHeartbeat()
     })
     this._subscriptions.clear()
     if (this._cable) {

@@ -19,6 +19,12 @@ module ApplicationCable
 
     before_subscribe :authenticate_subscription!
 
+    # The frontend Cable sends a periodic heartbeat on every subscription.
+    # Accept it on every channel so ones that don't track liveness (see
+    # BroadcasterChannel) don't log it as an unknown action.
+    def heartbeat(_data = nil)
+    end
+
     private
 
     # Authenticate the subscription using either:
