@@ -43,6 +43,7 @@ class Store(metaclass=StoreMeta):
     _db_shard_cache: Incomplete
     _db_shard_cache_lock: Incomplete
     DB_SHARD_CACHE_TIMEOUT: int
+    READ_TOPICS_DEFAULT_COUNT: int
 
     @classmethod
     def instance(cls, pool_size: int = 100, db_shard: int = 0): ...
