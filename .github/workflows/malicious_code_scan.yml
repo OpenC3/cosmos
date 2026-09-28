@@ -11,12 +11,17 @@
 
 
 # Scans every PR for obfuscated code, prompt injection, and other malicious
-# changes, and gates the AI Review workflow on the result. The workflow and
-# scanner live in OpenC3/.github (malicious-code-scan-reusable.yml).
+# changes. The AI Review workflow waits for it to pass, but the scan never starts
+# the review itself. The workflow and scanner live in OpenC3/.github
+# (malicious-code-scan-reusable.yml).
 #
 # This runs on pull_request_target so the workflow and scanner never come from
 # the PR: a PR cannot edit its way past the scan, and fork PRs get the Claude
 # review too. The PR is only ever read as data.
+#
+# To scan a PR by hand (e.g. one opened before this workflow was added, or whose
+# scan record has expired), run this workflow from the Actions tab on main with
+# the PR number. A run from any other branch is refused.
 #
 # The result is posted as the commit status `security/malicious-code-scan` on
 # the PR head; make that a required check in branch protection. A maintainer
@@ -37,6 +42,11 @@ on:
       - edited
       - ready_for_review
       - labeled
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to scan
+        required: true
 
 permissions:
   contents: read
@@ -48,9 +58,9 @@ jobs:
       contents: read
       statuses: write
       pull-requests: write
-      actions: write
+      actions: read
     with:
-      review_workflow: ai_review.yml
+      pr_number: ${{ inputs.pr_number }}
       project_description: >-
         OpenC3 COSMOS, an open-source command and control system for spacecraft and embedded systems
         (Ruby, Python, Vue/JS, shell, Docker)
