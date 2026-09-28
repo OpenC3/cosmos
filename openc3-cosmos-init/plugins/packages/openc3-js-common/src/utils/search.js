@@ -133,7 +133,7 @@ const mergeRanges = function (ranges) {
   ranges.sort((a, b) => a[0] - b[0] || a[1] - b[1])
   const merged = []
   for (const range of ranges) {
-    const last = merged[merged.length - 1]
+    const last = merged.at(merged.length - 1)
     if (last && range[0] <= last[1]) {
       last[1] = Math.max(last[1], range[1])
     } else {
@@ -203,7 +203,7 @@ const tokenizedFilter = function (value, query) {
   if (match === null) {
     return -1
   }
-  return match.ranges.length ? match.ranges : true
+  return match.ranges.length ? match.ranges : -1
 }
 
 // Sort items so the closest matches come first, which matters because
@@ -212,7 +212,7 @@ const tokenizedFilter = function (value, query) {
 // anything else keeps the order it came in with. key names the property on
 // each item holding the text to match.
 const tokenizedSort = function (items, query, key) {
-  if (!query || !query.trim()) {
+  if (!query?.trim()) {
     return items
   }
   return items

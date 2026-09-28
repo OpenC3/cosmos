@@ -590,7 +590,7 @@ export default {
   methods: {
     tokenizedFilter,
     // A v-combobox (glob mode) keeps its model in sync with the text as you
-    // type and commits whatever is left when it loses focus. With tokenized 
+    // type and commits whatever is left when it loses focus. With tokenized
     // search that text can be a multi word query like "heal stat", which is
     // never a valid name, so throw it away instead of selecting it - but only
     // once focus is gone, because while typing that same text is a half
