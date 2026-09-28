@@ -156,11 +156,9 @@ module OpenC3
       @limits_response_thread = nil
     end
 
-    def decom_packet(_topic, msg_id, msg_hash, _redis)
+    def decom_packet(topic, msg_id, msg_hash, _redis)
       OpenC3.in_span("decom_packet") do
-        msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
-        delta = Time.now.to_f - msgid_seconds_from_epoch
-        @metric.set(name: 'decom_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and decom start')
+        update_topic_lag(topic, msg_id, metric_name: 'decom_topic_delta_seconds', help: 'Delta time between data written to stream and decom start')
 
         #######################################
         # Build packet object from topic data
