@@ -73,6 +73,23 @@ test('finds a packet despite typos', async ({ page, utils }) => {
   await expect(page.getByRole('option')).toHaveText(['HEALTH_STATUS'])
 })
 
+test('shows everything for a query of only spaces', async ({ page, utils }) => {
+  await utils.selectTargetPacketItem('INST')
+
+  // A space is what separates two tokens, so a query that is nothing but
+  // whitespace has no tokens to match on and should leave the list alone
+  // rather than emptying it
+  await searchDropdown(page, 'select-packet', 'heal')
+  await expect(page.getByRole('option')).toHaveText(['HEALTH_STATUS'])
+  await page.locator('[data-test="select-packet"] input').fill('  ')
+  await expect(
+    page.getByRole('option', { name: 'HEALTH_STATUS', exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('option', { name: 'MECH', exact: true }),
+  ).toBeVisible()
+})
+
 test('requires every token to match', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST')
 
@@ -133,6 +150,35 @@ test.describe('with wildcards enabled', () => {
       'heal stat',
     )
     await expect(page.getByRole('option')).toHaveText(['HEALTH_STATUS'])
+  })
+
+  test('does not keep an item query as the selection', async ({
+    page,
+    utils,
+  }) => {
+    // Pick the packet while the dropdowns are still autocompletes, so the
+    // item list is populated before glob mode turns them into comboboxes
+    await expect(page.locator('.v-app-bar')).toContainText('Data Extractor')
+    await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+    await page.locator('[data-test=data-extractor-mode]').click()
+    await page.getByText('Allow Wildcards').click()
+    await page.keyboard.press('Escape')
+
+    await expect(page.locator('[data-test="select-item"] input')).toBeEnabled()
+    await page.locator('[data-test=select-item]').click()
+    await page
+      .locator('[data-test="select-item"] input')
+      .pressSequentially('temp mega')
+    await expect(page.locator('[data-test="select-item"] input')).toHaveValue(
+      'temp mega',
+    )
+
+    // Blurring without picking an option must not leave the query behind as
+    // though it were an item name
+    await page.locator('[data-test=select-target] input').click()
+    await expect(
+      page.locator('[data-test="select-item"] input'),
+    ).not.toHaveValue('temp mega')
   })
 
   test('does not keep a query as the selection', async ({ page, utils }) => {

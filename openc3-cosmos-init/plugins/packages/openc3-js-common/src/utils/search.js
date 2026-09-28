@@ -49,9 +49,6 @@ const swapVariants = function (token) {
 // into token, along with where that substring is. Returns null if it can't be
 // done within limit edits.
 const fuzzyIndexOf = function (text, token, limit) {
-  if (token.length === 0) {
-    return null
-  }
   let best = null
   for (const match of search(text, token, limit)) {
     if (best === null || match.errors < best.errors) {
@@ -158,7 +155,9 @@ const tokenizedFilter = function (value, query) {
   if (match === null) {
     return false
   }
-  return match.ranges.length ? match.ranges : false
+  // No ranges means the query was whitespace only: everything matches, with
+  // nothing to highlight
+  return match.ranges.length ? match.ranges : true
 }
 
 // Sort items so the closest matches come first, which matters because
