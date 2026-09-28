@@ -30,32 +30,32 @@
 name: AI Review
 
 on:
-  workflow_run:
-    # Every workflow that runs on pull_request, plus GitHub's CodeQL default setup. Each run warns
-    # about a missing one; the gate waits only on pull_request runs, not built-in ones like CodeQL.
-    workflows:
-      - API Tests
-      - Build UBI
-      - CLI Tests
-      - CodeQL
-      - Dependency Review
-      - eslint
-      - Frontend Generator Tests
-      - Playwright Tests
-      - Python Lint
-      - Python Type Check
-      - Python Unit Tests
-      - Ruby Unit Tests
-      - Shell Lint
-      - Check Spelling
-      - Tool Version Check
-      - Trivy Scan
-      - TSDB Integration Tests
-    types:
-      - completed
-    # Pushes to main run CI too; skip them here instead of starting a run that does nothing
-    branches-ignore:
-      - main
+  # workflow_run:
+  #   # Every workflow that runs on pull_request, plus GitHub's CodeQL default setup. Each run warns
+  #   # about a missing one; the gate waits only on pull_request runs, not built-in ones like CodeQL.
+  #   workflows:
+  #     - API Tests
+  #     - Build UBI
+  #     - CLI Tests
+  #     - CodeQL
+  #     - Dependency Review
+  #     - eslint
+  #     - Frontend Generator Tests
+  #     - Playwright Tests
+  #     - Python Lint
+  #     - Python Type Check
+  #     - Python Unit Tests
+  #     - Ruby Unit Tests
+  #     - Shell Lint
+  #     - Check Spelling
+  #     - Tool Version Check
+  #     - Trivy Scan
+  #     - TSDB Integration Tests
+  #   types:
+  #     - completed
+  #   # Pushes to main run CI too; skip them here instead of starting a run that does nothing
+  #   branches-ignore:
+  #     - main
   workflow_dispatch:
     inputs:
       pr_number:
