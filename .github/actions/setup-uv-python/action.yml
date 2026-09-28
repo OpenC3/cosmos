@@ -32,7 +32,7 @@ inputs:
       standardizes on; override only to test a candidate.
     required: false
     # Matches UV_VERSION in openc3-ruby/Dockerfile and Dockerfile-ubi.
-    default: "0.12.5"
+    default: "0.12.19"
   working-directory:
     description: |
       Directory holding pyproject.toml and uv.lock. Also given to setup-uv so
@@ -73,7 +73,7 @@ runs:
   using: composite
   steps:
     - name: Install uv
-      uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
       with:
         version: ${{ inputs.uv-version }}
         enable-cache: true
