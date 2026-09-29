@@ -51,6 +51,18 @@ module OpenC3
         @logger.warn("Failed to clear bootstrap metrics for #{@name}: #{e.message}")
       end
 
+      # Microservice.run published INITIALIZED and then set @state to RUNNING
+      # in memory only. A plugin has no status thread, and exec() below means
+      # nothing here gets another chance to write it, so a cmd that isn't
+      # itself an OpenC3::Microservice (Rails app, python script, any other
+      # binary) would show INITIALIZED forever. Publish RUNNING now. A cmd that
+      # is an OpenC3::Microservice overwrites this with its own status.
+      begin
+        MicroserviceStatusModel.set(as_json(), scope: @scope)
+      rescue Exception => e
+        @logger.warn("Failed to publish status for #{@name}: #{e.message}")
+      end
+
       # Fortify: Process Control
       # This is dangerous! However, plugins need to be able to run whatever they want.
       # Only admins can install plugins and they need to be vetted for content.
