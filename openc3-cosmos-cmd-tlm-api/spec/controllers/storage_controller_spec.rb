@@ -173,7 +173,7 @@ RSpec.describe StorageController, type: :controller do
       allow(FileUtils).to receive(:mkdir_p)
       allow(FileUtils).to receive(:rm_rf)
       allow(File).to receive(:read).and_return("file content")
-      allow(File).to receive(:exist?).and_return(true)
+      allow(File).to receive(:file?).and_return(true)
       allow(Base64).to receive(:encode64).and_return("encoded_content")
 
       get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "file.txt", scope: "DEFAULT"}
@@ -185,7 +185,7 @@ RSpec.describe StorageController, type: :controller do
 
     it "downloads a file from a volume" do
       allow(File).to receive(:read).and_return("file content")
-      allow(File).to receive(:exist?).and_return(true)
+      allow(File).to receive(:file?).and_return(true)
       allow(Base64).to receive(:encode64).and_return("encoded_content")
 
       get :download_file, params: {volume: "OPENC3_DATA_VOLUME", object_id: "file.txt", scope: "DEFAULT"}
@@ -298,7 +298,7 @@ RSpec.describe StorageController, type: :controller do
         allow(Dir).to receive(:mktmpdir).and_return("/tmp/dir")
         allow(FileUtils).to receive(:mkdir_p)
         allow(FileUtils).to receive(:rm_rf)
-        allow(File).to receive(:exist?).and_return(true)
+        allow(File).to receive(:file?).and_return(true)
       end
 
       it "converts ruby test reports to CTRF format" do
@@ -886,6 +886,36 @@ RSpec.describe StorageController, type: :controller do
       expect(JSON.parse(response.body)["message"]).to include("OPENC3_LOCAL_ONLY_TARGETS")
     end
 
+    it "returns not found when downloading a directory" do
+      write_local("DEFAULT/targets_modified/LOCAL/screens/a.txt", "SCREEN")
+      get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/LOCAL/screens", scope: "DEFAULT"}
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "uses local contents in bulk downloads without falling back to stale bucket files" do
+      write_local("DEFAULT/targets_modified/LOCAL/screens/a.txt", "LOCAL SCREEN")
+      expect(@bucket_client).to_not receive(:get_object)
+      post :download_multiple_files, params: {bucket: "OPENC3_CONFIG_BUCKET", path: "DEFAULT/targets_modified/LOCAL/screens/", files: ["a.txt", "missing.txt"], scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      Zip::File.open_buffer(Base64.decode64(JSON.parse(response.body)["contents"])) do |zip|
+        expect(zip.map(&:name)).to eq(["a.txt"])
+        expect(zip.read("a.txt")).to eq("LOCAL SCREEN")
+      end
+    end
+
+    it "deletes local only files from a directory while leaving stale bucket copies alone" do
+      key = "DEFAULT/targets_modified/LOCAL/procedures/test.rb"
+      other_key = "DEFAULT/targets_modified/OTHER/procedures/test.rb"
+      write_local(key, "puts 'hi'")
+      allow(OpenC3::LocalMode).to receive(:build_local_catalog).with(scope: "DEFAULT").and_return({key => 9})
+      allow(@bucket_client).to receive(:list_objects).and_return([double(key: key), double(key: other_key)])
+      expect(@bucket_client).to receive(:delete_objects).with(bucket: "config-bucket", keys: [other_key])
+      delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified", scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)["deleted_count"]).to eq(2)
+      expect(File.exist?("#{@tmp_dir}/#{key}")).to be false
+    end
+
     it "deletes only from the local mode volume" do
       expect(@bucket_client).to_not receive(:delete_object)
       key = "DEFAULT/targets_modified/LOCAL/procedures/test.rb"
@@ -1310,7 +1340,7 @@ RSpec.describe StorageController, type: :controller do
         allow(FileUtils).to receive(:mkdir_p)
         allow(FileUtils).to receive(:rm_rf)
         allow(File).to receive(:read).and_return("file content")
-        allow(File).to receive(:exist?).and_return(true)
+        allow(File).to receive(:file?).and_return(true)
 
         # Mock authorize to allow INST target with tlm permission
         allow(controller).to receive(:authorize) do |args|
@@ -1335,7 +1365,7 @@ RSpec.describe StorageController, type: :controller do
         allow(FileUtils).to receive(:mkdir_p)
         allow(FileUtils).to receive(:rm_rf)
         allow(File).to receive(:read).and_return("file content")
-        allow(File).to receive(:exist?).and_return(true)
+        allow(File).to receive(:file?).and_return(true)
 
         get :download_file, params: {bucket: "OPENC3_TOOLS_BUCKET", object_id: "tool/file.txt", scope: "DEFAULT"}
         expect(response).to have_http_status(:ok)

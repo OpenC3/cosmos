@@ -341,7 +341,7 @@ class StorageController < ApplicationController
 
       # get_object returns nil for a missing key (never writes temp_path), and a
       # volume file may not exist. Return 404 rather than letting File.read 500.
-      unless File.exist?(filename)
+      unless File.file?(filename)
         render json: { status: 'error', message: "File not found: #{params[:object_id]}" }, status: :not_found
         return
       end
@@ -782,7 +782,11 @@ class StorageController < ApplicationController
     # List all objects under the prefix (same pattern as TargetModel#undeploy)
     bucket = OpenC3::Bucket.getClient()
     objects = bucket.list_objects(bucket: bucket_name, prefix: path)
-    keys = objects.map(&:key)
+    keys = objects.map(&:key).reject { |key| local_only_config_key?(params[:bucket], key) }
+    if params[:bucket] == 'OPENC3_CONFIG_BUCKET' && !OpenC3::LocalMode.local_only_targets.empty?
+      local_keys = OpenC3::LocalMode.build_local_catalog(scope: path.split('/')[0]).keys
+      keys += local_keys.select { |key| key.start_with?(path) && OpenC3::LocalMode.local_only_key?(key) }
+    end
 
     if keys.empty?
       render json: { deleted_count: 0 }
@@ -792,12 +796,15 @@ class StorageController < ApplicationController
     # Delete in batches of 1000 (S3 limit)
     deleted_count = 0
     keys.each_slice(1000) do |key_batch|
-      bucket.delete_objects(bucket: bucket_name, keys: key_batch)
+      remote_keys = key_batch.reject { |key| local_only_config_key?(params[:bucket], key) }
+      bucket.delete_objects(bucket: bucket_name, keys: remote_keys) unless remote_keys.empty?
       deleted_count += key_batch.length
 
       # Handle local mode
-      if ENV.fetch('OPENC3_LOCAL_MODE', false)
-        key_batch.each { |key| OpenC3::LocalMode.delete_local(key) }
+      key_batch.each do |key|
+        if ENV.fetch('OPENC3_LOCAL_MODE', false) || local_only_config_key?(params[:bucket], key)
+          OpenC3::LocalMode.delete_local(key)
+        end
       end
     end
 
@@ -880,7 +887,12 @@ class StorageController < ApplicationController
       key = sanitize_path(key)
       temp_file = File.join(tmp_dir, filename)
       begin
-        bucket.get_object(bucket: bucket_name, key: key, path: temp_file)
+        if local_only_config_key?(params[:bucket], key)
+          temp_file = OpenC3::LocalMode.key_path(key)
+          next unless temp_file && File.file?(temp_file)
+        else
+          bucket.get_object(bucket: bucket_name, key: key, path: temp_file)
+        end
         zipfile.add(filename, temp_file)
       rescue => e
         OpenC3::Logger.warn("Failed to download #{key}: #{e.message}", user: username())
