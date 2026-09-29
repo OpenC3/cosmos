@@ -1,0 +1,90 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# Interface Integration Tests
+# Sends 30MB over UDP and TCP to interfaces with a slow consumer to verify
+# the socket reads keep up. See openc3/test/integration/interfaces/README.md
+
+name: Interface Integration Tests
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "openc3/lib/openc3/interfaces/**"
+      - "openc3/lib/openc3/io/udp_sockets.rb"
+      - "openc3/lib/openc3/streams/**"
+      - "openc3/lib/openc3/utilities/read_queue.rb"
+      - "openc3/python/openc3/interfaces/**"
+      - "openc3/python/openc3/io/udp_sockets.py"
+      - "openc3/python/openc3/streams/**"
+      - "openc3/python/openc3/utilities/read_queue.py"
+      - "openc3/test/integration/interfaces/**"
+      - ".github/workflows/interface_integration_tests.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "openc3/lib/openc3/interfaces/**"
+      - "openc3/lib/openc3/io/udp_sockets.rb"
+      - "openc3/lib/openc3/streams/**"
+      - "openc3/lib/openc3/utilities/read_queue.rb"
+      - "openc3/python/openc3/interfaces/**"
+      - "openc3/python/openc3/io/udp_sockets.py"
+      - "openc3/python/openc3/streams/**"
+      - "openc3/python/openc3/utilities/read_queue.py"
+      - "openc3/test/integration/interfaces/**"
+      - ".github/workflows/interface_integration_tests.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  interface-integration-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up uv and Python
+        uses: ./.github/actions/setup-uv-python
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+          working-directory: openc3
+
+      - name: Rake build
+        run: bundle exec rake build
+        working-directory: openc3
+        env:
+          OPENC3_DEVEL: ${GITHUB_WORKSPACE}/openc3
+
+      - name: Run Ruby interface integration tests
+        working-directory: openc3
+        run: bundle exec rspec test/integration/interfaces/ruby
+
+      # --no-sync runs against the venv the setup action synced, so --no-build
+      # costs nothing here and keeps a third-party build backend from executing
+      # if a future dependency arrives without a wheel.
+      - name: Run Python interface integration tests
+        working-directory: openc3/python
+        run: uv run --no-sync --no-build pytest ../test/integration/interfaces/python -s --tb=short

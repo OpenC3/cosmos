@@ -63,6 +63,14 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         self.interface.cmd_target_names = ["SYSTEM", "INST"]
         self.interface.tlm_target_names = ["SYSTEM", "INST"]
 
+        # The stub streams below return data forever so cap the read queue
+        # rather than letting the read thread buffer the full default budget
+        self.interface.set_option("READ_QUEUE_MAX_SIZE", ["65536"])
+
+    def tearDown(self):
+        # Stop the StreamInterface read thread started by reading
+        self.interface.stop_read_queue_thread()
+
     def test_complains_if_target_is_not_given(self):
         with self.assertRaises(TypeError):
             self.interface.add_protocol(IgnorePacketProtocol, [], "READ_WRITE")

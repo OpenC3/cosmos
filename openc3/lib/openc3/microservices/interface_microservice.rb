@@ -720,6 +720,7 @@ module OpenC3
                   else
                     @metric.set(name: 'router_cmd_total', value: @count, type: 'counter')
                   end
+                  set_read_queue_bytes_metric()
                 else
                   @logger.info "#{@interface.name}: Internal disconnect requested (returned nil)"
                   handle_connection_lost()
@@ -751,6 +752,19 @@ module OpenC3
         end
       end
       @logger.info "#{@interface.name}: Stopped packet reading"
+    end
+
+    # Report the bytes buffered on the read queue. Called after each packet and
+    # after a disconnect (which discards the queue) so the gauge doesn't stay
+    # stuck at its last value while no packets are flowing.
+    def set_read_queue_bytes_metric
+      if @interface_or_router == 'INTERFACE'
+        @metric.set(name: 'interface_read_queue_bytes', value: @interface.read_queue_bytes, type: 'gauge',
+                    unit: 'bytes', help: 'Bytes buffered on the interface read queue waiting to be processed')
+      else
+        @metric.set(name: 'router_read_queue_bytes', value: @interface.read_queue_bytes, type: 'gauge',
+                    unit: 'bytes', help: 'Bytes buffered on the router read queue waiting to be processed')
+      end
     end
 
     def handle_packet(packet)
@@ -905,6 +919,7 @@ module OpenC3
         rescue => e
           @logger.error "Disconnect: #{@interface.name}: #{e.formatted}"
         end
+        set_read_queue_bytes_metric() if @metric
 
         # If the interface is set to auto_reconnect then delay so the thread
         # can come back around and allow the interface a chance to reconnect.
