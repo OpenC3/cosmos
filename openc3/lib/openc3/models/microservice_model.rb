@@ -308,9 +308,9 @@ module OpenC3
     end
 
     def cleanup
-      # Cleanup metrics
-      metric_model = MetricModel.new(name: @name, scope: @scope)
-      metric_model.destroy
+      # Cleanup metrics - both the microservice's own and the process metrics
+      # the operator reported for it
+      MetricModel.destroy(scope: @scope, name: @name)
     end
   end
 end

@@ -35,6 +35,22 @@ module OpenC3
         # Its ok if this fails
       end
 
+      # exec() below replaces this process image, so the Metric update thread
+      # this bootstrap started dies without ever running shutdown. Whatever it
+      # managed to publish would then sit in Redis untouched until it expired,
+      # looking for all the world like a live microservice pinned at whatever
+      # cpu the bootstrap itself burned loading the OpenC3 gem. Clear it out and
+      # stop the thread before handing the process over to the real cmd. A cmd
+      # that is itself an OpenC3::Microservice builds a new Metric and starts
+      # publishing again; one that isn't gets its cpu and memory reported by the
+      # operator instead (see Operator#publish_process_metrics).
+      begin
+        @metric.shutdown
+        MetricModel.new(name: @name, scope: @scope).destroy
+      rescue Exception => e
+        @logger.warn("Failed to clear bootstrap metrics for #{@name}: #{e.message}")
+      end
+
       # Fortify: Process Control
       # This is dangerous! However, plugins need to be able to run whatever they want.
       # Only admins can install plugins and they need to be vetted for content.
