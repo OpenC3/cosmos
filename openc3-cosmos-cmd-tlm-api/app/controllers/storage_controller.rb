@@ -492,12 +492,10 @@ class StorageController < ApplicationController
     raise StorageError, "Missing contents" unless params.key?(:contents)
 
     # Check scope-based RBAC for config and logs buckets
-    if bucket_requires_rbac?(params[:bucket])
-      unless authorize_bucket_path(params[:bucket], path, permission: 'system_set')
-        path_scope = extract_scope_from_path(path)
-        render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: :forbidden
-        return
-      end
+    if bucket_requires_rbac?(params[:bucket]) && !authorize_bucket_path(params[:bucket], path, permission: 'system_set')
+      path_scope = extract_scope_from_path(path)
+      render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: :forbidden
+      return
     end
 
     # Same rule as get_upload_presigned_request: non-admins may only write the

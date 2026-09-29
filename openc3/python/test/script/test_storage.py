@@ -292,8 +292,10 @@ class TestGetTargetFile(unittest.TestCase):
 class TestLocalOnlyTargetFiles(unittest.TestCase):
     def setUp(self):
         self.api_server_mock = Mock()
-        openc3.script.API_SERVER = self.api_server_mock
-        openc3.script.OPENC3_IN_CLUSTER = True
+        for name, value in (("API_SERVER", self.api_server_mock), ("OPENC3_IN_CLUSTER", True)):
+            script_patcher = patch.object(openc3.script, name, value)
+            script_patcher.start()
+            self.addCleanup(script_patcher.stop)
         self.tmp_dir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.tmp_dir, ignore_errors=True)
         patcher = patch.object(LocalMode, "LOCAL_MODE_PATH", self.tmp_dir)
@@ -322,8 +324,9 @@ class TestLocalOnlyTargetFiles(unittest.TestCase):
             mock_client.assert_not_called()
 
     def test_outside_the_cluster_uses_the_api(self):
-        openc3.script.OPENC3_IN_CLUSTER = False
-        self.addCleanup(setattr, openc3.script, "OPENC3_IN_CLUSTER", True)
+        cluster_patcher = patch.object(openc3.script, "OPENC3_IN_CLUSTER", False)
+        cluster_patcher.start()
+        self.addCleanup(cluster_patcher.stop)
         response = Mock()
         response.status_code = 200
         self.api_server_mock.request.return_value = response
