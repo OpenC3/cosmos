@@ -897,7 +897,9 @@ RSpec.describe StorageController, type: :controller do
       expect(@bucket_client).to_not receive(:get_object)
       post :download_multiple_files, params: {bucket: "OPENC3_CONFIG_BUCKET", path: "DEFAULT/targets_modified/LOCAL/screens/", files: ["a.txt", "missing.txt"], scope: "DEFAULT"}
       expect(response).to have_http_status(:ok)
-      Zip::File.open_buffer(Base64.decode64(JSON.parse(response.body)["contents"])) do |zip|
+      zip_path = "#{@tmp_dir}/download.zip"
+      File.binwrite(zip_path, Base64.decode64(JSON.parse(response.body)["contents"]))
+      Zip::File.open(zip_path) do |zip|
         expect(zip.map(&:name)).to eq(["a.txt"])
         expect(zip.read("a.txt")).to eq("LOCAL SCREEN")
       end
@@ -907,13 +909,22 @@ RSpec.describe StorageController, type: :controller do
       key = "DEFAULT/targets_modified/LOCAL/procedures/test.rb"
       other_key = "DEFAULT/targets_modified/OTHER/procedures/test.rb"
       write_local(key, "puts 'hi'")
-      allow(OpenC3::LocalMode).to receive(:build_local_catalog).with(scope: "DEFAULT").and_return({key => 9})
+      write_local(other_key, "puts 'other'")
       allow(@bucket_client).to receive(:list_objects).and_return([double(key: key), double(key: other_key)])
       expect(@bucket_client).to receive(:delete_objects).with(bucket: "config-bucket", keys: [other_key])
       delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified", scope: "DEFAULT"}
       expect(response).to have_http_status(:ok)
       expect(JSON.parse(response.body)["deleted_count"]).to eq(2)
       expect(File.exist?("#{@tmp_dir}/#{key}")).to be false
+      expect(File.exist?("#{@tmp_dir}/#{other_key}")).to be true
+    end
+
+    it "does not create local mode directories when deleting a missing directory" do
+      allow(@bucket_client).to receive(:list_objects).and_return([])
+      delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "NOPE/targets_modified", scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)["deleted_count"]).to eq(0)
+      expect(File.exist?("#{@tmp_dir}/NOPE")).to be false
     end
 
     it "deletes only from the local mode volume" do

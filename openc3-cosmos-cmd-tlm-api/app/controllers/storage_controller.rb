@@ -784,8 +784,16 @@ class StorageController < ApplicationController
     objects = bucket.list_objects(bucket: bucket_name, prefix: path)
     keys = objects.map(&:key).reject { |key| local_only_config_key?(params[:bucket], key) }
     if params[:bucket] == 'OPENC3_CONFIG_BUCKET' && !OpenC3::LocalMode.local_only_targets.empty?
-      local_keys = OpenC3::LocalMode.build_local_catalog(scope: path.split('/')[0]).keys
-      keys += local_keys.select { |key| key.start_with?(path) && OpenC3::LocalMode.local_only_key?(key) }
+      # Local only target files live only in the local mode volume. Only look at an
+      # existing directory so this never creates directories for arbitrary paths.
+      local_dir = OpenC3::LocalMode.key_path(path.chomp('/'))
+      if local_dir && File.directory?(local_dir)
+        Dir.glob("#{local_dir}/**/*").each do |filename|
+          next if File.directory?(filename)
+          key = "#{path}#{filename[(local_dir.length + 1)..]}"
+          keys << key if OpenC3::LocalMode.local_only_key?(key)
+        end
+      end
     end
 
     if keys.empty?
