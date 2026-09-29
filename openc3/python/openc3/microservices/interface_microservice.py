@@ -654,6 +654,10 @@ class InterfaceMicroservice(Microservice):
 
         super().__init__(name)
         self.interface_or_router = self.__class__.__name__.split("Microservice")[0].upper()
+        # Built once since the metric is updated for every packet
+        kind = self.interface_or_router.lower()
+        self.read_queue_metric_name = f"{kind}_read_queue_bytes"
+        self.read_queue_metric_help = f"Bytes buffered on the {kind} read queue waiting to be processed"
         if self.interface_or_router == "INTERFACE":
             self.metric.set(name="interface_tlm_total", value=self.count, type="counter")
         else:
@@ -816,6 +820,7 @@ class InterfaceMicroservice(Microservice):
                                             value=self.count,
                                             type="counter",
                                         )
+                                    self.update_read_queue_metric()
                                 else:
                                     self.logger.info(
                                         f"{self.interface.name}: Internal disconnect requested (returned None)"
@@ -954,6 +959,9 @@ class InterfaceMicroservice(Microservice):
                 self.interface.disconnect()
             except Exception:
                 self.logger.error(f"Disconnect: {self.interface.name}: {traceback.format_exc()}")
+            # Disconnecting discards the read queue so report it as empty, otherwise
+            # the last reported value would persist until the next packet
+            self.update_read_queue_metric()
 
         try:
             self.interface.connect()
@@ -970,6 +978,17 @@ class InterfaceMicroservice(Microservice):
         else:
             RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         self.logger.info(f"{self.interface.name}: Connection Success")
+
+    def update_read_queue_metric(self):
+        if self.interface is None:
+            return
+        self.metric.set(
+            name=self.read_queue_metric_name,
+            value=self.interface.read_queue_bytes(),
+            type="gauge",
+            unit="bytes",
+            help=self.read_queue_metric_help,
+        )
 
     def disconnect(self, allow_reconnect=True):
         reconnect = False
@@ -992,6 +1011,9 @@ class InterfaceMicroservice(Microservice):
                 self.interface.disconnect()
             except Exception:
                 self.logger.error(f"Disconnect: {self.interface.name}: {traceback.format_exc()}")
+            # Disconnecting discards the read queue so report it as empty, otherwise
+            # the last reported value would persist until the next packet
+            self.update_read_queue_metric()
 
             # If the interface is set to auto_reconnect then delay so the thread
             # can come back around and allow the interface a chance to reconnect.

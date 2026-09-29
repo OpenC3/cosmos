@@ -91,6 +91,11 @@ class Interface:
     def write_queue_size(self):
         return self._write_queue_size
 
+    # @return [Integer] The number of bytes waiting on the read queue.
+    #   Interfaces which buffer raw reads override this (see ReadQueue).
+    def read_queue_bytes(self):
+        return 0
+
     # Should be implemented by subclass to return human readable connection string
     # which will be placed in log messages when connecting and during connection failures
     def connection_string(self):
