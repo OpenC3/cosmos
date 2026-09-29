@@ -277,6 +277,7 @@ export default {
       filename: '',
       fileModified: '',
       lockedBy: null,
+      saveAsInProgress: false,
       fileOpen: false,
       showSave: false,
       showSaveAs: false,
@@ -320,6 +321,9 @@ export default {
             {
               label: 'Save File',
               icon: 'mdi-content-save',
+              // A Save As in flight is about to change this.filename, so a
+              // save started now could post to either name
+              disabled: this.saveAsInProgress,
               command: () => {
                 this.saveFile()
               },
@@ -327,6 +331,7 @@ export default {
             {
               label: 'Save As...',
               icon: 'mdi-content-save',
+              disabled: this.saveAsInProgress,
               command: () => {
                 this.saveAs()
               },
@@ -459,21 +464,22 @@ export default {
       this.errorText = `Error: ${event}`
       this.showError = true
     },
-    saveFile: function () {
-      // Save a file by posting the new contents
+    // Write the current table values to this.filename. Displays the Save Error
+    // dialog and rejects if the save fails so callers can stop their sequence.
+    saveFileContents: function () {
       this.showSave = true
 
       const formData = new FormData()
       formData.append('binary', this.filename)
       formData.append('definition', this.definitionFilename)
       formData.append('tables', JSON.stringify(this.tables))
-      Api.post(`/openc3-api/tables/${this.filename}`, {
+      const savedFile = Api.post(`/openc3-api/tables/${this.filename}`, {
         data: formData,
         headers: {
           'Content-Type': 'multipart/form-data',
-          // A 403 (admin-only area) is shown in the Save Error dialog below,
-          // so skip the global network error banner
-          'Ignore-Errors': '403',
+          // A 403 (admin-only area) or a 404 (missing binary or definition) is
+          // shown in the Save Error dialog below, so skip the global banner
+          'Ignore-Errors': '403, 404',
         },
       })
         .then((response) => {
@@ -482,24 +488,74 @@ export default {
             this.showSave = false
           }, 2000)
         })
-        .catch(({ response }) => {
+        .catch((error) => {
           this.showSave = false
           this.errorTitle = 'Save Error'
-          this.errorText = response.data.message
+          this.errorText =
+            error.response?.data?.message ||
+            `Unable to save ${this.filename}. It still has unsaved changes.`
           this.showError = true
+          throw error
         })
       this.lockFile() // Ensure this file is locked for editing
+      return savedFile
+    },
+    saveFile: function () {
+      // Failures are reported in the Save Error dialog and the file stays
+      // marked as modified so the user can try again
+      this.saveFileContents().catch((error) => {})
     },
     saveAs: function () {
       this.showSaveAs = true
     },
     saveAsFilename: function (filename) {
-      Api.put(`/openc3-api/tables/${this.filename}/save-as/${filename}`).then(
-        (response) => {
-          this.filename = filename.replace(/\*$/, '')
-          this.getDefinition(this.definitionFilename)
+      if (this.saveAsInProgress) return // Backstop, the menu item is disabled
+      const newFilename = filename.replace(/\*$/, '')
+      // save-as only copies the file as it exists on the server, so any
+      // unsaved edits would be lost. Copy first to create the new file (the
+      // save API requires the binary to already exist), then write the
+      // current table values to it.
+      this.saveAsInProgress = true
+      Api.put(`/openc3-api/tables/${this.filename}/save-as/${newFilename}`, {
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          // Shown in the error dialog below, so skip the global error banner
+          'Ignore-Errors': '403, 404',
         },
-      )
+      })
+        .catch((error) => {
+          this.errorTitle = 'Save As Error'
+          this.errorText =
+            error.response?.data?.message || `Unable to create ${newFilename}`
+          this.showError = true
+          throw error
+        })
+        .then((response) => {
+          this.unlockFile() // Release the lock on the file we were editing
+          this.filename = newFilename
+          // Same request Open File makes: it reports who holds the new file
+          // and takes the lock if it is free. Save As can overwrite a file
+          // another user is editing, but it must not take their lock.
+          return Api.get(`/openc3-api/tables/${newFilename}`).catch((error) => {
+            return { data: {} } // Fall back to saving without the lock state
+          })
+        })
+        .then((response) => {
+          this.lockedBy = response.data.locked || null
+          // If this fails the new file exists with the previously saved
+          // contents, but fileModified stays set so Save can be retried
+          return this.saveFileContents()
+        })
+        .then((response) => {
+          this.getDefinition(this.definitionFilename)
+        })
+        .catch((error) => {
+          // Already reported in the dialogs above
+        })
+        .finally(() => {
+          this.saveAsInProgress = false
+        })
     },
     delete: function () {
       if (this.filename !== '') {
@@ -659,6 +715,9 @@ export default {
         })
     },
     lockFile: function () {
+      // Never take a lock another user holds. forceUnlock clears lockedBy
+      // before calling this, so it can still re-lock as this user.
+      if (this.readOnly) return Promise.resolve()
       return Api.post(`/openc3-api/tables/${this.filename}/lock`)
     },
     unlockFile: function () {

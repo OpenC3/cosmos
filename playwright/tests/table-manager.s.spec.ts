@@ -258,6 +258,110 @@ test('edits a binary file', async ({ page, utils }) => {
   )
 })
 
+// Save As has to write what the user is looking at, not what the server last
+// stored. The save-as API only copies the stored bytes, so before the fix the
+// new file got the pre-edit contents and the tool then reloaded that copy,
+// wiping the edits off the screen as well (issue #3811).
+test('save as keeps edits', async ({ page, utils }) => {
+  const source = 'INST/tables/bin/ConfigTables.bin'
+  const target = 'INST/tables/bin/ConfigTables3.bin'
+
+  // Generate the binary rather than opening it so the starting value of
+  // SCRUB_REGION_1_START_ADDR is the definition default no matter what the
+  // other tests in this file left behind
+  await page.locator('[data-test=table-manager-file]').click()
+  await page.locator('text=New Binary from Definition').click()
+  await openFile(page, utils, 'configtables_def.txt')
+  // The tests above already created this binary, so the overwrite prompt is
+  // expected. isVisible() would race the dialog rendering, click() waits.
+  await page.locator('button:has-text("Overwrite")').click()
+  // Save As posts the definition filename, which only lands once tables/load
+  // returns, so wait for it rather than saving an empty definition
+  await expect(
+    page.locator('[data-test=definition-filename] input'),
+  ).toHaveValue('INST/tables/config/ConfigTables_def.txt')
+  await expect(page.locator('[data-test=filename] input')).toHaveValue(source)
+
+  // Edit a value and deliberately do not save it
+  await page.locator('text=MC_CONFIGURATION').click()
+  const scrubAddress = page
+    .getByRole('row', { name: '1 SCRUB_REGION_1_START_ADDR' })
+    .locator('[data-test="table-item-text-field"] input')
+  await scrubAddress.fill('0xbeef')
+  // The '*' means the edit exists only in the browser at this point
+  await expect(page.locator('[data-test=filename] input')).toHaveValue(
+    `${source} *`,
+  )
+
+  await page.locator('[data-test=table-manager-file]').click()
+  await page.locator('text=Save As').click()
+  await expect(page.locator('.v-dialog')).toBeVisible()
+  await utils.sleep(100) // Sometimes the old filename gets populated after the test types
+  await expect(page.getByRole('progressbar')).not.toBeVisible()
+  await expect(page.getByText('TEMPLATED')).not.toBeVisible()
+  await page.locator('[data-test=file-open-save-filename] input').fill(target)
+  // Save As ends by reloading the file it just wrote. Watch for that request
+  // here so the assertions below can't be satisfied by the pre-reload screen.
+  const reloaded = page.waitForResponse(
+    (response) =>
+      response.url().includes('/openc3-api/tables/load') && response.ok(),
+  )
+  await page.locator('[data-test=file-open-save-submit-btn]').click()
+  // The target only exists if a previous run failed before its cleanup, so
+  // wait for the confirm rather than racing it with isVisible()
+  const overwrite = page.locator('[data-test=confirm-dialog-overwrite]')
+  const needsOverwrite = await overwrite
+    .waitFor({ state: 'visible', timeout: 2000 })
+    .then(() => true)
+    .catch(() => false)
+  if (needsOverwrite) {
+    await overwrite.click()
+  }
+  await reloaded
+
+  // No '*': the edit was written, not just renamed. The reload above must not
+  // put the marker back either.
+  await expect(page.locator('[data-test=filename] input')).toHaveValue(target)
+  await expect(
+    page.locator('[data-test=definition-filename] input'),
+  ).toHaveValue('INST/tables/config/ConfigTables_def.txt')
+  await expect(scrubAddress).toHaveValue('0xBEEF')
+
+  // The report is generated from the stored binary, so this is the edit coming
+  // back from the server rather than the value still sitting in the browser
+  await utils.download(
+    page,
+    '[data-test=download-file-report]',
+    function (contents) {
+      expect(contents).toContain('ConfigTables3')
+      expect(contents).toContain('SCRUB_REGION_1_START_ADDR, 0xBEEF')
+    },
+  )
+
+  // Save As must not write through to the file it was invoked from
+  await page.locator('[data-test=table-manager-file]').click()
+  await page.locator('text=Open File').click()
+  await openFile(page, utils, 'configtables.bin')
+  await expect(page.locator('[data-test=filename] input')).toHaveValue(source)
+  await expect(
+    page.locator('[data-test=definition-filename] input'),
+  ).toHaveValue('INST/tables/config/ConfigTables_def.txt')
+  await expect(scrubAddress).toHaveValue('0x0')
+
+  // Reopen the saved file to confirm the edit survives a round trip
+  await page.locator('[data-test=table-manager-file]').click()
+  await page.locator('text=Open File').click()
+  await openFile(page, utils, 'configtables3.bin')
+  await expect(page.locator('[data-test=filename] input')).toHaveValue(target)
+  await expect(scrubAddress).toHaveValue('0xBEEF')
+
+  // Clean up so a rerun starts from the same state
+  await page.locator('[data-test=table-manager-file]').click()
+  await page.locator('text=Delete File').click()
+  await expect(page.locator('text=Permanently delete file')).toBeVisible()
+  await page.locator('button:has-text("Delete")').click()
+})
+
 // Table Manager is the tool where a leaked modified marker actually corrupts data:
 // saveAsFilename passes the field straight to PUT /openc3-api/tables/.../save-as,
 // and nothing on that path (sanitize_params, Table.save_as, TargetFile.create)
