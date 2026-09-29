@@ -80,6 +80,7 @@ jobs:
     uses: OpenC3/.github/.github/workflows/ai-review-reusable.yml@main
     permissions:
       actions: read
+      checks: read
       contents: read
       pull-requests: write
       statuses: read
