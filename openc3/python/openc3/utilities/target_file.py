@@ -29,11 +29,14 @@ class TargetFile:
     @classmethod
     def body(cls, scope, name):
         name = cls.strip_modified(name)  # Remove '*' that indicates modified
+        # Local only targets are read from the local mode volume and never the bucket
+        if LocalMode.local_only_name(name):
+            return cls.local_body(scope, name)
         # First try opening a potentially modified version by looking for the modified target
         if OPENC3_LOCAL_MODE:
-            local_file = LocalMode.open_local_file(name, scope=scope)
-            if local_file:
-                return local_file.read()
+            body = cls.local_body(scope, name)
+            if body is not None:
+                return body
 
         bucket = Bucket.get_client()
         resp = bucket.get_object(bucket=OPENC3_CONFIG_BUCKET, key=f"{scope}/targets_modified/{name}")
@@ -44,3 +47,11 @@ class TargetFile:
             return resp["Body"].read()
         else:
             return None
+
+    @classmethod
+    def local_body(cls, scope, name):
+        local_file = LocalMode.open_local_file(name, scope=scope)
+        if not local_file:
+            return None
+        with local_file:
+            return local_file.read()

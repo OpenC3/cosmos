@@ -48,6 +48,39 @@ class LocalMode:
     ]
 
     @staticmethod
+    def local_only_targets():
+        """Target names from OPENC3_LOCAL_ONLY_TARGETS (comma separated). These targets keep
+        their target files only in the local mode volume and never read or write them in the
+        bucket. Read on every call so it can't go stale."""
+        names = os.environ.get("OPENC3_LOCAL_ONLY_TARGETS") or ""
+        return [name.strip().upper() for name in names.split(",") if name.strip()]
+
+    @classmethod
+    def local_only_target(cls, target_name):
+        if not target_name:
+            return False
+        return str(target_name).upper() in cls.local_only_targets()
+
+    @classmethod
+    def local_only_name(cls, name):
+        """name is relative to targets / targets_modified, e.g. "INST/procedures/test.py" """
+        return cls.local_only_target(str(name).split("/")[0])
+
+    @classmethod
+    def local_only_key(cls, key):
+        """key is a config bucket key, e.g. "DEFAULT/targets_modified/INST/procedures/test.py" """
+        split_key = str(key).split("/")
+        if len(split_key) < 3 or split_key[1] not in ("targets", "targets_modified"):
+            return False
+        return cls.local_only_target(split_key[2])
+
+    @classmethod
+    def local_target_dir_exists(cls, path, scope):
+        """True if path, relative to targets_modified (e.g. "INST/lib/utils"), is a local directory"""
+        full_path = cls.scope_path(scope, f"targets_modified/{path}")
+        return bool(full_path and cls.safe_key(path) and os.path.isdir(full_path))
+
+    @staticmethod
     def safe_key(key):
         """True if the key has no '.' / '..' segments, no empty segments, no leading
         slash and no backslash. Such a key always resolves under its first segment

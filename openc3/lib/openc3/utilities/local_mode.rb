@@ -518,6 +518,30 @@ module OpenC3
       File.write(config_path, data)
     end
 
+    # Target names from OPENC3_LOCAL_ONLY_TARGETS (comma separated). These
+    # targets keep their target files only in the local mode volume and never
+    # read or write them in the bucket. Read on every call so it can't go stale.
+    def self.local_only_targets
+      ENV['OPENC3_LOCAL_ONLY_TARGETS'].to_s.split(',').map { |name| name.strip.upcase }.reject(&:empty?)
+    end
+
+    def self.local_only_target?(target_name)
+      return false if target_name.nil? or target_name.to_s.empty?
+      local_only_targets.include?(target_name.to_s.upcase)
+    end
+
+    # name is relative to targets / targets_modified, e.g. "INST/procedures/test.rb"
+    def self.local_only_name?(name)
+      local_only_target?(name.to_s.split('/')[0])
+    end
+
+    # key is a config bucket key, e.g. "DEFAULT/targets_modified/INST/procedures/test.rb"
+    def self.local_only_key?(key)
+      split_key = key.to_s.split('/')
+      return false unless ['targets', 'targets_modified'].include?(split_key[1])
+      local_only_target?(split_key[2])
+    end
+
     # Helper methods
 
     # True if the key has no '.' / '..' segments, no empty segments, no leading
@@ -616,6 +640,10 @@ module OpenC3
       # Build catalogs
       local_catalog = build_local_catalog(scope: scope)
       remote_catalog = build_remote_catalog(bucket, scope: scope)
+      # Local only targets never sync in either direction. Any stale copies
+      # already in the bucket are left alone rather than pulled down or deleted.
+      local_catalog.reject! { |key, _size| local_only_key?(key) }
+      remote_catalog.reject! { |key, _size| local_only_key?(key) }
 
       # Find and Handle Differences
       local_catalog.each do |key, size|

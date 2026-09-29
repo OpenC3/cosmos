@@ -17,6 +17,8 @@
 
 require 'tempfile'
 require 'net/http'
+require 'base64'
+require 'openc3/utilities/local_mode'
 
 ENV['OPENC3_CLOUD'] ||= 'local'
 
@@ -52,6 +54,15 @@ module OpenC3
       raise "Disallowed path modifier '..' found in #{path}" if path.include?('..')
 
       upload_path = "#{scope}/targets_modified/#{path}"
+
+      if OpenC3::LocalMode.local_only_name?(path)
+        # The local mode volume is only mounted in the cluster so from outside
+        # write it through the API which never sends it to the bucket
+        return _upload_api_file(upload_path, io_or_string, scope: scope) unless $openc3_in_cluster
+        puts "Writing local #{upload_path}"
+        OpenC3::LocalMode.put_target_file(upload_path, io_or_string, scope: scope)
+        return nil
+      end
 
       if ENV['OPENC3_LOCAL_MODE'] and $openc3_in_cluster
         OpenC3::LocalMode.put_target_file(upload_path, io_or_string, scope: scope)
@@ -91,22 +102,22 @@ module OpenC3
     # @param original [Boolean] Whether to get the original or modified file
     # @return [File|nil]
     def get_target_file(path, original: false, scope: $openc3_scope)
+      # Local only targets only exist in the local mode volume so original doesn't apply
+      if OpenC3::LocalMode.local_only_name?(path)
+        # The local mode volume is only mounted in the cluster so from outside
+        # read it through the API which serves it from the volume
+        return _get_api_file("targets_modified/#{path}", scope: scope) unless $openc3_in_cluster
+        return _get_local_file(path, scope: scope)
+      end
+
       part = "targets"
       part += "_modified" unless original
       # Loop to allow redo when switching from modified to original
       loop do
         begin
           if part == "targets_modified" and ENV['OPENC3_LOCAL_MODE']
-            local_file = OpenC3::LocalMode.open_local_file(path, scope: scope)
-            if local_file
-              puts "Reading local #{scope}/#{part}/#{path}"
-              file = Tempfile.new('target', binmode: true)
-              file.filename = path
-              file.write(local_file.read)
-              local_file.close
-              file.rewind
-              return file
-            end
+            file = _get_local_file(path, scope: scope)
+            return file if file
           end
 
           return _get_storage_file("#{part}/#{path}", scope: scope)
@@ -125,7 +136,53 @@ module OpenC3
 
     # These are helper methods ... should not be used directly
 
+    # Write a file through the API instead of a presigned URL
+    def _upload_api_file(path, io_or_string, bucket: 'OPENC3_CONFIG_BUCKET', scope: $openc3_scope)
+      data = String === io_or_string ? io_or_string : io_or_string.read
+      endpoint = "/openc3-api/storage/upload_file/#{path}"
+      puts "Writing #{path}"
+      response = $api_server.request('put', endpoint, query: { bucket: bucket },
+        data: { contents: Base64.strict_encode64(data) }, json: true, scope: scope)
+      if response.nil? || response.status != 200
+        raise "Failed to write #{path}"
+      end
+      nil
+    end
+
+    # Read a file through the API instead of a presigned URL
+    # Returns nil if the file doesn't exist
+    def _get_api_file(path, bucket: 'OPENC3_CONFIG_BUCKET', scope: $openc3_scope)
+      endpoint = "/openc3-api/storage/download_file/#{scope}/#{path}"
+      response = $api_server.request('get', endpoint, query: { bucket: bucket }, scope: scope)
+      return nil if response && response.status == 404
+      if response.nil? || response.status != 200
+        raise "Failed to read #{scope}/#{path}"
+      end
+      puts "Reading #{scope}/#{path}"
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      file = Tempfile.new('target', binmode: true)
+      file.filename = path
+      file.write(Base64.decode64(json['contents']))
+      file.rewind
+      return file
+    end
+
+    def _get_local_file(path, scope: $openc3_scope)
+      local_file = OpenC3::LocalMode.open_local_file(path, scope: scope)
+      return nil unless local_file
+      puts "Reading local #{scope}/targets_modified/#{path}"
+      file = Tempfile.new('target', binmode: true)
+      file.filename = path
+      file.write(local_file.read)
+      local_file.close
+      file.rewind
+      return file
+    end
+
     def _get_download_url(path, scope: $openc3_scope)
+      if OpenC3::LocalMode.local_only_name?(path)
+        raise "#{path} belongs to a local only target (OPENC3_LOCAL_ONLY_TARGETS) and has no bucket download URL"
+      end
       targets = "targets_modified" # First try targets_modified
       response = $api_server.request('get', "/openc3-api/storage/exists/#{scope}/#{targets}/#{path}", query: { bucket: 'OPENC3_CONFIG_BUCKET' }, scope: scope)
       if response.status != 200
