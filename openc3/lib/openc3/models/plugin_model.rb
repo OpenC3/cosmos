@@ -428,11 +428,9 @@ module OpenC3
     # Dry run: which modified files would this plugin's install supersede?
     # Returns a list of "TARGET/path" names whose live (modified) content
     # differs from the rendered plugin content. Read-only; no side effects.
+    # Errors propagate so callers can tell a failed check from an empty diff.
     def self.modified_diff(plugin_hash, scope:)
       install_phase2(plugin_hash, scope: scope, diff_only: true)
-    rescue => e
-      Logger.warn("PluginModel.modified_diff failed: #{e.message}")
-      []
     end
 
     def initialize(
