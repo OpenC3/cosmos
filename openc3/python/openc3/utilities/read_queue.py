@@ -42,13 +42,17 @@ THREAD_JOIN_TIMEOUT = 2.0
 #
 # Subclasses must implement read_queue_data which performs
 # a single blocking read and returns the data read or None to indicate the read
-# source is done (which disconnects the interface).
+# source is done (which disconnects the interface). The read queue is set up by
+# __init__ so subclasses only need to call super().__init__().
 #
 # Setting READ_QUEUE_MAX_SIZE to 0 disables the read thread and reads inline
 # from read_queue_pop, which is how interfaces read before the queue existed.
 class ReadQueue(Interface):
-    # Initialize the read queue attributes. Must be called from the subclass
-    # __init__ method.
+    def __init__(self):
+        super().__init__()
+        self.initialize_read_queue()
+
+    # Initialize (or reset) the read queue attributes. Called by __init__.
     def initialize_read_queue(self, max_size=DEFAULT_READ_QUEUE_MAX_SIZE):
         self._read_queue = None
         self.read_queue_thread = None
