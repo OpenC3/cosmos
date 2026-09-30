@@ -154,6 +154,7 @@
       :targets="pluginTargets(currentPlugin)"
       :plugin-hash="pluginHashTmp"
       :plugin-delete="pluginDelete"
+      :version-history="scriptVersionsEnabled"
       @submit="modifiedSubmit"
     />
     <!-- <download-dialog v-model="showDownloadDialog" /> -->
