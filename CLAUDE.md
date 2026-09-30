@@ -236,8 +236,9 @@ PWDEBUG=1 pnpm test:parallel --headed     # Debug mode
 
 **Important UV Notes:**
 
-- Always use `uv sync --frozen` in CI/CD and Dockerfiles (fails if lockfile is out of sync)
-- Use `uv sync --locked` in development (updates if out of sync)
+- Use `uv sync --locked` in CI (fails if `uv.lock` is out of sync with `pyproject.toml`)
+- Use `uv sync --frozen` in Dockerfiles and at plugin install time (installs what `uv.lock` pins; `--locked` re-resolves when `PYPI_URL` is a mirror)
+- Use `uv sync` in development (updates if out of sync)
 - Use `uv run` instead of activating the venv manually
 - The lockfile (`uv.lock`) must be committed to git
 - Don't commit `.venv` directory (it's in .gitignore)
