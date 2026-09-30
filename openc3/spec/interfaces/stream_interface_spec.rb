@@ -54,6 +54,37 @@ module OpenC3
       end
     end
 
+    # Stream whose read blocks until released, even across a disconnect, like a
+    # stream whose disconnect doesn't wake up a pending read
+    class StuckStream < Stream
+      attr_reader :reads, :reading
+
+      def initialize
+        @reading = Queue.new
+        @release = Queue.new
+        @reads = 0
+      end
+
+      def release
+        @release << true
+      end
+
+      def connect; end
+
+      def connected?; true; end
+
+      def disconnect; end
+
+      def read
+        @reads += 1
+        @reading << true
+        @release.pop(timeout: 5)
+        "\x01\x02\x03"
+      end
+
+      def write(_data); end
+    end
+
     let(:interface) { StreamInterface.new }
 
     after(:each) do
@@ -232,6 +263,32 @@ module OpenC3
         interface.stream = QueueStream.new("\x02")
         expect(interface.read_queue_size).to eql 0
         expect(interface.read_interface()[0]).to eql "\x02"
+      end
+
+      it "doesn't let a read thread which survived being stopped queue or read again" do
+        stub_const("OpenC3::ReadQueue::THREAD_JOIN_TIMEOUT", 0.05)
+        # Simulate the thread surviving being killed
+        allow(OpenC3).to receive(:kill_thread)
+        stuck = StuckStream.new
+        interface.stream = stuck
+        interface.connect
+        expect(stuck.reading.pop(timeout: 2)).to be true
+        old_thread = interface.instance_variable_get(:@raw_read_thread)
+
+        interface.stream = QueueStream.new("\x0a")
+        interface.connect
+        start = Time.now
+        sleep(0.001) while interface.read_queue_size < 1 and (Time.now - start) < 2
+        expect(old_thread.alive?).to be true
+
+        # Once its read finally returns the old thread must exit without
+        # charging the bytes against the new queue or reading the new stream
+        stuck.release
+        expect(old_thread.join(2)).to_not be_nil
+        expect(stuck.reads).to eql 1
+        expect(interface.read_queue_bytes).to eql 1
+        expect(interface.read_interface()[0]).to eql "\x0a"
+        expect(interface.read_queue_bytes).to eql 0
       end
     end
   end
