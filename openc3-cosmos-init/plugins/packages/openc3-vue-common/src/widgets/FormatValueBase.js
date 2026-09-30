@@ -43,7 +43,9 @@ export default {
     // integer format specifiers manually to preserve full precision
     formatBigInt(value, formatString) {
       const match = formatString.match(
-        /^([^%]*)%([#0 +-]*)(\d+)?\.?(\d+)?([diouxX])(.*)$/,
+        // Width can't start with 0 (that's the zero-pad flag) and the precision
+        // digits only exist with the '.', so neither can overlap the group before it
+        /^([^%]*)%([#0 +-]*)([1-9]\d*)?(?:\.(\d*))?([diouxX])(.*)$/,
       )
       if (match) {
         const [, prefix, flags, widthStr, , specifier, suffix] = match

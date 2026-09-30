@@ -189,9 +189,28 @@ module OpenC3
       end
 
       it "deletes only the given files via TargetFile when a files list is passed" do
+        allow(TargetModel).to receive(:modified_files).with('TEST', scope: "DEFAULT")
+          .and_return(["TEST/screens/a.txt", "TEST/lib/b.rb", "TEST/lib/c.rb"])
         expect(OpenC3::TargetFile).to receive(:destroy).with("DEFAULT", "TEST/screens/a.txt")
         expect(OpenC3::TargetFile).to receive(:destroy).with("DEFAULT", "TEST/lib/b.rb")
-        TargetModel.delete_modified('TEST', scope: "DEFAULT", files: ["TEST/screens/a.txt", "TEST/lib/b.rb"])
+        TargetModel.delete_modified('TEST', scope: "DEFAULT", files: ["TEST/screens/a.txt", "TEST/lib/b.rb*"])
+      end
+
+      it "ignores files that are not modified files of the target" do
+        allow(TargetModel).to receive(:modified_files).with('TEST', scope: "DEFAULT")
+          .and_return(["TEST/screens/a.txt"])
+        expect(OpenC3::TargetFile).to_not receive(:destroy)
+        TargetModel.delete_modified('TEST', scope: "DEFAULT", files: [
+          "TEST/../../OTHER/targets_modified/INST/procedures/x.rb",
+          "../../OTHER/targets_modified/INST/procedures/x.rb",
+          "OTHER_TARGET/screens/a.txt",
+          { "not" => "a string" },
+        ])
+      end
+
+      it "rejects an invalid target_name" do
+        expect { TargetModel.delete_modified('../OTHER', scope: "DEFAULT") }.to raise_error(ArgumentError)
+        expect { TargetModel.delete_modified('A/B', scope: "DEFAULT") }.to raise_error(ArgumentError)
       end
 
       it "falls back to deleting all modified files when the files list is empty" do

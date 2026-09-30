@@ -928,6 +928,10 @@ module OpenC3
     # @return [Array, Hash] Array of [value, limits_state] pairs per row, or {} if no results.
     #   Single-row results return a flat array; multi-row results return array of arrays.
     def self.tsdb_lookup(items, start_time:, end_time: nil, scope: "DEFAULT")
+      # Every item is a placeholder for an item which doesn't exist, so there's
+      # nothing to query. Return a single row of nil values, one per item.
+      return Array.new(items.length) { [nil, nil] } if items.all? { |item| item[2].nil? }
+
       # Group items by db_shard number while preserving their original positions
       db_shard_groups = {} # db_shard => { positions: [], items: [] }
       items.each_with_index do |item, pos|
@@ -944,62 +948,36 @@ module OpenC3
         return tsdb_lookup_single_db_shard(group[:items], start_time: start_time, end_time: end_time, scope: scope, db_shard: db_shard)
       end
 
-      # Cross-db_shard: execute per-db_shard queries and merge results
-      db_shard_results = {} # db_shard => data
+      # Cross-db_shard: execute per-db_shard queries (as arrays of rows) and merge results
+      db_shard_rows = {} # db_shard => rows
       db_shard_groups.each do |db_shard, group|
-        result = tsdb_lookup_single_db_shard(group[:items], start_time: start_time, end_time: end_time, scope: scope, db_shard: db_shard)
-        db_shard_results[db_shard] = result
+        result = tsdb_lookup_single_db_shard(group[:items], start_time: start_time, end_time: end_time, scope: scope, db_shard: db_shard, flatten: false)
+        db_shard_rows[db_shard] = result.is_a?(Array) ? result : []
       end
 
-      # If all db_shards returned empty, return empty
-      return {} if db_shard_results.values.all? { |r| r == {} }
+      # Merge results positionally back into the original item order. Each db_shard
+      # may have different row counts so use the maximum row count and fill missing
+      # positions with [nil, nil]. If all db_shards returned empty, return empty.
+      max_rows = db_shard_rows.values.map(&:length).max
+      return {} if max_rows == 0
 
-      # Merge results positionally back into the original item order.
-      # For single-row results (no end_time), merge flat arrays.
-      # For multi-row results, each db_shard may have different row counts;
-      # use the maximum row count and fill missing positions with [nil, nil].
-      if !end_time
-        # Single-row mode: each db_shard returns a flat array of [value, limits] pairs.
-        # Merge them into the original item order.
-        merged = Array.new(items.length) { [nil, nil] }
-        db_shard_groups.each do |db_shard, group|
-          result = db_shard_results[db_shard]
-          next if result == {} || !result.is_a?(Array)
+      merged = Array.new(max_rows) { Array.new(items.length) { [nil, nil] } }
+      db_shard_groups.each do |db_shard, group|
+        db_shard_rows[db_shard].each_with_index do |row, row_num|
           group[:positions].each_with_index do |orig_pos, db_shard_idx|
-            merged[orig_pos] = result[db_shard_idx] if result[db_shard_idx]
+            merged[row_num][orig_pos] = row[db_shard_idx] if row[db_shard_idx]
           end
         end
-        merged
-      else
-        # Multi-row mode: find max row count across db_shards
-        max_rows = 0
-        db_shard_groups.each do |db_shard, _group|
-          result = db_shard_results[db_shard]
-          next if result == {}
-          count = result.is_a?(Array) ? result.length : 0
-          max_rows = count if count > max_rows
-        end
-        return {} if max_rows == 0
-
-        merged = Array.new(max_rows) { Array.new(items.length) { [nil, nil] } }
-        db_shard_groups.each do |db_shard, group|
-          result = db_shard_results[db_shard]
-          next if result == {}
-          rows = result.is_a?(Array) ? result : []
-          rows.each_with_index do |row, row_num|
-            next unless row.is_a?(Array)
-            group[:positions].each_with_index do |orig_pos, db_shard_idx|
-              merged[row_num][orig_pos] = row[db_shard_idx] if row[db_shard_idx]
-            end
-          end
-        end
-        merged
       end
+      # Match the single db_shard behavior of returning a flat array for a single row
+      return merged[0] if max_rows == 1
+      merged
     end
 
     # Execute a tsdb_lookup query against a single db_shard.
     # This contains the original ASOF JOIN logic for items all on the same QuestDB instance.
-    def self.tsdb_lookup_single_db_shard(items, start_time:, end_time: nil, scope: "DEFAULT", db_shard: 0)
+    # When flatten is true a single row result is returned as a flat array rather than an array of rows.
+    def self.tsdb_lookup_single_db_shard(items, start_time:, end_time: nil, scope: "DEFAULT", db_shard: 0, flatten: true)
       tables = {}
       names = []
       nil_count = 0
@@ -1059,6 +1037,11 @@ module OpenC3
           names << "\"T#{index}.#{safe_item_name}__L\""
         end
       end
+
+      # Every item in this db_shard is a placeholder so there's no table to query.
+      # Return no results and let tsdb_lookup fill these positions with [nil, nil]
+      # when it merges the db_shards (an all placeholder lookup returns before this)
+      return {} if tables.empty?
 
       # Add needed timestamp columns to the SELECT for calculated items
       needed_timestamps.each do |table_index, ts_columns|
@@ -1147,7 +1130,7 @@ module OpenC3
           data[row_num].insert(position, [calculated_value, nil])
         end
       end
-      if result.ntuples == 1
+      if flatten and result.ntuples == 1
         data = data[0]
       end
       data

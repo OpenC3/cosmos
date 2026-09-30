@@ -13,8 +13,8 @@ ARG NODE_VERSION=24.21.0
 # raising either version, check the candidate's bundled deps, e.g.
 #   npm pack npm@<version> && tar xzf npm-<version>.tgz
 #   cat package/node_modules/{brace-expansion,ip-address,tar,undici}/package.json
-ARG NPM_VERSION=11.19.1
-ARG PNPM_VERSION=11.21.0
+ARG NPM_VERSION=11.20.0
+ARG PNPM_VERSION=11.27.1
 
 FROM node:${NODE_VERSION}-trixie-slim AS nodejs
 

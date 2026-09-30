@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,7 +23,7 @@ export default class TlmCompleter extends PacketCompleter {
       // The data returned by the API is usable as-is, but grouping it this way makes it easier
       // to search through all the packets first, and then for an item within that packet.
       this.groupedPacketData = this.autocompleteData.reduce((groups, item) => {
-        const packetName = item.caption.match(/\S+\s\S+/)[0] // First two tokens, e.g. "INST ADCS" OF "INST ADCS POSX"
+        const packetName = item.caption.match(/^\S+\s+\S+/)[0] // First two tokens, e.g. "INST ADCS" OF "INST ADCS POSX"
         const itemName = item.snippet.replace(`${packetName} `, '')
         const amendedItem = {
           caption: itemName,

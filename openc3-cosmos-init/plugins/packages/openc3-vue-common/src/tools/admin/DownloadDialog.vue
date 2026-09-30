@@ -134,9 +134,8 @@ export default {
   },
   methods: {
     parseGithub: function () {
-      const gemRegEx = /\w+.gem/
       return this.response.tree
-        .filter((f) => gemRegEx.exec(f.path))
+        .filter((f) => f.path.endsWith('.gem'))
         .map((f) => {
           return {
             name: f.path,

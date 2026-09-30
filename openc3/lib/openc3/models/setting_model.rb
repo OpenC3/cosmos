@@ -182,9 +182,11 @@ module OpenC3
     # Seed settings from OPENC3_SETTING_<NAME> environment variables. Called by
     # `openc3cli initsettings` during init container startup.
     #
-    # By default a setting is only written when it does not already exist, so a
-    # value changed in the Admin Console survives a container restart. Set
-    # OPENC3_SETTINGS_OVERWRITE to write on every run instead.
+    # By default a setting is written when it does not exist yet, or when it
+    # still holds the value last seeded (see seeded_value?), so a changed env
+    # var takes effect but a value changed in the Admin Console survives a
+    # container restart. Set OPENC3_SETTINGS_OVERWRITE to write on every run
+    # instead.
     #
     # Nothing here aborts init by default. A bad setting name, a bad value, or a
     # malformed control variable is reported on stdout and that one setting is
