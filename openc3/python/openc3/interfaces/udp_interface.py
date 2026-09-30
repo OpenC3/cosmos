@@ -46,7 +46,6 @@ class UdpInterface(ReadQueue):
         bind_address="0.0.0.0",
     ):
         super().__init__()
-        self.initialize_read_queue()
         self.hostname = ConfigParser.handle_none(hostname)
         if self.hostname is not None:
             self.hostname = str(hostname)

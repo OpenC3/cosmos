@@ -329,6 +329,12 @@ module OpenC3
         # Return packet
         @read_count += 1
         Logger.warn("#{@name}: Interface unexpectedly requested disconnect") unless packet
+        # Timestamp buffered reads with when the data arrived rather than when
+        # it was processed (otherwise received_time is set when it is handled)
+        if packet and !packet.received_time
+          data_time = read_queue_data_time
+          packet.received_time = data_time if data_time
+        end
         return packet
       end
     rescue Exception => e
@@ -452,6 +458,13 @@ module OpenC3
       0
     end
 
+    # @return [Time, nil] When the data most recently returned by
+    #   read_interface was read from the underlying source, or nil if unknown.
+    #   Interfaces which buffer raw reads override this (see ReadQueue).
+    def read_queue_data_time
+      nil
+    end
+
     # @return [Boolean] Whether reading is allowed
     def read_allowed?
       @read_allowed
@@ -573,7 +586,7 @@ module OpenC3
     # @return [String] Raw packet data
     def read_interface_base(data, _extra = nil)
       if @save_raw_data
-        @read_raw_data_time = Time.now
+        @read_raw_data_time = read_queue_data_time || Time.now
         @read_raw_data = data.clone
       end
       @bytes_read += data.length

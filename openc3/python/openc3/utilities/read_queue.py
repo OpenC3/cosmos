@@ -12,6 +12,7 @@
 import queue
 import threading
 import traceback
+from datetime import datetime, timezone
 
 from openc3.interfaces.interface import Interface
 from openc3.utilities.logger import Logger
@@ -42,16 +43,23 @@ THREAD_JOIN_TIMEOUT = 2.0
 #
 # Subclasses must implement read_queue_data which performs
 # a single blocking read and returns the data read or None to indicate the read
-# source is done (which disconnects the interface).
+# source is done (which disconnects the interface). The read queue is set up by
+# __init__ so subclasses only need to call super().__init__().
 #
 # Setting READ_QUEUE_MAX_SIZE to 0 disables the read thread and reads inline
 # from read_queue_pop, which is how interfaces read before the queue existed.
 class ReadQueue(Interface):
-    # Initialize the read queue attributes. Must be called from the subclass
-    # __init__ method.
+    def __init__(self):
+        super().__init__()
+        self.initialize_read_queue()
+
+    # Initialize (or reset) the read queue attributes. Called by __init__.
     def initialize_read_queue(self, max_size=DEFAULT_READ_QUEUE_MAX_SIZE):
         self._read_queue = None
         self.read_queue_thread = None
+        # When the read thread read the data most recently returned by
+        # read_queue_pop (None when the read queue is disabled)
+        self.read_queue_data_time = None
         # Each read thread gets its own cancel event. A thread which is still
         # blocked in a read when it is replaced (Python can't kill it) keeps
         # seeing its own event set, so it can never touch the byte counters or
@@ -131,6 +139,7 @@ class ReadQueue(Interface):
                 cancel_event.set()
             self._read_queue_bytes = 0
             self._read_queue_budget = 0
+            self.read_queue_data_time = None
             # Unblock the read thread if it is waiting for room on the queue
             self._read_queue_condition.notify_all()
         if read_queue is not None:
@@ -177,12 +186,14 @@ class ReadQueue(Interface):
                 if read_queue is not self._read_queue or thread is None or not thread.is_alive():
                     return None
                 continue
-            if isinstance(data, (bytes, bytearray)):
+            if isinstance(data, tuple):
+                data, data_time = data
                 with self._read_queue_condition:
                     # Counters were reset if the queue was stopped / replaced
                     if read_queue is self._read_queue:
                         self._read_queue_bytes -= len(data)
                         self._read_queue_budget -= len(data) + READ_QUEUE_ENTRY_OVERHEAD
+                        self.read_queue_data_time = data_time
                         # Tell the read thread there is room for more data
                         self._read_queue_condition.notify_all()
             # Exceptions raised by the read thread are re-raised here so they are
@@ -228,6 +239,8 @@ class ReadQueue(Interface):
                 # before we get back here
                 if not self._reserve_read_queue_bytes(len(data), cancel_event):
                     break
-                read_queue.put(data)
+                # Queue the time of the read so packets are timestamped when the
+                # data arrived rather than when it was processed
+                read_queue.put((data, datetime.now(timezone.utc)))
         except Exception:
             Logger.error(f"{self.name}: Read queue thread unexpectedly died: {traceback.format_exc()}")

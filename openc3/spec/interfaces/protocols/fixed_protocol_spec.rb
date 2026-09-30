@@ -94,7 +94,9 @@ module OpenC3
         # The read thread buffers ahead so flush it to pick up the new data
         @interface.stop_read_queue_thread
         packet = @interface.read
-        expect(packet.received_time.to_f).to eql 0.0
+        # Unknown packets are timestamped with when their data was read
+        expect(packet.received_time).to_not be_nil
+        expect(packet.received_time).to eql @interface.read_queue_data_time
         expect(packet.target_name).to eql nil
         expect(packet.packet_name).to eql nil
         expect(packet.buffer).to eql "\x00"
@@ -117,7 +119,9 @@ module OpenC3
         @interface.tlm_target_names = ['EMPTY']
         $index = 1
         packet = @interface.read
-        expect(packet.received_time.to_f).to eql 0.0
+        # Unknown packets are timestamped with when their data was read
+        expect(packet.received_time).to_not be_nil
+        expect(packet.received_time).to eql @interface.read_queue_data_time
         expect(packet.target_name).to eql nil
         expect(packet.packet_name).to eql nil
         expect(packet.buffer).to eql "\x01"
