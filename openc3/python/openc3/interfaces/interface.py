@@ -69,6 +69,10 @@ class Interface:
         self.read_raw_data = ""
         self.written_raw_data = ""
         self.read_raw_data_time = None
+        # When the data most recently returned by read_interface was read from the
+        # underlying source, or None if unknown. Set by interfaces which buffer
+        # raw reads (see ReadQueue).
+        self.read_queue_data_time = None
         self.written_raw_data_time = None
         self.config_params = []
         self.interfaces = []
@@ -221,6 +225,10 @@ class Interface:
                 self.read_count += 1
                 if not packet:
                     Logger.warn(f"{self.name}: Interface unexpectedly requested disconnect")
+                # Timestamp buffered reads with when the data arrived rather than
+                # when it was processed (otherwise received_time is set when handled)
+                if packet and packet.received_time is None and self.read_queue_data_time is not None:
+                    packet.received_time = self.read_queue_data_time
                 return packet
         except Exception as error:
             Logger.error(f"{self.name}: Error reading from interface")
@@ -425,7 +433,7 @@ class Interface:
     # self.return [String] Raw packet data
     def read_interface_base(self, data, extra=None):
         if self.save_raw_data:
-            self.read_raw_data_time = datetime.now(timezone.utc)
+            self.read_raw_data_time = self.read_queue_data_time or datetime.now(timezone.utc)
             self.read_raw_data = data
         self.bytes_read += len(data)
         if self.stream_log_pair:

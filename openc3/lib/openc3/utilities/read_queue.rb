@@ -13,6 +13,7 @@
 
 require 'openc3/top_level'
 require 'openc3/core_ext/exception'
+require 'openc3/core_ext/time'
 require 'openc3/utilities/logger'
 
 module OpenC3
@@ -48,6 +49,10 @@ module OpenC3
     # @return [Integer] Maximum number of bytes buffered on the queue
     attr_accessor :read_queue_max_size
 
+    # @return [Time, nil] When the read thread read the data most recently
+    #   returned by read_queue_pop (nil when the read queue is disabled)
+    attr_reader :read_queue_data_time
+
     # Initialize the read queue attributes. Must be called from the including
     # class initialize method.
     def initialize_read_queue(max_size = DEFAULT_READ_QUEUE_MAX_SIZE)
@@ -55,6 +60,7 @@ module OpenC3
       @raw_read_thread = nil
       @raw_read_bytes = 0
       @raw_read_budget = 0
+      @read_queue_data_time = nil
       # Guards @raw_read_queue / @raw_read_bytes / @raw_read_budget and wakes the
       # read thread when the bytes it queued are consumed and there is room to
       # queue more. Each read thread is cancelled by closing its own queue under
@@ -135,6 +141,7 @@ module OpenC3
         @raw_read_queue = nil
         @raw_read_bytes = 0
         @raw_read_budget = 0
+        @read_queue_data_time = nil
         # Unblock the read thread if it is waiting for room on the queue
         @raw_read_condition.broadcast
       end
@@ -163,12 +170,14 @@ module OpenC3
       end
 
       data = queue.pop
-      if data.kind_of?(String)
+      if data.kind_of?(Array)
+        data, time = data
         @raw_read_mutex.synchronize do
           # Counters were reset if the queue was stopped / replaced
           if queue.equal?(@raw_read_queue)
             @raw_read_bytes -= data.length
             @raw_read_budget -= data.length + READ_QUEUE_ENTRY_OVERHEAD
+            @read_queue_data_time = time
             # Tell the read thread there is room for more data
             @raw_read_condition.broadcast
           end
@@ -201,7 +210,9 @@ module OpenC3
         # before we get back here
         break unless reserve_read_queue_bytes(queue, data.length)
 
-        queue.push(data)
+        # Queue the time of the read so packets are timestamped when the data
+        # arrived rather than when it was processed
+        queue.push([data, Time.now.sys])
       end
     rescue ClosedQueueError
       # Interface disconnected while we were pushing

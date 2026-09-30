@@ -187,6 +187,8 @@ Maximum number of bytes buffered on the interface read queue. The stream and UDP
 Because the read thread keeps draining the socket, a sender is no longer slowed by TCP flow control until the queue is full. If the interface can't keep up, telemetry can fall behind by up to READ_QUEUE_MAX_SIZE bytes before the sender is throttled. Lower READ_QUEUE_MAX_SIZE if you'd rather the sender block sooner.
 :::
 
+Packets read through the queue are timestamped with the time their data was read from the socket, not the time they were processed, so the received time stays accurate while the queue is backed up.
+
 :::warning Custom interfaces which read the stream directly
 Custom interfaces which subclass the stream, TCP/IP, serial, MQTT stream or UDP interfaces and read the stream or socket themselves now compete with the read thread for data, which silently splits and loses bytes. This includes overriding `read_interface` without calling `super`, reading a handshake response in `connect`, reading an acknowledgement in `write_interface`, and protocols which read `interface.stream` directly. Either update the interface to use the data passed through `read_interface` and the protocols, or set `OPTION READ_QUEUE_MAX_SIZE 0` to restore the previous inline reads.
 :::

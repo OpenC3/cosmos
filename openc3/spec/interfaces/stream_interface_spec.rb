@@ -239,6 +239,32 @@ module OpenC3
       end
     end
 
+    describe "read" do
+      it "timestamps packets with when the data was read rather than processed" do
+        stream = QueueStream.new("\x01\x02")
+        interface.stream = stream
+        interface.connect
+        start = Time.now
+        sleep(0.001) while interface.read_queue_size < 1 and (Time.now - start) < 2
+        queued = Time.now.sys
+        sleep(0.05)
+
+        packet = interface.read
+        expect(packet.buffer).to eql "\x01\x02"
+        expect(packet.received_time).to be <= queued
+        expect(interface.read_queue_data_time).to eql packet.received_time
+      end
+
+      it "doesn't timestamp packets when reading inline" do
+        interface.set_option('READ_QUEUE_MAX_SIZE', ['0'])
+        interface.stream = QueueStream.new("\x01\x02")
+        interface.connect
+        packet = interface.read
+        expect(packet.buffer).to eql "\x01\x02"
+        expect(packet.received_time).to be_nil
+      end
+    end
+
     describe "disconnect" do
       it "stops the read thread and clears the queue" do
         stream = QueueStream.new("\x01", "\x02")
