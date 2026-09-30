@@ -438,11 +438,17 @@ export default {
           byTarget[targetName] ||= []
           byTarget[targetName].push(fullName)
         }
-        for (const [targetName, files] of Object.entries(byTarget)) {
-          await Api.post(`/openc3-api/targets/${targetName}/delete_modified`, {
-            data: { files },
-          })
-        }
+        const deletePromises = Object.entries(byTarget).map(
+          async ([targetName, files]) => {
+            await Api.post(
+              `/openc3-api/targets/${targetName}/delete_modified`,
+              {
+                data: { files },
+              },
+            )
+          },
+        )
+        await Promise.all(deletePromises)
       }
       if (this.pluginDelete) {
         this.deletePlugin(this.currentPlugin)
