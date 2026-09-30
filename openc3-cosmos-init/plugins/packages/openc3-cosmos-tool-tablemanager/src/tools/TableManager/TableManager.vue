@@ -363,65 +363,16 @@ export default {
   },
   watch: {
     // Every time the filename changes we figure out if there is an associated upload & download script
-    filename: function (val) {
-      let upload =
-        this.filename.split('/').slice(0, 2).join('/') + '/procedures/upload'
-      let download =
-        this.filename.split('/').slice(0, 2).join('/') + '/procedures/download'
-      // First try Ruby
-      Api.get(`/openc3-api/tables/${upload}.rb`, {
-        headers: {
-          Accept: 'application/json',
-          // Since we're just checking for existence, 404 is possible so ignore it
-          'Ignore-Errors': '404',
-        },
-      })
-        .then((response) => {
-          this.uploadScript = `${upload}.rb`
-        })
-        .catch((error) => {
-          // Now try python
-          Api.get(`/openc3-api/tables/${upload}.py`, {
-            headers: {
-              Accept: 'application/json',
-              // Since we're just checking for existence, 404 is possible so ignore it
-              'Ignore-Errors': '404',
-            },
-          })
-            .then((response) => {
-              this.uploadScript = `${upload}.py`
-            })
-            .catch((error) => {
-              this.uploadScript = null
-            })
-        })
-      // First check Ruby
-      Api.get(`/openc3-api/tables/${download}.rb`, {
-        headers: {
-          Accept: 'application/json',
-          // Since we're just checking for existence, 404 is possible so ignore it
-          'Ignore-Errors': '404',
-        },
-      })
-        .then((response) => {
-          this.downloadScript = `${download}.rb`
-        })
-        .catch((error) => {
-          // Now try python
-          Api.get(`/openc3-api/tables/${download}.py`, {
-            headers: {
-              Accept: 'application/json',
-              // Since we're just checking for existence, 404 is possible so ignore it
-              'Ignore-Errors': '404',
-            },
-          })
-            .then((response) => {
-              this.downloadScript = `${download}.py`
-            })
-            .catch((error) => {
-              this.downloadScript = null
-            })
-        })
+    filename: async function (val) {
+      const procedures =
+        this.filename.split('/').slice(0, 2).join('/') + '/procedures'
+      // Look both up at once, they don't depend on each other
+      const [upload, download] = await Promise.all([
+        this.findScript(`${procedures}/upload`),
+        this.findScript(`${procedures}/download`),
+      ])
+      this.uploadScript = upload
+      this.downloadScript = download
     },
   },
   created() {
@@ -508,54 +459,56 @@ export default {
     saveAs: function () {
       this.showSaveAs = true
     },
-    saveAsFilename: function (filename) {
+    saveAsFilename: async function (filename) {
       if (this.saveAsInProgress) return // Backstop, the menu item is disabled
       const newFilename = filename.replace(/\*$/, '')
-      // save-as only copies the file as it exists on the server, so any
-      // unsaved edits would be lost. Copy first to create the new file (the
-      // save API requires the binary to already exist), then write the
-      // current table values to it.
       this.saveAsInProgress = true
-      Api.put(`/openc3-api/tables/${this.filename}/save-as/${newFilename}`, {
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-          // Shown in the error dialog below, so skip the global error banner
-          'Ignore-Errors': '403, 404',
-        },
-      })
-        .catch((error) => {
+      try {
+        // save-as only copies the file as it exists on the server, so any
+        // unsaved edits would be lost. Copy first to create the new file (the
+        // save API requires the binary to already exist), then write the
+        // current table values to it.
+        try {
+          await Api.put(
+            `/openc3-api/tables/${this.filename}/save-as/${newFilename}`,
+            {
+              headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                // Shown in the error dialog below, so skip the global banner
+                'Ignore-Errors': '403, 404',
+              },
+            },
+          )
+        } catch (error) {
           this.errorTitle = 'Save As Error'
           this.errorText =
             error.response?.data?.message || `Unable to create ${newFilename}`
           this.showError = true
           throw error
-        })
-        .then((response) => {
-          this.unlockFile() // Release the lock on the file we were editing
-          this.filename = newFilename
-          // Same request Open File makes: it reports who holds the new file
-          // and takes the lock if it is free. Save As can overwrite a file
-          // another user is editing, but it must not take their lock.
-          return Api.get(`/openc3-api/tables/${newFilename}`).catch((error) => {
-            return { data: {} } // Fall back to saving without the lock state
-          })
-        })
-        .then((response) => {
-          this.lockedBy = response.data.locked || null
-          // If this fails the new file exists with the previously saved
-          // contents, but fileModified stays set so Save can be retried
-          return this.saveFileContents()
-        })
-        .then((response) => {
-          this.getDefinition(this.definitionFilename)
-        })
-        .catch((error) => {
-          // Already reported in the dialogs above
-        })
-        .finally(() => {
-          this.saveAsInProgress = false
-        })
+        }
+        this.unlockFile() // Release the lock on the file we were editing
+        this.filename = newFilename
+        // Same request Open File makes: it reports who holds the new file and
+        // takes the lock if it is free. Save As can overwrite a file another
+        // user is editing, but it must not take their lock.
+        let locked = null
+        try {
+          const response = await Api.get(`/openc3-api/tables/${newFilename}`)
+          locked = response.data.locked
+        } catch (error) {
+          // Carry on without the lock state rather than losing the edits
+        }
+        this.lockedBy = locked || null
+        // If this throws the new file exists with the previously saved
+        // contents, but fileModified stays set so Save can be retried
+        await this.saveFileContents()
+        this.getDefinition(this.definitionFilename)
+      } catch (error) {
+        // Already reported in the dialogs above
+      } finally {
+        this.saveAsInProgress = false
+      }
     },
     delete: function () {
       if (this.filename !== '') {
@@ -653,20 +606,41 @@ export default {
         link.click()
       })
     },
-    upload() {
-      Api.post(`/script-api/scripts/${this.uploadScript}/run`, {
+    // Returns the Ruby or Python script at the given path, or null if neither
+    // exists. Used to decide whether to offer the upload / download actions.
+    findScript: async function (path) {
+      for (const extension of ['rb', 'py']) {
+        try {
+          await Api.get(`/openc3-api/tables/${path}.${extension}`, {
+            headers: {
+              Accept: 'application/json',
+              // Since we're just checking for existence, 404 is possible so ignore it
+              'Ignore-Errors': '404',
+            },
+          })
+          return `${path}.${extension}`
+        } catch (error) {
+          // Doesn't exist, try the next extension
+        }
+      }
+      return null
+    },
+    runScript: async function (script) {
+      const response = await Api.post(`/script-api/scripts/${script}/run`, {
         data: {
           environment: [{ key: 'TBL_FILENAME', value: this.filename }],
         },
-      }).then((response) => {
-        if (this.scriptBackground !== true) {
-          window.open(`/tools/scriptrunner/${response.data}`, '_blank')
-        }
       })
+      if (this.scriptBackground !== true) {
+        window.open(`/tools/scriptrunner/${response.data}`, '_blank')
+      }
     },
-    download() {
-      this.$dialog
-        .confirm(
+    upload() {
+      this.runScript(this.uploadScript)
+    },
+    download: async function () {
+      try {
+        await this.$dialog.confirm(
           `Are you sure you want to overwrite ${this.filename}? ` +
             'You can Save As to create a new file and then Download to preserve the existing file. ' +
             'Note: Once the download completes you will need to re-open the file to see changes.',
@@ -675,18 +649,10 @@ export default {
             cancelText: 'Cancel',
           },
         )
-        .then(() => {
-          Api.post(`/script-api/scripts/${this.downloadScript}/run`, {
-            data: {
-              environment: [{ key: 'TBL_FILENAME', value: this.filename }],
-            },
-          }).then((response) => {
-            if (this.scriptBackground !== true) {
-              window.open(`/tools/scriptrunner/${response.data}`, '_blank')
-            }
-          })
-        })
-        .catch((error) => {}) // Cancel, do nothing
+      } catch (error) {
+        return // Cancel, do nothing
+      }
+      this.runScript(this.downloadScript)
     },
     // TODO: Need to load to tmp dir or something before we can saveAs to rename
     // async loadBinary() {
@@ -797,36 +763,34 @@ export default {
     },
     // If "New File" is selected on a definition file,
     // check to see if the binary exists before overwriting.
-    checkAndBuildNewBinary: function (definitionFilename) {
+    checkAndBuildNewBinary: async function (definitionFilename) {
       const binaryFilename = definitionFilename
         .replace('/config/', '/bin/')
         .replace('_def.txt', '.bin')
 
-      Api.get(`/openc3-api/tables/${binaryFilename}`, {
-        headers: {
-          Accept: 'application/json',
-          'Ignore-Errors': '404',
-        },
-      })
-        .then((response) => {
-          this.$dialog
-            .confirm(
-              `Binary file ${binaryFilename} already exists. Do you want to overwrite it?`,
-              {
-                okText: 'Overwrite',
-                cancelText: 'Cancel',
-              },
-            )
-            .then(() => {
-              this.buildNewBinary(definitionFilename)
-            })
-            .catch(() => {
-              // User canceled, do nothing
-            })
+      try {
+        await Api.get(`/openc3-api/tables/${binaryFilename}`, {
+          headers: {
+            Accept: 'application/json',
+            'Ignore-Errors': '404',
+          },
         })
-        .catch((error) => {
-          this.buildNewBinary(definitionFilename)
-        })
+      } catch (error) {
+        this.buildNewBinary(definitionFilename) // Doesn't exist yet
+        return
+      }
+      try {
+        await this.$dialog.confirm(
+          `Binary file ${binaryFilename} already exists. Do you want to overwrite it?`,
+          {
+            okText: 'Overwrite',
+            cancelText: 'Cancel',
+          },
+        )
+      } catch (error) {
+        return // User canceled, do nothing
+      }
+      this.buildNewBinary(definitionFilename)
     },
     buildNewBinary: function (filename) {
       const formData = new FormData()
