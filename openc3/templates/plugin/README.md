@@ -18,7 +18,7 @@ Both files are packaged into the gem automatically, and COSMOS reads them when t
 
 ### Adding dependencies
 
-```
+```sh
 uv add requests                 # runtime dependency, installed into COSMOS with the plugin
 uv add --group dev pytest-mock  # development only, never installed into COSMOS
 ```
@@ -43,7 +43,7 @@ The `dev` dependency group is never installed into COSMOS.
 
 ### Developing locally
 
-```
+```sh
 uv sync --group dev           # create .venv with runtime and dev dependencies
 uv run --group dev pytest     # run tests; lib/ is on the import path
 uv run --group dev ruff check # lint
@@ -52,6 +52,13 @@ uv run --group dev ty check   # type check
 ```
 
 A plain `uv sync` installs only the runtime dependencies, matching what COSMOS installs.
+
+The plugin itself is not installed into `.venv`: COSMOS puts `lib/` on the Python path instead, and pytest and ty
+are configured to do the same. Anything else needs `lib/` on the path to import `<%= package_name %>`:
+
+```
+PYTHONPATH=lib uv run python my_script.py
+```
 
 uv picks any installed Python that satisfies `requires-python`. To develop against the same version COSMOS
 runs, pin it locally with `uv python pin 3.12`, which writes a `.python-version` file.
@@ -107,13 +114,13 @@ If you don’t have a local node environment, you can use our openc3-node contai
 
 Mac / Linux:
 
-```
+```sh
 docker run -it -v `pwd`:/openc3/local:z -w /openc3/local docker.io/openc3inc/openc3-node sh
 ```
 
 Windows:
 
-```
+```sh
 docker run -it -v %cd%:/openc3/local -w /openc3/local docker.io/openc3inc/openc3-node sh
 ```
 
