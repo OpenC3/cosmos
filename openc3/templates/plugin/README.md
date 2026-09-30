@@ -8,6 +8,84 @@ Update this comment with your own description.
 
 1. Edit the .gemspec file fields: name, summary, description, authors, email, and homepage
 1. Update the LICENSE.md file with your company name
+<% if @@language == 'py' -%>
+1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) to manage the plugin's Python dependencies
+
+## Python dependencies with uv
+
+The plugin's Python dependencies are declared in `pyproject.toml` and locked in `uv.lock`.
+Both files are packaged into the gem automatically, and COSMOS reads them when the plugin is installed.
+
+### Adding dependencies
+
+```
+uv add requests                 # runtime dependency, installed into COSMOS with the plugin
+uv add --group dev pytest-mock  # development only, never installed into COSMOS
+```
+
+`uv add` updates both `pyproject.toml` and `uv.lock`. Commit both files.
+
+If you edit `pyproject.toml` by hand, run `uv lock` afterwards. COSMOS installs a locked plugin with
+`uv sync --frozen`, which installs exactly what `uv.lock` records and does not check it against
+`pyproject.toml`, so a stale lock ships stale dependencies. `uv lock --check` fails if the lock is out of date.
+
+### How COSMOS installs them
+
+- **With `uv.lock`** (recommended): COSMOS runs `uv sync --frozen --no-dev`. Every install gets the same
+  versions, downloaded from the URLs recorded in the lock.
+- **Without `uv.lock`**: COSMOS resolves the dependencies at install time against the PyPI URL set in
+  Admin Console -> Settings, so versions can change from one install to the next.
+
+The `dev` dependency group is never installed into COSMOS.
+
+### Developing locally
+
+```
+uv sync --group dev           # create .venv with runtime and dev dependencies
+uv run --group dev pytest     # run tests; lib/ is on the import path
+uv run --group dev ruff check # lint
+uv run --group dev ruff format
+uv run --group dev ty check   # type check
+```
+
+A plain `uv sync` installs only the runtime dependencies, matching what COSMOS installs.
+
+uv picks any installed Python that satisfies `requires-python`. To develop against the same version COSMOS
+runs, pin it locally with `uv python pin 3.12`, which writes a `.python-version` file.
+
+The `openc3` dev dependency provides the COSMOS Python API for your editor, tests and `ty`. Pin it to the
+COSMOS version you deploy to so they see the same API, e.g. `uv add --group dev "openc3==X.Y.Z"`.
+
+### Where to put Python code
+
+Put Python code shared across the plugin in `lib/<%= package_name %>/`, never directly in `lib/`.
+
+COSMOS adds the `lib/` directory of every installed plugin to the Python path. If two plugins both ship
+`lib/helpers.py`, `import helpers` loads whichever one Python finds first, and the other can't be imported
+at all. A module directly in `lib/` can also hide an installed package of the same name, such as `requests`.
+The `<%= package_name %>` package is named after this plugin, so its modules can't collide.
+
+Import from the package:
+
+```python
+from <%= package_name %>.helpers import Helper
+```
+
+Reference its files by path in plugin configuration, e.g. `INTERFACE MY_INT <%= package_name %>/my_interface.py`.
+
+### Updating dependencies
+
+```
+uv lock --upgrade-package requests  # upgrade one package
+uv lock --upgrade                   # upgrade everything
+```
+
+### Private package indexes
+
+See the comments in the `[tool.uv]` section of `pyproject.toml`. If the COSMOS PyPI URL setting points at
+anything other than public PyPI, COSMOS ignores the plugin's own index settings when it resolves, so a
+package published only to your private index must also be served by that index, or be locked in `uv.lock`.
+<% end -%>
 
 ## Building non-tool / widget plugins
 

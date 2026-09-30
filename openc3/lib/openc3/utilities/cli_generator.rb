@@ -392,22 +392,25 @@ module OpenC3
       end
       FileUtils.mkdir(plugin_name)
       Dir.chdir(plugin_name) # Change to the plugin path to make copying easier
+      # Every installed plugin's lib/ goes on sys.path, so python code shared
+      # across the plugin lives in a package named after the plugin rather than
+      # directly in lib/, where a same-named module in another plugin collides.
+      package_name = plugin_name.gsub(/[^a-z0-9]+/, '_')
 
       process_template("#{TEMPLATES_DIR}/plugin", binding) do |filename|
         filename.sub!("plugin.gemspec", "#{plugin_name}.gemspec")
+        filename.sub!("lib/PACKAGE", "lib/#{package_name}")
         # Only python plugins get a pyproject.toml. Shipping one in every plugin
         # would make install_phase2 take the python dependency path (and build a
         # per-plugin venv) for plugins that have no python code at all.
         #
         # lib/ comes with it because pyproject.toml sets ty's extra-paths to
         # lib/, and ty exits non-zero rather than warning when a configured path
-        # does not exist. The .gitkeep holds the directory until the author runs
-        # 'cli generate target' or 'microservice'; it is not picked up by the
-        # gemspec's lib/**/* glob, which does not match dotfiles, so an otherwise
-        # empty lib/ does not reach install_phase2 and flip needs_dependencies.
+        # does not exist. The package's __init__.py does reach the gem, which is
+        # harmless: the gem's pyproject.toml already sets needs_dependencies.
         if @@language != 'py'
           next true if filename == 'pyproject.toml'
-          next true if filename == 'lib' or filename == 'lib/.gitkeep'
+          next true if filename == 'lib' or filename.start_with?('lib/')
         end
         false
       end

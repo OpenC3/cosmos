@@ -74,6 +74,11 @@ default-groups = []
 # so ty needs it here to resolve imports between the plugin's own modules.
 extra-paths = ["lib"]
 
+[tool.pytest.ini_options]
+# Same reason as ty's extra-paths: lib/ is on sys.path at runtime, not installed,
+# so tests need it on the path to import the plugin's own modules.
+pythonpath = ["lib"]
+
 [tool.ty.rules]
 # These are artifacts of how COSMOS ships its Python API, not mistakes in your
 # plugin, so they are off rather than "warn": ty exits non-zero on a warning, so

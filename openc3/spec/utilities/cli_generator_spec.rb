@@ -152,6 +152,15 @@ module OpenC3
         expect(gemspec).to include('Dir.glob("{pyproject.toml,uv.lock}")')
       end
 
+      it "keeps python bytecode out of a python plugin's gem" do
+        run_gen(['plugin', 'test-plugin', '--python'])
+        FileUtils.mkdir_p('lib/openc3_cosmos_test_plugin/__pycache__')
+        FileUtils.touch('lib/openc3_cosmos_test_plugin/__pycache__/__init__.cpython-312.pyc')
+        spec = Gem::Specification.load('openc3-cosmos-test-plugin.gemspec')
+        expect(spec.files).to include('lib/openc3_cosmos_test_plugin/__init__.py')
+        expect(spec.files.grep(/__pycache__/)).to be_empty
+      end
+
       it "does NOT reference the python dependency files in a ruby plugin's gemspec" do
         run_gen(['plugin', 'test-plugin', '--ruby'])
         gemspec = File.read('openc3-cosmos-test-plugin.gemspec')
@@ -173,13 +182,48 @@ module OpenC3
       end
 
       # ty resolves the plugin's own modules through extra-paths and exits non
-      # zero if that path is missing, so lib/ has to exist from the start. It is
-      # held by a dotfile the gemspec's lib/**/* glob does not match, so an
-      # otherwise empty lib/ never reaches install_phase2.
+      # zero if that path is missing, so lib/ has to exist from the start.
       it "generates lib/ for a python plugin so ty's extra-paths resolves" do
         run_gen(['plugin', 'test-plugin', '--python'])
         expect(Dir.exist?('lib')).to be true
         expect(File.read('pyproject.toml')).to include('extra-paths = ["lib"]')
+      end
+
+      # Every installed plugin's lib/ is on sys.path, so a module directly in
+      # lib/ collides with a same-named module in another plugin. The package
+      # is named after the plugin so its modules cannot.
+      it "generates a package named after the plugin under lib/ for a python plugin" do
+        run_gen(['plugin', 'test-plugin', '--python'])
+        expect(File.exist?('lib/openc3_cosmos_test_plugin/__init__.py')).to be true
+        expect(Dir.exist?('lib/PACKAGE')).to be false
+        expect(Dir.children('lib')).to eql(['openc3_cosmos_test_plugin'])
+        expect(File.read('README.md')).to include('from openc3_cosmos_test_plugin.helpers import Helper')
+      end
+
+      it "gives the package a valid python module name when the plugin name has other characters" do
+        run_gen(['plugin', 'my.test-plugin', '--python'])
+        expect(Dir.children('lib')).to eql(['openc3_cosmos_my_test_plugin'])
+      end
+
+      # Tests import the plugin's own modules the same way ty does, so pytest
+      # needs lib/ on its path too.
+      it "puts lib/ on pytest's path for a python plugin" do
+        run_gen(['plugin', 'test-plugin', '--python'])
+        expect(File.read('pyproject.toml')).to include('pythonpath = ["lib"]')
+      end
+
+      it "documents uv and ignores its local files only for a python plugin" do
+        run_gen(['plugin', 'test-plugin', '--python'])
+        expect(File.read('README.md')).to include('## Python dependencies with uv')
+        expect(File.read('.gitignore')).to include('.venv/')
+        expect(File.read('README.md')).to_not include('<%')
+        expect(File.read('.gitignore')).to_not include('<%')
+      end
+
+      it "does NOT document uv or ignore its local files for a ruby plugin" do
+        run_gen(['plugin', 'test-plugin', '--ruby'])
+        expect(File.read('README.md')).to_not include('uv')
+        expect(File.read('.gitignore')).to_not include('.venv/')
       end
 
       it "does NOT generate lib/ for a ruby plugin" do

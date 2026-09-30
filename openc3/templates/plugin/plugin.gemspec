@@ -26,6 +26,10 @@ Gem::Specification.new do |s|
   # Globbed rather than listed so the gem still builds before `uv lock` is run.
 <% end -%>
   s.files = Dir.glob("{targets,lib,public,tools,microservices}/**/*") + %w(Rakefile README.md LICENSE.md plugin.txt)<% if @@language == 'py' %> + Dir.glob("{pyproject.toml,uv.lock}")<% end %>
+<% if @@language == 'py' -%>
+  # Running tests or scripts locally writes bytecode next to the source; keep it out of the gem.
+  s.files = s.files.reject { |file| file.include?('__pycache__') }
+<% end -%>
 
   s.metadata = {
     # These fields are used when you submit your plugin to the OpenC3 Store at store.openc3.com
