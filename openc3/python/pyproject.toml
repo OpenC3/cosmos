@@ -67,7 +67,7 @@ openc3pycli = "openc3pycli:main"
 # manual watch. These are dev-only (PEP 735 groups never reach wheel metadata,
 # and the images sync --no-dev), so nothing here constrains downstream users.
 dev = [
-    "coverage==7.16.1",
+    "coverage==7.16.2",
     "fakeredis==2.38.0",
     "pytest==9.1.1",
     "pytest-profiling==1.8.1",
@@ -76,8 +76,8 @@ dev = [
     # match (just stubs-check), and every ty 0.0.x release can change which
     # diagnostics are reported.
     # Keep ruff in step with tools/generate_singleton_stubs.py.lock.
-    "ruff==0.16.8",
-    "ty==0.0.81",
+    "ruff==0.16.9",
+    "ty==0.0.84",
 ]
 
 [build-system]
