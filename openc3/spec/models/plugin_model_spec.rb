@@ -634,7 +634,7 @@ module OpenC3
         # which Python dependency file it ships and what OPENC3_USE_UV is set
         # to, so the shared doubles live here and each example is left with the
         # behavior it actually asserts.
-        def stub_plugin_gem(dep_file: 'pyproject.toml', dep_body: '[project]', use_uv: nil)
+        def stub_plugin_gem(dep_file: 'pyproject.toml', dep_body: '[project]', use_uv: nil, gem_install: true)
           expect(GemModel).to receive(:get).and_return("my_plugin.gem")
           gem = double("gem")
           expect(gem).to receive(:extract_files) do |path|
@@ -643,7 +643,11 @@ module OpenC3
           end
           expect(Gem::Package).to receive(:new).and_return(gem)
           allow(gem).to receive(:spec).and_return(spec_double)
-          expect(GemModel).to receive(:install).and_return(nil)
+          if gem_install
+            expect(GemModel).to receive(:install).and_return(nil)
+          else
+            expect(GemModel).to_not receive(:install)
+          end
 
           allow(ENV).to receive(:[]).and_call_original
           allow(ENV).to receive(:[]).with('OPENC3_USE_UV').and_return(use_uv)
@@ -739,6 +743,17 @@ module OpenC3
           expect(Open3).to receive(:capture2e).with("/openc3/bin/pipinstall", "-i", anything, anything).and_return(["pip ok", success_status])
 
           expect(install_plugin['needs_dependencies']).to eql true
+        end
+
+        it "does not install python packages when diff_only" do
+          stub_plugin_gem(gem_install: false)
+          stub_uv_on_path(true)
+
+          expect(Open3).to_not receive(:capture2e)
+
+          result = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines},
+            scope: "DEFAULT", diff_only: true)
+          expect(result).to eql([])
         end
       end
     end

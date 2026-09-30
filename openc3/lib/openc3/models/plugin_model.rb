@@ -278,7 +278,10 @@ module OpenC3
 
         if File.exist?(pyproject_path) || File.exist?(requirements_path)
           pypi_url = resolve_pypi_url(scope: scope)
-          unless validate_only
+          # Skipped for any dry run: diff_only runs inline in an HTTP request, so
+          # a slow or unreachable PyPI would time it out, and it must not mutate
+          # the plugin venv.
+          unless dry_run
             pypi_args = build_pypi_args(pypi_url)
 
             # Install Python dependencies into an isolated per-plugin venv when UV
