@@ -25,9 +25,12 @@ uv add --group dev pytest-mock  # development only, never installed into COSMOS
 
 `uv add` updates both `pyproject.toml` and `uv.lock`. Commit both files.
 
-If you edit `pyproject.toml` by hand, run `uv lock` afterwards. COSMOS installs a locked plugin with
-`uv sync --frozen`, which installs exactly what `uv.lock` records and does not check it against
-`pyproject.toml`, so a stale lock ships stale dependencies. `uv lock --check` fails if the lock is out of date.
+`uv lock` resolves `pyproject.toml` and writes `uv.lock` without installing anything. `uv sync` does the
+same when the lock is stale, then installs into `.venv`. Either works after editing `pyproject.toml` by hand;
+commit the updated `uv.lock`.
+
+COSMOS installs a locked plugin with `uv sync --frozen`, which installs exactly what `uv.lock` records and never
+relocks, so a stale lock ships stale dependencies. `uv lock --check` fails if the lock is out of date.
 
 ### How COSMOS installs them
 
