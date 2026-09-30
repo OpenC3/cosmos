@@ -535,28 +535,30 @@ export default {
         .catch(console.error)
       this.update()
     },
-    migrateToUv: function (plugin) {
-      this.$dialog
-        .confirm(
+    migrateToUv: async function (plugin) {
+      try {
+        await this.$dialog.confirm(
           `Migrate plugin ${plugin} to a per-plugin UV virtual environment?`,
           {
             okText: 'Migrate',
             cancelText: 'Cancel',
           },
         )
-        .then(() => {
-          Api.post(`/openc3-api/plugins/${plugin}/migrate_to_uv`)
-            .then((response) => {
-              this.alert = `Started migrating plugin ${plugin} to UV ...`
-              this.alertType = 'success'
-              this.showAlert = true
-              setTimeout(() => {
-                this.showAlert = false
-                this.updateProcesses()
-              }, 5000)
-            })
-            .catch(console.error)
-        })
+        try {
+          await Api.post(`/openc3-api/plugins/${plugin}/migrate_to_uv`)
+          this.alert = `Started migrating plugin ${plugin} to UV ...`
+          this.alertType = 'success'
+          this.showAlert = true
+          setTimeout(() => {
+            this.showAlert = false
+            this.updateProcesses()
+          }, 5000)
+        } catch (error) {
+          console.error(error)
+        }
+      } catch {
+        // user cancelled, do nothing
+      }
     },
     upgradePlugin(plugin) {
       this.resetControlState()
