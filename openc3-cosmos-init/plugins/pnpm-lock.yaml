@@ -749,6 +749,9 @@ importers:
       '@astrouxds/astro-web-components':
         specifier: 8.0.0
         version: 8.0.0
+      approx-string-match:
+        specifier: 2.0.0
+        version: 2.0.0
       axios:
         specifier: 1.20.0
         version: 1.20.0(debug@4.4.3)
@@ -1701,6 +1704,9 @@ packages:
 
   ajv@6.15.0:
     resolution: {integrity: sha512-fgFx7Hfoq60ytK2c7DhnF8jIvzYgOMxfugjLOSMHjLIPgenqa7S7oaagATUq99mV6IYvN2tRmC0wnTYX6iPbMw==}
+
+  approx-string-match@2.0.0:
+    resolution: {integrity: sha512-03v8MsWnZYV4Svv82EYWoVw1RIKAJ/zubmhG1FYvhJwOsBnLPxx6CPHF2dXN/yW8uwHK+653j52IwiNluJR97w==}
 
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
@@ -3228,6 +3234,8 @@ snapshots:
       fast-json-stable-stringify: 2.1.0
       json-schema-traverse: 0.4.1
       uri-js: 4.4.1
+
+  approx-string-match@2.0.0: {}
 
   asynckit@0.4.0: {}
 
