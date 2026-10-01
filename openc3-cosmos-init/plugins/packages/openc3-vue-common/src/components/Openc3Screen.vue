@@ -249,17 +249,27 @@ const MAX_ERRORS = 20
 // Identifies our own get_tlm_values poll as the source of a transient error
 const POLL_ERROR_SOURCE = 'screen:get_tlm_values'
 
-// Values compare equal if they're the same primitive or serialize the same.
+// Values compare equal if they're the same primitive or have equal contents.
 // Array and object values (ARRAY widgets, BLOCK, etc) come back as new objects
-// every poll so they need the JSON comparison.
+// every poll. Compare recursively because telemetry can contain BigInts.
 function sameValue(a, b) {
   if (Object.is(a, b)) {
     return true
   }
-  if (a === null || b === null || typeof a !== 'object') {
+  if (
+    a === null ||
+    b === null ||
+    typeof a !== 'object' ||
+    typeof b !== 'object' ||
+    Array.isArray(a) !== Array.isArray(b)
+  ) {
     return false
   }
-  return JSON.stringify(a) === JSON.stringify(b)
+  const keys = Object.keys(a)
+  return (
+    keys.length === Object.keys(b).length &&
+    keys.every((key) => Object.hasOwn(b, key) && sameValue(a[key], b[key]))
+  )
 }
 
 export default {

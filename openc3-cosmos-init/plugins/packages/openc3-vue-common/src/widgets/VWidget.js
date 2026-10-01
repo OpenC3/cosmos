@@ -82,7 +82,10 @@ export default {
   },
   watch: {
     _counter: function (newVal, oldVal) {
-      if (this.curValue !== this.prevValue) {
+      // Refresh the computed value before comparing: this watcher runs before
+      // rendering, and the screen stops updates once the fade is complete.
+      const value = this._value
+      if (value !== this.prevValue) {
         this.grayLevel = AGING_START
       } else {
         this.grayLevel -= this.grayRate
@@ -90,7 +93,7 @@ export default {
           this.grayLevel = AGING_MIN
         }
       }
-      this.prevValue = this.curValue
+      this.prevValue = value
     },
   },
   computed: {
