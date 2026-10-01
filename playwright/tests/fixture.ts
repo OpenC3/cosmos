@@ -34,6 +34,10 @@ const startCoverage = async (page: any) => {
 const stopCoverage = async (page: any) => {
   try {
     const coverage = await page.coverage.stopJSCoverage()
+    // Empty when the page never loaded a script with a URL (e.g. a blank popup)
+    // or profiling never started on it. MCR rejects [] with "The added coverage
+    // data must be Array(V8) or Object(Istanbul)", so skip it.
+    if (!coverage.length) return
     // Appends raw V8 data to coverage/.cache (safe across workers AND
     // separate `playwright test` invocations); generate-coverage.mjs
     // merges everything into one report at the end of `pnpm test`
