@@ -15,11 +15,13 @@ description: |
   built images are pushed to GHCR.
 
   OS package freshness: the cache key only reflects repo files, so a hit would
-  otherwise pin the `apt-get upgrade` in openc3-ruby/Dockerfile forever. When
-  push-cache is true, a hit on openc3-ruby is probed with `apt-get -s upgrade`;
-  if Debian has published fixes, openc3-ruby and every image built FROM it are
-  rebuilt (openc3-ruby without the layer cache) and pushed over the same cache
-  tags. Cost on a clean run is one short `docker run`.
+  otherwise pin the package upgrade each Dockerfile runs at build time forever.
+  When push-cache is true, a hit on an image that upgrades packages
+  (openc3-ruby, -buckets, -redis, -tsdb, -traefik) is probed by simulating the
+  upgrade (apt, apk or dnf) inside it. If fixes have been published, that image
+  and every image built FROM it are rebuilt (the probed image without the layer
+  cache) and pushed over the same cache tags. Cost on a clean run is one short
+  `docker run` per probed image.
 
   Local developer builds via ./openc3.sh build are unaffected.
 
@@ -151,18 +153,23 @@ runs:
         PARENTS_FILE: ${{ steps.hashes.outputs.parents-file }}
         STALE_FILE: ${{ steps.hashes.outputs.stale-file }}
         PUSH_CACHE: ${{ inputs.push-cache }}
+        # Images whose Dockerfile upgrades OS packages at build time. Keep in
+        # step with the Dockerfiles: openc3-ruby/buckets/redis use apt-get,
+        # openc3-tsdb dnf, openc3-traefik apk or dnf. openc3-base and its
+        # children only inherit from openc3-ruby, so they need no probe.
+        PROBE_IMAGES: openc3-ruby openc3-buckets openc3-redis openc3-tsdb openc3-traefik
       # For each image, attempt to pull its per-hash cache tag. On hit, retag
       # to docker.io/openc3inc/${name}:${TAG} so it serves as a local FROM
       # source for any downstream miss. Misses are recorded for the build step.
       #
       # The cache key only reflects repo files, so a hit can hold OS packages
-      # that Debian has since fixed. When this run may write the cache, a hit
-      # on openc3-ruby (the only image that runs `apt-get upgrade`) is probed:
-      # if `apt-get -s upgrade` inside it would install anything, it is treated
-      # as a miss and rebuilt without the layer cache. Images are visited
-      # parents first, so everything built FROM a stale image is forced to
-      # miss too. The rebuilt image is pushed over the same cache tag, so the
-      # next run probes clean and hits. Read-only consumers (push-cache false)
+      # that have since been fixed upstream. When this run may write the cache, a hit
+      # on a PROBE_IMAGES entry is probed: if a simulated package upgrade inside
+      # it would change anything, it is treated as a miss and rebuilt without
+      # the layer cache. Images are visited parents first, so everything built
+      # FROM a stale image (openc3-ruby's descendants) is forced to miss too.
+      # The rebuilt image is pushed over the same cache tag, so the next run
+      # probes clean and hits. Read-only consumers (push-cache false)
       # skip the probe: they could not publish the refresh, so they would
       # rebuild on every run until core CI refreshed the entry.
       run: |
@@ -173,11 +180,29 @@ runs:
         hits=0
         misses=0
 
-        # Prints the number of packages `apt-get upgrade` would change. Fails
-        # (non-zero) when the probe itself could not run, e.g. apt mirror down.
-        apt_pending() {
-          docker run --rm --user 0 --entrypoint bash "$1" -c \
-            'apt-get update -qq >/dev/null 2>&1 || exit 99; apt-get -s upgrade | grep -c "^Inst" || true'
+        # Prints how many packages a package-manager upgrade would change,
+        # using whichever of apt, apk or dnf the image has. Fails (non-zero)
+        # when the probe could not run: no known package manager, no shell,
+        # or the mirror is unreachable.
+        PROBE_SCRIPT='
+        if command -v apt-get >/dev/null 2>&1; then
+          apt-get update -qq >/dev/null 2>&1 || exit 99
+          apt-get -s upgrade | grep -c "^Inst" || true
+        elif command -v apk >/dev/null 2>&1; then
+          apk update -q >/dev/null 2>&1 || exit 99
+          apk upgrade -s | grep -c "Upgrading" || true
+        elif command -v dnf >/dev/null 2>&1; then
+          out=$(dnf -q check-update 2>/dev/null); rc=$?
+          case $rc in
+            0) echo 0 ;;
+            100) printf "%s\n" "$out" | grep -cE "^[^[:space:]]+\.[^[:space:]]+[[:space:]]+[^[:space:]]+[[:space:]]+[^[:space:]]+" || true ;;
+            *) exit 99 ;;
+          esac
+        else
+          exit 99
+        fi'
+        pending_updates() {
+          docker run --rm --user 0 --entrypoint sh "$1" -c "$PROBE_SCRIPT"
         }
 
         while IFS='=' read -r name hash; do
@@ -201,18 +226,18 @@ runs:
 
           if docker pull "$src" 2>/dev/null; then
             docker tag "$src" "docker.io/openc3inc/${name}:${TAG}"
-            if [ "$name" = "openc3-ruby" ] && [ "$PUSH_CACHE" = "true" ]; then
-              if pending=$(apt_pending "$src"); then
+            if [ "$PUSH_CACHE" = "true" ] && [[ " $PROBE_IMAGES " == *" $name "* ]]; then
+              if pending=$(pending_updates "$src"); then
                 if [ "$pending" -gt 0 ]; then
                   STALE[$name]=1
                   echo "$name" >> "$STALE_FILE"
                   echo "$name" >> "$MISSES_FILE"
                   misses=$((misses+1))
-                  echo "::notice::Cache STALE ${name} (${hash}) - ${pending} apt upgrades pending, rebuilding"
+                  echo "::notice::Cache STALE ${name} (${hash}) - ${pending} package upgrades pending, rebuilding"
                   continue
                 fi
               else
-                echo "::warning::Could not check ${name} for pending apt upgrades; using cached image"
+                echo "::warning::Could not check ${name} for pending package upgrades; using cached image"
               fi
             fi
             hits=$((hits+1))
