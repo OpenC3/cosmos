@@ -362,7 +362,10 @@ class QuestDBClient:
         self.pending_rows = []
 
     def _log_info(self, msg):
-        print(f"INFO: {msg}")
+        if self.logger:
+            self.logger.info(msg)
+        else:
+            print(f"INFO: {msg}")
 
     def _log_warn(self, msg):
         if self.logger:

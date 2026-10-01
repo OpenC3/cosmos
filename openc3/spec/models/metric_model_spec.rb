@@ -41,6 +41,66 @@ module OpenC3
       end
     end
 
+    describe "process metrics" do
+      # The operator reports cpu/memory on behalf of microservices that exec()
+      # into something that never loads the OpenC3 libraries. Those land in a
+      # separate redis hash so the two writers never clobber each other, and are
+      # merged back together on read.
+      it "merges operator reported process metrics into the microservice row" do
+        MetricModel.set({ 'name' => 'foo', 'values' => { 'decom_total' => { 'value' => 42 } } },
+                        scope: 'scope', queued: false)
+        MetricModel.set_process({ 'name' => 'foo', 'values' => { 'average_cpu_utilization' => { 'value' => 0.25 } } },
+                                scope: 'scope', queued: false)
+
+        all = MetricModel.all(scope: 'scope')
+        expect(all['foo']['values']['decom_total']['value']).to eql(42)
+        expect(all['foo']['values']['average_cpu_utilization']['value']).to eql(0.25)
+      end
+
+      it "does not let either writer clobber the other" do
+        MetricModel.set_process({ 'name' => 'foo', 'values' => { 'average_cpu_utilization' => { 'value' => 0.25 } } },
+                                scope: 'scope', queued: false)
+        # The microservice publishes again - its own counters must not wipe the
+        # process metrics, which is exactly what a shared field would do
+        MetricModel.set({ 'name' => 'foo', 'values' => { 'decom_total' => { 'value' => 7 } } },
+                        scope: 'scope', queued: false)
+
+        values = MetricModel.all(scope: 'scope')['foo']['values']
+        expect(values['decom_total']['value']).to eql(7)
+        expect(values['average_cpu_utilization']['value']).to eql(0.25)
+      end
+
+      it "surfaces a microservice that only has process metrics" do
+        # A plugin running a Rails app or a python script never reports for
+        # itself, so the operator's row is all there is
+        MetricModel.set_process({ 'name' => 'DEFAULT__USER__CFDP', 'values' => { 'average_cpu_utilization' => { 'value' => 0.1 } } },
+                                scope: 'scope', queued: false)
+
+        all = MetricModel.all(scope: 'scope')
+        expect(all['DEFAULT__USER__CFDP']['values']['average_cpu_utilization']['value']).to eql(0.1)
+        expect(MetricModel.names(scope: 'scope')).to include('DEFAULT__USER__CFDP')
+      end
+
+      it "prefers self reported values over operator reported ones" do
+        MetricModel.set_process({ 'name' => 'foo', 'values' => { 'num_threads' => { 'value' => 3 } } },
+                                scope: 'scope', queued: false)
+        MetricModel.set({ 'name' => 'foo', 'values' => { 'num_threads' => { 'value' => 9 } } },
+                        scope: 'scope', queued: false)
+
+        expect(MetricModel.get(name: 'foo', scope: 'scope')['values']['num_threads']['value']).to eql(9)
+      end
+
+      it "destroys both rows" do
+        MetricModel.set({ 'name' => 'foo', 'values' => { 'decom_total' => { 'value' => 42 } } },
+                        scope: 'scope', queued: false)
+        MetricModel.set_process({ 'name' => 'foo', 'values' => { 'average_cpu_utilization' => { 'value' => 0.25 } } },
+                                scope: 'scope', queued: false)
+
+        MetricModel.destroy(scope: 'scope', name: 'foo')
+        expect(MetricModel.all(scope: 'scope')['foo']).to be_nil
+      end
+    end
+
     describe "as_json" do
       it "encodes all the input parameters" do
         model = MetricModel.new(name: "foo", scope: "scope", values: {"test" => {"value" => 5}})
