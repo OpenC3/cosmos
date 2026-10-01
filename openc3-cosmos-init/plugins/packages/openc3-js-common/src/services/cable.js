@@ -63,11 +63,24 @@ class ResilientSubscription {
     return this._subscription?.identifier
   }
 
+  // Once the owner has torn this subscription down (unsubscribe, or
+  // Cable#disconnect when its component unmounts) there's nothing to perform
+  // on. Callers perform from async callbacks, e.g. after the token refresh in
+  // a connected handler, that can land after the teardown, and anycable
+  // rejects those on the closed consumer with NoConnectionError. Nobody awaits
+  // them, so that surfaced as an unhandled rejection - e.g. a Telemetry Viewer
+  // screen closed right after it opened.
   perform(action, data) {
+    if (this._unsubscribed) {
+      return Promise.resolve()
+    }
     return this._subscription?.perform(action, data)
   }
 
   send(data) {
+    if (this._unsubscribed) {
+      return Promise.resolve()
+    }
     return this._subscription?.send(data)
   }
 
