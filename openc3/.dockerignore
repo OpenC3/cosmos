@@ -5,19 +5,19 @@ Gemfile.lock
 .claude/
 **/node_modules
 openc3/
-coverage/
-spec/
-test/
+**/coverage/
+**/spec/
+**/test/
 log/*
 tmp/*
 **/*.so
 # Python virtual environments and caches
-.venv
-venv
-__pycache__
-*.pyc
-.pytest_cache
-.ruff_cache
+**/.venv
+**/venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
 # Local poetry install (plugins ship vendored deps that image scanners flag).
 # Bare patterns only match the context root, and this lives at python/.poetry.
 **/.poetry
