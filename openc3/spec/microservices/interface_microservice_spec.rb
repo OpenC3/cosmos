@@ -297,6 +297,64 @@ module OpenC3
         end
       end
 
+      describe "connection error logging" do
+        def raised(error)
+          raise error
+        rescue Exception => e
+          e
+        end
+
+        it "does not log a backtrace for expected connection failures" do
+          im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+          allow(im).to receive(:disconnect)
+          errors = []
+          allow(im.instance_variable_get(:@logger)).to receive(:error) { |msg, **| errors << msg }
+          im.handle_connection_failed("default:12345", raised(Errno::ECONNREFUSED.new))
+          expect(errors.length).to eql 1
+          expect(errors[0]).to include("failed due to")
+          im.shutdown
+        end
+
+        it "logs an unexpected connection failure backtrace only once per message" do
+          im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+          allow(im).to receive(:disconnect)
+          errors = []
+          allow(im.instance_variable_get(:@logger)).to receive(:error) { |msg, **| errors << msg }
+          im.handle_connection_failed("default:12345", raised(ArgumentError.new("bad thing")))
+          expect(errors.length).to eql 2
+          expect(errors[1]).to include("interface_microservice_spec.rb")
+          errors.clear
+          im.handle_connection_failed("default:12345", raised(ArgumentError.new("bad thing")))
+          expect(errors.length).to eql 1
+          expect(errors[0]).to_not include("interface_microservice_spec.rb")
+          im.shutdown
+        end
+
+        it "does not log a backtrace for expected lost connections" do
+          im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+          allow(im).to receive(:disconnect)
+          errors = []
+          allow(im.instance_variable_get(:@logger)).to receive(:error) { |msg, **| errors << msg }
+          im.handle_connection_lost(raised(Errno::ECONNRESET.new))
+          expect(errors).to be_empty
+          im.shutdown
+        end
+
+        it "logs an unexpected lost connection backtrace only once per message" do
+          im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+          allow(im).to receive(:disconnect)
+          errors = []
+          allow(im.instance_variable_get(:@logger)).to receive(:error) { |msg, **| errors << msg }
+          im.handle_connection_lost(raised(ArgumentError.new("bad thing")))
+          expect(errors.length).to eql 1
+          expect(errors[0]).to include("interface_microservice_spec.rb")
+          errors.clear
+          im.handle_connection_lost(raised(ArgumentError.new("bad thing")))
+          expect(errors).to be_empty
+          im.shutdown
+        end
+      end
+
       it "sends a command to the interface" do
         im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
         all = InterfaceStatusModel.all(scope: "DEFAULT")

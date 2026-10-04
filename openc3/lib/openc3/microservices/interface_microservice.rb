@@ -824,8 +824,9 @@ module OpenC3
         if RuntimeError === connect_error and (connect_error.message =~ /canceled/ or connect_error.message =~ /timeout/)
           # Do not write an exception file for these extremely common cases
         else
-          @logger.error "#{@interface.name}: #{connect_error.formatted}"
+          # Only log the backtrace the first time we see each distinct error
           unless @connection_failed_messages.include?(connect_error.message)
+            @logger.error "#{@interface.name}: #{connect_error.formatted}"
             @connection_failed_messages << connect_error.message
           end
         end
@@ -844,8 +845,9 @@ module OpenC3
         when Errno::ECONNABORTED, Errno::ECONNRESET, Errno::ETIMEDOUT, Errno::EBADF, Errno::ENOTSOCK, IOError
           # Do not write an exception file for these extremely common cases
         else
-          @logger.error "#{@interface.name}: #{err.formatted}"
+          # Only log the backtrace the first time we see each distinct error
           unless @connection_lost_messages.include?(err.message)
+            @logger.error "#{@interface.name}: #{err.formatted}"
             @connection_lost_messages << err.message
           end
         end
