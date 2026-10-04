@@ -136,12 +136,19 @@ class CosmosMetaTag
       saved_level = @level
       if data['modifiers']
         bump_level = false
-        unless @modifiers.values.include?(data['modifiers'].keys)
+        keys = data['modifiers'].keys
+        # A subset of an already documented modifier list (e.g. ROUTER vs INTERFACE)
+        # is described by reference rather than repeated
+        superset = @modifiers.find { |_, other| other != keys and (keys - other).empty? }
+        if superset
+          missing = superset[1] - keys
+          page << "\n#{keyword} accepts the [#{superset[0]} Modifiers](##{superset[0].downcase}-modifiers) except #{missing.join(', ')}.\n"
+        elsif not @modifiers.values.include?(keys)
           if bump_level == false
             bump_level = true
             @level += 1
           end
-          @modifiers[keyword] = data['modifiers'].keys
+          @modifiers[keyword] = keys
           page << "\n#{'#' * (@level - 1)} #{keyword} Modifiers\n"
           page << "The following keywords must follow a #{keyword} keyword.\n"
           build_page(data['modifiers'], page)
