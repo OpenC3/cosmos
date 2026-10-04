@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import json
+import math
 import threading
 import time
 import unittest
@@ -768,6 +769,32 @@ class TestInterfaceMicroservice(unittest.TestCase):
             None,
         )
         self.assertEqual(result, "Interface not connected: INST_INT")
+
+    def test_process_cmd_decodes_ruby_nan_cmd_params(self):
+        """cmd_params from a Ruby caller encode NaN as a json_class Float object;
+        it must reach build_cmd as a float, not a dict."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        handler = im.handler_thread
+        topic = "{DEFAULT__CMD}TARGET__INST"
+        msg_id = f"{int(time.time() * 1000)}-0"
+        cmd_params = '{"DURATION": {"json_class": "Float", "raw": "NaN"}}'
+        with patch("openc3.microservices.interface_microservice.System.commands.build_cmd") as build_cmd:
+            build_cmd.side_effect = RuntimeError("stop after build_cmd")
+            handler.process_cmd(
+                topic,
+                msg_id,
+                {
+                    b"target_name": b"INST",
+                    b"cmd_name": b"COLLECT",
+                    b"cmd_params": cmd_params.encode(),
+                    b"range_check": b"FALSE",
+                },
+                None,
+            )
+        params = build_cmd.call_args[0][2]
+        self.assertIsInstance(params["DURATION"], float)
+        self.assertTrue(math.isnan(params["DURATION"]))
 
     def test_process_cmd_identifies_a_cmd_buffer(self):
         """A command sent as a raw cmd_buffer is identified and written to the
