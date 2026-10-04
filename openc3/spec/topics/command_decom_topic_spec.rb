@@ -111,6 +111,17 @@ module OpenC3
         expect(hash['BOTH__C']).to eq('ON')
       end
 
+      it "does not log the given value of an obfuscated item" do
+        item = packet.get_item('VALUE')
+        item.obfuscate = true
+        packet.update_obfuscated_items_cache(item)
+        packet.given_values = { 'VALUE' => 5 }
+        packet.obfuscate
+        hash = json_data(packet)
+        expect(hash['VALUE']).to eq(0)
+        expect(hash['VALUE__C']).to eq(0)
+      end
+
       it "ignores given values for raw commands" do
         # Raw commands skip the write conversion so the given value is the raw value
         packet.raw = true
