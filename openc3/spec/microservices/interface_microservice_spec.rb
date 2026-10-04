@@ -327,6 +327,29 @@ module OpenC3
         expect(captured.extra['queue_username']).to eql("DEFAULT__MULTI__INST")
       end
 
+      it "acks SUCCESS for a write protocol STOP but rejects a DISCONNECT" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        interface = im.instance_variable_get(:@interface)
+        published = []
+        allow(CommandTopic).to receive(:write_packet) { |command, **| published << command.packet_name }
+        allow(CommandDecomTopic).to receive(:write_packet)
+        Thread.new { im.run }
+        sleep 0.01
+
+        protocol = Protocol.new
+        interface.write_protocols << protocol
+        # STOP means the protocol handled the command, so it is acked and published
+        allow(protocol).to receive(:write_packet).and_return(:STOP)
+        @api.cmd("INST", "ABORT")
+        expect(published).to eql ["ABORT"]
+
+        # DISCONNECT means nothing was written, so the command is rejected and not published
+        allow(protocol).to receive(:write_packet).and_return(:DISCONNECT)
+        expect { @api.cmd("INST", "ABORT") }.to raise_error(/write_packet requested disconnect/)
+        expect(published).to eql ["ABORT"]
+        im.shutdown
+      end
+
       it "handles obfuscated params" do
         im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
         all = InterfaceStatusModel.all(scope: "DEFAULT")

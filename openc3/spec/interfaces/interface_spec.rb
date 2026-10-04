@@ -429,7 +429,7 @@ module OpenC3
           def write_interface(data, extra = nil); write_interface_base(data, extra); end
         end
         interface.add_protocol(InterfaceTestProtocol, [nil, 0, :DISCONNECT, 0], :WRITE)
-        interface.write(packet)
+        expect { interface.write(packet) }.to raise_error(WriteRejectError, /write_packet requested disconnect/)
         expect(interface.write_count).to be 1
         expect(interface.bytes_written).to be 0
       end
@@ -473,7 +473,7 @@ module OpenC3
           def write_interface(data, extra = nil); write_interface_base(data, extra); end
         end
         interface.add_protocol(InterfaceTestProtocol, [:DISCONNECT, 0, nil, 0], :WRITE)
-        interface.write(packet)
+        expect { interface.write(packet) }.to raise_error(WriteRejectError, /write_data requested disconnect/)
         expect(interface.write_count).to be 1
         expect(interface.bytes_written).to be 0
       end

@@ -14,7 +14,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-from openc3.interfaces.interface import Interface
+from openc3.interfaces.interface import Interface, WriteRejectError
 from openc3.interfaces.protocols.protocol import Protocol
 from openc3.packets.packet import Packet
 from test.test_helper import BucketMock
@@ -468,7 +468,8 @@ class WriteInterface(unittest.TestCase):
 
         interface = MyInterface()
         interface.add_protocol(InterfaceTestProtocol, [None, 0, "DISCONNECT", 0], "WRITE")
-        interface.write(self.packet)
+        with self.assertRaisesRegex(WriteRejectError, "write_packet requested disconnect"):
+            interface.write(self.packet)
         self.assertEqual(interface.write_count, 1)
         self.assertEqual(interface.bytes_written, 0)
 
@@ -519,7 +520,8 @@ class WriteInterface(unittest.TestCase):
 
         interface = MyInterface()
         interface.add_protocol(InterfaceTestProtocol, ["DISCONNECT", 0, None, 0], "WRITE")
-        interface.write(self.packet)
+        with self.assertRaisesRegex(WriteRejectError, "write_data requested disconnect"):
+            interface.write(self.packet)
         self.assertEqual(interface.write_count, 1)
         self.assertEqual(interface.bytes_written, 0)
 
