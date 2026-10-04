@@ -113,7 +113,13 @@ module OpenC3
               @logger.info "#{@interface.name}: Connect requested"
               params = []
               if msg_hash['params']
-                params = JSON.parse(msg_hash['params'], allow_nan: true, create_additions: true)
+                begin
+                  params = JSON.parse(msg_hash['params'], allow_nan: true, create_additions: true)
+                rescue => e
+                  # Reject malformed params rather than killing the handler thread
+                  @logger.error "#{@interface.name}: Invalid connect params: #{e.message}"
+                  next e.message
+                end
               end
               @interface = @tlm.attempting(*params)
               next 'SUCCESS'
@@ -446,7 +452,13 @@ module OpenC3
             @logger.info "#{@router.name}: Connect requested"
             params = []
             if msg_hash['params']
-              params = JSON.parse(msg_hash['params'], allow_nan: true, create_additions: true)
+              begin
+                params = JSON.parse(msg_hash['params'], allow_nan: true, create_additions: true)
+              rescue => e
+                # Reject malformed params rather than killing the handler thread
+                @logger.error "#{@router.name}: Invalid connect params: #{e.message}"
+                next e.message
+              end
             end
             @router = @tlm.attempting(*params)
             next 'SUCCESS'

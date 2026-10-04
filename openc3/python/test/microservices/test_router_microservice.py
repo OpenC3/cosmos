@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from unittest.mock import *
 
 from openc3.interfaces.interface import Interface
+from openc3.microservices.interface_microservice import RouterTlmHandlerThread
 from openc3.microservices.router_microservice import RouterMicroservice
 from openc3.models.cvt_model import CvtModel
 from openc3.models.microservice_model import MicroserviceModel
@@ -164,6 +165,30 @@ class TestRouterMicroservice(unittest.TestCase):
         im.shutdown()
         im.handler_thread.thread.join(5)  # Wait for the handler to exit (no fixed sleep race)
         self.assertFalse(im.handler_thread.thread.is_alive())
+
+    def test_rejects_malformed_connect_params(self):
+        im = RouterMicroservice("DEFAULT__ROUTER__TEST_INT")
+        self.addCleanup(im.shutdown)
+        tlm = Mock()
+        tlm.attempting.return_value = im.interface
+        handler = RouterTlmHandlerThread(im.interface, tlm, scope="DEFAULT")
+        topic = "{DEFAULT__CMD}ROUTER__TEST_INT"
+        msg_id = f"{int(time.time() * 1000)}-0"
+        results = []
+
+        def receive_telemetry(*args, **kwargs):
+            results.append((yield (topic, msg_id, {b"connect": b"true", b"params": b"{not json"}, None)))
+            results.append((yield (topic, msg_id, {b"connect": b"true", b"params": b'["host", 1]'}, None)))
+            yield (topic, msg_id, {b"shutdown": b"true"}, None)
+
+        with (
+            patch.object(RouterTopic, "receive_telemetry", side_effect=receive_telemetry),
+            patch.object(RouterTopic, "clear_topics"),
+        ):
+            handler.run()
+        self.assertIn("Expecting", results[0])
+        self.assertEqual(results[1], "SUCCESS")
+        tlm.attempting.assert_called_once_with("host", 1)
 
     def test_supports_router_cmd(self):
         im = RouterMicroservice("DEFAULT__ROUTER__TEST_INT")
