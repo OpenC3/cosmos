@@ -758,26 +758,24 @@ module OpenC3
       InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope) unless @cancel_thread
       packet.received_time = Time.now.sys unless packet.received_time
 
+      if packet.identified? and !known_tlm_packet?(packet)
+        # Packet identified but we don't know about it or it isn't mapped to this interface
+        # Clear packet_name and target_name and try to identify
+        @logger.warn "#{@interface.name}: Received unknown identified telemetry: #{packet.target_name} #{packet.packet_name}"
+        packet.target_name = nil
+        packet.packet_name = nil
+      end
+
       if packet.stored
         # Stored telemetry does not update the current value table
         identified_packet = System.telemetry.identify_and_define_packet(packet, @interface.tlm_target_names)
       else
         # Identify and update packet
         if packet.identified?
-          begin
-            # Preidentifed packet - place it into the current value table
-            identified_packet = System.telemetry.update!(packet.target_name,
-                                                         packet.packet_name,
-                                                         packet.buffer)
-          rescue RuntimeError
-            # Packet identified but we don't know about it
-            # Clear packet_name and target_name and try to identify
-            @logger.warn "#{@interface.name}: Received unknown identified telemetry: #{packet.target_name} #{packet.packet_name}"
-            packet.target_name = nil
-            packet.packet_name = nil
-            identified_packet = System.telemetry.identify!(packet.buffer,
-                                                           @interface.tlm_target_names)
-          end
+          # Preidentifed packet - place it into the current value table
+          identified_packet = System.telemetry.update!(packet.target_name,
+                                                       packet.packet_name,
+                                                       packet.buffer)
         else
           # Packet needs to be identified
           identified_packet = System.telemetry.identify!(packet.buffer,
@@ -791,13 +789,21 @@ module OpenC3
         identified_packet.extra = packet.extra
         packet = identified_packet
       else
-        unknown_packet = System.telemetry.update!('UNKNOWN', 'UNKNOWN', packet.buffer)
+        if packet.stored
+          # Stored telemetry does not update the current value table
+          unknown_packet = System.telemetry.packet('UNKNOWN', 'UNKNOWN').clone
+          unknown_packet.buffer = packet.buffer
+        else
+          unknown_packet = System.telemetry.update!('UNKNOWN', 'UNKNOWN', packet.buffer)
+        end
         unknown_packet.received_time = packet.received_time
         unknown_packet.stored = packet.stored
         unknown_packet.extra = packet.extra
         packet = unknown_packet
-        json_hash = CvtModel.build_json_from_packet(packet)
-        CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, queued: @queued, scope: @scope)
+        unless packet.stored
+          json_hash = CvtModel.build_json_from_packet(packet)
+          CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, queued: @queued, scope: @scope)
+        end
         num_bytes_to_print = [UNKNOWN_BYTES_TO_PRINT, packet.length].min
         data = packet.buffer(false)[0..(num_bytes_to_print - 1)]
         prefix = data.each_byte.map { | byte | sprintf("%02X", byte) }.join()
@@ -809,6 +815,16 @@ module OpenC3
         TargetModel.sync_tlm_packet_counts(packet, @interface.tlm_target_names, scope: @scope)
         TelemetryTopic.write_packet(packet, queued: @queued, scope: @scope)
       end
+    end
+
+    # @return [Boolean] Whether a pre-identified packet names a defined packet
+    #   in one of this interface's telemetry mapped targets
+    def known_tlm_packet?(packet)
+      return false unless @interface.tlm_target_names.include?(packet.target_name)
+      System.telemetry.packet(packet.target_name, packet.packet_name)
+      true
+    rescue RuntimeError
+      false
     end
 
     def handle_connection_failed(connection, connect_error)
