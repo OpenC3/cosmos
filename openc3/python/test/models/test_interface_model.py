@@ -145,6 +145,21 @@ class TestInterfaceModel(unittest.TestCase):
         interface = model.build()
         self.assertEqual(interface.__class__.__name__, "TcpipClientInterface")
 
+    def test_starts_raw_logging_when_log_stream_is_set(self):
+        # LOG_STREAM with no parameters is stored as an empty list
+        for log_stream in [[], ["60", "1000000"]]:
+            model = InterfaceModel(
+                name="TEST_INT",
+                scope="DEFAULT",
+                config_params=["openc3/interfaces/interface.py"],
+                log_stream=log_stream,
+            )
+            with patch("openc3.interfaces.interface.Interface.start_raw_logging") as start_raw_logging:
+                interface = model.build()
+            self.assertIsNotNone(interface.stream_log_pair)
+            start_raw_logging.assert_called_once()
+            interface.stream_log_pair.shutdown()
+
     def test_sets_options_on_the_interface(self):
         model = InterfaceModel(
             name="TEST_INT",
