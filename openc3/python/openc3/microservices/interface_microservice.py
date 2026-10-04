@@ -109,9 +109,6 @@ class InterfaceCmdHandlerThread:
         release_critical = False
         critical_model = None
 
-        if msg_hash.get(b"shutdown"):
-            return "Shutdown"
-
         msgid_seconds_from_epoch = int(msg_id.split("-")[0]) / 1000.0
         delta = time.time() - msgid_seconds_from_epoch
         if self.metric is not None:
@@ -754,7 +751,7 @@ class InterfaceMicroservice(Microservice):
                 else:
                     router_model = RouterModel.get(name=self.interface.name, scope=self.scope)
                     # config_params[0] is the filename so set the rest
-                    interface_model["config_params"][1:] = list(params)
+                    router_model["config_params"][1:] = list(params)
                     RouterModel.set(router_model, scope=self.scope)
 
             self.interface.state = "ATTEMPTING"
@@ -763,8 +760,8 @@ class InterfaceMicroservice(Microservice):
             else:
                 RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
             return self.interface  # Return the interface/router since we may have recreated it
-        # Need to rescue Exception so we cover LoadError
-        except RuntimeError:
+        # Catch Exception so any rebuild failure (bad parameters, import errors) keeps the original interface
+        except Exception:
             self.logger.error(
                 f"Attempting connection #{self.interface.connection_string} failed due to {traceback.format_exc()}"
             )
@@ -1032,7 +1029,11 @@ class InterfaceMicroservice(Microservice):
             if self.interface_thread_sleeper:
                 self.interface_thread_sleeper.cancel()
             if self.interface:
-                self.interface.disconnect()
+                try:
+                    self.interface.disconnect()
+                except Exception:
+                    # Still clean up the status and stream logs if disconnect fails
+                    self.logger.error(f"{self.interface.name}: Disconnect failed during stop: {traceback.format_exc()}")
                 if self.interface_or_router == "INTERFACE":
                     valid_interface = InterfaceStatusModel.get_model(name=self.interface.name, scope=self.scope)
                 else:
