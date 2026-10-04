@@ -584,6 +584,50 @@ module OpenC3
       end
     end
 
+    describe "CONNECT_CMD and PERIODIC_CMD" do
+      let(:interface) do
+        i = Interface.new
+        class << i
+          def connect; super(); @is_connected = true; end
+          def connected?; @is_connected; end
+          def disconnect; @is_connected = false; super(); end
+        end
+        i
+      end
+
+      after(:each) do
+        interface.scheduler.shutdown(:kill) if interface.scheduler
+      end
+
+      it "sends connect commands after every connect" do
+        interface.set_option("CONNECT_CMD", ["LOG", "INST ABORT"])
+        interface.set_option("CONNECT_CMD", ["DONT_LOG", "INST CLEAR"])
+        expect(interface).to receive(:cmd).with("INST ABORT").twice
+        expect(interface).to receive(:cmd).with("INST CLEAR", log_message: false).twice
+        2.times do
+          interface.connect
+          interface.post_connect
+          interface.disconnect
+        end
+      end
+
+      it "sends periodic commands only while connected" do
+        interface.set_option("PERIODIC_CMD", ["LOG", "0.5", "INST ABORT"])
+        interface.set_option("PERIODIC_CMD", ["DONT_LOG", "0.5", "INST CLEAR"])
+        sent = []
+        allow(interface).to receive(:cmd) { |*args, **kwargs| sent << [args, kwargs] }
+        interface.connect
+        sleep 1.5
+        interface.disconnect
+        expect(sent).to include([["INST ABORT"], {}])
+        expect(sent).to include([["INST CLEAR"], { log_message: false }])
+        sleep 0.5 # Let any in-flight job finish
+        sent.clear
+        sleep 1
+        expect(sent).to be_empty
+      end
+    end
+
     describe "interface_cmd" do
       it "clears counters" do
         i = Interface.new
