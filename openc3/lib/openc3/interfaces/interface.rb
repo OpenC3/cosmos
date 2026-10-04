@@ -341,8 +341,6 @@ module OpenC3
       raise "Interface not writable: #{@name}" unless write_allowed?
 
       _write do
-        @write_count += 1
-
         # Potentially modify packet
         @write_protocols.each do |protocol|
           packet = protocol.write_packet(packet)
@@ -373,6 +371,9 @@ module OpenC3
           end
           return if data == :STOP
         end
+
+        # Only count packets that made it through the write protocols
+        @write_count += 1
 
         # Actually write out data if not handled by protocol
         # Extra check is for backwards compatibility

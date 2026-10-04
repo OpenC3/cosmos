@@ -469,7 +469,7 @@ class WriteInterface(unittest.TestCase):
         interface = MyInterface()
         interface.add_protocol(InterfaceTestProtocol, [None, 0, "DISCONNECT", 0], "WRITE")
         interface.write(self.packet)
-        self.assertEqual(interface.write_count, 1)
+        self.assertEqual(interface.write_count, 0)
         self.assertEqual(interface.bytes_written, 0)
 
     def test_stops_if_write_packet_returns_stop(self):
@@ -484,7 +484,7 @@ class WriteInterface(unittest.TestCase):
         interface.add_protocol(InterfaceTestProtocol, [None, 0, "STOP", 1], "WRITE")
         interface.write(self.packet)
         interface.write(self.packet)
-        self.assertEqual(interface.write_count, 2)
+        self.assertEqual(interface.write_count, 1)
         self.assertEqual(interface.bytes_written, 4)
 
     def test_allows_protocol_write_data_to_modify_the_data(self):
@@ -520,7 +520,7 @@ class WriteInterface(unittest.TestCase):
         interface = MyInterface()
         interface.add_protocol(InterfaceTestProtocol, ["DISCONNECT", 0, None, 0], "WRITE")
         interface.write(self.packet)
-        self.assertEqual(interface.write_count, 1)
+        self.assertEqual(interface.write_count, 0)
         self.assertEqual(interface.bytes_written, 0)
 
     def test_stops_if_write_data_returns_stop(self):
@@ -535,7 +535,7 @@ class WriteInterface(unittest.TestCase):
         interface.add_protocol(InterfaceTestProtocol, ["STOP", 1, None, 0], "WRITE")
         interface.write(self.packet)
         interface.write(self.packet)
-        self.assertEqual(interface.write_count, 2)
+        self.assertEqual(interface.write_count, 1)
         self.assertEqual(interface.bytes_written, 4)
 
     def test_calls_post_write_interface_with_the_packet_and_data(self):

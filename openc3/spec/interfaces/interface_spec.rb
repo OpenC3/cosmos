@@ -430,7 +430,7 @@ module OpenC3
         end
         interface.add_protocol(InterfaceTestProtocol, [nil, 0, :DISCONNECT, 0], :WRITE)
         interface.write(packet)
-        expect(interface.write_count).to be 1
+        expect(interface.write_count).to be 0
         expect(interface.bytes_written).to be 0
       end
 
@@ -443,7 +443,7 @@ module OpenC3
         interface.add_protocol(InterfaceTestProtocol, [nil, 0, :STOP, 1], :WRITE)
         interface.write(packet)
         interface.write(packet)
-        expect(interface.write_count).to be 2
+        expect(interface.write_count).to be 1
         expect(interface.bytes_written).to be 4
       end
 
@@ -474,7 +474,7 @@ module OpenC3
         end
         interface.add_protocol(InterfaceTestProtocol, [:DISCONNECT, 0, nil, 0], :WRITE)
         interface.write(packet)
-        expect(interface.write_count).to be 1
+        expect(interface.write_count).to be 0
         expect(interface.bytes_written).to be 0
       end
 
@@ -487,7 +487,7 @@ module OpenC3
         interface.add_protocol(InterfaceTestProtocol, [:STOP, 1, nil, 0], :WRITE)
         interface.write(packet)
         interface.write(packet)
-        expect(interface.write_count).to be 2
+        expect(interface.write_count).to be 1
         expect(interface.bytes_written).to be 4
       end
 

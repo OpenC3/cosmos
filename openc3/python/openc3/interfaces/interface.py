@@ -229,8 +229,6 @@ class Interface:
             raise RuntimeError(f"Interface not writable {self.name}")
 
         with self._write():
-            self.write_count += 1
-
             # Potentially modify packet
             for protocol in self.write_protocols:
                 packet = protocol.write_packet(packet)
@@ -256,6 +254,9 @@ class Interface:
                     return
                 if data == "STOP":
                     return
+
+            # Only count packets that made it through the write protocols
+            self.write_count += 1
 
             # Actually write out data if not handled by protocol:
             self.write_interface(data, extra)
