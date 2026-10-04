@@ -196,8 +196,8 @@ class InterfaceCmdHandlerThread:
                     self.interface.stop_raw_logging()
                 return "SUCCESS"
             if msg_hash.get(b"interface_cmd"):
-                params = json.loads(msg_hash[b"interface_cmd"])
                 try:
+                    params = json.loads(msg_hash[b"interface_cmd"])
                     str_params = " ".join([str(i) for i in params["cmd_params"]])
                     self.logger.info(f"{self.interface.name}: interface_cmd: {params['cmd_name']} {str_params}")
                     self.interface.interface_cmd(params["cmd_name"], *params["cmd_params"])
@@ -208,8 +208,8 @@ class InterfaceCmdHandlerThread:
                     return str(e)
                 return "SUCCESS"
             if msg_hash.get(b"protocol_cmd"):
-                params = json.loads(msg_hash[b"protocol_cmd"])
                 try:
+                    params = json.loads(msg_hash[b"protocol_cmd"])
                     str_params = " ".join([str(i) for i in params["cmd_params"]])
                     self.logger.info(
                         f"{self.interface.name}: protocol_cmd: {params['cmd_name']} {str_params} read_write: {params['read_write']} index: {params['index']}"
@@ -281,10 +281,15 @@ class InterfaceCmdHandlerThread:
                     )
                     return str(e)
 
-        target_name = msg_hash[b"target_name"].decode()
+        target_name = msg_hash.get(b"target_name")
+        target_name = target_name.decode() if target_name is not None else None
         if target_name and not self.interface.cmd_target_enabled.get(target_name, False):
+            # A released critical command was already acked as pending so it must get a result
+            if release_critical:
+                return f"Target {target_name} is disabled"
             return None  # Return and don't ack given target_name if disabled
-        cmd_name = msg_hash[b"cmd_name"].decode()
+        cmd_name = msg_hash.get(b"cmd_name")
+        cmd_name = cmd_name.decode() if cmd_name is not None else None
         manual = ConfigParser.handle_true_false(msg_hash.get(b"manual", b"FALSE").decode())
         cmd_params = None
         range_check = True
@@ -292,7 +297,11 @@ class InterfaceCmdHandlerThread:
         cmd_buffer = None
         hazardous_check = None
         if msg_hash.get(b"cmd_params") is not None:
-            cmd_params = json.loads(msg_hash.get(b"cmd_params"), cls=JsonDecoder)
+            try:
+                cmd_params = json.loads(msg_hash.get(b"cmd_params"), cls=JsonDecoder)
+            except ValueError as e:
+                self.logger.error(f"{self.interface.name}: Invalid cmd_params: {e}")
+                return f"Invalid cmd_params: {e}"
             range_check = ConfigParser.handle_true_false(msg_hash.get(b"range_check", b"TRUE").decode())
             raw = ConfigParser.handle_true_false(msg_hash.get(b"raw", b"FALSE").decode())
             hazardous_check = ConfigParser.handle_true_false(msg_hash.get(b"hazardous_check", b"TRUE").decode())
@@ -315,6 +324,8 @@ class InterfaceCmdHandlerThread:
                     raise RuntimeError(f"Invalid command received:\n{msg_hash}")
 
                 if not self.interface.cmd_target_enabled.get(command.target_name, False):
+                    if release_critical:
+                        return f"Target {command.target_name} is disabled"
                     return None  # Don't ack disabled targets
 
                 orig_command = System.commands.packet(command.target_name, command.packet_name)
@@ -384,10 +395,11 @@ class InterfaceCmdHandlerThread:
                     if command.validator and validate:
                         try:
                             result, reason = command.validator.pre_check(command)
-                        except Exception:
+                        except Exception as e:
                             result = False
-                            reason = traceback.format_exc()
-                        if not result:
+                            reason = str(e)
+                        # Explicitly check for False to allow None to represent unknown
+                        if result is False:
                             message = f"pre_check returned false for {command.extra['cmd_string']} due to {reason}"
                             raise WriteRejectError(message)
 
@@ -410,9 +422,9 @@ class InterfaceCmdHandlerThread:
                     if command.validator and validate:
                         try:
                             result, reason = command.validator.post_check(command)
-                        except Exception:
+                        except Exception as e:
                             result = False
-                            reason = traceback.format_exc()
+                            reason = str(e)
                         command.extra["cmd_success"] = result
                         if reason:
                             command.extra["cmd_reason"] = reason
@@ -421,7 +433,8 @@ class InterfaceCmdHandlerThread:
                     CommandTopic.write_packet(command, scope=self.scope)
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
 
-                    if not result:
+                    # Explicitly check for False to allow None to represent unknown
+                    if result is False:
                         message = f"post_check returned false for {command.extra['cmd_string']} due to {reason}"
                         raise WriteRejectError(message)
 

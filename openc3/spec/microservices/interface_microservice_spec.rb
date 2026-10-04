@@ -228,6 +228,91 @@ module OpenC3
       end
     end
 
+    describe "command message handling" do
+      # Drive the command handler block directly with one crafted message and
+      # return the block's result, which becomes the ack (nil means no ack)
+      def handle(msg_hash, topic: "{DEFAULT__CMD}TARGET__INST")
+        handler = InterfaceCmdHandlerThread.new(@interface, double("tlm").as_null_object, scope: "DEFAULT")
+        result = :not_run
+        mutex = Mutex.new
+        allow(InterfaceTopic).to receive(:receive_commands) do |*_args, **_kwargs, &block|
+          # The microservice's own handler thread may also land here, so only run the message once
+          mutex.synchronize do
+            result = block.call(topic, "#{(Time.now.to_f * 1000).to_i}-0", msg_hash, nil) if result == :not_run
+          end
+        end
+        handler.run
+        result
+      end
+
+      before(:each) do
+        @im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        @interface = @im.instance_variable_get(:@interface)
+        allow(@interface).to receive(:connected?).and_return(true)
+        allow(@interface).to receive(:write)
+      end
+
+      after(:each) do
+        @im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+
+      it "acks malformed interface_cmd and protocol_cmd JSON with an error" do
+        %w(interface_cmd protocol_cmd).each do |directive|
+          result = handle({ directive => '{not json' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
+          expect(result).to be_a(String)
+          expect(result).to_not eql 'SUCCESS'
+        end
+      end
+
+      it "acks malformed cmd_params JSON with an error" do
+        result = handle({ 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{not json' })
+        expect(result).to match(/Invalid cmd_params/)
+      end
+
+      it "does not ack a command for a disabled target" do
+        @interface.cmd_target_enabled['INST'] = false
+        expect(handle({ 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{}' })).to be_nil
+      end
+
+      it "acks a released critical command whose target is now disabled" do
+        critical_model = double("CriticalCmdModel", approver: 'approver',
+          cmd_hash: { 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST ABORT")' })
+        stub_const("OpenC3::CriticalCmdModel", double(get_model: critical_model))
+        @interface.cmd_target_enabled['INST'] = false
+        result = handle({ 'release_critical' => 'abc-123' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
+        expect(result).to eql "Target INST is disabled"
+      end
+
+      it "range checks a command that omits range_check" do
+        result = handle({ 'target_name' => 'INST', 'cmd_name' => 'COLLECT', 'cmd_params' => JSON.generate({ 'TYPE' => 'NORMAL', 'DURATION' => 100 }) })
+        expect(result).to match(/DURATION/)
+      end
+
+      it "hazardous checks a command that omits hazardous_check" do
+        result = handle({ 'target_name' => 'INST', 'cmd_name' => 'CLEAR', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST CLEAR")' })
+        expect(result).to start_with("HazardousError")
+      end
+
+      it "validates and logs a command that omits validate and log_message" do
+        validator = double("validator")
+        allow_any_instance_of(Packet).to receive(:validator).and_return(validator)
+        expect(validator).to receive(:pre_check).and_return([true, nil])
+        expect(validator).to receive(:post_check).and_return([true, nil])
+        expect(Logger).to receive(:info).with('cmd("INST ABORT")', anything).at_least(:once)
+        allow(Logger).to receive(:info)
+        result = handle({ 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST ABORT")' })
+        expect(result).to eql 'SUCCESS'
+      end
+
+      it "does not log a command with log_message false" do
+        expect(Logger).to_not receive(:info).with('cmd("INST ABORT")', anything)
+        allow(Logger).to receive(:info)
+        result = handle({ 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST ABORT")', 'log_message' => 'false' })
+        expect(result).to eql 'SUCCESS'
+      end
+    end
+
     describe "handle_packet" do
       it "does not write the status model after cancel_thread is set" do
         # A packet already buffered can be returned from read() after stop()
