@@ -441,7 +441,7 @@ module OpenC3
     # OPENC3_PYTHON_BIN. Outside an image (e.g. the gem installed on a dev
     # machine) there is no COSMOS Python to match, so no file is written.
     def self.write_python_version
-      python_bin = ENV['OPENC3_PYTHON_BIN']
+      python_bin = ENV.fetch('OPENC3_PYTHON_BIN', nil)
       return if python_bin.nil? || !File.executable?(python_bin)
       version, status = Open3.capture2(python_bin, '-c', 'import sys; print("%d.%d" % sys.version_info[:2])')
       return unless status.success? && version.strip =~ /\A\d+\.\d+\z/
