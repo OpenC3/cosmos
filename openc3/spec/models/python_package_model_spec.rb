@@ -393,7 +393,7 @@ module OpenC3
         @temp_dir = Dir.mktmpdir
         allow(ENV).to receive(:[]).and_call_original
         allow(ENV).to receive(:[]).with('PYTHONUSERBASE').and_return(@temp_dir)
-        allow(ENV).to receive(:[]).with('UV_ALLOW_INSECURE_HOST').and_return(nil)
+        allow(ENV).to receive(:[]).with('OPENC3_PYPI_ALLOW_INSECURE').and_return(nil)
         allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
         allow(ENV).to receive(:fetch).and_call_original
         allow(ENV).to receive(:fetch).with('PYPI_URL', nil).and_return(nil)

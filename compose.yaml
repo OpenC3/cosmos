@@ -196,6 +196,8 @@ services:
       # constant source, so RUBYGEMS_URL never rewrites Gemfile.lock.
       - RUBYGEMS_URL=${RUBYGEMS_URL}
       - PYPI_URL=${PYPI_URL}
+      - OPENC3_PYPI_ALLOW_INSECURE=${OPENC3_PYPI_ALLOW_INSECURE:-}
+      - PIP_ENABLE_TRUSTED_HOST=${PIP_ENABLE_TRUSTED_HOST:-}
       - PYTHONUSERBASE=/gems/python_packages
       - ANYCABLE_REDIS_URL=redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}
       - SECRET_KEY_BASE=${SECRET_KEY_BASE}
@@ -268,6 +270,8 @@ services:
       # constant source, so RUBYGEMS_URL never rewrites Gemfile.lock.
       - RUBYGEMS_URL=${RUBYGEMS_URL}
       - PYPI_URL=${PYPI_URL}
+      - OPENC3_PYPI_ALLOW_INSECURE=${OPENC3_PYPI_ALLOW_INSECURE:-}
+      - PIP_ENABLE_TRUSTED_HOST=${PIP_ENABLE_TRUSTED_HOST:-}
       - PYTHONUSERBASE=/gems/python_packages
       - OPENC3_USE_UV=true
       - ANYCABLE_REDIS_URL=redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}
@@ -356,6 +360,8 @@ services:
       # constant source, so RUBYGEMS_URL never rewrites Gemfile.lock.
       - RUBYGEMS_URL=${RUBYGEMS_URL}
       - PYPI_URL=${PYPI_URL}
+      - OPENC3_PYPI_ALLOW_INSECURE=${OPENC3_PYPI_ALLOW_INSECURE:-}
+      - PIP_ENABLE_TRUSTED_HOST=${PIP_ENABLE_TRUSTED_HOST:-}
       - PYTHONUSERBASE=/gems/python_packages
       - OPENC3_USE_UV=true
       # If your microservices do heavy BLAS / linear algebra work,
@@ -479,6 +485,8 @@ services:
       # constant source, so RUBYGEMS_URL never rewrites Gemfile.lock.
       - RUBYGEMS_URL=${RUBYGEMS_URL}
       - PYPI_URL=${PYPI_URL}
+      - OPENC3_PYPI_ALLOW_INSECURE=${OPENC3_PYPI_ALLOW_INSECURE:-}
+      - PIP_ENABLE_TRUSTED_HOST=${PIP_ENABLE_TRUSTED_HOST:-}
       - PYTHONUSERBASE=/gems/python_packages
       - OPENC3_USE_UV=true
       # Redis

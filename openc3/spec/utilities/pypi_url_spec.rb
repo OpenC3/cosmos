@@ -116,6 +116,14 @@ module OpenC3
         expect(PypiUrl.build_args("https://private.example.com/simple")).to include "--allow-insecure-host"
       end
 
+      # compose passes the variable through as ${VAR:-}, so leaving it unset in
+      # .env still puts an empty string in the container's environment.
+      it "treats an empty value as not opted in" do
+        allow(ENV).to receive(:[]).with(PypiUrl::INSECURE_HOST_ENV).and_return('')
+        allow(ENV).to receive(:[]).with(PypiUrl::DEPRECATED_INSECURE_HOST_ENV).and_return('')
+        expect(PypiUrl.build_args("https://private.example.com/simple")).to_not include "--allow-insecure-host"
+      end
+
       it "passes the host without the port or path" do
         allow(ENV).to receive(:[]).with(PypiUrl::INSECURE_HOST_ENV).and_return('1')
         args = PypiUrl.build_args("https://private.example.com:8443/simple")

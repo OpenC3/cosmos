@@ -590,7 +590,7 @@ module OpenC3
 
           allow(ENV).to receive(:[]).and_call_original
           allow(ENV).to receive(:[]).with('OPENC3_USE_UV').and_return(use_uv)
-          allow(ENV).to receive(:[]).with('UV_ALLOW_INSECURE_HOST').and_return(nil)
+          allow(ENV).to receive(:[]).with('OPENC3_PYPI_ALLOW_INSECURE').and_return(nil)
           allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
           allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
         end
@@ -755,14 +755,14 @@ module OpenC3
       end
 
       it "returns index args without an insecure host by default" do
-        allow(ENV).to receive(:[]).with('UV_ALLOW_INSECURE_HOST').and_return(nil)
+        allow(ENV).to receive(:[]).with('OPENC3_PYPI_ALLOW_INSECURE').and_return(nil)
         allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
         expect(PluginModel.build_pypi_args("https://custom.pypi.example.com/simple")).to \
           eql ["--default-index", "https://custom.pypi.example.com/simple", "--no-config"]
       end
 
       it "adds the insecure host derived from the url when PIP_ENABLE_TRUSTED_HOST is set" do
-        allow(ENV).to receive(:[]).with('UV_ALLOW_INSECURE_HOST').and_return(nil)
+        allow(ENV).to receive(:[]).with('OPENC3_PYPI_ALLOW_INSECURE').and_return(nil)
         allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return('1')
         expect(PluginModel.build_pypi_args("https://custom.pypi.example.com/simple")).to \
           eql ["--default-index", "https://custom.pypi.example.com/simple", "--no-config",
@@ -1003,7 +1003,7 @@ module OpenC3
         allow(PluginModel).to receive(:get_setting).and_return(nil)
         allow(ENV).to receive(:[]).and_call_original
         allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
-        allow(ENV).to receive(:[]).with('UV_ALLOW_INSECURE_HOST').and_return(nil)
+        allow(ENV).to receive(:[]).with('OPENC3_PYPI_ALLOW_INSECURE').and_return(nil)
         allow(ENV).to receive(:[]).with('PIP_ENABLE_TRUSTED_HOST').and_return(nil)
       end
 

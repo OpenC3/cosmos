@@ -124,6 +124,7 @@ Set in `.env`, or overridden per service in `compose.override.yaml`:
 | `OPENC3_REDIS_HOSTNAME`, `OPENC3_REDIS_PORT` | `openc3-redis`, `6379` | Redis / Valkey connection |
 | `OPENC3_CLOUD` | `local` | Cloud provider, for bucket and secret handling |
 | `RUBYGEMS_URL`, `PYPI_URL`, `NPM_URL`, `MAVEN_URL` | public mirrors | Package sources used at *build* time. To change the URLs COSMOS uses at *run* time, set the `rubygems_url` / `pypi_url` Admin settings |
+| `OPENC3_PYPI_ALLOW_INSECURE` | unset | Set to any value to pass uv `--allow-insecure-host` for the `pypi_url` host, for a private index with a self-signed certificate. `PIP_ENABLE_TRUSTED_HOST` is a deprecated alias |
 
 Pointing `pypi_url` (or `PYPI_URL`) at an index other than `https://pypi.org` makes that index authoritative for plugin Python dependencies: COSMOS passes uv `--no-config --no-sources`, so a plugin cannot resolve around it using an index declared in its own `[tool.uv].index` table or a `[tool.uv].sources` pin. Your index has to serve every package a plugin asks for — a plugin depending on something published only to its author's private index fails to install rather than quietly fetching from that index. This applies only where uv resolves; see [plugin Python dependencies](plugins.md#phase-2-deploy) for how a plugin shipping a `uv.lock` behaves.
 

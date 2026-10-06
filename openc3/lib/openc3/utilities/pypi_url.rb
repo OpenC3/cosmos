@@ -38,8 +38,9 @@ module OpenC3
 
     # Environment variable that opts a deployment into insecure (unverified TLS)
     # connections to the pypi index host, for operators running a private index
-    # with a self-signed certificate.
-    INSECURE_HOST_ENV = 'UV_ALLOW_INSECURE_HOST'
+    # with a self-signed certificate. OPENC3_ prefixed like our other settings,
+    # and kept out of uv's own UV_* namespace (uv reads UV_INSECURE_HOST itself).
+    INSECURE_HOST_ENV = 'OPENC3_PYPI_ALLOW_INSECURE'
 
     # Previous name for INSECURE_HOST_ENV, still honored so existing helm values
     # and compose files keep working. It was named for pip's --trusted-host, but
@@ -83,7 +84,9 @@ module OpenC3
     # @return [Boolean] whether the deployment opted into insecure connections
     #   to the pypi index host
     def self.allow_insecure_host?
-      !ENV[INSECURE_HOST_ENV].nil? || !ENV[DEPRECATED_INSECURE_HOST_ENV].nil?
+      # Empty counts as unset: compose passes both names through as
+      # ${VAR:-}, so an unset .env entry arrives as an empty string.
+      !ENV[INSECURE_HOST_ENV].to_s.empty? || !ENV[DEPRECATED_INSECURE_HOST_ENV].to_s.empty?
     end
   end
 end

@@ -35,7 +35,7 @@
 #      the mirror's access log shows only the private index was queried. The
 #      same plugin installs from the author's index at the default pypi_url.
 #   4. The self-signed index fails certificate verification without
-#      UV_ALLOW_INSECURE_HOST, and installs with it or with the deprecated
+#      OPENC3_PYPI_ALLOW_INSECURE, and installs with it or with the deprecated
 #      PIP_ENABLE_TRUSTED_HOST.
 #
 # Cases 3 and 4 resolve pypi.org and files.pythonhosted.org to 127.0.0.1 in the
@@ -374,7 +374,7 @@ run_cases() {
   # 4. Self-signed index
   run_case tls-no-opt-in fail "${TLS_INDEX}" plain "${BLOCKED_HOSTS[@]}"
   check_log tls-no-opt-in "rejected the certificate" "invalid peer certificate"
-  run_case tls-allow-insecure-host pass "${TLS_INDEX}" plain "${BLOCKED_HOSTS[@]}" -e UV_ALLOW_INSECURE_HOST=1
+  run_case tls-allow-insecure-host pass "${TLS_INDEX}" plain "${BLOCKED_HOSTS[@]}" -e OPENC3_PYPI_ALLOW_INSECURE=1
   check_log tls-allow-insecure-host "--allow-insecure-host passed" "--allow-insecure-host ${MIRROR_NAME}"
   check_log tls-allow-insecure-host "downloaded from the index" "GET /pypi/files/" mirror.log
   run_case tls-deprecated-env pass "${TLS_INDEX}" plain "${BLOCKED_HOSTS[@]}" -e PIP_ENABLE_TRUSTED_HOST=1
