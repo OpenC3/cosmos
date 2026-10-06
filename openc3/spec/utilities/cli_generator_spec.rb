@@ -126,6 +126,48 @@ module OpenC3
           .to raise_error(SystemExit)
       end
 
+      # The template README used to hardcode a Python version, which went stale
+      # and differs between the Debian and UBI images. The generator now asks
+      # the interpreter COSMOS runs (OPENC3_PYTHON_BIN) instead.
+      context "with .python-version" do
+        before(:each) do
+          @original_python_bin = ENV['OPENC3_PYTHON_BIN']
+          @fake_python = File.join(@temp_dir, 'fake_python')
+          File.write(@fake_python, "#!/bin/sh\necho 3.13\n")
+          File.chmod(0o755, @fake_python)
+        end
+
+        after(:each) do
+          ENV['OPENC3_PYTHON_BIN'] = @original_python_bin
+        end
+
+        it "pins the COSMOS python version for a python plugin" do
+          ENV['OPENC3_PYTHON_BIN'] = @fake_python
+          run_gen(['plugin', 'test-plugin', '--python'])
+          expect(File.read('.python-version')).to eql "3.13\n"
+        end
+
+        it "does not write one for a ruby plugin" do
+          ENV['OPENC3_PYTHON_BIN'] = @fake_python
+          run_gen(['plugin', 'test-plugin', '--ruby'])
+          expect(File.exist?('.python-version')).to be false
+        end
+
+        # Outside a COSMOS image there is no COSMOS Python to match.
+        it "does not write one when OPENC3_PYTHON_BIN is unset" do
+          ENV.delete('OPENC3_PYTHON_BIN')
+          run_gen(['plugin', 'test-plugin', '--python'])
+          expect(File.exist?('.python-version')).to be false
+        end
+
+        it "does not write one when the interpreter prints something unexpected" do
+          File.write(@fake_python, "#!/bin/sh\necho oops\n")
+          ENV['OPENC3_PYTHON_BIN'] = @fake_python
+          run_gen(['plugin', 'test-plugin', '--python'])
+          expect(File.exist?('.python-version')).to be false
+        end
+      end
+
       # PluginModel.install_phase2 takes the python dependency path (and builds a
       # per-plugin venv) for any plugin whose gem contains a pyproject.toml, so a
       # plugin with no python code must not ship one.

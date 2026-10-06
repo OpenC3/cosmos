@@ -60,9 +60,10 @@ are configured to do the same. Anything else needs `lib/` on the path to import 
 PYTHONPATH=lib uv run python my_script.py
 ```
 
-uv picks any installed Python that satisfies `requires-python`. To develop against the same version COSMOS
-runs, check it from your COSMOS project directory with `docker compose exec openc3-operator python3 --version`
-and pin that minor version locally with `uv python pin <version>`, which writes a `.python-version` file.
+`cli generate` writes a `.python-version` file pinning the Python version of the COSMOS image it ran in, so
+uv develops against the same Python COSMOS runs. If you upgrade to a COSMOS release with a newer Python, update
+it with `uv python pin <version>`. Without that file uv picks any installed Python that satisfies
+`requires-python`.
 
 The `openc3` dev dependency provides the COSMOS Python API for your editor, tests and `ty`. Pin it to the
 COSMOS version you deploy to so they see the same API, e.g. `uv add --group dev "openc3==X.Y.Z"`.

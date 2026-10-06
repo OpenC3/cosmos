@@ -11,6 +11,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'open3'
+
 module OpenC3
   class CliGenerator
     GENERATORS = %w(plugin target microservice widget conversion processor limits_response tool tool_vue tool_angular tool_react tool_svelte command_validator)
@@ -426,8 +428,26 @@ module OpenC3
         end
       end
 
+      write_python_version if @@language == 'py'
+
       puts "Plugin #{plugin_name} successfully generated!"
       return plugin_name
+    end
+
+    # Pin the plugin's local uv environment to the Python minor version COSMOS
+    # runs, read from the interpreter itself rather than hardcoded in the
+    # template: it differs between images (Debian vs UBI) and moves with the base
+    # image. `cli generate` runs in the cmd-tlm-api image, which sets
+    # OPENC3_PYTHON_BIN. Outside an image (e.g. the gem installed on a dev
+    # machine) there is no COSMOS Python to match, so no file is written.
+    def self.write_python_version
+      python_bin = ENV['OPENC3_PYTHON_BIN']
+      return if python_bin.nil? || !File.executable?(python_bin)
+      version, status = Open3.capture2(python_bin, '-c', 'import sys; print("%d.%d" % sys.version_info[:2])')
+      return unless status.success? && version.strip =~ /\A\d+\.\d+\z/
+      File.write('.python-version', "#{version.strip}\n")
+    rescue SystemCallError
+      nil
     end
 
     def self.generate_target(args)
