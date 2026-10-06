@@ -1,0 +1,5 @@
+PAYLOAD
+Payload_X recieves the command.
+Payload_X then sends a NACK message back.
+
+Payload_X does the command?

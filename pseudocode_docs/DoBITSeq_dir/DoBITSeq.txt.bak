@@ -1,0 +1,26 @@
+GROUND
+Logical Ground Seqment sends Do_BIT message to Command and 
+    Data Handling (CDH) subsystem (i.e. host)
+
+HOST
+Host messages the Payload_X (emulator) using the Do_BIT message
+
+PAYLOAD
+Payload_X recieves the Do_BIT message. Then sends the ACK command with
+    id of the Do_BIT message
+
+Payload_X then takes t time to respond with BIT_Complete_Status
+// POSSIBLE FAULT LOCATION
+Payload_X just does not send back a message or is late on the message
+
+HOST
+Host recieves ACK message with Do_BIT message_ID.
+Host polls until payload responds at 1Hz (1 sec) with BIT_Complete_Status
+
+Host handles the timeout and executes fault response if Do_BIT Timeout expired
+    if (timeout_flag){
+        execute_fault_response(); // could look like remessaging, reference NACK
+    }
+
+HOST
+Host starts sending space vehicle telemetry to the ground system.

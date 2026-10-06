@@ -1,0 +1,12 @@
+HOST
+Host messages the Payload_X (emulator) using the Do_BIT message
+
+Host recieves ACK message with Do_BIT message_ID.
+Host polls until payload responds at 1Hz (1 sec) with BIT_Complete_Status
+
+Host handles the timeout and executes fault response if Do_BIT Timeout expired
+    if (timeout_flag){
+        execute_fault_response(); // could look like remessaging, reference NACK
+    }
+
+Host starts sending space vehicle telemetry to the ground system.

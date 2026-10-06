@@ -1,0 +1,18 @@
+PAYLOAD
+Payload_X recieves the power_up message. Then sends the ACK command with
+    id of the power_up message
+
+Payload_X recieves the ID_exchange message, then processes the message
+    That can look like verifying the SW_version, storing the UUID of the platform
+        and the serial_number
+
+Payload_X then send the ID_exchange message back to the host system
+
+// POSSIBLE FAULT LOCATION
+* Payload does not send back a message
+
+Payload_X recieves the Offset message
+Payload_X sends the ACK message (message_ID = 5)
+
+Payload_X starts recieving PPS singal, Time message and State message at 1Hz
+Payload_X starts sending Telemetry_Update message at 1Hz

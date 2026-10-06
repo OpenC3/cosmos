@@ -1,0 +1,48 @@
+GROUND
+Logical Ground Seqment sends Start_File_Transfer message to Command and 
+    Data Handling (CDH) subsystem (i.e. host).
+
+HOST
+Host messages the Payload_X (emulator) using the Start_File_Transfer message
+    with direction = download. 
+
+PAYLOAD
+Payload_X recieves the Start_File_Transfer message. Then sends the ACK command with
+    id of the Start_File_Transfer message
+
+Payload_X starts sending File Packets
+// POTENTIAL FAULT INJECTION
+* Sending missing Packets
+* Sending out of order Packets
+* Not sending anything
+* Taking too long to send files
+
+HOST
+Host recieves ACK message with Start_File_Transfer message_ID.
+Host polls until Payload sends SFTP Transfer Completes, start recieving Packets
+while (File_Transfer_Complete_Status.SFTP_status == 0)
+    if (File_Transfer_Time >= File_Transfer_Timeout){
+        Resend_Last_response for message_ID File_Transfer_Complete_Status
+        // Use of timeout flag here is to verify if that the 
+        if (timeout_flag){
+            Send Return_to_Idle with message_ID=Start_File_Transfer
+            Wait for ACK from payload
+            // POSSIBLE FAULT INJECTION
+            * No ACK knowledge message (Unless we always believe that the 
+                ACK message can never fail)
+        }
+        timeout_flag = 1;
+        File_Transfer_Time = 0;
+    }
+    if (SFTP_status = 1){
+        // Fault response
+        break;
+    }
+
+
+PAYLOAD
+Payload_X completes the file transfer and send the File_Transfer_Complete_Status 
+    message with SFTP_status = 0 (for success) or SFTP_status = 1 (for failure) 
+
+HOST
+Host starts sending space vehicle telemetry to the ground system.

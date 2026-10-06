@@ -1,0 +1,37 @@
+GROUND
+Logical Ground Seqment sends Power message to Command and 
+    Data Handling (CDH) subsystem (i.e. host).
+
+HOST
+Host messages the Payload_X (emulator) using the Shutdown message. 
+
+PAYLOAD
+Payload_X recieves the Shutdown message. Then sends the ACK command with
+    id of the Shutdown message
+
+HOST
+Host recieves ACK message with Shutdown message_ID.
+Host polls until payload responds at 1 Hz, start ID_exchange time
+    if (ID_exchange time >= ID_exchange timout){
+        // flag or send an interrupt, using flag for simplicity
+        timeout_flag = 1;
+        break;
+    }
+
+PAYLOAD
+Payload_X then send the ID_exchange message back to the host system, confirming
+    the idl_status=confirmed
+// POSSIBLE FAULT LOCATION
+Payload_X just does not send back a message
+
+HOST
+Host handles the timeout and executes fault response
+    if (timeout_flag){
+        execute_fault_response(); // could look like remessaging, reference NACK
+    }
+    
+PAYLOAD
+Payload_X performs the Shutdown
+
+HOST
+Host starts sending space vehicle telemerty to the ground system.

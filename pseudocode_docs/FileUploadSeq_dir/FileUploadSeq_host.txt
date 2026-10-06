@@ -1,0 +1,26 @@
+HOST
+Host sends the Payload_X (emulator) using the Start_File_Transfer message
+    with direction = upload. 
+
+Host recieves ACK message with Start_File_Transfer message_ID.
+Host polls until Payload sends SFTP Transfer Completes, start recieving Packets
+while (File_Transfer_Complete_Status.SFTP_status == 0)
+    if (File_Transfer_Time >= File_Transfer_Timeout){
+        Resend_Last_response for message_ID File_Transfer_Complete_Status
+        // Use of timeout flag here is to verify if that the 
+        if (timeout_flag){
+            Send Return_to_Idle with message_ID=Start_File_Transfer
+            Wait for ACK from payload
+            // POSSIBLE FAULT INJECTION
+            * No ACK knowledge message (Unless we always believe that the 
+                ACK message can never fail)
+        }
+        timeout_flag = 1;
+        File_Transfer_Time = 0;
+    }
+    if (SFTP_status = 1){
+        // Fault response
+        break;
+    }
+
+Host starts sending space vehicle telemerty to the ground system.

@@ -1,0 +1,7 @@
+PAYLOAD
+Payload_X recieves the Do_BIT message. Then sends the ACK command with
+    id of the Do_BIT message
+
+Payload_X then takes t time to respond with BIT_Complete_Status
+// POSSIBLE FAULT LOCATION
+Payload_X just does not send back a message or is late on the message

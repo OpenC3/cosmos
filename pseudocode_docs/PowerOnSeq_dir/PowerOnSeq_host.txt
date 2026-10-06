@@ -1,0 +1,23 @@
+HOST
+Host powers on the Payload_X (emulator) using the power_up message. 
+
+Host recieves ACK message and sends ID_Exchange message
+Host polls until payload responds at 1 Hz, start ID_exchange time
+    if (ID_exchange time >= ID_exchange timout){
+        // flag or send an interrupt, using flag for simplicity
+        timeout_flag = 1;
+        break;
+    }
+
+Host handles the timeout and executes fault response
+    if (timeout_flag){
+        execute_fault_response(); // could look like remessaging, reference NACK
+    }
+Host recieves ID_Exchange message and send the offset message
+/* might have to wait for the ACK for the offset message (message_ID = 5) or 
+    just send it and continue? */
+
+Host loops at 1Hz (every second) sending the PPS signal, Time message 
+    and State message
+
+Host starts sending space vehicle telemetry to the ground system.

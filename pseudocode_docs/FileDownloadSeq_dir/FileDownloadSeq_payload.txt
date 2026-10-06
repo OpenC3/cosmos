@@ -1,0 +1,14 @@
+PAYLOAD
+Payload_X recieves the Start_File_Transfer message. Then sends the 
+    ACK command with id of the Start_File_Transfer message
+
+Payload_X starts sending File Packets
+// POTENTIAL FAULT INJECTION
+* Sending missing Packets
+* Sending out of order Packets
+* Not sending anything
+* Taking too long to send files
+
+Payload_X completes the file transfer and send the 
+    File_Transfer_Complete_Status message with SFTP_status = 0 (for 
+    success) or SFTP_status = 1 (for failure)

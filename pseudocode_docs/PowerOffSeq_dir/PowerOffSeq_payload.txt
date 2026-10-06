@@ -1,0 +1,10 @@
+PAYLOAD
+Payload_X recieves the Shutdown message. Then sends the ACK command with
+    id of the Shutdown message
+
+Payload_X then send the ID_exchange message back to the host system, confirming
+    the idl_status=confirmed
+// POSSIBLE FAULT LOCATION
+Payload_X just does not send back a message
+
+Payload_X performs the Shutdown

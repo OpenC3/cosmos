@@ -1,0 +1,25 @@
+GROUND
+Logical Ground Seqment sends commands to Command and 
+    Data Handling (CDH) subsystem (i.e. host).
+
+HOST
+Host sends a payload command. 
+
+PAYLOAD
+Payload_X then sends a NACK message back.
+
+HOST
+Host recieves NACK message.
+Resends the command and polls until recieves a message (POLLING IS AN ASSUMPTION).
+    while(polling at 1Hz until break){
+        if (Resend is unsuccessful){
+            // Recieved a second NACK message
+            execute_fault_response();
+            break;
+        }
+    }
+    // Send space vehicle telemerty to the ground system
+    
+
+PAYLOAD
+Payload_X does the command?
