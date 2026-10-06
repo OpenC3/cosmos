@@ -39,6 +39,17 @@ class TestHttpClientInterface(unittest.TestCase):
         i.disconnect()
         self.assertFalse(i.connected())
 
+    def test_connect_discards_stale_disconnect_markers(self):
+        i = HttpClientInterface("example.com")
+        i.connect()
+        i.disconnect()
+        self.assertEqual(i.read_interface(), (None, None))
+        # A second disconnect queues a marker nothing consumes
+        i.disconnect()
+        i.connect()
+        self.assertTrue(i.response_queue.empty())
+        i.disconnect()
+
     def test_default_parameters(self):
         i = HttpClientInterface("example.com")
         self.assertEqual(i.hostname, "example.com")
