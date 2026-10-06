@@ -1,0 +1,21 @@
+SCREEN AUTO AUTO 1.0
+
+TITLE "SENSOR_KIT Commanding"
+
+VERTICALBOX "LED Control"
+  LABEL "Control the built-in LED on the Arduino"
+  HORIZONTAL
+    BUTTON 'LED ON' 'api.cmd("SENSOR_KIT SET_LED with STATE 1")'
+    BUTTON 'LED OFF' 'api.cmd("SENSOR_KIT SET_LED with STATE 0")'
+  END
+END
+SETTING BACKCOLOR 163 185 163
+
+VERTICALBOX "Buzzer Control"
+  LABEL "Control the buzzer module"
+  HORIZONTAL
+    BUTTON 'Buzzer ON' 'api.cmd("SENSOR_KIT TRIGGER_BUZZER with STATE 1")'
+    BUTTON 'Buzzer OFF' 'api.cmd("SENSOR_KIT TRIGGER_BUZZER with STATE 0")'
+  END
+END
+SETTING BACKCOLOR 185 163 163

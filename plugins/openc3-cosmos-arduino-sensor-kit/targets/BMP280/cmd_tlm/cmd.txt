@@ -1,0 +1,2 @@
+COMMAND BMP280 SET_OLED LITTLE_ENDIAN "Set Screen Message"
+    APPEND_PARAMETER    OLED_TEXT 0       STRING          "SierraSpace" "The text to display"

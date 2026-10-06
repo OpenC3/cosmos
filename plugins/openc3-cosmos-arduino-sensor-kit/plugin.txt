@@ -1,0 +1,9 @@
+# Set VARIABLEs here to allow variation in your plugin
+
+VARIABLE bmp280_target_name BMP280
+
+TARGET BMP280 <%= bmp280_target_name %>
+
+INTERFACE <%= bmp280_target_name %>_INT tcpip_client_interface.rb host.docker.internal 2950 2950 10.0 nil
+  MAP_TARGET <%= bmp280_target_name %>
+  PROTOCOL READ LengthProtocol 32 8 5 1 LITTLE_ENDIAN 5 0x3412CDAB nil false

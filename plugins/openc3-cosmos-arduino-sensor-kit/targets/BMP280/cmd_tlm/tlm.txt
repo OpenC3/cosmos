@@ -1,0 +1,7 @@
+TELEMETRY SENSOR_KIT BMP280 LITTLE_ENDIAN "BMP280 Packet with Temperature, Pressure, and Altitude"
+  # Keyword      Name     BitSize Type  ID  Description
+  APPEND_ID_ITEM ID       8       UINT  1   "Identifier"
+  APPEND_ITEM    TEMP_C   32      FLOAT     "Temperature Reading"
+    UNITS Celsius C
+  APPEND_ITEM    HUMID_R  32      FLOAT     "Humidity Relative Reading"
+    UNITS Percent %
