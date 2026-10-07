@@ -49,6 +49,17 @@ ENV COVERAGE_BUILD=${COVERAGE_BUILD}
 # Build @openc3/js-common and @openc3/vue-common
 RUN pnpm build:common
 
+# docker-package-build.sh relocks each plugin's uv.lock against PYPI_URL, which
+# normally arrives as an ENV baked into the openc3-ruby base image. A build
+# against a base image that did not see the current .env - a selective rebuild
+# of just this image, or one pointed at a published openc3-node - would
+# otherwise silently relock against public PyPI. Accept an explicit override;
+# leaving it unset keeps whatever the base image carries. The ENV is inherited
+# by every openc3-tmp* stage below, which is where the plugin builds run.
+ARG PYPI_URL_OVERRIDE=
+ENV PYPI_URL=${PYPI_URL_OVERRIDE:-$PYPI_URL}
+ENV UV_DEFAULT_INDEX=${PYPI_URL}/simple
+
 # Copy in helper scripts for building
 COPY ./plugins/docker-package-build.sh ./plugins/eslint.config.mjs ./
 RUN chmod +x ./docker-package-build.sh
