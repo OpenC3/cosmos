@@ -663,8 +663,8 @@ RUBY
             arguments: common_args,
             notes: common_note,
             example: [
-              "cli generate #{args[0]} 'Data Viewer'",
-              "Creates: tools/dataviewer/ (#{framework}-based)",
+              "cli generate #{args[0]} 'Mission Planner'",
+              "Creates: tools/missionplanner/ (#{framework}-based)",
             ],
             in_plugin_extra: 'For other tool types, see: cli generate tool --help',
             docs: docs_url,
@@ -687,8 +687,8 @@ RUBY
               ],
             },
             example: [
-              "cli generate tool 'Data Viewer'",
-              'Creates: tools/dataviewer/',
+              "cli generate tool 'Mission Planner'",
+              'Creates: tools/missionplanner/',
             ],
             docs: docs_url,
             exit_code: (args[1].nil? ? 1 : 0),

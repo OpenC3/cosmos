@@ -278,7 +278,10 @@ module OpenC3
 
         if File.exist?(pyproject_path) || File.exist?(requirements_path)
           pypi_url = resolve_pypi_url(scope: scope)
-          unless validate_only
+          # Skipped for any dry run: diff_only runs inline in an HTTP request, so
+          # a slow or unreachable PyPI would time it out, and it must not mutate
+          # the plugin venv.
+          unless dry_run
             pypi_args = build_pypi_args(pypi_url)
 
             # Install Python dependencies into an isolated per-plugin venv when UV
@@ -428,11 +431,9 @@ module OpenC3
     # Dry run: which modified files would this plugin's install supersede?
     # Returns a list of "TARGET/path" names whose live (modified) content
     # differs from the rendered plugin content. Read-only; no side effects.
+    # Errors propagate so callers can tell a failed check from an empty diff.
     def self.modified_diff(plugin_hash, scope:)
       install_phase2(plugin_hash, scope: scope, diff_only: true)
-    rescue => e
-      Logger.warn("PluginModel.modified_diff failed: #{e.message}")
-      []
     end
 
     def initialize(
