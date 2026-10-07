@@ -99,6 +99,9 @@ test('shows and hides built-in tools', async ({ page, utils }) => {
   await expect(page.locator('id=openc3-tool')).not.toContainText(
     'openc3-cosmos-tool-tlmviewer',
   )
+  await expect(page.locator('id=openc3-tool')).not.toContainText(
+    'openc3-cosmos-tool-dashboards',
+  )
 
   await page.locator('text=Show Default Tools').click()
   await expect(page.locator('id=openc3-tool')).toContainText(
@@ -178,6 +181,9 @@ test('shows and hides built-in tools', async ({ page, utils }) => {
   )
   await expect(page.locator('id=openc3-tool')).toContainText(
     'openc3-cosmos-tool-tlmviewer',
+  )
+  await expect(page.locator('id=openc3-tool')).toContainText(
+    'openc3-cosmos-tool-dashboards',
   )
 })
 

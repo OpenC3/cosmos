@@ -230,6 +230,7 @@ export default {
         'openc3-cosmos-tool-cmdqueue', // Enterprise only
         'openc3-cosmos-tool-cmdhistory', // Enterprise only
         'openc3-cosmos-tool-cmdtlmserver',
+        'openc3-cosmos-tool-dashboards',
         'openc3-cosmos-tool-dataextractor',
         'openc3-cosmos-tool-dataviewer',
         'openc3-cosmos-tool-docs',

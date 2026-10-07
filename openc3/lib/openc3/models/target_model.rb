@@ -708,9 +708,9 @@ module OpenC3
               end
             end
           rescue => e
-            # ERB error parsing a screen is just a logger error because life can go on
+            # ERB error parsing a screen or dashboard is just a logger error because life can go on
             # With cmd/tlm or scripts this is a serious error and we raise
-            if (filename.include?('/screens/'))
+            if (filename.include?('/screens/') or filename.include?('/dashboards/'))
               Logger.error("ERB error parsing #{key} due to #{e.message}")
             else
               raise "ERB error parsing #{key} due to #{e.message}"

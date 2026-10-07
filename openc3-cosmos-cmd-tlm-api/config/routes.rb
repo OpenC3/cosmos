@@ -202,6 +202,13 @@ Rails.application.routes.draw do
     post "/screen", to: "screens#create"
     delete '/screen/:target/:screen', to: 'screens#destroy'
 
+    # Custom panel types from plugins (PANEL)
+    get "/panels", to: "panels#index"
+    get "/dashboards", to: "dashboards#index"
+    get "/dashboard/:target/:dashboard", to: "dashboards#show"
+    post "/dashboard", to: "dashboards#create"
+    delete "/dashboard/:target/:dashboard", to: "dashboards#destroy"
+
     get "/notebooks", to: "notebooks#index"
     get "/notebooks/running", to: "notebooks#running"
     get "/notebooks/completed", to: "notebooks#completed"

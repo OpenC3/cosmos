@@ -260,6 +260,52 @@ importers:
         specifier: 3.5.43
         version: 3.5.43(typescript@6.0.3)
 
+  packages/openc3-cosmos-tool-dashboards:
+    dependencies:
+      '@astrouxds/astro-web-components':
+        specifier: 8.0.0
+        version: 8.0.0
+      '@fontsource/ibm-plex-mono':
+        specifier: 5.3.0
+        version: 5.3.0
+      '@fontsource/ibm-plex-sans':
+        specifier: 5.3.0
+        version: 5.3.0
+      '@openc3/js-common':
+        specifier: workspace:*
+        version: link:../openc3-js-common
+      '@openc3/vue-common':
+        specifier: workspace:*
+        version: link:../openc3-vue-common
+      axios:
+        specifier: 1.20.0
+        version: 1.20.0(debug@4.4.3)
+      single-spa-vue:
+        specifier: 3.0.1
+        version: 3.0.1
+      uplot:
+        specifier: 1.6.32
+        version: 1.6.32
+    devDependencies:
+      '@vitejs/plugin-vue':
+        specifier: 6.0.9
+        version: 6.0.9(vite@7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0))(vue@3.5.43(typescript@6.0.3))
+      prettier:
+        specifier: 3.9.6
+        version: 3.9.6
+      rollup-plugin-sourcemaps2:
+        specifier: ^0.5.8
+        version: 0.5.8(@types/node@25.0.3)(rollup@4.60.4)
+      sass:
+        specifier: 1.105.0
+        version: 1.105.0
+      vite:
+        specifier: 7.3.6
+        version: 7.3.6(@types/node@25.0.3)(lightningcss@1.32.0)(sass@1.105.0)
+      vue:
+        specifier: 3.5.43
+        version: 3.5.43(typescript@6.0.3)
+
   packages/openc3-cosmos-tool-dataextractor:
     dependencies:
       '@astrouxds/astro-web-components':
@@ -1168,6 +1214,12 @@ packages:
 
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
+
+  '@fontsource/ibm-plex-mono@5.3.0':
+    resolution: {integrity: sha512-eTgnZjZEGk1QtD3ZstF+Vclo2HLAni8YMy34/DxllwZvyz1lR/1RF/xTiAquOBO7MvqBx8D2Ig2WCPMVfdZu7Q==}
+
+  '@fontsource/ibm-plex-sans@5.3.0':
+    resolution: {integrity: sha512-CbE4CbbEEZJX860XyUiRpsksXIQR8Rp2XDva2VO53NJox9tVNtusrysd2x5YkUEY3ErQ66W1IiiQL8/wihhw5w==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -2736,6 +2788,10 @@ snapshots:
       '@floating-ui/core': 1.7.3
 
   '@floating-ui/utils@0.2.10': {}
+
+  '@fontsource/ibm-plex-mono@5.3.0': {}
+
+  '@fontsource/ibm-plex-sans@5.3.0': {}
 
   '@humanfs/core@0.19.2':
     dependencies:

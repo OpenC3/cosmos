@@ -32,6 +32,7 @@ import GraphEditItemDialog from './GraphEditItemDialog.vue'
 import LogMessages from './LogMessages.vue'
 import NotFound from './NotFound.vue'
 import OpenC3TimePicker from './OpenC3TimePicker.vue'
+import PlaybackControls from './PlaybackControls.vue'
 import Openc3Screen from './Openc3Screen.vue'
 import OutputDialog from './OutputDialog.vue'
 import ScriptChooser from './ScriptChooser.vue'
@@ -66,6 +67,7 @@ export {
   LogMessages,
   NotFound,
   OpenC3TimePicker,
+  PlaybackControls,
   Openc3Screen,
   OutputDialog,
   ScriptChooser,

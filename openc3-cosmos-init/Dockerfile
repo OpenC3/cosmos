@@ -20,6 +20,7 @@ COPY ./plugins/packages/openc3-cosmos-tool-admin/*.json packages/openc3-cosmos-t
 COPY ./plugins/packages/openc3-cosmos-tool-bucketexplorer/*.json packages/openc3-cosmos-tool-bucketexplorer/
 COPY ./plugins/packages/openc3-cosmos-tool-cmdsender/*.json packages/openc3-cosmos-tool-cmdsender/
 COPY ./plugins/packages/openc3-cosmos-tool-cmdtlmserver/*.json packages/openc3-cosmos-tool-cmdtlmserver/
+COPY ./plugins/packages/openc3-cosmos-tool-dashboards/*.json packages/openc3-cosmos-tool-dashboards/
 COPY ./plugins/packages/openc3-cosmos-tool-dataextractor/*.json packages/openc3-cosmos-tool-dataextractor/
 COPY ./plugins/packages/openc3-cosmos-tool-dataviewer/*.json packages/openc3-cosmos-tool-dataviewer/
 COPY ./plugins/packages/openc3-cosmos-tool-iframe/*.json packages/openc3-cosmos-tool-iframe/
@@ -111,6 +112,10 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-tlmgrapher"]
 # Build tlmviewer tool
 COPY ./plugins/packages/openc3-cosmos-tool-tlmviewer/ packages/openc3-cosmos-tool-tlmviewer
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-tlmviewer"]
+
+# Build dashboards tool
+COPY ./plugins/packages/openc3-cosmos-tool-dashboards/ packages/openc3-cosmos-tool-dashboards/
+RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-dashboards"]
 
 # Build scriptrunner tool
 COPY ./plugins/packages/openc3-cosmos-tool-scriptrunner/ packages/openc3-cosmos-tool-scriptrunner/

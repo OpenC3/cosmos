@@ -1,0 +1,70 @@
+// Copyright 2026 OpenC3, Inc.
+// All Rights Reserved.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See LICENSE.md for more details.
+//
+// This file may also be used under the terms of a commercial license
+// if purchased from OpenC3, Inc.
+
+// Only what Vuetify utility classes can't express lives here. Colors come
+// from the Astro status tokens (--color-status-*) and the Vuetify theme, which
+// already match the Dashboards style system.
+.dashboards-root {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  // Phones: one step smaller everywhere so values fit instead of truncating
+  @media (max-width: 600px) {
+    font-size: 12px;
+  }
+  .mono {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+
+  // Status symbols, one shape per level (see status.js)
+  .sym {
+    width: 12px;
+    height: 12px;
+    flex: none;
+    path {
+      fill-rule: evenodd;
+    }
+  }
+  @each $level in critical, serious, caution, normal, standby, off {
+    .s-#{$level} path {
+      fill: var(--color-status-#{$level});
+    }
+  }
+
+  // Panel border for the worst status in the panel
+  .ring-caution {
+    border-color: color-mix(in srgb, var(--color-status-caution) 55%, transparent) !important;
+  }
+  .ring-critical {
+    border-color: color-mix(in srgb, var(--color-status-critical) 70%, transparent) !important;
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-status-critical) 30%, transparent),
+      0 10px 30px -14px color-mix(in srgb, var(--color-status-critical) 70%, transparent);
+  }
+
+  // Row tints for out of limits values
+  .t-critical {
+    background: color-mix(in srgb, var(--color-status-critical) 12%, transparent);
+  }
+  .t-caution {
+    background: color-mix(in srgb, var(--color-status-caution) 6%, transparent);
+  }
+
+  // Thin dividers between rows, matching the Vuetify border color
+  .db-row + .db-row {
+    border-top: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
+  }
+}
