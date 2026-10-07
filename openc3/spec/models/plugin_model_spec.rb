@@ -381,10 +381,9 @@ module OpenC3
         expect(PluginModel.modified_diff({"name" => "name"}, scope: "DEFAULT")).to eql(["TGT/screen.txt"])
       end
 
-      it "returns an empty array and logs when install_phase2 raises" do
+      it "raises when install_phase2 raises rather than reporting no differences" do
         expect(PluginModel).to receive(:install_phase2).and_raise("boom")
-        expect(Logger).to receive(:warn).with(/modified_diff failed: boom/)
-        expect(PluginModel.modified_diff({"name" => "name"}, scope: "DEFAULT")).to eql([])
+        expect { PluginModel.modified_diff({"name" => "name"}, scope: "DEFAULT") }.to raise_error("boom")
       end
     end
 

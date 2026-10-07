@@ -360,6 +360,24 @@ module OpenC3
         end
       end
 
+      describe "#version_store_available?" do
+        it "is true when the store is present and enabled" do
+          stub_const("VersionStore", double("VersionStore", enabled?: true))
+          expect(model.send(:version_store_available?)).to be true
+        end
+
+        it "is false when the store is present but disabled" do
+          stub_const("VersionStore", double("VersionStore", enabled?: false))
+          expect(model.send(:version_store_available?)).to be false
+        end
+
+        it "is false when the enterprise store gem is absent" do
+          hide_const("VersionStore") if defined?(VersionStore)
+          allow(model).to receive(:require).with("openc3-enterprise/utilities/version_store").and_raise(LoadError)
+          expect(model.send(:version_store_available?)).to be false
+        end
+      end
+
       describe "#apply_upgrade_version" do
         let(:store) { double("VersionStore") }
         before(:each) { stub_const("VersionStore", store) }
