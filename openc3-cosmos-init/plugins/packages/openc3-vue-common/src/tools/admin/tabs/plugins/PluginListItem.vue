@@ -178,9 +178,16 @@ export default {
       if (this.title) {
         return this.title
       }
-      return this.name
-        .replace(/^openc3-cosmos-/, '')
-        .replace(/-?\d+\.\d+\.\d+(?:\.pre\.beta\d+\.\d+)?\.gem(?:__\d+)?$/, '') // '-6.6.1.pre.beta0.20250801182255.gem__20250801182444' or '6.6.1.gem'
+      return (
+        this.name
+          .replace(/^openc3-cosmos-/, '')
+          // The (^|\D) prefix pins the match to the start of the version number so
+          // the engine doesn't retry inside it: '-6.6.1.pre.beta0.20250801182255.gem__20250801182444' or '6.6.1.gem'
+          .replace(
+            /(^|\D)-?\d+\.\d+\.\d+(?:\.pre\.beta\d+\.\d+)?\.gem(?:__\d+)?$/,
+            '$1',
+          )
+      )
     },
     getMicroservicesForPlugin: function () {
       const names = []

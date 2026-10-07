@@ -20,12 +20,17 @@
         <v-spacer />
       </v-toolbar>
       <v-card-text class="pa-3 card-container">
-        <!-- Deleting the plugin: offer to delete the orphaned modified files
-             (unchanged, destructive behavior). -->
-        <template v-if="pluginDelete">
+        <!-- Deleting the plugin, or upgrading without Version History (Core,
+             or Enterprise with it disabled): offer to delete the modified
+             files (destructive). Kept modified files override the plugin. -->
+        <template v-if="deleteFlow">
           <div>
             Plugin {{ plugin }} has modified files. Would you like to delete the
             existing modified files?
+          </div>
+          <div v-if="!pluginDelete" class="mt-2">
+            Modified files that are not deleted continue to override the new
+            plugin's versions of those files.
           </div>
           <v-list-item
             v-for="(target, index) in modifiedTargets"
@@ -49,13 +54,18 @@
           />
         </template>
 
-        <!-- Upgrading: warn (no options) about modified files that actually
-             differ from the new plugin. The plugin's version is taken and the
-             prior content saved to Version History. -->
+        <!-- Upgrading with Version History: warn (no options) about modified
+             files that actually differ from the new plugin. The plugin's
+             version is taken and the prior content saved to Version History. -->
         <template v-else>
           <div v-if="loading" class="d-flex align-center py-2">
             <v-progress-circular indeterminate size="20" class="mr-3" />
             Checking which modified files differ from the new plugin...
+          </div>
+          <div v-else-if="diffError" data-test="modified-plugin-diff-error">
+            Unable to check which of {{ plugin }}'s modified files differ from
+            the new plugin: {{ diffError }}. If you continue, all modified files
+            are kept and continue to override the new plugin's versions.
           </div>
           <div v-else-if="diffFiles.length === 0">
             None of {{ plugin }}'s modified files conflict with the new plugin.
@@ -122,6 +132,9 @@ export default {
       default: null,
     },
     pluginDelete: Boolean,
+    // Whether the Enterprise Version History backend is enabled. Without it
+    // an upgrade can't preserve modified content, so offer deletion instead.
+    versionHistory: Boolean,
   },
   emits: ['update:modelValue', 'submit', 'cancel'],
   data() {
@@ -133,9 +146,13 @@ export default {
       // the incoming plugin.
       loading: false,
       diffFiles: [],
+      diffError: null,
     }
   },
   computed: {
+    deleteFlow() {
+      return this.pluginDelete || !this.versionHistory
+    },
     show: {
       get() {
         return this.modelValue
@@ -146,7 +163,7 @@ export default {
     },
   },
   created() {
-    if (this.pluginDelete) {
+    if (this.deleteFlow) {
       this.loadModifiedFiles()
     } else {
       this.loadDiff()
@@ -181,12 +198,19 @@ export default {
       try {
         const response = await Api.post('/openc3-api/plugins/modified_diff', {
           data: { plugin_hash: JSON.stringify(this.pluginHash) },
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            // Reported inline in the dialog rather than the global banner
+            'Ignore-Errors': '500,502,503,504',
+          },
         })
         this.diffFiles = response.data.files || []
-      } catch {
-        // If the dry run fails, fall back to letting the install proceed with
-        // no version-history capture rather than blocking the upgrade.
+      } catch (error) {
+        // Report the failure rather than claiming no conflicts. The install
+        // can still proceed; with no files listed, every modified file is kept.
         this.diffFiles = []
+        this.diffError = error.response?.data?.message || error.message
       } finally {
         this.loading = false
       }
@@ -198,7 +222,7 @@ export default {
     submit() {
       let installFromPlugin = []
       const deleteFiles = []
-      if (this.pluginDelete) {
+      if (this.deleteFlow) {
         if (this.deleteModified) {
           for (const target of this.modifiedTargets) {
             target.files.forEach((f) => deleteFiles.push(f.fullName))

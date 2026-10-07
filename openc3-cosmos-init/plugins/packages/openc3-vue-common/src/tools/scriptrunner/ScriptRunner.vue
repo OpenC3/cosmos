@@ -1906,8 +1906,10 @@ export default {
         const line = this.editor.session.getLine(this.commandEditor.editLine)
         const indent = line.match(/^\s*/)[0] // Preserve indentation
         // Extract trailing comment if present
-        const commentMatch = line.match(/\s+#.*$/)
-        const trailingComment = commentMatch ? commentMatch[0] : ''
+        // The leading (?:^|\S) pins the match to the start of the whitespace run
+        // so the engine doesn't retry at every position inside it
+        const commentMatch = line.match(/(?:^|\S)(\s+#.*)$/)
+        const trailingComment = commentMatch ? commentMatch[1] : ''
         const newLine = `${indent}cmd("${commandString}")${trailingComment}`
         const Range = this.Range
         this.editor.session.replace(
@@ -3502,7 +3504,16 @@ export default {
         if (this.showPythonVenv) {
           data.pythonVenv = this.pythonVenv
         }
-        await Api.post(`/script-api/scripts/${this.filename}`, { data })
+        await Api.post(`/script-api/scripts/${this.filename}`, {
+          data,
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            // A 403 (approved script, admin-only area) is shown as an alert
+            // below, so skip the global network error banner
+            'Ignore-Errors': '403',
+          },
+        })
           .then((response) => {
             if (response.status == 200) {
               if (response.data.suites) {

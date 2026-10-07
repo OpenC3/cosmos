@@ -237,3 +237,77 @@ class TestCreateTableConvertedColumns(unittest.TestCase):
         }
         sql = self._create(item, "TLM")
         self.assertNotIn("VALUE__C", sql)
+
+
+class TestHandleIngressError(unittest.TestCase):
+    """handle_ingress_error parses the offending table and column out of the
+    QuestDB error message before casting the pending row to fit the column."""
+
+    def _client(self, pending_rows=None):
+        # Bypass __init__ so no connection is required
+        client = QuestDBClient.__new__(QuestDBClient)
+        client.pending_rows = pending_rows if pending_rows is not None else []
+        client.varchar_columns = {}
+        self.logs = []
+        client._log_warn = lambda msg: self.logs.append(msg)
+        client._log_error = lambda msg: self.logs.append(msg)
+        client._log_info = lambda msg: self.logs.append(msg)
+        client._reconnect_and_retry_pending = lambda: self.logs.append("retried")
+        return client
+
+    @staticmethod
+    def _error(message):
+        return type("IngressError", (Exception,), {"__str__": lambda self: message})()
+
+    CAST_ERROR = (
+        "error in line 1: table: INST__HEALTH_STATUS, column: TEMP1; "
+        "cast error from protocol type: DOUBLE to column type: LONG"
+    )
+
+    def test_parses_the_table_and_column_from_the_error(self):
+        client = self._client()
+        self.assertFalse(client.handle_ingress_error(self._error(self.CAST_ERROR)))
+        self.assertIn(
+            "Could not find column TEMP1 in pending rows for table INST__HEALTH_STATUS",
+            "\n".join(self.logs),
+        )
+
+    def test_casts_the_value_in_the_matching_pending_row(self):
+        columns = {"TEMP1": 1.5}
+        client = self._client([("INST__HEALTH_STATUS", columns, 0)])
+        self.assertTrue(client.handle_ingress_error(self._error(self.CAST_ERROR)))
+        self.assertEqual(columns["TEMP1"], 1)
+        self.assertIn("retried", self.logs)
+
+    def test_leaves_rows_for_other_tables_alone(self):
+        columns = {"TEMP1": 1.5}
+        client = self._client([("INST__ADCS", columns, 0)])
+        self.assertFalse(client.handle_ingress_error(self._error(self.CAST_ERROR)))
+        self.assertEqual(columns["TEMP1"], 1.5)
+
+    def test_parses_a_multi_line_error_message(self):
+        message = (
+            "error in line 1:\n table: INST__HEALTH_STATUS,\n column: TEMP1;\n cast error from protocol type: DOUBLE"
+        )
+        client = self._client()
+        self.assertFalse(client.handle_ingress_error(self._error(message)))
+        self.assertIn("for table INST__HEALTH_STATUS", "\n".join(self.logs))
+
+    def test_does_not_run_a_name_past_the_end_of_its_line(self):
+        # The table name is bounded by the newline as well as the comma, matching
+        # the r"(.+?)," this replaced (`.` never matched a newline)
+        message = "table: INST\nHEALTH_STATUS, column: TEMP1; cast error from protocol type: DOUBLE"
+        client = self._client()
+        self.assertFalse(client.handle_ingress_error(self._error(message)))
+        self.assertIn("Could not parse table or column", "\n".join(self.logs))
+
+    def test_gives_up_when_the_table_and_column_cannot_be_parsed(self):
+        client = self._client()
+        message = "cast error from protocol type: DOUBLE but no table or column named"
+        self.assertFalse(client.handle_ingress_error(self._error(message)))
+        self.assertIn("Could not parse table or column", "\n".join(self.logs))
+
+    def test_ignores_errors_that_are_not_type_mismatches(self):
+        client = self._client()
+        client.connect_ingest = lambda: None
+        self.assertFalse(client.handle_ingress_error(self._error("connection reset by peer")))

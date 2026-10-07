@@ -761,11 +761,12 @@ module OpenC3
     # Version History is an Enterprise feature. The plugin deploy runs in the
     # cmd-tlm-api process, which (unlike script-runner-api) doesn't otherwise
     # require the store, so lazily load it on demand. Returns false in Core
-    # builds where the Enterprise gem isn't present.
+    # builds where the Enterprise gem isn't present, and when the store is
+    # disabled (OPENC3_VERSION_HISTORY_DIR unset): its commits no-op there, so
+    # versioning would drop the modified copy without preserving it.
     def version_store_available?
-      return true if defined?(::VersionStore)
-      require 'openc3-enterprise/utilities/version_store'
-      defined?(::VersionStore) ? true : false
+      require 'openc3-enterprise/utilities/version_store' unless defined?(::VersionStore)
+      defined?(::VersionStore) && ::VersionStore.enabled? ? true : false
     rescue LoadError
       false
     end

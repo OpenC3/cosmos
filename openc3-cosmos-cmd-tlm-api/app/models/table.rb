@@ -19,6 +19,7 @@ require 'openc3'
 require 'ostruct'
 require 'tempfile'
 require 'openc3/utilities/target_file'
+require 'openc3/utilities/config_overlay'
 OpenC3.require_file 'openc3/utilities/store'
 OpenC3.require_file 'openc3/tools/table_manager/table_manager_core'
 
@@ -66,7 +67,7 @@ class Table < OpenC3::TargetFile
         FileUtils.remove_entry_secure(temp_dir, true) if temp_dir
       end
     else
-      contents = body(scope, definition_filename)
+      contents = definition_body(scope, definition_filename)
       raise NotFound, "Definition file '#{definition_filename}' not found" unless contents
       definition.filename = File.basename(definition_filename)
       definition.contents = contents
@@ -176,8 +177,24 @@ class Table < OpenC3::TargetFile
 
   # Private helper methods
 
+  # True if name is a canonical path under <TARGET>/tables/config/, the only
+  # place table definitions are loaded from
+  def self.definition_path?(name)
+    OpenC3::ConfigOverlay.table_definition?(strip_modified(name.to_s))
+  end
+
+  # Table definitions contain GENERIC_READ_CONVERSION / GENERIC_WRITE_CONVERSION
+  # blocks which are evaluated as Ruby. They are only parsed from
+  # TARGET/tables/config, whose overlay copy only an admin may write (see
+  # OpenC3::ConfigOverlay), so a definition can't be pointed at a file in a
+  # non-admin area such as screens or procedures.
+  def self.definition_body(scope, name)
+    raise NotFound, "Definition file '#{name}' must be under TARGET/tables/config" unless definition_path?(name)
+    body(scope, name)
+  end
+
   def self.get_definitions(scope, definition_filename, binary_filename = nil)
-    definition = body(scope, definition_filename)
+    definition = definition_body(scope, definition_filename)
     # We might not find the definition, especially if the binary isn't named
     # like the convention. If not, and they pass us a binary filename,
     # then look through all the definitions and try to find a match.
@@ -187,7 +204,7 @@ class Table < OpenC3::TargetFile
       found = false
       base_binary = File.basename(binary_filename, File.extname(binary_filename))
       all.each do |filename|
-        next unless filename.include?('config/')
+        next unless definition_path?(filename)
         base_def = File.basename(filename, File.extname(filename))
         base_def = base_def.sub('_def', '')
         if base_binary == base_def
@@ -202,7 +219,7 @@ class Table < OpenC3::TargetFile
         end
       end
       if found
-        definition = body(scope, definition_filename)
+        definition = definition_body(scope, definition_filename)
       else
         return [nil, definition_filename, nil]
       end
@@ -217,7 +234,7 @@ class Table < OpenC3::TargetFile
       definition.split("\n").each do |line|
         if line.strip =~ /^TABLEFILE (.*)/
           filename = File.join(base_dir, $1.remove_quotes)
-          file = body(scope, filename)
+          file = definition_body(scope, filename)
           raise NotFound, "Could not find file #{filename}" unless file
           File.write(File.join(temp_dir, File.basename(filename)), file)
         end
