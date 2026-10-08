@@ -26,6 +26,7 @@ OpenC3.require_file 'openc3/utilities/secrets'
 OpenC3.require_file 'openc3/utilities/sleeper'
 OpenC3.require_file 'openc3/utilities/open_telemetry'
 OpenC3.require_file 'openc3/utilities/thread_manager'
+OpenC3.require_file 'openc3/utilities/topic_lag_monitor'
 OpenC3.require_file 'openc3/models/microservice_model'
 OpenC3.require_file 'openc3/models/microservice_status_model'
 OpenC3.require_file 'tmpdir'
@@ -261,6 +262,23 @@ module OpenC3
       Thread.current[:topic_offsets] ||= {}
       topic_offsets = Thread.current[:topic_offsets]
       topic_offsets[@microservice_topic] = "0-0" # Always get all available
+    end
+
+    # Update the lag metric for a message read from a topic and notify users
+    # if this microservice is falling behind or has skipped trimmed data
+    #
+    # @param topic [String] Redis stream the message was read from
+    # @param msg_id [String] Redis stream id of the message
+    # @param metric_name [String] Gauge metric to update with the lag
+    # @param help [String] Help text for the gauge metric
+    # @return [Float] The lag in seconds
+    def update_topic_lag(topic, msg_id, metric_name:, help:)
+      topic_lag_monitor.record(topic, msg_id, metric_name: metric_name, help: help)
+    end
+
+    # @return [TopicLagMonitor] Lag monitor shared by this microservice's topic readers
+    def topic_lag_monitor
+      @topic_lag_monitor ||= TopicLagMonitor.new(name: @name, logger: @logger || Logger, metric: @metric, scope: @scope, db_shard: @db_shard || 0)
     end
 
     # Returns if the command was handled

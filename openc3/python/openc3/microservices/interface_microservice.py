@@ -46,6 +46,7 @@ from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued
 from openc3.utilities.thread_manager import ThreadManager
 from openc3.utilities.time import from_nsec_from_epoch
+from openc3.utilities.topic_lag_monitor import TopicLagMonitor
 
 
 with contextlib.suppress(ModuleNotFoundError):
@@ -54,7 +55,7 @@ with contextlib.suppress(ModuleNotFoundError):
 
 
 class InterfaceCmdHandlerThread:
-    def __init__(self, interface, tlm, logger=None, metric=None, db_shard=0, scope=None):
+    def __init__(self, interface, tlm, logger=None, metric=None, db_shard=0, scope=None, lag_monitor=None):
         self.interface = interface
         self.tlm = tlm
         self.scope = scope
@@ -68,6 +69,13 @@ class InterfaceCmdHandlerThread:
         if not self.logger:
             self.logger = Logger()
         self.metric = metric
+        self.lag_monitor = lag_monitor or TopicLagMonitor(
+            name=f"{scope}__INTERFACE__{interface.name}",
+            logger=self.logger,
+            metric=self.metric,
+            scope=scope,
+            db_shard=self.db_shard,
+        )
         self.count = 0
         self.directive_count = 0
         if self.metric is not None:
@@ -112,16 +120,12 @@ class InterfaceCmdHandlerThread:
         if msg_hash.get(b"shutdown"):
             return "Shutdown"
 
-        msgid_seconds_from_epoch = int(msg_id.split("-")[0]) / 1000.0
-        delta = time.time() - msgid_seconds_from_epoch
-        if self.metric is not None:
-            self.metric.set(
-                name="interface_topic_delta_seconds",
-                value=delta,
-                type="gauge",
-                unit="seconds",
-                help="Delta time between data written to stream and interface cmd start",
-            )
+        self.lag_monitor.record(
+            topic,
+            msg_id,
+            metric_name="interface_topic_delta_seconds",
+            help="Delta time between data written to stream and interface cmd start",
+        )
 
         if topic == "OPENC3__SYSTEM__EVENTS":
             msg = json.loads(msg_hash.get(b"event", b"{}").decode())
@@ -438,7 +442,7 @@ class InterfaceCmdHandlerThread:
 
 
 class RouterTlmHandlerThread:
-    def __init__(self, router, tlm, logger=None, metric=None, db_shard=0, scope=None):
+    def __init__(self, router, tlm, logger=None, metric=None, db_shard=0, scope=None, lag_monitor=None):
         self.router = router
         self.tlm = tlm
         self.scope = scope
@@ -447,6 +451,13 @@ class RouterTlmHandlerThread:
         if not self.logger:
             self.logger = Logger
         self.metric = metric
+        self.lag_monitor = lag_monitor or TopicLagMonitor(
+            name=f"{scope}__ROUTER__{router.name}",
+            logger=self.logger,
+            metric=self.metric,
+            scope=scope,
+            db_shard=self.db_shard,
+        )
         self.count = 0
         self.directive_count = 0
         if self.metric is not None:
@@ -486,16 +497,12 @@ class RouterTlmHandlerThread:
         result = None
 
         while True:
-            msgid_seconds_from_epoch = int(msg_id.split("-")[0]) / 1000.0
-            delta = time.time() - msgid_seconds_from_epoch
-            if self.metric is not None:
-                self.metric.set(
-                    name="router_topic_delta_seconds",
-                    value=delta,
-                    type="gauge",
-                    unit="seconds",
-                    help="Delta time between data written to stream and router tlm start",
-                )
+            self.lag_monitor.record(
+                topic,
+                msg_id,
+                metric_name="router_topic_delta_seconds",
+                help="Delta time between data written to stream and router tlm start",
+            )
 
             result = None  # Reset result for this iteration
 
@@ -699,6 +706,7 @@ class InterfaceMicroservice(Microservice):
                 metric=self.metric,
                 db_shard=self.db_shard,
                 scope=self.scope,
+                lag_monitor=self.topic_lag_monitor,
             )
         else:
             self.handler_thread = RouterTlmHandlerThread(
@@ -708,6 +716,7 @@ class InterfaceMicroservice(Microservice):
                 metric=self.metric,
                 db_shard=self.db_shard,
                 scope=self.scope,
+                lag_monitor=self.topic_lag_monitor,
             )
         self.handler_thread.start()
 
