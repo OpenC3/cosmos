@@ -19,6 +19,8 @@ require 'childprocess'
 require 'openc3'
 require 'fileutils'
 require 'tempfile'
+require 'openc3/models/metric_model'
+require 'openc3/utilities/process_stats'
 
 module OpenC3
   # Class to prevent an infinitely growing log file
@@ -156,6 +158,15 @@ module OpenC3
       end
     end
 
+    # The pid of the spawned process, or nil if it isn't running. Note this is
+    # the pid of plugin_microservice.rb, which exec()s the configured cmd, so it
+    # stays the pid of whatever the microservice actually ends up running.
+    def pid
+      @process ? @process.pid : nil
+    rescue Exception
+      nil
+    end
+
     def soft_stop
       Thread.new do
         Logger.info("Soft shutting down process: #{cmd_line()}", scope: @scope)
@@ -255,6 +266,9 @@ module OpenC3
       @new_processes = {}
       @changed_processes = {}
       @removed_processes = {}
+      # microservice name => ProcessStats, so cpu deltas survive across cycles
+      @process_stats = {}
+      @process_stats_db_shards = {}
       @mutex = Mutex.new
       @shutdown = false
       @shutdown_complete = false
@@ -262,6 +276,49 @@ module OpenC3
 
     def update
       raise "Implement in subclass"
+    end
+
+    # Report cpu and memory for every microservice this operator is running.
+    #
+    # Microservices that are themselves OpenC3::Microservices could report this
+    # about themselves, but ones that exec() into a Rails app, a Python script
+    # or any other binary never load the OpenC3 libraries and so can't. Doing it
+    # here covers every microservice the same way, including plugins we don't
+    # ship, without asking anything of the plugin author.
+    def publish_process_metrics
+      return unless ProcessStats.supported?
+
+      @mutex.synchronize do
+        @processes.each do |name, p|
+          break if @shutdown
+          # Not started yet - queued behind the per cycle start limit
+          next if @new_processes[name]
+
+          pid = p.pid
+          next unless pid
+
+          stats = @process_stats[name]
+          # A respawn gets a new pid, and the old cpu totals don't carry over
+          if stats.nil? or stats.pid != pid
+            stats = ProcessStats.new(pid)
+            @process_stats[name] = stats
+            @process_stats_db_shards[name] = MetricModel._lookup_db_shard(name, scope: p.scope)
+          end
+          next unless stats.sample
+
+          MetricModel.set_process(
+            { 'name' => name, 'db_shard' => @process_stats_db_shards[name], 'values' => stats.values },
+            scope: p.scope
+          )
+        end
+
+        # Stop tracking microservices that have gone away. Their metrics rows
+        # expire on their own (METRIC_EXPIRE_SECONDS).
+        (@process_stats.keys - @processes.keys).each do |name|
+          @process_stats.delete(name)
+          @process_stats_db_shards.delete(name)
+        end
+      end
     end
 
     def start_new
@@ -393,6 +450,7 @@ module OpenC3
           respawn_changed()
           start_new()
           respawn_dead()
+          publish_process_metrics()
         rescue => e
           Logger.error("#{self.class} cycle error, continuing: #{e.class} #{e.message}\n#{e.backtrace.join("\n")}")
         end

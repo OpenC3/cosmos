@@ -23,6 +23,13 @@ module OpenC3
     include DbShardedModel
 
     PRIMARY_KEY = '__openc3__metric'.freeze
+    # Process level metrics (cpu, memory) reported by the operator on behalf of
+    # the microservices it spawned. These live in their own hash so that the
+    # operator and the microservice are never two writers of one field - each
+    # write replaces the whole values hash, so sharing a field would have them
+    # clobbering each other every cycle. The two are merged back together on
+    # read by get/names/all, so callers see a single row per microservice.
+    PROCESS_PRIMARY_KEY = '__openc3__process_metric'.freeze
     METRIC_EXPIRE_SECONDS = 3600 # Expire metrics after 1 hour
 
     attr_accessor :values
@@ -47,15 +54,38 @@ module OpenC3
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     def self.get(name:, scope:)
-      _db_sharded_get("#{scope}#{PRIMARY_KEY}", name: name, scope: scope)
+      _merge_entries(
+        _db_sharded_get("#{scope}#{PRIMARY_KEY}", name: name, scope: scope),
+        _db_sharded_get("#{scope}#{PROCESS_PRIMARY_KEY}", name: name, scope: scope)
+      )
     end
 
     def self.names(scope:)
-      _db_sharded_names("#{scope}#{PRIMARY_KEY}", scope: scope)
+      names = _db_sharded_names("#{scope}#{PRIMARY_KEY}", scope: scope)
+      names.concat(_db_sharded_names("#{scope}#{PROCESS_PRIMARY_KEY}", scope: scope))
+      names.uniq.sort
     end
 
     def self.all(scope:)
-      _db_sharded_all("#{scope}#{PRIMARY_KEY}", scope: scope)
+      result = _db_sharded_all("#{scope}#{PRIMARY_KEY}", scope: scope)
+      _db_sharded_all("#{scope}#{PROCESS_PRIMARY_KEY}", scope: scope).each do |name, process_entry|
+        result[name] = _merge_entries(result[name], process_entry)
+      end
+      result
+    end
+
+    # Combine a microservice's self reported metrics with the process metrics
+    # the operator reported for it. The microservice's own values win on a key
+    # collision - a process that can measure itself knows better than the
+    # operator watching from outside.
+    def self._merge_entries(entry, process_entry)
+      return entry unless process_entry
+      return process_entry unless entry
+
+      entry['values'] = (process_entry['values'] || {}).merge(entry['values'] || {})
+      updated_at = [entry['updated_at'], process_entry['updated_at']].compact.max
+      entry['updated_at'] = updated_at if updated_at
+      entry
     end
 
     # Sets (updates) the redis hash of this model
@@ -66,13 +96,23 @@ module OpenC3
       self.new(**json).create(force: true, queued: queued, expire_seconds: METRIC_EXPIRE_SECONDS)
     end
 
+    # Sets (updates) the process metrics reported by the operator for a
+    # microservice it spawned. See PROCESS_PRIMARY_KEY.
+    def self.set_process(json, scope:, queued: true)
+      json[:scope] = scope
+      json.transform_keys!(&:to_sym)
+      json[:primary_key] = PROCESS_PRIMARY_KEY
+      self.new(**json).create(force: true, queued: queued, expire_seconds: METRIC_EXPIRE_SECONDS)
+    end
+
     def self.destroy(scope:, name:)
       db_shard = _db_shard_for_name(name, scope: scope)
       store.instance(db_shard: db_shard).hdel("#{scope}#{PRIMARY_KEY}", name)
+      store.instance(db_shard: db_shard).hdel("#{scope}#{PROCESS_PRIMARY_KEY}", name)
     end
 
-    def initialize(name:, values: {}, db_shard: 0, scope:)
-      super("#{scope}#{PRIMARY_KEY}", name: name, scope: scope)
+    def initialize(name:, values: {}, db_shard: 0, scope:, primary_key: PRIMARY_KEY)
+      super("#{scope}#{primary_key}", name: name, scope: scope)
       @values = values
       @db_shard = db_shard.to_i
     end

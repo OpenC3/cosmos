@@ -72,6 +72,11 @@ module OpenC3
         env['PYTHONPATH'] = nil
       end
       env['OPENC3_MICROSERVICE_NAME'] = microservice_name
+      # Tell the microservice not to report its own cpu/memory - we do that for
+      # it in publish_process_metrics, which also covers microservices that
+      # exec() into something that never loads the OpenC3 libraries. Only claim
+      # this where we can actually deliver on it.
+      env[Metric::SUPERVISED_ENV_VAR] = '1' if ProcessStats.supported?
       container = microservice_config["container"]
       scope = microservice_name.split("__")[0]
 

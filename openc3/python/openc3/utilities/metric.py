@@ -12,6 +12,7 @@
 import contextlib
 import importlib
 import json
+import os
 import threading
 import time
 
@@ -133,8 +134,24 @@ class Metric:
     def graceful_kill(self):
         pass
 
+    # Environment variable the operator sets on every microservice it spawns to
+    # say "I am already reporting process metrics for you". Without it an
+    # in-process generator and the operator would both be writing cpu/memory for
+    # the same microservice.
+    SUPERVISED_ENV_VAR = "OPENC3_OPERATOR_PROCESS_METRICS"
+
+    @classmethod
+    def supervised(cls):
+        """Whether something outside this process is already reporting its
+        process level metrics."""
+        return os.environ.get(Metric.SUPERVISED_ENV_VAR) is not None
+
     @classmethod
     def add_update_generator(cls, object):
+        # Generators produce process level metrics (cpu, memory). Skip them
+        # entirely when the operator is already reporting those for us.
+        if Metric.supervised():
+            return
         Metric.update_generators.append(object)
 
 
