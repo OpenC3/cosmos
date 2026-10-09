@@ -85,7 +85,9 @@ class TestFixedProtocol(unittest.TestCase):
         # The read thread buffers ahead so flush it to pick up the new data
         self.interface.stop_read_queue_thread()
         packet = self.interface.read()
-        self.assertIsNone(packet.received_time)
+        # Unknown packets are timestamped with when their data was read
+        self.assertIsNotNone(packet.received_time)
+        self.assertEqual(packet.received_time, self.interface.read_queue_data_time)
         self.assertIsNone(packet.target_name)
         self.assertIsNone(packet.packet_name)
         self.assertEqual(packet.buffer, b"\x00")
@@ -110,7 +112,9 @@ class TestFixedProtocol(unittest.TestCase):
         self.interface.tlm_target_names = ["EMPTY"]
         TestFixedProtocol.index = 1
         packet = self.interface.read()
-        self.assertIsNone(packet.received_time)
+        # Unknown packets are timestamped with when their data was read
+        self.assertIsNotNone(packet.received_time)
+        self.assertEqual(packet.received_time, self.interface.read_queue_data_time)
         self.assertIsNone(packet.target_name)
         self.assertIsNone(packet.packet_name)
         self.assertEqual(packet.buffer, b"\x01")

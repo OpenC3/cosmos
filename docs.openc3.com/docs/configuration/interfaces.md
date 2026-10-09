@@ -187,6 +187,16 @@ Maximum number of bytes buffered on the interface read queue. The stream and UDP
 Because the read thread keeps draining the socket, a sender is no longer slowed by TCP flow control until the queue is full. If the interface can't keep up, telemetry can fall behind by up to READ_QUEUE_MAX_SIZE bytes before the sender is throttled. Lower READ_QUEUE_MAX_SIZE if you'd rather the sender block sooner.
 :::
 
+Packets read through the queue are timestamped with the time their data was read from the socket, not the time they were processed, so the received time stays accurate while the queue is backed up.
+
+:::note Sizing memory
+READ_QUEUE_MAX_SIZE applies to each queue, so the memory an interface can hold is READ_QUEUE_MAX_SIZE times the number of queues. The TCP/IP server interface has one queue per connected client, so 10 clients at the default 20MB can buffer up to 200MB. All the interfaces in a microservice container share its memory, so lower READ_QUEUE_MAX_SIZE when running many interfaces or TCP/IP server interfaces that accept many clients.
+:::
+
+:::note Disconnecting
+When the interface disconnects it closes the stream, which unblocks the read thread, and then waits up to 2 seconds for the thread to exit. The built in interfaces wake up their pending read when they disconnect. A custom stream whose `disconnect` doesn't unblock a pending `read` delays each disconnect by those 2 seconds. In Ruby the thread is then killed and a warning is logged. In Python the thread can't be killed, so it is left blocked until its read returns and then exits without using the data. Make sure `disconnect` wakes up any blocked `read` (for example by closing the socket or writing to a wake up pipe).
+:::
+
 :::warning Custom interfaces which read the stream directly
 Custom interfaces which subclass the stream, TCP/IP, serial, MQTT stream or UDP interfaces and read the stream or socket themselves now compete with the read thread for data, which silently splits and loses bytes. This includes overriding `read_interface` without calling `super`, reading a handshake response in `connect`, reading an acknowledgement in `write_interface`, and protocols which read `interface.stream` directly. Either update the interface to use the data passed through `read_interface` and the protocols, or set `OPTION READ_QUEUE_MAX_SIZE 0` to restore the previous inline reads.
 :::
