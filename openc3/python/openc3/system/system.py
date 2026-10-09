@@ -163,7 +163,7 @@ class System(metaclass=SystemMeta):
             cls.post_instance_callbacks.append(callback)
 
     @classmethod
-    def setup_targets(cls, target_names, base_dir, scope=OPENC3_SCOPE):
+    def setup_targets(cls, target_names, base_dir, scope=OPENC3_SCOPE, descriptions=True):
         if not System.instance_obj:  # type: ignore[has-type]
             targets_path = f"{base_dir}/_targets"
             os.makedirs(targets_path, exist_ok=True)
@@ -190,15 +190,16 @@ class System(metaclass=SystemMeta):
                     bucket.get_object(bucket=OPENC3_CONFIG_BUCKET, key=bucket_key, path=local_path)
 
             # Build System from targets
-            System.instance(target_names, targets_path)
+            System.instance(target_names, targets_path, descriptions=descriptions)
 
     @classmethod
-    def instance(cls, target_names=None, target_config_dir=None):
+    def instance(cls, target_names=None, target_config_dir=None, descriptions=True):
         """Get the singleton instance of System
 
         Args:
             target_names [Array of target_names]
             target_config_dir Directory where target config folders are
+            descriptions [Boolean] Whether to keep packet and item descriptions
 
         Returns:
             [System] The System singleton
@@ -211,7 +212,7 @@ class System(metaclass=SystemMeta):
         with System.instance_mutex:
             if System.instance_obj:  # type: ignore[has-type]
                 return System.instance_obj  # type: ignore[has-type]
-            System.instance_obj = cls(target_names, target_config_dir)  # type: ignore[has-type]
+            System.instance_obj = cls(target_names, target_config_dir, descriptions)  # type: ignore[has-type]
             for callback in System.post_instance_callbacks:
                 callback()
             return System.instance_obj  # type: ignore[has-type]
@@ -233,7 +234,8 @@ class System(metaclass=SystemMeta):
     #
     # @param target_names [Array of target names]
     # @param target_config_dir Directory where target config folders are
-    def __init__(self, target_names, target_config_dir):
+    # @param descriptions Whether to keep packet and item descriptions
+    def __init__(self, target_names, target_config_dir, descriptions=True):
         # Find all the base gem lib directories and add them to the search path
         # Ruby handles this because the gem is installed so lib is in the path
         for path in glob.glob("/gems/gems/**/lib"):
@@ -241,7 +243,7 @@ class System(metaclass=SystemMeta):
         if target_config_dir:
             add_to_search_path(target_config_dir, True)
         self.targets = {}
-        self.packet_config = PacketConfig()
+        self.packet_config = PacketConfig(descriptions=descriptions)
         self.commands = Commands(self.packet_config, self)
         self.telemetry = Telemetry(self.packet_config, self)
         self.limits = Limits(self.packet_config, self)

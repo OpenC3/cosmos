@@ -99,7 +99,11 @@ module OpenC3
     # Note: DERIVED is not a valid converted type. Also TIME is currently only a converted type
     CONVERTED_DATA_TYPES = [:INT, :UINT, :FLOAT, :STRING, :BLOCK, :BOOL, :OBJECT, :ARRAY, :ANY, :TIME]
 
-    def initialize
+    # @param descriptions [Boolean] Whether to keep packet and item descriptions.
+    #   Pass false in processes that never display them (e.g. decom and
+    #   interface microservices) to reduce memory on large definitions.
+    def initialize(descriptions: true)
+      @descriptions = descriptions
       @name = nil
       @telemetry = {}
       @commands = {}
@@ -345,6 +349,7 @@ module OpenC3
     def finish_packet
       finish_item()
       if @current_packet
+        @current_packet.description = nil unless @descriptions
         @warnings += @current_packet.check_bit_offsets
         if !@current_packet.virtual && !@current_packet.disabled && !@current_packet.catchall && @current_packet.target_name != 'UNKNOWN' && @current_packet.id_items.empty?
           type = @current_cmd_or_tlm == COMMAND ? "Command" : "Telemetry"
@@ -926,6 +931,7 @@ module OpenC3
     # Finish updating packet item
     def finish_item
       if @current_item
+        @current_item.description = nil unless @descriptions
         @current_packet.set_item(@current_item)
         if @current_cmd_or_tlm == TELEMETRY
           target_latest_data = @latest_data[@current_packet.target_name]

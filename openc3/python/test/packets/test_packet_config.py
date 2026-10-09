@@ -60,6 +60,36 @@ class TestPacketConfig(unittest.TestCase):
 
         os.unlink(tf.name)
 
+    def test_drops_descriptions_when_descriptions_is_false(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('TELEMETRY TGT PKT BIG_ENDIAN "Tlm packet"\n')
+            tf.write('  APPEND_ITEM ITEM 16 UINT "Tlm item"\n')
+            tf.write("  APPEND_ITEM ITEM2 16 UINT\n")
+            tf.write('    DESCRIPTION "Tlm item 2"\n')
+            tf.write('COMMAND TGT CMD BIG_ENDIAN "Cmd packet"\n')
+            tf.write('  APPEND_PARAMETER PARAM 16 UINT MIN MAX 0 "Cmd param"\n')
+            tf.write("SELECT_TELEMETRY TGT PKT\n")
+            tf.write("  SELECT_ITEM ITEM\n")
+            tf.write('    DESCRIPTION "Selected item"\n')
+            tf.seek(0)
+
+            pc = PacketConfig(descriptions=False)
+            pc.process_file(tf.name, "TGT")
+            tlm = pc.telemetry["TGT"]["PKT"]
+            cmd = pc.commands["TGT"]["CMD"]
+            self.assertIsNone(tlm.description)
+            self.assertIsNone(tlm.get_item("ITEM").description)
+            self.assertIsNone(tlm.get_item("ITEM2").description)
+            self.assertIsNone(cmd.description)
+            self.assertIsNone(cmd.get_item("PARAM").description)
+
+            self.pc.process_file(tf.name, "TGT")
+            tlm = self.pc.telemetry["TGT"]["PKT"]
+            self.assertEqual(tlm.description, "Tlm packet")
+            self.assertEqual(tlm.get_item("ITEM").description, "Selected item")
+            self.assertEqual(tlm.get_item("ITEM2").description, "Tlm item 2")
+            self.assertEqual(self.pc.commands["TGT"]["CMD"].get_item("PARAM").description, "Cmd param")
+
     def test_creates_unknown_cmd_tlm_packets(self):
         # Only one target called "UNKNOWN"
         self.assertEqual(list(self.pc.commands.keys()), ["UNKNOWN"])

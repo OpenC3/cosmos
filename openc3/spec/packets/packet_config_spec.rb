@@ -69,6 +69,38 @@ module OpenC3
         tf.unlink
       end
 
+      it "drops packet and item descriptions when descriptions is false" do
+        tf = Tempfile.new('unittest')
+        tf.puts('TELEMETRY TGT PKT BIG_ENDIAN "Tlm packet"')
+        tf.puts('  APPEND_ITEM ITEM 16 UINT "Tlm item"')
+        tf.puts('  APPEND_ITEM ITEM2 16 UINT')
+        tf.puts('    DESCRIPTION "Tlm item 2"')
+        tf.puts('COMMAND TGT CMD BIG_ENDIAN "Cmd packet"')
+        tf.puts('  APPEND_PARAMETER PARAM 16 UINT MIN MAX 0 "Cmd param"')
+        tf.puts('SELECT_TELEMETRY TGT PKT')
+        tf.puts('  SELECT_ITEM ITEM')
+        tf.puts('    DESCRIPTION "Selected item"')
+        tf.close
+
+        pc = PacketConfig.new(descriptions: false)
+        pc.process_file(tf.path, 'TGT')
+        tlm = pc.telemetry['TGT']['PKT']
+        cmd = pc.commands['TGT']['CMD']
+        expect(tlm.description).to be_nil
+        expect(tlm.get_item('ITEM').description).to be_nil
+        expect(tlm.get_item('ITEM2').description).to be_nil
+        expect(cmd.description).to be_nil
+        expect(cmd.get_item('PARAM').description).to be_nil
+
+        @pc.process_file(tf.path, 'TGT')
+        tlm = @pc.telemetry['TGT']['PKT']
+        expect(tlm.description).to eql 'Tlm packet'
+        expect(tlm.get_item('ITEM').description).to eql 'Selected item'
+        expect(tlm.get_item('ITEM2').description).to eql 'Tlm item 2'
+        expect(@pc.commands['TGT']['CMD'].get_item('PARAM').description).to eql 'Cmd param'
+        tf.unlink
+      end
+
       it "creates UNKNOWN cmd/tlm packets" do
         # Only one target called "UNKNOWN"
         expect(@pc.commands.keys).to eql ["UNKNOWN"]
