@@ -24,6 +24,31 @@ class PacketItem(StructureItem):
     # The allowable state colors
     VALID_STATE_COLORS = ["GREEN", "YELLOW", "RED"]
 
+    # See StructureItem for why slots are used
+    __slots__ = (
+        "__format_string",
+        "__read_conversion",
+        "__write_conversion",
+        "__id_value",
+        "__states",
+        "__states_by_value",
+        "__description",
+        "__units_full",
+        "__units",
+        "__hazardous",
+        "__messages_disabled",
+        "__state_colors",
+        "__limits",
+        "__meta",
+        "default",
+        "minimum",
+        "maximum",
+        "required",
+        "obfuscate",
+        "persistence_setting",
+        "persistence_count",
+    )
+
     def __init__(
         self,
         name,
@@ -306,8 +331,11 @@ class PacketItem(StructureItem):
         else:
             self.__limits = None
 
+    # Created on first access like limits since most items have no meta
     @property
     def meta(self):
+        if self.__meta is None:
+            self.__meta = {}
         return self.__meta
 
     @meta.setter
@@ -318,15 +346,15 @@ class PacketItem(StructureItem):
 
             self.__meta = meta
         else:
-            self.__meta = {}
+            self.__meta = None
 
     # Make a light weight clone of this item
     def clone(self):
         item = copy.copy(self)
         # Since we're copying and not calling the constructor
         # we have to manually update the create_index
-        item.create_index = StructureItem.create_index
-        StructureItem.create_index += 1
+        item.create_index = StructureItem._next_create_index
+        StructureItem._next_create_index += 1
         return item
 
     # def calculate_range(self):
@@ -412,8 +440,8 @@ class PacketItem(StructureItem):
             if limits.response:
                 config += limits.response.to_config
 
-        if self.meta:
-            for key, values in self.meta.items():
+        if self.__meta:
+            for key, values in self.__meta.items():
                 vals = " ".join([quote_if_necessary(x) for x in values])
                 config += f"    META {quote_if_necessary(key)} {vals}\n"
 
@@ -478,8 +506,8 @@ class PacketItem(StructureItem):
             if item_limits.response:
                 config["limits_response"] = item_limits.response.as_json()
 
-        if self.meta:
-            config["meta"] = self.meta
+        if self.__meta:
+            config["meta"] = self.__meta
 
         if self.obfuscate:
             config["obfuscate"] = self.obfuscate

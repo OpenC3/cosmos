@@ -18,7 +18,32 @@ from openc3.accessors.binary_accessor import BinaryAccessor
 
 @total_ordering
 class StructureItem:
-    create_index = 0
+    _next_create_index = 0
+
+    # Slots avoid a per-instance __dict__, which is large because items have
+    # more attributes than Python shares between instances. __dict__ is still
+    # available (created on demand) for any attribute not listed here.
+    __slots__ = (
+        "__name",
+        "__key",
+        "__endianness",
+        "__data_type",
+        "__bit_offset",
+        "__bit_size",
+        "__array_size",
+        "__overflow",
+        "__variable_bit_size",
+        "structure_item_constructed",
+        "create_index",
+        "hidden",
+        "original_array_size",
+        "original_bit_offset",
+        "original_bit_size",
+        "overlap",
+        "parent_item",
+        "structure",
+        "__dict__",
+    )
 
     # Valid data types adds DERIVED to those defined by BinaryAccessor
     DATA_TYPES = [
@@ -74,8 +99,8 @@ class StructureItem:
         self.hidden = False
         self.parent_item = None
         self.structure = None
-        self.create_index = StructureItem.create_index
-        StructureItem.create_index += 1
+        self.create_index = StructureItem._next_create_index
+        StructureItem._next_create_index += 1
         self.structure_item_constructed = True
         self.verify_overall()
 
@@ -286,8 +311,8 @@ class StructureItem:
         item = copy.copy(self)
         # Since we're copying and not calling the constructor
         # we have to manually update the create_index
-        item.create_index = StructureItem.create_index
-        StructureItem.create_index += 1
+        item.create_index = StructureItem._next_create_index
+        StructureItem._next_create_index += 1
         return item
 
     def as_json(self):

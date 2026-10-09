@@ -9,6 +9,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import sys
+
 from openc3.packets.packet_item import PacketItem
 from openc3.utilities.extract import convert_to_value
 from openc3.utilities.logger import Logger
@@ -58,12 +60,18 @@ class StateParser:
         if item.states is None:
             item.states = {}
 
-        state_name = self._get_state_name()
+        # Intern since many items share the same state names
+        state_name = sys.intern(self._get_state_name())
         self._check_for_duplicate_states(item, warnings)
-        # Get the states, set one, then reassign for the setter to work
+        # Update states and states_by_value in place rather than reassigning
+        # item.states, which rebuilds both dicts for every STATE line
         states = item.states
-        states[state_name] = self._get_state_value(item.data_type)
-        item.states = states
+        states_by_value = item.states_by_value()
+        if state_name in states and states_by_value.get(states[state_name]) == state_name:
+            del states_by_value[states[state_name]]
+        value = self._get_state_value(item.data_type)
+        states[state_name] = value
+        states_by_value[value] = state_name
         self._parse_additional_parameters(packet, cmd_or_tlm, item)
 
     def _get_state_name(self):
