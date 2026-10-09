@@ -39,6 +39,28 @@ docker run -it -v %cd%:/openc3/local -w /openc3/local docker.io/openc3inc/openc3
 1. pnpm install --frozen-lockfile --ignore-scripts
 1. rake build VERSION=1.0.0
 
+## Continuous integration
+
+`.github/workflows/` ships three GitHub Actions workflows that work as soon as
+you push this plugin to GitHub. They call shared workflows from `OpenC3/.github`,
+so the steps stay current without you updating anything here.
+
+- **Unit Tests** - on every push and pull request. Runs Python tests in `tests/`
+  or `test/` and Ruby specs in `spec/` or `specs/`. Whichever you don't have is
+  skipped, so just add a test file.
+- **Playwright** - on every push and pull request, plus weekly. Builds the gem,
+  starts the latest COSMOS release in Docker, and installs the plugin through the
+  Admin tool, which catches a `plugin.txt` that doesn't parse, a target that
+  doesn't build, or a microservice that won't start. The weekly run is what tells
+  you a new COSMOS release broke this plugin. Once you add targets, list them in
+  `expected_targets` so the install is verified against them.
+- **Release** - manual, from the Actions tab. Builds the gem, tags the commit and
+  creates a GitHub release. Publishing to the OpenC3 App Store and to RubyGems is
+  off until you add the matching secret and tick the box.
+
+Adding a tool or a widget needs no change to any of these. All three build a
+frontend with pnpm as soon as the plugin has a `package.json`.
+
 ## Installing into OpenC3 COSMOS
 
 1. Go to the OpenC3 Admin Tool, Plugins Tab
