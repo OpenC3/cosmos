@@ -29,8 +29,8 @@ The above command creates a conversion called `double_conversion.py` at `targets
 
 ```python
 from openc3.conversions.conversion import Conversion
-# Using tlm() requires the following:
-# from openc3.api.tlm_api import tlm
+# Using System.telemetry.packet() requires the following:
+# from openc3.system.system import System
 
 # Custom conversion class
 # See https://docs.openc3.com/docs/configuration/telemetry#read_conversion
@@ -50,13 +50,19 @@ class DoubleConversion(Conversion):
         # Used when conversion is applied to a regular (not DERIVED) item
         # NOTE: You can also use packet.read("ITEM") to get additional values
         # return value / 2 * packet.read("OTHER_ITEM")
+        #
+        # Read the latest value from a different packet in the same target
+        # other = System.telemetry.packet(packet.target_name, "OTHER_PACKET")
+        # return value * other.read("OTHER_ITEM")
         return value
 ```
 
 There are a lot of comments to help you implement the `call` method.
 
 :::info[Conversions Across Packets]
-The `call` method passes in the current packet but if you want to use values from different packets you need to use the various tlm APIs. Note that for Python you need to add `from openc3.api.tlm_api import tlm`.
+The `call` method passes in the current packet. To use values from a different packet in the same target, get that packet with `System.telemetry.packet(packet.target_name, "OTHER_PACKET")` and call `read` on it. This returns the most recently received value without a round trip to the database. For Python you need to add `from openc3.system.system import System`.
+
+Only packets from targets processed by the same decom microservice are available, normally just the conversion's own target. Each packet holds the values from its most recent arrival (all zeros until it is first received).
 :::
 
 ### call

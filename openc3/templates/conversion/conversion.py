@@ -1,6 +1,6 @@
 from openc3.conversions.conversion import Conversion
-# Using tlm() requires the following:
-# from openc3.api.tlm_api import tlm
+# Using System.telemetry.packet() requires the following:
+# from openc3.system.system import System
 
 # Custom conversion class
 # See https://docs.openc3.com/docs/configuration/conversions
@@ -20,4 +20,8 @@ class <%= conversion_class %>(Conversion):
         # Used when conversion is applied to a regular (not DERIVED) item
         # NOTE: You can also use packet.read("ITEM") to get additional values
         # return value / 2 * packet.read("OTHER_ITEM")
+        #
+        # Read the latest value from a different packet in the same target
+        # other = System.telemetry.packet(packet.target_name, "OTHER_PACKET")
+        # return value * other.read("OTHER_ITEM")
         return value
