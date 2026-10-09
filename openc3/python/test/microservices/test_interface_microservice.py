@@ -641,6 +641,21 @@ class TestInterfaceMicroservice(unittest.TestCase):
         result = handler.process_cmd(topic, msg_id, full_msg_hash, None)
         self.assertIsNone(result)
 
+    def test_process_cmd_rejects_malformed_connect_params(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        handler = im.handler_thread
+        handler.tlm = Mock()
+        handler.tlm.attempting.return_value = handler.interface
+        topic = "{DEFAULT__CMD}INTERFACE__INST_INT"
+        msg_id = f"{int(time.time() * 1000)}-0"
+        result = handler.process_cmd(topic, msg_id, {b"connect": b"true", b"params": b"{not json"}, None)
+        self.assertIn("Expecting", result)
+        handler.tlm.attempting.assert_not_called()
+        result = handler.process_cmd(topic, msg_id, {b"connect": b"true", b"params": b'["host", 1]'}, None)
+        self.assertEqual(result, "SUCCESS")
+        handler.tlm.attempting.assert_called_once_with("host", 1)
+
     def test_process_cmd_supports_interface_directives(self):
         """Directive messages on the CMD}INTERFACE topic: interface_details and
         target_control (enable/disable and the error path)."""

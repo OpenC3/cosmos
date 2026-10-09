@@ -64,9 +64,7 @@ class InterfaceCmdHandlerThread:
             self.critical_commanding = scope_model.critical_commanding
         else:
             self.critical_commanding = "OFF"
-        self.logger = logger
-        if not self.logger:
-            self.logger = Logger()
+        self.logger = logger or Logger()
         self.metric = metric
         self.count = 0
         self.directive_count = 0
@@ -148,7 +146,12 @@ class InterfaceCmdHandlerThread:
                 self.logger.info(f"{self.interface.name}: Connect requested")
                 params = []
                 if msg_hash.get(b"params"):
-                    params = json.loads(msg_hash[b"params"])
+                    try:
+                        params = json.loads(msg_hash[b"params"])
+                    except json.JSONDecodeError as e:
+                        # Reject malformed params rather than killing the handler thread
+                        self.logger.error(f"{self.interface.name}: Invalid connect params: {e}")
+                        return str(e)
                 self.interface = self.tlm.attempting(*params)
                 return "SUCCESS"
             if msg_hash.get(b"disconnect"):
@@ -443,9 +446,7 @@ class RouterTlmHandlerThread:
         self.tlm = tlm
         self.scope = scope
         self.db_shard = int(db_shard or 0)
-        self.logger = logger
-        if not self.logger:
-            self.logger = Logger
+        self.logger = logger or Logger
         self.metric = metric
         self.count = 0
         self.directive_count = 0
@@ -515,11 +516,16 @@ class RouterTlmHandlerThread:
                     result = "SHUTDOWN"
                 elif msg_hash.get(b"connect"):
                     self.logger.info(f"{self.router.name}: Connect requested")
-                    params = []
-                    if msg_hash.get(b"params"):
-                        params = json.loads(msg_hash[b"params"])
-                    self.router = self.tlm.attempting(*params)
-                    result = "SUCCESS"
+                    params = None
+                    try:
+                        params = json.loads(msg_hash[b"params"]) if msg_hash.get(b"params") else []
+                    except json.JSONDecodeError as e:
+                        # Reject malformed params rather than killing the handler thread
+                        self.logger.error(f"{self.router.name}: Invalid connect params: {e}")
+                        result = str(e)
+                    if params is not None:
+                        self.router = self.tlm.attempting(*params)
+                        result = "SUCCESS"
                 elif msg_hash.get(b"disconnect"):
                     self.logger.info(f"{self.router.name}: Disconnect requested")
                     try:
