@@ -31,7 +31,7 @@ SARIF URI is relative to the repository root, so every path is rewritten that
 way via --repo-root.
 
 Usage:
-    uv run --frozen ty check --output-format=gitlab openc3 > ty.json
+    uv run --locked ty check --output-format=gitlab openc3 > ty.json
     ./tools/ty_report.py --input ty.json --sarif ty.sarif --markdown ty.md
 """
 

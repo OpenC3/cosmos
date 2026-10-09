@@ -64,6 +64,12 @@ echo "Creating per-plugin venv for '${PLUGIN_VENV_NAME}' at ${VENV_DIR}"
 mkdir -p "${VENV_BASE}"
 
 # Path 1: uv.lock present - use `uv sync --frozen` for reproducible installs
+#
+# --frozen, not --locked: UV_ARGS carries `-i ${PYPI_URL}/simple`, and --locked
+# calls a lock recorded against a different registry stale. On a mirror that
+# drops every locked plugin into path 2, which has no lock and no --no-build,
+# and the re-resolve needs index listings the baked wheel cache lacks. CI
+# catches drift in our own repo; a user's gem installs what they locked.
 if [ -f "${GEM_PATH}/uv.lock" ] && [ -f "${GEM_PATH}/pyproject.toml" ]; then
     echo "Found uv.lock - using uv sync --frozen for reproducible install"
 
