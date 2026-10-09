@@ -85,8 +85,22 @@ module OpenC3
     # The allowable state colors
     STATE_COLORS = [:GREEN, :YELLOW, :RED]
 
+    # PacketItemLimits is created on first access since most items have no
+    # limits and large definitions have hundreds of thousands of items.
     # @return [PacketItemLimits] All information regarding limits for this PacketItem
-    attr_reader :limits
+    def limits
+      @limits ||= PacketItemLimits.new
+    end
+
+    # @return [Symbol, nil] The limits state without creating PacketItemLimits
+    def limits_state
+      @limits ? @limits.state : nil
+    end
+
+    # @return [Hash, nil] The limits values without creating PacketItemLimits
+    def limits_values
+      @limits ? @limits.values : nil
+    end
 
     # @return [Boolean] Whether the parameter must be obfuscated from logs or not
     attr_accessor :obfuscate
@@ -110,7 +124,7 @@ module OpenC3
       @obfuscate = false
       @messages_disabled = nil
       @state_colors = nil
-      @limits = PacketItemLimits.new
+      @limits = nil
       @meta = nil
     end
 
@@ -165,7 +179,6 @@ module OpenC3
         end
 
         @states = upcase_states
-        @state_colors ||= {}
       else
         @states = nil
       end
@@ -317,7 +330,7 @@ module OpenC3
       item.hazardous = self.hazardous.clone if self.hazardous
       item.messages_disabled = self.messages_disabled.clone if self.messages_disabled
       item.state_colors = self.state_colors.clone if self.state_colors
-      item.limits = self.limits.clone if self.limits
+      item.limits = @limits.clone if @limits
       item.meta = self.meta.clone if @meta
       item.obfuscate = self.obfuscate.clone if @obfuscate
       item
@@ -401,16 +414,16 @@ module OpenC3
       config << self.read_conversion.to_config(:READ) if self.read_conversion
       config << self.write_conversion.to_config(:WRITE) if self.write_conversion
 
-      if self.limits.values
-        self.limits.values.each do |limits_set, limits_values|
-          config << "    LIMITS #{limits_set} #{self.limits.persistence_setting} #{self.limits.enabled ? 'ENABLED' : 'DISABLED'} #{limits_values[0]} #{limits_values[1]} #{limits_values[2]} #{limits_values[3]}"
+      if limits_values
+        @limits.values.each do |limits_set, limits_values|
+          config << "    LIMITS #{limits_set} #{@limits.persistence_setting} #{@limits.enabled ? 'ENABLED' : 'DISABLED'} #{limits_values[0]} #{limits_values[1]} #{limits_values[2]} #{limits_values[3]}"
           if limits_values[4] && limits_values[5]
             config << " #{limits_values[4]} #{limits_values[5]}\n"
           else
             config << "\n"
           end
         end
-        config << self.limits.response.to_config if self.limits.response
+        config << @limits.response.to_config if @limits.response
       end
 
       if @meta
@@ -456,19 +469,19 @@ module OpenC3
       config['write_conversion'] = self.write_conversion.as_json(*a) if self.write_conversion
 
       config['limits'] ||= {}
-      if self.limits.enabled
+      if @limits && @limits.enabled
         config['limits']['enabled'] = true
-      elsif self.limits.values || (self.state_colors && self.state_colors.length > 0)
+      elsif limits_values || (self.state_colors && self.state_colors.length > 0)
         # Only set to false if there are limits or state colors
         # to avoid items without limits acting like they can be enabled
         config['limits']['enabled'] = false
       end
-      if self.limits.values
+      if limits_values
         # Only set these if there are limits.values because persistence_setting has a default
         # and we don't want keys on the 'limits' hash if there aren't any limits
-        config['limits']['persistence_setting'] = self.limits.persistence_setting if self.limits.persistence_setting
-        config['limits']['response'] = self.limits.response.to_s if self.limits.response
-        self.limits.values.each do |limits_set, limits_values|
+        config['limits']['persistence_setting'] = @limits.persistence_setting if @limits.persistence_setting
+        config['limits']['response'] = @limits.response.to_s if @limits.response
+        @limits.values.each do |limits_set, limits_values|
           limits = {}
           limits['red_low'] =  limits_values[0]
           limits['yellow_low'] = limits_values[1]

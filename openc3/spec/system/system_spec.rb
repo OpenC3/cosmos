@@ -69,6 +69,22 @@ module OpenC3
         System.setup_targets(['INST'], dir, scope: 'DEFAULT')
         expect(System.instance.targets.keys).to eql ['INST']
       end
+
+      it "drops descriptions when descriptions is false" do
+        System.class_eval('@@instance = nil')
+        dir = Dir.mktmpdir
+        entry = double("entry", name: "INST")
+        zip = double("zip_file")
+        allow(zip).to receive(:each).and_yield(entry)
+        allow(zip).to receive(:extract) do |*_args, **kwargs|
+          FileUtils.cp_r(File.join(SPEC_DIR, 'install', 'config', 'targets', 'INST'), kwargs[:destination_directory])
+        end
+        allow(Zip::File).to receive(:open).and_yield(zip)
+        System.setup_targets(['INST'], dir, scope: 'DEFAULT', descriptions: false)
+        packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+        expect(packet.description).to be_nil
+        expect(packet.get_item('TEMP1').description).to be_nil
+      end
     end
 
     describe "instance" do

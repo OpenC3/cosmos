@@ -57,7 +57,11 @@ class PacketConfig:
         "TIME",
     ]
 
-    def __init__(self):
+    # descriptions: Whether to keep packet and item descriptions. Pass False in
+    #   processes that never display them (e.g. decom and interface microservices)
+    #   to reduce memory on large definitions.
+    def __init__(self, descriptions=True):
+        self.descriptions = descriptions
         self.name = None
         self.telemetry = {}
         self.commands = {}
@@ -412,6 +416,8 @@ class PacketConfig:
     def finish_packet(self):
         self.finish_item()
         if self.current_packet:
+            if not self.descriptions:
+                self.current_packet.description = None
             warnings = self.current_packet.check_bit_offsets()
             if len(warnings) > 0:
                 self.warnings += warnings
@@ -1082,6 +1088,8 @@ class PacketConfig:
         if self.current_item:
             if not self.current_packet:
                 raise RuntimeError("Cannot finish item without a current packet")
+            if not self.descriptions:
+                self.current_item.description = None
             self.current_packet.set_item(self.current_item)
             if self.current_cmd_or_tlm == PacketConfig.TELEMETRY_STRING:
                 target_latest_data = self.latest_data[self.current_packet.target_name]

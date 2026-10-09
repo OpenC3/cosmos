@@ -133,7 +133,7 @@ module OpenC3
       @target_names = @config["target_names"]
       @target_names ||= []
       # NOTE: setup_targets doesn't do anything if @target_names is empty
-      System.setup_targets(@target_names, @temp_dir, scope: @scope) unless is_plugin
+      System.setup_targets(@target_names, @temp_dir, scope: @scope, descriptions: load_descriptions?) unless is_plugin
 
       # Use at_exit to shutdown cleanly no matter how we die
       at_exit do
@@ -229,6 +229,12 @@ module OpenC3
     # Must be implemented by a subclass
     def run
       shutdown()
+    end
+
+    # Whether System keeps packet and item descriptions. Subclasses that never
+    # use them override this to return false to reduce memory.
+    def load_descriptions?
+      true
     end
 
     def shutdown(state = 'STOPPED')

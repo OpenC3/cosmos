@@ -642,6 +642,10 @@ class InterfaceMicroservice(Microservice):
     UNKNOWN_BYTES_TO_PRINT = 16
     DISCONNECT_WAIT_TIME = 1
 
+    # Interfaces never use descriptions so don't keep them in memory
+    def load_descriptions(self):
+        return False
+
     def __init__(self, name):
         self.mutex = threading.Lock()
         self.interface = None
