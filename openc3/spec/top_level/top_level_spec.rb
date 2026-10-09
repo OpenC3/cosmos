@@ -148,24 +148,26 @@ module OpenC3
   end
 
   describe "hash_files" do
-    it "calculates a hashing sum across files in md5 mode" do
+    before(:all) do
       File.open(File.join(OpenC3::PATH, 'test1.txt'), 'w') { |f| f.puts "test1" }
       File.open(File.join(OpenC3::PATH, 'test2.txt'), 'w') { |f| f.puts "test2" }
+    end
+
+    after(:all) do
+      FileUtils.rm_f(File.join(OpenC3::PATH, 'test1.txt'))
+      FileUtils.rm_f(File.join(OpenC3::PATH, 'test2.txt'))
+    end
+
+    it "calculates a hashing sum across files in md5 mode" do
       digest = OpenC3.hash_files(["test1.txt", "test2.txt"], nil, 'MD5')
       expect(digest.digest.length).to be 16
       expect(digest.hexdigest).to eql 'e51dfbea83de9c7e6b49560089d8a170'
-      File.delete(File.join(OpenC3::PATH, 'test1.txt'))
-      File.delete(File.join(OpenC3::PATH, 'test2.txt'))
     end
 
     it "calculates a hashing sum across files in sha256 mode" do
-      File.open(File.join(OpenC3::PATH, 'test1.txt'), 'w') { |f| f.puts "test1" }
-      File.open(File.join(OpenC3::PATH, 'test2.txt'), 'w') { |f| f.puts "test2" }
       digest = OpenC3.hash_files(["test1.txt", "test2.txt"], nil, 'SHA256')
       expect(digest.digest.length).to be 32
       expect(digest.hexdigest).to eql '49789e7c809eb38ea34864b00e2cfd68825e0c07cd7b7d0c6fe2642ac87a919c'
-      File.delete(File.join(OpenC3::PATH, 'test1.txt'))
-      File.delete(File.join(OpenC3::PATH, 'test2.txt'))
     end
   end
 
@@ -241,57 +243,67 @@ module OpenC3
   end
 
   describe "require_class" do
-    it "requires the class represented by the filename" do
-      filename = File.join(OpenC3::PATH, "lib", "my_test_class.rb")
-      File.delete(filename) if File.exist? filename
-
-      File.open(filename, 'w') do |file|
+    before(:all) do
+      FileUtils.mkdir_p(File.join(OpenC3::PATH, "lib"))
+      File.open(File.join(OpenC3::PATH, "lib", "my_test_class.rb"), 'w') do |file|
         file.puts "class MyTestClass"
         file.puts "end"
       end
-
-      klass = OpenC3.require_class("my_test_class.rb")
-      expect(klass).to be_a(Class)
-      expect(klass).to eq MyTestClass
-      File.delete(filename)
-    end
-
-    it "requires the class represented by the classname" do
-      filename = File.join(OpenC3::PATH, "lib", "my_other_test_class.rb")
-      File.delete(filename) if File.exist? filename
-
-      File.open(filename, 'w') do |file|
+      File.open(File.join(OpenC3::PATH, "lib", "my_other_test_class.rb"), 'w') do |file|
         file.puts "class MyOtherTestClass"
         file.puts "end"
       end
+    end
 
+    after(:all) do
+      FileUtils.rm_f(File.join(OpenC3::PATH, "lib", "my_test_class.rb"))
+      FileUtils.rm_f(File.join(OpenC3::PATH, "lib", "my_other_test_class.rb"))
+    end
+
+    it "requires the class represented by the filename" do
+      klass = OpenC3.require_class("my_test_class.rb")
+      expect(klass).to be_a(Class)
+      expect(klass).to eq MyTestClass
+    end
+
+    it "requires the class represented by the classname" do
       klass = OpenC3.require_class("MyOtherTestClass")
       expect(klass).to be_a(Class)
       expect(klass).to eq MyOtherTestClass
-      File.delete(filename)
     end
   end
 
   describe "require_file" do
-    it "requires the file" do
-      filename = File.join(OpenC3::PATH, "lib", "my_test_file.rb")
-      File.delete(filename) if File.exist? filename
+    filename = File.join(OpenC3::PATH, "lib", "my_test_file.rb")
 
+    before(:all) do
+      FileUtils.mkdir_p(File.dirname(filename))
+    end
+
+    after(:each) do
+      FileUtils.rm_f(filename)
+    end
+
+    it "raises LoadError if the file does not exist" do
+      FileUtils.rm_f(filename)
       expect { OpenC3.require_file("my_test_file.rb") }.to raise_error(LoadError, /Unable to require my_test_file.rb/)
+    end
 
+    it "raises NameError if the file has an error" do
       File.open(filename, 'w') do |file|
         file.puts "class MyTestFile"
         file.puts "  blah" # This will cause an error
         file.puts "end"
       end
       expect { OpenC3.require_file("my_test_file.rb") }.to raise_error(NameError, /Unable to require my_test_file.rb/)
+    end
 
+    it "requires the file" do
       File.open(filename, 'w') do |file|
         file.puts "class MyTestFile"
         file.puts "end"
       end
-      OpenC3.require_file("my_test_file.rb")
-      File.delete(filename)
+      expect { OpenC3.require_file("my_test_file.rb") }.to_not raise_error
     end
   end
 

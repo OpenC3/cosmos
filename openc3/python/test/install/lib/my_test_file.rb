@@ -1,3 +1,0 @@
-class MyTestFile
-  blah
-end
