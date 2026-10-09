@@ -29,6 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # Need write permission to upload release asset
+      id-token: write # required for Docker Hub OIDC login
     env:
       # workflow_dispatch passes a bare version (6.10.0), the release event
       # passes a tag (v6.10.0). Normalized to a bare version by the step below.
@@ -75,6 +76,15 @@ jobs:
       - name: Get current date
         id: date
         run: echo "date=$(date -u '+%m_%d_%y_%H_%M_%S')" >> "$GITHUB_OUTPUT"
+      # Authenticate Docker Hub pulls via OIDC to avoid anonymous rate limits.
+      # Fork PRs get no id-token, so let them fall back to anonymous pulls.
+      - name: Docker login
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        continue-on-error: ${{ github.event.pull_request.head.repo.fork == true }}
+        env:
+          DOCKERHUB_OIDC_CONNECTIONID: 49349db4-6ea2-468a-9d7a-5133cbbc5326
+        with:
+          username: openc3inc
       - name: ClamAV setup and update definitions
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
