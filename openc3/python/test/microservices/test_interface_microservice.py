@@ -18,6 +18,7 @@ from unittest.mock import *
 
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.interface import Interface
+from openc3.interfaces.protocols.protocol import Protocol
 from openc3.microservices.interface_microservice import InterfaceMicroservice
 from openc3.models.cvt_model import CvtModel
 from openc3.models.interface_model import InterfaceModel
@@ -640,6 +641,41 @@ class TestInterfaceMicroservice(unittest.TestCase):
         handler.interface.cmd_target_enabled["INST"] = False
         result = handler.process_cmd(topic, msg_id, full_msg_hash, None)
         self.assertIsNone(result)
+
+    def test_process_cmd_acks_success_for_write_stop_but_rejects_disconnect(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        thread = threading.Thread(target=im.run)
+        thread.start()
+        self.addCleanup(thread.join, 5)
+        self.addCleanup(im.shutdown)
+        time.sleep(0.1)
+
+        class ResultProtocol(Protocol):
+            result = None
+
+            def write_packet(self, packet):
+                return ResultProtocol.result
+
+        im.interface.write_protocols.append(ResultProtocol())
+        handler = im.handler_thread
+        topic = "{DEFAULT__CMD}TARGET__INST"
+        msg_id = f"{int(time.time() * 1000)}-0"
+        msg_hash = {b"target_name": b"INST", b"cmd_name": b"ABORT", b"cmd_params": json.dumps({}).encode()}
+
+        with (
+            patch("openc3.microservices.interface_microservice.CommandTopic.write_packet") as cmd_write,
+            patch("openc3.microservices.interface_microservice.CommandDecomTopic.write_packet"),
+        ):
+            # STOP means the protocol handled the command, so it is acked and published
+            ResultProtocol.result = "STOP"
+            self.assertEqual(handler.process_cmd(topic, msg_id, msg_hash, None), "SUCCESS")
+            self.assertEqual(cmd_write.call_count, 1)
+
+            # DISCONNECT means nothing was written, so the command is rejected and not published
+            ResultProtocol.result = "DISCONNECT"
+            result = handler.process_cmd(topic, msg_id, msg_hash, None)
+            self.assertIn("write_packet requested disconnect", result)
+            self.assertEqual(cmd_write.call_count, 1)
 
     def test_process_cmd_supports_interface_directives(self):
         """Directive messages on the CMD}INTERFACE topic: interface_details and
