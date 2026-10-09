@@ -165,6 +165,10 @@ runs:
       env:
         OPENC3_TAG: ${{ inputs.tag }}
         MISSES_FILE: ${{ steps.hashes.outputs.misses-file }}
+        # buildx 0.37.2+ rejects the `network: host` entitlement in
+        # compose-build.yaml when compose builds through bake. Images are
+        # built one at a time here so bake's parallelism buys nothing.
+        COMPOSE_BAKE: "false"
       # Misses are already in topological order (the hash step writes them
       # that way). Pulled parents are tagged locally as openc3inc/${name}:${TAG},
       # so a child-only miss resolves its FROM without rebuilding the parent.
