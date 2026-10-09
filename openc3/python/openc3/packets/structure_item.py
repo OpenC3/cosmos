@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import copy
+import sys
 from functools import total_ordering
 
 from openc3.accessors.binary_accessor import BinaryAccessor
@@ -89,7 +90,8 @@ class StructureItem:
         if len(name) == 0:
             raise ValueError("name must contain at least one character")
 
-        self.__name = name.upper()
+        # Intern since many packets share the same item names
+        self.__name = sys.intern(name.upper())
         if self.structure_item_constructed:
             self.verify_overall()
 
@@ -104,6 +106,7 @@ class StructureItem:
                 raise TypeError(f"key must be a String but is a {key.__class__.__name__}")
             if len(key) == 0:
                 raise ValueError("key must contain at least one character")
+            key = sys.intern(key)
         self.__key = key
 
     @property

@@ -26,7 +26,7 @@ class StateParser:
     #   appended with any warnings found case parsing the limits:
     @classmethod
     def parse(cls, parser, packet, cmd_or_tlm, item, warnings):
-        if item.limits.values:
+        if item.limits_values:
             raise parser.error("Items with LIMITS can't define STATE")
         if item.units:
             raise parser.error("Items with UNITS can't define STATE")

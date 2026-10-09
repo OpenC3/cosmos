@@ -1288,6 +1288,17 @@ module OpenC3
       end
 
       context "with states" do
+        it "handles states without state colors on an item with limits values" do
+          test1 = @p.get_item("TEST1")
+          test1.states = { "TRUE" => 1, "FALSE" => 0 }
+          test1.limits.values = { DEFAULT: [1, 2, 4, 5] }
+          @p.update_limits_items_cache(test1)
+          @p.enable_limits("TEST1")
+          @p.write("TEST1", 0)
+          @p.check_limits
+          expect(test1.limits.state).to be_nil
+        end
+
         it "calls the limits_change_callback" do
           test1 = @p.get_item("TEST1")
           expect(test1.limits.enabled).to be false

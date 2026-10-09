@@ -20,6 +20,12 @@ class TestStructureItem(unittest.TestCase):
     def test_name_creates_new_structure_items(self):
         self.assertEqual(StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", None).name, "TEST")
 
+    def test_name_and_key_are_interned(self):
+        si1 = StructureItem("".join(["TE", "ST"]), 0, 8, "UINT", "BIG_ENDIAN", None)
+        si2 = StructureItem("".join(["TE", "ST"]), 0, 8, "UINT", "BIG_ENDIAN", None)
+        self.assertIs(si1.name, si2.name)
+        self.assertIs(si1.key, si1.name)
+
     def test_name_complains_about_non_string_names(self):
         self.assertRaisesRegex(
             TypeError,
