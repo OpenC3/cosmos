@@ -640,6 +640,69 @@ class CopyTo(unittest.TestCase):
         self.assertEqual(i2.protocol_info, [[Protocol, [], "READ_WRITE"]])
 
 
+class ConnectAndPeriodicCmds(unittest.TestCase):
+    class MyInterface(Interface):
+        def __init__(self):
+            super().__init__()
+            self.is_connected = False
+
+        def connect(self):
+            super().connect()
+            self.is_connected = True
+
+        def connected(self):
+            return self.is_connected
+
+        def disconnect(self):
+            self.is_connected = False
+            super().disconnect()
+
+    @patch("openc3.interfaces.interface.cmd")
+    def test_sends_connect_cmds_after_every_connect(self, mock_cmd):
+        i = ConnectAndPeriodicCmds.MyInterface()
+        i.set_option("CONNECT_CMD", ["LOG", "INST ABORT"])
+        i.set_option("CONNECT_CMD", ["DONT_LOG", "INST CLEAR"])
+        for _ in range(2):
+            i.connect()
+            i.post_connect()
+            i.disconnect()
+        self.assertEqual(mock_cmd.call_count, 4)
+        mock_cmd.assert_any_call("INST ABORT")
+        mock_cmd.assert_any_call("INST CLEAR", log_message=False)
+
+    @patch("openc3.interfaces.interface.cmd")
+    def test_sends_periodic_cmds_only_while_connected(self, mock_cmd):
+        i = ConnectAndPeriodicCmds.MyInterface()
+        i.set_option("PERIODIC_CMD", ["LOG", "0.1", "INST ABORT"])
+        i.set_option("PERIODIC_CMD", ["DONT_LOG", "0.1", "INST CLEAR"])
+        i.connect()
+        time.sleep(0.5)
+        i.disconnect()
+        mock_cmd.assert_any_call("INST ABORT")
+        mock_cmd.assert_any_call("INST CLEAR", log_message=False)
+        i.scheduler_thread.join(1)
+        self.assertFalse(i.scheduler_thread.is_alive())
+        mock_cmd.reset_mock()
+        time.sleep(0.3)
+        mock_cmd.assert_not_called()
+
+    @patch("openc3.interfaces.interface.cmd")
+    def test_reconnect_leaves_one_scheduler_thread(self, mock_cmd):
+        i = ConnectAndPeriodicCmds.MyInterface()
+        i.set_option("PERIODIC_CMD", ["LOG", "0.1", "INST ABORT"])
+        i.connect()
+        first_thread = i.scheduler_thread
+        # Reconnect before the first thread has a chance to see the cancel
+        i.disconnect()
+        i.connect()
+        first_thread.join(1)
+        self.assertFalse(first_thread.is_alive())
+        self.assertTrue(i.scheduler_thread.is_alive())
+        i.disconnect()
+        i.scheduler_thread.join(1)
+        self.assertFalse(i.scheduler_thread.is_alive())
+
+
 class InterfaceCmd(unittest.TestCase):
     def test_clear_counters(self):
         i = Interface()
