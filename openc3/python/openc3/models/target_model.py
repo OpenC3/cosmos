@@ -596,11 +596,9 @@ class TargetModel(Model):
         configs = {}
         for packet in packets:
             target_name = packet.target_name.upper()
-            if not configs.get(target_name):
-                configs[target_name] = ""
-            config = configs[target_name]
-            config += packet.to_config(cmd_or_tlm)
-            config += "\n"
+            configs.setdefault(target_name, "")
+            configs[target_name] += packet.to_config(cmd_or_tlm) + "\n"
+
         for target_name, config in configs.items():
             bucket_key = f"{self.scope}/targets_modified/{target_name}/cmd_tlm/{filename}"
             client = Bucket.get_client()
