@@ -37,6 +37,11 @@ Configuration is passed by openc3-app via environment variables:
 * ``OPENC3_BRIDGE_CHANNEL`` — the stream/interface name (the ``stream/<name>`` ALPN).
 * ``OPENC3_HOST_INTERFACE`` — JSON ``{"config_params": [...], "options": [...]}``.
 * ``OPENC3_MICROSERVICE_NAME`` — name used for logging.
+* ``OPENC3_STOP_ON_STDIN_EOF`` — when set, stdin is a pipe whose write end only
+  openc3-app holds. EOF means openc3-app asked us to stop (it closes the pipe on
+  a graceful stop — the only graceful signal it has on Windows) or that it has
+  exited, even if it was force-killed or crashed. Either way we shut down, so a
+  host interface never outlives the app and keeps holding its device.
 """
 
 import asyncio
@@ -46,6 +51,7 @@ import json
 import os
 import signal
 import sys
+import threading
 import traceback
 
 from openc3.packets.packet import Packet
@@ -107,6 +113,42 @@ HANDSHAKE_TIMEOUT = 30.0
 # Device/plugin connect and disconnect methods are arbitrary synchronous code;
 # bound how long the async control loop waits for either operation.
 DEVICE_OPERATION_TIMEOUT = 30.0
+
+# See the module docstring. MUST match openc3-app's child_guard.rs.
+STOP_ON_STDIN_EOF_ENV = "OPENC3_STOP_ON_STDIN_EOF"
+
+# After a stdin-EOF stop request, exit regardless if the clean shutdown hasn't
+# finished by then. Device reads run in executor threads that can block
+# indefinitely, and with openc3-app gone nothing else would ever kill us.
+STOP_GRACE = 10.0
+
+
+class _PipeSafeStream:
+    """Wraps stdout/stderr so writing after openc3-app (the reader) has gone away
+    doesn't raise BrokenPipeError out of Logger calls mid-shutdown; output is
+    silently dropped instead."""
+
+    def __init__(self, stream):
+        self._stream = stream
+        self._broken = False
+
+    def write(self, data):
+        if not self._broken:
+            try:
+                return self._stream.write(data)
+            except (OSError, ValueError):
+                self._broken = True
+        return len(data)
+
+    def flush(self):
+        if not self._broken:
+            try:
+                self._stream.flush()
+            except (OSError, ValueError):
+                self._broken = True
+
+    def __getattr__(self, name):
+        return getattr(self._stream, name)
 
 
 def _iroh_error_detail(error):
@@ -188,6 +230,9 @@ class HostInterfaceMicroservice:
         return interface
 
     def run(self):
+        if os.environ.get(STOP_ON_STDIN_EOF_ENV):
+            sys.stdout = _PipeSafeStream(sys.stdout)
+            sys.stderr = _PipeSafeStream(sys.stderr)
         if not self.ticket or not self.channel:
             Logger.error(f"{self.name}: OPENC3_BRIDGE_TICKET and OPENC3_BRIDGE_CHANNEL are required; exiting")
             return
@@ -229,9 +274,24 @@ class HostInterfaceMicroservice:
 
         for sig in (signal.SIGINT, signal.SIGTERM):
             # add_signal_handler is unsupported on some loops (e.g. Windows
-            # Proactor); there the process is hard-stopped instead.
+            # Proactor); there the stdin lifeline below is the graceful route.
             with contextlib.suppress(NotImplementedError, ValueError, RuntimeError):
                 loop.add_signal_handler(sig, _request_stop)
+
+        # openc3-app's lifeline: stop when it closes our stdin or goes away.
+        if os.environ.get(STOP_ON_STDIN_EOF_ENV) and sys.stdin is not None:
+
+            def _stdin_closed():
+                Logger.info(f"{self.name}: openc3-app closed the lifeline; shutting down")
+                with contextlib.suppress(RuntimeError):  # loop already closed
+                    loop.call_soon_threadsafe(_request_stop)
+
+            threading.Thread(
+                target=self._watch_stdin,
+                args=(sys.stdin.buffer, _stdin_closed),
+                name="openc3-app-lifeline",
+                daemon=True,
+            ).start()
 
         # Bind with the openc3-app-provided identity so the hub can verify us.
         # No relay by default (co-located); set OPENC3_BRIDGE_RELAY to the same
@@ -264,6 +324,17 @@ class HostInterfaceMicroservice:
                 if inspect.isawaitable(result):
                     _ = await result
         Logger.info(f"{self.name}: shut down")
+
+    def _watch_stdin(self, stdin, on_eof):
+        """Block until `stdin` reaches EOF, then arm the exit backstop and call
+        `on_eof` (which requests a clean shutdown). Runs on a daemon thread."""
+        with contextlib.suppress(Exception):
+            while stdin.read(4096):
+                pass  # openc3-app never writes; just wait for EOF
+        backstop = threading.Timer(STOP_GRACE, os._exit, args=(0,))
+        backstop.daemon = True
+        backstop.start()
+        on_eof()
 
     def _set_desired(self, connected):
         if connected == self._desired_connected:

@@ -76,7 +76,8 @@ If running COSMOS Core skip to the next section.
    1. Change this openc3-keycloak line: KC_HOSTNAME: "http://localhost:2900/auth"
    1. It should be changed to the final url with correct http/https, domain, port and end with /auth
 1. Edit .env
-   1. Change the OPENC3_KEYCLOAK_EXTERNAL_URL and OPENC3_KEYCLOAK_URL lines so that **both** are set to the exact same url as set above in compose.yaml
+   1. Change the OPENC3_KEYCLOAK_EXTERNAL_URL line to the exact same url as set above in compose.yaml
+   1. Leave OPENC3_KEYCLOAK_URL set to the internal service url `http://openc3-keycloak:8080/auth`. COSMOS containers use it to talk to Keycloak directly.
 1. Edit openc3-enterprise-grafana/cosmos.yaml
    1. Change the cosmosUrl and keycloakUrl settings to the correct schema, domain, and port. Keep /auth if present.
 1. Edit openc3-enterprise-grafana/grafana.ini

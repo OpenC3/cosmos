@@ -201,17 +201,16 @@ From the Admin Console, browse for the newly creating `.gem` file containing you
 
 ## Step 9: Enable Hot-Reloads for Fast Development
 
-1.  Bootstrap the tool with pnpm
+1.  Install the tool's dependencies from your plugin directory (skip this if you already ran `pnpm install` in Step 7)
 
 ```bash
-openc3-init/plugins % pnpm install --frozen-lockfile --ignore-scripts
-openc3-init/plugins % pnpm build:common
+your-plugin % pnpm install
 ```
 
-1.  Serve a your tool locally
+1.  Serve your tool locally from your plugin directory
 
 ```bash
-openc3-init % pnpm serve
+your-plugin % pnpm serve
 ```
 
 1.  Set the [single SPA](https://single-spa.js.org/) override for the application
