@@ -555,6 +555,7 @@ module OpenC3
 
   class InterfaceMicroservice < Microservice
     UNKNOWN_BYTES_TO_PRINT = 16
+    DEFAULT_UPDATE_INTERVAL = 0.1 # seconds
 
     def initialize(name)
       @mutex = Mutex.new
@@ -591,18 +592,22 @@ module OpenC3
         RouterStatusModel.set(@interface.as_json(), scope: @scope)
       end
 
-      @queued = false
+      # Queue Redis writes by default and flush them every update_interval seconds
+      update_interval = DEFAULT_UPDATE_INTERVAL
       @interface.options.each do |option_name, option_values|
         # OPTIMIZE_THROUGHPUT was changed to UPDATE_INTERVAL to better represent the setting
         if option_name.upcase == 'UPDATE_INTERVAL' or option_name.upcase == 'OPTIMIZE_THROUGHPUT'
-          @queued = true
           update_interval = option_values[0].to_f
-          EphemeralStoreQueued.instance.set_update_interval(update_interval)
-          StoreQueued.instance.set_update_interval(update_interval)
         end
         if option_name.upcase == 'SYNC_PACKET_COUNT_DELAY_SECONDS'
           TargetModel.sync_packet_count_delay_seconds = option_values[0].to_f
         end
+      end
+      # An UPDATE_INTERVAL of 0 (or less) disables queuing and writes directly to Redis
+      @queued = update_interval > 0.0
+      if @queued
+        EphemeralStoreQueued.instance.set_update_interval(update_interval)
+        StoreQueued.instance.set_update_interval(update_interval)
       end
 
       @interface_thread_sleeper = Sleeper.new

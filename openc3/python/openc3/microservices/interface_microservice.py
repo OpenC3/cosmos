@@ -641,6 +641,7 @@ class RouterTlmHandlerThread:
 class InterfaceMicroservice(Microservice):
     UNKNOWN_BYTES_TO_PRINT = 16
     DISCONNECT_WAIT_TIME = 1
+    DEFAULT_UPDATE_INTERVAL = 0.1  # seconds
 
     def __init__(self, name):
         self.mutex = threading.Lock()
@@ -680,16 +681,19 @@ class InterfaceMicroservice(Microservice):
         else:
             RouterStatusModel.set(self.interface.as_json(), scope=self.scope)
 
-        self.queued = False
+        # Queue Redis writes by default and flush them every update_interval seconds
+        update_interval = InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL
         for option_name, option_values in self.interface.options.items():
             # OPTIMIZE_THROUGHPUT was changed to UPDATE_INTERVAL to better represent the setting
             if option_name.upper() == "UPDATE_INTERVAL" or option_name.upper() == "OPTIMIZE_THROUGHPUT":
-                self.queued = True
                 update_interval = float(option_values[0])
-                EphemeralStoreQueued.instance().set_update_interval(update_interval)
-                StoreQueued.instance().set_update_interval(update_interval)
             if option_name.upper() == "SYNC_PACKET_COUNT_DELAY_SECONDS":
                 TargetModel.sync_packet_count_delay_seconds = float(option_values[0])
+        # An UPDATE_INTERVAL of 0 (or less) disables queuing and writes directly to Redis
+        self.queued = update_interval > 0.0
+        if self.queued:
+            EphemeralStoreQueued.instance().set_update_interval(update_interval)
+            StoreQueued.instance().set_update_interval(update_interval)
 
         if self.interface_or_router == "INTERFACE":
             self.handler_thread = InterfaceCmdHandlerThread(
