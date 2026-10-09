@@ -80,6 +80,13 @@ class TestCommandDecomTopic(unittest.TestCase):
         self.assertEqual(msg_hash["packet_name"], "CMD")
         self.assertEqual(msg_hash["received_count"], 1)
 
+    def test_writes_stored_as_lowercase_like_ruby(self):
+        for stored, expected in [(True, "true"), (False, "false")]:
+            packet = self._make_packet()
+            packet.stored = stored
+            CommandDecomTopic.write_packet(packet, scope="DEFAULT")
+            self.assertEqual(self.captured["msg_hash"]["stored"], expected)
+
     def test_logs_given_value_for_write_conversion_items(self):
         packet = self._make_packet()
         packet.given_values = {"VALUE": 5, "STATE": "TRUE"}

@@ -77,6 +77,11 @@ class TestTelemetryDecomTopic(unittest.TestCase):
         self.assertEqual(msg_hash["received_count"], 5)
         self.assertIn("json_data", msg_hash)
 
+    def test_writes_stored_as_lowercase_like_ruby(self):
+        for stored, expected in [(True, "true"), (False, "false")]:
+            TelemetryDecomTopic.write_packet(self._make_packet(stored=stored), scope="DEFAULT")
+            self.assertEqual(self.captured["msg_hash"]["stored"], expected)
+
     def test_includes_extra_when_set(self):
         extra = {"foo": "bar", "count": 42}
         TelemetryDecomTopic.write_packet(self._make_packet(extra=extra), scope="DEFAULT")
