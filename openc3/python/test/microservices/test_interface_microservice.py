@@ -887,7 +887,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
 
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
         self.addCleanup(im.shutdown)
-        self.assertEqual(im.queued, True)
+        self.assertTrue(im.queued)
         self.assertEqual(StoreQueued.instance().update_interval, InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL)
         self.assertEqual(EphemeralStoreQueued.instance().update_interval, InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL)
         self.assertEqual(InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL, 0.1)
@@ -909,7 +909,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
 
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
         self.addCleanup(im.shutdown)
-        self.assertEqual(im.queued, False)
+        self.assertFalse(im.queued)
 
         im.shutdown()
         time.sleep(0.1)  # Allow threads to exit
