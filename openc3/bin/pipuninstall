@@ -3,7 +3,7 @@
 # PythonPackageModel.destroy for per-plugin venvs), uninstall from that venv.
 # Otherwise fall back to the shared PYTHONUSERBASE.
 VENV="${PIPINSTALL_VENV:-$PYTHONUSERBASE}"
-echo "uv pip uninstall $@"
+echo "uv pip uninstall $*"
 uv pip uninstall --python "$VENV" "$@"
 if [ $? -eq 0 ]; then
     echo "Command succeeded"
