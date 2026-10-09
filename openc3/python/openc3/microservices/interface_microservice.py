@@ -64,9 +64,7 @@ class InterfaceCmdHandlerThread:
             self.critical_commanding = scope_model.critical_commanding
         else:
             self.critical_commanding = "OFF"
-        self.logger = logger
-        if not self.logger:
-            self.logger = Logger()
+        self.logger = logger or Logger()
         self.metric = metric
         self.count = 0
         self.directive_count = 0
@@ -448,9 +446,7 @@ class RouterTlmHandlerThread:
         self.tlm = tlm
         self.scope = scope
         self.db_shard = int(db_shard or 0)
-        self.logger = logger
-        if not self.logger:
-            self.logger = Logger
+        self.logger = logger or Logger
         self.metric = metric
         self.count = 0
         self.directive_count = 0
