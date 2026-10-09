@@ -314,7 +314,11 @@ class InterfaceCmdHandlerThread:
                 else:
                     raise RuntimeError(f"Invalid command received:\n{msg_hash}")
 
-                if not self.interface.cmd_target_enabled.get(command.target_name, False):
+                # An unidentified buffer is sent as UNKNOWN on behalf of the target it was sent to
+                enabled_target_name = command.target_name
+                if enabled_target_name == "UNKNOWN" and target_name:
+                    enabled_target_name = target_name
+                if not self.interface.cmd_target_enabled.get(enabled_target_name, False):
                     return None  # Don't ack disabled targets
 
                 orig_command = System.commands.packet(command.target_name, command.packet_name)

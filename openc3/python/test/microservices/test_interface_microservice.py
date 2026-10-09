@@ -18,7 +18,7 @@ from unittest.mock import *
 
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.interface import Interface
-from openc3.microservices.interface_microservice import InterfaceMicroservice
+from openc3.microservices.interface_microservice import InterfaceCmdHandlerThread, InterfaceMicroservice
 from openc3.models.cvt_model import CvtModel
 from openc3.models.interface_model import InterfaceModel
 from openc3.models.interface_status_model import InterfaceStatusModel
@@ -868,3 +868,62 @@ class TestInterfaceMicroservice(unittest.TestCase):
 
         im.shutdown()
         time.sleep(0.1)  # Allow threads to exit
+
+
+class TestInterfaceCmdHandlerRoutedCommands(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system()
+        self.interface = MyInterface()
+        self.interface.name = "INST_INT"
+        self.interface._connected = True
+        self.interface.cmd_target_names = ["INST"]
+        self.interface.cmd_target_enabled = {"INST": True, "UNKNOWN": True}
+        self.written = []
+        for target in [
+            "openc3.microservices.interface_microservice.CommandTopic.write_packet",
+            "openc3.microservices.interface_microservice.CommandDecomTopic.write_packet",
+            "openc3.microservices.interface_microservice.InterfaceStatusModel.set",
+        ]:
+            p = patch(target)
+            mock = p.start()
+            self.addCleanup(p.stop)
+            if "CommandTopic.write_packet" in target and "Decom" not in target:
+                mock.side_effect = lambda packet, scope: self.written.append(packet)
+        p = patch(
+            "openc3.microservices.interface_microservice.TargetModel.increment_command_count",
+            return_value=1,
+        )
+        p.start()
+        self.addCleanup(p.stop)
+        self.handler = InterfaceCmdHandlerThread(self.interface, None, logger=Mock(), scope="DEFAULT")
+
+    def routed_msg(self, target_name, buffer):
+        # The message RouterTopic.route_command writes for an unidentified buffer
+        return {b"target_name": target_name.encode(), b"cmd_name": b"UNKNOWN", b"cmd_buffer": buffer}
+
+    def test_identifies_a_routed_command_against_the_routed_target(self):
+        buffer = bytes(System.commands.build_cmd("INST", "ABORT", {}).buffer)
+        result = self.handler.process_cmd("{DEFAULT__CMD}TARGET__INST", "1-0", self.routed_msg("INST", buffer), None)
+        self.assertEqual(result, "SUCCESS")
+        self.assertEqual([self.written[0].target_name, self.written[0].packet_name], ["INST", "ABORT"])
+
+    def test_sends_an_unidentified_routed_command_as_unknown(self):
+        # Sent on behalf of the routed target, so UNKNOWN itself need not be enabled
+        del self.interface.cmd_target_enabled["UNKNOWN"]
+        with patch.object(System.commands, "identify", return_value=None):
+            result = self.handler.process_cmd(
+                "{DEFAULT__CMD}TARGET__INST", "1-0", self.routed_msg("INST", b"\xff" * 8), None
+            )
+        self.assertEqual(result, "SUCCESS")
+        self.assertEqual([self.written[0].target_name, self.written[0].packet_name], ["UNKNOWN", "UNKNOWN"])
+        self.assertEqual(bytes(self.written[0].buffer), b"\xff" * 8)
+
+    def test_drops_an_unidentified_routed_command_for_a_disabled_target(self):
+        self.interface.cmd_target_enabled["INST"] = False
+        with patch.object(System.commands, "identify", return_value=None):
+            result = self.handler.process_cmd(
+                "{DEFAULT__CMD}TARGET__INST", "1-0", self.routed_msg("INST", b"\xff" * 8), None
+            )
+        self.assertIsNone(result)
+        self.assertEqual(self.written, [])
