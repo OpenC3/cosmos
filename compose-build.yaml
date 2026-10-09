@@ -19,7 +19,6 @@ services:
   openc3-ruby:
     build:
       context: "openc3-ruby"
-      network: host
       args:
         DEBIAN_RELEASE: ${DEBIAN_RELEASE}
         DEBIAN_POINT_RELEASE: ${DEBIAN_POINT_RELEASE}
@@ -33,7 +32,6 @@ services:
   openc3-base:
     build:
       context: "openc3"
-      network: host
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -45,7 +43,6 @@ services:
   openc3-node:
     build:
       context: "openc3-node"
-      network: host
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -57,7 +54,6 @@ services:
   openc3-buckets:
     build:
       context: "openc3-buckets"
-      network: host
       args:
         DEBIAN_RELEASE: ${DEBIAN_RELEASE}
         DEBIAN_POINT_RELEASE: ${DEBIAN_POINT_RELEASE}
@@ -68,7 +64,6 @@ services:
   openc3-tsdb:
     build:
       context: "openc3-tsdb"
-      network: host
       args:
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb:${OPENC3_TAG}"
@@ -76,7 +71,6 @@ services:
   openc3-redis:
     build:
       context: "openc3-redis"
-      network: host
       args:
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
         DEBIAN_POINT_RELEASE: ${DEBIAN_POINT_RELEASE}
@@ -86,7 +80,6 @@ services:
   openc3-cosmos-cmd-tlm-api:
     build:
       context: "openc3-cosmos-cmd-tlm-api"
-      network: host
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -99,7 +92,6 @@ services:
   openc3-cosmos-script-runner-api:
     build:
       context: "openc3-cosmos-script-runner-api"
-      network: host
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -112,7 +104,6 @@ services:
   openc3-operator:
     build:
       context: "openc3-operator"
-      network: host
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -124,7 +115,6 @@ services:
   openc3-traefik:
     build:
       context: "openc3-traefik"
-      network: host
       args:
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik:${OPENC3_TAG}"
@@ -134,7 +124,6 @@ services:
       context: "openc3-cosmos-init"
       additional_contexts:
         docs: "docs.openc3.com"
-      network: host
       args:
         NPM_URL: ${NPM_URL}
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
