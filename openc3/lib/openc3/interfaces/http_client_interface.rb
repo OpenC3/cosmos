@@ -51,6 +51,10 @@ module OpenC3
 
     # Connects the interface to its target(s)
     def connect
+      # Discard any responses or disconnect markers left over from a previous connection.
+      # disconnect can be called more than once per connection loss and each call queues
+      # a marker, so an unconsumed one would immediately disconnect the new connection.
+      @response_queue.clear
       # Per https://github.com/lostisland/faraday/blob/main/lib/faraday/options/env.rb
       # :timeout       - time limit for the entire request (Integer in seconds)
       # :open_timeout  - time limit for just the connection phase (e.g. handshake) (Integer in seconds)

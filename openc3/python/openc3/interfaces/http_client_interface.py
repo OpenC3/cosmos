@@ -73,6 +73,11 @@ class HttpClientInterface(Interface):
         """
         Initializes an HTTP session and then calls the parent class's connect method.
         """
+        # Discard any responses or disconnect markers left over from a previous connection.
+        # disconnect() can be called more than once per connection loss and each call queues
+        # a marker, so an unconsumed one would immediately disconnect the new connection.
+        while not self.response_queue.empty():
+            self.response_queue.get_nowait()
         self.http = requests.Session()
         super().connect()
 
