@@ -41,6 +41,17 @@ module OpenC3
       allow(@interface).to receive(:connected?) { true }
     end
 
+    # The stub streams below return data forever so cap the read queue rather
+    # than letting the read thread buffer the full default budget
+    before(:each) do
+      @interface.set_option('READ_QUEUE_MAX_SIZE', ['65536'])
+    end
+
+    after(:each) do
+      # Stop the StreamInterface read thread started by reading
+      @interface.stop_read_queue_thread if @interface
+    end
+
     describe "configure_protocol" do
       it "initializes attributes" do
         @interface.add_protocol(BurstProtocol, [1, '0xDEADBEEF', true], :READ_WRITE)

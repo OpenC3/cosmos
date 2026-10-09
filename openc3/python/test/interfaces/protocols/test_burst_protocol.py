@@ -47,6 +47,14 @@ class TestBurstProtocol(unittest.TestCase):
         TestBurstProtocol.data = b"\x01\x02\x03\x04"
         self.interface = TestBurstProtocol.MyInterface()
 
+        # The stub streams below return data forever so cap the read queue
+        # rather than letting the read thread buffer the full default budget
+        self.interface.set_option("READ_QUEUE_MAX_SIZE", ["65536"])
+
+    def tearDown(self):
+        # Stop the StreamInterface read thread started by reading
+        self.interface.stop_read_queue_thread()
+
     def test_initializes_attributes(self):
         self.interface.add_protocol(BurstProtocol, [1, "0xDEADBEEF", True], "READ_WRITE")
         self.assertEqual(self.interface.read_protocols[0].data, b"")

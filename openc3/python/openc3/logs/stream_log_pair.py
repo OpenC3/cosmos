@@ -47,12 +47,12 @@ class StreamLogPair:
         self.read_log.shutdown()
         self.write_log.shutdown()
 
-    # TODO: Simply copy.copy
-    # Clone the stream log pair
-    # def clone(self):
-    #   stream_log_pair = super.clone()
-    #   stream_log_pair.read_log = self.read_log.clone
-    #   stream_log_pair.write_log = self.write_log.clone
-    #   stream_log_pair.read_log.start if self.read_log.logging_enabled:
-    #   stream_log_pair.write_log.start if self.write_log.logging_enabled:
-    #   stream_log_pair
+    # Clone the stream log pair. New stream logs are created (rather than
+    # copied) so the clone doesn't share the open files of the original.
+    def clone(self):
+        read_log = self.read_log
+        params = [read_log.cycle_time, read_log.cycle_size, read_log.cycle_hour, read_log.cycle_minute]
+        stream_log_pair = StreamLogPair(read_log.orig_name, params)
+        stream_log_pair.read_log.logging_enabled = self.read_log.logging_enabled
+        stream_log_pair.write_log.logging_enabled = self.write_log.logging_enabled
+        return stream_log_pair
