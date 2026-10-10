@@ -247,6 +247,62 @@ module OpenC3
         im.shutdown
         sleep 0.1 # Allow threads to exit
       end
+
+      context "identification" do
+        def health_status_buffer
+          packet = System.telemetry.packet('INST', 'HEALTH_STATUS').clone
+          packet.id_items.each { |item| packet.write_item(item, item.id_value, :RAW) }
+          packet.buffer
+        end
+
+        def handle(im, buffer, target_name: nil, packet_name: nil, stored: false)
+          packet = Packet.new(target_name, packet_name)
+          packet.buffer = buffer
+          packet.stored = stored
+          im.send(:handle_packet, packet)
+        end
+
+        before(:each) do
+          @im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+          @warnings = []
+          allow(@im.instance_variable_get(:@logger)).to receive(:warn) { |msg| @warnings << msg }
+          @written = []
+          allow(TelemetryTopic).to receive(:write_packet) { |packet, **_| @written << packet }
+        end
+
+        after(:each) do
+          @im.shutdown
+          sleep 0.1 # Allow threads to exit
+        end
+
+        it "falls back to identifying a packet pre-identified with a target not mapped to the interface" do
+          handle(@im, health_status_buffer, target_name: 'SYSTEM', packet_name: 'LIMITS_CHANGE')
+          expect(@warnings).to include("INST_INT: Received unknown identified telemetry: SYSTEM LIMITS_CHANGE")
+          expect(@written.length).to eql 1
+          expect(@written[0].target_name).to eql 'INST'
+          expect(@written[0].packet_name).to eql 'HEALTH_STATUS'
+        end
+
+        it "falls back to identifying a stored packet pre-identified with an unknown packet" do
+          handle(@im, health_status_buffer, target_name: 'INST', packet_name: 'NOPE', stored: true)
+          expect(@warnings).to include("INST_INT: Received unknown identified telemetry: INST NOPE")
+          expect(@written.length).to eql 1
+          expect(@written[0].target_name).to eql 'INST'
+          expect(@written[0].packet_name).to eql 'HEALTH_STATUS'
+          expect(@written[0].stored).to be true
+        end
+
+        it "publishes an unidentified stored packet as UNKNOWN without updating the CVT" do
+          expect(CvtModel).to_not receive(:set)
+          expect(System.telemetry).to_not receive(:update!)
+          handle(@im, "\xAB\xCD", stored: true)
+          expect(@written.length).to eql 1
+          expect(@written[0].target_name).to eql 'UNKNOWN'
+          expect(@written[0].packet_name).to eql 'UNKNOWN'
+          expect(@written[0].stored).to be true
+          expect(@warnings).to include("INST_INT UNKNOWN packet length: 2 starting with: ABCD")
+        end
+      end
     end
 
     describe "run" do
