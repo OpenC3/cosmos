@@ -1860,20 +1860,10 @@ module OpenC3
         i.obfuscate = true
         p.update_obfuscated_items_cache(i)
         p.buffer = "\x01\x02\x03\x04"
-        p.obfuscate
-        expect(p.buffer).to eql "\x00\x02\x03\x04"
-      end
-
-      it "removes given values for obfuscated items" do
-        p = Packet.new("tgt", "pkt")
-        p.append_item("test1", 8, :UINT)
-        p.append_item("test2", 8, :UINT)
-        i = p.get_item("TEST1")
-        i.obfuscate = true
-        p.update_obfuscated_items_cache(i)
-        p.buffer = "\x01\x02"
+        # Given values of obfuscated items are removed regardless of key case
         p.given_values = { 'test1' => 1, 'TEST2' => 2 }
         p.obfuscate
+        expect(p.buffer).to eql "\x00\x02\x03\x04"
         expect(p.given_values).to eql({ 'TEST2' => 2 })
       end
 
