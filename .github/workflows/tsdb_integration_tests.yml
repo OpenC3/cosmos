@@ -44,22 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
-    services:
-      questdb:
-        image: questdb/questdb:9.3.5
-        ports:
-          - 9000:9000
-          - 8812:8812
-        env:
-          QDB_PG_USER: admin
-          QDB_PG_PASSWORD: admin
-          QDB_HTTP_USER: admin
-          QDB_HTTP_PASSWORD: admin
-        # Note: QuestDB image doesn't include curl, so we can't use --health-cmd with curl.
-        # Instead we rely on the "Wait for QuestDB" step below which uses curl from the host.
-        options: >-
-          --ulimit nofile=262144:262144
+      id-token: write # required for Docker Hub OIDC login
 
     env:
       OPENC3_TSDB_HOSTNAME: localhost
@@ -77,6 +62,30 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Authenticate Docker Hub pulls via OIDC to avoid anonymous rate limits.
+      # Fork PRs get no id-token, so let them fall back to anonymous pulls.
+      - name: Docker login
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        continue-on-error: ${{ github.event.pull_request.head.repo.fork == true }}
+        env:
+          DOCKERHUB_OIDC_CONNECTIONID: 49349db4-6ea2-468a-9d7a-5133cbbc5326
+          DOCKERHUB_OIDC_EXPIREIN: 3600 # token defaults to 5 min; long builds pull from Docker Hub later
+        with:
+          username: openc3inc
+
+      # Started here rather than as a job service container: services start
+      # before any step runs, so they can't use the Docker Hub login above.
+      # QuestDB image doesn't include curl, so readiness is checked from the
+      # host by the "Wait for QuestDB" step below.
+      - name: Start QuestDB
+        run: |
+          docker run -d --name questdb \
+            -p 9000:9000 -p 8812:8812 \
+            -e QDB_PG_USER=admin -e QDB_PG_PASSWORD=admin \
+            -e QDB_HTTP_USER=admin -e QDB_HTTP_PASSWORD=admin \
+            --ulimit nofile=262144:262144 \
+            questdb/questdb:9.3.5
 
       # sync: false -- the dependency sync has to happen after the gem build
       # below, so it stays as its own step further down
