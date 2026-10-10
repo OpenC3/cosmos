@@ -630,7 +630,15 @@ module OpenC3
         return @interface
       end
 
+      # A user requested (re)connect starts fresh so backtraces are logged again
+      clear_connection_messages()
       attempt_connection(*params)
+    end
+
+    # Forget which errors have already had their backtrace logged
+    def clear_connection_messages
+      @connection_failed_messages.clear
+      @connection_lost_messages.clear
     end
 
     # Sets the state to 'ATTEMPTING', first rebuilding the interface/router if
@@ -824,8 +832,9 @@ module OpenC3
         if RuntimeError === connect_error and (connect_error.message =~ /canceled/ or connect_error.message =~ /timeout/)
           # Do not write an exception file for these extremely common cases
         else
-          @logger.error "#{@interface.name}: #{connect_error.formatted}"
+          # Only log the backtrace the first time we see each distinct error
           unless @connection_failed_messages.include?(connect_error.message)
+            @logger.error "#{@interface.name}: #{connect_error.formatted}"
             @connection_failed_messages << connect_error.message
           end
         end
@@ -844,8 +853,9 @@ module OpenC3
         when Errno::ECONNABORTED, Errno::ECONNRESET, Errno::ETIMEDOUT, Errno::EBADF, Errno::ENOTSOCK, IOError
           # Do not write an exception file for these extremely common cases
         else
-          @logger.error "#{@interface.name}: #{err.formatted}"
+          # Only log the backtrace the first time we see each distinct error
           unless @connection_lost_messages.include?(err.message)
+            @logger.error "#{@interface.name}: #{err.formatted}"
             @connection_lost_messages << err.message
           end
         end
@@ -881,6 +891,7 @@ module OpenC3
       else
         RouterStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
       end
+      clear_connection_messages()
       @logger.info "#{@interface.name}: Connection Success"
     end
 
