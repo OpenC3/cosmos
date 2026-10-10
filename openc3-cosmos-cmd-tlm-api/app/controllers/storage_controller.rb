@@ -281,11 +281,16 @@ class StorageController < ApplicationController
       end
     end
 
-    bucket = OpenC3::Bucket.getClient()
-    # Returns true or false if the object is found
-    result = bucket.check_object(bucket: bucket_name,
-                                 key: path,
-                                 retries: false)
+    if local_only_config_key?(params[:bucket], path)
+      local_path = OpenC3::LocalMode.key_path(path)
+      result = !!(local_path && File.file?(local_path))
+    else
+      bucket = OpenC3::Bucket.getClient()
+      # Returns true or false if the object is found
+      result = bucket.check_object(bucket: bucket_name,
+                                   key: path,
+                                   retries: false)
+    end
     if result
       render json: result
     else
@@ -323,6 +328,9 @@ class StorageController < ApplicationController
 
       filename = if storage_type == :volume
         sanitize_path("/#{storage_name}/#{object_id}")
+      elsif local_only_config_key?(params[:bucket], object_id)
+        # Local only targets are served from the local mode volume
+        OpenC3::LocalMode.key_path(object_id).to_s
       else
         tmp_dir = Dir.mktmpdir
         temp_path = File.join(tmp_dir, object_id)
@@ -333,7 +341,7 @@ class StorageController < ApplicationController
 
       # get_object returns nil for a missing key (never writes temp_path), and a
       # volume file may not exist. Return 404 rather than letting File.read 500.
-      unless File.exist?(filename)
+      unless File.file?(filename)
         render json: { status: 'error', message: "File not found: #{params[:object_id]}" }, status: :not_found
         return
       end
@@ -416,6 +424,11 @@ class StorageController < ApplicationController
       end
     end
 
+    if local_only_config_key?(params[:bucket], path)
+      render_local_only_error(path)
+      return
+    end
+
     bucket = OpenC3::Bucket.getClient()
     result = bucket.presigned_request(bucket: bucket_name,
                                       key: path,
@@ -448,6 +461,11 @@ class StorageController < ApplicationController
     # GENERIC_*_CONVERSION blocks are evaluated as code. Everything else is admin.
     return if !non_admin_config_overlay_write?(params[:bucket], path) && !authorization('admin')
 
+    if local_only_config_key?(params[:bucket], path)
+      render_local_only_error(path)
+      return
+    end
+
     bucket = OpenC3::Bucket.getClient()
     result = bucket.presigned_request(bucket: bucket_name,
                                       key: path,
@@ -459,6 +477,46 @@ class StorageController < ApplicationController
   rescue Exception => e
     log_error(e)
     OpenC3::Logger.error("Upload request failed: #{e.message}", user: username())
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
+  # Writes a file through the API rather than a presigned URL. Used by scripts
+  # outside the cluster for local only targets, whose files live in the local
+  # mode volume that only the cluster can reach. The contents are base64 in a
+  # JSON body (matching download_file) so binary files survive the JSON clients.
+  def upload_file
+    return unless authorization('system_set')
+    params.require(:bucket)
+    bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
+    path = sanitize_path(params[:object_id])
+    raise StorageError, "Missing contents" unless params.key?(:contents)
+
+    # Check scope-based RBAC for config and logs buckets
+    if bucket_requires_rbac?(params[:bucket]) && !authorize_bucket_path(params[:bucket], path, permission: 'system_set')
+      path_scope = extract_scope_from_path(path)
+      render json: { status: 'error', message: "Not authorized for scope: #{path_scope}" }, status: :forbidden
+      return
+    end
+
+    # Same rule as get_upload_presigned_request: non-admins may only write the
+    # user-writable overlay, and never the cmd_tlm overlay. Everything else is admin.
+    return if !non_admin_config_overlay_write?(params[:bucket], path) && !authorization('admin')
+
+    data = Base64.decode64(params[:contents].to_s)
+    local_only = local_only_config_key?(params[:bucket], path)
+    # Mirror targets_modified writes into the local mode volume like TargetFile.create
+    if local_only || (ENV['OPENC3_LOCAL_MODE'] && params[:bucket] == 'OPENC3_CONFIG_BUCKET' && path.split('/')[1] == 'targets_modified')
+      raise StorageError, "Invalid path: #{path}" unless OpenC3::LocalMode.key_path(path)
+      OpenC3::LocalMode.put_target_file(path, data, scope: path.split('/')[0])
+    end
+    # Local only targets are never stored in the bucket
+    OpenC3::Bucket.getClient().put_object(bucket: bucket_name, key: path, body: data) unless local_only
+
+    OpenC3::Logger.info("Uploaded: #{local_only ? 'local' : bucket_name}/#{path}", scope: params[:scope], user: username())
+    head :ok
+  rescue Exception => e
+    log_error(e)
+    OpenC3::Logger.error("Upload failed: #{e.message}", user: username())
     render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 
@@ -629,6 +687,16 @@ class StorageController < ApplicationController
     OpenC3::ConfigOverlay.non_admin_writable_key?(path)
   end
 
+  # True if the config-bucket key belongs to a target in OPENC3_LOCAL_ONLY_TARGETS.
+  # Those files only live in the local mode volume and never in the bucket.
+  def local_only_config_key?(bucket_param, path)
+    bucket_param == 'OPENC3_CONFIG_BUCKET' && OpenC3::LocalMode.local_only_key?(path)
+  end
+
+  def render_local_only_error(path)
+    render json: { status: 'error', message: "#{path} belongs to a local only target (OPENC3_LOCAL_ONLY_TARGETS) and is not stored in the bucket" }, status: :bad_request
+  end
+
   def sanitize_path(path)
     return '' if path.nil?
     # path is passed as a parameter thus we have to sanitize it or the code scanner detects:
@@ -662,11 +730,12 @@ class StorageController < ApplicationController
     authorized = non_admin_config_overlay_write?(params[:bucket], path) || authorization('admin')
 
     if authorized
-      if ENV.fetch('OPENC3_LOCAL_MODE', false)
+      if ENV.fetch('OPENC3_LOCAL_MODE', false) || local_only_config_key?(params[:bucket], path)
         OpenC3::LocalMode.delete_local(path)
       end
 
-      OpenC3::Bucket.getClient().delete_object(bucket: bucket_name, key: path)
+      # Local only targets are never stored in the bucket
+      OpenC3::Bucket.getClient().delete_object(bucket: bucket_name, key: path) unless local_only_config_key?(params[:bucket], path)
       OpenC3::Logger.info("Deleted: #{bucket_name}/#{path}", scope: params[:scope], user: username())
       return true
     else
@@ -711,7 +780,19 @@ class StorageController < ApplicationController
     # List all objects under the prefix (same pattern as TargetModel#undeploy)
     bucket = OpenC3::Bucket.getClient()
     objects = bucket.list_objects(bucket: bucket_name, prefix: path)
-    keys = objects.map(&:key)
+    keys = objects.map(&:key).reject { |key| local_only_config_key?(params[:bucket], key) }
+    if params[:bucket] == 'OPENC3_CONFIG_BUCKET' && !OpenC3::LocalMode.local_only_targets.empty?
+      # Local only target files live only in the local mode volume. Only look at an
+      # existing directory so this never creates directories for arbitrary paths.
+      local_dir = OpenC3::LocalMode.key_path(path.chomp('/'))
+      if local_dir && File.directory?(local_dir)
+        Dir.glob("#{local_dir}/**/*").each do |filename|
+          next if File.directory?(filename)
+          key = "#{path}#{filename[(local_dir.length + 1)..]}"
+          keys << key if OpenC3::LocalMode.local_only_key?(key)
+        end
+      end
+    end
 
     if keys.empty?
       render json: { deleted_count: 0 }
@@ -721,12 +802,15 @@ class StorageController < ApplicationController
     # Delete in batches of 1000 (S3 limit)
     deleted_count = 0
     keys.each_slice(1000) do |key_batch|
-      bucket.delete_objects(bucket: bucket_name, keys: key_batch)
+      remote_keys = key_batch.reject { |key| local_only_config_key?(params[:bucket], key) }
+      bucket.delete_objects(bucket: bucket_name, keys: remote_keys) unless remote_keys.empty?
       deleted_count += key_batch.length
 
       # Handle local mode
-      if ENV.fetch('OPENC3_LOCAL_MODE', false)
-        key_batch.each { |key| OpenC3::LocalMode.delete_local(key) }
+      key_batch.each do |key|
+        if ENV.fetch('OPENC3_LOCAL_MODE', false) || local_only_config_key?(params[:bucket], key)
+          OpenC3::LocalMode.delete_local(key)
+        end
       end
     end
 
@@ -809,7 +893,12 @@ class StorageController < ApplicationController
       key = sanitize_path(key)
       temp_file = File.join(tmp_dir, filename)
       begin
-        bucket.get_object(bucket: bucket_name, key: key, path: temp_file)
+        if local_only_config_key?(params[:bucket], key)
+          temp_file = OpenC3::LocalMode.key_path(key)
+          next unless temp_file && File.file?(temp_file)
+        else
+          bucket.get_object(bucket: bucket_name, key: key, path: temp_file)
+        end
         zipfile.add(filename, temp_file)
       rescue => e
         OpenC3::Logger.warn("Failed to download #{key}: #{e.message}", user: username())
