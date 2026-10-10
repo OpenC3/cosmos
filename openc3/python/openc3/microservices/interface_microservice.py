@@ -23,7 +23,7 @@ import uuid
 from datetime import datetime, timezone
 
 from openc3.config.config_parser import ConfigParser
-from openc3.interfaces.interface import WriteRejectError
+from openc3.interfaces.interface import Interface, WriteRejectError
 from openc3.microservices.interface_decom_common import handle_inject_tlm
 from openc3.microservices.microservice import Microservice
 from openc3.models.cvt_model import CvtModel
@@ -50,11 +50,11 @@ from openc3.utilities.time import from_nsec_from_epoch
 
 with contextlib.suppress(ModuleNotFoundError):
     # Should never actually be used in COSMOS Core
-    from openc3enterprise.models.critical_cmd_model import CriticalCmdModel
+    from openc3enterprise.models.critical_cmd_model import CriticalCmdModel  # ty: ignore[unresolved-import]
 
 
 class InterfaceCmdHandlerThread:
-    def __init__(self, interface, tlm, logger=None, metric=None, db_shard=0, scope=None):
+    def __init__(self, interface, tlm, logger=None, metric=None, db_shard=0, *, scope):
         self.interface = interface
         self.tlm = tlm
         self.scope = scope
@@ -64,9 +64,7 @@ class InterfaceCmdHandlerThread:
             self.critical_commanding = scope_model.critical_commanding
         else:
             self.critical_commanding = "OFF"
-        self.logger = logger
-        if not self.logger:
-            self.logger = Logger()
+        self.logger = logger or Logger()
         self.metric = metric
         self.count = 0
         self.directive_count = 0
@@ -438,14 +436,12 @@ class InterfaceCmdHandlerThread:
 
 
 class RouterTlmHandlerThread:
-    def __init__(self, router, tlm, logger=None, metric=None, db_shard=0, scope=None):
+    def __init__(self, router, tlm, logger=None, metric=None, db_shard=0, *, scope):
         self.router = router
         self.tlm = tlm
         self.scope = scope
         self.db_shard = int(db_shard or 0)
-        self.logger = logger
-        if not self.logger:
-            self.logger = Logger
+        self.logger = logger or Logger()
         self.metric = metric
         self.count = 0
         self.directive_count = 0
@@ -644,7 +640,6 @@ class InterfaceMicroservice(Microservice):
 
     def __init__(self, name):
         self.mutex = threading.Lock()
-        self.interface = None
         self.interface_or_router = None
         self.interface_thread_sleeper = Sleeper()
         self.cancel_thread = False
@@ -661,6 +656,7 @@ class InterfaceMicroservice(Microservice):
 
         self.scope = name.split("__")[0]
         interface_name = name.split("__")[2]
+        self.interface: Interface
         if self.interface_or_router == "INTERFACE":
             self.interface = InterfaceModel.get_model(name=interface_name, scope=self.scope).build()
         else:
@@ -754,7 +750,7 @@ class InterfaceMicroservice(Microservice):
                 else:
                     router_model = RouterModel.get(name=self.interface.name, scope=self.scope)
                     # config_params[0] is the filename so set the rest
-                    interface_model["config_params"][1:] = list(params)
+                    router_model["config_params"][1:] = list(params)
                     RouterModel.set(router_model, scope=self.scope)
 
             self.interface.state = "ATTEMPTING"
@@ -766,7 +762,7 @@ class InterfaceMicroservice(Microservice):
         # Need to rescue Exception so we cover LoadError
         except RuntimeError:
             self.logger.error(
-                f"Attempting connection #{self.interface.connection_string} failed due to {traceback.format_exc()}"
+                f"Attempting connection #{self.interface.connection_string()} failed due to {traceback.format_exc()}"
             )
             # if SignalException === error:
             #   self.logger.info(f"{self.interface.name}: Closing from signal")
@@ -851,7 +847,7 @@ class InterfaceMicroservice(Microservice):
         if packet.received_time is None:
             packet.received_time = datetime.now(timezone.utc)
 
-        if self.interface is not None and packet.identified() and not self._known_tlm_packet(packet):
+        if packet.identified() and not self._known_tlm_packet(packet):
             # Packet identified but we don't know about it or it isn't mapped to this interface
             # Clear packet_name and target_name and try to identify
             self.logger.warn(
@@ -914,7 +910,7 @@ class InterfaceMicroservice(Microservice):
     # Whether a pre-identified packet names a defined packet in one of this
     # interface's telemetry mapped targets
     def _known_tlm_packet(self, packet):
-        if self.interface is None or packet.target_name not in self.interface.tlm_target_names:
+        if packet.target_name not in self.interface.tlm_target_names:
             return False
         try:
             System.telemetry.packet(packet.target_name, packet.packet_name)
@@ -1054,7 +1050,7 @@ class InterfaceMicroservice(Microservice):
                 if valid_interface:
                     valid_interface.destroy()
 
-    def shutdown(self, sig=None):
+    def shutdown(self, state="STOPPED"):
         if self.shutdown_complete:
             return  # Nothing more to do
         name = self.name
@@ -1065,7 +1061,7 @@ class InterfaceMicroservice(Microservice):
         if self.interface is not None and self.interface.stream_log_pair is not None:
             # In python shutdown does the join and cleanup
             self.interface.stream_log_pair.shutdown()
-        super().shutdown()
+        super().shutdown(state)
 
     def graceful_kill(self):
         pass  # Just to avoid warning
