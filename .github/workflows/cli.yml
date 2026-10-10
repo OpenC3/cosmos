@@ -53,6 +53,7 @@ jobs:
         continue-on-error: ${{ github.event.pull_request.head.repo.fork == true }}
         env:
           DOCKERHUB_OIDC_CONNECTIONID: 49349db4-6ea2-468a-9d7a-5133cbbc5326
+          DOCKERHUB_OIDC_EXPIREIN: 3600 # token defaults to 5 min; long builds pull from Docker Hub later
         with:
           username: openc3inc
       - uses: ./.github/actions/build-cosmos
