@@ -1089,7 +1089,17 @@ Example Usage:
 WIDGET HELLOWORLD
 ```
 
-WIDGET accepts the [TARGET Modifiers](#target-modifiers) except CMD_BUFFER_DEPTH, CMD_LOG_CYCLE_TIME, CMD_LOG_CYCLE_SIZE, CMD_LOG_RETAIN_TIME, TLM_BUFFER_DEPTH, TLM_LOG_CYCLE_TIME, TLM_LOG_CYCLE_SIZE, TLM_LOG_RETAIN_TIME, CMD_DECOM_RETAIN_TIME, TLM_DECOM_RETAIN_TIME, DECOM_FLUSH_PERIOD, LOG_RETAIN_TIME, CLEANUP_POLL_TIME, TARGET_MICROSERVICE, PACKET, SHARD, DB_SHARD, STORED_LIMITS_MODE.
+## WIDGET Modifiers
+The following keywords must follow a WIDGET keyword.
+
+### DISABLE_ERB
+<span class="badge badge--secondary since-right">Since 5.12.0</span>**Disable ERB processing**
+
+Disable ERB processing for the entire widget or a set of regular expressions over its filenames
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Regex | Regex to match against filenames. If match, then no ERB processing | False |
 
 ## SCRIPT_ENGINE
 <span class="badge badge--secondary since-right">Since 6.5.0</span>**Define a script engine to add language support to Script Runner**

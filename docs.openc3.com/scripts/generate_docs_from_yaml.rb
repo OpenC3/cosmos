@@ -139,7 +139,7 @@ class CosmosMetaTag
         keys = data['modifiers'].keys
         # A subset of an already documented modifier list (e.g. ROUTER vs INTERFACE)
         # is described by reference rather than repeated
-        superset = @modifiers.find { |_, other| other != keys and (keys - other).empty? }
+        superset = @modifiers.find { |_, other| other != keys and (keys - other).empty? and (other - keys).length < keys.length }
         if superset
           missing = superset[1] - keys
           page << "\n#{keyword} accepts the [#{superset[0]} Modifiers](##{superset[0].downcase}-modifiers) except #{missing.join(', ')}.\n"
