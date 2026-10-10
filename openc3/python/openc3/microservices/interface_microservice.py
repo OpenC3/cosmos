@@ -851,7 +851,7 @@ class InterfaceMicroservice(Microservice):
         if packet.received_time is None:
             packet.received_time = datetime.now(timezone.utc)
 
-        if packet.identified() and not self._known_tlm_packet(packet):
+        if self.interface is not None and packet.identified() and not self._known_tlm_packet(packet):
             # Packet identified but we don't know about it or it isn't mapped to this interface
             # Clear packet_name and target_name and try to identify
             self.logger.warn(
@@ -914,7 +914,7 @@ class InterfaceMicroservice(Microservice):
     # Whether a pre-identified packet names a defined packet in one of this
     # interface's telemetry mapped targets
     def _known_tlm_packet(self, packet):
-        if packet.target_name not in self.interface.tlm_target_names:
+        if self.interface is None or packet.target_name not in self.interface.tlm_target_names:
             return False
         try:
             System.telemetry.packet(packet.target_name, packet.packet_name)
