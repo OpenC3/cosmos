@@ -724,7 +724,14 @@ class InterfaceMicroservice(Microservice):
             self.logger.info(f"{self.interface.name}: Connect ignored, already connected")
             return self.interface
 
+        # A user requested (re)connect starts fresh so backtraces are logged again
+        self.clear_connection_messages()
         return self.attempt_connection(*params)
+
+    # Forget which errors have already had their backtrace logged
+    def clear_connection_messages(self):
+        self.connection_failed_messages.clear()
+        self.connection_lost_messages.clear()
 
     # Sets the state to 'ATTEMPTING', first rebuilding the interface/router if
     # parameters are given, so the run method performs the actual connection.
@@ -974,6 +981,7 @@ class InterfaceMicroservice(Microservice):
             InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         else:
             RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+        self.clear_connection_messages()
         self.logger.info(f"{self.interface.name}: Connection Success")
 
     def disconnect(self, allow_reconnect=True):

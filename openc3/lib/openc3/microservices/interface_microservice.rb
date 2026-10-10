@@ -630,7 +630,15 @@ module OpenC3
         return @interface
       end
 
+      # A user requested (re)connect starts fresh so backtraces are logged again
+      clear_connection_messages()
       attempt_connection(*params)
+    end
+
+    # Forget which errors have already had their backtrace logged
+    def clear_connection_messages
+      @connection_failed_messages.clear
+      @connection_lost_messages.clear
     end
 
     # Sets the state to 'ATTEMPTING', first rebuilding the interface/router if
@@ -883,6 +891,7 @@ module OpenC3
       else
         RouterStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
       end
+      clear_connection_messages()
       @logger.info "#{@interface.name}: Connection Success"
     end
 

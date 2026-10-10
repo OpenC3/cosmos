@@ -353,6 +353,29 @@ module OpenC3
           expect(errors).to be_empty
           im.shutdown
         end
+        it "logs backtraces again after a successful connect or a user requested connect" do
+          im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+          allow(im).to receive(:disconnect)
+          errors = []
+          allow(im.instance_variable_get(:@logger)).to receive(:error) { |msg, **| errors << msg }
+          log_both = lambda do
+            errors.clear
+            im.handle_connection_failed("default:12345", raised(ArgumentError.new("bad thing")))
+            im.handle_connection_lost(raised(ArgumentError.new("lost thing")))
+            errors.count { |msg| msg.include?("interface_microservice_spec.rb") }
+          end
+          expect(log_both.call).to eql 2
+          expect(log_both.call).to eql 0 # Already seen
+
+          im.connect # Connection Success clears them
+          expect(log_both.call).to eql 2
+          expect(log_both.call).to eql 0
+
+          im.instance_variable_get(:@interface).state = 'ATTEMPTING'
+          im.attempting # A user requested connect clears them
+          expect(log_both.call).to eql 2
+          im.shutdown
+        end
       end
 
       it "sends a command to the interface" do

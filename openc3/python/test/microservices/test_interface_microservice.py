@@ -312,6 +312,28 @@ class TestInterfaceMicroservice(unittest.TestCase):
         self.assertEqual(errors, [])
         im.shutdown()
 
+    def test_logs_backtraces_again_after_a_successful_connect_or_a_user_requested_connect(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        errors = self._logged_errors(im)
+
+        def log_both():
+            errors.clear()
+            im.handle_connection_failed("INST_INT", self._raised(ValueError("bad thing")))
+            im.handle_connection_lost(self._raised(ValueError("lost thing")))
+            return sum("Traceback" in msg for msg in errors)
+
+        self.assertEqual(log_both(), 2)
+        self.assertEqual(log_both(), 0)  # Already seen
+
+        im.connect()  # Connection Success clears them
+        self.assertEqual(log_both(), 2)
+        self.assertEqual(log_both(), 0)
+
+        im.interface.state = "ATTEMPTING"
+        im.attempting()  # A user requested connect clears them
+        self.assertEqual(log_both(), 2)
+        im.shutdown()
+
     def test_connect_handles_parameters(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
         all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
