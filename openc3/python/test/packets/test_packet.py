@@ -1918,19 +1918,10 @@ class PacketObfuscation(unittest.TestCase):
         i.obfuscate = True
         p.update_obfuscated_items_cache(i)
         p.buffer = b"\x01\x02\x03\x04"
-        p.obfuscate()
-        self.assertEqual(p.buffer, b"\x00\x02\x03\x04")
-
-    def test_removes_given_values_for_obfuscated_items(self):
-        p = Packet("tgt", "pkt")
-        p.append_item("test1", 8, "UINT")
-        p.append_item("test2", 8, "UINT")
-        i = p.get_item("TEST1")
-        i.obfuscate = True
-        p.update_obfuscated_items_cache(i)
-        p.buffer = b"\x01\x02"
+        # Given values of obfuscated items are removed regardless of key case
         p.given_values = {"test1": 1, "TEST2": 2}
         p.obfuscate()
+        self.assertEqual(p.buffer, b"\x00\x02\x03\x04")
         self.assertEqual(p.given_values, {"TEST2": 2})
 
     def test_obfuscates_multiple_items(self):

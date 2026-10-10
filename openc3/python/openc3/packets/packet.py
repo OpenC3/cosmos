@@ -1349,10 +1349,10 @@ class Packet(Structure):
 
         # Given values hold the plaintext the user sent, so drop them for obfuscated items
         if self.given_values:
-            obfuscated_names = [item.name.upper() for item in self.obfuscated_items]
-            for key in list(self.given_values.keys()):
-                if str(key).upper() in obfuscated_names:
-                    del self.given_values[key]
+            obfuscated_names = {item.name.upper() for item in self.obfuscated_items}
+            self.given_values = {
+                key: value for key, value in self.given_values.items() if str(key).upper() not in obfuscated_names
+            }
 
         for item in self.obfuscated_items:
             if item.data_type == "DERIVED":
