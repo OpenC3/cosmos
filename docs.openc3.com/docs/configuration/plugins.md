@@ -278,6 +278,16 @@ If DONT_RECONNECT is not present the Server will try to reconnect to an interfac
 Use this keyword to prevent the user from disconnecting from the interface. This is typically used in a 'production' environment where you would not want the user to inadvertently disconnect from a target.
 
 
+### DONT_LOG
+:::note[Deprecated]
+DONT_LOG does nothing and can be removed
+:::
+
+**Deprecated keyword that has no effect**
+
+Accepted for backwards compatibility with older plugins. A warning is logged and the keyword is otherwise ignored.
+
+
 ### LOG_STREAM
 <span class="badge badge--secondary since-right">Since 5.5.2</span>**Log all data on the interface exactly as it is sent and received**
 
@@ -334,7 +344,7 @@ When an option is set the interface class calls the set_option method. Custom in
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Name | The option to set. OpenC3 defines several options on the core provided interfaces. The SerialInterface defines FLOW_CONTROL which can be NONE (default) or RTSCTS and DATA_BITS which changes the data bits of the serial interface. The TcpipServerInterface and HttpServerInterface define LISTEN_ADDRESS which is the IP address to accept connections on (default 0.0.0.0). | True |
-| Parameters | Parameters to pass to the option | False |
+| Parameters | One or more parameters to pass to the option | True |
 
 Example Usage:
 ```cosmos
@@ -342,7 +352,7 @@ INTERFACE SERIAL_INT serial_interface.rb COM1 COM1 115200 NONE 1 10.0 nil
   OPTION FLOW_CONTROL RTSCTS
   OPTION DATA_BITS 8
 ROUTER SERIAL_ROUTER tcpip_server_interface.rb 2950 2950 10.0 nil BURST
-  ROUTE SERIAL_INT
+  MAP_TARGET DATA
   OPTION LISTEN_ADDRESS 127.0.0.1
 ```
 
@@ -436,7 +446,7 @@ Container to execute and run the microservice in. Only used in COSMOS Enterprise
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Args | Name of the container | False |
+| Args | Name of the container | True |
 
 ### ROUTE_PREFIX
 <span class="badge badge--secondary since-right">Since 5.7.0</span>**Prefix of route**
@@ -459,11 +469,25 @@ Operator Shard. Only used if running multiple operator containers typically in K
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Shard | Shard number starting from 0 | False |
+| Shard | Shard number starting from 0 | True |
 
 Example Usage:
 ```cosmos
 SHARD 0
+```
+
+### DB_SHARD
+<span class="badge badge--secondary since-right">Since 7.1.0</span>**Database shard for this interface's command and directive streams**
+
+DB Shard. Only used if running multiple database shards typically in Kubernetes
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| DB Shard | DB Shard number starting from 0 | True |
+
+Example Usage:
+```cosmos
+DB_SHARD 0
 ```
 
 ### BRIDGE
@@ -509,7 +533,7 @@ When a bridge option is set the bridge interface class calls the set_option meth
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Name | The option to set. OpenC3 defines several options on the core provided interfaces. The SerialInterface defines FLOW_CONTROL which can be NONE (default) or RTSCTS and DATA_BITS which changes the data bits of the serial interface. The TcpipServerInterface and HttpServerInterface define LISTEN_ADDRESS which is the IP address to accept connections on (default 0.0.0.0). | True |
-| Parameters | Parameters to pass to the option | False |
+| Parameters | One or more parameters to pass to the option | True |
 
 Example Usage:
 ```cosmos
@@ -551,6 +575,8 @@ Creates an router which receives command packets from their remote clients and s
 | Filename | Ruby or Python file to use when instantiating the interface.<br/><br/>Valid Values: <span class="values">tcpip_client_interface, tcpip_server_interface, udp_interface, serial_interface</span> | True |
 
 Additional parameters are required. Please see the [Interfaces](../configuration/interfaces.md) documentation for more details.
+
+ROUTER accepts the [INTERFACE Modifiers](#interface-modifiers) except BRIDGE, BRIDGE_PROTOCOL, BRIDGE_OPTION, BRIDGE_SECRET.
 
 ## TARGET
 **Defines a new target**
