@@ -32,3 +32,4 @@ jobs:
       # python_version: '3.12'  # Uncomment to pin a different Python
       # ruby_version: '3.4'  # Uncomment to pin a different Ruby
       # require_tests: true  # Uncomment to fail the build when there are no tests
+      # gemfile: Gemfile.dev  # Uncomment if the specs need a different Gemfile than the plugin's own
