@@ -150,7 +150,7 @@ class TestPacketItem(unittest.TestCase):
         self.pi.states = {"true": 1, "false": 0}
         self.assertIsNone(self.pi.state_colors)
         other = PacketItem("other", 0, 8, "UINT", "BIG_ENDIAN", None)
-        other.states = {"".join(["TR", "UE"]): 1}
+        other.states = {"true".upper(): 1}
         self.assertIs(list(other.states.keys())[0], list(self.pi.states.keys())[0])
 
     def test_complains_about_states_that_arent_hashes(self):

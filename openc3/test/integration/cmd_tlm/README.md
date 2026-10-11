@@ -16,7 +16,7 @@ By default this writes `generated/targets/BIG/cmd_tlm/{tlm.txt,cmd.txt}`
 
 - 2,000 telemetry packets with 500,000 items and 2,000,000 states
   (4 states per item). Packet and item descriptions are 50 to 250 characters.
-- 2,000 command packets with 150,000 parameters, also with 50 to 250
+- 2,000 command packets with 500,000 parameters, also with 50 to 250
   character packet and parameter descriptions.
 
 Each packet starts with an ID item/parameter, which counts toward the totals.
@@ -27,6 +27,24 @@ of the counts, e.g. for a quick smoke test:
 ruby test/integration/cmd_tlm/generate_cmd_tlm.rb --tlm-packets 20 --tlm-items 5000 \
   --tlm-states 20000 --cmd-packets 20 --cmd-params 1500
 ```
+
+## Install as a plugin
+
+The output directory is also a complete plugin (`plugin.txt`, gemspec,
+`Rakefile`, etc.) so the target can be installed into an operational COSMOS.
+Pass `--language python` to generate a Python target and interface instead of
+the default Ruby one. The interface is a TCP client to
+`host.docker.internal:8080` that doesn't need a server; it makes COSMOS start
+the interface and decom microservices that load the definition.
+
+```bash
+ruby test/integration/cmd_tlm/generate_cmd_tlm.rb --language python
+cd test/integration/cmd_tlm/generated
+rake build VERSION=1.0.0      # or: gem build openc3-cosmos-big.gemspec
+```
+
+Then install `openc3-cosmos-big-1.0.0.gem` from the Admin Plugins tab or with
+`./openc3.sh cli load`.
 
 ## Run the benchmark
 

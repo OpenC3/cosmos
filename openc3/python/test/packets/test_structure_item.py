@@ -21,8 +21,8 @@ class TestStructureItem(unittest.TestCase):
         self.assertEqual(StructureItem("test", 0, 8, "UINT", "BIG_ENDIAN", None).name, "TEST")
 
     def test_name_and_key_are_interned(self):
-        si1 = StructureItem("".join(["TE", "ST"]), 0, 8, "UINT", "BIG_ENDIAN", None)
-        si2 = StructureItem("".join(["TE", "ST"]), 0, 8, "UINT", "BIG_ENDIAN", None)
+        si1 = StructureItem("test".upper(), 0, 8, "UINT", "BIG_ENDIAN", None)
+        si2 = StructureItem("test".upper(), 0, 8, "UINT", "BIG_ENDIAN", None)
         self.assertIs(si1.name, si2.name)
         self.assertIs(si1.key, si1.name)
 
