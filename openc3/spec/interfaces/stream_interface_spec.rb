@@ -98,6 +98,23 @@ module OpenC3
     end
 
     describe "read_interface" do
+      it "timestamps reads before waiting for queue space" do
+        interface.read_queue_max_size = 1 + ReadQueueInterface::READ_QUEUE_ENTRY_OVERHEAD
+        interface.stream = QueueStream.new("\x01", "\x02")
+        reserving = Queue.new
+        allow(interface).to receive(:reserve_read_queue_bytes).and_wrap_original do |original, *args|
+          reserving << Time.now.sys
+          original.call(*args)
+        end
+        interface.connect
+        expect(reserving.pop(timeout: 2)).not_to be_nil
+        second_read_time = reserving.pop(timeout: 2)
+        expect(second_read_time).not_to be_nil
+        expect(interface.read_interface()[0]).to eql "\x01"
+        expect(interface.read_interface()[0]).to eql "\x02"
+        expect(interface.read_queue_data_time).to be <= second_read_time
+      end
+
       it "reads ahead of read_interface and reports the queue size" do
         stream = QueueStream.new("\x01", "\x02", "\x03")
         interface.stream = stream
