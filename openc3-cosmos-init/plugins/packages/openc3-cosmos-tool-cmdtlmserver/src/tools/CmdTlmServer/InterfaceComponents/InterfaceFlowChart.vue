@@ -1007,7 +1007,7 @@ watch(
     <!-- Details Dialog -->
     <v-dialog v-model="detailsDialog" max-width="80vw" max-height="80vh">
       <DetailsTable
-        v-if="detailsDialog"
+        v-if="detailsDialog && selectedDetails"
         :mode="selectedMode"
         :details="selectedDetails"
         :health="nodeHealth(selectedMode.toLowerCase(), selectedDetails.name)"

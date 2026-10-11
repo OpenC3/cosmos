@@ -120,7 +120,9 @@ function metricRow(service, metric, data, age) {
     if (value >= critical) state = 'critical'
     else if (value >= warning) state = 'warning'
   }
-  const unit = isBuffer ? 'bytes' : isDelay || isDuration ? 'seconds' : null
+  let unit = null
+  if (isBuffer) unit = 'bytes'
+  else if (isDelay || isDuration) unit = 'seconds'
   const label = METRIC_LABELS[metric] || metric.replaceAll('_', ' ')
   return {
     id: `${service}:${metric}`,
@@ -147,9 +149,11 @@ export function flowHealth(rows = [], unavailable = false) {
   else if (rows.some((row) => row.state === 'critical')) state = 'critical'
   else if (rows.some((row) => row.state === 'warning')) state = 'warning'
   else if (rows.some((row) => row.state === 'stale')) state = 'stale'
-  else if (rows.some((row) => row.monitored && row.state === 'unknown'))
-    state = 'unknown'
-  else if (rows.some((row) => row.monitored && row.state === 'ok')) state = 'ok'
+  else if (
+    !rows.some((row) => row.monitored && row.state === 'unknown') &&
+    rows.some((row) => row.monitored && row.state === 'ok')
+  )
+    state = 'ok'
   return { state, ...STATES[state], rows }
 }
 
@@ -165,12 +169,9 @@ export function buildFlowMetrics(
     const [, type, ...nameParts] = service.split('__')
     const name = nameParts.join('__')
     if (!name || !type) continue
-    const kind =
-      type === 'INTERFACE'
-        ? 'interface'
-        : type === 'ROUTER'
-          ? 'router'
-          : 'target'
+    let kind = 'target'
+    if (type === 'INTERFACE') kind = 'interface'
+    else if (type === 'ROUTER') kind = 'router'
     const timestamp = numeric(report?.updated_at)
     const age =
       timestamp === null ? null : Math.max(0, (now - timestamp / 1e6) / 1000)
