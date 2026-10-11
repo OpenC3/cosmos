@@ -66,12 +66,15 @@ class StateParser:
         # Update states and states_by_value in place rather than reassigning
         # item.states, which rebuilds both dicts for every STATE line
         states = item.states
-        states_by_value = item.states_by_value()
-        if state_name in states and states_by_value.get(states[state_name]) == state_name:
-            del states_by_value[states[state_name]]
         value = self._get_state_value(item.data_type)
-        states[state_name] = value
-        states_by_value[value] = state_name
+        if state_name in states:
+            # Duplicate state (rare) so rebuild both dicts through the setter
+            # to keep states_by_value consistent with other states sharing a value
+            states[state_name] = value
+            item.states = states
+        else:
+            states[state_name] = value
+            item.states_by_value()[value] = state_name
         self._parse_additional_parameters(packet, cmd_or_tlm, item)
 
     def _get_state_name(self):
