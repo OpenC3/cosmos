@@ -69,11 +69,15 @@ module OpenC3
         @release << true
       end
 
-      def connect; end
+      def connect
+        # Nothing to connect, reads block until released
+      end
 
       def connected?; true; end
 
-      def disconnect; end
+      def disconnect
+        # Deliberately doesn't wake up a pending read
+      end
 
       def read
         @reads += 1
@@ -82,7 +86,9 @@ module OpenC3
         "\x01\x02\x03"
       end
 
-      def write(_data); end
+      def write(_data)
+        # Writes are discarded, only reads are tested
+      end
     end
 
     let(:interface) { StreamInterface.new }
