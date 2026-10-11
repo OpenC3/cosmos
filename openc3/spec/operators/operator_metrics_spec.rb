@@ -89,6 +89,16 @@ module OpenC3
         operator.publish_process_metrics
       end
 
+      # The KubernetesOperator's processes are pods elsewhere in the cluster
+      # with no local pid to read
+      it "skips a process that has no pid" do
+        expect(ProcessStats).not_to receive(:new)
+
+        operator = Operator.new
+        operator.processes['DEFAULT__USER__CFDP'] = double("KubernetesProcess", scope: 'DEFAULT')
+        operator.publish_process_metrics
+      end
+
       it "publishes nothing when the sample fails" do
         allow(ProcessStats).to receive(:new).with(1234).and_return(sampler(pid: 1234, sampled: false))
 

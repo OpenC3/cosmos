@@ -17,6 +17,8 @@ require 'openc3/microservices/plugin_microservice'
 # Override at_exit to do nothing for testing
 saved_verbose = $VERBOSE; $VERBOSE = nil
 def at_exit(*args, &block)
+  # Intentionally empty: Microservice#initialize registers a shutdown hook
+  # that would otherwise run against mocks after the suite finishes
 end
 $VERBOSE = saved_verbose
 
@@ -26,7 +28,7 @@ module OpenC3
       # Avoid spawning the Metric update thread (would leak past the test)
       allow(Metric).to receive(:new).and_return(double("Metric").as_null_object)
       allow(MetricModel).to receive(:new).and_return(double("MetricModel").as_null_object)
-      config = { 'cmd' => ['rails', 's'], 'topics' => [], 'target_names' => [], 'secrets' => nil, 'plugin' => 'PLUGIN', 'work_dir' => '.' }
+      config = { 'cmd' => ['rails', 's'], 'topics' => [], 'target_names' => [], 'secrets' => nil, 'plugin' => 'PLUGIN', 'work_dir' => '.', 'db_shard' => 2 }
       allow(MicroserviceModel).to receive(:get).and_return(config)
       client = double("BucketClient")
       allow(client).to receive(:list_objects).and_return([])
@@ -45,6 +47,14 @@ module OpenC3
     describe "run" do
       it "publishes RUNNING status before exec replaces the process" do
         expect(MicroserviceStatusModel).to receive(:set).with(hash_including('name' => "DEFAULT__USER__NAME", 'state' => 'RUNNING'), scope: 'DEFAULT').ordered
+        expect(@microservice).to receive(:exec).with('rails', 's').ordered
+        @microservice.run
+      end
+
+      it "clears the bootstrap metrics row from the microservice's db_shard" do
+        metric_model = double("MetricModel")
+        expect(MetricModel).to receive(:new).with(name: "DEFAULT__USER__NAME", scope: 'DEFAULT', db_shard: 2).and_return(metric_model)
+        expect(metric_model).to receive(:destroy).ordered
         expect(@microservice).to receive(:exec).with('rails', 's').ordered
         @microservice.run
       end

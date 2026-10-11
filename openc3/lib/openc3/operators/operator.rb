@@ -294,6 +294,11 @@ module OpenC3
           # Not started yet - queued behind the per cycle start limit
           next if @new_processes[name]
 
+          # Only processes this operator spawned locally have a pid we can read
+          # from /proc. The KubernetesOperator's processes are pods elsewhere in
+          # the cluster, so they don't implement pid and keep reporting their
+          # own metrics from inside the pod.
+          next unless p.respond_to?(:pid)
           pid = p.pid
           next unless pid
 

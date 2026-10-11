@@ -30,6 +30,22 @@ module OpenC3
       ].join(' ')
     end
 
+    # Each call to File.read returns the next line, the last one repeating
+    def stub_stat(*lines)
+      allow(File).to receive(:read).with("/proc/1234/stat").and_return(*lines)
+    end
+
+    # Each call to Time.now returns the next epoch second, the last one repeating
+    def stub_now(*seconds)
+      allow(Time).to receive(:now).and_return(*seconds.map { |sec| Time.at(sec) })
+    end
+
+    def value(name)
+      stats.values[name]['value']
+    end
+
+    let(:stats) { ProcessStats.new(1234) }
+
     before(:each) do
       # sysconf and /proc/uptime vary by machine; pin them so the math is checkable
       allow(ProcessStats).to receive(:supported?).and_return(true)
@@ -40,89 +56,74 @@ module OpenC3
 
     describe "sample" do
       it "parses cpu, memory and thread count out of /proc/<pid>/stat" do
-        allow(File).to receive(:read).with("/proc/1234/stat").and_return(stat_line())
-        allow(Time).to receive(:now).and_return(Time.at(1_002_000))
+        stub_stat(stat_line())
+        stub_now(1_002_000)
 
-        stats = ProcessStats.new(1234)
         expect(stats.sample).to be true
-
-        values = stats.values
-        expect(values['num_threads']['value']).to eql 7
-        expect(values['virtual_memory_bytes']['value']).to eql 123_456_789.0
-        expect(values['resident_memory_bytes']['value']).to eql(4096 * 4096.0)
+        expect(value('num_threads')).to eql 7
+        expect(value('virtual_memory_bytes')).to eql 123_456_789.0
+        expect(value('resident_memory_bytes')).to eql(4096 * 4096.0)
 
         # cpu_time = (utime 500 + stime 100) / 100 Hz = 6s
         # start_time = boot 1_000_000 + (starttime 200_000 / 100 Hz) = 1_002_000
         # elapsed = 1_002_000 - 1_002_000 = 0, so average stays at its initial 0
-        expect(values['average_cpu_utilization']['value']).to eql 0.0
+        expect(value('average_cpu_utilization')).to eql 0.0
       end
 
       it "computes average cpu over the life of the process" do
-        allow(File).to receive(:read).with("/proc/1234/stat").and_return(stat_line())
+        stub_stat(stat_line())
         # 12s after the process started, having used 6s of cpu => 50%
-        allow(Time).to receive(:now).and_return(Time.at(1_002_012))
+        stub_now(1_002_012)
 
-        stats = ProcessStats.new(1234)
         expect(stats.sample).to be true
-        expect(stats.values['average_cpu_utilization']['value']).to be_within(0.001).of(0.5)
+        expect(value('average_cpu_utilization')).to be_within(0.001).of(0.5)
       end
 
       it "computes sample cpu from the delta between two samples" do
-        allow(Time).to receive(:now).and_return(Time.at(1_002_010), Time.at(1_002_020))
-        allow(File).to receive(:read).with("/proc/1234/stat").and_return(
+        stub_now(1_002_010, 1_002_020)
+        stub_stat(
           stat_line(utime: 500, stime: 100),
           # 250 more ticks of cpu (2.5s) over a 10s wall gap => 25%
           stat_line(utime: 700, stime: 150)
         )
 
-        stats = ProcessStats.new(1234)
         stats.sample
         # No previous sample to diff against yet
-        expect(stats.values['sample_cpu_utilization']['value']).to eql 0.0
+        expect(value('sample_cpu_utilization')).to eql 0.0
 
         stats.sample
-        expect(stats.values['sample_cpu_utilization']['value']).to be_within(0.001).of(0.25)
+        expect(value('sample_cpu_utilization')).to be_within(0.001).of(0.25)
       end
 
       it "reports a process that has used no cpu at all, then picks up the delta" do
-        allow(Time).to receive(:now).and_return(Time.at(1_002_010), Time.at(1_002_020))
-        allow(File).to receive(:read).with("/proc/1234/stat").and_return(
-          stat_line(utime: 0, stime: 0),
-          stat_line(utime: 500, stime: 0)
-        )
+        stub_now(1_002_010, 1_002_020)
+        stub_stat(stat_line(utime: 0, stime: 0), stat_line(utime: 500, stime: 0))
 
-        stats = ProcessStats.new(1234)
         stats.sample
-        expect(stats.values['average_cpu_utilization']['value']).to eql 0.0
+        expect(value('average_cpu_utilization')).to eql 0.0
 
         # An idle first sample must not wedge the delta calculation off
         stats.sample
-        expect(stats.values['sample_cpu_utilization']['value']).to be_within(0.001).of(0.5)
+        expect(value('sample_cpu_utilization')).to be_within(0.001).of(0.5)
       end
 
       it "handles a comm containing spaces and parens" do
-        allow(File).to receive(:read).with("/proc/1234/stat")
-          .and_return(stat_line(comm: '(my (odd) proc)'))
-        allow(Time).to receive(:now).and_return(Time.at(1_002_012))
+        stub_stat(stat_line(comm: '(my (odd) proc)'))
+        stub_now(1_002_012)
 
-        stats = ProcessStats.new(1234)
         expect(stats.sample).to be true
         # Field offsets must survive a comm that would fool a naive split
-        expect(stats.values['num_threads']['value']).to eql 7
-        expect(stats.values['average_cpu_utilization']['value']).to be_within(0.001).of(0.5)
+        expect(value('num_threads')).to eql 7
+        expect(value('average_cpu_utilization')).to be_within(0.001).of(0.5)
       end
 
       it "returns false when the process is gone" do
         allow(File).to receive(:read).with("/proc/1234/stat").and_raise(Errno::ENOENT)
-
-        stats = ProcessStats.new(1234)
         expect(stats.sample).to be false
       end
 
       it "returns false on a truncated stat line" do
-        allow(File).to receive(:read).with("/proc/1234/stat").and_return("1234 (ruby) S 1 1234")
-
-        stats = ProcessStats.new(1234)
+        stub_stat("1234 (ruby) S 1 1234")
         expect(stats.sample).to be false
       end
     end

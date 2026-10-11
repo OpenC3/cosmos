@@ -46,7 +46,7 @@ module OpenC3
       # operator instead (see Operator#publish_process_metrics).
       begin
         @metric.shutdown
-        MetricModel.new(name: @name, scope: @scope).destroy
+        MetricModel.new(name: @name, scope: @scope, db_shard: @db_shard).destroy
       rescue Exception => e
         @logger.warn("Failed to clear bootstrap metrics for #{@name}: #{e.message}")
       end
