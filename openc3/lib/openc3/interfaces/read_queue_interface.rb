@@ -236,6 +236,7 @@ module OpenC3
       until queue.closed?
         begin
           data = raw_read.call(*read_args)
+          data_time = Time.now.sys
         rescue Timeout::Error => e
           # A read timeout doesn't end the reader so pass it along and keep
           # reading. Only one is queued at a time so a reader which times out
@@ -263,7 +264,7 @@ module OpenC3
 
         # Queue the time of the read so packets are timestamped when the data
         # arrived rather than when it was processed
-        queue.push([data, Time.now.sys])
+        queue.push([data, data_time])
       end
     rescue ClosedQueueError
       # Interface disconnected while we were pushing

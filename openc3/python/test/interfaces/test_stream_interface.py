@@ -298,6 +298,24 @@ class TestStreamInterface(unittest.TestCase):
         self.assertLessEqual(packet.received_time, queued)
         self.assertEqual(self.interface.read_queue_data_time, packet.received_time)
 
+    def test_timestamps_reads_before_waiting_for_queue_space(self):
+        self.interface.read_queue_max_size = 1 + READ_QUEUE_ENTRY_OVERHEAD
+        self.interface.stream = QueueStream(b"\x01", b"\x02")
+        reserving = queue.Queue()
+        reserve = self.interface._reserve_read_queue_bytes
+
+        def reserve_bytes(*args):
+            reserving.put(datetime.now(timezone.utc))
+            return reserve(*args)
+
+        with patch.object(self.interface, "_reserve_read_queue_bytes", side_effect=reserve_bytes):
+            self.interface.connect()
+            reserving.get(timeout=2)
+            second_read_time = reserving.get(timeout=2)
+            self.assertEqual(self.interface.read_interface()[0], b"\x01")
+            self.assertEqual(self.interface.read_interface()[0], b"\x02")
+            self.assertLessEqual(self.interface.read_queue_data_time, second_read_time)
+
     def test_doesnt_timestamp_packets_when_reading_inline(self):
         self.interface.set_option("READ_QUEUE_MAX_SIZE", ["0"])
         self.interface.stream = QueueStream(b"\x01\x02")
