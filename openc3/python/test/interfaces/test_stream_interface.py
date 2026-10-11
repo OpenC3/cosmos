@@ -13,6 +13,7 @@ import queue
 import threading
 import time
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
@@ -244,6 +245,26 @@ class TestStreamInterface(unittest.TestCase):
         # A closed stream still disconnects the interface
         stream.disconnect()
         self.assertEqual(self.interface.read_interface(), (None, None))
+
+    def test_timestamps_packets_with_when_the_data_was_read_rather_than_processed(self):
+        self.interface.stream = QueueStream(b"\x01\x02")
+        self.interface.connect()
+        self.wait_for_queue_size(1)
+        queued = datetime.now(timezone.utc)
+        time.sleep(0.05)
+
+        packet = self.interface.read()
+        self.assertEqual(packet.buffer, b"\x01\x02")
+        self.assertLessEqual(packet.received_time, queued)
+        self.assertEqual(self.interface.read_queue_data_time, packet.received_time)
+
+    def test_doesnt_timestamp_packets_when_reading_inline(self):
+        self.interface.set_option("READ_QUEUE_MAX_SIZE", ["0"])
+        self.interface.stream = QueueStream(b"\x01\x02")
+        self.interface.connect()
+        packet = self.interface.read()
+        self.assertEqual(packet.buffer, b"\x01\x02")
+        self.assertIsNone(packet.received_time)
 
     def test_disconnect_stops_the_read_thread_and_clears_the_queue(self):
         self.interface.stream = QueueStream(b"\x01", b"\x02")

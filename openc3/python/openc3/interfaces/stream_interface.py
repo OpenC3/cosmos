@@ -22,7 +22,6 @@ class StreamInterface(ReadQueue):
         if protocol_args is None:
             protocol_args = []
         super().__init__()
-        self.initialize_read_queue()
         self._stream = None
         self.protocol_type = ConfigParser.handle_none(protocol_type)
         self.protocol_args = protocol_args
