@@ -15,19 +15,15 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3/interfaces/interface'
-require 'openc3/utilities/read_queue'
+require 'openc3/interfaces/read_queue_interface'
 
 module OpenC3
   # Base class for interfaces that act read and write from a stream
-  class StreamInterface < Interface
-    include ReadQueue
-
+  class StreamInterface < ReadQueueInterface
     attr_reader :stream
 
     def initialize(protocol_type = nil, protocol_args = [])
       super()
-      initialize_read_queue()
       @stream = nil
       @protocol_type = ConfigParser.handle_nil(protocol_type)
       @protocol_args = protocol_args
@@ -48,8 +44,10 @@ module OpenC3
       super() # Reset the protocols
       @stream.connect if @stream
       # The read thread continuously drains the stream so the operating system
-      # buffers don't fill up while we're busy processing the previous read
-      start_read_queue_thread() if @stream and read_allowed?
+      # buffers don't fill up while we're busy processing the previous read.
+      # @stream.read is redirected to the queue so everything reading the
+      # stream (including subclasses and protocols) still sees all the data.
+      start_read_queue_thread(@stream) if @stream and read_allowed?
     end
 
     def connected?
@@ -67,29 +65,26 @@ module OpenC3
       super()
     end
 
-    # Called by the read thread to perform a single blocking stream read
-    # @return [String, nil] Data read or nil if the stream is done
-    def read_queue_data
+    def read_interface
+      # The read thread is normally started by connect but interfaces can also
+      # be handed an already connected stream so start it on demand
+      if @stream and !read_queue_started? and read_queue_enabled? and read_allowed? and connected?
+        start_read_queue_thread(@stream)
+      end
+
+      timeout = false
       begin
         data = @stream.read
       rescue Timeout::Error
         Logger.error "#{@name}: Timeout waiting for data to be read"
+        timeout = true
+        data = nil
+      end
+      if data.nil? or data.length <= 0
+        Logger.info "#{@name}: #{@stream.class} read returned nil" if data.nil? and not timeout
+        Logger.info "#{@name}: #{@stream.class} read returned 0 bytes (stream closed)" if not data.nil? and data.length <= 0
         return nil
       end
-      if data.nil?
-        Logger.info "#{@name}: #{@stream.class} read returned nil"
-        return nil
-      end
-      if data.length <= 0
-        Logger.info "#{@name}: #{@stream.class} read returned 0 bytes (stream closed)"
-        return nil
-      end
-      return data
-    end
-
-    def read_interface
-      data = read_queue_pop()
-      return nil if data.nil?
 
       extra = nil
       read_interface_base(data, extra)

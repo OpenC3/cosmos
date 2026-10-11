@@ -145,9 +145,8 @@ module OpenC3
           sender = UdpWriteSocket.new('127.0.0.1', read_port)
 
           sender.write("telemetry")
-          # The interface read thread owns the socket so read through the interface
-          data, _extra = i.read_interface
-          expect(data).to eql "telemetry"
+          # Reading the socket directly still works as it is redirected to the read queue
+          expect(i.instance_variable_get(:@read_socket).read(1.0)).to eql "telemetry"
           i.instance_variable_get(:@write_socket).write("command")
           expect(destination.read(1.0)).to eql "command"
           expect(i.instance_variable_get(:@write_socket).local_address.ip_port).to eql read_port
@@ -263,7 +262,7 @@ module OpenC3
         i = UdpInterface.new('127.0.0.1', 'nil', '8889')
         # Each datagram below is 4 bytes and is also charged the per entry
         # overhead so budget for exactly 2 of them
-        i.set_option('READ_QUEUE_MAX_SIZE', [(2 * (4 + ReadQueue::READ_QUEUE_ENTRY_OVERHEAD)).to_s])
+        i.set_option('READ_QUEUE_MAX_SIZE', [(2 * (4 + ReadQueueInterface::READ_QUEUE_ENTRY_OVERHEAD)).to_s])
         i.connect
         5.times { |index| write.write("\x00\x01\x02#{index}") }
         sleep(0.1)

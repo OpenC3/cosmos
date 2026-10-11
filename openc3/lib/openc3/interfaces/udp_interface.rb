@@ -15,16 +15,13 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3/interfaces/interface'
-require 'openc3/utilities/read_queue'
+require 'openc3/interfaces/read_queue_interface'
 require 'openc3/io/udp_sockets'
 require 'openc3/config/config_parser'
 
 module OpenC3
   # Base class for interfaces that send and receive messages over UDP
-  class UdpInterface < Interface
-    include ReadQueue
-
+  class UdpInterface < ReadQueueInterface
     HOST_127_0_0_1 = '127.0.0.1'
     HOST_0_0_0_0 = '0.0.0.0'
 
@@ -54,7 +51,6 @@ module OpenC3
     )
 
       super()
-      initialize_read_queue()
       @hostname = ConfigParser.handle_nil(hostname)
       if @hostname
         @hostname = @hostname.to_s
@@ -146,8 +142,9 @@ module OpenC3
       super()
       # The read thread continuously drains the socket so the operating system
       # buffers don't fill up (and drop datagrams) while we're busy processing
-      # the previous read
-      start_read_queue_thread() if @read_port
+      # the previous read. @read_socket.read is redirected to the queue so
+      # everything reading the socket (including subclasses) still sees all the data.
+      start_read_queue_thread(@read_socket, @read_timeout) if @read_socket
     end
 
     # @return [Boolean] Whether the active ports (read and/or write) have
@@ -187,27 +184,22 @@ module OpenC3
       return nil
     end
 
-    # Called by the read thread to perform a single blocking socket read
-    # @return [String, nil] Data read or nil if the socket is done
-    def read_queue_data
-      socket = @read_socket
-      return nil unless socket # Disconnected
-
-      data = socket.read(@read_timeout)
-      Logger.info "#{@name}: Udp read returned 0 bytes (stream closed)" if data.length <= 0
-      return data
-    rescue IOError # Disconnected
-      return nil
+    # Zero length datagrams are valid so only nil means the socket is done
+    def read_queue_done?(data)
+      data.nil?
     end
 
-    # Reads the data queued by the read thread if the read_port is defined
+    # Reads from the socket if the read_port is defined
     def read_interface
-      data = read_queue_pop()
-      return nil if data.nil?
+      data = @read_socket.read(@read_timeout)
+      return nil unless data # Disconnected
 
+      Logger.info "#{@name}: Udp read returned 0 bytes (stream closed)" if data.length <= 0
       extra = nil
       read_interface_base(data, extra)
       return data, extra
+    rescue IOError # Disconnected
+      return nil
     end
 
     # Writes to the socket

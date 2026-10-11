@@ -18,9 +18,9 @@ from unittest.mock import Mock, patch
 
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
 from openc3.interfaces.protocols.length_protocol import LengthProtocol
+from openc3.interfaces.read_queue_interface import READ_QUEUE_ENTRY_OVERHEAD
 from openc3.interfaces.stream_interface import StreamInterface
 from openc3.streams.stream import Stream
-from openc3.utilities.read_queue import READ_QUEUE_ENTRY_OVERHEAD
 
 
 # Stream which returns the data it is given, one read at a time, and then blocks
@@ -82,6 +82,46 @@ class StuckStream(Stream):
         self.reading.set()
         self.release.wait(5)
         return b"\x01\x02\x03"
+
+    def write(self, data):
+        pass
+
+
+# Reads a handshake in connect and an acknowledgement after each write, like
+# custom interfaces written before the read queue existed
+class HandshakeInterface(StreamInterface):
+    def __init__(self, stream):
+        super().__init__()
+        self.acks = []
+        self.handshake = None
+        self.stream = stream
+
+    def connect(self):
+        super().connect()
+        self.handshake = self.stream.read()
+
+    def write_interface(self, data, extra=None):
+        result = super().write_interface(data, extra)
+        self.acks.append(self.stream.read())
+        return result
+
+
+# Stream with __slots__ (and no Stream base class which has a __dict__) so its
+# read can't be redirected
+class SlotsStream:
+    __slots__ = ()
+
+    def connect(self):
+        pass
+
+    def connected(self):
+        return True
+
+    def disconnect(self):
+        pass
+
+    def read(self):
+        return b"\x01"
 
     def write(self, data):
         pass
@@ -285,7 +325,7 @@ class TestStreamInterface(unittest.TestCase):
         self.assertEqual(self.interface.read_queue_size(), 0)
         self.assertEqual(self.interface.read_interface()[0], b"\x02")
 
-    @patch("openc3.utilities.read_queue.THREAD_JOIN_TIMEOUT", 0.05)
+    @patch("openc3.interfaces.read_queue_interface.THREAD_JOIN_TIMEOUT", 0.05)
     def test_a_replaced_read_thread_stuck_in_a_read_does_not_queue_or_read_again(self):
         stuck = StuckStream()
         self.interface.stream = stuck
@@ -308,3 +348,60 @@ class TestStreamInterface(unittest.TestCase):
         self.assertEqual(self.interface.read_queue_bytes(), 1)
         self.assertEqual(self.interface.read_interface()[0], b"\x0a")
         self.assertEqual(self.interface.read_queue_bytes(), 0)
+
+    def test_derived_classes_read_the_stream_through_the_queue_in_order(self):
+        stream = QueueStream(b"HELLO", b"\x01", b"ACK", b"\x02")
+        interface = HandshakeInterface(stream)
+        interface.connect()
+        self.assertEqual(interface.handshake, b"HELLO")
+        self.assertEqual(interface.read_interface()[0], b"\x01")
+        interface.write_interface(b"\x00")
+        self.assertEqual(interface.acks, [b"ACK"])
+        self.assertEqual(interface.read_interface()[0], b"\x02")
+        interface.disconnect()
+
+    def test_restores_the_stream_read_when_disconnected(self):
+        stream = QueueStream(b"\x01", b"\x02")
+        self.interface.stream = stream
+        self.interface.connect()
+        self.assertIn("read", vars(stream))
+        self.assertEqual(stream.read(), b"\x01")
+        self.interface.disconnect()
+        self.assertNotIn("read", vars(stream))
+
+    def test_restores_a_read_set_on_the_stream_itself(self):
+        stream = QueueStream()
+        stream.read = lambda: b"\x05"
+        stub = stream.read
+        self.interface.set_option("READ_QUEUE_MAX_SIZE", ["1024"])
+        self.interface.stream = stream
+        self.interface.connect()
+        self.assertEqual(self.interface.read_interface()[0], b"\x05")
+        self.interface.disconnect()
+        self.assertIs(stream.read, stub)
+
+    def test_returns_data_queued_behind_a_read_timeout(self):
+        stream = QueueStream()
+        raw_read = stream.read
+        calls = []
+
+        def read():
+            calls.append(1)
+            if len(calls) == 1:
+                raise TimeoutError()
+            return raw_read()
+
+        stream.read = read
+        self.interface.stream = stream
+        self.interface.connect()
+        stream.push(b"\x01")
+        self.wait_for_queue_size(2)
+        # The timeout happened while nobody was waiting so the data is returned
+        self.assertEqual(self.interface.read_interface()[0], b"\x01")
+
+    def test_disables_the_read_queue_if_the_stream_read_cant_be_redirected(self):
+        self.interface.stream = SlotsStream()
+        self.interface.connect()
+        self.assertEqual(self.interface.read_queue_max_size, 0)
+        self.assertFalse(self.interface.read_queue_started())
+        self.assertEqual(self.interface.read_interface()[0], b"\x01")

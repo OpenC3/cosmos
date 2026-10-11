@@ -179,11 +179,99 @@ module OpenC3
       end
     end
 
+    describe "derived classes which read the stream directly" do
+      # Reads a handshake in connect and an acknowledgement after each write,
+      # like custom interfaces written before the read queue existed
+      class HandshakeInterface < StreamInterface
+        attr_reader :handshake, :acks
+
+        def initialize(stream)
+          super()
+          @acks = []
+          self.stream = stream
+        end
+
+        def connect
+          super()
+          @handshake = @stream.read
+        end
+
+        def write_interface(data, extra = nil)
+          result = super(data, extra)
+          @acks << @stream.read
+          return result
+        end
+      end
+
+      it "reads the stream through the queue in order" do
+        stream = QueueStream.new("HELLO", "\x01", "ACK", "\x02")
+        interface = HandshakeInterface.new(stream)
+        interface.connect
+        expect(interface.handshake).to eql "HELLO"
+        expect(interface.read_interface()[0]).to eql "\x01"
+        interface.write_interface("\x00")
+        expect(interface.acks).to eql ["ACK"]
+        expect(interface.read_interface()[0]).to eql "\x02"
+        # Only the read thread reads the underlying stream
+        expect(stream.reads).to be >= 4
+        interface.disconnect
+      end
+
+      it "restores the stream read when disconnected" do
+        stream = QueueStream.new("\x01", "\x02")
+        interface.stream = stream
+        interface.connect
+        expect(stream.singleton_methods).to include(:read)
+        expect(stream.read).to eql "\x01"
+        interface.disconnect
+        expect(stream.singleton_methods).to_not include(:read)
+      end
+
+      it "restores a read defined on the stream itself" do
+        stream = QueueStream.new
+        stream.define_singleton_method(:read) { "\x05" }
+        interface.set_option('READ_QUEUE_MAX_SIZE', ['1024'])
+        interface.stream = stream
+        interface.connect
+        expect(interface.read_interface()[0]).to eql "\x05"
+        interface.disconnect
+        expect(stream.read).to eql "\x05"
+      end
+
+      it "returns data queued behind a read timeout" do
+        stream = QueueStream.new
+        calls = 0
+        raw_read = stream.method(:read)
+        stream.define_singleton_method(:read) do
+          calls += 1
+          raise Timeout::Error if calls == 1
+
+          raw_read.call
+        end
+        interface.stream = stream
+        interface.connect
+        stream.push("\x01")
+        start = Time.now
+        sleep(0.001) while interface.read_queue_size < 2 and (Time.now - start) < 2
+        # The timeout happened while nobody was waiting so the data is returned
+        expect(interface.read_interface()[0]).to eql "\x01"
+      end
+
+      it "disables the read queue if the stream read can't be redirected" do
+        stream = QueueStream.new("\x01").freeze
+        interface.stream = stream
+        expect(Logger).to receive(:warn).with(/Can't redirect/)
+        interface.connect
+        expect(interface.read_queue_max_size).to eql 0
+        expect(interface.read_queue_started?).to be false
+      end
+    end
+
     describe "set_option" do
       it "limits how many bytes are buffered" do
         # Each queued read is also charged the per entry overhead so budget for
         # exactly two of the two byte reads below
-        max_size = 2 * (2 + ReadQueue::READ_QUEUE_ENTRY_OVERHEAD)
+        max_size = 2 * (2 + ReadQueueInterface::READ_QUEUE_ENTRY_OVERHEAD)
         interface.set_option('READ_QUEUE_MAX_SIZE', [max_size.to_s])
         expect(interface.read_queue_max_size).to eql max_size
         stream = QueueStream.new("\x01\x02", "\x03\x04", "\x05\x06")
@@ -292,7 +380,7 @@ module OpenC3
       end
 
       it "doesn't let a read thread which survived being stopped queue or read again" do
-        stub_const("OpenC3::ReadQueue::THREAD_JOIN_TIMEOUT", 0.05)
+        stub_const("OpenC3::ReadQueueInterface::THREAD_JOIN_TIMEOUT", 0.05)
         # Simulate the thread surviving being killed
         allow(OpenC3).to receive(:kill_thread)
         stuck = StuckStream.new

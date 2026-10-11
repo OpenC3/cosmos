@@ -10,14 +10,14 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.config.config_parser import ConfigParser
+from openc3.interfaces.read_queue_interface import ReadQueueInterface
 from openc3.top_level import get_class_from_module
 from openc3.utilities.logger import Logger
-from openc3.utilities.read_queue import ReadQueue
 from openc3.utilities.string import class_name_to_filename
 
 
 # Base class for interfaces that act read and write from a stream
-class StreamInterface(ReadQueue):
+class StreamInterface(ReadQueueInterface):
     def __init__(self, protocol_type=None, protocol_args=None):
         if protocol_args is None:
             protocol_args = []
@@ -46,9 +46,11 @@ class StreamInterface(ReadQueue):
         if self.stream:
             self.stream.connect()
         # The read thread continuously drains the stream so the operating system
-        # buffers don't fill up while we're busy processing the previous read
+        # buffers don't fill up while we're busy processing the previous read.
+        # stream.read is redirected to the queue so everything reading the
+        # stream (including subclasses and protocols) still sees all the data.
         if self.stream and self.read_allowed:
-            self.start_read_queue_thread()
+            self.start_read_queue_thread(self.stream)
 
     def connected(self):
         if self.stream:
@@ -63,25 +65,30 @@ class StreamInterface(ReadQueue):
         self.stop_read_queue_thread()
         super().disconnect()
 
-    # Called by the read thread to perform a single blocking stream read
-    # @return [bytes, None] Data read or None if the stream is done
-    def read_queue_data(self):
+    def read_interface(self):
+        # The read thread is normally started by connect but interfaces can also
+        # be handed an already connected stream so start it on demand
+        if (
+            self.stream
+            and not self.read_queue_started()
+            and self.read_queue_enabled()
+            and self.read_allowed
+            and self.connected()
+        ):
+            self.start_read_queue_thread(self.stream)
+
+        timeout = False
         try:
             data = self.stream.read()
         except TimeoutError:
             Logger.error(f"{self.name}: Timeout waiting for data to be read")
-            return None
-        if data is None:
-            Logger.info(f"{self.name}: {self.stream.__class__.__name__} read returned None")
-            return None
-        if len(data) <= 0:
-            Logger.info(f"{self.name}: {self.stream.__class__.__name__} read returned 0 bytes (stream closed)")
-            return None
-        return data
-
-    def read_interface(self):
-        data = self.read_queue_pop()
-        if data is None:
+            timeout = True
+            data = None
+        if data is None or len(data) <= 0:
+            if data is None and not timeout:
+                Logger.info(f"{self.name}: {self.stream.__class__.__name__} read returned None")
+            if data is not None and len(data) <= 0:
+                Logger.info(f"{self.name}: {self.stream.__class__.__name__} read returned 0 bytes (stream closed)")
             return None, None
 
         extra = None

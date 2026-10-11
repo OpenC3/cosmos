@@ -453,14 +453,14 @@ module OpenC3
     end
 
     # @return [Integer] The number of bytes waiting on the read queue.
-    #   Interfaces which buffer raw reads override this (see ReadQueue).
+    #   Interfaces which buffer raw reads override this (see ReadQueueInterface).
     def read_queue_bytes
       0
     end
 
     # @return [Time, nil] When the data most recently returned by
     #   read_interface was read from the underlying source, or nil if unknown.
-    #   Interfaces which buffer raw reads override this (see ReadQueue).
+    #   Interfaces which buffer raw reads override this (see ReadQueueInterface).
     def read_queue_data_time
       nil
     end

@@ -15,12 +15,12 @@ import time
 import unittest
 from unittest.mock import patch
 
+from openc3.interfaces.read_queue_interface import READ_QUEUE_ENTRY_OVERHEAD
 from openc3.interfaces.udp_interface import UdpInterface
 from openc3.io.udp_sockets import UdpReadSocket, UdpWriteSocket
 from openc3.packets.packet import Packet
 from openc3.top_level import close_socket
 from openc3.utilities.bucket_utilities import BucketUtilities
-from openc3.utilities.read_queue import READ_QUEUE_ENTRY_OVERHEAD
 
 
 class TestUdpInterface(unittest.TestCase):
@@ -154,9 +154,8 @@ class TestUdpInterface(unittest.TestCase):
         self.addCleanup(close_socket, sender)
 
         sender.write(b"telemetry")
-        # The interface read thread owns the socket so read through the interface
-        data, _extra = i.read_interface()
-        self.assertEqual(data, b"telemetry")
+        # Reading the socket directly still works as it is redirected to the read queue
+        self.assertEqual(i.read_socket.read(1.0), b"telemetry")
         i.write_socket.write(b"command")
         self.assertEqual(destination.read(1.0), b"command")
         self.assertEqual(i.write_socket.getsockname()[1], read_port)

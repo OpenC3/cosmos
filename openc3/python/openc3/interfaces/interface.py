@@ -71,7 +71,7 @@ class Interface:
         self.read_raw_data_time = None
         # When the data most recently returned by read_interface was read from the
         # underlying source, or None if unknown. Set by interfaces which buffer
-        # raw reads (see ReadQueue).
+        # raw reads (see ReadQueueInterface).
         self.read_queue_data_time = None
         self.written_raw_data_time = None
         self.config_params = []
@@ -96,7 +96,7 @@ class Interface:
         return self._write_queue_size
 
     # @return [Integer] The number of bytes waiting on the read queue.
-    #   Interfaces which buffer raw reads override this (see ReadQueue).
+    #   Interfaces which buffer raw reads override this (see ReadQueueInterface).
     def read_queue_bytes(self):
         return 0
 

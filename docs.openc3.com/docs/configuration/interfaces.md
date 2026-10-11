@@ -197,8 +197,8 @@ READ_QUEUE_MAX_SIZE applies to each queue, so the memory an interface can hold i
 When the interface disconnects it closes the stream, which unblocks the read thread, and then waits up to 2 seconds for the thread to exit. The built in interfaces wake up their pending read when they disconnect. A custom stream whose `disconnect` doesn't unblock a pending `read` delays each disconnect by those 2 seconds. In Ruby the thread is then killed and a warning is logged. In Python the thread can't be killed, so it is left blocked until its read returns and then exits without using the data. Make sure `disconnect` wakes up any blocked `read` (for example by closing the socket or writing to a wake up pipe).
 :::
 
-:::warning Custom interfaces which read the stream directly
-Custom interfaces which subclass the stream, TCP/IP, serial, MQTT stream or UDP interfaces and read the stream or socket themselves now compete with the read thread for data, which silently splits and loses bytes. This includes overriding `read_interface` without calling `super`, reading a handshake response in `connect`, reading an acknowledgement in `write_interface`, and protocols which read `interface.stream` directly. Either update the interface to use the data passed through `read_interface` and the protocols, or set `OPTION READ_QUEUE_MAX_SIZE 0` to restore the previous inline reads.
+:::note Custom interfaces which read the stream directly
+While the read thread is running the stream's (or UDP read socket's) `read` method is redirected to the read queue. Custom interfaces and protocols which read the stream themselves, for example reading a handshake response in `connect` or an acknowledgement in `write_interface`, keep working unchanged and receive the data in the order it arrived. The read thread is the only thing reading the underlying socket. Code which bypasses `read` and accesses the underlying socket directly (for example with `select` or `recvfrom`) still competes with the read thread, so set `OPTION READ_QUEUE_MAX_SIZE 0` for those interfaces to restore the previous inline reads.
 :::
 
 <Tabs groupId="script-language">
