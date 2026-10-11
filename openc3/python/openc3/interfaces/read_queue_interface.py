@@ -271,6 +271,7 @@ class ReadQueueInterface(Interface):
             while not cancel_event.is_set():
                 try:
                     data = raw_read(*read_args)
+                    data_time = datetime.now(timezone.utc)
                 except TimeoutError as error:
                     # A read timeout doesn't end the reader so pass it along and keep reading
                     if self._reserve_read_queue_timeout(cancel_event):
@@ -292,7 +293,7 @@ class ReadQueueInterface(Interface):
                     break
                 # Queue the time of the read so packets are timestamped when the
                 # data arrived rather than when it was processed
-                read_queue.put((data, datetime.now(timezone.utc)))
+                read_queue.put((data, data_time))
         except Exception:
             Logger.error(f"{self.name}: Read queue thread unexpectedly died: {traceback.format_exc()}")
 
