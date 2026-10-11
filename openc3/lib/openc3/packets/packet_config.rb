@@ -349,7 +349,12 @@ module OpenC3
     def finish_packet
       finish_item()
       if @current_packet
-        @current_packet.description = nil unless @descriptions
+        unless @descriptions
+          @current_packet.description = nil
+          # Reserved items (PACKET_TIMESECONDS, etc.) get descriptions from
+          # define_reserved_items and never pass through finish_item
+          @current_packet.sorted_items.each { |item| item.description = nil }
+        end
         @warnings += @current_packet.check_bit_offsets
         if !@current_packet.virtual && !@current_packet.disabled && !@current_packet.catchall && @current_packet.target_name != 'UNKNOWN' && @current_packet.id_items.empty?
           type = @current_cmd_or_tlm == COMMAND ? "Command" : "Telemetry"

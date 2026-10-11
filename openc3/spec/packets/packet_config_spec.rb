@@ -89,14 +89,18 @@ module OpenC3
         expect(tlm.description).to be_nil
         expect(tlm.get_item('ITEM').description).to be_nil
         expect(tlm.get_item('ITEM2').description).to be_nil
+        expect(tlm.get_item('PACKET_TIMESECONDS').description).to be_nil
+        expect(tlm.get_item('RECEIVED_COUNT').description).to be_nil
         expect(cmd.description).to be_nil
         expect(cmd.get_item('PARAM').description).to be_nil
+        expect(cmd.get_item('RECEIVED_TIMEFORMATTED').description).to be_nil
 
         @pc.process_file(tf.path, 'TGT')
         tlm = @pc.telemetry['TGT']['PKT']
         expect(tlm.description).to eql 'Tlm packet'
         expect(tlm.get_item('ITEM').description).to eql 'Selected item'
         expect(tlm.get_item('ITEM2').description).to eql 'Tlm item 2'
+        expect(tlm.get_item('RECEIVED_COUNT').description).to eql 'OpenC3 packet received count'
         expect(@pc.commands['TGT']['CMD'].get_item('PARAM').description).to eql 'Cmd param'
         tf.unlink
       end

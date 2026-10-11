@@ -80,14 +80,18 @@ class TestPacketConfig(unittest.TestCase):
             self.assertIsNone(tlm.description)
             self.assertIsNone(tlm.get_item("ITEM").description)
             self.assertIsNone(tlm.get_item("ITEM2").description)
+            self.assertIsNone(tlm.get_item("PACKET_TIMESECONDS").description)
+            self.assertIsNone(tlm.get_item("RECEIVED_COUNT").description)
             self.assertIsNone(cmd.description)
             self.assertIsNone(cmd.get_item("PARAM").description)
+            self.assertIsNone(cmd.get_item("RECEIVED_TIMEFORMATTED").description)
 
             self.pc.process_file(tf.name, "TGT")
             tlm = self.pc.telemetry["TGT"]["PKT"]
             self.assertEqual(tlm.description, "Tlm packet")
             self.assertEqual(tlm.get_item("ITEM").description, "Selected item")
             self.assertEqual(tlm.get_item("ITEM2").description, "Tlm item 2")
+            self.assertEqual(tlm.get_item("RECEIVED_COUNT").description, "OpenC3 packet received count")
             self.assertEqual(self.pc.commands["TGT"]["CMD"].get_item("PARAM").description, "Cmd param")
 
     def test_creates_unknown_cmd_tlm_packets(self):

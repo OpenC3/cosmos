@@ -418,6 +418,10 @@ class PacketConfig:
         if self.current_packet:
             if not self.descriptions:
                 self.current_packet.description = None
+                # Reserved items (PACKET_TIMESECONDS, etc.) get descriptions from
+                # define_reserved_items and never pass through finish_item
+                for item in self.current_packet.sorted_items:
+                    item.description = None
             warnings = self.current_packet.check_bit_offsets()
             if len(warnings) > 0:
                 self.warnings += warnings
